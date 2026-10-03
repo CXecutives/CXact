@@ -39,12 +39,8 @@
 // says why; "Abrufen" then completes and ends the setup)
 // · no-minimum (a profile without a minimum day rate and a start: the reader's strip shows
 // the ad's rate and start as plain facts)
-// · dry-run (the demo: a Probelauf mailbox, every command that writes outside the database
-// refuses with `dryRun` like `ensure_real`)
-// · demo (the demo start, `CXact Demo` or `--demo`: an empty Aktuell, the sample profile and
-// a made-up mailbox whose fetch brings the scripted fetch's jobs; connecting a mailbox, a
-// sign-in, another work folder, the reset and a restore refuse with `demo` like
-// `ensure_not_demo`)
+// · dry-run (a Probelauf mailbox, every command that writes outside the database refuses
+// with `dryRun` like `ensure_real`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
 // before the last fetch).
@@ -786,7 +782,6 @@ function initial(): void {
     // The app's version (src-tauri's CARGO_PKG_VERSION, the workspace's).
     version: '3.0.0',
     dryRun: false,
-    demo: false,
     firstRun: false,
     running: null,
     settings: {
@@ -907,20 +902,6 @@ function initial(): void {
     case 'session-left':
       // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
       state.portals[1]!.signedIn = true;
-      break;
-    case 'demo':
-      // Like `create_demo_data`: an empty Aktuell, no fetch yet, the sample profile; the
-      // made-up mailbox brings jobs with every fetch.
-      state.demo = true;
-      jobs = [];
-      state.mailbox = {
-        user: 'demo@example.com',
-        vault: VAULT,
-        error: null,
-        check: null,
-        checkedAt: null,
-      };
-      state.lastRun = null;
       break;
     case 'dry-run':
       state.dryRun = true;
@@ -2384,19 +2365,6 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'restore_backup',
 ]);
 
-/** Commands that refuse in the demo (`ensure_not_demo` in src-tauri): a real mailbox, the
- *  portals' sign-in, the vault, another work folder, the reset, a restore. Its fetches run
- *  like any (its mailbox and portals are made up). */
-const DEMO_REFUSED: ReadonlySet<string> = new Set([
-  'save_mailbox',
-  'remove_mailbox',
-  'portal_login',
-  'portal_logout',
-  'pick_workspace',
-  'reset_all',
-  'restore_backup',
-]);
-
 /** Resolves in the next task (a message, not a timer: no clamping, no fake clock). */
 function nextTask(): Promise<void> {
   return new Promise((resolve) => {
@@ -2414,7 +2382,6 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
   const handler = handlers[command as keyof Commands] as ((a: unknown) => unknown) | undefined;
   if (handler === undefined) throw fail('internal', { command });
   if (state.dryRun && DRY_RUN_REFUSED.has(command)) throw fail('dryRun');
-  if (state.demo && DEMO_REFUSED.has(command)) throw fail('demo');
   const delay = command === 'job_detail' ? DELAY + harness.detailDelay : DELAY;
   if (command !== 'report_ui_error') {
     // Like Tauri's IPC, the answer arrives in a task of its own: the page's work on it is

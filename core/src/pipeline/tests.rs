@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use jiff::SignedDuration;
 use tokio::time::Instant;
 
-use super::demo::{DemoBackends, DemoMail, DemoPages};
+use super::dry_run::{DryRunBackends, DryRunMail, DryRunPages};
 use super::*;
 use crate::error::ErrorKind;
 use crate::export::TXT_DIR;
@@ -100,7 +100,7 @@ async fn a_fetch_without_a_mailbox_searches_and_reads_the_hits() {
     };
     let c = clock();
     let (summary, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx,
@@ -111,7 +111,7 @@ async fn a_fetch_without_a_mailbox_searches_and_reads_the_hits() {
     assert_eq!(summary.outcome, Outcome::Completed);
     assert!(summary.scan.is_none());
     let found = &summary.search.as_ref().unwrap()[&Portal::Hays];
-    // Its first page brought a new job, so its second was asked too (the demo's source shows
+    // Its first page brought a new job, so its second was asked too (the dry run's source shows
     // the same job there, known by then: no third).
     assert_eq!((found.pages, found.hits, found.new), (2, 2, 1));
     assert_eq!(summary.new_jobs.map(|n| n.count), Some(1));
@@ -141,7 +141,7 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let (s, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), false),
@@ -274,7 +274,7 @@ async fn one_click_run_writes_everything_and_finishes_once() {
 
     // Second run: nothing new, no text file twice.
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), false),
@@ -295,7 +295,7 @@ async fn cancel_during_fetch_keeps_work() {
     let mut events = Vec::new();
     let policy = Mutex::new(Policy::in_memory());
     let s = run(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &policy,
         &request(),
@@ -330,7 +330,7 @@ async fn the_scan_logs_out() {
     use crate::mail::{RawHead, RawMail};
 
     static LOGGED_OUT: AtomicBool = AtomicBool::new(false);
-    struct Tracked(DemoMail);
+    struct Tracked(DryRunMail);
     impl MailSource for Tracked {
         async fn search(
             &mut self,
@@ -352,12 +352,12 @@ async fn the_scan_logs_out() {
     struct WithTracked;
     impl Backends for WithTracked {
         type Mail = Tracked;
-        type Pages = DemoPages;
+        type Pages = DryRunPages;
         async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<Tracked, MailError> {
-            Ok(Tracked(DemoBackends.connect_mail(cancel).await?))
+            Ok(Tracked(DryRunBackends.connect_mail(cancel).await?))
         }
-        fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DemoPages, String> {
-            Ok(DemoPages)
+        fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
+            Ok(DryRunPages)
         }
     }
     let c = clock();
@@ -381,15 +381,15 @@ async fn the_scan_logs_out() {
 async fn mail_failure_skips_fetch_but_exports() {
     struct Failing;
     impl Backends for Failing {
-        type Mail = DemoMail;
-        type Pages = DemoPages;
-        async fn connect_mail(&mut self, _: &CancellationToken) -> Result<DemoMail, MailError> {
+        type Mail = DryRunMail;
+        type Pages = DryRunPages;
+        async fn connect_mail(&mut self, _: &CancellationToken) -> Result<DryRunMail, MailError> {
             Err(MailError::Auth(
                 "[AUTHENTICATIONFAILED] Invalid credentials".into(),
             ))
         }
-        fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DemoPages, String> {
-            Ok(DemoPages)
+        fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
+            Ok(DryRunPages)
         }
     }
     let c = clock();
@@ -413,7 +413,7 @@ async fn mail_failure_skips_fetch_but_exports() {
     // A first fetch that failed leaves setup open; one that read the mailbox ends it.
     assert!(!has_completed_fetch(&store));
     go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &scan_only(dir.path()),
@@ -430,7 +430,7 @@ async fn dry_run_writes_nothing() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), true),
@@ -451,7 +451,7 @@ async fn a_portal_must_be_enabled() {
     let mut context = ctx(dir.path(), false);
     context.portals.clear();
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &context,
@@ -472,7 +472,7 @@ async fn details_off_means_no_request_to_the_portal() {
     let mut context = ctx(dir.path(), false);
     context.fetch_portals = vec![Portal::Freelancermap];
     let (s, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &context,
@@ -504,7 +504,7 @@ async fn details_off_means_no_request_to_the_portal() {
         kind: RunKind::Details { keys: vec![key] },
     };
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &details,
         &context,
@@ -522,7 +522,7 @@ async fn targeted_fetch_only_touches_the_chosen_jobs() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &scan_only(dir.path()),
@@ -539,7 +539,7 @@ async fn targeted_fetch_only_touches_the_chosen_jobs() {
         },
     };
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &targeted,
         &ctx(dir.path(), false),
@@ -566,7 +566,7 @@ async fn rescore_only_exports() {
         kind: RunKind::Rescore,
     };
     let (s, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &rescore,
         &ctx(dir.path(), false),
@@ -591,7 +591,7 @@ async fn cancel_after_k_of_n_keeps_exactly_k() {
         let mut updated = 0;
         let policy = Mutex::new(Policy::in_memory());
         run(
-            &mut DemoBackends,
+            &mut DryRunBackends,
             &store,
             &policy,
             &request(),
@@ -708,7 +708,7 @@ async fn a_run_that_cannot_begin_fails() {
     let store = Store::in_memory().unwrap();
     store.kv_set("run_seq", "broken").unwrap();
     let (s, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), false),
@@ -727,13 +727,13 @@ async fn a_run_that_cannot_begin_fails() {
 struct Unscored;
 
 impl Backends for Unscored {
-    type Mail = DemoMail;
-    type Pages = DemoPages;
-    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DemoMail, MailError> {
-        DemoBackends.connect_mail(cancel).await
+    type Mail = DryRunMail;
+    type Pages = DryRunPages;
+    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DryRunMail, MailError> {
+        DryRunBackends.connect_mail(cancel).await
     }
-    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DemoPages, String> {
-        Ok(DemoPages)
+    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
+        Ok(DryRunPages)
     }
 }
 
@@ -761,13 +761,13 @@ impl Matcher for Picky {
 struct WithPicky(&'static str);
 
 impl Backends for WithPicky {
-    type Mail = DemoMail;
-    type Pages = DemoPages;
-    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DemoMail, MailError> {
-        DemoBackends.connect_mail(cancel).await
+    type Mail = DryRunMail;
+    type Pages = DryRunPages;
+    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DryRunMail, MailError> {
+        DryRunBackends.connect_mail(cancel).await
     }
-    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DemoPages, String> {
-        Ok(DemoPages)
+    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
+        Ok(DryRunPages)
     }
     fn matcher(&self) -> Option<Arc<dyn Matcher>> {
         Some(Arc::new(Picky(self.0)))
@@ -894,13 +894,13 @@ impl Matcher for Panicky {
 struct WithPanicky;
 
 impl Backends for WithPanicky {
-    type Mail = DemoMail;
-    type Pages = DemoPages;
-    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DemoMail, MailError> {
-        DemoBackends.connect_mail(cancel).await
+    type Mail = DryRunMail;
+    type Pages = DryRunPages;
+    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DryRunMail, MailError> {
+        DryRunBackends.connect_mail(cancel).await
     }
-    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DemoPages, String> {
-        Ok(DemoPages)
+    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
+        Ok(DryRunPages)
     }
     fn matcher(&self) -> Option<Arc<dyn Matcher>> {
         Some(Arc::new(Panicky))
@@ -950,7 +950,7 @@ async fn a_rescore_says_what_it_changed() {
     let store = Store::in_memory().unwrap();
     let fetch = ctx(dir.path(), true);
     go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &fetch,
@@ -966,7 +966,7 @@ async fn a_rescore_says_what_it_changed() {
         kind: RunKind::Rescore,
     };
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &rescore,
         &fetch,
@@ -995,7 +995,7 @@ async fn a_run_keeps_the_open_musts() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let (_, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), true),
@@ -1046,7 +1046,7 @@ async fn a_run_writes_no_text_files_and_no_top_matches() {
     let store = Store::in_memory().unwrap();
     let result_dir = dir.path().join(RESULT_DIR);
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), false),
@@ -1071,7 +1071,7 @@ async fn a_run_writes_no_text_files_and_no_top_matches() {
     std::fs::create_dir_all(result_dir.join(TXT_DIR)).unwrap();
     std::fs::write(result_dir.join(TXT_DIR).join("old.txt"), b"alt").unwrap();
     go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), false),
@@ -1087,19 +1087,19 @@ async fn a_run_writes_no_text_files_and_no_top_matches() {
     );
 }
 
-/// Records which fetch path the run builds per portal (mails and pages from the demo).
+/// Records which fetch path the run builds per portal (mails and pages from the dry run).
 #[derive(Default)]
 struct Paths(Vec<(Portal, FetchPath)>);
 
 impl Backends for Paths {
-    type Mail = DemoMail;
-    type Pages = DemoPages;
-    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DemoMail, MailError> {
-        DemoBackends.connect_mail(cancel).await
+    type Mail = DryRunMail;
+    type Pages = DryRunPages;
+    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DryRunMail, MailError> {
+        DryRunBackends.connect_mail(cancel).await
     }
-    fn pages(&mut self, portal: Portal, path: FetchPath) -> Result<DemoPages, String> {
+    fn pages(&mut self, portal: Portal, path: FetchPath) -> Result<DryRunPages, String> {
         self.0.push((portal, path));
-        Ok(DemoPages)
+        Ok(DryRunPages)
     }
 }
 
@@ -1156,17 +1156,17 @@ async fn switches_decide_the_fetch_path() {
     assert!(paths.0.contains(&(Portal::FreelanceDe, FetchPath::Session)));
 }
 
-/// The demo, with the fetch paths read from the stored settings like in the app.
+/// The dry run, with the fetch paths read from the stored settings like in the app.
 struct Stored(Arc<Store>);
 
 impl Backends for Stored {
-    type Mail = DemoMail;
-    type Pages = DemoPages;
-    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DemoMail, MailError> {
-        DemoBackends.connect_mail(cancel).await
+    type Mail = DryRunMail;
+    type Pages = DryRunPages;
+    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<DryRunMail, MailError> {
+        DryRunBackends.connect_mail(cancel).await
     }
-    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DemoPages, String> {
-        Ok(DemoPages)
+    fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
+        Ok(DryRunPages)
     }
     fn live_paths(&self) -> Option<LivePaths> {
         Some(stored_paths(Arc::clone(&self.0)))
@@ -1236,7 +1236,7 @@ async fn every_run_starts_with_its_kind() {
     ];
     for (kind, name) in kinds {
         let (s, events) = go(
-            &mut DemoBackends,
+            &mut DryRunBackends,
             &store,
             &RunRequest { kind },
             &ctx(dir.path(), false),
@@ -1256,7 +1256,7 @@ async fn every_run_starts_with_its_kind() {
     // A run that cannot even begin says what it was, too.
     store.kv_set("run_seq", "broken").unwrap();
     let (_, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &RunRequest {
             kind: RunKind::Rescore,
@@ -1284,7 +1284,7 @@ async fn the_last_run_is_the_last_fetch() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let (fetch, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &scan_only(dir.path()),
@@ -1299,7 +1299,7 @@ async fn the_last_run_is_the_last_fetch() {
         .key;
     for kind in [RunKind::Details { keys: vec![key] }, RunKind::Rescore] {
         let (s, _) = go(
-            &mut DemoBackends,
+            &mut DryRunBackends,
             &store,
             &RunRequest { kind },
             &ctx(dir.path(), false),
@@ -1313,7 +1313,7 @@ async fn the_last_run_is_the_last_fetch() {
     let mut none = ctx(dir.path(), false);
     none.portals.clear();
     let (failed, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &none,
@@ -1335,7 +1335,7 @@ async fn a_fetch_counts_its_new_jobs() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let (s, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &ctx(dir.path(), false),
@@ -1390,7 +1390,7 @@ async fn a_fetch_counts_its_new_jobs() {
         .map(|job| job.key.clone())
         .expect("a job without details");
     let (d, events) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &RunRequest {
             kind: RunKind::Details { keys: vec![key] },
@@ -1407,7 +1407,7 @@ async fn a_fetch_counts_its_new_jobs() {
             .all(|e| !matches!(e, RunEvent::JobUpdated { fresh: true, .. }))
     );
     let (r, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &RunRequest {
             kind: RunKind::Rescore,
@@ -1450,7 +1450,7 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
     let store = Store::in_memory().unwrap();
     let fetch = ctx(dir.path(), false);
     go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &fetch,
@@ -1493,7 +1493,7 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
     let files = txt_files(dir.path());
     // The next run reads the same alert mails: the job stays deleted.
     let (s, _) = go(
-        &mut DemoBackends,
+        &mut DryRunBackends,
         &store,
         &request(),
         &fetch,

@@ -20,7 +20,7 @@ jobs and scores each one against a consultant's profile.
 ## Install
 
 **Windows:** run the NSIS installer (a per-user install, no admin rights). The build is unsigned, so
-SmartScreen asks on the first start: *More info → Run anyway*. A portable build and a demo build come from
+SmartScreen asks on the first start: *More info → Run anyway*. A portable build comes from
 `tools/portable.cmd`.
 
 **macOS:** open the `.dmg` (Apple Silicon, macOS 14 or newer). On the first start go to *System Settings →
@@ -81,8 +81,8 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 npx tauri build         # release bundles (NSIS on Windows, app and dmg on macOS)
-tools/portable.cmd      # target/portable/CXact.exe and "CXact Demo.exe"
+tools/portable.cmd      # target/portable/CXact.exe
 ```
 
-**Dry run and demo:** `--dry-run` starts the app without touching the real mailbox, sources or work
-folder. The demo build starts on made-up jobs and asks no source.
+**Dry run:** `--dry-run` starts the app without touching the real mailbox, sources or work
+folder.

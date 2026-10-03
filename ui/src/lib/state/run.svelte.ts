@@ -113,8 +113,8 @@ class RunStore {
   /** Why the fetch cannot start now (what its menu chose: "Jobs suchen" the search,
    *  "Alert-Mails lesen" the mailbox), in the order it is fixed: a run holds the app; for the
    *  search no source of it switched on or no profile to search with; for the mails no
-   *  mailbox or no source of alert mails switched on; null when it can (the demo fetches from
-   *  its made-up mailbox). The backend refuses the same. */
+   *  mailbox or no source of alert mails switched on; null when it can. The backend refuses
+   *  the same. */
   get fetchBlocked(): string | null {
     if (this.active) return this.busyText;
     if (app.fetchWay === 'search') {

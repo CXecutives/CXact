@@ -9,7 +9,7 @@
 //! and data, never prose; the log gets English lines with the run id (never content,
 //! addresses or passwords).
 
-pub mod demo;
+pub mod dry_run;
 pub mod local;
 pub mod rescore;
 pub mod score;

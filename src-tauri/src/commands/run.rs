@@ -16,7 +16,7 @@ use jobalert_core::fetch::Fetchers;
 use jobalert_core::fetch::http::HttpFetcher;
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::mail::imap::{Credentials, Gmail, MailError};
-use jobalert_core::pipeline::demo::{DemoBackends, DemoFeed};
+use jobalert_core::pipeline::dry_run::DryRunBackends;
 use jobalert_core::pipeline::{
     self, Backends, Matcher, Outcome, RunContext, RunEvent, RunKindName, RunRequest, RunSnapshot,
     RunSummary,
@@ -182,8 +182,8 @@ impl Backends for AppBackends {
 /// Settings and Gmail access of a run. Only the mailbox step needs Gmail: fetching job
 /// details also works when the vault entry is unreadable right now. A mailbox run needs a
 /// portal to read: with every portal switched off it is refused here ("at least one portal
-/// must be active"), never started only to be stored as a failed fetch. The dry run and the
-/// demo never read the vault: their mailboxes are made up.
+/// must be active"), never started only to be stored as a failed fetch. The dry run never
+/// reads the vault: its mailbox is made up.
 fn run_context(
     state: &AppState,
     request: &RunRequest,
@@ -199,15 +199,14 @@ fn run_context(
     let mail = settings.fetches_mail();
     let reads_mail = mail || state.dry_run;
     let searches = !mail;
-    let credentials = if state.dry_run || state.demo || !scans || !reads_mail {
+    let credentials = if state.dry_run || !scans || !reads_mail {
         None
     } else {
         Vault::app().load_gmail()?
     };
     let workspace = settings.workspace_or(&state.default_workspace);
     // A fetch searches the sources that have a search (not the dry run: its made-up mails are
-    // all it has; the demo's search shows its own ads), with the active profile's search
-    // terms.
+    // all it has), with the active profile's search terms.
     let search_portals: Vec<Portal> = if scans && !state.dry_run && searches {
         enabled
             .iter()
@@ -246,7 +245,7 @@ fn run_context(
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
         // Without a mailbox a fetch only searches (with nothing to search the scan says the
         // mailbox is missing).
-        read_mail: reads_mail && (state.dry_run || state.demo || credentials.is_some()),
+        read_mail: reads_mail && (state.dry_run || credentials.is_some()),
         search_portals,
         search_terms,
     };
@@ -327,24 +326,19 @@ pub(super) fn launch(
 
     let store = state.store.clone();
     let dry_run = state.dry_run;
-    // The dry run and the demo ask no portal: their safety state lives in memory.
-    let policy = (!dry_run && !state.demo).then(|| state.policy_path());
+    // The dry run asks no portal: its safety state lives in memory.
+    let policy = (!dry_run).then(|| state.policy_path());
     let started = Timestamp::now();
     let work = if dry_run {
         tauri::async_runtime::spawn(drive(
-            DemoBackends,
+            DryRunBackends,
             store,
             policy,
-            false,
             request,
             ctx,
             cancel,
             emit,
         ))
-    } else if let Some(ads) = &state.demo_ads {
-        // The demo: its mailbox brings the next bundled ads, its portals their pages.
-        let feed = DemoFeed::new(Arc::clone(ads), Arc::clone(&store), state.matcher());
-        tauri::async_runtime::spawn(drive(feed, store, policy, true, request, ctx, cancel, emit))
     } else {
         let backends = AppBackends {
             credentials,
@@ -356,9 +350,7 @@ pub(super) fn launch(
             local: state.matcher(),
             store: Arc::clone(&store),
         };
-        tauri::async_runtime::spawn(drive(
-            backends, store, policy, false, request, ctx, cancel, emit,
-        ))
+        tauri::async_runtime::spawn(drive(backends, store, policy, request, ctx, cancel, emit))
     };
     // Supervisor: a panic too ends with exactly one `Finished`, and the slot becomes free.
     // It only clears the slot for its own run - a new one could already be running.
@@ -384,13 +376,11 @@ pub(super) fn launch(
 }
 
 /// A run with dummies or real fetch routes. `policy`: path of `policy.json` (`None` in the
-/// dry run and the demo - then in memory only); `quick`: the demo's short pace.
-#[allow(clippy::too_many_arguments)]
+/// dry run - then in memory only).
 async fn drive<B: Backends>(
     mut backends: B,
     store: Arc<Store>,
     policy: Option<PathBuf>,
-    quick: bool,
     request: RunRequest,
     ctx: RunContext,
     cancel: CancellationToken,
@@ -398,7 +388,6 @@ async fn drive<B: Backends>(
 ) {
     let policy = Mutex::new(match policy {
         Some(path) => Policy::load(&path, Timestamp::now()),
-        None if quick => Policy::quick(),
         None => Policy::in_memory(),
     });
     pipeline::run(

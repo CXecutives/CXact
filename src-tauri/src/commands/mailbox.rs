@@ -30,7 +30,6 @@ pub async fn save_mailbox(
     password: String,
 ) -> CmdResult<Mailbox> {
     state.ensure_real()?;
-    state.ensure_not_demo()?;
     let credentials = Credentials::new(&user, &password);
     // The shape first: a typo is named at once, also while a fetch holds the app.
     credentials.validate().map_err(|e| ErrorInfo::from(&e))?;
@@ -68,7 +67,6 @@ pub async fn save_mailbox(
 #[tauri::command]
 pub async fn remove_mailbox(app: AppHandle, state: State<'_, AppState>) -> CmdResult<bool> {
     state.ensure_real()?;
-    state.ensure_not_demo()?;
     // Held like saving: a run that read the vault before this reads it again.
     let guard = state.claim_mailbox(&app)?;
     let removed = Vault::app().delete_gmail()?;

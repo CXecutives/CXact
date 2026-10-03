@@ -14,8 +14,7 @@
   Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog whose action fails
   stays open and says why inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
-  the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
-  export folder and reset are locked with its reason. Opened from a job for one source
+  the reason of that run instead of failing. Opened from a job for one source
   ("Anmeldung einrichten") the page shows that source's tab, glides to its row, focuses its
   sign-in and offers "Zurück zum Job" beside the tabs.
 -->
@@ -66,7 +65,7 @@
   const lock = $derived<Lock | null>(
     cfg === null ? null : { state: cfg, t, running: run.active, busyText: run.busyText },
   );
-  /** The mailbox is outside the demo's and the dry run's own data, and a run holds it. */
+  /** The mailbox is outside the dry run's own data, and a run holds it. */
   const mailboxLocked = $derived(lock === null ? null : ACTIONS.folderChange.locked(lock));
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
   const sourcesIn = (card: Sources) => portals.filter((p) => sourcesOf(p.way) === card);
@@ -278,8 +277,6 @@
   {:else}
     {#if cfg.dryRun}
       <Notice tone="info" text={t.settings.dryRun} />
-    {:else if cfg.demo}
-      <Notice tone="info" text={t.settings.demo} testid="demo-note" />
     {/if}
 
     <div class="tabbar" data-first-row>

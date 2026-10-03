@@ -207,14 +207,14 @@ mod tests {
     use super::*;
     use crate::mail::{RawHead, RawMail};
     use crate::pipeline::Backends;
-    use crate::pipeline::demo::{DemoBackends, DemoMail};
+    use crate::pipeline::dry_run::{DryRunBackends, DryRunMail};
 
     /// The sample mailbox of the dry run holds one alert mail per portal: each is counted
     /// for its portal, the total is their sum, and a portal not asked for is not in it.
     #[tokio::test(start_paused = true)]
     async fn the_alert_mails_are_counted_per_portal() {
         let cancel = CancellationToken::new();
-        let mut mail = DemoBackends.connect_mail(&cancel).await.unwrap();
+        let mut mail = DryRunBackends.connect_mail(&cancel).await.unwrap();
         let check = count_alerts(&mut mail, &Portal::ALL, Timestamp::now())
             .await
             .unwrap();
@@ -395,7 +395,7 @@ mod tests {
         let credentials = Credentials::new(GOOD_USER, GOOD_PASSWORD);
         let refused = sign_in_and_count(
             &credentials,
-            |_| async { Err::<DemoMail, _>(MailError::Auth("[AUTHENTICATIONFAILED]".into())) },
+            |_| async { Err::<DryRunMail, _>(MailError::Auth("[AUTHENTICATIONFAILED]".into())) },
             &Portal::ALL,
             Timestamp::now(),
         )
@@ -421,7 +421,7 @@ mod tests {
         let cancel = CancellationToken::new();
         let counted = sign_in_and_count(
             &credentials,
-            |_| async { DemoBackends.connect_mail(&cancel).await },
+            |_| async { DryRunBackends.connect_mail(&cancel).await },
             &Portal::ALL,
             Timestamp::now(),
         )
@@ -430,7 +430,7 @@ mod tests {
         cancel.cancel();
         let stopped = sign_in_and_count(
             &credentials,
-            |_| async { DemoBackends.connect_mail(&cancel).await },
+            |_| async { DryRunBackends.connect_mail(&cancel).await },
             &Portal::ALL,
             Timestamp::now(),
         )

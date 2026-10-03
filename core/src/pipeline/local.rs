@@ -361,7 +361,7 @@ mod tests {
     use crate::store::{MailRef, Store};
 
     fn profile() -> Value {
-        serde_json::from_str(super::super::demo::PROFILE_JSON).unwrap()
+        serde_json::from_str(super::super::dry_run::PROFILE_JSON).unwrap()
     }
 
     /// A stored job with `text` as its description (none if empty).

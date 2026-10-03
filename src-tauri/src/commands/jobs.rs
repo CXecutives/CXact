@@ -3,7 +3,7 @@
 use jiff::Timestamp;
 use jobalert_core::export;
 use jobalert_core::model::Place;
-use jobalert_core::pipeline::{self, demo};
+use jobalert_core::pipeline::{self, dry_run};
 use jobalert_core::portal::JobKey;
 use jobalert_core::profile;
 use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack};
@@ -138,7 +138,7 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
 /// The profile as the prompts use it (the sample profile in the dry run).
 fn prompt_profile(state: &AppState) -> CmdResult<serde_json::Value> {
     let profile = if state.dry_run {
-        serde_json::from_str(demo::PROFILE_JSON).ok()
+        serde_json::from_str(dry_run::PROFILE_JSON).ok()
     } else {
         profile::load(&state.workspace()?)?
     };

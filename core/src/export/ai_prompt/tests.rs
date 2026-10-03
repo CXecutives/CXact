@@ -1140,7 +1140,7 @@ fn stored(url: &str, title: &str, text: &str, profile: &Value) -> PromptSource {
 
 #[test]
 fn the_real_engine_behind_a_stored_job() {
-    let profile: Value = serde_json::from_str(crate::pipeline::demo::PROFILE_JSON).unwrap();
+    let profile: Value = serde_json::from_str(crate::pipeline::dry_run::PROFILE_JSON).unwrap();
     let fits = stored(
         "https://www.freelancermap.de/nproj/2999101.html",
         "Interim CFO (m/w/d)",

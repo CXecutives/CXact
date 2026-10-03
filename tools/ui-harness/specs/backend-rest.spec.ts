@@ -2,14 +2,11 @@
 // (the section says its number in Archiv and Papierkorb before every page is there), the
 // best new jobs of the Übersicht while others wait for a score (by match those come first),
 // the app's version in Wartung, Einstellungen opened at one portal from a job ("Anmeldung
-// einrichten", with the way back) and the demo start, which begins with an empty Aktuell and
-// the sample profile, fetches from its made-up mailbox and says that it is the demo.
+// einrichten", with the way back).
 
 import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
-import { DEMO } from './demo';
-import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';
-import { showTab, T } from './helpers';
+import { animationsDone, expect, open, test } from './fixtures';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -121,52 +118,4 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
   await expect(page.getByTestId('portal-freelance')).toBeVisible();
   await expect(page.getByTestId('back-to-job')).toHaveCount(0);
   await expect(page.getByTestId('sign-in-freelance')).not.toBeFocused();
-});
-
-test('the demo starts with an empty Aktuell and the sample profile and fetches like the app', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&way=mail&scenario=demo`);
-  await expect(page.getByTestId('empty-all')).toBeVisible();
-  await expect(page.getByTestId('job-list').getByTestId('no-profile')).toHaveCount(0);
-  const fetch = page.getByTestId('fetch');
-  await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
-  await fetch.click();
-  expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
-    request: { kind: 'fetch' },
-  });
-  await runFinished(page);
-  // The fetch's jobs arrive in Aktuell; Profil holds the sample profile.
-  const first = DEMO.announced[0]!.key;
-  const row = page.getByTestId('job-list').getByTestId(`job-row-${first.portal}-${first.id}`);
-  await expect(row).toBeVisible();
-  await page.getByTestId('nav-profile').click();
-  await expect(page.getByTestId('profile-empty')).toHaveCount(0);
-});
-
-test('the demo keeps to its own folders and says why', async ({ page }) => {
-  await open(page, `${WIN}&scenario=demo`);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('demo-note')).toHaveText(T.settings.demo);
-  // Its made-up mailbox stays as it is: Ändern and Entfernen wait like the folder and the reset.
-  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
-    await expect(page.getByTestId(id)).toHaveAttribute('aria-disabled', 'true');
-  }
-  // What stays in its own folders still works: the folder and the log open.
-  await expect(page.getByTestId('folder-open')).not.toHaveAttribute('aria-disabled', 'true');
-  // No portal either: the sign-in is off and says why.
-  const signIn = await showTab(page, page.getByTestId('sign-in-freelance'));
-  await expect(signIn).toHaveAttribute('aria-disabled', 'true');
-  await signIn.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
-});
-
-test('the sidebar says it is the demo (the top bar shows no title)', async ({ page }) => {
-  for (const os of ['?platform=macos', '?platform=windows']) {
-    await open(page, `${os}&scenario=demo`);
-    await expect(page.getByTestId('sidebar').getByTestId('demo-mark')).toHaveText('Demo');
-    await open(page, os);
-    await expect(page.getByTestId('sidebar').getByTestId('nav-jobs')).toBeVisible();
-    await expect(page.getByTestId('demo-mark')).toHaveCount(0);
-  }
 });

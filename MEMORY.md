@@ -34,8 +34,8 @@ and current: replace what changes, drop what no longer holds.
 
 ## State (2026-10-03)
 
-- `main` is green on CI (Windows and macOS, both harness engines). The portable builds of 2026-10-02 are in
-  `target/portable/`: `CXact.exe` and `CXact Demo.exe`.
+- `main` is green on CI (Windows and macOS, both harness engines). The portable build of 2026-10-02 is
+  `target/portable/CXact.exe`.
 - The search already pages deeply. Up to 24 terms come from the profile (`profile::deep_search_terms`).
   Each term is paged while new jobs come, up to 10 pages on Hays, freelancermap, Michael Page and GULP. A
   cut-short paging resumes at the next fetch within 7 days. A title pre-score orders the fetch. Caps are

@@ -97,8 +97,7 @@ pre-assessment to any AI chat for a deeper check.
     docks or folds, folding by itself below 1100 px. Zurück and Vor walk the views, places, jobs and tabs.
   - The app's own menus, toasts (at most three, bottom right) and tooltips.
   - A start whose data cannot load offers to restore a daily copy of the database.
-- **Demo and dry run:** `CXact Demo.exe` (`--features embedded-demo`) starts on a fresh demo folder with
-  made-up jobs and asks no source. `--dry-run` changes nothing outside its own data.
+- **Dry run:** `--dry-run` changes nothing outside its own data.
 
 ## Decisions that hold
 
@@ -173,7 +172,7 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Auslastung, Laufzeit, Einsatzländer
 - Einstellungen, Daten, Arbeitsordner
 - Aufrufe, Anmelden, Abmelden
-- Probelauf, Demo
+- Probelauf
 
 ## Next
 
@@ -204,5 +203,5 @@ build.
   and what each query brings. Measure before and after with the user's real profile: hits per source and
   term, the share of high matches, duplicates, known jobs it missed.
 - [ ] Optional: a calmer "Gefunden" line in the Jobdetails; hide Jobdetails rows that only say "–".
-- [ ] The release and demo installers (`npx tauri build`, `docs/CHANGING.md` "Release a version"); the user
+- [ ] The release installers (`npx tauri build`, `docs/CHANGING.md` "Release a version"); the user
   starts them.

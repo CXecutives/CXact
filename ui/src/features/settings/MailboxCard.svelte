@@ -9,9 +9,7 @@
   toast). It says "Nicht erreichbar" or "Abgelehnt" after a red one only for a mail error of
   a fetch that finished after Gmail last accepted the mailbox (`mailbox.checkedAt`), with a
   sentence at the end of the card where it adds the next step; a sentence unfolds, so the
-  card below glides. A run, the dry run and
-  the demo lock the mailbox with their reason. The demo shows its made-up mailbox
-  (demo@example.com), connected, which brings new jobs with every fetch. A
+  card below glides. A run and the dry run lock the mailbox with their reason. A
   dialog whose action fails stays open and says why inside; its button tries again.
 -->
 <script lang="ts">
@@ -31,7 +29,7 @@
 
   interface Props {
     cfg: AppState;
-    /** Why the mailbox cannot change now (the demo, the dry run, a run), or null. */
+    /** Why the mailbox cannot change now (the dry run, a run), or null. */
     locked: string | null;
     testid?: string | null;
   }

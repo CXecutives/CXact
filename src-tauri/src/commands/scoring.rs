@@ -9,7 +9,7 @@ use std::time::SystemTime;
 
 use jobalert_core::error::ErrorKind;
 use jobalert_core::pipeline::rescore::{Host, Rescore};
-use jobalert_core::pipeline::{LocalMatcher, Matcher, RunEvent, RunKind, RunRequest, demo};
+use jobalert_core::pipeline::{LocalMatcher, Matcher, RunEvent, RunKind, RunRequest, dry_run};
 use jobalert_core::profile;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
@@ -58,7 +58,7 @@ impl AppState {
     /// uses the invented sample profile.
     pub(super) fn compiled_profile(&self) -> Option<Arc<LocalMatcher>> {
         if self.dry_run {
-            return Some(demo::matcher());
+            return Some(dry_run::matcher());
         }
         let workspace = self.workspace().ok()?;
         let path = profile::profile_path(&workspace);

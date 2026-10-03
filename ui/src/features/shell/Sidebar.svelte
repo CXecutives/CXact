@@ -3,8 +3,8 @@
   view's sheet is the divider. It starts with the views: Jobs, Profil, Einstellungen, each
   with its icon and no count, the first on the first line of every view. The places of the
   jobs (Aktuell, Archiv, Papierkorb) are tabs above the list. Before the first fetch the
-  setup page stands for Jobs; every entry can be chosen, as always. In the demo a quiet line
-  "Demo" stands at the foot. A press here never takes the focus (the list keeps its keys).
+  setup page stands for Jobs; every entry can be chosen, as always. A press here never takes
+  the focus (the list keeps its keys).
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the
   user's, shell.sidebarWidth) or folded away; folded it floats over the view (`floating`,
   App), and a choice there folds it again.
@@ -62,11 +62,6 @@
       <SideNav {items} active={navigation.current} label={t.nav.label} onselect={choose} />
     </div>
   {/if}
-
-  {#if app.state?.demo}
-    <!-- The demo (`--demo`) says so on every view, so nobody takes its samples for real. -->
-    <p class="demo" data-testid="demo-mark">{t.nav.demo}</p>
-  {/if}
 </aside>
 
 <style>
@@ -83,13 +78,5 @@
   /* The first entry is centred in the first row of every view. */
   .nav {
     margin-top: calc(var(--pane-padding) + (var(--first-row) - var(--control-md)) / 2);
-  }
-
-  /* The demo's quiet line at the foot (the text where the nav's icons start). */
-  .demo {
-    margin-top: auto;
-    padding: var(--space-8) var(--space-12);
-    color: var(--text-subtle);
-    font: var(--type-xs);
   }
 </style>

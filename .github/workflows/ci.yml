@@ -87,7 +87,7 @@ jobs:
         run: cargo build -p job-alert-monitor
 
       # ------------------------------------------------------------------ smoke probe
-      # Opens a real window, clicks the fetch button and exits with 0 once the demo run is
+      # Opens a real window, clicks the fetch button and exits with 0 once the dry run is
       # done. A screenshot every 1.5 s alongside - there is no other way to see the macOS UI
       # from outside.
       - name: Smoke probe (Windows)

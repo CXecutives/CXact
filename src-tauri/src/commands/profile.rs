@@ -16,7 +16,7 @@ use std::path::Path;
 use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::matching::{self, Vocabulary};
-use jobalert_core::pipeline::demo;
+use jobalert_core::pipeline::dry_run;
 use jobalert_core::profile;
 use jobalert_core::view::{self, AskedTerm, ProfileDraft, ProfileEntry, ProfileInfo, ProfileSave};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -236,7 +236,7 @@ pub async fn load_profile(
 #[tauri::command]
 pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>> {
     let form = if state.dry_run {
-        profile::form_of(demo::PROFILE_JSON)
+        profile::form_of(dry_run::PROFILE_JSON)
     } else {
         profile::stored_form(&state.workspace()?)
     };

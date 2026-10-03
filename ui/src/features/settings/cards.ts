@@ -40,15 +40,9 @@ export interface Action {
   warns?: boolean;
 }
 
-/** Why the dry run or the demo refuse a change of what is outside their own data. */
+/** Why the dry run refuses a change of what is outside its own data. */
 const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
-  state.demo
-    ? t.error.text('demo', {})
-    : state.dryRun
-      ? t.error.text('dryRun', {})
-      : running
-        ? busyText
-        : null;
+  state.dryRun ? t.error.text('dryRun', {}) : running ? busyText : null;
 
 export const ACTIONS = {
   folderChange: {

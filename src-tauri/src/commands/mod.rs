@@ -97,13 +97,6 @@ pub struct AppState {
     pub data_dir: PathBuf,
     pub default_workspace: PathBuf,
     pub dry_run: bool,
-    /// The demo (`--demo`, the `CXact Demo` build): `data_dir` and `default_workspace` are its
-    /// own folders inside the app's data folder; its mailbox and portals are made up
-    /// (`demo_ads`), it never touches a real mailbox, a portal or the vault.
-    pub demo: bool,
-    /// The ads the demo's mailbox brings fetch by fetch (`pipeline::demo::DemoFeed`); `None`
-    /// outside the demo.
-    pub demo_ads: Option<Arc<jobalert_core::pipeline::demo::DemoAds>>,
     pub user_agent: String,
     pub reset_report: Mutex<Option<ResetReport>>,
     /// Gmail address from the vault. The vault (with the password) is thus read only once per
@@ -360,16 +353,6 @@ impl AppState {
     fn ensure_real(&self) -> CmdResult<()> {
         if self.dry_run {
             return Err(ErrorInfo::new(ErrorKind::DryRun));
-        }
-        Ok(())
-    }
-
-    /// The demo never touches a real mailbox, a portal or the vault and keeps to its own
-    /// folders: what would do so (connecting a mailbox, a sign-in, another work folder, a
-    /// reset, a restore) refuses with `Demo`.
-    fn ensure_not_demo(&self) -> CmdResult<()> {
-        if self.demo {
-            return Err(ErrorInfo::new(ErrorKind::Demo));
         }
         Ok(())
     }

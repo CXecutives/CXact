@@ -27,7 +27,6 @@ use crate::error::{Error, InvalidInput, Result};
 use crate::export::write_atomic;
 use crate::matching::{self, ProfileQuality, ProfileSummary};
 
-pub(crate) use form::KEYS_SEARCH_TERMS;
 #[cfg(test)]
 pub(crate) use form::typescript as form_typescript;
 pub use form::{

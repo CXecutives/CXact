@@ -19,9 +19,6 @@ use crate::export::write_atomic;
 use crate::portal::Portal;
 use crate::time;
 
-/// The pace of [`Policy::quick`] (the demo), in milliseconds.
-pub const QUICK_PACE_MS: RangeInclusive<u64> = 150..=450;
-
 /// Pace and caps of a portal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Limits {
@@ -181,9 +178,6 @@ pub enum Allowance {
 pub struct Policy {
     #[serde(skip)]
     path: Option<PathBuf>,
-    /// The demo's short pace ([`Policy::quick`]).
-    #[serde(skip)]
-    quick: bool,
     #[serde(default, deserialize_with = "known_portals")]
     portals: BTreeMap<Portal, PortalState>,
 }
@@ -244,16 +238,6 @@ impl Policy {
     /// State in memory only (dry run, tests): `save` writes nothing.
     pub fn in_memory() -> Policy {
         Policy::default()
-    }
-
-    /// The demo's: in memory like [`Policy::in_memory`], with a short pace between two
-    /// requests ([`QUICK_PACE_MS`]). Its portals are made up and no request leaves the app,
-    /// so the real pace would only make the demo slow; never for a real portal.
-    pub fn quick() -> Policy {
-        Policy {
-            quick: true,
-            ..Policy::default()
-        }
     }
 
     /// Cap timestamps from a wrong clock: no request and no answer lies after "now", no
@@ -457,15 +441,11 @@ impl Policy {
     /// even if the clock was set back.
     pub fn pace_wait(&self, portal: Portal, now: Timestamp) -> Option<Duration> {
         let last = self.last_access(portal)?;
-        let range = if self.quick {
-            QUICK_PACE_MS
-        } else {
-            limits(portal).pace_ms
-        };
-        // A Crawl-delay of the source's robots.txt is the least gap (not in quick mode).
-        let delay = (!self.quick)
-            .then(|| self.portals.get(&portal))
-            .flatten()
+        let range = limits(portal).pace_ms;
+        // A Crawl-delay of the source's robots.txt is the least gap.
+        let delay = self
+            .portals
+            .get(&portal)
             .and_then(|state| state.robots.as_ref())
             .and_then(|robots| robots.crawl_delay)
             .map_or(0, |seconds| seconds.saturating_mul(1000));
@@ -874,21 +854,5 @@ mod tests {
         p.record_access(Portal::LinkedIn, at(0));
         p.record_access(Portal::LinkedIn, at(25 * 60));
         assert_eq!(p.state(Portal::LinkedIn).accesses, [at(25 * 60)]);
-    }
-
-    /// The demo's policy waits only a short pace between two requests, far below any real
-    /// portal's; a real policy keeps each portal's own.
-    #[test]
-    fn the_quick_policy_of_the_demo_keeps_a_short_pace() {
-        let now = at(0);
-        let mut quick = Policy::quick();
-        let mut real = Policy::in_memory();
-        for p in [&mut quick, &mut real] {
-            p.record_access(Portal::FreelanceDe, now);
-        }
-        let short = quick.pace_wait(Portal::FreelanceDe, now).unwrap();
-        assert!(short <= Duration::from_millis(*QUICK_PACE_MS.end()));
-        let long = real.pace_wait(Portal::FreelanceDe, now).unwrap();
-        assert!(long >= Duration::from_millis(*limits(Portal::FreelanceDe).pace_ms.start()));
     }
 }

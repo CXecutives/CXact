@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use commands::{Activity, AppState, CloseGuard, GmailUser, Scoring};
 use jobalert_core::error::ErrorKind;
-use jobalert_core::pipeline::demo::{self, StartMode};
+use jobalert_core::pipeline::dry_run::StartMode;
 use jobalert_core::secrets::Vault;
 use jobalert_core::store::Store;
 use tauri::Manager;
@@ -36,8 +36,6 @@ struct Texts {
     use_newer: &'static str,
     database_in_use: &'static str,
     database_damaged: &'static str,
-    /// The main window's title in the demo (`--demo`): nobody takes its jobs for real ones.
-    demo_title: &'static str,
 }
 
 // User-facing text, German by product decision.
@@ -55,7 +53,6 @@ const TEXTS: Texts = Texts {
     database_in_use: "Ist sie in einem anderen Programm geöffnet, schließ es und starte die App neu.",
     database_damaged: "Ist sie beschädigt, benenne die Datei um. Die App legt dann eine neue an, \
         ohne die bisherigen Jobs und Einstellungen.",
-    demo_title: "CXact Demo",
 };
 // end of user-facing text
 
@@ -66,10 +63,8 @@ static EXIT_CODE: AtomicI32 = AtomicI32::new(0);
 fn main() {
     let context = tauri::generate_context!();
     // Dry run: database and vault state in memory only, fakes instead of mailbox and
-    // portals, no files. Demo: a data folder of its own made anew, a made-up mailbox and
-    // portals that bring the bundled ads fetch by fetch; the demo build ("CXact Demo", its
-    // identifier ends in `.demo`) always starts so.
-    let mode = StartMode::of_app(std::env::args().skip(1), &context.config().identifier);
+    // portals, no files.
+    let mode = StartMode::of(std::env::args().skip(1));
     let builder = tauri::Builder::default()
         // Must be the first plugin: a second start only brings the existing window to the
         // front.
@@ -206,58 +201,17 @@ fn install_log(data_dir: &Path) {
 #[used]
 static THIRD_PARTY: &str = include_str!("../resources/THIRD-PARTY.txt");
 
-/// The files of the held-out sets built into the exe (feature `embedded-demo`; empty without).
-mod embedded {
-    include!(concat!(env!("OUT_DIR"), "/demo_ads.rs"));
-}
-
-/// The ads the demo draws from: built into the exe (the CXact Demo as one file), else the sets
-/// in the app's resources.
-fn demo_ads(app: &tauri::App) -> jobalert_core::Result<demo::DemoAds> {
-    if !embedded::DEMO_FILES.is_empty() {
-        let mut sets: Vec<&str> = embedded::DEMO_FILES
-            .iter()
-            .map(|(set, _, _)| *set)
-            .collect();
-        sets.dedup();
-        return demo::DemoAds::load_from(&sets, |set, file| {
-            embedded::DEMO_FILES
-                .iter()
-                .find(|(s, f, _)| *s == set && *f == file)
-                .map(|(_, _, text)| (*text).to_owned())
-        });
-    }
-    let resources = app
-        .path()
-        .resource_dir()
-        .map_err(|e| jobalert_core::Error::Corrupt(format!("resources: {e}")))?;
-    demo::DemoAds::load(&demo::demo_sources(&resources))
-}
-
-/// The database of a start, the work folder it falls back to and, in the demo, the ads its
-/// mailbox brings: the real database, one in memory (dry run) or the demo's, made anew in
-/// `<data>/demo` with an empty inbox and its own work folder there with the sample profile,
-/// its ads read from the ones the app bundles.
+/// The database of a start and the work folder it falls back to: the real database or one
+/// in memory (dry run).
 fn open_store(
     app: &tauri::App,
     mode: StartMode,
-    app_data: &Path,
     data_dir: &Path,
-) -> Result<(Store, PathBuf, Option<Arc<demo::DemoAds>>), Failure> {
+) -> Result<(Store, PathBuf), Failure> {
     let database = data_dir.join(jobalert_core::DB_FILE);
     let opened = match mode {
         StartMode::Normal => Store::open(&database),
         StartMode::DryRun => Store::in_memory(),
-        StartMode::Demo => {
-            let ads = demo_ads(app).map_err(|e| Failure::other(format!("demo: {e}")))?;
-            let profile = demo::demo_profile();
-            let fresh = demo::create_demo_data_with(app_data, ads, Some(&profile))
-                .map_err(|e| Failure::other(format!("demo: {e}")))?;
-            log::info!("demo: {} ads", fresh.ads.len());
-            let store =
-                Store::open(&fresh.database).map_err(|e| Failure::database(&fresh.database, &e))?;
-            return Ok((store, fresh.workspace, Some(Arc::new(fresh.ads))));
-        }
     };
     // `Documents\CXact`, or the folder of an earlier version that holds the app's files.
     let workspace = jobalert_core::settings::default_workspace(
@@ -268,34 +222,26 @@ fn open_store(
     Ok((
         opened.map_err(|e| Failure::database(&database, &e))?,
         workspace,
-        None,
     ))
 }
 
 /// Startup: log -> panic hook -> crypto -> pending reset -> database -> window.
 fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     let dry_run = mode == StartMode::DryRun;
-    let app_data = app
+    let data_dir = app
         .path()
         .app_local_data_dir()
         .map_err(|e| Failure::other(format!("data folder: {e}")))?;
-    // The demo keeps to a folder of its own inside the app's: its log, database, safety
-    // state and work folder. The real ones stay as they are.
-    let data_dir = if mode == StartMode::Demo {
-        app_data.join(demo::DEMO_DIR)
-    } else {
-        app_data.clone()
-    };
     install_log(&data_dir);
     jobalert_core::install_crypto();
     // Dates in the files follow the OS's zone, like the page's.
     jobalert_core::time::follow_system_zone();
     // A requested reset runs before anything else - nothing holds a file open yet. The dry
-    // run and the demo never delete anything.
+    // run never deletes anything.
     let reset_report = (mode == StartMode::Normal)
         .then(|| jobalert_core::reset::perform_pending(&data_dir, &Vault::app()))
         .flatten();
-    let (store, default_workspace, demo_ads) = open_store(app, mode, &app_data, &data_dir)?;
+    let (store, default_workspace) = open_store(app, mode, &data_dir)?;
     let store = Arc::new(store);
     // The sessions' storage outside the data folder (macOS data stores) goes too.
     if reset_report.is_some() {
@@ -306,8 +252,6 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         default_workspace,
         data_dir,
         dry_run,
-        demo: mode == StartMode::Demo,
-        demo_ads,
         user_agent: platform::USER_AGENT.to_owned(),
         reset_report: Mutex::new(reset_report),
         gmail_user: Mutex::new(GmailUser::Unread),
@@ -323,11 +267,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     log::info!(
         "start {}{} (web view {})",
         env!("CARGO_PKG_VERSION"),
-        match mode {
-            StartMode::Normal => "",
-            StartMode::DryRun => " (dry run)",
-            StartMode::Demo => " (demo)",
-        },
+        if dry_run { " (dry run)" } else { "" },
         if webview_version.is_empty() {
             "unknown"
         } else {
@@ -345,12 +285,6 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         .ok_or_else(|| Failure::window("no configuration for the main window"))?;
     let builder =
         tauri::WebviewWindowBuilder::from_config(app.handle(), &config).map_err(Failure::window)?;
-    // Nobody takes the demo's jobs for real ones: its window says it is the demo.
-    let builder = if mode == StartMode::Demo {
-        builder.title(TEXTS.demo_title)
-    } else {
-        builder
-    };
     let builder = platform::harden(builder, app.config());
     #[cfg(debug_assertions)]
     let builder = smoke::attach(builder);

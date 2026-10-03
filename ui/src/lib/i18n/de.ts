@@ -112,7 +112,6 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
           ? 'Die Sicherung gibt es nicht mehr.'
           : 'Das gibt es nicht mehr.',
   dryRun: 'Im Probelauf geht das nicht.',
-  demo: 'In der Demo geht das nicht.',
   mailMissing: 'Es ist kein Postfach verbunden.',
   mailConnect: 'Gmail ist nicht erreichbar.',
   mailAuth: 'Gmail lehnt Adresse oder App-Passwort ab.',
@@ -674,8 +673,6 @@ export const de = {
     jobs: 'Jobs',
     profile: 'Profil',
     settings: 'Einstellungen',
-    /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
-    demo: 'Demo',
     /** The buttons of the top bar: back and forward through what was shown, the sidebar and
      *  the job view on and off (their tooltips). */
     back: 'Zurück',
@@ -1559,8 +1556,6 @@ export const de = {
     resetPartly: (value: number) =>
       `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
     dryRun: 'Probelauf, es werden keine Daten verändert.',
-    /** The demo: its own data from invented ads, every fetch brings more. */
-    demo: 'Demo mit erfundenen Beispieldaten.',
   },
   firstRun: {
     steps: 'Erste Schritte',

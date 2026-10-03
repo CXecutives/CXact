@@ -38,9 +38,9 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             .map(|job| job.ok_or_else(|| not_found("job")))
     };
     // A mail opens in the account of the mailbox the app reads (the address is cached after
-    // the first read; the dry run and the demo never touch the vault).
+    // the first read; the dry run never touches the vault).
     let mail = |id: Option<u64>| -> CmdResult<std::ffi::OsString> {
-        let mailbox = if state.dry_run || state.demo {
+        let mailbox = if state.dry_run {
             None
         } else {
             state.gmail_user().0

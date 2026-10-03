@@ -1579,10 +1579,6 @@ pub struct AppState {
     /// The app's version (`3.0.0`), shown in Einstellungen under Wartung.
     pub version: String,
     pub dry_run: bool,
-    /// The demo (`--demo`, or the CXact Demo build): a data folder of its own; every fetch
-    /// brings the next bundled ads from a made-up mailbox (`Demo` refuses a real mailbox,
-    /// the sign-ins and the vault).
-    pub demo: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,
     /// A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the
@@ -2485,7 +2481,7 @@ Rahmenbedingungen:
     /// is active (`save`), and a current one keeps its time.
     #[test]
     fn the_reader_recomputes_and_heals_a_stale_score() {
-        let matcher = crate::pipeline::demo::matcher();
+        let matcher = crate::pipeline::dry_run::matcher();
         let (store, key) = job_with_text(AD);
         let t1: Timestamp = "2026-09-20T08:00:00Z".parse().unwrap();
         let busy = job_detail(&store, &key, Some(&matcher), false, t1)
@@ -2531,7 +2527,7 @@ Rahmenbedingungen:
     /// engine's findings stay listed); taken back, the engine's verdict is stored again.
     #[test]
     fn an_override_shows_the_users_word_and_can_be_taken_back() {
-        let matcher = crate::pipeline::demo::matcher();
+        let matcher = crate::pipeline::dry_run::matcher();
         let (store, key) = job_with_text(AD);
         let now = Timestamp::now();
         job_detail(&store, &key, Some(&matcher), true, now).unwrap();
@@ -2577,7 +2573,7 @@ Rahmenbedingungen:
     /// Reasons, highlights and the criteria strip reference each other consistently.
     #[test]
     fn the_explanation_is_bounded_and_linked() {
-        let matcher = crate::pipeline::demo::matcher();
+        let matcher = crate::pipeline::dry_run::matcher();
         let many = (0..60).fold(String::new(), |mut all, i| {
             all.push_str("- Kenntnisse in Spezialthema Nummer");
             all.push_str(&i.to_string());
@@ -2635,7 +2631,7 @@ Rahmenbedingungen:
     /// codes; the pending count follows the stored revisions.
     #[test]
     fn the_profile_summary_reaches_the_interface() {
-        let matcher = crate::pipeline::demo::matcher();
+        let matcher = crate::pipeline::dry_run::matcher();
         let (store, key) = job_with_text(AD);
         let file = crate::profile::ProfileInfo {
             path: PathBuf::from("beraterprofil.json"),
@@ -2880,7 +2876,7 @@ Anforderungen:
 - Erfahrung im Controlling
 - Kenntnisse in Anaplan
 - Branchenerfahrung Energie";
-        let matcher = crate::pipeline::demo::matcher();
+        let matcher = crate::pipeline::dry_run::matcher();
         let (store, key) = job_with_text(text);
         let detail = job_detail(&store, &key, Some(&matcher), false, Timestamp::now())
             .unwrap()

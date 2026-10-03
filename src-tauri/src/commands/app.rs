@@ -18,7 +18,7 @@ use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::model::Place;
-use jobalert_core::pipeline::{self, Matcher as _, RunEvent, demo};
+use jobalert_core::pipeline::{self, Matcher as _, RunEvent, dry_run};
 use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
 use jobalert_core::store::Backup;
@@ -36,19 +36,16 @@ const UI_ERRORS_PER_MINUTE: usize = 10;
 const MAX_UI_MESSAGE_CHARS: usize = 500;
 const MAX_UI_SOURCE_CHARS: usize = 200;
 
-/// The mailbox as the interface shows it. The dry run and the demo never touch the vault
-/// but show a mailbox: otherwise the app would ask for one, and what they should
-/// demonstrate could not be seen. `example.org` and `example.com` are reserved for examples
-/// and cannot be a real mailbox.
+/// The mailbox as the interface shows it. The dry run never touches the vault but shows a
+/// mailbox: otherwise the app would ask for one, and what it should demonstrate could not be
+/// seen. `example.org` is reserved for examples and cannot be a real mailbox.
 pub(super) fn mailbox(state: &AppState) -> Mailbox {
     let (user, error) = if state.dry_run {
         (Some("probelauf@example.org".to_string()), None)
-    } else if state.demo {
-        (Some(demo::DEMO_ADDRESS.to_string()), None)
     } else {
         state.gmail_user()
     };
-    let checked_at = if state.dry_run || state.demo {
+    let checked_at = if state.dry_run {
         None
     } else {
         state
@@ -72,13 +69,13 @@ pub(super) fn mailbox(state: &AppState) -> Mailbox {
 pub(super) fn profile_info(state: &AppState, workspace: &std::path::Path) -> Option<ProfileInfo> {
     let info = if state.dry_run {
         let sample = profile::ProfileInfo {
-            path: PathBuf::from(demo::PROFILE_NAME),
-            bytes: demo::PROFILE_JSON.len() as u64,
+            path: PathBuf::from(dry_run::PROFILE_NAME),
+            bytes: dry_run::PROFILE_JSON.len() as u64,
             saved_at: None,
             parse_error: None,
         };
-        ProfileInfo::of(&sample, Some(demo::PROFILE_NAME.to_owned()))
-            .with_form(profile::form_of(demo::PROFILE_JSON))
+        ProfileInfo::of(&sample, Some(dry_run::PROFILE_NAME.to_owned()))
+            .with_form(profile::form_of(dry_run::PROFILE_JSON))
     } else {
         match profile::info(workspace) {
             Ok(info) => ProfileInfo::of(&info?, None).with_form(profile::stored_form(workspace)),
@@ -110,7 +107,7 @@ pub(super) fn profile_entries(
     workspace: &std::path::Path,
 ) -> CmdResult<Vec<ProfileEntry>> {
     if state.dry_run {
-        let role = profile::form_of(demo::PROFILE_JSON)
+        let role = profile::form_of(dry_run::PROFILE_JSON)
             .map(|form| form.title.trim().to_owned())
             .filter(|title| !title.is_empty());
         return Ok(vec![ProfileEntry {
@@ -163,16 +160,13 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         platform: crate::platform::platform(),
         version: env!("CARGO_PKG_VERSION").to_owned(),
         dry_run: state.dry_run,
-        demo: state.demo,
-        // The dry run and the demo come with a mailbox and a sample profile: they start in the
-        // app itself, never on the first-run page (the smoke probe on a fresh CI machine relies
-        // on it; the demo starts with an empty Eingang). The first-run page stays until a fetch
-        // has read the mailbox, also after a failed one.
+        // The dry run comes with a mailbox and a sample profile: it starts in the app itself,
+        // never on the first-run page (the smoke probe on a fresh CI machine relies on it). The
+        // first-run page stays until a fetch has read the mailbox, also after a failed one.
         first_run: !state.dry_run
-            && !state.demo
             && !pipeline::has_completed_fetch(&state.store)
             && counts.inbox + counts.archive + counts.trash == 0,
-        setup_done: state.dry_run || state.demo || pipeline::has_completed_fetch(&state.store),
+        setup_done: state.dry_run || pipeline::has_completed_fetch(&state.store),
         running,
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),
@@ -238,11 +232,8 @@ fn at_start(app: &AppHandle, state: &AppState) {
 
 /// Once per app start, after the first page load and off the window thread: the database's
 /// copy of the day in the data folder (`Store::backup_daily`, the newest three kept). The dry
-/// run has none: its database lives in memory; nor the demo: it is made anew at every start.
+/// run has none: its database lives in memory.
 fn daily_backup(app: &AppHandle) {
-    if app.state::<AppState>().demo {
-        return;
-    }
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
@@ -282,8 +273,6 @@ pub async fn pick_workspace(
     state: State<'_, AppState>,
 ) -> CmdResult<Option<WorkspacePick>> {
     state.ensure_idle()?;
-    // The demo keeps to its own work folder.
-    state.ensure_not_demo()?;
     let current = state.workspace()?;
     let Some(folder) = rfd::AsyncFileDialog::new()
         .set_title(texts::PICK_WORKSPACE)
@@ -353,7 +342,6 @@ fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
 pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
     state.ensure_idle()?;
     state.ensure_real()?;
-    state.ensure_not_demo()?;
     let plan = ResetPlan {
         workspace: state.workspace()?,
         txt_names: state.store.txt_names()?,
@@ -375,7 +363,7 @@ pub async fn list_backups(state: State<'_, AppState>) -> CmdResult<Vec<Backup>> 
 /// Restores the database from its copy `id` (a name of `list_backups`). The state it replaces
 /// is copied first and that copy returned: restoring it is the undo. The app is held
 /// meanwhile like a file command (no run, sign-in or file command writes the database), and
-/// neither the dry run nor the demo restores. Afterwards the scores follow the profile (a
+/// the dry run never restores. Afterwards the scores follow the profile (a
 /// rescore when the copy's are of another profile or engine); the page loads everything
 /// again.
 #[tauri::command]
@@ -385,7 +373,6 @@ pub async fn restore_backup(
     id: String,
 ) -> CmdResult<Backup> {
     state.ensure_real()?;
-    state.ensure_not_demo()?;
     let files = state.claim_files(&app)?;
     let before = state.store.restore_backup(&id, Timestamp::now())?;
     log::info!(
