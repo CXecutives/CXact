@@ -2,7 +2,7 @@
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de; any
 source's alert mail by its job links) from Gmail, searches the sources that allow it itself (Hays, freelancermap,
-Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x, FRATCH; user decisions 2026-10-01), fetches the job pages and **scores every job
+Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x, FRATCH), fetches the job pages and **scores every job
 against a consultant profile**, only when the user presses the fetch: "Jobs suchen" or "Alert-Mails lesen", the
 menu beside it chooses which (never both).
 **What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read it before any
@@ -21,7 +21,7 @@ baseline of `tools/eval/legacy_baseline.py`).
 - UI: the CXact palette, the default and for now the only one shown (cxpertise.de's cream, the coral #E67A5C
   of the icon and a richer cxpertise navy; Light and Dark wait in the same file behind the hidden
   Darstellung), defined only in `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app with one top bar
-  like the Claude app's (user 2026-09-27): the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
+  like the Claude app's: the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
   Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
   the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the
   traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
@@ -53,7 +53,7 @@ baseline of `tools/eval/legacy_baseline.py`).
 - The backend never sends prose: notices, errors and status are `{code, params}`; texts live in the UI catalog.
 - Scraping stays conservative: links from the user's alert mails, and the public search of the sources that
   allow it (`Way::Search`, the profile's Suchbegriffe), never more than their robots.txt allows (read at run time;
-  every request of the sources added 2026-10-01). Every request through `admit` (policy.json), stop on
+  every request of the searched sources). Every request through `admit` (policy.json), stop on
   429/999/403/captcha/login wall, never bypass captchas or 2FA. Every source can be switched off.
 - Run events stay below 8 KB (Tauri channel messages above 8 KB bypass the ACL). async-imap logs LOGIN on trace:
   logger levels stay capped.
@@ -94,7 +94,7 @@ baseline of `tools/eval/legacy_baseline.py`).
 - A flaky test is fixed or removed the same day, never retried (CI fails a test that passes only on its retry).
 - macOS is verified through the `macos-latest` CI runner (real app screenshots, dmg install probe) and WebKit locally.
 
-## Speed and tokens (project rules, user 2026-09-26)
+## Speed and tokens (project rules)
 Fast AND lean: the cost comes from extra work, not from speed. So:
 - Only what pays off. Decide before building (product questions in one round, with a recommendation), so nothing
   is built twice. Deliver what the user can see first (preview early), background work after.

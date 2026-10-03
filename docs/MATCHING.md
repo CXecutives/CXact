@@ -806,7 +806,7 @@ params only (`factors.rs`); they are read from the evaluation and never change a
 
 ### Version 18: experience against the profile's own years
 
-v18 (user decision 2026-09-27, option b): the target years (`zielprofil_min_jahre`, "Mindestens
+v18: the target years (`zielprofil_min_jahre`, "Mindestens
 verlangte Erfahrung") are gone from the form and read no more; the key stays known, so a file
 that has it loads without a warning and keeps it on save. The years an ad asks for are judged
 against the profile's own years (`berufserfahrung_jahre`, as before falling back to the most
@@ -871,8 +871,7 @@ None of this moved a corpus row or a held-out total.
 
 ### Rubric of the AI prompts
 
-`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts (until
-2026-09-27 also for the `job-matching` skill, which is gone): bands 1 to 10 (9 to 10 only with
+`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts: bands 1 to 10 (9 to 10 only with
 a met Schwerpunkt when the profile names some), the caps, contract and ANÜ rules, wishes never
 exclude and move at most one point. `core/tests/rubric.rs` checks its bands and that the
 English rubric says the same.

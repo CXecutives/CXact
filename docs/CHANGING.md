@@ -114,9 +114,8 @@ Components never ask which palette is on.
   `core/tests/settings_compat.rs`.
 - The alert mails a fetch reads: since the last fetch (a day of overlap), the first one the
   last 30 days (`Scope::New`, `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`); there is no
-  choice of it (user decision 2026-10-01).
-- The app writes no files of jobs (no Excel or CSV file since 2026-10-01, no text files or
-  `top_matches.json` since 2026-09-27); its work folder holds the profiles.
+  choice of it.
+- The app writes no files of jobs; its work folder holds the profiles.
 - The export folder of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`); the `Job-Alert-Monitor` folder of an earlier version stays in use
   while it holds the app's files. "Öffnen" makes a missing folder first.
@@ -287,7 +286,7 @@ the reason (`params.term`, `params.field`). The stub's `askedTerms`
    its switches from `Portal::ALL`.
 4. The stub's demo data may give it jobs; `docs/PLAN.md` says what the portal allows.
 
-A source added after 2026-10-01 also sets `checks_robots()`; one of alert mails its
+A new source also sets `checks_robots()`; one of alert mails its
 `setup_url()` (Einstellungen and the first-run page offer it as "Alert anlegen"). Its alert
 mails need no code of their own: the mail reader takes any layout by the job links its
 `job_link()` knows (also forwarded and collection mails, click trackers that carry the
@@ -296,7 +295,7 @@ browser is read from the data it loads (`fetch_url()`, GULP).
 
 ## Add a search source
 
-A source the app searches itself (user decision 2026-10-01): an adapter as above with
+A source the app searches itself: an adapter as above with
 `way()` `Way::Search`, `search_urls(terms)` (the first page per term, or one list it filters
 by them), `search_page_url(first, n)` (its further pages as its own links count them; none
 for a source that shows every hit on one page) and `search_page(html)` (its hits, or
@@ -420,7 +419,7 @@ is the real one (the run's events, the scan, the pages at a quick pace, the engi
 (`core/src/pipeline/demo/feed.rs`) and brings 5 to 15 new jobs out of the invented ads of the
 nine held-out sets, until all are in. It never touches a real mailbox, a portal or the keychain.
 
-- **One exe each, no setup** (user, 2026-09-30): `tools/portable.cmd` writes
+- **One exe each, no setup:** `tools/portable.cmd` writes
   `target/portable/CXact.exe` and `target/portable/CXact Demo.exe` (`tauri build --no-bundle`;
   the demo with the cargo feature `embedded-demo`, whose `src-tauri/build.rs` builds the ads of
   all nine held-out sets into the exe, read by `DemoAds::load_from`). Both carry their
