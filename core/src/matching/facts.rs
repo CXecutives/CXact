@@ -1,4 +1,4 @@
-//! Hard criteria of the new engine (V10-V13), structured facts first. A violation is
+//! Hard criteria of the engine (V10-V13), structured facts first. A violation is
 //! decided only on clear wording; everything unclear becomes a check:
 //! ANÜ (named, not negated, not optional) · permanent employment (excluded by the profile:
 //! a stated permanent role, not an inferred one or one that offers interim too) · work
@@ -33,7 +33,7 @@ pub(crate) enum Availability {
     From(Date),
 }
 
-/// Hard criteria as the new engine reads them from the profile.
+/// Hard criteria as the engine reads them from the profile.
 #[derive(Debug, Clone)]
 pub(crate) struct HardCriteria {
     pub min_rate: Option<i128>,
@@ -188,12 +188,12 @@ pub(crate) fn excludes_permanent(value: &Value) -> bool {
 /// The excluded contract types: temporary agency work and permanent employment. A value
 /// that names neither in a readable way is reported as not understood.
 fn excluded_contracts(
-    legacy: &Criteria,
+    criteria: &Criteria,
     data: &Value,
     not_understood: &mut Vec<(&'static str, String)>,
 ) -> (bool, bool) {
     let found = criterion(data, lexicon::KEYS_EXCLUDED_CONTRACTS);
-    let anue = legacy.anue_excluded == Some(true)
+    let anue = criteria.anue_excluded == Some(true)
         || found.is_some_and(|(key, value)| {
             let excluded = excludes_anue(value);
             if excluded.is_none() {
@@ -219,7 +219,7 @@ fn yes_no(value: &Value) -> Option<bool> {
 }
 
 impl HardCriteria {
-    pub(crate) fn new(legacy: &Criteria, data: &Value) -> Self {
+    pub(crate) fn new(criteria: &Criteria, data: &Value) -> Self {
         let mut not_understood = Vec::new();
         let available = match availability_text(data) {
             None => Availability::Unset,
@@ -243,7 +243,7 @@ impl HardCriteria {
                 .map(i128::from)
         };
         let min_rate = match criterion(data, lexicon::KEYS_MIN_RATE) {
-            None => legacy.min_day_rate.filter(|m| *m > 0).or_else(fallback),
+            None => criteria.min_day_rate.filter(|m| *m > 0).or_else(fallback),
             Some((key, value)) => match number(value) {
                 Some(n) if n > 0 => Some(i128::from(n)),
                 Some(_) => fallback(),
@@ -257,7 +257,7 @@ impl HardCriteria {
         };
         // The old reader keeps the entries as written (upper case): names become codes
         // here; a list with an unknown name goes the checked way below and is reported.
-        let countries = legacy
+        let countries = criteria
             .countries
             .clone()
             .filter(|c| !c.is_empty())
@@ -275,8 +275,8 @@ impl HardCriteria {
                 list
             });
         let (anue_excluded, permanent_excluded) =
-            excluded_contracts(legacy, data, &mut not_understood);
-        let remote_outside = legacy.remote_outside_allowed.or_else(|| {
+            excluded_contracts(criteria, data, &mut not_understood);
+        let remote_outside = criteria.remote_outside_allowed.or_else(|| {
             let (key, value) = criterion(data, lexicon::KEYS_REMOTE_OUTSIDE)?;
             let allowed = yes_no(value);
             if allowed.is_none() {

@@ -1,4 +1,4 @@
-//! Lines, headings and sentences of a job text (old engine semantics).
+//! Lines, headings and requirement cues of a job text.
 
 use std::sync::LazyLock;
 
@@ -100,13 +100,7 @@ pub(crate) enum Inline<'a> {
     Other,
 }
 
-/// Does the line match the old inline-heading pattern? The old engine crashed here
-/// (`IndexError: no such group`) because the pattern had one group, not two.
-pub(crate) fn is_inline_heading(line: &str) -> bool {
-    INLINE_HEADING.is_match(&pyre::view(line))
-}
-
-/// The inline heading as the old code intended it (used by the new engine skeleton).
+/// The inline heading of a line (`Anforderungen: ...`).
 pub(crate) fn inline_heading(line: &str) -> Inline<'_> {
     let view = pyre::view(line);
     let Some(caps) = INLINE_HEADING.captures(&view) else {
@@ -132,45 +126,6 @@ pub(crate) fn inline_heading(line: &str) -> Inline<'_> {
         return Inline::Other;
     };
     Inline::Section(kind, rest)
-}
-
-/// Python `_split_sentences`: split after `.!?;` + whitespace before an uppercase letter
-/// or digit; parts stripped, empty parts dropped.
-pub(crate) fn split_sentences(text: &str) -> Vec<&str> {
-    let text = strip(text);
-    let mut parts = Vec::new();
-    let mut start = 0;
-    let mut prev: Option<char> = None;
-    let mut iter = text.char_indices().peekable();
-    while let Some((at, c)) = iter.next() {
-        if !is_space(c) {
-            prev = Some(c);
-            continue;
-        }
-        let mut end = at + c.len_utf8();
-        while let Some(&(next_at, next)) = iter.peek() {
-            if !is_space(next) {
-                break;
-            }
-            end = next_at + next.len_utf8();
-            iter.next();
-        }
-        let before = prev.is_some_and(|p| matches!(p, '.' | '!' | '?' | ';'));
-        let after = text[end..].chars().next().is_some_and(|n| {
-            n.is_ascii_uppercase() || n.is_ascii_digit() || matches!(n, 'Ä' | 'Ö' | 'Ü')
-        });
-        if before && after {
-            parts.push(&text[start..at]);
-            start = end;
-        }
-        prev = text[at..end].chars().last();
-    }
-    parts.push(&text[start..]);
-    parts
-        .into_iter()
-        .map(strip)
-        .filter(|p| !p.is_empty())
-        .collect()
 }
 
 /// Python `_clean_phrase`: leading bullets and numbering removed.
@@ -209,19 +164,12 @@ mod tests {
     }
 
     #[test]
-    fn sentences() {
-        assert_eq!(
-            split_sentences("A b. C d; e f. 3 g"),
-            ["A b.", "C d; e f.", "3 g"]
-        );
-        assert_eq!(split_sentences("x.\u{a0} Y"), ["x.", "Y"]);
-        assert_eq!(split_sentences("x. \u{200b}Y"), ["x. \u{200b}Y"]);
-    }
-
-    #[test]
     fn inline_headings() {
-        assert!(is_inline_heading("Anforderungen: SAP"));
-        assert!(!is_inline_heading("Anforderungen:"));
+        assert!(matches!(
+            inline_heading("Anforderungen: SAP"),
+            Inline::Section(ReqKind::Must, "SAP")
+        ));
+        assert!(matches!(inline_heading("Anforderungen:"), Inline::None));
         assert!(matches!(
             inline_heading("Ihr Profil: SAP FI"),
             Inline::Section(ReqKind::Must, "SAP FI")

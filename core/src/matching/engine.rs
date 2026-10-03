@@ -1,4 +1,4 @@
-//! The new engine: requirements read from the job (V5-V7, V16), each item scored on the
+//! The engine: requirements read from the job (V5-V7, V16), each item scored on the
 //! ladder (V1-V4, V8, V9, V15), hard criteria decided or checked (V10-V13), relevance
 //! (V17, V18) and the shrunk score (V19). Integer arithmetic only.
 //!
@@ -22,7 +22,6 @@ use super::facts::{self, Finding, HardCriteria, JobFacts, Segment};
 use super::fit::{self, ItemFit, Skills};
 use super::focus::{self, Focus};
 use super::job::{self, Class, Item, Stage};
-use super::legacy::LegacyProfile;
 use super::lexicon::engine as lex;
 use super::limits;
 use super::normalize::{char_len, strip};
@@ -34,6 +33,7 @@ use super::params::{
     TITLE_OPEN_CAP, W_MUST, W_SOFT, W_TERM, WISH_MAX,
 };
 use super::permanent;
+use super::profile::{self, CoreText};
 use super::relevance;
 use super::roles::{self, Role, RoleFit};
 use super::score::div_round_half_even;
@@ -42,9 +42,10 @@ use super::seniority;
 use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict};
 use super::wishes::{self, WishResult, Wishes};
 
-/// A profile prepared for the new engine.
+/// A profile prepared for the engine.
 pub(crate) struct EngineProfile {
-    pub legacy: LegacyProfile,
+    /// The core competences as the profile names them.
+    pub core: Vec<CoreText>,
     pub skills: Skills,
     pub criteria: HardCriteria,
     pub query: Vec<(String, u64)>,
@@ -63,10 +64,10 @@ pub(crate) struct EngineProfile {
 
 impl EngineProfile {
     pub(crate) fn new(data: &Value) -> Self {
-        let legacy = LegacyProfile::new(data);
+        let core = profile::core_texts(data);
         let declared = focus::declared(data);
-        let skills = Skills::new(&legacy, data, &declared.items);
-        let criteria = HardCriteria::new(&legacy.criteria, data);
+        let skills = Skills::new(&core, data, &declared.items);
+        let criteria = HardCriteria::new(&profile::criteria(data), data);
         let query = relevance::query(&skills);
         let (focus, mut unreadable) = focus::resolve(&skills, &declared.items);
         unreadable.extend(declared.unreadable);
@@ -76,7 +77,7 @@ impl EngineProfile {
         let (wishes, wishes_unreadable) = Wishes::new(data, &skills.vocab);
         unreadable.extend(wishes_unreadable);
         Self {
-            legacy,
+            core,
             skills,
             criteria,
             query,

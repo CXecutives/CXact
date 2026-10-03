@@ -1,7 +1,7 @@
 //! Ranking metrics for the matching evaluation (docs/MATCHING.md).
 //!
 //! Grades are 0-3 (3 = would apply). All functions are deterministic: ties in the
-//! ranking keep the input order, the bootstrap uses a fixed seed.
+//! ranking keep the input order.
 #![allow(clippy::cast_precision_loss)] // Counts are tiny; these are report numbers.
 
 /// Indices ordered by score, highest first; ties keep the input order.
@@ -103,43 +103,6 @@ pub fn high_band_precision(scores: &[f64], grades: &[u8], relevant: u8) -> Optio
     Some(high.iter().filter(|&&i| grades[i] >= relevant).count() as f64 / high.len() as f64)
 }
 
-/// Result of a paired bootstrap: mean difference and the 95 % percentile interval.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Interval {
-    pub mean: f64,
-    pub low: f64,
-    pub high: f64,
-}
-
-/// Paired bootstrap over `n` items: `diff(sample)` is the metric difference (new - old)
-/// on a resample of item indices. Fixed seed, so reports are reproducible.
-pub fn paired_bootstrap(
-    n: usize,
-    rounds: usize,
-    seed: u64,
-    diff: impl Fn(&[usize]) -> f64,
-) -> Interval {
-    let mut rng = fastrand::Rng::with_seed(seed);
-    let mut values: Vec<f64> = (0..rounds)
-        .map(|_| {
-            let sample: Vec<usize> = (0..n).map(|_| rng.usize(0..n)).collect();
-            diff(&sample)
-        })
-        .collect();
-    values.sort_by(f64::total_cmp);
-    let at = |q: f64| {
-        let index = ((values.len() - 1) as f64 * q).round();
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let index = index as usize;
-        values[index]
-    };
-    Interval {
-        mean: values.iter().sum::<f64>() / values.len() as f64,
-        low: at(0.025),
-        high: at(0.975),
-    }
-}
-
 /// Distance of a score to an expected band (0 inside).
 pub fn band_distance(score: u8, band: (u8, u8)) -> u8 {
     if score < band.0 {
@@ -192,23 +155,6 @@ mod tests {
         let tied = spearman(&[1.0, 1.0, 2.0, 3.0], &[1.0, 2.0, 3.0, 4.0]);
         assert!(close(tied, 0.948_683_298_050_513_8), "{tied}");
         assert!(close(spearman(&[1.0, 1.0], &[1.0, 2.0]), 0.0));
-    }
-
-    #[test]
-    fn bootstrap_is_reproducible_and_centred() {
-        let diffs = [1.0, 2.0, 3.0, 4.0, 5.0];
-        let run = || {
-            paired_bootstrap(5, 2000, 7, |s| {
-                s.iter().map(|&i| diffs[i]).sum::<f64>() / s.len() as f64
-            })
-        };
-        let a = run();
-        assert_eq!(a, run());
-        assert!(
-            a.low < 3.0
-                && 3.0 < a.high
-                && close((a.mean - 3.0).abs().min(0.2), (a.mean - 3.0).abs())
-        );
     }
 
     #[test]

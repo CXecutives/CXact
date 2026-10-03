@@ -1,13 +1,11 @@
-//! Consultant profile: competences with their JSON paths, the weighted terms of the old
-//! engine and the hard criteria.
+//! Consultant profile: competences with their JSON paths and the hard criteria.
 
-use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use serde_json::{Map, Value};
 
 use super::lexicon;
-use super::normalize::{canonical_phrase, canonical_stream, casefold, char_len, strip, tokens};
+use super::normalize::{casefold, strip};
 
 /// A core competence text of the profile.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,19 +18,11 @@ pub(crate) struct CoreText {
     pub explicit: bool,
 }
 
-/// Profile texts sorted into the old engine's groups.
-#[derive(Debug, Default)]
-pub(crate) struct Signals {
-    pub core: Vec<CoreText>,
-    pub experience: Vec<String>,
-    pub soft: Vec<String>,
-}
-
-/// Python `analyze_profile` (without the criteria).
-pub(crate) fn signals(data: &Value) -> Signals {
+/// The core competences of a profile: texts under competence and skill keys anywhere, then
+/// the known profile lists.
+pub(crate) fn core_texts(data: &Value) -> Vec<CoreText> {
     let mut raw_core: Vec<CoreText> = Vec::new();
-    let mut signals = Signals::default();
-    walk(data, None, "", &mut raw_core, &mut signals);
+    walk(data, None, "", &mut raw_core);
 
     if let Value::Object(map) = data {
         for (list_key, sub_keys) in lexicon::PROFILE_LISTS {
@@ -63,18 +53,19 @@ pub(crate) fn signals(data: &Value) -> Signals {
         }
     }
 
-    // `dict.fromkeys(text.strip() ...)`: unique stripped texts, first occurrence wins; a
-    // text found by both passes counts as explicit.
+    // Unique stripped texts, first occurrence wins; a text found by both passes counts as
+    // explicit.
+    let mut core: Vec<CoreText> = Vec::new();
     for entry in raw_core {
         if entry.text.is_empty() {
             continue;
         }
-        match signals.core.iter_mut().find(|c| c.text == entry.text) {
+        match core.iter_mut().find(|c| c.text == entry.text) {
             Some(existing) => existing.explicit |= entry.explicit,
-            None => signals.core.push(entry),
+            None => core.push(entry),
         }
     }
-    signals
+    core
 }
 
 fn core_text(text: &str, path: String, explicit: bool) -> CoreText {
@@ -85,13 +76,7 @@ fn core_text(text: &str, path: String, explicit: bool) -> CoreText {
     }
 }
 
-fn walk(
-    node: &Value,
-    last: Option<&str>,
-    path: &str,
-    core: &mut Vec<CoreText>,
-    signals: &mut Signals,
-) {
+fn walk(node: &Value, last: Option<&str>, path: &str, core: &mut Vec<CoreText>) {
     match node {
         Value::Object(map) => {
             for (key, value) in map {
@@ -104,12 +89,12 @@ fn walk(
                 } else {
                     format!("{path}.{key}")
                 };
-                walk(value, Some(&key_cf), &child, core, signals);
+                walk(value, Some(&key_cf), &child, core);
             }
         }
         Value::Array(items) => {
             for (index, item) in items.iter().enumerate() {
-                walk(item, last, &format!("{path}[{index}]"), core, signals);
+                walk(item, last, &format!("{path}[{index}]"), core);
             }
         }
         Value::String(text) => {
@@ -121,113 +106,22 @@ fn walk(
                 || lexicon::contains(lexicon::SKILL_KEYS, last)
             {
                 core.push(core_text(text, path.to_owned(), false));
-            } else if !strip(text).is_empty() {
-                if lexicon::contains(lexicon::SOFT_KEYS, last) {
-                    signals.soft.push(text.clone());
-                } else {
-                    signals.experience.push(text.clone());
-                }
             }
         }
         _ => {}
     }
 }
 
-/// A weighted profile term of the old engine (`Term`).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Term {
-    pub display: String,
-    pub phrase: bool,
-    /// Base weight in halves (3.0 -> 6).
-    pub base_halves: u8,
-    pub core: bool,
-    pub key: Option<String>,
-}
-
-impl Term {
-    /// Base weight as the old engine printed it.
-    pub fn base(&self) -> f64 {
-        f64::from(self.base_halves) / 2.0
-    }
-
-    /// Canonical form compared with job texts.
-    pub fn match_key(&self) -> String {
-        self.key
-            .clone()
-            .unwrap_or_else(|| canonical_phrase(&self.display))
-    }
-}
-
-/// Python `build_terms`: phrases and single words of the profile in insertion order.
-pub(crate) fn build_terms(signals: &Signals) -> Vec<Term> {
-    let mut terms: Vec<Term> = Vec::new();
-    let mut index: BTreeMap<String, usize> = BTreeMap::new();
-    let mut set_default = |terms: &mut Vec<Term>, id: String, term: Term| {
-        index.entry(id).or_insert_with(|| {
-            terms.push(term);
-            terms.len() - 1
-        });
-    };
-    for core in &signals.core {
-        let phrase = canonical_phrase(&core.text);
-        if !phrase.is_empty() {
-            let term = Term {
-                display: core.text.clone(),
-                phrase: true,
-                base_halves: 6,
-                core: true,
-                key: Some(phrase.clone()),
-            };
-            set_default(&mut terms, format!("p:{phrase}"), term);
-        }
-        for token in canonical_stream(tokens(&core.text)) {
-            if char_len(&token) >= 3 {
-                let term = Term {
-                    display: token.clone(),
-                    phrase: false,
-                    base_halves: 4,
-                    core: true,
-                    key: None,
-                };
-                set_default(&mut terms, format!("w:{token}"), term);
-            }
-        }
-    }
-    for (texts, cap, halves_per_count) in [(&signals.experience, 3u8, 2u8), (&signals.soft, 2, 1)] {
-        let mut counts: Vec<(String, u8)> = Vec::new();
-        for text in texts {
-            for token in canonical_stream(tokens(text)) {
-                match counts.iter_mut().find(|(t, _)| *t == token) {
-                    Some((_, count)) => *count = (*count + 1).min(cap),
-                    None => counts.push((token, 1)),
-                }
-            }
-        }
-        for (token, count) in counts {
-            let term = Term {
-                display: token.clone(),
-                phrase: false,
-                base_halves: count * halves_per_count,
-                core: false,
-                key: None,
-            };
-            set_default(&mut terms, format!("w:{token}"), term);
-        }
-    }
-    terms
-}
-
-/// Hard criteria as the old engine read them (`_parse_criteria`); `None` = inactive.
+/// The hard criteria `HardCriteria` starts from; `None` = inactive.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Criteria {
     pub min_day_rate: Option<i128>,
     pub countries: Option<Vec<String>>,
     pub anue_excluded: Option<bool>,
-    pub available_now: bool,
     pub remote_outside_allowed: Option<bool>,
 }
 
-/// Python `_parse_criteria`.
+/// The criteria of `harte_kriterien`, with `einsatzpraeferenzen` as the fallback.
 pub(crate) fn criteria(data: &Value) -> Criteria {
     let empty = Map::new();
     let section = |key: &str| match data.get(key) {
@@ -255,10 +149,6 @@ pub(crate) fn criteria(data: &Value) -> Criteria {
         ),
         _ => None,
     };
-    let available_now = matches!(
-        either(lexicon::KEY_AVAILABLE, lexicon::KEY_AVAILABLE),
-        Some(Value::String(text)) if text.to_lowercase().contains(lexicon::AVAILABLE_NOW)
-    );
     let remote_outside_allowed = match hard.get(lexicon::KEY_REMOTE_OUTSIDE) {
         Some(Value::Bool(allowed)) => Some(*allowed),
         _ => None,
@@ -267,7 +157,6 @@ pub(crate) fn criteria(data: &Value) -> Criteria {
         min_day_rate,
         countries,
         anue_excluded,
-        available_now,
         remote_outside_allowed,
     }
 }
@@ -427,7 +316,6 @@ mod tests {
         assert_eq!(c.min_day_rate, Some(999));
         assert_eq!(c.countries, Some(vec!["DE".to_owned(), "AT".to_owned()]));
         assert_eq!(c.anue_excluded, Some(true));
-        assert!(c.available_now);
         assert_eq!(c.remote_outside_allowed, None);
     }
 }

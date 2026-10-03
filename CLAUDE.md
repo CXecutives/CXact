@@ -7,8 +7,7 @@ against a consultant profile**, only when the user presses the fetch: "Jobs such
 menu beside it chooses which (never both).
 **What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read it before any
 work and tick its boxes. How to work with the user is in `MEMORY.md` (imported at the end of this file).**
-The old app `CXecutives/projektscraper` is a read-only reference (its old engine, commit `ca9a2cd^`, is the
-baseline of `tools/eval/legacy_baseline.py`).
+The old app `CXecutives/projektscraper` is a read-only reference.
 
 ## Hard rules
 - Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/CXact` (formerly `Project`), fast-forward only; never bypass
@@ -68,7 +67,7 @@ baseline of `tools/eval/legacy_baseline.py`).
   `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`
   (build.rs writes the manifest and `capabilities/main.json`, contract.rs the TS map and checks `generate_handler!`).
 - `ui/`: Svelte 5 + Vite + TypeScript. `styles/`, `components/` (design system), `features/` (screens), `lib/`.
-- `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `eval/legacy_baseline.py`, `icon.py`, `third-party.mjs`.
+- `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `icon.py`, `third-party.mjs`.
 
 ## Commands
 - After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`; the Rust toolchain
@@ -83,7 +82,8 @@ baseline of `tools/eval/legacy_baseline.py`).
   `npm run preview:refresh` only when a block is finished and green, then tell the user to reload it.
 - Engine changes: `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` ·
   `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`; every new
-  `ENGINE_VERSION` gets its section in `docs/MATCHING.md`.
+  `ENGINE_VERSION` updates the rules and measurements in `docs/MATCHING.md` (the numbers before and after go
+  into the commit message).
 
 ## Workflow
 - Small English commits, each green on its own. Tick `docs/PLAN.md`. Parallel tracks work in their own worktree with

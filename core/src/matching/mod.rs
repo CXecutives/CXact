@@ -1,14 +1,12 @@
 //! Matching engine: scores a job text against the consultant profile.
 //!
 //! Pure, synchronous and deterministic; no I/O, integer arithmetic. [`compile_profile`]
-//! once per profile, then [`assess`] per job. [`legacy`] reproduces the old Python engine
-//! for parity tests. See `docs/MATCHING.md`.
+//! once per profile, then [`assess`] per job. See `docs/MATCHING.md`.
 
 mod ad_facts;
 mod application;
 mod atoms;
 mod contract;
-mod criteria;
 mod engine;
 mod exclusion;
 mod explain;
@@ -17,7 +15,6 @@ pub(crate) mod facts;
 mod fit;
 mod focus;
 mod job;
-mod ladder;
 mod layout;
 pub(crate) mod lexicon;
 mod limits;
@@ -32,14 +29,10 @@ mod roles;
 mod score;
 mod sections;
 mod seniority;
-mod signals;
 mod terms;
 mod types;
 mod vocabulary;
 mod wishes;
-
-#[doc(hidden)]
-pub mod legacy;
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -229,7 +222,7 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
 }
 
 fn summarize(engine: &EngineProfile, data: &Value, quality: ProfileQuality) -> ProfileSummary {
-    let core = &engine.legacy.signals.core;
+    let core = &engine.core;
     let mut sources: BTreeMap<String, (u16, bool)> = BTreeMap::new();
     for entry in core {
         let slot = sources
@@ -291,7 +284,7 @@ fn warnings(
     criteria: &[CriterionInfo],
 ) -> Vec<ProfileWarning> {
     let c = &engine.criteria;
-    let core = &engine.legacy.signals.core;
+    let core = &engine.core;
     let availability_raw = facts::availability_text(data);
     let warn = |code, params: Value| ProfileWarning {
         code,

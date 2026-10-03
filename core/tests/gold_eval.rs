@@ -209,13 +209,12 @@ fn labels_reject_bad_grades_and_shapes() {
 
 // --- metrics -----------------------------------------------------------------------------
 
-fn pair(new: (u8, Outcome), old: u8, grade: u8, label_excluded: bool) -> Pair {
+fn pair(score: u8, outcome: Outcome, grade: u8, label_excluded: bool) -> Pair {
     Pair {
         profile: 0,
-        new_score: new.0,
-        new_rank: 0,
-        new_outcome: new.1,
-        old_score: old,
+        score,
+        rank: 0,
+        outcome,
         grade,
         label_excluded,
     }
@@ -225,33 +224,30 @@ fn pair(new: (u8, Outcome), old: u8, grade: u8, label_excluded: bool) -> Pair {
 /// the score before the caps.
 #[test]
 fn ndcg_skips_profiles_without_relevant_jobs_and_ranks_ties_by_rank() {
-    let mut pairs = vec![
-        pair((90, Scored), 10, 3, false),
-        pair((10, Scored), 90, 0, false),
-    ];
+    let mut pairs = vec![pair(90, Scored, 3, false), pair(10, Scored, 0, false)];
     pairs.extend([
         Pair {
             profile: 1,
-            ..pair((50, Scored), 50, 0, false)
+            ..pair(50, Scored, 0, false)
         },
         Pair {
             profile: 1,
-            ..pair((40, Scored), 40, 0, true)
+            ..pair(40, Scored, 0, true)
         },
     ]);
-    assert!(close(metrics::metrics(&pairs).new.ndcg10, 1.0));
+    assert!(close(metrics::metrics(&pairs).ranking.ndcg10, 1.0));
     let tie = |rank_relevant: u16, rank_other: u16| {
         let pairs = [
             Pair {
-                new_rank: rank_other,
-                ..pair((40, Scored), 0, 0, false)
+                rank: rank_other,
+                ..pair(40, Scored, 0, false)
             },
             Pair {
-                new_rank: rank_relevant,
-                ..pair((40, Scored), 0, 3, false)
+                rank: rank_relevant,
+                ..pair(40, Scored, 3, false)
             },
         ];
-        metrics::metrics(&pairs).new.ndcg10
+        metrics::metrics(&pairs).ranking.ndcg10
     };
     assert!(close(tie(420, 380), 1.0));
     assert!(tie(380, 420) < 1.0);
@@ -259,66 +255,39 @@ fn ndcg_skips_profiles_without_relevant_jobs_and_ranks_ties_by_rank() {
 
 #[test]
 fn keys_rank_excluded_last_and_gain_ignores_excluded_labels() {
-    let scored = pair((5, Scored), 0, 3, false);
-    let unscorable = pair((50, Unscorable), 0, 3, false);
-    let excluded = pair((99, Excluded), 0, 3, true);
-    assert!(scored.new_key() > unscorable.new_key());
-    assert!(unscorable.new_key() > excluded.new_key());
+    let scored = pair(5, Scored, 3, false);
+    let unscorable = pair(50, Unscorable, 3, false);
+    let excluded = pair(99, Excluded, 3, true);
+    assert!(scored.key() > unscorable.key());
+    assert!(unscorable.key() > excluded.key());
     assert_eq!((scored.gain(), excluded.gain()), (3, 0));
-    assert!(scored.new_buried() && unscorable.new_buried() && excluded.new_buried());
-    assert!(!pair((40, Scored), 0, 3, false).new_buried());
-    assert!(pair((40, Scored), 39, 3, false).old_buried());
+    assert!(scored.buried() && unscorable.buried() && excluded.buried());
+    assert!(!pair(40, Scored, 3, false).buried());
 }
 
 #[test]
-fn perfect_new_ranking_beats_reversed_old_one() {
-    // New orders by grade; old orders the other way round.
-    let pairs: Vec<Pair> = [
-        (90, 10, 3),
-        (70, 30, 2),
-        (50, 50, 1),
-        (30, 70, 0),
-        (10, 90, 0),
-    ]
-    .iter()
-    .map(|&(new, old, grade)| pair((new, Scored), old, grade, false))
-    .collect();
+fn a_ranking_by_grade_is_perfect() {
+    let pairs: Vec<Pair> = [(90, 3), (70, 2), (50, 1), (30, 0), (10, 0)]
+        .iter()
+        .map(|&(score, grade)| pair(score, Scored, grade, false))
+        .collect();
     let m = metrics::metrics(&pairs);
     assert_eq!(m.n, 5);
-    assert!(close(m.new.ndcg10, 1.0) && close(m.new.ndcg20, 1.0));
-    assert!(m.old.ndcg10 < 0.6, "{}", m.old.ndcg10);
-    // Two relevant jobs, both in every top 5: P@5 is measured against what is reachable.
-    assert!(close(m.new.p5, 1.0) && close(m.old.p5, 1.0));
-    assert!(
-        close(m.new.spearman, 0.974_679_434_480_896_4),
-        "{}",
-        m.new.spearman
-    );
-    assert!(close(m.old.spearman, -0.974_679_434_480_896_4));
-    assert_eq!(m.new.high_band, Some(1.0));
-    assert_eq!(m.old.high_band, Some(0.0));
-    assert_eq!((m.new.grade3_low, m.old.grade3_low), (0, 1));
-    let delta = m.delta_ndcg10.expect("bootstrap");
-    assert!(delta.low <= delta.mean && delta.mean <= delta.high);
-    assert!(delta.mean > 0.3, "{delta:?}");
-    assert_eq!(
-        metrics::metrics(&pairs).delta_ndcg10,
-        Some(delta),
-        "fixed seed"
-    );
+    let r = &m.ranking;
+    assert!(close(r.ndcg10, 1.0) && close(r.ndcg20, 1.0));
+    // Two relevant jobs, both in the top 5: P@5 is measured against what is reachable.
+    assert!(close(r.p5, 1.0));
+    assert!(close(r.spearman, 0.974_679_434_480_896_4), "{}", r.spearman);
+    assert_eq!(r.high_band, Some(1.0));
+    assert_eq!(r.grade3_low, 0);
 }
 
 #[test]
 fn an_excluded_top_score_does_not_count_as_first() {
     // The engine excludes the best-scored job: it ranks last, so the grade-3 job leads.
-    let pairs = [
-        pair((99, Excluded), 99, 0, true),
-        pair((60, Scored), 60, 3, false),
-    ];
+    let pairs = [pair(99, Excluded, 0, true), pair(60, Scored, 3, false)];
     let m = metrics::metrics(&pairs);
-    assert!(close(m.new.ndcg10, 1.0));
-    // The old engine has no exclusion: the job with gain 0 stays first.
-    assert!(close(m.old.ndcg10, 1.0 / 3f64.log2()), "{}", m.old.ndcg10);
+    assert!(close(m.ranking.ndcg10, 1.0));
     assert_eq!(
         m.exclusions,
         Exclusions {
@@ -332,11 +301,11 @@ fn an_excluded_top_score_does_not_count_as_first() {
 #[test]
 fn exclusion_precision_and_recall() {
     let pairs = [
-        pair((80, Excluded), 0, 2, true),
-        pair((80, Excluded), 0, 2, false),
-        pair((80, Scored), 0, 2, true),
-        pair((80, Scored), 0, 2, true),
-        pair((80, Scored), 0, 2, false),
+        pair(80, Excluded, 2, true),
+        pair(80, Excluded, 2, false),
+        pair(80, Scored, 2, true),
+        pair(80, Scored, 2, true),
+        pair(80, Scored, 2, false),
     ];
     let e = Exclusions::of(&pairs);
     assert_eq!(
@@ -355,39 +324,29 @@ fn exclusion_precision_and_recall() {
 
 #[test]
 fn total_averages_ndcg_over_profiles_and_pools_the_rest() {
-    let mut pairs = vec![
-        pair((90, Scored), 10, 3, false),
-        pair((10, Scored), 90, 0, false),
-    ];
-    // Second profile: the new engine gets it wrong, the old one right.
+    let mut pairs = vec![pair(90, Scored, 3, false), pair(10, Scored, 0, false)];
+    // Second profile: the engine gets it wrong.
     pairs.extend([
         Pair {
             profile: 1,
-            ..pair((10, Scored), 90, 3, false)
+            ..pair(10, Scored, 3, false)
         },
         Pair {
             profile: 1,
-            ..pair((90, Scored), 10, 0, false)
+            ..pair(90, Scored, 0, false)
         },
     ]);
-    let total = metrics::metrics(&pairs);
+    let total = metrics::metrics(&pairs).ranking;
     // Grade 3 at rank 2: (7 / log2 3) / 7.
     let worst = 1.0 / 3f64.log2();
     assert!(
-        close(total.new.ndcg10, f64::midpoint(1.0, worst)),
+        close(total.ndcg10, f64::midpoint(1.0, worst)),
         "{}",
-        total.new.ndcg10
+        total.ndcg10
     );
-    assert!(close(total.old.ndcg10, total.new.ndcg10));
-    assert!(close(total.new.spearman, 0.0));
-    assert_eq!(total.new.high_band, Some(0.5));
-    assert_eq!(total.new.grade3_low, 1);
-    // Symmetric profiles: the bootstrap difference centres on zero.
-    let delta = total.delta_ndcg10.expect("bootstrap");
-    assert!(
-        delta.mean.abs() < 0.05 && delta.low < 0.0 && delta.high > 0.0,
-        "{delta:?}"
-    );
+    assert!(close(total.spearman, 0.0));
+    assert_eq!(total.high_band, Some(0.5));
+    assert_eq!(total.grade3_low, 1);
 }
 
 #[test]
@@ -395,13 +354,12 @@ fn gates_and_status() {
     let good: Vec<Pair> = (0..10u8)
         .map(|i| {
             let grade = if i < 5 { 3 } else { 0 };
-            // New orders by grade, old the other way round.
-            pair((100 - i * 9, Scored), 10 + i * 9, grade, false)
+            pair(100 - i * 9, Scored, grade, false)
         })
         .collect();
     let m = metrics::metrics(&good);
     let gates = metrics::gates(&m);
-    assert_eq!(gates.len(), 14);
+    assert_eq!(gates.len(), 11);
     assert!(gates.iter().all(|g| g.pass), "{gates:?}");
     assert_eq!(metrics::status(0, &gates), Status::NoLabels);
     assert_eq!(metrics::status(59, &gates), Status::Preliminary);
@@ -409,7 +367,7 @@ fn gates_and_status() {
 
     // One wrong exclusion and a buried grade-3 job fail their gates.
     let mut bad = good.clone();
-    bad[0].new_outcome = Excluded;
+    bad[0].outcome = Excluded;
     let gates = metrics::gates(&metrics::metrics(&bad));
     let failed: Vec<&str> = gates
         .iter()
@@ -428,7 +386,7 @@ fn gates_and_status() {
     let reversed: Vec<Pair> = good
         .iter()
         .map(|p| Pair {
-            new_score: 100 - p.new_score,
+            score: 100 - p.score,
             ..*p
         })
         .collect();
@@ -446,17 +404,17 @@ fn gates_and_status() {
 #[test]
 fn relevant_spearman_and_concordance_per_grade_pair() {
     let pairs = [
-        pair((90, Scored), 90, 3, false),
-        pair((70, Scored), 50, 2, false),
-        pair((70, Scored), 60, 1, false),
+        pair(90, Scored, 3, false),
+        pair(70, Scored, 2, false),
+        pair(70, Scored, 1, false),
         // Excluded by the engine with its score kept, a grade-2 job by the labels.
-        pair((80, Excluded), 30, 2, false),
-        pair((20, Scored), 70, 0, false),
-        pair((10, Scored), 20, 0, true),
+        pair(80, Excluded, 2, false),
+        pair(20, Scored, 0, false),
+        pair(10, Scored, 0, true),
     ];
     let m = metrics::metrics(&pairs);
     let c = |lower, higher| {
-        let c = m.new.concordance_of(lower, higher);
+        let c = m.ranking.concordance_of(lower, higher);
         (c.share, c.pairs)
     };
     assert_eq!(c(0, 3), (Some(1.0), 2));
@@ -466,35 +424,28 @@ fn relevant_spearman_and_concordance_per_grade_pair() {
     assert_eq!(c(1, 2), (Some(0.75), 2));
     assert_eq!(c(2, 3), (Some(1.0), 2));
     assert_eq!(c(1, 3), (Some(1.0), 1));
-    assert_eq!(m.old.concordance_of(0, 2).share, Some(0.5));
     // Relevant pairs by list order (the excluded job last), gains 3, 2, 1, 2: key ranks
     // 4, 2.5, 2.5, 1 against gain ranks 4, 2.5, 1, 2.5.
-    assert_eq!(m.new.spearman_relevant, Some(0.5));
+    assert_eq!(m.ranking.spearman_relevant, Some(0.5));
     // Relevant pairs of one gain have no order to judge.
-    let flat = [
-        pair((90, Scored), 0, 3, false),
-        pair((10, Scored), 0, 3, false),
-    ];
-    assert_eq!(metrics::metrics(&flat).new.spearman_relevant, None);
+    let flat = [pair(90, Scored, 3, false), pair(10, Scored, 3, false)];
+    assert_eq!(metrics::metrics(&flat).ranking.spearman_relevant, None);
     let table = metrics::order_table(&[("a.json".to_owned(), m)], &m);
     assert_eq!(table.lines().count(), 4, "{table}");
-    assert!(table.contains("| 1.000 / 0.500 (4) |"), "{table}");
+    assert!(table.contains("| 1.000 (4) |"), "{table}");
     assert!(!table.contains("NaN"));
 }
 
 #[test]
 fn tables_have_one_row_per_profile_and_the_total() {
-    let pairs = [
-        pair((90, Scored), 10, 3, false),
-        pair((10, Excluded), 90, 0, true),
-    ];
+    let pairs = [pair(90, Scored, 3, false), pair(10, Excluded, 0, true)];
     let m = metrics::metrics(&pairs);
     let table = metrics::table(&[("a.json".to_owned(), m)], &m);
     assert_eq!(table.lines().count(), 4, "{table}");
-    assert!(table.contains("| a.json | 2 | 1.000 / "));
+    assert!(table.contains("| a.json | 2 | 1.000 |"), "{table}");
     assert!(table.contains("| **Total** | 2 |"));
     assert!(!table.contains("NaN"));
     let gates = metrics::gate_table(&metrics::gates(&m));
-    assert_eq!(gates.lines().count(), 16);
+    assert_eq!(gates.lines().count(), 13);
     assert!(gates.contains("| Exclusion precision | 1.000 | 1.000 | pass |"));
 }

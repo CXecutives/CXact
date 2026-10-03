@@ -1,23 +1,20 @@
-//! Evaluate the new and the old engine against the blind labels of the private gold set:
+//! Evaluate the engine against the blind labels of the private gold set:
 //!
 //! ```text
 //! cargo run -p jobalert-core --example match_eval -- [--gold DIR] [--labels FILE] [--profile FILE]...
 //! ```
 //!
 //! Reads `gold/jobs.json`, the TXT files (from `export_gold`) and `gold/labels.json`, scores
-//! every job with the new engine (`compile_profile` + `assess`: title, raw location, portal,
-//! text, page facts, teaser kind, mail date) and the old one (`legacy::legacy_percent`) for
-//! every profile (`core/tests/fixtures/matching/sample_profile*.json` or `--profile`), and
-//! reports per profile and in total: NDCG@10/@20, P@5, Spearman (all pairs and relevant
-//! pairs), the concordance per grade pair, high-band precision, grade-3 jobs buried,
-//! exclusion precision/recall and a paired bootstrap of NDCG@10 new - old
-//! (`examples/common/metrics.rs`). Prints Markdown tables (numbers only, never ad text) and
-//! writes `gold/report.md` (private; it also lists job keys of misses).
+//! every job with the engine (`compile_profile` + `assess`: title, raw location, portal,
+//! text, page facts, teaser kind, mail date) for every profile
+//! (`core/tests/fixtures/matching/sample_profile*.json` or `--profile`), and reports per
+//! profile and in total: NDCG@10/@20, P@5, Spearman (all pairs and relevant pairs), the
+//! concordance per grade pair, high-band precision, grade-3 jobs buried and exclusion
+//! precision/recall (`examples/common/metrics.rs`). Prints Markdown tables (numbers only,
+//! never ad text) and writes `gold/report.md` (private; it also lists job keys of misses).
 //!
-//! Exit code 1 when a gate fails with at least 60 labelled jobs (`docs/PLAN.md`, the
-//! Spearman gate replaced by the relevant-pair Spearman and the concordance gates of
-//! `docs/MATCHING.md` "Corpus and gates"); below that the result is "preliminary" and the exit
-//! code 0.
+//! Exit code 1 when a gate of `docs/MATCHING.md` "Corpus and gates" fails with at least 60
+//! labelled jobs; below that the result is "preliminary" and the exit code 0.
 
 mod common;
 
@@ -30,7 +27,7 @@ use std::process::ExitCode;
 use common::gold::{self, GoldJob};
 use common::labels::{self, Labels};
 use common::metrics::{self, MIN_LABELLED_JOBS, Metrics, Outcome, Pair, Status};
-use jobalert_core::matching::{self, JobInput, TextKind, Verdict, legacy};
+use jobalert_core::matching::{self, JobInput, TextKind, Verdict};
 use jobalert_core::model::is_usable_title;
 use jobalert_core::portal::Portal;
 use jobalert_core::time::local_date;
@@ -76,13 +73,11 @@ fn parse_args() -> Res<Args> {
     Ok(args)
 }
 
-/// A gold job ready for both engines.
+/// A gold job ready for the engine.
 struct Loaded {
     job: GoldJob,
     portal: Portal,
     title: String,
-    /// The TXT file as written (the old engine reads the whole file).
-    content: String,
     body: String,
     posted: Option<jiff::civil::Date>,
 }
@@ -116,7 +111,6 @@ fn load(dir: &Path, jobs: Vec<GoldJob>) -> (Vec<Loaded>, usize) {
             job,
             portal,
             title,
-            content,
             body,
         });
     }
@@ -130,7 +124,6 @@ struct Counts {
     excluded: usize,
     unscorable: usize,
     high: usize,
-    old_absent: usize,
     labelled: usize,
     unknown_labels: usize,
 }
@@ -203,27 +196,20 @@ fn run_profile(
         if outcome == Outcome::Scored && assessment.score >= 80 {
             counts.high += 1;
         }
-        let old = legacy::parse_job_file(&job.content)
-            .and_then(|file| legacy::legacy_percent(&data, &file.text))
-            .map(|s| s.pct);
-        if old.is_none() {
-            counts.old_absent += 1;
-        }
         let Some(label) = own.and_then(|l| labels::for_job(l, &job.job)) else {
             continue;
         };
         counts.labelled += 1;
         let pair = Pair {
             profile: index,
-            new_score: assessment.score,
-            new_rank: assessment.rank,
-            new_outcome: outcome,
-            old_score: old.unwrap_or(0),
+            score: assessment.score,
+            rank: assessment.rank,
+            outcome,
             grade: label.grade,
             label_excluded: label.excluded,
         };
         let key = &job.job.file;
-        if pair.gain() == 3 && pair.new_buried() {
+        if pair.gain() == 3 && pair.buried() {
             misses.grade3_buried.push(key.clone());
         }
         match (outcome == Outcome::Excluded, label.excluded) {
@@ -243,22 +229,15 @@ fn run_profile(
 
 fn counts_table(runs: &[ProfileRun]) -> String {
     let mut out = String::from(
-        "| Profile | Scored | Excluded | Unscorable | High band (new) | Old absent | Labelled | Unknown labels |\n\
-         |---|---|---|---|---|---|---|---|\n",
+        "| Profile | Scored | Excluded | Unscorable | High band | Labelled | Unknown labels |\n\
+         |---|---|---|---|---|---|---|\n",
     );
     for run in runs {
         let c = &run.counts;
         let _ = writeln!(
             out,
-            "| {} | {} | {} | {} | {} | {} | {} | {} |",
-            run.name,
-            c.scored,
-            c.excluded,
-            c.unscorable,
-            c.high,
-            c.old_absent,
-            c.labelled,
-            c.unknown_labels
+            "| {} | {} | {} | {} | {} | {} | {} |",
+            run.name, c.scored, c.excluded, c.unscorable, c.high, c.labelled, c.unknown_labels
         );
     }
     out
@@ -290,15 +269,9 @@ fn misses_section(runs: &[ProfileRun]) -> String {
 /// The metric tables and the gates.
 fn results(rows: &[(String, Metrics)], total: &Metrics, gates: &[metrics::Gate]) -> String {
     let mut out = String::from(
-        "\nNew / old per cell. NDCG and P@5: mean over profiles; Spearman, high band and \
-         buried grade-3 jobs pooled. Gain 2^grade - 1, grade 0 when the labelers excluded \
-         the job; the new engine ranks excluded jobs last. Bootstrap: ",
-    );
-    let _ = writeln!(
-        out,
-        "{} rounds, seed {}.\n",
-        metrics::BOOTSTRAP_ROUNDS,
-        metrics::BOOTSTRAP_SEED
+        "\nNDCG and P@5: mean over profiles; Spearman, high band and buried grade-3 jobs \
+         pooled. Gain 2^grade - 1, grade 0 when the labelers excluded the job; the engine \
+         ranks excluded jobs last.\n\n",
     );
     out.push_str(&metrics::table(rows, total));
     out.push_str(

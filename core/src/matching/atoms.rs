@@ -1,4 +1,4 @@
-//! Skill atoms of the new engine: case-folded, umlauts folded, fillers removed, light
+//! Skill atoms of the engine: case-folded, umlauts folded, fillers removed, light
 //! stemming (V1), bilingual concepts (V3), and the fit of two atoms including compounds
 //! (V2) and specific/general relations (V4).
 

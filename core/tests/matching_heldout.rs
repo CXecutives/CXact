@@ -3,11 +3,10 @@
 //! profiles the engine was not tuned on at the time. Every set was later used to find and
 //! fix systematic gaps, so they are regression gates now, not an unseen measurement.
 //!
-//! Every set runs the new engine and the old one (`legacy_percent`) over all labelled
-//! (profile, job) pairs and computes the metrics of `docs/MATCHING.md` (NDCG@10/20, P@5
-//! against what each profile can reach, Spearman over all and over the relevant pairs, the
-//! concordance per grade pair, high band, buried grade-3 jobs, exclusion precision and
-//! recall). The gates below freeze what the engine reaches;
+//! Every set runs the engine over all labelled (profile, job) pairs and computes the
+//! metrics of `docs/MATCHING.md` (NDCG@10/20, P@5 against what each profile can reach,
+//! Spearman over all and over the relevant pairs, the concordance per grade pair, high band,
+//! buried grade-3 jobs, exclusion precision and recall). The gates below freeze what the engine reaches;
 //! `-- --ignored heldout_report --nocapture` prints the tables.
 
 #[allow(dead_code)]
@@ -25,9 +24,7 @@ mod metrics;
 
 use std::path::{Path, PathBuf};
 
-use jobalert_core::matching::{
-    Assessment, JobInput, TextKind, Verdict, assess, compile_profile, legacy,
-};
+use jobalert_core::matching::{Assessment, JobInput, TextKind, Verdict, assess, compile_profile};
 use jobalert_core::portal::Portal;
 use metrics::{Metrics, Outcome, Pair};
 use serde_json::Value;
@@ -111,15 +108,11 @@ fn run_set(name: &str) -> SetRun {
                 Verdict::Excluded => Outcome::Excluded,
                 Verdict::Unscorable => Outcome::Unscorable,
             };
-            let old = legacy::parse_job_file(&content)
-                .and_then(|file| legacy::legacy_percent(&data, &file.text))
-                .map_or(0, |s| s.pct);
             let pair = Pair {
                 profile: index,
-                new_score: a.score,
-                new_rank: a.rank,
-                new_outcome: outcome,
-                old_score: old,
+                score: a.score,
+                rank: a.rank,
+                outcome,
                 grade: label.grade,
                 label_excluded: label.excluded,
             };
@@ -186,7 +179,7 @@ struct Floor {
 /// Engine 18 (a product decision, 2026-09-27): the years an ad asks for are judged against the
 /// profile's own years and never exclude, so the pairs the labels exclude only for the retired
 /// target years (`zielprofil_min_jahre`) are scored now. The recall floors (and NDCG@10 and
-/// Spearman where those pairs reach the top) follow; `docs/MATCHING.md`, "Version 18".
+/// Spearman where those pairs reach the top) follow.
 const HELDOUT1: Floor = Floor {
     ndcg10: 0.92,
     spearman: 0.75,
@@ -289,19 +282,19 @@ fn misses(run: &SetRun) -> String {
     };
     format!(
         "buried grade 3: {:?}\nwrong exclusions: {:?}\nmissed exclusions: {:?}",
-        list(&|p| p.gain() == 3 && p.new_buried()),
-        list(&|p| p.new_outcome == Outcome::Excluded && !p.label_excluded),
-        list(&|p| p.new_outcome != Outcome::Excluded && p.label_excluded),
+        list(&|p| p.gain() == 3 && p.buried()),
+        list(&|p| p.outcome == Outcome::Excluded && !p.label_excluded),
+        list(&|p| p.outcome != Outcome::Excluded && p.label_excluded),
     )
 }
 
 fn check(name: &str, floor: &Floor) {
     let run = run_set(name);
-    let t = &run.total;
-    let e = &t.exclusions;
+    let t = &run.total.ranking;
+    let e = &run.total.exclusions;
     let report = format!(
         "{name}\n{}\n{}",
-        metrics::table(&run.per_profile, t),
+        metrics::table(&run.per_profile, &run.total),
         misses(&run)
     );
     assert!(
@@ -312,15 +305,11 @@ fn check(name: &str, floor: &Floor) {
         e.recall().unwrap_or(1.0) >= floor.exclusion_recall,
         "exclusion recall:\n{report}"
     );
-    assert!(t.new.ndcg10 >= floor.ndcg10, "NDCG@10:\n{report}");
-    assert!(t.new.spearman >= floor.spearman, "Spearman:\n{report}");
+    assert!(t.ndcg10 >= floor.ndcg10, "NDCG@10:\n{report}");
+    assert!(t.spearman >= floor.spearman, "Spearman:\n{report}");
     assert!(
-        t.new.grade3_low <= floor.grade3_buried,
+        t.grade3_low <= floor.grade3_buried,
         "buried grade-3 jobs:\n{report}"
-    );
-    assert!(
-        t.new.ndcg10 > t.old.ndcg10,
-        "the new engine ranks below the old one:\n{report}"
     );
 }
 
@@ -400,18 +389,19 @@ fn heldout_report() {
 }
 
 /// One row of the per-set table of `docs/MATCHING.md`.
-fn summary_line(name: &str, t: &Metrics) -> String {
+fn summary_line(name: &str, m: &Metrics) -> String {
     let three = |v: Option<f64>| v.map_or_else(|| "n/a".to_owned(), |v| format!("{v:.3}"));
+    let r = &m.ranking;
     format!(
         "| {name} | {:.3} | {:.3} | {} | {} | {} | {} | {} / {} |",
-        t.new.ndcg10,
-        t.new.p5,
-        three(t.new.spearman_relevant),
-        three(t.new.concordance_of(2, 3).share),
-        three(t.new.concordance_of(1, 2).share),
-        t.new.grade3_low,
-        three(t.exclusions.precision()),
-        three(t.exclusions.recall()),
+        r.ndcg10,
+        r.p5,
+        three(r.spearman_relevant),
+        three(r.concordance_of(2, 3).share),
+        three(r.concordance_of(1, 2).share),
+        r.grade3_low,
+        three(m.exclusions.precision()),
+        three(m.exclusions.recall()),
     )
 }
 
@@ -428,12 +418,11 @@ fn heldout_rows() {
         for r in run_set(name).rows {
             let p = r.pair;
             println!(
-                "{name} {} {} new {} {:?} old {} grade {} excluded {}",
+                "{name} {} {} score {} {:?} grade {} excluded {}",
                 r.profile.trim_end_matches(".json"),
                 r.job,
-                p.new_score,
-                p.new_outcome,
-                p.old_score,
+                p.score,
+                p.outcome,
                 p.grade,
                 p.label_excluded
             );

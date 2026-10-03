@@ -1,4 +1,4 @@
-//! Word lists of the new engine.
+//! Word lists of the engine.
 //!
 //! external contract - do not translate: German and English wording of job ads and
 //! consultant profiles. All entries are case-folded; sorted tables are searched with
@@ -955,7 +955,7 @@ pub(crate) const NUMBER_WORDS: &[(&str, u32)] = &[
     ("ten", 10),
 ];
 
-/// Profile keys of the new engine (German JSON keys of the profile format).
+/// Profile keys of the engine (German JSON keys of the profile format).
 pub(crate) const KEY_LANGUAGES: &str = "sprachen";
 pub(crate) const KEY_LANGUAGE: &str = "sprache";
 pub(crate) const KEY_LEVEL: &str = "niveau";
@@ -2790,8 +2790,7 @@ pub(crate) const CLOSING_WORDS: &[&str] = &[
     "jetzt bewerben",
     "apply now",
 ];
-/// Bullet glyphs of pasted and LinkedIn ads on top of the old engine's bullets (the new
-/// engine only; the old one is frozen).
+/// Bullet glyphs of pasted and LinkedIn ads on top of `BULLETS`.
 pub(crate) const EXTRA_BULLETS: &[char] = &[
     '▪', '■', '●', '◦', '✅', '✔', '✓', '➡', '→', '👉', '➤', '\u{fe0f}',
 ];

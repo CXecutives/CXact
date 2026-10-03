@@ -269,7 +269,7 @@ mod tests {
             ],
             "sprachen": [{"sprache": "Englisch", "niveau": "C1"}]
         });
-        let skills = Skills::new(&super::super::legacy::LegacyProfile::new(&data), &data, &[]);
+        let skills = Skills::new(&super::super::profile::core_texts(&data), &data, &[]);
         let query = query(&skills);
         let weight = |text: &str| {
             let atom = atoms::atoms(text, &skills.vocab).remove(0);

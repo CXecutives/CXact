@@ -1,14 +1,11 @@
 //! The synthetic matching corpus (`core/tests/fixtures/matching`).
 //!
-//! - Parity: the Rust port of the old engine (`legacy_percent`) equals the frozen outputs
-//!   of the real old Python engine (`legacy.json`, `legacy_edge.json`) for every profile
-//!   and job.
 //! - Hygiene: no fixture is ignored by git (the repository is public, fixtures must ship).
-//! - Gates of the new engine: per-job band distance new <= old with a strictly smaller sum,
-//!   decided exclusions and status exactly as in `corpus.json`, expected checks raised,
-//!   `mustOpen` items never met; a golden digest of all corpus results (same on Windows
-//!   and macOS) and the speed budget (release builds). Expectations written for a later
-//!   engine (`since`, `profileSince` in `corpus.json`) are gated from that `ENGINE_VERSION` on.
+//! - Gates of the engine: decided exclusions and status exactly as in `corpus.json`,
+//!   expected checks raised, `mustOpen` items never met; a golden digest of all corpus
+//!   results (same on Windows and macOS) and the speed budget (release builds). Expectations
+//!   written for a later engine (`since`, `profileSince` in `corpus.json`) are gated from
+//!   that `ENGINE_VERSION` on.
 
 mod common;
 
@@ -17,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
-use jobalert_core::matching::legacy::{self, LegacyOutcome, legacy_outcome, parse_job_file};
 use jobalert_core::matching::{
     Assessment, JobInput, ReasonCode, ReasonKind, TextKind, Verdict, Weight, assess,
     compile_profile,
@@ -27,7 +23,7 @@ use serde_json::Value;
 use sha2::Digest as _;
 
 /// SHA-256 (16 hex) over every profile x job result of the corpus. Update it only together
-/// with `ENGINE_VERSION` and the before/after table in `docs/MATCHING.md`. Version 11 (the
+/// with `ENGINE_VERSION` and the measurements in `docs/MATCHING.md`. Version 11 (the
 /// excluded permanent employment, a key no corpus profile sets) changed only the version
 /// line: with `engine 10` in front the rows still give the version-10 value
 /// `6e4d9945276f410c`. Version 17 (the deadline and the contact, no score moved) changed only
@@ -62,100 +58,12 @@ fn read_json(path: &Path) -> Value {
     serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-/// The old engine's result for a job file, in the shape of `legacy.json`.
-fn legacy_entry(profile: &Value, content: &str) -> Value {
-    let outcome = match parse_job_file(content) {
-        Some(file) => legacy_outcome(profile, &file.text),
-        None => LegacyOutcome::Absent,
-    };
-    match outcome {
-        LegacyOutcome::Scored(score) => serde_json::to_value(score).expect("serialisable"),
-        LegacyOutcome::Absent => serde_json::json!({ "pct": null }),
-        LegacyOutcome::Crashed => {
-            serde_json::json!({ "pct": null, "error": "IndexError: no such group" })
-        }
-        LegacyOutcome::InvalidProfile => {
-            serde_json::json!({ "pct": null, "error": "ProfileError" })
-        }
-    }
-}
-
-/// Compares every profile x job of a frozen baseline; returns the mismatches.
-fn parity(frozen: &str, jobs: &str) -> (usize, Vec<String>) {
-    let root = fixtures();
-    parity_in(&root.join(frozen), &root.join(jobs))
-}
-
-/// Profiles named in the frozen file are read from the fixture folder.
-fn parity_in(frozen: &Path, jobs: &Path) -> (usize, Vec<String>) {
-    let root = fixtures();
-    let frozen = read_json(frozen);
-    let mut compared = 0;
-    let mut mismatches = Vec::new();
-    for (profile_name, entries) in frozen["profiles"].as_object().expect("profiles") {
-        let profile = read_json(&root.join(profile_name));
-        for (job, expected) in entries.as_object().expect("jobs") {
-            let path = jobs.join(format!("{job}.txt"));
-            let content = std::fs::read_to_string(&path).expect("job file");
-            let actual = legacy_entry(&profile, &content);
-            compared += 1;
-            if &actual != expected {
-                mismatches.push(format!(
-                    "{profile_name} {job}\n  old:  {expected}\n  rust: {actual}"
-                ));
-            }
-        }
-    }
-    (compared, mismatches)
-}
-
-#[test]
-fn legacy_port_equals_frozen_corpus_outputs() {
-    let (compared, mismatches) = parity("legacy.json", "corpus");
-    assert_eq!(compared, 348, "6 profiles x 58 jobs");
-    assert!(
-        mismatches.is_empty(),
-        "{} of {compared} differ:\n{}",
-        mismatches.len(),
-        mismatches.join("\n")
-    );
-}
-
-/// Fidelity on local private ads (nothing of them is committed). Freeze the old engine
-/// first, then compare:
-///
-/// ```text
-/// py -3.14 tools/eval/legacy_baseline.py run --corpus DIR --profile core/tests/fixtures/matching/sample_profile.json --out OUT.json
-/// JOBALERT_FIDELITY_DIR=DIR JOBALERT_FIDELITY_JSON=OUT.json cargo test -p jobalert-core --test matching_corpus -- --ignored local
-/// ```
+/// The engine on local private ads: no panic, one line per job.
+/// `JOBALERT_LOCAL_DIR=DIR cargo test -p jobalert-core --test matching_corpus -- --ignored engine_on_local`
 #[test]
 #[ignore = "needs local private data"]
-fn legacy_port_equals_python_on_local_data() {
-    let (Ok(dir), Ok(json)) = (
-        std::env::var("JOBALERT_FIDELITY_DIR"),
-        std::env::var("JOBALERT_FIDELITY_JSON"),
-    ) else {
-        panic!("set JOBALERT_FIDELITY_DIR and JOBALERT_FIDELITY_JSON");
-    };
-    let (compared, mismatches) = parity_in(Path::new(&json), Path::new(&dir));
-    println!(
-        "local fidelity: {} of {compared} identical",
-        compared - mismatches.len()
-    );
-    assert!(
-        mismatches.is_empty(),
-        "{} of {compared} differ:\n{}",
-        mismatches.len(),
-        mismatches.join("\n")
-    );
-}
-
-/// The new engine on local private ads: no panic, one line per job (old vs new score).
-/// `JOBALERT_FIDELITY_DIR=DIR cargo test -p jobalert-core --test matching_corpus -- --ignored new_engine_on_local`
-#[test]
-#[ignore = "needs local private data"]
-fn new_engine_on_local_data() {
-    let dir = std::env::var("JOBALERT_FIDELITY_DIR").expect("set JOBALERT_FIDELITY_DIR");
+fn engine_on_local_data() {
+    let dir = std::env::var("JOBALERT_LOCAL_DIR").expect("set JOBALERT_LOCAL_DIR");
     let root = fixtures();
     let (corpus, _) = corpus();
     for name in corpus["profiles"]
@@ -174,7 +82,7 @@ fn new_engine_on_local_data() {
         files.sort();
         for (index, path) in files.iter().enumerate() {
             let content = std::fs::read_to_string(path).expect("job file");
-            let file = parse_any_job_file(&content);
+            let file = parse_job_file(&content);
             let input = JobInput {
                 title: &file.title,
                 company: &file.company,
@@ -185,27 +93,14 @@ fn new_engine_on_local_data() {
                 posted: None,
                 kind: TextKind::Full,
             };
-            let new = assess(&profile, &input, None);
-            let old = legacy::legacy_percent(&data, &file.text).map(|s| s.pct);
-            let verdict = new.as_ref().map(|a| code_of_verdict(a.verdict));
+            let assessment = assess(&profile, &input, None);
+            let verdict = assessment.as_ref().map(|a| code_of_verdict(a.verdict));
             println!(
-                "{name} #{index}: old {old:?} new {:?} {verdict:?}",
-                new.map(|a| a.score)
+                "{name} #{index}: {:?} {verdict:?}",
+                assessment.map(|a| a.score)
             );
         }
     }
-}
-
-#[test]
-fn legacy_port_equals_frozen_edge_outputs() {
-    let (compared, mismatches) = parity("legacy_edge.json", "legacy_edge");
-    assert_eq!(compared, 27, "3 profiles x 9 edge jobs");
-    assert!(
-        mismatches.is_empty(),
-        "{} of {compared} differ:\n{}",
-        mismatches.len(),
-        mismatches.join("\n")
-    );
 }
 
 #[test]
@@ -241,7 +136,7 @@ fn no_fixture_is_ignored_by_git() {
     );
 }
 
-// --- gates of the new engine ---------------------------------------------------------
+// --- gates of the engine ---------------------------------------------------------
 
 /// Expectation of one job for one profile (`corpus.json`).
 struct Expect {
@@ -257,7 +152,7 @@ struct CorpusJob {
     id: String,
     /// First `ENGINE_VERSION` whose gates check this job.
     since: u32,
-    file: legacy::JobFile,
+    file: JobFile,
     portal: Portal,
     mail_date: Option<jiff::civil::Date>,
     kind: TextKind,
@@ -287,7 +182,7 @@ fn corpus() -> (Value, Vec<CorpusJob>) {
             let id = job["id"].as_str().expect("id").to_owned();
             let content = std::fs::read_to_string(root.join("corpus").join(format!("{id}.txt")))
                 .expect("job file");
-            let file = parse_any_job_file(&content);
+            let file = parse_job_file(&content);
             let expect = job["expect"]
                 .as_object()
                 .expect("expect")
@@ -334,8 +229,16 @@ fn since(value: &Value) -> u32 {
         .unwrap_or(2)
 }
 
-/// Header and body of a TXT file, also for bodies below the old 100-character minimum.
-fn parse_any_job_file(content: &str) -> legacy::JobFile {
+/// A job description file: header lines (`Titel:`, `Unternehmen:`, `Ort:`), a blank line,
+/// the text.
+struct JobFile {
+    title: String,
+    company: String,
+    location: String,
+    text: String,
+}
+
+fn parse_job_file(content: &str) -> JobFile {
     let (header, body) = content.split_once("\n\n").unwrap_or((content, ""));
     let field = |name: &str| {
         header
@@ -343,12 +246,10 @@ fn parse_any_job_file(content: &str) -> legacy::JobFile {
             .find_map(|l| l.strip_prefix(name).map(|v| v.trim().to_owned()))
             .unwrap_or_default()
     };
-    legacy::JobFile {
+    JobFile {
         title: field("Titel:"),
         company: field("Unternehmen:"),
         location: field("Ort:"),
-        url: field("Link:"),
-        source: field("Quelle:"),
         text: body.trim().to_owned(),
     }
 }
@@ -369,7 +270,7 @@ fn code(code: ReasonCode) -> String {
         .to_owned()
 }
 
-/// New and old results per (profile key, job id).
+/// The results per (profile key, job id).
 struct Run {
     rows: Vec<Row>,
 }
@@ -383,7 +284,6 @@ struct Row {
     expect_checks: Vec<String>,
     must_open: Vec<String>,
     new: Option<Assessment>,
-    old: u8,
     /// The gates check this row (its expectations are for this engine or an older one).
     gated: bool,
 }
@@ -414,7 +314,6 @@ fn run() -> Run {
 fn run_with(prepare: impl Fn(&str, Value) -> Value) -> Run {
     let root = fixtures();
     let (corpus, jobs) = corpus();
-    let legacy = read_json(&root.join("legacy.json"));
     let mut rows = Vec::new();
     for (key, file) in corpus["profiles"].as_object().expect("profiles") {
         let file = file.as_str().expect("profile file");
@@ -433,9 +332,6 @@ fn run_with(prepare: impl Fn(&str, Value) -> Value) -> Run {
                 kind: job.kind,
             };
             let new = assess(&profile, &input, None);
-            let old = legacy["profiles"][file][&job.id]["pct"]
-                .as_u64()
-                .unwrap_or(0);
             let (_, expect) = job
                 .expect
                 .iter()
@@ -450,40 +346,11 @@ fn run_with(prepare: impl Fn(&str, Value) -> Value) -> Run {
                 expect_checks: expect.checks.clone(),
                 must_open: expect.must_open.clone(),
                 new,
-                old: u8::try_from(old).unwrap_or(0),
                 gated: profile_since.max(job.since) <= jobalert_core::matching::ENGINE_VERSION,
             });
         }
     }
     Run { rows }
-}
-
-#[test]
-fn new_engine_is_closer_to_the_bands_than_the_old_one() {
-    let run = run();
-    let mut worse = Vec::new();
-    let (mut sum_new, mut sum_old) = (0u32, 0u32);
-    for row in run.rows.iter().filter(|r| r.gated) {
-        let new = common::eval::band_distance(effective(row.new.as_ref()), row.expect_band);
-        let old = common::eval::band_distance(row.old, row.expect_band);
-        sum_new += u32::from(new);
-        sum_old += u32::from(old);
-        if new > old {
-            worse.push(format!(
-                "{} {}: new {new} > old {old}",
-                row.profile, row.job
-            ));
-        }
-    }
-    assert!(
-        worse.is_empty(),
-        "jobs further from their band than before:\n{}",
-        worse.join("\n")
-    );
-    assert!(
-        sum_new < sum_old,
-        "total band distance new {sum_new} must be below old {sum_old}"
-    );
 }
 
 #[test]
@@ -715,12 +582,12 @@ fn engine_is_fast_enough() {
     assert!(total.as_millis() <= 3000, "2000 jobs took {total:?}");
 }
 
-/// Prints the before/after table of the corpus (`-- --ignored report --nocapture`).
+/// Prints the table of the corpus (`-- --ignored report --nocapture`).
 #[test]
 #[ignore = "report"]
 fn report() {
     let run = run();
-    println!("profile job band old new status/expected findings");
+    println!("profile job band score status/expected findings");
     for row in &run.rows {
         let new = row.new.as_ref();
         let status = new.map_or("-".to_owned(), |a| code_of_verdict(a.verdict));
@@ -735,20 +602,16 @@ fn report() {
             .unwrap_or_default();
         let (lo, hi) = row.expect_band;
         let score = effective(new);
-        let d_new = common::eval::band_distance(score, row.expect_band);
-        let d_old = common::eval::band_distance(row.old, row.expect_band);
         let flag = if !row.gated {
             " (not gated yet)"
-        } else if d_new > d_old {
-            " WORSE"
-        } else if d_new > 0 {
+        } else if common::eval::band_distance(score, row.expect_band) > 0 {
             " off"
         } else {
             ""
         };
         println!(
-            "{} {} [{lo},{hi}] old {} new {score} {status}/{} {findings:?} exp {:?}{flag}",
-            row.profile, row.job, row.old, row.expect_status, row.expect_checks
+            "{} {} [{lo},{hi}] {score} {status}/{} {findings:?} exp {:?}{flag}",
+            row.profile, row.job, row.expect_status, row.expect_checks
         );
     }
 }

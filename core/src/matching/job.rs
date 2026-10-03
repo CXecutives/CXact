@@ -1,4 +1,4 @@
-//! A job text as the new engine reads it: sections with inline headings, frame and
+//! A job text as the engine reads it: sections with inline headings, frame and
 //! English headings (V5), three stages - sections, requirement sentences, vocabulary (V16),
 //! items with AND parts, OR alternatives and examples (V6) and the kind of every item (V7).
 

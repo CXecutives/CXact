@@ -336,8 +336,9 @@ and profiles: an external contract, never translated):
   competences, `concepts` map a phrase to a concept, `generic` holds words too broad to meet
   a requirement alone. The head of `domains/mod.rs` says how a key is written (folded words,
   single spaces).
-- `wishes.rs`: the wishes and industries. `tables.rs` is generated from the old engine
-  (`core/tests/fixtures/matching/legacy_lexicon.json`): never edit it.
+- `wishes.rs`: the wishes and industries.
+- `tables.rs`: stopwords, word synonyms, the heading lists, the job vocabulary and the profile
+  keys of the competence walk.
 
 1. **A term or synonym**: one `(phrase, concept)` pair in the pack of its field, or in
    `CORE_CONCEPTS` when every field uses it. A false friend gets a concept of its own. The
@@ -351,8 +352,8 @@ and profiles: an external contract, never translated):
    `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` and
    `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`.
 4. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
-   scores the stored jobs again) and gets its section in `docs/MATCHING.md` with the numbers
-   before and after.
+   scores the stored jobs again) and updates the rules and measurements in `docs/MATCHING.md`;
+   the numbers before and after go into the commit message.
 
 ## Release a version
 

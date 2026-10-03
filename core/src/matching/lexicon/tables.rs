@@ -1,10 +1,8 @@
 //! Word lists of the matching engine.
 //!
 //! external contract - do not translate: these are German and English words as they
-//! appear in job ads and consultant profiles. The legacy tables are copied verbatim from
-//! the old Python engine (`ca9a2cd^:matcher.py`) and checked against
-//! `core/tests/fixtures/matching/legacy_lexicon.json` by the tests. Sorted tables are
-//! searched with `binary_search`; keep them sorted.
+//! appear in job ads and consultant profiles. Sorted tables are searched with
+//! `binary_search`; keep them sorted.
 
 /// Tokens that never count as a skill (sorted).
 pub(crate) const STOPWORDS: &[&str] = &[
@@ -817,35 +815,4 @@ pub(crate) const CORE_KEYS: &[&str] = &[
     "sprache",
     "titel",
     "zertifizierung",
-];
-
-/// Profile keys with soft evidence such as quotes (sorted).
-pub(crate) const SOFT_KEYS: &[&str] = &["testimonial", "zitat"];
-
-/// Country names found anywhere in a job text and their ISO codes (sorted by name).
-pub(crate) const COUNTRY_NAMES: &[(&str, &str)] = &[
-    ("austria", "AT"),
-    ("czech", "CZ"),
-    ("deutschland", "DE"),
-    ("england", "GB"),
-    ("france", "FR"),
-    ("frankreich", "FR"),
-    ("germany", "DE"),
-    ("india", "IN"),
-    ("indien", "IN"),
-    ("italien", "IT"),
-    ("italy", "IT"),
-    ("netherlands", "NL"),
-    ("niederlande", "NL"),
-    ("oesterreich", "AT"),
-    ("poland", "PL"),
-    ("polen", "PL"),
-    ("schweiz", "CH"),
-    ("spain", "ES"),
-    ("spanien", "ES"),
-    ("switzerland", "CH"),
-    ("tschechien", "CZ"),
-    ("uk", "GB"),
-    ("usa", "US"),
-    ("österreich", "AT"),
 ];

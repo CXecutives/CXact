@@ -1,10 +1,7 @@
 //! Words and patterns the engine looks for in job ads and profiles.
 //!
 //! external contract - do not translate: everything in this module is German or English
-//! wording of job ads, consultant profiles (German JSON keys of the profile format) and the
-//! old engine's output texts. The legacy parts are copied
-//! verbatim from `ca9a2cd^:matcher.py`; `tables.rs` is generated from
-//! `core/tests/fixtures/matching/legacy_lexicon.json`.
+//! wording of job ads and consultant profiles (German JSON keys of the profile format).
 
 pub(crate) mod domains;
 pub(crate) mod engine;
@@ -38,9 +35,6 @@ pub(crate) enum HeadingKind {
 /// Characters that start a bullet line.
 pub(crate) const BULLETS: &[char] = &['-', '*', '•', '·', '▸', '►'];
 
-/// Characters removed from a requirement item before tokenising.
-pub(crate) const ITEM_STRIP: &[char] = &['(', ')', '[', ']', '{', '}', '„', '“', '"', '\''];
-
 /// Suffixes that turn a language token into the language (`deutschkenntnisse` -> `deutsch`).
 pub(crate) const LANGUAGE_SUFFIXES: &[&str] = &[
     "kenntnisse",
@@ -60,46 +54,6 @@ pub(crate) const CUE_EXPERIENCE: &str =
     r"\b(?:erfahrung|erfahrungen|kenntnis|kenntnisse)\b.{0,40}\b(?:in|mit|im|von)\b";
 /// Marks a cue sentence as nice-to-have.
 pub(crate) const CUE_NICE: &str = r"\b(?:von{S}+vorteil|nice{S}+to{S}+have|nice-to-have|wünschenswert|wuenschenswert|idealerweise|vorteilhaft|bonus)\b";
-
-/// Separators of requirement items (case-sensitive, like the old engine).
-pub(crate) const ITEM_SPLIT: &str =
-    r"{S}+(?:sowie|und|oder|bzw\.|beziehungsweise){S}+|,{S}+|;{S}+|{S}+&{S}+";
-
-/// Job signal patterns, applied to the case-folded text.
-pub(crate) const REMOTE_PERCENT: &str = r"({D}{1,3}){S}*%{S}*(?:remote|remote-anteil)";
-pub(crate) const FULLY_REMOTE: &str =
-    r"(?:100{S}*%{S}*remote|voll(?:ständig)?{S}*remote|fully{S}+remote)";
-pub(crate) const ONSITE: &str = r"\b(?:vor{S}+ort|onsite|on-site|präsenz|prasenz)\b";
-pub(crate) const RATE: &str = r"(?:tagessatz|day{S}*rate|honorar|stundensatz)[^0-9]{0,40}?({D}[{DB}.,]*){S}*(?:€|eur){S}*(?:pro{S}*tag|/tag|per{S}*day)?";
-pub(crate) const RATE_SIMPLE: &str = r"({D}{3,4}){S}*(?:€|eur){S}*(?:/|pro){S}*tag";
-pub(crate) const START_NOW: &str =
-    r"\b(?:start|beginn|verfügbar|verfugbar|ab){S}*[:：]?{S}*(sofort|asap|ab{S}+sofort)";
-pub(crate) const FUTURE_START: &str = r"\bab{S}+(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember|q[1-4]|monat{S}*{D}+)\b";
-pub(crate) const ANUE: &str = r"\b(?:anü|anue|arbeitnehmerüberlassung)\b";
-pub(crate) const ANUE_NEGATED: &str =
-    r"\b(?:kein|keine|nicht|ohne){S}+(?:anü|anue|arbeitnehmerüberlassung)\b";
-pub(crate) const COUNTRY: &str = r"\b(?:deutschland|germany|österreich|oesterreich|austria|schweiz|switzerland|niederlande|netherlands|frankreich|france|italien|italy|spanien|spain|polen|poland|tschechien|czech|usa|uk|england|indien|india)\b";
-
-/// Suffix of a nice-to-have requirement label in the old output.
-pub(crate) const LABEL_NICE: &str = " (wünschenswert)";
-/// Suffix of a matched vocabulary term in the old output.
-pub(crate) const LABEL_VOCAB: &str = " (Job-Fachbegriff)";
-
-/// Old violation texts (`check_criteria`).
-pub(crate) const VIOLATION_ANUE: &str = "Arbeitnehmerüberlassung (ANÜ) ist ausgeschlossen";
-pub(crate) const VIOLATION_START: &str = "Start liegt in der Zukunft (Verfügbarkeit: sofort)";
-
-pub(crate) fn violation_day_rate(rate: &str, min: &str) -> String {
-    format!("Tagessatz {rate} € unter {min} €")
-}
-
-pub(crate) fn violation_country(outside: &[String], allowed: &[String]) -> String {
-    format!(
-        "Einsatzland {} außerhalb {}",
-        outside.join(", "),
-        allowed.join("/")
-    )
-}
 
 /// Profile keys of the explicit list pass: top-level list and the item keys read from it.
 pub(crate) const PROFILE_LISTS: &[(&str, &[&str])] = &[
@@ -121,7 +75,7 @@ pub(crate) const KEY_COUNTRIES: &str = "laender";
 pub(crate) const KEY_EXCLUDED_CONTRACTS: &str = "ausgeschlossene_vertragsarten";
 pub(crate) const KEY_AVAILABLE: &str = "verfuegbar_ab";
 pub(crate) const KEY_REMOTE_OUTSIDE: &str = "remote_ausserhalb_erlaubt";
-/// Keys of the new engine, German first, English aliases after (missing = rule off).
+/// Keys of the engine, German first, English aliases after (missing = rule off).
 pub(crate) const KEY_CRITERIA_ALIASES: &[&str] = &[KEY_CRITERIA, "hard_criteria"];
 pub(crate) const KEYS_MIN_SALARY: &[&str] =
     &["min_jahresgehalt", "min_annual_salary", "min_salary"];
@@ -214,12 +168,4 @@ pub(crate) fn synonym_pair(first: &str, second: &str) -> Option<&'static str> {
         .binary_search_by(|(a, b, _)| (*a, *b).cmp(&(first, second)))
         .ok()
         .map(|i| SYNONYM_PAIRS[i].2)
-}
-
-/// ISO code of a country name.
-pub(crate) fn country_code(name: &str) -> Option<&'static str> {
-    COUNTRY_NAMES
-        .binary_search_by(|(k, _)| k.cmp(&name))
-        .ok()
-        .map(|i| COUNTRY_NAMES[i].1)
 }

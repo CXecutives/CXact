@@ -1,4 +1,4 @@
-//! The profile the new engine matches against, and the match ladder for one item:
+//! The profile the engine matches against, and the match ladder for one item:
 //! exact/stem/synonym = 1.0, profile more specific = 1.0, profile more general = 0.5,
 //! two thirds of a long phrase = 0.5, generic atoms never alone (V1-V4, V15), language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
@@ -9,10 +9,10 @@ use serde_json::Value;
 
 use super::atoms::{self, Fit, Vocab, fold};
 use super::job::{Class, Item, Stage, contains_word, language_of, level_in, names_degree};
-use super::legacy::LegacyProfile;
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::{self, engine as lex};
 use super::params::{E_FULL, E_HALF, E_NONE, SENTENCE_ATOMS};
+use super::profile::CoreText;
 use super::types::Via;
 
 /// A profile entry (core competence, tool, certificate, ...), or an alternative term of
@@ -27,7 +27,7 @@ pub(crate) struct Entry {
     pub alias_of: Option<String>,
 }
 
-/// What the new engine uses from the profile.
+/// What the engine uses from the profile.
 #[derive(Debug, Clone)]
 pub(crate) struct Skills {
     pub entries: Vec<Entry>,
@@ -180,7 +180,7 @@ fn aliases(data: &Value, core: &[String]) -> Vec<(String, String, String, Option
 impl Skills {
     /// `extra`: competences (text, JSON path) that must be entries although the profile
     /// walk did not find them (Schwerpunkte under an English key or in objects).
-    pub(crate) fn new(legacy: &LegacyProfile, data: &Value, extra: &[(String, String)]) -> Self {
+    pub(crate) fn new(core: &[CoreText], data: &Value, extra: &[(String, String)]) -> Self {
         // Years per competence text: list items with a `jahre` number.
         let mut years: BTreeMap<String, u32> = BTreeMap::new();
         if let Value::Object(map) = data {
@@ -198,7 +198,7 @@ impl Skills {
                 }
             }
         }
-        let core_texts: Vec<String> = legacy.signals.core.iter().map(|c| c.text.clone()).collect();
+        let core_texts: Vec<String> = core.iter().map(|c| c.text.clone()).collect();
         let aliases = aliases(data, &core_texts);
         let folded_core: Vec<String> = core_texts.iter().map(|t| fold(t)).collect();
         let extra: Vec<&(String, String)> = extra
@@ -212,15 +212,13 @@ impl Skills {
                 .chain(aliases.iter().map(|(_, alias, _, _)| alias.as_str()))
                 .chain(extra.iter().map(|(text, _)| text.as_str())),
         );
-        let mut entries: Vec<Entry> = legacy
-            .signals
-            .core
+        let mut entries: Vec<Entry> = core
             .iter()
-            .map(|core| Entry {
-                atoms: atoms::atoms(&core.text, &vocab),
-                years: years.get(&core.text).copied(),
-                text: core.text.clone(),
-                path: core.path.clone(),
+            .map(|competence| Entry {
+                atoms: atoms::atoms(&competence.text, &vocab),
+                years: years.get(&competence.text).copied(),
+                text: competence.text.clone(),
+                path: competence.path.clone(),
                 alias_of: None,
             })
             .collect();
@@ -246,15 +244,15 @@ impl Skills {
         let languages = languages_of(data);
         let mut degree_fields: Option<Vec<&'static str>> = None;
         let (mut degree_level, mut degrees) = (0, Vec::new());
-        for core in &legacy.signals.core {
-            let folded = fold(&core.text);
+        for competence in core {
+            let folded = fold(&competence.text);
             let tokens: Vec<&str> = atoms::raw_tokens(&folded).collect();
-            let is_degree = core.path.ends_with("abschluss") || names_degree(&tokens);
+            let is_degree = competence.path.ends_with("abschluss") || names_degree(&tokens);
             if is_degree {
                 let fields = degree_fields.get_or_insert_with(Vec::new);
                 fields.extend(degree_fields_in(&folded));
                 degree_level = degree_level.max(degree_level_in(&folded));
-                degrees.push(core.text.clone());
+                degrees.push(competence.text.clone());
             }
         }
         let total_years = total_years_of(data)
@@ -730,13 +728,14 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+    use crate::matching::profile::core_texts;
 
     /// Knowledge of a product family (`SAP-Kenntnisse`) is met by an entry naming a product
     /// of it; a product of the family asked for is not (`SAP BW`).
     #[test]
     fn a_family_is_met_by_its_products() {
         let data = json!({"kernkompetenzen": [{"kompetenz": "SAP S/4HANA"}, {"kompetenz": "CFO"}]});
-        let skills = Skills::new(&LegacyProfile::new(&data), &data, &[]);
+        let skills = Skills::new(&core_texts(&data), &data, &[]);
         assert_eq!(
             skill_fit_in(&skills, "Sehr gute SAP-Kenntnisse", None).value,
             E_FULL
@@ -767,7 +766,7 @@ mod tests {
     #[test]
     fn licences_under_any_name() {
         let data = json!({"kernkompetenzen": [{"kompetenz": "Sachkundige Person nach § 15 AMG"}]});
-        let skills = Skills::new(&LegacyProfile::new(&data), &data, &[]);
+        let skills = Skills::new(&core_texts(&data), &data, &[]);
         assert_eq!(licence_fit(&skills, "qualified person").value, E_FULL);
         assert_eq!(licence_fit(&skills, "sachkundige person").value, E_FULL);
         assert_eq!(licence_fit(&skills, "steuerberater").value, E_NONE);
@@ -781,7 +780,7 @@ mod tests {
             "kernkompetenzen": [{"kompetenz": "Controlling"}],
             "branchen": [{"branche": "Maschinenbau"}]
         });
-        let skills = Skills::new(&LegacyProfile::new(&data), &data, &[]);
+        let skills = Skills::new(&core_texts(&data), &data, &[]);
         let fit = |text: &str| skill_fit_in(&skills, text, None).value;
         assert_eq!(fit("Vertriebserfahrung im Maschinenbau"), E_NONE);
         assert_eq!(fit("Controlling im Maschinenbau"), E_FULL);
@@ -794,7 +793,7 @@ mod tests {
     fn a_teaser_term_in_another_field_is_half() {
         let term = |profile: &str| {
             let data = json!({"kernkompetenzen": [{"kompetenz": profile}]});
-            let skills = Skills::new(&LegacyProfile::new(&data), &data, &[]);
+            let skills = Skills::new(&core_texts(&data), &data, &[]);
             let item = Item {
                 span: None,
                 text: "controlling".to_owned(),

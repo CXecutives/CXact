@@ -1,4 +1,4 @@
-//! Frozen parameters of the new engine (change them only with a new `ENGINE_VERSION`).
+//! Frozen parameters of the engine (change them only with a new `ENGINE_VERSION`).
 
 /// Evidence of an item in per-mille.
 pub(crate) const E_FULL: u16 = 1000;
