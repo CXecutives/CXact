@@ -1,7 +1,10 @@
-//! Held-out regression corpora (`core/tests/fixtures/matching/heldout1` to `heldout9`):
+//! Held-out regression corpora (`core/tests/fixtures/matching/heldout1` to `heldout10`):
 //! invented ads with blind labels (grade 0-3, excluded) written by independent agents for
 //! profiles the engine was not tuned on at the time. Every set was later used to find and
 //! fix systematic gaps, so they are regression gates now, not an unseen measurement.
+//! Set 10 (customer service and contact center, customer experience, IT service management
+//! and marketing, the fields of the domain packs `customerService`, `itService` and
+//! `marketing`) is reported only; it has no gate yet.
 //!
 //! Every set runs the engine over all labelled (profile, job) pairs and computes the
 //! metrics of `docs/MATCHING.md` (NDCG@10/20, P@5 against what each profile can reach,
@@ -358,10 +361,18 @@ fn heldout9_holds_its_gates() {
     check("heldout9", &HELDOUT9);
 }
 
-/// Every held-out set.
-const SETS: [&str; 9] = [
-    "heldout1", "heldout2", "heldout3", "heldout4", "heldout5", "heldout6", "heldout7", "heldout8",
+/// Every held-out set (set 10 in the report only, without a gate).
+const SETS: [&str; 10] = [
+    "heldout1",
+    "heldout2",
+    "heldout3",
+    "heldout4",
+    "heldout5",
+    "heldout6",
+    "heldout7",
+    "heldout8",
     "heldout9",
+    "heldout10",
 ];
 
 /// Prints every set's tables and misses (`-- --ignored heldout_report --nocapture`), then

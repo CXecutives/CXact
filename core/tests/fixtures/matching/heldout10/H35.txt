@@ -1,0 +1,38 @@
+Titel: Jira Service Management Administrator und Entwickler (m/w/d)
+Unternehmen: Elbtal Software Manufaktur GmbH
+Ort: D-01067 Dresden
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1349480-Jira-Service-Management-Administrator-und-Entwickler-m-w-d
+Abgerufen am: 02.10.2026 18:07
+
+Projekt-ID: 1349480
+Ort: Dresden
+Remote: 100 %
+Start: ab sofort
+Dauer: 4 Monate
+Vertragsart: Freiberuflich
+Honorar: 700 € pro Tag
+Letztes Update: 02.10.2026
+
+Projektbeschreibung
+Wir migrieren unseren Support von Jira Server auf Jira Service Management Cloud und brauchen dafür Unterstützung.
+
+Aufgaben:
+- Konfiguration von Service-Projekten, Workflows, SLAs und Kundenportal in Jira Service Management
+- Migration von Daten und Automatisierungen
+- Entwicklung von Erweiterungen mit ScriptRunner und Groovy
+- Anbindung an Confluence als Wissensdatenbank
+
+Anforderungen:
+- Mehrjährige Erfahrung als Jira-Administrator
+- Programmierkenntnisse in Groovy
+- Erfahrung mit Atlassian-Cloud-Migrationen
+
+Rahmen:
+Remote, Vollzeit. 700 € pro Tag zzgl. MwSt.
+
+Kategorien und Skills
+Jira Service Management
+Atlassian
+Groovy
+ScriptRunner

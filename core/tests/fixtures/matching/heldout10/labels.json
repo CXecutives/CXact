@@ -1,0 +1,1258 @@
+{
+  "P1.json": {
+    "H01": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of a 280-person customer service with two outsourcers, WFM, accessibility, complaints and works council at a utility is exactly her core; 1300 per day is above her minimum.",
+      "quote": ""
+    },
+    "H02": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of an omnichannel e-commerce customer service with a BPO partner, Zendesk, CSAT/FCR/AHT and a GenAI chatbot decision matches her mail-order and outsourcing experience; 1250 per day is fine.",
+      "quote": ""
+    },
+    "H03": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim leadership of a 120-seat insurance contact center after a Genesys Cloud switch, with WFM, intraday steering, IVR, routing and quality monitoring is her core; she knows Genesys and insurers. 1050 per day meets her minimum.",
+      "quote": ""
+    },
+    "H04": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Forecasting, scheduling and intraday steering in injixo are her WFM roots, but this is a hands-on planner role far below her level; 85 per hour is 680 per day, below her 1000.",
+      "quote": "Stundensatz: 85 € netto"
+    },
+    "H05": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Make-or-buy, tender and transition of 150 agents to a new BPO plus vendor steering is exactly what she did as interim manager; telecom is one of her industries.",
+      "quote": ""
+    },
+    "H06": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of a utility's customer dialogue with phone, back office, service centers, accessibility and workforce planning fits her utility interim mandate exactly; no rate given.",
+      "quote": ""
+    },
+    "H07": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "She led chatbot and voicebot programmes with IVR and Genesys in service, but this is a hands-on implementation consulting role rather than service leadership; 1000 per day meets her minimum.",
+      "quote": ""
+    },
+    "H08": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Leading a 250-person DACH customer service with outsourcers fits her field, but it is a permanent role in Munich; her permanent places are Hamburg only and the ad names no remote share.",
+      "quote": "unbefristeten Festanstellung"
+    },
+    "H09": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Same field but an entry-level agent job far below an interim head; it is temporary agency work, which she excludes.",
+      "quote": "im Rahmen der Arbeitnehmerüberlassung"
+    },
+    "H10": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "A team lead job in customer service is far too junior; a permanent role in Leipzig at 58000 misses her salary and place.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H11": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Leading a telecom service transformation with agent assist, chatbot, knowledge management, WFM and outsourcer footprint is exactly her profile; 1400 per day is well above her minimum.",
+      "quote": ""
+    },
+    "H12": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "She built complaint management with escalation levels and root cause analysis, but the banking regulation focus is a gap; 900 per day is below her 1000.",
+      "quote": "900 €/Tag"
+    },
+    "H13": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "She introduced NICE IEX and knows WFM deeply, but this is a configuration consulting role below her level; 110 per hour is 880 per day, below her 1000.",
+      "quote": "110 €/Stunde"
+    },
+    "H14": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim site leadership of a 250-agent contact center with client service levels fits her contact center leadership; Austria is allowed and 1100 per day is above her minimum.",
+      "quote": ""
+    },
+    "H15": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Customer service leadership fits, but on site in Poland is outside her countries and 900 per day is below her 1000.",
+      "quote": "Willingness to work on site in Warsaw five days a week"
+    },
+    "H16": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of a mail-order customer service with an outsourcer, service levels and workforce planning is her former home turf in Hamburg.",
+      "quote": ""
+    },
+    "H17": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "She steers service by NPS and knows journeys from service, but journey mapping consulting is not her leadership profile.",
+      "quote": ""
+    },
+    "H18": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "She steered service by NPS and CX and led large teams, but building a CX function with VoC and journey analytics is more a CX strategist's job than a service operator's.",
+      "quote": ""
+    },
+    "H19": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "She used NPS to steer service, but building a VoC programme on a feedback platform is CX work; 950 per day is below her 1000.",
+      "quote": "Honorar: 950 € pro Tag"
+    },
+    "H20": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Service design for online public services is not service operations; 850 per day is below her 1000.",
+      "quote": "850 €/Tag"
+    },
+    "H21": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Hands-on data science on feedback data is not service leadership.",
+      "quote": ""
+    },
+    "H22": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "CX with complaints and NPS touches her work, but it is a mid-level permanent role in Hamburg at 85000, far below her minimum salary.",
+      "quote": "Jahresgehalt 75.000 bis 85.000 €"
+    },
+    "H23": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "CX metrics, customer centricity and a utility context fit parts of her profile, but strategy consulting is not her operational leadership focus.",
+      "quote": ""
+    },
+    "H24": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Journeys touch her service work, but journey management is a CX role.",
+      "quote": ""
+    },
+    "H25": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "UX research is not service leadership; 800 per day is below her 1000.",
+      "quote": "Honorar: 800 € pro Tag"
+    },
+    "H26": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Building a combined customer service and CX unit with omnichannel, complaints, chatbot and NPS at an insurer is her profile; 1250 per day fits.",
+      "quote": ""
+    },
+    "H27": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "IT service management is not customer service leadership; 95 per hour is 760 per day, below her 1000.",
+      "quote": "Stundensatz: 95 € zzgl. MwSt."
+    },
+    "H28": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Running a service desk with an external partner, SLAs, capacity planning and first contact resolution is close to contact center work, but in IT with ITIL and ServiceNow she lacks.",
+      "quote": ""
+    },
+    "H29": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; 850 per day is below her 1000.",
+      "quote": "Honorar: 850 € pro Tag"
+    },
+    "H30": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; 90 per hour is 720 per day, below her 1000.",
+      "quote": "Stundensatz: 90 €"
+    },
+    "H31": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service leadership; a permanent role in Munich is outside her place Hamburg.",
+      "quote": "in Festanstellung"
+    },
+    "H32": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; 900 per day is below her 1000.",
+      "quote": "Honorar: 900 € pro Tag"
+    },
+    "H33": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Entry-level IT support, not customer service leadership; agency work is excluded.",
+      "quote": "im Rahmen der Arbeitnehmerüberlassung"
+    },
+    "H34": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not customer service; Switzerland is allowed and the rate in francs is no clear breach.",
+      "quote": ""
+    },
+    "H35": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; 700 per day is below her 1000.",
+      "quote": "Honorar: 700 € pro Tag"
+    },
+    "H36": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not customer service.",
+      "quote": ""
+    },
+    "H37": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Marketing leadership, not customer service.",
+      "quote": ""
+    },
+    "H38": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not customer service.",
+      "quote": ""
+    },
+    "H39": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; 75 per hour is 600 per day, below her 1000.",
+      "quote": "Honorar: 75 € pro Stunde"
+    },
+    "H40": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "CRM marketing is not customer service.",
+      "quote": ""
+    },
+    "H41": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; a permanent role in Köln is outside her place Hamburg.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H42": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not customer service.",
+      "quote": ""
+    },
+    "H43": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not customer service; 70 per hour is 560 per day, below her 1000.",
+      "quote": "Stundensatz: 70 €"
+    },
+    "H44": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not customer service; Switzerland is allowed.",
+      "quote": ""
+    },
+    "H45": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not customer service.",
+      "quote": ""
+    },
+    "H46": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "A working student job, an exclusion word of the profile.",
+      "quote": "Werkstudent Marketing (m/w/d)"
+    },
+    "H47": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Sales leadership is not customer service; pay on commission only is on her exclusion list.",
+      "quote": "Die Vergütung erfolgt ausschließlich auf Provisionsbasis."
+    },
+    "H48": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "A finance role, no relation to customer service.",
+      "quote": ""
+    },
+    "H49": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "SAP finance consulting, no relation to customer service.",
+      "quote": ""
+    },
+    "H50": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Customer success is account work, not customer service leadership; 90 per hour is 720 per day, below her 1000.",
+      "quote": "Stundensatz 90 €"
+    },
+    "H51": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of customer service and back office with backlog reduction, input management, a new case platform, accessibility and workforce planning fits her profile; insurance experience helps, 1150 per day fits.",
+      "quote": ""
+    },
+    "H52": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "NPS and journeys touch her CX side, but this is a retail marketing role; 950 per day is below her 1000.",
+      "quote": "950 €/Tag"
+    }
+  },
+  "P2.json": {
+    "H01": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Complaints and root causes touch customer experience, but this is operational line leadership of a service organisation, not CX consulting.",
+      "quote": ""
+    },
+    "H02": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "CSAT and the KPI framework touch CX measurement, but the role is running service operations and a BPO.",
+      "quote": ""
+    },
+    "H03": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Pure contact center operations, no CX strategy or research.",
+      "quote": ""
+    },
+    "H04": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Workforce planning has nothing to do with CX consulting; 680 per day is below his 900.",
+      "quote": "Stundensatz: 85 € netto"
+    },
+    "H05": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Quality metrics in a service tender touch CX, but this is outsourcing and procurement work.",
+      "quote": ""
+    },
+    "H06": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "A chatbot and customer communication touch CX, but the role is line leadership of a service organisation.",
+      "quote": ""
+    },
+    "H07": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Dialogue design and satisfaction measurement touch service design, but the project is a bot implementation.",
+      "quote": ""
+    },
+    "H08": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Service operations leadership, not CX consulting; he excludes permanent employment.",
+      "quote": "unbefristeten Festanstellung"
+    },
+    "H09": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Agent job, no CX content; agency work is excluded.",
+      "quote": "im Rahmen der Arbeitnehmerüberlassung"
+    },
+    "H10": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No CX content; permanent employment is excluded.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H11": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "Customer journeys, self-service and satisfaction are his topics, but the programme is mainly service operations and technology.",
+      "quote": ""
+    },
+    "H12": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Complaint insights touch voice of the customer, but this is a regulatory process role; 900 per day meets his minimum.",
+      "quote": ""
+    },
+    "H13": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "WFM tool consulting is not CX; 880 per day is below his 900.",
+      "quote": "110 €/Stunde"
+    },
+    "H14": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Site operations of a contact center, no CX consulting.",
+      "quote": ""
+    },
+    "H15": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Service operations, little CX; on site in Poland is outside his countries.",
+      "quote": "Willingness to work on site in Warsaw five days a week"
+    },
+    "H16": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Service operations, little CX content.",
+      "quote": ""
+    },
+    "H17": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Customer journey mapping, pain points with business cases, NPS and CES measurement and workshop moderation at an insurer is exactly his core; 1000 per day fits.",
+      "quote": ""
+    },
+    "H18": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim Head of CX with VoC and NPS programme, closed loop, journey management and CX strategy in digital banking matches his profile and his interim CX lead experience.",
+      "quote": ""
+    },
+    "H19": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Building a VoC and NPS programme with Qualtrics or Medallia, closed loop and CX dashboards at a utility is exactly what he did five times; 950 per day fits.",
+      "quote": ""
+    },
+    "H20": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Service design, prototyping, user tests and design thinking fit him, the public sector is new; 850 per day is below his 900.",
+      "quote": "850 €/Tag"
+    },
+    "H21": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "NPS driver analysis and CX dashboards relate to his CX measurement work, but the role needs hands-on SQL, Python, text mining and Tableau he does not have.",
+      "quote": ""
+    },
+    "H22": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Customer journey ownership with NPS and feedback fits, but it is a mid-level role and permanent employment, which he excludes.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H23": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "CX strategy, customer centricity programme, a CX KPI system with NPS, CSAT and CES, journey prioritisation and change workshops at a utility is his core; 1100 per day fits.",
+      "quote": ""
+    },
+    "H24": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "End-to-end journey ownership with feedback in telecom fits his journey and telecom experience; the teaser leaves scope and rate open.",
+      "quote": ""
+    },
+    "H25": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "User interviews, personas, prototype tests and banking fit his insights and service design background, though UX research is a discipline of its own; 800 per day is below his 900.",
+      "quote": "Honorar: 800 € pro Tag"
+    },
+    "H26": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "NPS with closed loop and journey prioritisation are his topics, but the core is leading a 350-person service organisation, which he has not done.",
+      "quote": ""
+    },
+    "H27": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; 760 per day is below his 900.",
+      "quote": "Stundensatz: 95 € zzgl. MwSt."
+    },
+    "H28": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H29": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; 850 per day is below his 900.",
+      "quote": "Honorar: 850 € pro Tag"
+    },
+    "H30": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; 720 per day is below his 900.",
+      "quote": "Stundensatz: 90 €"
+    },
+    "H31": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; permanent employment is excluded.",
+      "quote": "in Festanstellung"
+    },
+    "H32": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX; 900 per day meets his minimum.",
+      "quote": ""
+    },
+    "H33": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; agency work is excluded.",
+      "quote": "im Rahmen der Arbeitnehmerüberlassung"
+    },
+    "H34": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H35": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; 700 per day is below his 900.",
+      "quote": "Honorar: 700 € pro Tag"
+    },
+    "H36": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H37": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Brand marketing leadership is not CX consulting.",
+      "quote": ""
+    },
+    "H38": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H39": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; 600 per day is below his 900.",
+      "quote": "Honorar: 75 € pro Stunde"
+    },
+    "H40": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "The customer lifecycle and loyalty touch CX, but this is CRM marketing automation.",
+      "quote": ""
+    },
+    "H41": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; permanent employment is excluded.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H42": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H43": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; 560 per day is below his 900.",
+      "quote": "Stundensatz: 70 €"
+    },
+    "H44": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H45": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not CX.",
+      "quote": ""
+    },
+    "H46": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "A working student job, an exclusion word of the profile.",
+      "quote": "Werkstudent Marketing (m/w/d)"
+    },
+    "H47": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not CX; commission pay is on his exclusion list.",
+      "quote": "Die Vergütung erfolgt ausschließlich auf Provisionsbasis."
+    },
+    "H48": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "A finance role, no relation to CX.",
+      "quote": ""
+    },
+    "H49": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "SAP finance consulting, no relation to CX.",
+      "quote": ""
+    },
+    "H50": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Customer success touches customer centricity, but it is account management; 720 per day is below his 900.",
+      "quote": "Stundensatz 90 €"
+    },
+    "H51": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Satisfaction and the customer portal touch CX, but this is service and back office line leadership.",
+      "quote": ""
+    },
+    "H52": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "Customer journey analysis and NPS fit him, the CRM campaigns and loyalty programme are a gap; 950 per day meets his minimum.",
+      "quote": ""
+    }
+  },
+  "P3.json": {
+    "H01": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Customer service line leadership at a utility has nothing to do with IT service management.",
+      "quote": ""
+    },
+    "H02": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Customer service operations in retail, not IT service management.",
+      "quote": ""
+    },
+    "H03": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Contact center operations, not ITSM.",
+      "quote": ""
+    },
+    "H04": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Contact center workforce planning is not ITSM; 680 per day is below his 750.",
+      "quote": "Stundensatz: 85 € netto"
+    },
+    "H05": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Tendering providers with service levels and a transition resembles his SIAM and service transition work, but in customer service, not IT.",
+      "quote": ""
+    },
+    "H06": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not IT service management.",
+      "quote": ""
+    },
+    "H07": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "A voicebot rollout in customer service is not ITSM.",
+      "quote": ""
+    },
+    "H08": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Customer service leadership is not ITSM; Munich and 140000 would meet his permanent criteria.",
+      "quote": ""
+    },
+    "H09": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Agent job, not ITSM; the ad asks for shift work, an exclusion word of the profile.",
+      "quote": "Bereitschaft zum Schichtdienst zwischen 7 und 22 Uhr"
+    },
+    "H10": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; permanent in Leipzig with 58000 is outside his places and below his salary.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H11": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Knowledge management and tool rollout overlap a little with his ITSM work; the context is customer service.",
+      "quote": ""
+    },
+    "H12": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM; 900 per day would be fine.",
+      "quote": ""
+    },
+    "H13": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "WFM tooling is not ITSM; 880 per day meets his 750.",
+      "quote": ""
+    },
+    "H14": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; on site in Vienna is outside his only country Germany.",
+      "quote": "Einsatzort: Wien, vor Ort an fünf Tagen pro Woche"
+    },
+    "H15": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; on site in Poland is outside Germany.",
+      "quote": "Willingness to work on site in Warsaw five days a week"
+    },
+    "H16": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H17": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H18": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H19": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H20": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM; 850 per day meets his 750.",
+      "quote": ""
+    },
+    "H21": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H22": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; permanent in Hamburg is outside his places and below his salary.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H23": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H24": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H25": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM; 800 per day meets his 750.",
+      "quote": ""
+    },
+    "H26": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H27": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "ITIL incident, problem and change in ServiceNow, CAB and SLA reporting at a Munich insurer is exactly his profile; 760 per day meets his 750.",
+      "quote": ""
+    },
+    "H28": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim leadership of an IT service desk with 1st and 2nd level, partner steering by SLAs, knowledge management and ServiceNow matches his service desk leadership; 1000 per day fits.",
+      "quote": ""
+    },
+    "H29": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "ServiceNow ITSM introduction with incident, change, request fulfilment and CMDB at an automotive supplier is exactly what he did; 850 per day meets his 750.",
+      "quote": ""
+    },
+    "H30": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Major incident management is one of his competences, but this is an operational role with on-call duty, an exclusion word of his profile, and 720 per day is below his 750.",
+      "quote": "Teilnahme an der 24/7-Rufbereitschaft"
+    },
+    "H31": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "Service delivery with SLAs, reviews and ITIL fits him and is one of his target roles, but it is a mid-level permanent role; Munich and 105000 meet his permanent criteria.",
+      "quote": ""
+    },
+    "H32": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "SIAM model for four providers with unified SLAs and OLAs and service level management is exactly his recent work; remote for a German client, 900 per day.",
+      "quote": ""
+    },
+    "H33": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "1st level support is the field of his service desks, but this is an entry-level job; the shift work in the title is an exclusion word of his profile.",
+      "quote": "Mitarbeiter 1st Level Support (m/w/d) im Schichtdienst"
+    },
+    "H34": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Problem management fits well and continuity management partly, at a bank; but on site in Zurich is outside his only country Germany.",
+      "quote": "Präsenz vor Ort in Zürich an fünf Tagen pro Woche"
+    },
+    "H35": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "He uses Jira Service Management, but this is a hands-on admin and Groovy developer role; 700 per day is below his 750.",
+      "quote": "Honorar: 700 € pro Tag"
+    },
+    "H36": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "ITIL change management with CAB, ServiceNow and release coordination in automotive IT is his profile; the teaser leaves the rate open.",
+      "quote": ""
+    },
+    "H37": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H38": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H39": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; 600 per day is below his 750.",
+      "quote": "Honorar: 75 € pro Stunde"
+    },
+    "H40": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H41": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; permanent in Köln is outside his places.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H42": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H43": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; 560 per day is below his 750.",
+      "quote": "Stundensatz: 70 €"
+    },
+    "H44": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; on site in Basel is outside his only country Germany.",
+      "quote": "On site in Basel four days a week"
+    },
+    "H45": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    },
+    "H46": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "A working student job, an exclusion word of the profile.",
+      "quote": "Werkstudent Marketing (m/w/d)"
+    },
+    "H47": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Sales leadership is not ITSM; no criterion of his excludes it.",
+      "quote": ""
+    },
+    "H48": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "A finance role, no relation to ITSM.",
+      "quote": ""
+    },
+    "H49": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "SAP finance consulting is not ITSM.",
+      "quote": ""
+    },
+    "H50": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not ITSM; 720 per day is below his 750.",
+      "quote": "Stundensatz 90 €"
+    },
+    "H51": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "The ServiceNow CSM rollout uses his platform, but the role is customer service leadership, not ITSM.",
+      "quote": ""
+    },
+    "H52": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Not ITSM.",
+      "quote": ""
+    }
+  },
+  "P4.json": {
+    "H01": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "Customer service operations, no marketing content.",
+      "quote": ""
+    },
+    "H02": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing content.",
+      "quote": ""
+    },
+    "H03": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing content; 1050 per day is below her minimum of 1100.",
+      "quote": "Honorar: 1.050 € pro Tag"
+    },
+    "H04": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 680 per day is below her 1100.",
+      "quote": "Stundensatz: 85 € netto"
+    },
+    "H05": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing content.",
+      "quote": ""
+    },
+    "H06": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing content.",
+      "quote": ""
+    },
+    "H07": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 1000 per day is below her 1100.",
+      "quote": "Honorar: 1.000 € pro Tag"
+    },
+    "H08": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; a permanent role in Munich is outside her places Düsseldorf and Köln.",
+      "quote": "unbefristeten Festanstellung"
+    },
+    "H09": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; agency work is excluded.",
+      "quote": "im Rahmen der Arbeitnehmerüberlassung"
+    },
+    "H10": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; permanent in Leipzig below her salary.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H11": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing content.",
+      "quote": ""
+    },
+    "H12": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 900 per day is below her 1100.",
+      "quote": "900 €/Tag"
+    },
+    "H13": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 880 per day is below her 1100.",
+      "quote": "110 €/Stunde"
+    },
+    "H14": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing; 1100 per day meets her minimum and Austria is allowed.",
+      "quote": ""
+    },
+    "H15": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; on site in Poland and 900 per day below her minimum.",
+      "quote": "Willingness to work on site in Warsaw five days a week"
+    },
+    "H16": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing.",
+      "quote": ""
+    },
+    "H17": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Customer journeys border on marketing, but this is CX consulting; 1000 per day is below her 1100.",
+      "quote": "1.000 €/Tag"
+    },
+    "H18": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Customer insights border on marketing, but the role is CX leadership.",
+      "quote": ""
+    },
+    "H19": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Customer feedback borders on marketing insights; 950 per day is below her 1100.",
+      "quote": "Honorar: 950 € pro Tag"
+    },
+    "H20": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 850 per day is below her 1100.",
+      "quote": "850 €/Tag"
+    },
+    "H21": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Analytics borders on her marketing analytics, but this is data science; 1000 per day is below her 1100.",
+      "quote": "Tagessatz 1.000 €"
+    },
+    "H22": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing focus; permanent in Hamburg below her salary.",
+      "quote": "unbefristeter Festanstellung"
+    },
+    "H23": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Communication and customer focus border on marketing, but this is a CX strategy role; 1100 per day meets her minimum.",
+      "quote": ""
+    },
+    "H24": {
+      "grade": 1,
+      "excluded": false,
+      "reason": "Journeys border on marketing, but this is CX.",
+      "quote": ""
+    },
+    "H25": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 800 per day is below her 1100.",
+      "quote": "Honorar: 800 € pro Tag"
+    },
+    "H26": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing content.",
+      "quote": ""
+    },
+    "H27": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 760 per day is below her 1100.",
+      "quote": "Stundensatz: 95 € zzgl. MwSt."
+    },
+    "H28": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 1000 per day is below her 1100.",
+      "quote": "Tagessatz 1.000 €"
+    },
+    "H29": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 850 per day is below her 1100.",
+      "quote": "Honorar: 850 € pro Tag"
+    },
+    "H30": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 720 per day is below her 1100.",
+      "quote": "Stundensatz: 90 €"
+    },
+    "H31": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; permanent in Munich below her salary and outside her places.",
+      "quote": "in Festanstellung"
+    },
+    "H32": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 900 per day is below her 1100.",
+      "quote": "Honorar: 900 € pro Tag"
+    },
+    "H33": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; agency work is excluded.",
+      "quote": "im Rahmen der Arbeitnehmerüberlassung"
+    },
+    "H34": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing; Switzerland is allowed.",
+      "quote": ""
+    },
+    "H35": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "No marketing; 700 per day is below her 1100.",
+      "quote": "Honorar: 700 € pro Tag"
+    },
+    "H36": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing.",
+      "quote": ""
+    },
+    "H37": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of marketing at a branded consumer goods maker with brand relaunch, budget, media planning and agency steering in Düsseldorf is exactly her profile; 1300 per day fits.",
+      "quote": ""
+    },
+    "H38": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "An interim CMO role with HubSpot, positioning and team leadership fits, but SaaS demand generation and ABM are gaps against her B2C and B2B machinery background; 1400 per day fits.",
+      "quote": ""
+    },
+    "H39": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Google Ads, Meta and GA4 in e-commerce are her performance marketing core, but this is a hands-on specialist role; 600 per day is below her 1100.",
+      "quote": "Honorar: 75 € pro Stunde"
+    },
+    "H40": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Leading CRM marketing with lifecycle journeys in Salesforce Marketing Cloud, segmentation and a loyalty programme in retail matches her CRM marketing work; 1100 per day meets her minimum.",
+      "quote": ""
+    },
+    "H41": {
+      "grade": 2,
+      "excluded": false,
+      "reason": "Brand strategy and brand management at a branded goods maker fit, corporate communications and PR are a partial gap and it is permanent; Köln and 150000 meet her permanent criteria.",
+      "quote": ""
+    },
+    "H42": {
+      "grade": 3,
+      "excluded": true,
+      "reason": "Interim head of B2C online marketing with performance, affiliate, CRM and a brand campaign is her profile, but the employer is a gambling operator and gambling is on her exclusion list.",
+      "quote": "Anbieter von Online-Sportwetten und Glücksspiel"
+    },
+    "H43": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Content marketing and SEO are in her profile, but this is copywriting far below her level; 560 per day is below her 1100.",
+      "quote": "Stundensatz: 70 €"
+    },
+    "H44": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim marketing director for consumer brands with brand plans, media, launches and agencies fits her consumer goods background; Switzerland is allowed and the franc rate is no clear breach.",
+      "quote": ""
+    },
+    "H45": {
+      "grade": 3,
+      "excluded": false,
+      "reason": "Interim head of digital marketing at a fashion online retailer with performance, SEO and CRM is exactly her former role.",
+      "quote": ""
+    },
+    "H46": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Marketing, but a working student job, an exclusion word of the profile.",
+      "quote": "Werkstudent Marketing (m/w/d)"
+    },
+    "H47": {
+      "grade": 1,
+      "excluded": true,
+      "reason": "Sales leadership borders on her marketing work but is another field; commission pay is on her exclusion list.",
+      "quote": "Die Vergütung erfolgt ausschließlich auf Provisionsbasis."
+    },
+    "H48": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "A finance role, no relation to marketing.",
+      "quote": ""
+    },
+    "H49": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "SAP finance consulting, no marketing; 1000 per day is below her 1100.",
+      "quote": "Honorar: 1.000 € pro Tag"
+    },
+    "H50": {
+      "grade": 0,
+      "excluded": true,
+      "reason": "Not marketing; 720 per day is below her 1100.",
+      "quote": "Stundensatz 90 €"
+    },
+    "H51": {
+      "grade": 0,
+      "excluded": false,
+      "reason": "No marketing content.",
+      "quote": ""
+    },
+    "H52": {
+      "grade": 2,
+      "excluded": true,
+      "reason": "Loyalty programme relaunch and CRM campaigns in fashion retail fit, the CX part is partial and the role is mid-level; 950 per day is below her 1100.",
+      "quote": "950 €/Tag"
+    }
+  }
+}

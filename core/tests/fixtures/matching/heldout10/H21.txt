@@ -1,0 +1,39 @@
+Titel: CX Analytics Lead (m/w/d) – Freelance
+Unternehmen: Emscher Netz GmbH
+Ort: Dortmund, Nordrhein-Westfalen, Deutschland (Remote)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4364215930/
+Abgerufen am: 29.09.2026 07:37
+
+Emscher Netz GmbH
+Dortmund, Nordrhein-Westfalen, Deutschland (Remote)
+Vor 1 Tag · 17 Bewerber
+Remote · Vertrag · Mid-Senior-Level
+Bewerben
+Speichern
+
+Über die Stelle
+Wir sind ein Anbieter von Glasfaser und Internet mit 450.000 Kundinnen und Kunden. Unser CX-Team sammelt jeden Monat 25.000 Feedbacks und Freitexte, nutzt sie aber kaum. Wir suchen eine freiberufliche Verstärkung für sechs Monate.
+
+Deine Aufgaben
+• Aufbau eines Datenmodells aus Umfragen, Kontaktgründen und Vertragsdaten in Snowflake
+• Treiberanalysen für NPS und Kündigungen mit Python und SQL
+• Textanalyse der Freitexte mit Topic Modelling und Sentimentanalyse
+• Dashboards in Tableau für Geschäftsführung und Fachbereiche
+
+Dein Profil
+• Mehrjährige Erfahrung in Customer Analytics oder Data Science
+• Sehr gute Kenntnisse in SQL, Python und Tableau
+• Erfahrung mit Textanalyse und statistischen Modellen
+• Interesse an Customer Experience
+
+Rahmenbedingungen
+• 6 Monate, Start 01.12.2026
+• Remote
+• Tagessatz 1.000 €
+
+Weniger anzeigen
+Senioritätsstufe
+Mid-Senior-Level
+Beschäftigungsverhältnis
+Vertrag

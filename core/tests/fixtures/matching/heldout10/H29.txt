@@ -1,0 +1,42 @@
+Titel: ServiceNow ITSM Berater (m/w/d) – Einführung Incident, Change und CMDB
+Unternehmen: Lechfeld Automotive Systems GmbH
+Ort: D-86150 Augsburg
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1348772-ServiceNow-ITSM-Berater-m-w-d-Einfuehrung-Incident-Change-und-CMDB
+Abgerufen am: 01.10.2026 18:14
+
+Projekt-ID: 1348772
+Ort: Augsburg
+Remote: 70 %
+Start: 01.12.2026
+Dauer: 8 Monate
+Vertragsart: Freiberuflich
+Honorar: 850 € pro Tag
+Letztes Update: 01.10.2026
+
+Projektbeschreibung
+Wir sind ein Automobilzulieferer mit 14 Werken und lösen unser bisheriges Ticketsystem durch ServiceNow ab. Gesucht wird eine erfahrene Beraterin oder ein erfahrener Berater, die oder der die ITSM-Module fachlich verantwortet.
+
+Aufgaben:
+- Fachliche Konzeption von Incident Management, Change Management und Request Fulfilment in ServiceNow
+- Aufbau der CMDB mit dem Configuration Management und Anbindung der Discovery
+- Abstimmung mit dem Implementierungspartner und den Werks-IT-Teams
+- Erstellung von Rollenkonzept, Prozessdokumentation und Schulungen
+- Begleitung des Go-live und der Hypercare
+
+Anforderungen:
+- Mehrjährige Erfahrung mit ServiceNow ITSM-Einführungen
+- Fundierte ITIL-Kenntnisse
+- Erfahrung mit CMDB und Configuration Management
+- Erfahrung in Industrie oder Automotive von Vorteil
+
+Rahmen:
+Vier Tage pro Woche, überwiegend remote. 850 € pro Tag zzgl. MwSt.
+
+Kategorien und Skills
+ServiceNow
+ITSM
+ITIL
+CMDB
+Incident Management
+Change Management

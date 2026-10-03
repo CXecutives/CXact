@@ -1,0 +1,38 @@
+Titel: ITSM-Prozessberater ITIL 4 – Service Level Management und SIAM (m/w/d)
+Unternehmen: Mittelland Logistik Holding AG
+Ort: D-34117 Kassel
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1349105-ITSM-Prozessberater-ITIL-4-Service-Level-Management-und-SIAM-m-w-d
+Abgerufen am: 01.10.2026 18:30
+
+Projekt-ID: 1349105
+Ort: Kassel
+Remote: 100 %
+Start: 01.12.2026
+Dauer: 6 Monate
+Vertragsart: Freiberuflich
+Honorar: 900 € pro Tag
+Letztes Update: 01.10.2026
+
+Projektbeschreibung
+Unsere IT-Leistungen werden von vier externen Dienstleistern erbracht. Die Verträge haben unterschiedliche Servicelevels und Kennzahlen, Störungen werden zwischen den Dienstleistern hin- und hergeschoben. Wir wollen ein SIAM-Modell einführen.
+
+Aufgaben:
+- Entwicklung eines Service-Integration-Modells mit Rollen, Gremien und Prozessschnittstellen
+- Vereinheitlichung von SLAs und OLAs über alle Dienstleister
+- Aufbau des Service Level Managements mit Reporting und Service Reviews
+- Abstimmung der Incident- und Problem-Prozesse über Dienstleistergrenzen hinweg
+
+Anforderungen:
+- Mehrjährige Erfahrung als ITSM-Berater nach ITIL 4
+- Erfahrung mit SIAM oder Multi-Provider-Umgebungen
+- Erfahrung im Service Level Management
+
+Rahmen:
+Vollständig remote, drei bis vier Tage pro Woche. 900 € pro Tag zzgl. MwSt.
+
+Kategorien und Skills
+ITIL 4
+SIAM
+Service Level Management
+ITSM

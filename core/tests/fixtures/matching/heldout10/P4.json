@@ -1,0 +1,183 @@
+{
+  "name": "Sandra Musterbeispiel",
+  "email": "sandra.musterbeispiel@example.invalid",
+  "telefon": "+49 172 0000000",
+  "titel": "Interim CMO und Marketingleiterin B2C und B2B",
+  "abschluss": "Diplom-Kauffrau (Univ.)",
+  "berufserfahrung_jahre": 21,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Kauffrau",
+      "fach": "Betriebswirtschaftslehre mit Schwerpunkt Marketing",
+      "hochschule": "Beispieluniversität",
+      "jahr": 2005
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2018 - heute",
+      "rolle": "Selbstständige Interim Managerin Marketing",
+      "schwerpunkte": [
+        "Interim CMO bei einem Konsumgüterhersteller mit 80 Millionen Euro Umsatz, Neuaufstellung des Marketingteams mit 18 Personen",
+        "Interim Head of Digital Marketing bei einem Onlinehändler, Performance-Marketing-Budget von 12 Millionen Euro",
+        "Rebranding und Markenstrategie für einen B2B-Maschinenbauer mit Go-to-Market in drei neuen Ländern",
+        "Einführung von HubSpot und Salesforce Marketing Cloud für CRM-Marketing und Marketing Automation"
+      ]
+    },
+    {
+      "zeitraum": "2012 - 2018",
+      "rolle": "Marketingleiterin bei einem Mode-Onlinehändler",
+      "schwerpunkte": [
+        "Verantwortung für Performance Marketing, SEO, SEA, Paid Social und Affiliate mit 25 Millionen Euro Budget",
+        "Aufbau von CRM-Marketing, Newsletter und Kundenbindungsprogramm",
+        "Steuerung von Kreativ-, Media- und Performance-Agenturen"
+      ]
+    },
+    {
+      "zeitraum": "2005 - 2012",
+      "rolle": "Brand Managerin bei einem Hersteller von Markenartikeln",
+      "schwerpunkte": [
+        "Markenführung für zwei Kernmarken, Produkteinführungen und Kampagnen im Handel",
+        "Marktforschung und Konsumentenanalysen"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Marketingleitung",
+      "jahre": 13,
+      "auch": ["Head of Marketing", "CMO", "Leitung Marketing", "Marketing Director"]
+    },
+    {
+      "kompetenz": "Performance Marketing",
+      "jahre": 12,
+      "auch": ["SEA", "Paid Social", "Programmatic Advertising", "Google Ads"]
+    },
+    {
+      "kompetenz": "Online Marketing",
+      "jahre": 14,
+      "auch": ["Digital Marketing", "SEO", "Affiliate Marketing"]
+    },
+    {
+      "kompetenz": "CRM-Marketing",
+      "jahre": 10,
+      "auch": ["E-Mail-Marketing", "Marketing Automation", "Customer Lifecycle Management", "Kundenbindungsprogramm"]
+    },
+    {
+      "kompetenz": "Markenführung",
+      "jahre": 18,
+      "auch": ["Brand Management", "Markenstrategie", "Rebranding", "Markenpositionierung"]
+    },
+    {
+      "kompetenz": "Content Marketing",
+      "jahre": 8,
+      "auch": ["Content-Strategie", "Social Media Marketing"]
+    },
+    {
+      "kompetenz": "Kampagnenmanagement",
+      "jahre": 16,
+      "auch": ["Kampagnenplanung", "Campaign Management", "Integrierte Kampagnen"]
+    },
+    {
+      "kompetenz": "Marketingbudget",
+      "jahre": 13,
+      "auch": ["Budgetverantwortung Marketing", "Marketing Controlling"]
+    },
+    {
+      "kompetenz": "Agentursteuerung",
+      "jahre": 15,
+      "auch": ["Agency Management", "Agenturmanagement"]
+    },
+    {
+      "kompetenz": "Go-to-Market",
+      "jahre": 8,
+      "auch": ["Markteinführung", "Produkteinführung", "Product Launch"]
+    },
+    {
+      "kompetenz": "Marketing Analytics",
+      "jahre": 10,
+      "auch": ["Web Analytics", "Google Analytics", "Attributionsmodelle"]
+    },
+    {
+      "kompetenz": "Teamführung",
+      "jahre": 15,
+      "auch": ["Führung von Marketingteams", "Personalführung"]
+    },
+    {
+      "kompetenz": "Marketing-Transformation",
+      "jahre": 6,
+      "auch": ["Neuaufstellung Marketing", "Marketing Operations"]
+    }
+  ],
+  "methoden_tools": [
+    { "name": "HubSpot" },
+    { "name": "Salesforce Marketing Cloud" },
+    { "name": "Google Ads" },
+    { "name": "Meta Ads Manager" },
+    { "name": "Google Analytics 4" },
+    { "name": "Adobe Analytics" }
+  ],
+  "zertifizierungen": [
+    { "name": "Google Ads Search Certification" },
+    { "name": "HubSpot Marketing Software Certification" }
+  ],
+  "branchen": [
+    { "branche": "Konsumgüter" },
+    { "branche": "E-Commerce" },
+    { "branche": "Mode und Lifestyle" },
+    { "branche": "Handel" },
+    { "branche": "Maschinenbau" }
+  ],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "C1" }
+  ],
+  "alleinstellungsmerkmale": [
+    "Verbindet Markenführung mit messbarem Performance Marketing",
+    "Hat Marketingteams in drei Unternehmen als Interim CMO neu aufgestellt",
+    "Steuert große Budgets und Agenturnetzwerke"
+  ],
+  "keywords": [
+    "Marketing",
+    "Interim CMO",
+    "Performance Marketing",
+    "Brand Management",
+    "CRM",
+    "Marketing Automation",
+    "HubSpot",
+    "E-Commerce",
+    "Konsumgüter"
+  ],
+  "schwerpunkte": [
+    "Marketingleitung",
+    "Performance Marketing",
+    "Markenführung",
+    "CRM-Marketing"
+  ],
+  "wunschrollen": [
+    "Interim CMO",
+    "Interim Head of Marketing",
+    "Interim Marketingleitung",
+    "Head of Digital Marketing"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1350,
+    "remote": "teilweise",
+    "regionen": ["Nordrhein-Westfalen", "Hessen", "DACH"],
+    "branchen": ["Konsumgüter", "E-Commerce", "Handel"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1100,
+    "laender": ["DE", "AT", "CH"],
+    "ausgeschlossene_vertragsarten": ["anue"],
+    "remote_ausserhalb_erlaubt": false,
+    "verfuegbar_ab": "sofort",
+    "min_jahresgehalt": 150000,
+    "festanstellung_orte": ["Düsseldorf", "Köln"],
+    "festanstellung_remote_min": 60,
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum", "Provisionsbasis", "Glücksspiel"]
+  }
+}

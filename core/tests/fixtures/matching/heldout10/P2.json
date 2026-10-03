@@ -1,0 +1,178 @@
+{
+  "name": "Jonas Exemplar",
+  "email": "jonas.exemplar@example.invalid",
+  "telefon": "+49 170 0000000",
+  "titel": "Freiberuflicher Berater für Customer Experience und Service Design",
+  "abschluss": "Master of Arts Marketing und Konsumentenpsychologie",
+  "berufserfahrung_jahre": 15,
+  "ausbildung": [
+    {
+      "abschluss": "Master of Arts",
+      "fach": "Marketing und Konsumentenpsychologie",
+      "hochschule": "Beispielhochschule für Wirtschaft",
+      "jahr": 2011
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2019 - heute",
+      "rolle": "Selbstständiger Berater für Customer Experience",
+      "schwerpunkte": [
+        "CX-Strategie und Kundenzentrierungsprogramme für Versicherer, Energieversorger und Telekommunikationsanbieter",
+        "Customer Journey Mapping mit mehr als 40 Journeys, Ableitung von Maßnahmen und Business Cases",
+        "Aufbau von Voice-of-the-Customer- und NPS-Programmen mit Qualtrics und Medallia inklusive Closed Loop",
+        "Service Design für digitale Kundenprozesse, Prototypen und Tests mit Kundinnen und Kunden",
+        "Interim-Leitung eines CX-Teams mit acht Personen bei einem Direktversicherer"
+      ]
+    },
+    {
+      "zeitraum": "2014 - 2019",
+      "rolle": "Senior Manager Customer Experience bei einer Managementberatung",
+      "schwerpunkte": [
+        "CX-Reifegradanalysen und Zielbilder für Banken und Handel",
+        "Moderation von Design-Thinking-Workshops mit Fachbereichen und Vorstand",
+        "Aufbau von CX-KPI-Systemen aus NPS, CSAT und Customer Effort Score"
+      ]
+    },
+    {
+      "zeitraum": "2011 - 2014",
+      "rolle": "Customer Insights Manager bei einer Direktbank",
+      "schwerpunkte": [
+        "Kundenbefragungen, Segmentierung und Persona-Entwicklung",
+        "Auswertung von Beschwerden und Kundenfeedback für das Produktmanagement"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Customer Experience Management",
+      "jahre": 12,
+      "auch": ["CX-Strategie", "CEM", "Customer Experience", "Kundenerlebnis"]
+    },
+    {
+      "kompetenz": "Customer Journey Mapping",
+      "jahre": 10,
+      "auch": ["Kundenreise", "Journey Management", "Touchpoint-Analyse"]
+    },
+    {
+      "kompetenz": "Voice of the Customer",
+      "jahre": 9,
+      "auch": ["VoC-Programme", "Kundenfeedback", "Closed Loop Feedback", "Feedbackmanagement"]
+    },
+    {
+      "kompetenz": "NPS-Programme",
+      "jahre": 9,
+      "auch": ["Net Promoter Score", "Kundenzufriedenheit", "CSAT", "Customer Effort Score"]
+    },
+    {
+      "kompetenz": "Service Design",
+      "jahre": 8,
+      "auch": ["Design Thinking", "Prototyping", "Nutzertests"]
+    },
+    {
+      "kompetenz": "Customer Insights",
+      "jahre": 12,
+      "auch": ["Marktforschung", "Kundenbefragung", "Personas", "Kundensegmentierung"]
+    },
+    {
+      "kompetenz": "Kundenzentrierung",
+      "jahre": 10,
+      "auch": ["Customer Centricity", "kundenzentrierte Organisation"]
+    },
+    {
+      "kompetenz": "CX-Messung und KPI-Systeme",
+      "jahre": 8,
+      "auch": ["CX-Kennzahlen", "CX-Dashboards"]
+    },
+    {
+      "kompetenz": "Workshop-Moderation",
+      "jahre": 12,
+      "auch": ["Moderation", "Facilitation"]
+    },
+    {
+      "kompetenz": "Changemanagement",
+      "jahre": 7,
+      "auch": ["Change Management", "Veränderungsmanagement"]
+    },
+    {
+      "kompetenz": "Projektmanagement",
+      "jahre": 10,
+      "auch": ["Projektleitung", "agiles Projektmanagement"]
+    },
+    {
+      "kompetenz": "Business Cases für CX-Maßnahmen",
+      "jahre": 6,
+      "auch": ["Wirtschaftlichkeitsrechnung"]
+    }
+  ],
+  "methoden_tools": [
+    { "name": "Qualtrics XM" },
+    { "name": "Medallia" },
+    { "name": "Miro" },
+    { "name": "Figma" },
+    { "name": "Smaply" },
+    { "name": "Power BI" },
+    { "name": "Salesforce" }
+  ],
+  "zertifizierungen": [
+    { "name": "Certified Customer Experience Professional (CCXP)" },
+    { "name": "Design Thinking Coach" },
+    { "name": "Professional Scrum Product Owner I" }
+  ],
+  "branchen": [
+    { "branche": "Versicherungen" },
+    { "branche": "Banken" },
+    { "branche": "Telekommunikation" },
+    { "branche": "Energie" },
+    { "branche": "Handel" }
+  ],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "C2" }
+  ],
+  "alleinstellungsmerkmale": [
+    "Verbindet CX-Strategie mit messbaren Maßnahmen in Service und Produkt",
+    "Hat NPS- und VoC-Programme in fünf Unternehmen aufgebaut",
+    "Moderiert vom Vorstand bis zum Kundenservice"
+  ],
+  "keywords": [
+    "Customer Experience",
+    "CX",
+    "Customer Journey",
+    "Voice of the Customer",
+    "NPS",
+    "Service Design",
+    "Kundenzentrierung",
+    "Qualtrics",
+    "Medallia"
+  ],
+  "schwerpunkte": [
+    "Customer Experience Management",
+    "Customer Journey Mapping",
+    "Voice of the Customer",
+    "Service Design"
+  ],
+  "wunschrollen": [
+    "CX Consultant",
+    "Customer Experience Berater",
+    "Interim Head of CX",
+    "Service Designer"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1100,
+    "remote": "ueberwiegend",
+    "regionen": ["remote im DACH-Raum", "Rhein-Main", "Berlin"],
+    "branchen": ["Versicherungen", "Banken", "Energie"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 900,
+    "laender": ["DE", "AT", "CH"],
+    "ausgeschlossene_vertragsarten": ["anue", "festanstellung"],
+    "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "sofort",
+    "auslastung_min_tage": 2,
+    "auslastung_max_tage": 4,
+    "min_laufzeit_monate": 2,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum", "Provisionsbasis"]
+  }
+}

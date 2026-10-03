@@ -1,0 +1,43 @@
+Titel: Berater Voicebot und Conversational AI im Kundenservice (m/w/d)
+Unternehmen: Weserbogen Versicherung a.G.
+Ort: D-30159 Hannover
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1346110-Berater-Voicebot-und-Conversational-AI-im-Kundenservice-m-w-d
+Abgerufen am: 24.09.2026 17:58
+
+Projekt-ID: 1346110
+Ort: Hannover
+Remote: 80 %
+Start: ab sofort
+Dauer: 6 Monate
+Vertragsart: Freiberuflich
+Honorar: 1.000 € pro Tag
+Letztes Update: 24.09.2026
+
+Projektbeschreibung
+Unser Kundenservice erhält rund 90.000 Anrufe im Monat, ein großer Teil davon sind einfache Anliegen wie Adressänderungen, Bescheinigungen oder Schadenmeldungen. Wir wollen einen Voicebot vor die bestehende IVR schalten und einen Chatbot auf der Website und in der App einführen. Die Plattform (Cognigy) ist ausgewählt, die Anbindung an Genesys Cloud steht.
+
+Aufgaben:
+- Analyse der Anrufgründe und Auswahl der Anliegen für Voicebot und Chatbot
+- Gestaltung der Dialoge und der Übergabe an die Mitarbeitenden mit Kontext
+- Steuerung des Implementierungspartners und Abstimmung mit IT, Datenschutz und Fachbereichen
+- Definition und Messung der Kennzahlen (Automatisierungsquote, Kundenzufriedenheit, Weiterleitungsquote)
+- Einbindung von Teamleitungen und Betriebsrat, Schulung der Mitarbeitenden
+
+Anforderungen:
+- Erfahrung mit Conversational-AI- oder Voicebot-Projekten im Kundenservice
+- Kenntnisse in IVR-Design und Contact-Center-Plattformen, idealerweise Genesys
+- Verständnis für Prozesse im Kundenservice und für generative KI
+- Erfahrung in der Steuerung von Dienstleistern
+- Deutsch sehr gut
+
+Rahmen:
+Vier Tage pro Woche, überwiegend remote. Abrechnung nach Tagen, 1.000 € pro Tag zzgl. MwSt.
+
+Kategorien und Skills
+Voicebot
+Chatbot
+Conversational AI
+IVR
+Genesys
+Kundenservice
