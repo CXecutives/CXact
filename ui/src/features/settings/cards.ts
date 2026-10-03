@@ -1,19 +1,19 @@
-// Einstellungen as data: the cards in their order (Suche, Postfach, Darstellung, Daten; by
-// the fetch's two ways, user decision 2026-10-01), each on its tab (Suche, Postfach, Daten,
+// Einstellungen as data: the cards in their order (Suche, Postfach, Daten; by the fetch's two
+// ways, user decision 2026-10-01), each on its tab (Suche, Postfach, Daten,
 // like the Profil's) with its name and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`).
 //
-// Rules the list keeps (docs/PLAN.md, Einstellungen): a switch or a choice moves at once and
-// is its own answer; every text button of a row is the same outlined button (secondary, 28
-// px), whether it changes the row's value or opens something, and the ones that lose
+// Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
+// answer; every text button of a row is the same outlined button (secondary, 28
+// px), whether it opens something or runs a command, and the ones that lose
 // something for good are red (`warns`: Zurücksetzen, like Entfernen of the mailbox); a
 // locked button says why (`locked`); the reset stands alone on the last row.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
+import type { AppState, OpenTarget, SettingsPatch, Way } from '$lib/ipc/types';
 import type { SettingsTab } from '$lib/state/settings.svelte';
 
 /** What a row reads: the catalog of the moment and the app state. */
@@ -84,22 +84,8 @@ export interface Switch {
   set: (state: AppState, on: boolean) => void;
 }
 
-/** One of a few, side by side (Segmented): the page follows at once, the save after. */
-export interface ChoiceRow<Id extends string = string> {
-  kind: 'choice';
-  id: string;
-  label: Text;
-  options: readonly Id[];
-  name(t: Catalog, id: Id): string;
-  value(state: AppState): Id;
-  patch(id: Id): Partial<SettingsPatch>;
-  /** The state as it will be. */
-  set(state: AppState, id: Id): void;
-}
-
 /** A row with its buttons at the end, and a switch after them. */
-export interface ActionsRow {
-  kind: 'actions';
+export interface Row {
   id: string;
   label: Text;
   /** A value under the label to copy (a path). */
@@ -110,8 +96,6 @@ export interface ActionsRow {
   toggle?: Switch;
 }
 
-export type Row = ChoiceRow<Palette> | ActionsRow;
-
 /** A card: its rows, and for the two ways of the fetch a block of their own: Suche its
  *  sources, Postfach the card of its account and under it the sources of its alert mails. */
 export interface CardSpec {
@@ -120,8 +104,6 @@ export interface CardSpec {
   heading: Text;
   block?: Sources;
   rows: readonly Row[];
-  /** Kept but not shown for now (a card that may come back). */
-  hidden?: boolean;
 }
 
 /** The cards of the sources, by how a source brings its jobs (`PortalState.way`). */
@@ -133,28 +115,11 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
   portals: [],
   fetchMail: null,
   fetchSearch: null,
-  palette: null,
   ...change,
 });
 
-const palette: ChoiceRow<Palette> = {
-  kind: 'choice',
-  id: 'palette',
-  label: (t) => t.settings.palette,
-  options: ['cxact', 'light', 'dark'],
-  name: (t, id) => t.settings.paletteName[id],
-  value: (state) => state.palette,
-  patch: (id) => ({ palette: id }),
-  set: (state, id) => void (state.palette = id),
-};
-
-/** Darstellung is hidden for now (user, 2026-09-30), its code kept; the backend holds its
- *  choice at the default (core settings::LOOK_SHOWN: the app is CXact). */
-const LOOK_SHOWN = false;
-
 /** The work folder (the profiles). */
-const folder: ActionsRow = {
-  kind: 'actions',
+const folder: Row = {
   id: 'folder',
   label: (t) => t.settings.folder,
   path: (state) => state.settings.workspace,
@@ -165,13 +130,6 @@ export const CARDS: readonly CardSpec[] = [
   { id: 'search', tab: 'search', heading: (t) => t.settings.search, block: 'search', rows: [] },
   { id: 'mailbox', tab: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
   {
-    id: 'look',
-    tab: 'data',
-    heading: (t) => t.settings.look,
-    rows: [palette],
-    hidden: !LOOK_SHOWN,
-  },
-  {
     id: 'data',
     tab: 'data',
     heading: (t) => t.settings.data,
@@ -179,7 +137,7 @@ export const CARDS: readonly CardSpec[] = [
       // The one action that deletes for good; what it deletes is said in its dialog (user
       // decision 2026-09-27: no Sicherung and no Protokoll rows here).
       folder,
-      { kind: 'actions', id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
+      { id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
     ],
   },
 ];

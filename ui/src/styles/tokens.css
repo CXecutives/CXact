@@ -6,26 +6,20 @@
  *   1. Palette  `--p-*`  HSL triplets, referenced ONLY inside this file.
  *   2. Semantic tokens   everything components use (colours are complete `hsl()` values).
  *
- * Three palettes (user, 2026-09-29), chosen in Einstellungen (Darstellung): CXact, the
- * `:root` block below and the default (the cxpertise cream, coral that acts, navy for
- * headings, what is chosen, links and switches), and two conventional themes like the Claude
- * app's with a fifth of Primer: Light ("Hell", `:root[data-palette='light']`, black on white)
- * and Dark ("Dunkel", `:root[data-palette='dark']`, white on black), blue only for details
- * (links, focus, the unread dot, switches, the selected row's edge). Components never branch
- * on the palette; the page sets `data-palette` (lib/palette.ts) and the roles follow.
+ * One palette, CXact: the `:root` block below (the cxpertise cream, coral that acts, navy for
+ * headings, what is chosen, links and switches).
  *
  * Lint (stylelint + eslint + core/tests/ui_contract.rs) rejects hex, named colours, colour
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
  *
  * What is not the page takes its colours from here too: `npm run regen` (tools/tokens.mjs,
- * then tools/icon.py) writes the colour tokens into core/src/export/palette.rs (the Excel
- * file, the window), tools/palette.json (the app icon) and the window's
+ * then tools/icon.py) writes the colour tokens into core/src/export/palette.rs (the icon's
+ * tests), tools/palette.json (the app icon) and the window's
  * backgroundColor (src-tauri/tauri*.conf.json). core/tests/palette.rs and `npm run check`
  * fail while one of them is stale.
  *
- * The roles keep their names in every palette: `--p-coral` is what acts (the primary; black
- * in Light, white in Dark), `--p-navy` the detail colour (navy in CXact, blue in the others).
- * The five ring colours (red to green) are the scores, not an accent.
+ * `--p-coral` is what acts (the primary), `--p-navy` the detail colour. The five ring colours
+ * (red to green) are the scores, not an accent.
  */
 
 :root {
@@ -46,7 +40,7 @@
   --p-coral: 13 73% 63%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
-  --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
+  --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
   --p-coral-variant: 13 64% 56%;
   --p-coral-press: 13 64% 46%;
   --p-muted: 30 20% 97%;
@@ -63,7 +57,6 @@
      2026-10-01). */
   --p-navy: 212 50% 36%;
   --p-navy-deep: 213 54% 27%;
-  --p-navy-hover: 212 52% 31%; /* a switch that is on, under the pointer */
   --p-navy-50: 212 50% 96.5%;
   --p-navy-100: 212 48% 93%;
   --p-navy-150: 212 42% 89%;
@@ -93,7 +86,7 @@
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
   --p-shade-navy: 213 40% 20%;
-  /* The tooltip, the same in both palettes (like Claude's): a dark bubble with a light edge. */
+  /* The tooltip (like Claude's): a dark bubble with a light edge. */
   --p-emphasis: 213 40% 20%;
   --p-tooltip-edge: 213 25% 36%;
 
@@ -138,7 +131,7 @@
   --text-heading: hsl(var(--p-navy));
   --text-label: hsl(var(--p-ink));
   --text-on-accent: hsl(var(--p-on-accent));
-  /* The label of the filled danger button: white, on the dark the canvas (its red is light). */
+  /* The label of the filled danger button: white. */
   --text-on-danger: hsl(var(--p-on-accent));
   --text-inverse: hsl(var(--p-white));
   /* The second line of a tooltip (a key, a hint): quieter white on the navy bubble. */
@@ -179,7 +172,7 @@
      translucent ink, as clear on the grey wash as the plain track is on white. */
   --ring-track-inactive: hsl(var(--p-ink) / 0.1);
   /* The sliding pill of the active sidebar entry: a surface a step above the sidebar, lifted
-     by the thumbs' shadow and without an edge in every palette, like a chosen tab or segment
+     by the thumbs' shadow and without an edge, like a chosen tab or segment
      (user, 2026-09-30); in CXact a warm white, its label navy and its icon coral. */
   --nav-active-bg: hsl(var(--p-nav-active));
   /* An idle entry under the pointer: the quiet wash of the tabs, pressed a step more. */
@@ -291,10 +284,9 @@
   /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
      and the folder with the check cut out of it. tools/icon.py draws every icon file in
      these two (through tools/palette.json): the CXact orange plate and a white folder, fixed, so
-     the icon never changes with a design. On the dark the mark gets a faint light edge. */
+     the icon never changes with a design. */
   --brand: hsl(var(--p-brand));
   --brand-glyph: hsl(var(--p-brand-glyph));
-  --brand-edge: hsl(var(--p-ink) / 0);
   --brand-radius: 22.37%;
 
   /* --------------------------------------------------------------- gradients */
@@ -359,8 +351,7 @@
      the window's surface with a hairline under it; the caption buttons (Windows) take the
      design's quiet wash under the pointer and a deeper one pressed, the close button the
      app's own danger red of the delete actions with a white glyph and a darker red pressed;
-     the glyphs fade while the window is in the back. Every palette block names them again,
-     so a design change carries over. */
+     the glyphs fade while the window is in the back. */
   --titlebar-bg: var(--bg);
   --titlebar-border: var(--border);
   --titlebar-fg: var(--text-muted);
@@ -737,180 +728,6 @@
 [data-pointer-focus] {
   --focus-ring: var(--focus-ring-off);
   --focus-ring-inset: var(--focus-ring-off);
-}
-
-/* ---------------------------------------------------------------- palettes
-   Light and Dark set the palette entries under CXact's names, so every role follows, and
-   then the few roles whose part differs. The Excel file and the app icon take CXact (the
-   :root block, read by tools/tokens.mjs); the window wears --bg of the chosen palette
-   (tools/tokens.mjs writes the others into core/src/export/palette.rs). `node tools/tokens.mjs
-   --check` measures every text on its backgrounds in every palette (WCAG AA). */
-
-:root[data-palette='light'] {
-  color-scheme: light;
-
-  /* Light (user, 2026-09-29): black on white like the Claude app, a fifth of Primer. White
-     content, a light grey window and sidebar, what acts in near black, neutral washes for
-     what is selected, blue only for the details (links, focus, the unread dot, switches,
-     progress, the selected row's edge). */
-  --p-cream: 60 9% 96.2%;
-  --p-ink: 60 3% 10%;
-  --p-coral: 60 3% 12%;
-  --p-coral-variant: 60 2% 22%;
-  --p-coral-press: 60 2% 28%;
-  --p-muted: 60 8% 97%;
-  --p-muted-fg: 60 2% 34%;
-  --p-line: 60 5% 89%;
-  --p-coral-800: 60 3% 12%;
-  --p-coral-25: 60 6% 95.5%;
-  --p-coral-40: 60 6% 95%;
-  --p-coral-50: 60 6% 93.5%;
-  --p-coral-70: 60 5% 92%;
-  --p-coral-150: 60 4% 86%;
-  --p-navy: 218 70% 48%;
-  --p-navy-deep: 218 72% 38%;
-  --p-navy-hover: 218 71% 43%;
-  --p-navy-50: 218 80% 97%;
-  --p-navy-100: 218 75% 94%;
-  --p-navy-150: 218 60% 90%;
-  --p-navy-200: 218 45% 82%;
-  --p-fg-subtle: 60 2% 40%;
-  --p-border-strong: 60 3% 78%;
-  --p-border-input: 60 2% 62%;
-  --p-border-press: 60 2% 50%;
-  --p-wash: 60 3% 12%;
-  --p-scrim: 0 0% 8%;
-  --p-shade-xs: 0 0% 10%;
-  --p-shade-pop: 0 0% 8%;
-  --p-shade-navy: 0 0% 10%;
-  --p-emphasis: 210 3% 13%;
-  --p-tooltip-edge: 210 2% 22%;
-
-  --text-heading: hsl(var(--p-ink));
-  --nav-active-fg: hsl(var(--p-ink));
-  --nav-active-icon: hsl(var(--p-navy));
-  --nav-active-bg: hsl(var(--p-white));
-  --toggle-on: hsl(var(--p-navy));
-  --toggle-on-hover: hsl(var(--p-navy-hover));
-  --toggle-on-press: hsl(var(--p-navy-deep));
-  --unread: hsl(var(--p-navy));
-  --selection-bar: hsl(var(--p-navy) / 0.85);
-  --border-accent: hsl(var(--p-ink) / 0.12);
-}
-
-:root[data-palette='dark'] {
-  color-scheme: dark;
-  --p-danger-fill: 0 64% 50%;
-  --p-danger-fill-hover: 0 66% 45%;
-  --p-danger-fill-press: 0 68% 40%;
-  --p-switch: 217 72% 54%;
-  --p-tooltip-edge: 210 2% 22%;
-  --p-emphasis: 210 3% 13%;
-
-  --p-white: 60 1% 9%;
-  --p-raised: 60 1% 12.5%;
-  --p-nav-active: 60 1% 14%;
-  --p-cream: 60 2% 6.5%;
-  --p-ink: 60 4% 91%;
-  /* What acts is white with dark words (the Claude app's dark primary), a shade darker under
-     the pointer and pressed; the details blue. */
-  --p-coral: 60 4% 91%;
-  --p-coral-variant: 60 4% 84%;
-  --p-coral-press: 60 3% 76%;
-  --p-muted: 60 1% 10.5%;
-  --p-muted-fg: 60 2% 64%;
-  --p-line: 60 1% 17.5%;
-  --p-danger: 2.7 92.6% 62.9%; /* fgColor-danger */
-  --p-coral-800: 60 5% 92%;
-  /* The selected row and its steps: neutral washes of the light text. */
-  --p-coral-25: 60 1% 12.5%;
-  --p-coral-40: 60 1% 13%;
-  --p-coral-50: 60 1% 15%;
-  --p-coral-70: 60 1% 17%;
-  --p-coral-150: 60 1% 23%;
-  --p-navy: 217 88% 70%;
-  --p-navy-deep: 217 90% 79%;
-  --p-navy-50: 217 30% 12%;
-  --p-navy-100: 217 28% 15%;
-  --p-navy-150: 217 25% 19%;
-  --p-navy-200: 217 25% 29%;
-  --p-fg-subtle: 60 2% 58%;
-  --p-border-strong: 60 1% 24%;
-  --p-border-input: 60 1% 35%;
-  --p-border-press: 60 2% 52%;
-  --p-success-soft: 156 36% 11%; /* bgColor-success-muted on the canvas */
-  --p-warning-soft: 43.3 30% 11.8%; /* bgColor-attention-muted on the canvas */
-  --p-danger-strong: 2.7 92.6% 62.9%; /* fgColor-danger, also the filled danger button */
-  --p-danger-soft: 338.6 23.3% 11.8%; /* bgColor-danger-muted on the canvas */
-  --p-danger-700: 3.8 100% 72.4%; /* red-3 */
-  --p-danger-750: 5.2 100% 79.8%; /* red-2 */
-  --p-on-accent: 60 2% 9%;
-  --p-scrim: 0 0% 2%;
-  --p-shade-xs: 0 0% 2%;
-  --p-shade-pop: 0 0% 2%;
-  --p-shade-navy: 0 0% 2%;
-  --p-wash: 60 4% 91%;
-
-  /* Washes of the light text instead of the dark ink, a deeper scrim, the tooltip grey with
-     the light text, and shadows that still show on the dark: stronger, and floating layers
-     outlined by the border (as Primer draws them). */
-  --surface-hover: hsl(var(--p-wash) / 0.06);
-  --surface-press: hsl(var(--p-wash) / 0.1);
-  --surface-selected-inactive: hsl(var(--p-ink) / 0.08);
-  --surface-track: hsl(var(--p-wash) / 0.08);
-  /* On the dark the chosen segment is lighter than its track, not a hole in it. */
-  --thumb: hsl(var(--p-coral-150));
-  --selection-bar: hsl(var(--p-navy) / 0.75);
-  --unread: hsl(var(--p-navy));
-  --border-accent: hsl(var(--p-ink) / 0.14);
-  --toggle-on: hsl(var(--p-switch));
-  --toggle-on-hover: hsl(var(--p-switch) / 0.9);
-  --toggle-on-press: hsl(var(--p-switch) / 0.8);
-  --scrim: hsl(var(--p-scrim) / 0.6);
-  --surface-inverse: hsl(var(--p-emphasis));
-  --text-heading: hsl(var(--p-ink));
-  --text-label: hsl(var(--p-ink));
-  --text-inverse: hsl(var(--p-ink));
-  --text-inverse-muted: hsl(var(--p-ink) / 0.72);
-  --nav-active-bg: hsl(var(--p-nav-active));
-  --nav-active-fg: hsl(var(--p-ink));
-  --brand-edge: hsl(var(--p-ink) / 0.16);
-  --nav-hover: hsl(var(--p-wash) / 0.045);
-  --nav-press: hsl(var(--p-wash) / 0.08);
-  /* The filled red button: a deeper red with white words (the red text stays light). */
-  --danger-fill: hsl(var(--p-danger-fill));
-  --danger-fill-hover: hsl(var(--p-danger-fill-hover));
-  --danger-fill-active: hsl(var(--p-danger-fill-press));
-  --text-on-danger: hsl(var(--p-knob));
-  --nav-active-icon: hsl(var(--p-navy));
-  --ring-track-inactive: hsl(var(--p-ink) / 0.14);
-  --selection: hsl(var(--p-navy) / 0.35);
-  --scrollbar: hsl(var(--p-ink) / 0.24);
-  --scrollbar-hover: hsl(var(--p-ink) / 0.4);
-  --grad-shimmer: linear-gradient(90deg, transparent, hsl(var(--p-ink) / 0.06), transparent);
-  --sh-xs: 0 1px 2px hsl(var(--p-shade-xs) / 0.4);
-  --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.5);
-  --sh-pop: 0 0 0 1px hsl(var(--p-line)), 0 8px 24px -6px hsl(var(--p-shade-pop) / 0.6);
-  --sh-tooltip: 0 4px 12px -4px hsl(var(--p-shade-pop) / 0.6);
-  --sh-hover:
-    0 4px 12px -4px hsl(var(--p-shade-navy) / 0.5), 0 1px 2px hsl(var(--p-shade-navy) / 0.3);
-  --sh-menu:
-    0 0 0 1px hsl(var(--p-line)), 0 4px 12px hsl(var(--p-shade-pop) / 0.4),
-    0 16px 40px hsl(var(--p-shade-pop) / 0.5);
-  --sh-primary: 0 1px 2px hsl(var(--p-shade-xs) / 0.4);
-
-  /* The top bar: the window's surface, the washes, the danger red; pressed a shade darker
-     on the dark window (Primer's red steps grow lighter here). */
-  --titlebar-bg: var(--bg);
-  --titlebar-border: var(--border);
-  --titlebar-fg: var(--text-muted);
-  --titlebar-fg-hover: var(--text);
-  --titlebar-fg-inactive: var(--text-subtle);
-  --titlebar-button-hover: var(--surface-hover);
-  --titlebar-button-press: var(--surface-press);
-  --titlebar-close-hover: hsl(var(--p-titlebar-close));
-  --titlebar-close-press: hsl(var(--p-titlebar-close-press));
-  --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

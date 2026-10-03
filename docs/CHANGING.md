@@ -15,7 +15,7 @@ tokens.css as well.
 
 Palette first, roles second.
 
-1. **Palette** (`--p-*`, HSL triplets such as `13 73% 63%`). A new palette is new values here:
+1. **Palette** (`--p-*`, HSL triplets such as `13 73% 63%`). New colours are new values here:
    the coral, the navy, the cream, the ink, the greys, the status colours, the ten score steps
    (`--p-score-0` ... `--p-score-9`). Only tokens.css refers to a palette entry, so renaming one
    (a blue brand is no longer `--p-coral`) is a change inside this file.
@@ -28,21 +28,20 @@ Components use roles only; so do the consumers outside the page:
 
 | Consumer | Roles | Read through |
 |---|---|---|
-| Window colour of every palette (`WINDOW_PALETTES`) | `bg` of each palette (the window wears it, `window_colours` in `src-tauri/src/platform.rs`; the top bar is the page's, `--titlebar-*`) | `palette.rs` |
-| Window background, both OS | `bg`: Light's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
+| Window background, both OS (before the page paints; the top bar is the page's, `--titlebar-*`) | `bg` | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json` |
 | App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
 
 Only opaque colour roles leave the page: a role with an alpha (`--selection`), gradients and
-shadows stay in it. `palette.rs` holds only the roles of this table (`OUTSIDE` in
-`tools/tokens.mjs`): a consumer that starts to wear another role adds it there.
+shadows stay in it. `palette.rs` holds only the roles a Rust consumer reads (`OUTSIDE` in
+`tools/tokens.mjs`, today the icon's): a consumer that starts to wear another role adds it
+there.
 
 ### 2. Run `npm run regen`
 
 It runs `node tools/tokens.mjs`, then `python tools/icon.py` (Python with Pillow, about
 30 s). It rewrites, never edit these by hand:
 
-- `core/src/export/palette.rs`: the colour roles of the table above as Rust constants (the
-  window, the icon's tests)
+- `core/src/export/palette.rs`: the icon's colour roles as Rust constants (the icon's tests)
 - `tools/palette.json`: every colour role for the icon generator
 - `backgroundColor` in `src-tauri/tauri.conf.json` and `src-tauri/tauri.macos.conf.json`
 - `src-tauri/icons/icon.ico`, `icon.icns`, `icon.png`, `src-tauri/icons/CXact.icon/` and
@@ -52,62 +51,34 @@ Commit them together with tokens.css.
 
 ### 3. Check
 
-- `npm run check`: its last step, `check:tokens`, fails while a generated file is stale.
+- `npm run check`: its step `check:tokens` fails while a generated file is stale, and while a
+  text role on one of its backgrounds is below WCAG AA (`CONTRAST` in `tools/tokens.mjs`,
+  4.5:1; the documented exceptions in `EXCEPTIONS`).
 - `cargo test -p jobalert-core --test palette --test icon --test ui_contract`: the generated
   files say what tokens.css says, no colour is written anywhere else, every icon file carries
-  `--brand`, the window names its role. CI runs these with `cargo test`.
-- Contrast: the gallery's colour board (`tools/ui-preview.cmd`, then add `&gallery` to the
-  address) measures the text roles against white and the cream. Body text keeps 4.5:1.
+  `--brand`. CI runs these with `cargo test`.
+- Contrast by eye: the gallery's colour board (`tools/ui-preview.cmd`, then add `&gallery` to
+  the address) measures the text roles against white and the cream.
 - Look at the page (`tools/ui-preview.cmd`) and, after `npx tauri build` and installing, the top bar, the window before the page
   paints, and the icon in the taskbar, the Dock and Finder.
 
-### What does not follow the palette
+### What the tokens do not colour
 
-- The app icon keeps Light whatever palette is chosen in Einstellungen
-  (Light and Dark reach only the page and the window).
-- The macOS traffic lights and the window's frame (shadow, edge): the system's. The top bar and
-  the Windows caption buttons are the page's and follow the palette (`--titlebar-*`).
+- The macOS traffic lights and the window's frame (shadow, edge): the system's, always light
+  (`"theme": "Light"` in `tauri*.conf.json`). The top bar and the Windows caption buttons are
+  the page's (`--titlebar-*`).
 - `tools/ui-harness/specs/shell.spec.ts` paints Apple's traffic light colours into a screenshot
   for people to look at.
 - The diagnostic sheets of `tools/icon.py` (`--compare`, `--fringe-sheet`) show the icon on
   neutral desktops (dark, mid grey, white).
 - Test mails and pages in `core/tests/fixtures/` keep the colours of whoever wrote them.
 
-## Add or change a palette
-
-The app has three palettes in `ui/src/styles/tokens.css`: CXact is the `:root` block and the
-default (for now the only one shown; Einstellungen > Darstellung is hidden), Light and Dark are
-one block each, `:root[data-palette='light']` and `:root[data-palette='dark']`, laid over it.
-Components never ask which palette is on.
-
-1. **Change one**: edit its block. It sets the palette entries under Light's names (`--p-cream`
-   is the window and the sidebar, `--p-white` the sheet and the cards, `--p-ink` the text,
-   `--p-coral` the fills and what is new, `--p-navy` focus, links and progress, ...), so every
-   role follows, and then only the roles whose part differs from Light (in Dark the washes of
-   the light text, the scrim, the shadows, the text on the tooltip and on the fills). A value
-   of CXact is a change of `:root` and reaches the icon too;
-   Light and Dark reach only the page and the window.
-2. **Add one** (say `sepia`): a block `:root[data-palette='sepia'] { ... }`, then the name in
-   `Palette` (`core/src/settings.rs`, with `code()`), in `window_colours`
-   (`src-tauri/src/platform.rs`), in `PALETTES` (`ui/src/lib/palette.ts`), in the options of
-   the row `palette` (`ui/src/features/settings/cards.ts`) and its word in
-   `settings.paletteName` of `de.ts`. `cargo test -p jobalert-core ipc_types`
-   writes the TypeScript type.
-3. Run `npm run regen`: `tools/tokens.mjs` writes the window's colours of every palette
-   (`LIGHT_BG`, `DARK_TEXT`, ... and `WINDOW_PALETTES` in `palette.rs`) and measures every text
-   role on its backgrounds in every palette (`CONTRAST`, WCAG AA 4.5:1). It fails on a pair
-   below; a documented exception would stand in `EXCEPTIONS` (none today). `npm run check` runs the same measurement.
-4. Check: `cargo test -p jobalert-core --test palette --test ui_contract`, the settings spec
-   (`npm run harness -- settings.spec.ts`, its palette and contrast tests), and the page in
-   each palette (`tools/ui-preview.cmd`, add `&palette=dark` to the address).
-
 ## Add or change a setting or a first-run step
 
 - Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
-  their order (Suche, Postfach, Export, Darstellung, Daten), each with its rows (a source lands
-  in Suche or, under the connection, in Postfach by its `way()`). A setting is
-  one row there: its kind (switch, choice, a row of buttons, a value), its texts from the
-  catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
+  their order (Suche, Postfach, Daten), each with its rows (a source lands in Suche or, under
+  the connection, in Postfach by its `way()`). A setting is one row there: its buttons, a
+  switch or a value, its texts from the catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`), and a file of the new version in

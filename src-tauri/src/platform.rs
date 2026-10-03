@@ -22,66 +22,11 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use jobalert_core::export::palette;
-use jobalert_core::settings::Palette;
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview, WebviewWindow, WebviewWindowBuilder};
 
 /// Label of the app's own window (`tauri.conf.json`).
 pub const MAIN: &str = "main";
-
-// ------------------------------------------------------------------ window colours
-
-// The colour of the window in the palette the user chose (Einstellungen, Darstellung): the
-// window behind the page on both OS, the colour of the top bar and the sidebar. A token of
-// `ui/src/styles/tokens.css`, read through the palette `tools/tokens.mjs` generates. A new
-// colour is a change of tokens.css and `npm run regen` (docs/CHANGING.md); pointing the
-// window at another token is a change here (`core/tests/ui_contract.rs` checks which one).
-
-/// What the window wears in one palette.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct WindowColours {
-    /// `--bg`: the window before the page paints (the colour of the top bar and the sidebar).
-    pub background: Rgb,
-}
-
-/// The window's colours in a palette.
-pub const fn window_colours(chosen: Palette) -> WindowColours {
-    match chosen {
-        Palette::Cxact => WindowColours {
-            background: palette::BG.rgb,
-        },
-        Palette::Light => WindowColours {
-            background: palette::LIGHT_BG.rgb,
-        },
-        Palette::Dark => WindowColours {
-            background: palette::DARK_BG.rgb,
-        },
-    }
-}
-
-/// A colour as red, green and blue bytes.
-pub type Rgb = [u8; 3];
-
-/// Dresses the window in a palette at once: its background before the page paints and the
-/// system's light or dark frame (the macOS traffic lights; on Windows the system menu and the
-/// window's edge). At the start before the window shows (the stored choice), then on every
-/// choice in Einstellungen (`save_settings`).
-pub fn dress<R: Runtime>(window: &WebviewWindow<R>, palette: Palette) {
-    let colours = window_colours(palette);
-    let [r, g, b] = colours.background;
-    if let Err(e) = window.set_background_color(Some(tauri::window::Color(r, g, b, u8::MAX))) {
-        log::warn!("window background not set: {e}");
-    }
-    let theme = if palette == Palette::Dark {
-        tauri::Theme::Dark
-    } else {
-        tauri::Theme::Light
-    };
-    if let Err(e) = window.set_theme(Some(theme)) {
-        log::warn!("window theme not set: {e}");
-    }
-}
 
 // ------------------------------------------------------------------ user agent
 

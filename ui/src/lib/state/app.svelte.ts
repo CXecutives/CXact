@@ -1,13 +1,11 @@
 // The app state from the backend (`app_state`): settings, mailbox, profile, portals, last
 // run. Loaded once at start and again after anything that changes it (a finished run,
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
-// than --dur-fast, so a quick start never flashes placeholders. Every state brings the
-// app's palette, which the whole page follows at once. What a fetch reads (the
+// than --dur-fast, so a quick start never flashes placeholders. What a fetch reads (the
 // menu beside it: the search or the mailbox) is saved from here through the settings patch.
 
 import { errorText } from '../i18n/texts';
 import { invoke } from '../ipc/api';
-import { applyPalette } from '../palette';
 import type { AppState, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
 import { tokenMs } from '../tokens';
 
@@ -21,7 +19,6 @@ const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
   fetchMail: null,
   fetchSearch: null,
-  palette: null,
   ...change,
 });
 
@@ -53,7 +50,6 @@ class AppStore {
   /** Replace the state with a newer one a command returned (save_settings). */
   set(next: AppState): void {
     this.state = next;
-    applyPalette(next.palette);
   }
 
   /** Only the answer to the latest save may replace the state (quick choices in a row). */

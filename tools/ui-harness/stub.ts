@@ -69,7 +69,7 @@
 // `?tick=ms` sets the pace of a scripted run (default 40); `?mail=offline` lets every fetch fail to reach Gmail,
 // `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
-// comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette (CXact by default).
+// comes along), `?folder=own` one with its own.
 // Dates are fixed so screenshots stay stable (the tests also fix the clock). The portals
 // come in the order of the backend (`Portal::ALL`).
 
@@ -89,7 +89,6 @@ import type {
   MoveBack,
   Notice,
   Origin,
-  Palette,
   Place,
   PortalState,
   ProfileDraft,
@@ -292,9 +291,6 @@ const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 const NO_INTERNET = params.get('mail') === 'no-internet';
 /** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
-/** The palette as the backend says it (`palette=light|dark`; CXact by default). */
-const PALETTE: Palette =
-  params.get('palette') === 'dark' ? 'dark' : params.get('palette') === 'light' ? 'light' : 'cxact';
 
 const NOW = new Date('2026-09-24T09:30:00+02:00').getTime();
 const HOUR = 3_600_000;
@@ -823,7 +819,6 @@ function initial(): void {
     setupDone: true,
     fetchMail: MAIL_WAY,
     fetchSearch: !MAIL_WAY,
-    palette: PALETTE,
     lastRun: lastRun(),
     counts: countsOf([]),
     matchPending: 0,
@@ -2216,7 +2211,6 @@ const handlers: Handlers = {
     if (patch.fetchSearch !== null && patch.fetchSearch !== undefined) {
       state.fetchSearch = patch.fetchSearch;
     }
-    if (patch.palette !== null) state.palette = patch.palette;
     state.profiles = profileEntries();
     return structuredClone(state);
   },

@@ -3,15 +3,14 @@
   2026-10-01), each with its cards of cards.ts (Suche its sources, Postfach the card of its
   account and under it the card of the sources of its alert mails, Daten the work folder and
   the reset). Every text button of a row is the same outlined button, and every row ends on
-  the card's inner edge (its buttons, switch or choice flush with the rows above and
-  below). This file only renders the list and runs its commands; what a row is, says and does
-  is one entry in cards.ts.
+  the card's inner edge (its buttons or switch flush with the rows above and below). This
+  file only renders the list and runs its commands; what a row is, says and does is one entry
+  in cards.ts.
 
-  A switch or a choice moves at once (the state is patched before the save) and is its own
-  answer; Darstellung switches the colours of the whole app at once, and
-  the backend follows with the window and the files. A success that shows nowhere else is a
-  toast (another export folder); errors and warnings stay a note at the end of their card,
-  which unfolds (the cards below glide down instead of jumping).
+  A switch moves at once (the state is patched before the save) and is its own answer. A
+  success that shows nowhere else is a toast (another export folder); errors and warnings
+  stay a note at the end of their card, which unfolds (the cards below glide down instead of
+  jumping).
   Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog whose action fails
   stays open and says why inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
@@ -25,7 +24,6 @@
   import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
-  import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import Tabs, { type TabOption } from '$components/Tabs.svelte';
@@ -51,7 +49,6 @@
     sourcesOf,
     type Action,
     type ActionId,
-    type ChoiceRow,
     type CommandId,
     type Lock,
     type Row,
@@ -94,8 +91,8 @@
   const failed = (card: string, error: unknown): void =>
     note(card, { tone: 'danger', text: () => errorText(error) });
 
-  /** A switch or a choice: the page follows at once, the save after; a failure loads the
-   *  stored state again (switch and colours go back) and says why in its card. */
+  /** A switch: the page follows at once, the save after; a failure loads the stored state
+   *  again (the switch goes back) and says why in its card. */
   async function save(card: string, change: Partial<SettingsPatch>): Promise<void> {
     const mine = ++saves;
     note(card, null);
@@ -112,14 +109,6 @@
     if (cfg === null) return Promise.resolve();
     toggle.set(cfg, on);
     return save(card, toggle.patch(on));
-  }
-
-  function choose<Id extends string>(card: string, row: ChoiceRow<Id>, id: Id): void {
-    if (cfg === null) return;
-    row.set(cfg, id);
-    // The colours of the whole page follow the state at once.
-    app.set(cfg);
-    void save(card, row.patch(id));
   }
 
   function open(card: string, target: OpenTarget): void {
@@ -226,54 +215,41 @@
 
 {#snippet row(card: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    {#if item.kind === 'choice'}
-      {@const choice = item as ChoiceRow}
-      <SettingRow label={choice.label(t, cfg)} testid="row-{choice.id}">
-        <Segmented
-          options={choice.options.map((id) => ({ id, label: choice.name(t, id) }))}
-          value={choice.value(cfg)}
-          label={choice.label(t, cfg)}
-          testid={choice.id}
-          onchange={(id) => choose(card, choice, id)}
-        />
-      </SettingRow>
-    {:else}
-      {@const toggle = item.toggle ?? null}
-      <SettingRow
-        label={item.label(t, cfg)}
-        hint={item.path?.(cfg) ?? item.hint?.(t, cfg) ?? null}
-        copy={item.path !== undefined}
-        for={toggle === null ? null : `switch-${toggle.id}`}
-        testid={item.id}
-      >
-        <div class="buttons">
-          {#each item.actions as id (id)}
-            {@const action: Action = ACTIONS[id]}
-            {@const locked = action.locked?.(lock) ?? null}
-            <Button
-              variant="secondary"
-              icon={action.icon}
-              label={action.label(t, cfg)}
-              loading={busy === id}
-              disabled={locked !== null}
-              disabledReason={locked}
-              warns={action.warns ?? false}
-              testid={testidOf(id)}
-              onclick={() => act(card, id)}
-            />
-          {/each}
-          {#if toggle}
-            <Toggle
-              id="switch-{toggle.id}"
-              checked={toggle.on(cfg)}
-              label={item.label(t, cfg)}
-              testid="toggle-{toggle.id}"
-              onchange={(on) => flip(card, toggle, on)}
-            />
-          {/if}
-        </div>
-      </SettingRow>
-    {/if}
+    {@const toggle = item.toggle ?? null}
+    <SettingRow
+      label={item.label(t, cfg)}
+      hint={item.path?.(cfg) ?? item.hint?.(t, cfg) ?? null}
+      copy={item.path !== undefined}
+      for={toggle === null ? null : `switch-${toggle.id}`}
+      testid={item.id}
+    >
+      <div class="buttons">
+        {#each item.actions as id (id)}
+          {@const action: Action = ACTIONS[id]}
+          {@const locked = action.locked?.(lock) ?? null}
+          <Button
+            variant="secondary"
+            icon={action.icon}
+            label={action.label(t, cfg)}
+            loading={busy === id}
+            disabled={locked !== null}
+            disabledReason={locked}
+            warns={action.warns ?? false}
+            testid={testidOf(id)}
+            onclick={() => act(card, id)}
+          />
+        {/each}
+        {#if toggle}
+          <Toggle
+            id="switch-{toggle.id}"
+            checked={toggle.on(cfg)}
+            label={item.label(t, cfg)}
+            testid="toggle-{toggle.id}"
+            onchange={(on) => flip(card, toggle, on)}
+          />
+        {/if}
+      </div>
+    </SettingRow>
   {/if}
 {/snippet}
 
@@ -331,7 +307,7 @@
         aria-label={t.settings[tab]}
         data-testid="settings-panel-{tab}"
       >
-        {#each CARDS.filter((card) => !card.hidden && card.tab === tab) as card (card.id)}
+        {#each CARDS.filter((card) => card.tab === tab) as card (card.id)}
           {@const feedback = notes[card.id] ?? null}
           <section
             class="section"

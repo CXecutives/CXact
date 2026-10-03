@@ -1,10 +1,9 @@
 //! `ui/src/styles/tokens.css` is the one place a colour of the app is written. What is not the
 //! page reads it through files `tools/tokens.mjs` generates: `core/src/export/palette.rs` (the
-//! window and its title bar, the icon's tests), `tools/palette.json` (the app
-//! icon) and the window's `backgroundColor` in `src-tauri/tauri*.conf.json`. These tests read
-//! tokens.css on their own (their own parser, their own conversion to RGB) and fail while a
-//! generated file is stale (`npm run regen` writes them anew) or a colour is written anywhere
-//! else.
+//! icon's tests), `tools/palette.json` (the app icon) and the window's `backgroundColor` in
+//! `src-tauri/tauri*.conf.json`. These tests read tokens.css on their own (their own parser,
+//! their own conversion to RGB) and fail while a generated file is stale (`npm run regen`
+//! writes them anew) or a colour is written anywhere else.
 
 use std::path::{Path, PathBuf};
 
@@ -31,31 +30,11 @@ fn tokens_css() -> String {
         .into_owned()
 }
 
-/// The custom properties of the first `:root` block of tokens.css (Light), in order.
+/// The custom properties of the first `:root` block of tokens.css, in order.
 fn declarations() -> Vec<(String, String)> {
     let css = tokens_css();
     let start = css.find(":root {").expect(":root block") + ":root {".len();
     properties(&css[start..start + css[start..].find('}').expect("end of :root")])
-}
-
-/// The palettes besides Light by name: Light's declarations with the ones of their
-/// `:root[data-palette='name']` block laid over them.
-fn palettes() -> Vec<(String, Vec<(String, String)>)> {
-    let css = tokens_css();
-    Regex::new(r":root\[data-palette='([\w-]+)'\]\s*\{([^}]*)\}")
-        .unwrap()
-        .captures_iter(&css)
-        .map(|found| {
-            let mut all = declarations();
-            for (name, value) in properties(&found[2]) {
-                match all.iter_mut().find(|(n, _)| *n == name) {
-                    Some(entry) => entry.1 = value,
-                    None => all.push((name, value)),
-                }
-            }
-            (found[1].to_string(), all)
-        })
-        .collect()
 }
 
 /// The custom properties of a block's body (name without the dashes, value with its white
@@ -112,11 +91,7 @@ struct Token {
 /// `hsl(var(--p-name))`, or `var(--other)` of another colour token. Tokens with an alpha,
 /// gradients and shadows stay in the page.
 fn colour_tokens() -> Vec<Token> {
-    colour_tokens_of(&declarations())
-}
-
-/// The colour tokens of a set of declarations (Light's, or a palette's).
-fn colour_tokens_of(all: &[(String, String)]) -> Vec<Token> {
+    let all = declarations();
     let value = |name: &str| all.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
     let direct = Regex::new(r"^hsl\(var\(--(p-[\w-]+)\)\)$").unwrap();
     let alias = Regex::new(r"^var\(--([\w-]+)\)$").unwrap();
@@ -163,8 +138,8 @@ fn as_token(name: &str, colour: Colour) -> Token {
 }
 
 /// The colour tokens something besides the page wears (`OUTSIDE` in tools/tokens.mjs): the
-/// window and the icon.
-const OUTSIDE: [&str; 3] = ["bg", "brand", "brand-glyph"];
+/// icon.
+const OUTSIDE: [&str; 2] = ["brand", "brand-glyph"];
 
 /// palette.rs holds the colour tokens something besides the page wears, in the order of
 /// tokens.css, as tokens.css says them - no colour only the page wears.
@@ -179,41 +154,6 @@ fn the_rust_palette_is_the_tokens() {
         .filter(|t| OUTSIDE.contains(&t.name.as_str()))
         .collect();
     assert_eq!(generated, outside, "palette.rs {REGEN}");
-}
-
-/// The window's colour of every other palette (Light, Dark): `--bg` of its block, as the
-/// window wears it before the page paints.
-#[test]
-fn the_window_colours_of_each_palette_are_the_tokens() {
-    let found = palettes();
-    let names: Vec<&str> = found.iter().map(|(name, _)| name.as_str()).collect();
-    assert_eq!(names, ["light", "dark"], "the palettes of tokens.css");
-    let mut expected = Vec::new();
-    for (palette, all) in &found {
-        let tokens = colour_tokens_of(all);
-        let token = tokens
-            .iter()
-            .find(|t| t.name == "bg")
-            .unwrap_or_else(|| panic!("{palette} has no --bg"));
-        expected.push((
-            palette.clone(),
-            "bg".to_string(),
-            token.css.clone(),
-            token.rgb,
-        ));
-    }
-    let generated: Vec<(String, String, String, [u8; 3])> = palette::WINDOW_PALETTES
-        .iter()
-        .map(|(palette, name, colour)| {
-            (
-                (*palette).to_string(),
-                (*name).to_string(),
-                colour.css.to_string(),
-                colour.rgb,
-            )
-        })
-        .collect();
-    assert_eq!(generated, expected, "palette.rs {REGEN}");
 }
 
 /// palette.json (what tools/icon.py reads) holds every colour token of tokens.css.
@@ -234,12 +174,17 @@ fn the_icon_palette_is_the_tokens() {
     assert_eq!(generated, expected, "tools/palette.json {REGEN}");
 }
 
+/// `--bg` as the window's configuration writes it (`#RRGGBB`).
+fn bg_hex() -> String {
+    let bg = token("bg");
+    format!("#{:02X}{:02X}{:02X}", bg.rgb[0], bg.rgb[1], bg.rgb[2])
+}
+
 /// Before the page paints, the window shows its `backgroundColor`: the page's `--bg`, on both
 /// OS (Windows also shows it under its title bar).
 #[test]
 fn the_window_is_the_page_background() {
-    let bg = token("bg");
-    let hex = format!("#{:02X}{:02X}{:02X}", bg.rgb[0], bg.rgb[1], bg.rgb[2]);
+    let hex = bg_hex();
     for file in [
         "src-tauri/tauri.conf.json",
         "src-tauri/tauri.macos.conf.json",
@@ -308,7 +253,7 @@ fn no_colour_is_written_twice() {
         "src-tauri/tauri.windows.conf.json",
     ] {
         let text = read(file);
-        let generated = palette::BG.hex();
+        let generated = bg_hex();
         for found in hex.find_iter(&text) {
             if !found.as_str().eq_ignore_ascii_case(&generated)
                 || !text.contains(&format!("\"backgroundColor\": \"{}\"", found.as_str()))

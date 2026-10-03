@@ -33,7 +33,6 @@ export type { Notice } from "./Notice";
 export type { OpenTarget } from "./OpenTarget";
 export type { Origin } from "./Origin";
 export type { Outcome } from "./Outcome";
-export type { Palette } from "./Palette";
 export type { PauseReason } from "./PauseReason";
 export type { Place } from "./Place";
 export type { Platform } from "./Platform";

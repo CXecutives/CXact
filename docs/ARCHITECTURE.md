@@ -16,8 +16,8 @@ Each layer uses only the ones below it.
   `commands.txt`; they call core and return its view types. Per-OS code only in
   `src/platform.rs` (`smoke.rs` is the debug-only probe).
 - **`ui/src/`** (Svelte 5), from the bottom:
-  - `styles/tokens.css`: every value (colour, length, time, radius, shadow, layer) and the
-    palettes (CXact; Light and Dark behind the hidden Darstellung). Nothing else writes a value.
+  - `styles/tokens.css`: every value (colour, length, time, radius, shadow, layer), the one
+    palette CXact. Nothing else writes a value.
   - `components/`: the design system. The only raw controls, the only Lucide import
     (`Icon.svelte`); it knows no feature and gets its data as props.
   - `features/<name>/`: one screen each (`jobs`, `profile`, `settings`,
@@ -36,7 +36,7 @@ A decision is written once; everything else reads it or is generated from it.
 
 | Decision | Source | Read by |
 |---|---|---|
-| Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (window, icon) |
+| Colours, sizes, times | `ui/src/styles/tokens.css` | components, `npm run regen` (window, icon) |
 | Facts of a job, their order and icons | `ui/src/lib/facts.ts` | list row, reader |
 | Order and filter of the list | `ui/src/lib/state/filter.ts`; in the backend `filter_condition` in `core/src/store/jobs.rs` (portal, band, contract types, remote) | funnel menu, filter chips, reset, harness |
 | The job's menu (what shows it, what changes it, the moves per place) | `jobMenu` in `ui/src/features/jobs/actions.ts` | a row's right click, the reader's "…" (its second group) |
@@ -55,7 +55,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
-| Defaults of the settings (`fetchMail`, `fetchSearch`, `palette`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
+| Defaults of the settings (`fetchMail`, `fetchSearch`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
 | Engine words | `core/src/matching/lexicon/` | the engine |
 

@@ -2,7 +2,7 @@
 rem The app's UI with demo data in the browser, to click through every screen and button
 rem without mails or the engine (the harness stub). It serves the copy in .preview, which is
 rem refreshed only when a block is finished and green; without one it builds it first.
-rem Variants via the address, e.g. ?platform=macos  ?scenario=first-run  &palette=dark
+rem Variants via the address, e.g. ?platform=macos  ?scenario=first-run
 rem (see tools\ui-harness\stub.ts for all scenarios). Close the window to stop it.
 cd /d "%~dp0.."
 where node >nul 2>nul || (echo Node.js was not found. & pause & exit /b 1)

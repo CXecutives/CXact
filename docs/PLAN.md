@@ -90,7 +90,6 @@ pre-assessment to any AI chat for a deeper check.
   - Postfach: the account card (mail tile, the address, "Verbunden" after a green dot, Ändern, Entfernen),
     under it the card of the alert sources (sign-in where offered, then "Alert anlegen").
   - Daten: the work folder (Ändern, Öffnen) and "Alle Daten zurücksetzen".
-  - Darstellung (the palette) is hidden for now (`LOOK_SHOWN`).
 - **Erste Schritte** (until the first completed fetch): 1 Profil, 2 Postfach (optional, only the alert
   mails need it), 3 the first fetch in the words of its way.
 - **Shell:**
@@ -104,9 +103,9 @@ pre-assessment to any AI chat for a deeper check.
 ## Decisions that hold
 
 - **Look:**
-  - One palette shown, CXact (cream window, white sheet, the coral #E67A5C of the icon and cxpertise.de
+  - One palette, CXact (cream window, white sheet, the coral #E67A5C of the icon and cxpertise.de
     for what acts or is new, a richer cxpertise navy 212 50% 36% for headings, what is chosen, links and
-    focus). Light and Dark wait behind the hidden Darstellung.
+    focus). No light or dark theme.
   - Warnings and successes take the score rings' yellow and green for their signs and dots, their words
     stay ink.
   - Five ring colours from red to green by 20 points.

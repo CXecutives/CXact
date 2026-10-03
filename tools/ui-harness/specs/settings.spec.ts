@@ -1,6 +1,6 @@
 // Einstellungen against the stub: the tabs in their order (Suche, Postfach, Daten) and the
 // cards of each, their rows flush on one edge, the mailbox and its dialog, the sources with
-// their calls, the palettes, the work folder, the backups and the reset.
+// their calls, the work folder, the backups and the reset.
 
 import type { Locator, Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
@@ -67,7 +67,6 @@ const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
   fetchMail: null,
   fetchSearch: null,
-  palette: null,
   ...change,
 });
 
@@ -629,90 +628,6 @@ test('another work folder takes the profile along; its own profile is said', asy
   await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.folderOwnProfile));
 });
 
-/* ------------------------------------------------------------- Darstellung */
-
-// Darstellung is hidden for now (cards.ts LOOK_SHOWN, user 2026-09-30); kept for its return.
-test.skip('Darstellung: a palette applies at once, is saved and wears the start', async ({
-  page,
-}) => {
-  await settings(page);
-  const look = page.getByTestId('settings-look');
-  await expect(look.locator('[data-setting-row]')).toHaveCount(2);
-  const root = page.locator('html');
-  await expect(root).toHaveAttribute('data-palette', 'cxact');
-  const cream = await colour(page, '--bg');
-  // CXact first (the default), then light and dark, in words.
-  const palette = page.getByTestId('palette');
-  const name = T.settings.paletteName;
-  await expect(palette.getByRole('radio')).toHaveText(['CXact', 'Hell', 'Dunkel']);
-  // The one height of every choice of the app, as in the Profil form: a field's.
-  await expect(palette).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
-  await palette.getByRole('radio', { name: name.dark }).click();
-  await expect(root).toHaveAttribute('data-palette', 'dark');
-  await expect(page.locator('body')).not.toHaveCSS('background-color', cream);
-  await palette.getByRole('radio', { name: name.light }).click();
-  await expect(root).toHaveAttribute('data-palette', 'light');
-  expect(await saved(page)).toEqual([patch({ palette: 'dark' }), patch({ palette: 'light' })]);
-  await expect(page.getByTestId('toast')).toHaveCount(0);
-  // The backend keeps the choice: a start wears it.
-  await settings(page, `${WIN}&palette=dark`);
-  await expect(root).toHaveAttribute('data-palette', 'dark');
-  // A save that fails puts the palette back and says why in the card.
-  await failNext(page, 'save_settings');
-  await palette.getByRole('radio', { name: name.light }).click();
-  await expect(page.getByTestId('look-note')).toHaveText('Die Datenbank meldet einen Fehler.');
-  await expect(root).toHaveAttribute('data-palette', 'dark');
-});
-
-test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ page }) => {
-  for (const palette of ['cxact', 'light', 'dark']) {
-    await settings(page, `${WIN}&palette=${palette}`);
-    const weak = await page.evaluate(() => {
-      const rgb = (value: string): number[] =>
-        (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
-      const read = (token: string, property: 'color' | 'backgroundColor'): number[] => {
-        const probe = document.body.appendChild(document.createElement('span'));
-        probe.style[property] = `var(${token})`;
-        const value = getComputedStyle(probe)[property];
-        probe.remove();
-        return rgb(value);
-      };
-      const luminance = (bytes: number[]): number => {
-        const [r, g, b] = bytes.map((value) => {
-          const c = value / 255;
-          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-        });
-        return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
-      };
-      const pairs: [string, string][] = [
-        ['--text', '--bg'],
-        ['--text', '--surface'],
-        ['--text-muted', '--surface'],
-        ['--text-muted', '--bg'],
-        ['--text-subtle', '--surface'],
-        ['--text-subtle', '--surface-muted'],
-        ['--text-heading', '--surface'],
-        ['--link', '--surface'],
-        ['--text', '--surface-selected'],
-        ['--text-inverse', '--surface-inverse'],
-        ['--danger-strong', '--danger-soft'],
-        ['--text', '--success-soft'],
-        ['--text', '--warning-soft'],
-        ['--count-soft-fg', '--count-soft-bg'],
-      ];
-      return pairs.flatMap(([text, ground]) => {
-        const [light, dark] = [
-          luminance(read(text, 'color')),
-          luminance(read(ground, 'backgroundColor')),
-        ].sort((a, b) => b - a);
-        const ratio = (light! + 0.05) / (dark! + 0.05);
-        return ratio < 4.5 ? [`${text} on ${ground}: ${ratio.toFixed(2)}`] : [];
-      });
-    });
-    expect(weak, palette).toEqual([]);
-  }
-});
-
 /* ------------------------------------------------------------------- Daten */
 
 test('Daten: only Alle Daten zurücksetzen; no Sicherung, no Protokoll, no data path', async ({
@@ -799,9 +714,4 @@ test('baseline: first run', async ({ page }) => {
 test('baseline: settings', async ({ page }) => {
   await settings(page);
   await expectShot(page, 'settings');
-});
-
-test('baseline: settings in Dark', async ({ page }) => {
-  await settings(page, `${WIN}&palette=dark`);
-  await expectShot(page, 'settings-dark');
 });

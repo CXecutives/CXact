@@ -187,7 +187,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
         fetch_mail: settings.fetch_mail,
         fetch_search: settings.fetch_search,
-        palette: settings.palette,
         last_run,
         counts,
         match_pending: state.match_pending(),
@@ -259,20 +258,16 @@ fn daily_backup(app: &AppHandle) {
     });
 }
 
-/// Saves the portal switches, the fetch's way, the language and the palette. The workspace
-/// only changes through the dialog. Another palette dresses the window at once.
+/// Saves the portal switches and the fetch's way. The workspace only changes through the
+/// dialog.
 #[tauri::command]
 pub async fn save_settings(
-    window: WebviewWindow,
     state: State<'_, AppState>,
     patch: SettingsPatch,
 ) -> CmdResult<view::AppState> {
     let mut settings = state.settings()?;
     patch.apply(&mut settings);
     settings.save(&state.store)?;
-    if patch.palette.is_some() {
-        crate::platform::dress(&window, settings.palette);
-    }
     build_state(&state)
 }
 

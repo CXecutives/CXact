@@ -25,7 +25,6 @@
     width: var(--mark-size);
     height: var(--mark-size);
     border-radius: var(--brand-radius);
-    box-shadow: 0 0 0 var(--border-width) var(--brand-edge);
     pointer-events: none;
   }
 

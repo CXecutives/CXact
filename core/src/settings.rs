@@ -15,8 +15,8 @@ pub(crate) const KEY: &str = "settings";
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
 /// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `exportExcel`, `exportCsv`,
-/// `autoArchiveDays`, `autoEmptyTrashDays`, `language`) are skipped silently - serde only
-/// refuses unknown fields with `deny_unknown_fields`.
+/// `autoArchiveDays`, `autoEmptyTrashDays`, `language`, `palette`) are skipped silently - serde
+/// only refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -28,44 +28,11 @@ pub struct Settings {
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// The colours of the page and the window (Einstellungen, Darstellung); the page draws
-    /// the top bar itself. The Excel file and the icon keep CXact. A name this version does
-    /// not know (a newer version's) reads as CXact, and so does the earlier name "coast".
-    #[serde(deserialize_with = "known_palette")]
-    pub palette: Palette,
     /// The fetch reads the alert mails (the menu beside the button, user decision
     /// 2026-10-01): with `fetch_search` off, see [`Settings::fetches_mail`].
     pub fetch_mail: bool,
     /// The fetch searches the sources the app searches itself (the same menu).
     pub fetch_search: bool,
-}
-
-/// Einstellungen shows Darstellung (the palette); hidden for now.
-pub const LOOK_SHOWN: bool = false;
-
-/// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
-/// cream, coral and navy), and Light and Dark, neutral with blue details.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub enum Palette {
-    #[default]
-    #[serde(alias = "coast")]
-    Cxact,
-    Light,
-    Dark,
-}
-
-impl Palette {
-    /// The name of the palette in tokens.css (`:root[data-palette='dark']`) and in the
-    /// generated window colours (`export::palette::WINDOW_PALETTES`).
-    pub fn code(self) -> &'static str {
-        match self {
-            Palette::Cxact => "cxact",
-            Palette::Light => "light",
-            Palette::Dark => "dark",
-        }
-    }
 }
 
 /// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
@@ -127,7 +94,6 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
-            palette: Palette::Cxact,
             fetch_mail: true,
             fetch_search: true,
         }
@@ -166,17 +132,6 @@ impl Settings {
             portals: Portal::ALL.into_iter().map(|p| (p, off)).collect(),
             ..Settings::default()
         }
-    }
-
-    /// The settings while Darstellung is hidden (user, 2026-09-30): the app is CXact
-    /// ([`LOOK_SHOWN`]). A hidden choice goes back to that; `true` when something changed
-    /// (the start saves it). The field and its code stay.
-    pub fn fit_hidden(&mut self) -> bool {
-        let before = self.clone();
-        if !LOOK_SHOWN {
-            self.palette = Palette::default();
-        }
-        *self != before
     }
 
     pub fn save(&self, store: &Store) -> Result<()> {
@@ -269,16 +224,6 @@ fn holds_app_files(folder: &Path) -> bool {
         || folder.join(crate::export::RESULT_DIR).is_dir()
 }
 
-/// A stored palette; one this version does not know is CXact.
-fn known_palette<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> std::result::Result<Palette, D::Error> {
-    let name = Option::<String>::deserialize(deserializer)?;
-    Ok(name
-        .and_then(|name| serde_json::from_value(serde_json::Value::String(name)).ok())
-        .unwrap_or_default())
-}
-
 /// Reads the portal switches in today's map form or the list form of earlier versions.
 /// Unknown portal keys are skipped.
 fn portals_any_form<'de, D: Deserializer<'de>>(
@@ -313,22 +258,6 @@ fn portals_any_form<'de, D: Deserializer<'de>>(
 
 #[cfg(test)]
 mod tests {
-    /// Hidden cards keep their defaults: CXact, no overview file; the rest stays.
-    #[test]
-    fn hidden_cards_keep_their_defaults() {
-        let mut s = Settings {
-            palette: Palette::Dark,
-            fetch_mail: false,
-            ..Settings::default()
-        };
-        assert_eq!(s.fit_hidden(), !LOOK_SHOWN);
-        if !LOOK_SHOWN {
-            assert_eq!(s.palette, Palette::Cxact);
-        }
-        assert!(!s.fetch_mail);
-        assert!(!s.fit_hidden(), "a second fit changes nothing");
-    }
-
     /// The fetch searches or reads the mailbox, never both: the mailbox only while its switch
     /// alone is on, so the defaults and a file with both switches search.
     #[test]
@@ -481,41 +410,6 @@ mod tests {
         assert!(!saved.contains("autoArchiveDays"), "{saved}");
         store.kv_set(KEY, r#"{"portals":[]}"#).unwrap();
         assert!(Settings::load(&store).unwrap().enabled_portals().is_empty());
-    }
-
-    /// CXact until one is chosen; the choice survives a restart, a palette of a newer version
-    /// reads as CXact without costing the other settings, and so does its earlier name.
-    #[test]
-    fn the_palette_is_cxact_until_chosen() {
-        let store = Store::in_memory().unwrap();
-        let mut s = Settings::load(&store).unwrap();
-        assert_eq!(s.palette, Palette::Cxact);
-        s.palette = Palette::Dark;
-        s.save(&store).unwrap();
-        assert_eq!(Settings::load(&store).unwrap().palette, Palette::Dark);
-        assert!(
-            store
-                .kv_get(KEY)
-                .unwrap()
-                .unwrap()
-                .contains(r#""palette":"dark""#)
-        );
-        store
-            .kv_set(KEY, r#"{"palette":"sepia","fetchMail":false}"#)
-            .unwrap();
-        let newer = Settings::load(&store).unwrap();
-        assert_eq!(newer.palette, Palette::Cxact);
-        assert!(!newer.fetch_mail);
-        store
-            .kv_set(KEY, r#"{"palette":"coast","fetchMail":false}"#)
-            .unwrap();
-        let earlier = Settings::load(&store).unwrap();
-        assert_eq!(earlier.palette, Palette::Cxact);
-        assert!(!earlier.fetch_mail);
-        assert_eq!(
-            [Palette::Cxact, Palette::Light, Palette::Dark].map(Palette::code),
-            ["cxact", "light", "dark"]
-        );
     }
 
     /// An enabled portal always fetches its ads; switched off it gets zero requests. A file

@@ -27,7 +27,6 @@ import type {
   ErrorKind,
   InvalidInput,
   JobSort,
-  Palette,
   PauseReason,
   Place,
   Portal,
@@ -1484,8 +1483,6 @@ export const de = {
     mailbox: 'Postfach',
     /** The card of the sources the app searches itself. */
     search: 'Suche',
-    /** The card of how the app looks: its colours. */
-    look: 'Darstellung',
     /** The card of the app's data: its backups, its log, the reset. */
     data: 'Daten',
     /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
@@ -1564,13 +1561,6 @@ export const de = {
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     /** The demo: its own data from invented ads, every fetch brings more. */
     demo: 'Demo mit erfundenen Beispieldaten.',
-    palette: 'Design',
-    /** The palettes (tokens.css): CXact (the default), light and dark. */
-    paletteName: {
-      cxact: 'CXact',
-      light: 'Hell',
-      dark: 'Dunkel',
-    } satisfies Record<Palette, string>,
   },
   firstRun: {
     steps: 'Erste Schritte',
