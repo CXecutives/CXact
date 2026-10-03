@@ -16,6 +16,23 @@ auswertung/
 profil/
 Profil_*.json
 *.xlsx
+# CVs: only the invented ones of the tests (tools/cv-fixtures.py)
+*.doc
+*.docx
+*.docm
+*.dotx
+*.odt
+*.rtf
+*.pdf
+*.pages
+*.heic
+!/core/tests/fixtures/cv/*
+
+# The CV worker's local state and secrets (cv-worker/)
+/cv-worker/.wrangler/
+.dev.vars*
+.env
+.env.*
 
 # System
 Thumbs.db

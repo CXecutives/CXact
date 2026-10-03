@@ -1,0 +1,61 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "wunschrollen",
+    "berufserfahrung_jahre",
+    "kernkompetenzen",
+    "methoden_tools",
+    "branchen",
+    "sprachen",
+    "abschluesse",
+    "zertifizierungen"
+  ],
+  "properties": {
+    "wunschrollen": { "type": "array", "items": { "type": "string" } },
+    "berufserfahrung_jahre": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+    "kernkompetenzen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kompetenz", "jahre", "schwerpunkt"],
+        "properties": {
+          "kompetenz": { "type": "string" },
+          "jahre": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+          "schwerpunkt": { "type": "boolean" }
+        }
+      }
+    },
+    "methoden_tools": { "type": "array", "items": { "type": "string" } },
+    "branchen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["branche", "wunsch"],
+        "properties": {
+          "branche": { "type": "string" },
+          "wunsch": { "type": "boolean" }
+        }
+      }
+    },
+    "sprachen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sprache", "niveau"],
+        "properties": {
+          "sprache": { "type": "string" },
+          "niveau": {
+            "type": "string",
+            "enum": ["A1", "A2", "B1", "B2", "C1", "C2", "Muttersprache"]
+          }
+        }
+      }
+    },
+    "abschluesse": { "type": "array", "items": { "type": "string" } },
+    "zertifizierungen": { "type": "array", "items": { "type": "string" } }
+  }
+}

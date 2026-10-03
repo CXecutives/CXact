@@ -1,4 +1,4 @@
-// ESLint for the UI (ui/src) and the harness (tools/ui-harness).
+// ESLint for the UI (ui/src), the harness (tools/ui-harness) and the CV worker (cv-worker).
 //
 // The UI rules make the design system's promises impossible to break by accident:
 // no inline styles, raw controls only inside components/, each outside dependency behind
@@ -171,6 +171,7 @@ export default ts.config(
       'playwright-report/**',
       'src-tauri/**',
       'core/**',
+      'cv-worker/.wrangler/**',
     ],
   },
   js.configs.recommended,
@@ -195,6 +196,16 @@ export default ts.config(
   {
     files: ['*.js', 'ui/*.{js,ts}', 'tools/**/*.{js,mjs,ts}'],
     languageOptions: { globals: { ...globals.node } },
+  },
+  // The CV worker (Cloudflare Workers runtime, its types from @cloudflare/workers-types).
+  {
+    files: ['cv-worker/**/*.ts'],
+    languageOptions: { globals: { ...globals.serviceworker } },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
   {
     files: [UI],

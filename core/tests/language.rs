@@ -25,6 +25,8 @@ const ALLOWLIST_PATHS: &[&str] = &[
     "core/src/export/ai_rubric.de.md",
     // The German AI prompts (external contract; their Markdown lines can start with `*`).
     "core/src/export/ai_prompt/de.rs",
+    // The German system prompt of the CV worker (external contract).
+    "cv-worker/src/prompt.de.md",
     // Real or invented German mail/page/profile data, and recorded output.
     "core/tests/fixtures/",
     "core/tests/snapshots/",
