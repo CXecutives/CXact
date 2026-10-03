@@ -1,7 +1,8 @@
 //! Table layout. An empty database gets the tables of [`SCHEMA_VERSION`]; a database from a
 //! newer version is refused and left untouched. A database of an earlier version (schema 1
 //! to 7) is never migrated: the start resets everything before it opens one
-//! (`reset::reset_outdated`), so here it is refused like a damaged one.
+//! (`reset::reset_outdated`), so here it is refused (`OldSchema`). Both are refused on a
+//! connection that only reads, before anything is written.
 
 use std::path::Path;
 
@@ -93,24 +94,48 @@ CREATE TABLE tombstone (
 ) WITHOUT ROWID;
 ";
 
-/// Creates the tables in an empty database, accepts a current one and refuses a newer one
-/// (`NewerSchema`) and one of an earlier version (`Corrupt`).
+/// Creates the tables in an empty database, accepts a current one and refuses the others
+/// ([`check`]).
 pub(super) fn create(conn: &Connection) -> Result<()> {
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    check(version)?;
+    if version == 0 {
+        // Tables and version number in one transaction: a crash in between would
+        // otherwise leave tables with version 0, and every later start would fail.
+        conn.execute_batch(&format!(
+            "BEGIN IMMEDIATE; {SCHEMA} PRAGMA user_version = {SCHEMA_VERSION}; COMMIT;"
+        ))?;
+    }
+    Ok(())
+}
+
+/// Accepts an empty (0) or current schema and refuses a newer one (`NewerSchema`) and one of
+/// an earlier version (`OldSchema`).
+fn check(version: i64) -> Result<()> {
     match version {
-        0 => {
-            // Tables and version number in one transaction: a crash in between would
-            // otherwise leave tables with version 0, and every later start would fail.
-            conn.execute_batch(&format!(
-                "BEGIN IMMEDIATE; {SCHEMA} PRAGMA user_version = {SCHEMA_VERSION}; COMMIT;"
-            ))?;
-            Ok(())
-        }
-        SCHEMA_VERSION => Ok(()),
+        0 | SCHEMA_VERSION => Ok(()),
         newer if newer > SCHEMA_VERSION => Err(Error::NewerSchema(newer)),
-        older => Err(Error::Corrupt(format!(
-            "schema {older} of an earlier version"
-        ))),
+        older => Err(Error::OldSchema(older)),
+    }
+}
+
+/// The schema of the database file at `path` with the connection that read it, which only
+/// reads (`None`: no file).
+fn probe(path: &Path) -> Result<Option<(i64, Connection)>> {
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    Ok(Some((version, conn)))
+}
+
+/// Refuses the database file at `path` before a connection that writes opens it (one that
+/// switches to WAL writes at once): a newer or an earlier schema ([`check`]) stays untouched.
+pub(super) fn refuse_foreign(path: &Path) -> Result<()> {
+    match probe(path)? {
+        Some((version, _)) => check(version),
+        None => Ok(()),
     }
 }
 
@@ -118,16 +143,10 @@ pub(super) fn create(conn: &Connection) -> Result<()> {
 /// connection that only reads it: `None` for a missing, empty, current or newer one, and for
 /// a file that is no readable database (opening it says so).
 pub(super) fn outdated(path: &Path) -> Option<(i64, Connection)> {
-    if !path.is_file() {
-        return None;
-    }
-    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
-    let version: i64 = conn
-        .pragma_query_value(None, "user_version", |r| r.get(0))
-        .ok()?;
-    (1..SCHEMA_VERSION)
-        .contains(&version)
-        .then_some((version, conn))
+    probe(path)
+        .ok()
+        .flatten()
+        .filter(|(version, _)| (1..SCHEMA_VERSION).contains(version))
 }
 
 #[cfg(test)]
@@ -177,8 +196,14 @@ mod tests {
             .unwrap()
             .pragma_update(None, "user_version", 99)
             .unwrap();
+        let before = std::fs::read(&path).unwrap();
         // Not "corrupt" - otherwise someone would set a healthy database aside.
         assert!(matches!(Store::open(&path), Err(Error::NewerSchema(99))));
+        assert_eq!(std::fs::read(&path).unwrap(), before, "never written");
+        assert!(
+            !dir.path().join("jobs.db-wal").exists(),
+            "never switched to WAL"
+        );
         assert_eq!(outdated(&path).map(|(v, _)| v), None);
     }
 
@@ -194,7 +219,13 @@ mod tests {
             .pragma_update(None, "user_version", 7)
             .unwrap();
         assert_eq!(outdated(&path).map(|(v, _)| v), Some(7));
-        assert!(matches!(Store::open(&path), Err(Error::Corrupt(_))));
+        let before = std::fs::read(&path).unwrap();
+        assert!(matches!(Store::open(&path), Err(Error::OldSchema(7))));
+        assert_eq!(std::fs::read(&path).unwrap(), before, "never written");
+        assert!(
+            !dir.path().join("jobs.db-wal").exists(),
+            "never switched to WAL"
+        );
         std::fs::remove_file(&path).unwrap();
         drop(Store::open(&path).unwrap());
         assert_eq!(outdated(&path).map(|(v, _)| v), None, "a current one");

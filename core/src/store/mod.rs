@@ -63,12 +63,13 @@ pub struct Store {
 }
 
 impl Store {
-    /// Opens (or creates) the database. One of an earlier version is refused: the start
-    /// resets it first ([`outdated`]).
+    /// Opens (or creates) the database. One of a newer or an earlier version is refused
+    /// before anything is written (the start resets an earlier one first, [`outdated`]).
     pub fn open(path: &Path) -> Result<Store> {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| Error::io(dir, e))?;
         }
+        schema::refuse_foreign(path)?;
         let conn = Connection::open(path)?;
         // Write-ahead log: readers never wait for the writer, and a commit is one append.
         // NORMAL is durable in WAL mode except for the last commits on a power loss.

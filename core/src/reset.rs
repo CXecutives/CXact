@@ -6,12 +6,15 @@
 //! journal, WAL and shared-memory files and its copies (`backups/`), the profiles of the
 //! session windows (freelance.de sign-in; on macOS the app removes their `WKWebView` data
 //! stores right after the start, which needs the running app), the Gmail access in the
-//! keychain and, in the workspace, every profile in `profil/`. `policy.json` stays - a block
-//! pause must not be clickable away. Foreign files stay untouched.
+//! keychain and, in the workspace, every profile in `profil/`, and what earlier resets set
+//! aside (`profil.alt*`, `alt-schema-*`). `policy.json` stays - a block pause must not be
+//! clickable away. Foreign files stay untouched. The database goes last: while it is there,
+//! a later attempt can still finish the rest.
 //!
 //! A database an earlier version wrote (schema 1 to 7) is reset the same way at the start,
-//! without an order ([`reset_outdated`]); its profiles are set aside (`profil.alt`), not
-//! deleted.
+//! without an order ([`reset_outdated`]), but nothing of its data is deleted: the database
+//! with its sidecars and copies moves to `alt-schema-<schema>-<time>/` in the data folder,
+//! the profiles to `profil.alt`.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -43,24 +46,37 @@ pub struct ResetPlan {
     pub workspace: PathBuf,
 }
 
-/// What happens to the profiles in the workspace.
+/// Which reset runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Profiles {
-    /// Deleted ("reset everything").
-    Delete,
-    /// The folder set aside as `profil.alt` (the reset of a database of an earlier version).
-    SetAside,
+enum Mode {
+    /// "Reset everything": the data and the profiles are deleted.
+    Everything,
+    /// The reset of a database of an earlier version (its schema): database and profiles
+    /// are set aside, not deleted.
+    Outdated(i64),
 }
 
-/// The name of the profiles' folder once set aside.
+/// What happens to the database, its sidecars and its copies.
+enum Old {
+    Delete,
+    /// Moved into this folder.
+    Move(PathBuf),
+    /// Left where it is (its folder could not be created; the next start tries again).
+    Stay,
+}
+
+/// The name of the profiles' folder once set aside (`profil.alt`, then `profil.alt-<time>`).
 const SET_ASIDE: &str = "alt";
+/// Name start of the folders in the data folder that hold a database set aside.
+const OLD_DATA: &str = "alt-schema-";
 
 /// Result after the restart.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ResetReport {
+    /// What was deleted or set aside.
     pub removed: usize,
-    /// What could not be deleted (paths and short English notes, for the log).
+    /// What could not be deleted or set aside (paths and short English notes, for the log).
     pub failed: Vec<String>,
 }
 
@@ -98,14 +114,14 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
         report.failed.push("order unreadable".into());
         return Some(report);
     };
-    Some(perform(data_dir, &plan, vault, Profiles::Delete))
+    Some(perform(data_dir, &plan, vault, Mode::Everything))
 }
 
 /// Call at the start, after [`perform_pending`] and before the database is opened: a database
 /// an earlier version wrote (schema 1 to 7) is never migrated; everything is reset as by
 /// "reset everything", and the start opens a new one. The plan comes from the old database
 /// while it is still readable (the work folder its settings name, else `default_workspace`);
-/// the profiles are set aside, not deleted. `None`: no such database.
+/// database and profiles are set aside, not deleted. `None`: no such database.
 pub fn reset_outdated(
     data_dir: &Path,
     default_workspace: &Path,
@@ -126,20 +142,23 @@ pub fn reset_outdated(
         data_dir,
         &ResetPlan { workspace },
         vault,
-        Profiles::SetAside,
+        Mode::Outdated(old.schema),
     ))
 }
 
-/// Deletes what `plan` names (see the module).
-fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault, profiles: Profiles) -> ResetReport {
+/// Deletes (or sets aside) what `plan` names, the database last (see the module).
+fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault, mode: Mode) -> ResetReport {
     let mut report = ResetReport::default();
-    let db = data_dir.join(DB_FILE);
     let profile_dir = plan.workspace.join(PROFILE_DIR);
     let sessions: Vec<String> = Portal::ALL.into_iter().map(session_dir).collect();
     let sidecars: Vec<String> = SIDECARS.iter().map(|s| format!("{DB_FILE}{s}")).collect();
-    let mut targets = vec![db, data_dir.join(BACKUP_DIR)];
-    targets.extend(sidecars.iter().map(|name| data_dir.join(name)));
-    targets.extend(sessions.iter().map(|dir| data_dir.join(dir)));
+    let old = match mode {
+        Mode::Everything => Old::Delete,
+        Mode::Outdated(schema) => old_data_dir(data_dir, schema, &mut report),
+    };
+    for name in &sidecars {
+        dispose(&data_dir.join(name), &old, &mut report);
+    }
     // Take along the leftovers of earlier attempts - a renamed session profile with its
     // sign-in cookie would otherwise stay forever.
     let names_in_data = |base: &str| {
@@ -148,28 +167,30 @@ fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault, profiles: Profiles)
             || sidecars.iter().any(|name| name == base)
             || sessions.iter().any(|dir| dir == base)
     };
-    targets.extend(leftovers(data_dir, names_in_data));
-    match profiles {
-        // Every profile, its backup, the index of the profiles and remains of an interrupted
-        // write - a profile may carry name and contact data. Foreign files in the folder
-        // stay.
-        Profiles::Delete => targets.extend(files_in(&profile_dir, |name| {
-            is_app_file(name) || is_tmp(name)
-        })),
-        Profiles::SetAside => set_aside(&profile_dir, &mut report),
+    let mut doomed: Vec<PathBuf> = sessions.iter().map(|dir| data_dir.join(dir)).collect();
+    doomed.extend(leftovers(data_dir, names_in_data));
+    for target in doomed {
+        dispose(&target, &Old::Delete, &mut report);
     }
-    for target in targets {
-        match remove(&target) {
-            Ok(true) => report.removed += 1,
-            Ok(false) => {}
-            Err((rest, e)) => {
-                log::warn!("reset: {} not deleted: {e}", rest.display());
-                report.failed.push(rest.display().to_string());
+    dispose(&data_dir.join(BACKUP_DIR), &old, &mut report);
+    match mode {
+        Mode::Everything => {
+            // What earlier resets set aside, every profile, its backup, the index of the
+            // profiles and remains of an interrupted write - a profile may carry name and
+            // contact data. Foreign files in the folder stay.
+            let mut doomed = entries(data_dir, |name| name.starts_with(OLD_DATA));
+            doomed.extend(files_in(&profile_dir, |name| {
+                is_app_file(name) || is_tmp(name)
+            }));
+            doomed.extend(entries(&plan.workspace, is_set_aside));
+            for target in doomed {
+                dispose(&target, &Old::Delete, &mut report);
             }
+            // The profiles' folder goes if that made it empty (never with content).
+            let _ = std::fs::remove_dir(&profile_dir);
         }
+        Mode::Outdated(_) => set_aside(&profile_dir, &mut report),
     }
-    // The profiles' folder goes if that made it empty (never with content).
-    let _ = std::fs::remove_dir(profile_dir);
     if let Err(e) = vault.delete_gmail() {
         log::warn!("reset: Gmail access in the keychain not deleted: {e}");
         report
@@ -187,12 +208,84 @@ fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault, profiles: Profiles)
             .failed
             .push(format!("sign-in state in {POLICY_FILE} ({e})"));
     }
+    dispose(&data_dir.join(DB_FILE), &old, &mut report);
     log::info!(
-        "reset: {} removed, {} not deleted (each named above)",
+        "reset: {} removed, {} not (each named above)",
         report.removed,
         report.failed.len()
     );
     report
+}
+
+/// The new folder `alt-schema-<schema>-<time>` in the data folder for a database of an
+/// earlier version; when it cannot be created, the database stays.
+fn old_data_dir(data_dir: &Path, schema: i64, report: &mut ResetReport) -> Old {
+    let dir = data_dir.join(format!(
+        "{OLD_DATA}{schema}-{}",
+        jiff::Timestamp::now().as_millisecond()
+    ));
+    match std::fs::create_dir_all(&dir) {
+        Ok(()) => Old::Move(dir),
+        Err(e) => {
+            log::warn!("reset: {} not created: {e}", dir.display());
+            report
+                .failed
+                .push(format!("{} not created ({e})", dir.display()));
+            Old::Stay
+        }
+    }
+}
+
+/// Deletes, moves or leaves `path` as `old` says and notes the outcome.
+fn dispose(path: &Path, old: &Old, report: &mut ResetReport) {
+    let outcome = match old {
+        Old::Delete => remove(path),
+        Old::Move(dir) => move_into(path, dir),
+        Old::Stay => return,
+    };
+    match outcome {
+        Ok(true) => report.removed += 1,
+        Ok(false) => {}
+        Err((rest, e)) => {
+            log::warn!("reset: {} not removed: {e}", rest.display());
+            report.failed.push(rest.display().to_string());
+        }
+    }
+}
+
+/// Moves `path` into `dir` under its name, with up to ten attempts like [`remove`].
+fn move_into(path: &Path, dir: &Path) -> Result<bool, (PathBuf, std::io::Error)> {
+    if std::fs::symlink_metadata(path).is_err() {
+        return Ok(false);
+    }
+    let target = dir.join(path.file_name().unwrap_or_default());
+    let mut last = None;
+    for attempt in 0..ATTEMPTS {
+        if attempt > 0 {
+            std::thread::sleep(PAUSE);
+        }
+        match std::fs::rename(path, &target) {
+            Ok(()) => return Ok(true),
+            Err(e) => last = Some(e),
+        }
+    }
+    Err((
+        path.to_path_buf(),
+        last.unwrap_or_else(|| std::io::Error::other("unknown")),
+    ))
+}
+
+/// A profiles' folder an earlier reset set aside: `profil.alt` or `profil.alt-<time>`.
+fn is_set_aside(name: &str) -> bool {
+    name.strip_prefix(PROFILE_DIR)
+        .and_then(|rest| rest.strip_prefix('.'))
+        .and_then(|rest| rest.strip_prefix(SET_ASIDE))
+        .is_some_and(|rest| {
+            rest.is_empty()
+                || rest.strip_prefix('-').is_some_and(|time| {
+                    !time.is_empty() && time.bytes().all(|b| b.is_ascii_digit())
+                })
+        })
 }
 
 /// Moves the profiles' folder aside to `profil.alt` (or, when that is taken,
@@ -219,21 +312,32 @@ fn set_aside(profile_dir: &Path, report: &mut ResetReport) {
     }
 }
 
-/// Renamed leftovers of earlier attempts (`<name>.delete-<time>`) in `dir` whose name fits
-/// `ours`.
-fn leftovers(dir: &Path, ours: impl Fn(&str) -> bool) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(dir) else {
+/// The entries of `dir` whose name, or a leftover's name before its suffix
+/// (`<name>.delete-<time>`), fits `ours`.
+fn entries(dir: &Path, ours: impl Fn(&str) -> bool) -> Vec<PathBuf> {
+    let Ok(read) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
-    entries
-        .filter_map(Result::ok)
+    read.filter_map(Result::ok)
         .filter(|e| {
             e.file_name()
                 .to_str()
-                .and_then(|name| name.split_once(LEFTOVER))
-                .is_some_and(|(base, _)| ours(base))
+                .is_some_and(|name| ours(name.split_once(LEFTOVER).map_or(name, |(base, _)| base)))
         })
         .map(|e| e.path())
+        .collect()
+}
+
+/// Renamed leftovers of earlier attempts (`<name>.delete-<time>`) in `dir` whose name fits
+/// `ours`.
+fn leftovers(dir: &Path, ours: impl Fn(&str) -> bool) -> Vec<PathBuf> {
+    entries(dir, ours)
+        .into_iter()
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.contains(LEFTOVER))
+        })
         .collect()
 }
 
@@ -346,9 +450,32 @@ mod tests {
         );
     }
 
+    /// "Reset everything" also deletes what earlier resets set aside: the old profiles
+    /// (`profil.alt*`) and the old databases (`alt-schema-*`). Similar foreign names stay.
+    #[test]
+    fn what_was_set_aside_goes_with_everything() {
+        let root = tempfile::tempdir().unwrap();
+        let (data, plan) = setup(root.path());
+        let ws = &plan.workspace;
+        for dir in ["profil.alt", "profil.alt-1759500000000", "profil.alter"] {
+            std::fs::create_dir_all(ws.join(dir)).unwrap();
+            std::fs::write(ws.join(dir).join("beraterprofil.json"), b"{}").unwrap();
+        }
+        std::fs::create_dir_all(data.join("alt-schema-7-1/backups")).unwrap();
+        std::fs::write(data.join("alt-schema-7-1/jobs.db"), b"old").unwrap();
+        request(&data, &plan).unwrap();
+        let report = perform_pending(&data, &Vault::for_tests("reset")).unwrap();
+        assert!(report.failed.is_empty(), "{report:?}");
+        assert!(!ws.join("profil.alt").exists());
+        assert!(!ws.join("profil.alt-1759500000000").exists());
+        assert!(!data.join("alt-schema-7-1").exists());
+        assert!(ws.join("profil.alter/beraterprofil.json").exists());
+    }
+
     /// A database of schema 7 (an earlier version) is reset at the start like "reset
     /// everything": the plan comes from the old database (its work folder), the sign-in and
-    /// the Gmail access go, the profiles are set aside, and the start opens a new database.
+    /// the Gmail access go, the database with its copies and the profiles are set aside, and
+    /// the start opens a new database.
     #[test]
     fn a_database_of_an_earlier_version_is_reset_and_opens_new() {
         let root = tempfile::tempdir().unwrap();
@@ -392,6 +519,30 @@ mod tests {
         assert!(!data.join(DB_FILE).exists());
         assert!(!data.join("backups").exists());
         assert!(!data.join("session-freelance").exists(), "the sign-in goes");
+        // The old database and its copies are set aside, not deleted.
+        let aside: Vec<PathBuf> = std::fs::read_dir(&data)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| {
+                p.file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with("alt-schema-7-")
+            })
+            .collect();
+        assert_eq!(aside.len(), 1, "{aside:?}");
+        assert!(aside[0].join("backups/jobs-2026-09-19.db").exists());
+        let kept = rusqlite::Connection::open_with_flags(
+            aside[0].join(DB_FILE),
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .unwrap();
+        let jobs: i64 = kept
+            .query_row("SELECT COUNT(*) FROM job", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(jobs, 1, "the old jobs are still in it");
+        drop(kept);
         #[cfg(windows)]
         assert!(
             vault.load_gmail().unwrap().is_none(),

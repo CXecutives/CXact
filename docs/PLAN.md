@@ -119,9 +119,11 @@ pre-assessment to any AI chat for a deeper check.
 - **Texts:** the rules in `CLAUDE.md`. The fetch's words are "Jobs suchen" and "Alert-Mails lesen"; the
   first place is "Aktuell".
 - **Data:** SQLite in the OS app data folder (schema 8, no migrations). A database of schema 1 to 7 is
-  reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the database, `backups/`,
-  the sessions and the Gmail entry go, the old profiles are set aside as `profil.alt`, `policy.json`
-  stays, and the reset notice shows. The app writes no files of jobs;
+  reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the database with its
+  sidecars and `backups/` moves to `alt-schema-<n>-<time>/` in the data folder, the old profiles to
+  `profil.alt`, the sessions and the Gmail entry go, `policy.json` stays, and the reset notice shows.
+  "Alle Daten zurücksetzen" deletes these folders too. A newer or older database is refused before
+  anything is written. The app writes no files of jobs;
   its work folder holds the profiles.
 - **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`
   (`docs/CHANGING.md`).

@@ -14,6 +14,8 @@ node_modules/
 # Personal data - never commit, even if a work folder ends up in here
 auswertung/
 profil/
+# Profiles an earlier version's reset set aside (core/src/reset.rs)
+profil.alt*/
 Profil_*.json
 *.xlsx
 # CVs: only the invented ones of the tests (tools/cv-fixtures.py)

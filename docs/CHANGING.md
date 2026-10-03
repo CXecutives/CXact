@@ -377,8 +377,8 @@ and profiles: an external contract, never translated):
    schema changed, step 2). The identifier `de.cxecutives.job-alert-monitor` never
    changes: it names the data folder and the keychain entry.
 6. **Check**: the new version in the installed apps of Windows (on macOS in the About
-   window), the jobs and the profile still there (after a schema change: the reset notice and
-   `profil.alt`), a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+   window), the jobs and the profile still there (after a schema change: the reset notice,
+   `profil.alt` and `alt-schema-<n>-<time>/` in the data folder), a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
 
 ## Where a new rule goes
 
