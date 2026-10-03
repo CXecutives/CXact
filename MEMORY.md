@@ -35,7 +35,7 @@ and current: replace what changes, drop what no longer holds.
 ## State (2026-10-03)
 
 - `main` is green on CI (Windows and macOS, both harness engines). The portable builds of 2026-10-02 are in
-  `target/portable/` of the old folder: `CXact.exe` and `CXact Demo.exe`.
+  `target/portable/`: `CXact.exe` and `CXact Demo.exe`.
 - The search already pages deeply. Up to 24 terms come from the profile (`profile::deep_search_terms`).
   Each term is paged while new jobs come, up to 10 pages on Hays, freelancermap, Michael Page and GULP. A
   cut-short paging resumes at the next fetch within 7 days. A title pre-score orders the fetch. Caps are
@@ -47,6 +47,9 @@ and current: replace what changes, drop what no longer holds.
 
 - Windows dev PC: Git Bash, PowerShell 5.1, Python as `py -3.14`. macOS is checked only through the
   `macos-latest` CI runner.
+- The clone lives in `Documents\CXact`, the app's default work folder (`settings::default_workspace`).
+  The real app's Arbeitsordner is set elsewhere in Einstellungen > Daten; `profil/` and `auswertung/` are
+  ignored by git either way.
 - After a fresh clone:
   - `git config core.hooksPath .githooks`, then `npm ci`. The Rust toolchain comes from
     `rust-toolchain.toml`.

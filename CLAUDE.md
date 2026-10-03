@@ -11,7 +11,7 @@ The old app `CXecutives/projektscraper` is a read-only reference (its old engine
 baseline of `tools/eval/legacy_baseline.py`).
 
 ## Hard rules
-- Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/Project`, fast-forward only; never bypass
+- Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/CXact` (formerly `Project`), fast-forward only; never bypass
   `.githooks/pre-push`; never force-push. The repo holds CXact only: no old code, branches or history.
 - Secrets: never ask for, read, log, print or commit passwords. The Gmail app password lives only in the OS keychain.
   The repo is public: no real mails, profiles or labels outside `core/tests/fixtures/private/` (ignored).
