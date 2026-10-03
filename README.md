@@ -59,8 +59,7 @@ The mailbox is opened read-only: mails stay unread, and nothing is changed, dele
 never searched; only the links in the user's own alert mails are opened. freelance.de can sign in through
 its own window (off by default).
 
-Every request goes through one policy: robots.txt read at run time, randomized pauses, hourly and daily
-caps per source, and a stop on rate limits, blocks, captchas or sign-in walls, never bypassed.
+How each source is read, its pauses and caps: `docs/PLAN.md` ("Sources").
 
 ## Development
 
@@ -68,21 +67,9 @@ The rules for working on the code are in `CLAUDE.md`. The product and its next s
 `docs/PLAN.md`, the layers in `docs/ARCHITECTURE.md`, where each kind of change goes in
 `docs/CHANGING.md`, and the engine with its measurements in `docs/MATCHING.md`.
 
-**Requirements:** the Rust toolchain pinned in `rust-toolchain.toml`, Node 22.12 or newer, npm. After a
-clone: `git config core.hooksPath .githooks` and `npm ci`.
-
-**Commands:**
-```
-npm run check          # svelte-check, eslint, stylelint, prettier, tokens, architecture
-npx playwright install chromium webkit   # once, for the harness
-npm run harness         # the Playwright UI harness (Chromium + WebKit)
-tools/ui-preview.cmd    # the UI with demo data in the browser (http://localhost:5178)
-cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-npx tauri build         # release bundles (NSIS on Windows, app and dmg on macOS)
-tools/portable.cmd      # target/portable/CXact.exe
-```
+**Requirements:** the Rust toolchain pinned in `rust-toolchain.toml`, Node 22.12 or newer, npm. The setup
+after a clone and the commands are in `CLAUDE.md` ("Commands"); `tools/ui-preview.cmd` shows the UI with
+demo data in the browser (http://localhost:5178).
 
 **Dry run:** `--dry-run` starts the app without touching the real mailbox, sources or work
 folder.

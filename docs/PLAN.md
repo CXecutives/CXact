@@ -32,9 +32,8 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   freelancermap, Michael Page and GULP. A cut-short paging resumes at the next fetch within 7 days.
   SOLCOM, interim-x and FRATCH list all their projects; the app filters them. A title pre-score that knows
   the target roles orders what is fetched first.
-- Conservative and polite: every request goes through `admit` (`fetch/policy.rs`). Search sources run at
-  2.5 to 5 s, capped at 300 an hour and 1,500 a day each, never below robots.txt's Crawl-delay. A source
-  stops on 429, 999, 403, a captcha or a login wall. Captchas and 2FA are never bypassed.
+- The pace, within the scraping rules of `CLAUDE.md` (`admit`, `fetch/policy.rs`): search sources run at
+  2.5 to 5 s, capped at 300 an hour and 1,500 a day each, never below robots.txt's Crawl-delay.
 - Rejected for good: jobs.ch, karriere.at, eFinancialCareers and StepStone (their terms forbid automated
   access); Robert Half and Etengo (almost no interim or project roles); web search APIs; the Bundesagentur.
 - Jobs that several sources bring merge into one (`dup_of`); "Gefunden" names every way it came.
@@ -93,8 +92,8 @@ pre-assessment to any AI chat for a deeper check.
 - **Erste Schritte** (until the first completed fetch): 1 Profil, 2 Postfach (optional, only the alert
   mails need it), 3 the first fetch in the words of its way.
 - **Shell:**
-  - One top bar like the Claude app's (`CLAUDE.md`). The sidebar has Jobs, Profil and Einstellungen; it
-    docks or folds, folding by itself below 1100 px. Zurück and Vor walk the views, places, jobs and tabs.
+  - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
+    Einstellungen. Zurück and Vor also walk the tabs of Profil and Einstellungen.
   - The app's own menus, toasts (at most three, bottom right) and tooltips.
   - A start whose data cannot load offers to restore a daily copy of the database.
 - **Dry run:** `--dry-run` changes nothing outside its own data.
@@ -115,25 +114,23 @@ pre-assessment to any AI chat for a deeper check.
     of what a click does. arrow-left and arrow-right.
   - In the job: Öffnen is the open book, Alert-Mails lesen the open envelope, Trotzdem bewerten the plain
     plus.
-- **Controls:** one button height, 28 px (only a button inside a field is lower), at most one primary per
-  view. Menus open from a chevron button. Motion stays at 180 ms or less, ease-out, no bounce.
-- **Texts:** the rules in `CLAUDE.md`. German only (`de.ts`), no English UI. The fetch's
-  words are "Jobs suchen" and "Alert-Mails lesen"; the first place is "Aktuell".
+- **Controls:** one button height, 28 px (only a button inside a field is lower). Menus open from a chevron
+  button.
+- **Texts:** the rules in `CLAUDE.md`. The fetch's words are "Jobs suchen" and "Alert-Mails lesen"; the
+  first place is "Aktuell".
 - **Data:** SQLite in the OS app data folder (schema 8, no migrations). A database of schema 1 to 7 is
-  reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the old profiles are set
-  aside as `profil.alt`, `policy.json` stays, and the reset notice shows. The app writes no files of jobs;
+  reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the database, `backups/`,
+  the sessions and the Gmail entry go, the old profiles are set aside as `profil.alt`, `policy.json`
+  stays, and the reset notice shows. The app writes no files of jobs;
   its work folder holds the profiles.
-- **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`;
-  the backend sends codes and params, never prose; run events stay under 8 KB.
+- **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`
+  (`docs/CHANGING.md`).
 
 ## Platforms (documented differences only)
 
 Inside the window both OS show the same app. They differ by OS convention, decided in
 `ui/src/lib/platform.ts` and `src-tauri/src/platform.rs`:
-- **The top bar:**
-  - Windows: no native title bar. The app's caption buttons sit at the right, and the caption window of
-    `platform.rs` moves the window and opens the system menu and the snap layouts. 36 px.
-  - macOS: the native traffic lights 16 px in, centred. 44 px.
+- **The top bar:** Windows draws its caption buttons, macOS keeps the native traffic lights (`CLAUDE.md`).
 - **Dialog buttons:** Windows puts the action first; macOS puts cancel left and the action right.
 - **Scrollbars:** Windows slim and styled, their room kept; macOS native overlay.
 - **Middle-button autoscroll:** Windows only.

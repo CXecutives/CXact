@@ -82,10 +82,6 @@ Commit them together with tokens.css.
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`).
-- The alert mails a fetch reads: since the last fetch (a day of overlap), the first one the
-  last 30 days (`Scope::New`, `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`); there is no
-  choice of it.
-- The app writes no files of jobs; its work folder holds the profiles.
 - The work folder of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`). "Öffnen" makes a missing folder first.
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
@@ -142,13 +138,14 @@ Each role of the UI has one pattern, decided in one place; the components only r
   never a note that stays in the view.
 - **Hover, press and focus**: one answer per surface kind (quiet, control, raised, label) in
   `ui/src/styles/tokens.css` ("one answer per surface kind").
-- **Buttons**: two heights, `sm` (28 px, in rows and tools) and `field` (32 px, the default);
-  a button that loses something for good is `warns` (red at rest).
+- **Buttons**: one height (`docs/PLAN.md` "Controls", `--btn-height` in
+  `ui/src/components/Button.svelte`); a button that loses something for good is `warns` (red
+  at rest).
 - **Tooltips**: only where something is missing: a button that shows only its glyph, text
   that is cut off, the reason a control waits; never the words that stand there (the sidebar
   always names its entries). No "·" as a separator: an icon, a comma or a
   line of its own. Both are rules of `ui_contract.rs`.
-- **Motion**: only through `ui/src/lib/motion/` (<= 180 ms each): a view switch fades out,
+- **Motion**: only through `ui/src/lib/motion/`: a view switch fades out,
   then in; a row that leaves folds its height; what comes under the list header unfolds;
   bars, notices, dialogs, menus and toasts have their entrances there.
 - **Check**: `cargo test -p jobalert-core --test ui_contract`, `npm run check`, and
@@ -299,8 +296,9 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
   (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `RESTORE_KEPT`);
   a start whose data cannot load lists and restores them (`list_backups`, `restore_backup`,
   `BackupDialog.svelte` from `App.svelte`).
-- Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
-  `core/src/mail/scan.rs`) stand in the catalog texts by hand.
+- The days the first mailbox scan reads: `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`
+  (`Scope::New`; later fetches read from the last one with a day of overlap). Not generated
+  yet: the catalog texts name the 30 by hand.
 
 ## The preview's demo data
 
@@ -360,13 +358,11 @@ and profiles: an external contract, never translated):
 1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer, the macOS About
    window and the log read it) and in `package.json`; the lock files follow (`cargo check`,
    `npm install --package-lock-only`). The harness stub keeps its own demo version.
-2. **Data of the old version**: there are no migrations. A new database layout raises
-   `SCHEMA_VERSION` (`core/src/store/schema.rs`, the one `SCHEMA`); at the start a database of
-   an earlier schema is reset like "Alle Daten zurücksetzen" (`reset::reset_outdated`: the
-   database, `backups/`, the sessions and the Gmail entry go, the profiles are set aside as
-   `profil.alt`, `policy.json` stays) and the reset notice shows. Its range is
-   `1..SCHEMA_VERSION`; the test with the frozen layout of the last version
-   (`core/tests/fixtures/schema_v7.sql`) gets a fixture of the old layout when it changes.
+2. **Data of the old version**: there are no migrations (`docs/PLAN.md` "Data"). A new
+   database layout raises `SCHEMA_VERSION` (`core/src/store/schema.rs`, the one `SCHEMA`), and
+   `reset::reset_outdated` resets `1..SCHEMA_VERSION` at the start; the test with the frozen
+   layout of the last version (`core/tests/fixtures/schema_v7.sql`) gets a fixture of the old
+   layout when it changes.
    A new field of `Settings` loads with its default from an older file (`#[serde(default)]`).
 3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
    and the full harness in both engines once.

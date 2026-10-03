@@ -1,10 +1,8 @@
 # CXact (formerly Job-Alert-Monitor)
 
-Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de; any
-source's alert mail by its job links) from Gmail, searches the sources that allow it itself (Hays, freelancermap,
-Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x, FRATCH), fetches the job pages and **scores every job
-against a consultant profile**, only when the user presses the fetch: "Jobs suchen" or "Alert-Mails lesen", the
-menu beside it chooses which (never both).
+Desktop app (Tauri 2 + Rust, Windows and macOS) that finds interim and freelance jobs, by its own search of the
+sources that allow it or from the user's job alert mails in Gmail, fetches the job pages and **scores every job
+against a consultant profile**, only when the user presses the fetch.
 **What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read it before any
 work and tick its boxes. How to work with the user is in `MEMORY.md` (imported at the end of this file).**
 The old app `CXecutives/projektscraper` is a read-only reference.
@@ -70,20 +68,19 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 - `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `icon.py`, `third-party.mjs`.
 
 ## Commands
-- After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`; the Rust toolchain
-  comes from `rust-toolchain.toml`. `core/tests/fixtures/private/` (real mails, ignored) is copied by hand.
+- After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`,
+  `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
+  `core/tests/fixtures/private/` (real mails, ignored) is copied by hand.
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
 - `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
-- `npx tauri build` (release bundles) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
-- Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the
-  window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
+- `npx tauri build` (release bundles) · `tools/portable.cmd` (`target/portable/CXact.exe`) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
+- Colours: after a change to `tokens.css`, `npm run regen` rewrites the window and icon colours
+  (`docs/CHANGING.md` "Change the look").
 - The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
   every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with
   `npm run preview:refresh` only when a block is finished and green, then tell the user to reload it.
-- Engine changes: `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` ·
-  `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`; every new
-  `ENGINE_VERSION` updates the rules and measurements in `docs/MATCHING.md` (the numbers before and after go
-  into the commit message).
+- Engine changes: `docs/CHANGING.md` "Add words to the engine" (both reports, `ENGINE_VERSION`,
+  `docs/MATCHING.md`).
 
 ## Workflow
 - Small English commits, each green on its own. Tick `docs/PLAN.md`. Parallel tracks work in their own worktree with
@@ -103,8 +100,7 @@ Fast AND lean: the cost comes from extra work, not from speed. So:
   except for data safety, security and backend removals; never confirmation audits.
 - Verify where it is uncertain: cheap gates always (`npm run check`, clippy, Rust tests); UI specs of the changed
   area only; the full harness in both engines once before a push; never re-verify what is proven.
-- One source per decision: the palette in `ui/src/styles/tokens.css` (+ `npm run regen`), decision tables such as
-  `ui/src/lib/facts.ts`, one command table. `docs/CHANGING.md` says where each kind of change goes.
+- One source per decision (`docs/ARCHITECTURE.md`); `docs/CHANGING.md` says where each kind of change goes.
 - Tests check behaviour through shared helpers and read texts from the catalog; screenshot baselines run on request.
 - Report at milestones only, state durations honestly beforehand, watch the plan's token use.
 
