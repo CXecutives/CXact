@@ -5,6 +5,7 @@
 
 pub(crate) mod domains;
 pub(crate) mod engine;
+pub(crate) mod esco;
 mod tables;
 pub(crate) mod terms;
 pub(crate) mod wishes;

@@ -1,6 +1,6 @@
 // Generates src-tauri/resources/THIRD-PARTY.txt: the license notices of everything that
-// ships inside the app - Rust crates, the npm runtime packages bundled into the UI, and the
-// Inter font.
+// ships inside the app - Rust crates, the npm runtime packages bundled into the UI, the
+// Inter font and the ESCO data of the matching engine.
 //
 // MIT, Apache-2.0 and ISC require the copyright notice to travel with the program; MPL-2.0
 // additionally requires telling where the source is. The file is bundled as an app resource
@@ -15,10 +15,12 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(repo, 'src-tauri', 'resources', 'THIRD-PARTY.txt');
 const FONT_LICENSE = join(repo, 'ui', 'src', 'assets', 'fonts', 'Inter-LICENSE.txt');
+const ESCO = join(repo, 'core', 'src', 'matching', 'lexicon', 'esco.bin');
 
 // Both platforms together: Windows-only crates would be missing from a Mac run and vice versa.
 const TARGETS = ['x86_64-pc-windows-msvc', 'aarch64-apple-darwin', 'x86_64-apple-darwin'];
@@ -48,6 +50,16 @@ function crates(target) {
     }
   }
   return [...seen].map((id) => byId.get(id)).filter(Boolean);
+}
+
+/* ------------------------------------------------------------------ ESCO */
+
+/** The ESCO version in the engine's vocabulary: the first line of its first section
+ * (format in tools/esco/build.py). */
+function escoVersion() {
+  const data = readFileSync(ESCO);
+  const index = inflateSync(data.subarray(9, 9 + data.readUInt32LE(5))).toString('utf8');
+  return index.slice(0, index.indexOf('\n')).replace(/^ESCO /, '');
 }
 
 /* ------------------------------------------------------------------- npm */
@@ -173,6 +185,9 @@ lines.push('');
 lines.push('The font Inter is licensed under the SIL Open Font License 1.1; its text is');
 lines.push('at the end of this file.');
 lines.push('');
+lines.push('The job matching uses data of the ESCO classification of the European');
+lines.push('Commission; its notice is at the end of this file.');
+lines.push('');
 lines.push(`Rust crates: ${rustList.length}`);
 lines.push(`npm packages: ${npmList.length}`);
 lines.push('');
@@ -194,6 +209,19 @@ for (const [body, number] of [...bodies.entries()].sort((a, b) => a[1] - b[1])) 
 
 lines.push('', RULE, 'Font: Inter', RULE, '');
 lines.push(readFileSync(FONT_LICENSE, 'utf8').replace(/\r\n/g, '\n').trim());
+
+lines.push('', RULE, 'Data: ESCO', RULE, '');
+lines.push('This service uses the ESCO classification of the European Commission.');
+lines.push('');
+lines.push(`ESCO version ${escoVersion()} (European Skills, Competences, Qualifications and`);
+lines.push('Occupations), German and English: https://esco.ec.europa.eu');
+lines.push('Copyright European Union. Reuse is authorised under the reuse policy of the');
+lines.push('European Commission (Commission Decision 2011/833/EU of 12 December 2011 on');
+lines.push('the reuse of Commission documents), provided the source is acknowledged.');
+lines.push('');
+lines.push('CXact uses a modified form: the labels are folded and filtered for its job');
+lines.push('matching, and the classification is not shown as a whole. The European');
+lines.push('Commission does not endorse CXact.');
 
 const text = `${lines.join('\n')}\n`;
 writeFileSync(OUT, text, 'utf8');

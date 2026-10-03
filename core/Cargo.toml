@@ -13,6 +13,8 @@ workspace = true
 async-imap = { version = "0.11.3", default-features = false, features = ["runtime-tokio"] }
 ego-tree = "0.11"
 fastrand = "2"
+# Decodes the embedded ESCO vocabulary (matching/lexicon/esco.bin); already in the tree via reqwest.
+flate2 = "1"
 jiff = { version = "0.2.37", features = ["serde"] }
 keyring = "4.2"
 log = { version = "0.4", features = ["std"] }
@@ -39,7 +41,6 @@ url = "2.5"
 [dev-dependencies]
 insta = "1"
 rpassword = "7"
-flate2 = "1"
 # Tests: their own runtime, simulated time, duplex streams for the IMAP protocol.
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "test-util", "io-util"] }
 wiremock = "0.6"

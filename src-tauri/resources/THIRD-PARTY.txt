@@ -12,6 +12,9 @@ the source information of the MPL-2.0.
 The font Inter is licensed under the SIL Open Font License 1.1; its text is
 at the end of this file.
 
+The job matching uses data of the ESCO classification of the European
+Commission; its notice is at the end of this file.
+
 Rust crates: 389
 npm packages: 23
 
@@ -7946,3 +7949,19 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
+
+---------------------------------------------------------------------------
+Data: ESCO
+---------------------------------------------------------------------------
+
+This service uses the ESCO classification of the European Commission.
+
+ESCO version 1.2.1 (European Skills, Competences, Qualifications and
+Occupations), German and English: https://esco.ec.europa.eu
+Copyright European Union. Reuse is authorised under the reuse policy of the
+European Commission (Commission Decision 2011/833/EU of 12 December 2011 on
+the reuse of Commission documents), provided the source is acknowledged.
+
+CXact uses a modified form: the labels are folded and filtered for its job
+matching, and the classification is not shown as a whole. The European
+Commission does not endorse CXact.
