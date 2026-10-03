@@ -27,7 +27,7 @@ test('baseline: jobs with the reader in English', async ({ page }) => {
 });
 
 test('baseline: settings in English', async ({ page }) => {
+  // Darstellung is hidden for now (cards.ts LOOK_SHOWN): the first tab, in English.
   await settings(page, EN);
-  await page.getByTestId('settings-look').scrollIntoViewIfNeeded();
   await expectShot(page, 'settings-en');
 });

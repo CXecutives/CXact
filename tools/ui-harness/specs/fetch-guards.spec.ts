@@ -1,6 +1,6 @@
-// Fixes of the backend-core track as the page sees them through the stub, which mirrors the
+// What the page does when a source or the profile is gone, through the stub, which mirrors the
 // backend's contract: a profile that no longer reads leaves no scores behind, and every
-// portal may be switched off, while a fetch then waits for one, like it waits for a mailbox
+// source may be switched off, while a fetch then waits for one and says why
 // (the backend refuses it too, never with a failed fetch).
 
 import { calls, expect, open, test } from './fixtures';

@@ -1,4 +1,4 @@
-// Wave 2, texts: one word per thing and the words of the form (see docs/PLAN.md, glossary).
+// The English reader: one word per thing (docs/PLAN.md, glossary).
 
 import type { Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';

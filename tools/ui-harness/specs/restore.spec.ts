@@ -1,5 +1,4 @@
-// Wave 2, backend group: an undo and Wiederherstellen put a job back as it was (see
-// docs/wave2/PLAN.md).
+// An undo and Wiederherstellen put a job back as it was.
 
 import type { Page } from '@playwright/test';
 import { calls, expect, NOW, open, test } from './fixtures';

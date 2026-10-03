@@ -12,9 +12,8 @@
   the backend follows with the window and the files. A success that shows nowhere else is a
   toast (another export folder); errors and warnings stay a note at the end of their card,
   which unfolds (the cards below glide down instead of jumping).
-  Only "Zurücksetzen", "Entfernen" of the mailbox and the restore of a backup
-  (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
-  inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
+  Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog whose action fails
+  stays open and says why inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
   the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
   export folder and reset are locked with its reason. Opened from a job for one source

@@ -1,1186 +1,208 @@
-# Plan - matching back, new UI, everything else reviewed
+# CXact: the product, its decisions and the next steps
 
-Approved 2026-09-24. Priorities: (1) bring matching back, at least equal to the old app and measurably better;
-(2) a completely new, consistent, lively UI in the cxpertise.de look; (3) review scraping, architecture, code and
-project layout. Windows and macOS as identical as possible. Done = shippable Windows installer + macOS .app/.dmg.
+The state of 2026-10-03. This file says what CXact is and does, the decisions that hold, and what comes next.
+Tick the boxes under "Next" as the work lands, and replace a decision when the user changes it. Older
+history is in git, read it only when a question needs it. How to change a part is in `docs/CHANGING.md`,
+the layers in `docs/ARCHITECTURE.md`, the engine in `docs/MATCHING.md`, how to work with the user in
+`MEMORY.md`.
 
-## Decisions (user answers, binding)
-| Topic | Decision |
-|---|---|
-| UI language | superseded (user, 2026-09-25): German and English. Einstellungen > Sprache ("Deutsch" and "English", each language in its own words in both catalogs; wave 2) switches the whole app at once, no restart; the app starts German, English only when chosen (amended 2026-09-25: many German consultants run an English OS; only the macOS menu follows the OS, `sys-locale` in `platform.rs`); the choice is stored in the settings (`language`, `save_settings`). `de.ts` stays the source catalog, `en.ts` has its type (a missing or extra key is a type error), the screens read `t` (`lib/i18n/t.ts`); numbers and dates de-DE / en-GB. Excel file, HTML overview, the AI prompts (with `ai_rubric.en.md`), the CV prompt, file dialogs and the sign-in window follow the setting, the macOS menu the OS; the TXT files stayed German and byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone) |
-| Frontend | Svelte 5 + Vite + TypeScript, no SvelteKit, no animation library, Lucide icons only |
-| Keys | only inside fields/dialogs: Tab/Shift+Tab, Enter = save, Esc = cancel, Ctrl/Cmd+C/V/X/A/Z. Amended by the input audit (2026-09-24): fields take every character of the layout (AltGr on Windows, Option on macOS) and the OS editing keys (word/line moves, delete word, redo, Shift selection); Tab/Shift+Tab move the focus everywhere, Space presses the focused button, switch or radio and Enter a button only (a switch or a radio toggles with Space like the native ones, Enter there goes on to the form), so there is no dead end after a field; a modal dialog holds the focus; Cmd+, reaches the macOS menu. No WebView shortcut. Amended (user, final round 2026-09-25): the app's own shortcuts are exactly three, with the command key of the OS (Ctrl on Windows, Cmd on macOS; `keyConventions()` in platform.ts, handled only in input.ts): Ctrl/Cmd+F (the list's search), Ctrl/Cmd+Z outside fields (the last list action) and Ctrl/Cmd+B outside fields (fold the sidebar; in a field it does nothing). Amended (user, 2026-09-25 evening): the fold is gone, so the shortcuts are two, Ctrl/Cmd+F and Ctrl/Cmd+Z. Amended (wave 2): Ctrl/Cmd+S is a form key like Enter and Esc, not a third shortcut: it saves the Profil form from anywhere in it, takes text typed into a chip field in first and never opens the WebView's "save page"; Enter in its single-line fields saves too, except in its row lists (next row) and chip fields (adds the chip). Outside fields and controls PageUp, PageDown, Space and Shift+Space scroll the pane by a page; Space on the open job's row pages through the reader |
-| OS window functions | keep Alt+F4, Cmd+Q/W/M/H, double-click on title bar; no own shortcuts besides the two under "Keys" |
-| Mac | no Mac available: macOS via GitHub `macos-latest` (real app screenshots, dmg install probe, keychain test) + WebKit locally |
-| macOS minimum | 14.0 (Safari 17 baseline, `data_store_identifier` for sessions) |
-| Evaluation data | no access to Katharina: local real data + real runs through the app, invented and composite profiles (six in the corpus, two of them the senior and SAP profiles with wishes; up to 15 per held-out set), blind labels by two independent agents + tie-breaker. Amended (2026-09-25): the measurement used eight blind held-out sets of invented ads instead of a private gold set of real ads (Phase 5) |
-| Embeddings | dropped (user, 2026-09-24): the rule engine covers the measured failures; the `Embedder` seam stays for later |
-| AI stage | superseded (2026-09-27, Profile round): no skill, no top-matches file, no TXT files; the copied AI prompt is the one way to a deeper check. Before: two-stage like professional systems: stage 1 = our engine for every job (incl. the skill rubric); stage 2 = the improved `job-matching` skill, optional, only for the app's top matches, in the user's own Claude (no API key). The app writes a machine-readable top-matches file for it |
-| AI prompts (user, 2026-09-25) | The copied prompts (reader "Prompt für KI-Bewertung kopieren" = `ai_prompt`, overview "Prompt für KI-Vergleich kopieren" = `ai_prompt_top`) are at least as good as the skill, for any AI chat without files: role and goal; the profile without contact data and a glossary of the keys it holds; the ad with its key facts (contract, pay, start, duration, remote share, the page's own labels; each one the app did not find is said) and its text status (full, teaser, very short, none, closed); the app's pre-assessment, marked as a machine word match to check, not to copy (score and band, or the exclusion with its reason and the ad's words; every hard criterion with the profile's threshold, the ad's value and words; requirements met, partly, open with the profile entry and its years; points to check; Schwerpunkte, target role, wishes; all in words, no engine code); the skill's method (one row per requirement, weights, OR branches, degrees, the five frame rows with the profile's thresholds, no invention); the whole rubric; a fixed answer format (result with a recommendation, reasons, requirements table, hard criteria table, risks, open questions, pay and conditions, application points, a short message). The comparison gives each job the same and asks for a ranking first (score, then interim, then fewer open musts). German and English in full (`export/ai_prompt/de.rs` is the external contract, `en.rs` mirrors it); one golden prompt per language in `core/tests/fixtures/prompts/` |
-| Reuse | the app is generic: everything personal lives in the profile; competences may carry alternative terms (`auch`); lexicon = general core + domain packs that activate automatically from the profile; no pack editor in the UI; new portals via adapters |
-| Extra criteria | superseded: the engine adopts the skill rubric (contract type, permanent-role salary and region, seniority, formal requirements) via optional profile keys - exclusions only on clear wording, otherwise checks |
-| Scraping | everything switchable per portal (Active / Fetch details / Sign in), safe defaults; each switch says in one sentence what it does (risk grades removed 2026-09-25; wave 2 removes the `risk` field from the IPC too). Amended (user, 2026-09-25): limits raised moderately to LinkedIn 30 per hour / 80 per day, freelancermap 40 / 120, freelance.de 20 / 60 (`limits()` of each adapter); pace, pauses and the stops on 429/999/403/captcha/login wall unchanged |
-| HTML overview | no full text: title, company, location, portal, link, match (excluded: ring without number), up to 2 met requirements (the list keeps no open ones), exclusion reason in words. It holds the inbox favourites (when there are some) and the new matches ("Neu und passend", at most 20), never one in place of the other. Wave 2: the title as the app shows it (`view::display_title`), and a ring waits where the app's does (not scored yet, or unscorable while its details still come: no number, "Noch nicht bewertet") |
-| Extras | Pin (star) + auto fetch on start (> 6 h, switchable); no notifications, no "still open?" checks |
-| Logo | no CXpertise company logo; the coral app icon (folder + check) is the window icon of the native title bar and the mark of the first run and empty states |
-| Heading colour | warm dark ink (45 7% 17%), not slate; coral is the only accent colour (user chose variant A). Headings stay ink; "only accent colour" is superseded by "cxpertise navy" below |
-| Windows caption buttons | superseded (2026-09-24 night): the native caption buttons of the Windows title bar; superseded again 2026-09-27 by "Top bar like Claude": the app draws them |
-| Sizes | controls 28/36/40, list rows 86 (one-line title, date top right; amended 2026-09-25: a long title takes a second line and the row grows to 106, the rest is a tooltip; superseded 2026-09-25 evening by the user: every row one height, the title always one line with an ellipsis and the full title in a tooltip), body text 15 (the top strip is gone: the native title bar of the OS) |
-| Layout | variant C chosen by the user: calm sidebar (~196 px, no own surface, hairline divider, nav with icons (no count at Jobs: the list's segments Neu n, Alle n and Favoriten n keep their counts; user, 2026-09-25 evening), quiet run status at the bottom; icons only below ~1100 px; the manual fold was dropped by the user as unneeded, 2026-09-25 evening); search, "Abrufen" and filters in the list column header (revised 2026-09-24 night: no content strip, the native title bar) |
-| Toasts | allowed for short confirmations whose result is not visible otherwise (saved, copied, files written, run finished): bottom right, at most 3, 4 s (10 s with an undo), paused on hover, while the window is in the back and while a modal dialog is open (the stack lies below its scrim); 520 px wide, a job's title keeps to one line in its quotes; anything needing action stays inline. One exception, a tip once after the third single move (several jobs can be chosen at once); when a fourth toast comes the oldest one without an action goes first, so a tip never pushes out an undo (wave 2) |
-| User test of the installed app (2026-09-24 evening) | Windows title bar like a native one (full width, 16 px app icon + app name at the left, caption buttons at the native height, no tooltips); macOS uses the normal native title bar; "Abrufen" lives in the list column header next to the search; the cxpertise palette again: light coral (13 73% 63%) for primary fills, hover 13 64% 56%, switches coral when on; lighter font weights; faster, snappier motion; no lag in the real app; native-feeling input (left click only for controls, middle-button scrolling in scroll areas, copyable text where it makes sense); no unneeded micro details |
-| UI round 2 (design critique) | one white sheet for all views (no floating cards), coral only for Abrufen, selection bar, unread dot, active nav (progress bars stay coral as Abrufen feedback) - amended by "cxpertise navy": the selection bar, active nav and progress are navy now; mid scores ochre; primary in deep coral (4.9:1); reader like an issue view (title, facts, match line, chips, actions); sort as icon toggle; switches ink when on. Superseded since: switches coral when on (user test 2026-09-24); the primary is light coral 13 73% 63% with a near-white 500 label (about 2.8:1, the documented contrast exception); the order is a quiet MenuButton that opens the OS menu (Nach Passung, Nach Datum) |
-| Cleanup outside | `.notes` archived to `../_archive/TEST-notes`; user deletes `origin/ci-macos` and release `latest`; CI publishes nothing |
-| Native window frame on both OS (user, 2026-09-24 night) | Superseded 2026-09-27 by "Top bar like Claude". Windows keeps its native title bar (icon, title, caption buttons, system menu on the icon, right click and Alt+Space, snap layouts), coloured like the app via DWM: caption = `--bg` cream (= `backgroundColor`), title = ink, dimmed to `--text-subtle` while inactive (Windows 11; Windows 10 keeps its light bar); macOS keeps its native title bar with the centred title (revised: the unified title bar, see "Title bars, final"). No title bar or caption buttons in the page; the sidebar has no brand row. Principle: two versions, as identical as possible inside the window; whatever differs by OS convention does differ (see Platforms) |
-| UI overhaul after the installed test (2026-09-24 night) | Abrufen next to the search in the list header (Abbrechen in its place during a run); light coral primary, coral switches; weights 400/500/600; motion 100/150/180 ms, ring fill 360 ms, ease-out, no stagger, no bounce, no glow/lift/shimmer, no backdrop blur (amended by "cxpertise navy": 80 ms hover-in, press scale, icon nudges, sliding indicators, the one-shot pop, draw and flash are allowed); rows and rings do not replay when a view comes back; one Tauri channel per streaming call (a shared one lost the second run); day overview without a profile: tiles Neu and Ohne Details plus a card to choose one; each portal problem once; a Gemerkt tile once something is pinned (superseded: the day overview has no tiles or counts, see UI "Jobs"); excluded unread jobs under Neu behind the divider |
-| Title bars, final (user, 2026-09-24 late night) | Superseded 2026-09-27 by "Top bar like Claude" (the minimum window and the app's own placement of the traffic lights stay). Windows: the native title bar stays (the 36 px web-drawn bar and a snap-layouts overlay were tried and dropped); its colours come from `window_colours` in `platform.rs` (caption, title, inactive title), each a token of the generated palette (`--bg`, `--text`, `--text-subtle` of the chosen palette, see "Palettes"), so a later cxpertise blue is a change of `tokens.css` and `npm run regen` (see "One source for the look"). macOS: the unified title bar of Mail or Notes: `titleBarStyle` Overlay, hidden title, traffic lights at x 20 / y 28 (the CI smoke measured the 14 px buttons at centre y - 2, so y 28 centres them in the 52 px row; checked by the macOS CI screenshot and the smoke line `SMOKE {"lights":...}`), placed by the app itself (`platform.rs` `lights`, tao's geometry after show and on every resize, focus, theme and scale change) because tao applies the inset only while its covered content view draws; the sidebar runs to the top with the lights in its first row, search and Abrufen sit in that row, the sheet reaches the top edge, and every empty point of the row moves the window (`data-tauri-drag-region` on `DragBand` and the full-width list header row, macOS only, own capability `macos.json`; the harness probes the whole row in every view and width); a double click there zooms (native zoom through Tauri's drag script; the system setting "double-click a title bar to" is not read). Minimum window 480 x 360 so every Windows 11 snap layout fits (quarters of 1366 x 768 included); snap layouts are the native ones. Later option: WebView2 `CoreWebView2WindowControlsOverlay` once it is stable |
-| Top bar like Claude (user, 2026-09-27: "Mach es wie Claude") | Both OS get the same top bar, drawn by the page (`ui/src/features/shell/TitleBar.svelte`) across the whole window above the sidebar and the sheet: the design's window colour (`--titlebar-bg`, every palette block names its `--titlebar-*` tokens, never a system colour) with a hairline under it (`--titlebar-border`), on Windows the app's icon (16 px) and name at the left like a Windows 11 app's, on macOS nothing but the traffic lights like Mail and Claude; 36 px on Windows (Claude's bar there, `--titlebar-height`), 44 px on macOS (`--titlebar-height-macos`, base.css switches); below it the app is identical, and a dialog's scrim starts under it. Windows: `decorations: false` with `shadow: true` (the shadow, the rounded corners and the resize borders stay; maximized, the client is the work area, no gaps). The page draws Minimieren, Maximieren (Verkleinern while maximized) and Schließen (`ui/src/components/WindowButtons.svelte`: 46 px over the bar's full height, 10 px line glyphs, not in the tab order, tooltips in the words of Windows, the design's hover and press washes, Schließen in the app's danger red `--danger-strong` with a white glyph, darker pressed). `caption` in `src-tauri/src/platform.rs` lays a window without a surface of its own over the bar (the web view's windows belong to the engine's processes) and answers `WM_NCHITTEST` by `jobalert_core::window::Bar` (`BAR_HEIGHT` 36, `CAPTION_BUTTON` 46, tied to the tokens): `HTCAPTION` for the empty bar (moving, Aero Snap, a double click maximizes, a right click opens the system menu), `HTTOP` at the top edge, `HTMINBUTTON`, `HTMAXBUTTON` and `HTCLOSE` over the buttons, so the snap layouts of Windows 11 open over Maximieren; the main window's own `WM_NCHITTEST` answers the same. It performs a click itself (`WM_SYSCOMMAND`, so Schließen is a normal close request) and reports hover and press to the page (event `caption`), which shows them with the tooltip; Alt+Space opens the system menu natively. `window_button` and `window_maximized` (commands.txt) serve the page's own clicks (the harness, the fallback), `window-state` switches Maximieren to Verkleinern. macOS: `titleBarStyle` Overlay with the hidden title, the native traffic lights 16 px from the left and centred in the 44 px bar (`trafficLightPosition` 16 / 24, placed by `lights`), no buttons drawn. The bar is a Tauri drag region on both (capability `window-bar.json`). Gone: the DWM caption colours, `DragBand`, the macOS 52 px toolbar row and the view names in it |
-| One source for the look (user, 2026-09-26) | A whole palette must be swappable from one place, nothing hardcoded: `ui/src/styles/tokens.css` is the only file that writes a colour (palette `--p-*` first, roles second). `npm run regen` runs `tools/tokens.mjs` (every opaque colour role into `core/src/export/palette.rs` for the report, the Excel file and the Windows title bar, into `tools/palette.json` for the icon, and `--bg` into the window's `backgroundColor` of `tauri.conf.json` and `tauri.macos.conf.json`) and `tools/icon.py` (every icon file in `--brand` and `--brand-glyph`). The report names the app's roles (its own copy of the colours is gone, the font is `--font-sans`); the Excel header row is `--surface-muted`, excluded rows `--score-excluded` (were neutral greys). `core/tests/palette.rs` checks every generated file against tokens.css with its own parser and fails on a colour written anywhere else in `core/src`, `src-tauri/src`, the tools and CI; `npm run check` runs `check:tokens`. How-to: `docs/CHANGING.md`, "Change the look" |
-| Palettes (user, 2026-09-26) | Einstellungen > Darstellung > Farben offers three palettes: **Coast** (cream, coral and navy, the default), **Hell** / Light and **Dunkel** / Dark (GitHub's Primer colours of its light and dark theme, clean, no gradients; Primer has one accent, so coral and navy both hold its blue there; in Dark the fills carry dark text so a blue that also reads as text keeps AA both ways). Each palette is one block of `tokens.css` (`:root` is Coast, `:root[data-palette='light'|'dark']` lays its entries and the few roles that differ over it); components never branch on it. The choice is the setting `palette` (`save_settings`), applied at once without a reload (`lib/palette.ts`, a copy in localStorage for the first frame); the window background and the Windows title bar follow it (`platform::dress`, `window_colours`: `--bg`, `--text`, `--text-subtle` of each palette, generated into `palette.rs`), macOS and the Windows caption buttons take the dark system appearance in Dark. The report, the Excel file and the icon stay on Coast. `tools/tokens.mjs --check` (and `npm run check`) measures every text role on its backgrounds in all three palettes (WCAG AA; the one documented exception is Coast's light coral primary); Coast's coral-800 (the text on the coral washes) went from 45 % to 42 % lightness so the accent badge and the hovered count pill keep AA. How-to: `docs/CHANGING.md`, "Add or change a palette" |
-| Score ring scale (user, 2026-09-25) | the ring colour follows the score in ten steps by decile (0-9 ... 90-100), red through orange and yellow to green, clean and not neon (OKLCH-derived: 4 62% 58%, 13 69% 58%, 19 75% 58%, 25 79% 58%, 33 80% 58%, 40 77% 59%, 51 58% 54%, 68 43% 49%, 96 35% 50%, 140 41% 45%); the digits are ink; excluded and unscored rings are not on the scale; the band words (Hohe, Mittlere, Geringe Passung) stay by band. One table: `--score-ring-0..9` in tokens.css, which `core/src/export/scale.rs` (HTML overview rings, Excel score cells) takes through the generated palette (see "One source for the look") |
-| One ring, one sliding bar (user, 2026-09-25) | supersedes the dashed track: every score ring has the same solid track, the centre and the arc say the state. A provisional score (from a teaser) looks exactly like a scored one (the row's badge "Nur Anriss" and the reader say it); not scored yet is the track with an empty centre; waiting turns a quarter arc in the reader and lets the track breathe in the list; excluded, unscorable and off as before. On the grey wash of an inactive window the selected row's ring track greys too. The coral bar of the open job's row is one bar in the list's scroll content that slides to the next open row like the sidebar's pill ("Gleiten wie in der Leiste": 180 ms, emphasized, top and height together, the row's inset kept on rows of 86 and 106 px) after a click, the arrow keys, the next job after a move and an undo; it stays on its row whatever moves the rows (arriving, folding away, growing, gliding), is simply there the first time (start, view return, reload, filter, search) and after far jumps (Home, End), never moves under reduced motion, keeps its place while the open job folds away until the next one opens there, steps inside the focus ring and greys with the window; while several rows are chosen each marks itself and nothing slides |
-| Warm selection (user, after the A/B preview, 2026-09-24) | supersedes the navy selection below: the selected row and the active nav are warm and very light (row wash 22 72% 96.5 %, hover 94.5 %, a coral bar at 0.75, the ring track 20 40% 88 %; the nav pill white with an ink label and a coral icon; soft count pills 95 % with coral-800 digits). Navy stays for the pinned star, tooltips, progress, info, links, focus, the first-run current step and the chosen filter. Switch rows get no background at all ("kein grau, nur die Schalter"): only the switch reacts (superseded 2026-09-25 by the user: only the switch itself toggles, like the Windows and macOS settings; its row's label and hint name and describe it through aria-labelledby and aria-describedby but are no click target and show no hover). No press ever deforms a control: buttons give uniformly (0.98), everything else only darkens; rows share one grid (a row's wash and divider are its own box, the container's inset is --row-inset) |
-| cxpertise navy for structure and state (user, 2026-09-24) | two brand colours with two jobs: coral (13 73% 63%) means act or new - the one primary per view, switches that are on, the unread dot; navy (212 34% 37%) and deep navy (212 30% 26%) mean where you are and what the data says - the selection bar and wash, the active nav (a sliding white pill; label and icon as in Warm selection), the chosen filter, focus, caret and text selection, progress, counts (soft pills; the sidebar has none), tooltips, info, sub-labels and links. Navy only as small dense marks and 93-96 % washes, never a large fill, never on headings, switches, scores or row-title hover; navy and coral never share an element and never blend. Motion "quiet at rest, rich on contact": hover-in 80 ms, hover-out 150 ms, press 60 ms, buttons scale uniformly to 0.98 (`--scale-press`), everything else only darkens, release with --ease-emphasized; icons nudge 1-2 px, indicators slide 180 ms, counts roll, the star pops once (1, 1.18, 1), checks draw, a passage flashes; no lift, glow, stagger, bounce, blur or replay (nothing animates on mount; `intro: false`) |
-| Profile editor (user, 2026-09-24) | The Profil view is the profile as a form (no JSON writing): the keys the engine and the skill read, grouped as a consultant thinks (superseded by "Profile page, final round": Person, Kompetenzen und Schwerpunkte, Erfahrung, Werkzeuge und Zertifikate, Sprachen, Wünsche, Ausschlusskriterien); chip fields for lists, toggle buttons for small fixed choices (no dropdown). Three ways in without a profile: Profil anlegen, Aus Lebenslauf erstellen (a prompt in the app's language for any AI chat, no product named, `core/src/profile/prompt.rs`, the answer is pasted back), Datei wählen; file and answer fill the form for review. Saving merges into the JSON: only changed fields are written, unknown keys, their values and the key order stay, atomic write, one backup `profil/beraterprofil.json.bak`. "Vorlage speichern" is gone. New profile inputs `schwerpunkte` (at most 5, stars on the competences), `wunschrollen`, wishes in `einsatzpraeferenzen` (`tagessatz_wunsch`, `remote` voll/ueberwiegend/teilweise/vor_ort, `regionen`, `branchen`); the engine side follows separately |
-| Profile page, final round (plan 2026-09-25, track C) | Eight blocks: head (person, an honest quality badge that follows the form while it changes: "Vollständig" only with competences, else "Wenig Inhalt" or "Ohne Kompetenzen", "Etwas prüfen" with its reasons in the tooltip; terms, Schwerpunkte, specialist vocabulary; Andere Datei wählen, Aus Lebenslauf aktualisieren, Ordner öffnen, Entfernen), Person, Kompetenzen und Schwerpunkte, Erfahrung und Qualifikation, Wünsche, Ausschlusskriterien (only real exclusions; the remote-abroad switch under the countries, missing = allowed as the engine reads it; ANÜ and Festanstellung as excluded contract types, engine 11), Verfügbarkeit (only marks), "So liest die App dein Profil" (closed; terms, the parts of the file they come from, also the ones only the file holds, criteria). A value the engine cannot read is said at its field with "Wert entfernen" (`ProfileSave.clear`, `UnreadableField`); a value the backend refuses is said at its field (or row), which gets the caret (`profileValue.row`). English keys are read and written where they are. More than five Schwerpunkte: the first five, saving writes them. Money with cents counts whole euros and says so. Sentence lists split only at line breaks; a double click edits a chip. Drafts show their warnings before saving; an update from a CV fills the stored profile for review. Closing the window with unsaved changes asks (`set_unsaved`, event `close-requested`, `close_window`; a page that does not answer within 3 s does not keep the window open). Removing makes the file the backup, a 10 s toast offers "Rückgängig" (`restore_profile`); a reset still leaves neither. Amended by the logic round (user, 2026-09-25): the blocks are Person, Kompetenzen, Erfahrung und Qualifikation, Sprachen, Wünsche, Ausschlusskriterien, Verfügbarkeit, "So liest die App dein Profil", each with one sentence of what it is for (the competences say once that only they are needed); every field of a block is 36 px (choice buttons md), every number field one width with its unit beside it; Einsatzländer is a chip field that suggests every country the engine knows (`profile::country_codes`, named in both catalogs, `core/tests/countries.rs`), found by its German or English name, with DACH in one click, and a country of a file the app does not know stays; the day of "Ab Datum" exists only while it is chosen; placeholders any consultant fits |
-| Reader terms as a table (user, 2026-09-26) | The strip of chips with marks ("Rahmen", dash, check, question mark) is a three-column table: what (Vertragsart, Tagessatz, Einsatzländer, Arbeitnehmerüberlassung, Verfügbarkeit, Erfahrung), the ad's value in words ("genannt" or "nicht genannt" when the ad gives no value, never the name twice), and the verdict as a word (passt, passt nicht, prüfen, offen; since 2026-09-26 also "passt teilweise" in amber for a limit or a wish missed, "prüfen" only for what the ad leaves unclear, the deciding reason in the tooltip, no profile values, and no table for an ad the app never read); a value with a passage marks it on hover and jumps to it on a click; the one-line "all met" form is gone. The head says "3 von 4 Pflichtpunkten erfüllt"; an override is "Manuell einbezogen" with "Rückgängig"; "KI-Prompt kopieren" |
-| UI logic round (user, 2026-09-25) | only the left mouse button presses anything (right and middle never do; the middle button scrolls, with autoscroll on Windows); a press beside a text field ends its focus; one focus ring, only from the keyboard; only the switch itself toggles; no manual sidebar fold (the icon rail below 1100 px); no count at Jobs in the sidebar; the only resize handle sits between list and reader (a grey 4 x 44 px grip on hover, no line) |
-| CV prompt (2026-09-25) | superseded (user, 2026-09-27): the CV flow (the paste dialog, "Aus Lebenslauf erstellen" and "aktualisieren", the update prompt, `parse_profile`) is gone. The ways to a new profile, wherever they are offered (the Profil view's empty state, the menu of its title, the first-run page): "Neues Profil" (the primary where one is shown), "Aus Datei laden" and "KI-Prompt für Profilanfertigung kopieren" (`profile_prompt`, a toast "KI-Prompt kopiert" like the job's prompt). The prompt (`profile/prompt.rs`, app's language) stands on its own for any AI: it says the AI does not know the app, explains every key the editor reads, has the AI ask first in one short message for what the CV cannot say (roles, rates or salary, remote share, regions or countries, excluded contract types, availability, days, duration, exclusion words; each may be skipped) and asks for the file `beraterprofil.json` (else the JSON alone in one code block), loaded with "Aus Datei laden". A chosen file is read like an answer when it is none as it is (`profile::read_file`: a code block, a sentence or a byte order mark around the JSON, `profile/answer.rs` repairs and reshapes it); the empty values an AI leaves go in either case |
-| Wave 2 (one cloud session, 2026-09-25) | Jobs, Archiv and Papierkorb chosen in the sidebar open without the search (like a mail app's folders); the "Auch im …" links and a trip to another view keep it. The reader's terms strip ("Rahmen") also shows the ad's rate and start as plain chips from its facts (banknote, calendar) where no criterion of the profile covers them, never one value twice. The list search matches every word of the query (at most 8) in any field (title, company, location, text) and the portal's name, in the list, its counts and "Alle als gelesen markieren"; a `search_version` in kv makes the store recompute the search column of stored jobs once after a change. Engine 15: a heading of the other listings under an ad counts only as a whole heading, and the engine reads every country name the Profil view offers in both languages (`docs/MATCHING.md`). The settings section of what the app does on its own (auto fetch at start, archive, empty the trash) is "Automatisch". A value the backend refuses says its limit ("Höchstens 100.000.", `InvalidInput::ProfileValue.max`), and one of the hidden Festanstellung block brings the block back. Text typed into a chip field counts as an unsaved change (Speichern, `set_unsaved`, leaving and closing ask); an AI answer pasted in the CV steps is kept in the editor until it fills the form (Esc, Abbrechen and another view keep it, reopening leaves the clipboard alone), but closing the window with only an answer held does not ask. No risk grades and no `risk` field in the IPC. The Excel file and the HTML overview show the title the app shows (`view::display_title`). The day overview's blocks stand in the DOM in their order on screen. A reload of Neu that keeps the list (the end of a run, a sort) keeps the jobs opened in this visit where the list's order puts them; entering Neu again drops them. The arrow keys, Home, End and the next job after a move count rows in the order the list draws them (active, then excluded) |
-| Self-decided | TXT header stayed German and byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone) · primary button light coral 13 73% 63% (user test 2026-09-24), label 500 · excluded jobs grey behind a divider, also under "Neu" but not counted · Excel for excluded: domain score, grey row · merge cross-portal duplicates · Smart App Control is off on the dev PC · dates in the files (Excel, HTML overview, TXT, file names) follow the OS time zone like the page's; Europe/Berlin until the app sets it at its start, so every test keeps Berlin (`time::follow_system_zone`, `core/tests/time_zone.rs`) · copies of `jobs.db` in the data folder's `backups/` (never the work folder): `jobs.pre-v4.db` before every migration and `jobs-YYYY-MM-DD.db` once a day after the first page load, off the window thread, the newest three of each kind; none in the dry run; "Alles zurücksetzen" deletes them; restored in Einstellungen > Wartung ("Restore a backup" below; `store/backup.rs`) |
-| Restore a backup (user, 2026-09-26) | Einstellungen > Wartung > "Sicherung wiederherstellen" lists the copies of `backups/` by day in the app's time words (newest first and chosen, the size, "vor einem Update" / "vor dem Wiederherstellen"), asks with the copy's date and says the current state is saved first. The restore checks the copy and brings it to the current schema in memory, copies the current database to `jobs.before-restore-<UTC>.db` (the newest three kept), then replaces the content in one SQLite transaction on the app's own connection (backup API; a failure leaves the database as it was); the settings and the export stamps stay, the files and the scores follow. Refused in the demo and the dry run and while the activity slot is held (`list_backups`, `restore_backup`). The page loads everything again; a toast offers "Rückgängig" (restores the copy of the state before) |
+## What CXact is
 
-## Contracts
+A desktop app for Windows and macOS (Tauri 2, a Rust core, a Svelte 5 UI) for an interim manager or a
+freelance consultant. It finds jobs and scores each one against the consultant's profile.
 
-### Schema 3 (one migration, chain instead of `1 => SCHEMA_VERSION`)
-New nullable `job` columns: `match_score INTEGER`, `match_status TEXT` (scored|excluded|unscorable), `match_note TEXT`
-(JSON `{code, params, mustMet, mustTotal, top[<=2]}`, <= 400 B), `match_at`, `match_rev TEXT` (16 hex of sha256 over
-ENGINE_VERSION + canonical profile view + model id), `read_at`, `desc_facts TEXT`, `dup_of TEXT` (`portal:id`),
-`parser_version INTEGER`, `pinned_at`. `desc_status` gains `teaser`. Frozen fixture `core/tests/fixtures/schema_v2.sql`.
-Migration marks everything before the last mailbox run as read. `PRAGMA journal_mode=WAL; synchronous=NORMAL`;
-reset deletes `-wal`/`-shm`. No FTS5 (table is WITHOUT ROWID): search stays `LIKE` on the folded `search` column.
-Since wave 2 the column also holds the portal's name, and a search asks it for every word of the query (split at
-whitespace, at most 8; `json_each` over the patterns); kv `search_version` recomputes the column of stored jobs once
-after its content changes.
-Reasons are not stored; `job_detail` recomputes them. Settings JSON: per portal `enabled`, `fetchDetails`,
-`loginEnabled` (freelance.de), plus `autoFetchOnStart` and `autoArchiveDays` (default 30, 0 = off).
+The fetch runs only when the user presses it, one of two ways the menu beside the button chooses (never
+both; the search by default, `Settings::fetches_mail`):
+- **"Jobs suchen"** searches the sources that allow it itself, with terms from the active profile.
+- **"Alert-Mails lesen"** reads the job alert mails of LinkedIn and freelance.de from Gmail (IMAP, an app
+  password in the OS keychain), since the last fetch, the first one 30 days back.
 
-### Schema 4 (the user's marks, one more step of the chain)
-New nullable `job` columns: `app_status TEXT` (applied|interview|offer|rejected), `app_status_at`, `note TEXT`
-(<= 2000 characters, no export shows it), `hidden_at` ("Nicht interessant"). Frozen fixture
-`core/tests/fixtures/schema_v3.sql`. A hidden job is in no list but "hidden" and in no count but its own; the HTML
-overview and `top_matches.json` leave it out. The Excel file has no mark column (schema 5: the favourite is the only
-mark and stays in the app); an excluded job keeps its domain score in a grey row, links included. The TXT files stayed
-byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The AI prompts (user decision: universal for any AI chat, they replace the skill for
-normal use; `export/ai_prompt.rs`, external contract) address the assistant as "du" without naming a product and carry
-the whole rubric, the skill's method and the app's pre-assessment (superseded in detail by the decision "AI prompts",
-2026-09-25) and the profile without name, contact data, links and references (<= 8,000
-characters): `ai_prompt(key)` for a deep analysis of one ad (text <= 12,000 characters), `ai_prompt_top(limit 3..5)`
-for one comparison with a ranking of the best current matches (scored, not hidden, ad still online; pinned first, then
-by score), each ad text <= 6,000 characters, the prompt says where one was cut.
+Every new job's ad is fetched and scored by the matching engine. The list sorts by match, date or day rate.
 
-### Schema 5 (places like mail, the favourite, delete for good, "fits anyway"; user decisions 2026-09-24/25)
-Schema 4 is on main, so this is its own step (`migrate_4_to_5`, frozen fixture `core/tests/fixtures/schema_v4.sql`):
-`hidden_at` is renamed `archived_at`, new nullable `override_include`, `mail_version` and `trashed_at`, every schema 4
-mark (an application status, the pin) becomes the favourite (`app_status = 'saved'`), the `note` column stays unused,
-and a `tombstone(portal, job_id, deleted_at)` table. Email model (user decision 2026-09-25): every job is in exactly
-one place, Jobs (the inbox; `inbox` in code), Archiv or Papierkorb (trash; `trashed_at` wins over `archived_at`); the favourite (the star,
-`set_pinned`) is a flag of its own; no stages, no follow-up, no note. `move_jobs(keys, to)` moves; `restore_jobs(keys)`
-("Wiederherstellen") puts a job of the trash back where it lay, the archive or the inbox, like Mail; `purge_jobs(keys)`
-("Endgültig löschen", only from the trash) and `empty_trash()` delete rows (with the duplicates that stand for them)
-and their TXT files, rewrite the overview and leave the tombstone, so a scan of an old alert mail never imports them
-again (the dry run deletes in its database only); `empty_trash` empties the whole trash like Mail, whatever the search,
-and `Deleted{count, keys}` says how many and which. `move_jobs` returns the keys that really moved; `move_back(jobs)`
-(the undo of a toast) puts each job back with its earlier times (the trash keeps its date, the inbox its age). At the end of every
-run inbox jobs that are no favourite archive themselves after `autoArchiveDays` (default 30, 0 = off; the age counts
-from the last time the user moved the job into the inbox, `inbox_at`, so her choice stands), and the trash empties itself after `autoEmptyTrashDays`
-(default 30, 0 = off; also at the start of the app). The Excel sheet, the HTML overview, `top_matches.json` and the
-best-matches prompt take only inbox jobs; the HTML overview (two sections under the title "Übersicht": the inbox
-favourites, only when there are some, and always the app's "Neu und passend", at most 20 with one line for the rest,
-whatever run brought them) and `top_matches.json` follow a mark (move, star, "fits anyway", read) 2 s after
-the last one without a run (never during one: it writes them at its end), the overview is written again right before
-"Übersicht öffnen", the Excel file waits for the next run (its Info sheet says the app rewrites it, which a rescore, a
-details run and a delete for good do too). `set_override(key, include)`: an excluded job counts as scored with its fit
-score (note and first reason `userOverride`), every rescore keeps it, and `top_matches.json` lists it like a scored job
-with `userOverride` and the codes of the exclusion first in `checks` (the AI prompts build their own assessment, `PromptSource::load`);
-taken back, the job is assessed again at once.
-A list is a place plus an `unread` filter ("Neu", no day window) and a sort (by match, by date: the mail's, in the
-trash the day it went there, or by day rate); the counts per place (inbox, unread, archive, trash) come from the same
-statement and follow the search. The funnel's filter (`portal`, the exact `band`, `contracts`, the `workMode`; the
-same in every place) narrows the list and all its counts like the search. A job is read when it is opened (`mark_read`); there is no
-"all read" and no "unread again" (removed 2026-09-26).
-`top_matches.json` is schema 2 (`appStatus` "saved" for a favourite, the first sighting per job; the unread or
-favourite inbox matches of the last 14 days). The first mailbox scan reads 30 days.
-Whether the user has to act comes from the backend: `actionNeeded` in `PortalState` and in the `PortalHealth` event
-(a sign-in, or alert mails without jobs; a pause, a cap or pages without a description resolve themselves). Both
-prompts carry `core/src/export/ai_rubric.de.md` whole (its preamble names no product). Mail healing: `mail_version`
-(`mail::MAIL_PARSER_VERSION`, 2 since a collection mail no longer gives the next job's title as company, 3 since the plain-text link forms of Outlook and Apple Mail give the title); a job an
-older parser read takes the current reading when a mail names it again (with its page read, only a pair that reads like
-a job title gives way), and the first scan after an update reads back once to the oldest such job (kv `mail_healed:<portal>`, per portal: a portal switched off meanwhile reads back once it is on again;
-IMAP read-only).
+## Sources
 
-### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
-Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore})` (a fetch reads the range of the setting `fetchRange`) · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest|rate, search?, portal?, band?, contracts[], workMode?, run?, limit, offset}) -> JobPage{jobs, counts{inbox, archive, trash, excluded, excludedArchive, excludedTrash}}`
-(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `unread` = the new jobs, not opened and not excluded (the row's dot, in every place), `contracts` are `KeyFacts.contract` codes, empty = all; `workMode` = remote, hybrid or on site by the stated remote share, else the location's work mode; `run` = the new jobs of that fetch, the ones its toast counts) · a list row (`JobView`) says `hasMail` for "Alert-Mail öffnen" in its menu ·
-`job_detail(key)` · `mark_read(key) -> bool` ·
-`move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
-`set_override(key, include) -> bool` ·
-`purge_jobs(keys) -> Deleted{count, keys, exportError?}` · `empty_trash -> Deleted` ·
-`ai_prompt(key) -> string` · `pick_profile -> ProfileDraft?` ·
-`profile_prompt` · `save_profile(ProfileSave{before, after, source?, clear[]}) -> ProfileInfo` ·
-`remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `answer_close(close)` (the question while a fetch runs) · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
-`pick_workspace` · `open_target({jobUrl|gmail|alertMail{gmailId}|portalHome|appPasswordPage|twoStepPage|dataDir|workspace|profileDir|excel|csv|excelInFolder|excelBackupInFolder{name}|txtDir|logDir})` (a Gmail link names the mailbox's account; `excel` and `csv` are not found while switched off and are written fresh before they open; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
-`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `export_data` · `import_data` (the data file, `store/bundle.rs`; both removed 2026-09-27, see the list below) · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
-Rust triggers `rescore` itself (after pick/remove profile, at start, after an engine update, if pending > 0; pending = 0
+- Searched by the app: Hays, freelancermap, Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x, FRATCH.
+  Their public search, as their robots.txt allows (read at run time, kept a day in `policy.json`).
+- By alert mail: LinkedIn and freelance.de. A job link of any other source in an alert mail is read too.
+  LinkedIn is never searched or scraped beyond the links in the user's own alert mails.
+- Every source can be switched off (Einstellungen > Suche, Postfach). freelance.de can sign in through its
+  own window (`session.rs`), so the fetch reads ads that need a sign-in.
+- Deep search: up to 24 terms from the profile (`profile::deep_search_terms`: Wunschrollen, Schwerpunkte,
+  the proposed or stored Suchbegriffe). Each term is paged while new jobs come, up to 10 pages on Hays,
+  freelancermap, Michael Page and GULP. A cut-short paging resumes at the next fetch within 7 days.
+  SOLCOM, interim-x and FRATCH list all their projects; the app filters them. A title pre-score that knows
+  the target roles orders what is fetched first.
+- Conservative and polite: every request goes through `admit` (`fetch/policy.rs`). Search sources run at
+  2.5 to 5 s, capped at 300 an hour and 1,500 a day each, never below robots.txt's Crawl-delay. A source
+  stops on 429, 999, 403, a captcha or a login wall. Captchas and 2FA are never bypassed.
+- Rejected for good: jobs.ch, karriere.at, eFinancialCareers and StepStone (their terms forbid automated
+  access); Robert Half and Etengo (almost no interim or project roles); web search APIs; the Bundesagentur.
+- Jobs that several sources bring merge into one (`dup_of`); "Gefunden" names every way it came.
 
-`list_profiles` · `switch_profile(id)` · `create_profile` · `duplicate_profile(id, name?)` · `rename_profile(id, name)` · `delete_profile(id)` · `restore_profile(id?)` · `load_profile` (each but `delete_profile` and `restore_profile` answers `ProfileEntry[]`; `AppState.profiles` lists them too) · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
-`pick_workspace` · `open_target({jobUrl|gmail|alertMail{gmailId}|portalHome|appPasswordPage|twoStepPage|dataDir|workspace|profileDir|excel|csv|excelInFolder|excelBackupInFolder{name}|txtDir|logDir})` (a Gmail link names the mailbox's account; `excel` and `csv` are not found while switched off and are written fresh before they open; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
-`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
-Rust triggers `rescore` itself (after a save, a switch or a deletion of the active profile, at start, after an engine update, if pending > 0; pending = 0
-without a usable matcher); nothing else runs on its own.
-Events on channel `run` (struct variants, each < 8 KB): `Started{kind}` (first event of every run, also of the runs Rust
-starts itself) · `Progress{step: scan|fetch|score|export, portal?, done, total}` ·
-`Status{code, portal?, until?}` · `Alert{portal, subject, date, postings, gmailId}` · `JobUpdated{job, fresh}` (fresh = first seen in this run) ·
-`PortalHealth{portal, health, actionNeeded}` · `LoginNeeded{portal, waiting}` ·
-`Finished{summary{kind, perPortal[{portal,new,known,dup,fetched,failed}], newJobs{count, high}?, score{scored,excluded,unscorable,pending,best}, export{overviewXlsx?, overviewCsv?, backup?, txtWritten, txtFailed, error{kind, params.target: workspace|txtFolder|txt|overview|backup|csv}?}, stops[], emptyAlerts[]}}`
-(`newJobs` of a mailbox run: first seen, not a duplicate, not excluded; `high` of those; the export never fails a run but names what it could not write).
-Types: `JobView{key, portal, title, company, location, workMode, mailDate, firstSeenAt, unread, detail, short, closed, match{score, band, status, note, mustMet, mustTotal, top[], facts}|null, alsoOn[], place: inbox|archive|trash, trashedAt, overridden}` ·
-`JobDetail{job, text, url, fetchedAt, mail{subject, gmailUrl}, match{score, status, band, rev, at, summary, reasons[<=40], highlights[<=200], criteria[]}|null}` ·
-`Reason{id, kind: met|partial|open|violation|check, weight: must|nice|hard|info, code, label, evidence{profile, path, via, quote}|null, params, ranges[]}` ·
-`Highlight{id, start, end (UTF-16), kind, reason}` · `ProfileInfo{fileName, bytes, savedAt, quality: good|thin|empty, understood{competenceCount, competences[], sources[], criteria[], warnings[], packs[], years, degrees[], focus[], roles[], wishes}, scoredAt, pending, form}` ·
-`ProfileForm` (the editor's fields, `core/src/profile/form.rs`) · `ProfileDraft{form, source, quality, understood}` ·
-`PortalHealth = ok | paused{until, reason} | quotaReached{until} | layoutSuspect{emptyMails, pages} | loginRequired` ·
-`AppState{platform, version, dryRun, demo, firstRun, setupDone, running, settings{workspace, workspaceIsDefault, excelPath, excelExists, csvPath, csvExists}, mailbox, profile, portals[{portal, enabled, login, loginEnabled, signedIn, health, actionNeeded, quota{usedHour, capHour, usedDay (since local midnight), capDay}?}] (Portal::ALL order), fetchRange: sinceLast|days7|days30|all, exportExcel, exportCsv, language, palette, lastRun (the last fetch, never a rescore or details run), counts, matchPending, dataDir, logDir, resetReport?}` ·
-`CommandError{kind, params}`. Traits: `pipeline::score::Matcher{rev, assess}` · `portal::PortalAdapter` · `matching::prescore`.
+## Matching
 
-### Matching engine (`core/src/matching`, pure, synchronous, integer only)
-Modules: mod, params, types, lexicon/ (external contract), normalize, profile, job, sections, requirements, atoms,
-ladder, fit, facts, ad_facts, signals, criteria, contract, permanent, seniority, focus, roles, wishes, relevance, engine,
-score, explain, legacy, pyre.
-- Profile compiled once: core phrases with JSON path, languages + level, degrees, total years, criteria, quality
-  (empty => not scored). Profile keys stay German (the existing profile format); English aliases also understood.
-- Requirements: sections (V5), 3 stages (V16), UND splits / ODER = alternatives (V6), kinds skill/formal/language/years/soft/frame (V7).
-- Match ladder: exact · stem · synonym/bilingual = 1.0 · profile more specific = 1.0 · profile more general = 0.5 ·
-  2/3 rule (>= 3 atoms) = 0.5 · no semantic step (embeddings dropped; the `Embedder` seam stays). Generic atoms never
-  count alone.
-- Weights: must 1000, soft 250, frame 0; nice by count. `M = sum(w*e*500)/sum(w)`, `K = sum(e*500)/n_nice`,
-  `P = must ? (nice ? (3M+K)/4 : M) : K`, evidence `n = sum(w_must) + 500*n_nice`, relevance `R = min(1000, R_lex + T/2)`
-  (BM25F-like: title x3, requirements x2, rest x1, k1 1.2, b 0.75, fixed length 2400, static specificity),
-  shrinkage `P' = (n*P + k*R)/(n + k)`, k = 2000 (calibrated, frozen per ENGINE_VERSION), `score = round_half_even(P'/10)`.
-- Status: excluded if >= 1 decided violation (score kept, ring shows no number) · unscorable if too little text · else scored.
-  Band only via `model::band`: >= 80 high, 40-79 mid, < 40 low.
-- Order: `(match_status IS 'excluded'), (match_status IS 'scored'), closed, score DESC, rank DESC, mail date DESC, portal, job_id`,
-  score and rank of scored jobs only (the jobs whose ring shows no number first, not scored yet and unscorable together,
-  newest first: the list's "Noch ohne Passung" on top, so every page it loads is complete; the excluded ones, whose ring
-  shows the ban, newest first; UI sweep 2026-09-29).
-- Hard criteria (no threshold in code, missing key = inactive). Decided only on clear wording, otherwise `check`:
-  ANUE (named, not negated, not optional) · country (location field/line/on-site sentence/facts, remote not full) ·
-  day rate (EUR, upper bound, hourly x8, no clear permanent role) · availability gap is a check only (`availabilityGap {days}`, never an exclusion; decided after the corpus review) ·
-  day-rate fallback `einsatzpraeferenzen.tagessatz_ab` kept (old behaviour) · status precedence excluded > unscorable > scored · permanent position detected = check only.
-- Scored at `JobUpdated` (rings appear live) + catch-up `Step::Score` (pages of 250) + `rescore` run.
-- `legacy_percent()` reproduces the old path for parity tests only.
+The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSION` 18) reads the profile
+and the ad:
+- **Exclusions:** contract types (Zeitarbeit, Festanstellung), exclusion words, countries, the minimum day
+  rate, permanent-role rules.
+- **Requirements:** must-haves and optional ones, each met, partly met or not met against the
+  competences, tools, languages, degrees, certificates and years of experience.
+- **The rest:** Schwerpunkte, target roles and wishes (rate, remote share, regions, industries,
+  availability, workload, duration).
 
-### Evaluation
-- Synthetic corpus in CI (both OS): six profiles (fin, it, senior, sap, wish, wishSap), K01-K58 in TXT contract format,
-  `corpus.json` with bands/status/codes fixed BEFORE building (reviewed by an independent agent), `legacy.json` frozen
-  once by `tools/eval/legacy_baseline.py` (old matcher via `git show ca9a2cd^`); held-out sets 1 to 8 as regression
-  corpora with frozen floors (`matching_heldout.rs`).
-- Private gold set (ignored, never committed): real local ads + real ads fetched by normal app runs from the owner's
-  alert mails; three realistic composite profiles modelled on real consultant CVs (interim CFO/controlling, SAP FI/CO
-  consultant, IT project lead; no real person, user decision 2026-09-24); the primary one is modelled on the skill
-  rubric, which belongs to Katharina (very senior, ~30 years, Diplom-Kauffrau, interim >= 1000 EUR/day, permanent >= 150k,
-  DACH, Munich region for permanent roles); blind labels 0-3 by two Opus agents with the
-  skill rubric, a third breaks ties; old engine vs new engine vs labels. Not built (2026-09-25): the evaluation used
-  eight blind held-out sets of invented ads instead (two labelers and an arbiter each, 192 to 960 pairs per set);
-  `export_gold`, `match_eval` and `core/tests/gold_eval.rs` are ready for real ads.
-- CI gates: 35 old tests (one documented deviation: `1.200,50`) · `legacy_percent == legacy.json` · per job
-  distance(new) <= distance(old), sum strictly smaller · decided exclusions 0 wrong / 0 missing · same golden digest on
-  Windows and macOS · median <= 0.5 ms/job, 2000 jobs <= 3 s incl. SQLite.
-- Private gates (reported "preliminary" if n < 60): exclusion precision 100 %, recall >= 80 % · NDCG@10 >= 0.75 and
-  >= old + 0.10 · P@5 >= 0.8 and >= old · no grade-3 job below 40 · high-band precision >= 0.8 ·
-  Spearman over the relevant pairs >= 0.50 and > old · concordance 0v3 >= 0.95, 0v2 >= 0.85, 1v3 >= 0.80, 2v3 >= 0.70 (these replace the pooled Spearman >= 0.55, see docs/MATCHING.md).
-- Prescore order only if AUC >= 0.7: 0.906 on the held-out labels (2,824 pairs of sets 1 to 7, tuned sets, 2026-09-25;
-  `docs/MATCHING.md`), so the fetch queue follows `matching::prescore`.
+It gives a score of 0 to 100 in three bands, or an exclusion with its reason. An excluded job can be
+scored anyway ("Trotzdem bewerten"). Measured on a corpus and on held-out sets of invented ads
+(`docs/MATCHING.md`). The copied AI prompt ("Prompt kopieren") hands a job, the profile and the engine's
+pre-assessment to any AI chat for a deeper check.
 
-### Scraping and sign-in
-Per portal: Active · Fetch details (off = zero requests to the portal) · Sign in (freelance.de only, default off).
-No risk grades (user, 2026-09-25): each switch says in one sentence what it does. Limits per hour / day: LinkedIn
-30 / 80 (pace 4-7 s), freelancermap 40 / 120 (3-5 s), freelance.de 20 / 60 (10-20 s plus 8-20 s dwell in the session
-window). Always on: only alert-mail links, `admit` for every request, Retry-After honoured, stop and
-pause on 429/999/403/captcha/login wall, never bypass captcha/2FA, never an unasked login window.
-S1 PortalHealth + per-portal empty-alert warning · S2 freelance.de teaser · S3 `desc_facts` · S4 PortalAdapter registry,
-`join_all` · S5 error kinds, PARSER_VERSION, requeue, Retry-After, constants in `policy.rs` · S6 freelancermap URL forms,
-SimHash duplicates · S7 prescore order · S8 two-phase IMAP · S10 UA passed from `platform.rs` · S11 codes, English logs with run id.
-Sessions: Windows `data_directory`, macOS `data_store_identifier` + `clear_all_browsing_data`; sign out deletes cookies,
-cache, profile dir, marker, then verifies `signedIn=false`.
+## Screens
 
-### UI
-- Shell (revised 2026-09-27, see Decisions "Top bar like Claude"): the app's top bar across the window (36 px on
-  Windows with the caption buttons, 44 px on macOS with the traffic lights), below it on both OS the sidebar (nav
-  Jobs · Profil · Einstellungen, the run status) and the white sheet. "Abrufen" next to the search in the
-  list column header. No menu (Windows), no gear icon. Closing during a run shows a short note until the run stops.
-  Every view switch is the same 100 ms cross-fade (new view on top, never an empty sheet); nothing animates at start;
-  `:root[data-window]` is 'inactive' while the OS window is in the background (selections grey out against it).
-  The sidebar run status shows only while there is a run to open, on one line as high as a nav entry, its glyph on
-  the nav icons' axis: Abgerufen, Fehler or Abgebrochen with the time today and the date on another day (the run
-  card has the time); it steps aside while the run card is on screen (in one column an open job hides the card, so
-  the status stays, and a finished fetch brings its toast). During the first run every view can be reached
-  (Einstellungen with the language, Profil); Jobs, Archiv and Papierkorb lead to the setup page, which no entry
-  marks as current, and leave the place of the list as it is. Closing while the app is busy names what it waits
-  for (a fetch, the details, a rescore, a sign-in, the files; `closing {activity}`), and so does the busy error
-  (`Busy {activity}`).
-- Sidebar (final round, user decisions 2026-09-25; superseded: the places are the tabs above the list since the
-  list header of 2026-09-26, and the sub-entries, the arrow and `--turn-quarter` were removed from SideNav on
-  2026-09-27; the sidebar holds Jobs, Profil and Einstellungen): under Jobs (the inbox) its two other places, Archiv and Papierkorb,
-  as quieter sub-entries (13 px, indented, a `role="group"` of their own) that the one sliding pill steps over. An
-  arrow at the end of the Jobs row (`places-toggle`, a button of its own, never inside the nav button;
-  no `nav-` test id, the smoke probe counts five), hides and shows them: chevron down, a quarter turn to the right while
-  hidden (`--turn-quarter`, 180 ms), the entries fade out where they are and the ones below then take their place (no
-  height animation); unfolded they fade in. The choice is kept (default shown, so the first start and the smoke probe
-  see all five), and at start it is simply there. While Archiv or Papierkorb is open they stay: the arrow waits
-  (disabled, its tooltip "Bleibt offen, solange du im Archiv bist."). In the icon rail they are 32 px squares right
-  under the Jobs icon, the arrow a slim row between them and a hairline after them, so they read as children of Jobs;
-  the pill shrinks onto them; the height fits 480 x 360 on both OS (harness). A click in the sidebar switches the view
-  first: an unsaved Profil may ask, and the place changes only with the switch (Abbrechen keeps both; Verwerfen or
-  Speichern goes to the place asked for); a click on the place that is open reloads nothing.
-- Folding the sidebar: dropped (user, 2026-09-25 evening: "nichts Überflüssiges"). The sidebar is the icon rail
-  only below 1100 px, by the window width alone; no edge, no key, no menu item.
-- The handle between the list and the reader: the list keeps 320 px (`--list-min`), the reader 440 px (`--reader-min`),
-  and the list takes at most 60 % of the content; the first width is 40 % of the content, at most 460 px
-  (`--list-first-max`). Limits and first width follow the window and the sidebar (`splitLimits`), a kept width that
-  does not fit shows at the limit and comes back once there is room. Only this handle resizes (the sidebar has none). No line: on hover a
-  grey 4 x 44 px grip (`--grip-width`, `--grip-height`) in the middle of the gap, darker while dragging, like Claude's; the
-  tooltip "Breite ändern" over "Doppelklick setzt zurück"; a double click sets the first width back.
-- Jobs: list header (the approved design of 2026-09-26): the tabs Eingang (its unopened jobs in coral, none at 0),
-  Archiv, Papierkorb; one toolbar row: the search, the funnel (inbox only) and Abrufen (the primary; Abbrechen
-  during a run); an active filter named in one quiet line under it with "Zurücksetzen"; the Archiv and the
-  Papierkorb keep a second row with their count, "Papierkorb leeren" and the order · left
-  column run card + list (86 px rows, 106 with a two-line title: ring 40, title with unread dot, meta, reason line,
-  date, status badge only on deviation; excluded grey behind the divider; duplicates as one row) · reader unboxed on
-  the sheet, at most 720 px (ring 56 counting up, band word, n of m must, the "Rahmen" chips for contract type and hard
-  criteria plus the ad's rate and start where no criterion covers them, reasons met/partial/open/check/violations;
-  hover lights the passage, click scrolls to it) · day overview when nothing is selected (Neu und passend with the
-  comparison prompt, Offene Punkte, Dateien; no counts; the blocks stand in the DOM as on screen; superseded: the
-  Übersicht is gone, with nothing selected the reader shows the place's empty state).
-  One list per place in the chosen order (no segments, no sections but the folded "Ausgeschlossen (n)" at the
-  end); an unopened job keeps its dot until it is opened. The keys count rows in the order the list draws them.
-  Wave 1 (2026-09-25): a placeholder waits once (the list or the job that takes
-  `--delay-placeholder` shows it, then at once; until then the pane keeps what it showed); the
-  selected row darkens one more warm step while pressed (`--surface-selected-press`, 93 %); a
-  detail state has one tone in the row, the reader and the run card (`DETAIL_WARNS` in
-  texts.ts); the reader's compact bar is for the pointer like a row's tools; the trash line
-  counts the days left.
-- Profil: the profile as a form (see Decisions "Profile editor" and "Profile page, final round"): head card (person,
-  quality, one line of what the app reads, keys it does not read, rescore, the file actions), the seven blocks of the
-  form and the reading, sticky save bar (Speichern only with a change, Verwerfen, once "Weiter zum ersten Abruf" during
-  setup for a profile that counts), a question before leaving or closing the window with unsaved changes; empty state
-  with the three ways in.
-- Einstellungen: Postfach · Automatisch (archive and empty the trash after 30 days) · Portale (switches with one
-  sentence each, health, pages used today, the meter only from 80 % or while paused) · Dateien · Darstellung (Farben,
-  Sprache) · Tastenkürzel · Wartung · Alles zurücksetzen (a card of its own, last). Superseded (2026-09-27): the
-  cards are Postfach · Portale · Export (Exportordner, Excel-Datei, CSV-Datei) · Darstellung (Design, Sprache) ·
-  Daten (Sicherung, Protokoll, Alle Daten); Automatisch, Tastenkürzel, Wartung and Dateien are gone. One list: the cards, their rows
-  and buttons are data (`features/settings/cards.ts`), the view only renders it. First run: full page with three
-  real, self-ticking steps, also one list (`features/first-run/steps.ts`).
-- All states per screen (first use, no profile, empty, loading, run, nothing new, no search hit, errors, offline,
-  portal paused, no details, teaser, unscorable, excluded). Feedback where the action happened; toasts only as in
-  Decisions "Toasts".
-- Tokens (`tokens.css`, `:root` is Coast; Light and Dark lay their blocks over it, see Decisions "Palettes"): palette from the brief (coral 13 73% 63%, navy
-  212 34% 37% with deep navy 212 30% 26% and washes 96/93/90/84 %, cream 32 33% 96%, ink 45 7% 17%, ...) plus shades
-  (coral-800 13 62% 42% for text, *-strong/*-soft for status; info is navy), semantic tokens only in components, score
-  colours (band words: high 152 50% 31%, mid ochre, low 30 4% 42%; the ring in ten steps by decile, see Decisions
-  "Score ring scale"), no decorative gradients or glow
-  (one gradient: the light of a loading placeholder); brand mark = the real coral app icon (folder + check) as SVG;
-  small shadows only for what floats (dialog, toast, tooltip) plus the static hover shadow on `::after`, none
-  animated; radii 6/8/10/12/16, 4 px spacing, controls 28/36/40, type 12/13/14 (tabs)/15/15/17/20/26/34 (UI standard
-  15/22; 11 only for the second line of a tooltip, a key or a hint), weights 400/500/600, motion 60/80 (hover-in)/100/150/180 ms, ring fill 360 ms, loop 1400 ms, ease-out and
-  `--ease-emphasized`, no stagger, no bounce; top bar tokens `--titlebar-height` 36 px (`--titlebar-height-macos`
-  44 px), `--titlebar-button-width` 46 px and `--traffic-lights-width` 80 px (checked against core's
-  `window::BAR_HEIGHT`, `CAPTION_BUTTON` and `tauri.macos.conf.json`), its colours `--titlebar-*` in every palette.
-- 35 components (Badge, BrandMark, Button primary|secondary|ghost|danger|link x sm|md|lg, Card, Chip, ChipInput,
-  Count (soft|plain), Dialog, Disclosure, EmptyState, Field, Icon, IconTile, JobRow,
-  ListRow, MenuButton (opens the OS menu), Meter, Notice, ReasonItem, ScoreRing, Segmented, SelectionBar, SettingRow,
-  SideNav, Skeleton, Spinner, Splitter, StatTile, StatusLine, TextArea, TextField, Toast, Toggle, Tooltip,
-  WindowButtons (the Windows caption buttons of the top bar, 2026-09-27)). Not: select, checkbox, radio, a page-drawn
-  context menu. Superseded (2026-09-27): Chip, SelectionBar, StatTile and StatusLine are gone; the design system is
-  the 37 files of `ui/src/components/` (Calendar, ListDivider, Menu, RadioList, Suggestions and Tabs came since).
-- Motion: only transform/opacity (colour on hover); shadows/glow on `::after` via opacity; whole-pixel end values;
-  <= 10 staggered, <= 10 rings animating, FLIP <= 100 rows else cross-fade; reduced motion via `motion.ts`.
-  Since "cxpertise navy": hover-in `--dur-hover` 80 ms on the :hover rule, hover-out 150 ms on the base rule, press
-  60 ms with `--scale-press` (0.98, buttons only; everything else darkens), `--ease-emphasized` for everything that
-  slides or settles; transforms on HTML
-  wrappers, never on SVG children; one-shots only from event handlers or a mounted previous-value compare; every
-  scale, move and turn token has a neutral reduced-motion value (a half turn keeps its angle). Two height
-  animations: a job moved out of the list folds its row away (`rowCollapse`, 150 ms, one contained row; not for
-  filtering; instant under reduced motion), and the list's selection bar takes the height of the row it slides to
-  (`barSlide`, a 3 px box out of the flow). Results of the same kind within 2 s merge into one toast with one undo.
-- Performance (2026-09-25, the list at 2000 jobs): no task over 50 ms on the reference machine (the development machine
-  at 4x CPU throttling; the harness slows every machine to it; project `timing`, alone after the others). A row builds
-  only what shows at rest (its tools exist under the pointer or the focus; icons are copies of one drawing per glyph);
-  nothing on :root or a large container changes with scrolling or hover (hover rests per row, `data-still`); no style
-  or layout read in the middle of a script (transitions and sentinels read nothing, glides read every box before they
-  move one); a reload keeps the rows that did not change and builds at most a chunk of new rows per frame; another list
-  is a new generation of rows. The harness stub answers IPC in a task of its own, like Tauri.
-- Consistency: stylelint (no hex/named colours, no colour functions/units outside tokens, strict values, allowed
-  transition properties, keyframes only in motion.css) · ESLint (no inline styles, raw elements only in components,
-  restricted imports, no title attribute, no empty catch, listeners only in input.ts) · Rust architecture tests ·
-  gallery · Playwright screenshots in Chromium + WebKit against `vite preview` with production CSP · per-screen audit.
-- Input policy: prevent the browser context menu everywhere (the native OS menu with the OS edit commands only in
-  text fields and on selected copyable text, via `popupEditMenu` in api.ts), non-left buttons, dblclick outside drag area, dragstart, selection
-  outside fields, keys outside fields (except Tab, Space on buttons, switches and radios and Enter on
-  buttons, see Decisions "Keys"), Ctrl/Cmd+wheel
-  (a wheel listener only while Ctrl/Cmd is held), pinch. Native: WebView2 switches, macOS minimal menu,
-  `accept_first_mouse`, no link preview, devtools off in release, navigation guard, window shown after first load.
-  Native keys beyond the shortcuts (OS conventions, not own shortcuts; 2026-09-25): Tab passes disabled
-  controls; in a radio group (the segments) Home and End choose too; Shift+ArrowUp/ArrowDown and
-  Shift+Home/End extend the choice of jobs from the open one like Explorer and Mail (no Ctrl/Cmd+A); with
-  the focus nowhere the arrows scroll the pane clicked last by a line (`--scroll-line`) and Home/End to its
-  top and end (Einstellungen, Profil), and after a click into the reader they scroll the reader instead of
-  switching jobs, like the message of a mail app (a click in the list gives them back); Space on the open
-  job's row pages through the reader.
+- **Jobs:**
+  - The places Aktuell, Archiv, Papierkorb as tabs. The fetch with its way menu (a chevron) at the right,
+    "Papierkorb leeren" in the Papierkorb.
+  - The search over every word, and the funnel: the order Übereinstimmung, Datum or Tagessatz; the filters
+    Quelle, Übereinstimmung and Gefunden (Heute, 7, 30 Tage).
+  - One row height. A row holds the ring, the unread dot, the title, the company, the place, the pay and the
+    date. Excluded jobs stand behind a divider.
+  - The job view, right of the list or in place of it when narrow:
+    - The head: the title, Archivieren and Löschen as icon buttons, close.
+    - The ring with its band words, then the actions: "Trotzdem bewerten" for an excluded job, Anzeige
+      öffnen, Alert-Mail öffnen (only for a job a mail brought), Prompt kopieren.
+    - The Jobdetails table with the verdict icons, the Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
+      erfüllt; a missing term goes into the profile with a plus) and the ad's text.
+  - Moves have an undo toast. Delete for good stays in the Papierkorb.
+- **Profil:**
+  - Several profiles, one active. The title's menu holds the profiles, Neues Profil, Duplizieren,
+    Umbenennen (in the title) and Löschen. A new profile starts on a page with three ways: Leer anfangen,
+    Datei hochladen, Prompt kopieren (the prompt has any AI hand back the profile as a file).
+  - Name and Rolle under the title. The tabs:
+    - Wünsche in groups with headings: Rollen und Suche, Tagessatz, Ort, Zeit, Branchen.
+    - Können: Kompetenzen with Schwerpunkte as stars, Werkzeuge, Stichworte, Stärken.
+    - Erfahrung: years, Branchen, Sprachen, Abschlüsse, Zertifikate.
+    - Ausschlüsse: words, Zeitarbeit, Festanstellung and its rules.
+  - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's
+    JSON in the work folder (`profil/`), keeping unknown keys, with one backup.
+- **Einstellungen**, on tabs like the Profil:
+  - Suche: the eight search sources, each a compact row with its tile, the calls of today, open in the
+    browser and a switch.
+  - Postfach: the account card (mail tile, the address, "Verbunden" after a green dot, Ändern, Entfernen),
+    under it the card of the alert sources (sign-in where offered, then "Alert anlegen").
+  - Daten: the work folder (Ändern, Öffnen) and "Alle Daten zurücksetzen".
+  - Darstellung (palette and language) is hidden for now (`LOOK_SHOWN`).
+- **Erste Schritte** (until the first completed fetch): 1 Profil, 2 Postfach (optional, only the alert
+  mails need it), 3 the first fetch in the words of its way.
+- **Shell:**
+  - One top bar like the Claude app's (`CLAUDE.md`). The sidebar has Jobs, Profil and Einstellungen; it
+    docks or folds, folding by itself below 1100 px. Zurück and Vor walk the views, places, jobs and tabs.
+  - The app's own menus, toasts (at most three, bottom right) and tooltips.
+  - A start whose data cannot load offers to restore a daily copy of the database.
+- **Demo and dry run:** `CXact Demo.exe` (`--features embedded-demo`) starts on a fresh demo folder with
+  made-up jobs and asks no source. `--dry-run` changes nothing outside its own data.
 
-### Platforms (documented differences only)
-Inside the window both OS show the same app; these differ by OS convention (UI: `ui/src/lib/platform.ts`, native:
-`src-tauri/src/platform.rs`): the window buttons in the one top bar (Windows: no native title bar, the app's caption
-buttons at the right and the caption window of `platform.rs` that moves the window, opens the system menu and the
-snap layouts; macOS: the native traffic lights at the left, 16 px in and centred) and the bar's height (36 px on
-Windows, 44 px on macOS; below it the same app) · dialog buttons (Windows: action first; macOS: cancel left, action
-right) · scrollbars (Windows: slim styled, their room kept by every view, the list, its header and the reader
-whether they scroll or not, so no edge and no column moves between a short and a long page; macOS: native overlay
-scrollbars, which take no room) · middle-button
-autoscroll (Windows; macOS has none) · words for OS things (Explorer / Finder, Anmeldeinformationsverwaltung /
-Schlüsselbund) · the command key of the app's shortcuts and how a shortcut is written (Strg vs. Cmd) · menu (none vs.
-minimal App/Edit/Window) · font smoothing on macOS · keychain vs. credential manager
-(same code) · a text field's menu (Windows: Undo | Cut, Copy, Paste, Delete | Select all;
-macOS without Undo and Delete) · session storage API · reveal in folder (`explorer /select` vs. `open -R`) · per-OS user agent
-· the back key where a view has a way back (Windows: Alt+Left; macOS: Cmd+[ or Cmd+Left; the mouse's back button on
-both) · Edit > Undo of the macOS menu runs the app's undo outside fields · key names in texts (Strg+Klick vs.
-⌘-Klick, ⇧-Klick) · the start dialog speaks the OS language (German or English). Build target Safari 17; forbidden: View Transitions, `@starting-style`,
-`scrollbar-gutter`, `content-visibility`. Windows: NSIS currentUser, German installer, downloadBootstrapper.
-macOS: Apple Silicon only (M1 and newer, since 2020; user 2026-09-24), ad-hoc signed, minimum 14.0; the icon targets the macOS 26 (Tahoe) Dock look.
+## Decisions that hold
 
-## Phases (tick as you go)
+- **Look:**
+  - One palette shown, CXact (cream window, white sheet, the coral #E67A5C of the icon and cxpertise.de
+    for what acts or is new, a richer cxpertise navy 212 50% 36% for headings, what is chosen, links and
+    focus). Light and Dark wait behind the hidden Darstellung.
+  - Warnings and successes take the score rings' yellow and green for their signs and dots, their words
+    stay ink.
+  - Five ring colours from red to green by 20 points.
+- **Icons:** Lucide only, by meaning (`ui/src/lib/icons.ts`, one glyph per meaning and one meaning per
+  glyph). The stroke is 2 of 24 units, so it grows with the icon. Sizes: 15 px in the content and the top
+  bar, 19 in the sidebar.
+  - The top bar shows panel-left and panel-right at rest; under the pointer, the panel close or open glyph
+    of what a click does. arrow-left and arrow-right.
+  - In the job: Öffnen is the open book, Alert-Mails lesen the open envelope, Trotzdem bewerten the plain
+    plus.
+- **Controls:** one button height, 28 px (only a button inside a field is lower), at most one primary per
+  view. Menus open from a chevron button. Motion stays at 180 ms or less, ease-out, no bounce.
+- **Texts:** the rules in `CLAUDE.md`. German first (`de.ts`), English mirrors it (`en.ts`). The fetch's
+  words are "Jobs suchen" and "Alert-Mails lesen"; the first place is "Aktuell".
+- **Data:** SQLite in the OS app data folder (schema 7, a chain of migrations); the settings file stays
+  readable across versions (`core/tests/settings_compat.rs`). No real users yet: old local data may be
+  dropped with a new version. The app writes no files of jobs; its work folder holds the profiles.
+- **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`;
+  the backend sends codes and params, never prose; run events stay under 8 KB.
 
-### Phase 0 - rescue, clean up, context
-- [x] Cherry-pick the bare-URL title fix (c9a78ba)
-- [x] Rescue matching corpus to `core/tests/fixtures/matching/` (`sample_profile.json`, `corpus/K01-K30.txt`)
-- [x] Save schema-3 draft, stash and CI v5 commit as patches (scratch), remove 4 worktrees, stash, old branches
-- [x] Archive `.notes` outside the repo, `cargo clean`, remove `__pycache__`, English `.gitignore`
-- [x] `CLAUDE.md` and this file
-- Done when: worktree list = main, stash empty, branches = main, `cargo test --workspace` green.
+## Platforms (documented differences only)
 
-### Phase 1 - contracts and foundation (parallel tracks)
-- [x] 1a Contract (merged ab97def; deviations: DetailState.failed={attempts,retryAt}, paused.until nullable, extra OpenTarget variants, app_state(channel) + RunSnapshot; PortalAdapter/prescore still open): IPC v3 in `view.rs` + ts-rs; codes for notices/errors/status; RunEvent v3;
-      `RunRequest.kind`; new command signatures; `Matcher` trait with empty score step; `PortalAdapter` trait +
-      `prescore` signature; `PortalHealth`; split `store.rs` into `store/{mod,schema,jobs,matches}.rs`; schema-3 column
-      list; prose out of core; split `commands.rs`; `contract.rs` reads `.ts`.
-      Done when: types generated and `git diff` clean, `contract.rs` green.
-- [x] 1b UI foundation (merged 587dbec): package.json, Vite, Svelte, TS; tokens/base/motion css, motion.ts, input.ts, api.ts, i18n;
-      shell (title bar, tabs, caption buttons); gallery with token boards; Playwright against `vite preview` with
-      production CSP; lint setup; new `ui_contract.rs`; old `ui/*` removed.
-      Done when: `npm run check` green; a planted hex value, px value and raw `<button>` each turn lint red.
-- [x] 1c Platform and delivery (merged 92669ef; macOS parts verified only by CI): tauri.conf (withGlobalTauri false, freezePrototype true, frontendDist `../ui/dist`,
-      beforeBuildCommand, hidden window + light theme), `tauri.windows.conf.json` (NSIS), macOS minimum 14.0,
-      `platform.rs`, smoke on `data-testid`, `rust-toolchain.toml`, English CI with `tauri build` on both OS,
-      macOS dmg install probe with screenshot, no public release.
-      Done when: release app starts on Windows and in macOS CI without CSP violation; CI ships setup.exe + dmg.
-- [x] 1d Evaluation base + port (merged 9c8279f; 35/35 old tests, 80/80 legacy.json, 27/27 edge cases, 12/12 local real ads): corpus to K40 + second profile, `corpus.json`, `legacy_baseline.py` -> `legacy.json`
-      FIRST; `eval.rs`; port "v3-equal" with `legacy_percent`; `matching_legacy.rs` (35 tests).
-      Done when: fidelity 31/18/11/7/6/0 reproduced, 35 old tests green (1 documented deviation),
-      `legacy_percent == legacy.json` for all K, clippy clean.
-
-### Phase 2 - core work (parallel, disjoint files; contracts frozen)
-- [x] 2A Matching better (merged 9c8279f; in band fin 17->38/40, it 30->39/40, band distance 491->3 and 188->1, ~0.25 ms/job): V5, V6, V3, V2, V1, V4, V15, V7, V9, V8, V16, V10-V13, decided/check model, V17, V18, V19,
-      explain.rs, prescore - one commit each with corpus guard; calibrate, freeze.
-- [x] 2B Store, runs, export (schema chain to 5 + WAL; save_match(es), mark_read, set_pinned, job_page; alsoOn;
-      freelance.de guest teaser; LocalMatcher, scoring at JobUpdated + catch-up, Rust-triggered rescore and auto fetch
-      after 6 h; settings (portal switches, autoFetchOnStart, autoArchiveDays, autoEmptyTrashDays); profile summary;
-      Excel grey header and grey excluded rows, no mail address on the Info sheet; HTML overview; TXT byte tests; demo
-      with high/mid/low/excluded. Dropped by later decisions: the template, the Excel status column)
-- [x] 2C Components (merged 587dbec; 78 harness tests, both engines): all 23 with variants, states, motion; complete gallery; baselines.
-- [x] 2D Scraping and sign-in (session delete, macOS data store, no unasked sign-in window, keychain test already merged with 1c): S1-S11; switches honoured in the fetch path; optional sign-in with risk note; delete
-      session per portal (macOS `data_store_identifier`); keychain test on macOS; dead code list.
-      Done by the integrator: `AppBackends::prescore` -> `matching::prescore` with the profile; `commands/mod.rs` uses
-      `sync::lock`. Done since: exports list no duplicate rows (Excel sheet, one text file
-      per job); the automatic queue fetches only what the lists show as active (inbox and favourites, never the trash
-      or a duplicate), the rest says "Details auf Anfrage".
-      Done when: 26 fetch tests + new (4th test portal via registry only, health, teaser, Retry-After, requeue, slug
-      URL = same id, duplicate group, IMAP loads candidates only, details off => zero portal requests, sign-out
-      verified on both OS).
-- [x] Integration: engine wired (LocalMatcher, rescore, job detail, profile summary, template, top_matches.json), scraping merged, prescore orders the fetch queue; engine v3 with the skill rubric, domain packs and aliases (in band 49/51/49/51 of 52 for the four profiles). A + B done (LocalMatcher, Rust-triggered
-      rescore, reader recompute, profile summary, template, demo on the real engine, `auswertung/top_matches.json` for the
-      skill as optional stage 2; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone); D done (the fetch queue follows `matching::prescore`).
-- [x] Engine v4 (`docs/MATCHING.md`): Schwerpunkte, target roles and wishes (bounded, never an exclusion, no lift
-      into the high band while fewer than half of the musts are met); fixes of held-out sets 1 and 2, now regression
-      corpora with frozen floors (NDCG@10 0.822 to 0.930 and 0.632 to 0.805); criteria met only with the ad's value
-      as evidence, key facts on `JobMatch`; one German rubric for the Claude check and the skill
-      (`core/src/export/ai_rubric.de.md`). Open: the honest check on held-out set 3.
-- [x] Engine v6: the gaps of the unseen held-out set 3 fixed as general rules (rates next to a currency, reading
-      noise, English language names, texts without requirements, generic heads, a tie-breaker, student roles);
-      set 3 is a regression corpus (NDCG@10 0.618 to 0.950). Open: the unseen check on held-out set 4.
-- [x] Engine v8: the gaps of the unseen held-out set 4 fixed as general rules (fine-print facts, teasers and
-      titles, reading noise, one open skill under a foreign title, junior roles, vocabulary); set 4 is a regression
-      corpus (NDCG@10 0.688 to 0.808, exclusion recall 0.832 to 0.988). Open: the unseen check on held-out set 5.
-- [x] Engine v9: the set-5 fix bundle ported as general rules (languages a light fit, the relevance query holds the
-      field, portal leftovers, industries no function, entry-level musts, leading titles, salary chips and bonus,
-      every years minimum is the target); set 5 is a regression corpus (NDCG@10 0.694 to 0.819, exclusions
-      0.980 / 0.943 to 0.988 / 1.000). Open: the final unseen check on held-out set 6.
-- [x] Engine v10: general bugs of the unseen held-out set 6 (country of the on-site clause, particle words are no
-      Führung, shared objects of split lines, stated permanent roles with a comma and denied interim wording, the
-      linking s, teaser caps and other-field compounds); set 6 is a regression corpus (NDCG@10 0.843 to 0.909,
-      exclusions 0.929 / 0.939 to 0.989 / 0.994). Open decision: the wage of temporary agency work (day rate or pay).
-- [x] Domain packs for every field: hr, procurement, data, pharma, operations, sales, legal, software (held-out 2
-      NDCG@10 0.805 to 0.862). Open: synthetic corpus ads and profiles of the new fields.
-
-### Phase 3 - screens and core workflow (two UI agents)
-- [x] Jobs (toolbar, run card, list with progressive rendering, reader with reasons and highlights, day overview)
-- [x] Shell, Profil, Einstellungen, first run; all states; texts only from `de.ts`; `mark_read` only on a real click
-- [x] Profile editor (form over the profile JSON, merge with one backup, Claude answer, chip fields, Schwerpunkte,
-      wishes; 17 harness scenarios in both engines, baselines `profile`, `profile-empty`, `profile-paste`)
-- [x] Profile page, final round (track C, see Decisions): values that do not read at their field with "Wert entfernen",
-      English keys written where they are, the first five of more Schwerpunkte, money with cents, refused values at their field,
-      remote switch under the countries, availability as its own block, Festanstellung excluded (engine 11), close
-      guard, remove with undo, head actions, reading block, local quality, drafts with warnings, CV prompt with wishes,
-      criteria and stations, no pack names in the UI (removed 2026-09-27, never shown); harness `profile.spec.ts`
-- [x] >= 30 harness scenarios (200 in Chromium + WebKit after the polish round) in Chromium + WebKit; screenshot baselines; smoke probe of the real app
-- [x] German and English (see Decisions "UI language"): `en.ts`, reactive `t`, locale-aware `format.ts`, Sprache in
-      Einstellungen, exports and prompts in both languages; `ui_contract.rs` checks both catalogs (punctuation,
-      glossary, no German in English), `rust_texts.rs` the English Rust texts, `rubric.rs` the English rubric;
-      harness `language.spec.ts` with the English baselines `jobs-reader-en` and `settings-en`
-- Done when: core workflow works in both engines and the real app; every view in every state is captured; 0 lint
-  exceptions; all 33 audit findings of the old UI are resolved. Send screenshots (Windows + macOS CI) to the user.
-
-### Phase 4 - English sweep (parallel to phase 3)
-- [x] Translate remaining comments, logs, errors, asserts, CI, hook, toml; new English README; `language.rs` with allowlist
-- [x] Finish the dead-code list
-
-### Phase 5 - verification, measurement, audit
-- [x] Real runs through the app and the measurement: run 9 on the test mailbox fixed the mail reading (portal
-      promo/onboarding mails are no alerts, no false "layout changed?"; a collection mail never takes another job's
-      title as company or location; a stored title-like pair gives way; a new location makes the score pending;
-      fixtures `promo_mails/`, `forward_composite.eml`), and the user's run of 2026-09-25 fetched every portal (Live
-      canary below). The evaluation used eight blind held-out sets of invented ads (192 to 960 pairs each, two
-      labelers and an arbiter) instead of a private gold set; old/new reports per set in `docs/MATCHING.md`. Open for
-      later: real ads with blind labels (`export_gold --blind`, `match_eval`; below 60 jobs the result is "preliminary").
-- [x] Scraping review, offline only (2026-09-25 night, fixtures and unit tests, no live request): the scan reads
-      All Mail (`\All`, drafts and own sent mails left out); only alert mails bring job links in (activity mails,
-      InMails and newsletters do not); every alert subject is a head candidate; plain-text link forms of Outlook and
-      Apple Mail (`MAIL_PARSER_VERSION` 3, read-back per portal); `?currentJobId=` links. Pages: walls and checks
-      served with 200 block at once (LinkedIn, freelancermap); LinkedIn's four criteria and `<br><br>` paragraphs
-      (anonymised skeleton fixtures in `core/tests/fixtures/pages/`); freelancermap's real island (start, duration,
-      skills, contract type, country); freelance.de end markers as headings only, the exact description heading,
-      the EXPERT notice only in place of the description, long guest teasers, rate and more head labels, a status
-      hint without `responseStatus`, redirects to a sign-in. Policy: every run's first layout page costs an attempt
-      and retries rotate; per-job verdicts never feed the breaker; broken settings switch no portal on; closed ads
-      marked and never a TXT; jobs beyond the 30-day window say "Details auf Anfrage"; teasers and slug links take
-      part in duplicates, archived or closed jobs are no original. Open: the WebKit status path wants the
-      macos-latest probe, one guest page of freelance.de for a real-structure fixture at the next allowed live run.
-- [x] Live canary per portal (one counted page via `admit`): the user's run of 2026-09-25 14:35 through the app read 18
-      mails and fetched every portal without a stop (LinkedIn 2 full ads, freelancermap 2 full, freelance.de 2 guest
-      teasers by design)
-- [x] Windows installer + first run + screenshots; macOS CI screenshots + dmg probe + WebKit scenarios (2026-09-25:
-      NSIS build installed here and clicked through with the real mailbox data; macOS CI app screenshots and the dmg
-      install probe; every harness scenario in Chromium and WebKit)
-- [x] Long tasks at 2000 jobs (2026-09-25): the tab switch and the windows while scrolling stay below 50 ms on the
-      reference machine (see "Performance" above; harness `timing.spec.ts`, 10 of 10 in Chromium and WebKit; the smoke
-      probe of the real app shows none). Still above 50 ms at 4x CPU throttling with 300 rows mounted (50 to 100 ms):
-      the first layout of a job in the reader (text shaping), the fold of a moved row and its return on undo (every row
-      below it moves: paint properties and layers of the whole list), and a tab switch or a re-sort that tears down
-      hundreds of rows at once (Svelte's teardown of their effects).
-- [x] Final round, sidebar and handle (tracks A and B, 2026-09-25; see UI "Sidebar", "Folding the sidebar", "The
-      handle"): the arrow for Archiv and Papierkorb (kept, forced open while one is open, grouped in the rail), the
-      sidebar fold (dropped later by the user), a click in
-      the sidebar waits for the Profil's question before it changes the place, the handle's wider limits that follow
-      the window and the sidebar, grip and two-line tooltips; harness `sidebar.spec.ts`, `splitter.spec.ts` in both
-      engines and both OS conventions
-- [x] UI logic round after the user's test of the installed app (tracks T1 to T4, 2026-09-25): only the left
-      button presses (`data-aux-press`, a pressed look only under the pointer, `ui_contract`), a press beside a field
-      ends its focus, one focus ring and only from the keyboard, only the switch toggles, the profile in a logical order
-      with one control height and neutral placeholders, searchable countries (names in a file become codes, engine 13),
-      the list one Tab stop with stable rows, dates that follow the clock, undo per toast; the native title bars again;
-      the sidebar fold dropped; the handle's grip like Claude's; harness 819 in both engines, baselines refreshed
-- [x] Rings and the list's bar (user, 2026-09-25; see Decisions "One ring, one sliding bar"): every ring on one
-      solid track, the open row's bar slides like the sidebar's pill (`features/jobs/RowBar.svelte`); harness
-      `asks-rings-bar.spec.ts` in both engines
-- [x] Performance: start time; contrast (2026-09-25: the installed release shows its first content about 0.45 s after
-      the process starts, warm, measured over CDP; contrast in the consistency audit below)
-- [x] Consistency audit per screen (checklist below) and fixes; one adversarial review workflow over the whole diff
-      (2026-09-25: two UI audits with 86 and 36 confirmed findings, a scraping review with 31 and a final review with
-      42, all fixed; then the installed app walked through: place changes close the open job from any view, an empty
-      place has no blank header row, the overview hint only beside a list with jobs, date and time never break)
-
-### Phase 6 - delivery
-- [x] Skill `job-matching` (stage 2): back up the original, drop the hard-coded foreign path (use the app's work folder, works on macOS), read the app's top-matches file instead of screening every ad, align the rubric wording with the engine, test, deliver as a folder with a short install guide (`tools/job-matching-skill/`: `SKILL.md`, `scripts/matching.py` brief + render with the rubric caps, README, test on the corpus; original backed up outside the repo; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone)
-- [x] The copied AI prompts at least as good as the skill (2026-09-25, see Decisions "AI prompts"): the gap analysis
-      against the skill's brief closed (method, frame rows, codes in words) and what neither had added (exclusions,
-      hard criteria with the ad's words, key facts and text status, profile evidence with years, page labels, risks,
-      questions, conditions); `PromptSource` assesses a stored job afresh for the prompt; tests for every section in
-      both languages, the contact filter, missing facts, teaser and short texts, exclusions, English ads, no engine
-      code; a golden prompt per language
-- [x] Final CI builds (artifacts only), first-start guide, close this plan, hand over: CI builds the Windows installer
-      and the macOS dmg and .app on every push to main and publishes nothing (workflow artifacts); the first-start guide
-      is README "Install" and "First start" (SmartScreen, Gatekeeper, the keychain prompt after updates, mailbox,
-      profile, Abrufen, the language); wave 2 closes this plan and hands over with its pull request
-- [x] Wave 2 (one cloud session, 2026-09-25, branch `wave2`; see Decisions "Wave 2"): the last confirmed findings of
-      the ship audit, the list search over every word, the ad's rate and start in the reader's terms strip, engine 15,
-      one word per thing in the texts, the docs true for the app
-
-## Consistency audit per screen
-For each of Jobs, Reader, Day overview, Profil, Einstellungen, First run, dialogs:
-- [x] tokens only · 4 px grid, shared edges aligned · <= 1 primary, button variants by rule · icon sizes by context
-- [x] hover/active/focus/disabled everywhere · all screen states present · glossary, no sentence twice · tabular numbers
-- [x] motion only via tokens, reduced motion checked · AA contrast (documented exception: primary button)
-- [x] Windows and macOS screenshots side by side: only the documented differences
+Inside the window both OS show the same app. They differ by OS convention, decided in
+`ui/src/lib/platform.ts` and `src-tauri/src/platform.rs`:
+- **The top bar:**
+  - Windows: no native title bar. The app's caption buttons sit at the right, and the caption window of
+    `platform.rs` moves the window and opens the system menu and the snap layouts. 36 px.
+  - macOS: the native traffic lights 16 px in, centred. 44 px.
+- **Dialog buttons:** Windows puts the action first; macOS puts cancel left and the action right.
+- **Scrollbars:** Windows slim and styled, their room kept; macOS native overlay.
+- **Middle-button autoscroll:** Windows only.
+- **Words for OS things:** Explorer or Finder, Anmeldeinformationsverwaltung or Schlüsselbund.
+- **Keys:** the command key (Strg or Cmd) and how keys are written. The back key (Alt+Left, or Cmd+[ and
+  Cmd+Left; the mouse's back button on both).
+- **The menu:** none, or a minimal App, Edit, Window.
+- **Smaller differences:** a text field's menu, font smoothing, keychain or credential manager, session
+  storage, reveal in folder.
+- **Builds:** target Safari 17, so View Transitions, `@starting-style`, `scrollbar-gutter` and
+  `content-visibility` are forbidden. Windows: NSIS per user, German installer. macOS: Apple Silicon only,
+  ad-hoc signed, minimum 14.0.
 
 ## Glossary (UI)
-Since 2026-09-27, one word per thing in both languages (vocabulary round 2026-09-29; this list wins over older
-words in this plan). Checked for the UI catalogs (`ui_contract.rs`) and the Rust texts: exports, startup dialog,
-window titles, file dialogs, macOS menu (`rust_texts.rs`). English (`en.ts`, the English exports and prompts) is plain
-British English as a well made desktop app writes it, not German word for word: "email", never "mail"; no comma
-splices; countries in words; product and portal names stay. German → English:
-- Job → Job; Jobs (the sidebar's entry) → Jobs; Jobansicht → Job view; Seitenleiste → Sidebar
-- Eingang → Inbox (the place of the active jobs, `inbox` in code); Neu (= unread) → New
-- Archiv → Archive; In den Eingang (back from the Archiv) → Move to inbox
+
+One word per thing in both languages, checked for the catalogs (`ui_contract.rs`) and the Rust texts
+(`rust_texts.rs`). English is plain British English ("email", never "mail"). German → English:
+- Job → Job; Jobansicht → Job view; Seitenleiste → Sidebar
+- Aktuell (the place of the active jobs, `inbox` in code) → Current; Neu (unread) → New
+- Archiv → Archive; Zurückholen (out of the Archiv) → Move back
 - Papierkorb → Trash; Löschen → Delete; Endgültig löschen → Delete forever; Wiederherstellen → Restore
-- Ablage (the tabs Eingang, Archiv, Papierkorb; the Excel column) → Folders (the Excel column says Place)
 - Übereinstimmung (Hohe, Mittlere, Geringe) → Match (High, Medium, Low)
-- Quelle (a source the app searches, or one of alert mails; was Portal until 2026-10-01) → Source; Suche → Search;
-  Alert-Mails → Alert emails; Jobs abrufen → Fetch jobs
+- Quelle → Source; Suche → Search; Alert-Mails → Alert emails
+- Jobs suchen → Search jobs; Alert-Mails lesen → Read alert emails; Abruf → Fetch
 - bewerten, neu bewerten → score, rescore
-- Ausgeschlossen → Excluded; Trotzdem bewerten → Score anyway; Wieder ausschließen → Exclude again
-- Anforderungen → Requirements; Pflicht, Pflichtanforderung → Must-have; Optional → Optional
-- Ausschluss, Ausschlusskriterium → Exclusion, exclusion criterion; Hinweis → Note
-- Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar → Met, Partly met, Not met, Unclear
-- Jobdetails (the reader's table) → Job details
-- Anzeige (laden, öffnen; Nur eine Vorschau) → Ad (Load ad, Open ad; Only a preview)
-- Postfach → Mailbox; Postfach abrufen (the button) → Check mailbox; Abruf → Fetch; Zeitraum → Time range
-- Alert-Mail → Alert email; Alert → Alert
-- Profil → Profile; Bedingungen → Conditions; Wünsche → Preferences
+- Ausgeschlossen → Excluded; Trotzdem bewerten → Score anyway
+- Anforderungen → Requirements; Pflicht → Must-have; Optional → Optional
+- Erfüllt, Teilweise erfüllt, Nicht erfüllt → Met, Partly met, Not met
+- Jobdetails → Job details; Gefunden → Found
+- Anzeige (öffnen) → Ad (Open ad); Prompt kopieren → Copy prompt
+- Postfach → Mailbox; Alert-Mail → Alert email; Alert anlegen → Set up alert
+- Profil → Profile; Wünsche → Preferences; Können → Skills; Erfahrung → Experience; Ausschlüsse → Exclusions
 - Kompetenz → Skill; Schwerpunkt → Focus area; Werkzeuge und Methoden → Tools and methods
-- Wunschrolle, Wunschtagessatz, Wunschregion, Wunschbranche → Preferred role, day rate, region, industry
-- Tagessatz → Day rate; Mindesttagessatz → Minimum day rate; Stundensatz → Hourly rate; Gehalt → Salary
-- Festanstellung → Permanent job (as a contract type Permanent); Zeitarbeit → Temporary agency work
-- Vertragsart → Contract type; Interim, Freiberuflich → Interim, Freelance
-- Ort, Einsatzort → Location; Orte für Festanstellung → Locations for permanent jobs; Einsatzländer → Countries
-- Arbeitsmodell (Remote, Hybrid, Vor Ort) → Work model (Remote, Hybrid, On site); Remote-Anteil → Remote share
-- Auslastung → Workload; Laufzeit → Duration; Mindestlaufzeit → Minimum duration
-- Ausschlusswörter → Exclusion words; Häufig verlangt → Often asked for
-- KI-Prompt → AI prompt
-- Einstellungen → Settings; Darstellung → Appearance; Design (CXact, Hell, Dunkel) → Theme (CXact, Light, Dark)
-- Sprache → Language; Daten (the card) → Data; Sicherung → Backup
-- Arbeitsordner → Work folder (the profiles, the overviews while written); Excel-Datei → Excel file; CSV-Datei → CSV file
-- Aufrufe (what a portal allows a day, and what it slows down) → Requests
-- Anmeldung, Anmelden, Abmelden → Sign-in, Sign in, Sign out
+- Wunschrolle → Preferred role; Suchbegriffe → Search terms
+- Tagessatz → Day rate; Mindesttagessatz → Minimum day rate; Gehalt → Salary
+- Festanstellung → Permanent job; Zeitarbeit → Temporary agency work
+- Vertragsart → Contract type; Arbeitsmodell → Work model; Remote-Anteil → Remote share
+- Auslastung → Workload; Laufzeit → Duration; Einsatzländer → Countries
+- Einstellungen → Settings; Daten → Data; Arbeitsordner → Work folder
+- Aufrufe → Requests; Anmelden, Abmelden → Sign in, Sign out
 - Probelauf → Dry run; Demo → Demo
 
+## Next
 
-## Budget and models
-The user's usage limit is tight: work token-efficiently without lowering quality - targeted reads, focused test runs,
-no sub-agents inside tracks, screenshots only at milestones, commit every finished step. Models (no Haiku):
-- **Opus** for everything that shapes the product or the measurement: matching engine, contract, store/pipeline,
-  scraping/sign-in logic, UI foundation, components and screens, integration and merges, corpus band review,
-  gold-set labelling, consistency audit and the final review.
-- **Sonnet** for simple, fully verifiable work: phase 4 comment/log translation (checked by language.rs, build and
-  tests), README and first-start guide from finished facts, collecting CI artifacts and screenshots, routine cleanup.
+Asked by the user on 2026-10-02. Start with drafts for the visible points, decide them in one round, then
+build.
 
-## Status 2026-09-25 evening (wave 2)
-Every box of this plan is ticked. The app has engine 15, German and English, the native title bars, the UI logic
-round and eight held-out sets as regression gates; wave 2 (branch `wave2`, one pull request against `main`) fixed the
-last confirmed findings of the ship audit. Left for later, each needing the user: real ads with blind labels (the
-tools are ready, see Phase 5); one freelance.de guest page for a real-structure fixture at the next allowed live run;
-the contrast of the primary label (about 2.8:1, the documented exception) and of the subtle text for dates and hints
-(4.2:1 on white, 3.9:1 on cream, below AA), both a choice of colour.
-
-## Final round 2026-09-26 (the last plan; decisions of the user, binding)
-The whole round is one plan (Parts A to L, kept by the integrator); the boxes below are ticked
-as the parts land on `main`.
-- Name: the app is shown as **CXact** (read "exact", like cxpertise and CXecutives). Only the
-  visible name changes: identifier `de.cxecutives.job-alert-monitor`, binary, data and work
-  folders (`Documents\Job-Alert-Monitor`; superseded 2026-09-27: a new install exports into `Documents\CXact`, an
-  existing `Job-Alert-Monitor` folder with the app's files stays in use, nothing moves) and keychain service stay (the TXT contract stayed too; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The
-  NSIS installer speaks German and English and first removes an install named
-  Job-Alert-Monitor silently (its data stays).
-- Icon: one flat coral, no gradient; on Windows the plate fills the square (48 of 48 px, like
-  Claude and Roblox, every stage) with Apple's continuous corner (UIKit curve, r 22.37 %, the
-  one fit to Apple's own mask), no shadow; exact area coverage (every stage within 1 level of
-  the ideal shape). macOS 14/15 keeps Apple's grid (824 of 1024, fractional margins) over
-  Apple's template shadow (black 30 %, 12 down, blur 12 at 1024; user 2026-09-26); macOS 26 gets
-  the Icon Composer package (tools/icon.py writes src-tauri/icons/CXact.icon) compiled by
-  actool in the macOS CI. The glyph sits 10 grid units lower than before (user 2026-09-26).
-- No fetch at app start (the switch is gone); F5 or Ctrl/Cmd+R and "Abrufen" fetch.
-- The app starts in the **Übersicht**, a view of its own (sidebar: Übersicht, Jobs, Profil,
-  Einstellungen; the settings as a gear). Archiv and Papierkorb are tabs of Jobs (Eingang,
-  Archiv, Papierkorb). The inbox is one list (user, 2026-09-26): no Neu, Alle, Favoriten
-  segments, no "Alle gelesen"; the Eingang tab counts the unopened jobs. Ctrl/Cmd+1 to 4
-  choose the views.
-- Menus: the app draws every menu itself (field menu, the job's menu on a right click, the
-  sort, "…" menus); no OS popup (the Tauri menu API and its permissions are gone). OS file and
-  folder pickers, the start failure box, the macOS menu bar and the freelance.de sign-in
-  window stay native. Paste reads the clipboard through `clipboard_text`.
-- Filter: one funnel in the inbox's header holds the order and the filter (portal, band from
-  mid or high only, reset); a dot and its tooltip say when it is on; the archive and the
-  trash keep their order button and have no filter.
-- Filter: one funnel in the inbox's toolbar row holds the order and the filter under small
-  headings (Sortierung; Nur Favoriten, a switch; Portal; Passung from mid or high only;
-  "Filter zurücksetzen"), one table (`ui/src/lib/state/filter.ts`) that the menu, the line
-  under the toolbar, the reset and the harness read; a coral dot on the funnel and the line
-  say when it is on; the archive and the trash keep their order button and have no filter.
-- Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
-  S favourite, O open the ad; shown in tooltips and menus (U and B went with "Als ungelesen"
-  and "Beworben", 2026-09-26). One table holds these keys (`LIST_KEYS` in
-  `ui/src/lib/input/input.ts`): the handler, the job's actions and menu, the card of the keys
-  and Einstellungen read it; the orders of every menu come from the filter table's `SORTS`.
-- Rows (approved row, user 2026-09-26): line 1 the title with, together at its end, the star
-  of a favourite, the portal's tile ("+1" for other portals, named in its tooltip; the tile
-  stays beside the hover tools) and the date; line 2 company · place; line 3 the ad's facts
-  from the facts table `ui/src/lib/facts.ts` in its order (contract first, then pay, start,
-  duration, workload, remote share or work mode), each with its icon, only whole facts, the
-  line's tooltip listing all when some do not fit, badges after them. The reader's
-  Konditionen read the same table (one icon per value). An excluded row names why on line 3
-  with the ban icon (its ring is a grey number without a mark); "Einbezogen" for a job counted
-  anyway; dots only in the inbox. `KeyFacts` carries the stated annual salary in euros
-  (`salary`, `salaryLowerBound`) since 2026-09-26. The contract kind names interim
-  management `interim` and a freelance project `freelance` (the rules read both as one kind).
-  S favourite, O open the ad; shown in tooltips and menus.
-- Rows: the portal's tile ("+1" for other portals), the third line holds the ad's conditions
-  only (rate first), an excluded row names why and keeps its fit as a grey number with a ban
-  mark, "Einbezogen" for a job counted anyway, dots only in the inbox.
-- Colours: coral means new and the one main action (and stays where it was); navy carries the
-  structure (section headings, active labels of the sidebar, tabs and segments, links, "prüfen").
-- Time: days in words up to a week everywhere ("gestern 08:30", "vorgestern", "Mo").
-- New features: exclusion words in the profile; workload and
-- New features: ("Beworben" with date and note left the UI again, 2026-09-26; the backend
-  follows); exclusion words in the profile; workload and
-  minimum duration as checks (engine 16); an hourly wage for employees or agency work is
-  employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
-  updates, an application-letter prompt, snooze, radius, direct client vs agency.
-- Engine 16 in the UI: Konditionen hold, after "Verfügbar ab", Auslastung (von, bis, 1 to 5
-  Tage pro Woche, either may stay empty), Mindestlaufzeit (Monate) and Ausschlusswörter; each
-  value of the file that does not read has "Wert entfernen" (`UnreadableField`); the reader's
-  row Auslastung follows Laufzeit, both a check outside the profile ("prüfen") and "passt"
-  within; a list row's facts read Tagessatz · Remote · Laufzeit · Auslastung · Start; an
-  exclusion word says itself in the exclusion box, the HTML report and the Excel file.
-- Backend rest (2026-09-26): `--demo` starts on a data folder of its own (`<data>/demo`, made
-  anew from the bundled held-out ads of sets 8 and 9, no profile, window "CXact Demo", no
-  fetch, mailbox, sign-in, other work folder or reset: `ErrorKind::Demo`; `tools/demo.cmd`);
-  Wartung shows the version; by match the jobs without a score come first; the excluded
-  jobs of Archiv and Papierkorb are counted in their place; "Anmeldung einrichten" opens
-  Einstellungen at that portal's sign-in with "Zurück zum Job".
-- Übersicht (2026-09-26, audit OV-*): one ordered list of blocks (`features/overview/blocks.ts`,
-  docs/CHANGING.md): Eingang (Abrufen, Abbrechen during a run; the tiles Neu and Hohe Passung,
-  each opening exactly what it counts; a failed fetch or start as one danger note under them,
-  never "Abgerufen"), Heute ansehen (the best unopened jobs; a failed job query in its place
-  with "Erneut versuchen"), Favoriten (without those Heute ansehen shows; "Alle n Favoriten"),
-  KI-Prompt kopieren, Offene Punkte by weight (no usable profile, portal problems to act on,
-  "Details holen" for the ads that can still be fetched, new excluded jobs with the Eingang's
-  excluded section open, what resolves itself, quiet portals with "Alert anlegen"), Oft
-  verlangt, Markt der letzten 30 Tage, Dateien. No Ausgeschlossen tile, no "Alle n neuen", no
-  "Braucht eine Entscheidung"; each block says its own errors.
-- [x] Engine 16 review fixes before the release (E16-1 to E16-8, still `ENGINE_VERSION` 16, see
-      `docs/MATCHING.md` "Review fixes"): exclusion words only where they name the job itself,
-      whole-word generated forms, wage words as words, ANÜ a topic only under a governing cue and
-      read in the title, no home office, site or travel days as workload, part-time hours
-      without the week, months only from a real duration statement. Both reports unchanged.
-- Einstellungen and Erste Schritte (audit 2026-09-26, lens settings and the findings of the
-  other lenses on these views): the mailbox badge reads the data (`Mailbox.checkedAt`: a mail
-  error of a fetch that ended before Gmail last accepted the mailbox is past) and is the only
-  answer to a save; one key list (`lib/input/keys.ts`) for the card of the keys and
-  Einstellungen, F5 / Cmd+R fetch in every view; before the first fetch Excel, Bericht and
-  "Neu schreiben" wait with their reason; "Neu schreiben" and "Löschen" answer with a toast,
-  "Löschen" asks nothing and undoes by writing the files again; Textdateien open their folder
-  (`txtDir`), the Bericht shows itself in its folder (`overviewInFolder`), Protokoll opens its
-  folder; a dialog whose action fails keeps the reason inside and tries again; no reset report
-  in Einstellungen. Another work folder takes `profil/` along or says the app now uses the
-  folder's own profile, and Excel, Bericht and text files are written there at once
-  (`pick_workspace` returns `WorkspacePick`); another language rewrites Excel and Bericht a
-  moment later. A stored sign-in the fetch does not use looks like none ("Anmelden" only lets
-  the fetch use it), a run holds "Abmelden" too; the row's own change action is secondary, the
-  rest ghost. Erste Schritte name only the portals that are on (none: "Einstellungen öffnen"),
-  show the alert mails "Verbinden" found per portal (none at all: step 3 says to set up an
-  alert first), offer "Profil anlegen" beside the CV way, and after a reset warn with the log
-  only when something stayed (a clean reset is one toast); the sidebar's run status waits
-  until the setup is done. The page starts German before the app state arrives.
-
-## Cleanup round 2026-09-27 (decisions of the user, binding)
-The user clicked through the preview: too much in it, words and looks uneven. One plan (kept by the integrator,
-three tracks: backend, job list and reader, the rest of the UI) makes the app minimal, logical and uniform.
-- Out: the app's own keyboard shortcuts (only the OS's stay), multi-select, favourites, the Übersicht, "Automatisch"
-  (archive and empty the trash after 30 days), the switch "Details holen" (a portal that is on always loads the ads
-  of its alert mails; no mails-only mode), the status line of the sidebar, "So liest die App dein Profil", marks and
-  jumps in the reader, the HTML report.
-- Job row: title, company, location, portal, date; everything exact in the reader. Reader: "Konditionen" is
-  "Jobdetails" in a fixed order, a missing value "/", verdicts as symbols (green met, yellow partly, red not met,
-  grey unclear); buttons Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…" with Archivieren, Löschen.
-  The context menu of a row is the same table as the reader's "…".
-- Ausgeschlossen stays at the end of the list, folded, with a ban mark instead of the ring; "Trotzdem bewerten" in
-  the "…" and the context menu, then "Wieder ausschließen" (the backend's `set_override` stays).
-- Fetch: the button "Postfach abrufen"; its range in Einstellungen > Postfach (`fetchRange`: since the last fetch,
-  the last 7 or 30 days, all alert mails; `RunKind::FullMailbox` is gone).
-- Export: the Excel file and a CSV file, each with its switch (`exportExcel` on, `exportCsv` off by default), in the
-  result folder; the text files for the job-matching skill stayed byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The CSV file has the Excel file's
-  columns (one table, `core/src/export/columns.rs`) in the old program's format: `;`, UTF-8 with BOM, CRLF,
-  headers in the app's language, dates `DD.MM.YYYY HH:MM` as text, links as addresses. Columns: "Übereinstimmung"
-  instead of "Passung", the alert mail's subject ("Mail-Betreff") after the portal, no favourite.
-- Portals in the order freelance.de, LinkedIn, freelancermap (the UI's table, not `Portal::ALL`); each 100 requests a
-  day ("Aufrufe", with a bar), the day counted from local midnight so "Heute" is true; the hourly caps and pauses stay.
-- List filter in every place: portal, match (from mid, only high), contract type (Interim, Freiberuflich,
-  Festanstellung, Zeitarbeit: `JobQuery.contracts`), work place (remote only: `JobQuery.remoteOnly`); active filters
-  as chips.
-- Commands without a caller go (`set_pinned`, `overview_stats`, `ai_prompt_top`, `rewrite_txt`, `clear_txt`,
-  `company_count`); `commands.txt` stays the one list.
-- One word per thing in the UI, Excel, CSV and the AI prompt (glossary above; the TXT files stayed as they were; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). Guiding
-  rules: no "·" anywhere, tooltips only where something is missing, little text, the same thing looks the same,
-  quiet motion everywhere (<= 180 ms).
-- [x] Backend (track B): favourites, Übersicht, automatic actions, the details switch, the HTML report and the
-  whole-mailbox run out; `fetchRange`, `exportExcel`, `exportCsv`; the CSV file; the glossary in the exports and
-  prompts; 100 requests a day from midnight; `contracts` and `remoteOnly`; `company_count` out; palette.rs holds only
-  what the Excel file, the window and the icon wear
-- [x] Job list and reader (track J): one header in every place (search, sort button, filter, the place's action),
-  two-line rows with a hollow ring (the ban for an excluded job), one menu table for the row's right click and the
-  reader's "…" (`jobMenu` in `ui/src/features/jobs/actions.ts`), the run line under the header instead of the run
-  card, the reader's Jobdetails with verdict symbols and "/"; keys, multi-select and favourites out
-- [x] Settings, profile, shell and first run (track S): five cards (Postfach with the range, Portale in the UI's
-  order with the day's calls, Export with the Excel and CSV switches, Darstellung, App), a quiet profile head, one
-  choice component, a save bar only while something changed; no Übersicht, no status line
-- [x] Integration: the harness green in both engines without the screenshot baselines (`BASELINES=1` runs them);
-  tests of removed behaviour rewritten; real defects fixed (the reader's "…" from the one menu table, a marked value
-  keeps its waiting profile section open, the first row of the sidebar, tabs and headings on one middle, no green
-  toast when files could not be written, a failed last fetch shows in the run line after a restart); the glossary
-  in `de.ts` and `en.ts` with unused texts removed; guiding rules as tests in `ui_contract.rs` (no "·", tooltips
-  only where something is missing, the new glossary words); a view switch fades out, then in; the docs
-- [x] CI harness per browser (`HARNESS_ENGINES`, one job per engine)
-
-## List round 2026-09-27 (decisions of the user, binding)
-- Row tools again: under the pointer (and while its menu is open) a row shows the moves of its place as icons over
-  the date, from the one table of the menus (`rowTools`): Eingang Archivieren, Löschen; Archiv Dearchivieren, Löschen;
-  Papierkorb Wiederherstellen, Endgültig löschen. The label is the tooltip, the delete glyphs turn red, nothing
-  shifts; a row that slides under a resting pointer waits for it to move.
-- "Dearchivieren" replaces "Wiederherstellen" in the Archiv (row, menu, reader, toast "Dearchiviert").
-- One filter control: no sort button; the funnel menu holds Sortierung, Portal, Übereinstimmung, Vertragsart,
-  Arbeitsort (portals in the UI order), stays open while choosing, "Filter zurücksetzen" last while filtered; the dot
-  only for a filter.
-- The reader's "…" follows the job's place like the row; the company icon is `building-2`.
-- [x] Row tools, Dearchivieren, the company glyph
-- [x] One filter control
-- [x] The reader's "…" per place (a job that just moved away offers no moves while the next one loads)
-
-## Profile round 2026-09-27
-- "Häufig verlangt" under the competences of the Profil: the terms the scored jobs of the
-  Eingang and the Archiv of the last 30 days ask for that the profile does not name (the
-  engine's open must and nice requirements that are skills of at most five words, the rule
-  of the reader's "+"), from two jobs on, the most frequent first, at most eight, each a quiet
-  tag with its number of jobs and a "+" that adds it as a competence of the form (an unsaved
-  change like any other); the block shows only with a term and asks again after a save and
-  after every run (`asked_terms`, the terms a stored match keeps in its note, revision
-  inputs 6).
-- [x] "Häufig verlangt": store query, command, stub, the block, specs
-- Terms, not phrases (user 2026-09-27): a requirement's term and the profile field it goes
-  into come from core (`matching::core_term`: lead and wish words go, "Kenntnisse in Anaplan" is
-  the tool "Anaplan", "Branchenerfahrung Energie" the industry "Energie", "Erfahrung mit SAP
-  Analytics Cloud" the tool "SAP Analytics Cloud"; Kompetenz, Werkzeug, Branche, Sprache, and
-  Zertifikat or Abschluss where clear). "Häufig verlangt" counts by the term and names its
-  field; it is a calm list between hairlines (the term, its field, "in 7 Jobs", "Hinzufügen"
-  into that field as an unsaved change). The reader's "+" adds the same term to the same field,
-  saved at once as before (its tooltip names both). Revision inputs 7.
-- [x] Core terms with their field: engine function and tests, `asked_terms`, the list, the
-  reader's "+", stub, specs
-- Decision 2026-09-27: no `job-matching` skill, no TXT files, no `top_matches.json` (supersedes
-  "AI stage", the TXT and top-matches lines above and "the text files for the job-matching
-  skill stay byte-identical" of the cleanup round). The copied AI prompt is the one way to a
-  deeper check. `tools/job-matching-skill/` is gone; the contact-data rules of the prompts
-  moved to `core/src/export/personal_data.json` (cases `core/tests/fixtures/personal_cases.json`),
-  the corpus format of the evaluation to `core/examples/common/gold.rs` (`txt_file`). A run
-  writes neither file any more (`ExportSummary` without `txtWritten`/`txtFailed`, no
-  `OpenTarget::TxtDir`, no `best_matches`); the old files stay in the result folder until
-  "Alles zurücksetzen", and deleting a job for good still removes the old text file the app
-  wrote for it. The rubrics no longer name the skill.
-- [x] Skill, TXT export and `top_matches.json` out
-
-## Round two 2026-09-27 (decisions of the user, binding)
-The user clicked through the reworked preview; one more round in four tracks.
-- Fetch range at the fetch button: the range of "Postfach abrufen" (since the last fetch, the last 7 or 30 days, all
-  alert mails; `fetchRange`) is chosen at the button itself, not in Einstellungen.
-- List filters: Tagessatz, Nur neue, Remote oder hybrid; the list sorts by the day rate too (no deadline filter:
-  the reader marks a close deadline red).
-- The match explains itself in a popover (why the ring says what it says).
-- Deadline and contact: the reader shows the application deadline and the contact an ad names.
-- The verdict colours of the Jobdetails and the requirements come from the rings (one colour per verdict, the
-  ring's).
-- No data export or import (decided against: the user keeps one computer; a backup restore stays).
-- Closing the window while a fetch runs asks first: "Der Abruf läuft noch. Trotzdem schließen?" with Schließen
-  (the fetch is cancelled, the window closes once it stopped) and Abbrechen (`close-running`, `answer_close`). A
-  second close while it asks closes anyway; a fetch that ends takes the question with it.
-- No internet: a fetch whose connection to Gmail finds no network (the name does not resolve, the network is down or
-  unreachable) fails with its own code `offline`; the run line says "Keine Verbindung zum Internet" with "Erneut
-  versuchen". Any other connection failure stays `mailConnect` ("Gmail ist nicht erreichbar").
-- Alert health: each portal says whether its alert mails still arrive.
-- The macOS toolbar row is replaced by the top bar (Top bar round below).
-- Decision: the `job-matching` skill, its text files (TXT) and `top_matches.json` are gone for good. This supersedes
-  every older line that says they stay (the UI language, the self-decided TXT header, schema 4, the integration and
-  delivery tasks of phases 2 and 6, the name of the final round, the export and glossary lines of the cleanup
-  round); the Profile round above made the change, this round confirms it.
-- [x] The close question during a fetch, the `offline` code (track B3)
-- [x] Fetch range at the button, the list filters and the sort by rate (the filters and the sort by rate are
-  in; the fetch range went for good with the lean round of 2026-10-01)
-- [x] Explanation popover, deadline and contact, verdict colours from the rings (deadline, contact and the
-  colours are in; the popover went for good on 2026-10-01, the user did not need it)
-- [x] Alert health (a source's quiet line in Einstellungen: a pause, alert mails without jobs, a week without
-  an alert mail with Alert prüfen)
-- [x] Every filter group lists all values of its dimension or is gone (user decision 2026-09-27): Übereinstimmung Hoch, Mittel, Gering (`JobQuery.band`), Arbeitsmodell Remote, Hybrid, Vor Ort (`JobQuery.workMode`, the stated share first, else the location); no Tagessatz floor; the row's date is when the job came in, the deadline only in the Jobdetails
-
-## Top bar round 2026-09-27 (decision of the user, binding)
-"Mach es wie Claude": one top bar drawn by the app on both OS, the window buttons the only difference (Decisions,
-"Top bar like Claude"). Measures after the Claude app's own code: 36 px on Windows, 44 px on macOS with the traffic
-lights 16 px from the left; colours only from the design's tokens (the close button in the app's danger red).
-- [x] The bar (TitleBar.svelte), the Windows caption buttons (WindowButtons.svelte), --titlebar-* tokens in every
-  palette block; the macOS toolbar row, DragBand and the view names in it out; a dialog's scrim under the bar
-- [x] Windows without a native title bar: the caption window in platform.rs (WM_NCHITTEST by
-  jobalert_core::window::Bar, moving, double click, system menu on a right click and Alt+Space, snap layouts over
-  Maximieren, clicks as WM_SYSCOMMAND, hover and press to the page), window_button and window_maximized, the
-  capability window-bar.json for both OS; no DWM caption colours any more
-- [x] macOS: `trafficLightPosition` 16 / 24, centred in the 44 px bar
-- [x] Tests: ui_contract.rs (the bar, the measures tied to core and the configuration), the unit tests of
-  Bar::hit, the shell and input specs for both OS (bar height per OS, the buttons with tooltips and the red close,
-  no buttons on macOS, the same layout below the bar), the smoke check (SMOKE {"caption":...}, the window step);
-  checked in the real Windows app: no caption, maximize and restore without gaps, minimize, close, the snap layouts
-  under the real pointer, drag, double click, the system menu
-- [x] macOS: the traffic lights in the 44 px bar on the CI screenshots (SMOKE {"lights":...}: centre 22; the
-  macOS smoke of 2026-10-01 logs centreY 22.0)
-
-- [x] Alert health, Mac title row (the health lines are in; the title row became the top bar)
-
-## Input and reader round 2026-09-27 (decisions of the user, binding)
-- Removing never puts a caret anywhere: a click on an × (a chip, a language row, a competence row, any list row)
-  removes it and drops the focus without a ring; removed by the keyboard (Backspace or Delete in a chip field,
-  Enter or Space on a focused ×) the focus goes to the next × of that list (the previous one after the last),
-  never into a text field (`afterRemove` in `lib/input/input.ts`).
-- Mouse buttons everywhere: controls act on the left button only; a right click opens the app's menu where there
-  is one and does nothing else; a middle click never activates anything; the wheel only scrolls.
-- No hover marking in the reader: hovering a requirement or a Jobdetails row tints nothing in the ad and a click
-  scrolls nothing; the ad keeps its structure and the marks of the list's search.
-- No "Frist in 7 Tagen" filter: the red deadline in the row stays, the list never asks for `deadlineSoon`.
-- Language names follow the UI language (the suggestions and the rows); the profile keeps a known language under
-  its German name, as the engine reads it.
-- [x] "Frist in 7 Tagen" out of the filter
-- [x] No hover marking in the reader
-- [x] Language names in the UI language
-- [x] The focus after removing
-- [x] Mouse buttons and the wheel, audited (the one gap: a middle press over a scroll area moved the focus for a moment, so a chip field took its typed text as a chip and the calendar closed; `keepFocus` now holds the focus events until it is back)
-
-## Several profiles (user decision 2026-09-27; supersedes "several profiles" under Declined)
-- Each profile is a file of the old format in `profil/`: `beraterprofil.json` the first (the file of earlier
-  versions, so an existing profile simply is the first one: nothing is moved, copied or rewritten), every further
-  one `beraterprofil-<n>.json`, each with its one backup `<file>.bak`. `profil/profilliste.json` holds the active
-  one, the one active before it and the names the user gave (English keys, serde defaults; missing or unreadable:
-  the first profile is active and each goes by its role). A new profile takes the number after the highest file of the folder, a deleted
-  one's backup included, so its undo never meets another profile (`core/src/profile/set.rs`).
-- A switch (and a new, copied, loaded or deleted active profile) scores every job again (`scoring::profile_changed`).
-  Refused in the dry run like every write; the demo keeps its own work folder.
-- The head of the Profil: on the left the switcher (the active profile's name, `data-copy`, with a chevron; its menu:
-  every profile with a check at the active one, Neues Profil, Profil duplizieren, Umbenennen, Aus Datei laden,
-  Ordner öffnen, Profil löschen in red), on the right "Aus Lebenslauf aktualisieren"; the "…" menu is gone. A name
-  defaults to the profile's role, else "Profil 2"; only Umbenennen (a small dialog) changes it. Another profile
-  with unsaved changes asks first (Speichern, Verwerfen, Abbrechen); a switch says "Profil gewechselt, Jobs neu
-  bewertet"; deleting asks naming the profile, the next one is active and a toast offers Rückgängig; the last one
-  leaves the ways in. With profiles the head also stands over the ways in of a profile that does not read.
-- [x] Several profiles: storage, migration by reading, commands, the switcher, the stub (the preview's work folder
-  holds the demo profile and two test profiles, with the engine's matches of each in the snapshot), specs
-- The CV steps ("Aus Lebenslauf anlegen" / "aktualisieren") are a dialog instead of the card that pushed the
-  profile down (user, 2026-09-27): three numbered steps, 1 "Prompt kopieren" (it says "Kopiert" for a moment, "Prompt
-  ansehen" below it), 2 "Im KI-Chat einfügen und Lebenslauf anhängen", 3 "Antwort der KI einfügen" with "Aus
-  Zwischenablage einfügen" (`clipboard_text`; where the platform refuses, pasting into the field works). As soon as
-  the answer reads the dialog says what it brings ("Ergänzt werden 3 Kompetenzen, 2 Werkzeuge und 1 Sprache.", an
-  update only fills gaps); an answer that does not read says why under the field. "Übernehmen" fills the form for
-  review as before; nothing copies by itself any more.
-- [x] The CV dialog, its summary (`features/profile/answer.ts`), specs
-
-## Einstellungen, Erste Schritte and shell audit 2026-09-27 (decisions binding)
-- A file row's "Öffnen" waits only while its switch is off ("Schalte die Excel-Datei ein.", "Schalte die CSV-Datei
-  ein."); switched on it opens, written fresh first. Turning the CSV file on writes it like the Excel file.
-- The reset dialog names what `core/src/reset.rs` deletes: "die Sicherungen" and "die Profile" too.
-- A run's lock reason is the busy text of its kind (a details run: the ads are loading).
-- The demo shows what is true: no mailbox ("Kein Postfach", "Verbinden" locked), no calls or meters of a portal.
-- A start whose data cannot load offers "Sicherung wiederherstellen" beside the retry, the log and the folder.
-- The close question during a fetch is "Trotzdem schließen?" over "Der Abruf läuft noch." (supersedes the one
-  line above).
-- The export folder of a new install is `Documents\CXact`; an old `Job-Alert-Monitor` folder with the app's files
-  stays in use. "Öffnen" of a missing export folder makes it first.
-- [x] Export rows, reset list, busy texts, demo, failed start, close question, small texts ("Gmail-Adresse"
-  with a non-breaking hyphen, toast and note periods, "Restore Down")
-- [x] Export folder default and its "Öffnen"; stale docs (CHANGING, PLAN, README, CLAUDE.md, settings.rs,
-  tokens.mjs); the sidebar's sub-entries, fold arrow and waiting entries removed with their tokens
-
-## Profil design pass (user 2026-09-27: "gutes Design, überall"; supersedes the head above)
-- The head is the page's title: the active profile's name (26/600, heading colour, `data-copy`, an ellipsis when
-  long; "Neues Profil" while the form holds a new one), right after it a small ghost chevron that opens the menu of
-  the profiles under the title. "Aus Lebenslauf aktualisieren" (for a new or empty profile "erstellen") stays on the
-  title's line at the right edge, quiet (ghost with its glyph), and stays while a draft is in the form ("Erst
-  speichern oder verwerfen."), so the focus stays on it after "Übernehmen". A status only when needed.
-- One size for every choice of a few (Segmented): a field's 32 px, in Profil and Einstellungen alike. The day of
-  "Datum" slides in beside the choice, as high and as wide as a number field, its calendar button inside the field
-  at the right end like a native date picker.
-- Neues Profil and Aus Datei laden (menu and empty state, one name each) open a draft; only Speichern adds the
-  profile. A deleted active profile gives the place back to the one active before it; the toasts of a copy, a new
-  profile and a deletion name the profile active now; a switch says "Profil gewechselt, Jobs werden neu bewertet."
-- Languages have no "Offen" level (the engine assumes B2: a row without one shows B2, a new row starts at B2) and
-  column heads; Festanstellung says what it does in one sentence; a typed 0 where at least 1 counts is refused;
-  the workload counts once in "Werte prüfen"; the page keeps --page-end under the last section unless the save bar
-  is there.
-- [x] Head, choices, day field, drafts for new and loaded profiles, the audit's fixes, specs
-- [x] The most important fields first (2026-10-01: the four tabs, see "Search and sources")
-
-## Profil and reader say one thing (user decisions 2026-09-27)
-- Experience (option b): "Mindestens verlangte Erfahrung" goes; the years an ad asks for are judged against
-  Berufserfahrung (at or below met, from 80 % in part, below not met, never an exclusion; a clearly junior role is
-  met in part, "überqualifiziert"); the row "Erfahrung" shows the ad's years (a range as a range, a junior level by
-  its word) with the verdict of the years, general experience is the row's own and not listed again (engine 18,
-  `docs/MATCHING.md`).
-- The rows of the Jobdetails show the value and the verdict icon only; why stands in the icon's tooltip, one plain
-  sentence. Every verdict icon says why, in the Jobdetails and in every item of the Anforderungen
-  (`texts.ts` `reasonWhy`, the catalog's `reason.why`).
-- [x] Experience against Berufserfahrung, the field gone, the row and the requirements alike, every icon's tooltip
-- Pay and duration as the ad states them, one number everywhere: a range as a range ("900 bis 1.200 €/Tag", "3 bis
-  6 Monate"), an hourly rate per hour with what it makes a day in the tooltip, a salary with its bonus ("plus 20 %
-  Bonus", compared with it), one in another currency in its own money and never compared with a minimum in euros,
-  weeks as weeks ("9 Wochen", a 4.33rd of a month each); the tooltip of a permanent job's place names the remote
-  share and the minimum where they decide it.
-- [x] Pay and duration as the ad states them (engine 18), the reader's rows and tooltips
-
-## The Jobs list audit (2026-09-27)
-- "Neu" is one thing: not opened and not excluded (`store::NEW`, `filter.ts` `isNew`): "Nur neue", the row's dot
-  and its heavier title, in every place, like a mail app's unread mark.
-- The "Zeigen" of a fetch's toast lists exactly the jobs the toast counts: `JobQuery.run` (the new jobs of that run,
-  none excluded) with the high band where the toast names it, the chip "Aus dem letzten Abruf"; nothing of it is kept,
-  "Filter zurücksetzen", a reload and the next fetch take the run off.
-- The row's menu and the reader's buttons read one table (`features/jobs/shows.ts`; `JobView.hasMail`).
-- [x] New is unread and not excluded; the counts nobody read are gone (`unread`, `high`, `noDetail`, `newByPortal`)
-- [x] Zeigen lists the jobs of its toast
-- [x] Row menu and reader alike: no mail, no ad text, Offline-Anzeige öffnen
-- [x] A failed fetch offers its own fix only; English "Mailbox settings"
-- [x] The trash dialog keeps its count, the focus stays in the list after deleting for good
-- [x] Abbrechen in every place, in the same slot
-- [x] Leftovers (the Übersicht's reveal, split buttons, stale comments and specs); a double click on a row's tool is
-  the tool's
-
-## A new profile from a copied AI prompt (user decision 2026-09-27)
-- The CV flow goes (the paste dialog, "Aus Lebenslauf erstellen" and "aktualisieren", `parse_profile`, the update
-  prompt). The ways to a new profile are the same wherever they are offered (the Profil view's empty state, the
-  menu of its title, the first-run page): "Neues Profil", "Aus Datei laden", "KI-Prompt für Profilanfertigung
-  kopieren" (a toast "KI-Prompt kopiert"). A chosen file may be an AI's answer saved as it came (a code block, a
-  sentence or a byte order mark around the JSON); the empty values an AI leaves go.
-- The prompt stands on its own for any AI: every key the editor reads, the questions the CV cannot answer (asked
-  first, in one short message, each may be skipped), the file `beraterprofil.json` as the answer.
-- [x] The CV flow gone, the three ways everywhere, files read like answers
-- [x] The prompt on its own: every key, the questions first, the file as the answer
-
-## The Claude style (user decisions 2026-09-27)
-This replaces the 2026-09-25 decisions "no manual sidebar fold (the icon rail below 1100 px)" and "the only resize
-handle sits between list and reader".
-- Two palettes, Light (the default) and Dark: neutral like the Claude app with a fifth of Primer, one calm blue
-  accent, no orange; the five ring colours stay; the CXact palette is kept in `docs/palettes/cxact.css`, a stored
-  "coast" loads as Light. The tooltip is the same dark bubble with a light edge in both; menus, dialogs and toasts
-  stand on a raised surface. The app icon: plate #101016, a white folder 62 % of the plate, the check 67 units.
-- Size B: controls 27 / 30 / 33 / 37 px, text 12 / 12.5 / 14, the place 14.5, headings 16 / 19 / 23.5, tabs row
-  41, rings 36 and 51, pane padding 14, sidebar 206.
-- The top bar: no line, no icon, no name; the sidebar's colour as far as the sidebar reaches, a seam at its edge and
-  one at the list's; the sidebar's button, Zurück and Vor at the left, the job view's button at the right; no app
-  shortcuts. Windows leaves the buttons' zones to the page (`TOOLS_START`, `TOOLS_END`, smoke probe `tools`).
-- The sidebar docks or folds away like Claude's: floats out from its button or the window's left edge, folds by
-  itself below 1100 px, its state and its width (a second handle) kept per user. Hovered and chosen entries look
-  clearly apart. Hiding the job view closes its job; a job chosen shows it again. Zurück and Vor walk the views,
-  places and jobs shown (the mouse's back button too). Where content scrolls away it fades (the views, the list
-  under its header, the job view).
-- [x] Palettes, tooltip, icon
-- [x] Size B
-- [x] Top bar, sidebar fold, second handle, job view button, Zurück and Vor, fades
-- Second pass (user, same day): the palettes at 90 % Claude, 10 % Primer, tuned (the tooltip measured from Claude:
-  #20201F, edge #373736); lighter weights (medium 460, semibold 530, Inter is variable); size C a notch smaller
-  (controls 26 / 29 / 31 / 35, text 12 / 13.5, headings 15.5 / 18 / 22, rows 62, rings 34 and 48, tabs row 39); the
-  sidebar's button a plain switch like the job view's (only the window's left edge floats a folded sidebar out); the
-  bar's icons and the caption glyphs one quiet colour, the text colour under the pointer; the fade only under the
-  top bar (the list header keeps its hairline).
-- [x] 90/10 palettes, lighter weights, size C, plain switches, one bar colour, fade under the bar only
-- Third pass (user, 2026-09-28): type t2, Inter a half step smaller and lighter (text 13, place 13.5, headings
-  15 / 17 / 20, medium 420, semibold 480, rows 60); every line icon one stroke in screen pixels (1.35); a switch's
-  knob white in both designs; the quota meters one blue; the Jobdetails keep their topic icons and put the
-  verdict in one fixed column between the name and the value (it never moves), no tooltips on verdicts anywhere,
-  the sentences that only they showed are gone (criterion `met`, `reason.why`, `reader.payMet`).
-- [x] Type t2, one icon stroke, white knob, one-blue meters, the verdict column, no verdict tooltips
-- Fourth pass (user, 2026-09-29): the CXact palette back in `:root`; a normal size (controls 27 / 30 / 32 / 35,
-  text 12 / 13.5, place 14, rows 61, icons 16 and 20 at 1.4); the top bar's glyphs 16 px in the caption buttons'
-  1 px line; the tabs wash like the segments; the chosen sidebar entry a white pill with a hairline like the tabs'
-  thumb; "Warum diese Zahl?" opens on hover, its lines green, yellow, red, the note last; the Profil's languages in
-  Erfahrung und Qualifikation, the remote share of Festanstellung only with places, "Häufig verlangt" under each
-  field; the run's notes under the list header and the lit portal row in Einstellungen hidden (code kept).
-- [x] Fourth pass
-
-## The demo app (user decision 2026-09-29; built at the end of the UI phase)
-
-- An own setup "CXact Demo" (one .exe to send): it always starts as the demo on a data folder of its own and
-  never touches real data. It starts with an empty Eingang and the filled sample profile; every "Postfach
-  abrufen" runs like a real fetch (progress, details, the real engine) and brings 5 to 15 new jobs out of the
-  invented ads of all held-out sets (about 500); once all are there a fetch finds no new jobs.
-- [x] Demo fetch in batches (its made-up portals at a quick pace), the "CXact Demo" bundle, a note in docs/CHANGING.md
-- [x] The demo searches too (2026-10-01): a batch's freelancermap ads come through freelancermap's search, not as
-  alert mails; the demo's profile is the sample with two search terms of its own (the corpus sample has none)
-
-## Final UI pass (user decisions 2026-09-29)
-
-- Three palettes in Einstellungen > Darstellung with the language again: CXact (the default: cream, coral that
-  acts, the cxpertise navy back for headings, what is chosen, links, focus and switches), Light (black on white
-  like the Claude app, blue only for details) and Dark (white on black, blue details). A stored "coast" or an
-  unknown name reads as CXact.
-- The top bar's glyphs are the app's own (Bar*.svelte): 16 px in a 1.5 px line with round ends like the Claude
-  app's bar. Öffnen takes chevron-left, Trotzdem bewerten the scale. Papierkorb leeren is filled red.
-- What went wrong in a run is one toast with its way on (no note under the list header).
-- The Jobdetails' Erfahrung says what its requirement says among the Anforderungen.
-- [x] Palettes, language, bar glyphs, toasts, Erfahrung
-- Second round (user, 2026-09-30): size A (controls 25 / 28 / 30 / 33, text 13, weights 430 / 500 / 580, icons 15
-  and 19 at 1.6), the bar's glyphs square with arrows as wide as them, a darker Dark, CXact lively (the site's
-  saturated navy, a richer coral, a warmer cream), Papierkorb leeren outlined red and as wide as Postfach abrufen.
-- [x] The job prompt in line with the engine, the words of both catalogs, the demo app, size A, the full harness in
-  both engines, the smoke probe
-- [ ] The push and CI (done), the release and demo setups (the user starts them)
-
-## Search and sources (user decisions 2026-10-01, binding)
-
-- Sources, one way each: CXact searches Hays, freelancermap, Michael Page, SOLCOM and Etengo itself (their public
-  search, allowed by robots.txt, which the app checks at run time for every request of a new source); LinkedIn,
-  freelance.de, GULP, Robert Half and interim-x come by alert mail. No offers by mail, no Bundesagentur, no web
-  search API. The hits land in the one job list; "Postfach abrufen" becomes "Jobs abrufen" (mails and search); a
-  search runs at the start and every 4 hours while the app is open (supersedes "the app never fetches by itself",
-  2026-09-26), switchable. The search terms come from the active profile (Suchbegriffe). Einstellungen: two cards
-  Suche and Alert-Mails, monogram tiles (no logos).
-- The Profil on four tabs: Suche (roles, Suchbegriffe, the rates side by side, regions beside the countries, the
-  remote switch, Remote-Anteil, Verfügbar ab, Auslastung and Mindestlaufzeit, Wunschbranchen), Können, Erfahrung,
-  Ausschlüsse (the words, the contracts, Festanstellung). Name and role under the title as quiet fields.
-- Profiles (one consultant, several roles): the menu holds the profiles, Neues Profil, Duplizieren, Umbenennen
-  (in the title), Löschen; "Neues Profil" (menu, empty state, first-run page) opens one dialog with the three
-  ways: Aus dem Lebenslauf (copy the prompt, paste the AI's answer), Leer anfangen, Aus Datei laden.
-- The app icon: folder 78 %, check 78 units thick and 78 % of its arms.
-- [x] 0 Icon
-- [x] 1 Profil: tabs, profiles dialog and rename, Suchbegriffe
-- [x] 2 Search: the step, robots.txt, freelancermap and Hays, automatic runs, "Jobs abrufen"
-- [x] 3 Michael Page, SOLCOM, Etengo (interim tiles only: the robots.txt forbids the contract filter)
-- [x] 4 Einstellungen: Suche (with "Automatisch abrufen") and Alert-Mails, monograms, "Alert anlegen"
-  (`OpenTarget::PortalSetup`), "Quelle" in the UI texts
-- [x] 5 GULP, Robert Half, interim-x: link forms, the ad readers against real pages (GULP through the data
-  its page loads, `/gulp2/rest/internal/projects/...`, which its robots.txt allows)
-- [x] GULP, Robert Half and interim-x are searched, not alert sources (user 2026-10-01: no access to their alert
-  mails): GULP's project search (a POST of the term, as its page sends it), Robert Half's
-  `/de/de/jobs/deutschland/<term>` (interim and project roles only), interim-x's project list (every project).
-  Their alert mails are still read where they come: the reader needs no code per source (tests with made-up
-  layouts in `mail/tests.rs`). A reader for unknown sources stays out: no ad reader, robots.txt or pace per source
-- [x] Only the best sources (user 2026-10-01): Robert Half (almost only permanent posts) and Etengo (IT and SAP
-  only) are out for good, code and data (schema 7 drops their rows; `policy.json` and the settings skip a source
-  they do not know). Eight remain: LinkedIn, freelance.de (alert mails), Hays, freelancermap, SOLCOM, GULP,
-  Michael Page, interim-x (search)
-- [x] Only by hand (user 2026-10-01): no automatic fetch; "Automatisch abrufen" hidden (`AUTO_SHOWN`, its code
-  stays). The icon button beside "Jobs abrufen" is "Abruf einstellen": switches "Alert-Mails" and "Suche" (kept
-  in the settings, `fetchMail`, `fetchSearch`), then the Zeitraum; with neither the fetch waits and says why.
-  The list's filter "Herkunft" (Alert-Mails, Suche; a job can be both, `mailed_at`, `searched_at` of schema 7).
-  The funnel's menu may scroll now where the window is low (eight sources with jobs)
-- Round 5 (user decisions 2026-10-01, later the same day; they supersede the menu and the filter above):
-  - [x] One list: the sidebar shows only "Jobs" (the ways "Suche" and "Alert-Mails" under it with a chevron
-    were built and taken out again the same day)
-  - [x] "Abruf einstellen" beside the fetch again: "Suche" or "Postfach", never both (user, "nur Postfach
-    oder Suche"; the search by default, it needs no mailbox; `Settings::fetches_mail`: the mailbox only
-    while its switch alone is on). The button says what it does: "Jobs suchen" or "Postfach abrufen" (the
-    glyph of every fetch, not the mail's). The Zeitraum is a row of the card Alert-Mails in Einstellungen;
-    the filter "Herkunft" goes
-  - [x] The funnel: Sortierung, Quelle and Übereinstimmung (several choices each, any of them passes:
-    `JobQuery.portals`, `bands`), Eingegangen (Heute, Letzte 7 Tage, Letzte 30 Tage: `receivedSince`, the
-    start of the day in the user's time zone; the alert mail's date, else the first sighting). Vertragsart,
-    Arbeitsmodell and "Nur neue" are gone (see Lean below)
-  - [x] Profil: Name and Rolle as fields with a frame and a label under the title; the tab "Suche" is
-    "Wünsche"; Suchbegriffe the app proposes are dashed chips, "Vorschlag aus Wunschrollen und Schwerpunkten";
-    Verfügbar ab only "Sofort" and "Datum" (the engine scores "Offen" like "Sofort"), the calendar's button
-    beside the day; the Remote-Anteil's "Offen" is "Egal"; a language's level is a field whose chevron alone
-    opens its menu; no line under the last switch of a card
-  - [x] Jobansicht: Archivieren and Löschen as icon buttons beside the close button (no outline, like it),
-    the "…" menu goes (an excluded job shows "Trotzdem bewerten" before the three buttons); "KI-Prompt
-    kopieren"; the row "Gefunden" names the way and the source ("Suche bei hays.de", "Alert-Mail von
-    linkedin.com", "auch auf ...")
-  - [x] The top bar's glyphs in a 1.25 px line (1.5 was too heavy); the job view's button keeps its place
-- Round 6 (user decisions 2026-10-01, evening):
-  - [x] The fetch reads the mailbox or searches, never both ("nur Postfach oder Suche"; the search by default)
-  - [x] The funnel's Quelle lists every source switched on; the note "Ohne Postfach ..." only for the mailbox
-  - [x] The app icon has the shapes of the icon workshop (the workshop now shows the built icon beside it)
-  - [x] Deep search ("tief und viel", "alles hoch"): up to 24 terms (`profile::deep_search_terms`), each
-    term paged while new jobs come (up to 10 pages; Hays, freelancermap, Michael Page, GULP), the sources
-    side by side, a cut-short paging resumed at the next fetch within 7 days, caps 300 an hour and 1,500
-    a day per search source at 2.5 to 5 s (never below robots.txt's Crawl-delay), the fetch order by a
-    title pre-score that knows the target roles. GULP's first page was never read (its pages count from
-    0): fixed
-  - [x] More sources for interim and finance (researched): Amadeus Fire (its job directory on the data
-    host its robots.txt allows, `search_robots_url`; only the interim and project roles), FRATCH (its
-    project list, every freelance project). Michael Page Austria and Switzerland were built and taken out
-    again the same day (user: Germany above all, nothing the app does not use). Rejected: jobs.ch,
-    karriere.at, eFinancialCareers, StepStone (their terms forbid automated access), the interim
-    providers without a public list (Atreus, Bridge IMP, Butterfly Manager, UNITEDINTERIM, ...)
-  - [x] Jobdetails: no row "Eingegangen"; the moment stands in "Gefunden" (and the filter "Eingegangen" is
-    "Gefunden"); "Alert-Mail öffnen" only for a job an alert mail brought (button and menu)
-- Lean (user 2026-10-01: "lean, clean, modern", nothing the app does not use; this ends "hide, don't
-  delete" of 2026-09-29): what the UI hides goes, code, texts and tests with it. English and the palettes
-  stay for now (user).
-  - [x] Small things: the sidebar's ways (`WAYS_SHOWN`, `JobQuery.origin`, `RunRequest.only`), the filter
-    groups Vertragsart, Arbeitsmodell and "Nur neue" (`HIDDEN_GROUPS`, `JobQuery.contracts`, `work_mode`,
-    `unread`), the run line's notes (`LINE_NOTES`: what went wrong is a toast), the splitter's tooltip,
-    the unused `AppState.sources`, the error `noFetchWay`, the reader's "Ausschließen"
-  - [x] The automatic fetch (`AUTO_SHOWN`, `auto_fetch`, `commands/auto.rs`, `pipeline::auto_due`); the
-    app fetches only by hand
-  - [x] The Excel and CSV export (`EXPORT_SHOWN`, the export step and its status, the info sheet and the
-    facts it kept, the files following the marks, the Excel colours of the palette, `rust_xlsxwriter`; the AI
-    prompt stays, and so does the cleanup of the files earlier versions wrote); then the change counter `data_rev` and the
-    Excel sheet's queries (only the export read them); a delete for good while the work folder is away keeps
-    the old text files waiting (found by the data safety review)
-- Round 7 (user decisions 2026-10-01, night):
-  - [x] "Jobs suchen" without a profile searched nothing and fell back to the mailbox ("Es ist kein Postfach
-    verbunden"): the search way never reads the mailbox; without search terms the fetch waits and says why
-    (`noSearchTerms`); a toast that says the same as one shown replaces it
-  - [x] Icons: "Trotzdem bewerten" the plus (user: the plain one), "KI-Prompt kopieren" the copy glyph (as
-    "Prompt kopieren")
-  - [x] The first tab "Eingang" is "Aktuell" (back from the Archiv: "Zurückholen")
-  - [x] Einstellungen by the fetch's two ways: Suche, then Postfach (the connection, then the sources of its
-    alert mails), then Daten; no Zeitraum (every fetch reads the mails since the last one, the first one 30
-    days)
-  - [x] Neues Profil: no dialog; a start page with three ways (Aus dem Lebenslauf with Prompt kopieren and
-    Antwort einfügen in place, Leer anfangen, Aus Datei laden); "Profil anlegen" in Jobs and "Neues Profil"
-    in the menu lead there. Then (user): the order Leer anfangen, Aus Datei laden ("Datei hochladen"),
-    Aus dem Lebenslauf ("Prompt kopieren" only): the prompt has the AI hand over the profile as a file,
-    no "Antwort einfügen" (`read_profile_text` goes); the job's "KI-Prompt kopieren" is "Prompt
-    kopieren"
-  - [x] One button height for the whole app, 28 px (user: "gleich groß, einheitlich"; a button inside a
-    field a notch lower, a part of it; `ButtonSize` goes); every line icon 1.75 px (1.6 looked thin; the
-    top bar keeps 1.25); in a narrow list only the company gives way, the place stays whole up to
-    `--row-place-max`, the pay always; Name and Rolle on the grid of the card below, edges flush
-- Round 8 (user decisions 2026-10-01, late evening; drafts against today's app):
-  - [x] One yellow: the ring's ("Mittel") for every warning sign, dot and soft fill; the words stay ink (the
-    ochre goes)
-  - [x] Line icons as Lucide draws them: the stroke 2 of the icon's 24 units, so it grows with the icon (the
-    sidebar's larger ones in the same proportion as the rows' small ones), the top bar too
-  - [x] The top bar with Lucide's own icons: panel-left and panel-right at rest; under the pointer or the
-    keyboard focus the one that says what a click does (panel-left-close / panel-left-open,
-    panel-right-close / panel-right-open); arrow-left, arrow-right (the own glyphs go)
-  - [x] One green: the ring's for every check and dot, the words ink (the mint and Primer's green go); the
-    rings' lime fresher (84 56% 47%) and green a touch clearer (142 50% 41%), so the five steps are
-    equally strong
-  - [x] Profil: the Wünsche in groups with a heading (Rollen und Suche, Tagessatz, Ort, Zeit, Branchen); a
-    language's level opens from a button beside its field, like the calendar
-  - [x] Einstellungen on tabs like the Profil (Suche, Postfach, Daten): the Postfach's account as a card of its
-    own with its tile, under it the card of its alert sources; compact rows, no quota bars
-  - [x] The navy of cxpertise.de (#3E5C7E) a step richer (212 50% 36%), and every heading in it instead of a
-    near-black navy, so the palette does not look pale beside the coral (the icon keeps #E67A5C)
-  - [x] Erste Schritte: the profile first (the search needs it), the mailbox optional (only the alert mails
-    need it, its Verbinden secondary), the first fetch in the words of its way (Jobs suchen, Alert-Mails lesen)
-  - [x] The fetch's two ways named alike: "Jobs suchen" and "Alert-Mails lesen" (its menu: Suche, Alert-Mails);
-    the button keeps one width whichever way is chosen
-  - [x] A source's sign-in stands before "Alert anlegen", so that one stays in one column in every row
-  - [x] The Suchbegriffe the app proposes are chips like any other (hollow ones read as a fault); the hint
-    says they are its proposal
-  - [x] Öffnen of a job is the open book; the top bar's icons 15 px like the content's small ones
-  - [x] Alert-Mails lesen takes the open envelope, the button of the fetch's menu the chevron of every menu
-  - [x] No "Warum diese Zahl?" any more (user: not needed): the reader's ring only shows; the menu layer's
-    hover popovers and lines that only tell, the popover delay, its texts and `MatchDetail.factors` go
-    (the engine keeps its factors for the AI prompt)
+- [ ] An excluded or not yet scored job shows no analysis: no verdict icons in the Jobdetails, no
+  Anforderungen; only the ad and "Trotzdem bewerten" until it is scored.
+- [ ] No press shrink: pressing a button must not scale it (`Button.svelte`, `.btn:active:hover` with
+  `--btn-press`). It looks odd on the small chevron buttons; drop it at least there, likely everywhere
+  ("nothing deforms on press"). Check the open look of a menu button (`aria-expanded` keeps the wash).
+- [ ] The job view's action buttons: the user dislikes their words and size. Drafts: shorter words,
+  icon buttons with tooltips beside Archivieren and Löschen, or one text button and a "…" menu.
+- [ ] The list's date shows when a job came into CXact (`first_seen_at`), for the row and the order "Nach
+  Datum". Today it is the alert mail's date where there is one (`COALESCE(mail_date, first_seen_at)` in
+  `store/jobs.rs` `page_order` and the row).
+- [ ] A leaner Profil (drafts). Candidates:
+  - Drop Suchbegriffe; the search derives its terms.
+  - Drop the field Rolle; it repeats the profile's title, which is renamed in place.
+  - Merge Stichworte into the Kompetenzen.
+  - One Branchen field with stars for the wished ones, like the Schwerpunkte.
+  - Perhaps Können as the first tab, the one block the profile needs.
+- [ ] The search as one pipeline with the scoring: the queries from the whole profile, expanded through the
+  engine's own lexicon (synonyms, role phrases, German and English), and the sources' own filters from the
+  profile (freelance and interim when Zeitarbeit and Festanstellung are excluded, remote share, regions,
+  the rate where a source filters it). Completeness over speed: longer pauses rather than fewer pages,
+  still within each source's robots.txt and stops. Show in Einstellungen > Suche what CXact searches for
+  and what each query brings. Measure before and after with the user's real profile: hits per source and
+  term, the share of high matches, duplicates, known jobs it missed.
+- [ ] Optional: a calmer "Gefunden" line in the Jobdetails; hide Jobdetails rows that only say "–".
+- [ ] The release and demo installers (`npx tauri build`, `docs/CHANGING.md` "Release a version"); the user
+  starts them.

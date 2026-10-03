@@ -329,17 +329,10 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
 - The copies of the database live in `backups/` next to `jobs.db` in the data folder
   (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`);
-  Einstellungen > Daten lists and restores them (`list_backups`, `restore_backup`), and so
-  does a start whose data cannot load ("Sicherung wiederherstellen", `App.svelte`).
+  a start whose data cannot load lists and restores them (`list_backups`, `restore_backup`,
+  `BackupDialog.svelte` from `App.svelte`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
-
-## Data export and import (removed)
-
-"Alle Daten exportieren" and "Daten importieren" were removed on 2026-09-27 (docs/PLAN.md,
-"No data export or import": the user keeps one computer; the backup restore stays). There is
-no data file, `bundle.rs`, `export_data` or `import_data` any more; the copies of the
-database above are the only way back to an earlier state.
 
 ## The preview's demo data
 
@@ -420,10 +413,10 @@ and profiles: an external contract, never translated):
 
 ## The demo app
 
-"CXact Demo" is a setup of its own to send to others (docs/PLAN.md, "The demo app"). It always
-starts as the demo, on a data folder of its own made anew at every start: an empty Eingang and
-the sample profile (`core/tests/fixtures/matching/sample_profile.json`). Every "Postfach
-abrufen" is the real fetch (the run's events, the scan, the pages at a quick pace, the engine) against a made-up mailbox and portals
+"CXact Demo" is a setup of its own to send to others (docs/PLAN.md, "Screens"). It always
+starts as the demo, on a data folder of its own made anew at every start: an empty Aktuell and
+the sample profile (`core/tests/fixtures/matching/sample_profile.json`). Every fetch
+is the real one (the run's events, the scan, the pages at a quick pace, the engine) against a made-up mailbox and portals
 (`core/src/pipeline/demo/feed.rs`) and brings 5 to 15 new jobs out of the invented ads of the
 nine held-out sets, until all are in. It never touches a real mailbox, a portal or the keychain.
 

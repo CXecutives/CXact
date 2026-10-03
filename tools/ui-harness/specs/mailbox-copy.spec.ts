@@ -1,5 +1,4 @@
-// Final round, team "switches and profile": the mailbox address to copy (the Profil parts of
-// this round are in profile.spec.ts).
+// The connected mailbox address is text to copy.
 
 import { expect, open, test } from './fixtures';
 import { showTab } from './helpers';

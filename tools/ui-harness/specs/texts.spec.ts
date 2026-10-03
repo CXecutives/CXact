@@ -1,5 +1,5 @@
-// The words of the final text audit: what a text promises is what the app does, one name
-// for one thing, numbers formatted like every other count, rows in short words.
+// The words of the app: what a text promises is what the app does, one name for one thing,
+// numbers formatted like every other count, rows in short words.
 
 import { expect, open, runFinished, test } from './fixtures';
 import { T } from './helpers';

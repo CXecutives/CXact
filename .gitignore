@@ -23,7 +23,9 @@ desktop.ini
 .DS_Store
 
 # Local Claude Code files
-/.claude/
+/.claude/*
+# The two preview servers (`ui-preview`, `ui-dev`) for Claude's browser pane.
+!/.claude/launch.json
 
 # Python caches of the helper scripts
 __pycache__/

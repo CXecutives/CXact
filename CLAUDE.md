@@ -3,10 +3,12 @@
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de; any
 source's alert mail by its job links) from Gmail, searches the sources that allow it itself (Hays, freelancermap,
 Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x, FRATCH; user decisions 2026-10-01), fetches the job pages and **scores every job
-against a consultant profile**, only when the user presses the fetch: "Jobs suchen" or "Postfach abrufen", the
+against a consultant profile**, only when the user presses the fetch: "Jobs suchen" or "Alert-Mails lesen", the
 menu beside it chooses which (never both).
-Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).
-**Progress, phases and decisions live in `docs/PLAN.md` - read it before any work and tick its boxes.**
+**What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read it before any
+work and tick its boxes. How to work with the user is in `MEMORY.md` (imported at the end of this file).**
+The old app `CXecutives/projektscraper` is a read-only reference (its old engine, commit `ca9a2cd^`, is the
+baseline of `tools/eval/legacy_baseline.py`).
 
 ## Hard rules
 - Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/Project`, fast-forward only; never bypass
@@ -70,6 +72,8 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `eval/legacy_baseline.py`, `icon.py`, `third-party.mjs`.
 
 ## Commands
+- After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`; the Rust toolchain
+  comes from `rust-toolchain.toml`. `core/tests/fixtures/private/` (real mails, ignored) is copied by hand.
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
 - `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
 - `npx tauri build` (release bundles) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
@@ -104,3 +108,6 @@ Fast AND lean: the cost comes from extra work, not from speed. So:
   `ui/src/lib/facts.ts`, one command table. `docs/CHANGING.md` says where each kind of change goes.
 - Tests check behaviour through shared helpers and read texts from the catalog; screenshot baselines run on request.
 - Report at milestones only, state durations honestly beforehand, watch the plan's token use.
+
+## Memory
+@MEMORY.md

@@ -1,5 +1,5 @@
-// Wave 2: the reader's terms, the search over every word, and the fixes of the ship audit
-// (see docs/PLAN.md).
+// Edge cases across the screens: the reader's terms, the search over every word, the form's
+// values and caret, undo and the end of a run.
 
 import type { Page } from '@playwright/test';
 import { expect, nav, NOW, open, runFinished, test } from './fixtures';
