@@ -11,6 +11,7 @@
 //! network: everything stays on the computer.
 
 mod answer;
+pub mod cv;
 mod form;
 mod json;
 pub mod prompt;

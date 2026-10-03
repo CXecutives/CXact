@@ -5,3 +5,5 @@
 *.ico binary
 *.png binary
 *.eml -text
+# The invented test CVs stay byte for byte as tools/cv-fixtures.py writes them
+core/tests/fixtures/cv/** -text

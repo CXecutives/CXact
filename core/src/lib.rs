@@ -4,6 +4,7 @@
 //! fully testable here without a window (`cargo test -p jobalert-core`).
 #![forbid(unsafe_code)]
 
+pub mod ai;
 pub mod error;
 pub mod export;
 pub mod fetch;

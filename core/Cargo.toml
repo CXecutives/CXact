@@ -11,14 +11,20 @@ workspace = true
 
 [dependencies]
 async-imap = { version = "0.11.3", default-features = false, features = ["runtime-tokio"] }
+# The CV files of the AI import (profile/cv): base64 for the worker, the Word 97 container,
+# downscaling of photos, the XML of DOCX and ODT, the zip around both.
+base64 = "0.22"
+cfb = "0.7"
 ego-tree = "0.11"
 fastrand = "2"
 # Decodes the embedded ESCO vocabulary (matching/lexicon/esco.bin); already in the tree via reqwest.
 flate2 = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 jiff = { version = "0.2.37", features = ["serde"] }
 keyring = "4.2"
 log = { version = "0.4", features = ["std"] }
 mail-parser = "0.11.9"
+quick-xml = "0.41"
 regex = "1"
 # TLS via rustls with ring (not aws-lc: no extra C toolchain needed).
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "http2", "system-proxy", "cookies", "gzip", "brotli"] }
@@ -37,6 +43,10 @@ tokio-io-timeout = "1"
 tokio-rustls = { version = "0.26.5", default-features = false, features = ["logging", "tls12", "ring"] }
 tokio-util = "0.7"
 url = "2.5"
+# The install id of the AI import (ai.rs).
+uuid = { version = "1", features = ["v4"] }
+# Reading only (DOCX, ODT): deflate, no writer, no other methods.
+zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]
 insta = "1"
