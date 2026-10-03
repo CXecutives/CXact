@@ -1,13 +1,12 @@
 // The shell of the app, in one place: the window's top bar and its buttons, the sidebar
 // and its views (one table, lib/views.ts), the switch between views, the window sizes it
 // survives, the press that follows the pointer, reduced motion, the tooltips, the toasts and
-// dialogs, the run status, the card of the keys, a start whose data cannot load and the
-// language switch. The keys themselves are input.spec.ts; the components one by one are
-// gallery.spec.ts. Texts come from the catalog where a test names a label (text()).
+// dialogs, the run status, the card of the keys and a start whose data cannot load. The keys
+// themselves are input.spec.ts; the components one by one are gallery.spec.ts. Texts come
+// from the catalog where a test names a label (text()).
 
 import type { Locator, Page } from '@playwright/test';
 import {
-  animationsDone,
   calls,
   expect,
   expectShot,
@@ -20,11 +19,7 @@ import {
   text,
   viewsSettled,
 } from './fixtures';
-import { demoScore } from './demo';
 import { failNext, rowMenu, SEARCHED, showTab, T, tokenColour, tokenPx, viaMenu } from './helpers';
-
-/** The score of the best job, the first row of the list (freelancermap-2801). */
-const BEST = String(demoScore('freelancermap-2801'));
 
 // Every view switch, the Jobs view included, is the same: the old view fades out, then the new
 // one fades in, so two views are never readable at once. Recorded from the Web Animations
@@ -98,9 +93,6 @@ async function mailboxTabByKeys(page: Page): Promise<void> {
 
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
 
-const rows = (page: Page): Locator =>
-  page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
-
 const row = (page: Page, key: string): Locator =>
   page.getByTestId('job-list').getByTestId(`job-row-${key}`);
 
@@ -154,16 +146,6 @@ async function pressAndLeave(
 
 /** A point outside the window: above its top left corner. */
 const OUTSIDE = { x: -40, y: -40 };
-
-const EN = `${WIN}&lang=en`;
-
-async function readFirst(page: Page): Promise<void> {
-  await page.getByTestId('nav-jobs').click();
-  // The best scored job (by match the first row is one still without a score).
-  await page.getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('reader-ring')).toContainText(BEST);
-  await animationsDone(page);
-}
 
 /* ----------------------------------------------------- The frame, the views and the look */
 
@@ -1814,86 +1796,4 @@ test('a held sidebar entry that the pointer leaves looks at rest', async ({ page
   const entry = page.getByTestId('nav-settings');
   await pressAndLeave(page, entry);
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-});
-
-/* -------------------------------------------------------------------------- The language */
-
-// The language switch: Einstellungen > Sprache turns the whole app to English and back at
-// once (no reload), the backend stores the choice, and a backend that says English starts
-// the app in English. Words, numbers and dates follow; the baselines stay German, two
-// English ones show the reader and the settings.
-
-// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
-test.skip('Sprache switches the whole app to English and back at once', async ({ page }) => {
-  await settings(page);
-  const choice = page.getByTestId('language');
-  await expect(choice.getByRole('radio', { name: 'Deutsch' })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  // No hint: the Excel file and the report follow by themselves (settings.spec.ts).
-  await expect(page.getByTestId('settings-look')).toContainText('Sprache');
-
-  await choice.getByRole('radio', { name: 'English' }).click();
-  // The page switches before anything reloads: the sidebar, the headings, the document.
-  await expect(page.getByTestId('nav-settings')).toContainText('Settings');
-  await expect(page.getByTestId('nav-profile')).toContainText('Profile');
-  await expect(page.getByTestId('settings-look')).toContainText('Appearance');
-  await expect(page.getByTestId('settings-data')).toContainText('Work folder');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(choice.getByRole('radio', { name: 'English' })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  expect((await calls(page, 'save_settings')).map(([, args]) => args)).toEqual([
-    {
-      patch: {
-        portals: [],
-        language: 'en',
-        palette: null,
-      },
-    },
-  ]);
-
-  // The Jobs view in English: the list header and the reader follow.
-  await readFirst(page);
-  await expect(page.getByTestId('list-header')).toContainText(
-    await text(page, 'toolbar.searchNow'),
-  );
-  await expect(page.getByTestId('reader-ring')).toHaveAttribute(
-    'aria-label',
-    new RegExp(`${BEST}%`),
-  );
-  await expect(page.getByTestId('reader')).not.toContainText('Passung');
-
-  // Back to German, the same way.
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('language').getByRole('radio', { name: 'Deutsch' }).click();
-  await expect(page.getByTestId('nav-settings')).toContainText('Einstellungen');
-  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-  // The job stays open; its reader speaks German again, with a narrow no-break space before
-  // the percent sign.
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('reader-ring')).toHaveAttribute(
-    'aria-label',
-    new RegExp(`${BEST}\\s%`),
-  );
-  await expect(page.getByTestId('list-header')).toContainText(
-    await text(page, 'toolbar.searchNow'),
-  );
-});
-
-// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
-test.skip('the app starts in the language the backend says', async ({ page }) => {
-  await open(page, EN);
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.getByTestId('nav-jobs')).toContainText('Jobs');
-  await expect(page.getByTestId('nav-settings')).toContainText('Settings');
-  // Relative dates and the reader beside the list speak English too.
-  await expect(page.getByTestId('place-reader')).toHaveText('Select a job in the list.');
-  await expect(rows(page).first()).not.toContainText(/gestern|vor \d/);
-  await page.getByTestId('nav-settings').click();
-  await expect(
-    page.getByTestId('language').getByRole('radio', { name: 'English' }),
-  ).toHaveAttribute('aria-checked', 'true');
 });

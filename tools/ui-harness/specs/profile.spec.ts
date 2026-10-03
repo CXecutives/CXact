@@ -578,7 +578,7 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   await expect(aliases).toHaveAttribute('placeholder', T.profile.field.aliases);
   await page.setViewportSize({ width: 1360, height: 900 });
   await expect(aliases).not.toHaveAttribute('placeholder', /./);
-  await profile(page, '&scenario=no-profile&lang=en');
+  await profile(page, '&scenario=no-profile');
   await chooseWay(page, 'empty');
   // Name and role are fields with their labels: no placeholder repeats them.
   await expect(page.getByTestId('profile-name-field')).not.toHaveAttribute('placeholder', /./);
@@ -1358,15 +1358,6 @@ test('the day exists only for "Ab Datum", gets the caret and is judged when left
   await expect(date).toHaveCount(0);
   await save(page).click();
   expect((await lastSave(page)).after.criteria.available).toEqual({ kind: 'now' });
-  // In English.
-  await profile(page, '&lang=en');
-  await page
-    .getByTestId('profile-available')
-    .getByRole('radio', { name: 'Date', exact: true })
-    .click();
-  await page.getByTestId('profile-date').fill('31/02/2026');
-  await page.getByTestId('profile-name-field').focus();
-  await expect(error).toHaveText('This date does not exist.');
 });
 
 test('a value too large is said at once, stays with its error and holds the save', async ({
@@ -1648,7 +1639,7 @@ test('the countries: search in both languages, Enter or a click, chips', async (
   await expect(chips(countries(page))).toHaveText(['Deutschland', 'Österreich', 'Schweden']);
   await expect(input).toHaveValue('');
   await expect(options(page)).toBeHidden();
-  // English names find the country too, named in the app's language; a click takes it.
+  // English names find the country too, named in German; a click takes it.
   await input.fill('nether');
   await expect(options(page).getByRole('option')).toHaveText(['Niederlande']);
   await options(page).getByRole('option', { name: 'Niederlande' }).click();
@@ -1737,11 +1728,6 @@ test('the countries: other names find them, a chosen one or no country says so',
   await page.getByTestId('profile-name-field').focus();
   await expect(chips(countries(page)).last()).toHaveText('Italien');
   await expect(none).toHaveCount(0);
-  // In English: English names, German ones still find them.
-  await profile(page, '&lang=en');
-  await expect(chips(countries(page))).toHaveText(['Germany', 'Austria']);
-  await countryInput(page).fill('schweiz');
-  await expect(options(page).getByRole('option')).toHaveText(['Switzerland']);
 });
 
 // ------------------------------------------------------------------ competences, chips, languages
@@ -1988,7 +1974,7 @@ test('the language field suggests common languages in both names', async ({ page
   await name.press('Enter');
   await expect(name).toHaveValue('Französisch');
   await expect(suggestions.getByRole('option')).toHaveCount(0);
-  // Found by its English name too, taken in the app's language; any other text stays.
+  // Found by its English name too, taken in German; any other text stays.
   await name.fill('Spanish');
   await expect(suggestions.getByRole('option')).toHaveText(['Spanisch']);
   await name.fill('Klingonisch');
@@ -1996,44 +1982,30 @@ test('the language field suggests common languages in both names', async ({ page
   await expect(name).toHaveValue('Klingonisch');
 });
 
-test('language names follow the UI language; the profile keeps them in German', async ({
-  page,
-}) => {
+test('common languages show and are kept by their German names', async ({ page }) => {
   const values = (): Promise<string[]> =>
     page
       .getByTestId('language-name')
       .evaluateAll((all) => all.map((input) => (input as HTMLInputElement).value));
-  for (const [query, shown, english, spanish] of [
-    ['', ['Deutsch', 'Englisch'], 'Englisch', 'Spanisch'],
-    ['&lang=en', ['German', 'English'], 'English', 'Spanish'],
-  ] as const) {
-    await profile(page, query);
-    // The demo profile keeps "Deutsch" and "Englisch": the rows name them in the UI's words.
-    expect(await values()).toEqual(shown);
-    await (await show(page, page.getByTestId('language-add'))).click();
-    const name = page.getByTestId('language-name').last();
-    const suggestions = page.getByTestId('language-name-options').last();
-    // Typing towards a language suggests it in the UI's words, found by either name.
-    await name.fill('Englis');
-    await expect(suggestions.getByRole('option')).toHaveText([english]);
-    await name.fill('Spani');
-    await expect(suggestions.getByRole('option')).toHaveText([spanish]);
-    await name.press('Enter');
-    await expect(name).toHaveValue(spanish);
-    // A name in the other language stays as typed while the field has the focus, then shows
-    // in the UI's words.
-    await name.fill(spanish === 'Spanisch' ? 'spanish' : 'spanisch');
-    await expect(name).toHaveValue(spanish === 'Spanisch' ? 'spanish' : 'spanisch');
-    await page.keyboard.press('Tab');
-    await expect(name).toHaveValue(spanish);
-    await save(page).click();
-    const sent = await lastSave(page);
-    expect(sent.after.languages.map((row) => row.language)).toEqual([
-      'Deutsch',
-      'Englisch',
-      'Spanisch',
-    ]);
-  }
+  await profile(page);
+  expect(await values()).toEqual(['Deutsch', 'Englisch']);
+  await (await show(page, page.getByTestId('language-add'))).click();
+  const name = page.getByTestId('language-name').last();
+  const suggestions = page.getByTestId('language-name-options').last();
+  await name.fill('Spani');
+  await expect(suggestions.getByRole('option')).toHaveText(['Spanisch']);
+  // An English name stays as typed while the field has the focus, then shows in German.
+  await name.fill('spanish');
+  await expect(name).toHaveValue('spanish');
+  await page.keyboard.press('Tab');
+  await expect(name).toHaveValue('Spanisch');
+  await save(page).click();
+  const sent = await lastSave(page);
+  expect(sent.after.languages.map((row) => row.language)).toEqual([
+    'Deutsch',
+    'Englisch',
+    'Spanisch',
+  ]);
 });
 
 // ------------------------------------------------------------------ the ways in

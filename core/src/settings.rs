@@ -14,8 +14,9 @@ pub(crate) const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
-/// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `exportExcel`, `exportCsv`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped
-/// silently - serde only refuses unknown fields with `deny_unknown_fields`.
+/// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `exportExcel`, `exportCsv`,
+/// `autoArchiveDays`, `autoEmptyTrashDays`, `language`) are skipped silently - serde only
+/// refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -27,11 +28,6 @@ pub struct Settings {
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// Language of the interface and of the prompts (Einstellungen,
-    /// Darstellung); `None` = German, until the user chooses English ([`Language::DEFAULT`],
-    /// [`Settings::language_or`]). A code of a newer version reads as `None`.
-    #[serde(deserialize_with = "known_language")]
-    pub language: Option<Language>,
     /// The colours of the page and the window (Einstellungen, Darstellung); the page draws
     /// the top bar itself. The Excel file and the icon keep CXact. A name this version does
     /// not know (a newer version's) reads as CXact, and so does the earlier name "coast".
@@ -44,7 +40,7 @@ pub struct Settings {
     pub fetch_search: bool,
 }
 
-/// Einstellungen shows Darstellung (the palette and the language); hidden for now.
+/// Einstellungen shows Darstellung (the palette); hidden for now.
 pub const LOOK_SHOWN: bool = false;
 
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
@@ -68,48 +64,6 @@ impl Palette {
             Palette::Cxact => "cxact",
             Palette::Light => "light",
             Palette::Dark => "dark",
-        }
-    }
-}
-
-/// The app's language: German unless the user chose English in Einstellungen
-/// ([`Language::DEFAULT`]); only the macOS menu follows the OS ([`Language::from_locale`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub enum Language {
-    De,
-    En,
-}
-
-impl Language {
-    /// The app's language until the user picks one in Einstellungen: German, whatever the
-    /// OS display language is (the app is written for German-speaking consultants; many of
-    /// them run an English Windows or macOS).
-    pub const DEFAULT: Language = Language::De;
-
-    /// The language for a BCP 47 tag of the OS (`de-DE`, `de_AT.UTF-8`, `gsw-CH` ...): German
-    /// for German, English for everything else (and for no tag at all).
-    pub fn from_locale(tag: Option<&str>) -> Language {
-        let primary = tag
-            .unwrap_or_default()
-            .split(['-', '_', '.', '@'])
-            .next()
-            .unwrap_or_default()
-            .to_ascii_lowercase();
-        // `gsw` is Swiss German, `nds` Low German: their readers read German.
-        if matches!(primary.as_str(), "de" | "gsw" | "nds") {
-            Language::De
-        } else {
-            Language::En
-        }
-    }
-
-    /// The code of the language (`de`, `en`), as in `<html lang>`.
-    pub fn code(self) -> &'static str {
-        match self {
-            Language::De => "de",
-            Language::En => "en",
         }
     }
 }
@@ -173,7 +127,6 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
-            language: None,
             palette: Palette::Cxact,
             fetch_mail: true,
             fetch_search: true,
@@ -215,14 +168,13 @@ impl Settings {
         }
     }
 
-    /// The settings while Darstellung is hidden (user, 2026-09-30): the app is CXact and
-    /// German ([`LOOK_SHOWN`]). A hidden choice goes back to that; `true` when something
-    /// changed (the start saves it). The fields and their code stay.
+    /// The settings while Darstellung is hidden (user, 2026-09-30): the app is CXact
+    /// ([`LOOK_SHOWN`]). A hidden choice goes back to that; `true` when something changed
+    /// (the start saves it). The field and its code stay.
     pub fn fit_hidden(&mut self) -> bool {
         let before = self.clone();
         if !LOOK_SHOWN {
             self.palette = Palette::default();
-            self.language = None;
         }
         *self != before
     }
@@ -283,11 +235,6 @@ impl Settings {
         portal.access().path(switches.login_enabled)
     }
 
-    /// The chosen language, else `fallback` (the app passes [`Language::DEFAULT`]).
-    pub fn language_or(&self, fallback: Language) -> Language {
-        self.language.unwrap_or(fallback)
-    }
-
     /// Workspace (chosen or default).
     pub fn workspace_or(&self, default: &std::path::Path) -> PathBuf {
         self.workspace
@@ -320,14 +267,6 @@ pub fn default_workspace(documents: &Path) -> PathBuf {
 fn holds_app_files(folder: &Path) -> bool {
     folder.join(crate::profile::PROFILE_DIR).is_dir()
         || folder.join(crate::export::RESULT_DIR).is_dir()
-}
-
-/// A stored language; one this version does not know (a newer version wrote it) is none.
-fn known_language<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> std::result::Result<Option<Language>, D::Error> {
-    let code = Option::<String>::deserialize(deserializer)?;
-    Ok(code.and_then(|code| serde_json::from_value(serde_json::Value::String(code)).ok()))
 }
 
 /// A stored palette; one this version does not know is CXact.
@@ -374,18 +313,17 @@ fn portals_any_form<'de, D: Deserializer<'de>>(
 
 #[cfg(test)]
 mod tests {
-    /// Hidden cards keep their defaults: CXact, German, no overview file; the rest stays.
+    /// Hidden cards keep their defaults: CXact, no overview file; the rest stays.
     #[test]
     fn hidden_cards_keep_their_defaults() {
         let mut s = Settings {
             palette: Palette::Dark,
-            language: Some(Language::En),
             fetch_mail: false,
             ..Settings::default()
         };
         assert_eq!(s.fit_hidden(), !LOOK_SHOWN);
         if !LOOK_SHOWN {
-            assert_eq!((s.palette, s.language), (Palette::Cxact, None));
+            assert_eq!(s.palette, Palette::Cxact);
         }
         assert!(!s.fetch_mail);
         assert!(!s.fit_hidden(), "a second fit changes nothing");
@@ -543,51 +481,6 @@ mod tests {
         assert!(!saved.contains("autoArchiveDays"), "{saved}");
         store.kv_set(KEY, r#"{"portals":[]}"#).unwrap();
         assert!(Settings::load(&store).unwrap().enabled_portals().is_empty());
-    }
-
-    /// Without a choice the app follows the OS: German only on a German system. A stored
-    /// choice wins and survives a restart; an unknown code falls back to the OS.
-    #[test]
-    fn the_language_follows_the_system_until_chosen() {
-        for (tag, language) in [
-            (Some("de-DE"), Language::De),
-            (Some("de-AT"), Language::De),
-            (Some("de_CH.UTF-8"), Language::De),
-            (Some("gsw-CH"), Language::De),
-            (Some("DE"), Language::De),
-            (Some("en-US"), Language::En),
-            (Some("fr-FR"), Language::En),
-            (Some("nl"), Language::En),
-            (Some("dev"), Language::En),
-            (Some(""), Language::En),
-            (None, Language::En),
-        ] {
-            assert_eq!(Language::from_locale(tag), language, "{tag:?}");
-        }
-
-        let store = Store::in_memory().unwrap();
-        let mut s = Settings::load(&store).unwrap();
-        assert_eq!(s.language, None);
-        assert_eq!(s.language_or(Language::De), Language::De);
-        assert_eq!(s.language_or(Language::En), Language::En);
-        s.language = Some(Language::En);
-        s.save(&store).unwrap();
-        let back = Settings::load(&store).unwrap();
-        assert_eq!(back.language_or(Language::De), Language::En);
-        assert!(
-            store
-                .kv_get(KEY)
-                .unwrap()
-                .unwrap()
-                .contains(r#""language":"en""#)
-        );
-        // A language of a newer version: the settings stay, the language follows the OS.
-        store
-            .kv_set(KEY, r#"{"language":"fr","fetchMail":false}"#)
-            .unwrap();
-        let newer = Settings::load(&store).unwrap();
-        assert!(!newer.fetch_mail);
-        assert_eq!(newer.language, None);
     }
 
     /// CXact until one is chosen; the choice survives a restart, a palette of a newer version

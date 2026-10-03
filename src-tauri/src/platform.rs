@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use jobalert_core::export::palette;
-use jobalert_core::settings::{Language, Palette};
+use jobalert_core::settings::Palette;
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview, WebviewWindow, WebviewWindowBuilder};
 
@@ -167,16 +167,6 @@ const fn major_after(haystack: &str, marker: &str) -> u32 {
         i += 1;
     }
     major
-}
-
-// ------------------------------------------------------------------ language
-
-/// The language of the OS (macOS: the first of Language & Region), German only when it is
-/// German. The macOS menu and the startup dialog follow it, as the OS's own menus and
-/// dialogs do; the app's own language starts German (`Language::DEFAULT`) until the user
-/// picks one.
-pub fn system_language() -> Language {
-    Language::from_locale(sys_locale::get_locale().as_deref())
 }
 
 // ------------------------------------------------------------------ app
@@ -1354,38 +1344,11 @@ mod macos {
     const CLOSE_WINDOW: &str = "Fenster schließen";
     // end of user-facing text
 
-    /// The menu on an English (any non-German) Mac, in the words of macOS.
-    mod en {
-        // User-facing text, English.
-        pub(super) const ABOUT: &str = "About CXact";
-        pub(super) const SETTINGS: &str = "Settings…";
-        pub(super) const HIDE: &str = "Hide CXact";
-        pub(super) const HIDE_OTHERS: &str = "Hide Others";
-        pub(super) const QUIT: &str = "Quit CXact";
-        pub(super) const EDIT: &str = "Edit";
-        pub(super) const UNDO: &str = "Undo";
-        pub(super) const REDO: &str = "Redo";
-        pub(super) const CUT: &str = "Cut";
-        pub(super) const COPY: &str = "Copy";
-        pub(super) const PASTE: &str = "Paste";
-        pub(super) const SELECT_ALL: &str = "Select All";
-        pub(super) const WINDOW: &str = "Window";
-        pub(super) const MINIMIZE: &str = "Minimize";
-        pub(super) const CLOSE_WINDOW: &str = "Close Window";
-        // end of user-facing text
-    }
-
     /// Minimal app menu instead of Tauri's default (no reload or zoom, no Help, no
     /// Services). It carries the system shortcuts the app keeps: Cmd+, (settings), Cmd+Q,
     /// Cmd+H, Cmd+M, Cmd+W, and Cmd+C/V/X/A/Z, which `WKWebView` only receives through an
-    /// Edit menu. Like the menus of every Mac app it speaks the language of the OS and uses
-    /// its words (it is built before the app's own setting is read; the page follows that
-    /// setting).
+    /// Edit menu. It speaks German in the words of macOS.
     pub fn menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-        let english = super::system_language() == super::Language::En;
-        let w = |german: &'static str, english_word: &'static str| {
-            if english { english_word } else { german }
-        };
         let info = app.package_info();
         let about = AboutMetadata {
             name: Some(info.name.clone()),
@@ -1397,45 +1360,39 @@ mod macos {
             &info.name,
             true,
             &[
-                &PredefinedMenuItem::about(app, Some(w(ABOUT, en::ABOUT)), Some(about))?,
+                &PredefinedMenuItem::about(app, Some(ABOUT), Some(about))?,
                 &PredefinedMenuItem::separator(app)?,
-                &MenuItem::with_id(
-                    app,
-                    SETTINGS_ID,
-                    w(SETTINGS, en::SETTINGS),
-                    true,
-                    Some("CmdOrCtrl+,"),
-                )?,
+                &MenuItem::with_id(app, SETTINGS_ID, SETTINGS, true, Some("CmdOrCtrl+,"))?,
                 &PredefinedMenuItem::separator(app)?,
-                &PredefinedMenuItem::hide(app, Some(w(HIDE, en::HIDE)))?,
-                &PredefinedMenuItem::hide_others(app, Some(w(HIDE_OTHERS, en::HIDE_OTHERS)))?,
+                &PredefinedMenuItem::hide(app, Some(HIDE))?,
+                &PredefinedMenuItem::hide_others(app, Some(HIDE_OTHERS))?,
                 &PredefinedMenuItem::separator(app)?,
-                &MenuItem::with_id(app, QUIT_ID, w(QUIT, en::QUIT), true, Some("CmdOrCtrl+Q"))?,
+                &MenuItem::with_id(app, QUIT_ID, QUIT, true, Some("CmdOrCtrl+Q"))?,
             ],
         )?;
         let edit = Submenu::with_items(
             app,
-            w(EDIT, en::EDIT),
+            EDIT,
             true,
             &[
-                &MenuItem::with_id(app, UNDO_ID, w(UNDO, en::UNDO), true, Some("CmdOrCtrl+Z"))?,
-                &PredefinedMenuItem::redo(app, Some(w(REDO, en::REDO)))?,
+                &MenuItem::with_id(app, UNDO_ID, UNDO, true, Some("CmdOrCtrl+Z"))?,
+                &PredefinedMenuItem::redo(app, Some(REDO))?,
                 &PredefinedMenuItem::separator(app)?,
-                &PredefinedMenuItem::cut(app, Some(w(CUT, en::CUT)))?,
-                &PredefinedMenuItem::copy(app, Some(w(COPY, en::COPY)))?,
-                &PredefinedMenuItem::paste(app, Some(w(PASTE, en::PASTE)))?,
-                &PredefinedMenuItem::select_all(app, Some(w(SELECT_ALL, en::SELECT_ALL)))?,
+                &PredefinedMenuItem::cut(app, Some(CUT))?,
+                &PredefinedMenuItem::copy(app, Some(COPY))?,
+                &PredefinedMenuItem::paste(app, Some(PASTE))?,
+                &PredefinedMenuItem::select_all(app, Some(SELECT_ALL))?,
             ],
         )?;
         // The window-list id makes macOS treat it as the standard Window menu.
         let window = Submenu::with_id_and_items(
             app,
             WINDOW_SUBMENU_ID,
-            w(WINDOW, en::WINDOW),
+            WINDOW,
             true,
             &[
-                &PredefinedMenuItem::minimize(app, Some(w(MINIMIZE, en::MINIMIZE)))?,
-                &PredefinedMenuItem::close_window(app, Some(w(CLOSE_WINDOW, en::CLOSE_WINDOW)))?,
+                &PredefinedMenuItem::minimize(app, Some(MINIMIZE))?,
+                &PredefinedMenuItem::close_window(app, Some(CLOSE_WINDOW))?,
             ],
         )?;
         Menu::with_items(app, &[&app_menu, &edit, &window])
@@ -1511,24 +1468,15 @@ pub const LOG_DIR_HINT: &str = if cfg!(target_os = "macos") {
     "%LOCALAPPDATA%\\de.cxecutives.job-alert-monitor\\logs"
 };
 
-// User-facing text, German by product decision.
-const WINDOW_HINT_DE: &str = "Fehlt die Microsoft-Edge-WebView2-Laufzeit, installiere sie \
-    (https://developer.microsoft.com/microsoft-edge/webview2/).";
-// end of user-facing text
-
-// User-facing text, English.
-const WINDOW_HINT_EN: &str = "If the Microsoft Edge WebView2 runtime is missing, install it \
-    (https://developer.microsoft.com/microsoft-edge/webview2/).";
-// end of user-facing text
-
-/// What helps when the window cannot open, in the startup dialog's language: on Windows the
-/// WebView2 runtime is usually missing; macOS brings its engine along.
-pub fn window_hint(language: Language) -> Option<&'static str> {
-    if !cfg!(windows) {
-        return None;
-    }
-    Some(match language {
-        Language::De => WINDOW_HINT_DE,
-        Language::En => WINDOW_HINT_EN,
-    })
-}
+/// What helps when the window cannot open: on Windows the WebView2 runtime is usually
+/// missing; macOS brings its engine along.
+pub const WINDOW_HINT: Option<&str> = if cfg!(windows) {
+    // User-facing text, German by product decision.
+    Some(
+        "Fehlt die Microsoft-Edge-WebView2-Laufzeit, installiere sie \
+        (https://developer.microsoft.com/microsoft-edge/webview2/).",
+    )
+    // end of user-facing text
+} else {
+    None
+};

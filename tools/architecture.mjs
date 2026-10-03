@@ -37,7 +37,6 @@ const MAX_LINES = 500;
  */
 const LARGE = {
   'ui/src/lib/i18n/de.ts': [null, 'the catalog: every text of the UI in one table'],
-  'ui/src/lib/i18n/en.ts': [null, 'the catalog: mirrors de.ts key for key'],
   'ui/src/lib/input/input.ts': [1800, 'the one place of all input handling (CLAUDE.md)'],
   'ui/src/features/gallery/gallery.ts': [600, 'the samples of the gallery, one table'],
   // Known large files: split along their parts when next touched.

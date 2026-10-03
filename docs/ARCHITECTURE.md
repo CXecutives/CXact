@@ -26,7 +26,7 @@ Each layer uses only the ones below it.
     `tools/architecture.mjs`.
   - `lib/`: no components, no features. `lib/state/` the app's state, `lib/ipc/api.ts` the
     only door to Tauri, `lib/input/input.ts` all input handling, `lib/motion/` all motion,
-    `lib/i18n/` the catalogs (`de.ts` the source, `en.ts` its mirror) and the text functions,
+    `lib/i18n/` the catalog (`de.ts`) and the text functions,
     `lib/platform.ts` the per-OS conventions, `lib/icons.ts` the icons by meaning.
   - `App.svelte`, `main.ts`: which view shows.
 
@@ -47,7 +47,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Toasts (kinds, life) | `TOAST_KINDS`, `TOAST_LIFE` in `ui/src/lib/state/toasts.svelte.ts` | `Toast.svelte` |
 | Hover, press, focus | one answer per surface kind in `tokens.css` | every control |
 | Screens as tables | `features/jobs/reader-sections.ts`, `features/settings/cards.ts` (the five cards), `features/first-run/steps.ts`, `features/profile/sections.ts` | their views |
-| Texts | `ui/src/lib/i18n/de.ts` (`en.ts` mirrors it) | every text the UI shows |
+| Texts | `ui/src/lib/i18n/de.ts` | every text the UI shows |
 | Commands | `src-tauri/commands.txt` | `generate_handler!`, capabilities, `commands.ts`, the stub |
 | Profile criteria | `CRITERIA` in `core/src/profile/form.rs` | form, engine, `profile.ts` |
 | Match bands | `HIGH_FROM`, `MID_FROM` in `core/src/model.rs` | store, prompts, `bands.ts` |
@@ -55,7 +55,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
-| Defaults of the settings (`fetchMail`, `fetchSearch`, `language`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
+| Defaults of the settings (`fetchMail`, `fetchSearch`, `palette`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
 | Engine words | `core/src/matching/lexicon/` | the engine |
 
@@ -128,7 +128,7 @@ the rule and the fix.
 | Layering: components never import features; lib neither components nor features; a feature no other feature's internals | `tools/architecture.mjs` (`check:architecture`) |
 | A `.ts`/`.svelte` file of `ui/src` stays at 500 lines (known large files: a ceiling that only goes down) | `tools/architecture.mjs` |
 | No dead file, no unused export in `ui/src` and `tools/ui-harness` | `tools/architecture.mjs` |
-| UI text only from the catalog; the catalogs plain, English without German | `ui_contract.rs`, `core/tests/language.rs` |
+| UI text only from the catalog; the catalog plain | `ui_contract.rs`, `core/tests/language.rs` |
 | Errors only through `errorText` | `eslint.config.js` (`errorMessage`) |
 | Per-OS code only in `lib/platform.ts` and `src-tauri/src/platform.rs` | `ui_contract.rs`, `core/tests/architecture.rs` |
 | Commands declared once | `core/tests/contract.rs` |

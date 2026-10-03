@@ -10,7 +10,7 @@
       },
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["German", "English"],
+        "languages": ["German"],
         "displayLanguageSelector": false,
         "installerHooks": "./windows/hooks.nsh"
       }

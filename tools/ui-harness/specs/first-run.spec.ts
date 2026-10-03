@@ -147,11 +147,6 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   await expect(step.getByTestId('first-mailbox-hint')).toHaveCount(0);
   await page.getByTestId('first-open-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  // In English the same.
-  await open(page, `${WIN}&scenario=first-run&lang=en`);
-  await expect(page.getByTestId('step-mailbox')).toContainText(
-    'The alert emails from linkedin.com and freelance.de must go to this Gmail address.',
-  );
 });
 
 test('no alert mail in 30 days says to set up an alert first, for the mailbox', async ({
@@ -273,7 +268,7 @@ test('the three steps are in view at 1280 x 720 on both systems', async ({ page 
 
 test('it opens at its top, no caret pulled into the optional mailbox', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
-  for (const query of [`${WIN}&scenario=reset&lang=en`, `${MAC}&scenario=first-run`]) {
+  for (const query of [`${WIN}&scenario=reset`, `${MAC}&scenario=first-run`]) {
     await open(page, query);
     await expect(page.getByTestId('first-profile')).toBeVisible();
     await expect(page.getByTestId('mailbox-user')).not.toBeFocused();

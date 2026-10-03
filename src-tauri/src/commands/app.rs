@@ -187,7 +187,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
         fetch_mail: settings.fetch_mail,
         fetch_search: settings.fetch_search,
-        language: settings.language_or(state.system_language),
         palette: settings.palette,
         last_run,
         counts,
@@ -292,7 +291,7 @@ pub async fn pick_workspace(
     state.ensure_not_demo()?;
     let current = state.workspace()?;
     let Some(folder) = rfd::AsyncFileDialog::new()
-        .set_title(texts::of(state.language()?).pick_workspace)
+        .set_title(texts::PICK_WORKSPACE)
         .set_directory(current.parent().unwrap_or(&current))
         .set_parent(&window)
         .pick_folder()

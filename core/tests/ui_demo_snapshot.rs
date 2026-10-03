@@ -20,7 +20,6 @@ use jobalert_core::export::{PromptSource, ai_prompt};
 use jobalert_core::model::{AlertMail, Place, Posting};
 use jobalert_core::pipeline::{LocalMatcher, Matcher};
 use jobalert_core::portal::{JobKey, Portal};
-use jobalert_core::settings::Language;
 use jobalert_core::store::Store;
 use jobalert_core::view::{self, JobQuery, JobSort, JobView};
 use serde::{Deserialize, Serialize};
@@ -134,9 +133,8 @@ struct Snapshot {
     profile: view::ProfileInfo,
     /// The preview's other profiles ([`OTHER_PROFILES`]).
     profiles: Vec<OtherProfile>,
-    /// The AI prompts per language: every job's (`portal:id`, the scripted fetch's once their
-    /// page came).
-    prompts: BTreeMap<&'static str, BTreeMap<String, String>>,
+    /// The AI prompts: every job's (`portal:id`, the scripted fetch's once their page came).
+    prompts: BTreeMap<String, String>,
 }
 
 /// Another profile of the preview: what the app shows of it and the engine's match of every
@@ -280,22 +278,18 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
     rows
 }
 
-/// The languages of the prompts, as the snapshot names them.
-const LANGUAGES: [(&str, Language); 2] = [("de", Language::De), ("en", Language::En)];
-
-/// The AI prompt of each job (`portal:id`) in a language.
+/// The AI prompt of each job (`portal:id`).
 fn job_prompts(
     store: &Store,
     matcher: &LocalMatcher,
     profile: &Value,
     keys: &[JobKey],
-    language: Language,
 ) -> BTreeMap<String, String> {
     keys.iter()
         .map(|key| {
             let row = store.job(key).unwrap().unwrap();
             let source = PromptSource::load(store, Some(matcher), &row).unwrap();
-            (key.to_string(), ai_prompt(profile, source.job(), language))
+            (key.to_string(), ai_prompt(profile, source.job()))
         })
         .collect()
 }
@@ -458,18 +452,11 @@ fn snapshot() -> Snapshot {
         .iter()
         .map(|key| (key.to_string(), detail_of(store, matcher, key)))
         .collect();
-    let mut prompts = BTreeMap::new();
-    for (name, language) in LANGUAGES {
-        let texts = job_prompts(store, matcher, &demo.profile, &keys, language);
-        prompts.insert(name, texts);
-    }
+    let mut prompts = job_prompts(store, matcher, &demo.profile, &keys);
     let profile = demo.profile_info(PROFILE_FILE_NAME);
     let (announced, fetched) = demo.fetch(&listed);
     let arrived: Vec<JobKey> = announced.iter().map(|job| job.key.clone()).collect();
-    for (name, language) in LANGUAGES {
-        let texts = job_prompts(store, matcher, &demo.profile, &arrived, language);
-        prompts.entry(name).or_default().extend(texts);
-    }
+    prompts.extend(job_prompts(store, matcher, &demo.profile, &arrived));
     Snapshot {
         generated_by: "cargo test -p jobalert-core --test ui_demo_snapshot",
         now: now(),

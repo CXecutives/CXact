@@ -3,7 +3,7 @@
 // like the Profil's) with its name and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
-// (`(t) => t.settings.…`), so they follow the language.
+// (`(t) => t.settings.…`).
 //
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch or a choice moves at once and
 // is its own answer; every text button of a row is the same outlined button (secondary, 28
@@ -13,7 +13,7 @@
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, Language, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
+import type { AppState, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
 import type { SettingsTab } from '$lib/state/settings.svelte';
 
 /** What a row reads: the catalog of the moment and the app state. */
@@ -110,7 +110,7 @@ export interface ActionsRow {
   toggle?: Switch;
 }
 
-export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow;
+export type Row = ChoiceRow<Palette> | ActionsRow;
 
 /** A card: its rows, and for the two ways of the fetch a block of their own: Suche its
  *  sources, Postfach the card of its account and under it the sources of its alert mails. */
@@ -133,7 +133,6 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
   portals: [],
   fetchMail: null,
   fetchSearch: null,
-  language: null,
   palette: null,
   ...change,
 });
@@ -149,19 +148,8 @@ const palette: ChoiceRow<Palette> = {
   set: (state, id) => void (state.palette = id),
 };
 
-const language: ChoiceRow<Language> = {
-  kind: 'choice',
-  id: 'language',
-  label: (t) => t.settings.language,
-  options: ['de', 'en'],
-  name: (t, id) => t.settings.languageName[id],
-  value: (state) => state.language,
-  patch: (id) => ({ language: id }),
-  set: (state, id) => void (state.language = id),
-};
-
 /** Darstellung is hidden for now (user, 2026-09-30), its code kept; the backend holds its
- *  choices at the defaults (core settings::LOOK_SHOWN: the app is CXact and German). */
+ *  choice at the default (core settings::LOOK_SHOWN: the app is CXact). */
 const LOOK_SHOWN = false;
 
 /** The work folder (the profiles). */
@@ -180,7 +168,7 @@ export const CARDS: readonly CardSpec[] = [
     id: 'look',
     tab: 'data',
     heading: (t) => t.settings.look,
-    rows: [palette, language],
+    rows: [palette],
     hidden: !LOOK_SHOWN,
   },
   {

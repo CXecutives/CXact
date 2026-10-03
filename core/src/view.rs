@@ -28,7 +28,7 @@ pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
-use crate::settings::{Language, Palette, PortalSwitches, Settings};
+use crate::settings::{Palette, PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
@@ -1059,8 +1059,6 @@ pub struct SettingsPatch {
     /// "Jobs abrufen" searches the sources.
     #[serde(default)]
     pub fetch_search: Option<bool>,
-    /// The language the user chose (from then on the OS language no longer counts).
-    pub language: Option<Language>,
     /// The palette the user chose (Einstellungen, Darstellung).
     pub palette: Option<Palette>,
 }
@@ -1090,9 +1088,6 @@ impl SettingsPatch {
         }
         if let Some(on) = self.fetch_search {
             settings.fetch_search = on;
-        }
-        if let Some(language) = self.language {
-            settings.language = Some(language);
         }
         if let Some(palette) = self.palette {
             settings.palette = palette;
@@ -1611,8 +1606,6 @@ pub struct AppState {
     pub fetch_mail: bool,
     /// "Jobs abrufen" searches the sources (the menu beside the button).
     pub fetch_search: bool,
-    /// The language of the interface and the exports: the chosen one, else the OS language.
-    pub language: Language,
     /// The colours of the page and the window (Excel and the icon keep Light).
     pub palette: Palette,
     /// The last fetch - a rescore or a details run is none.

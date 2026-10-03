@@ -55,7 +55,7 @@ class RunStore {
   loginNeeded = $state<Portal | null>(null);
   /** The last finished fetch of this session (see above). */
   summary = $state<RunSummary | null>(null);
-  /** An error of `start_run` itself (busy, no mailbox ...); said in the current language. */
+  /** An error of `start_run` itself (busy, no mailbox ...). */
   #startFailure = $state.raw<{ error: unknown } | null>(null);
   /** `start_run` is on its way: nothing is known yet (the first-run page stays until then). */
   starting = $state(false);

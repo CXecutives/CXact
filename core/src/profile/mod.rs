@@ -26,7 +26,6 @@ use serde_json::Value;
 use crate::error::{Error, InvalidInput, Result};
 use crate::export::write_atomic;
 use crate::matching::{self, ProfileQuality, ProfileSummary};
-use crate::settings::Language;
 
 pub(crate) use form::KEYS_SEARCH_TERMS;
 #[cfg(test)]
@@ -207,10 +206,9 @@ fn without_empty(doc: &Json, text: &str) -> (Json, String) {
     }
 }
 
-/// The prompt that has any AI write a profile from a CV (see [`prompt`]), in the app's
-/// language.
-pub fn cv_prompt(language: Language) -> String {
-    prompt::text(language, crate::time::local_date(Timestamp::now()))
+/// The prompt that has any AI write a profile from a CV (see [`prompt`]).
+pub fn cv_prompt() -> String {
+    prompt::text(crate::time::local_date(Timestamp::now()))
 }
 
 /// The form of the stored profile; `None` without a readable one.

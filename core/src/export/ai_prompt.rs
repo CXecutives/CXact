@@ -17,15 +17,11 @@
 //! 6. the one scoring rubric of the app (`ai_rubric.de.md`),
 //! 7. a fixed answer format for a consultant who decides whether to apply.
 //!
-//! Its text is content for the assistant, not interface prose, in the app's language: the
-//! German words ([`de`]) are an external contract - do not translate; [`en`] says the same in
-//! English with the English rubric (`ai_rubric.en.md`, the same bands and caps,
-//! `core/tests/rubric.rs`). The profile keys stay German in both: they are the profile's own.
-//! No engine code reaches the text: every reason is said in words (an exhaustive `match` in
-//! both languages).
+//! Its text is content for the assistant, not interface prose: the German words ([`de`]) are
+//! an external contract - do not translate. The profile keys are the profile's own. No engine
+//! code reaches the text: every reason is said in words (an exhaustive `match`).
 
 mod de;
-mod en;
 #[cfg(test)]
 mod tests;
 
@@ -42,7 +38,6 @@ use crate::matching::{
 use crate::model::{Band, band};
 use crate::pipeline::LocalMatcher;
 use crate::portal::Facts;
-use crate::settings::Language;
 use crate::store::{JobRow, Store};
 use crate::text::{one_line, truncate_chars};
 use crate::view::{DetailState, JobView, WorkMode};
@@ -110,9 +105,9 @@ impl PromptSource {
     }
 }
 
-/// The prompt for one job in the app's language (the ad text at most [`MAX_AD_CHARS`]).
-pub fn ai_prompt(profile: &Value, item: PromptJob<'_>, language: Language) -> String {
-    let w = wording(language);
+/// The prompt for one job (the ad text at most [`MAX_AD_CHARS`]).
+pub fn ai_prompt(profile: &Value, item: PromptJob<'_>) -> String {
+    let w: &dyn Wording = &de::German;
     let t = w.words();
     let consultant = Consultant::new(profile);
     let ad = ad_parts(w, item, MAX_AD_CHARS);
@@ -158,7 +153,7 @@ fn section(level: usize, heading: &str, body: &str) -> String {
 
 // ------------------------------------------------------------------------- the words
 
-/// The fixed texts of the prompts in one language.
+/// The fixed texts of the prompts.
 struct Words {
     rubric: &'static str,
     task_heading: &'static str,
@@ -254,7 +249,7 @@ struct Entry {
     via: Via,
 }
 
-/// Everything a language says in its own words.
+/// Everything the prompt says in its own words.
 trait Wording: Sync {
     fn words(&self) -> &'static Words;
     fn quote(&self, text: &str) -> String;
@@ -287,13 +282,6 @@ trait Wording: Sync {
     /// A reason in one sentence; `None` for requirements and terms (they are quoted).
     fn reason(&self, code: ReasonCode, params: &Map<String, Value>) -> Option<String>;
     fn requirement(&self, line: &Requirement<'_>) -> String;
-}
-
-fn wording(language: Language) -> &'static dyn Wording {
-    match language {
-        Language::De => &de::German,
-        Language::En => &en::English,
-    }
 }
 
 // ------------------------------------------------------------------------- the profile
@@ -955,13 +943,13 @@ fn list_param(params: &Map<String, Value>, key: &str) -> Vec<String> {
     }
 }
 
-/// Digits grouped by threes with `separator` (`1450` -> `1.450`).
-fn grouped(n: i64, separator: char) -> String {
+/// Digits grouped by threes with a dot (`1450` -> `1.450`).
+fn grouped(n: i64) -> String {
     let digits = n.unsigned_abs().to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {
         if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(separator);
+            out.push('.');
         }
         out.push(c);
     }

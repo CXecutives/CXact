@@ -58,7 +58,7 @@
   let form = $state<MailboxForm | null>(null);
   let confirmRemove = $state(false);
   let removing = $state(false);
-  /** Said when it shows, so in the language of the moment. */
+  /** Said when it shows. */
   let removeError = $state<(() => string) | null>(null);
 
   /** The last fetch failed at the mailbox after Gmail last accepted it: a sign-in since then

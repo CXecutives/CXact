@@ -14,16 +14,13 @@ use commands::{Activity, AppState, CloseGuard, GmailUser, Scoring};
 use jobalert_core::error::ErrorKind;
 use jobalert_core::pipeline::demo::{self, StartMode};
 use jobalert_core::secrets::Vault;
-use jobalert_core::settings::Language;
 use jobalert_core::store::Store;
 use tauri::Manager;
 
 // ------------------------------------------------------------------ startup error texts
-// The start dialog is the only prose here. It speaks the language of the OS, like the OS's
-// own dialogs (it shows before the app's own setting could be read): German on a German
-// system, English on any other.
+// The start dialog is the only prose here.
 
-/// The words of the start dialog in one language.
+/// The words of the start dialog.
 struct Texts {
     title: &'static str,
     start_failed: &'static str,
@@ -44,7 +41,7 @@ struct Texts {
 }
 
 // User-facing text, German by product decision.
-const DE: Texts = Texts {
+const TEXTS: Texts = Texts {
     title: "CXact",
     start_failed: "Die App konnte nicht starten.",
     see_log: "Details stehen im Protokoll unter",
@@ -61,33 +58,6 @@ const DE: Texts = Texts {
     demo_title: "CXact Demo",
 };
 // end of user-facing text
-
-// User-facing text, English.
-const EN: Texts = Texts {
-    title: "CXact",
-    start_failed: "The app could not start.",
-    see_log: "The log has the details, in",
-    window_failed: "The window could not open.",
-    database_failed: "The database could not be opened.",
-    database_locked: "The database is open in another program.",
-    newer_schema: "The data comes from a newer version of the app.",
-    database_at: "The file is in",
-    close_other: "Close that program and start the app again.",
-    use_newer: "Use the newer version, the data stays as it is.",
-    database_in_use: "If it is open in another program, close that and start the app again.",
-    database_damaged: "If it is damaged, rename the file. The app then creates a new one, \
-        without the jobs and settings so far.",
-    demo_title: "CXact Demo",
-};
-// ------------------------------------------------------------------ end of user-facing text
-
-/// The start dialog's words: those of the OS's language.
-fn texts() -> &'static Texts {
-    match platform::system_language() {
-        Language::De => &DE,
-        Language::En => &EN,
-    }
-}
 
 /// Exit code from `AppHandle::exit(code)`. Otherwise Tauri always ends the process with 0 on
 /// Windows (the event loop only knows `ExitWithCode(0)`).
@@ -149,8 +119,8 @@ impl Failure {
 
     /// The window or the UI could not be created; the platform may know what helps.
     fn window(cause: impl std::fmt::Display) -> Failure {
-        let text = texts();
-        let message = match platform::window_hint(platform::system_language()) {
+        let text = &TEXTS;
+        let message = match platform::WINDOW_HINT {
             Some(hint) => format!("{}\n\n{hint}", text.window_failed),
             None => text.window_failed.to_owned(),
         };
@@ -163,7 +133,7 @@ impl Failure {
     /// The database could not be opened: what happened, where the file is and what to do.
     /// A database of a newer version is not damaged - it must not be put aside.
     fn database(path: &Path, error: &jobalert_core::Error) -> Failure {
-        let text = texts();
+        let text = &TEXTS;
         let at = format!("{} {}.", text.database_at, path.display());
         let message = match error.kind() {
             ErrorKind::NewerSchema => format!("{} {at}\n\n{}", text.newer_schema, text.use_newer),
@@ -185,7 +155,7 @@ impl Failure {
 /// Shows a startup error and exits.
 fn fail(failure: &Failure) -> ! {
     log::error!("startup failed: {}", failure.cause);
-    let words = texts();
+    let words = &TEXTS;
     let mut text = words.start_failed.to_owned();
     if !failure.message.is_empty() {
         text = format!("{text}\n\n{}", failure.message);
@@ -339,7 +309,6 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         demo: mode == StartMode::Demo,
         demo_ads,
         user_agent: platform::USER_AGENT.to_owned(),
-        system_language: jobalert_core::settings::Language::DEFAULT,
         reset_report: Mutex::new(reset_report),
         gmail_user: Mutex::new(GmailUser::Unread),
         mailbox_check: Mutex::new(None),
@@ -378,7 +347,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         tauri::WebviewWindowBuilder::from_config(app.handle(), &config).map_err(Failure::window)?;
     // Nobody takes the demo's jobs for real ones: its window says it is the demo.
     let builder = if mode == StartMode::Demo {
-        builder.title(texts().demo_title)
+        builder.title(TEXTS.demo_title)
     } else {
         builder
     };

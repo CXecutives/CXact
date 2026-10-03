@@ -2,7 +2,6 @@
 // named once, and the texts and tables of the app itself (the German catalog, the filter
 // table), so a changed word or entry changes the specs with it.
 
-import './runes';
 import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
 import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';

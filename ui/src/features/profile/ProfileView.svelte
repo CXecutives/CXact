@@ -56,7 +56,7 @@
   const rescoring = $derived((run.active && run.kind === 'rescore') || (profile?.pending ?? 0) > 0);
 
   let busy = $state<'save' | null>(null);
-  /** A failure is said when it shows, so it follows a switch of the language. */
+  /** A failure is said when it shows. */
   type Words = () => string;
   let note = $state<Words | null>(null);
   let saveNote = $state<Words | null>(null);

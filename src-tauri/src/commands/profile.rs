@@ -32,10 +32,9 @@ pub async fn pick_profile(
     state: State<'_, AppState>,
 ) -> CmdResult<Option<ProfileDraft>> {
     let workspace = state.workspace()?;
-    let words = texts::of(state.language()?);
     let Some(file) = rfd::AsyncFileDialog::new()
-        .set_title(words.pick_profile)
-        .add_filter(words.profile_filter, &["json"])
+        .set_title(texts::PICK_PROFILE)
+        .add_filter(texts::PROFILE_FILTER, &["json"])
         .set_directory(&workspace)
         .set_parent(&window)
         .pick_file()
@@ -46,11 +45,10 @@ pub async fn pick_profile(
     Ok(Some(profile::draft_from_file(file.path())?.into()))
 }
 
-/// The prompt that has any AI write a profile file from a CV (copied by the page), in the
-/// app's language.
+/// The prompt that has any AI write a profile file from a CV (copied by the page).
 #[tauri::command]
-pub async fn profile_prompt(state: State<'_, AppState>) -> CmdResult<String> {
-    Ok(profile::cv_prompt(state.language()?))
+pub async fn profile_prompt() -> CmdResult<String> {
+    Ok(profile::cv_prompt())
 }
 
 /// Saves the editor: merges the form into the active profile (or the draft it came from;
@@ -215,10 +213,9 @@ pub async fn load_profile(
 ) -> CmdResult<Option<Vec<ProfileEntry>>> {
     state.ensure_real()?;
     let workspace = state.workspace()?;
-    let words = texts::of(state.language()?);
     let Some(file) = rfd::AsyncFileDialog::new()
-        .set_title(words.pick_profile)
-        .add_filter(words.profile_filter, &["json"])
+        .set_title(texts::PICK_PROFILE)
+        .add_filter(texts::PROFILE_FILTER, &["json"])
         .set_directory(&workspace)
         .set_parent(&window)
         .pick_file()

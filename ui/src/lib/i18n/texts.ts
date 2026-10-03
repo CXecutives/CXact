@@ -1,8 +1,8 @@
-// Turns codes with params (errors, notices, reasons, criteria, health) into catalog text of
-// the app's language (`t`). The screens never build sentences themselves.
+// Turns codes with params (errors, notices, reasons, criteria, health) into catalog text
+// (`t`). The screens never build sentences themselves.
 //
 // Engine codes travel as plain strings (`Reason.code`, `Notice.code`). The catalog tables
-// in t.ts (and en.ts, the same keys) are the one place that knows them: a new code needs one
+// in de.ts are the one place that knows them: a new code needs one
 // entry there. Unknown codes from a newer core fall back to the ad's words or are left out,
 // never to a raw code.
 

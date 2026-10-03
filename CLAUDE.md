@@ -17,7 +17,7 @@ baseline of `tools/eval/legacy_baseline.py`).
   The repo is public: no real mails, profiles or labels outside `core/tests/fixtures/private/` (ignored).
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
   modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
-  patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
+  patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts`. `core/tests/language.rs` enforces it.
 - UI: the CXact palette, the default and for now the only one shown (cxpertise.de's cream, the coral #E67A5C
   of the icon and a richer cxpertise navy; Light and Dark wait in the same file behind the hidden
   Darstellung), defined only in `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app with one top bar
@@ -46,7 +46,7 @@ baseline of `tools/eval/legacy_baseline.py`).
   fill <= 400 ms), ease-out, no bounce; nothing deforms on press; no grey washes behind switch rows.
 - Styling only via tokens in `ui/src/styles/tokens.css`; controls only from `ui/src/components/`; Tauri only via
   `ui/src/lib/ipc/api.ts`; motion only via `ui/src/lib/motion/`. At most one primary button per view. Lint enforces it.
-- UI text (German source, English mirror; the user picks the language in Einstellungen): little text, only what is needed, plain and human. No AI-style writing: no dashes or
+- UI text (German only, `ui/src/lib/i18n/de.ts`): little text, only what is needed, plain and human. No AI-style writing: no dashes or
   em dashes as separators, no colons in labels or headings, no "X: Y" constructions, no filler, no exclamation
   marks, no emoji. Buttons are one verb phrase, notes one short sentence. The UI must not look AI-generated
   (no sparkles, no gradient text, no glow for decoration).

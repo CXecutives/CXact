@@ -3,7 +3,7 @@
 // field or a section is one entry here (docs/CHANGING.md "Add a profile criterion"). A field
 // names the value of the form it edits (a criterion by its key: its limit and unit come from
 // core, `types/profile.ts`), its control, and its words by their key in the catalog
-// (`t.profile.field`), so they follow the language. Controls with more to them than a field
+// (`t.profile.field`). Controls with more to them than a field
 // (the competences table, the languages, the countries, the day, the workload, the remote
 // choice, the switches) are components the table names by their kind.
 //

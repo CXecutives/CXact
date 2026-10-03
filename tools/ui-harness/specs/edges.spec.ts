@@ -12,17 +12,12 @@ const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^
 const stage = (page: Page) => page.getByTestId('stage');
 
 test('the reader shows the ad rate and start without a profile minimum', async ({ page }) => {
-  for (const [lang, rate, start] of [
-    ['', '1.200 €/Tag', 'ab sofort'],
-    ['&lang=en', '€1,200/day', 'immediately'],
-  ] as const) {
-    await open(page, `${WIN}&scenario=no-minimum${lang}`);
-    await row(page, 'freelancermap-2801').click();
-    // The profile sets neither a minimum rate nor a start: the ad's values join the line.
-    const clean = stage(page).getByTestId('criteria');
-    await expect(clean).toContainText(rate);
-    await expect(clean).toContainText(start);
-  }
+  await open(page, `${WIN}&scenario=no-minimum`);
+  await row(page, 'freelancermap-2801').click();
+  // The profile sets neither a minimum rate nor a start: the ad's values join the line.
+  const line = stage(page).getByTestId('criteria');
+  await expect(line).toContainText('1.200 €/Tag');
+  await expect(line).toContainText('ab sofort');
   // With a minimum the criterion chip says the rate, and no fact repeats it.
   await open(page, WIN);
   await row(page, 'freelancermap-2801').click();

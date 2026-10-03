@@ -581,7 +581,6 @@ mod tests {
     use crate::mail::{MailKind, classify_mail};
     use crate::model::DescStatus;
     use crate::pipeline::{Outcome, RunContext, RunKind, RunRequest, RunSummary, run};
-    use crate::settings::Language;
     use crate::store::JobFilter;
 
     /// Every held-out set the demo build bundles.
@@ -625,7 +624,6 @@ mod tests {
             portals: Portal::ALL.to_vec(),
             fetch_portals: Portal::ALL.to_vec(),
             sign_in: Vec::new(),
-            language: Language::De,
             mailbox: None,
             read_mail: true,
             search_portals: Portal::ALL

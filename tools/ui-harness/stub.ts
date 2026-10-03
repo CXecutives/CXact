@@ -85,7 +85,6 @@ import type {
   JobKey,
   JobQuery,
   JobView,
-  Language,
   MailboxCheck,
   MoveBack,
   Notice,
@@ -169,7 +168,7 @@ interface Harness {
   maximized: boolean;
   /** The window was minimized (`window_button` minimize). */
   minimized: boolean;
-  /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
+  /** A text of the UI's catalog (`'keysHelp.fetch'`, a function
    *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
   text: (path: string, ...args: unknown[]) => Promise<string>;
   /** "Verbinden" signs in and counts until this is false again or `cancel_run` stops it; it
@@ -293,8 +292,6 @@ const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 const NO_INTERNET = params.get('mail') === 'no-internet';
 /** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
-/** The app's language as the backend says it (`lang=en`; German by default). */
-const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
 /** The palette as the backend says it (`palette=light|dark`; CXact by default). */
 const PALETTE: Palette =
   params.get('palette') === 'dark' ? 'dark' : params.get('palette') === 'light' ? 'light' : 'cxact';
@@ -826,7 +823,6 @@ function initial(): void {
     setupDone: true,
     fetchMail: MAIL_WAY,
     fetchSearch: !MAIL_WAY,
-    language: LANGUAGE,
     palette: PALETTE,
     lastRun: lastRun(),
     counts: countsOf([]),
@@ -1396,9 +1392,9 @@ function detailOf(j: JobView): JobDetail {
   return detail;
 }
 
-/** The prompt of a job for an AI chat (export::ai_prompt) in the app's language. */
+/** The prompt of a job for an AI chat (export::ai_prompt). */
 function promptOf(j: JobView): string {
-  const prompt = DEMO.prompts[state.language][sourceOf(j.key)];
+  const prompt = DEMO.prompts[sourceOf(j.key)];
   if (prompt === undefined) throw fail('notFound', { what: 'job' });
   return prompt;
 }
@@ -2220,7 +2216,6 @@ const handlers: Handlers = {
     if (patch.fetchSearch !== null && patch.fetchSearch !== undefined) {
       state.fetchSearch = patch.fetchSearch;
     }
-    if (patch.language !== null) state.language = patch.language;
     if (patch.palette !== null) state.palette = patch.palette;
     state.profiles = profileEntries();
     return structuredClone(state);

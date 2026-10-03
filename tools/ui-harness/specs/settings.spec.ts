@@ -1,6 +1,6 @@
 // Einstellungen against the stub: the tabs in their order (Suche, Postfach, Daten) and the
 // cards of each, their rows flush on one edge, the mailbox and its dialog, the sources with
-// their calls, the palettes and the language, the work folder, the backups and the reset.
+// their calls, the palettes, the work folder, the backups and the reset.
 
 import type { Locator, Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
@@ -67,7 +67,6 @@ const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
   fetchMail: null,
   fetchSearch: null,
-  language: null,
   palette: null,
   ...change,
 });
@@ -712,21 +711,6 @@ test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ p
     });
     expect(weak, palette).toEqual([]);
   }
-});
-
-// Darstellung is hidden for now (cards.ts LOOK_SHOWN, user 2026-09-30); kept for its return.
-test.skip('Darstellung: the language switches everything at once; notes follow it', async ({
-  page,
-}) => {
-  await settings(page);
-  await failNext(page, 'open_target');
-  await page.getByTestId('folder-open').click();
-  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
-  await page.getByTestId('language').getByRole('radio', { name: 'English' }).click();
-  await expect(page.getByTestId('settings-data')).toContainText('Work folder');
-  await expect(page.getByTestId('data-note')).toHaveText('The database reports an error.');
-  await expect(page.getByTestId('portal-freelance')).toContainText('11 of 100 requests today');
-  expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));
 });
 
 /* ------------------------------------------------------------------- Daten */

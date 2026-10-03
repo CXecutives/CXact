@@ -1,7 +1,7 @@
-//! Tests of the AI prompts: every section of both prompts in both languages, the contact
-//! filter, missing facts, the text status, an exclusion, an English ad, no engine code in the
-//! text, the cuts, the real engine behind a stored job, and one golden prompt per language
-//! (`core/tests/fixtures/prompts/`, invented data only).
+//! Tests of the AI prompts: every section of the prompt, the contact filter, missing facts,
+//! the text status, an exclusion, an English ad, no engine code in the text, the cuts, the
+//! real engine behind a stored job, and one golden prompt (`core/tests/fixtures/prompts/`,
+//! invented data only).
 
 use jiff::Timestamp;
 use serde_json::{Map, Value, json};
@@ -445,22 +445,13 @@ fn in_order(prompt: &str, headings: &[&str]) {
     }
 }
 
-fn both(check: impl Fn(Language, &str)) {
-    let view = view();
-    let a = assessment();
-    for language in [Language::De, Language::En] {
-        let one = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), language);
-        check(language, &one);
-    }
-}
-
 // ------------------------------------------------------------------------- structure
 
 #[test]
 fn every_section_of_one_job_in_order() {
     let view = view();
     let a = assessment();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
     in_order(
         &de,
         &[
@@ -492,45 +483,13 @@ fn every_section_of_one_job_in_order() {
             "## Nachricht\n",
         ],
     );
-    let en = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::En);
-    in_order(
-        &en,
-        &[
-            "# Task\n",
-            "# My profile\n",
-            "```json\n",
-            "# The ad\n",
-            "## Job details\n",
-            "## Ad text\n",
-            "```text\n",
-            "# The app's pre-assessment\n",
-            "**Hard criteria**",
-            "**Met**",
-            "**Open**",
-            "**Focus areas, target role and preferences**",
-            "# How to work\n",
-            "# Scoring rule\n",
-            "## Caps",
-            "# Answer format\n",
-            "## Result\n",
-            "## Reasons\n",
-            "## Requirements\n",
-            "| Requirement | Weight | Status | Ad | Profile |",
-            "## Hard criteria\n",
-            "## Risks and red flags\n",
-            "## Open questions\n",
-            "## Pay and conditions\n",
-            "## For the application\n",
-            "## Message\n",
-        ],
-    );
 }
 
 #[test]
 fn the_pre_assessment_says_what_the_app_found() {
     let view = view();
     let a = assessment();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
     for part in [
         "- Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)",
         "- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen",
@@ -585,7 +544,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         factor(FactorCode::Permanent, json!({ "percent": 90 })),
         factor(FactorCode::Cap, json!({ "cap": "titleOpen", "max": 60 })),
     ];
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
     let result = de.split("**Harte Kriterien**").next().unwrap();
     for part in [
         "- Wunschrolle: keine im Titel",
@@ -595,16 +554,6 @@ fn what_moved_the_score_is_said_with_the_cap() {
         "- Obergrenze: Muss-Anforderung zum Kern der Rolle offen, höchstens 60 von 100 Punkten",
     ] {
         assert!(result.contains(part), "{part}:\n{result}");
-    }
-    let en = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::En);
-    for part in [
-        "- Target role: none in the title",
-        "- Preferences: lower the score by 1 of 100 points",
-        "- Text: only the teaser, the score leans to the middle",
-        "- Permanent role: counts at 90% of its fit",
-        "- Cap: a must-have on the core of the role open, at most 60 of 100 points",
-    ] {
-        assert!(en.contains(part), "{part}:\n{en}");
     }
 }
 
@@ -616,12 +565,10 @@ fn no_contact_data_reaches_a_prompt() {
     let mut a = assessment();
     // A profile entry behind a reason is filtered too.
     a.reasons[0].evidence.as_mut().unwrap().profile = "Controlling, siehe max@example.org".into();
-    both(|_, prompt| {
-        for private in PRIVATE {
-            assert!(!prompt.contains(private), "{private} leaked:\n{prompt}");
-        }
-    });
-    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    for private in PRIVATE {
+        assert!(!prompt.contains(private), "{private} leaked:\n{prompt}");
+    }
     assert!(!prompt.contains("max@example.org"));
     // What the analysis needs stays, and the profile part is valid JSON.
     for kept in [
@@ -644,17 +591,14 @@ fn no_contact_data_reaches_a_prompt() {
 #[test]
 fn the_glossary_names_only_the_keys_the_profile_holds() {
     let view = view();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), None), Language::De);
+    let de = ai_prompt(&profile(), item(&view, Some(AD), None));
     assert!(de.contains("- `min_tagessatz`: niedrigster Tagessatz in Euro"));
     assert!(de.contains("- `einsatzpraeferenzen`: Wünsche, nie ein Ausschluss"));
     assert!(
         !de.contains("`min_jahresgehalt`:"),
         "the profile sets no salary"
     );
-    let en = ai_prompt(&profile(), item(&view, Some(AD), None), Language::En);
-    assert!(en.contains("- `laender`: allowed countries of work as country codes"));
-    assert!(en.contains("- `kernkompetenzen`: core skills"));
-    let bare = ai_prompt(&json!({}), item(&view, Some(AD), None), Language::De);
+    let bare = ai_prompt(&json!({}), item(&view, Some(AD), None));
     assert!(
         !bare.contains(de_words().glossary_intro),
         "no glossary without keys"
@@ -666,17 +610,15 @@ fn the_glossary_names_only_the_keys_the_profile_holds() {
     full["harte_kriterien"]["min_laufzeit_monate"] = json!(6);
     full["harte_kriterien"]["ausschlusswoerter"] = json!(["Werkstudent"]);
     full["keywords"] = json!(["IFRS 16"]);
-    for language in [Language::De, Language::En] {
-        let prompt = ai_prompt(&full, item(&view, Some(AD), None), language);
-        for key in [
-            "auslastung_min_tage",
-            "auslastung_max_tage",
-            "min_laufzeit_monate",
-            "ausschlusswoerter",
-            "keywords",
-        ] {
-            assert!(prompt.contains(&format!("- `{key}`: ")), "{key}");
-        }
+    let prompt = ai_prompt(&full, item(&view, Some(AD), None));
+    for key in [
+        "auslastung_min_tage",
+        "auslastung_max_tage",
+        "min_laufzeit_monate",
+        "ausschlusswoerter",
+        "keywords",
+    ] {
+        assert!(prompt.contains(&format!("- `{key}`: ")), "{key}");
     }
 }
 
@@ -687,7 +629,7 @@ fn the_glossary_names_only_the_keys_the_profile_holds() {
 fn limits_are_checks_and_remote_work_abroad_fits_unless_ruled_out() {
     let view = view();
     let a = assessment();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
     for part in [
         "`min_laufzeit_monate` sind teilweise, nie ein Ausschluss",
         "bei einer voll remote Stelle nur, wenn `remote_ausserhalb_erlaubt` auf `false` steht",
@@ -695,23 +637,13 @@ fn limits_are_checks_and_remote_work_abroad_fits_unless_ruled_out() {
     ] {
         assert!(de.contains(part), "{part}");
     }
-    let en = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::En);
-    for part in [
-        "`min_laufzeit_monate` are partly met, never an exclusion",
-        "for a fully remote role only when `remote_ausserhalb_erlaubt` is `false`",
-        "violated is only what excludes under the scoring rule",
-    ] {
-        assert!(en.contains(part), "{part}");
-    }
     let mut strict = profile();
     strict["harte_kriterien"]["remote_ausserhalb_erlaubt"] = json!(false);
-    let de = ai_prompt(&strict, item(&view, Some(AD), Some(&a)), Language::De);
+    let de = ai_prompt(&strict, item(&view, Some(AD), Some(&a)));
     assert!(
         de.contains("- Einsatzland DE, AT: erfüllt, Ort Hamburg"),
         "{de}"
     );
-    let en = ai_prompt(&strict, item(&view, Some(AD), Some(&a)), Language::En);
-    assert!(en.contains("- Country of work DE, AT: met"), "{en}");
 }
 
 #[test]
@@ -738,11 +670,7 @@ fn missing_facts_are_said() {
     bare.company.clear();
     bare.location.clear();
     bare.mail_date = None;
-    let de = ai_prompt(
-        &profile(),
-        item(&bare, Some("Kurzer Text."), None),
-        Language::De,
-    );
+    let de = ai_prompt(&profile(), item(&bare, Some("Kurzer Text."), None));
     for label in [
         "Unternehmen",
         "Ort",
@@ -758,22 +686,6 @@ fn missing_facts_are_said() {
         );
     }
     assert!(de.contains(de_words().no_assessment));
-    let en = ai_prompt(
-        &profile(),
-        item(&bare, Some("Short text."), None),
-        Language::En,
-    );
-    for label in [
-        "Company",
-        "Location",
-        "Contract type",
-        "Pay",
-        "Start",
-        "Duration",
-        "Remote share",
-    ] {
-        assert!(en.contains(&format!("- {label}: not found")), "{label}");
-    }
     // What the portal page states fills a gap in its own words.
     let page = Facts {
         employment_type: Some("Freiberuflich".into()),
@@ -788,7 +700,7 @@ fn missing_facts_are_said() {
         page: Some(&page),
         ..item(&bare, Some("Kurzer Text."), None)
     };
-    let de = ai_prompt(&profile(), with_page, Language::De);
+    let de = ai_prompt(&profile(), with_page);
     for part in [
         "- Vertragsart: nicht erkannt",
         "- Beschäftigungsart: „Freiberuflich“ (laut Portalseite)",
@@ -814,9 +726,7 @@ fn the_text_status_is_said() {
     closed.closed = true;
     let mut gone = view();
     gone.detail = DetailState::Gone;
-    let de = |job: &JobView, text: Option<&str>| {
-        ai_prompt(&profile(), item(job, text, None), Language::De)
-    };
+    let de = |job: &JobView, text: Option<&str>| ai_prompt(&profile(), item(job, text, None));
     assert!(de(&full, Some(AD)).contains(de_words().text_full));
     let marked = de(
         &teaser,
@@ -835,45 +745,23 @@ fn the_text_status_is_said() {
     assert!(
         de(&gone, None).contains("- Status: Die Anzeige ist auf dem Portal nicht mehr online.")
     );
-    let en = ai_prompt(
-        &profile(),
-        item(&teaser, Some("Teaser."), None),
-        Language::En,
-    );
-    assert!(en.contains("Only the teaser the portal shows without signing in."));
 }
 
 #[test]
 fn an_english_ad_stays_as_it_is() {
     let view = view();
     let ad = "We are looking for an Interim CFO (m/f/d).\n\nRequirements\n- 10+ years in controlling\n- Fluent German and English";
-    let de = ai_prompt(&profile(), item(&view, Some(ad), None), Language::De);
+    let de = ai_prompt(&profile(), item(&view, Some(ad), None));
     assert!(de.contains(ad), "the ad verbatim");
     assert!(de.contains("Antworte auf Deutsch"));
     assert!(de.contains("Zitate bleiben in der Sprache der Anzeige."));
-    let en = ai_prompt(&profile(), item(&view, Some(AD), None), Language::En);
-    assert!(
-        en.contains(AD),
-        "a German ad verbatim in the English prompt"
-    );
-    assert!(en.contains("Answer in English"));
-    assert!(en.contains("Quotes stay in the language of the ad."));
-    for german in [
-        "Antworte",
-        "Titel:",
-        "Bewertungsregel",
-        "Muss-Anforderungen",
-        "gekürzt",
-    ] {
-        assert!(!outside_fences(&en).contains(german), "{german} in:\n{en}");
-    }
 }
 
 #[test]
 fn a_fence_is_longer_than_any_backticks_in_the_ad() {
     let view = view();
     let ad = "Kenntnisse in ```SQL``` und `Python`";
-    let prompt = ai_prompt(&profile(), item(&view, Some(ad), None), Language::De);
+    let prompt = ai_prompt(&profile(), item(&view, Some(ad), None));
     assert!(
         prompt.contains(&format!("````text\n{ad}\n````")),
         "{prompt}"
@@ -891,7 +779,7 @@ fn long_texts_are_cut() {
     );
     let text = "Anforderung ".repeat(5_000);
     let view = view();
-    let prompt = ai_prompt(&big, item(&view, Some(&text), None), Language::De);
+    let prompt = ai_prompt(&big, item(&view, Some(&text), None));
     assert!(
         prompt.chars().count() < MAX_PROFILE_CHARS + MAX_AD_CHARS + 20_000,
         "{}",
@@ -903,7 +791,7 @@ fn long_texts_are_cut() {
         "profile and ad marked as cut, and the note says so"
     );
     assert!(prompt.contains("Der Text ist nach 12.000 Zeichen gekürzt"));
-    let short = ai_prompt(&profile(), item(&view, Some(AD), None), Language::De);
+    let short = ai_prompt(&profile(), item(&view, Some(AD), None));
     assert!(!short.contains("[gekürzt]"));
 }
 
@@ -957,11 +845,7 @@ fn an_excluded_job_says_why() {
         factors: Vec::new(),
     };
     let mut job = view();
-    let de = ai_prompt(
-        &profile(),
-        item(&job, Some(ad), Some(&excluded)),
-        Language::De,
-    );
+    let de = ai_prompt(&profile(), item(&job, Some(ad), Some(&excluded)));
     for part in [
         "- Ergebnis: ausgeschlossen durch ein hartes Kriterium, ohne den Ausschluss 90 von 100 Punkten der App",
         "- Ausschlussgrund: Der Stundensatz ergibt mal 8 etwa 760 € pro Tag, unter dem Minimum von 1.100 €. „Honorar: 95,- € pro Stunde“",
@@ -973,25 +857,8 @@ fn an_excluded_job_says_why() {
     }
     assert!(!de.contains(de_words().overridden));
     job.overridden = true;
-    let de = ai_prompt(
-        &profile(),
-        item(&job, Some(ad), Some(&excluded)),
-        Language::De,
-    );
+    let de = ai_prompt(&profile(), item(&job, Some(ad), Some(&excluded)));
     assert!(de.contains(&format!("- {}", de_words().overridden)));
-    let en = ai_prompt(
-        &profile(),
-        item(&job, Some(ad), Some(&excluded)),
-        Language::En,
-    );
-    for part in [
-        "- Result: excluded by a hard criterion; without the exclusion 90 of the app's 100 points",
-        "- Reason for the exclusion: The hourly rate times 8 gives about €760 per day, below the minimum of €1,100. \"Honorar: 95,- € pro Stunde\"",
-        "- Day rate at least €1,100: violated, €95 per hour, about €760 per day (\"Honorar: 95,- € pro Stunde\")",
-        "I marked the job as fitting anyway",
-    ] {
-        assert!(en.contains(part), "{part}:\n{en}");
-    }
 }
 
 // ------------------------------------------------------------------------- no codes
@@ -1206,41 +1073,36 @@ fn no_engine_code_reaches_a_prompt() {
     let path = regex::Regex::new(r"[a-z_]+\[\d+\]").unwrap();
     let raw_words = regex::Regex::new(r"\b(exact|stem|vocabulary)\b").unwrap();
     let view = view();
-    for language in [Language::De, Language::En] {
-        let prompt = ai_prompt(&rich, item(&view, Some(AD), Some(&every)), language);
-        let prose = outside_fences(&prompt);
-        let codes: Vec<&str> = camel.find_iter(&prose).map(|m| m.as_str()).collect();
-        assert!(codes.is_empty(), "engine codes {codes:?} in:\n{prose}");
-        assert!(!path.is_match(&prose), "a JSON path in:\n{prose}");
-        assert!(!raw_words.is_match(&prose), "a raw param in:\n{prose}");
-        for raw in ["\"type\"", "{", "}"] {
-            assert!(!prose.contains(raw), "{raw} in:\n{prose}");
-        }
+    let prompt = ai_prompt(&rich, item(&view, Some(AD), Some(&every)));
+    let prose = outside_fences(&prompt);
+    let codes: Vec<&str> = camel.find_iter(&prose).map(|m| m.as_str()).collect();
+    assert!(codes.is_empty(), "engine codes {codes:?} in:\n{prose}");
+    assert!(!path.is_match(&prose), "a JSON path in:\n{prose}");
+    assert!(!raw_words.is_match(&prose), "a raw param in:\n{prose}");
+    for raw in ["\"type\"", "{", "}"] {
+        assert!(!prose.contains(raw), "{raw} in:\n{prose}");
     }
 }
 
 #[test]
 fn the_prompts_name_no_product_and_carry_the_rubric() {
-    both(|language, prompt| {
-        for product in [
-            "Claude",
-            "ChatGPT",
-            "Gemini",
-            "Copilot",
-            "OpenAI",
-            "Anthropic",
-        ] {
-            assert!(!prompt.contains(product), "{product}");
-        }
-        let (rubric, method) = match language {
-            Language::De => (de_words().rubric, "# Arbeitsweise"),
-            Language::En => (en::English.words().rubric, "# How to work"),
-        };
-        assert!(prompt.contains(rubric.trim_end()), "the rubric whole");
-        assert!(prompt.find(method) < prompt.find(rubric.trim_end()));
-    });
-    assert!(de_words().rubric.starts_with("# Bewertungsregel"));
-    assert!(en::English.words().rubric.starts_with("# Scoring rule"));
+    let view = view();
+    let a = assessment();
+    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    for product in [
+        "Claude",
+        "ChatGPT",
+        "Gemini",
+        "Copilot",
+        "OpenAI",
+        "Anthropic",
+    ] {
+        assert!(!prompt.contains(product), "{product}");
+    }
+    let rubric = de_words().rubric;
+    assert!(prompt.contains(rubric.trim_end()), "the rubric whole");
+    assert!(prompt.find("# Arbeitsweise") < prompt.find(rubric.trim_end()));
+    assert!(rubric.starts_with("# Bewertungsregel"));
 }
 
 /// The other listings a portal shows under an ad are no part of it, as for the engine: the
@@ -1250,9 +1112,6 @@ fn the_rubric_leaves_out_the_other_listings_under_an_ad() {
     let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
     assert!(flat(de_words().rubric).contains(
         "Die weiteren Anzeigen, die ein Portal unter einer Anzeige zeigt (etwa „Ähnliche Projekte“ oder „Similar jobs“), gehören nicht zu ihr. Keine Regel liest sie, und sie schließen nichts aus."
-    ));
-    assert!(flat(en::English.words().rubric).contains(
-        "The other listings a portal shows under an ad (such as “Similar jobs” or „Ähnliche Projekte“) are no part of it. No rule reads them, and they exclude nothing."
     ));
 }
 
@@ -1288,7 +1147,7 @@ fn the_real_engine_behind_a_stored_job() {
         "Wir suchen ab sofort einen Interim CFO (m/w/d).\n\nAnforderungen:\n- Erfahrung im Controlling\n- Konzernrechnungslegung nach IFRS\n- Erfahrung mit SAP S/4HANA\n\nRahmenbedingungen:\n- Tagessatz 1.200 €\n- Einsatzort Hamburg",
         &profile,
     );
-    let prompt = ai_prompt(&profile, fits.job(), Language::De);
+    let prompt = ai_prompt(&profile, fits.job());
     for part in [
         "- Ergebnis: ",
         " von 100 Punkten der App, hohe Übereinstimmung",
@@ -1306,7 +1165,7 @@ fn the_real_engine_behind_a_stored_job() {
         "Für die Einführung von SAP S/4HANA suchen wir eine Projektleitung (m/w/d).\n\nAnforderungen:\n- Projektmanagement in SAP-Einführungen\n- Erfahrung mit SAP S/4HANA\n\nRahmenbedingungen:\n- Tagessatz bis 800 €\n- 100 % remote",
         &profile,
     );
-    let prompt = ai_prompt(&profile, excluded.job(), Language::De);
+    let prompt = ai_prompt(&profile, excluded.job());
     for part in [
         "- Ergebnis: ausgeschlossen durch ein hartes Kriterium",
         "- Ausschlussgrund: Der Tagessatz von 800 € liegt unter dem Minimum von 1.000 €. „Tagessatz bis 800 €“",
@@ -1341,40 +1200,34 @@ fn passages_follow_utf16_offsets() {
 
 // ------------------------------------------------------------------------- golden samples
 
-/// One full prompt per language, checked in: a change to the prompt shows as a diff of
-/// `core/tests/fixtures/prompts/` (the test writes the new text and fails once - look at the
-/// diff and commit it).
+/// One full prompt, checked in: a change to the prompt shows as a diff of
+/// `core/tests/fixtures/prompts/job.de.md` (the test writes the new text and fails once -
+/// look at the diff and commit it).
 #[test]
-fn golden_prompts() {
+fn golden_prompt() {
     let view = view();
     let a = assessment();
-    let mut changed = Vec::new();
-    for (language, name) in [(Language::De, "job.de.md"), (Language::En, "job.en.md")] {
-        let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), language);
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/prompts")
-            .join(name);
-        let stored = std::fs::read_to_string(&path)
-            .unwrap_or_default()
-            .replace("\r\n", "\n");
-        if stored != prompt {
-            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-            std::fs::write(&path, &prompt).unwrap();
-            changed.push(path.display().to_string());
-        }
+    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/prompts/job.de.md");
+    let stored = std::fs::read_to_string(&path)
+        .unwrap_or_default()
+        .replace("\r\n", "\n");
+    if stored != prompt {
+        std::fs::write(&path, &prompt).unwrap();
+        panic!(
+            "regenerated {} - check the diff and commit it",
+            path.display()
+        );
     }
-    assert!(
-        changed.is_empty(),
-        "regenerated {changed:?} - check the diff and commit it"
-    );
 }
 
 #[test]
 fn money_and_numbers() {
-    assert_eq!(grouped(1450, '.'), "1.450");
-    assert_eq!(grouped(150_000, ','), "150,000");
-    assert_eq!(grouped(999, '.'), "999");
-    assert_eq!(grouped(-1200, '.'), "-1.200");
+    assert_eq!(grouped(1450), "1.450");
+    assert_eq!(grouped(150_000), "150.000");
+    assert_eq!(grouped(999), "999");
+    assert_eq!(grouped(-1200), "-1.200");
     assert_eq!(as_int(&json!("1000")), Some(1000));
     assert_eq!(as_int(&json!(12.6)), Some(13));
     let params: Map<String, Value> = json!({ "a": ["DE", "AT"], "b": "DE, AT" })

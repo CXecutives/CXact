@@ -2,10 +2,9 @@
 // run. Loaded once at start and again after anything that changes it (a finished run,
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
 // than --dur-fast, so a quick start never flashes placeholders. Every state brings the
-// app's language and palette, which the whole page follows at once. What a fetch reads (the
+// app's palette, which the whole page follows at once. What a fetch reads (the
 // menu beside it: the search or the mailbox) is saved from here through the settings patch.
 
-import { language } from '../i18n/language.svelte';
 import { errorText } from '../i18n/texts';
 import { invoke } from '../ipc/api';
 import { applyPalette } from '../palette';
@@ -22,7 +21,6 @@ const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
   fetchMail: null,
   fetchSearch: null,
-  language: null,
   palette: null,
   ...change,
 });
@@ -55,7 +53,6 @@ class AppStore {
   /** Replace the state with a newer one a command returned (save_settings). */
   set(next: AppState): void {
     this.state = next;
-    language.set(next.language);
     applyPalette(next.palette);
   }
 

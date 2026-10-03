@@ -12,7 +12,7 @@
   }
 
   let { size = 'md', label, progress = false }: Props = $props();
-  // Without a label the spinner says "loading" in the app's language (null says nothing).
+  // Without a label the spinner says "loading" (null says nothing).
   const spoken = $derived(label === undefined ? t.common.loading : label);
 </script>
 

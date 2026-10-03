@@ -34,7 +34,6 @@ use crate::fetch::{
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
 use crate::portal::{FetchPath, JobKey, Portal};
-use crate::settings::Language;
 use crate::store::Store;
 use crate::text::truncate_chars;
 use crate::time;
@@ -110,8 +109,6 @@ pub struct RunContext {
     /// Of those, the portals read in the session window (sign-in switched on); the others
     /// go as a guest. A run never opens a session window for any other portal.
     pub sign_in: Vec<Portal>,
-    /// Language of the Excel file (the text files stay German).
-    pub language: Language,
     /// The Gmail address the run reads (`None` without a mailbox step or in the dry run):
     /// after a successful scan the files link the alert mails in its account.
     pub mailbox: Option<String>,

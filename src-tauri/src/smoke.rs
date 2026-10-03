@@ -129,7 +129,7 @@ const INIT: &str = r#"(() => {
       }
       await wait(600);
       const rows = all('[data-testid^="job-row-"]').length;
-      // Scored rings in either language (the class, not the German aria label).
+      // Scored rings (the class, not the aria label).
       const rings = all('[data-testid^="job-row-"] .ring.scored').length;
       return { ok: rows > 0 && rings > 0, rows, rings, perf: stop() };
     },

@@ -91,7 +91,7 @@ Components never ask which palette is on.
    `Palette` (`core/src/settings.rs`, with `code()`), in `window_colours`
    (`src-tauri/src/platform.rs`), in `PALETTES` (`ui/src/lib/palette.ts`), in the options of
    the row `palette` (`ui/src/features/settings/cards.ts`) and its word in
-   `settings.paletteName` of `de.ts` and `en.ts`. `cargo test -p jobalert-core ipc_types`
+   `settings.paletteName` of `de.ts`. `cargo test -p jobalert-core ipc_types`
    writes the TypeScript type.
 3. Run `npm run regen`: `tools/tokens.mjs` writes the window's colours of every palette
    (`LIGHT_BG`, `DARK_TEXT`, ... and `WINDOW_PALETTES` in `palette.rs`) and measures every text
@@ -230,11 +230,11 @@ A number or a list of words under `harte_kriterien`:
    `UnreadableField.ts` and `profile.ts`.
 4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
    (`{ kind: 'number', key, label, testid }` or `{ kind: 'chips', ... }`; its unit and limit
-   come from core) and its label (and hint, placeholder) in both catalogs (`profile.field`).
+   come from core) and its label (and hint, placeholder) in the catalog (`profile.field`).
    `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` and the stub's validation
    need nothing.
 5. The AI prompt for a new profile (`core/src/profile/prompt.rs`): its key in the skeleton's
-   `harte_kriterien`, in the order of `CRITERIA`, and one rule line in German and English
+   `harte_kriterien`, in the order of `CRITERIA`, and one rule line
    (and, if the CV cannot say it, one question of "Der Ablauf"); a test fails while the
    skeleton misses a field of the form or a key has no rule.
 

@@ -33,7 +33,6 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         portals: Portal::ALL.to_vec(),
         fetch_portals: Portal::ALL.to_vec(),
         sign_in: vec![Portal::FreelanceDe],
-        language: Language::De,
         mailbox: None,
         read_mail: true,
         search_portals: Vec::new(),

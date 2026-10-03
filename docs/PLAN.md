@@ -90,7 +90,7 @@ pre-assessment to any AI chat for a deeper check.
   - Postfach: the account card (mail tile, the address, "Verbunden" after a green dot, Ändern, Entfernen),
     under it the card of the alert sources (sign-in where offered, then "Alert anlegen").
   - Daten: the work folder (Ändern, Öffnen) and "Alle Daten zurücksetzen".
-  - Darstellung (palette and language) is hidden for now (`LOOK_SHOWN`).
+  - Darstellung (the palette) is hidden for now (`LOOK_SHOWN`).
 - **Erste Schritte** (until the first completed fetch): 1 Profil, 2 Postfach (optional, only the alert
   mails need it), 3 the first fetch in the words of its way.
 - **Shell:**
@@ -119,7 +119,7 @@ pre-assessment to any AI chat for a deeper check.
     plus.
 - **Controls:** one button height, 28 px (only a button inside a field is lower), at most one primary per
   view. Menus open from a chevron button. Motion stays at 180 ms or less, ease-out, no bounce.
-- **Texts:** the rules in `CLAUDE.md`. German first (`de.ts`), English mirrors it (`en.ts`). The fetch's
+- **Texts:** the rules in `CLAUDE.md`. German only (`de.ts`), no English UI. The fetch's
   words are "Jobs suchen" and "Alert-Mails lesen"; the first place is "Aktuell".
 - **Data:** SQLite in the OS app data folder (schema 7, a chain of migrations); the settings file stays
   readable across versions (`core/tests/settings_compat.rs`). No real users yet: old local data may be
@@ -150,32 +150,31 @@ Inside the window both OS show the same app. They differ by OS convention, decid
 
 ## Glossary (UI)
 
-One word per thing in both languages, checked for the catalogs (`ui_contract.rs`) and the Rust texts
-(`rust_texts.rs`). English is plain British English ("email", never "mail"). German → English:
-- Job → Job; Jobansicht → Job view; Seitenleiste → Sidebar
-- Aktuell (the place of the active jobs, `inbox` in code) → Current; Neu (unread) → New
-- Archiv → Archive; Zurückholen (out of the Archiv) → Move back
-- Papierkorb → Trash; Löschen → Delete; Endgültig löschen → Delete forever; Wiederherstellen → Restore
-- Übereinstimmung (Hohe, Mittlere, Geringe) → Match (High, Medium, Low)
-- Quelle → Source; Suche → Search; Alert-Mails → Alert emails
-- Jobs suchen → Search jobs; Alert-Mails lesen → Read alert emails; Abruf → Fetch
-- bewerten, neu bewerten → score, rescore
-- Ausgeschlossen → Excluded; Trotzdem bewerten → Score anyway
-- Anforderungen → Requirements; Pflicht → Must-have; Optional → Optional
-- Erfüllt, Teilweise erfüllt, Nicht erfüllt → Met, Partly met, Not met
-- Jobdetails → Job details; Gefunden → Found
-- Anzeige (öffnen) → Ad (Open ad); Prompt kopieren → Copy prompt
-- Postfach → Mailbox; Alert-Mail → Alert email; Alert anlegen → Set up alert
-- Profil → Profile; Wünsche → Preferences; Können → Skills; Erfahrung → Experience; Ausschlüsse → Exclusions
-- Kompetenz → Skill; Schwerpunkt → Focus area; Werkzeuge und Methoden → Tools and methods
-- Wunschrolle → Preferred role; Suchbegriffe → Search terms
-- Tagessatz → Day rate; Mindesttagessatz → Minimum day rate; Gehalt → Salary
-- Festanstellung → Permanent job; Zeitarbeit → Temporary agency work
-- Vertragsart → Contract type; Arbeitsmodell → Work model; Remote-Anteil → Remote share
-- Auslastung → Workload; Laufzeit → Duration; Einsatzländer → Countries
-- Einstellungen → Settings; Daten → Data; Arbeitsordner → Work folder
-- Aufrufe → Requests; Anmelden, Abmelden → Sign in, Sign out
-- Probelauf → Dry run; Demo → Demo
+One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust texts (`rust_texts.rs`):
+- Job, Jobansicht, Seitenleiste
+- Aktuell (the place of the active jobs, `inbox` in code), Neu (unread)
+- Archiv, Zurückholen (out of the Archiv)
+- Papierkorb, Löschen, Endgültig löschen, Wiederherstellen
+- Übereinstimmung (Hohe, Mittlere, Geringe)
+- Quelle, Suche, Alert-Mails
+- Jobs suchen, Alert-Mails lesen, Abruf
+- bewerten, neu bewerten
+- Ausgeschlossen, Trotzdem bewerten
+- Anforderungen, Pflicht, Optional
+- Erfüllt, Teilweise erfüllt, Nicht erfüllt
+- Jobdetails, Gefunden
+- Anzeige (öffnen), Prompt kopieren
+- Postfach, Alert-Mail, Alert anlegen
+- Profil, Wünsche, Können, Erfahrung, Ausschlüsse
+- Kompetenz, Schwerpunkt, Werkzeuge und Methoden
+- Wunschrolle, Suchbegriffe
+- Tagessatz, Mindesttagessatz, Gehalt
+- Festanstellung, Zeitarbeit
+- Vertragsart, Arbeitsmodell, Remote-Anteil
+- Auslastung, Laufzeit, Einsatzländer
+- Einstellungen, Daten, Arbeitsordner
+- Aufrufe, Anmelden, Abmelden
+- Probelauf, Demo
 
 ## Next
 

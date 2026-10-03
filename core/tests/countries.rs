@@ -1,7 +1,8 @@
 //! The countries a profile can choose are the engine's: the Profil view offers exactly the
 //! countries the engine tells apart in a job ad (`jobalert_core::profile::country_codes`),
-//! and both UI catalogs name every one of them, so a chip or a violation never shows a bare
-//! code for a country the engine knows.
+//! and the UI catalog names every one of them in German and in English (the English names
+//! find a country too), so a chip or a violation never shows a bare code for a country the
+//! engine knows.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -56,15 +57,12 @@ fn the_german_catalog_names_every_country_of_the_engine() {
 }
 
 #[test]
-fn the_english_catalog_names_every_country_of_the_engine() {
-    let en = read("ui/src/lib/i18n/en.ts");
-    assert_eq!(
-        keys_after(&en, "const countryName: Record<string, string> = {"),
-        engine()
-    );
+fn the_english_names_cover_every_country_of_the_engine() {
+    let de = read("ui/src/lib/i18n/de.ts");
+    assert_eq!(keys_after(&de, "\n    countryEnglish: {"), engine());
 }
 
-/// The names both catalogs give a country, from the object literal that opens at `start`.
+/// The names the catalog gives a country, from the object literal that opens at `start`.
 fn names_after(text: &str, start: &str) -> Vec<(String, String)> {
     let at = text
         .find(start)
@@ -81,18 +79,14 @@ fn names_after(text: &str, start: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-/// A profile may name its countries the way the app names them: every name of both
-/// catalogs reads back to its code, so no such name switches the country rule off.
+/// A profile may name its countries the way the app names them: every German and English
+/// name of the catalog reads back to its code, so no such name switches the country rule off.
 #[test]
 fn every_country_name_of_the_app_reads_back_to_its_code() {
     let de = read("ui/src/lib/i18n/de.ts");
-    let en = read("ui/src/lib/i18n/en.ts");
     let names = names_after(&de, "\n    country: {")
         .into_iter()
-        .chain(names_after(
-            &en,
-            "const countryName: Record<string, string> = {",
-        ));
+        .chain(names_after(&de, "\n    countryEnglish: {"));
     let mut seen = 0;
     for (code, name) in names {
         assert_eq!(

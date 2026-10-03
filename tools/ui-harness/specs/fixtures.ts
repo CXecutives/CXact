@@ -73,7 +73,7 @@ export async function nav(
   await page.getByTestId(id).click();
 }
 
-/** A text of the UI's catalog in the page's language: `text(page, 'keysHelp.fetch')`, a
+/** A text of the UI's catalog: `text(page, 'keysHelp.fetch')`, a
  *  function entry with its arguments (`text(page, 'toast.runDone', 3)`). */
 export function text(page: Page, path: string, ...args: unknown[]): Promise<string> {
   return page.evaluate(([key, rest]) => window.__harness.text(key, ...rest), [path, args] as const);

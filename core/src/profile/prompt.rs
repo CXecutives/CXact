@@ -3,8 +3,7 @@
 //! file to download (or, where it makes no files, alone in one code block to save as one),
 //! which the user loads with "Datei hochladen" (user decision 2026-10-01; [`super::answer`]
 //! finds the profile in a whole answer saved as the file too). Like the app's other prompts it addresses the assistant as "du" without
-//! naming a product, in the app's language; the JSON keys and the fixed values stay German in
-//! both (they are the profile format).
+//! naming a product; the JSON keys and the fixed values are the profile format.
 //!
 //! It stands on its own for an AI that has never seen the app: it says so first, then how to
 //! go about it (ask the user in one short message for what the CV cannot say but the matching
@@ -19,8 +18,6 @@
 //! (the tests check that every key of the skeleton is explained and that the editor reads it).
 
 use jiff::civil::Date;
-
-use crate::settings::Language;
 
 /// The keys the AI fills, in the order the app writes them: the ones a CV fills, the career
 /// stations (read by the engine, kept in the file), the wishes and the hard criteria (in the
@@ -173,183 +170,31 @@ const MONTHS: [&str; 12] = [
     "Dezember",
 ];
 
-/// The same prompt in English (the keys and the fixed values it names stay German).
-mod en {
-    pub(super) const INTRO: &str = "You support me as an AI assistant with my consultant profile. You do not know my job alert app; everything you need to know about the profile and its format follows in this text. The app compares every job ad with my profile term by term; the more precisely the profile reflects my CV and my preferences, the better the app finds matching projects and positions. Please create the profile from my attached CV; if it is missing, ask me for it first.";
-
-    pub(super) const STEPS: &str = "How to go about it
-1. First read the whole CV.
-2. Then ask me in one single short message for what the app needs most for the comparison but the CV does not say. Ask only for what is not already in it.
-- the roles I want to be booked for (suggest the ones from the CV for me to confirm)
-- my minimum day rate and my desired day rate, for permanent roles the minimum annual salary and the places
-- the remote share I would like
-- regions or countries where I want to work
-- contract types I rule out, such as temporary agency work or permanent employment
-- when I am available from
-- how many days a week I want to work
-- the shortest duration of an assignment I accept
-- words that rule an ad out for me
-3. I may skip any question; whatever I do not answer stays empty.
-4. Write the profile only after my answer, following the rules below, and hand it over as “The answer” describes.";
-
-    pub(super) const PRINCIPLES: &str = "Principles
-1. For everything that comes from the CV, the CV is the only source. Take only what it says or what follows directly from it; invent, estimate and add nothing.
-2. Preferences and exclusion criteria come from my answer to your questions, and from the CV only where it states them explicitly.
-3. Whatever neither the CV nor I state stays empty, text as \"\", lists as [] and numbers or yes-no values as null. I fill empty fields in the app myself.
-4. Work out years from the dates in the CV in whole years, rounded down; periods that overlap count once. Today is {today}.
-5. Keep terms short and write them the way job ads do; languages, industries and sentences in English.
-6. No contact details, no address, no date of birth, no marital status and no names of employers or clients.";
-
-    pub(super) const FIELDS: &str = "The fields
-- name is my first and last name.
-- titel is my professional role in two to five words, as it could head a matching ad, such as Interim CFO, IT Programme Manager or Electronics Development Engineer. No degree and no sentence.
-- wunschrollen are two to six roles I want to be booked for, as I confirmed or named them, otherwise as the CV shows them, each with its field, such as Head of Controlling or Commissioning Project Manager. Interim Manager, Consultant or Freelancer alone name no field. If ads name a role in German and in English, include both forms.
-- berufserfahrung_jahre counts from the start of my first professional position until today, without vocational training, studies, internships and gaps. If the CV states the number itself, use it.
-- ausbildung holds one object per degree. abschluss names the type in full (Bachelor, Master, Diplom, Magister, Staatsexamen, PhD, MBA or a vocational qualification) and the subject, with (FH), (Univ.) or (BA) if the CV says so, such as Diplom-Ingenieur (FH) Maschinenbau, Master of Science in Business Informatics or Industriekaufmann (IHK). No school leaving certificates.
-- kernkompetenzen are ten to twenty skills, as far as the CV bears them out, the most important first, one object each with kompetenz, jahre and auch. kompetenz is a term of one to four words, such as Group Controlling, Requirements Engineering or Mechanical Design; nothing as general as Management, no tools such as SAP (they belong in methoden_tools) and no sentences.
-- jahre of a skill are the years of the positions in which the CV names it; without such positions jahre stays null.
-- auch are other terms under which ads look for exactly this skill, above all the German or English equivalent, such as Anforderungsmanagement for Requirements Engineering. No broader or narrower terms and no related topics, as the app counts every term in auch as the skill itself.
-- schwerpunkte are three to five of the kernkompetenzen I most want to be booked for, as the profile summary and the latest positions show. Write each focus area exactly as in kernkompetenzen.
-- methoden_tools are software, systems, programming languages and methods, one object with name each, as precise as in the CV, such as SAP S/4HANA FI, Power BI, Python, Scrum or FMEA.
-- zertifizierungen are certificates and licences I hold, under their common name, one object with name each, such as PMP, PRINCE2 Practitioner or ITIL 4 Foundation. No training courses without a certificate.
-- branchen are the industries of my positions, one object with branche each, such as Automotive, Banking or Pharmaceuticals. No functions such as Controlling and no company names.
-- sprachen holds every language with sprache and niveau. niveau is \"A1\", \"A2\", \"B1\", \"B2\", \"C1\", \"C2\" or \"Muttersprache\" for a native language; business fluent, fluent and very good become \"C1\", good becomes \"B2\", basic knowledge becomes \"A2\". Without a level in the CV, niveau stays empty.
-- alleinstellungsmerkmale are up to five short sentences on what sets me apart according to the CV, each with evidence from it, such as “Led three plant start-ups through to series production.” Numbers only if the CV states them, and no empty phrases such as team player or highly motivated.
-- keywords are five to twenty further specialist terms from the CV that appear in matching ads and are still missing above, such as standards, regulations and procedures like IFRS 16, ISO 26262 or GMP.
-- stationen holds every professional position as an object, the latest first. Write zeitraum like 03/2021 to 06/2024 or 03/2021 to today, rolle as the function without company names and schwerpunkte as two to six specialist topics the CV names for the position, short like skills.";
-
-    pub(super) const SETTINGS: &str = "Preferences and exclusion criteria
-Fill the fields under einsatzpraeferenzen and harte_kriterien from my answer to your questions, and from the CV only where it states them explicitly; otherwise they stay empty. A wrong value costs matching jobs points or rules them out. The three fields for permanent roles stay empty if I rule out permanent employment. Day rates are euros per day, an hourly rate counts eight times; salaries are gross euros per year.
-- tagessatz_wunsch is my desired day rate; if the CV names just one day rate, it is a preference, not a minimum.
-- remote is \"voll\" (fully remote), \"ueberwiegend\" (more than half), \"teilweise\" (up to half) or \"vor_ort\" (on site).
-- regionen are places or regions where I want to work, such as Hamburg or Munich.
-- branchen under einsatzpraeferenzen are industries I want to work in from now on, not simply the previous ones.
-- min_tagessatz is a day rate below which I explicitly do not work.
-- laender are country codes such as \"DE\", \"AT\" and \"CH\" if I limit assignments to these countries.
-- ausgeschlossene_vertragsarten names \"anue\" if I rule out temporary agency work and \"festanstellung\" if I do not want a permanent role.
-- verfuegbar_ab is \"sofort\" (immediately) or a date such as \"01.11.2026\", day first; a month without a day becomes the first of that month.
-- remote_ausserhalb_erlaubt is false if, besides laender, I also rule out fully remote assignments for clients in other countries, and true if they suit me; without a statement it stays null.
-- min_jahresgehalt is the annual salary below which I do not accept a permanent role.
-- festanstellung_orte are the places where I accept a permanent role, such as Hamburg or Munich.
-- festanstellung_remote_min is the remote share in percent from 1 to 100 from which a permanent role outside these places suits me.
-- auslastung_min_tage and auslastung_max_tage are the days a week from 1 to 5 I want to work at least and at most.
-- min_laufzeit_monate is the shortest duration of an assignment in months that I accept.
-- ausschlusswoerter are words that rule an ad out for me, such as Werkstudent or Praktikum.";
-
-    pub(super) const ANSWER: &str = "The answer
-Give me the finished profile as a file profil.json to download. If you cannot create files, write the JSON alone in one single code block that I save as profil.json. Then say in one sentence that I load the file in the app under Profile with “New profile” and “Upload file”, and nothing else. The JSON keeps every key of the structure below, its spelling and the order. An object in a list shows the structure of one entry; repeat it for every entry. Write numbers without quotation marks and without a unit. The JSON must be valid, with straight double quotation marks, no comments and no comma before a closing bracket.";
-
-    pub(super) const CHECK: &str = "Check before you answer";
-    pub(super) const CHECKS: [&str; 6] = [
-        "Is every value from the CV in it, or does it follow directly from it?",
-        "Is every skill a short term, and does every term in auch mean exactly this skill?",
-        "Is every focus area written exactly as in kernkompetenzen, and does every target role name a field?",
-        "Do all years come from the dates in the CV?",
-        "Do preferences and exclusion criteria come from my answer or explicitly from the CV, and are they empty otherwise?",
-        "Is the JSON valid, does it have exactly the keys of the structure, and is it alone in one single code block?",
-    ];
-
-    pub(super) const STRUCTURE: &str = "The structure";
-
-    pub(super) const MONTHS: [&str; 12] = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
+/// `25. September 2026`.
+fn german_day(day: Date) -> String {
+    let month = usize::try_from(day.month() - 1).unwrap_or(0);
+    format!("{}. {} {}", day.day(), MONTHS[month], day.year())
 }
 
-/// The words of the prompt in one language.
-struct Words {
-    intro: &'static str,
-    steps: &'static str,
-    principles: &'static str,
-    fields: &'static str,
-    settings: &'static str,
-    answer: &'static str,
-    check: &'static str,
-    checks: [&'static str; 6],
-    structure: &'static str,
-    months: [&'static str; 12],
-    /// Day, month name, year: `{d}`, `{m}`, `{y}` replaced.
-    date: &'static str,
-}
-
-const DE: Words = Words {
-    intro: INTRO,
-    steps: STEPS,
-    principles: PRINCIPLES,
-    fields: FIELDS,
-    settings: SETTINGS,
-    answer: ANSWER,
-    check: CHECK,
-    checks: CHECKS,
-    structure: STRUCTURE,
-    months: MONTHS,
-    date: "{d}. {m} {y}",
-};
-
-const EN: Words = Words {
-    intro: en::INTRO,
-    steps: en::STEPS,
-    principles: en::PRINCIPLES,
-    fields: en::FIELDS,
-    settings: en::SETTINGS,
-    answer: en::ANSWER,
-    check: en::CHECK,
-    checks: en::CHECKS,
-    structure: en::STRUCTURE,
-    months: en::MONTHS,
-    date: "{d} {m} {y}",
-};
-
-impl Words {
-    fn of(language: Language) -> &'static Words {
-        match language {
-            Language::De => &DE,
-            Language::En => &EN,
-        }
-    }
-
-    /// `25. September 2026`, `25 September 2026`.
-    fn day(&self, day: Date) -> String {
-        let month = usize::try_from(day.month() - 1).unwrap_or(0);
-        self.date
-            .replace("{d}", &day.day().to_string())
-            .replace("{m}", self.months[month])
-            .replace("{y}", &day.year().to_string())
-    }
-}
-
-/// The whole prompt in the app's language: the task (the AI does not know the app), the steps
-/// (the questions first), the principles (with `today`), the rule of every field, the wishes
-/// and exclusion criteria, the answer wanted and the checks before it; then the skeleton in a
-/// JSON code block.
-pub fn text(language: Language, today: Date) -> String {
-    let w = Words::of(language);
-    let checks: Vec<String> = w
-        .checks
+/// The whole prompt: the task (the AI does not know the app), the steps (the questions
+/// first), the principles (with `today`), the rule of every field, the wishes and exclusion
+/// criteria, the answer wanted and the checks before it; then the skeleton in a JSON code
+/// block.
+pub fn text(today: Date) -> String {
+    let checks: Vec<String> = CHECKS
         .iter()
         .enumerate()
         .map(|(i, check)| format!("{}. {check}", i + 1))
         .collect();
     let parts = [
-        w.intro.to_owned(),
-        w.steps.to_owned(),
-        w.principles.replace("{today}", &w.day(today)),
-        w.fields.to_owned(),
-        w.settings.to_owned(),
-        w.answer.to_owned(),
-        format!("{}\n{}", w.check, checks.join("\n")),
-        format!("{}\n```json\n{}\n```", w.structure, skeleton()),
+        INTRO.to_owned(),
+        STEPS.to_owned(),
+        PRINCIPLES.replace("{today}", &german_day(today)),
+        FIELDS.to_owned(),
+        SETTINGS.to_owned(),
+        ANSWER.to_owned(),
+        format!("{CHECK}\n{}", checks.join("\n")),
+        format!("{STRUCTURE}\n```json\n{}\n```", skeleton()),
     ];
     let mut text = parts.join("\n\n");
     text.push('\n');
@@ -573,78 +418,35 @@ mod tests {
         }
     }
 
-    /// Every key of the skeleton has its rule before the code blocks, in both languages, and
-    /// so has every fixed value the form reads.
+    /// Every key of the skeleton has its rule before the code blocks, and so has every fixed
+    /// value the form reads.
     #[test]
     fn every_key_of_the_skeleton_is_explained() {
-        for language in [Language::De, Language::En] {
-            let text = text(language, day());
-            let skeleton: Json = serde_json::from_str(&skeleton()).unwrap();
-            let mut keys = Vec::new();
-            all_keys(&skeleton, &mut keys);
-            for key in &keys {
-                assert!(names(rules(&text), key), "{language:?}: {key}");
-            }
-            for value in [
-                "Muttersprache",
-                "C1",
-                "B2",
-                "A2",
-                "voll",
-                "ueberwiegend",
-                "teilweise",
-                "vor_ort",
-                "anue",
-                "festanstellung",
-                "sofort",
-            ] {
-                assert!(
-                    text.contains(&format!("\"{value}\"")),
-                    "{language:?}: {value}"
-                );
-            }
-            for word in ["true", "false", "null"] {
-                assert!(names(rules(&text), word), "{language:?}: {word}");
-            }
-        }
-    }
-
-    /// German and English say the same thing in the same order: the same lines, each rule
-    /// on the same key, the same numbered steps, the same JSON.
-    #[test]
-    fn both_languages_have_the_same_structure() {
-        let german = text(Language::De, day());
-        let english = text(Language::En, day());
+        let text = text(day());
         let skeleton: Json = serde_json::from_str(&skeleton()).unwrap();
         let mut keys = Vec::new();
         all_keys(&skeleton, &mut keys);
-        let (de, en): (Vec<&str>, Vec<&str>) =
-            (german.lines().collect(), english.lines().collect());
-        assert_eq!(de.len(), en.len(), "{german}\n{english}");
-        let mut code = false;
-        for (d, e) in de.iter().zip(&en) {
-            if d.starts_with("```") {
-                code = !code;
-                assert_eq!(d, e);
-            } else if code {
-                assert_eq!(d, e, "the JSON is the same");
-            } else if let Some(item) = d.strip_prefix("- ") {
-                // A rule names its key first; a question is an item of its own.
-                let first = |line: &str| line.split(' ').next().unwrap().to_owned();
-                let english = e.strip_prefix("- ").map(first);
-                assert!(english.is_some(), "{d}\n{e}");
-                if keys.contains(&first(item)) {
-                    assert_eq!(Some(first(item)), english, "{d}\n{e}");
-                }
-            } else if let Some((number, _)) =
-                d.split_once(". ").filter(|(n, _)| n.parse::<u8>().is_ok())
-            {
-                assert!(e.starts_with(&format!("{number}. ")), "{d}\n{e}");
-            } else {
-                assert_eq!(d.is_empty(), e.is_empty(), "{d}\n{e}");
-            }
+        for key in &keys {
+            assert!(names(rules(&text), key), "{key}");
         }
-        assert!(!code, "every code block closes");
+        for value in [
+            "Muttersprache",
+            "C1",
+            "B2",
+            "A2",
+            "voll",
+            "ueberwiegend",
+            "teilweise",
+            "vor_ort",
+            "anue",
+            "festanstellung",
+            "sofort",
+        ] {
+            assert!(text.contains(&format!("\"{value}\"")), "{value}");
+        }
+        for word in ["true", "false", "null"] {
+            assert!(names(rules(&text), word), "{word}");
+        }
     }
 
     /// The prompt says first that the AI does not know the app, has it ask for what the CV
@@ -653,7 +455,7 @@ mod tests {
     /// code block; it reads like the app's other prompts.
     #[test]
     fn the_text_asks_first_and_ends_with_the_skeleton() {
-        let german = text(Language::De, day());
+        let german = text(day());
         assert!(german.starts_with(
             "Du unterstützt mich als KI-Assistent bei meinem Beraterprofil. Du kennst meine \
              Job-Alert-App nicht;"
@@ -664,76 +466,24 @@ mod tests {
         assert!(german.contains("als Datei profil.json zum Herunterladen"));
         assert!(german.contains("unter Profil mit „Neues Profil“ und „Datei hochladen“"));
         assert!(german.ends_with(&format!("Der Aufbau\n```json\n{}\n```\n", skeleton())));
-        let english = text(Language::En, day());
-        assert!(english.starts_with(
-            "You support me as an AI assistant with my consultant profile. You do not know my \
-             job alert app;"
-        ));
-        assert!(english.contains("in one single short message"));
-        assert!(english.contains("I may skip any question"));
-        assert!(english.contains("Today is 25 September 2026."));
-        assert!(english.contains("as a file profil.json to download"));
-        assert!(english.contains("under Profile with “New profile” and “Upload file”"));
-        assert!(english.ends_with(&format!("The structure\n```json\n{}\n```\n", skeleton())));
         let march = Date::new(2027, 3, 1).unwrap();
-        assert!(text(Language::De, march).contains("Heute ist der 1. März 2027."));
+        assert!(text(march).contains("Heute ist der 1. März 2027."));
         // The questions come before the rules of the fields.
-        for (text, questions, fields) in [
-            (&german, "Der Ablauf", "Die Felder"),
-            (&english, "How to go about it", "The fields"),
-        ] {
-            assert!(text.find(questions).unwrap() < text.find(fields).unwrap());
-        }
+        assert!(german.find("Der Ablauf").unwrap() < german.find("Die Felder").unwrap());
         // The view and the button as the interface names them.
-        let catalogs = [
-            (
-                include_str!("../../../ui/src/lib/i18n/de.ts"),
-                [
-                    "profile: 'Profil'",
-                    "newProfile: 'Neues Profil'",
-                    "pickFile: 'Datei hochladen'",
-                ],
-            ),
-            (
-                include_str!("../../../ui/src/lib/i18n/en.ts"),
-                [
-                    "profile: 'Profile'",
-                    "newProfile: 'New profile'",
-                    "pickFile: 'Upload file'",
-                ],
-            ),
-        ];
-        for (catalog, names) in catalogs {
-            for name in names {
-                assert!(catalog.contains(name), "{name}");
-            }
-        }
-
-        for text in [&german, &english] {
-            // No dash as a separator, no product named.
-            for word in [
-                "\u{2013}", "\u{2014}", "Claude", "ChatGPT", "Gemini", "Copilot",
-            ] {
-                assert!(!text.contains(word), "{word}");
-            }
-        }
-        // The English one speaks English: German only in keys, fixed values and the examples
-        // of German degrees and terms.
-        for word in [
-            "und",
-            "der",
-            "die",
-            "das",
-            "nicht",
-            "ist",
-            "mit",
-            "von",
-            "für",
-            "oder",
-            "wenn",
-            "Lebenslauf",
+        let catalog = include_str!("../../../ui/src/lib/i18n/de.ts");
+        for name in [
+            "profile: 'Profil'",
+            "newProfile: 'Neues Profil'",
+            "pickFile: 'Datei hochladen'",
         ] {
-            assert!(!names(rules(&english), word), "{word}");
+            assert!(catalog.contains(name), "{name}");
+        }
+        // No dash as a separator, no product named.
+        for word in [
+            "\u{2013}", "\u{2014}", "Claude", "ChatGPT", "Gemini", "Copilot",
+        ] {
+            assert!(!german.contains(word), "{word}");
         }
         for word in ["the", "and", "you", "your", "with"] {
             assert!(!names(rules(&german), word), "{word}");

@@ -37,7 +37,7 @@ The app opens on Erste Schritte:
 2. Optionally connect the Gmail mailbox with an app password, needed only for alert mails.
 3. Run the first fetch.
 
-The app speaks German; English is built in and switched on in a later version.
+The app speaks German.
 
 ## The profile
 

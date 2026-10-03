@@ -7,7 +7,6 @@
   import ChipInput from '$components/ChipInput.svelte';
   import Field from '$components/Field.svelte';
   import { de } from '$lib/i18n/de';
-  import { en } from '$lib/i18n/en';
   import { t } from '$lib/i18n/t';
 
   interface Props {
@@ -29,18 +28,16 @@
     NL: ['Holland'],
     US: ['United States', 'Vereinigte Staaten', 'America', 'Amerika'],
   };
-  /** Every country the engine knows, named in the app's language and found by every name. */
-  const COUNTRIES = $derived(
-    Object.keys(de.profile.country).map((code) => ({
-      id: code,
-      label: t.profile.country[code] ?? code,
-      terms: [
-        de.profile.country[code] ?? code,
-        en.profile.country[code] ?? code,
-        ...(COUNTRY_TERMS[code] ?? []),
-      ],
-    })),
-  );
+  /** Every country the engine knows, named in German and found by every name. */
+  const COUNTRIES = Object.keys(de.profile.country).map((code) => ({
+    id: code,
+    label: de.profile.country[code] ?? code,
+    terms: [
+      de.profile.country[code] ?? code,
+      de.profile.countryEnglish[code] ?? code,
+      ...(COUNTRY_TERMS[code] ?? []),
+    ],
+  }));
 </script>
 
 <div data-field="countries">

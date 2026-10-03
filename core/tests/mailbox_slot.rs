@@ -133,20 +133,15 @@ fn cred_1_saving_the_mailbox_holds_the_app_and_can_be_stopped() {
     );
 
     // The page words the busy error and the closing note of the check.
-    for catalog in ["ui/src/lib/i18n/de.ts", "ui/src/lib/i18n/en.ts"] {
-        let text = read(catalog);
-        let busy = &text[text.find("type Busy").unwrap()..];
-        let busy = &busy[..busy.find("const errors").unwrap()];
-        assert!(
-            busy.contains("'mailbox'"),
-            "{catalog}: Busy knows the check"
-        );
-        assert_eq!(
-            busy.matches("\n  mailbox: ").count(),
-            2,
-            "{catalog}: a busy sentence and a closing note for the check"
-        );
-    }
+    let text = read("ui/src/lib/i18n/de.ts");
+    let busy = &text[text.find("type Busy").unwrap()..];
+    let busy = &busy[..busy.find("const errors").unwrap()];
+    assert!(busy.contains("'mailbox'"), "Busy knows the check");
+    assert_eq!(
+        busy.matches("\n  mailbox: ").count(),
+        2,
+        "a busy sentence and a closing note for the check"
+    );
 }
 
 /// CRED-2 follow-up: `save_mailbox` looks at the shape of address and app password before

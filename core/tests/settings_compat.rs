@@ -14,13 +14,13 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use jobalert_core::portal::Portal;
-use jobalert_core::settings::{Language, Palette, PortalSwitches, Settings};
+use jobalert_core::settings::{Palette, PortalSwitches, Settings};
 use jobalert_core::store::Store;
 
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0-7.json";
+const NEWEST: &str = "3.0.0-8.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -69,7 +69,6 @@ fn newest() -> Settings {
             (Portal::AmadeusFire, switches(false, false)),
             (Portal::Fratch, switches(false, false)),
         ]),
-        language: Some(Language::En),
         palette: Palette::Dark,
         fetch_mail: false,
         fetch_search: false,
@@ -166,7 +165,6 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
             (Portal::InterimX, switches(true, false)),
             (Portal::Fratch, switches(true, false)),
         ]),
-        language: Some(Language::En),
         palette: Palette::Dark,
         ..Settings::default()
     };
@@ -218,13 +216,14 @@ fn the_file_before_the_new_sources_loads_with_them_on() {
 }
 
 /// The files with the automatic fetch, the fetch range and the Excel and CSV switches (taken
-/// out 2026-10-01: only by hand, every fetch reads the mails since the last one, no files):
-/// their fields go, everything else as it was.
+/// out 2026-10-01: only by hand, every fetch reads the mails since the last one, no files)
+/// and the files with the language (taken out 2026-10-03: the app is German): their fields
+/// go, everything else as it was.
 #[test]
 fn the_files_with_the_automatic_fetch_and_the_range_load_without_them() {
     let loaded = load(&fixture("3.0.0-4.json"));
     assert_eq!(loaded, newest());
-    for earlier in ["3.0.0-5.json", "3.0.0-6.json"] {
+    for earlier in ["3.0.0-5.json", "3.0.0-6.json", "3.0.0-7.json"] {
         assert_eq!(round_trip(&load(&fixture(earlier))).0, newest());
     }
     let (back, saved) = round_trip(&loaded);
@@ -238,8 +237,8 @@ fn the_files_with_the_automatic_fetch_and_the_range_load_without_them() {
 #[test]
 fn a_file_of_a_newer_version_loads_without_damage() {
     let loaded = load(&fixture("newer.json"));
-    // Unknown fields, an unknown portal and a switch it does not know are skipped; a language,
-    // palette or fetch range of a newer version reads as none chosen. Nothing else changes:
+    // Unknown fields, an unknown portal and a switch it does not know are skipped; a palette
+    // or fetch range of a newer version reads as none chosen. Nothing else changes:
     // above all the file is not taken for a damaged one (that would switch every portal off).
     // The search sources and the fetch's switches came after it: at their defaults.
     let mut portals = newest().portals;
@@ -255,7 +254,6 @@ fn a_file_of_a_newer_version_loads_without_damage() {
         portals.insert(portal, switches(true, false));
     }
     let expected = Settings {
-        language: None,
         palette: Palette::Cxact,
         portals,
         fetch_mail: true,

@@ -1,12 +1,7 @@
-//! The texts on the Rust side follow the rules of the interface's catalogs (CLAUDE.md,
-//! glossary in docs/PLAN.md): the startup dialog,
-//! the sign-in window title, the file dialogs and the macOS menu. Each block starts at a line
-//! naming "User-facing text, German" (or "User-facing text, English") and ends at "end of
-//! user-facing text"; every string literal in it is checked, the German ones against the
-//! German glossary, the English ones against the English glossary and for German that
-//! slipped in. A table that holds both languages (the Excel columns) is a block of its own,
-//! "User-facing text, German and English": there the literals after `de:` are German, the
-//! ones after `en:` English, and every other literal is code.
+//! The texts on the Rust side follow the rules of the interface's catalog (CLAUDE.md,
+//! glossary in docs/PLAN.md): the startup dialog, the sign-in window title, the file dialogs
+//! and the macOS menu. Each block starts at a line naming "User-facing text, German" and ends
+//! at "end of user-facing text"; every string literal in it is checked against the glossary.
 //!
 //! Every test asserts how many texts it found: a moved block must not turn a rule into a
 //! silent no-op.
@@ -21,40 +16,8 @@ const FILES: [(&str, usize); 4] = [
     ("src-tauri/src/commands/mod.rs", 3),
 ];
 
-/// The files with English text blocks (the words the windows show in the English app), and
-/// how many strings each has at least.
-const FILES_EN: [(&str, usize); 3] = [
-    ("src-tauri/src/session.rs", 1),
-    ("src-tauri/src/commands/mod.rs", 3),
-    ("src-tauri/src/platform.rs", 15),
-];
-
 const START: &str = "User-facing text, German";
-const START_EN: &str = "User-facing text, English";
-const START_BOTH: &str = "User-facing text, German and English";
 const END: &str = "end of user-facing text";
-
-/// Old or foreign words and the English glossary word the texts use instead.
-const GLOSSARY_EN: [(&str, &str); 11] = [
-    ("Source", "Portal"),
-    ("Entry", "Job"),
-    ("Candidate", "Job"),
-    ("Inbox", "Mailbox"),
-    ("Hit", "Match"),
-    ("Pinned", "Favourite"),
-    ("Saved", "Favourite"),
-    ("Run", "Fetch"),
-    // One message is an "email" in English ("mailbox" and "Gmail" are other words).
-    ("Mail", "Email"),
-    ("Wish", "Preference"),
-    ("Competence", "Skill"),
-];
-
-/// Words that mark German inside an English text (whole words, any case).
-const GERMAN_WORDS: [&str; 14] = [
-    "und", "der", "die", "das", "nicht", "ist", "mit", "von", "für", "oder", "auf", "bei", "neu",
-    "alle",
-];
 
 /// Old words and the glossary word the texts use instead.
 const GLOSSARY: [(&str, &str); 11] = [
@@ -79,38 +42,18 @@ struct Text {
 
 /// The string literals of the German text blocks of every file.
 fn texts() -> Vec<Text> {
-    texts_of(&FILES, START, "de:")
-}
-
-/// The string literals of the English text blocks of every file.
-fn texts_en() -> Vec<Text> {
-    texts_of(&FILES_EN, START_EN, "en:")
-}
-
-/// The literals of the blocks that start at `start`, and of the two-language blocks those
-/// after `label`.
-fn texts_of(files: &[(&str, usize)], start: &str, label: &str) -> Vec<Text> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut out = Vec::new();
-    for &(file, min) in files {
+    for (file, min) in FILES {
         let source =
             std::fs::read_to_string(root.join(file)).unwrap_or_else(|e| panic!("{file}: {e}"));
-        let plain = blocks(&source, start)
+        let found = blocks(&source)
             .into_iter()
             .flat_map(|(line, block)| {
                 literals(&block)
                     .into_iter()
                     .map(move |(n, text)| (line + n, text))
-            });
-        let both = blocks(&source, START_BOTH)
-            .into_iter()
-            .flat_map(|(line, block)| {
-                labelled(&block, label)
-                    .into_iter()
-                    .map(move |(n, text)| (line + n, text))
-            });
-        let found = plain
-            .chain(both)
+            })
             .map(|(line, text)| Text {
                 at: format!("{file}:{line}"),
                 text,
@@ -127,9 +70,8 @@ fn texts_of(files: &[(&str, usize)], start: &str, label: &str) -> Vec<Text> {
 }
 
 /// The text blocks of a file: first line number (1-based) and the lines after the start
-/// marker up to the end marker (or the end of the file). A German block is not a
-/// two-language one.
-fn blocks(source: &str, start: &str) -> Vec<(usize, String)> {
+/// marker up to the end marker (or the end of the file).
+fn blocks(source: &str) -> Vec<(usize, String)> {
     let mut out = Vec::new();
     let mut current: Option<(usize, String)> = None;
     for (index, line) in source.lines().enumerate() {
@@ -140,26 +82,11 @@ fn blocks(source: &str, start: &str) -> Vec<(usize, String)> {
                 block.push_str(line);
                 block.push('\n');
             }
-        } else if line.contains(start) && (start == START_BOTH || !line.contains(START_BOTH)) {
+        } else if line.contains(START) {
             current = Some((index + 2, String::new()));
         }
     }
     out.extend(current);
-    out
-}
-
-/// The string literals right after `label` (`de:` or `en:`) with their line offset.
-fn labelled(code: &str, label: &str) -> Vec<(usize, String)> {
-    let mut out = Vec::new();
-    for (at, _) in code.match_indices(label) {
-        let rest = code[at + label.len()..].trim_start();
-        if rest.starts_with('"') {
-            let line = code[..at].matches('\n').count();
-            if let Some((_, text)) = literals(rest).into_iter().next() {
-                out.push((line, text));
-            }
-        }
-    }
     out
 }
 
@@ -232,7 +159,7 @@ fn fail(problems: &[String], rule: &str) {
 #[test]
 fn the_rust_texts_have_no_ai_punctuation() {
     let mut problems = Vec::new();
-    for Text { at, text } in texts().into_iter().chain(texts_en()) {
+    for Text { at, text } in texts() {
         for dash in [" - ", " – ", "–", "—"] {
             if text.contains(dash) {
                 problems.push(format!("{at}: dash as a separator in \"{text}\""));
@@ -271,36 +198,6 @@ fn the_rust_texts_keep_the_glossary() {
     fail(&problems, "glossary and length of the Rust texts");
 }
 
-/// The English texts keep the English glossary, stay short and carry no German (product
-/// names aside): no umlaut, no sharp s, no German function word.
-#[test]
-fn the_english_rust_texts_keep_their_glossary_and_no_german() {
-    let mut problems = Vec::new();
-    for Text { at, text } in texts_en() {
-        let lower = text.to_lowercase();
-        for (old, new) in GLOSSARY_EN {
-            if uses_word(&lower, &old.to_lowercase()) {
-                problems.push(format!("{at}: \"{old}\" is called \"{new}\" in \"{text}\""));
-            }
-        }
-        if text.chars().any(|c| "äöüÄÖÜß".contains(c)) {
-            problems.push(format!("{at}: German letters in \"{text}\""));
-        }
-        for word in lower.split(|c: char| !c.is_alphanumeric()) {
-            if GERMAN_WORDS.contains(&word) {
-                problems.push(format!("{at}: German \"{word}\" in \"{text}\""));
-            }
-        }
-        if text.chars().count() > 140 {
-            problems.push(format!(
-                "{at}: {} characters (max 140)",
-                text.chars().count()
-            ));
-        }
-    }
-    fail(&problems, "glossary and language of the English Rust texts");
-}
-
 /// The scanner itself: continuation lines, escapes and comments.
 #[test]
 fn literals_are_read_like_rust_reads_them() {
@@ -308,24 +205,16 @@ fn literals_are_read_like_rust_reads_them() {
         "const A: &str = \"eins \\\n    zwei\"; // \"kein Text\"\nconst B: &str = \"C:\\\\x\";";
     let found: Vec<String> = literals(code).into_iter().map(|(_, text)| text).collect();
     assert_eq!(found, ["eins zwei", "C:\\x"]);
-    let file = "x\n// User-facing text, German by product decision.\nconst A: &str = \"a\";\n// end of user-facing text\nconst B: &str = \"b\";\n// User-facing text, English.\nconst C: &str = \"c\";\n// end of user-facing text";
-    let found = |start: &str| -> Vec<(usize, String)> {
-        blocks(file, start)
-            .into_iter()
-            .flat_map(|(line, block)| {
-                literals(&block)
-                    .into_iter()
-                    .map(move |(n, t)| (line + n, t))
-            })
-            .collect()
-    };
-    assert_eq!(found(START), [(3, "a".to_owned())]);
-    assert_eq!(found(START_EN), [(7, "c".to_owned())]);
-    let table = "// User-facing text, German and English.\nX { key: \"k\", de: \"Ja\",\n en: \"Yes\" },\n// end of user-facing text";
-    let (line, block) = blocks(table, START_BOTH).remove(0);
-    assert_eq!(labelled(&block, "de:"), [(0, "Ja".to_owned())]);
-    assert_eq!(labelled(&block, "en:"), [(1, "Yes".to_owned())]);
-    assert_eq!(line, 2);
+    let file = "x\n// User-facing text, German by product decision.\nconst A: &str = \"a\";\n// end of user-facing text\nconst B: &str = \"b\";";
+    let found: Vec<(usize, String)> = blocks(file)
+        .into_iter()
+        .flat_map(|(line, block)| {
+            literals(&block)
+                .into_iter()
+                .map(move |(n, t)| (line + n, t))
+        })
+        .collect();
+    assert_eq!(found, [(3, "a".to_owned())]);
     assert!(uses_word("Umfang des letzten Laufs", "Lauf"));
     assert!(uses_word("Postfach-Lauf", "Lauf"));
     assert!(!uses_word("Die WebView2-Laufzeit fehlt.", "Lauf"));

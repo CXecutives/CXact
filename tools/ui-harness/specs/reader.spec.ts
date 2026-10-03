@@ -968,13 +968,6 @@ test.describe('Jobdetails', () => {
     expect(columns).toBe(2);
     await expect(why(page)).toHaveCount(0);
   });
-
-  test('in English: the row Workload in the same form', async ({ page }) => {
-    await openAt(page, 'freelance-900413', `${WIN}&lang=en`);
-    await expect(stage(page).getByTestId('terms').locator('h2')).toHaveText('Job details');
-    expect(await terms(page).locator('.term-name').allInnerTexts()).toContain('Workload');
-    expect(await cell(page, 'workload')).toEqual(['2 days/week', 'partial']);
-  });
 });
 
 test.describe('Anforderungen', () => {

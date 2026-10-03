@@ -48,7 +48,7 @@
   const id = $props.id();
   let user = $state(app.state?.mailbox.user ?? '');
   let password = $state('');
-  /** An error is said when it shows, so it follows a switch of the language. */
+  /** An error is said when it shows. */
   type Words = () => string;
   let userError = $state<Words | null>(null);
   let passwordError = $state<Words | null>(null);

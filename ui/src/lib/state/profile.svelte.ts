@@ -12,7 +12,6 @@
 // The criteria, their limits and the empty form come from core (`types/profile.ts`, written
 // from `core/src/profile/form.rs`): a new number or word criterion needs nothing here.
 
-import { language } from '../i18n/language.svelte';
 import { invoke } from '../ipc/api';
 import { app } from './app.svelte';
 import type {
@@ -173,7 +172,7 @@ export function localQuality(
 // ------------------------------------------------------------------ values that did not read
 
 /** A value the backend refused on saving: the field (and row) it names and its words (said
- *  when they show, so they follow a switch of the language). */
+ *  when they show). */
 export interface FieldError {
   field: string;
   row: number | null;
@@ -264,27 +263,17 @@ export function fieldProblems(
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 
-/** A day as British English writes it, the month in words (`1 Nov 2026`). */
-const BRITISH_DAY = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
-
-/** `2026-11-01` -> `01.11.2026`, in English `1 Nov 2026` (as the field shows a day). */
+/** `2026-11-01` -> `01.11.2026` (as the field shows a day). */
 export function shownDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (match === null) return iso;
   const [, year, month, day] = match;
-  return language.current === 'de'
-    ? `${day}.${month}.${year}`
-    : BRITISH_DAY.format(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  return `${day}.${month}.${year}`;
 }
 
 const GERMAN_DAY = /^(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})$/;
 const ISO_DAY = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
-/** A day with the month in words, German or English (`1 Nov 2026`, `1. März 2026`). */
+/** A day with the month in words (`1. März 2026`, `1 Nov 2026`). */
 const NAMED_DAY = /^(\d{1,2})\.?\s+(\p{L}+)\.?\s+(\d{4})$/u;
 /** The month of a name by its first three letters (umlauts folded: `mär` is `mar`). */
 const MONTH_OF: Readonly<Record<string, number>> = {
@@ -293,24 +282,20 @@ const MONTH_OF: Readonly<Record<string, number>> = {
   mar: 3,
   apr: 4,
   mai: 5,
-  may: 5,
   jun: 6,
   jul: 7,
   aug: 8,
   sep: 9,
   okt: 10,
-  oct: 10,
   nov: 11,
   dez: 12,
-  dec: 12,
 };
 const monthOf = (name: string): number =>
   MONTH_OF[name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().slice(0, 3)] ?? 0;
 
 /**
  * A typed day (`1.11.2026`, `01.11.26`, `01/11/2026`, `2026-11-01`, `1 Nov 2026`) as
- * `YYYY-MM-DD`; `null` if it is none. Day first in both languages (German and British
- * English).
+ * `YYYY-MM-DD`; `null` if it is none. Day first.
  */
 export function isoDate(text: string): string | null {
   const value = text.trim();

@@ -1,7 +1,6 @@
-//! The scoring rubric of the AI prompts: the German file `core/src/export/ai_rubric.de.md`
-//! covers the bands 1 to 10, maps them onto the app's points and bands and stops wishes below
-//! the app's high band; the English rubric of the English prompts (`ai_rubric.en.md`) has the
-//! same sections, bands and caps.
+//! The scoring rubric of the AI prompts: `core/src/export/ai_rubric.de.md` covers the bands
+//! 1 to 10, maps them onto the app's points and bands, stops wishes below the app's high band
+//! and names the profile keys it rules on.
 
 use std::path::{Path, PathBuf};
 
@@ -21,36 +20,6 @@ fn read(path: &str) -> String {
 }
 
 const RUBRIC: &str = "core/src/export/ai_rubric.de.md";
-
-/// A cap: an upper (`true`) or lower bound and its score.
-type Cap = (bool, u32);
-
-fn sorted(mut caps: Vec<Cap>) -> Vec<Cap> {
-    caps.sort_unstable();
-    caps
-}
-
-/// The caps of the rubric: the lines of its section `Obergrenzen`.
-fn rubric_caps(rubric: &str) -> Vec<Cap> {
-    let section = rubric
-        .split("\n## ")
-        .find(|s| s.starts_with("Obergrenzen"))
-        .expect("section Obergrenzen");
-    let caps = section
-        .lines()
-        .filter(|l| l.starts_with("- "))
-        .map(|line| {
-            let upper = line.contains("höchstens");
-            let n: u32 = line
-                .rsplit(' ')
-                .next()
-                .and_then(|n| n.parse().ok())
-                .unwrap_or_else(|| panic!("a cap ends with its score: {line}"));
-            (upper, n)
-        })
-        .collect();
-    sorted(caps)
-}
 
 #[test]
 fn the_bands_cover_one_to_ten() {
@@ -83,74 +52,11 @@ fn the_bands_cover_one_to_ten() {
     );
 }
 
-const RUBRIC_EN: &str = "core/src/export/ai_rubric.en.md";
-
-/// The bands of a rubric (`from`, `to`) in the section `heading`, written `- 9 <to> 10 ...`.
-fn bands(rubric: &str, heading: &str, to: &str) -> Vec<(u32, u32)> {
-    let section = rubric
-        .split("\n## ")
-        .find(|s| s.starts_with(heading))
-        .unwrap_or_else(|| panic!("section {heading}"));
-    section
-        .lines()
-        .filter(|l| l.starts_with("- "))
-        .map(|line| {
-            let words: Vec<&str> = line.split(' ').collect();
-            assert_eq!(words[2], to, "{line}");
-            (words[1].parse().unwrap(), words[3].parse().unwrap())
-        })
-        .collect()
-}
-
-/// The caps of the English rubric: the lines of its section `Caps`.
-fn english_caps(rubric: &str) -> Vec<Cap> {
-    let section = rubric
-        .split("\n## ")
-        .find(|s| s.starts_with("Caps"))
-        .expect("section Caps");
-    let caps = section
-        .lines()
-        .filter(|l| l.starts_with("- "))
-        .map(|line| {
-            let n: u32 = line
-                .rsplit(' ')
-                .next()
-                .and_then(|n| n.parse().ok())
-                .unwrap_or_else(|| panic!("a cap ends with its score: {line}"));
-            (line.contains("at most"), n)
-        })
-        .collect();
-    sorted(caps)
-}
-
-/// The English prompts carry the English rubric (`ai_rubric.en.md`): it says what the German
-/// one says, so both languages score alike - the same sections, bands, caps and the same stop
-/// below the app's high band.
+/// The rubric rules on the profile's own keys, and on no retired one: the engine reads the
+/// years an ad asks for against `berufserfahrung_jahre` only (engine 18).
 #[test]
-fn the_english_rubric_says_the_same() {
-    let german = read(RUBRIC);
-    let english = read(RUBRIC_EN);
-    assert_eq!(
-        german.matches("\n## ").count(),
-        english.matches("\n## ").count(),
-        "the same sections"
-    );
-    assert_eq!(
-        bands(&german, "Punkte von 1 bis 10", "bis"),
-        bands(&english, "Points from 1 to 10", "to")
-    );
-    assert_eq!(rubric_caps(&german), english_caps(&english));
-    let high = u32::from(HIGH_FROM) / 10;
-    assert!(
-        english.contains(&format!("to {high} or more")),
-        "high band {high}"
-    );
-    let mid = u32::from(MID_FROM) / 10;
-    let flat = english.split_whitespace().collect::<Vec<_>>().join(" ");
-    assert!(
-        flat.contains(&format!("a high match from {high}, medium from {mid}")),
-        "bands {high} and {mid}"
-    );
+fn the_rubric_names_the_profile_keys() {
+    let rubric = read(RUBRIC);
     for key in [
         "min_tagessatz",
         "laender",
@@ -161,11 +67,7 @@ fn the_english_rubric_says_the_same() {
         "tagessatz_wunsch",
         "einsatzpraeferenzen",
     ] {
-        assert!(german.contains(key) && english.contains(key), "{key}");
+        assert!(rubric.contains(key), "{key}");
     }
-    // The engine reads the years an ad asks for against `berufserfahrung_jahre` only
-    // (engine 18): the retired key is no rule of either rubric.
-    for rubric in [&german, &english] {
-        assert!(!rubric.contains("zielprofil"), "a retired key");
-    }
+    assert!(!rubric.contains("zielprofil"), "a retired key");
 }

@@ -6,10 +6,9 @@
   lines up), then "Sprache hinzufügen". A
   row without a level shows B2, the level the engine assumes then (matching's fit), and a
   new row starts at B2. The x of a row needs no tooltip. The language field suggests common languages like the countries field (found by their German and
-  English names, taken in the app's language); any other language can be typed. A common
-  language shows in the app's language (Englisch, English) and the profile keeps it under its
-  German name, as the engine reads it (core matching::lexicon LANGUAGES); while the field has
-  the focus it shows what was typed. Enter moves
+  English names); any other language can be typed. A common language shows and is kept
+  under its German name, as the engine reads it (core matching::lexicon LANGUAGES); while
+  the field has the focus it shows what was typed. Enter moves
   through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
   saves. Removing a row puts no caret anywhere (input.ts removeBy): after a click the focus is
   dropped, from the keyboard it goes to the next row's x (the previous one after the last,
@@ -21,7 +20,6 @@
   import { folded } from '$components/Suggestions.svelte';
   import TextField from '$components/TextField.svelte';
   import { de } from '$lib/i18n/de';
-  import { en } from '$lib/i18n/en';
   import { t } from '$lib/i18n/t';
   import { formKeys, removeBy } from '$lib/input/input';
   import type { LanguageLevel, ProfileLanguage } from '$lib/ipc/types';
@@ -51,14 +49,12 @@
 
   type LanguageCode = keyof typeof de.profile.languageName;
   const CODES = Object.keys(de.profile.languageName) as LanguageCode[];
-  /** Common languages, named in the app's language and found by both names. */
-  const LANGUAGES = $derived(
-    CODES.map((code) => ({
-      id: code,
-      label: t.profile.languageName[code],
-      terms: [de.profile.languageName[code], en.profile.languageName[code]],
-    })),
-  );
+  /** Common languages, named in German and found by both names. */
+  const LANGUAGES = CODES.map((code) => ({
+    id: code,
+    label: de.profile.languageName[code],
+    terms: [de.profile.languageName[code], de.profile.languageEnglish[code]],
+  }));
 
   /** The common language a name stands for (German or English, any case, with or without
    *  accents), else null. */
@@ -69,18 +65,13 @@
       CODES.find(
         (code) =>
           folded(de.profile.languageName[code]) === key ||
-          folded(en.profile.languageName[code]) === key,
+          folded(de.profile.languageEnglish[code]) === key,
       ) ?? null
     );
   }
 
-  /** A row's language as the field shows it: a common one in the app's language. */
-  function shown(language: string): string {
-    const code = codeOf(language);
-    return code === null ? language : t.profile.languageName[code];
-  }
-
-  /** A typed language as the profile keeps it: a common one by its German name. */
+  /** A language as the field shows it and the profile keeps it: a common one by its German
+   *  name. */
   function kept(typed: string): string {
     const code = codeOf(typed);
     return code === null ? typed : de.profile.languageName[code];
@@ -135,7 +126,7 @@
     <div class="row" data-row data-testid="language-row" use:formKeys={{ save: () => enter(row) }}>
       <span class="name" onfocusout={() => (typing = null)}>
         <TextField
-          value={typing?.row === row ? typing.text : shown(row.language)}
+          value={typing?.row === row ? typing.text : kept(row.language)}
           label={words.language}
           options={LANGUAGES}
           placeholder={rows.length === 1 ? words.languagePlaceholder : null}
@@ -161,7 +152,7 @@
           iconOnly
           icon="close"
           plain
-          label={words.removeLanguage(shown(row.language).trim())}
+          label={words.removeLanguage(kept(row.language).trim())}
           testid="language-remove"
           onclick={(event) => removeBy(event.currentTarget, () => remove(row))}
         />

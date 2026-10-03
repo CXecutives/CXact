@@ -1,6 +1,4 @@
-// German UI catalog - the source of UI text. en.ts says the same in English under the same
-// keys (a missing or extra key there is a type error); the screens read the catalog of the
-// app's language through `t` (t.ts).
+// German UI catalog - the one source of UI text; the screens read it through `t` (t.ts).
 //
 // Style rules (CLAUDE.md, checked by core/tests/ui_contract.rs): little text, plain and
 // human. Buttons are one verb phrase without a period; notes are one short sentence with a
@@ -29,7 +27,6 @@ import type {
   ErrorKind,
   InvalidInput,
   JobSort,
-  Language,
   Palette,
   PauseReason,
   Place,
@@ -902,7 +899,7 @@ export const de = {
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
     },
-    /** A failed fetch's way to the mailbox's settings (English: never the fetch's words). */
+    /** A failed fetch's way to the mailbox's settings. */
     checkMailbox: 'Postfach prüfen',
   },
   list: {
@@ -1388,6 +1385,35 @@ export const de = {
       SK: 'Slowakei',
       US: 'USA',
     } as Record<string, string>,
+    /** The English names of the countries: the field finds a country by them too (the
+     *  same keys as `country`). */
+    countryEnglish: {
+      AT: 'Austria',
+      BE: 'Belgium',
+      CH: 'Switzerland',
+      CZ: 'Czechia',
+      DE: 'Germany',
+      DK: 'Denmark',
+      ES: 'Spain',
+      FI: 'Finland',
+      FR: 'France',
+      GB: 'United Kingdom',
+      HR: 'Croatia',
+      HU: 'Hungary',
+      IE: 'Ireland',
+      IN: 'India',
+      IT: 'Italy',
+      LU: 'Luxembourg',
+      NL: 'Netherlands',
+      NO: 'Norway',
+      PL: 'Poland',
+      PT: 'Portugal',
+      RO: 'Romania',
+      SE: 'Sweden',
+      SI: 'Slovenia',
+      SK: 'Slovakia',
+      US: 'USA',
+    } as Record<string, string>,
     /** Common languages, suggested in the language of a row (found by their German and
      *  English names; any other language can be typed). */
     languageName: {
@@ -1420,6 +1446,37 @@ export const de = {
       uk: 'Ukrainisch',
       hu: 'Ungarisch',
     },
+    /** The English names of the common languages: the field finds a language by them too. */
+    languageEnglish: {
+      ar: 'Arabic',
+      bg: 'Bulgarian',
+      zh: 'Chinese',
+      da: 'Danish',
+      de: 'German',
+      en: 'English',
+      fi: 'Finnish',
+      fr: 'French',
+      el: 'Greek',
+      hi: 'Hindi',
+      it: 'Italian',
+      ja: 'Japanese',
+      ko: 'Korean',
+      hr: 'Croatian',
+      nl: 'Dutch',
+      no: 'Norwegian',
+      pl: 'Polish',
+      pt: 'Portuguese',
+      ro: 'Romanian',
+      ru: 'Russian',
+      sv: 'Swedish',
+      sk: 'Slovak',
+      sl: 'Slovenian',
+      es: 'Spanish',
+      cs: 'Czech',
+      tr: 'Turkish',
+      uk: 'Ukrainian',
+      hu: 'Hungarian',
+    },
   },
   settings: {
     /** The name of the tabs (Suche, Postfach, Daten) for a screen reader. */
@@ -1427,7 +1484,7 @@ export const de = {
     mailbox: 'Postfach',
     /** The card of the sources the app searches itself. */
     search: 'Suche',
-    /** The card of how the app looks and speaks: its colours and its language. */
+    /** The card of how the app looks: its colours. */
     look: 'Darstellung',
     /** The card of the app's data: its backups, its log, the reset. */
     data: 'Daten',
@@ -1514,12 +1571,6 @@ export const de = {
       light: 'Hell',
       dark: 'Dunkel',
     } satisfies Record<Palette, string>,
-    language: 'Sprache',
-    /** Each language in its own words, the same in both catalogs. */
-    languageName: {
-      de: 'Deutsch',
-      en: 'English',
-    } satisfies Record<Language, string>,
   },
   firstRun: {
     steps: 'Erste Schritte',
@@ -1613,7 +1664,7 @@ export function textOf(text: Text, params: Params = {}): string {
   return typeof text === 'function' ? text(params) : text;
 }
 
-/** The shape of this catalog with any words: the type of every catalog (en.ts). */
+/** The shape of this catalog with any words: the type of `t`. */
 export type Catalog = Widen<typeof de>;
 
 /** Words become `string`; keys, nesting and function signatures stay. */

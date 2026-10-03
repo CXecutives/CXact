@@ -1,6 +1,6 @@
 //! The German prompts: external contract - do not translate. The user copies them into any
-//! AI chat as they are; [`super::en`] says the same in English. The profile keys in the
-//! text (`min_tagessatz`, `laender` ...) are the profile's own and stay German.
+//! AI chat as they are. The profile keys in the text (`min_tagessatz`, `laender` ...) are the
+//! profile's own.
 
 use jiff::civil::Date;
 use serde_json::{Map, Value};
@@ -199,7 +199,7 @@ static WORDS: Words = Words {
 
 /// `1450` -> `1.450 €`, `1200 CHF` -> `1.200 CHF`.
 fn money(amount: i64, currency: Option<&str>) -> String {
-    format!("{} {}", grouped(amount, '.'), currency.unwrap_or("€"))
+    format!("{} {}", grouped(amount), currency.unwrap_or("€"))
 }
 
 /// Years asked, a range with both ends: "3 bis 5 Jahre".
@@ -323,7 +323,7 @@ impl Wording for German {
         let max = i64::try_from(max).unwrap_or(i64::MAX);
         format!(
             "Der Text ist nach {} Zeichen gekürzt, die Stelle ist mit [gekürzt] markiert.",
-            grouped(max, '.')
+            grouped(max)
         )
     }
 

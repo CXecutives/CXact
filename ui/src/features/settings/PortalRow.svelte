@@ -45,7 +45,7 @@
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
   const DAY_MS = 24 * 60 * 60 * 1000;
-  /** Why the last action failed, said when it shows (so in the language of the moment). */
+  /** Why the last action failed, said when it shows. */
   let error = $state<(() => string) | null>(null);
   let busy = $state(false);
   /** Only the answer to the latest save may replace the state (quick double flips). */

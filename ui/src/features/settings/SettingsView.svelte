@@ -8,7 +8,7 @@
   is one entry in cards.ts.
 
   A switch or a choice moves at once (the state is patched before the save) and is its own
-  answer; Darstellung switches the colours and the language of the whole app at once, and
+  answer; Darstellung switches the colours of the whole app at once, and
   the backend follows with the window and the files. A success that shows nowhere else is a
   toast (another export folder); errors and warnings stay a note at the end of their card,
   which unfolds (the cards below glide down instead of jumping).
@@ -61,8 +61,7 @@
   import MailboxCard from './MailboxCard.svelte';
   import PortalRow from './PortalRow.svelte';
 
-  /** A note keeps what happened and says it when it shows, so it follows a switch of the
-   *  language (a sentence made at once would stay in the old one). */
+  /** A note keeps what happened and says it when it shows. */
   type Feedback = { tone: NoticeTone; text: () => string };
 
   const cfg = $derived(app.state);
@@ -96,7 +95,7 @@
     note(card, { tone: 'danger', text: () => errorText(error) });
 
   /** A switch or a choice: the page follows at once, the save after; a failure loads the
-   *  stored state again (switch, colours and language go back) and says why in its card. */
+   *  stored state again (switch and colours go back) and says why in its card. */
   async function save(card: string, change: Partial<SettingsPatch>): Promise<void> {
     const mine = ++saves;
     note(card, null);
@@ -118,7 +117,7 @@
   function choose<Id extends string>(card: string, row: ChoiceRow<Id>, id: Id): void {
     if (cfg === null) return;
     row.set(cfg, id);
-    // The language and the colours of the whole page follow the state at once.
+    // The colours of the whole page follow the state at once.
     app.set(cfg);
     void save(card, row.patch(id));
   }

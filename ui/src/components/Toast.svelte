@@ -29,8 +29,8 @@
   import type { Action } from 'svelte/action';
   import { tooltip } from '$lib/actions/tooltip';
 
-  /** A sentence around one quoted name: German „…“, English “…”. */
-  const QUOTED = /^(.*?)([„“])([^“”]+)([“”])(.*)$/su;
+  /** A sentence around one quoted name („…“). */
+  const QUOTED = /^(.*?)(„)([^“]+)(“)(.*)$/su;
 
   interface Quoted {
     before: string;
