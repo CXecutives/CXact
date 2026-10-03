@@ -17,7 +17,7 @@ Each layer uses only the ones below it.
   `src/platform.rs` (`smoke.rs` is the debug-only probe).
 - **`ui/src/`** (Svelte 5), from the bottom:
   - `styles/tokens.css`: every value (colour, length, time, radius, shadow, layer) and the
-    two palettes. Nothing else writes a value.
+    palettes (CXact; Light and Dark behind the hidden Darstellung). Nothing else writes a value.
   - `components/`: the design system. The only raw controls, the only Lucide import
     (`Icon.svelte`); it knows no feature and gets its data as props.
   - `features/<name>/`: one screen each (`jobs`, `profile`, `settings`,
@@ -75,9 +75,8 @@ mail, store, engine, view, UI:
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
    before every request (search pages and robots.txt too) and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the
-   store keeps the assessment. The app writes no files of jobs (no Excel or CSV file since
-   2026-10-01, no text files or `top_matches.json` since 2026-09-27); deleting a job for good
-   and "reset everything" still remove the ones earlier versions wrote.
+   store keeps the assessment. The app writes no files of jobs; deleting a job for good and
+   "reset everything" still remove the ones earlier versions wrote.
 4. `view.rs` shapes the view types (`AppState`, `JobView`, `JobPage`, ...); commands
    return them, runs report `RunEvent`s over a channel (each under 8 KB).
 5. The UI calls `invoke(name, args)` of `api.ts`, typed by `commands.ts`; a store of
