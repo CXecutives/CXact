@@ -361,6 +361,14 @@ Known in full after the fills: 1,933 of 3,122 (61.9 %). NDCG@10 against the roun
 grade-3 job less), heldout9 0.886 to 0.898; Spearman over the relevant pairs up on eight sets
 (heldout3 0.521 to 0.634), concordance 2v3 up on seven; the rest the same.
 
+The packs stay as they are where ESCO names alike: the 47 entries whose key and concept are
+preferred labels of one ESCO concept (`Risk Management` and `Risikomanagement`, `Data Science`,
+`Public Relations`, in the customer service pack `Kundendienst`) were taken out one at a time;
+42 moved no set, three gained a little and two lost a little. They stay, because ESCO only meets
+a requirement with a profile entry, while a pack's entry also carries the relevance, the title
+fit and the Profil's suggestions. Gone: the keys the synonym table maps first, so no ad ever
+reached them (`projektleiter`, `projektleiterin`, `s4hana`, `s4`).
+
 ## Domain packs
 
 Packs in `lexicon/domains/`: German and English terms and spellings, role titles with the female

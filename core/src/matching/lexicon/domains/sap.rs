@@ -12,8 +12,6 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("order to cash", "order-to-cash"),
         ("otc", "order-to-cash"),
         ("procure to pay", "procure-to-pay"),
-        ("s4hana", "s/4hana"),
-        ("s4", "s/4hana"),
         ("central finance", "central-finance"),
         ("fi-gl", "hauptbuchhaltung"),
         ("fi-ap", "kreditorenbuchhaltung"),
