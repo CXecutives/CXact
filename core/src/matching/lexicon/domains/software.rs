@@ -7,6 +7,12 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "software",
+    search: &[
+        "Softwareentwickler",
+        "Software Engineer",
+        "Softwarearchitekt",
+        "DevOps Engineer",
+    ],
     triggers: &[
         "angular",
         "ansible",

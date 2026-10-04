@@ -1,13 +1,22 @@
 //! The terms of the deep search (user decision 2026-10-01: "tief und viel"), derived from the
-//! profile alone when a fetch starts (2026-10-03: no search terms of their own): each target
-//! role, the role without its contract words (`Interim CFO` -> `CFO`), the other names job
-//! boards give it (the engine's role table, `matching::lexicon::wishes::ROLE_GROUPS`) and its
-//! ESCO occupation's German and English name (`Contact Center Manager` -> `Leiter des
-//! Kundendienstes`); then the Schwerpunkte, the competences (the longest experience first) and
-//! the tools - each once, at most [`MAX_DEEP_TERMS`]. A competence or a tool the engine finds
-//! too broad to search alone (`Projektmanagement`, `Personalführung`, `SAP`,
-//! `matching::broad_search_term`) is left out: roles and specialities go first. A phrase of more
-//! than [`MAX_TERM_WORDS`] words finds little on a job board and is left out too.
+//! profile alone when a fetch starts (2026-10-03: no search terms of their own), from its core
+//! (2026-10-04, after a live search: generic words alone bring every field's jobs):
+//! - each target role, the role without its contract words (`Interim CFO` -> `CFO`), the
+//!   other names job boards give it (the engine's role table,
+//!   `matching::lexicon::wishes::ROLE_GROUPS`) with the role's own field kept
+//!   (`Projektleiter Customer Service` -> `Project Manager Customer Service`, never a bare
+//!   `Project Manager`), and its ESCO occupation's German and English name (`Contact Center
+//!   Manager` -> `Leiter des Kundendienstes`);
+//! - the Schwerpunkte;
+//! - the names job boards give the field the roles and Schwerpunkte lie in (`Kundenservice`,
+//!   `Contact Center`, `Call Center`: `matching::field_search_terms`);
+//! - the competences, those of that field first, the longest experience first; then the
+//!   tools.
+//!
+//! Each once, at most [`MAX_DEEP_TERMS`]. A competence or a tool the engine finds too broad to
+//! search alone (`Projektmanagement`, `Personalführung`, `Automatisierung`, `SAP`,
+//! `matching::broad_search_term`) is left out. A phrase of more than [`MAX_TERM_WORDS`] words
+//! finds little on a job board and is left out too.
 
 use super::form::ProfileForm;
 
@@ -41,15 +50,6 @@ fn key(term: &str) -> String {
         .join(" ")
 }
 
-/// Whether `text` names `name` as whole words (both as [`key`]s).
-fn names(text: &str, name: &str) -> bool {
-    let words: Vec<&str> = text.split([' ', '-', '/', ',']).collect();
-    let wanted: Vec<&str> = name.split([' ', '-', '/', ',']).collect();
-    words
-        .windows(wanted.len())
-        .any(|window| window == wanted.as_slice())
-}
-
 /// The role without its contract words (`Interim CFO` -> `CFO`); `None` when nothing is left
 /// or nothing was taken.
 fn core(role: &str) -> Option<String> {
@@ -62,13 +62,56 @@ fn core(role: &str) -> Option<String> {
     (!kept.is_empty() && kept.len() < words.len()).then(|| kept.join(" "))
 }
 
-/// The other names of every role group `text` names.
-fn other_names(text: &str) -> impl Iterator<Item = &'static str> {
-    let text = key(text);
-    crate::matching::lexicon::wishes::ROLE_GROUPS
-        .iter()
-        .filter(move |group| group.iter().any(|name| names(&text, &key(name))))
-        .flat_map(|group| group.iter().copied())
+/// Words that join two roles in one (`CFO und Transformationsleitung`).
+const JOINING_WORDS: &[&str] = &["und", "and", "&", "/", "sowie"];
+
+/// The other names of the role groups `text` names, with the rest of `text` kept: a name
+/// with a field of its own beside it is renamed in place (`Projektleiter Customer Service`
+/// -> `Project Manager Customer Service`); a name alone, or joined to another role
+/// (`CFO und Transformationsleitung`), brings the other names alone.
+fn other_names(text: &str) -> Vec<String> {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let keys: Vec<String> = words.iter().map(|w| key(w)).collect();
+    let mut out = Vec::new();
+    for group in crate::matching::lexicon::wishes::ROLE_GROUPS {
+        for name in *group {
+            let wanted: Vec<String> = name.split_whitespace().map(key).collect();
+            let Some(at) = keys
+                .windows(wanted.len())
+                .position(|window| window == wanted.as_slice())
+            else {
+                continue;
+            };
+            let before = &words[..at];
+            let after = &words[at + wanted.len()..];
+            // The name stands alone when only contract words are beside it, or a joining word.
+            let field = |side: &[&str]| -> Vec<String> {
+                side.iter()
+                    .map(|w| key(w))
+                    .filter(|w| !CONTRACT_WORDS.contains(&w.as_str()))
+                    .collect()
+            };
+            let joins = |w: Option<&String>| w.is_none_or(|w| JOINING_WORDS.contains(&w.as_str()));
+            let alone = joins(field(after).first()) && joins(field(before).last());
+            if alone {
+                out.push((*name).to_owned());
+            }
+            for other in group.iter().filter(|other| *other != name) {
+                out.push(if alone {
+                    (*other).to_owned()
+                } else {
+                    before
+                        .iter()
+                        .copied()
+                        .chain(std::iter::once(*other))
+                        .chain(after.iter().copied())
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                });
+            }
+        }
+    }
+    out
 }
 
 /// The deep search's terms for a profile form, in the order they are asked for.
@@ -80,22 +123,33 @@ pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
         if let Some(core) = &core {
             terms.add(core);
         }
-        for name in other_names(role) {
-            terms.add(name);
+        let base = core.as_deref().unwrap_or(role);
+        for name in other_names(base) {
+            terms.add(&name);
         }
-        let occupation = crate::matching::occupation_names(core.as_deref().unwrap_or(role));
-        for name in &occupation {
-            terms.add(name);
-        }
-    }
-    for focus in form.focus() {
-        terms.add_specific(&focus.name);
-        for name in other_names(&focus.name) {
+        for name in &crate::matching::occupation_names(base) {
             terms.add(name);
         }
     }
+    let focus: Vec<&str> = form.focus().map(|f| f.name.as_str()).collect();
+    for name in &focus {
+        terms.add_specific(name);
+    }
+    let field = crate::matching::SearchField::of(
+        form.roles
+            .iter()
+            .map(String::as_str)
+            .chain(focus.iter().copied()),
+    );
+    for name in field.map_or(&[][..], |f| f.names()) {
+        terms.add(name);
+    }
+    // The competences of the field first, the longest experience first.
     let mut competences: Vec<_> = form.competences.iter().collect();
-    competences.sort_by_key(|competence| std::cmp::Reverse(competence.years.unwrap_or(0)));
+    competences.sort_by_cached_key(|c| {
+        let of_field = field.is_some_and(|f| f.holds(&c.name));
+        (!of_field, std::cmp::Reverse(c.years.unwrap_or(0)))
+    });
     for competence in &competences {
         terms.add_specific(&competence.name);
     }
@@ -244,10 +298,75 @@ mod tests {
 
     #[test]
     fn a_name_counts_as_whole_words_only() {
-        assert!(names(&key("Interim CFO (m/w/d)"), "cfo"));
-        assert!(!names(&key("CFOs Assistenz"), "cfo"));
+        assert!(other_names("Interim CFO (m/w/d)").contains(&"Chief Financial Officer".to_owned()));
+        assert!(other_names("CFOs Assistenz").is_empty());
         assert_eq!(core("Interim CFO"), Some("CFO".to_owned()));
         assert_eq!(core("CFO"), None);
         assert_eq!(core("Interim"), None);
+    }
+
+    /// A role's other names keep its own field (never a bare `Project Manager`); a name joined
+    /// to another role stands alone.
+    #[test]
+    fn other_names_keep_the_field() {
+        assert_eq!(
+            other_names("Projektleiter Customer Service"),
+            [
+                "Projektmanager Customer Service",
+                "Project Manager Customer Service"
+            ]
+        );
+        let joined = other_names("CFO und Transformationsleitung");
+        assert!(joined.contains(&"CFO".to_owned()), "{joined:?}");
+        assert!(joined.contains(&"Finanzvorstand".to_owned()), "{joined:?}");
+    }
+
+    /// A head of customer service as a CV names it: the roles with their field, the
+    /// Schwerpunkte, the names job boards give the field, then its competences; generic words
+    /// stay out.
+    #[test]
+    fn the_field_of_roles_and_schwerpunkte_is_searched() {
+        let form = ProfileForm {
+            roles: vec![
+                "Interim Head of Customer Service".into(),
+                "Projektleiter Customer Service".into(),
+            ],
+            competences: vec![
+                competence("Customer Service Management", 30, true),
+                competence("Automatisierung", 8, true),
+                competence("Coaching", 20, false),
+                competence("Workforce Management", 15, false),
+                competence("Training & Weiterbildung", 6, false),
+            ],
+            ..ProfileForm::default()
+        };
+        let terms = deep_search_terms(&form);
+        for wanted in [
+            "Head of Customer Service",
+            "Project Manager Customer Service",
+            "Kundenservice",
+            "Contact Center",
+            "Call Center",
+            "Beschwerdemanagement",
+        ] {
+            assert!(terms.iter().any(|t| t == wanted), "{wanted} in {terms:?}");
+        }
+        for noise in [
+            "Projektleiter",
+            "Project Manager",
+            "Automatisierung",
+            "Training & Weiterbildung",
+        ] {
+            assert!(!terms.iter().any(|t| t == noise), "{noise} in {terms:?}");
+        }
+        // The field's competences before the others, whatever their years.
+        let at = |t: &str| terms.iter().position(|x| x == t).unwrap();
+        assert!(at("Workforce Management") < at("Coaching"));
+        // A profile without a field of its own searches no field's names.
+        let finance = ProfileForm {
+            competences: vec![competence("Controlling", 10, false)],
+            ..ProfileForm::default()
+        };
+        assert_eq!(deep_search_terms(&finance), ["Controlling"]);
     }
 }

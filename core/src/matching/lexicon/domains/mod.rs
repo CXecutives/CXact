@@ -32,6 +32,10 @@ mod software;
 pub(crate) struct Domain {
     /// Stable id, shown in the profile summary.
     pub name: &'static str,
+    /// The field's names as job boards write them, the most common first: a profile whose
+    /// target roles and Schwerpunkte lie in the field searches for them too
+    /// (`profile::deep_search_terms`).
+    pub search: &'static [&'static str],
     /// Folded token prefixes in the profile's competences that switch the pack on.
     pub triggers: &'static [&'static str],
     /// Folded words of the field that are too broad to meet a requirement on their own
@@ -125,6 +129,23 @@ mod tests {
                 assert!(table.windows(2).all(|w| w[0] < w[1]), "{}", domain.name);
                 assert!(table.iter().all(|w| fold(w) == *w), "{}", domain.name);
             }
+        }
+    }
+
+    /// Every pack names its field for the deep search: a few short terms, each once.
+    #[test]
+    fn every_pack_names_its_field() {
+        for domain in DOMAINS {
+            assert!((3..=10).contains(&domain.search.len()), "{}", domain.name);
+            let mut names: Vec<String> = domain.search.iter().map(|n| fold(n)).collect();
+            assert!(
+                names.iter().all(|n| n.split_whitespace().count() <= 4),
+                "{}",
+                domain.name
+            );
+            names.sort();
+            names.dedup();
+            assert_eq!(names.len(), domain.search.len(), "{}", domain.name);
         }
     }
 

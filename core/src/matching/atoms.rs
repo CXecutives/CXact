@@ -448,6 +448,106 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
     })
 }
 
+/// The atoms of each pack's names of its field (`Domain::search`), without the generic ones.
+static PACK_NAMES: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
+    DOMAINS
+        .iter()
+        .map(|d| {
+            let mut names: Vec<String> = d
+                .search
+                .iter()
+                .flat_map(|term| atoms(term, &ALL_PACKS))
+                .filter(|a| !is_generic(a))
+                .collect();
+            names.sort();
+            names.dedup();
+            names
+        })
+        .collect()
+});
+
+/// The concepts of each pack as atoms (`kundenservic-leitung`), with the parts of the
+/// hyphenated ones that name something on their own (`workforc` of `workforc-management`).
+static PACK_CONCEPTS: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
+    DOMAINS
+        .iter()
+        .map(|d| {
+            let mut concepts: Vec<String> = d
+                .concepts
+                .iter()
+                .map(|(_, c)| stem(c))
+                .flat_map(|c| {
+                    let parts: Vec<String> = c
+                        .split('-')
+                        .filter(|p| c.contains('-') && p.len() >= 4 && !is_generic(p))
+                        .map(str::to_owned)
+                        .collect();
+                    std::iter::once(c).chain(parts)
+                })
+                .collect();
+            concepts.sort();
+            concepts.dedup();
+            concepts
+        })
+        .collect()
+});
+
+/// How much texts lie in each pack's field: an atom like one of the field's names
+/// (`Domain::search`; equal, narrower or wider) adds a full share, a concept of the pack a
+/// share divided among the packs that have it.
+fn field_shares<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<usize> {
+    const SHARE: usize = 60;
+    let mut shares = vec![0usize; DOMAINS.len()];
+    for text in texts {
+        for atom in atoms(text, &ALL_PACKS).iter().filter(|a| !is_generic(a)) {
+            let concept: Vec<bool> = PACK_CONCEPTS
+                .iter()
+                .map(|concepts| concepts.binary_search(atom).is_ok())
+                .collect();
+            let packs = concept.iter().filter(|c| **c).count().max(1);
+            for ((share, names), concept) in shares.iter_mut().zip(PACK_NAMES.iter()).zip(concept) {
+                if names
+                    .iter()
+                    .any(|n| fit(atom, n) != Fit::None || fit(n, atom) != Fit::None)
+                {
+                    *share += SHARE;
+                }
+                if concept {
+                    *share += SHARE / packs;
+                }
+            }
+        }
+    }
+    shares
+}
+
+/// The field of a profile for the deep search: the one domain pack its target roles and
+/// Schwerpunkte lie in most ([`field_shares`]); none on a tie or when they lie in none.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SearchField(usize);
+
+impl SearchField {
+    pub(crate) fn of<'a>(texts: impl IntoIterator<Item = &'a str>) -> Option<Self> {
+        let shares = field_shares(texts);
+        let most = shares.iter().copied().max().unwrap_or(0);
+        let mut best = shares.iter().enumerate().filter(|(_, s)| **s == most);
+        match (best.next(), best.next()) {
+            (Some((index, _)), None) if most > 0 => Some(Self(index)),
+            _ => None,
+        }
+    }
+
+    /// The field's names as job boards write them.
+    pub(crate) fn names(self) -> &'static [&'static str] {
+        DOMAINS[self.0].search
+    }
+
+    /// Does a text (a competence) lie in the field at all?
+    pub(crate) fn holds(self, text: &str) -> bool {
+        field_shares([text])[self.0] > 0
+    }
+}
+
 /// Relation of a job atom to a profile atom.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Fit {

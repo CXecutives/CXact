@@ -722,10 +722,12 @@ pub(crate) const LEADERSHIP_ATOMS: &[&str] = &[
     "teamleitung",
 ];
 /// Words that reach every field, too broad for a search term on their own (beside the
-/// generic, general business, leadership and soft words): `Generative KI`, `Digitalisierung`
+/// generic, general business, leadership and soft words): `Generative KI`, `Digitalisierung`,
+/// `Automatisierung`, `Weiterbildung` (ads of every field offer it)
 /// (`atoms::broad_search_term`).
 pub(crate) const SEARCH_BROAD_ATOMS: &[&str] = &[
     "ai",
+    "automatisierung",
     "digitalisierung",
     "generativ",
     "innovation",
@@ -738,6 +740,7 @@ pub(crate) const SEARCH_BROAD_ATOMS: &[&str] = &[
     "prozessoptimierung",
     "strategie",
     "transformation",
+    "weiterbildung",
 ];
 /// Words of a leading role in a profile entry (`Leiter Controlling`, `Head of IT`, `CFO`).
 pub(crate) const PROFILE_LEAD_WORDS: &[&str] = &[

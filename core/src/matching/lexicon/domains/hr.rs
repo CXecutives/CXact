@@ -7,6 +7,13 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "hr",
+    search: &[
+        "Personalleiter",
+        "Head of HR",
+        "HR Business Partner",
+        "Personalentwicklung",
+        "Personalwesen",
+    ],
     triggers: &[
         "arbeitsdirektor",
         "arbeitsrecht",

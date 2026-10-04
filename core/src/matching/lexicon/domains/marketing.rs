@@ -14,6 +14,13 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "marketing",
+    search: &[
+        "Marketingleiter",
+        "Head of Marketing",
+        "Marketing Manager",
+        "Online Marketing",
+        "Performance Marketing",
+    ],
     triggers: &[
         "adwords",
         "campaign",

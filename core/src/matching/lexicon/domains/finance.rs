@@ -6,6 +6,14 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "finance",
+    search: &[
+        "Leiter Finanzen",
+        "Head of Finance",
+        "Leiter Controlling",
+        "Leiter Rechnungswesen",
+        "Finanzbuchhaltung",
+        "Konzernrechnungswesen",
+    ],
     triggers: &[
         "accounting",
         "bilanz",

@@ -408,6 +408,10 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
     atoms::broad_search_term(term)
 }
 
+/// The field of target roles and Schwerpunkte for the deep search: the names job boards give
+/// it, and whether a competence lies in it.
+pub(crate) use atoms::SearchField;
+
 /// The names of the ESCO occupation a role names as a whole, German then English (the deep
 /// search asks for them).
 pub(crate) fn occupation_names(role: &str) -> Vec<String> {

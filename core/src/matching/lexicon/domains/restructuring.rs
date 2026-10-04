@@ -8,6 +8,12 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "restructuring",
+    search: &[
+        "Restrukturierung",
+        "Sanierung",
+        "Turnaround",
+        "Chief Restructuring Officer",
+    ],
     triggers: &[
         "eigenverwaltung",
         "insolvenz",

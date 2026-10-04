@@ -7,6 +7,12 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "energy",
+    search: &[
+        "Energiewirtschaft",
+        "Energiehandel",
+        "Netzbetreiber",
+        "Erneuerbare Energien",
+    ],
     triggers: &[
         "anreizregulierung",
         "bilanzkreis",

@@ -8,6 +8,12 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "legal",
+    search: &[
+        "Legal Counsel",
+        "Syndikusrechtsanwalt",
+        "Compliance Manager",
+        "Datenschutz",
+    ],
     triggers: &[
         "aml",
         "compliance",

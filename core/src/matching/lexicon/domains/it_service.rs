@@ -12,6 +12,13 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "itService",
+    search: &[
+        "IT Service Manager",
+        "Service Delivery Manager",
+        "IT Service Management",
+        "Service Desk",
+        "IT-Betrieb",
+    ],
     // `Incident` alone is no trigger: security profiles handle incidents too.
     triggers: &[
         "cmdb",

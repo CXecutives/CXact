@@ -7,6 +7,13 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "data",
+    search: &[
+        "Business Intelligence",
+        "Data Analyst",
+        "Data Engineer",
+        "Datenanalyse",
+        "Data Governance",
+    ],
     triggers: &[
         "airflow",
         "bigquery",

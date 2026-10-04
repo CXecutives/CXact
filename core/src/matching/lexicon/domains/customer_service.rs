@@ -15,6 +15,18 @@ use super::Domain;
 
 pub(crate) const DOMAIN: Domain = Domain {
     name: "customerService",
+    search: &[
+        "Kundenservice",
+        "Leiter Kundenservice",
+        "Customer Service",
+        "Contact Center",
+        "Call Center",
+        "Kundendienst",
+        "Customer Care",
+        "Beschwerdemanagement",
+        "Eskalationsmanagement",
+        "Kundendialog",
+    ],
     // Triggers also mark a known skill in any ad (`soft_sentence`), so no common word
     // such as `customer`, `contact` or `Kundenzufriedenheit` is one.
     triggers: &[
