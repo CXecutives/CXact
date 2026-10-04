@@ -71,6 +71,7 @@
   class:drawn
   class:docked={shell.docked}
   class:setup={shell.firstRun}
+  class:page={!shell.firstRun && navigation.current !== 'jobs'}
   data-testid="title-bar"
   data-tauri-drag-region
   data-press-only
@@ -152,6 +153,11 @@
   /* The setup's page is the cream one: the bar wears it too. */
   .bar.setup {
     background-color: var(--bg);
+  }
+
+  /* Profil and Einstellungen: the ground of their layout (lib/design.ts). */
+  .bar.page {
+    background-color: var(--layout-page);
   }
 
   /* The sidebar's colour as far as the docked sidebar reaches, its seam at the edge. */

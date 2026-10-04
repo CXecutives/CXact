@@ -808,13 +808,13 @@ test('the first line: the sidebar entry, the tabs and the titles share one middl
   await open(page, WIN);
   const line = middle(await page.getByTestId('nav-jobs').boundingBox());
   expect(middle(await page.getByTestId('places').boundingBox())).toBe(line);
-  // The title of every page's head stands on the same row.
+  // The first heading of every page without a title stands on the same row.
   for (const [view, title] of [
-    ['profile', 'profile-heading'],
-    ['settings', 'settings-heading'],
+    ['profile', '#profile-section-search-heading'],
+    ['settings', '#settings-portals-heading'],
   ] as const) {
     await open(page, `${WIN}&view=${view}`);
-    const first = page.getByTestId(title);
+    const first = page.locator(title);
     await expect(first, view).toBeVisible();
     expect(Math.abs(middle(await first.boundingBox()) - line), view).toBeLessThanOrEqual(1);
   }
@@ -1340,7 +1340,7 @@ test('a notice banner stands in the page column and draws no line of its own', a
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
   const edge = (await banner.boundingBox())!.x;
-  const heading = (await page.getByTestId('settings-heading').boundingBox())!.x;
+  const heading = (await page.getByTestId('settings-portals').boundingBox())!.x;
   expect(Math.abs(edge - heading)).toBeLessThanOrEqual(1);
   const same = async (notice: Locator): Promise<boolean> =>
     notice.evaluate((node) => {

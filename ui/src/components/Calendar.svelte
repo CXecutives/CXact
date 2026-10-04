@@ -308,10 +308,6 @@
     transition-duration: var(--dur-hover);
   }
 
-  .day:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
-
   .today {
     font-weight: var(--weight-semibold);
     box-shadow: inset 0 0 0 var(--border-width) var(--border-strong);

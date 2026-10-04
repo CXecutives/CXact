@@ -1,7 +1,8 @@
 <!--
-  Einstellungen: one airy white page (design B) under its head ("Einstellungen"), in the
-  column of the pages (600), three sections of cards.ts, each with its heading and one quiet
-  line, its rows between hairlines and no card: Jobportale (all ten portals in one list,
+  Einstellungen: one page without a title (the sidebar names the place; user 2026-10-04), in
+  the column of the pages (600), laid out as the page's layout says (tokens.css
+  `--layout-*`; B "Luftig" by default), three sections of cards.ts, each with its heading,
+  its rows between hairlines: Jobportale (all ten portals in one list,
   PortalRow: the eight the app searches, then LinkedIn and freelance.de), Postfach
   (MailboxCard) and Daten (the profile's folder and the reset, each one sentence and its
   button). Every text button of a Daten row is the same outlined button with its glyph; every
@@ -14,7 +15,7 @@
   first; a dialog whose action fails stays open and says why inside. The dry run changes
   nothing, and a run holds the mailbox and the reset, locked with the reason of that run
   instead of failing. Opened from a job for one portal ("Anmeldung einrichten") the page
-  glides to the portal's row, focuses its sign-in and offers "Zurück zum Job" in its head.
+  glides to the portal's row, focuses its sign-in and offers "Zurück zum Job" in a head above it.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -216,14 +217,9 @@
 {/snippet}
 
 <div class="page" data-testid="settings" bind:this={root}>
-  <PageHeader
-    heading={t.settings.title}
-    headingTestid="settings-heading"
-    column="page"
-    testid="settings-head"
-  >
-    {#snippet actions()}
-      {#if backToJob}
+  {#if backToJob}
+    <PageHeader column="page" testid="settings-head">
+      {#snippet actions()}
         <Button
           variant="ghost"
           icon="back"
@@ -231,9 +227,9 @@
           testid="back-to-job"
           onclick={goBackToJob}
         />
-      {/if}
-    {/snippet}
-  </PageHeader>
+      {/snippet}
+    </PageHeader>
+  {/if}
   <div class="body">
     {#if cfg === null}
       {#if app.slow}
@@ -250,16 +246,18 @@
         <Section
           id="settings-{section.id}"
           name={section.id}
-          heading={section.heading(t, cfg)}
-          info={section.info?.(t, cfg) ?? null}
+          heading={section.heading?.(t, cfg) ?? null}
+          plain={section.block === 'portals'}
           testid="settings-{section.id}"
         >
           {#if section.block === 'portals'}
             {#each WAYS as way (way)}
               <h3 class="group" data-testid="portals-{way}">{t.settings.way[way]}</h3>
-              {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
-                <PortalRow {portal} />
-              {/each}
+              <div class="surface">
+                {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
+                  <PortalRow {portal} />
+                {/each}
+              </div>
             {/each}
           {:else if section.block === 'mailbox'}
             <MailboxCard {cfg} locked={mailboxLocked} />
@@ -287,6 +285,7 @@
 <style>
   .page {
     min-height: 100%;
+    background-color: var(--layout-page);
   }
 
   /* The column under the head: 600 wide, centred; a section's hairline as far from what
@@ -295,15 +294,19 @@
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: var(--section-top);
+    gap: var(--layout-section-gap);
     max-width: calc(var(--page-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--space-8) var(--pane-padding) var(--page-end);
+    padding: var(--page-top) var(--pane-padding) var(--page-end);
+  }
+
+  .page:has(> :global(header)) .body {
+    padding-top: var(--space-8);
   }
 
   /* A group of portals: a small heading over its rows. */
   .group {
-    padding-top: var(--space-12);
+    padding: var(--space-12) var(--layout-heading-inset) calc(var(--layout-group-pad) / 2);
     color: var(--text-muted);
     font: var(--type-sm);
     font-weight: var(--weight-semibold);
@@ -311,6 +314,22 @@
 
   .group:first-child {
     padding-top: 0;
+  }
+
+  /* The group of portals in the page's layout (the same as a section's, Section). */
+  .surface {
+    --row-inset: var(--layout-group-pad);
+
+    display: flex;
+    flex-direction: column;
+    padding: var(--layout-group-pad-block) var(--layout-group-pad);
+    border-radius: var(--layout-group-radius);
+    background-color: var(--layout-group);
+    box-shadow: inset 0 0 0 var(--border-width) var(--layout-group-edge);
+  }
+
+  .surface + .group {
+    padding-top: var(--space-16);
   }
 
   .fold {

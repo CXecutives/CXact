@@ -1,13 +1,14 @@
 <!--
-  Länder: a chip field of the countries the engine knows. With the focus it lists them,
-  Deutschland, Österreich and Schweiz first, then the others by name; typing finds a country by
-  its German and English names and the other names people use. The chip holds the code; a
+  Länder: a chip field of the countries the engine knows, no dropdown: under it Deutschland,
+  Österreich and Schweiz as quick picks while they are not chosen (QuickPicks); typing finds
+  any country by its German and English names and the other names people use. The chip holds the code; a
   country of a file the app does not know stays as it is.
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
   import { de } from '$lib/i18n/de';
   import { t } from '$lib/i18n/t';
+  import QuickPicks from './QuickPicks.svelte';
 
   interface Props {
     id: string;
@@ -59,4 +60,12 @@
   {missing}
   {invalid}
   testid="profile-countries"
+/>
+<QuickPicks
+  picks={FIRST.filter((code) => !values.includes(code)).map((code) => ({
+    id: code,
+    label: nameOf(code),
+  }))}
+  testid="country-pick"
+  onpick={(code) => (values = [...values, code])}
 />

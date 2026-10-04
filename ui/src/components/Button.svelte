@@ -77,7 +77,7 @@
     menu?: boolean;
     /** Its menu is open: announced, and the button keeps its hover look meanwhile. */
     expanded?: boolean;
-    /** The default of a dialog (Enter presses it); Dialog marks it with the focus ring. */
+    /** The default of a dialog (Enter presses it); Dialog gives it the focus. */
     isDefault?: boolean;
     /** Deletes, removes or resets something: red text and glyph (secondary and ghost). */
     warns?: boolean;
@@ -311,10 +311,6 @@
   .turned .glyph {
     transform: rotate(var(--turn-half));
     transition-duration: var(--dur-slow);
-  }
-
-  .btn:focus-visible {
-    box-shadow: var(--focus-ring);
   }
 
   .btn[aria-disabled='true'] {

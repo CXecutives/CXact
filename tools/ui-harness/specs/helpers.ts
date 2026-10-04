@@ -325,6 +325,5 @@ export async function fillRequired(page: Page): Promise<void> {
   await roles.fill('Interim CFO');
   await roles.press('Enter');
   await page.getByTestId('competence-name').first().fill('Controlling');
-  await page.getByTestId('language-name').first().click();
-  await page.getByTestId('menu-item-Deutsch').click();
+  await page.getByTestId('language-pick-Deutsch').click();
 }

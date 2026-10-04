@@ -2,7 +2,7 @@
   A large button that is one choice or one place to drop a file (design round 3): a bordered
   tile (radius 10) with its glyph in navy, its label and one small line under it. Under the
   pointer and pressed it takes a navy edge on a faint navy tint (150 ms, ease-out; nothing
-  moves or shrinks); keyboard focus is the navy ring; Enter and Space press it like any
+  moves or shrinks); focus draws no ring; Enter and Space press it like any
   button.
   - choice: the glyph on top, the label in bold, the content at the left (the setup's two
     ways to the profile, side by side; a click goes on at once).
@@ -77,10 +77,6 @@
   :global(:where(:root:not([data-aux-press]))) .tile:active:hover {
     background-color: var(--active-hover);
     transition-duration: var(--dur-instant);
-  }
-
-  .tile:focus-visible {
-    box-shadow: var(--focus-ring);
   }
 
   .glyph {

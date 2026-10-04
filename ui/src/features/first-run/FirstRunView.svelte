@@ -16,7 +16,7 @@
   Upload.svelte, and the sentence about the AI in the foot); Auswertung (a spinner and
   "Abbrechen", or what went wrong as the heading with a warning sign and its ways on at the
   right, the primary last, CV_PROBLEMS); Profil prüfen after the CV and Profil ausfüllen by
-  hand (design round 4: the whole Profil page on white in the pages' column instead of the
+  hand (the whole Profil page in its groups on the cream, in the pages' column instead of the
   card, the foot at the window's bottom; "Weiter" is always on, marks what is missing and says
   it beside itself, and goes on once nothing is); Alert-Mails, optional ("Überspringen" at the
   left, "Verbinden" the primary; once connected the portals' rows with "Alert anlegen", the
@@ -317,9 +317,9 @@
     padding: var(--setup-top) var(--space-16) var(--space-32);
   }
 
-  /* The whole profile: the white page in the pages' column, no card. */
+  /* The whole profile: its groups on the cream page in the pages' column, no card. */
   .setup.white {
-    background-color: var(--surface);
+    background-color: var(--layout-page);
   }
 
   .column.page {
@@ -333,6 +333,7 @@
     padding: 0;
     border: 0;
     border-radius: 0;
+    background-color: transparent;
   }
 
   .card.page {
@@ -341,6 +342,7 @@
 
   .card.page .foot {
     flex-wrap: wrap;
+    background-color: var(--layout-page);
     margin: 0 calc(-1 * var(--pane-padding));
     padding: var(--space-12) var(--pane-padding) var(--space-16);
     border-radius: 0;

@@ -14,8 +14,7 @@
   during a scroll carry `data-still` (input.ts) until it is over, so only those rows
   restyle. A mark on :root or a property that inherits (pointer-events) would restyle every
   row twice per scroll, a long task with a few hundred rows. Every row is a button and a Tab
-  stop. Under the keyboard focus ring the coral bar steps inside it (navy and coral touch,
-  never blend).
+  stop; focus draws no ring (user decision 2026-10-04).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -150,15 +149,6 @@
 
   :global(:root[data-window='inactive']) .selected::before {
     background-color: var(--text-subtle);
-  }
-
-  .row:focus-visible {
-    box-shadow: var(--focus-ring-inset);
-  }
-
-  /* Inside the focus ring (as wide as --focus-ring-inset). */
-  .row:focus-visible::before {
-    left: var(--space-2);
   }
 
   .leading,

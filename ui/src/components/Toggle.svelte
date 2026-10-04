@@ -170,10 +170,6 @@
     background-color: var(--toggle-on-press);
   }
 
-  .toggle:focus-visible .track {
-    box-shadow: var(--focus-ring);
-  }
-
   .toggle[aria-disabled='true'] {
     cursor: default;
     opacity: var(--opacity-disabled);

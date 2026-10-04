@@ -6,8 +6,8 @@
   180 ms (ease-out) and leaves in 100 ms. It holds the focus like a native one (input.ts):
   Tab and Shift+Tab cycle through its buttons, Esc cancels wherever the focus is, Enter
   presses the focused button or, on the dialog itself, its default button (cancel for
-  danger, confirm otherwise). The focus starts on that default button; it shows the focus
-  ring only when the keyboard opened the dialog or moves in it, never after a click. The
+  danger, confirm otherwise). The focus starts on that default button (no focus ring,
+  user decision 2026-10-04). The
   heading stays ink also in a danger dialog (its red button says it). A click on its text
   keeps the focus inside; on close the focus goes back to where it was. A failure of the
   action shows inside the dialog (`error`), never behind the scrim. The toasts lie below the scrim and wait while it is

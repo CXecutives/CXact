@@ -1,5 +1,5 @@
 // Einstellungen as data: one page of three sections in their order (design B), each with its
-// heading, its info sentence, and its block or its rows, and every button of a row. SettingsView.svelte
+// heading and its block or its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`).
@@ -85,9 +85,8 @@ export type Block = 'portals' | 'mailbox';
 
 export interface SectionSpec {
   id: string;
-  heading: Text;
-  /** The sentence of the info symbol after the heading. */
-  info?: Text;
+  /** None: a group of its own under the one before (Alle Daten zurücksetzen). */
+  heading?: Text;
   block?: Block;
   rows: readonly Row[];
 }
@@ -96,21 +95,18 @@ export const SECTIONS: readonly SectionSpec[] = [
   {
     id: 'portals',
     heading: (t) => t.settings.portals,
-    info: (t) => t.settings.portalsInfo,
     block: 'portals',
     rows: [],
   },
   {
     id: 'mailbox',
     heading: (t) => t.settings.mailbox,
-    info: (t) => t.settings.mailboxInfo,
     block: 'mailbox',
     rows: [],
   },
   {
     id: 'data',
     heading: (t) => t.settings.data,
-    info: (t) => t.settings.dataInfo,
     rows: [
       {
         id: 'folder',
@@ -119,7 +115,13 @@ export const SECTIONS: readonly SectionSpec[] = [
         path: (_t, state) => state.settings.workspace,
         actions: ['folderChange', 'folderOpen'],
       },
-      // The one action that deletes for good; what it deletes is said in its dialog too.
+    ],
+  },
+  // The one action that deletes for good, alone in the last group; what it deletes is said
+  // in its dialog too.
+  {
+    id: 'reset',
+    rows: [
       {
         id: 'reset-all',
         tile: 'trash',

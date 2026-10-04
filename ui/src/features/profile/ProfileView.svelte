@@ -1,12 +1,9 @@
 <!--
-  Profil: the one profile of the app as one airy page (design B) under the view's head
-  (PageHeader, it scrolls with the page under the top bar's fade): "Profil" at the left, "Aus
-  Lebenslauf ausfüllen" with its popover at the right (ProfileActions). A CV dropped anywhere
-  on the page (Tauri's drag and drop of the window, the same path as the setup's upload; the
-  page never sends a path) is evaluated the same way while that button would take it; the
-  page shows a dashed edge while such a file is over it. The CV fills the profile at once
-  ("Profil ausgefüllt. Bitte prüfen.").
-  Under the head the column (600): what went wrong with the CV or the last save, the rescore
+  Profil: one page without a title (the sidebar names the place; user 2026-10-04); "Aus
+  Lebenslauf ausfüllen" ends the first section's heading line (ProfileActions). A CV dropped
+  on the page (Tauri's drag and drop, never a path) is evaluated the same way, with a dashed
+  edge while it is over the page; it fills the profile at once.
+  The column (600): what went wrong with the CV or the last save, the rescore
   a save started, and the three sections. While the form holds a change a dark bar floats at
   the foot (SaveBar): "Ungespeicherte Änderungen", Verwerfen and Speichern (the view's one
   primary). Without a profile the two ways in (ProfileStart); a file that no longer reads says
@@ -19,10 +16,8 @@
   until they are filled. A new or changed form asks core what it still lacks
   (`profileMissing`, a moment after the last edit), the stored profile names its own
   (`missing`).
-  In the setup (`setup`) the page is the same form without the head, the bar and "Häufig
-  verlangt"; the setup's "Weiter" (`next`) marks what is missing the same way and goes on only
-  once nothing is (`onflag` hands the sentence's names to the setup's foot); Esc does
-  nothing; closing the window with unsaved changes still asks.
+  In the setup (`setup`) the same form without the CV, the bar and "Häufig verlangt"; its
+  "Weiter" (`next`) marks what is missing the same way and goes on once nothing is (`onflag`).
 -->
 <script lang="ts" module>
   /** A required field that is still empty, with its name. */
@@ -388,20 +383,14 @@
   {/if}
 {:else}
   <div class="page" class:over data-testid="profile">
-    <PageHeader
-      heading={editor.origin === null && profile?.parseError
-        ? t.profile.unreadable
-        : t.profile.title}
-      headingTestid="profile-heading"
-      column="page"
-      testid="profile-head"
-    >
-      {#snippet actions()}
-        {#if editor.origin !== null}
-          <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
-        {/if}
-      {/snippet}
-    </PageHeader>
+    {#if editor.origin === null && profile?.parseError}
+      <PageHeader
+        heading={t.profile.unreadable}
+        headingTestid="profile-heading"
+        column="page"
+        testid="profile-head"
+      />
+    {/if}
     <div class="body">
       {#if editor.origin === null}
         <ProfileStart
@@ -416,10 +405,14 @@
         />
       {:else}
         {@render notes()}
+        {#snippet actions()}
+          <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
+        {/snippet}
         <ProfileEditor
           bind:this={panel}
           {fieldError}
           missing={marked}
+          {actions}
           onsave={() => void trySave()}
           ondiscard={discard}
         />
@@ -459,6 +452,7 @@
     display: flex;
     flex-direction: column;
     min-height: 100%;
+    background-color: var(--layout-page);
   }
 
   /* The column under the head: 600 wide, centred, the room of the page's end below. */
@@ -469,7 +463,12 @@
     width: 100%;
     max-width: calc(var(--page-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--space-8) var(--pane-padding) var(--page-end);
+    padding: var(--page-top) var(--pane-padding) var(--page-end);
+  }
+
+  /* Under the heading of a file that no longer reads. */
+  .page:has(> :global(header)) .body {
+    padding-top: var(--space-8);
   }
 
   /* With the floating bar, the bar ends the page: its own room replaces the page's end. */

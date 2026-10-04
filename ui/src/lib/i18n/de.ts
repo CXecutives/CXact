@@ -1130,16 +1130,13 @@ export const de = {
     /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
      *  does not name, each with its number of jobs (a click puts it into that field). */
     asked: 'Häufig verlangt',
-    /** The three sections on one page, and the sentence of each one's info symbol. */
+    /** The five groups of the page. */
     section: {
       search: 'Was du suchst',
+      where: 'Wo und wann',
       skills: 'Was du mitbringst',
+      experience: 'Erfahrung',
       exclusions: 'Was nicht passt',
-    },
-    sectionInfo: {
-      search: 'Danach sucht und bewertet CXact.',
-      skills: 'Das gleicht CXact mit den Anforderungen ab.',
-      exclusions: 'Diese Jobs blendet CXact aus.',
     },
     field: {
       roles: 'Wunschrollen',
@@ -1159,6 +1156,7 @@ export const de = {
       countriesMore: '+ Land',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
+      languageNone: 'Keine Sprache mit diesem Namen.',
       regions: 'Regionen',
       regionsPlaceholder: 'z. B. Hamburg',
       regionsMore: '+ Region',
@@ -1194,9 +1192,14 @@ export const de = {
       unprefer: (name: string) => `${name} nicht mehr bevorzugen`,
       languages: 'Sprachen',
       language: 'Sprache',
-      languagePlaceholder: 'Sprache wählen',
+      languagePlaceholder: 'Sprache eingeben',
       level: 'Niveau',
-      addLanguage: 'Sprache hinzufügen',
+      addLanguage: 'Sprache',
+      /** A long list folded to its first rows, and unfolded. */
+      showAll: (count: number) => `Alle anzeigen (${n(count)})`,
+      showLess: 'Weniger anzeigen',
+      /** The chips a folded chip field hides. */
+      moreChips: (count: number) => `+ ${n(count)} weitere`,
       removeLanguage: (name: string) => `${name} entfernen`,
       degrees: 'Abschlüsse',
       degreesPlaceholder: 'z. B. Master BWL',
@@ -1221,13 +1224,10 @@ export const de = {
     },
     /** The info symbols beside a label, one sentence each (only these places, docs/PLAN.md). */
     info: {
-      roles: 'Danach sucht CXact.',
       contracts: 'Was du nicht wählst, wird ausgeschlossen.',
       dayRate: 'Unter dem Minimum wird ein Job ausgeschlossen.',
-      workMode: 'Nur ein Wunsch, schließt nie aus.',
       countries: 'Andere Länder werden ausgeschlossen. Remote gilt überall.',
       competences: 'Bis zu fünf Schwerpunkte. Sie zählen doppelt.',
-      industries: 'Branchen, in denen du gern arbeitest.',
       exclusionWords: 'Jobs, die so heißen, werden ausgeschlossen.',
     },
     /** The unit right of a number field. */
@@ -1258,16 +1258,14 @@ export const de = {
       6: '6+',
       12: '12+ Monate',
     } satisfies Record<ProfileForm['minMonths'], string>,
-    /** The level of a language in plain words, its CEFR level after them. */
+    /** The four plain levels of a language (user 2026-10-04), stored as A2, B2, C1 and
+     *  native; A1 and B1 read as Grundkenntnisse, C2 as Fließend (LanguageList). */
     level: {
-      A1: 'Anfänger A1',
-      A2: 'Grundkenntnisse A2',
-      B1: 'Gute Kenntnisse B1',
-      B2: 'Sehr gute Kenntnisse B2',
-      C1: 'Fließend C1',
-      C2: 'Verhandlungssicher C2',
+      A2: 'Grundkenntnisse',
+      B2: 'Gut',
+      C1: 'Fließend',
       native: 'Muttersprache',
-    } satisfies Record<ProfileForm['languages'][number]['level'], string>,
+    } satisfies Partial<Record<ProfileForm['languages'][number]['level'], string>>,
     availability: {
       now: 'Sofort',
       from: 'Ab Datum',
@@ -1412,13 +1410,10 @@ export const de = {
   },
   settings: {
     title: 'Einstellungen',
-    /** The three sections of the page, each with the sentence of its info symbol. */
+    /** The three sections of the page. */
     portals: 'Jobportale',
-    portalsInfo: 'Hier sucht CXact und liest deine Alert-Mails.',
     mailbox: 'Postfach',
-    mailboxInfo: 'Für Alert-Mails von allen Portalen.',
     data: 'Daten',
-    dataInfo: 'Dein Profil und alles, was CXact speichert.',
     /** How CXact uses a portal: the two groups of the list. */
     way: {
       search: 'Suche und Alert-Mails',

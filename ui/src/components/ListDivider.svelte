@@ -101,10 +101,6 @@
     transition-duration: var(--dur-hover);
   }
 
-  .toggle:focus-visible {
-    box-shadow: var(--focus-ring-inset);
-  }
-
   .chevron {
     display: inline-flex;
     flex: none;

@@ -397,6 +397,17 @@ fn no_hand_cursor() {
     );
 }
 
+/// No focus ring anywhere, not for the keyboard either (user decision 2026-10-04): no ring
+/// token, no outline drawn on focus. The keys still move and press as before.
+#[test]
+fn no_focus_ring() {
+    let all = scanned(MIN_FILES);
+    fail(
+        &find(&all, &["--focus-ring", "outline: var(--focus"], |_| false),
+        "no focus ring anywhere (user decision 2026-10-04)",
+    );
+}
+
 #[test]
 fn a_pressed_look_only_under_the_pointer() {
     // A control shows its pressed state only while the pointer is on it: pressed, then moved
@@ -1678,10 +1689,15 @@ fn coral_only_in_its_roles() {
     const ROLES: [(&str, &[&str]); 8] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
-        // A switch that is on, and the check of a chosen row.
+        // A switch that is on, the check of a chosen row, and a chosen checkbox (the
+        // Vertragsart, 2026-10-04).
         (
             "var(--toggle-on",
-            &["components/Toggle.svelte", "components/JobRow.svelte"],
+            &[
+                "components/Toggle.svelte",
+                "components/JobRow.svelte",
+                "components/CheckGroup.svelte",
+            ],
         ),
         // The dot of a job not opened yet, what is new in a place (the tab's count) and the
         // dot of a filter that is on (the approved design, 2026-09-26).

@@ -9,8 +9,7 @@
   Opening a job while none is open
   fades it in (150 ms), closing fades it out (100 ms). A job that leaves the list (archive,
   trash) keeps it where its row was until the next job opens there: it waits there while the
-  next row rises into that place, however long the fold takes. Inside the keyboard
-  focus ring of its row it steps in, and it greys while the window is inactive, like a
+  next row rises into that place, however long the fold takes. It greys while the window is inactive, like a
   row's own bar (ListRow). Under reduced motion it never moves.
 -->
 <script lang="ts">
@@ -324,10 +323,5 @@
   /* Like Mail and Explorer: the selection greys out while the window is in the back. */
   :global(:root[data-window='inactive']) .bar {
     background-color: var(--text-subtle);
-  }
-
-  /* Inside the keyboard focus ring of its row (as wide as --focus-ring-inset). */
-  :global(:has([data-open] :focus-visible)) > .bar {
-    left: var(--space-2);
   }
 </style>

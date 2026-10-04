@@ -130,10 +130,6 @@
     --nav-glyph: var(--text);
   }
 
-  .item:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
-
   .glyph {
     display: inline-flex;
     color: var(--nav-glyph, currentcolor);

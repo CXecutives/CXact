@@ -93,10 +93,6 @@
     transition-duration: var(--dur-instant);
   }
 
-  .row:focus-visible {
-    box-shadow: var(--focus-ring-inset);
-  }
-
   .mark {
     display: inline-flex;
     flex: none;

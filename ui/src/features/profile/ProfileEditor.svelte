@@ -1,12 +1,13 @@
 <!--
-  The profile as one airy page of fields (design B "Luftig"): the three sections of
-  `sections.ts` in their order (Was du suchst, Was du mitbringst, Was nicht passt), each under
-  its heading with its info symbol, no cards; the same page in the setup. Each field as the
-  table describes it: its label above its control (and, only where docs/PLAN.md places one,
-  its info symbol beside the label), 14 apart; two small fields side by side where the table
-  pairs them (one under the other in a narrow window). Vertragsart is a choice of several
-  (Projekt und Interim, Festanstellung, Zeitarbeit; one stays). Every control is 26 px high; a number field fills
-  its place with its unit inside; a number is formatted when its field is left.
+  The profile as one page of fields: the three sections of `sections.ts` in their order (Was
+  du suchst, Was du mitbringst, Was nicht passt), each a group of rows between hairlines
+  (Section, "Native Gruppen"); the same page in the setup. The page's actions (`actions`,
+  "Aus Lebenslauf ausfüllen") end the first heading's line. Each field as the table describes
+  it: a single value (number, choice, day) at the right of its label, a list of values under
+  its label at full width (and, only where docs/PLAN.md places one, an info symbol beside the
+  label). Vertragsart is three checkboxes (Projekt und Interim, Festanstellung, Zeitarbeit;
+  one stays). Every control is 26 px high; a number field has its unit inside; a number is
+  formatted when its field is left.
   A required field that is still empty shows its amber edge and halo only once Speichern or
   the setup's Weiter was pressed (`missing`, ProfileView) and loses it as it is filled; a
   link of the missing sentence puts the caret into it and lets it flash (`focusField`). A
@@ -29,6 +30,7 @@
 
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
+  import CheckGroup from '$components/CheckGroup.svelte';
   import Field from '$components/Field.svelte';
   import Section from '$components/Section.svelte';
   import Segmented from '$components/Segmented.svelte';
@@ -39,21 +41,14 @@
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
   import { fade } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
-  import { tick } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import AskedTerms from './AskedTerms.svelte';
   import AvailableField from './AvailableField.svelte';
   import CompetenceList from './CompetenceList.svelte';
   import CountriesField from './CountriesField.svelte';
   import LanguageList from './LanguageList.svelte';
   import NumberField from './NumberField.svelte';
-  import {
-    SECTIONS,
-    fieldOf,
-    type ChoiceKey,
-    type Control,
-    type NumberKey,
-    type Row,
-  } from './sections';
+  import { SECTIONS, fieldOf, type ChoiceKey, type Control, type NumberKey } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
@@ -63,11 +58,13 @@
     missing: readonly string[];
     /** The setup's page: no "Häufig verlangt", Esc does nothing. */
     setup?: boolean;
+    /** The page's actions, at the end of the first section's heading line. */
+    actions?: Snippet | null;
     onsave: () => void;
     ondiscard: () => void;
   }
 
-  let { fieldError, missing, setup = false, onsave, ondiscard }: Props = $props();
+  let { fieldError, missing, setup = false, actions = null, onsave, ondiscard }: Props = $props();
 
   // Text typed into a chip field of the form counts as a change.
   editor.typed.share();
@@ -239,32 +236,20 @@
   use:formKeys={untouched && !setup ? { save: onsave, cancel: ondiscard } : { save: onsave }}
   data-testid="profile-form"
 >
-  {#each SECTIONS as section (section.id)}
+  {#each SECTIONS as section, index (section.id)}
     <Section
       id="profile-section-{section.id}"
       name={section.id}
       heading={t.profile.section[section.id]}
-      info={t.profile.sectionInfo[section.id]}
+      actions={index === 0 ? actions : null}
       testid="section-{section.id}"
     >
       <div class="fields">
-        {#each section.rows as row, index (index)}{@render line(row)}{/each}
+        {#each section.rows as row, index (index)}{@render cell(row)}{/each}
       </div>
     </Section>
   {/each}
 </div>
-
-{#snippet line(row: Row)}
-  {#if row.kind === 'pair'}
-    {#if row.items.some(shown)}
-      <div class="pair" transition:fade>
-        {#each row.items as c, index (index)}{@render cell(c)}{/each}
-      </div>
-    {/if}
-  {:else}
-    {@render cell(row)}
-  {/if}
-{/snippet}
 
 {#snippet cell(c: Control)}
   {#if shown(c)}
@@ -288,6 +273,7 @@
     <Field
       label={words[c.label]}
       for="{id}-{c.key}"
+      single
       info={infoOf(c)}
       hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
       {error}
@@ -313,13 +299,14 @@
         missing={open}
         invalid={error !== null}
         suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
+        fold={c.key === 'tools'}
         testid={c.testid}
       />
       {#if c.asked && !setup}<AskedTerms field={c.asked} home={c.testid} />{/if}
     </Field>
   {:else if c.kind === 'contracts'}
     <Field label={words.contracts} info={infoOf(c)}>
-      <Segmented
+      <CheckGroup
         options={CONTRACTS}
         values={contracts}
         keepOne={words.keepOneContract}
@@ -329,7 +316,7 @@
       />
     </Field>
   {:else if c.kind === 'choice'}
-    <Field label={words[c.label]} info={infoOf(c)} error={errorOf(c.key)}>
+    <Field label={words[c.label]} info={infoOf(c)} error={errorOf(c.key)} single>
       <Segmented
         options={CHOICES[c.key]}
         value={choiceOf(c.key)}
@@ -350,7 +337,7 @@
     </Field>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
-    <Field label={words.available} {error}>
+    <Field label={words.available} {error} single>
       <AvailableField invalid={error !== null} />
     </Field>
   {:else if c.kind === 'competences'}
@@ -373,6 +360,7 @@
         invalid={error !== null}
         suggestions={vocabulary.industries}
         star={INDUSTRY_STAR}
+        fold
         testid="profile-industries"
       />
       {#if !setup}<AskedTerms field="industry" home="profile-industries" />{/if}
@@ -390,29 +378,17 @@
   .editor {
     display: flex;
     flex-direction: column;
-    gap: var(--section-top);
+    gap: var(--layout-section-gap);
   }
 
-  /* The fields of a section, 14 apart; a pair asks the column's width. */
+  /* The fields of a section, rows between hairlines. */
   .fields {
     display: flex;
     flex-direction: column;
-    gap: var(--field-gap);
-    container-type: inline-size;
   }
 
-  /* Two small fields side by side, one under the other in a narrow column; a single one
-     takes the left half. */
-  .pair {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--field-gap) var(--pair-gap);
-  }
-
-  @container (width < 420px) {
-    .pair {
-      grid-template-columns: minmax(0, 1fr);
-    }
+  .fields > :global(* + *) {
+    box-shadow: inset 0 var(--border-width) 0 var(--layout-row-rule);
   }
 
   /* A field flashes once when a link of the missing sentence led to it (a wash in the
@@ -420,6 +396,7 @@
   .cell {
     position: relative;
     min-width: 0;
+    padding-block: var(--layout-row-pad);
   }
 
   .cell::after {

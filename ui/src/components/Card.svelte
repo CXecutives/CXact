@@ -105,10 +105,6 @@
     transition-duration: var(--dur-instant);
   }
 
-  .interactive:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
-
   .pad-none {
     padding: 0;
   }

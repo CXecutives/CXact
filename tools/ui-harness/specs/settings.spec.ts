@@ -81,7 +81,7 @@ const middle = (box: { y: number; height: number } | null): number =>
 
 /* ---------------------------------------------------------------- the page */
 
-test('one page: Jobportale, Postfach and Daten, each heading with its info symbol', async ({
+test('one page: Jobportale, Postfach, Daten and the reset in a group of its own', async ({
   page,
 }) => {
   await settings(page);
@@ -96,43 +96,30 @@ test('one page: Jobportale, Postfach and Daten, each heading with its info symbo
     'settings-portals',
     'settings-mailbox',
     'settings-data',
+    'settings-reset',
   ]);
   // Every portal in one list: the ones the app searches, then the ones of alert mails.
   expect(await ids(page, 'settings-portals', '[data-setting-row]')).toEqual(
     [...SEARCHED, ...ALERT_PORTALS].map((portal) => `portal-${portal}`),
   );
   expect(await ids(page, 'settings-mailbox', '[data-setting-row]')).toEqual(['mailbox']);
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
-  // An info symbol after each heading (no line under it), no other; no version, no search
-  // terms; no primary.
-  await expect(view.locator('[data-testid^="info-"]')).toHaveCount(3);
-  for (const [id, info] of [
-    ['portals', T.settings.portalsInfo],
-    ['mailbox', T.settings.mailboxInfo],
-    ['data', T.settings.dataInfo],
-  ] as const) {
-    const tip = page.getByTestId(`settings-${id}`).getByTestId('info-tip');
-    await tip.hover();
-    await expect(page.getByRole('tooltip')).toHaveText(info);
-  }
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder']);
+  expect(await ids(page, 'settings-reset', '[data-setting-row]')).toEqual(['reset-all']);
+  // No info symbol at the headings (user 2026-10-04); no version, no search terms; no
+  // primary.
+  await expect(view.locator('[data-testid^="info-"]')).toHaveCount(0);
   await expect(view).not.toContainText('Version');
   await expect(page.getByTestId('search-terms')).toHaveCount(0);
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  // The title stands on the first row, centred on the sidebar's first entry (macOS too);
-  // the head scrolls with the page, without a hairline.
-  const title = page.getByTestId('settings-heading');
+  // No title (the sidebar names the place; user 2026-10-04): the first heading stands on the
+  // first row, centred on the sidebar's first entry (macOS too).
+  await expect(page.getByTestId('settings-heading')).toHaveCount(0);
+  const first = page.getByTestId('settings-portals').getByRole('heading', { level: 2 });
   for (const query of [WIN, MAC]) {
     await settings(page, query);
-    await expect(title).toHaveText(T.settings.title);
     const line = middle(await page.getByTestId('nav-jobs').boundingBox());
-    expect(Math.abs(middle(await title.boundingBox()) - line), query).toBeLessThanOrEqual(1);
+    expect(Math.abs(middle(await first.boundingBox()) - line), query).toBeLessThanOrEqual(1);
   }
-  const head = page.getByTestId('settings-head');
-  await expect(head).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
-  const top = (await head.boundingBox())!.y;
-  await page.setViewportSize({ width: 1360, height: 500 });
-  await page.getByTestId('view-settings').evaluate((node) => node.scrollTo({ top: 300 }));
-  await expect.poll(async () => (await head.boundingBox())!.y).toBeLessThan(top);
 });
 test('button styles: the text buttons of a row are outlined, the calls of a portal quiet; red deletes', async ({
   page,
@@ -543,7 +530,7 @@ test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles z
 }) => {
   await settings(page, `${WIN}&folder=other`);
   const data = page.getByTestId('settings-data');
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder']);
   const folder = page.getByTestId('folder');
   await expect(folder).toContainText(T.settings.folder);
   await expect(folder.locator('[data-copy]')).toContainText('Job-Alerts');

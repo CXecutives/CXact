@@ -107,7 +107,7 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
   // The whole Profil page: its three sections, without its head, the CV button and the bar.
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  await expect(page.locator('[data-section]')).toHaveCount(3);
+  await expect(page.locator('[data-section]')).toHaveCount(5);
   for (const gone of ['profile-heading', 'profile-from-cv', 'profile-save-bar']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
@@ -167,7 +167,7 @@ test('by hand: Weiter marks what is missing and says it beside itself; Esc does 
   await open(page, `${WIN}&scenario=first-run&step=way`);
   await page.getByTestId('way-self').click();
   await expectStep(page, T.firstRun.self);
-  await expect(page.locator('[data-section]')).toHaveCount(3);
+  await expect(page.locator('[data-section]')).toHaveCount(5);
   const roles = page.getByTestId('profile-roles').locator('input');
   await roles.focus();
   await page.keyboard.press('Escape');
@@ -190,8 +190,7 @@ test('by hand: Weiter marks what is missing and says it beside itself; Esc does 
   await roles.press('Enter');
   await expect(missing).not.toContainText(words.roles);
   await page.getByTestId('competence-name').first().fill('Controlling');
-  await page.getByTestId('language-name').first().click();
-  await page.getByTestId('menu-item-Deutsch').click();
+  await page.getByTestId('language-pick-Deutsch').click();
   await expect(page.getByTestId('profile-missing')).toHaveCount(0);
   await next(page).click();
   await expectStep(page, T.firstRun.alerts);

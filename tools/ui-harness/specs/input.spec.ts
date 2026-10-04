@@ -716,24 +716,24 @@ test('a dialog holds the focus: Tab cycles, a click on its text keeps Esc workin
   await expect(dialog).toHaveCount(0);
 });
 
-test('a dialog starts on its default button, ringed only once the keyboard moves', async ({
+test('a dialog starts on its default button, and no focus ring shows, not even for the keyboard', async ({
   page,
 }) => {
   const { opener, dialog } = await resetDialog(page);
-  // Opened with the mouse: the focus is on the default button, without a ring.
   await opener.click();
   const cancel = dialog.getByTestId('dialog-cancel');
   const confirm = dialog.getByTestId('dialog-confirm');
   await expect(cancel).toBeFocused();
-  const ring = (button: typeof cancel): Promise<string> =>
-    button.evaluate((node) => getComputedStyle(node).boxShadow);
-  const atOpen = await ring(cancel);
-  // Tab moves the focus and shows the ring there; the default stays unmarked.
+  const look = (button: typeof cancel): Promise<string> =>
+    button.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return `${style.boxShadow} ${style.outlineStyle}`;
+    });
+  const before = await look(confirm);
+  // No ring at all (user decision 2026-10-04): Tab moves the focus and draws nothing.
   await page.keyboard.press('Tab');
   await expect(confirm).toBeFocused();
-  const focusRing = await ring(confirm);
-  expect(atOpen).not.toBe(focusRing);
-  expect(await ring(cancel)).toBe(atOpen);
+  expect(await look(confirm)).toBe(before);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
 });
@@ -978,19 +978,16 @@ test('the back button closes the reader where it stands alone in one column', as
   await expect(rows(page).first()).toBeVisible();
 });
 
-test('after a click a lone Shift, Ctrl or Alt shows no focus ring; Tab does', async ({ page }) => {
+test('no key ever draws a focus ring (user decision 2026-10-04)', async ({ page }) => {
   await open(page, WIN);
   const row = page.locator('[data-testid^="job-row-"]').first();
   await row.click();
   const ring = (): Promise<string> =>
     page.evaluate(() => getComputedStyle(document.activeElement as HTMLElement).boxShadow);
-  for (const key of ['Shift', 'Control', 'Alt']) {
+  for (const key of ['Shift', 'Control', 'Alt', 'Tab']) {
     await page.keyboard.press(key);
     expect(await ring(), key).not.toContain('inset');
   }
-  // A key that moves the focus: the ring is the keyboard's again.
-  await page.keyboard.press('Tab');
-  await expect.poll(ring).not.toBe('none');
 });
 
 test('letters type inside the search field and act on no job', async ({ page }) => {
@@ -1489,9 +1486,9 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   const view = page.getByTestId('view-profile');
-  /** Ends the autoscroll with a press on the Profil's plain title. */
+  /** Ends the autoscroll with a press on the Profil's first plain heading. */
   const end = async (): Promise<void> => {
-    await view.getByTestId('profile-heading').click();
+    await view.locator('#profile-section-search-heading').click();
   };
   // A choice (a radio group): the chosen option stays chosen.
   const group = page.getByTestId('profile-work-mode');
@@ -1562,7 +1559,7 @@ test('the wheel over a date field, the calendar, a level and the filter menu cha
   await available.getByRole('radio').last().click();
   const date = page.getByTestId('profile-date');
   await date.fill('01.11.2026');
-  await page.getByTestId('view-profile').getByTestId('profile-heading').click();
+  await page.getByTestId('view-profile').locator('#profile-section-search-heading').click();
   expect(await wheelOver(page, date, 'view-profile')).not.toBe(0);
   await expect(date).toHaveValue('01.11.2026');
   // Over the calendar the page scrolls; its month stays.

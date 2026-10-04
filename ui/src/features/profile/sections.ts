@@ -1,10 +1,10 @@
-// The Profil form as data: the fields of the page in three sections (Was du suchst, Was du
-// mitbringst, Was nicht passt; user decision 2026-10-03, design B "Luftig" since round 4),
+// The Profil form as data: the fields of the page in five groups (Was du suchst, Wo und wann,
+// Was du mitbringst, Erfahrung, Was nicht passt; user decision 2026-10-04, "Native Gruppen"),
 // the same page in the setup. ProfileEditor renders these tables and nothing else, so adding,
 // moving or removing a field is one entry here (docs/CHANGING.md "Add a profile field"). A
 // field names the value of the form it edits, its control, its words by their key in the
 // catalog (`t.profile.field`) and, at the few places docs/PLAN.md names, its info symbol
-// (`t.profile.info`). Two small fields may stand side by side (`pair`). Controls with more to
+// (`t.profile.info`). Controls with more to
 // them than a field (the competences, the industries, the languages, the countries, the day)
 // are components the table names by their kind.
 
@@ -61,12 +61,11 @@ export type Control =
   | { kind: 'countries'; info: Info }
   | { kind: 'available' }
   | { kind: 'competences'; info: Info }
-  | { kind: 'industries'; info: Info }
+  | { kind: 'industries' }
   | { kind: 'languages' };
 
-/** A line of a section: one field, or two small ones side by side (one under the other in a
- *  narrow window; a single one takes the left half). */
-export type Row = Control | { kind: 'pair'; items: readonly Control[] };
+/** A row of a group: one field. */
+export type Row = Control;
 
 export type SectionId = keyof Catalog['profile']['section'];
 
@@ -75,79 +74,60 @@ export interface Section {
   rows: readonly Row[];
 }
 
+const chips = (
+  key: ListKey,
+  testid: string,
+  more: Partial<Extract<Control, { kind: 'chips' }>> = {},
+): Control => ({
+  kind: 'chips',
+  key,
+  label: key,
+  placeholder: `${key}Placeholder` as Word,
+  more: `${key}More` as Word,
+  testid,
+  ...more,
+});
+
 export const SECTIONS: readonly Section[] = [
   {
     id: 'search',
     rows: [
-      {
-        kind: 'chips',
-        key: 'roles',
-        label: 'roles',
-        placeholder: 'rolesPlaceholder',
-        more: 'rolesMore',
-        info: 'roles',
-        suggest: 'roles',
-        testid: 'profile-roles',
-      },
+      chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
       {
+        kind: 'number',
+        key: 'dayRateWish',
+        label: 'dayRateWish',
+        unit: 'euro',
+        testid: 'profile-wish-rate',
+      },
+      {
+        kind: 'number',
+        key: 'dayRateMin',
+        label: 'dayRateMin',
+        unit: 'euro',
+        info: 'dayRate',
+        testid: 'profile-min-rate',
+      },
+      {
         // The salary counts for Festanstellung and Zeitarbeit only.
-        kind: 'pair',
-        items: [
-          {
-            kind: 'number',
-            key: 'minSalary',
-            label: 'minSalary',
-            unit: 'euro',
-            shown: (form) => form.permanent || form.temporary,
-            testid: 'profile-min-salary',
-          },
-        ],
+        kind: 'number',
+        key: 'minSalary',
+        label: 'minSalary',
+        unit: 'euro',
+        shown: (form) => form.permanent || form.temporary,
+        testid: 'profile-min-salary',
       },
-      {
-        kind: 'pair',
-        items: [
-          {
-            kind: 'number',
-            key: 'dayRateWish',
-            label: 'dayRateWish',
-            unit: 'euro',
-            testid: 'profile-wish-rate',
-          },
-          {
-            kind: 'number',
-            key: 'dayRateMin',
-            label: 'dayRateMin',
-            unit: 'euro',
-            info: 'dayRate',
-            testid: 'profile-min-rate',
-          },
-        ],
-      },
-      {
-        kind: 'choice',
-        key: 'workMode',
-        label: 'workMode',
-        info: 'workMode',
-        testid: 'profile-work-mode',
-      },
+    ],
+  },
+  {
+    id: 'where',
+    rows: [
+      { kind: 'choice', key: 'workMode', label: 'workMode', testid: 'profile-work-mode' },
       { kind: 'countries', info: 'countries' },
-      {
-        kind: 'chips',
-        key: 'regions',
-        label: 'regions',
-        placeholder: 'regionsPlaceholder',
-        more: 'regionsMore',
-        suggest: 'regions',
-        testid: 'profile-regions',
-      },
-      {
-        kind: 'pair',
-        items: [
-          { kind: 'available' },
-          { kind: 'choice', key: 'workload', label: 'workload', testid: 'profile-workload' },
-        ],
-      },
+      chips('regions', 'profile-regions', { suggest: 'regions' }),
+      { kind: 'available' },
+      { kind: 'choice', key: 'workload', label: 'workload', testid: 'profile-workload' },
       { kind: 'choice', key: 'minMonths', label: 'minMonths', testid: 'profile-min-months' },
     ],
   },
@@ -155,70 +135,28 @@ export const SECTIONS: readonly Section[] = [
     id: 'skills',
     rows: [
       { kind: 'competences', info: 'competences' },
+      chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
+    ],
+  },
+  {
+    id: 'experience',
+    rows: [
       {
-        kind: 'chips',
-        key: 'tools',
-        label: 'tools',
-        placeholder: 'toolsPlaceholder',
-        more: 'toolsMore',
-        suggest: 'skills',
-        asked: 'tool',
-        testid: 'profile-tools',
+        kind: 'number',
+        key: 'years',
+        label: 'totalYears',
+        unit: 'years',
+        testid: 'profile-years',
       },
-      {
-        kind: 'pair',
-        items: [
-          {
-            kind: 'number',
-            key: 'years',
-            label: 'totalYears',
-            unit: 'years',
-            testid: 'profile-years',
-          },
-        ],
-      },
-      { kind: 'industries', info: 'industries' },
+      { kind: 'industries' },
       { kind: 'languages' },
-      {
-        kind: 'pair',
-        items: [
-          {
-            kind: 'chips',
-            key: 'degrees',
-            label: 'degrees',
-            placeholder: 'degreesPlaceholder',
-            more: 'degreesMore',
-            lines: true,
-            asked: 'degree',
-            testid: 'profile-degrees',
-          },
-          {
-            kind: 'chips',
-            key: 'certificates',
-            label: 'certificates',
-            placeholder: 'certificatesPlaceholder',
-            more: 'certificatesMore',
-            lines: true,
-            asked: 'certificate',
-            testid: 'profile-certificates',
-          },
-        ],
-      },
+      chips('degrees', 'profile-degrees', { lines: true, asked: 'degree' }),
+      chips('certificates', 'profile-certificates', { lines: true, asked: 'certificate' }),
     ],
   },
   {
     id: 'exclusions',
-    rows: [
-      {
-        kind: 'chips',
-        key: 'exclusionWords',
-        label: 'exclusionWords',
-        placeholder: 'exclusionWordsPlaceholder',
-        more: 'exclusionWordsMore',
-        info: 'exclusionWords',
-        testid: 'profile-exclusion-words',
-      },
-    ],
+    rows: [chips('exclusionWords', 'profile-exclusion-words', { info: 'exclusionWords' })],
   },
 ];
 
@@ -236,14 +174,10 @@ export function fieldOf(control: Control): keyof ProfileForm {
   }
 }
 
-/** The fields of a line, left to right. */
-export const controlsOf = (row: Row): readonly Control[] =>
-  row.kind === 'pair' ? row.items : [row];
-
 /** Every value of the form in the order of the page (the missing sentence names them so). */
 export const FIELD_ORDER: readonly (keyof ProfileForm)[] = SECTIONS.flatMap((section) =>
-  section.rows.flatMap(controlsOf),
-).map(fieldOf);
+  section.rows.map(fieldOf),
+);
 
 /** The value of a field holds nothing (a required field still to fill). */
 export function blank(form: ProfileForm, field: string): boolean {

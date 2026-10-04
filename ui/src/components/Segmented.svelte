@@ -5,9 +5,7 @@
   reduced motion never slide), always exactly the option's box whatever the labels, counts or
   window width. Every small single choice takes it: the places above the list (Aktuell,
   Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar ab, Auslastung and
-  Mindestlaufzeit. With `values` it is a choice of several (Vertragsart): every chosen option
-  on its own white thumb with a small coral check, each a checkbox and its own Tab stop; the
-  last chosen one stays (a click does nothing, its tooltip says why: `keepOne`).
+  Mindestlaufzeit.
   Each option is as wide as its label and count; when the track has less room than the
   options want, the labels shorten with an ellipsis (the counts stay); nothing ever overlaps.
   The chosen label is navy (ink while the window is in the back) and its count a soft warm
@@ -38,16 +36,11 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { settled } from '$lib/motion/settled.svelte';
   import Count from './Count.svelte';
-  import Icon from './Icon.svelte';
 
   interface Props {
     options: readonly SegmentedOption<Id>[];
     /** The one chosen option (a choice of one). */
     value?: Id | null;
-    /** The chosen options of a choice of several (`onchange` names the one clicked). */
-    values?: readonly Id[] | null;
-    /** Why the last chosen option of a choice of several cannot go. */
-    keepOne?: string | null;
     label: string;
     /** The places of a list: a tablist of tabs instead of a radiogroup. */
     tabs?: boolean;
@@ -55,20 +48,9 @@
     onchange: (id: Id) => void;
   }
 
-  let {
-    options,
-    value = null,
-    values = null,
-    keepOne = null,
-    label,
-    tabs = false,
-    testid = null,
-    onchange,
-  }: Props = $props();
+  let { options, value = null, label, tabs = false, testid = null, onchange }: Props = $props();
 
-  const isChosen = (id: Id): boolean => (values !== null ? values.includes(id) : id === value);
-  /** The one chosen option of a choice of several, which cannot go. */
-  const last = (id: Id): boolean => values !== null && values.length === 1 && values[0] === id;
+  const isChosen = (id: Id): boolean => id === value;
 
   /** The count each option showed last: a count that goes keeps its room with it. */
   const kept = $state<Record<string, number>>({});
@@ -92,7 +74,7 @@
   let slidingUntil = 0;
 
   function measure(): void {
-    const chosen = values === null ? track?.querySelector<HTMLElement>('[data-chosen]') : null;
+    const chosen = track?.querySelector<HTMLElement>('[data-chosen]') ?? null;
     thumb = chosen ? { x: chosen.offsetLeft, width: chosen.offsetWidth } : null;
   }
 
@@ -118,8 +100,7 @@
 
 <div
   class="segmented"
-  class:several={values !== null}
-  role={tabs ? 'tablist' : values !== null ? 'group' : 'radiogroup'}
+  role={tabs ? 'tablist' : 'radiogroup'}
   aria-label={label}
   data-testid={testid ?? undefined}
   bind:this={track}
@@ -134,23 +115,18 @@
     {@const chosen = isChosen(option.id)}
     <button
       type="button"
-      role={tabs ? 'tab' : values !== null ? 'checkbox' : 'radio'}
+      role={tabs ? 'tab' : 'radio'}
       class="option"
       aria-checked={tabs ? undefined : chosen}
       aria-selected={tabs ? chosen : undefined}
       data-chosen={chosen ? '' : undefined}
-      tabindex={values !== null || option.id === stop ? 0 : -1}
+      tabindex={option.id === stop ? 0 : -1}
       data-testid={option.testid ?? undefined}
-      use:tooltip={last(option.id) ? keepOne : null}
       onclick={() => {
-        if (last(option.id)) return;
         if (!chosen || !tabs) onchange(option.id);
       }}
     >
       <span class="pill" aria-hidden="true"></span>
-      {#if values !== null && chosen}<span class="check" aria-hidden="true"
-          ><Icon name="check" size="xs" /></span
-        >{/if}
       <span class="label" use:tooltip={{ text: option.label, truncated: true }}>{option.label}</span
       >
       {#if option.count !== undefined && option.count !== null}
@@ -251,25 +227,6 @@
     color: var(--nav-active-fg);
   }
 
-  /* A choice of several: each chosen option on a thumb of its own (the one look of a chosen
-     segment), a small coral check before its label. */
-  .several .option[data-chosen] .pill {
-    background-color: var(--thumb);
-    box-shadow: 0 0 0 var(--border-width) var(--thumb-edge);
-    opacity: 1;
-  }
-
-  .several .option + .option {
-    margin-left: var(--space-2);
-  }
-
-  .check {
-    display: inline-flex;
-    flex: none;
-    margin-left: calc(-1 * var(--space-2));
-    color: var(--accent);
-  }
-
   :global(:root[data-window='inactive']) .option[data-chosen] {
     color: var(--text);
   }
@@ -284,9 +241,5 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .option:focus-visible {
-    box-shadow: var(--focus-ring-inset);
   }
 </style>

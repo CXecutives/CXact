@@ -316,6 +316,8 @@
   /* The fade under the top bar (user, 2026-09-27; back in design round 4): the view's colour
      into nothing. */
   --grad-fade: linear-gradient(hsl(var(--p-white)), hsl(var(--p-white) / 0));
+  /* The same over a page in its layout's ground (lib/design.ts). */
+  --grad-fade-page: linear-gradient(var(--layout-page), transparent);
 
   /* ----------------------------------------------------------------- shadows */
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
@@ -333,14 +335,8 @@
      hairline border every floating surface has: menus, toasts, dialogs, popovers). */
   --sh-menu: 0 4px 12px hsl(var(--p-shade-pop) / 0.08), 0 16px 40px hsl(var(--p-shade-pop) / 0.12);
   --sh-primary: inset 0 1px 0 hsl(var(--p-white) / 0.16), 0 1px 2px hsl(var(--p-shade-xs) / 0.12);
-  /* Keyboard focus (only :focus-visible, never after a click): one thin navy ring around
-     the control, or inside it where the control fills its row. A text field in focus shows
-     its edge in navy (--border-focus) and nothing around it: never two rings. */
-  --focus-ring: 0 0 0 var(--focus-width) hsl(var(--p-navy));
-  --focus-ring-inset: inset 0 0 0 var(--focus-width) hsl(var(--p-navy));
-  /* After a press of the pointer no ring until a key that moves or acts (lib/input/input.ts:
-     a lone Shift, Ctrl, Alt or Windows key is none). */
-  --focus-ring-off: 0 0 0 0 transparent;
+  /* No focus ring anywhere, not for the keyboard either (user decision 2026-10-04); the
+     keys still work. A text field in focus shows its edge in navy, as native fields do. */
   --border-focus: hsl(var(--p-navy));
 
   /* ------------------------------------------- one answer per surface kind */
@@ -354,8 +350,7 @@
        shadow under the pointer; pressed it darkens like a control and drops the shadow.
      - label: text without a box (disclosure, divider, tab): ink under the pointer, its
        chevron navy, and --pressed while pressed.
-     Keyboard focus is one navy ring: around a control (--focus-ring), inside a row or an
-     entry that fills its line (--focus-ring-inset). */
+     Focus draws no ring (user decision 2026-10-04). */
   --quiet-hover: var(--surface-hover);
   --quiet-press: var(--surface-press);
   --control-hover: var(--surface-muted);
@@ -537,6 +532,25 @@
      and this much under the heading's line. */
   --section-top: 18px;
   --section-head-gap: 10px;
+  /* The pages Profil and Einstellungen ("Native Gruppen", user decision 2026-10-04): white
+     rounded groups on the cream page like the settings of macOS and Windows, a small muted
+     heading above each group, rows between hairlines; a single value (a number, a choice, a
+     day) at the right of its label, a list of values under its label at full width. */
+  --layout-page: var(--bg);
+  --layout-group: var(--surface);
+  --layout-group-edge: var(--border);
+  --layout-group-radius: 12px;
+  --layout-group-pad: 16px;
+  --layout-group-pad-block: 2px;
+  --layout-section-gap: 28px;
+  --layout-heading-font: var(--type-label);
+  --layout-heading-color: var(--text-muted);
+  --layout-heading-inset: 16px;
+  --layout-field-columns: minmax(0, 1fr) auto;
+  --layout-column-gap: var(--space-16);
+  --layout-label-height: var(--control-field);
+  --layout-row-rule: var(--border);
+  --layout-row-pad: 9px;
   /* The setup (features/first-run): one centred card this wide (the profile takes the
      page's column instead), the step indicator above it with its numbered dots and their
      edge. */
@@ -572,6 +586,9 @@
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
   --head-pad: var(--space-12);
+  /* A page without a title (Profil, Einstellungen): its first heading's line lies where a
+     head's first row would, centred on the sidebar's first entry. */
+  --page-top: calc(var(--head-pad) + (var(--first-row) - var(--control-field)) / 2);
   --ring-sm: 30px;
   --ring-sm-stroke: 3.5px;
   --ring-md: 44px;
@@ -785,14 +802,6 @@
   --link-hover: var(--text-inverse);
   --quiet-hover: hsl(var(--p-white) / 0.1);
   --quiet-press: hsl(var(--p-white) / 0.16);
-  --focus-ring: 0 0 0 var(--focus-width) hsl(var(--p-white));
-}
-
-/* No focus ring on what a pointer press focused until a key that moves or acts (lib/input/
-   input.ts marks it `data-pointer-focus`; only that element, never :root). */
-[data-pointer-focus] {
-  --focus-ring: var(--focus-ring-off);
-  --focus-ring-inset: var(--focus-ring-off);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

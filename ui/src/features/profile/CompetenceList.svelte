@@ -10,7 +10,9 @@
   empty last row (rows.ts); it never saves the profile. Removing a row puts no caret anywhere
   (input.ts removeBy): after a click the focus is dropped, from the keyboard it goes to the
   next row's x (the previous one after the last, "Kompetenz hinzufügen" once none is left).
-  The competence suggests the engine's words while typing (vocabulary.svelte.ts).
+  The competence suggests the engine's words while typing (vocabulary.svelte.ts). A long
+  list shows its first eight rows and "Alle anzeigen (n)" beside the add row ("Weniger
+  anzeigen" folds it again); adding a row or a refused row further down shows them all.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -50,7 +52,16 @@
     rows = rows.filter((other) => other !== row);
   }
 
+  /** Rows shown before "Alle anzeigen". */
+  const FOLDED = 8;
+  let unfolded = $state(false);
+  const all = $derived(
+    unfolded || rows.length <= FOLDED || (refused !== null && rows.indexOf(refused) >= FOLDED),
+  );
+  const shown = $derived(all ? rows : rows.slice(0, FOLDED));
+
   const append = (): void => {
+    unfolded = true;
     rows = [...rows, { name: '', years: null, focus: false }];
   };
 
@@ -90,7 +101,7 @@
       />
     </span>
   {/if}
-  {#each rows as row, index (row)}
+  {#each shown as row, index (row)}
     {@const wrong = row === refused}
     {@const named = row.name.trim() !== ''}
     <div
@@ -160,6 +171,14 @@
         testid="competence-add"
         onclick={() => void add()}
       />
+      {#if rows.length > FOLDED}
+        <Button
+          variant="ghost"
+          label={all ? words.showLess : words.showAll(rows.length)}
+          testid="competence-fold"
+          onclick={() => (unfolded = !all)}
+        />
+      {/if}
     </span>
   {/if}
 </div>
@@ -196,6 +215,7 @@
      add's glyph on the names' text). */
   .add.indent {
     display: flex;
+    justify-content: space-between;
     margin-left: calc(var(--control-field) + var(--space-6) - var(--space-2));
   }
 

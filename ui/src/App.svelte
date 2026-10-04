@@ -304,6 +304,7 @@
      column never jumps sideways between a short and a long view. */
   .view:not(.fixed) {
     overflow-y: scroll;
+    background-color: var(--layout-page);
   }
 
   /* The fade under the top bar: the view's colour into nothing at the top of a view that
@@ -316,7 +317,7 @@
     display: block;
     height: var(--fade-height);
     margin-bottom: calc(-1 * var(--fade-height));
-    background: var(--grad-fade);
+    background: var(--grad-fade-page);
     pointer-events: none;
   }
 

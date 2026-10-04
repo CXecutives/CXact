@@ -10,8 +10,8 @@
   breaks. A value that is already there (in any case) is not added twice. Without `entry` the
   field only shows and removes (chips chosen elsewhere). Keys and the double click come from
   input.ts (chipKeys, chipEdit).
-  With `options` the field takes only those (the countries of the profile): with the focus and
-  nothing typed the list shows every option not chosen yet, in their order; typing shows the
+  With `options` the field takes only those (the countries of the profile): nothing lists
+  them before a letter is typed (no dropdown, user 2026-10-04); typing shows the
   options whose name or other names start with it (any word of them, in any case, with or
   without accents) in a list under the field, Enter or a click takes the marked one (the
   first), leaving the field takes a single match. The list has one mark, like a native
@@ -26,6 +26,8 @@
   As tall as a text field (26 px) with one line of chips; with `star` each chip starts with
   its star (a preferred industry, ChipStar); with chips its input says "+ Rolle" (`more`);
   required and empty (`missing`) it has the amber edge and halo of every field of the form.
+  With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
+  focus; a click on it, or the focus, shows them all.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -38,6 +40,8 @@
   } from '$lib/input/input';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
+  import { ChipFold } from '$lib/state/chipFold.svelte';
+  import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ChipStar from './ChipStar.svelte';
   import Suggestions, {
@@ -79,6 +83,8 @@
       label: (value: string, on: boolean) => string;
       toggle: (value: string) => void;
     } | null;
+    /** Two lines of chips and "+ n weitere" while the field has no focus. */
+    fold?: boolean;
     testid?: string | null;
     onchange?: (values: string[]) => void;
   }
@@ -98,6 +104,7 @@
     noMatch = null,
     suggestions = undefined,
     star = null,
+    fold = false,
     testid = null,
     onchange,
   }: Props = $props();
@@ -127,14 +134,22 @@
     options?.find((option) => option.id === value)?.label ?? value;
 
   let box = $state<HTMLElement | null>(null);
+
+  /** A long list folded to two lines while the field has no focus (`fold`). */
+  const folder = new ChipFold(() => fold && !focused);
+  const visible = $derived(folder.visible(values));
+  $effect(() => {
+    void values.length;
+    void focused;
+    void folder.measure(box);
+  });
+  $effect(() => (fold && box !== null ? folder.observe(box) : undefined));
   const known = (list: string[], text: string): boolean =>
     list.some((value) => value.toLowerCase() === text.toLowerCase());
 
   /** Options whose names start with the typed text (a whole name first), chosen or not;
    *  every option, in its order, while nothing is typed. */
-  const found = $derived(
-    options === null ? [] : folded(draft) === '' ? options : suggested(options, draft),
-  );
+  const found = $derived(options === null || folded(draft) === '' ? [] : suggested(options, draft));
   /** The options found that are not chosen yet: the list under the field. */
   const matches = $derived(found.filter((option) => !values.includes(option.id)));
   const listed = $derived(focused && matches.length > 0);
@@ -326,7 +341,7 @@
     onpointerdown={focusInput}
     use:chipEdit={entry && options === null ? edit : null}
   >
-    {#each values as value, index (value)}
+    {#each visible as value, index (value)}
       <span class="chip" class:starred={star !== null} data-chip={index} data-value={value}>
         {#if star}
           {@const on = star.on(value)}
@@ -350,11 +365,22 @@
         </button>
       </span>
     {/each}
+    {#if visible.length < values.length}
+      <span class="more" data-keep-focus>
+        <Button
+          variant="link"
+          label={t.profile.field.moreChips(values.length - visible.length)}
+          testid={testid ? `${testid}-more` : null}
+          onclick={() => (folder.opened = true)}
+        />
+      </span>
+    {/if}
     {#if entry}
       <input
         bind:this={input}
         bind:value={draft}
         class="input"
+        class:folded={visible.length < values.length}
         type="text"
         id={id ?? undefined}
         role={options !== null || suggesting ? 'combobox' : undefined}
@@ -366,7 +392,7 @@
             ? `${own}-hints`
             : undefined}
         aria-activedescendant={listed
-          ? `${own}-option-${active}`
+          ? `${own}-options-${active}`
           : hints[hint] !== undefined
             ? `${own}-hints-${hint}`
             : undefined}
@@ -398,31 +424,18 @@
     />
   {/if}
   {#if options !== null}
-    <div
-      class="options"
+    <Suggestions
       id="{own}-options"
-      role="listbox"
-      aria-label={label ?? placeholder ?? undefined}
-      hidden={!listed}
-      data-testid={testid ? `${testid}-options` : undefined}
-    >
-      {#each listed ? matches : [] as option, index (option.id)}
-        <button
-          type="button"
-          class="option"
-          class:active={index === active}
-          id="{own}-option-{index}"
-          role="option"
-          aria-selected={index === active}
-          tabindex="-1"
-          data-keep-focus
-          onpointermove={() => (active = index)}
-          onclick={() => choose(option)}
-        >
-          {option.label}
-        </button>
-      {/each}
-    </div>
+      items={listed ? matches.map((option) => option.label) : []}
+      {active}
+      label={label ?? placeholder}
+      testid={testid ? `${testid}-options` : null}
+      onpick={(name) => {
+        const option = matches.find((each) => each.label === name);
+        if (option) choose(option);
+      }}
+      onmark={(index) => (active = index)}
+    />
     {#if nothing && noMatch}
       <p class="none" id="{own}-none" data-testid={testid ? `${testid}-none` : undefined}>
         {noMatch}
@@ -526,10 +539,6 @@
     transition-duration: var(--dur-hover);
   }
 
-  .remove:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
-
   .input {
     flex: 1 1 0;
     min-width: var(--space-48);
@@ -551,49 +560,19 @@
     color: var(--text-subtle);
   }
 
-  /* The options drop down under the field, over what follows, like a native menu. */
-  .options {
-    position: absolute;
-    z-index: var(--z-overlay);
-    top: calc(100% + var(--menu-gap));
-    right: 0;
-    left: 0;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(6 * var(--menu-row) + 2 * var(--space-4));
-    padding: var(--space-4);
-    overflow-y: auto;
-    border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-control);
-    background-color: var(--surface);
-    box-shadow: var(--sh-pop);
-  }
-
-  .options[hidden] {
-    display: none;
-  }
-
-  .option {
-    display: flex;
-    flex: none;
-    align-items: center;
-    height: var(--menu-row);
-    padding: 0 var(--space-8);
-    border-radius: var(--radius-xs);
-    color: var(--text);
-    font: var(--type-field);
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  /* One mark: the pointer moves it (pointermove), never a second wash of its own. */
-  .option.active {
-    background-color: var(--active-surface);
-    color: var(--active-text);
-  }
-
   .none {
     color: var(--text-muted);
     font: var(--type-sm);
+  }
+
+  /* Folded: the input keeps its place in the Tab order without taking a line. */
+  .input.folded {
+    flex: 0 0 0;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .more {
+    display: inline-flex;
   }
 </style>

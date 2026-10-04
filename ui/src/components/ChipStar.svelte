@@ -50,8 +50,4 @@
   .star.on {
     color: var(--pressed);
   }
-
-  .star:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
 </style>

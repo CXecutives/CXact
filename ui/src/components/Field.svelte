@@ -7,7 +7,9 @@
   shared with the control inside (its `aria-describedby`) only while a message shows.
   Beside the label an info symbol (`info`, InfoTip: only where docs/PLAN.md places one, and
   never with a hint). Without `for` the field holds a group of controls (rows, choices) that
-  its label names.
+  its label names. `single` marks a control of one value (a number, a choice, a day): it
+  stands at the right of its label (the pages' groups, user decision 2026-10-04), a list
+  stays under its label.
 -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
@@ -27,6 +29,8 @@
     /** A way on that belongs to the hint (opens a page), at the end of the helper line. */
     action?: { label: string; icon?: IconName; testid?: string; onclick: () => void } | null;
     error?: string | null;
+    /** A control of one value (number, choice, day), not a list. */
+    single?: boolean;
     children: Snippet;
   }
 
@@ -37,6 +41,7 @@
     info = null,
     action = null,
     error = null,
+    single = false,
     children,
   }: Props = $props();
 
@@ -47,6 +52,7 @@
 
 <div
   class="field"
+  class:single
   role={target === null ? 'group' : undefined}
   aria-labelledby={target === null ? `${own}-label` : undefined}
 >
@@ -85,11 +91,17 @@
 </div>
 
 <style>
+  /* The label above the control; a single value at the right of its label. */
   .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--label-gap);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--label-gap) var(--layout-column-gap);
+    align-items: start;
     min-width: 0;
+  }
+
+  .field.single {
+    grid-template-columns: var(--layout-field-columns);
   }
 
   .top {
@@ -99,12 +111,24 @@
     min-width: 0;
   }
 
+  .single .top {
+    min-height: var(--layout-label-height);
+  }
+
+  .single .label {
+    align-self: center;
+  }
+
   /* The control and what belongs under it ("Häufig verlangt"), one under the other. */
   .control {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
     min-width: 0;
+  }
+
+  .single .control {
+    justify-self: end;
   }
 
   /* As wide as its text: a click beside the label is a click beside the field, and that ends
@@ -126,6 +150,7 @@
   }
 
   .help {
+    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;

@@ -51,8 +51,4 @@
     color: var(--text-muted);
     transition-duration: var(--dur-hover);
   }
-
-  .info:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
 </style>

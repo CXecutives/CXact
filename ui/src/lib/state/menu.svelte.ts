@@ -1,5 +1,5 @@
 // The app's own menus: one menu at a time, drawn by components/Menu.svelte in the app layer.
-// A right click (lib/input/input.ts), a menu button (MenuButton) or a "…" button opens it;
+// A right click (lib/input/input.ts), a "…" button opens it;
 // the OS never draws a menu of ours (a native popup could hang the window, and it looked
 // different on every OS). Keys, the press outside, the window's blur, resizing and scrolling
 // are handled in input.ts, which closes the menu through `closeMenu`.
