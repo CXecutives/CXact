@@ -244,12 +244,11 @@ fn run_context(
     if fetch && !read_mail && (search_portals.is_empty() || search_terms.is_empty()) {
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
-    let contracts = form
-        .as_ref()
-        .map_or_else(Contracts::default, |form| Contracts {
-            permanent: form.permanent,
-            temporary: form.temporary,
-        });
+    let contracts = form.as_ref().map_or(Contracts::ALL, |form| Contracts {
+        project: form.project,
+        permanent: form.permanent,
+        temporary: form.temporary,
+    });
     let ctx = RunContext {
         workspace,
         dry_run: state.dry_run,

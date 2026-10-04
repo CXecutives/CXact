@@ -154,6 +154,7 @@ async fn main() {
         search_portals: portals.clone(),
         search_terms: terms.clone(),
         contracts: Contracts {
+            project: form.project,
             permanent: form.permanent,
             temporary: form.temporary,
         },

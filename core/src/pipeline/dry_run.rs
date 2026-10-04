@@ -186,6 +186,7 @@ impl PageFetcher for DryRunPages {
             title: "Interim CFO".to_owned(),
             company: String::new(),
             location: "Hamburg".to_owned(),
+            contract: None,
         }])
     }
 }

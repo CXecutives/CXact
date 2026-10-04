@@ -3,8 +3,9 @@
 //! (user decision 2026-10-01): its job search is drawn in the browser from a file the
 //! robots.txt of its data host forbids, so the app reads the sitemap that host allows
 //! (`daten.amadeus-fire.de/packages/jobtoolControlling/`, about 6,000 jobs, the robots.txt of
-//! that host checked at run time, [`PortalAdapter::search_robots_url`]) and keeps the interim
-//! and project roles (most of the rest are permanent posts): their address names them.
+//! that host checked at run time, [`PortalAdapter::search_robots_url`]). Its address names an
+//! interim or project role; every other job is a permanent post (most of them), kept where the
+//! profile allows Festanstellung.
 //!
 //! A job is `/jobs/<slug>-<number>` on www.amadeus-fire.de, its page server-drawn with a
 //! JSON-LD `JobPosting` (title, text in parts, place, contract, the number as its identifier).
@@ -17,8 +18,8 @@ use serde_json::Value;
 use url::Url;
 
 use super::{
-    Access, Css, Facts, Hit, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
-    host_and_segments, host_is, selector, without_gender_mark,
+    Access, Css, Facts, Hit, HitContract, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way,
+    all_digits, host_and_segments, host_is, selector, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -31,8 +32,9 @@ const ORIGIN: &str = "https://www.amadeus-fire.de/";
 /// The job directory its data host's robots.txt allows (its `Sitemap:` line names it).
 const DIRECTORY: &str =
     "https://daten.amadeus-fire.de/packages/jobtoolControlling/jobtool2xml.php?jobsite=19";
-const PARSER_VERSION: u32 = 1;
-/// Words of an address that make the job an interim or project role.
+/// 2: a job whose title names no interim or project role is a permanent post.
+const PARSER_VERSION: u32 = 2;
+/// Words of an address (or a title) that make the job an interim or project role.
 const ROLE_WORDS: [&str; 5] = [
     "interim",
     "projekt",
@@ -101,8 +103,8 @@ impl PortalAdapter for AmadeusFire {
         Some("https://daten.amadeus-fire.de/robots.txt")
     }
 
-    /// The directory's addresses (`<loc>`, each in a CDATA section): the interim and project
-    /// roles among them, their title and place from the address until the page tells them.
+    /// The directory's addresses (`<loc>`, each in a CDATA section): the jobs among them with
+    /// their contract, title and place from the address until the page tells them.
     fn search_page(&self, xml: &str) -> Result<Vec<Hit>, NoHits> {
         if !xml.contains("<urlset") {
             let doc = Html::parse_document(xml);
@@ -184,15 +186,17 @@ impl PortalAdapter for AmadeusFire {
 }
 
 impl AmadeusFire {
-    /// A job of the directory when its address names an interim or project role: the words
-    /// before the gender mark its title, those after it (up to the number) its place.
+    /// A job of the directory: an interim or project role where its address names one, else
+    /// a permanent post; the words before the gender mark its title, those after it (up to
+    /// the number) its place.
     fn hit(&self, url: &Url) -> Option<Hit> {
         let link = self.job_link(url)?;
         let slug = url.path_segments()?.next_back()?;
-        let words: Vec<&str> = slug.split('-').collect();
-        if !words.iter().any(|word| ROLE_WORDS.contains(word)) {
-            return None;
-        }
+        let contract = if names_role(slug) {
+            HitContract::Project
+        } else {
+            HitContract::Permanent
+        };
         let rest = slug.rsplit_once('-')?.0;
         let (title, place) = GENDER_MARKS
             .iter()
@@ -205,6 +209,7 @@ impl AmadeusFire {
             title: words_of(title),
             company: String::new(),
             location: words_of(place),
+            contract: Some(contract),
         })
     }
 }
@@ -280,7 +285,14 @@ fn parse(doc: &Html) -> Parsed {
     }
 }
 
-/// The contract of the posting: an interim role is interim, a contractor's freelance.
+/// The text (an address or a title, lower case) names an interim or project role.
+fn names_role(text: &str) -> bool {
+    text.split(|c: char| !c.is_alphanumeric())
+        .any(|word| ROLE_WORDS.contains(&word))
+}
+
+/// The contract of the posting: an interim role is interim, a contractor's freelance, a
+/// title that names no interim or project role a permanent post.
 fn facts(posting: Option<&Value>) -> Facts {
     let title = posting
         .and_then(|p| p.get("title"))
@@ -299,6 +311,8 @@ fn facts(posting: Option<&Value>) -> Facts {
             Facts::value("Interim")
         } else if kind == "CONTRACTOR" {
             Facts::value("Freiberuflich")
+        } else if !title.is_empty() && !names_role(&title) {
+            Facts::value("Festanstellung")
         } else {
             None
         },
@@ -329,26 +343,26 @@ mod tests {
       "jobLocation":{"@type":"Place","address":{"@type":"PostalAddress","addressLocality":"München"}}}</script></head><body></body></html>"#;
 
     #[test]
-    fn the_directory_gives_its_interim_and_project_roles() {
+    fn the_directory_gives_its_jobs_with_their_contract() {
         let urls = AmadeusFire.search_urls(&["Controlling".to_owned()]);
         assert_eq!(urls.len(), 1);
         assert_eq!(urls[0].host_str(), Some("daten.amadeus-fire.de"));
         assert!(AmadeusFire.search_urls(&[" ".to_owned()]).is_empty());
         let hits = AmadeusFire.search_page(DIRECTORY_XML).unwrap();
+        assert_eq!(hits.len(), 3, "no address that is no job");
+        assert_eq!(hits[0].title, "Treasurer");
+        assert_eq!(hits[0].contract, Some(HitContract::Permanent));
+        assert_eq!(hits[1].link.key.id, "252709");
+        assert_eq!(hits[1].title, "Interim Controller");
+        assert_eq!(hits[1].location, "Muenchen");
+        assert_eq!(hits[1].contract, Some(HitContract::Project));
         assert_eq!(
-            hits.len(),
-            2,
-            "no permanent post, no address that is no job"
-        );
-        assert_eq!(hits[0].link.key.id, "252709");
-        assert_eq!(hits[0].title, "Interim Controller");
-        assert_eq!(hits[0].location, "Muenchen");
-        assert_eq!(
-            hits[0].link.url.as_str(),
+            hits[1].link.url.as_str(),
             "https://www.amadeus-fire.de/jobs/interim-controller-m-w-d-muenchen-252709"
         );
-        assert_eq!(hits[1].title, "Projektmanager Finance Transformation");
-        assert_eq!(hits[1].location, "Hamburg");
+        assert_eq!(hits[2].title, "Projektmanager Finance Transformation");
+        assert_eq!(hits[2].location, "Hamburg");
+        assert_eq!(hits[2].contract, Some(HitContract::Project));
         assert_eq!(
             AmadeusFire.search_page("<html><body>Wartung</body></html>"),
             Err(NoHits::Suspicious(Cause::PageNotRecognised))
@@ -378,6 +392,16 @@ mod tests {
         assert_eq!(fields.location, "München");
         assert_eq!(fields.company, "");
         assert_eq!(facts.employment_type.as_deref(), Some("Interim"));
+        // A title that names no interim or project role: a permanent post.
+        let posting = |title: &str, kind: &str| serde_json::json!({ "@type": "JobPosting", "title": title, "employmentType": kind });
+        for (title, kind, contract) in [
+            ("Treasurer (m/w/d)", "FULL_TIME", Some("Festanstellung")),
+            ("Projektmanager Finance (m/w/d)", "FULL_TIME", None),
+            ("SAP Berater", "CONTRACTOR", Some("Freiberuflich")),
+        ] {
+            let facts = super::facts(Some(&posting(title, kind)));
+            assert_eq!(facts.employment_type.as_deref(), contract, "{title}");
+        }
         // Not a job: another page of the site, the data host.
         for other in [
             "https://www.amadeus-fire.de/karriere",

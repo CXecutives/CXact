@@ -106,6 +106,7 @@ impl PortalAdapter for Fratch {
                     title: without_gender_mark(&one_line(item.get("name")?.as_str()?)),
                     company: String::new(),
                     location: String::new(),
+                    contract: None,
                 })
             })
             .collect())

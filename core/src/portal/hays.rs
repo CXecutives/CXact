@@ -1,9 +1,9 @@
 //! Hays (hays.de): the largest agency for freelance projects in Germany. The app searches its
 //! public job search itself (user decision 2026-10-01), served as HTML with `mrew=1&e=false`:
-//! limited to projects for freelancers (`joblevel=3`, "Contracting") when the profile allows
-//! neither Festanstellung nor Zeitarbeit, else every job (its filter takes one contract type
-//! only: 1 Arbeitnehmerüberlassung, 2 Festanstellung, 3 Contracting, 4 and 5 students; read
-//! 2026-10-04). The robots.txt allows the search and the ads (checked at run time).
+//! limited to the one contract type a profile allows alone (`joblevel`: 1
+//! Arbeitnehmerüberlassung, 2 Festanstellung, 3 Contracting, 4 and 5 students; read
+//! 2026-10-04), else every job (its filter takes one contract type only). The robots.txt
+//! allows the search and the ads (checked at run time).
 //!
 //! A hit is `div.search__result` with its link, its title and its place; an ad is
 //! `/jobsuche/stellenangebote-jobs-detail-<slug>-<id>/1` (the slug is not read: any one opens
@@ -28,8 +28,23 @@ pub(super) struct Hays;
 const DOMAIN: &str = "hays.de";
 const DETAIL_PREFIX: &str = "stellenangebote-jobs-detail-";
 const PARSER_VERSION: u32 = 1;
-/// The search's contract type "Contracting" (`joblevel`).
-const CONTRACTING: &str = "3";
+/// The search's contract types (`joblevel`) with the name its further pages carry in their
+/// path (`None`: its pages were not seen, the first is the only one asked).
+const JOBLEVELS: [(&str, Option<&str>); 3] = [
+    ("3", Some("Contracting")),
+    ("2", Some("Festanstellung")),
+    ("1", None),
+];
+
+/// The `joblevel` for the one contract type a profile allows alone; `None` for more.
+fn joblevel(contracts: Contracts) -> Option<&'static str> {
+    match (contracts.project, contracts.permanent, contracts.temporary) {
+        (true, false, false) => Some("3"),
+        (false, true, false) => Some("2"),
+        (false, false, true) => Some("1"),
+        _ => None,
+    }
+}
 
 impl PortalAdapter for Hays {
     fn portal(&self) -> Portal {
@@ -148,20 +163,18 @@ impl PortalAdapter for Hays {
             .collect()
     }
 
-    /// Projects for freelancers only (`joblevel=3`) while the profile allows neither
-    /// Festanstellung nor Zeitarbeit; the filter takes one contract type, so with either of
-    /// them the search keeps every job.
+    /// The one contract type a profile allows alone (`joblevel`: projects for freelancers 3,
+    /// Festanstellung 2, Zeitarbeit 1); the filter takes one contract type, so with two or
+    /// more the search keeps every job.
     fn contract_filter(&self, url: &Url, contracts: Contracts) -> Option<Url> {
-        if contracts.permanent || contracts.temporary {
-            return None;
-        }
+        let level = joblevel(contracts)?;
         let mut filtered = Url::parse("https://www.hays.de/jobsuche/stellenangebote-jobs").ok()?;
         {
             let mut query = filtered.query_pairs_mut();
             for (name, value) in url.query_pairs() {
                 query.append_pair(&name, &value);
                 if name == "q" {
-                    query.append_pair("joblevel", CONTRACTING);
+                    query.append_pair("joblevel", level);
                 }
             }
         }
@@ -169,20 +182,28 @@ impl PortalAdapter for Hays {
     }
 
     /// Its further pages as its own links name them (measured 2026-10-01 and 2026-10-04):
-    /// page `n` in the path (below `/j/Contracting/3` for the contracting jobs), the term in
-    /// the query.
+    /// page `n` in the path (below `/j/Contracting/3` for the contracting jobs,
+    /// `/j/Festanstellung/2` for the permanent ones), the term in the query. A contract type
+    /// whose pages were not seen (Arbeitnehmerüberlassung) has its first page only.
     fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
         let term = first
             .query_pairs()
             .find(|(name, _)| name == "q")
             .map(|(_, value)| value.into_owned())?;
-        let contracting = first
+        let level = first
             .query_pairs()
-            .any(|(name, value)| name == "joblevel" && value == CONTRACTING);
-        let path = if contracting {
-            format!("j/Contracting/{CONTRACTING}/p/{page}")
-        } else {
-            format!("p/{page}/")
+            .find(|(name, _)| name == "joblevel")
+            .map(|(_, value)| value.into_owned());
+        let path = match level {
+            None => format!("p/{page}/"),
+            Some(level) => {
+                let (code, name) = JOBLEVELS.iter().find(|(code, _)| *code == level)?;
+                match name {
+                    Some("Contracting") => format!("j/Contracting/{code}/p/{page}"),
+                    Some(name) => format!("j/{name}/{code}/p/{page}/"),
+                    None => return None,
+                }
+            }
         };
         let mut url = Url::parse(&format!(
             "https://www.hays.de/jobsuche/stellenangebote-jobs/{path}"
@@ -248,6 +269,7 @@ fn hit(result: ElementRef<'_>) -> Option<Hit> {
         // The client stays unnamed: Hays places the freelancer.
         company: String::new(),
         location,
+        contract: None,
     })
 }
 
@@ -344,7 +366,7 @@ mod tests {
     </body></html>"#;
 
     /// Its further pages as its own links name them (measured 2026-10-01 and 2026-10-04),
-    /// with the contract filter only for a profile of projects alone.
+    /// with the contract filter only for a profile of one contract type alone.
     #[test]
     fn the_search_pages_like_its_links() {
         let first = Hays.search_urls(&["Interim CFO".to_owned()]).remove(0);
@@ -352,7 +374,8 @@ mod tests {
             Hays.search_page_url(&first, 2).unwrap().as_str(),
             "https://www.hays.de/jobsuche/stellenangebote-jobs/p/2/?q=Interim+CFO&e=false&ij=false"
         );
-        let projects = Hays.contract_filter(&first, Contracts::default()).unwrap();
+        assert_eq!(Hays.contract_filter(&first, Contracts::ALL), None);
+        let projects = Hays.contract_filter(&first, Contracts::PROJECTS).unwrap();
         assert_eq!(
             projects.as_str(),
             "https://www.hays.de/jobsuche/stellenangebote-jobs?q=Interim+CFO&joblevel=3&mrew=1&e=false"
@@ -361,14 +384,45 @@ mod tests {
             Hays.search_page_url(&projects, 2).unwrap().as_str(),
             "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2?q=Interim+CFO&e=false&ij=false"
         );
+        let permanent = Contracts {
+            project: false,
+            permanent: true,
+            temporary: false,
+        };
+        let jobs = Hays.contract_filter(&first, permanent).unwrap();
+        assert_eq!(
+            jobs.as_str(),
+            "https://www.hays.de/jobsuche/stellenangebote-jobs?q=Interim+CFO&joblevel=2&mrew=1&e=false"
+        );
+        assert_eq!(
+            Hays.search_page_url(&jobs, 2).unwrap().as_str(),
+            "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Festanstellung/2/p/2/?q=Interim+CFO&e=false&ij=false"
+        );
+        let temporary = Contracts {
+            project: false,
+            permanent: false,
+            temporary: true,
+        };
+        let agency = Hays.contract_filter(&first, temporary).unwrap();
+        assert!(agency.as_str().contains("joblevel=1"), "{agency}");
+        assert_eq!(
+            Hays.search_page_url(&agency, 2),
+            None,
+            "its pages were not seen"
+        );
+        // Two contract types or more: every job.
         for contracts in [
             Contracts {
-                permanent: true,
-                temporary: false,
+                temporary: true,
+                ..permanent
             },
             Contracts {
-                permanent: false,
-                temporary: true,
+                project: true,
+                ..permanent
+            },
+            Contracts {
+                project: true,
+                ..temporary
             },
         ] {
             assert_eq!(Hays.contract_filter(&first, contracts), None);

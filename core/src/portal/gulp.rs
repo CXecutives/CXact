@@ -246,6 +246,7 @@ fn hit(project: &Value) -> Option<Hit> {
             field(project, "companyName").unwrap_or_default()
         },
         location: field(project, "location").unwrap_or_default(),
+        contract: None,
     })
 }
 

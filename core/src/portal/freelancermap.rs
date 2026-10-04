@@ -211,6 +211,7 @@ fn search_hit(project: &Value) -> Option<Hit> {
         title: without_archive_mark(&text("title")).to_owned(),
         company: text("company"),
         location: text("city"),
+        contract: None,
     })
 }
 

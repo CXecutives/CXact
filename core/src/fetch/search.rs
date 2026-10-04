@@ -456,8 +456,10 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
                 Ok(hits) => {
                     lock(policy).clear_suspicious(portal);
                     let all = hits.len();
+                    // A contract type the profile does not allow, as the page shows it.
                     let mut postings: Vec<Posting> = hits
                         .into_iter()
+                        .filter(|hit| plan.contracts.allows(hit.contract))
                         .map(|hit| {
                             Posting::new(
                                 hit.link.key,
@@ -627,7 +629,7 @@ mod tests {
 
     use super::super::policy::limits;
     use super::*;
-    use crate::portal::{Hit, JobKey, JobLink};
+    use crate::portal::{Hit, HitContract, JobKey, JobLink};
 
     const HAYS: Portal = Portal::Hays;
     const FM: Portal = Portal::Freelancermap;
@@ -685,6 +687,7 @@ mod tests {
             title: format!("Interim CFO {id}"),
             company: String::new(),
             location: "Hamburg".to_owned(),
+            contract: None,
         }
     }
 
@@ -704,7 +707,7 @@ mod tests {
         let plan = SearchPlan {
             portals,
             terms: words,
-            contracts: Contracts::default(),
+            contracts: Contracts::PROJECTS,
             prescore: None,
             screen: None,
         };
@@ -786,6 +789,7 @@ mod tests {
             portals: &[HAYS],
             terms: &words,
             contracts: Contracts {
+                project: true,
                 permanent: true,
                 temporary: false,
             },
@@ -794,6 +798,59 @@ mod tests {
         };
         search_with(&mut fakes, &store, &policy, &plan, &on).await;
         assert!(!lock(&asked)[0].as_str().contains("joblevel"));
+    }
+
+    /// The hits whose page shows a contract type the profile does not allow are no jobs;
+    /// the paging still goes by every hit of the page.
+    #[tokio::test(start_paused = true)]
+    async fn the_hits_of_a_contract_type_not_allowed() {
+        let on = |_: Portal| true;
+        let of = |id: &str, contract| Hit {
+            contract: Some(contract),
+            ..hit(id)
+        };
+        let words = terms(&["CFO"]);
+        for (contracts, kept) in [
+            (Contracts::PROJECTS, vec!["891480"]),
+            (Contracts::ALL, vec!["891480", "891481"]),
+            (
+                Contracts {
+                    project: false,
+                    ..Contracts::ALL
+                },
+                vec!["891481"],
+            ),
+        ] {
+            let store = Store::in_memory().unwrap();
+            let policy = Mutex::new(Policy::in_memory());
+            let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+            let mut fakes = BTreeMap::from([(
+                HAYS,
+                Fake {
+                    answers: VecDeque::from([
+                        Ok(vec![
+                            of("891480", HitContract::Project),
+                            of("891481", HitContract::Permanent),
+                        ]),
+                        Ok(Vec::new()),
+                    ]),
+                    asked: asked.clone(),
+                    ..Fake::default()
+                },
+            )]);
+            let plan = SearchPlan {
+                portals: &[HAYS],
+                terms: &words,
+                contracts,
+                prescore: None,
+                screen: None,
+            };
+            let (_, found, _) = search_with(&mut fakes, &store, &policy, &plan, &on).await;
+            assert_eq!(found[&HAYS].new, kept.len(), "{contracts:?}");
+            let yields = term_yields(&store, HAYS).unwrap();
+            assert_eq!(yields["CFO"].jobs, kept, "{contracts:?}");
+            assert!(lock(&asked).len() >= 2 || kept.is_empty(), "{contracts:?}");
+        }
     }
 
     /// A source whose robots.txt refuses every page says so instead of an empty "ok"; every
@@ -860,7 +917,7 @@ mod tests {
         let plan = SearchPlan {
             portals: &[HAYS],
             terms: &words,
-            contracts: Contracts::default(),
+            contracts: Contracts::PROJECTS,
             prescore: Some(&low),
             screen: Some(&screen),
         };
@@ -886,6 +943,7 @@ mod tests {
             title: format!("Interim CFO {id}"),
             company: String::new(),
             location: String::new(),
+            contract: None,
         };
         let mut fakes = BTreeMap::from([(
             Portal::InterimX,
@@ -897,7 +955,7 @@ mod tests {
         let plan = SearchPlan {
             portals: &[Portal::InterimX],
             terms: &words,
-            contracts: Contracts::default(),
+            contracts: Contracts::PROJECTS,
             prescore: Some(&low),
             screen: None,
         };

@@ -44,14 +44,52 @@ use crate::fetch::policy::Limits;
 use crate::fetch::site::PortalSite;
 use crate::fetch::{Cause, PageOutcome};
 
-/// The contract types a profile allows beside projects and interim work (always allowed):
-/// what a source's search may filter by ([`PortalAdapter::contract_filter`]).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// The contract types a profile allows: what a source's search may filter by
+/// ([`PortalAdapter::contract_filter`]) and which hits it keeps ([`Hit::contract`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Contracts {
+    /// Projects and interim work.
+    pub project: bool,
     /// Festanstellung.
     pub permanent: bool,
     /// Zeitarbeit (temporary agency work).
     pub temporary: bool,
+}
+
+impl Contracts {
+    /// Every contract type (a new profile, or none).
+    pub const ALL: Contracts = Contracts {
+        project: true,
+        permanent: true,
+        temporary: true,
+    };
+    /// Projects and interim work alone.
+    pub const PROJECTS: Contracts = Contracts {
+        project: true,
+        permanent: false,
+        temporary: false,
+    };
+
+    /// A hit of this contract type is kept (`None`: its page does not say, the engine decides).
+    pub fn allows(self, contract: Option<HitContract>) -> bool {
+        match contract {
+            None => true,
+            Some(HitContract::Project) => self.project,
+            Some(HitContract::Permanent) => self.permanent,
+            Some(HitContract::Temporary) => self.temporary,
+        }
+    }
+}
+
+/// The contract type a search page shows for a hit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HitContract {
+    /// A project or interim role.
+    Project,
+    /// Festanstellung.
+    Permanent,
+    /// Zeitarbeit (temporary agency work).
+    Temporary,
 }
 
 /// A portal. The order is the one of the interface and the export.
@@ -156,6 +194,9 @@ pub struct Hit {
     pub title: String,
     pub company: String,
     pub location: String,
+    /// The contract type the page shows for it (`None`: it does not say). The search keeps
+    /// only what the profile allows ([`Contracts::allows`]).
+    pub contract: Option<HitContract>,
 }
 
 /// How the guest client treats redirects.
@@ -236,8 +277,7 @@ pub trait PortalAdapter: Send + Sync {
         Vec::new()
     }
     /// A search page of [`Self::search_urls`] with the source's filter by contract type for
-    /// what the profile allows beside projects and interim work (`None`: no filter takes away
-    /// anything here). A filter only takes away what the engine surely excludes (user decision
+    /// what the profile allows (`None`: no filter takes away anything here). A filter only takes away what the engine surely excludes (user decision
     /// 2026-10-03): never by remote work or country. Its robots.txt refusing the filtered page,
     /// the search asks for the page without it (`fetch::search`).
     fn contract_filter(&self, url: &Url, contracts: Contracts) -> Option<Url> {

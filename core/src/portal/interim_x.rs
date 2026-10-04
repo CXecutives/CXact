@@ -174,6 +174,7 @@ fn hit(anchor: ElementRef<'_>) -> Option<Hit> {
         title: without_gender_mark(&text(&LIST_ROLE)),
         company: String::new(),
         location: text(&LIST_PLACE),
+        contract: None,
     })
 }
 

@@ -1,8 +1,8 @@
 //! Michael Page (michaelpage.de): senior interim roles, Finance above all. The app searches its
 //! public job search itself (user decision 2026-10-01), one keyword page per term; its
-//! robots.txt forbids the contract filter (`contract=temp`), so the app keeps the interim roles
-//! of the page itself (the tile's contract). The robots.txt allows the keyword pages and the
-//! ads (checked at run time).
+//! robots.txt forbids the contract filter (`contract=temp`), so each tile tells its contract
+//! (interim and projects, Zeitarbeit, else a permanent post) and the search keeps what the
+//! profile allows. The robots.txt allows the keyword pages and the ads (checked at run time).
 //!
 //! A hit is `div.job-tile` with its link, title and place; an ad is
 //! `/job-detail/<slug>/ref/jn-<MMYYYY>-<number>` (the slug belongs to the address: the link
@@ -16,8 +16,9 @@ use scraper::{ElementRef, Html};
 use url::Url;
 
 use super::{
-    Access, Css, Facts, Hit, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
-    definitions, host_and_segments, host_is, keyword_slug, selector, without_gender_mark,
+    Access, Css, Facts, Hit, HitContract, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way,
+    all_digits, definitions, host_and_segments, host_is, keyword_slug, selector,
+    without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -183,8 +184,10 @@ static TILE: Css = LazyLock::new(|| selector("div.job-tile"));
 static TILE_LINK: Css = LazyLock::new(|| selector(".job-title a"));
 static TILE_PLACE: Css = LazyLock::new(|| selector(".job-location"));
 static TILE_CONTRACT: Css = LazyLock::new(|| selector(".job-contract-type"));
-/// The contracts of the roles the app keeps (interim and projects; no permanent posts).
+/// The tile contracts of interim and project roles, and of Zeitarbeit; any other is a
+/// permanent post ("Festanstellung").
 const INTERIM: [&str; 2] = ["interim", "projekt"];
+const TEMPORARY: [&str; 3] = ["zeitarbeit", "temporär", "arbeitnehmerüberlassung"];
 static TITLE: Css = LazyLock::new(|| selector("h1"));
 static TEXT: Css = LazyLock::new(|| selector("#job-description"));
 static SUMMARY: Css = LazyLock::new(|| selector("dl"));
@@ -196,9 +199,13 @@ fn hit(card: ElementRef<'_>) -> Option<(Hit, u32)> {
         .next()
         .map(|node| node.text().collect::<String>().to_lowercase())
         .unwrap_or_default();
-    if !INTERIM.iter().any(|word| contract.contains(word)) {
-        return None;
-    }
+    let contract = if INTERIM.iter().any(|word| contract.contains(word)) {
+        HitContract::Project
+    } else if TEMPORARY.iter().any(|word| contract.contains(word)) {
+        HitContract::Temporary
+    } else {
+        HitContract::Permanent
+    };
     let anchor = card.select(&TILE_LINK).next()?;
     let url = Url::parse(ORIGIN)
         .ok()?
@@ -219,6 +226,7 @@ fn hit(card: ElementRef<'_>) -> Option<(Hit, u32)> {
             // The client stays unnamed: Michael Page places the interim manager.
             company: String::new(),
             location,
+            contract: Some(contract),
         },
         posted,
     ))
@@ -329,14 +337,13 @@ mod tests {
     #[test]
     fn the_search_lists_its_current_hits() {
         let hits = MichaelPage.search_page(SEARCH).unwrap();
-        assert_eq!(
-            hits.len(),
-            1,
-            "the ad of a year ago has gone, the permanent post is none"
-        );
+        assert_eq!(hits.len(), 2, "the ad of a year ago has gone");
         assert_eq!(hits[0].link.key.id, "7113284");
         assert_eq!(hits[0].title, "Interim Projektcontroller");
         assert_eq!(hits[0].location, "Hamburg");
+        assert_eq!(hits[0].contract, Some(HitContract::Project));
+        assert_eq!(hits[1].title, "Head of Controlling");
+        assert_eq!(hits[1].contract, Some(HitContract::Permanent));
         assert_eq!(
             MichaelPage.search_page("<html></html>"),
             Err(NoHits::Suspicious(Cause::PageNotRecognised))

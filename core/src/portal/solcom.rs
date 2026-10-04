@@ -189,6 +189,7 @@ fn hit(card: ElementRef<'_>) -> Option<Hit> {
         // The client stays unnamed: SOLCOM places the freelancer.
         company: String::new(),
         location: facts.get(3).cloned().unwrap_or_default(),
+        contract: None,
     })
 }
 

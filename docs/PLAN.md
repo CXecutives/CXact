@@ -44,9 +44,10 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   (measured on the held-out sets: no high-band job below it). A title pre-score that knows the target
   roles orders what is fetched first; one run reads at most half a searched source's daily cap of ads
   (`fetch::run_budget`), the titles that fit least wait for a later run.
-- A source filters only by contract type: Hays to Contracting when the profile allows neither
-  Festanstellung nor Zeitarbeit (its robots.txt refusing that page, the term goes without the filter).
-  GULP's `projectTypes` name where a project comes from, not its contract: no filter. No remote or country
+- A source filters only by contract type: Hays to the one type a profile allows alone (Contracting,
+  Festanstellung or Arbeitnehmerüberlassung; its robots.txt refusing that page, the term goes without the
+  filter). Michael Page's tiles and Amadeus Fire's addresses tell a hit's contract (interim and projects,
+  else permanent): the search keeps the types the profile allows (`portal::Contracts::allows`). GULP's `projectTypes` name where a project comes from, not its contract: no filter. No remote or country
   filter. A source whose robots.txt refused every page reports it instead of "ok" with no jobs.
 - The screen before any ad (`pipeline::score::screen`): a new job whose title alone the engine excludes
   (an exclusion word, Zeitarbeit the profile does not allow) is kept as excluded without its ad; "Trotzdem

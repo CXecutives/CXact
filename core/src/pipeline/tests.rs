@@ -37,7 +37,7 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         mail_error: None,
         search_portals: Vec::new(),
         search_terms: Vec::new(),
-        contracts: Contracts::default(),
+        contracts: Contracts::ALL,
     }
 }
 
