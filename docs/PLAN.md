@@ -32,7 +32,8 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   other names of the engine's role table and their ESCO occupation's German and English name, Schwerpunkte,
   Kompetenzen, Tools; a competence or tool the engine finds too broad to search alone, such as
   Projektmanagement or SAP, stays out). Each term is paged while new jobs come, up to 10 pages on Hays,
-  freelancermap, Michael Page and GULP. A cut-short paging resumes at the next fetch within 7 days.
+  freelancermap, Michael Page and GULP, each asked for the newest first (so a page without new jobs ends a
+  term safely). A cut-short paging resumes at the next fetch within 7 days.
   SOLCOM, interim-x and FRATCH list all their projects; the app filters them. Amadeus Fire, interim-x and
   FRATCH (one list whatever the terms) keep only the titles whose pre-score reaches `PRESCORE_FLOOR`
   (measured on the held-out sets: no high-band job below it). A title pre-score that knows the target

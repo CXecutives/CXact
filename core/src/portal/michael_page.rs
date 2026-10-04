@@ -127,7 +127,9 @@ impl PortalAdapter for MichaelPage {
         facts(&Html::parse_document(html))
     }
 
-    /// One keyword page per term (the search's own address), interim roles only.
+    /// One keyword page per term (the search's own address), the newest first
+    /// (`sort_by=most_recent`, "Aktualität", read 2026-10-04; its robots.txt allows it): the
+    /// paging that stops at a page without new jobs misses nothing.
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         terms
             .iter()
@@ -137,7 +139,12 @@ impl PortalAdapter for MichaelPage {
                     return None;
                 }
                 // No contract filter: the robots.txt forbids it.
-                Url::parse(ORIGIN).ok()?.join(&format!("jobs/{slug}")).ok()
+                let mut url = Url::parse(ORIGIN)
+                    .ok()?
+                    .join(&format!("jobs/{slug}"))
+                    .ok()?;
+                url.query_pairs_mut().append_pair("sort_by", "most_recent");
+                Some(url)
             })
             .collect()
     }
@@ -315,7 +322,7 @@ mod tests {
             .remove(0);
         assert_eq!(
             MichaelPage.search_page_url(&first, 2).unwrap().as_str(),
-            "https://www.michaelpage.de/jobs/controlling?page=1"
+            "https://www.michaelpage.de/jobs/controlling?sort_by=most_recent&page=1"
         );
     }
 
@@ -338,8 +345,8 @@ mod tests {
         assert_eq!(
             urls.iter().map(Url::as_str).collect::<Vec<_>>(),
             [
-                "https://www.michaelpage.de/jobs/interim-cfo",
-                "https://www.michaelpage.de/jobs/sap-fi-co"
+                "https://www.michaelpage.de/jobs/interim-cfo?sort_by=most_recent",
+                "https://www.michaelpage.de/jobs/sap-fi-co?sort_by=most_recent"
             ]
         );
     }

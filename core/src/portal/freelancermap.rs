@@ -145,13 +145,17 @@ impl PortalAdapter for Freelancermap {
         true
     }
 
-    /// One page per term, the portal's own order.
+    /// One page per term, the newest projects first (`sort=1`, "neue Projekte zuerst", read
+    /// 2026-10-04; its robots.txt allows every page): the paging that stops at a page without
+    /// new jobs misses nothing.
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         terms
             .iter()
             .filter_map(|term| {
                 let mut url = Url::parse("https://www.freelancermap.de/projekte").ok()?;
-                url.query_pairs_mut().append_pair("query", term);
+                url.query_pairs_mut()
+                    .append_pair("query", term)
+                    .append_pair("sort", "1");
                 Some(url)
             })
             .collect()
@@ -631,7 +635,7 @@ pub(crate) mod tests {
             .remove(0);
         assert_eq!(
             Freelancermap.search_page_url(&first, 3).unwrap().as_str(),
-            "https://www.freelancermap.de/projekte?query=Controlling&pagenr=3"
+            "https://www.freelancermap.de/projekte?query=Controlling&sort=1&pagenr=3"
         );
     }
 
@@ -653,7 +657,7 @@ pub(crate) mod tests {
         );
         assert_eq!(
             Freelancermap.search_urls(&["SAP FI/CO".to_owned()])[0].as_str(),
-            "https://www.freelancermap.de/projekte?query=SAP+FI%2FCO"
+            "https://www.freelancermap.de/projekte?query=SAP+FI%2FCO&sort=1"
         );
     }
 
