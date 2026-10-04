@@ -790,6 +790,7 @@ pub(crate) const TITLE_CONTRACT_WORDS: &[&str] = &[
     "befristeter",
     "contract",
     "contractor",
+    "fractional",
     "freelance",
     "freelancer",
     "freiberufler",

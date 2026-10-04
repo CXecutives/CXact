@@ -106,6 +106,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("accounts receivable", "debitorenbuchhaltung"),
         ("fixed asset accounting", "anlagenbuchhaltung"),
         ("asset accounting", "anlagenbuchhaltung"),
+        ("subledger", "nebenbuchhaltung"),
+        ("tax audit", "betriebsprufung"),
         // Treasury and liquidity.
         ("liquidity planning", "liquiditatsplanung"),
         ("cash flow planning", "liquiditatsplanung"),
@@ -116,6 +118,11 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("liquiditatssteuerung", "cash-management"),
         ("working capital management", "working-capital-management"),
         ("working capital", "working-capital-management"),
+        ("fx hedging", "devisensicherung"),
+        ("currency hedging", "devisensicherung"),
+        ("foreign exchange hedging", "devisensicherung"),
+        ("refinancing", "refinanzierung"),
+        ("payment transactions", "zahlungsverkehr"),
         // Transactions and restructuring.
         ("post merger integration", "post-merger-integration"),
         ("pmi", "post-merger-integration"),

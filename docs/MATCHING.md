@@ -354,8 +354,15 @@ out: `Verständnis`, `bis`, `beim`, `mehreren`, `großen`, the number words, `Au
 - 19 activity and setting words are generic atoms, too broad to meet a requirement alone
   (`Erstellung`, `Umstellung`, `Anwendung`, `Zusammenarbeit`, `Erfolg`, `Transaktion`,
   `Transition`, `international`, `reguliert`).
+- Spellings of the error analysis: `Projekt Management` written apart, `S/4 HANA` with a space,
+  the typo `Kentnisse`.
+- Treasury and accounting pairs in the finance pack (`FX hedging` = `Devisensicherung`,
+  `refinancing`, `payment transactions`, `subledger`, `tax audit`); `fractional` in a title is a
+  contract word like `Interim`; 19 tools and one certificate for the terms of the Profil and the
+  reader (`Helm`, `ArgoCD`, `BlackLine`, `Migration Cockpit`, `Universal Journal`, `AUTOSAR`,
+  `ISTQB`). No set moved by these.
 
-Known in full after the fills: 1,933 of 3,122 (61.9 %). NDCG@10 against the round's start
+Known in full after the fills: 1,975 of 3,070 (64.3 %; 61.9 % after the function words). NDCG@10 against the round's start
 (engine 19 with ESCO): heldout2 0.857 to 0.877, heldout3 0.865 to 0.871, heldout4 0.821 to
 0.832, heldout5 0.797 to 0.802, heldout7 0.915 to 0.918, heldout8 0.930 to 0.940 (one buried
 grade-3 job less), heldout9 0.886 to 0.898; Spearman over the relevant pairs up on eight sets
