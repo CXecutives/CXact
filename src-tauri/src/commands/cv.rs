@@ -68,7 +68,7 @@ pub async fn profile_from_cv(
     match result {
         Ok(Some(())) => {
             scoring::profile_changed(&app, &state);
-            Ok(profile_info(&state, &state.workspace()))
+            Ok(profile_info(&state, &state.workspace()?))
         }
         Ok(None) => Ok(None),
         Err(error) => Err(error),
@@ -110,7 +110,7 @@ async fn import(
         answer.until.as_deref(),
         today,
     );
-    let Some((_, filled)) = profile::import_cv(&state.workspace(), &answer.profile)? else {
+    let Some((_, filled)) = profile::import_cv(&state.workspace()?, &answer.profile)? else {
         return Err(cv_error(&cv::CvError::Refused));
     };
     profile::set_ai_filled(&state.store, &filled)?;

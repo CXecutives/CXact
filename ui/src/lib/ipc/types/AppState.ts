@@ -7,6 +7,7 @@ import type { ProfileInfo } from "./ProfileInfo";
 import type { ResetSummary } from "./ResetSummary";
 import type { RunSnapshot } from "./RunSnapshot";
 import type { RunSummary } from "./RunSummary";
+import type { SettingsView } from "./SettingsView";
 
 /**
  * Everything the interface needs at the start (and after a reload).
@@ -24,7 +25,7 @@ firstRun: boolean,
 /**
  * The run in progress (after a reload the interface picks up from here).
  */
-running: RunSnapshot | null, mailbox: Mailbox, 
+running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, 
 /**
  * The profile.
  */

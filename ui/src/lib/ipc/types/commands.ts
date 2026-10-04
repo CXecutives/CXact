@@ -21,6 +21,7 @@ import type { RunRequest } from "./RunRequest";
 import type { SearchTerm } from "./SearchTerm";
 import type { SettingsPatch } from "./SettingsPatch";
 import type { Vocabulary } from "./Vocabulary";
+import type { WorkspacePick } from "./WorkspacePick";
 
 /** Every IPC command: its arguments and its result. */
 export type Commands = {
@@ -52,6 +53,7 @@ export type Commands = {
   remove_mailbox: { args: Record<string, never>; result: boolean };
   portal_login: { args: { portal: Portal }; result: boolean };
   portal_logout: { args: { portal: Portal }; result: boolean };
+  pick_workspace: { args: Record<string, never>; result: WorkspacePick | null };
   open_target: { args: { target: OpenTarget }; result: null };
   save_settings: { args: { patch: SettingsPatch }; result: AppState };
   finish_onboarding: { args: Record<string, never>; result: null };

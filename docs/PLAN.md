@@ -114,8 +114,8 @@ pre-assessment to any AI chat for a deeper check.
     browser and a switch.
   - Postfach: the account card (mail tile, the address, "Verbunden" after a green dot, Ändern, Entfernen),
     under it the card of the alert sources (sign-in where offered, then "Alert anlegen").
-  - Daten: the work folder (Öffnen; it is always `Documents\CXact`, `settings::default_workspace`) and
-    "Alle Daten zurücksetzen".
+  - Daten: the profile's folder (Ändern with `pick_workspace`, Öffnen; `Documents\CXact` until another is
+    chosen, `settings::default_workspace`) and "Alle Daten zurücksetzen".
 - **Erste Schritte** (until the setup is finished, `Settings::onboarded`, saved by `finish_onboarding`; a
   reset brings it back): 1 Profil, 2 Postfach (optional, only the alert mails need it), 3 Fertig.
 - **Shell:**

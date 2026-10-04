@@ -31,7 +31,8 @@ use crate::view::{
     MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount, PortalLogin,
     PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave, ProfileSource,
     ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, ResetSummary, SearchTerm,
-    SettingsPatch, TermField, TextLayout, TextRange, VaultKind, WorkMode,
+    SettingsPatch, SettingsView, TermField, TextLayout, TextRange, VaultKind, WorkMode,
+    WorkspacePick, WorkspaceProfile,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -190,7 +191,10 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<Mailbox>();
     f.add::<PortalCount>();
     f.add::<MailboxCheck>();
+    f.add::<SettingsView>();
     f.add::<SettingsPatch>();
+    f.add::<WorkspacePick>();
+    f.add::<WorkspaceProfile>();
     f.add::<SearchTerm>();
     f.add::<PortalPatch>();
     f.add::<PortalLogin>();

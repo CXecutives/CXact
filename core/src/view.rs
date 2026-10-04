@@ -26,7 +26,7 @@ use crate::pipeline::{LocalMatcher, Matcher, RunSnapshot, RunSummary, local};
 use crate::portal::{JobKey, Portal, Way};
 pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileForm, ProfileIndustry,
-    ProfileLanguage, WorkWish, Workload,
+    ProfileLanguage, WorkWish, Workload, WorkspaceProfile,
 };
 use crate::settings::{PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, PortalAlerts, Store};
@@ -1019,7 +1019,27 @@ pub struct PortalCount {
     pub count: u32,
 }
 
-/// Changes of the settings: the portal switches (`null` = unchanged).
+/// The work folder as Einstellungen shows it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct SettingsView {
+    /// The work folder in use (chosen or default); its `profil/` holds the profile.
+    pub workspace: PathBuf,
+    pub workspace_is_default: bool,
+}
+
+/// Another work folder (`pick_workspace`): the folder, and what became of the profile there.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct WorkspacePick {
+    pub folder: PathBuf,
+    pub profile: WorkspaceProfile,
+}
+
+/// Changes of the settings: the portal switches (`null` = unchanged); the work folder only
+/// changes through the folder dialog (`pick_workspace`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -1520,6 +1540,7 @@ pub struct AppState {
     pub first_run: bool,
     /// The run in progress (after a reload the interface picks up from here).
     pub running: Option<RunSnapshot>,
+    pub settings: SettingsView,
     pub mailbox: Mailbox,
     /// The profile.
     pub profile: Option<ProfileInfo>,

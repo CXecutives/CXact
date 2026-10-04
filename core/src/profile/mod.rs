@@ -163,6 +163,45 @@ pub fn save_form(
     info(workspace)?.ok_or_else(|| Error::Corrupt("profile unreadable right after saving".into()))
 }
 
+/// The profile after a change of the work folder ([`carry_over`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum WorkspaceProfile {
+    /// The new folder had none: the old folder's profile came along (a copy, with its
+    /// backup; the old folder keeps its own).
+    Copied,
+    /// The new folder brings its own profile, which the app uses from now on.
+    Own,
+    /// Neither folder has a profile.
+    None,
+}
+
+/// The profile for another work folder: its own where it has one, else a copy of the old
+/// folder's profile and its backup (nothing in the new folder is overwritten, nothing in the
+/// old one removed). One save at a time ([`WRITING`]).
+pub fn carry_over(old: &Path, new: &Path) -> Result<WorkspaceProfile> {
+    let _one_at_a_time = writing();
+    if profile_path(new).is_file() {
+        return Ok(WorkspaceProfile::Own);
+    }
+    if old == new || !profile_path(old).is_file() {
+        return Ok(WorkspaceProfile::None);
+    }
+    let folder = new.join(PROFILE_DIR);
+    std::fs::create_dir_all(&folder).map_err(|e| Error::io(folder.clone(), e))?;
+    for (from, to) in [
+        (backup_path(old), backup_path(new)),
+        (profile_path(old), profile_path(new)),
+    ] {
+        if from.is_file() && !to.exists() {
+            std::fs::copy(&from, &to).map_err(|e| Error::io(to.clone(), e))?;
+        }
+    }
+    log::info!("profile copied into the new work folder");
+    Ok(WorkspaceProfile::Copied)
+}
+
 /// The form fields the CV import filled, until the next save (the Profil marks them).
 pub fn ai_filled(store: &Store) -> Vec<String> {
     store
@@ -205,6 +244,35 @@ mod tests {
             tools: tools.iter().map(|t| (*t).to_owned()).collect(),
             ..ProfileForm::default()
         }
+    }
+
+    /// Another work folder: its own profile wins, else the old one comes along as a copy;
+    /// without any, none.
+    #[test]
+    fn the_profile_comes_along_to_another_folder() {
+        let (old, new, own) = (workspace(), workspace(), workspace());
+        assert_eq!(
+            carry_over(old.path(), new.path()).unwrap(),
+            WorkspaceProfile::None
+        );
+        save_form(old.path(), &form(&[]), &form(&["SAP"])).unwrap();
+        save_form(old.path(), &form(&["SAP"]), &form(&["SAP", "HGB"])).unwrap();
+        save_form(own.path(), &form(&[]), &form(&["Excel"])).unwrap();
+        assert_eq!(
+            carry_over(old.path(), own.path()).unwrap(),
+            WorkspaceProfile::Own
+        );
+        assert!(stored(own.path()).contains("Excel"), "its own stays");
+        assert_eq!(
+            carry_over(old.path(), new.path()).unwrap(),
+            WorkspaceProfile::Copied
+        );
+        assert_eq!(stored(new.path()), stored(old.path()));
+        assert!(backup_path(new.path()).is_file(), "the backup comes along");
+        assert!(
+            profile_path(old.path()).is_file(),
+            "the old folder keeps its own"
+        );
     }
 
     #[test]

@@ -82,8 +82,9 @@ Commit them together with tokens.css.
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`).
-- The work folder is `Documents\CXact` (`default_workspace` in `core/src/settings.rs`); it
-  cannot be changed. "Öffnen" makes a missing folder first.
+- The work folder of a new install is `Documents\CXact` (`default_workspace` in
+  `core/src/settings.rs`); `pick_workspace` chooses another (`Settings::workspace`), and the
+  profile comes along (`profile::carry_over`). "Öffnen" makes a missing folder first.
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
 

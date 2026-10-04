@@ -19,7 +19,7 @@ const TWO_STEP_URL: &str = "https://myaccount.google.com/signinoptions/twosv";
 /// opened. The dry run writes nothing outside its
 /// database: there a missing folder stays not found.
 fn workspace_folder(state: &AppState) -> CmdResult<std::ffi::OsString> {
-    let workspace = state.workspace();
+    let workspace = state.workspace()?;
     if !state.dry_run && !workspace.is_dir() {
         std::fs::create_dir_all(&workspace)
             .map_err(|e| ErrorInfo::from(jobalert_core::Error::io(&workspace, e)))?;
@@ -69,7 +69,7 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
         OpenTarget::TwoStepPage => TWO_STEP_URL.into(),
         OpenTarget::Workspace => workspace_folder(&state)?,
         OpenTarget::ProfileDir => existing(
-            state.workspace().join(jobalert_core::profile::PROFILE_DIR),
+            state.workspace()?.join(jobalert_core::profile::PROFILE_DIR),
             "folder",
         )?,
         OpenTarget::LogDir => existing(state.data_dir.join(jobalert_core::LOG_DIR), "folder")?,

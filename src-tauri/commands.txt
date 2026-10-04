@@ -33,6 +33,7 @@ save_mailbox      { user: string; password: string }                            
 remove_mailbox    {}                                                                 -> boolean
 portal_login      { portal: Portal }                                                 -> boolean
 portal_logout     { portal: Portal }                                                 -> boolean
+pick_workspace    {}                                                                 -> WorkspacePick | null
 open_target       { target: OpenTarget }                                             -> null
 save_settings     { patch: SettingsPatch }                                           -> AppState
 finish_onboarding {}                                                                 -> null

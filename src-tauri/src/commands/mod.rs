@@ -66,6 +66,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         mailbox::remove_mailbox,
         portals::portal_login,
         portals::portal_logout,
+        app::pick_workspace,
         files::open_target,
         app::save_settings,
         app::finish_onboarding,
@@ -271,9 +272,10 @@ impl AppState {
         Ok(Settings::load(&self.store)?)
     }
 
-    /// The work folder (`settings::default_workspace`): its `profil/` holds the profile.
-    fn workspace(&self) -> PathBuf {
-        self.default_workspace.clone()
+    /// The work folder (chosen in Einstellungen, else `settings::default_workspace`): its
+    /// `profil/` holds the profile.
+    fn workspace(&self) -> CmdResult<PathBuf> {
+        Ok(self.settings()?.workspace_or(&self.default_workspace))
     }
 
     pub fn busy(&self) -> bool {

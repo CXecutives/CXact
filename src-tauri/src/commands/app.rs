@@ -18,17 +18,25 @@ use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::model::Place;
-use jobalert_core::pipeline::{self, RunEvent, dry_run};
+use jobalert_core::pipeline::{self, Matcher as _, RunEvent, dry_run};
 use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
 use jobalert_core::store::Backup;
 use jobalert_core::view::{
-    self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch,
+    self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
+    WorkspacePick, WorkspaceProfile,
 };
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 use super::{Activity, AppState, CmdResult, lock, scoring};
+
+/// Title of the folder dialog (the only words this side shows itself here).
+mod texts {
+    // User-facing text, German.
+    pub const PICK_WORKSPACE: &str = "Ordner für das Profil wählen";
+    // end of user-facing text
+}
 
 /// UI error reports per minute that reach the log.
 const UI_ERRORS_PER_MINUTE: usize = 10;
@@ -104,7 +112,7 @@ pub(super) fn profile_info(state: &AppState, workspace: &std::path::Path) -> Opt
 /// Everything the page needs - without attaching to a run.
 fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     let settings = state.settings()?;
-    let workspace = state.workspace();
+    let workspace = settings.workspace_or(&state.default_workspace);
     let now = Timestamp::now();
     let policy = if state.dry_run {
         Policy::in_memory()
@@ -151,6 +159,10 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         // stays until it reached "Alles eingerichtet" (`finish_onboarding`).
         first_run: !state.dry_run && !settings.onboarded,
         running,
+        settings: SettingsView {
+            workspace_is_default: settings.workspace.is_none(),
+            workspace: workspace.clone(),
+        },
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
         portals: view::portal_states(&policy, &settings, &empty_mails, alerts.as_deref(), now),
@@ -238,6 +250,57 @@ pub async fn save_settings(
     build_state(&state)
 }
 
+/// Folder dialog for the work folder ("Ändern"); `None` if cancelled. The profile comes along
+/// (user decision 2026-09-26, back 2026-10-04): a folder without a profile gets a copy of the
+/// old folder's, one with a profile of its own keeps it and the app uses it from now on
+/// (`profile::carry_over`); another profile scores every job again. The app is held
+/// meanwhile, like a file command.
+#[tauri::command]
+pub async fn pick_workspace(
+    app: AppHandle,
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> CmdResult<Option<WorkspacePick>> {
+    state.ensure_idle()?;
+    let current = state.workspace()?;
+    let Some(folder) = rfd::AsyncFileDialog::new()
+        .set_title(texts::PICK_WORKSPACE)
+        .set_directory(current.parent().unwrap_or(&current))
+        .set_parent(&window)
+        .pick_folder()
+        .await
+    else {
+        return Ok(None);
+    };
+    let folder = folder.path().to_path_buf();
+    // Writable? Better a clear error now than later at a save of the profile. The dry run
+    // never writes anything outside its in-memory database.
+    if !state.dry_run {
+        let probe = folder.join(".cxact-write-test");
+        std::fs::write(&probe, b"")
+            .map_err(|e| ErrorInfo::from(jobalert_core::Error::io(&folder, e)))?;
+        let _ = std::fs::remove_file(probe);
+    }
+    let files = state.claim_files(&app)?;
+    let profile = if state.dry_run {
+        WorkspaceProfile::None
+    } else {
+        profile::carry_over(&current, &folder)?
+    };
+    let before = state.matcher().map(|m| m.rev().to_owned());
+    let mut settings = state.settings()?;
+    settings.workspace = Some(folder.clone());
+    settings.save(&state.store)?;
+    log::info!("work folder changed ({profile:?})");
+    // The profile lives in the work folder: another folder can mean another profile (its
+    // rescore starts once the app is free).
+    if state.matcher().map(|m| m.rev().to_owned()) != before {
+        scoring::profile_changed(&app, &state);
+    }
+    drop(files);
+    Ok(Some(WorkspacePick { folder, profile }))
+}
+
 /// The setup reached "Alles eingerichtet": the next start opens the Jobs view
 /// (`Settings::onboarded`; a reset deletes it with the database).
 #[tauri::command]
@@ -254,7 +317,7 @@ pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<
     state.ensure_idle()?;
     state.ensure_real()?;
     let plan = ResetPlan {
-        workspace: state.workspace(),
+        workspace: state.workspace()?,
     };
     reset::request(&state.data_dir, &plan)?;
     log::info!("reset requested, restarting");

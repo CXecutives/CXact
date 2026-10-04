@@ -17,6 +17,10 @@ pub(crate) const KEY: &str = "settings";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    /// The work folder (its `profil/` holds the profile); `None` = the default
+    /// ([`default_workspace`]: `Documents\CXact`). Only changeable through the folder dialog
+    /// (`pick_workspace`), never a path sent by the page.
+    pub workspace: Option<PathBuf>,
     /// Switches per portal.
     pub portals: BTreeMap<Portal, PortalSwitches>,
     /// The setup reached "Alles eingerichtet" (`finish_onboarding`): the app starts in the
@@ -47,6 +51,7 @@ impl Default for PortalSwitches {
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
+            workspace: None,
             portals: Portal::ALL
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
@@ -85,6 +90,7 @@ impl Settings {
             login_enabled: false,
         };
         Settings {
+            workspace: None,
             portals: Portal::ALL.into_iter().map(|p| (p, off)).collect(),
             ..Settings::default()
         }
@@ -138,10 +144,17 @@ impl Settings {
         }
         portal.access().path(switches.login_enabled)
     }
+
+    /// The work folder: the chosen one, else `default`.
+    pub fn workspace_or(&self, default: &Path) -> PathBuf {
+        self.workspace
+            .clone()
+            .unwrap_or_else(|| default.to_path_buf())
+    }
 }
 
-/// The work folder in `documents`: `CXact` (its `profil/` holds the profile). It cannot be
-/// changed (user decision 2026-10-03).
+/// The default work folder in `documents`: `CXact` (its `profil/` holds the profile). A
+/// folder chosen in Einstellungen wins ([`Settings::workspace_or`], user decision 2026-10-04).
 pub fn default_workspace(documents: &Path) -> PathBuf {
     documents.join("CXact")
 }
@@ -196,21 +209,26 @@ mod tests {
         assert!(partial.portal(Portal::LinkedIn).enabled);
     }
 
-    /// The setup is open until it is finished; a stored file of an earlier version (with its
-    /// own work folder) reads without it.
+    /// The setup is open until it is finished; a stored file of an earlier version keeps its
+    /// work folder and reads without the setup's end.
     #[test]
     fn the_setup_is_open_until_finished() {
         let store = Store::in_memory().unwrap();
-        assert!(!Settings::load(&store).unwrap().onboarded);
+        let fresh = Settings::load(&store).unwrap();
+        assert!(!fresh.onboarded);
+        let default = Path::new("Documents/CXact");
+        assert_eq!(fresh.workspace_or(default), default);
         store
-            .kv_set(KEY, r#"{"workspace":"D:\Daten","fetchMail":true}"#)
+            .kv_set(KEY, r#"{"workspace":"D:/Daten","fetchMail":true}"#)
             .unwrap();
         let mut old = Settings::load(&store).unwrap();
         assert!(!old.onboarded);
+        assert_eq!(old.workspace_or(default), Path::new("D:/Daten"));
         old.onboarded = true;
         old.save(&store).unwrap();
-        assert!(Settings::load(&store).unwrap().onboarded);
-        assert!(!store.kv_get(KEY).unwrap().unwrap().contains("workspace"));
+        let back = Settings::load(&store).unwrap();
+        assert!(back.onboarded);
+        assert_eq!(back.workspace, Some(PathBuf::from("D:/Daten")));
     }
 
     /// Broken JSON gives the defaults for convenience, but never switches a portal on:

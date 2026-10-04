@@ -28,7 +28,7 @@ pub async fn save_profile(
     save: ProfileSave,
 ) -> CmdResult<ProfileInfo> {
     state.ensure_real()?;
-    let workspace = state.workspace();
+    let workspace = state.workspace()?;
     let info = profile::save_form(&workspace, &save.before, &save.after)?;
     profile::set_ai_filled(&state.store, &[])?;
     scoring::profile_changed(&app, &state);
@@ -53,7 +53,7 @@ pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>
     let form = if state.dry_run {
         profile::parse(dry_run::PROFILE_JSON).ok()
     } else {
-        profile::load(&state.workspace())?
+        profile::load(&state.workspace()?)?
     };
     let Some(form) = form else {
         return Ok(Vec::new());
@@ -73,7 +73,7 @@ pub async fn search_terms(state: State<'_, AppState>) -> CmdResult<Vec<SearchTer
     let form = if state.dry_run {
         profile::parse(dry_run::PROFILE_JSON).ok()
     } else {
-        profile::load(&state.workspace())?
+        profile::load(&state.workspace()?)?
     };
     Ok(match form {
         Some(form) => view::search_terms(&state.store, &form)?,
