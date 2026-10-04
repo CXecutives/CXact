@@ -21,6 +21,7 @@ ai_prompt         { key: JobKey }                                               
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
 profile_from_cv   { dropped: boolean }                                               -> ProfileInfo | null
 asked_terms       {}                                                                 -> AskedTerm[]
+search_terms      {}                                                                 -> SearchTerm[]
 vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null

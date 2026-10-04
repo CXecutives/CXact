@@ -17,6 +17,7 @@ import type { ProfileInfo } from "./ProfileInfo";
 import type { ProfileSave } from "./ProfileSave";
 import type { RunEvent } from "./RunEvent";
 import type { RunRequest } from "./RunRequest";
+import type { SearchTerm } from "./SearchTerm";
 import type { SettingsPatch } from "./SettingsPatch";
 import type { Vocabulary } from "./Vocabulary";
 
@@ -38,6 +39,7 @@ export type Commands = {
   save_profile: { args: { save: ProfileSave }; result: ProfileInfo };
   profile_from_cv: { args: { dropped: boolean }; result: ProfileInfo | null };
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
+  search_terms: { args: Record<string, never>; result: SearchTerm[] };
   vocabulary: { args: Record<string, never>; result: Vocabulary };
   set_unsaved: { args: { on: boolean }; result: null };
   close_window: { args: Record<string, never>; result: null };

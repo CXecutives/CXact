@@ -63,6 +63,7 @@ export type { RunSummary } from "./RunSummary";
 export type { ScanCounts } from "./ScanCounts";
 export type { ScoreDelta } from "./ScoreDelta";
 export type { ScoreSummary } from "./ScoreSummary";
+export type { SearchTerm } from "./SearchTerm";
 export type { SettingsPatch } from "./SettingsPatch";
 export type { StatusCode } from "./StatusCode";
 export type { Step } from "./Step";

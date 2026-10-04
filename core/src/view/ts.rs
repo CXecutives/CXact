@@ -30,8 +30,8 @@ use crate::view::{
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
     MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount, PortalLogin,
     PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave, ProfileSource,
-    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, ResetSummary, SettingsPatch,
-    TermField, TextLayout, TextRange, VaultKind, WorkMode,
+    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, ResetSummary, SearchTerm,
+    SettingsPatch, TermField, TextLayout, TextRange, VaultKind, WorkMode,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -191,6 +191,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<PortalCount>();
     f.add::<MailboxCheck>();
     f.add::<SettingsPatch>();
+    f.add::<SearchTerm>();
     f.add::<PortalPatch>();
     f.add::<PortalLogin>();
     f.add::<Quota>();

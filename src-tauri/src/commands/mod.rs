@@ -54,6 +54,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         profile::save_profile,
         cv::profile_from_cv,
         profile::asked_terms,
+        profile::search_terms,
         profile::vocabulary,
         profile::set_unsaved,
         profile::close_window,

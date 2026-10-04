@@ -46,7 +46,8 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
 - The screen before any ad (`pipeline::score::screen`): a new job whose title alone the engine excludes
   (an exclusion word, Zeitarbeit the profile does not allow) is kept as excluded without its ad; "Trotzdem
   bewerten" reads it. A place, a junior level or Festanstellung never screen a job out.
-- What each term brought per source is kept (`fetch::search::term_jobs`, "CXact sucht nach").
+- What each term brought per source is kept (`fetch::search::term_jobs`); the command `search_terms` gives
+  each term of the profile with the fitting jobs it brought last ("CXact sucht nach").
   `core/examples/live_search.rs` runs a real search with fetch and scores and compares two term lists.
 - The pace, within the scraping rules of `CLAUDE.md` (`admit`, `fetch/policy.rs`): search sources run at
   2.5 to 5 s, capped at 300 an hour and 1,500 a day each, never below robots.txt's Crawl-delay.

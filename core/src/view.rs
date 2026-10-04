@@ -1336,6 +1336,33 @@ pub const MAX_ASKED: usize = 8;
 /// A term counts as often asked from this many jobs on (one job is no pattern).
 pub const MIN_ASKED: u32 = 2;
 
+/// A term the search asks the portals for (from the profile, in the search's order) and how
+/// many fitting jobs (scored in the mid or high band) it brought at the last search; `null`:
+/// not searched yet ("CXact sucht nach" in Einstellungen).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct SearchTerm {
+    pub term: String,
+    pub matched: Option<u32>,
+}
+
+/// The terms of the deep search for a profile (`profile::deep_search_terms`), each with the
+/// fitting jobs it brought at the last search of the sources (`fetch::search::term_jobs`).
+pub fn search_terms(store: &Store, form: &ProfileForm) -> crate::Result<Vec<SearchTerm>> {
+    let found = crate::fetch::search::term_jobs(store)?;
+    crate::profile::deep_search_terms(form)
+        .into_iter()
+        .map(|term| {
+            let matched = match found.get(&term) {
+                Some(keys) => Some(store.fitting(keys)?),
+                None => None,
+            };
+            Ok(SearchTerm { term, matched })
+        })
+        .collect()
+}
+
 /// A term the ads ask for that the profile does not cover, the field of the profile it
 /// belongs to, and in how many jobs ("Häufig verlangt" in the Profil).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -2026,6 +2053,40 @@ mod tests {
 
     /// A range of remote shares is a work mode like one share (from 100 % remote, to 0 % on
     /// site, else hybrid), and the list orders by day rate: the highest first (in euros, an
+    /// "CXact sucht nach": each term of the profile with the fitting jobs it brought at the last
+    /// search, `null` before its first one.
+    #[test]
+    fn each_search_term_with_what_it_brought() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let form = crate::profile::of_json(&serde_json::json!({"wunschrollen": ["Interim CFO"]}));
+        let terms = search_terms(&store, &form).unwrap();
+        assert!(terms.iter().all(|t| t.matched.is_none()), "{terms:?}");
+        assert_eq!(terms[0].term, "Interim CFO");
+        let mut keys = Vec::new();
+        for (id, score) in [("4000000201", 85), ("4000000202", 20)] {
+            let link = job_link(&format!("https://www.linkedin.com/jobs/view/{id}/")).unwrap();
+            let posting = Posting::new(link.key.clone(), link.url, "Interim CFO", "", "");
+            let mail = MailRef {
+                subject: "x",
+                date: None,
+                gmail_id: None,
+            };
+            store
+                .upsert_posting(run, &posting, mail, Timestamp::now())
+                .unwrap();
+            store
+                .save_matches(
+                    &[(link.key.clone(), record(MatchStatus::Scored, score))],
+                    "r",
+                    Timestamp::now(),
+                )
+                .unwrap();
+            keys.push(link.key);
+        }
+        assert_eq!(store.fitting(&keys).unwrap(), 1);
+    }
+
     /// "Nach Datum" and "Neu seit" go by the day a job came into CXact, whatever its alert
     /// mail's date; within a day the newest mail first, then by portal.
     #[test]

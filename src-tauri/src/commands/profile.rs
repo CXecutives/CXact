@@ -12,7 +12,7 @@ use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::matching::{self, Vocabulary};
 use jobalert_core::pipeline::dry_run;
 use jobalert_core::profile;
-use jobalert_core::view::{self, AskedTerm, ProfileInfo, ProfileSave};
+use jobalert_core::view::{self, AskedTerm, ProfileInfo, ProfileSave, SearchTerm};
 use tauri::{AppHandle, State, WebviewWindow};
 
 use super::app::profile_info;
@@ -53,6 +53,22 @@ pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>
         Some(&form),
         Timestamp::now(),
     )?)
+}
+
+/// "CXact sucht nach": the terms the search asks for, from the stored profile (the dry run's
+/// sample profile in the dry run), each with the fitting jobs it brought last; none without a
+/// profile.
+#[tauri::command]
+pub async fn search_terms(state: State<'_, AppState>) -> CmdResult<Vec<SearchTerm>> {
+    let form = if state.dry_run {
+        profile::parse(dry_run::PROFILE_JSON).ok()
+    } else {
+        profile::load(&state.workspace())?
+    };
+    Ok(match form {
+        Some(form) => view::search_terms(&state.store, &form)?,
+        None => Vec::new(),
+    })
 }
 
 /// The engine's words as terms, for the suggestions of the profile's fields (skills and
