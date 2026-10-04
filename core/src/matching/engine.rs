@@ -516,7 +516,8 @@ fn job_facts<'a>(job: &JobInput<'a>) -> JobFacts<'a> {
 }
 
 /// Every cap of a job: the rubric's caps, a text without requirements (`NO_ITEMS_CAP`)
-/// and a junior role for a senior profile (`JUNIOR_CAP`).
+/// and a junior role for a senior profile (`JUNIOR_CAP`); no off-field cap where the title
+/// names the profile's field (`field_title`: it meets a target role or names a Schwerpunkt).
 fn all_caps(
     profile: &EngineProfile,
     items: &[Scored],
@@ -524,10 +525,12 @@ fn all_caps(
     job: &JobInput<'_>,
     formal_cap: bool,
     no_items: bool,
+    field_title: bool,
 ) -> Option<Cap> {
     let vocab = &profile.skills.vocab;
     let title_fit = relevance::title_fit(&profile.query, title, vocab);
     cap(items, title, vocab, formal_cap, title_fit)
+        .filter(|c| !(field_title && c.1 == CapKind::OffField))
         .into_iter()
         .chain(no_items.then_some((NO_ITEMS_CAP, CapKind::NoItems)))
         .chain(
@@ -672,7 +675,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     // A text without any requirement (long enough to read, or a short teaser) is judged
     // from its title: low evidence, at most `NO_ITEMS_CAP`.
     let no_items = (!short || title_only) && items.is_empty();
-    let cap = all_caps(profile, &items, &title, job, formal_cap, no_items);
     let decided = findings.iter().any(|f| f.decided);
 
     let weight_of_evidence = must_weight + N_NICE * nice_count;
@@ -718,14 +720,21 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     } else {
         (role, wishes)
     };
+    let cap = all_caps(
+        profile,
+        &items,
+        &title,
+        job,
+        formal_cap,
+        no_items,
+        role.is_some() || focus.iter().any(|h| h.title),
+    );
     let adjusted = adjust(shrunk, role.as_ref(), &wishes, &items);
     let (score, rank, capped) = final_score(adjusted, cap, unscorable);
-    let verdict = if decided {
-        Verdict::Excluded
-    } else if unscorable {
-        Verdict::Unscorable
-    } else {
-        Verdict::Scored
+    let verdict = match (decided, unscorable) {
+        (true, _) => Verdict::Excluded,
+        (false, true) => Verdict::Unscorable,
+        (false, false) => Verdict::Scored,
     };
     Evaluation {
         items,

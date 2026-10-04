@@ -172,6 +172,37 @@ band, the same as engine 18 on the migrated profiles (336 on the old ones). Off 
 K29 78, K32 46, K50 60; it K12 13, K39 35; sap K39 31; senior K02 55, K17 92, K32 46; wish K17
 96, K28 79, K31 70; wishSap K31 50, K32 62, K39 37, K44 24.
 
+Third round of engine 19 (2026-10-04): a live search with a real CV profile (an interim head of
+customer service; the stored runs and their comparison in `core/tests/fixtures/private/baseline/`)
+scored the core of its field low (`Teamleiter Call Center` 44, `Service Manager - Callcenter
+Manager` 43) and jobs off it high (`Support / Workplace Management` 81, `Servicetechniker` 64,
+`Teamlead SAP Purchase to Pay` 74). The causes and their fixes, every one measured alone:
+- Musts of the field the CV covers stayed open: `Customer Service Management` and `Call Center
+  Management` are the leads of their field now (as `Kundenservicemanagement` was), an ad's words a
+  hyphenated profile atom joins are read as that atom (`Contact Center`), an abbreviation is met by
+  a profile compound it starts (`Kennzahlen` by `KPI-Reporting`, never `DIN` by `DIN 276`),
+  `Zendesk` and `Freshdesk` are ticket systems, `Leadership` is met half by a competence of
+  leadership, service orientation and its kin are soft skills, a recruiter's greeting ends the
+  requirements.
+- `Zendesk` read as a compound of `Desk` met `Service Desk` (the 81).
+- An ad whose musts are languages only scored them as a full `M`: such musts weigh a quarter
+  beside the nice-to-haves (`(M+3K)/4`).
+- `Ingenieurstudium` was no degree (a compound ending in `studium` is one).
+- An off-field cap held ads whose title names the profile's target role or Schwerpunkt
+  (`Leiter Kundenservice` 25): such a title is no ad off the field (corpus: wish K55 25 -> 28, in
+  band).
+
+Held-out sets before and after (NDCG@10 / Spearman relevant / buried / exclusion recall):
+heldout3 0.871 / 0.634 / 0 / 0.900 -> 0.911 / 0.595 / 0 / 0.900 (T06, the one ad of the sets
+whose musts are languages only: its grade-0 pairs fall, P1's grade 3 rises, two grade-2 pairs fall
+with them); heldout8 NDCG@10 0.954 -> 0.953, heldout9 0.898 -> 0.900, Spearman over all pairs
+heldout6 0.520 -> 0.519; every other number unchanged. Tried and left out: industries out of the
+relevance or at half weight (heldout10 Spearman below its floor), atoms of multi-word entries at
+half weight (a buried grade 3 in heldout4, heldout5 below its floor), general business words
+(`Projektmanagement`) at the generic weight (heldout2 and 3 below their floors), leadership met in
+full by a competence of leadership (grade-0 heads of sales rose on heldout5), a tool name as no
+compound (heldout2 lost a must its profile met through a tool).
+
 ## The engine
 
 Integer-only, per-mille throughout; `core/src/matching/{job,atoms,fit,facts,contract,permanent,
