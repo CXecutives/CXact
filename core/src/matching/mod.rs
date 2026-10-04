@@ -14,6 +14,7 @@ mod factors;
 pub(crate) mod facts;
 mod fit;
 mod focus;
+mod gaps;
 mod job;
 mod layout;
 pub(crate) mod lexicon;
@@ -42,6 +43,7 @@ use sha2::{Digest, Sha256};
 
 use crate::profile::ProfileForm;
 
+pub use gaps::{Gap, JobGaps, vocabulary_gaps};
 pub use layout::{TextLayout, text_layout};
 pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;

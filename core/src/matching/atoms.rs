@@ -112,8 +112,7 @@ impl Vocab {
         Self::with(&packs)
     }
 
-    /// Every pack (tests).
-    #[cfg(test)]
+    /// Every pack (the gap finder, tests).
     pub(crate) fn all() -> Self {
         Self::with(DOMAINS)
     }
