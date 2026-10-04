@@ -914,6 +914,8 @@ pub(crate) const DEGREE_WORDS: &[&str] = &[
     "studium",
     "university",
 ];
+/// A compound that ends in a degree word is a degree too (`Ingenieurstudium`, `BWL-Studium`).
+pub(crate) const DEGREE_ENDINGS: &[&str] = &["studium", "studiums"];
 /// Words that make `Promotion` sales work, not a doctorate (`Sales Promotion`).
 pub(crate) const PROMOTION_NOT_DEGREE: &[&str] = &[
     "handel",

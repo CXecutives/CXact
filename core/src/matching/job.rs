@@ -1013,7 +1013,8 @@ pub(crate) fn names_degree(tokens: &[&str]) -> bool {
         .iter()
         .any(|t| starts_with_any(t, lex::PROMOTION_NOT_DEGREE));
     tokens.iter().enumerate().any(|(i, t)| {
-        starts_with_any(t, lex::DEGREE_WORDS)
+        (starts_with_any(t, lex::DEGREE_WORDS)
+            || lex::DEGREE_ENDINGS.iter().any(|e| t.ends_with(e)))
             && !(sales && t.starts_with("promotion"))
             && !(t.starts_with("master")
                 && (lex::MASTER_NOT_DEGREE
@@ -1527,6 +1528,14 @@ mod tests {
         assert_eq!(
             classify(
                 "Abgeschlossenes Studium der Wirtschaftswissenschaften",
+                None,
+                &Vocab::core()
+            ),
+            Class::Degree
+        );
+        assert_eq!(
+            classify(
+                "Abgeschlossene technische Ausbildung oder Ingenieurstudium",
                 None,
                 &Vocab::core()
             ),

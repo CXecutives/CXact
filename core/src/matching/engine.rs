@@ -4,7 +4,8 @@
 //!
 //! `M = sum(w*f*e)/sum(w*f)` over musts (w 1000, soft 250, frame 0; f = 2 for a requirement
 //! met in full through a Schwerpunkt, else 1), `K = sum(f*e)/sum(f)` over nice-to-haves,
-//! `P = must ? (nice ? (3M+K)/4 : M) : K`, evidence `n = sum(w_must) + 500*n_nice`,
+//! `P = must ? (nice ? (3M+K)/4 : M) : K` (`(M+3K)/4` when the musts are languages and soft
+//! skills only), evidence `n = sum(w_must) + 500*n_nice`,
 //! `R' = min(1000, R + 100*demanded Schwerpunkte (at most 3))`, `P' = (n*P + k*R')/(n + k)`,
 //! permanent roles `P' * 0.9`, then `+ role + clamp(sum(wishes), -100, 100)` per-mille (a
 //! lift ends at 790 while fewer than half of the musts are met),
@@ -291,6 +292,8 @@ fn cap(
 /// through a Schwerpunkt weighs `FOCUS_FACTOR` times in `M` and `K`; the returned must
 /// weight and nice count (the evidence `n`) stay unweighted, and a language counts there
 /// with the full must weight (it is a requirement the ad states, only a light one in `M`).
+/// Musts of languages and soft skills alone weigh a quarter beside the nice-to-haves
+/// (`(M + 3K)/4`): an ad that asks for German and English names its field in the rest.
 fn fit_score(items: &[Scored]) -> (u64, u64, u64) {
     let (mut must_weight, mut must_fit_weight, mut must_mass) = (0u64, 0u64, 0u64);
     let (mut nice_count, mut nice_fit_count, mut nice_mass) = (0u64, 0u64, 0u64);
@@ -317,9 +320,16 @@ fn fit_score(items: &[Scored]) -> (u64, u64, u64) {
             }
         }
     }
+    // Languages and soft skills alone say little about the field: the nice-to-haves lead.
+    let hygiene_only = !items.iter().any(|s| {
+        s.item.kind == ReqKind::Must
+            && s.weight > 0
+            && !matches!(s.item.class, Class::Language(..) | Class::Soft)
+    });
     let must_score = must_mass.checked_div(must_fit_weight);
     let nice_score = nice_mass.checked_div(nice_fit_count);
     let fit = match (must_score, nice_score) {
+        (Some(must), Some(nice)) if hygiene_only => (must + 3 * nice) / 4,
         (Some(must), Some(nice)) => (3 * must + nice) / 4,
         (Some(must), None) => must,
         (None, Some(nice)) => nice,
@@ -769,6 +779,19 @@ mod tests {
             params: json!({}),
             spans: Vec::new(),
         }]
+    }
+
+    /// Musts of languages alone weigh a quarter beside the nice-to-haves; a skill must
+    /// among them leads as before.
+    #[test]
+    fn languages_alone_leave_the_field_to_the_nice_to_haves() {
+        let mut german = must(E_FULL);
+        german.item.class = Class::Language("deutsch".into(), None);
+        german.weight = W_SOFT;
+        let mut nice = must(E_NONE);
+        nice.item.kind = ReqKind::Nice;
+        assert_eq!(fit_score(&[german.clone(), nice.clone()]).0, 250);
+        assert_eq!(fit_score(&[german, must(E_FULL), nice]).0, 750);
     }
 
     #[test]
