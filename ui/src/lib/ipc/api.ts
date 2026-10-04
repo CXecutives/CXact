@@ -17,11 +17,14 @@
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type {
+  AppState,
   Commands,
   ErrorInfo,
   ErrorKind,
   NewJobs,
+  PauseReason,
   Portal,
+  ProfileForm,
   ProfileInfo,
   RunEvent,
   RunSummary,
@@ -37,19 +40,23 @@ export interface SearchTerm {
 /**
  * Commands the interface needs that the backend adds next, in the shape of `Commands`; each
  * moves into src-tauri/commands.txt (and out of here) once the backend has it.
- * - `profile_from_cv`: "Aus Lebenslauf ausfüllen". `path`: the file dropped on the upload
- *   (onFileDrop), else null and the backend asks for the CV with its own file dialog (the CV
- *   formats). It reads the file, has it evaluated and merges the answer into the one profile
- *   (or makes it), saved at once. The stored profile (its `aiFilled` names what the CV
- *   filled), or null when the dialog was closed. Fails with `{kind: 'cv', params: {reason}}`
- *   (`CvFailure`).
+ * - `profile_from_cv`: "Aus Lebenslauf ausfüllen". `dropped`: take the files last dropped on
+ *   the window (the window keeps them, the page never sends a path; onFileDrag), else the
+ *   backend asks for the CV with its own file dialog (the CV formats). It reads the file, has
+ *   it evaluated and merges the answer into the one profile (or makes it), saved at once. The
+ *   stored profile (its `aiFilled` names what the CV filled), or null when the dialog was
+ *   closed. Fails with `{kind: 'cv', params: {reason}}` (`CvFailure`).
+ * - `profile_missing`: the required fields a form still lacks, by the rule of the stored
+ *   profile's `missing` (core::profile::missing_required: roles, countries, competences,
+ *   languages), for a form not saved yet ("Noch 2 Angaben offen" of a new profile).
  * - `search_terms`: the terms the search asks for, in its order (profile::deep_search_terms),
  *   each with what it brought last (Einstellungen > Portale, "CXact sucht nach").
  * - `finish_onboarding`: the setup reached "Alles eingerichtet": saves `onboarded`, so the
  *   next start opens the Jobs view (`AppState.firstRun` = not onboarded, outside the dry run).
  */
 export type NextCommands = {
-  profile_from_cv: { args: { path: string | null }; result: ProfileInfo | null };
+  profile_from_cv: { args: { dropped: boolean }; result: ProfileInfo | null };
+  profile_missing: { args: { form: ProfileForm }; result: string[] };
   search_terms: { args: Record<string, never>; result: SearchTerm[] };
   finish_onboarding: { args: Record<string, never>; result: null };
 };
@@ -71,6 +78,20 @@ export type NextRunSummary = Omit<RunSummary, 'newJobs'> & {
   mail?: ErrorInfo | null;
   newJobs: (NewJobs & { excluded?: number }) | null;
 };
+
+/**
+ * Fields of the app state the backend adds next: `cvUntil`, the day (`YYYY-MM-DD`, UTC) "Aus
+ * Lebenslauf ausfüllen" works again while its tries are used up; null while it works.
+ */
+export type NextAppState = AppState & { cvUntil?: string | null };
+
+/** Why a portal pauses, with what the backend adds next: `robots`, its robots.txt forbids
+ *  the next page. */
+export type NextPauseReason = PauseReason | 'robots';
+
+/** The error kinds with what the backend adds next: `cv`, a failed CV evaluation. */
+export type NextErrorKind = ErrorKind | 'cv';
+
 type AllCommands = Commands & NextCommands;
 
 export type CommandName = keyof AllCommands;
@@ -120,8 +141,10 @@ export const CV_FAILURES = [
   'outdated',
   'unreadable',
   'tooLarge',
+  'unsupported',
   'offline',
   'refused',
+  'unavailable',
 ] as const;
 export type CvFailure = (typeof CV_FAILURES)[number];
 
@@ -140,21 +163,27 @@ const isCvFailure = (value: unknown): value is CvFailure =>
   (CV_FAILURES as readonly unknown[]).includes(value);
 
 /**
- * "Aus Lebenslauf ausfüllen" (`profile_from_cv`): the stored profile, or null when the file
- * dialog was closed. Rejects with a CvError (no network counts as `offline`), anything else
- * with an IpcError.
+ * "Aus Lebenslauf ausfüllen" (`profile_from_cv`): the files last dropped on the window
+ * (`dropped`), else the backend's file dialog. The stored profile, or null when the dialog was
+ * closed. Rejects with a CvError (no network counts as `offline`), anything else with an
+ * IpcError.
  */
-export async function fillFromCv(path: string | null = null): Promise<ProfileInfo | null> {
+export async function fillFromCv(dropped = false): Promise<ProfileInfo | null> {
   try {
-    return await invoke('profile_from_cv', { path });
+    return await invoke('profile_from_cv', { dropped });
   } catch (error) {
     if (!(error instanceof IpcError)) throw error;
     if (error.kind === 'offline') throw new CvError('offline');
-    if ((error.kind as string) === 'cv' && isCvFailure(error.params.reason)) {
+    if ((error.kind as NextErrorKind) === 'cv' && isCvFailure(error.params.reason)) {
       throw new CvError(error.params.reason);
     }
     throw error;
   }
+}
+
+/** The required fields a form not saved yet still lacks (`profile_missing`). */
+export function profileMissing(form: ProfileForm): Promise<string[]> {
+  return invoke('profile_missing', { form });
 }
 
 type RunHandler = (event: NextRunEvent) => void;

@@ -114,7 +114,7 @@
 
   /** Why the engine excludes the job, in one sentence: its first violation, else the note. A
    *  violation a row of the Jobdetails judges speaks from the profile's side (its criterion's
-   *  sentence, "Du schließt Zeitarbeit aus."); the row's tooltip says what the ad states. */
+   *  sentence, "Zeitarbeit wird ausgeschlossen."); the row's tooltip says what the ad states. */
   const exclusion = $derived.by((): string => {
     for (const reason of all) {
       if (reason.kind !== 'violation') continue;

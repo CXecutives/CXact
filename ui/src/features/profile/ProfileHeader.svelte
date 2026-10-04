@@ -2,7 +2,8 @@
   The head of the Profil view, its title block on the first row of the window
   (`data-first-row`): "Profil" as the page's title (26/600 in the heading colour) and at its
   right "Aus Lebenslauf ausfüllen" (secondary: Speichern is the view's one primary), which
-  waits while the form holds changes. Under the title, each only while it has something to say
+  waits while the form holds changes and says ahead of the click when no evaluation is left
+  today. Under the title, each only while it has something to say
   and each one quiet line: the required fields still empty ("Noch 2 Angaben offen" with "Zum
   ersten", which puts the caret there), the dot of the fields the CV filled ("aus dem
   Lebenslauf"), the rescore a save started; then what went wrong with the CV (with its way on)
@@ -56,8 +57,8 @@
         icon="pickFile"
         label={t.profile.fromCv}
         loading={fromCv.busy}
-        disabled={dirty}
-        disabledReason={t.profile.saveFirst}
+        disabled={dirty || fromCv.limited}
+        disabledReason={fromCv.limited ? t.profile.cvError.limit : t.profile.saveFirst}
         testid="profile-from-cv"
         onclick={oncv}
       />

@@ -52,8 +52,11 @@
 // run goes), whose summary says what the save changed in Aktuell (`ScoreDelta`).
 // "Aus Lebenslauf ausfüllen" (`profile_from_cv`) answers after a few seconds with the demo
 // profile filled from a CV (merged into a stored one, the CV's fields in `aiFilled`);
-// `?cv=limit|offline|timeout|unreadable|tooBig|unavailable|outdated` fails like the CV
-// evaluation, `?cv=slow` takes as long as a real one, `?cv=none` closes the file dialog.
+// `dropped` takes the files last dropped on the window like the window keeps them (`notFound`
+// without one). `?cv=limit|paused|offline|timeout|unreadable|tooBig|unsupported|unavailable|
+// outdated` fails like the CV evaluation (`limit` also sets `cvUntil`), `?cv=used` starts with
+// the tries used up (`cvUntil`), `?cv=slow` takes as long as a real one, `?cv=none` closes the
+// file dialog. `profile_missing` names what a form still lacks like core's missing_required.
 // Engine 16 in the demo: the profile works three to five days a week for at least six months
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
@@ -65,7 +68,6 @@
 // come in the order of the backend (`Portal::ALL`).
 
 import type {
-  AppState,
   AskedTerm,
   Backup,
   Commands,
@@ -99,6 +101,7 @@ import {
 } from '../../ui/src/lib/ipc/types/profile';
 import type {
   CvFailure,
+  NextAppState,
   NextCommands,
   NextRunEvent as RunEvent,
   NextRunSummary,
@@ -286,9 +289,15 @@ const CV_FAILURE: Readonly<Record<string, CvFailure>> = {
   timeout: 'timeout',
   unreadable: 'unreadable',
   tooBig: 'tooLarge',
-  unavailable: 'paused',
+  unsupported: 'unsupported',
+  paused: 'paused',
+  unavailable: 'unavailable',
   outdated: 'outdated',
 };
+/** The day the CV import works again while its tries are used up. */
+const CV_UNTIL = '2026-09-25';
+/** What a drop of files on the window left for the CV import (the window keeps it). */
+let droppedFiles: string[] | null = null;
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 /** `mail=no-internet`: every fetch finds no network at all (`offline`, not `mailConnect`). */
 const NO_INTERNET = params.get('mail') === 'no-internet';
@@ -676,7 +685,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 /* -------------------------------------------------------------------- store */
 
 let jobs: JobView[] = [];
-let state: AppState;
+let state: NextAppState;
 /** `searching`: a search starts once the page asked for the state. */
 let autorun = false;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
@@ -902,6 +911,7 @@ function initial(): void {
     dataDir: DATA_DIR,
     logDir: `${DATA_DIR}/logs`,
     resetReport: null,
+    cvUntil: params.get('cv') === 'used' ? CV_UNTIL : null,
   };
   SCENARIOS[scenario]?.();
   // `?open=portal:id`: that job is open when the page comes (the store the app keeps it in).
@@ -1884,12 +1894,16 @@ const handlers: Handlers = {
   },
   // "Aus Lebenslauf ausfüllen": the CV merged into the one profile (or made into it), saved
   // at once, after the time an evaluation takes; `?cv=` fails like the evaluation.
-  profile_from_cv: async () => {
+  profile_from_cv: async ({ dropped }) => {
+    const files = droppedFiles;
+    droppedFiles = null;
+    if (dropped && (files === null || files.length === 0)) throw fail('notFound', { what: 'file' });
     const cv = params.get('cv');
     await new Promise((resolve) => setTimeout(resolve, cv === 'slow' ? 20_000 : CV_WAIT));
     if (cv === 'none') return null;
     const failure = cv === null || cv === 'slow' ? null : (CV_FAILURE[cv] ?? null);
     if (failure === 'offline') throw fail('offline');
+    if (failure === 'limit') state.cvUntil = CV_UNTIL;
     if (failure !== null) throw fail('cv' as ErrorInfo['kind'], { reason: failure });
     const form = mergeCv(state.profile?.form ?? null);
     state.profile = infoOf(form, [...CV_FIELDS]);
@@ -1899,6 +1913,7 @@ const handlers: Handlers = {
     refresh();
     return structuredClone(state.profile);
   },
+  profile_missing: ({ form }) => missingOf(form),
   search_terms: () => searchTerms(),
   // Fertig of the setup: the next start opens the Jobs view.
   finish_onboarding: () => {
@@ -2049,6 +2064,11 @@ const harness: Harness = {
     startRun(kind === 'details' ? { kind, keys: [] } : { kind }, null);
   },
   fire(name, payload) {
+    // The window keeps what was dropped for the CV import (AppState::note_drop).
+    if (name === 'tauri://drag-drop') {
+      const paths = (payload as { paths?: unknown } | null)?.paths;
+      droppedFiles = Array.isArray(paths) ? paths.filter((p) => typeof p === 'string') : [];
+    }
     for (const handler of listeners.get(name) ?? []) handler({ payload });
   },
   done: false,

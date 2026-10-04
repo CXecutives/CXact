@@ -548,6 +548,54 @@ test('"Aus Lebenslauf ausfüllen" waits while the form holds changes', async ({ 
   await expect(cv).not.toHaveAttribute('aria-disabled', 'true');
 });
 
+test('no evaluation left today: the CV buttons say so ahead of the click, a drop is not taken', async ({
+  page,
+}) => {
+  await profile(page, '&cv=used');
+  const cv = page.getByTestId('profile-from-cv');
+  await expect(cv).toHaveAttribute('aria-disabled', 'true');
+  expect(await tooltipOf(page, cv)).toBe(T.profile.cvError.limit);
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await page.waitForTimeout(100);
+  expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
+  await profile(page, '&scenario=no-profile&cv=used');
+  const pick = page.getByTestId('new-profile-cv');
+  await expect(pick).toHaveAttribute('aria-disabled', 'true');
+  expect(await tooltipOf(page, pick)).toBe(T.profile.cvError.limit);
+  // A limit met on the click turns the button off from then on.
+  await profile(page, '&cv=limit');
+  await cv.click();
+  await expect(page.getByTestId('cv-error')).toContainText(T.profile.cvError.limit);
+  await expect(cv).toHaveAttribute('aria-disabled', 'true');
+});
+
+test('a CV dropped anywhere on the profile page fills it like the button', async ({ page }) => {
+  await profile(page, '&scenario=profile-incomplete');
+  await page.evaluate(() => window.__harness.fire('tauri://drag-enter', { paths: [] }));
+  await expect(page.getByTestId('profile')).toHaveClass(/over/);
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await expect(page.getByTestId('profile')).not.toHaveClass(/over/);
+  await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
+  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: true });
+  // While the form holds changes the drop waits like the button.
+  await page.getByTestId('profile-wish-rate').fill('1.250');
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await page.waitForTimeout(100);
+  expect(await calls(page, 'profile_from_cv')).toHaveLength(1);
+  // On the start page too.
+  await profile(page, '&scenario=no-profile');
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+});
+
 test('a CV that fills nothing says why in one sentence, with its way on', async ({ page }) => {
   const cases: [string, keyof typeof T.profile.cvError, string | null][] = [
     ['limit', 'limit', null],
@@ -555,7 +603,9 @@ test('a CV that fills nothing says why in one sentence, with its way on', async 
     ['timeout', 'timeout', T.common.retry],
     ['unreadable', 'unreadable', T.profile.otherFile],
     ['tooBig', 'tooLarge', T.profile.otherFile],
-    ['unavailable', 'paused', null],
+    ['unsupported', 'unsupported', T.profile.otherFile],
+    ['unavailable', 'unavailable', T.common.retry],
+    ['paused', 'paused', null],
     ['outdated', 'outdated', null],
   ];
   for (const [cv, reason, again] of cases) {
@@ -605,6 +655,9 @@ test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once co
 }) => {
   await create(page);
   await expect(roles(page).locator('input')).toBeFocused();
+  // Before the first save core names what the new form still lacks.
+  await expect(page.getByTestId('profile-open')).toBeVisible();
+  expect(await calls(page, 'profile_missing')).not.toHaveLength(0);
   await expect(page.getByTestId('competence-row')).toHaveCount(1);
   await expect(page.getByTestId('language-row')).toHaveCount(0);
   await expect(bar(page)).toHaveCount(0);

@@ -27,7 +27,6 @@ import type {
   ErrorKind,
   InvalidInput,
   JobSort,
-  PauseReason,
   Place,
   Portal,
   ProfileForm,
@@ -35,7 +34,7 @@ import type {
   TermField,
   WorkMode,
 } from '../ipc/types';
-import type { CvFailure } from '../ipc/api';
+import type { CvFailure, NextPauseReason } from '../ipc/api';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import { formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
@@ -164,13 +163,14 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 };
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
-const pause: Record<PauseReason, string> = {
+const pause: Record<NextPauseReason, string> = {
   throttled: 'das Portal bremst die Aufrufe',
   blocked: 'das Portal blockiert die Aufrufe',
   layoutChanged: 'die Seiten sehen anders aus als erwartet',
   stateUnreadable: 'der Stand des Portals ist nicht lesbar',
   network: 'das Portal ist nicht erreichbar',
   challenged: 'das Portal verlangt eine Prüfung',
+  robots: 'die robots.txt des Portals erlaubt die Suche nicht',
 };
 
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
@@ -397,8 +397,8 @@ const reasonCode = {
   permanent: (p) => {
     if (p.excluded !== true) return 'Das klingt nach einer Festanstellung.';
     return p.stated === true
-      ? 'Der Job ist eine Festanstellung, das Profil schließt sie aus.'
-      : 'Das klingt nach einer Festanstellung, das Profil schließt sie aus.';
+      ? 'Der Job ist eine Festanstellung, sie wird ausgeschlossen.'
+      : 'Das klingt nach einer Festanstellung, sie wird ausgeschlossen.';
   },
   permanentRegion: (p) => {
     const place = p.location
@@ -512,12 +512,12 @@ const criteria = {
   noAnue: {
     label: 'Zeitarbeit',
     short: 'Zeitarbeit',
-    exclusion: 'Du schließt Zeitarbeit aus.',
+    exclusion: 'Zeitarbeit wird ausgeschlossen.',
   },
   noPermanent: {
     label: 'Festanstellung',
     short: 'Festanstellung',
-    exclusion: 'Du schließt Festanstellungen aus.',
+    exclusion: 'Festanstellungen werden ausgeschlossen.',
   },
   availability: {
     label: 'Verfügbarkeit',
@@ -761,7 +761,7 @@ export const de = {
     /** A ring without a usable profile. */
     off: 'Ohne Profil keine Übereinstimmung',
     /** The info symbol beside the band words of the job view. */
-    info: 'Wie gut der Job zu deinem Profil passt.',
+    info: 'Wie gut die Anforderungen der Anzeige zu deinem Profil passen.',
     infoLabel: 'Mehr zur Übereinstimmung',
     band: {
       high: 'Hohe Übereinstimmung',
@@ -1021,7 +1021,7 @@ export const de = {
   health: {
     /** A portal problem in one sentence that says whether to act (its row in the settings). */
     advice: {
-      paused: (reason: PauseReason, iso: string | null) => {
+      paused: (reason: NextPauseReason, iso: string | null) => {
         const why = pause[reason].charAt(0).toUpperCase() + pause[reason].slice(1);
         return iso
           ? `${why}, die Suche macht ab ${formatMoment(iso)} von selbst weiter.`
@@ -1065,7 +1065,9 @@ export const de = {
       outdated: 'Diese Version ist zu alt für die Auswertung.',
       unreadable: CV_UNREADABLE,
       tooLarge: CV_UNREADABLE,
+      unsupported: 'Dieses Format wird nicht unterstützt.',
       refused: CV_UNREADABLE,
+      unavailable: 'Die Auswertung ist gerade nicht verfügbar.',
     } satisfies Record<CvFailure, string>,
     otherFile: 'Andere Datei wählen',
     /** The required fields still empty, and the way to the first of them. */
@@ -1188,14 +1190,15 @@ export const de = {
     },
     /** The info symbols beside a label, one sentence each (only these places, docs/PLAN.md). */
     info: {
-      roles: 'Danach sucht CXact nach Jobs.',
-      contracts: 'Projekt und Interim sucht CXact immer, die anderen nur mit Haken.',
-      dayRate: 'Unter dem Minimum fällt ein Job raus, der Wunsch hebt passende Jobs.',
-      workMode: 'Ein Wunsch, er hebt passende Jobs und schließt keinen aus.',
-      countries: 'Jobs in anderen Ländern fallen raus, Remote-Jobs zählen überall.',
-      competences: 'Mit Stern zählt eine Kompetenz doppelt, höchstens fünf.',
-      industries: 'Mit Stern bevorzugst du eine Branche.',
-      exclusionWords: 'Steht eines dieser Wörter in der Anzeige, fällt der Job raus.',
+      roles: 'Danach sucht CXact.',
+      contracts:
+        'Projekt und Interim ist immer dabei. Was du sonst nicht wählst, wird ausgeschlossen.',
+      dayRate: 'Unter dem Minimum wird ein Job ausgeschlossen.',
+      workMode: 'Nur ein Wunsch, schließt nie aus.',
+      countries: 'Andere Länder werden ausgeschlossen. Remote gilt überall.',
+      competences: 'Bis zu fünf Schwerpunkte. Sie zählen doppelt.',
+      industries: 'Branchen, in denen du gern arbeitest.',
+      exclusionWords: 'Jobs, die so heißen, werden ausgeschlossen.',
     },
     /** The unit right of a number field. */
     unit: {
@@ -1386,7 +1389,7 @@ export const de = {
     /** The card of the terms the search asks the portals for, its info symbol, each term's
      *  last yield, and the way to change them. */
     terms: 'CXact sucht nach',
-    termsInfo: 'Die Begriffe kommen aus deinem Profil und gehen an jedes Jobportal.',
+    termsInfo: 'Aus deinem Profil.',
     termMatched: (value: number) => `zuletzt ${n(value)} passende`,
     termNew: 'neu',
     editTerms: 'Im Profil ändern',
@@ -1417,7 +1420,7 @@ export const de = {
     address: 'Gmail-Adresse',
     password: 'App-Passwort',
     /** The info symbol beside it. */
-    passwordInfo: 'Ein Passwort von Google nur für CXact, nicht dein Gmail-Passwort.',
+    passwordInfo: 'Ein eigenes Passwort nur für CXact, von Google.',
     createPassword: 'App-Passwort erstellen',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',

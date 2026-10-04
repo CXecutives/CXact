@@ -2,8 +2,8 @@
   The two ways to the profile as the rows of one card, each with its one button: "Aus
   Lebenslauf ausfüllen" (the CV is evaluated by an AI and the profile saved at once,
   fromCv.svelte.ts) and "Selbst ausfüllen" (the empty form, stored on "Speichern"). What went
-  wrong with the CV is said at the end of the card with its way on. The Profil view shows it
-  without a profile.
+  wrong with the CV is said at the end of the card with its way on; with no evaluation left
+  today its button says so ahead of the click. The Profil view shows it without a profile.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -36,6 +36,8 @@
       icon="pickFile"
       label={t.profile.pickCv}
       loading={fromCv.busy}
+      disabled={fromCv.limited}
+      disabledReason={t.profile.cvError.limit}
       testid="new-profile-cv"
       onclick={() => void cv()}
     />

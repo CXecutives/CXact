@@ -21,8 +21,6 @@ class Onboarding {
   error = $state<string | null>(null);
   /** Counts the evaluations begun: the answer of one that was cancelled is dropped. */
   #attempt = 0;
-  /** The file of the last evaluation (null: the file dialog), for "Erneut versuchen". */
-  #path: string | null = null;
   #begun = false;
   #finished = false;
 
@@ -36,7 +34,7 @@ class Onboarding {
     this.#begun = true;
     const asked = new URLSearchParams(location.search).get('step');
     if (isStep(asked)) {
-      if (asked === 'reading') void this.read(null);
+      if (asked === 'reading') void this.read(false);
       else this.go(asked);
       return;
     }
@@ -61,17 +59,16 @@ class Onboarding {
     return true;
   }
 
-  /** The CV (a dropped file, else the file dialog) evaluated: the profile it filled is
-   *  stored and reviewed next; a closed dialog goes back to the upload. */
-  async read(path: string | null): Promise<void> {
+  /** The CV (the files dropped on the window, else the file dialog) evaluated: the profile
+   *  it filled is stored and reviewed next; a closed dialog goes back to the upload. */
+  async read(dropped: boolean): Promise<void> {
     const mine = ++this.#attempt;
-    this.#path = path;
     this.failure = null;
     this.error = null;
     this.way = 'cv';
     this.step = 'reading';
     try {
-      const info = await fillFromCv(path);
+      const info = await fillFromCv(dropped);
       if (mine !== this.#attempt) return;
       if (info === null) {
         this.step = 'upload';
@@ -81,8 +78,11 @@ class Onboarding {
       if (mine === this.#attempt) this.step = 'review';
     } catch (failure) {
       if (mine !== this.#attempt) return;
-      if (failure instanceof CvError) this.failure = failure.reason;
-      else this.error = errorText(failure);
+      if (failure instanceof CvError) {
+        this.failure = failure.reason;
+        // The state names the day it works again.
+        if (failure.reason === 'limit') void app.load();
+      } else this.error = errorText(failure);
     }
   }
 
@@ -94,8 +94,9 @@ class Onboarding {
     this.step = 'upload';
   }
 
+  /** "Erneut versuchen": the backend took the dropped files, so the file dialog asks again. */
   retry(): void {
-    void this.read(this.#path);
+    void this.read(false);
   }
 
   /** "Selbst ausfüllen" after a failure: the form, empty or as stored. */

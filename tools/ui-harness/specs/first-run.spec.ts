@@ -90,7 +90,7 @@ test('the CV: upload, evaluation, review; Weiter saves and goes on to the alert 
   await expect(page.getByTestId('cv-reading')).toBeVisible();
   await expect(page.getByTestId('first-back')).toHaveCount(0);
   await expectStep(page, T.firstRun.review);
-  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ path: null });
+  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
   // The Profil's form in its setup mode: no title, no CV button, no save bar.
   await expect(page.getByTestId('profile-form')).toBeVisible();
   for (const gone of ['profile-heading', 'profile-from-cv', 'profile-jumps', 'profile-save-bar']) {
@@ -100,14 +100,12 @@ test('the CV: upload, evaluation, review; Weiter saves and goes on to the alert 
   // Zurück skips the evaluation.
   await page.getByTestId('first-back').click();
   await expectStep(page, T.firstRun.upload);
-  // A dropped file is read from its path.
+  // A dropped file is taken from the window: the page never sends its path.
   await page.evaluate(() =>
     window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
   );
   await expectStep(page, T.firstRun.review);
-  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({
-    path: 'C:/Users/demo/Lebenslauf.pdf',
-  });
+  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: true });
   await next(page).click();
   await expectStep(page, T.firstRun.alerts);
 });
@@ -119,7 +117,9 @@ test('a failed evaluation says one sentence and its ways on; Abbrechen goes back
     ['limit', 'limit', ['self']],
     ['offline', 'offline', ['retry', 'self']],
     ['unreadable', 'unreadable', ['otherFile', 'self']],
-    ['unavailable', 'paused', ['self']],
+    ['unsupported', 'unsupported', ['otherFile', 'self']],
+    ['unavailable', 'unavailable', ['retry', 'self']],
+    ['paused', 'paused', ['self']],
     ['outdated', 'outdated', ['self']],
   ] as const;
   for (const [cv, reason, ways] of cases) {

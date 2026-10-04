@@ -1,6 +1,7 @@
 <!--
   The upload of the setup: one zone with a dashed edge that takes the CV dropped on the window
-  (Tauri's drag and drop, `onFileDrag`) or chosen with "Datei wählen" (the backend's file
+  (Tauri's drag and drop, `onFileDrag`; the window keeps the file, the page never sends a
+  path) or chosen with "Datei wählen" (the backend's file
   dialog with the CV formats), the formats it reads in one quiet line and under the zone the
   one sentence about the AI ("Wird von einer KI ausgewertet."). While a file is dragged over
   the window the zone darkens a little.
@@ -12,8 +13,8 @@
   import { onFileDrag } from '$lib/ipc/api';
 
   interface Props {
-    /** The file dropped (its path), or null: the file dialog. */
-    onfile: (path: string | null) => void;
+    /** A file was dropped on the window (true), or the file dialog is to ask (false). */
+    onfile: (dropped: boolean) => void;
   }
   let { onfile }: Props = $props();
 
@@ -21,7 +22,7 @@
   $effect(() =>
     onFileDrag((drag) => {
       over = drag.kind === 'over';
-      if (drag.kind === 'drop' && drag.paths[0] !== undefined) onfile(drag.paths[0]);
+      if (drag.kind === 'drop' && drag.paths.length > 0) onfile(true);
     }),
   );
 </script>
@@ -34,7 +35,7 @@
     icon="pickFile"
     label={t.firstRun.pick}
     testid="upload-pick"
-    onclick={() => onfile(null)}
+    onclick={() => onfile(false)}
   />
   <p class="formats">{t.firstRun.formats}</p>
 </div>

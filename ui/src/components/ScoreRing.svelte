@@ -11,6 +11,8 @@
   green; `d0` ... `d9`) with ink digits. provisional (a score from a teaser only) looks exactly
   like a scored ring: the reader says once that the ad is only a preview. excluded: the ring
   and its number in grey (the fit is kept, so a wrong exclusion shows at once).
+  The tooltip names the band and the percentage; a ring with a number adds under it the one
+  sentence of what the match means (`score.info`, as the info symbol of the reader says it).
   Every ring without a score is one state and one look (not scored yet, being scored, not
   scorable, and off without a usable profile): the empty track with a dash. A score of 100 sets
   its digits smaller in the list ring.
@@ -113,6 +115,9 @@
     }
   });
 
+  /** What the match means, under the label of a ring with a number. */
+  const hint = $derived(valued && !ban ? t.score.info : null);
+
   function place(value: number): void {
     void number.set(value, { duration: 0 });
     shown = value;
@@ -175,7 +180,7 @@
   role="img"
   aria-label={label}
   data-testid={testid ?? undefined}
-  use:tooltip={label}
+  use:tooltip={{ text: label, hint }}
 >
   {@render face()}
 </span>

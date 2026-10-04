@@ -95,7 +95,9 @@ export const CV_PROBLEMS: Readonly<Record<CvFailure, readonly CvWay[]>> = {
   timeout: ['retry', 'self'],
   unreadable: ['otherFile', 'self'],
   tooLarge: ['otherFile', 'self'],
+  unsupported: ['otherFile', 'self'],
   refused: ['otherFile', 'self'],
+  unavailable: ['retry', 'self'],
   paused: ['self'],
   outdated: ['self'],
 };

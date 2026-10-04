@@ -7,7 +7,12 @@
   unless the window is low) and the form, whose save bar shows while it holds a change. A save
   is answered by a toast once the bar has gone, with what its rescore changed (saveEffect.ts).
   Leaving the view or closing the window with unsaved changes asks once ("Änderungen
-  speichern?", the heading alone).
+  speichern?", the heading alone). A CV dropped anywhere on the page (Tauri's drag and drop of
+  the window, the same path as the setup's upload; the page never sends a path) is evaluated
+  like "Aus Lebenslauf ausfüllen", while that button would take it (no changes in the form, an
+  evaluation left today); the page shows a dashed edge while such a file is over it.
+  "Noch 2 Angaben offen" follows the form: a new or changed form asks core what it still lacks
+  (`profileMissing`, a moment after the last edit), the stored profile names its own (`missing`).
   In the setup (`onboarding`, its step "Prüfen und ergänzen") the page is only the form and the
   line of what is still open: no title, no "Aus Lebenslauf ausfüllen", no jump links, no save
   bar and no "Häufig verlangt"; the setup's "Weiter" saves (`next`) and goes on only once
@@ -19,7 +24,7 @@
   import Dialog from '$components/Dialog.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
-  import { IpcError, invoke, onCloseRequested } from '$lib/ipc/api';
+  import { IpcError, invoke, onCloseRequested, onFileDrag, type FileDrag } from '$lib/ipc/api';
   import type { ProfileForm } from '$lib/ipc/types';
   import { crossfadeDuration, duration } from '$lib/motion/motion';
   import { app } from '$lib/state/app.svelte';
@@ -30,6 +35,7 @@
   import { toasts } from '$lib/state/toasts.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
+  import { draftMissing } from './draftMissing.svelte';
   import ProfileEditor, { type FieldError } from './ProfileEditor.svelte';
   import ProfileHeader from './ProfileHeader.svelte';
   import ProfileStart from './ProfileStart.svelte';
@@ -128,9 +134,12 @@
       return false;
     });
     const stopClose = onCloseRequested(() => void closeRequested());
+    // The setup takes its CV on its own upload step.
+    const stopDrag = onboarding ? () => undefined : onFileDrag(dragged);
     return () => {
       release();
       stopClose();
+      stopDrag();
       fromCv.clear();
       void invoke('set_unsaved', { on: false }).catch(() => undefined);
       // An untouched new form starts over next time.
@@ -166,9 +175,18 @@
     if (form !== null) editor.edit(form);
   }
 
-  async function fillFromCv(): Promise<void> {
-    const info = await fromCv.run();
+  async function fillFromCv(dropped = false): Promise<void> {
+    const info = await fromCv.run(dropped);
     if (info !== null) filled(info.form);
+  }
+
+  /** A file over the page that the CV import would take now. */
+  let over = $state(false);
+  const takesDrop = (): boolean => !editor.dirty && !fromCv.busy && !fromCv.limited;
+
+  function dragged(drag: FileDrag): void {
+    over = drag.kind === 'over' && takesDrop();
+    if (drag.kind === 'drop' && drag.paths.length > 0 && takesDrop()) void fillFromCv(true);
   }
 
   /** The caret into a field that has just appeared (the input of a chip field). */
@@ -271,11 +289,16 @@
 
   // ------------------------------------------------------------ what is still open
 
-  /** The required fields still empty, in the order of the page: core names them for the
-   *  stored profile (`missing`), the form drops those filled since. */
+  /** What core says a new or changed form still lacks. */
+  const draft = draftMissing();
+
+  /** The required fields still empty, in the order of the page: core names them (for a new
+   *  or changed form on asking, else for the stored profile), the form drops those filled
+   *  since at once. */
   const missing = $derived(
     FIELD_ORDER.filter(
-      (field) => (profile?.missing ?? []).includes(field) && blank(editor.after, field),
+      (field) =>
+        (draft.fields() ?? profile?.missing ?? []).includes(field) && blank(editor.after, field),
     ),
   );
   /** The fields the CV filled, while the form shows the stored profile. */
@@ -307,7 +330,7 @@
   }
 </script>
 
-<div class="page" class:bare={onboarding} data-testid="profile">
+<div class="page" class:bare={onboarding} class:over data-testid="profile">
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
   {:else if onboarding}
@@ -409,6 +432,13 @@
      otherwise the room under the last section stays (--page-end). */
   .page:has(> :global([data-save-bar])) {
     padding-bottom: 0;
+  }
+
+  /* A CV over the page: a dashed edge inside the column. */
+  .page.over {
+    border-radius: var(--radius-lg);
+    outline: var(--border-width) dashed var(--border-strong);
+    outline-offset: calc(-1 * var(--space-8));
   }
 
   /* In the setup the column is the setup's. */

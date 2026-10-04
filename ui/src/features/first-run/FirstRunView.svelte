@@ -77,7 +77,7 @@
   };
   const cvDoes: Record<CvWay, () => void> = {
     retry: () => onboarding.retry(),
-    otherFile: () => void onboarding.read(null),
+    otherFile: () => void onboarding.read(false),
     self: () => onboarding.byHand(),
   };
 
@@ -224,7 +224,7 @@
   {:else if id === 'way'}
     {@render way()}
   {:else if id === 'upload'}
-    <Upload onfile={(path) => void onboarding.read(path)} />
+    <Upload onfile={(dropped) => void onboarding.read(dropped)} />
   {:else if id === 'reading'}
     {@render reading()}
   {:else if id === 'review'}
