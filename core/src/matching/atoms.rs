@@ -2,8 +2,10 @@
 //! stemming (V1), bilingual concepts (V3), and the fit of two atoms including compounds
 //! (V2) and specific/general relations (V4).
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use super::lexicon::domains::{DOMAINS, Domain};
 use super::lexicon::{self, engine as lex};
@@ -12,7 +14,11 @@ use super::params::PACK_HITS;
 
 /// Case-folded, umlauts folded (`Übersicht` -> `ubersicht`, `ß` -> `ss`).
 pub(crate) fn fold(text: &str) -> String {
-    casefold(text)
+    let folded = casefold(text);
+    if !folded.contains(['ä', 'ö', 'ü']) {
+        return folded;
+    }
+    folded
         .chars()
         .map(|c| match c {
             'ä' => 'a',
@@ -43,7 +49,13 @@ pub(crate) struct Vocab {
     /// The concepts (values), sorted.
     values: Vec<String>,
     packs: Vec<&'static str>,
+    /// Its own number: the key of the atoms read with it ([`atoms`]). A clone is the same
+    /// table and keeps it.
+    id: u64,
 }
+
+/// The next [`Vocab::id`].
+static VOCAB_IDS: AtomicU64 = AtomicU64::new(0);
 
 /// The forms of a compound stem without one linking `s`: an `s` after four letters or more
 /// and before three or more (`werksleit` -> `werkleit`).
@@ -84,6 +96,7 @@ impl Vocab {
             by_linking_s,
             values,
             packs: packs.iter().map(|d| d.name).collect(),
+            id: VOCAB_IDS.fetch_add(1, Ordering::Relaxed),
         }
     }
 
@@ -115,6 +128,11 @@ impl Vocab {
     /// Every pack (the gap finder, tests).
     pub(crate) fn all() -> Self {
         Self::with(DOMAINS)
+    }
+
+    /// Its own number ([`Vocab::id`]).
+    pub(crate) fn id(&self) -> u64 {
+        self.id
     }
 
     /// Names of the switched-on packs.
@@ -219,11 +237,15 @@ pub(crate) fn stem(word: &str) -> String {
 
 /// Two passes, so `reportings` and `reporting` meet in `report`.
 fn stem_word(word: &str) -> String {
-    let once = stem_once(word);
-    stem_once(&once)
+    // A word the first pass keeps, the second keeps too.
+    match stem_once(word) {
+        Some(once) => stem_once(&once).unwrap_or(once),
+        None => word.to_owned(),
+    }
 }
 
-fn stem_once(word: &str) -> String {
+/// One pass of the rules; `None` when no rule changes the word.
+fn stem_once(word: &str) -> Option<String> {
     const RULES: &[(&str, &str)] = &[
         ("ungen", "ung"),
         ("heiten", "heit"),
@@ -239,7 +261,7 @@ fn stem_once(word: &str) -> String {
         ("s", ""),
     ];
     if word.len() < 5 || !word.is_ascii() {
-        return word.to_owned();
+        return None;
     }
     for (suffix, replacement) in RULES {
         if let Some(base) = word.strip_suffix(suffix) {
@@ -248,11 +270,11 @@ fn stem_once(word: &str) -> String {
                 continue;
             }
             if base.len() >= 4 {
-                return format!("{base}{replacement}");
+                return Some(format!("{base}{replacement}"));
             }
         }
     }
-    word.to_owned()
+    None
 }
 
 /// Gender forms end a word (`Personalleiter:in`, `Berater*innen`, `Leiter/in`,
@@ -328,11 +350,55 @@ fn kept(token: &str) -> Option<String> {
 /// concept whose words include a filler, a stopword or a short word (`US GAAP`, `Order to
 /// Cash`, `Year End Closing`) is found before those words go.
 pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Vec<String> {
-    let folded = strip_gender(&fold(text));
-    let split: Vec<&str> = raw_tokens(&folded)
-        .map(without_knowledge)
-        .flat_map(split_codes)
-        .collect();
+    // One job reads its title, items and lines many times (the ladder per Schwerpunkt, the
+    // caps, the relevance): each text once per vocabulary and thread.
+
+    let key = (vocab.id, text.to_owned());
+    if let Some(found) = READ_ATOMS.with(|read| read.borrow().get(&key).cloned()) {
+        return found;
+    }
+    let found = read_atoms(text, vocab);
+    READ_ATOMS.with(|read| {
+        let mut read = read.borrow_mut();
+        if read.len() >= ATOMS_KEPT {
+            read.clear();
+        }
+        read.insert(key, found.clone());
+    });
+    found
+}
+
+/// Forgets the texts [`atoms`] read on this thread (a new job: one job's texts are read
+/// again, another job's hardly).
+pub(crate) fn forget_atoms() {
+    READ_ATOMS.with(|read| read.borrow_mut().clear());
+}
+
+thread_local! {
+    /// The texts [`atoms`] read, by vocabulary.
+    static READ_ATOMS: RefCell<HashMap<(u64, String), Vec<String>>> = RefCell::new(HashMap::new());
+}
+
+/// So many texts [`atoms`] keeps per thread before it starts anew.
+pub(crate) const ATOMS_KEPT: usize = 4096;
+
+/// [`atoms`], read.
+fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
+    let folded = fold(text);
+    // Every gender form starts with one of these.
+    let folded = if folded.contains([':', '*', '_', '/', '(']) {
+        strip_gender(&folded)
+    } else {
+        folded
+    };
+    let mut split: Vec<&str> = Vec::new();
+    for token in raw_tokens(&folded).map(without_knowledge) {
+        if token.contains('/') {
+            split.extend(split_codes(token));
+        } else {
+            split.push(token);
+        }
+    }
     let raw: Vec<String> = numbered(
         &split
             .iter()
@@ -357,34 +423,41 @@ pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Vec<String> {
         }
         if let Some(t) = kept(&raw[i]) {
             // Hyphenated words that form a known concept count as that concept.
-            let spaced: Vec<String> = t.split('-').map(stem).collect();
+            let spaced: Vec<String> = if t.contains('-') {
+                t.split('-').map(stem).collect()
+            } else {
+                Vec::new()
+            };
             if spaced.len() > 1
                 && vocab
                     .concept_at(&spaced, 0)
                     .is_some_and(|(n, _)| n == spaced.len())
             {
                 pieces.extend(spaced.into_iter().map(|s| (s, false)));
+            } else if t == raw[i] {
+                pieces.push((full[i].clone(), false));
             } else {
                 pieces.push((stem(&t), false));
             }
         }
         i += 1;
     }
-    let stems: Vec<String> = pieces.iter().map(|(s, _)| s.clone()).collect();
+    let (mut stems, done): (Vec<String>, Vec<bool>) = pieces.into_iter().unzip();
     let mut result = Vec::with_capacity(stems.len());
     let mut i = 0;
     while i < stems.len() {
-        if pieces[i].1 {
-            result.push(stems[i].clone());
+        if done[i] {
+            result.push(std::mem::take(&mut stems[i]));
             i += 1;
         } else if let Some((len, concept)) = vocab
             .concept_at(&stems, i)
-            .filter(|(len, _)| !pieces[i..i + len].iter().any(|(_, done)| *done))
+            .filter(|(len, _)| !done[i..i + len].iter().any(|d| *d))
         {
             result.push(concept);
             i += len;
         } else {
-            result.push(stems[i].clone());
+            // Each stem is read here once, after every look ahead from before it.
+            result.push(std::mem::take(&mut stems[i]));
             i += 1;
         }
     }
@@ -618,6 +691,17 @@ fn linking_s(a: &str, b: &str) -> bool {
 fn fit_direct(job: &str, profile: &str) -> Fit {
     if job == profile {
         return Fit::Equal;
+    }
+    // Every relation below is one atom at the start or the end of the other, or a linking
+    // `s` (one letter more): the rest of the work only for those (the hot path of the
+    // relevance and the ladder).
+    if job.len().abs_diff(profile.len()) != 1
+        && !job.starts_with(profile)
+        && !job.ends_with(profile)
+        && !profile.starts_with(job)
+        && !profile.ends_with(job)
+    {
+        return Fit::None;
     }
     // A generic profile atom (`Management`) never reaches a compound
     // (`Projektmanagement`).

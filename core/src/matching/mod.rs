@@ -399,6 +399,8 @@ pub fn assess(
     if profile.quality == ProfileQuality::Empty {
         return None;
     }
+    // A new job: the texts the last one read are not read again.
+    fit::forget();
     let evaluation = engine::evaluate(&profile.engine, job);
     Some(explain::assessment(&profile.engine, job.text, &evaluation))
 }

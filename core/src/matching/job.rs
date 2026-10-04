@@ -218,10 +218,8 @@ fn section_phrases(text: &str) -> (Vec<Phrase<'_>>, Vec<usize>) {
             continue;
         }
         // `Interessiert? Dann freuen wir uns auf Ihre Bewerbung.` closes the ad.
-        if lex::CLOSING_WORDS
-            .iter()
-            .any(|w| fold(stripped).contains(w))
-        {
+        let folded = fold(stripped);
+        if lex::CLOSING_WORDS.iter().any(|w| folded.contains(w)) {
             current = Some(HeadingKind::Neutral);
             continue;
         }
@@ -297,7 +295,8 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
             }
             for sentence in sentences(stripped) {
                 let phrase = sections::clean_phrase(sentence);
-                let english = EN_CUES.iter().any(|c| fold(phrase).contains(c));
+                let folded = fold(phrase);
+                let english = EN_CUES.iter().any(|c| folded.contains(c));
                 let kind = sections::cue_kind(phrase).or(english.then_some(ReqKind::Must));
                 if let Some(kind) = kind {
                     let kind = if nice_cue(phrase) {
@@ -349,6 +348,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
             };
             nice |= nice_cue(whole);
             let kind = if nice { ReqKind::Nice } else { kind };
+            let years = years_in(whole);
             doc.items.push(Item {
                 span: Some(start + span.start..start + span.end),
                 text: with_tail(whole),
@@ -358,8 +358,8 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
                     .collect(),
                 kind,
                 class,
-                years: years_in(whole).map(|(min, _)| min),
-                years_max: years_in(whole).and_then(|(_, max)| max),
+                years: years.map(|(min, _)| min),
+                years_max: years.and_then(|(_, max)| max),
                 stage,
             });
         }

@@ -102,6 +102,10 @@ pub(crate) enum Inline<'a> {
 
 /// The inline heading of a line (`Anforderungen: ...`).
 pub(crate) fn inline_heading(line: &str) -> Inline<'_> {
+    // The pattern needs its colon: most lines have none.
+    if !line.contains([':', '：']) {
+        return Inline::None;
+    }
     let view = pyre::view(line);
     let Some(caps) = INLINE_HEADING.captures(&view) else {
         return Inline::None;

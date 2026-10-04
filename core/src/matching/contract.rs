@@ -7,8 +7,11 @@
 //! the portal (freelance portals list projects). A staffing agency without any of it stays
 //! unclear and is checked like a permanent role with an ANÜ risk.
 
+use std::collections::HashMap;
 use std::ops::Range;
+use std::sync::{LazyLock, Mutex};
 
+use regex::Regex;
 use serde_json::Value;
 
 use super::atoms::fold;
@@ -53,8 +56,24 @@ pub(crate) struct Contract {
     pub spans: Vec<Range<usize>>,
 }
 
-fn any(folded: &str, words: &[&str]) -> bool {
-    words.iter().any(|w| folded.contains(w))
+fn any(folded: &str, words: &'static [&'static str]) -> bool {
+    !words.is_empty() && any_of(words).is_match(folded)
+}
+
+/// A list of words as one pattern (built once per list): whether a text contains any of
+/// them, in one pass over the text instead of one per word.
+fn any_of(words: &'static [&'static str]) -> &'static Regex {
+    static BUILT: LazyLock<Mutex<HashMap<usize, &'static Regex>>> =
+        LazyLock::new(|| Mutex::new(HashMap::new()));
+    let mut built = BUILT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    built.entry(words.as_ptr() as usize).or_insert_with(|| {
+        let pattern: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
+        Box::leak(Box::new(
+            Regex::new(&pattern.join("|")).expect("a list of literal words"),
+        ))
+    })
 }
 
 /// A student or trainee role (`Werkstudent`, `Praktikum` in the title): employment, inferred
@@ -80,7 +99,13 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
     // A denied or merely possible later permanent position is no statement of one; a comma
     // between the words is none (`permanent, full-time`). A wage states an employment.
     let stated_at = |f: &str| {
-        let f = &f.replace(", ", " ");
+        let replaced;
+        let f = if f.contains(", ") {
+            replaced = f.replace(", ", " ");
+            replaced.as_str()
+        } else {
+            f
+        };
         (any(f, lex::PERMANENT_WORDS) || any(f, lex::PERMANENT_STATED) || wage_in(f))
             && !any(f, lex::PERMANENT_NEGATED)
             && !any(f, lex::PERMANENT_OPTION)

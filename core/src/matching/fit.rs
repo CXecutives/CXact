@@ -3,6 +3,9 @@
 //! two thirds of a long phrase = 0.5, generic atoms never alone (V1-V4, V15), language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 use super::atoms::{self, Fit, Vocab, fold};
 use super::job::{Class, Item, Stage, contains_word, language_of, names_degree};
 use super::lexicon::domains::DOMAINS;
@@ -121,6 +124,35 @@ impl Broad {
     pub(crate) fn names(&self, role: &Broad) -> bool {
         self.shared(role).next().is_some()
     }
+}
+
+thread_local! {
+    /// What ESCO names in the requirements read on this thread, by vocabulary.
+    static ITEM_BROAD: RefCell<HashMap<(u64, String), Broad>> = RefCell::new(HashMap::new());
+}
+
+/// What ESCO names in a requirement ([`Broad::skills`]), each text once per job: the ladder
+/// asks again for every Schwerpunkt.
+fn item_broad(text: &str, vocab: &Vocab) -> Broad {
+    let key = (vocab.id(), text.to_owned());
+    if let Some(found) = ITEM_BROAD.with(|read| read.borrow().get(&key).cloned()) {
+        return found;
+    }
+    let found = Broad::skills(text, vocab);
+    ITEM_BROAD.with(|read| {
+        let mut read = read.borrow_mut();
+        if read.len() >= atoms::ATOMS_KEPT {
+            read.clear();
+        }
+        read.insert(key, found.clone());
+    });
+    found
+}
+
+/// Forgets the texts read on this thread (a new job): the requirements and their atoms.
+pub(crate) fn forget() {
+    ITEM_BROAD.with(|read| read.borrow_mut().clear());
+    atoms::forget_atoms();
 }
 
 /// What the engine uses from the profile.
@@ -526,7 +558,7 @@ fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool
     }
     // ESCO, the broad layer: a concept the item and an entry both name.
     if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
-        let item = Broad::skills(text, &skills.vocab);
+        let item = item_broad(text, &skills.vocab);
         for (index, entry) in skills.entries.iter().enumerate() {
             if only.is_some_and(|only| !only.contains(&index)) {
                 continue;

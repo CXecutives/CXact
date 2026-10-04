@@ -896,6 +896,10 @@ pub(crate) fn readable_rate(text: &str) -> bool {
 }
 
 pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
+    // Every amount is written in digits.
+    if !folded.bytes().any(|b| b.is_ascii_digit()) {
+        return None;
+    }
     // Pay by commission is no rate (`Vergütung auf Provisionsbasis ... 250 € pro Workshop`).
     if lex::NO_RATE_WORDS.iter().any(|w| folded.contains(w))
         && !lex::NO_RATE_EXCEPT.iter().any(|w| folded.contains(w))

@@ -52,9 +52,12 @@ fn tokens(folded: &str) -> Vec<&str> {
 
 /// Whether the words at `at` are the entry `marker` (one or more words); the index after it.
 fn marker_at(words: &[&str], at: usize, marker: &str) -> Option<usize> {
-    let parts: Vec<&str> = marker.split(' ').collect();
-    let end = at + parts.len();
-    (words.get(at..end)? == parts.as_slice()).then_some(end)
+    let mut end = at;
+    for part in marker.split(' ') {
+        (*words.get(end)? == part).then_some(())?;
+        end += 1;
+    }
+    Some(end)
 }
 
 /// The index of the first word from `at` that is not one of `fillers`.
@@ -228,14 +231,26 @@ fn folded(words: &[(usize, &str)]) -> Vec<String> {
 
 /// Whether the folded words at `at` are the entry `marker`; the index after it.
 fn folded_marker(words: &[String], at: usize, marker: &str) -> Option<usize> {
-    let parts: Vec<&str> = marker.split(' ').collect();
-    let end = at + parts.len();
-    let found = words.get(at..end)?;
-    found.iter().zip(&parts).all(|(w, p)| w == p).then_some(end)
+    let mut end = at;
+    for part in marker.split(' ') {
+        (words.get(end)? == part).then_some(())?;
+        end += 1;
+    }
+    Some(end)
 }
 
 /// The person a line names after a contact word (a label only at the line's start).
 fn person(line: &str) -> Option<String> {
+    // A line without any contact word names no person (folding a line folds its words).
+    let folded_line = fold(line);
+    let first = |marker: &'static str| marker.split(' ').next().unwrap_or(marker);
+    if !lex::CONTACT_PERSON_WORDS
+        .iter()
+        .chain(lex::CONTACT_LABELS)
+        .any(|&m| folded_line.contains(first(m)))
+    {
+        return None;
+    }
     let words = spans(line);
     let folds = folded(&words);
     (0..words.len()).find_map(|at| {

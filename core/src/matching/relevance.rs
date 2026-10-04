@@ -2,7 +2,7 @@
 //! title fit (V17) and a BM25F-like lexical score over title x3, requirement lines x2 and
 //! the rest x1 with static specificity and a fixed document length (V18).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 
 use super::atoms::{self, Fit, Vocab, fold};
@@ -24,12 +24,23 @@ fn counts(text: &str, vocab: &Vocab) -> BTreeMap<String, u64> {
     map
 }
 
-fn occurrences(counts: &BTreeMap<String, u64>, profile_atom: &str) -> u64 {
-    counts
-        .iter()
-        .filter(|(job, _)| matches!(atoms::fit(job, profile_atom), Fit::Equal | Fit::Specific))
-        .map(|(_, n)| *n)
-        .sum()
+/// The atoms of each line read once, then [`counts`] over lines borrowing them.
+fn tally<'c>(
+    lines: impl Iterator<Item = &'c str>,
+    read: &'c HashMap<&str, Vec<String>>,
+) -> HashMap<&'c str, u64> {
+    let mut map = HashMap::new();
+    for line in lines {
+        for atom in read.get(line).into_iter().flatten() {
+            *map.entry(atom.as_str()).or_insert(0) += 1;
+        }
+    }
+    map
+}
+
+/// Does a job atom name a profile atom (the same or narrower)?
+fn matches(job: &str, profile_atom: &str) -> bool {
+    matches!(atoms::fit(job, profile_atom), Fit::Equal | Fit::Specific)
 }
 
 /// Distinct profile atoms with their static weight: specific 1000, generic 200; an atom
@@ -181,23 +192,57 @@ pub(crate) fn relevance(
     requirement_lines: &[Range<usize>],
 ) -> u64 {
     let title_counts = counts(title, vocab);
-    let all = counts(text, vocab);
-    let mut requirement_text = String::new();
-    for range in requirement_lines {
-        requirement_text.push_str(&text[range.clone()]);
-        requirement_text.push('\n');
+    // The atoms of each line and requirement phrase once.
+    let requirement_text = || {
+        requirement_lines
+            .iter()
+            .flat_map(|range| text[range.clone()].lines())
+    };
+    let mut read: HashMap<&str, Vec<String>> = HashMap::new();
+    for line in text.lines().chain(requirement_text()) {
+        read.entry(line)
+            .or_insert_with(|| atoms::atoms(line, vocab));
     }
-    let requirement_counts = counts(&requirement_text, vocab);
+    let all = tally(text.lines(), &read);
+    let requirement_counts = tally(requirement_text(), &read);
     let length = text.chars().count() as u64;
     // Length normalisation in per-mille: 1 - b + b * len / avg.
     let norm = (1000 - BM25_B) + BM25_B * length / BM25_LENGTH;
+    // Each distinct atom of the ad against the query once: the profile atoms it names.
+    let mut named: HashMap<&str, Vec<usize>> = HashMap::new();
+    for job in title_counts
+        .keys()
+        .map(String::as_str)
+        .chain(all.keys().copied())
+        .chain(requirement_counts.keys().copied())
+    {
+        named.entry(job).or_insert_with(|| {
+            query
+                .iter()
+                .enumerate()
+                .filter(|(_, (atom, _))| matches(job, atom))
+                .map(|(index, _)| index)
+                .collect()
+        });
+    }
+    let field = |counts: &mut dyn Iterator<Item = (&str, u64)>| {
+        let mut per_atom = vec![0u64; query.len()];
+        for (job, n) in counts {
+            for &index in named.get(job).into_iter().flatten() {
+                per_atom[index] += n;
+            }
+        }
+        per_atom
+    };
+    let in_title = field(&mut title_counts.iter().map(|(k, n)| (k.as_str(), *n)));
+    let in_all = field(&mut all.iter().map(|(k, n)| (*k, *n)));
+    let in_requirements = field(&mut requirement_counts.iter().map(|(k, n)| (*k, *n)));
     let mut mass: u64 = 0;
-    for (atom, weight) in query {
-        let in_title = occurrences(&title_counts, atom);
-        let in_requirements = occurrences(&requirement_counts, atom);
-        let in_rest = occurrences(&all, atom).saturating_sub(in_requirements);
-        let tf =
-            FIELD_TITLE * in_title + FIELD_REQUIREMENTS * in_requirements + FIELD_REST * in_rest;
+    for (index, (_, weight)) in query.iter().enumerate() {
+        let in_rest = in_all[index].saturating_sub(in_requirements[index]);
+        let tf = FIELD_TITLE * in_title[index]
+            + FIELD_REQUIREMENTS * in_requirements[index]
+            + FIELD_REST * in_rest;
         if tf == 0 {
             continue;
         }

@@ -27,6 +27,7 @@
 //!   and tasks: a wished industry named is met, only other industries named is missed,
 //!   none named is unknown.
 
+use std::cell::LazyCell;
 use std::ops::Range;
 use std::sync::LazyLock;
 
@@ -513,8 +514,9 @@ fn has_onsite(folded: &str) -> bool {
 /// remote days of a week (`zwei Tage vor Ort` = 60 %).
 fn stated_shares(folded: &str) -> Vec<u64> {
     let mut out = Vec::new();
-    let remote = has_remote(folded);
-    let onsite = has_onsite(folded);
+    // Read only where a share or days need them (most sentences state neither).
+    let remote = LazyCell::new(|| has_remote(folded));
+    let onsite = LazyCell::new(|| has_onsite(folded));
     let bytes = folded.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
@@ -539,7 +541,7 @@ fn stated_shares(folded: &str) -> Vec<u64> {
             let to_onsite = first_at(&head, lex::ONSITE_AD_WORDS);
             if to_onsite < to_remote {
                 out.push(100 - n);
-            } else if to_remote < to_onsite || remote {
+            } else if to_remote < to_onsite || *remote {
                 out.push(n);
             }
         }
@@ -564,7 +566,7 @@ fn stated_shares(folded: &str) -> Vec<u64> {
             let first_onsite = first_at(&after, lex::ONSITE_AD_WORDS);
             (first_remote < first_onsite, first_onsite < first_remote)
         } else {
-            (remote && !onsite, onsite && !remote)
+            (*remote && !*onsite, *onsite && !*remote)
         };
         let per_day = 100 / WORKDAYS;
         if days_remote {
