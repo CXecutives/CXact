@@ -772,6 +772,10 @@ mod tests {
         assert_eq!(all("Customer Experience").len(), 1);
         assert_eq!(all("Job Evaluation"), all("Stellenbewertung"));
         assert_eq!(all("General Counsel"), ["leitung-recht"]);
+        // Spellings the error analysis found: words apart, a space in a code, a typo.
+        assert_eq!(all("Projekt Management"), all("Projektmanagement"));
+        assert_eq!(all("SAP S/4 HANA"), all("SAP S/4HANA"));
+        assert_eq!(all("sehr gute Kentnisse in SAP FI"), all("SAP FI"));
     }
 
     #[test]

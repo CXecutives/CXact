@@ -48,10 +48,11 @@ const INDUSTRY_SKILLS: &[&str] = &["banken", "gesundheitswesen", "öffentlicher 
 
 /// Keys that are no term to write.
 const HIDDEN: &[&str] = &[
-    // Truncated stems and typos the engine forgives.
+    // Truncated stems, typos and spellings apart the engine forgives.
     "project manag",
     "interim manag",
     "change managment",
+    "projekt management",
     // Phrases that lost their small words (`of`, `&`, `to`) to the folding.
     "absatz produktionsplanung",
     "chemistry manufacturing controls",

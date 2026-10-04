@@ -295,6 +295,7 @@ pub(crate) const SYNONYM_WORDS: &[(&str, Option<&str>)] = &[
     ("qm", Some("qm")),
     ("restructuring", Some("restrukturierung")),
     ("restrukturierung", Some("restrukturierung")),
+    ("s/4", Some("s/4hana")),
     ("s4", Some("s/4hana")),
     ("s4/hana", Some("s/4hana")),
     ("s4hana", Some("s/4hana")),

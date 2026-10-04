@@ -103,7 +103,10 @@ pub(crate) const FILLERS: &[&str] = &[
     "jetzt",
     "jeweils",
     "keep",
+    "kenntniss",
     "kenntnissen",
+    "kentniss",
+    "kentnisse",
     "kurz",
     "kurze",
     "large",
@@ -296,6 +299,7 @@ pub(crate) const LIGHT_HEADS: &[&str] = &[
 pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
     ("project management", "projektmanagement"),
     ("project manag", "projektmanagement"),
+    ("projekt management", "projektmanagement"),
     ("programme management", "programmmanagement"),
     ("program management", "programmmanagement"),
     ("change management", "changemanagement"),
