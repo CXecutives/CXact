@@ -1,9 +1,9 @@
 <!--
-  One section of the profile form: the heading (H2, 17/600) and its fields in a card 12 px
-  below. Its id is the target of its jump link (`profile-section-{id}`).
+  One section of the profile form: its heading above the card and its rows in the card
+  (components/Section). The rows bring their own padding and hairlines (ProfileEditor).
 -->
 <script lang="ts">
-  import Card from '$components/Card.svelte';
+  import Section from '$components/Section.svelte';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -15,38 +15,18 @@
   let { id, heading, children }: Props = $props();
 </script>
 
-<section
-  class="section"
-  id="profile-section-{id}"
-  aria-labelledby="profile-section-{id}-heading"
-  data-section={id}
-  data-testid="section-{id}"
->
-  <h2 class="heading" id="profile-section-{id}-heading" tabindex="-1">{heading}</h2>
-  <Card padding="md">
-    <div class="fields">{@render children()}</div>
-  </Card>
-</section>
+<Section id="profile-section-{id}" name={id} {heading} padding="none" testid="section-{id}">
+  <div class="fields">{@render children()}</div>
+</Section>
 
 <style>
-  /* A jump lands the heading under the jump links. */
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-    scroll-margin-top: calc(var(--control-field) + var(--space-16));
-  }
-
-  .heading {
-    color: var(--text-heading);
-    font: var(--type-lg);
-    outline: none;
-  }
-
+  /* The rows run edge to edge and pad their content by the card's inset; the fields ask its
+     width (Field `side`). */
   .fields {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    padding: 0 var(--card-padding);
     container-type: inline-size;
+    --row-inset: var(--card-padding);
   }
 </style>

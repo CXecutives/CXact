@@ -149,11 +149,6 @@
     gap: var(--space-8);
   }
 
-  /* Under a field like its hint; under the competences the section's gap spaces it. */
-  :global(.field) + .asked {
-    padding-top: var(--space-6);
-  }
-
   .label {
     flex: none;
     color: var(--text-subtle);

@@ -4,7 +4,8 @@
   the tone, the text in ink), with at most one action, a small secondary button with the
   glyph the same action has everywhere else, and an optional × at the end that hides the
   note (a problem that waits for the next run); inline, the button is centred on the
-  sentence's first line. Info is navy. A notice that appears in
+  sentence's first line. Info is navy. A sentence with links in it (the missing line of the
+  profile) comes as `children` instead of `text`. A notice that appears in
   a view already on screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that
   comes with its view is simply there.
 -->
@@ -13,6 +14,7 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { fade, rise } from '$lib/motion/transitions';
   import Button from './Button.svelte';
   import Icon, { type IconName } from './Icon.svelte';
@@ -21,7 +23,7 @@
     tone?: NoticeTone;
     variant?: 'inline' | 'banner' | 'row';
     heading?: string | null;
-    text: string;
+    text?: string;
     action?: {
       label: string;
       icon?: IconName | null;
@@ -31,16 +33,19 @@
     /** The × at the end that hides the note (its label is its accessible name). */
     dismiss?: { label: string; testid?: string | null; onclick: () => void } | null;
     testid?: string | null;
+    /** The sentence when it holds more than words (links). */
+    children?: Snippet;
   }
 
   let {
     tone = 'info',
     variant = 'banner',
     heading = null,
-    text,
+    text = '',
     action = null,
     dismiss = null,
     testid = null,
+    children,
   }: Props = $props();
 
   const ICONS: Record<NoticeTone, IconName> = {
@@ -62,7 +67,9 @@
   <span class="icon"><Icon name={ICONS[tone]} size="sm" /></span>
   <div class="copy">
     {#if heading}<p class="heading">{heading}</p>{/if}
-    <p class="text">{text}</p>
+    <p class="text">
+      {#if children}{@render children()}{:else}{text}{/if}
+    </p>
   </div>
   {#if action || dismiss}
     <span class="action">
@@ -98,12 +105,12 @@
     font: var(--type-sm);
   }
 
-  /* A tinted box whose content starts where a card's does (20 px in); its edge is its own
-     tint in every tone, so no tone draws a line of its own. */
+  /* A tinted box whose content starts where a card's does; its edge is its own tint in every
+     tone, so no tone draws a line of its own. */
   .banner {
     align-items: center;
-    gap: var(--space-12);
-    padding: var(--space-12) var(--space-20);
+    gap: var(--space-8);
+    padding: var(--space-8) var(--card-padding);
     border: var(--border-width) solid var(--notice-line);
     border-radius: var(--radius-card);
     background-color: var(--notice-bg);
@@ -113,7 +120,7 @@
 
   .row {
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-8);
     color: var(--text);
     font: var(--type-md);
   }

@@ -19,7 +19,7 @@ import {
   text,
   viewsSettled,
 } from './fixtures';
-import { failNext, rowMenu, SEARCHED, showTab, T, tokenColour, tokenPx, viaMenu } from './helpers';
+import { failNext, rowMenu, SEARCHED, reveal, T, tokenColour, tokenPx, viaMenu } from './helpers';
 
 // Every view switch, the Jobs view included, is the same: the old view fades out, then the new
 // one fades in, so two views are never readable at once. Recorded from the Web Animations
@@ -83,12 +83,10 @@ const sidebarWidth = async (page: Page): Promise<number> =>
 
 const tooltip = (page: Page) => page.getByRole('tooltip');
 
-/** Einstellungen on Portale (the mailbox's tab), chosen with the arrows like a keyboard user
- *  would (a click would make the next focus() a pointer's, which shows no tooltip). */
-async function mailboxTabByKeys(page: Page): Promise<void> {
-  await page.getByTestId('settings-tab-data').focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect(page.getByTestId('settings-panel-portals')).toBeVisible();
+/** A key that moves, like a keyboard user's (after a click the next focus() would be a
+ *  pointer's, which shows no tooltip). */
+async function byKeys(page: Page): Promise<void> {
+  await page.keyboard.press('Tab');
 }
 
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
@@ -484,7 +482,7 @@ test('per-OS convention: the order of dialog buttons', async ({ page }) => {
   const order = async (os: string): Promise<string[]> => {
     await open(page, `?platform=${os}`);
     await page.getByTestId('nav-settings').click();
-    await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
+    await (await reveal(page, page.getByTestId('mailbox-remove'))).click();
     const dialog = page.getByTestId('dialog-remove-mailbox');
     await expect(dialog).toBeVisible();
     return dialog.getByRole('button').allInnerTexts();
@@ -714,7 +712,7 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
 }) => {
   await open(page, `${WIN}&view=settings`);
   const words = await text(page, 'settings.openPortal');
-  await mailboxTabByKeys(page);
+  await byKeys(page);
   const first = page.getByTestId('open-portal-freelance');
   await first.focus();
   // Not at once: after the same delay as hovering (checked right away, not after a fixed
@@ -741,7 +739,7 @@ test('a disabled button that says why stays a Tab stop; its reason shows on focu
 }) => {
   // While a run holds the mailbox, Ändern waits and says why.
   await open(page, `${WIN}&view=settings&scenario=running`);
-  await mailboxTabByKeys(page);
+  await byKeys(page);
   await page.getByTestId('mailbox-change').focus();
   await expect(page.getByTestId('mailbox-change')).toBeFocused();
   await expect(page.getByTestId('mailbox-change')).toHaveAttribute('aria-disabled', 'true');
@@ -787,8 +785,8 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await page.setViewportSize({ width: 1100, height: 400 });
   await open(page, `${WIN}&view=settings`);
   const view = (id: string) => page.getByTestId(`view-${id}`);
-  // Portale, the tab it opens on, scrolls that far at this height (once its terms came).
-  await expect(page.getByTestId('search-term').first()).toBeVisible();
+  // The page scrolls that far at this height.
+  await expect(page.getByTestId('portal-hays')).toBeVisible();
   await view('settings').evaluate((node) => (node.scrollTop = 200));
   await page.getByTestId('nav-profile').click();
   await viewsSettled(page);
@@ -804,49 +802,43 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await expect.poll(() => view('profile').evaluate((node) => node.scrollTop)).toBe(260);
 });
 
-test('the first line: the sidebar entry, the tabs and the first headings share one middle', async ({
+test('the first line: the sidebar entry, the tabs and the titles share one middle', async ({
   page,
 }) => {
   await open(page, WIN);
   const line = middle(await page.getByTestId('nav-jobs').boundingBox());
   expect(middle(await page.getByTestId('places').boundingBox())).toBe(line);
-  // The views' first headings take the row with `data-first-row` (tokens.css --first-row).
-  // Profil and Einstellungen carry the attribute; their views still place the heading on
-  // the row (until then the offset is noted, not failed).
-  for (const view of ['profile', 'settings']) {
+  // The title of every page's head stands on the same row.
+  for (const [view, title] of [
+    ['profile', 'profile-heading'],
+    ['settings', 'settings-heading'],
+  ] as const) {
     await open(page, `${WIN}&view=${view}`);
-    const first = page.locator(`[data-testid="view-${view}"] [data-first-row]`).first();
+    const first = page.getByTestId(title);
     await expect(first, view).toBeVisible();
-    const at = middle(await first.boundingBox());
-    if (at !== line) {
-      test
-        .info()
-        .annotations.push({ type: 'first-row', description: `${view}: ${at} for ${line}` });
-      continue;
-    }
-    expect(at, view).toBe(line);
+    expect(Math.abs(middle(await first.boundingBox()) - line), view).toBeLessThanOrEqual(1);
   }
+  await open(page, `${WIN}&open=freelancermap:2801`);
+  const reader = page.getByTestId('reader-title');
+  await expect(reader).toBeVisible();
+  // Once it has risen in.
+  await expect
+    .poll(async () => Math.abs(middle(await reader.boundingBox()) - line))
+    .toBeLessThanOrEqual(1);
 });
-
-test('a toast lies above the save bar of Profil; its Zeigen opens the finished fetch', async ({
+test('a toast of a finished fetch over Profil: its Zeigen opens the fetch once the change goes', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1360, height: 700 });
   await open(page, `${WIN}&view=profile&tick=5`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  // The save bar shows while the form holds a change.
+  // Speichern shows in the head while the form holds a change.
   await page.getByTestId('profile-wish-rate').fill('1.300');
+  await expect(page.getByTestId('profile-save')).toBeVisible();
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
   const toast = page.getByTestId('toast');
   await expect(toast.getByTestId('toast-action')).toHaveText('Zeigen');
-  const bar = (await page.getByTestId('profile-save-bar').boundingBox())!;
-  await expect
-    .poll(async () => {
-      const box = (await toast.boundingBox())!;
-      return box.y + box.height <= bar.y;
-    })
-    .toBe(true);
   // Zeigen is no undo: a click opens the run in Jobs (once the change is discarded).
   await page.getByTestId('profile-discard').click();
   const show = toast.getByTestId('toast-action');
@@ -854,11 +846,10 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
   await show.click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
-
 for (const os of [WIN, MAC]) {
   test(`a dialog leaves the top bar free, and the bar moves the window ${os}`, async ({ page }) => {
     await open(page, `${os}&view=settings`);
-    await (await showTab(page, page.getByTestId('reset'))).click();
+    await (await reveal(page, page.getByTestId('reset'))).click();
     await expect(page.getByTestId('dialog-reset')).toBeVisible();
     await settle(page);
     const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
@@ -869,26 +860,21 @@ for (const os of [WIN, MAC]) {
     expect(hit).toBe(true);
   });
 }
-test('a start whose data cannot load: try again, a backup, the log, the data folder', async ({
-  page,
-}) => {
+test('a start whose data cannot load: try again, a backup, the data folder', async ({ page }) => {
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
   await expect(failed).toContainText(await text(page, 'shell.loadFailed'));
-  // The log and the folder with the glyph they have everywhere.
-  for (const id of ['open-log', 'open-data']) {
-    await expect(page.getByTestId(id).locator('svg')).toHaveCount(1);
-  }
-  await page.getByTestId('open-log').click();
+  // No way to the log (it is written quietly); the folder with the glyph it has everywhere.
+  await expect(page.getByTestId('open-log')).toHaveCount(0);
+  await expect(page.getByTestId('open-data').locator('svg')).toHaveCount(1);
   await page.getByTestId('open-data').click();
   const targets = (await calls(page, 'open_target')).map(
     ([, args]) => (args as { target: { kind: string } }).target.kind,
   );
-  expect(targets).toEqual(['logDir', 'dataDir']);
+  expect(targets).toEqual(['dataDir']);
   await failed.getByRole('button', { name: await text(page, 'common.retry') }).click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
-
 test('a start whose data cannot load offers the backups; a restore loads the app', async ({
   page,
 }) => {
@@ -1077,7 +1063,7 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
   };
   // A portal's switch on, then (the press switched it) off.
   const id = 'toggle-enabled-linkedin';
-  await showTab(page, page.getByTestId(id));
+  await reveal(page, page.getByTestId(id));
   for (const state of ['true', 'false']) {
     await expect(page.getByTestId(id)).toHaveAttribute('aria-checked', state);
     const [rest, hover, pressed] = await steps(id);
@@ -1100,7 +1086,7 @@ test('deleting is one look: Löschen and Endgültig löschen are red, the other 
 
 test('a dialog confirms with the bare verb of its heading', async ({ page }) => {
   await settings(page);
-  await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
+  await (await reveal(page, page.getByTestId('mailbox-remove'))).click();
   await expect(page.getByTestId('dialog-remove-mailbox').getByTestId('dialog-confirm')).toHaveText(
     'Entfernen',
   );
@@ -1224,11 +1210,10 @@ test('Tab passes disabled switches; a disabled button that says why stays a Tab 
 }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
   const landed: { id: string; role: string | null; tag: string }[] = [];
-  // Through every tab of the page (one shows at a time).
-  for (const tab of ['portals', 'data']) {
-    await page.getByTestId(`settings-tab-${tab}`).click();
+  // Through the page.
+  {
     await page.getByTestId('nav-settings').focus();
-    for (let stop = 0; stop < 40; stop += 1) {
+    for (let stop = 0; stop < 60; stop += 1) {
       await page.keyboard.press('Tab');
       const disabled = await page.evaluate(() => {
         const node = document.activeElement;
@@ -1313,7 +1298,7 @@ test('a chip value copies; a double click still edits it; its x has no tooltip',
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const keywords = await showTab(page, page.getByTestId('profile-tools'));
+  const keywords = await reveal(page, page.getByTestId('profile-tools'));
   const chip = keywords.locator('[data-chip]').first();
   const text = chip.locator('.text');
   await text.scrollIntoViewIfNeeded();
@@ -1344,9 +1329,9 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
   // Each on its own tab (one shows at a time, all of one width).
-  const toggle = await edge(await showTab(page, page.getByTestId('toggle-enabled-linkedin')));
+  const toggle = await edge(await reveal(page, page.getByTestId('toggle-enabled-linkedin')));
   for (const id of ['profiles-open', 'reset']) {
-    const button = await edge(await showTab(page, page.getByTestId(id)));
+    const button = await edge(await reveal(page, page.getByTestId(id)));
     expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
   }
 });
@@ -1357,8 +1342,8 @@ test('a notice banner shares the inset of the cards and draws no line of its own
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
   const icon = (await banner.locator(':scope > .icon').boundingBox())!.x;
-  const reset = await showTab(page, page.getByTestId('reset-all'));
-  const label = (await reset.locator('.label').first().boundingBox())!.x;
+  const reset = await reveal(page, page.getByTestId('reset-all'));
+  const label = (await reset.locator('.hint').first().boundingBox())!.x;
   expect(icon).toBe(label);
   const same = async (notice: Locator): Promise<boolean> =>
     notice.evaluate((node) => {
@@ -1366,9 +1351,6 @@ test('a notice banner shares the inset of the cards and draws no line of its own
       return style.borderTopColor === style.backgroundColor;
     });
   expect(await same(banner)).toBe(true);
-  // The warning of the reset report too.
-  await open(page, `${WIN}&scenario=reset`);
-  expect(await same(page.getByTestId('first-reset-report'))).toBe(true);
 });
 
 test('one glyph per action: retries load again, what deletes for good shares its glyph', async ({
@@ -1698,8 +1680,9 @@ test('toasts stay while hovered and leave on their own', async ({ page }) => {
   await expect(toasts).toHaveCount(1);
   await page.getByTestId('nav-profile').click();
   await page.getByTestId('profile-from-cv').click();
+  await page.getByTestId('cv-drop').click();
   await expect(toasts).toHaveCount(2);
-  // Enter saves (the toasts stand over the save bar).
+  // Enter saves.
   await page.getByTestId('profile-wish-rate').fill('1.300');
   await page.getByTestId('profile-wish-rate').press('Enter');
   await expect(toasts).toHaveCount(3);

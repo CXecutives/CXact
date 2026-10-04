@@ -171,7 +171,8 @@ test('the mail part fails, the search works: it ends completed, the mailbox is t
   await expect(warning.getByTestId('toast-action')).toHaveText(T.run.checkMailbox);
   await expect(page.getByTestId('toast').filter({ hasText: T.toast.runDone(1) })).toHaveCount(1);
   await warning.getByTestId('toast-action').click();
-  await expect(page.getByTestId('settings-tab-portals')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('settings-mailbox')).toBeVisible();
 });
 
 test('the reader stays with the selected job while a run updates the one before', async ({

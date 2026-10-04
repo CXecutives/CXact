@@ -98,9 +98,11 @@
     font: var(--type-lg);
   }
 
+  /* A centred sentence breaks into lines of a like length. */
   .text {
     color: var(--text-muted);
     font: var(--type-body);
+    text-wrap: balance;
   }
 
   .actions {

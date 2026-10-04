@@ -1,9 +1,10 @@
 <!--
-  The languages: over the rows the heads of their columns (Sprache, Niveau, like the
-  competences), one row each with the language and its level, both selects in a row of fields
-  (the common languages by their German names, as the engine reads them; the levels in plain
-  words with their CEFR level), then "Sprache hinzufügen", whose menu lists the common
-  languages not chosen yet; a new row starts at B2, the level the engine assumes. A language
+  The languages: one row each with the language and its level, both selects in a row of
+  fields (the common languages by their German names, as the engine reads them; the levels in
+  plain words with their CEFR level), then "Sprache hinzufügen", whose menu lists the common
+  languages not chosen yet; a new row starts at B2, the level the engine assumes. Without a
+  language a blank row stands instead (its select says "Sprache wählen", with "Pflicht" and
+  the amber edge while it is required): choosing a language makes it the first row. A language
   of the profile that is no common one (from the CV) stays as it is. The x of a row needs no
   tooltip; removing a row puts no caret anywhere (input.ts removeBy). A value the backend
   refused is said under the rows.
@@ -19,11 +20,13 @@
 
   interface Props {
     rows: Language[];
+    /** Required and still empty: the blank row's select is amber and says "Pflicht". */
+    missing?: boolean;
     /** A value the backend refused and why. */
     error?: { row: number | null; text: string } | null;
   }
 
-  let { rows = $bindable(), error = null }: Props = $props();
+  let { rows = $bindable(), missing = false, error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   const id = $props.id();
@@ -57,6 +60,9 @@
   };
 
   let adder = $state<HTMLElement | null>(null);
+  /** The level of the blank row, until its language makes it a row. */
+  let blankLevel = $state<LanguageLevel>(ASSUMED);
+  const BLANK = $derived(COMMON.map((name) => ({ id: name, label: name })));
 
   /** "Sprache hinzufügen": the common languages not chosen yet, a new row at B2. */
   function openAdd(event: MouseEvent): void {
@@ -74,12 +80,33 @@
   }
 </script>
 
-<div class="list" data-testid="languages" data-removes>
-  {#if rows.length > 0}
-    <div class="head" aria-hidden="true">
-      <span>{words.language}</span>
-      <span>{words.level}</span>
-      <span></span>
+<div class="list" class:empty={rows.length === 0} data-testid="languages" data-removes>
+  {#if rows.length === 0}
+    <div class="row blank" data-testid="language-blank">
+      <span class="select">
+        <MenuButton
+          options={BLANK}
+          value=""
+          placeholder={missing
+            ? t.profile.required(words.languagePlaceholder)
+            : words.languagePlaceholder}
+          {missing}
+          menuLabel={words.language}
+          field
+          testid="language-name"
+          onchange={(name) => (rows = [{ language: name, level: blankLevel }])}
+        />
+      </span>
+      <span class="select">
+        <MenuButton
+          options={LEVELS}
+          value={blankLevel}
+          menuLabel={words.level}
+          field
+          testid="language-level"
+          onchange={(next) => (blankLevel = next)}
+        />
+      </span>
     </div>
   {/if}
   {#each rows as row (row)}
@@ -120,40 +147,42 @@
   {#if error}
     <p class="error" id="{id}-error" role="alert" data-testid="language-error">{error.text}</p>
   {/if}
-  <span bind:this={adder} data-remove-fallback>
-    <Button
-      variant="secondary"
-      icon="add"
-      label={words.addLanguage}
-      menu
-      testid="language-add"
-      onclick={openAdd}
-    />
-  </span>
+  {#if rows.length > 0}
+    <span class="add" bind:this={adder} data-remove-fallback>
+      <Button
+        variant="secondary"
+        icon="add"
+        label={words.addLanguage}
+        menu
+        testid="language-add"
+        onclick={openAdd}
+      />
+    </span>
+  {/if}
 </div>
 
 <style>
+  /* language | level | remove in one grid for every row: the levels as wide as the widest
+     of them, the languages take the rest; the blank row has nothing to remove. */
   .list {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-8);
-  }
-
-  /* language | level | remove: both selects as wide as their column in every row. */
-  .head,
-  .row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--control-field);
+    grid-template-columns: minmax(0, 1fr) max-content var(--control-field);
     align-items: center;
-    gap: var(--space-6) var(--space-12);
-    width: 100%;
+    gap: var(--space-6);
   }
 
-  .head {
-    color: var(--text);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
+  .list.empty {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .row {
+    display: contents;
+  }
+
+  .add,
+  .error {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .select,

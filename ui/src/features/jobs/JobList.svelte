@@ -6,8 +6,8 @@
   the rows on screen glide to their new place (150 ms); rows off screen and new rows are
   simply there. A search and live updates never move anything. A row the user moves out
   (archive, delete, restore) folds its height away. An unopened job carries the coral dot
-  until it is opened. At the end of every place the excluded jobs, grey with the ban in the
-  ring's place, in one section "Ausgeschlossen (n)" that is folded by default (the choice is
+  until it is opened. At the end of every place the excluded jobs, their titles muted and the
+  red ban in the ring's place, in one section "Ausgeschlossen (n)" that is folded by default (the choice is
   kept; it opens when its job is opened from elsewhere). A page that fails to load while
   scrolling says so at the end of the list, with a retry. A search looks in the list's place;
   under its hits a button names each other place with hits ("Im Archiv (2)", counted with
@@ -673,10 +673,10 @@
      under it, so nothing moves when the rows arrive. */
   .skeleton-row {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-12);
+    align-items: center;
+    gap: var(--space-10);
     height: var(--row-height);
-    padding: var(--space-12) var(--pane-padding);
+    padding: var(--list-row-pad) var(--pane-padding);
     border-bottom: var(--border-width) solid var(--border);
   }
 

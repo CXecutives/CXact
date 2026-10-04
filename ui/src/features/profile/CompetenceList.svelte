@@ -1,10 +1,11 @@
 <!--
   The core competences: one row each with the star of a Schwerpunkt (outlined, filled while
-  marked), the competence and its years, then "Kompetenz hinzufügen". The star says what a
-  click does (mark, or remove the Schwerpunkt); the count stands over the stars ("2/5"). At
-  most five: a sixth star is disabled and its tooltip says why, as does the star of a row
-  without a competence. The x of a row needs no tooltip, and no field repeats its column's
-  name as a placeholder. A value that is too large (the years) or that the backend refused
+  marked), the competence and its years at the right ("Jahre" as their placeholder), then
+  "Kompetenz hinzufügen". The star says what a click does (mark, or remove the Schwerpunkt).
+  At most five: a sixth star is disabled and its tooltip says why, as does the star of a row
+  without a competence. The x of a row needs no tooltip. Without a competence a blank field
+  stands instead (with "Pflicht" and the amber edge while it is required): what is typed
+  there becomes the first row. A value that is too large (the years) or that the backend refused
   marks its row. Enter goes to the next row, adds one after the last and ends the list on an
   empty last row (rows.ts); it never saves the profile. Removing a row puts no caret anywhere
   (input.ts removeBy): after a click the focus is dropped, from the keyboard it goes to the
@@ -24,11 +25,13 @@
 
   interface Props {
     rows: Competence[];
+    /** Required and still empty: the blank field is amber and says "Pflicht". */
+    missing?: boolean;
     /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
   }
 
-  let { rows = $bindable(), error = null }: Props = $props();
+  let { rows = $bindable(), missing = false, error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   vocabulary.load();
@@ -57,19 +60,37 @@
     focusRow(list, rows.length - 1);
   }
 
+  /** The first letters typed into the blank field: they become the first row, which keeps
+   *  the caret. */
+  async function begin(text: string): Promise<void> {
+    if (text === '') return;
+    rows = [{ name: text, years: null, focus: false }];
+    await tick();
+    const input = list?.querySelector<HTMLInputElement>('[data-row] input');
+    input?.focus();
+    input?.setSelectionRange(text.length, text.length);
+  }
+
   const blank = (row: Competence): boolean => row.name.trim() === '' && row.years === null;
   const enter = (row: Competence): void =>
     void enterRow({ list, rows, row, blank, add: append, remove });
 </script>
 
 <div class="list" bind:this={list} data-testid="competences" data-removes>
-  {#if rows.length > 0}
-    <div class="head" aria-hidden="true">
-      <span class="count" data-testid="focus-count">{words.focusCount(stars, MAX_FOCUS)}</span>
-      <span>{words.competence}</span>
-      <span>{words.years}</span>
-      <span></span>
-    </div>
+  {#if rows.length === 0}
+    <span class="blank">
+      <TextField
+        value=""
+        id="{id}-name-0"
+        label={words.competence}
+        placeholder={missing
+          ? t.profile.required(words.competencePlaceholder)
+          : words.competencePlaceholder}
+        {missing}
+        testid="competence-blank"
+        oninput={(text) => void begin(text)}
+      />
+    </span>
   {/if}
   {#each rows as row, index (row)}
     {@const wrong = row === refused}
@@ -99,7 +120,12 @@
           bind:value={row.name}
           id="{id}-name-{index}"
           label={words.competence}
-          placeholder={rows.length === 1 ? words.competencePlaceholder : null}
+          placeholder={rows.length === 1
+            ? missing
+              ? t.profile.required(words.competencePlaceholder)
+              : words.competencePlaceholder
+            : null}
+          missing={missing && index === 0 && !named}
           invalid={wrong}
           describedby={wrong ? `${id}-error` : null}
           suggestions={vocabulary.skills}
@@ -110,6 +136,7 @@
         <NumberField
           bind:value={row.years}
           label={words.years}
+          placeholder={words.years}
           invalid={wrong}
           testid="competence-years"
         />
@@ -130,47 +157,38 @@
   {#if error}
     <p class="error" id="{id}-error" role="alert" data-testid="competence-error">{error.text}</p>
   {/if}
-  <span class="add" class:indent={rows.length > 0} data-remove-fallback>
-    <Button
-      variant="secondary"
-      icon="add"
-      label={words.addCompetence}
-      testid="competence-add"
-      onclick={() => void add()}
-    />
-  </span>
+  {#if rows.length > 0}
+    <span class="add indent" data-remove-fallback>
+      <Button
+        variant="secondary"
+        icon="add"
+        label={words.addCompetence}
+        testid="competence-add"
+        onclick={() => void add()}
+      />
+    </span>
+  {/if}
 </div>
 
 <style>
   .list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-6);
   }
 
   /* star | competence | years | remove */
-  .head,
   .row {
     display: grid;
-    grid-template-columns:
-      var(--control-field) minmax(0, 1fr) calc(var(--space-64) + var(--space-8))
-      var(--control-field);
+    grid-template-columns: var(--control-field) minmax(0, 1fr) var(--years-width) var(
+        --control-field
+      );
     align-items: start;
-    gap: var(--space-8);
+    gap: var(--space-6);
   }
 
-  .head {
-    color: var(--text);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
-  }
-
-  /* The count of Schwerpunkte over their stars, centred on them. */
-  .count {
-    color: var(--text-muted);
-    font-variant-numeric: var(--numeric);
-    text-align: center;
-    white-space: nowrap;
+  .blank {
+    display: flex;
   }
 
   .star,
@@ -180,11 +198,10 @@
     height: var(--control-field);
   }
 
-  /* Under the rows the button lines up with the competence column; alone it starts at the
-     card's edge. */
+  /* Under the rows the button lines up with the competence column. */
   .add.indent,
   .error {
-    margin-left: calc(var(--control-field) + var(--space-8));
+    margin-left: calc(var(--control-field) + var(--space-6));
   }
 
   .error {

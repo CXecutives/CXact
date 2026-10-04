@@ -26,9 +26,9 @@ export const ICONS = {
   star: 'star',
 
   // A job and its ad.
-  /** Open a job in the job view, to read it (its menu's first entry; user, 2026-10-01). */
-  open: 'book-open',
-  /** Opens a page in the browser: the ad, a portal, Google's app passwords. */
+  /** The ad of a job, to read it in the browser (Anzeige öffnen; design round 3). */
+  ad: 'book-open',
+  /** Opens a page in the browser: a portal, Google's app passwords. */
   external: 'external-link',
   /** Mail: an alert mail (open it, read the older ones) and the mailbox they come to. */
   alertMail: 'mail',
@@ -81,7 +81,8 @@ export const ICONS = {
   sidebar: 'panel-left',
   sidebarHide: 'panel-left-close',
   sidebarShow: 'panel-left-open',
-  /** The top bar's job view button, the same way. */
+  /** The top bar's job view button, the same way; its "show" also opens a job in the job
+   *  view (the job's menu's first entry). */
   readerPane: 'panel-right',
   readerHide: 'panel-right-close',
   readerShow: 'panel-right-open',

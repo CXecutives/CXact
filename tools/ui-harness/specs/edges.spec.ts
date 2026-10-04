@@ -3,7 +3,7 @@
 
 import type { Page } from '@playwright/test';
 import { expect, nav, NOW, open, runFinished, test } from './fixtures';
-import { chooseWay, showTab } from './helpers';
+import { chooseWay, reveal } from './helpers';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -47,7 +47,7 @@ test('the search matches every word in any field and the portal name', async ({ 
 test('a decimal number is cut to a whole one, never joined', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const years = await showTab(page, page.getByTestId('profile-years'));
+  const years = await reveal(page, page.getByTestId('profile-years'));
   await years.fill('7,5');
   await expect(page.getByTestId('profile-years-rounded')).toHaveCount(0);
   await page.getByTestId('profile-min-rate').focus();
@@ -55,7 +55,7 @@ test('a decimal number is cut to a whole one, never joined', async ({ page }) =>
   await expect(page.getByTestId('profile-years-rounded')).toHaveText(
     'Auf eine ganze Zahl abgerundet.',
   );
-  await (await showTab(page, page.getByTestId('competence-years'))).first().fill('2.5');
+  await (await reveal(page, page.getByTestId('competence-years'))).first().fill('2.5');
   await page.getByTestId('profile-save').click();
   const saves = async (): Promise<unknown[][]> =>
     (await page.evaluate(() => window.__harness.calls)).filter(([name]) => name === 'save_profile');
@@ -73,7 +73,7 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const save = page.getByTestId('profile-save');
-  const tools = (await showTab(page, page.getByTestId('profile-tools'))).locator('input');
+  const tools = (await reveal(page, page.getByTestId('profile-tools'))).locator('input');
   await tools.fill('Miro');
   // Typed, not yet a chip: Speichern waits no more, and the backend knows it is unsaved.
   await expect(save).not.toHaveAttribute('aria-disabled', 'true');
@@ -91,7 +91,7 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
   await expect(tools).toHaveValue('');
 
   // Closing the window with typed text asks first.
-  await (await showTab(page, page.getByTestId('profile-regions'))).locator('input').fill('Berlin');
+  await (await reveal(page, page.getByTestId('profile-regions'))).locator('input').fill('Berlin');
   // The form has taken the typed text as a change (as the user sees it), and the backend
   // knows it (the page's `set_unsaved`), before the window closes.
   await expect(save).toBeEnabled();

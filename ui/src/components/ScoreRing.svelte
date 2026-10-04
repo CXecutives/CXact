@@ -1,6 +1,6 @@
 <!--
-  The match of a job as a ring: sm 34 (list rows), md 48 (reader), lg 96. Hollow at every
-  size: the solid track, the arc and the number, nothing tinted behind them.
+  The match of a job as a ring: sm 28 (list rows), md 42 (the job view). Hollow at both
+  sizes: the solid track, the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
   (360 ms, ease-out) only when that means something: when a score arrives while the ring is
   on screen (live scoring during a run; the number counts along), or the first time a job is
@@ -72,11 +72,11 @@
 
   interface Props {
     ring: RingState;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md';
     /** Fill on mount the first time this job is shown (the reader passes the job's key). */
     animate?: string | null;
-    /** An excluded job in the list: the empty track with the ban in the middle, no number
-     *  (user decision 2026-09-27: as large as every other row's ring). */
+    /** An excluded job in the list: a light red track with the red ban in the middle, no
+     *  number, as large as every other row's ring (design round 3). */
     ban?: boolean;
     testid?: string | null;
   }
@@ -176,6 +176,7 @@
 
 <span
   class="ring {size} {ring.status} {step}"
+  class:ban
   class:full={valued && score === 100}
   role="img"
   aria-label={label}
@@ -242,6 +243,10 @@
     stroke: var(--score-excluded-track);
   }
 
+  .ring.ban .track {
+    stroke: var(--ban-track);
+  }
+
   .excluded .value {
     stroke: var(--score-excluded);
   }
@@ -255,10 +260,10 @@
     transform-origin: center;
   }
 
-  /* The ban of an excluded row: quiet, in the track's middle. */
-  .ban {
+  /* The ban of an excluded row: red, in the light red track's middle. */
+  .center .ban {
     display: inline-flex;
-    color: var(--text-subtle);
+    color: var(--ban);
   }
 
   .center {
@@ -337,14 +342,7 @@
     --ring-type: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
   }
 
-  .lg {
-    --ring-size: var(--ring-lg);
-    --ring-stroke: var(--ring-lg-stroke);
-    --ring-scale: var(--ring-lg-scale);
-    --ring-type: var(--type-2xl);
-  }
-
-  /* Three digits would touch the 4 px stroke of the 34 px ring. */
+  /* Three digits would touch the stroke of the 28 px ring. */
   .sm.full {
     --ring-type: var(--weight-semibold) var(--font-xs) / var(--leading-xs) var(--font-sans);
   }

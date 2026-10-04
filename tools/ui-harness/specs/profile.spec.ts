@@ -1,8 +1,8 @@
-// The Profil view against the stub, in one spec: the head (the title, the CV button, what is
-// still open, the dots of the CV), the jump links, the form as the table
-// of sections.ts lays it out (three sections on one page, each field with its words and
-// control, the info symbols at their places), the two ways in, the CV and its failures, the
-// save bar that shows only while something changed, saving (answered by a toast), discarding,
+// The Profil view against the stub, in one spec: the sticky head (the title, the CV button
+// and its popover, Verwerfen and Speichern only while something changed), the line of what is
+// still missing, the form as the table of sections.ts lays it out (three sections on one page,
+// each row with its words and control, the info symbols at their places), the two ways in, the
+// CV and its failures, saving (answered by a toast), discarding,
 // leaving and closing with unsaved changes, values that hold the save, refused values, a
 // quiet hint where values contradict each other, and "Häufig verlangt". The stub's demo
 // profile looks for Interim CFO roles in Germany and Austria (projects and permanent roles),
@@ -12,7 +12,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import { chooseWay, failNext, fillRequired, showTab as show, T, WIN } from './helpers';
+import { chooseWay, failNext, fillRequired, reveal as show, T, WIN } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -32,7 +32,6 @@ async function create(page: Page, scenario = 'no-profile'): Promise<void> {
 const save = (page: Page): Locator => page.getByTestId('profile-save');
 const discard = (page: Page): Locator => page.getByTestId('profile-discard');
 const chips = (field: Locator): Locator => field.locator('.chip .text');
-const bar = (page: Page): Locator => page.getByTestId('profile-save-bar');
 const field = (page: Page, name: string): Locator => page.locator(`[data-field~="${name}"]`);
 const label = (scope: Locator): Locator => scope.locator('.top .label').first();
 const countries = (page: Page): Locator => page.getByTestId('profile-countries');
@@ -40,7 +39,16 @@ const countryInput = (page: Page): Locator => countries(page).locator('input');
 const options = (page: Page): Locator => page.getByTestId('profile-countries-options');
 const roles = (page: Page): Locator => page.getByTestId('profile-roles');
 const saves = async (page: Page): Promise<number> => (await calls(page, 'save_profile')).length;
-const contract = (page: Page, id: string): Locator => page.getByTestId(`profile-contract-${id}`);
+/** The switch of a contract type (Festanstellungen, Zeitarbeit). */
+const contract = (page: Page, id: 'permanent' | 'temporary'): Locator =>
+  page.getByTestId(`profile-${id}`);
+/** The line of what is still missing. */
+const missing = (page: Page): Locator => page.getByTestId('profile-missing');
+/** "Aus Lebenslauf ausfüllen" and the drop zone of its popover: the file dialog of the CV. */
+async function pickCv(page: Page): Promise<void> {
+  await page.getByTestId('profile-from-cv').click();
+  await page.getByTestId('cv-drop').click();
+}
 const menuItem = (page: Page, id: string): Locator => page.getByTestId(`menu-item-${id}`);
 
 /** The toast that answers a save (with what its rescore changed, when it did). */
@@ -101,7 +109,7 @@ async function tooltipOf(page: Page, target: Locator): Promise<string> {
 
 // ------------------------------------------------------------------ the head
 
-test('the head: "Profil" with "Aus Lebenslauf ausfüllen", no menu of profiles', async ({
+test('the head: "Profil" with "Aus Lebenslauf ausfüllen", Speichern only with a change', async ({
   page,
 }) => {
   await profile(page);
@@ -109,16 +117,22 @@ test('the head: "Profil" with "Aus Lebenslauf ausfüllen", no menu of profiles',
   await expect(page.getByTestId('profile-heading')).toHaveText(T.profile.title);
   const cv = page.getByTestId('profile-from-cv');
   await expect(cv).toHaveText(T.profile.fromCv);
+  await expect(cv.locator('[data-icon]')).toHaveAttribute('data-icon', 'pickFile');
   // Speichern is the view's one primary.
   await expect(cv).toHaveClass(/secondary/);
   await expect(head.getByRole('button')).toHaveCount(1);
-  // A complete profile without a CV: nothing open, no dots, no lines.
-  await expect(page.getByTestId('profile-open')).toHaveCount(0);
-  await expect(page.getByTestId('profile-ai-filled')).toHaveCount(0);
-  await expect(page.getByTestId('field-mark')).toHaveCount(0);
+  // A complete profile: nothing missing.
+  await expect(missing(page)).toHaveCount(0);
+  await page.getByTestId('profile-wish-rate').fill('1.250');
+  await expect(head.getByRole('button')).toHaveText([
+    T.profile.save,
+    T.profile.discard,
+    T.profile.fromCv,
+  ]);
+  await expect(save(page)).toHaveClass(/primary/);
+  await expect(discard(page)).toHaveClass(/ghost/);
 });
-
-test('three sections on one page in their order; the jump links lead to each', async ({ page }) => {
+test('three sections on one page in their order, under the head that stays', async ({ page }) => {
   await profile(page);
   const ids = ['search', 'skills', 'exclusions'] as const;
   await expect(page.locator('[data-section]')).toHaveCount(3);
@@ -127,32 +141,24 @@ test('three sections on one page in their order; the jump links lead to each', a
     await expect(section).toHaveAttribute('data-section', id);
     await expect(section.getByRole('heading', { level: 2 })).toHaveText(T.profile.section[id]);
   }
-  const jumps = page.getByTestId('profile-jumps');
-  await expect(jumps.getByRole('button')).toHaveText(ids.map((id) => T.profile.section[id]));
-  // A jump puts its heading at the top, under the links, which stay in view.
-  await page.getByTestId('profile-jump-exclusions').click();
-  const heading = page.getByTestId('section-exclusions').getByRole('heading');
-  await expect(heading).toBeFocused();
-  await expect(heading).toBeInViewport();
-  await expect(jumps).toBeInViewport();
-  const links = (await jumps.boundingBox())!;
-  await expect
-    .poll(async () => (await heading.boundingBox())!.y)
-    .toBeGreaterThanOrEqual(links.y + links.height - 1);
-  await page.getByTestId('profile-jump-search').click();
-  await expect(page.getByTestId('section-search').getByRole('heading')).toBeFocused();
+  await expect(page.getByTestId('profile-jumps')).toHaveCount(0);
+  // The head stays at the top while the page scrolls under it.
+  const head = page.getByTestId('profile-head');
+  const top = (await head.boundingBox())!.y;
+  await page.getByTestId('view-profile').evaluate((view) => view.scrollTo({ top: 600 }));
+  await expect.poll(async () => (await head.boundingBox())!.y).toBe(top);
+  await expect(head).toHaveCSS('border-bottom-width', '1px');
 });
-
 test('each field under its section with its label', async ({ page }) => {
   await profile(page);
   const words = T.profile.field;
   const layout: Record<string, [string, string][]> = {
     search: [
       ['roles', words.roles],
-      ['permanent', words.contracts],
-      ['dayRateWish', words.dayRateWish],
-      ['dayRateMin', words.dayRateMin],
+      ['permanent', words.permanent],
+      ['temporary', words.temporary],
       ['minSalary', words.minSalary],
+      ['dayRateWish', words.dayRate],
       ['workMode', words.workMode],
       ['countries', words.countries],
       ['regions', words.regions],
@@ -178,10 +184,10 @@ test('each field under its section with its label', async ({ page }) => {
       await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
     }
   }
-  // Every label in one column at the left, its control beside it on the same line (the
-  // approved draft, variant 3): the pairs stand one under the other.
+  // Every label in one column at the left, its control beside it on the same line, a
+  // hairline between the rows (the approved draft of design round 3).
   const lefts = new Set<number>();
-  for (const name of ['roles', 'dayRateWish', 'dayRateMin', 'countries', 'regions', 'years']) {
+  for (const name of ['roles', 'dayRateWish', 'countries', 'regions', 'years']) {
     const scope = page.locator(`[data-field~="${name}"]`);
     const [words, control] = await Promise.all([
       label(scope).boundingBox(),
@@ -195,19 +201,22 @@ test('each field under its section with its label', async ({ page }) => {
     ).toBeLessThan(4);
   }
   expect(lefts.size).toBe(1);
+  await expect(field(page, 'roles')).toHaveCSS('border-bottom-width', '1px');
+  // Wunsch and Minimum stand side by side in the rate's row, the euro after the last.
   const [wish, min] = [
-    await field(page, 'dayRateWish').boundingBox(),
-    await field(page, 'dayRateMin').boundingBox(),
+    await page.getByTestId('profile-wish-rate').boundingBox(),
+    await page.getByTestId('profile-min-rate').boundingBox(),
   ];
-  expect(min!.y).toBeGreaterThan(wish!.y + wish!.height);
+  expect(Math.abs(min!.y - wish!.y)).toBeLessThan(2);
+  expect(min!.x).toBeGreaterThan(wish!.x + wish!.width);
+  await expect(field(page, 'dayRateWish')).toContainText(words.dayRateWish);
+  await expect(field(page, 'dayRateWish')).toContainText(words.dayRateMin);
 });
-
 test('the stored profile fills every field', async ({ page }) => {
   await profile(page);
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
-  await expect(contract(page, 'project')).toHaveAttribute('aria-pressed', 'true');
-  await expect(contract(page, 'permanent')).toHaveAttribute('aria-pressed', 'true');
-  await expect(contract(page, 'temporary')).toHaveAttribute('aria-pressed', 'false');
+  await expect(contract(page, 'permanent')).toHaveAttribute('aria-checked', 'true');
+  await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByTestId('profile-wish-rate')).toHaveValue('1.200');
   await expect(page.getByTestId('profile-min-rate')).toHaveValue('1.100');
   await expect(page.getByTestId('profile-min-salary')).toHaveValue('');
@@ -217,8 +226,12 @@ test('the stored profile fills every field', async ({ page }) => {
   await expect(chips(countries(page))).toHaveText(['Deutschland', 'Österreich']);
   await expect(chips(page.getByTestId('profile-regions'))).toHaveText(['Hamburg']);
   await expect(page.getByTestId('profile-date')).toHaveValue('01.09.2026');
-  await expect(page.getByTestId('profile-workload')).toContainText(T.profile.workload.any);
-  await expect(page.getByTestId('profile-min-months')).toContainText(T.profile.minMonths[6]);
+  await expect(
+    page.getByTestId('profile-workload').getByRole('radio', { checked: true }),
+  ).toHaveText(T.profile.workload.any);
+  await expect(
+    page.getByTestId('profile-min-months').getByRole('radio', { checked: true }),
+  ).toHaveText(T.profile.minMonths[6]);
   await expect(page.getByTestId('competence-name')).toHaveCount(6);
   expect(await marked(page)).toEqual(['Controlling', 'Konzernrechnungslegung nach IFRS']);
   await expect(page.getByTestId('competence-years').first()).toHaveValue('12');
@@ -242,7 +255,7 @@ test('the stored profile fills every field', async ({ page }) => {
     'Werkstudent',
     'Praktikum',
   ]);
-  await expect(bar(page)).toHaveCount(0);
+  await expect(save(page)).toHaveCount(0);
 });
 
 test('info symbols only at their places, their sentence on hover, keyboard focus and click', async ({
@@ -251,8 +264,8 @@ test('info symbols only at their places, their sentence on hover, keyboard focus
   await profile(page);
   const places: [string, keyof typeof T.profile.info, string][] = [
     ['roles', 'roles', T.profile.field.roles],
-    ['permanent', 'contracts', T.profile.field.contracts],
-    ['dayRateWish', 'dayRate', T.profile.field.dayRateWish],
+    ['permanent', 'contracts', T.profile.field.permanent],
+    ['dayRateWish', 'dayRate', T.profile.field.dayRate],
     ['workMode', 'workMode', T.profile.field.workMode],
     ['countries', 'countries', T.profile.field.countries],
     ['competences', 'competences', T.profile.field.competences],
@@ -283,29 +296,19 @@ test('info symbols only at their places, their sentence on hover, keyboard focus
 
 // ------------------------------------------------------------------ the controls
 
-test('Vertragsart: Projekt und Interim always ticked, the others toggle; the salary comes with them', async ({
+test('Festanstellungen and Zeitarbeit are switches beside one sentence; the salary comes with them', async ({
   page,
 }) => {
   await profile(page);
-  const project = contract(page, 'project');
-  await expect(project).toHaveText(T.profile.contract.project);
-  await expect(project).toHaveAttribute('aria-disabled', 'true');
-  expect(await tooltipOf(page, project)).toBe(T.profile.contractFixed);
-  // Ticked ones show the check, the others the plus.
-  await expect(contract(page, 'permanent').locator('[data-icon]')).toHaveAttribute(
-    'data-icon',
-    'check',
-  );
-  await expect(contract(page, 'temporary').locator('[data-icon]')).toHaveAttribute(
-    'data-icon',
-    'add',
-  );
+  await expect(field(page, 'permanent')).toContainText(T.profile.field.contractsText);
+  await expect(contract(page, 'permanent')).toHaveAccessibleName(T.profile.field.permanent);
+  await expect(contract(page, 'temporary')).toHaveAccessibleName(T.profile.field.temporary);
   const salary = page.getByTestId('profile-min-salary');
   await expect(salary).toBeVisible();
   await contract(page, 'permanent').click();
   await expect(salary).toHaveCount(0);
   await contract(page, 'temporary').click();
-  await expect(contract(page, 'temporary')).toHaveAttribute('aria-pressed', 'true');
+  await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'true');
   await expect(salary).toBeVisible();
   await salary.fill('90000');
   await save(page).click();
@@ -316,7 +319,6 @@ test('Vertragsart: Projekt und Interim always ticked, the others toggle; the sal
   await save(page).click();
   expect((await lastSave(page)).after).toMatchObject({ temporary: false, minSalary: null });
 });
-
 test('the rates side by side; a wish under the minimum says so quietly', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-wish-rate').fill('900');
@@ -329,7 +331,7 @@ test('the rates side by side; a wish under the minimum says so quietly', async (
   await expect(field(page, 'dayRateWish').getByTestId('info-tip')).toHaveCount(1);
 });
 
-test('Arbeitsmodell and Verfügbar ab are segments, Auslastung and Mindestlaufzeit selects', async ({
+test('Arbeitsmodell, Verfügbar ab, Auslastung and Mindestlaufzeit are one segmented look', async ({
   page,
 }) => {
   await profile(page);
@@ -340,13 +342,17 @@ test('Arbeitsmodell and Verfügbar ab are segments, Auslastung and Mindestlaufze
     .getByTestId('profile-available')
     .getByRole('radio', { name: T.profile.availability.now })
     .click();
-  await page.getByTestId('profile-workload-open').click();
-  await expect(page.getByRole('menuitemradio')).toHaveText(Object.values(T.profile.workload));
-  await menuItem(page, 'fulltime').click();
-  await expect(page.getByTestId('profile-workload')).toContainText(T.profile.workload.fulltime);
-  await page.getByTestId('profile-min-months-open').click();
-  await expect(page.getByRole('menuitemradio')).toHaveText(Object.values(T.profile.minMonths));
-  await menuItem(page, '12').click();
+  const loads = page.getByTestId('profile-workload').getByRole('radio');
+  await expect(loads).toHaveText(Object.values(T.profile.workload));
+  await loads.filter({ hasText: T.profile.workload.fulltime }).click();
+  const months = page.getByTestId('profile-min-months').getByRole('radio');
+  await expect(months).toHaveText(Object.values(T.profile.minMonths));
+  await months.filter({ hasText: T.profile.minMonths[12] }).click();
+  // The chosen one on white with a hairline ring, like the place tabs.
+  await expect(page.getByTestId('profile-min-months').locator('.thumb')).toHaveCSS(
+    'box-shadow',
+    /1px/,
+  );
   await save(page).click();
   expect((await lastSave(page)).after).toMatchObject({
     workMode: 'hybrid',
@@ -355,7 +361,6 @@ test('Arbeitsmodell and Verfügbar ab are segments, Auslastung and Mindestlaufze
     minMonths: 12,
   });
 });
-
 test('Länder: the list opens with Deutschland, Österreich and Schweiz first; typing finds', async ({
   page,
 }) => {
@@ -410,11 +415,9 @@ test('at most five Schwerpunkte: the star says what a click does, a sixth waits'
 }) => {
   await profile(page);
   const stars = page.getByTestId('competence-star');
-  await expect(page.getByTestId('focus-count')).toHaveText('2/5');
   await expect(stars.nth(1)).toHaveAccessibleName(T.profile.field.unstar);
   await expect(stars.nth(0)).toHaveAccessibleName(T.profile.field.star);
   for (const index of [0, 3, 4]) await stars.nth(index).click();
-  await expect(page.getByTestId('focus-count')).toHaveText('5/5');
   await expect(stars.nth(5)).toHaveAttribute('aria-disabled', 'true');
   expect(await tooltipOf(page, stars.nth(5))).toBe(T.profile.field.focusFull);
   // A row without a competence has no star to give yet.
@@ -471,11 +474,11 @@ test('Sprachen: a menu adds a common language at B2, the level in plain words', 
     'Französisch',
   ]);
   await expect(page.getByTestId('language-level').nth(2)).toHaveText(T.profile.level.B2);
-  await page.getByTestId('language-level-open').nth(2).click();
+  await page.getByTestId('language-level').nth(2).click();
   await expect(page.getByRole('menuitemradio')).toHaveText(Object.values(T.profile.level));
   await menuItem(page, 'A2').click();
   // The language of a row is a select too.
-  await page.getByTestId('language-name-open').nth(1).click();
+  await page.getByTestId('language-name').nth(1).click();
   await menuItem(page, 'Spanisch').click();
   await page.getByTestId('language-remove').first().click();
   await save(page).click();
@@ -487,36 +490,68 @@ test('Sprachen: a menu adds a common language at B2, the level in plain words', 
 
 // ------------------------------------------------------------------ what is still open
 
-test('"Noch n Angaben offen": "Zum ersten" puts the caret there, the count follows the form', async ({
+test('the missing line names what is open; each name leads to its field, which flashes', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-incomplete');
-  const open = page.getByTestId('profile-open');
-  await expect(open).toContainText(T.profile.open(2));
-  await page.getByTestId('profile-to-first').click();
+  const words = T.profile.field;
+  // Its words as they read (the links are buttons: their inner room is no space).
+  const said = (): Promise<string> =>
+    missing(page)
+      .innerText()
+      .then((text) =>
+        text
+          .replace(/\s+/g, ' ')
+          .replace(/ ([.,])/g, '$1')
+          .trim(),
+      );
+  await expect.poll(said).toBe(T.profile.missing([words.roles, words.languages]));
+  // An empty required field: the amber edge, "Pflicht" in its placeholder.
+  await expect(roles(page).locator('input')).toHaveAttribute(
+    'placeholder',
+    T.profile.required(words.rolesPlaceholder),
+  );
+  await expect(field(page, 'roles')).toHaveAttribute('data-missing', '');
+  await missing(page).getByTestId('missing-roles').click();
   await expect(roles(page).locator('input')).toBeFocused();
+  await expect(field(page, 'roles')).toHaveAttribute('data-flash', '');
   await roles(page).locator('input').fill('Interim CFO');
   await roles(page).locator('input').press('Enter');
-  await expect(open).toContainText(T.profile.open(1));
-  await page.getByTestId('profile-to-first').click();
-  await expect(page.getByTestId('language-add')).toBeFocused();
-  await page.getByTestId('language-add').click();
-  await menuItem(page, 'language-Deutsch').click();
-  await expect(open).toHaveCount(0);
+  await expect.poll(said).toBe(T.profile.missing([words.languages]));
+  // Without a language a blank row stands: its select says "Pflicht".
+  const blank = page.getByTestId('language-blank');
+  await expect(blank.getByTestId('language-name')).toHaveText(
+    T.profile.required(words.languagePlaceholder),
+  );
+  await missing(page).getByTestId('missing-languages').click();
+  await expect(blank.getByTestId('language-name')).toBeFocused();
+  await blank.getByTestId('language-name').click();
+  await menuItem(page, 'Deutsch').click();
+  await expect(missing(page)).toHaveCount(0);
   await save(page).click();
   await lastSave(page);
   await expect.poll(() => page.evaluate(() => window.__harness.form()?.languages.length)).toBe(1);
-  await expect(open).toHaveCount(0);
+  await expect(missing(page)).toHaveCount(0);
 });
-
 // ------------------------------------------------------------------ the CV
 
-test('"Aus Lebenslauf ausfüllen" fills and saves at once; dots mark what the CV filled', async ({
+test('"Aus Lebenslauf ausfüllen": its popover, a click fills and saves at once', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-incomplete');
   const cv = page.getByTestId('profile-from-cv');
   await cv.click();
+  const popover = page.getByTestId('cv-popover');
+  await expect(popover).toContainText(T.profile.cvDrop);
+  await expect(popover).toContainText(T.profile.cvFormats);
+  await expect(popover).toContainText(T.profile.cvNote);
+  await expect(page.getByTestId('cv-drop')).toBeFocused();
+  // Esc closes it and gives the focus back.
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  await expect(cv).toBeFocused();
+  await pickCv(page);
+  await expect(popover).toHaveCount(0);
   await expect(cv).toHaveAttribute('aria-busy', 'true');
   await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
   expect(await calls(page, 'profile_from_cv')).toHaveLength(1);
@@ -525,26 +560,9 @@ test('"Aus Lebenslauf ausfüllen" fills and saves at once; dots mark what the CV
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
   await expect(page.getByTestId('competence-name').first()).toHaveValue('Controlling');
   await expect(page.getByTestId('language-name')).toHaveText(['Deutsch', 'Englisch']);
-  await expect(page.getByTestId('profile-open')).toHaveCount(0);
-  await expect(bar(page)).toHaveCount(0);
-  // The fields the CV fills carry the dot, the head says once what it means.
-  await expect(page.getByTestId('profile-ai-filled')).toHaveText(T.profile.aiFilled);
-  for (const name of ['roles', 'competences', 'tools', 'languages']) {
-    await expect(field(page, name).getByTestId('field-mark'), name).toHaveAccessibleName(
-      T.profile.aiFilled,
-    );
-  }
-  for (const name of ['permanent', 'dayRateMin', 'countries', 'exclusionWords']) {
-    await expect(field(page, name).getByTestId('field-mark'), name).toHaveCount(0);
-  }
-  // Until the next save.
-  await page.getByTestId('profile-wish-rate').fill('1.250');
-  await save(page).click();
-  await lastSave(page);
-  await expect(page.getByTestId('field-mark')).toHaveCount(0);
-  await expect(page.getByTestId('profile-ai-filled')).toHaveCount(0);
+  await expect(missing(page)).toHaveCount(0);
+  await expect(save(page)).toHaveCount(0);
 });
-
 test('"Aus Lebenslauf ausfüllen" waits while the form holds changes', async ({ page }) => {
   await profile(page);
   const cv = page.getByTestId('profile-from-cv');
@@ -567,13 +585,14 @@ test('no evaluation left today: the CV buttons say so ahead of the click, a drop
   );
   await page.waitForTimeout(100);
   expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
+  // The start page's tile says it on the click, without asking.
   await profile(page, '&scenario=no-profile&cv=used');
-  const pick = page.getByTestId('new-profile-cv');
-  await expect(pick).toHaveAttribute('aria-disabled', 'true');
-  expect(await tooltipOf(page, pick)).toBe(T.profile.cvError.limit);
+  await chooseWay(page, 'cv');
+  await expect(page.getByTestId('cv-error')).toContainText(T.profile.cvError.limit);
+  expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
   // A limit met on the click turns the button off from then on.
   await profile(page, '&cv=limit');
-  await cv.click();
+  await pickCv(page);
   await expect(page.getByTestId('cv-error')).toContainText(T.profile.cvError.limit);
   await expect(cv).toHaveAttribute('aria-disabled', 'true');
 });
@@ -617,62 +636,70 @@ test('a CV that fills nothing says why in one sentence, with its way on', async 
   ];
   for (const [cv, reason, again] of cases) {
     await profile(page, `&scenario=no-profile&cv=${cv}`);
-    await page.getByTestId('new-profile-cv').click();
+    await chooseWay(page, 'cv');
     const error = page.getByTestId('cv-error');
     await expect(error, cv).toContainText(T.profile.cvError[reason]);
     await expect(error.getByTestId('cv-again')).toHaveCount(again === null ? 0 : 1);
     if (again !== null) await expect(error.getByTestId('cv-again')).toHaveText(again);
     // Nothing stored; "Selbst ausfüllen" stays the way.
     expect(await saves(page)).toBe(0);
-    await expect(page.getByTestId('new-profile-empty')).toBeVisible();
+    await expect(page.getByTestId('way-self')).toBeVisible();
   }
   // Another try runs the CV again.
   await page.getByTestId('nav-jobs').click();
   await profile(page, '&scenario=no-profile&cv=offline');
-  await page.getByTestId('new-profile-cv').click();
+  await chooseWay(page, 'cv');
   await page.getByTestId('cv-again').click();
   await expect.poll(async () => (await calls(page, 'profile_from_cv')).length).toBe(2);
   // A closed dialog says nothing.
   await profile(page, '&scenario=no-profile&cv=none');
-  await page.getByTestId('new-profile-cv').click();
+  await chooseWay(page, 'cv');
   await expect.poll(async () => (await calls(page, 'profile_from_cv')).length).toBe(1);
-  await expect(page.getByTestId('new-profile-cv')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.getByTestId('cv-error')).toHaveCount(0);
 });
 
 // ------------------------------------------------------------------ the ways in
 
-test('no profile: the start page with its two ways, each with its own button', async ({ page }) => {
+test('no profile: one sentence and the two ways as tiles, a click goes its way', async ({
+  page,
+}) => {
   await profile(page, '&scenario=no-profile');
-  await expect(page.getByTestId('profile-start-heading')).toHaveText(T.profile.title);
+  await expect(page.getByTestId('profile-heading')).toHaveText(T.profile.title);
+  await expect(page.getByTestId('profile-empty')).toContainText(T.profile.noneText);
   const ways = page.getByTestId('new-profile-ways');
-  await expect(ways.getByTestId('new-profile-way-cv')).toContainText(T.profile.fromCv);
-  await expect(ways.getByTestId('new-profile-way-cv')).toContainText(T.profile.fromCvHint);
-  await expect(ways.getByTestId('new-profile-way-empty')).toContainText(T.profile.byHand);
-  await expect(ways.getByRole('button')).toHaveText([T.profile.pickCv, T.profile.startEmpty]);
+  await expect(ways.getByTestId('way-cv')).toContainText(T.profile.wayCv);
+  await expect(ways.getByTestId('way-cv')).toContainText(T.profile.wayCvText);
+  await expect(ways.getByTestId('way-self')).toContainText(T.profile.byHand);
+  await expect(ways.getByTestId('way-self')).toContainText(T.profile.byHandText);
+  // Side by side.
+  const [cv, self] = [
+    await ways.getByTestId('way-cv').boundingBox(),
+    await ways.getByTestId('way-self').boundingBox(),
+  ];
+  expect(Math.abs(cv!.y - self!.y)).toBeLessThan(1);
+  expect(Math.abs(cv!.width - self!.width)).toBeLessThan(1);
   // The CV makes the profile: the form shows it as stored.
   await chooseWay(page, 'cv');
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
-  await expect(bar(page)).toHaveCount(0);
+  await expect(save(page)).toHaveCount(0);
 });
-
 test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once complete', async ({
   page,
 }) => {
   await create(page);
   await expect(roles(page).locator('input')).toBeFocused();
   // Before the first save core names what the new form still lacks.
-  await expect(page.getByTestId('profile-open')).toBeVisible();
+  await expect(missing(page)).toBeVisible();
   expect(await calls(page, 'profile_missing')).not.toHaveLength(0);
   await expect(page.getByTestId('competence-row')).toHaveCount(1);
   await expect(page.getByTestId('language-row')).toHaveCount(0);
-  await expect(bar(page)).toHaveCount(0);
+  await expect(save(page)).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
   await chooseWay(page, 'empty');
   await fillRequired(page);
-  await expect(bar(page)).toBeVisible();
+  await expect(save(page)).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await save(page).click();
@@ -685,13 +712,13 @@ test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once co
     competences: [{ name: 'Controlling', years: null, focus: false }],
     languages: [{ language: 'Deutsch', level: 'B2' }],
   });
-  await expect(page.getByTestId('profile-open')).toHaveCount(0);
+  await expect(missing(page)).toHaveCount(0);
 });
 
 test('a profile edited into broken JSON says so and where, with its folder', async ({ page }) => {
   await profile(page, '&scenario=profile-broken');
   const empty = page.getByTestId('profile-empty');
-  await expect(empty).toContainText('Profil nicht lesbar');
+  await expect(page.getByTestId('profile-heading')).toHaveText(T.profile.unreadable);
   await expect(empty).toContainText(
     'Die Datei ist beschädigt (Zeile 12). Ein neues Profil ersetzt die Datei.',
   );
@@ -702,22 +729,22 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await chooseWay(page, 'empty');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(page.getByTestId('new-profile-cv')).toBeFocused();
+  await expect(page.getByTestId('way-cv')).toBeFocused();
 });
 
 // ------------------------------------------------------------------ saving
 
 test('edit and discard: the form goes back to what is stored, the bar leaves', async ({ page }) => {
   await profile(page);
-  await expect(bar(page)).toHaveCount(0);
+  await expect(save(page)).toHaveCount(0);
   await roles(page).locator('input').fill('Interim CTO');
   await roles(page).locator('input').press('Enter');
-  await expect(bar(page)).toBeVisible();
+  await expect(save(page)).toBeVisible();
   await contract(page, 'temporary').click();
   await discard(page).click();
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
-  await expect(contract(page, 'temporary')).toHaveAttribute('aria-pressed', 'false');
-  await expect(bar(page)).toHaveCount(0);
+  await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'false');
+  await expect(save(page)).toHaveCount(0);
   expect(await saves(page)).toBe(0);
 });
 
@@ -736,8 +763,8 @@ test('edit and save: both forms go to the backend, the toast answers', async ({ 
   await words.getByRole('button', { name: 'Praktikum entfernen' }).click();
   await words.locator('input').fill('Trainee');
   await words.locator('input').press('Enter');
-  // No word about what is unsaved: the bar itself says it.
-  await expect(bar(page)).toHaveText(/^\s*(Speichern\s*Verwerfen|Verwerfen\s*Speichern)\s*$/);
+  // No word about what is unsaved: Verwerfen and Speichern in the head say it.
+  await expect(discard(page)).toBeVisible();
   await save(page).click();
   await expect(savedToast(page)).toBeVisible();
   const sent = await lastSave(page);
@@ -746,7 +773,7 @@ test('edit and save: both forms go to the backend, the toast answers', async ({ 
   expect(sent.after.tools.at(-1)).toBe('Bilanzierung');
   expect(sent.after.available).toEqual({ kind: 'from', date: '01.11.2026' });
   expect(sent.after.exclusionWords).toEqual(['Werkstudent', 'Trainee']);
-  await expect(bar(page)).toHaveCount(0);
+  await expect(save(page)).toHaveCount(0);
   await expect(page.getByTestId('profile-date')).toHaveValue('01.11.2026');
 });
 
@@ -870,7 +897,7 @@ test('Enter in a field saves the form; lists and chips keep their Enter', async 
     await page.getByTestId(id).fill(value);
     await page.getByTestId(id).press('Enter');
     await expect.poll(() => saves(page), id).toBe(before + 1);
-    await expect(bar(page)).toHaveCount(0);
+    await expect(save(page)).toHaveCount(0);
   }
   // The day: Enter judges it while it does not read.
   const date = page.getByTestId('profile-date');
@@ -926,7 +953,7 @@ test('money is grouped like everywhere; cents count whole, and say so', async ({
   expect((await lastSave(page)).after.dayRateMin).toBe(950);
 });
 
-test('the day exists only for "Datum", gets the caret and is judged when left or saved', async ({
+test('the day exists only for "Ab Datum", gets the caret and is judged when left or saved', async ({
   page,
 }) => {
   await profile(page);
@@ -1019,7 +1046,7 @@ test('"Hinzufügen" puts the term into its field, an unsaved change like any oth
   await askedRow(page, 'Anaplan').getByTestId('asked-add').click();
   await expect(tools.last()).toHaveText('Anaplan');
   await expect(askedRow(page, 'Anaplan')).toHaveCount(0);
-  await expect(bar(page)).toBeVisible();
+  await expect(save(page)).toBeVisible();
   await discard(page).click();
   await expect(askedRow(page, 'Anaplan')).toHaveCount(1);
   await askedRow(page, 'Energie').getByTestId('asked-add').click();

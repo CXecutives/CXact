@@ -1,14 +1,14 @@
 // The connected mailbox address is text to copy.
 
 import { expect, open, test } from './fixtures';
-import { showTab } from './helpers';
+import { reveal } from './helpers';
 
 const WIN = '?platform=windows';
 
 test('the connected mailbox address is text to copy', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const address = await showTab(
+  const address = await reveal(
     page,
     page.getByTestId('settings-mailbox').locator('[data-copy]').first(),
   );

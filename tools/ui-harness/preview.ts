@@ -1,8 +1,9 @@
 // The preview's menu (tools/ui-preview.cmd): a tiny quiet round button in the bottom right
 // corner that opens the table below, to jump straight into a state of the app without clicking
 // there: the first open (the default, a demo the whole way through), every step of the setup,
-// every failure of the CV, an empty list, a search that runs, no fitting job, an excluded job,
-// an open profile, no mailbox; "Von vorn" starts the state shown again (the stub keeps its data
+// every failure of the CV, an empty list, a search that runs, no fitting job, a scored, an
+// unscored and an excluded job, the profile complete, incomplete and missing, Einstellungen
+// with and without a mailbox; "Von vorn" starts the state shown again (the stub keeps its data
 // in memory and the demo in sessionStorage, both are cleared with the page's store). It lives in the
 // stub, which only the harness build contains (vite.config.ts aliases @tauri-apps/api to it in
 // `--mode harness`), so the app never has it (specs/preview.spec.ts checks the release build).
@@ -28,10 +29,10 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
       { label: 'Weg wählen', query: `${SETUP}way` },
       { label: 'Upload', query: `${SETUP}upload` },
       { label: 'Auswertung', query: `${SETUP}reading` },
-      { label: 'Prüfen und ergänzen', query: `${SETUP}review` },
+      { label: 'Prüfen (nach KI)', query: 'scenario=setup-cv&step=review' },
+      { label: 'Selbst ausfüllen', query: `${SETUP}self` },
       { label: 'Alert-Mails', query: 'scenario=setup-profile' },
       { label: 'Fertig', query: 'scenario=setup-profile&step=done' },
-      { label: 'Nach dem Zurücksetzen', query: 'scenario=reset' },
     ],
   },
   {
@@ -53,16 +54,25 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
       { label: 'Leere Liste', query: 'scenario=fresh' },
       { label: 'Suche läuft', query: 'scenario=searching' },
       { label: 'Keine Treffer', query: 'scenario=empty' },
+      { label: 'Bewerteter Job', query: 'scenario=default&open=freelancermap:2801' },
+      { label: 'Unbewerteter Job', query: 'scenario=default&open=linkedin:4100200302' },
       { label: 'Ausgeschlossener Job', query: 'scenario=default&open=freelance:900412' },
-      { label: 'Kein Postfach', query: 'scenario=no-mailbox' },
     ],
   },
   {
     heading: 'Profil',
     entries: [
+      { label: 'Profil vollständig', query: 'scenario=default&view=profile' },
       { label: 'Profil unvollständig', query: 'scenario=profile-incomplete&view=profile' },
       { label: 'Kein Profil', query: 'scenario=no-profile&view=profile' },
       { label: 'Lebenslauf heute ausgeschöpft', query: 'scenario=default&view=profile&cv=used' },
+    ],
+  },
+  {
+    heading: 'Einstellungen',
+    entries: [
+      { label: 'Mit Postfach', query: 'scenario=default&view=settings' },
+      { label: 'Ohne Postfach', query: 'scenario=no-mailbox&view=settings' },
     ],
   },
 ];

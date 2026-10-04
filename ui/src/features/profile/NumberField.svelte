@@ -125,21 +125,22 @@
   .number {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-6);
     min-width: 0;
   }
 
   /* One width for every number field, the width of the day of Verfügbar ab too. */
   .box {
     flex: none;
-    width: min(100%, calc(var(--stat-min) - var(--space-48)));
+    width: var(--number-width);
+    max-width: 100%;
   }
 
   .box.compact {
     width: var(--space-64);
   }
 
-  /* The unit reads with the value: the 14 px of the field. */
+  /* The unit reads with the value: the text of the field. */
   .unit {
     flex: none;
     color: var(--text-muted);

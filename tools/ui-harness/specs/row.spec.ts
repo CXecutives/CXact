@@ -24,6 +24,7 @@ import {
   stubList,
   T,
   tokenColour,
+  tokenPx,
   unfoldExcluded,
   viaMenu,
   WIN,
@@ -290,7 +291,7 @@ test.describe('tools', () => {
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.archived);
     // Every toast is as wide as the others (--toast-width), a one-word one too.
     const toast = (await page.getByTestId('toast').last().boundingBox())!;
-    expect(Math.round(toast.width)).toBe(440);
+    expect(Math.round(toast.width)).toBe(await tokenPx(page, '--toast-width'));
     // The next row stands under the pointer now, its tools' slot under the tool: none until
     // the pointer moves.
     await animationsDone(page);
@@ -381,10 +382,12 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     return { menu, reader };
   };
   // A job without an alert mail offers none (user, 2026-10-01: no button at all), and one
-  // without a score no prompt.
+  // without a score no prompt; the reader of a job not scored yet shows no buttons at all
+  // (design round 3), its menu still opens the ad.
   const failed = await offered('freelancermap-2805');
   expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, 'none']);
-  expect(failed.reader).toEqual(failed.menu);
+  expect(failed.reader).toEqual(['none', 'none', 'none']);
+  await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
   const closed = await offered('linkedin-4100200304');
   expect(closed.menu).toEqual([
     `${T.actions.mail} on`,
@@ -404,7 +407,7 @@ test('stamps move on while the app stays open', async ({ page }) => {
   await expect(date).not.toHaveText(before ?? '');
 });
 
-test('an excluded row shows the empty ring with the ban in it, muted, without a dot', async ({
+test('an excluded row shows the red ban on a light red track, its title muted, no dot', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -415,14 +418,20 @@ test('an excluded row shows the empty ring with the ban in it, muted, without a 
     const target = row(page, key);
     const ban = target.getByTestId('row-excluded');
     await expect(ban).toBeVisible();
-    // As large as every other row's ring: its empty track, the ban in the middle, no number.
+    // As large as every other row's ring: its light red track, the red ban in the middle, no
+    // number.
     await expect(ban.locator(`svg.lucide-${ICONS.excluded}`)).toHaveCount(1);
+    await expect(ban.locator('.center .ban')).toHaveCSS('color', await tokenColour(page, '--ban'));
     await expect(ban).toHaveAttribute('aria-label', T.score.excluded);
     await expect(ban.locator('.value')).toHaveCount(0);
     const size = (await ban.boundingBox())!.width;
     const other = (await list(page).locator('.ring').first().boundingBox())!.width;
     expect(Math.round(size)).toBe(Math.round(other));
-    await expect(target).toHaveClass(/muted/);
+    await expect(target).not.toHaveCSS('opacity', /0\./);
+    await expect(target.locator('.title')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--text-muted'),
+    );
     await expect(job(page, key).locator('.dot')).toHaveCount(0);
   }
   // A scored row keeps its ring.

@@ -80,6 +80,7 @@
     {/if}
     {#if hint}<p
         class="hint"
+        class:alone={label === null && !badges}
         class:path={copy}
         class:status={dot !== null}
         id={control !== null ? `${control}-hint` : undefined}
@@ -100,10 +101,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-24);
-    min-height: calc(var(--control-md) + 2 * var(--space-12));
+    gap: var(--space-16);
+    min-height: calc(var(--control-field) + 2 * var(--row-pad));
     margin-inline: calc(-1 * var(--row-inset));
-    padding: var(--space-12) var(--row-inset);
+    padding: var(--row-pad) var(--row-inset);
     border-bottom: var(--border-width) solid var(--border);
     isolation: isolate;
   }
@@ -143,11 +144,17 @@
     font: var(--type-sm);
   }
 
-  /* The tile stands 12 from the text (the row's other parts keep its 24). */
+  /* A row of one sentence: it reads as the row's text. */
+  .hint.alone {
+    color: var(--text);
+    font: var(--type-md);
+  }
+
+  /* The tile stands 10 from the text (the row's other parts keep its 16). */
   .lead {
     display: inline-flex;
     flex: none;
-    margin-inline-end: calc(var(--space-12) - var(--space-24));
+    margin-inline-end: calc(var(--space-10) - var(--space-16));
   }
 
   .hint.status {
@@ -186,12 +193,12 @@
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-8);
   }
 
   /* A ghost button at the end lines its text up with the edge, like toggles and bordered
      buttons (the ghost's own padding would inset it). */
-  .control :global(.btn.ghost.sm:last-child) {
+  .control :global(.btn.ghost:last-child) {
     margin-right: calc(-1 * var(--ghost-inset));
   }
 

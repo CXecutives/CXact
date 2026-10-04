@@ -155,7 +155,7 @@
 
   /** What an icon says (lib/icons.ts): the name every component and view passes. */
   export type IconName = IconMeaning;
-  export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'mark';
   /** The drawing of each glyph used so far (the SVG its Lucide component renders). */
   const drawn: Partial<Record<Glyph, SVGSVGElement>> = {};
 
@@ -242,5 +242,9 @@
 
   .xl {
     --icon-size: var(--icon-xl);
+  }
+
+  .mark {
+    --icon-size: var(--icon-mark);
   }
 </style>

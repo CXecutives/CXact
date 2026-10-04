@@ -92,7 +92,7 @@ const tip = async (page: Page, target: Locator): Promise<string> =>
 /** The moves beside the head's x (their ids, their names), the x not among them. */
 async function headTools(page: Page): Promise<{ ids: string[]; labels: string[] }> {
   const tools = stage(page)
-    .locator('.head .close .btn')
+    .locator('[data-testid="reader-head"] .actions .btn')
     .and(page.locator(':not([data-testid="reader-close"])'));
   await expect(tools.first()).toBeVisible();
   const ids = await tools.evaluateAll((all) =>
@@ -132,7 +132,7 @@ async function toolsOf(page: Page, key: string): Promise<string[]> {
 /** The moves of a job that just left the list are off (they would be the new place's). */
 async function movesOff(page: Page): Promise<void> {
   const tools = stage(page)
-    .locator('.head .close .btn')
+    .locator('[data-testid="reader-head"] .actions .btn')
     .and(page.locator(':not([data-testid="reader-close"])'));
   for (const tool of await tools.all()) {
     await expect(tool).toHaveAttribute('aria-disabled', 'true');
@@ -209,22 +209,29 @@ test.describe('the head and the match', () => {
     expect(new Set(seen)).toEqual(new Set([BEST]));
   });
 
-  test('every job without a score is one empty ring with a dash', async ({ page }) => {
-    // An ad still to come, and one too short to score: the same ring, the same words.
-    for (const key of ['linkedin-4100200302', 'freelancermap-2806']) {
-      if (key === 'linkedin-4100200302') await openAt(page, key);
-      else await openJob(page, key);
-      const ring = stage(page).getByTestId('reader-ring');
-      await expect(ring).toHaveText('–');
-      await expect(ring).toHaveAttribute('aria-label', 'Noch nicht bewertet');
-      const band = stage(page).getByTestId('band');
-      await expect(band).toHaveText('Noch nicht bewertet');
-      await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
-    }
+  test('a job without a score: the empty ring with a dash; its ad still to come, no buttons', async ({
+    page,
+  }) => {
+    // An ad still to come: the ring's dash, one sentence, no buttons at all.
+    await openAt(page, 'linkedin-4100200302');
+    let ring = stage(page).getByTestId('reader-ring');
+    await expect(ring).toHaveText('–');
+    await expect(ring).toHaveAttribute('aria-label', 'Noch nicht bewertet');
+    const band = stage(page).getByTestId('band');
+    await expect(band).toHaveText(T.reader.unscored);
+    await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
+    await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
+    await expect(stage(page).getByTestId('band-info')).toHaveCount(0);
+    // One too short to score: the same ring, "Noch nicht bewertet", its buttons.
+    await openJob(page, 'freelancermap-2806');
+    ring = stage(page).getByTestId('reader-ring');
+    await expect(ring).toHaveText('–');
+    await expect(band).toHaveText('Noch nicht bewertet');
+    await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
+    await expect(stage(page).getByTestId('open-ad')).toBeVisible();
     // The short text says so once, where the text is.
     await expect(stage(page).getByTestId('short-note')).toHaveText('Die Anzeige ist sehr kurz.');
   });
-
   test('the ring only shows: no popover of what moved the score (user 2026-10-01)', async ({
     page,
   }) => {
@@ -277,7 +284,7 @@ test.describe('the head and the match', () => {
 });
 
 test.describe('the actions', () => {
-  test('three buttons alike in one order, the moves of the place beside the x', async ({
+  test('three buttons alike in one order with their glyphs, the moves of the place beside the x', async ({
     page,
   }) => {
     // A wide window: every button with its words.
@@ -292,12 +299,17 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
     expect(T.actions.prompt).toBe('Prompt kopieren');
-    // One variant and one height for all three.
+    // One variant and one height for all three, each with the glyph of its meaning.
     const looks = await buttons.evaluateAll((all) =>
       all.map((button) => `${button.className.includes('secondary')} ${button.clientHeight}`),
     );
     expect(new Set(looks).size).toBe(1);
     expect(looks[0]).toMatch(/^true /);
+    expect(
+      await buttons.evaluateAll((all) =>
+        all.map((button) => button.querySelector('[data-icon]')?.getAttribute('data-icon')),
+      ),
+    ).toEqual(['ad', 'alertMail', 'copy']);
     // The moves of Aktuell beside the x, quiet like it (no frame, user 2026-10-01), in
     // one row and one size with it; no "…" menu.
     const tools = await headTools(page);
@@ -339,9 +351,7 @@ test.describe('the actions', () => {
     );
   });
 
-  test('the action row stays one line; where the words do not fit, icons name them', async ({
-    page,
-  }) => {
+  test('the action row keeps its words; where they do not fit, it wraps', async ({ page }) => {
     const lines = () =>
       stage(page)
         .getByTestId('reader-actions')
@@ -354,15 +364,6 @@ test.describe('the actions', () => {
               }),
             ).size,
         );
-    // Which of Alert-Mail, Anzeige and the prompt show only their icon.
-    const bare = () =>
-      stage(page)
-        .getByTestId('reader-actions')
-        .evaluate((node) =>
-          ['open-ad', 'reader-mail', 'reader-prompt'].map((id) =>
-            node.querySelector(`[data-testid="${id}"]`)?.classList.contains('icon-only'),
-          ),
-        );
     for (const size of [
       { width: 1360, height: 900 },
       { width: 1000, height: 800 },
@@ -371,23 +372,12 @@ test.describe('the actions', () => {
     ]) {
       await page.setViewportSize(size);
       await openAt(page, 'freelancermap-2801');
-      await expect.poll(lines).toBe(1);
-      // They give up their words from the last: the prompt first, Alert-Mail last.
-      const flags = await bare();
-      const first = flags.indexOf(true);
-      expect(first === -1 || flags.slice(first).every(Boolean), `${size.width}`).toBe(true);
-      if (size.width === 1360) expect(flags).toEqual([false, false, false]);
-      // Three buttons with short words (user 2026-10-01): at 1000 px all keep them.
-      if (size.width === 1000) expect(flags).toEqual([false, false, false]);
-    }
-    // A button that shows only its icon names itself in its tooltip.
-    for (const id of ['open-ad', 'reader-mail', 'reader-prompt']) {
-      const button = stage(page).getByTestId(id);
-      if (!((await button.getAttribute('class')) ?? '').includes('icon-only')) continue;
-      expect((await tooltipOf(page, button))[0]).not.toBe('');
+      // Never only an icon: every button keeps its words.
+      await expect(stage(page).getByTestId('reader-actions').locator('.icon-only')).toHaveCount(0);
+      if (size.width === 1360) await expect.poll(lines).toBe(1);
+      else expect(await lines()).toBeLessThanOrEqual(2);
     }
   });
-
   test('the moves of the archive and of the trash, deleting for good asks first', async ({
     page,
   }) => {
@@ -561,16 +551,27 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // Trotzdem bewerten: its real match and a toast that takes it back. The row under the box
-    // has the ad, the alert mail and the prompt; the head has the moves of its place.
+    // The ban and the word in the red of a danger, on a neutral box (no red fill).
+    await expect(box.getByTestId('reader-ban')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--ban'),
+    );
+    await expect(stage(page).getByTestId('band')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--ban'),
+    );
+    await expect(box).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    // Trotzdem bewerten (with its plus): its real match and a toast that takes it back. The
+    // row under the box has the ad and the prompt; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
+    await expect(include.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
     expect(
       await stage(page)
         .getByTestId('reader-actions')
         .locator('.btn')
         .evaluateAll((all) => all.map((button) => button.getAttribute('data-testid'))),
-    ).toEqual(['open-ad', 'reader-mail', 'reader-prompt']);
+    ).toEqual(['open-ad', 'reader-prompt']);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();

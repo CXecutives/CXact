@@ -1,76 +1,43 @@
 <!--
-  The two ways to the profile as the rows of one card, each with its one button: "Aus
-  Lebenslauf ausfüllen" (the CV is evaluated by an AI and the profile saved at once,
-  fromCv.svelte.ts) and "Selbst ausfüllen" (the empty form, stored on "Speichern"). What went
-  wrong with the CV is said at the end of the card with its way on; with no evaluation left
-  today its button says so ahead of the click. The Profil view shows it without a profile.
+  The two ways to the profile as two tiles side by side, one look wherever they are (the
+  setup's "Wie legst du dein Profil an?", the Profil without a profile): "Aus Lebenslauf"
+  (an AI fills the profile) and "Selbst ausfüllen". A click on a tile goes its way at once.
+  In a narrow window the tiles stand one under the other.
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
-  import Card from '$components/Card.svelte';
-  import Notice from '$components/Notice.svelte';
-  import SettingRow from '$components/SettingRow.svelte';
+  import Tile from '$components/Tile.svelte';
   import { t } from '$lib/i18n/t';
-  import type { ProfileInfo } from '$lib/ipc/types';
-  import { fromCv } from './fromCv.svelte';
 
   interface Props {
-    /** The CV filled the profile, which is stored now. */
-    onfilled: (info: ProfileInfo) => void;
-    /** "Selbst ausfüllen": the empty form. */
-    onempty: () => void;
+    oncv: () => void;
+    onself: () => void;
+    testid?: string | null;
   }
 
-  let { onfilled, onempty }: Props = $props();
-
-  async function cv(): Promise<void> {
-    const info = await fromCv.run();
-    if (info !== null) onfilled(info);
-  }
+  let { oncv, onself, testid = null }: Props = $props();
 </script>
 
-<Card padding="rows" testid="new-profile-ways">
-  <SettingRow label={t.profile.fromCv} hint={t.profile.fromCvHint} testid="new-profile-way-cv">
-    <Button
-      variant="secondary"
-      icon="pickFile"
-      label={t.profile.pickCv}
-      loading={fromCv.busy}
-      disabled={fromCv.limited}
-      disabledReason={t.profile.cvError.limit}
-      testid="new-profile-cv"
-      onclick={() => void cv()}
-    />
-  </SettingRow>
-  <SettingRow label={t.profile.byHand} hint={t.profile.byHandHint} testid="new-profile-way-empty">
-    <Button
-      variant="secondary"
-      icon="edit"
-      label={t.profile.startEmpty}
-      disabled={fromCv.busy}
-      testid="new-profile-empty"
-      onclick={onempty}
-    />
-  </SettingRow>
-  {#if fromCv.problem}
-    {@const problem = fromCv.problem}
-    <div class="note">
-      <Notice
-        tone="danger"
-        variant="inline"
-        text={problem.text()}
-        action={problem.again
-          ? { label: problem.again(), testid: 'cv-again', onclick: () => void cv() }
-          : null}
-        testid="cv-error"
-      />
-    </div>
-  {/if}
-</Card>
+<div class="ways" data-testid={testid ?? undefined}>
+  <Tile
+    icon="document"
+    label={t.profile.wayCv}
+    note={t.profile.wayCvText}
+    testid="way-cv"
+    onclick={oncv}
+  />
+  <Tile
+    icon="edit"
+    label={t.profile.byHand}
+    note={t.profile.byHandText}
+    testid="way-self"
+    onclick={onself}
+  />
+</div>
 
 <style>
-  /* A note runs on the rows' inset. */
-  .note {
-    padding: 0 var(--row-inset) var(--space-12);
+  .ways {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--stat-min), 1fr));
+    gap: var(--space-8);
   }
 </style>

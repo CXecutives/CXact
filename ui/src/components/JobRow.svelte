@@ -29,8 +29,8 @@
   the pointer moves (input.ts `hover`). The row's menu (a right click, the app's own) and a
   double click (the ad in the browser) act on the job too. The ring
   stays hollow on the open row (its track is never tinted); without a usable profile it is
-  empty (a dash). An excluded job shows the ban in the ring's place, and the whole row is
-  muted. A new job (lib/state/filter.ts `isNew`: not opened yet and not excluded) carries
+  empty (a dash). An excluded job shows the red ban on a light red track in the ring's place
+  and its title muted. A new job (lib/state/filter.ts `isNew`: not opened yet and not excluded) carries
   the dot and the heavier title in every place, like a mail app's unread mark; when it is
   read while its row is on screen the dot shrinks away. Stamps follow the page's clock (they move on while
   the app stays open). Layout stays inside the row (containment); like the row, its
@@ -237,7 +237,6 @@
     {leading}
     {selected}
     {bar}
-    muted={excluded}
     onclick={onselect ? () => onselect?.(job) : null}
     ondouble={onopen ? () => onopen?.(job) : null}
     testid={rowId}
@@ -295,10 +294,10 @@
     contain: layout;
   }
 
-  /* The unread dot: centred in the pane padding, on the axis of the ring. */
+  /* The unread dot: centred in the pane padding, on the axis of the ring (the row's middle). */
   .dot {
     position: absolute;
-    top: calc(var(--space-12) + (var(--ring-sm) - var(--dot-unread)) / 2);
+    top: calc(50% - var(--dot-unread) / 2);
     left: calc((var(--pane-padding) - var(--dot-unread)) / 2);
     width: var(--dot-unread);
     height: var(--dot-unread);
@@ -341,8 +340,9 @@
     color: inherit;
   }
 
-  /* An ad that takes no applications any more: its title steps back. */
-  .title.closed {
+  /* An ad that takes no applications any more, and an excluded job: its title steps back. */
+  .title.closed,
+  .excluded .title {
     color: var(--text-muted);
   }
 
@@ -381,7 +381,7 @@
   .meta {
     display: flex;
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-10);
     min-width: 0;
     height: var(--leading-sm);
     overflow: hidden;
@@ -424,7 +424,7 @@
   /* The tools over the date, centred on the title line, their right edge on the date's. */
   .tools {
     position: absolute;
-    top: calc(var(--space-12) + (var(--leading-title) - var(--control-field)) / 2);
+    top: calc(var(--list-row-pad) + (var(--leading-title) - var(--control-field)) / 2);
     right: var(--pane-padding);
     display: flex;
     gap: var(--space-2);
@@ -440,12 +440,6 @@
 
   .tooled:where(:not([data-still])) .tool {
     opacity: 1;
-  }
-
-  /* An excluded row is muted as a whole, its tools too (as bright as the row under the
-     pointer). */
-  .excluded.tooled:where(:not([data-still])) .tool {
-    opacity: var(--opacity-muted-hover);
   }
 
   /* On the washed row a tool's own hover is one step deeper (the red of one that deletes

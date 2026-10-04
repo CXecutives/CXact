@@ -24,18 +24,12 @@ import type {
   NewJobs,
   PauseReason,
   Portal,
+  PortalState,
   ProfileForm,
   ProfileInfo,
   RunEvent,
   RunSummary,
 } from './types';
-
-/** A term the search asks the portals for (from the profile) and how many fitting jobs it
- *  brought in the last search (null: not searched yet, "neu"). */
-export interface SearchTerm {
-  term: string;
-  matched: number | null;
-}
 
 /**
  * Commands the interface needs that the backend adds next, in the shape of `Commands`; each
@@ -44,20 +38,17 @@ export interface SearchTerm {
  *   the window (the window keeps them, the page never sends a path; onFileDrag), else the
  *   backend asks for the CV with its own file dialog (the CV formats). It reads the file, has
  *   it evaluated and merges the answer into the one profile (or makes it), saved at once. The
- *   stored profile (its `aiFilled` names what the CV filled), or null when the dialog was
- *   closed. Fails with `{kind: 'cv', params: {reason}}` (`CvFailure`).
+ *   stored profile, or null when the dialog was closed. Fails with
+ *   `{kind: 'cv', params: {reason}}` (`CvFailure`).
  * - `profile_missing`: the required fields a form still lacks, by the rule of the stored
  *   profile's `missing` (core::profile::missing_required: roles, countries, competences,
- *   languages), for a form not saved yet ("Noch 2 Angaben offen" of a new profile).
- * - `search_terms`: the terms the search asks for, in its order (profile::deep_search_terms),
- *   each with what it brought last (Einstellungen > Portale, "CXact sucht nach").
+ *   languages), for a form not saved yet (the missing line of a new profile).
  * - `finish_onboarding`: the setup reached "Alles eingerichtet": saves `onboarded`, so the
  *   next start opens the Jobs view (`AppState.firstRun` = not onboarded, outside the dry run).
  */
 export type NextCommands = {
   profile_from_cv: { args: { dropped: boolean }; result: ProfileInfo | null };
   profile_missing: { args: { form: ProfileForm }; result: string[] };
-  search_terms: { args: Record<string, never>; result: SearchTerm[] };
   finish_onboarding: { args: Record<string, never>; result: null };
 };
 
@@ -84,6 +75,10 @@ export type NextRunSummary = Omit<RunSummary, 'newJobs'> & {
  * Lebenslauf ausfüllen" works again while its tries are used up; null while it works.
  */
 export type NextAppState = AppState & { cvUntil?: string | null };
+
+/** Fields of a portal's state the backend adds next: `alertMails`, how many alert mails of
+ *  the portal the app read in the last 30 days (its row in Einstellungen; null: unknown). */
+export type NextPortalState = PortalState & { alertMails?: number | null };
 
 /** Why a portal pauses, with what the backend adds next: `robots`, its robots.txt forbids
  *  the next page. */

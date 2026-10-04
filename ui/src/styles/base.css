@@ -113,6 +113,11 @@ h4 {
   font: inherit;
 }
 
+/* No word alone on the last line of a sentence. */
+p {
+  text-wrap: pretty;
+}
+
 ul,
 ol {
   list-style: none;

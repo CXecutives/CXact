@@ -32,6 +32,7 @@ import type {
   ProfileForm,
   ReasonWeight,
   TermField,
+  Way,
   WorkMode,
 } from '../ipc/types';
 import type { CvFailure, NextPauseReason } from '../ipc/api';
@@ -72,7 +73,7 @@ const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 
-const INTERNAL = 'Ein interner Fehler, mehr steht im Protokoll.';
+const INTERNAL = 'Ein interner Fehler ist aufgetreten.';
 
 /** What holds the app (the backend's `activity`: a run by its kind, a sign-in, a file
  *  command, the mailbox check of Verbinden), for the busy error and the closing note.
@@ -143,11 +144,10 @@ const profileField = (): Record<string, string> => {
   const { field } = de.profile;
   return {
     roles: field.roles,
-    contracts: field.contracts,
-    permanent: field.contracts,
-    temporary: field.contracts,
-    dayRateWish: field.dayRateWish,
-    dayRateMin: field.dayRateMin,
+    permanent: field.permanent,
+    temporary: field.temporary,
+    dayRateWish: field.dayRateWishName,
+    dayRateMin: field.dayRateMinName,
     minSalary: field.minSalary,
     workMode: field.workMode,
     countries: field.countries,
@@ -680,7 +680,6 @@ export const de = {
     retry: 'Erneut versuchen',
     undo: 'Rückgängig',
     openFolder: 'Ordner öffnen',
-    openLog: 'Protokoll öffnen',
     /** The accessible name of an info symbol beside a label. */
     infoAbout: (label: string) => `Mehr zu ${label}`,
   },
@@ -1018,6 +1017,8 @@ export const de = {
     mail: OPEN_MAIL,
     setUpSignIn: 'Anmeldung einrichten',
     promptNoText: 'Der Text der Anzeige fehlt noch.',
+    /** Beside the ring of a job not scored yet (it shows no buttons then). */
+    unscored: 'Wird bewertet, sobald die Anzeige geladen ist.',
     /** Loads the whole ad (a preview, a missing one). */
     fetchDetails: 'Anzeige laden',
     why: 'Anforderungen',
@@ -1066,15 +1067,20 @@ export const de = {
      *  Profil), each with one sentence what it does. */
     fromCv: 'Aus Lebenslauf ausfüllen',
     fromCvHint: 'Wird von einer KI ausgewertet.',
+    /** The drop zone of the CV (the setup's upload, the Profil's popover): what it takes and
+     *  the formats it reads; under the Profil's what the import does. */
+    cvDrop: 'Datei hierher ziehen oder klicken',
+    cvFormats: 'PDF, Word, OpenDocument, RTF, Text oder Foto',
+    cvNote: 'Ergänzt dein Profil, überschreibt nichts. Wird von einer KI ausgewertet.',
     byHand: 'Selbst ausfüllen',
-    byHandHint: 'Du füllst die Felder selbst aus.',
-    /** The buttons of the two ways on the start page. */
-    pickCv: 'Lebenslauf wählen',
-    startEmpty: 'Anlegen',
+    /** The two ways as tiles (the setup, the Profil without a profile), each with its line. */
+    wayCv: 'Aus Lebenslauf',
+    wayCvText: 'Eine KI füllt das Profil aus.',
+    byHandText: 'Du trägst alles selbst ein.',
     /** Why "Aus Lebenslauf ausfüllen" waits while the form holds changes. */
     saveFirst: 'Erst speichern oder verwerfen.',
     /** The toast once the CV filled the profile (saved at once). */
-    filled: 'Profil aus dem Lebenslauf ausgefüllt',
+    filled: 'Profil ausgefüllt. Bitte prüfen.',
     /** Why the CV filled nothing, one sentence each; the way on is a button beside it. */
     cvError: {
       limit: 'Heute ist keine Auswertung mehr möglich.',
@@ -1089,12 +1095,15 @@ export const de = {
       unavailable: 'Die Auswertung ist gerade nicht verfügbar.',
     } satisfies Record<CvFailure, string>,
     otherFile: 'Andere Datei wählen',
-    /** The required fields still empty, and the way to the first of them. */
-    open: (value: number) => `Noch ${count(value, 'Angabe', 'Angaben')} offen`,
-    toFirst: 'Zum ersten',
-    /** The small dot at a field the CV filled (until the next save), and the one line in the
-     *  head that says what it means. */
-    aiFilled: 'aus dem Lebenslauf',
+    /** The required fields still empty, one line on top: its words before the names (each a
+     *  link to its field), what stands before each name, and the whole sentence (the tooltip
+     *  of the setup's Weiter). */
+    missingLead: 'Es fehlt noch',
+    missingBefore: (index: number, total: number) =>
+      index === 0 ? ' ' : index === total - 1 ? ' und ' : ', ',
+    missing: (names: readonly string[]) => `Es fehlt noch ${joined([...names])}.`,
+    /** The placeholder of a required field that is still empty. */
+    required: (placeholder: string) => `Pflicht, ${placeholder}`,
     /** The toast of a save. */
     saved: 'Profil gespeichert',
     /** The same toast with what the rescore of the save changed in Aktuell: the jobs
@@ -1134,8 +1143,7 @@ export const de = {
       certificate: 'Zertifikat',
       degree: 'Abschluss',
     } satisfies Record<TermField, string>,
-    /** The three sections on one page, their jump links and the links' accessible name. */
-    sections: 'Bereiche des Profils',
+    /** The three sections on one page. */
     section: {
       search: 'Was du suchst',
       skills: 'Was du mitbringst',
@@ -1144,17 +1152,29 @@ export const de = {
     field: {
       roles: 'Wunschrollen',
       rolesPlaceholder: 'z. B. Interim CFO',
-      contracts: 'Vertragsart',
-      dayRateWish: 'Wunschtagessatz',
-      dayRateMin: 'Mindesttagessatz',
-      minSalary: 'Mindestjahresgehalt',
+      /** After the chips of a list field: its input takes one more. */
+      rolesMore: '+ Rolle',
+      /** The two contract types beside Projekt und Interim, each a switch; the sentence of
+       *  the first. */
+      permanent: 'Festanstellungen',
+      temporary: 'Zeitarbeit',
+      contractsText: 'Projekt und Interim sind immer dabei.',
+      /** The day rate's row and its two fields; their names in an error. */
+      dayRate: 'Tagessatz',
+      dayRateWish: 'Wunsch',
+      dayRateMin: 'Minimum',
+      dayRateWishName: 'Wunschtagessatz',
+      dayRateMinName: 'Mindesttagessatz',
+      minSalary: 'Mindestgehalt',
       workMode: 'Arbeitsmodell',
       countries: 'Länder',
       countriesPlaceholder: 'Land suchen',
+      countriesMore: '+ Land',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
       regions: 'Regionen',
       regionsPlaceholder: 'z. B. Hamburg',
+      regionsMore: '+ Region',
       available: 'Verfügbar ab',
       date: 'Datum',
       datePlaceholder: '01.11.2026',
@@ -1166,6 +1186,7 @@ export const de = {
       competences: 'Kompetenzen',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
+      competencesMore: '+ Kompetenz',
       years: 'Jahre',
       addCompetence: 'Kompetenz hinzufügen',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
@@ -1174,29 +1195,33 @@ export const de = {
       unstar: 'Schwerpunkt entfernen',
       starEmpty: 'Trag erst eine Kompetenz ein.',
       focusFull: 'Höchstens fünf Schwerpunkte.',
-      /** The Schwerpunkte over the column of their stars (`2/5`). */
-      focusCount: (value: number, max: number) => `${n(value)}/${n(max)}`,
       tools: 'Tools und Methoden',
       toolsPlaceholder: 'z. B. Scrum',
+      toolsMore: '+ Tool',
       totalYears: 'Berufserfahrung',
       industries: 'Branchen',
       industriesPlaceholder: 'z. B. Handel',
+      industriesMore: '+ Branche',
       /** The star of an industry chip says what a click does. */
       prefer: (name: string) => `${name} bevorzugen`,
       unprefer: (name: string) => `${name} nicht mehr bevorzugen`,
       languages: 'Sprachen',
       language: 'Sprache',
+      languagePlaceholder: 'Sprache wählen',
       level: 'Niveau',
       addLanguage: 'Sprache hinzufügen',
       removeLanguage: (name: string) => `${name} entfernen`,
       degrees: 'Abschlüsse',
       degreesPlaceholder: 'z. B. Master BWL',
+      degreesMore: '+ Abschluss',
       certificates: 'Zertifikate',
       certificatesPlaceholder: 'z. B. PMP',
+      certificatesMore: '+ Zertifikat',
       exclusionWords: 'Ausschlusswörter',
       exclusionWordsPlaceholder: 'z. B. Werkstudent',
+      exclusionWordsMore: '+ Wort',
       /** Quiet hint where two values contradict each other. */
-      belowMinRate: 'Liegt unter dem Mindesttagessatz.',
+      belowMinRate: 'Der Wunsch liegt unter dem Minimum.',
       /** A euro amount with cents: the app counts whole euros. */
       rounded: 'Auf ganze Euro abgerundet.',
       /** Another number with a decimal part: the app counts whole ones. */
@@ -1210,8 +1235,7 @@ export const de = {
     /** The info symbols beside a label, one sentence each (only these places, docs/PLAN.md). */
     info: {
       roles: 'Danach sucht CXact.',
-      contracts:
-        'Projekt und Interim ist immer dabei. Was du sonst nicht wählst, wird ausgeschlossen.',
+      contracts: 'Was du nicht einschaltest, wird ausgeschlossen.',
       dayRate: 'Unter dem Minimum wird ein Job ausgeschlossen.',
       workMode: 'Nur ein Wunsch, schließt nie aus.',
       countries: 'Andere Länder werden ausgeschlossen. Remote gilt überall.',
@@ -1224,13 +1248,6 @@ export const de = {
       euro: '€',
       years: 'Jahre',
     },
-    /** The contract types: Projekt und Interim always, the others with a tick. */
-    contract: {
-      project: 'Projekt und Interim',
-      permanent: 'Festanstellung',
-      temporary: 'Zeitarbeit',
-    },
-    contractFixed: 'Ist immer dabei.',
     workMode: {
       any: ANY,
       remote: 'Remote',
@@ -1244,9 +1261,9 @@ export const de = {
     } satisfies Record<ProfileForm['workload'], string>,
     minMonths: {
       0: ANY,
-      3: 'Ab 3 Monaten',
-      6: 'Ab 6 Monaten',
-      12: 'Ab 12 Monaten',
+      3: '3+',
+      6: '6+',
+      12: '12+ Monate',
     } satisfies Record<ProfileForm['minMonths'], string>,
     /** The level of a language in plain words, its CEFR level after them. */
     level: {
@@ -1260,7 +1277,7 @@ export const de = {
     } satisfies Record<ProfileForm['languages'][number]['level'], string>,
     availability: {
       now: 'Sofort',
-      from: 'Datum',
+      from: 'Ab Datum',
     } satisfies Record<ProfileForm['available']['kind'], string>,
     /** Regions of Germany, Austria and Switzerland, suggested in Regionen (any other can be
      *  typed). */
@@ -1402,32 +1419,29 @@ export const de = {
   },
   settings: {
     title: 'Einstellungen',
-    /** The name of the tabs (Portale, Daten) for a screen reader, and the tabs. */
-    tabs: 'Bereiche der Einstellungen',
+    /** The three sections of the page. */
     portals: 'Portale',
+    mailbox: 'Postfach für Alert-Mails',
     data: 'Daten',
-    /** The card of the terms the search asks the portals for, its info symbol, each term's
-     *  last yield, and the way to change them. */
-    terms: 'CXact sucht nach',
-    termsInfo: 'Aus deinem Profil.',
-    termMatched: (value: number) => `zuletzt ${n(value)} passende`,
-    termNew: 'neu',
-    editTerms: 'Im Profil ändern',
-    noTerms: 'Ohne Profil hat die Suche keine Begriffe.',
-    /** The card of the portals the app searches itself, and the card of the alert mails. */
-    search: 'Jobportale',
-    alerts: 'Alert-Mails',
-    /** Without a mailbox the portals of alert mails rest (named in the app's order). */
-    noMailbox: (portals: readonly Portal[]) =>
-      `Ohne Postfach ruhen ${joined(portals.map((p) => portalName[p]))}.`,
+    /** How a portal brings its jobs, a small label beside its name. */
+    way: {
+      search: 'Suche',
+      alert: 'Alert-Mail',
+    } satisfies Record<Way, string>,
+    /** A portal of alert mails without a mailbox (its row's second line). */
+    needsMailbox: 'Braucht ein Postfach',
+    /** How many alert mails of a portal the app read in the last 30 days. */
+    alertMails: (value: number) =>
+      value === 0
+        ? 'Keine Alert-Mails in 30 Tagen'
+        : `${count(value, 'Alert-Mail', 'Alert-Mails')} in 30 Tagen`,
+    /** A portal that rests until a moment (its row's second line). */
+    pausedUntil: (iso: string) => `Pausiert bis ${formatMoment(iso)}`,
     /** What the last search brought from a portal (its row). */
     lastNew: (value: number) =>
       value === 0
         ? 'Zuletzt keine neuen Jobs'
         : `Zuletzt ${count(value, 'neuer Job', 'neue Jobs')}`,
-    /** A portal's own note under its name (only where it adds something). */
-    portalNote: (portal: Portal): string | null =>
-      portal === 'freelance' ? 'Mit Anmeldung auch Anzeigen nur für Mitglieder.' : null,
     /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
     backToJob: 'Zurück zum Job',
     connected: 'Verbunden',
@@ -1460,8 +1474,7 @@ export const de = {
     checkAlert: 'Alert prüfen',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
-    /** The row of the profile's folder and its one sentence. */
-    profiles: 'Profil',
+    /** The row of the profile's folder: its one sentence. */
     profilesHint: 'Dein Profil liegt als Datei in einem Ordner.',
     /** The database's copies (the failed start offers them). */
     backupHeading: 'Sicherung wiederherstellen',
@@ -1476,20 +1489,14 @@ export const de = {
     backupRestored: 'Sicherung wiederhergestellt',
     /** Its undo brought the state before it back. */
     backupUndone: 'Der vorherige Stand ist zurück.',
-    /** The row of the reset, its button and its dialog. */
-    reset: 'Alle Daten',
-    resetHint: 'Löscht alles, CXact startet mit der Einrichtung neu.',
-    resetAction: 'Zurücksetzen',
+    /** The row of the reset: its one sentence, its button and its dialog. */
+    resetHint: 'Löscht Jobs, Profil, Postfach und Anmeldungen.',
+    resetAction: 'Alle Daten zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText:
-      'Löscht Jobs, Profile, Postfach und Anmeldungen. CXact startet mit der Einrichtung neu.',
-    resetDone: 'Die App ist zurückgesetzt.',
-    /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
-    resetPartly: (value: number) =>
-      `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
+      'Löscht Jobs, Profil, Postfach und Anmeldungen. CXact startet mit der Einrichtung neu.',
+    resetConfirm: 'Zurücksetzen',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
-    /** The quiet line at the end of Daten. */
-    version: (version: string) => `Version ${version}`,
   },
 
   /** The setup (features/first-run/steps.ts): each step's heading, its one sentence where it
@@ -1497,34 +1504,36 @@ export const de = {
   firstRun: {
     welcome: 'Willkommen bei CXact',
     welcomeText:
-      'CXact findet Projekt- und Interim-Jobs und bewertet sie nach deinem Profil. Die Einrichtung dauert zwei Minuten.',
+      'CXact sucht Projekt- und Interim-Jobs für dich und bewertet jeden nach deinem Profil.',
     begin: 'Los geht’s',
     next: 'Weiter',
     /** The step indicator above the card: its name and its two stages. */
     stepsLabel: 'Einrichtung',
     stages: ['Profil', 'Alert-Mails'] as string[],
-    way: 'Dein Profil',
-    /** The second line of the tile "Aus Lebenslauf ausfüllen". */
-    wayCv: 'Eine KI füllt das Profil aus.',
+    way: 'Wie legst du dein Profil an?',
     upload: 'Lebenslauf hochladen',
-    /** The drop zone: what it takes ("auswählen" is the link to the file dialog), and the
-     *  formats it reads. */
-    drop: 'Datei hierher ziehen oder',
-    pick: 'auswählen',
-    formats: 'PDF, Word, OpenDocument, RTF, Text oder Foto',
     reading: 'Lebenslauf wird ausgewertet',
     readingText: 'Etwa eine halbe Minute.',
-    review: 'Prüfen und ergänzen',
+    /** After the CV: what only the user can say. */
+    review: 'Fast fertig',
+    reviewText: 'Diese Angaben kann nur du machen.',
+    /** What the CV filled beyond the short form, in a quiet strip under it. */
+    fromCv: (competences: number, tools: number, industries: number) =>
+      `${count(competences, 'Kompetenz', 'Kompetenzen')}, ${count(tools, 'Tool', 'Tools')} und ${count(industries, 'Branche', 'Branchen')} aus deinem Lebenslauf`,
+    later: 'später im Profil',
+    /** By hand: the short form. */
+    self: 'Dein Profil',
+    selfText: 'Das Wichtigste, den Rest kannst du später im Profil ergänzen.',
     alerts: 'Alert-Mails',
     optional: 'optional',
     /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
     alertsText: (portals: readonly Portal[]) =>
-      `Jobs von ${joined(portals.map((p) => portalName[p]))} kommen per Mail. CXact liest sie aus deinem Gmail.`,
+      `${joined(portals.map((p) => portalName[p]))} schicken Jobs per Mail. CXact liest sie aus deinem Gmail mit.`,
     /** Connected: the address the portals' alerts must go to, and their rows. */
     alertsDone: 'Leg bei den Portalen Alerts an diese Adresse an.',
     skip: 'Überspringen',
     done: 'Alles eingerichtet',
-    doneText: 'Dein Profil steht.',
+    doneText: 'Dein Profil steht. In der Jobliste startest du die erste Suche.',
     toJobs: 'Zu den Jobs',
   },
 

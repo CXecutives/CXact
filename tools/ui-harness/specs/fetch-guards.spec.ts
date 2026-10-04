@@ -4,7 +4,7 @@
 // (the backend refuses it too, never with a failed fetch).
 
 import { calls, expect, open, test } from './fixtures';
-import { PORTALS, showTab, T } from './helpers';
+import { PORTALS, reveal, T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -16,7 +16,7 @@ test('every portal may be switched off; Jobs suchen then waits for one and says 
   await expect(page.getByTestId('settings')).toBeVisible();
   // Every source switched on (the sites outside Germany are off already).
   for (const portal of PORTALS) {
-    await (await showTab(page, page.getByTestId(`toggle-enabled-${portal}`))).click();
+    await (await reveal(page, page.getByTestId(`toggle-enabled-${portal}`))).click();
     await expect(page.getByTestId(`toggle-enabled-${portal}`)).toHaveAttribute(
       'aria-checked',
       'false',
@@ -39,7 +39,7 @@ test('every portal may be switched off; Jobs suchen then waits for one and says 
 
   // One portal back on: Jobs suchen goes again, the view's primary throughout.
   await page.getByTestId('nav-settings').click();
-  await (await showTab(page, page.getByTestId('toggle-enabled-freelancermap'))).click();
+  await (await reveal(page, page.getByTestId('toggle-enabled-freelancermap'))).click();
   await page.getByTestId('nav-jobs').click();
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   await expect(fetch).toHaveClass(/primary/);

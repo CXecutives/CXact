@@ -298,15 +298,9 @@ export async function tokenColour(page: Page, token: string): Promise<string> {
   }, token);
 }
 
-/** Opens the tab of the Profil or of Einstellungen that holds `target` (one tab shows at a
- *  time); the target. */
-export async function showTab(page: Page, target: Locator): Promise<Locator> {
-  const panel = await target
-    .first()
-    .evaluate((node) => node.closest('[role="tabpanel"]')?.getAttribute('data-testid') ?? '');
-  // `profile-panel-skills` is shown by `profile-tab-skills`, `settings-panel-data` by
-  // `settings-tab-data`.
-  if (panel !== '') await page.getByTestId(panel.replace('-panel-', '-tab-')).click();
+/** A control of a page that scrolls (Profil, Einstellungen): in view, visible. */
+export async function reveal(_page: Page, target: Locator): Promise<Locator> {
+  await target.first().scrollIntoViewIfNeeded();
   await expect(target.first()).toBeVisible();
   return target;
 }
@@ -330,7 +324,7 @@ export async function expectMailboxState(
 export async function chooseWay(page: Page, way: 'empty' | 'cv'): Promise<void> {
   const ways = page.getByTestId('new-profile-ways');
   await expect(ways).toBeVisible();
-  await ways.getByTestId(`new-profile-${way}`).click();
+  await ways.getByTestId(way === 'cv' ? 'way-cv' : 'way-self').click();
 }
 
 /** Fills what a usable profile needs into the form (Deutschland is there already): a wished
@@ -340,6 +334,6 @@ export async function fillRequired(page: Page): Promise<void> {
   await roles.fill('Interim CFO');
   await roles.press('Enter');
   await page.getByTestId('competence-name').first().fill('Controlling');
-  await page.getByTestId('language-add').click();
-  await page.getByTestId('menu-item-language-Deutsch').click();
+  await page.getByTestId('language-name').first().click();
+  await page.getByTestId('menu-item-Deutsch').click();
 }

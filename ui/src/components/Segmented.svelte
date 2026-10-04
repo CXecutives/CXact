@@ -1,20 +1,22 @@
 <!--
-  Two to four options with an optional counter each, on one track. Each option is as wide as
-  its label and count; one white thumb covers the chosen option and slides to the next one
-  like the sidebar's pill and the list's bar (180 ms, emphasized; user 2026-09-25), always
-  exactly the option's box whatever the labels, counts or window width (a change of size
-  follows at once; the first placement and reduced motion never slide).
-  When the track has less room than the options want, the labels shorten with an ellipsis
-  (the counts stay); nothing ever overlaps. The chosen label is ink and its count a soft
-  warm pill, the others stay muted with a plain count (same box, so nothing moves); an option
-  may keep one tone whatever is chosen (the unread count stays warm). A count that goes
-  (`null`: none now, 0 is not shown) keeps its room, unseen, as wide as it was last, so the
-  options keep their widths and nothing jumps. An unchosen option washes on hover and darkens
-  while pressed. Counts roll when they change.
-  Like native radio buttons the group is one Tab stop and the arrows, Home and End choose.
-  One size everywhere (Einstellungen and Profil alike): as high as a field (--control-field,
-  32 px, so it lines up with the fields and buttons of its row) with the 13 px text of a small
-  button.
+  The one choice of a few, one look everywhere (design round 3): two to four options on a light
+  track, the chosen one on a white thumb with a hairline ring that slides to the next choice
+  like the sidebar's pill (180 ms, emphasized; the first placement, a change of size and
+  reduced motion never slide), always exactly the option's box whatever the labels, counts or
+  window width. Every small single choice takes it: the places above the list (Aktuell,
+  Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar ab, Auslastung and
+  Mindestlaufzeit.
+  Each option is as wide as its label and count; when the track has less room than the
+  options want, the labels shorten with an ellipsis (the counts stay); nothing ever overlaps.
+  The chosen label is navy (ink while the window is in the back) and its count a soft warm
+  pill, the others stay muted with a plain count (same box, so nothing moves); an option may
+  keep one tone whatever is chosen. A count that goes (`null`: none now, 0 is not shown) keeps
+  its room, unseen, as wide as it was last, so the options keep their widths and nothing
+  jumps. An unchosen option washes on hover and darkens while pressed. Counts roll when they
+  change.
+  Like native radio buttons (and native tabs, `tabs`) the group is one Tab stop and the
+  arrows, Home and End choose (lib/input/input.ts). As high as a field (24 px), so it lines up
+  with the fields and buttons of its row, with the 12 px medium text of a tab.
 -->
 <script lang="ts" module>
   export interface SegmentedOption<Id extends string = string> {
@@ -24,6 +26,7 @@
     count?: number | null;
     /** The count's tone whatever is chosen (default: soft when chosen, plain otherwise). */
     tone?: 'soft' | 'plain' | null;
+    testid?: string;
   }
 </script>
 
@@ -38,11 +41,13 @@
     options: readonly SegmentedOption<Id>[];
     value: Id;
     label: string;
+    /** The places of a list: a tablist of tabs instead of a radiogroup. */
+    tabs?: boolean;
     testid?: string | null;
     onchange: (id: Id) => void;
   }
 
-  let { options, value, label, testid = null, onchange }: Props = $props();
+  let { options, value, label, tabs = false, testid = null, onchange }: Props = $props();
 
   /** The count each option showed last: a count that goes keeps its room with it. */
   const kept = $state<Record<string, number>>({});
@@ -66,7 +71,7 @@
   let slidingUntil = 0;
 
   function measure(): void {
-    const chosen = track?.querySelector<HTMLElement>('[aria-checked="true"]');
+    const chosen = track?.querySelector<HTMLElement>('[data-chosen]');
     thumb = chosen ? { x: chosen.offsetLeft, width: chosen.offsetWidth } : null;
   }
 
@@ -92,7 +97,7 @@
 
 <div
   class="segmented"
-  role="radiogroup"
+  role={tabs ? 'tablist' : 'radiogroup'}
   aria-label={label}
   data-testid={testid ?? undefined}
   bind:this={track}
@@ -107,11 +112,16 @@
     {@const chosen = option.id === value}
     <button
       type="button"
-      role="radio"
+      role={tabs ? 'tab' : 'radio'}
       class="option"
-      aria-checked={chosen}
+      aria-checked={tabs ? undefined : chosen}
+      aria-selected={tabs ? chosen : undefined}
+      data-chosen={chosen ? '' : undefined}
       tabindex={option.id === stop ? 0 : -1}
-      onclick={() => onchange(option.id)}
+      data-testid={option.testid ?? undefined}
+      onclick={() => {
+        if (!chosen || !tabs) onchange(option.id);
+      }}
     >
       <span class="pill" aria-hidden="true"></span>
       <span class="label" use:tooltip={{ text: option.label, truncated: true }}>{option.label}</span
@@ -130,18 +140,22 @@
 <style>
   /* It may shrink inside a flex row too (its options then shorten their labels). */
   .segmented {
+    position: relative;
     display: inline-flex;
+    flex: none;
+    align-self: flex-start;
+    justify-self: start;
     min-width: 0;
     max-width: 100%;
     height: var(--control-field);
     padding: var(--space-2);
     border-radius: var(--radius-control);
-    position: relative;
     background-color: var(--surface-track);
     isolation: isolate;
   }
 
-  /* The one white thumb under the chosen option; it slides like the sidebar's pill. */
+  /* The one white thumb under the chosen option, a hairline ring around it; it slides like
+     the sidebar's pill. */
   .thumb {
     position: absolute;
     z-index: var(--z-below);
@@ -149,9 +163,9 @@
     bottom: var(--space-2);
     left: 0;
     width: var(--thumb-width);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-inner);
     background-color: var(--thumb);
-    box-shadow: var(--sh-thumb);
+    box-shadow: 0 0 0 var(--border-width) var(--thumb-edge);
     transform: translateX(var(--thumb-x));
     /* Only the move animates (a width is layout); the width takes the option's at once. */
     transition: transform var(--dur-slow) var(--ease-emphasized);
@@ -170,11 +184,10 @@
     justify-content: center;
     gap: var(--space-4);
     min-width: 0;
-    padding: 0 var(--space-12);
-    border-radius: var(--radius-sm);
+    padding: 0 var(--space-10);
+    border-radius: var(--radius-inner);
     color: var(--text-muted);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
+    font: var(--type-tab);
     white-space: nowrap;
     transition: color var(--dur-base) var(--ease-standard);
   }
@@ -193,25 +206,25 @@
       background-color var(--dur-fast) var(--ease-standard);
   }
 
-  .option[aria-checked='false']:hover {
+  .option:not([data-chosen]):hover {
     color: var(--text);
     transition-duration: var(--dur-hover);
   }
 
-  .option[aria-checked='false']:hover .pill {
+  .option:not([data-chosen]):hover .pill {
     opacity: 1;
     transition-duration: var(--dur-hover);
   }
 
-  :global(:where(:root:not([data-aux-press]))) .option[aria-checked='false']:active:hover .pill {
+  :global(:where(:root:not([data-aux-press]))) .option:not([data-chosen]):active:hover .pill {
     background-color: var(--quiet-press);
   }
 
-  .option[aria-checked='true'] {
+  .option[data-chosen] {
     color: var(--nav-active-fg);
   }
 
-  :global(:root[data-window='inactive']) .option[aria-checked='true'] {
+  :global(:root[data-window='inactive']) .option[data-chosen] {
     color: var(--text);
   }
 

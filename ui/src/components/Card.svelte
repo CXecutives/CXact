@@ -115,8 +115,8 @@
 
   .pad-rows {
     overflow: hidden;
-    padding: 0 var(--space-20);
-    --row-inset: var(--space-20);
+    padding: 0 var(--card-padding);
+    --row-inset: var(--card-padding);
   }
 
   .pad-rows > :global(:not([data-setting-row])) {
@@ -124,10 +124,10 @@
   }
 
   .pad-md {
-    padding: var(--space-16) var(--space-20);
+    padding: var(--space-12) var(--card-padding);
   }
 
   .pad-lg {
-    padding: var(--space-24);
+    padding: var(--space-20);
   }
 </style>

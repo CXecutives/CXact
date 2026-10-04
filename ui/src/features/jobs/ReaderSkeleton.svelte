@@ -61,10 +61,11 @@
     gap: var(--space-20);
   }
 
+  /* Where the job's title will stand: on the first row of its head. */
   .title {
     display: flex;
     align-items: center;
-    height: var(--leading-2xl);
+    height: var(--first-row);
   }
 
   .match {

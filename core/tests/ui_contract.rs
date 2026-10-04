@@ -1,7 +1,7 @@
 //! Architecture rules of the UI (`ui/src`, Svelte 5 + TypeScript). They run without Node,
 //! so `cargo test` alone keeps them: each rule protects a promise of the design system
-//! that ESLint/Stylelint also enforce, or one that no linter can see (gallery coverage,
-//! per-OS markup, the release build without gallery).
+//! that ESLint/Stylelint also enforce, or one that no linter can see (per-OS markup, the
+//! release build without a development board).
 //!
 //! Every test asserts how many files it scanned: a moved folder must not turn a rule into
 //! a silent no-op.
@@ -13,7 +13,6 @@ const EXTENSIONS: [&str; 3] = ["svelte", "ts", "css"];
 /// Lower bounds of the scan (the foundation has more than this).
 const MIN_FILES: usize = 55;
 const MIN_SVELTE: usize = 35;
-const MIN_COMPONENTS: usize = 24;
 
 fn repo(relative: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -510,31 +509,6 @@ fn input_listeners_only_in_input_ts() {
     assert!(
         base.code.contains("[data-copy]"),
         "base.css does not make the copyable text selectable"
-    );
-}
-
-#[test]
-fn every_component_is_in_the_gallery() {
-    let all = scanned(MIN_FILES);
-    let components: Vec<&Source> = all.iter().filter(|s| s.under("components/")).collect();
-    assert!(
-        components.len() >= MIN_COMPONENTS,
-        "only {} components scanned",
-        components.len()
-    );
-    let gallery: String = all
-        .iter()
-        .filter(|s| s.under("features/gallery/"))
-        .map(|s| s.code.as_str())
-        .collect();
-    let missing: Vec<String> = components
-        .iter()
-        .filter(|c| !gallery.contains(&format!("$components/{}", &c.path["components/".len()..])))
-        .map(|c| c.path.clone())
-        .collect();
-    fail(
-        &missing,
-        "every component appears in the gallery (features/gallery/)",
     );
 }
 
@@ -1084,11 +1058,9 @@ fn the_catalog_keeps_the_glossary() {
     let mut problems = Vec::new();
     for (n, line) in catalog(&all, CATALOG).lines() {
         for (old, new) in [
-            // The sources the app searches and those of alert mails (2026-10-01).
-            ("Portal", "Quelle"),
-            ("Portale", "Quellen"),
-            ("Portals", "der Quelle"),
-            ("Portalen", "Quellen"),
+            // The sources the app searches and those of alert mails (user, 2026-10-03:
+            // "Portal" again, as in Einstellungen > Portale).
+            ("Quelle", "Portal"),
             ("Eintrag", "Job"),
             ("Volltext", "Anzeige"),
             ("Kandidat", "Job"),
@@ -1424,8 +1396,8 @@ fn icons_by_meaning() {
     );
 }
 
-/// Buttons have one height, 28 px (user 2026-10-01): no size to choose (a button inside a
-/// field is a notch lower, a part of it), every glyph one size, one type.
+/// Buttons have one height, 24 px (design round 3, 2026-10-04): no size to choose (a button
+/// inside a field is a notch lower, a part of it), every glyph one size, one type.
 #[test]
 fn buttons_have_one_height() {
     let all = scanned(MIN_FILES);
@@ -1449,7 +1421,7 @@ fn buttons_have_one_height() {
             }
         }
     }
-    fail(&problems, "buttons have one height (28 px)");
+    fail(&problems, "buttons have one height (24 px)");
 }
 
 /// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only

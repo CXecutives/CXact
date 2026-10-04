@@ -29,12 +29,12 @@
 // `?way=mail`: the fetch reads the mailbox (its menu's "Postfach") instead of searching; a
 // scripted fetch brings the jobs of the way it takes (the search freelancermap's).
 //
-// Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
+// Scenarios (`?scenario=`): default · first-run · setup-cv (the setup after the CV: no
+// wished role, country or language) · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
 // concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
 // profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
-// two required fields open) · reset (the state after "reset everything": first run, no
-// mailbox, no profile, the report) · first-run-empty-profile (no competence, no language)
+// two required fields open) · first-run-empty-profile (no competence, no language)
 // · session-left (freelance.de still signed in while the fetch does not use the sign-in)
 // · first-fetch-failed (the setup page after a first fetch that could not reach Gmail: step 3
 // says why; "Abrufen" then completes and ends the setup)
@@ -46,14 +46,14 @@
 // be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
 // before the last fetch).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
-// with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
+// with `?alerts=none` its check finds no alert mail.
 // One profile (core's profile::set): `save_profile` makes it or saves it, refuses a day rate
 // above 100.000, a salary above 10.000.000 and a competence with more than 70 years (with its
 // row) like core's validation, and names what a usable profile still needs (`missing`, like
 // core's missing_required); a saved profile starts the rescore like core (with jobs, while no
 // run goes), whose summary says what the save changed in Aktuell (`ScoreDelta`).
 // "Aus Lebenslauf ausfüllen" (`profile_from_cv`) answers after a few seconds with the demo
-// profile filled from a CV (merged into a stored one, the CV's fields in `aiFilled`);
+// profile filled from a CV (merged into a stored one);
 // `dropped` takes the files last dropped on the window like the window keeps them (`notFound`
 // without one). `?cv=limit|paused|offline|timeout|unreadable|tooBig|unsupported|unavailable|
 // outdated` fails like the CV evaluation (`limit` also sets `cvUntil`), `?cv=used` starts with
@@ -106,8 +106,8 @@ import type {
   NextAppState,
   NextCommands,
   NextRunEvent as RunEvent,
+  NextPortalState,
   NextRunSummary,
-  SearchTerm,
 } from '../../ui/src/lib/ipc/api';
 import snapshot from './demo/snapshot.json';
 // The engine's words of the suggestions (written by core's matching::vocabulary test).
@@ -633,7 +633,13 @@ const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
   'fratch',
 ]);
 
-const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
+/** How many alert mails of a portal of alert mails came in the last 30 days (the demo's). */
+const ALERT_MAILS: Partial<Record<PortalState['portal'], number>> = { linkedin: 24, freelance: 11 };
+
+const portal = (
+  name: PortalState['portal'],
+  extra: Partial<NextPortalState> = {},
+): NextPortalState => ({
   portal: name,
   way: SEARCHED.has(name) ? 'search' : 'alert',
   enabled: true,
@@ -644,6 +650,7 @@ const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): 
   actionNeeded: false,
   quota: null,
   lastAlert: null,
+  alertMails: ALERT_MAILS[name] ?? null,
   ...extra,
 });
 
@@ -786,6 +793,15 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
     state.lastRun = null;
   },
+  // The setup right after the CV: the profile it filled (no wished role, no country, no
+  // language), the step "Fast fertig".
+  'setup-cv': () => {
+    jobs = [];
+    state.firstRun = true;
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.lastRun = null;
+    state.profile = infoOf({ ...mergeCv(null), roles: [], countries: [], languages: [] });
+  },
   // Before the first search: Aktuell holds nothing yet.
   fresh: () => {
     jobs = [];
@@ -836,15 +852,6 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.portals[1]!.actionNeeded = true;
     // Near the day's limit: the meter turns ochre.
     state.portals[2]!.quota = { usedHour: 12, capHour: 40, usedDay: 92, capDay: 100 };
-  },
-  reset: () => {
-    // After "reset everything" the app starts empty: the first-run page, with the report.
-    jobs = [];
-    state.firstRun = true;
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
-    state.profile = null;
-    state.lastRun = null;
-    state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
   },
   'session-left': () => {
     // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
@@ -923,10 +930,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
 
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
-  backups =
-    scenario === 'first-run' || scenario === 'reset' || DEMO_MODE
-      ? []
-      : structuredClone([...DEMO_BACKUPS]);
+  backups = scenario === 'first-run' || DEMO_MODE ? [] : structuredClone([...DEMO_BACKUPS]);
   // The last fetch brought a job whose page is still to come: the stub holds it before the
   // catch-up scores it (the list's jobs without a score stand first).
   for (const j of jobs) if (j.detail.kind === 'pending') j.match = null;
@@ -1342,25 +1346,6 @@ function askedTerms(): AskedTerm[] {
     .sort(([ka, a], [kb, b]) => b.count - a.count || (ka < kb ? -1 : ka > kb ? 1 : 0))
     .slice(0, 8)
     .map(([, entry]) => entry);
-}
-
-/** `search_terms` like profile::deep_search_terms: the wished roles, the focus competences,
- *  then the others and the tools, at most 24, each with what it brought in the last search
- *  (the demo's counts; none before a search: "neu"). */
-function searchTerms(): SearchTerm[] {
-  const form = state.profile?.form;
-  if (!form) return [];
-  const named = [
-    ...form.roles,
-    ...form.competences.filter((c) => c.focus).map((c) => c.name),
-    ...form.competences.filter((c) => !c.focus).map((c) => c.name),
-    ...form.tools,
-  ].filter((term, index, all) => term.trim() !== '' && all.indexOf(term) === index);
-  const searched = state.lastRun !== null;
-  return named.slice(0, 24).map((term, index) => ({
-    term,
-    matched: searched && index < 8 ? [6, 4, 3, 3, 2, 1, 0, 1][index]! : null,
-  }));
 }
 
 /* ------------------------------------------------------------------- detail */
@@ -2045,7 +2030,6 @@ const handlers: Handlers = {
     return structuredClone(state.profile);
   },
   profile_missing: ({ form }) => missingOf(form),
-  search_terms: () => searchTerms(),
   // Fertig of the setup: the next start opens the Jobs view.
   finish_onboarding: () => {
     state.firstRun = false;
@@ -2138,7 +2122,7 @@ const handlers: Handlers = {
   },
   // The app starts again with the setup (in the preview: the page, as after a reset).
   reset_all: () => {
-    if (PREVIEW) setTimeout(() => preview.restart('reset'), 400);
+    if (PREVIEW) setTimeout(() => preview.restart('first-run'), 400);
     return null;
   },
   list_backups: () => structuredClone(backups),

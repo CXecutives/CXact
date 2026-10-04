@@ -74,11 +74,11 @@
     flex-direction: column;
     width: var(--sidebar-live, var(--sidebar-width));
     height: 100%;
-    padding: 0 var(--space-12) var(--space-12);
+    padding: 0 var(--space-8) var(--space-8);
   }
 
   /* The first entry is centred in the first row of every view. */
   .nav {
-    margin-top: calc(var(--pane-padding) + (var(--first-row) - var(--control-md)) / 2);
+    margin-top: calc(var(--head-pad) + (var(--first-row) - var(--control-md)) / 2);
   }
 </style>

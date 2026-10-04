@@ -34,6 +34,7 @@ class Onboarding {
     this.#begun = true;
     const asked = new URLSearchParams(location.search).get('step');
     if (isStep(asked)) {
+      if (asked === 'self') this.way = 'self';
       if (asked === 'reading') void this.read(false);
       else this.go(asked);
       return;
@@ -99,13 +100,19 @@ class Onboarding {
     void this.read(false);
   }
 
-  /** "Selbst ausfüllen" after a failure: the form, empty or as stored. */
+  /** "Selbst ausfüllen" (its tile, or after a failure): the short form, empty or as stored. */
   byHand(): void {
     this.#attempt += 1;
     this.way = 'self';
     this.failure = null;
     this.error = null;
-    this.go('review');
+    this.go('self');
+  }
+
+  /** "Aus Lebenslauf": the upload. */
+  byCv(): void {
+    this.way = 'cv';
+    this.go('upload');
   }
 
   /** "Zu den Jobs": the shell leaves the setup for the Jobs view. */

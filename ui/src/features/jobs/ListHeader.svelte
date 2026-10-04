@@ -1,7 +1,9 @@
 <!--
-  The header of the list column, the same in the three places. First row: the places as tabs
-  (Aktuell, Archiv, Papierkorb, their names only; another place starts without the search,
-  like a folder of a mail app) and at its right end the place's one action: in the
+  The header of the list column, the same in the three places: the view's head (PageHeader,
+  on white with a hairline under it, the list scrolls beneath it). First row: the places as
+  tabs (Aktuell, Archiv, Papierkorb, their names only, the one segmented look of the app;
+  another place starts without the search, like a folder of a mail app) and at its right end
+  the place's one action: in the
   Aktuell "Jobs suchen" with the magnifier (the alert mails, then the portals), the one
   primary of the Jobs view, with or without a mailbox; "Abbrechen" stands in its place while
   a fetch goes (the wider of them sets the slot); in the other places "Abbrechen" stands where
@@ -27,16 +29,16 @@
   on, its parts
   stand as small chips under the row, each with its × (the row unfolds and folds away, the
   list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
-  what went wrong. The bottom hairline shows only once the list below is scrolled. Under the
-  rows one sentence says when a job action of the list failed (a move, its undo); it goes
-  with the next list or the next action that works.
+  what went wrong. Under the rows one sentence says when a job action of the list failed (a
+  move, its undo); it goes with the next list or the next action that works.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice from '$components/Notice.svelte';
-  import Tabs, { type TabOption } from '$components/Tabs.svelte';
+  import PageHeader from '$components/PageHeader.svelte';
+  import Segmented, { type SegmentedOption } from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import type { Place } from '$lib/ipc/types';
@@ -53,17 +55,11 @@
   import RunLine from './RunLine.svelte';
   import TrashAction from './TrashAction.svelte';
 
-  interface Props {
-    /** The list below is scrolled away from its top. */
-    scrolled?: boolean;
-  }
-  let { scrolled = false }: Props = $props();
-
   const place = $derived(jobs.place);
   /** The jobs of every place, whatever the search and the filter. */
   const totals = $derived(jobs.overviewCounts ?? jobs.counts);
 
-  const places = $derived<TabOption<Place>[]>([
+  const places = $derived<SegmentedOption<Place>[]>([
     { id: 'inbox', label: t.place.inbox, testid: 'place-inbox' },
     { id: 'archive', label: t.place.archive, testid: 'place-archive' },
     { id: 'trash', label: t.place.trash, testid: 'place-trash' },
@@ -229,89 +225,96 @@
   </span>
 {/snippet}
 
-<div class="header" class:scrolled data-testid="list-header" data-press-only>
-  <div class="places" bind:this={placesBox}>
-    <Tabs
-      options={places}
-      value={place}
-      label={t.place.tabs}
-      testid="places"
-      onchange={choosePlace}
-    />
-    {#if place === 'inbox' || run.fetching || emptiable}
-      <!-- One cell in every place, as wide as the widest of what it holds (the fetch's
+<div class="header" data-testid="list-header" data-press-only>
+  <PageHeader>
+    {#snippet lead()}
+      <span class="places" bind:this={placesBox}>
+        <Segmented
+          tabs
+          options={places}
+          value={place}
+          label={t.place.tabs}
+          testid="places"
+          onchange={choosePlace}
+        />
+      </span>
+    {/snippet}
+    {#snippet actions()}
+      {#if place === 'inbox' || run.fetching || emptiable}
+        <!-- One cell in every place, as wide as the widest of what it holds (the fetch's
            buttons hold its width where they do not show); only the one that fits the place
            and the run shows and takes clicks: "Abbrechen" while a fetch goes, wherever the
            list is (a fetch that ends at once simply shows "Jobs suchen" again). -->
-      <span class="action" data-testid="place-action">
-        <span class="slot" class:shown={fetchGroup} inert={!fetchGroup}>
-          {@render fetchButtons()}
+        <span class="action" data-testid="place-action">
+          <span class="slot" class:shown={fetchGroup} inert={!fetchGroup}>
+            {@render fetchButtons()}
+          </span>
+          {#if emptiable}
+            <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
+              <TrashAction
+                disabled={run.active}
+                disabledReason={run.busyText}
+                testid={run.fetching ? null : 'empty-trash'}
+                onclick={askEmpty}
+              />
+            </span>
+          {/if}
         </span>
-        {#if emptiable}
-          <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
-            <TrashAction
-              disabled={run.active}
-              disabledReason={run.busyText}
-              testid={run.fetching ? null : 'empty-trash'}
-              onclick={askEmpty}
-            />
-          </span>
-        {/if}
-      </span>
-    {/if}
-  </div>
-  <div class="top">
-    {#if tools}
-      <span class="search" bind:this={searchBox}>
-        <TextField
-          kind="search"
-          value={jobs.search}
-          label={t.place.search[place]}
-          placeholder={t.place.search[place]}
-          testid="search"
-          oninput={(value) => jobs.setSearch(value)}
-        />
-      </span>
-      <span class="funnel" bind:this={funnelBox}>
-        <Button
-          variant="secondary"
-          iconOnly
-          icon="filter"
-          label={t.toolbar.filter}
-          dot={jobs.filtered}
-          menu
-          expanded={funnelOpen}
-          testid="filter"
-          onclick={openFunnel}
-        />
-      </span>
-    {/if}
-  </div>
-  {#if chips.length > 0}
-    <div class="unfold" transition:unfold>
-      <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
-        {#each chips as chip (chip.id)}
-          <span class="chip" transition:fade>
-            <Button
-              variant="secondary"
-              label={chip.label}
-              trailing="close"
-              testid="chip-{chip.id}"
-              onclick={() => dropChip(chip)}
-            />
-          </span>
-        {/each}
-      </div>
+      {/if}
+    {/snippet}
+    <div class="top">
+      {#if tools}
+        <span class="search" bind:this={searchBox}>
+          <TextField
+            kind="search"
+            value={jobs.search}
+            label={t.place.search[place]}
+            placeholder={t.place.search[place]}
+            testid="search"
+            oninput={(value) => jobs.setSearch(value)}
+          />
+        </span>
+        <span class="funnel" bind:this={funnelBox}>
+          <Button
+            variant="secondary"
+            iconOnly
+            icon="filter"
+            label={t.toolbar.filter}
+            dot={jobs.filtered}
+            menu
+            expanded={funnelOpen}
+            testid="filter"
+            onclick={openFunnel}
+          />
+        </span>
+      {/if}
     </div>
-  {/if}
-  <RunLine />
-  {#if jobs.actionError}
-    <div class="unfold" transition:unfold>
-      <div class="note">
-        <Notice tone="danger" variant="inline" text={jobs.actionError} testid="header-error" />
+    {#if chips.length > 0}
+      <div class="unfold" transition:unfold>
+        <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
+          {#each chips as chip (chip.id)}
+            <span class="chip" transition:fade>
+              <Button
+                variant="secondary"
+                label={chip.label}
+                trailing="close"
+                testid="chip-{chip.id}"
+                onclick={() => dropChip(chip)}
+              />
+            </span>
+          {/each}
+        </div>
       </div>
-    </div>
-  {/if}
+    {/if}
+    <RunLine />
+    {#if jobs.actionError}
+      <div class="unfold" transition:unfold>
+        <div class="note">
+          <Notice tone="danger" variant="inline" text={jobs.actionError} testid="header-error" />
+        </div>
+      </div>
+    {/if}
+  </PageHeader>
 </div>
 
 <Dialog
@@ -333,26 +336,11 @@
     display: flex;
     flex: none;
     flex-direction: column;
-    padding: var(--list-header-top) var(--pane-padding) var(--pane-padding);
-    border-bottom: var(--border-width) solid transparent;
-    transition: border-color var(--dur-fast) var(--ease-standard);
   }
 
-  .scrolled {
-    border-bottom-color: var(--border);
-  }
-
-  /* The rows span the header's side padding too. A narrow column puts the action under the
-     tabs. */
   .places {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-8);
-    min-height: var(--tabs-height);
-    margin: 0 calc(-1 * var(--pane-padding));
-    padding: 0 var(--pane-padding);
+    min-width: 0;
   }
 
   /* One height whatever it holds (an empty place keeps the row, empty). A narrow column
@@ -363,8 +351,7 @@
     align-items: center;
     gap: var(--space-8);
     min-height: var(--list-toolbar);
-    margin: var(--space-12) calc(-1 * var(--pane-padding)) 0;
-    padding: 0 var(--pane-padding);
+    margin-top: var(--space-10);
   }
 
   .search {
@@ -441,6 +428,6 @@
   }
 
   .note {
-    padding-top: var(--space-12);
+    padding-top: var(--space-10);
   }
 </style>

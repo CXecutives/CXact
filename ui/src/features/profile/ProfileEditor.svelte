@@ -1,23 +1,21 @@
 <!--
-  The profile as one form on one page (user decision 2026-10-03, variant 3): the three
-  sections of `sections.ts` in their order (Was du suchst, Was du mitbringst, Was nicht passt),
-  each under its heading in a card, each field as the table describes it, its label in a
-  column of its own at the left (Field `side`, where the card is wide enough). Every field has
-  its label (13/500) and, only where docs/PLAN.md places one, an info symbol beside it (never with
-  a hint); a field the CV filled carries a small navy dot until the next save. Every control
-  is 32 px high, every number field one width with its unit beside it; a number is formatted
-  when its field is left. A value that is too large, a 0 where at least 1 counts, a day that
-  does not read and a value the backend refused are said at their field, stay with their
-  error until they change, and hold the save (the field gets the caret when a save is tried).
-  A wished rate under the minimum says so quietly in the hint's place. Mindestjahresgehalt
-  shows only while Festanstellung or Zeitarbeit is ticked.
-  The save bar rises in at the bottom of the view only while the form holds a change:
-  "Speichern" (the one primary) and "Verwerfen"; it leaves once saved (the view says so in a
-  toast) or discarded. While it shows, the toasts rise above it (the toast stack measures
-  it). An untouched new form goes back to the ways in with Esc. Enter in a field saves, as in
-  every form (in the row lists it goes to the next row, in a chip field it adds what was
-  typed). In the setup (`onboarding`) there is no save bar and no "Häufig verlangt"; Enter is
-  the setup's "Weiter" (`onsave`, also without a change) and Esc does nothing.
+  The profile as rows (design round 3): on the page the three sections of `sections.ts` in
+  their order (Was du suchst, Was du mitbringst, Was nicht passt), each under its heading in a
+  card; in the setup one of its short forms (`form`), the rows on the setup's card. Each row
+  is a field as the table describes it, its label (and, only where docs/PLAN.md places one,
+  its info symbol) in a column of its own at the left (Field `side`, 128 px; 118 in the
+  setup), its control in the column beside it, a hairline between the rows. Every control is
+  24 px high, every number field one width with its unit beside it; a number is formatted
+  when its field is left. A required field that is still empty (`missing`) has an amber edge
+  with a soft halo and says "Pflicht" in its placeholder; a link of the missing line puts the
+  caret into it and lets its row flash (`focusField`). A value that is too large, a 0 where
+  at least 1 counts, a day that does not read and a value the backend refused are said at
+  their field, stay with their error until they change, and hold the save (the field gets
+  the caret when a save is tried). A wished rate under the minimum says so quietly under the
+  rate. Mindestgehalt shows only while Festanstellungen or Zeitarbeit is on.
+  Enter in a field saves (the setup: goes on), as in every form (in the row lists it goes to
+  the next row, in a chip field it adds what was typed); an untouched new form goes back to
+  the ways in with Esc (not in the setup).
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -29,18 +27,15 @@
 </script>
 
 <script lang="ts">
-  import Button from '$components/Button.svelte';
   import ChipInput from '$components/ChipInput.svelte';
   import Field from '$components/Field.svelte';
-  import MenuButton from '$components/MenuButton.svelte';
-  import Notice from '$components/Notice.svelte';
   import Segmented from '$components/Segmented.svelte';
+  import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
-  import { fade, rise } from '$lib/motion/transitions';
-  import { primaryFirst } from '$lib/platform';
+  import { fade } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
   import AskedTerms from './AskedTerms.svelte';
@@ -50,35 +45,30 @@
   import LanguageList from './LanguageList.svelte';
   import NumberField from './NumberField.svelte';
   import ProfileSection from './ProfileSection.svelte';
-  import { SECTIONS, fieldsOf, type Control, type Line, type NumberKey } from './sections';
+  import {
+    SECTIONS,
+    fieldsOf,
+    type ChoiceKey,
+    type Control,
+    type NumberKey,
+    type Word,
+  } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
     /** A value the backend refused on the last save. */
     fieldError: FieldError | null;
-    /** The fields the CV filled (a dot at each until the next save). */
-    aiFilled: readonly string[];
-    busy: boolean;
-    /** A failure of the last save, in words. */
-    note: string | null;
+    /** The required fields still empty (an amber edge each). */
+    missing: readonly string[];
+    /** The setup's short form, its rows (null: the page with its sections). */
+    rows?: readonly Control[] | null;
     onsave: () => void;
     ondiscard: () => void;
-    /** The save bar has left (after a save: the view's toast comes now). */
-    onbargone?: () => void;
-    /** The setup: no save bar, no "Häufig verlangt", Enter goes on. */
-    onboarding?: boolean;
   }
 
-  let {
-    fieldError,
-    aiFilled,
-    busy,
-    note,
-    onsave,
-    ondiscard,
-    onbargone,
-    onboarding = false,
-  }: Props = $props();
+  let { fieldError, missing, rows = null, onsave, ondiscard }: Props = $props();
+
+  const setup = $derived(rows !== null);
 
   // Text typed into a chip field of the form counts as a change.
   editor.typed.share();
@@ -122,9 +112,9 @@
   );
 
   /** A value is marked: Speichern waits until it is put right. */
-  const held = $derived(
-    invalid.length > 0 || fieldError !== null || (editor.judged && editor.dateInvalid),
-  );
+  export function held(): boolean {
+    return invalid.length > 0 || fieldError !== null || (editor.judged && editor.dateInvalid);
+  }
 
   /** The error of a field: a value the backend refused, else one that is wrong as it is. */
   function errorOf(field: string): string | null {
@@ -140,37 +130,33 @@
     return wrong ? { row: wrong.row, text: wrong.text } : null;
   }
 
-  /** The dot of a field the CV filled. */
-  const markOf = (control: Control): string | null =>
-    fieldsOf(control).some((field) => aiFilled.includes(field)) ? t.profile.aiFilled : null;
   const infoOf = (control: Control): string | null =>
     'info' in control && control.info ? t.profile.info[control.info] : null;
+  const isMissing = (control: Control): boolean =>
+    fieldsOf(control).some((field) => missing.includes(field));
+  /** The placeholder of a field, with "Pflicht" while it is required and empty. */
+  const placeholderOf = (word: Word, open: boolean): string =>
+    open ? t.profile.required(words[word]) : words[word];
 
   // ------------------------------------------------------------ the choices
 
-  const WORK_MODES = $derived(
-    (Object.keys(t.profile.workMode) as ProfileForm['workMode'][]).map((mode) => ({
-      id: mode,
-      label: t.profile.workMode[mode],
+  const CHOICES = $derived<Record<ChoiceKey, { id: string; label: string }[]>>({
+    workMode: Object.entries(t.profile.workMode).map(([mode, label]) => ({ id: mode, label })),
+    workload: Object.entries(t.profile.workload).map(([load, label]) => ({ id: load, label })),
+    minMonths: Object.entries(t.profile.minMonths).map(([months, label]) => ({
+      id: months,
+      label,
     })),
-  );
-  const WORKLOADS = $derived(
-    (Object.keys(t.profile.workload) as ProfileForm['workload'][]).map((load) => ({
-      id: load,
-      label: t.profile.workload[load],
-    })),
-  );
-  const MONTHS = [0, 3, 6, 12] as const satisfies readonly ProfileForm['minMonths'][];
-  const DURATIONS = $derived(
-    MONTHS.map((months) => ({ id: String(months), label: t.profile.minMonths[months] })),
-  );
-  const monthsOf = (value: string): ProfileForm['minMonths'] =>
-    MONTHS.find((months) => String(months) === value) ?? 0;
+  });
+  /** A choice's value as the segmented control holds it, and back. */
+  const choiceOf = (key: ChoiceKey): string => String(form[key]);
+  function choose(key: ChoiceKey, value: string): void {
+    if (key === 'minMonths') form.minMonths = Number(value) as ProfileForm['minMonths'];
+    else if (key === 'workload') form.workload = value as ProfileForm['workload'];
+    else form.workMode = value as ProfileForm['workMode'];
+  }
 
-  /** The contract types beside the project one, which is always ticked. */
-  const CONTRACTS = ['permanent', 'temporary'] as const;
-
-  // ------------------------------------------------------------ the industries
+  // ------------------------------------------------------------ names as chips
 
   const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
   const industryNames = (): string[] => form.industries.map((row) => row.name);
@@ -189,10 +175,22 @@
       if (row) row.preferred = !row.preferred;
     },
   };
+  /** The setup's competences as names, each keeping its years and star. */
+  const competenceNames = (): string[] =>
+    form.competences.map((row) => row.name).filter((name) => name.trim() !== '');
+  function setCompetences(names: string[]): void {
+    form.competences = names.map(
+      (name) =>
+        form.competences.find((row) => same(row.name, name)) ?? {
+          name,
+          years: null,
+          focus: false,
+        },
+    );
+  }
 
   // ------------------------------------------------------------ saving
 
-  const actionFirst = primaryFirst();
   let root = $state<HTMLElement | null>(null);
 
   /** Ready to save: a value that holds the save is said at its field, which gets the caret. */
@@ -208,36 +206,22 @@
   }
 
   /** The caret into a field of the form (its marked control first), in the middle of the
-   *  view; `false` when the field is not on the page. */
-  export async function focusField(field: string): Promise<boolean> {
+   *  view, and with `flash` its row lights up once; `false` when the field is not on the
+   *  page. */
+  export async function focusField(field: string, flash = false): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     const target =
       scope?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
       scope?.querySelector<HTMLElement>('input, textarea, button:not([data-testid="info-tip"])');
-    target?.focus();
-    target?.scrollIntoView({ block: 'center' });
+    target?.focus({ preventScroll: true });
+    (target ?? scope)?.scrollIntoView({ block: 'center' });
+    if (flash && scope) {
+      delete scope.dataset.flash;
+      void scope.offsetWidth;
+      scope.dataset.flash = '';
+    }
     return target !== null && target !== undefined;
-  }
-
-  let bar = $state<HTMLElement | null>(null);
-
-  /** A focused control that ends under the sticky save bar moves up (WebKit does not
-   *  apply scroll-margin when it scrolls a focused field into view). */
-  function keepClear(event: FocusEvent): void {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-    requestAnimationFrame(() => {
-      const top = bar?.getBoundingClientRect().top ?? Infinity;
-      if (target.isConnected && target.getBoundingClientRect().bottom > top) {
-        target.scrollIntoView({ block: 'center' });
-      }
-    });
-  }
-
-  function save(): void {
-    if (!editor.dirty || busy) return;
-    if (ready()) onsave();
   }
 
   /** A new form nothing was typed into: Esc goes back to the ways in. */
@@ -246,320 +230,273 @@
 
 <div
   class="editor"
+  class:setup
   bind:this={root}
-  use:formKeys={onboarding
-    ? { save: () => !busy && onsave() }
-    : untouched
-      ? { save, cancel: ondiscard }
-      : { save }}
-  onfocusin={keepClear}
+  use:formKeys={untouched && !setup ? { save: onsave, cancel: ondiscard } : { save: onsave }}
   data-testid="profile-form"
 >
-  {#each SECTIONS as section (section.id)}
-    <ProfileSection id={section.id} heading={t.profile.section[section.id]}>
-      {#each section.lines as line, index (index)}
-        {@render lineOf(line)}
-      {/each}
-    </ProfileSection>
-  {/each}
-</div>
-
-{#snippet lineOf(line: Line)}
-  {#if line.kind === 'pair'}
-    <div class="pair">
-      {#each line.fields as field, index (index)}{@render control(field)}{/each}
+  {#if rows !== null}
+    <div class="rows">
+      {#each rows as control, index (index)}{@render row(control)}{/each}
     </div>
   {:else}
-    {@render control(line)}
+    {#each SECTIONS as section (section.id)}
+      <ProfileSection id={section.id} heading={t.profile.section[section.id]}>
+        {#each section.rows as control, index (index)}{@render row(control)}{/each}
+      </ProfileSection>
+    {/each}
+  {/if}
+</div>
+
+{#snippet row(c: Control)}
+  {#if c.kind !== 'number' || (c.shown?.(form) ?? true)}
+    <div
+      class="row"
+      data-field={fieldsOf(c).join(' ')}
+      data-missing={isMissing(c) ? '' : undefined}
+      onanimationend={(event) => {
+        if (event.target === event.currentTarget) delete event.currentTarget.dataset.flash;
+      }}
+      transition:fade
+    >
+      {@render control(c, isMissing(c))}
+    </div>
   {/if}
 {/snippet}
 
-{#snippet control(c: Control)}
-  {@const fields = fieldsOf(c).join(' ')}
+{#snippet control(c: Control, open: boolean)}
   {#if c.kind === 'number'}
-    {#if c.shown?.(form) ?? true}
-      {@const error = errorOf(c.key)}
-      {@const advice = c.advice?.(form) ?? null}
-      <div data-field={fields} transition:fade>
-        <Field
-          side
-          label={words[c.label]}
-          for="{id}-{c.key}"
-          hint={advice === null ? null : words[advice]}
-          info={infoOf(c)}
-          mark={markOf(c)}
-          {error}
-        >
-          <NumberField
-            id="{id}-{c.key}"
-            money={c.unit === 'euro'}
-            unit={t.profile.unit[c.unit]}
-            bind:value={form[c.key]}
-            invalid={error !== null}
-            testid={c.testid}
-          />
-        </Field>
-      </div>
-    {/if}
+    {@const error = errorOf(c.key)}
+    <Field side label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} {error}>
+      <NumberField
+        id="{id}-{c.key}"
+        money={c.unit === 'euro'}
+        unit={t.profile.unit[c.unit]}
+        bind:value={form[c.key]}
+        invalid={error !== null}
+        testid={c.testid}
+      />
+    </Field>
   {:else if c.kind === 'chips'}
     {@const error = errorOf(c.key)}
-    <div data-field={fields}>
-      <Field
-        side
-        label={words[c.label]}
-        for="{id}-{c.key}"
-        info={infoOf(c)}
-        mark={markOf(c)}
-        {error}
-      >
-        <ChipInput
-          id="{id}-{c.key}"
-          bind:values={form[c.key]}
-          split={c.lines ? 'lines' : 'list'}
-          placeholder={words[c.placeholder]}
-          invalid={error !== null}
-          suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
-          testid={c.testid}
-        />
-      </Field>
-      {#if c.asked && !onboarding}<div class="under">
-          <AskedTerms field={c.asked} home={c.testid} />
-        </div>{/if}
-    </div>
-  {:else if c.kind === 'segments'}
-    <div data-field={fields}>
-      <Field side label={words[c.label]} info={infoOf(c)} mark={markOf(c)} error={errorOf(c.key)}>
-        <Segmented
-          options={WORK_MODES}
-          value={form.workMode}
+    <Field side label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} {error}>
+      <ChipInput
+        id="{id}-{c.key}"
+        bind:values={form[c.key]}
+        split={c.lines ? 'lines' : 'list'}
+        placeholder={placeholderOf(c.placeholder, open)}
+        more={words[c.more]}
+        missing={open}
+        invalid={error !== null}
+        suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
+        testid={c.testid}
+      />
+      {#if c.asked && !setup}<AskedTerms field={c.asked} home={c.testid} />{/if}
+    </Field>
+  {:else if c.kind === 'switch'}
+    <Field side inline label={words[c.label]} info={infoOf(c)}>
+      <div class="switch">
+        {#if c.text}<span class="text" id="{id}-{c.key}-text">{words[c.text]}</span>{/if}
+        <Toggle
+          checked={form[c.key]}
           label={words[c.label]}
-          testid={c.testid}
-          onchange={(mode) => (form.workMode = mode)}
+          describedby={c.text ? `${id}-${c.key}-text` : null}
+          testid="profile-{c.key}"
+          onchange={(on) => (form[c.key] = on)}
         />
-      </Field>
-    </div>
-  {:else if c.kind === 'select'}
-    <div class="choose" data-field={fields}>
-      <Field side label={words[c.label]} mark={markOf(c)} error={errorOf(c.key)}>
-        {#if c.key === 'workload'}
-          <MenuButton
-            options={WORKLOADS}
-            value={form.workload}
-            menuLabel={words[c.label]}
-            field
-            testid={c.testid}
-            onchange={(load) => (form.workload = load)}
+      </div>
+    </Field>
+  {:else if c.kind === 'rate'}
+    {@const error = errorOf('dayRateWish') ?? errorOf('dayRateMin')}
+    {@const below =
+      form.dayRateWish !== null && form.dayRateMin !== null && form.dayRateWish < form.dayRateMin}
+    <Field
+      side
+      label={words.dayRate}
+      info={infoOf(c)}
+      hint={below && error === null ? words.belowMinRate : null}
+      {error}
+    >
+      <div class="rate">
+        <span class="pair">
+          <label class="part" for="{id}-wish">{words.dayRateWish}</label>
+          <NumberField
+            id="{id}-wish"
+            money
+            bind:value={form.dayRateWish}
+            invalid={errorOf('dayRateWish') !== null}
+            testid="profile-wish-rate"
           />
-        {:else}
-          <MenuButton
-            options={DURATIONS}
-            value={String(form.minMonths)}
-            menuLabel={words[c.label]}
-            field
-            testid={c.testid}
-            onchange={(months) => (form.minMonths = monthsOf(months))}
+        </span>
+        <span class="pair">
+          <label class="part" for="{id}-min">{words.dayRateMin}</label>
+          <NumberField
+            id="{id}-min"
+            money
+            unit={t.profile.unit.euro}
+            bind:value={form.dayRateMin}
+            invalid={errorOf('dayRateMin') !== null}
+            testid="profile-min-rate"
           />
-        {/if}
-      </Field>
-    </div>
-  {:else if c.kind === 'contracts'}
-    <div data-field={fields}>
-      <Field side label={words.contracts} info={infoOf(c)} mark={markOf(c)}>
-        <div class="checks" data-testid="profile-contracts">
-          <Button
-            variant="secondary"
-            icon="check"
-            label={t.profile.contract.project}
-            pressed
-            disabled
-            disabledReason={t.profile.contractFixed}
-            testid="profile-contract-project"
-          />
-          {#each CONTRACTS as contract (contract)}
-            <Button
-              variant="secondary"
-              icon={form[contract] ? 'check' : 'add'}
-              label={t.profile.contract[contract]}
-              pressed={form[contract]}
-              testid="profile-contract-{contract}"
-              onclick={() => (form[contract] = !form[contract])}
-            />
-          {/each}
-        </div>
-      </Field>
-    </div>
+        </span>
+      </div>
+    </Field>
+  {:else if c.kind === 'choice'}
+    <Field side label={words[c.label]} info={infoOf(c)} error={errorOf(c.key)}>
+      <Segmented
+        options={CHOICES[c.key]}
+        value={choiceOf(c.key)}
+        label={words[c.label]}
+        testid={c.testid}
+        onchange={(value) => choose(c.key, value)}
+      />
+    </Field>
   {:else if c.kind === 'countries'}
     {@const error = errorOf('countries')}
-    <div data-field={fields}>
-      <Field
-        side
-        label={words.countries}
-        for="{id}-countries"
-        info={infoOf(c)}
-        mark={markOf(c)}
-        {error}
-      >
-        <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
-      </Field>
-    </div>
+    <Field side label={words.countries} for="{id}-countries" info={infoOf(c)} {error}>
+      <CountriesField
+        id="{id}-countries"
+        bind:values={form.countries}
+        missing={open}
+        invalid={error !== null}
+      />
+    </Field>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
-    <div data-field={fields}>
-      <Field side label={words.available} mark={markOf(c)} {error}>
-        <AvailableField invalid={error !== null} />
-      </Field>
-    </div>
+    <Field side label={words.available} {error}>
+      <AvailableField invalid={error !== null} />
+    </Field>
   {:else if c.kind === 'competences'}
-    <div data-field={fields}>
-      <Field side label={words.competences} info={infoOf(c)} mark={markOf(c)}>
-        <CompetenceList bind:rows={form.competences} error={listError('competences')} />
-      </Field>
-      {#if !onboarding}<div class="under">
-          <AskedTerms field="competence" home="competence-add" />
-        </div>{/if}
-    </div>
+    <Field side label={words.competences} info={infoOf(c)}>
+      <CompetenceList
+        bind:rows={form.competences}
+        missing={open}
+        error={listError('competences')}
+      />
+      {#if !setup}<AskedTerms field="competence" home="competence-add" />{/if}
+    </Field>
+  {:else if c.kind === 'competenceNames'}
+    <Field side label={words.competences} for="{id}-competences" info={infoOf(c)}>
+      <ChipInput
+        id="{id}-competences"
+        bind:values={competenceNames, setCompetences}
+        placeholder={placeholderOf('competencePlaceholder', open)}
+        more={words.competencesMore}
+        missing={open}
+        suggestions={vocabulary.skills}
+        testid="profile-competence-names"
+      />
+    </Field>
   {:else if c.kind === 'industries'}
     {@const error = errorOf('industries')}
-    <div data-field={fields}>
-      <Field
-        side
-        label={words.industries}
-        for="{id}-industries"
-        info={infoOf(c)}
-        mark={markOf(c)}
-        {error}
-      >
-        <ChipInput
-          id="{id}-industries"
-          bind:values={industryNames, setIndustries}
-          placeholder={words.industriesPlaceholder}
-          invalid={error !== null}
-          suggestions={vocabulary.industries}
-          star={INDUSTRY_STAR}
-          testid="profile-industries"
-        />
-      </Field>
-      {#if !onboarding}<div class="under">
-          <AskedTerms field="industry" home="profile-industries" />
-        </div>{/if}
-    </div>
+    <Field side label={words.industries} for="{id}-industries" info={infoOf(c)} {error}>
+      <ChipInput
+        id="{id}-industries"
+        bind:values={industryNames, setIndustries}
+        placeholder={words.industriesPlaceholder}
+        more={words.industriesMore}
+        invalid={error !== null}
+        suggestions={vocabulary.industries}
+        star={INDUSTRY_STAR}
+        testid="profile-industries"
+      />
+      {#if !setup}<AskedTerms field="industry" home="profile-industries" />{/if}
+    </Field>
   {:else if c.kind === 'languages'}
-    <div data-field={fields}>
-      <Field side label={words.languages} mark={markOf(c)}>
-        <LanguageList bind:rows={form.languages} error={listError('languages')} />
-      </Field>
-      {#if !onboarding}<div class="under">
-          <AskedTerms field="language" home="language-add" />
-        </div>{/if}
-    </div>
+    <Field side label={words.languages}>
+      <LanguageList bind:rows={form.languages} missing={open} error={listError('languages')} />
+      {#if !setup}<AskedTerms field="language" home="language-add" />{/if}
+    </Field>
   {/if}
 {/snippet}
 
-{#if editor.dirty && !onboarding}
-  <div
-    class="bar"
-    bind:this={bar}
-    data-save-bar
-    data-testid="profile-save-bar"
-    in:rise={{ distance: 'lg' }}
-    out:fade
-    onoutroend={() => onbargone?.()}
-  >
-    <div class="status">
-      {#if note}
-        <Notice tone="danger" variant="inline" text={note} testid="profile-save-error" />
-      {/if}
-    </div>
-    <div class="buttons">
-      {#snippet discard()}
-        <Button
-          variant="secondary"
-          label={t.profile.discard}
-          disabled={busy}
-          testid="profile-discard"
-          onclick={ondiscard}
-        />
-      {/snippet}
-      {#if !actionFirst}{@render discard()}{/if}
-      <Button
-        variant="primary"
-        label={t.profile.save}
-        disabled={held}
-        disabledReason={t.profile.fixFirst}
-        loading={busy}
-        testid="profile-save"
-        onclick={save}
-      />
-      {#if actionFirst}{@render discard()}{/if}
-    </div>
-  </div>
-{/if}
-
 <style>
-  /* The sections 32 apart. */
+  /* The sections 24 apart. */
   .editor {
     display: flex;
     flex-direction: column;
-    gap: var(--space-32);
+    gap: var(--space-24);
   }
 
-  /* "Häufig verlangt" under a field starts in the controls' column. */
-  @container (width >= 520px) {
-    .under {
-      padding-inline-start: calc(var(--label-column) + var(--space-16));
-    }
-  }
-
-  /* The fields of a pair one under the other, each with its label in the label column. */
-  .pair {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-16);
-  }
-
-  /* A select is as wide as a number field, or its column where that is narrower. */
-  .choose :global(.select) {
-    width: min(100%, calc(var(--stat-min) - var(--space-48) + var(--control-field)));
-  }
-
-  .checks {
+  /* The setup's rows on its card: as wide as the card's content, the field's own query. */
+  .rows {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-8);
+    flex-direction: column;
+    container-type: inline-size;
   }
 
-  /* The save bar stays in view at the bottom of the scrolling view while there is a
-     change; under a short page it still stands at the bottom (the page is at least as high
-     as the view), so a note that appears above never moves it under the pointer. */
-  .bar {
-    position: sticky;
-    z-index: var(--z-sticky);
-    bottom: 0;
+  .setup {
+    --label-column: var(--label-column-setup);
+  }
+
+  /* A row of the form: edge to edge in its card (the card's inset as its own padding), a
+     hairline under it but the last. It flashes once when a link of the missing line led to
+     it (a wash in the halo's amber over the row). */
+  .row {
+    position: relative;
+    margin-inline: calc(-1 * var(--row-inset));
+    padding: var(--row-pad) var(--row-inset);
+    border-bottom: var(--border-width) solid var(--border);
+    scroll-margin-block: calc(2 * var(--head-pad) + var(--first-row) + var(--space-16));
+  }
+
+  .row:last-child {
+    border-bottom: 0;
+  }
+
+  .row::after {
+    position: absolute;
+    inset: 0;
+    background-color: var(--missing-flash);
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .row:global([data-flash]::after) {
+    animation: pulse var(--dur-flash) var(--ease-out);
+  }
+
+  /* A switch's sentence at the left of its column, the switch at its end. */
+  .switch {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+    min-height: var(--control-field);
+  }
+
+  .text {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-muted);
+    font: var(--type-sm);
+  }
+
+  .switch > :global(:last-child) {
+    margin-left: auto;
+  }
+
+  /* Wunsch and Minimum, each named before its field, the euro after the last. */
+  .rate {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-    margin-top: auto;
-    padding: var(--space-12) 0;
-    border-top: var(--border-width) solid var(--border);
-    background-color: var(--surface);
+    gap: var(--space-8) var(--space-16);
   }
 
-  .status {
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* Tab and focus scrolling keep a field clear of the sticky save bar and the jump links. */
-  .editor :global(:is(input, textarea, button, [role='switch'])) {
-    scroll-margin-top: calc(var(--pane-padding) + var(--control-field));
-    scroll-margin-bottom: calc(var(--control-field) + 2 * var(--space-12) + var(--space-8));
-  }
-
-  .buttons {
+  .pair {
     display: flex;
-    gap: var(--space-12);
+    align-items: center;
+    gap: var(--space-6);
+  }
+
+  .part {
+    color: var(--text-muted);
+    font: var(--type-sm);
+  }
+
+  /* Tab and focus scrolling keep a field clear of the sticky head. */
+  .editor :global(:is(input, textarea, button, [role='switch'])) {
+    scroll-margin-block: calc(2 * var(--head-pad) + var(--first-row) + var(--space-24));
   }
 </style>

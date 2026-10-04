@@ -1,14 +1,14 @@
 <!--
-  One portal in the card Jobportale or Alert-Mails of Einstellungen > Portale (and the
-  setup's Alert-Mails), the same compact row for each (user, 2026-10-01): its tile and name,
-  under it in one quiet line what the last search brought from it ("Zuletzt 4 neue Jobs";
-  the limits are said by the run's status) and the portal's own note where it has one
-  (freelance.de: what the sign-in adds), "Anmelden" or "Abmelden" where the
-  portal offers a sign-in, then for a source of alert mails "Alert anlegen" (its page in the
-  browser; in one column in every row, whether a sign-in stands before it), the portal in the
-  browser (in one column in every row) and its switch (the name
-  names the switch but, like every text next to a switch, does not switch it); at the
-  smallest window the sign-in goes to a line of its own at the row's end. A
+  One portal in the list of Einstellungen > Portale (and the setup's Alert-Mails), the same
+  compact row for each (design round 3): its tile, its name with a small label of how it
+  brings its jobs ("Suche" in a grey outline, "Alert-Mail" in navy), under it one quiet line
+  of its state (what the last search brought, "Zuletzt 4 neue Jobs"; for a portal of alert
+  mails how many came in 30 days, or "Braucht ein Postfach" without one; "Pausiert bis …"
+  while it rests), then the portal in the browser, its calls as quiet buttons where they
+  apply ("Anmelden" or "Abmelden" where the portal offers a sign-in, "Alert anlegen" for a
+  portal of alert mails: its page in the browser) and its switch (the name names the switch
+  but, like every text next to a switch, does not switch it); at the smallest window the
+  calls go to a line of their own at the row's end. A
   problem of the portal is one quiet line under the calls (whether the user has to act, the
   time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
   jobs); it unfolds and folds away, so the rows below glide. A portal that is on and sent no
@@ -22,13 +22,14 @@
   says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
+  import Badge from '$components/Badge.svelte';
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
-  import { invoke } from '$lib/ipc/api';
+  import { invoke, type NextPortalState } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
@@ -79,13 +80,30 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** What the last search brought from it (nothing before one, or when it was not asked). */
-  const lastNew = $derived.by(() => {
+  /** Its state in one quiet line: resting until a moment, a portal of alert mails without a
+   *  mailbox, how many alert mails came in 30 days, or what the last search brought from it
+   *  (nothing before one, or when it was not asked). */
+  const status = $derived.by((): string | null => {
+    const now = portal.health;
+    if (now.kind === 'paused' && now.until !== null) return t.settings.pausedUntil(now.until);
+    if (now.kind === 'quotaReached') return t.settings.pausedUntil(now.until);
+    if (portal.way === 'alert') {
+      if (!app.hasMailbox) return t.settings.needsMailbox;
+      const mails = (portal as NextPortalState).alertMails;
+      return mails === undefined || mails === null ? null : t.settings.alertMails(mails);
+    }
     const line = app.state?.lastRun?.perPortal.find((p) => p.portal === portal.portal);
     return line === undefined ? null : t.settings.lastNew(line.new);
   });
-  /** The portal's own note (freelance.de: what the sign-in adds). */
-  const note = $derived(t.settings.portalNote(portal.portal));
+  /** Its problem in one sentence, where the state line does not say it already. */
+  const problem = $derived(
+    health !== null &&
+      portal.enabled &&
+      !(portal.health.kind === 'paused' && portal.health.until !== null) &&
+      portal.health.kind !== 'quotaReached'
+      ? health
+      : null,
+  );
   /** A sign-in is stored (in the session window's profile). */
   const stored = $derived(portal.signedIn === true);
   /** Signed in as the fetch sees it: a stored sign-in it does not use counts as none while
@@ -159,22 +177,27 @@
 <!-- A row of the card like a SettingRow (edge to edge, its own padding: `data-setting-row`
      keeps the card's inset for other content off it). -->
 <div class="row" data-setting-row data-testid="portal-{portal.portal}">
-  <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
+  <span class="lead"
+    ><IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" /></span
+  >
   <div class="text">
-    <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
-    {#if note}
-      <span class="quiet" data-testid="note-{portal.portal}">{note}</span>
+    <span class="title">
+      <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
+      <Badge
+        label={t.settings.way[portal.way]}
+        tone={portal.way === 'alert' ? 'navy' : 'outline'}
+      />
+    </span>
+    {#if status}
+      <span class="quiet" data-testid="status-{portal.portal}">{status}</span>
     {/if}
-    {#if lastNew}
-      <span class="quiet" data-testid="last-new-{portal.portal}">{lastNew}</span>
-    {/if}
-    {#if health && portal.enabled}
+    {#if problem}
       <div class="fold" transition:unfold>
         <div class="line">
           <Notice
             tone={portal.actionNeeded ? 'warning' : 'info'}
             variant="inline"
-            text={health}
+            text={problem}
             action={alertMail
               ? {
                   label: t.reader.mail,
@@ -213,12 +236,12 @@
     {/if}
   </div>
   {#if portal.way === 'alert' || loginShown}
-    <span class="login">
+    <span class="calls">
       {#if loginShown}
         <span class="sign" transition:fade>
           {#if signedIn}
             <Button
-              variant="secondary"
+              variant="ghost"
               icon="signOut"
               label={t.settings.signOut}
               loading={busy}
@@ -229,7 +252,7 @@
             />
           {:else}
             <Button
-              variant="secondary"
+              variant="ghost"
               icon="signIn"
               label={t.settings.signIn}
               loading={busy}
@@ -243,7 +266,7 @@
       {/if}
       {#if portal.way === 'alert'}
         <Button
-          variant="secondary"
+          variant="ghost"
           icon="alertMail"
           label={t.settings.setUpAlert}
           testid="setup-{portal.portal}"
@@ -252,7 +275,7 @@
       {/if}
     </span>
   {/if}
-  <div class="tools">
+  <span class="tools">
     <Button
       variant="ghost"
       iconOnly
@@ -261,6 +284,8 @@
       testid="open-portal-{portal.portal}"
       onclick={() => open('home')}
     />
+  </span>
+  <span class="tools">
     <Toggle
       {id}
       checked={portal.enabled}
@@ -268,7 +293,7 @@
       testid="toggle-enabled-{portal.portal}"
       onchange={(on) => change({ enabled: on })}
     />
-  </div>
+  </span>
 </div>
 
 <style>
@@ -277,9 +302,9 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: var(--space-8) var(--space-12);
+    gap: var(--space-6) var(--space-10);
     margin-inline: calc(-1 * var(--row-inset));
-    padding: var(--space-12) var(--row-inset);
+    padding: var(--row-pad) var(--row-inset);
     border-bottom: var(--border-width) solid var(--border);
   }
 
@@ -287,8 +312,17 @@
     border-bottom: 0;
   }
 
-  /* Name and calls 2 apart like a setting row's label and hint, centred on the tile; a line
-     brings its 6 along, so it folds in one piece. */
+  /* The tile centred on the name and its state. */
+  .lead {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
+  }
+
+  /* Name and state 2 apart like a setting row's label and hint, centred on the tile; every
+     row as high as two lines, so the list keeps one rhythm whether a row has its state or
+     not. A line brings its 6 along, so it folds in one piece. */
   .text {
     display: flex;
     flex: 1;
@@ -296,7 +330,14 @@
     justify-content: center;
     gap: var(--space-2);
     min-width: 0;
-    min-height: var(--tile-sm);
+    min-height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
+  }
+
+  .title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-width: 0;
   }
 
   .name {
@@ -308,7 +349,6 @@
   .quiet {
     color: var(--text-muted);
     font: var(--type-sm);
-    font-variant-numeric: var(--numeric);
   }
 
   .fold {
@@ -321,15 +361,15 @@
     padding-top: var(--space-6);
   }
 
-  /* 12 apart, like the buttons and the switch of every other row of the page, centred on
-     the tile. */
-  .login,
+  /* Centred on the two lines: the calls (4 apart), the browser's glyph and the switch, the
+     glyph and the switch in one column in every row. */
+  .calls,
   .tools {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-12);
-    min-height: var(--tile-sm);
+    gap: var(--space-4);
+    height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
   }
 
   /* The sign-in fades in and out on its own, before "Alert anlegen". */
@@ -337,10 +377,10 @@
     display: flex;
   }
 
-  /* Narrow (the smallest window) "Alert anlegen" and the sign-in go to a line of their own at
-     the row's end, as the buttons of a setting row do. */
+  /* Narrow (the smallest window) the calls go to a line of their own at the row's end, as
+     the buttons of a setting row do. */
   @container (width < 520px) {
-    .login {
+    .calls {
       order: 1;
       flex-basis: 100%;
       justify-content: flex-end;

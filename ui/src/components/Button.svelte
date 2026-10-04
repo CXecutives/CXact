@@ -3,9 +3,10 @@
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
   (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
-  - One height for every button, 28 px (user 2026-10-01, core/tests/ui_contract.rs): in rows,
-    tools, bars, dialogs and empty states alike; the small type, every glyph 15 px. Only a
-    button inside a field (`inField`) is a notch lower, a part of the field.
+  - One height for every button, 24 px (design round 3, core/tests/ui_contract.rs): in rows,
+    tools, bars, dialogs and empty states alike; the app's text in medium, every glyph 14 px.
+    Only a button inside a field (`inField`) is a notch lower, a part of the field. A text
+    button carries the glyph of its meaning (lib/icons.ts).
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
     (the x that removes a row) goes without the tooltip (`plain`). A button with its words
@@ -16,9 +17,9 @@
     (one that is disabled while focused keeps the focus).
   - Loading keeps the width: the content fades out under the spinner. A ghost toggle (the
     star of a Schwerpunkt) pops once when a click switches it on.
-  - radio: an option of a radiogroup (profile/ChoiceButtons), like a secondary toggle, chosen
-    while `checked`, only the group's Tab stop (`stop`) in the Tab order, the arrows move
-    (input.ts); 14 px text like a field. turned: the glyph stands half a turn (180 ms).
+  - radio: an option of a radiogroup, like a secondary toggle, chosen while `checked`, only
+    the group's Tab stop (`stop`) in the Tab order, the arrows move (input.ts). turned: the
+    glyph stands half a turn (180 ms).
   - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
     filter narrows it; the chips say what). link: navy text that underlines on hover.
   - inText: a link inside a sentence (the upload's "auswählen"), in the sentence's type.
@@ -212,11 +213,10 @@
     box-shadow: var(--btn-shadow);
     color: var(--btn-fg);
     font: var(--btn-type);
-    font-weight: var(--weight-medium);
     white-space: nowrap;
-    --btn-pad: var(--space-12);
+    --btn-pad: var(--space-10);
     --btn-gap: var(--space-6);
-    --btn-type: var(--type-sm);
+    --btn-type: var(--type-button);
 
     transition:
       background-color var(--dur-base) var(--ease-standard),
@@ -462,7 +462,7 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* One height, one type: 28 px; inside a field a notch lower, within its frame. */
+  /* One height, one type: 24 px; inside a field a notch lower, within its frame. */
   .btn {
     --btn-height: var(--control-field);
   }
@@ -472,15 +472,12 @@
     --btn-height: var(--control-sm);
   }
 
-  /* A choice reads like the field beside it: 14 px text. */
-  .btn[role='radio'] {
-    --btn-type: var(--type-field);
-  }
-
-  /* A link in a sentence takes the sentence's type and line. */
+  /* A link in a sentence takes the sentence's type and line, and no room of its own. */
   .in-text {
     --btn-height: auto;
     --btn-type: inherit;
+
+    border-width: 0;
   }
 
   .icon-only {

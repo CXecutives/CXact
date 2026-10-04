@@ -7,6 +7,7 @@
 // the rescore back).
 
 import { t } from '$lib/i18n/t';
+import { IpcError } from '$lib/ipc/api';
 import type { ScoreDelta } from '$lib/ipc/types';
 import { run } from '$lib/state/run.svelte';
 import { tokenMs } from '$lib/tokens';
@@ -33,9 +34,17 @@ export function watchSave(): SaveEffect {
   });
   return {
     async said() {
-      if (started && delta === undefined) {
+      if (delta === undefined) {
         await new Promise<void>((resolve) => {
           wake = resolve;
+          // A rescore that has not begun after a moment does not come (no jobs, a fetch holds
+          // it back); one that began is waited for at most a toast's life.
+          setTimeout(
+            () => {
+              if (!started) resolve();
+            },
+            2 * tokenMs('--dur-slow'),
+          );
           setTimeout(resolve, tokenMs('--dur-toast'));
         });
       }
@@ -50,4 +59,20 @@ export function watchSave(): SaveEffect {
     },
     stop: () => void stop(),
   };
+}
+
+/** A value of the save out of range (`profileValue`): the field (and row) it names, and the
+ *  limit where one is; null for any other failure. */
+export function refused(
+  error: unknown,
+): { field: string; row: number | null; max: number | null } | null {
+  if (!(error instanceof IpcError) || error.params.reason !== 'profileValue') return null;
+  const { field, row, max } = error.params;
+  return typeof field === 'string'
+    ? {
+        field,
+        row: typeof row === 'number' ? row : null,
+        max: typeof max === 'number' ? max : null,
+      }
+    : null;
 }

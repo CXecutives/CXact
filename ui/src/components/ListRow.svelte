@@ -25,8 +25,6 @@
     selected?: boolean;
     /** A selected row draws its own bar (false: the list's one sliding bar marks it). */
     bar?: boolean;
-    /** Greyed out (excluded jobs behind the divider). */
-    muted?: boolean;
     /** The click. */
     onclick?: ((event: MouseEvent) => void) | null;
     /** A double click on the row itself (a job row opens its ad); one on a control laid
@@ -41,7 +39,6 @@
   let {
     selected = false,
     bar = true,
-    muted = false,
     onclick = null,
     ondouble = null,
     testid = null,
@@ -56,7 +53,6 @@
   class="row"
   class:selected
   class:bar
-  class:muted
   aria-current={selected ? 'true' : undefined}
   data-rests=""
   data-testid={testid ?? undefined}
@@ -72,17 +68,15 @@
   .row {
     position: relative;
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-12);
+    align-items: center;
+    gap: var(--space-10);
     width: 100%;
     min-height: var(--row-height);
     overflow: hidden;
-    padding: var(--space-12) var(--pane-padding);
+    padding: var(--list-row-pad) var(--pane-padding);
     background-color: transparent;
     text-align: left;
-    transition:
-      background-color var(--dur-base) var(--ease-standard),
-      opacity var(--dur-base) var(--ease-standard);
+    transition: background-color var(--dur-base) var(--ease-standard);
   }
 
   .row:hover:where(:not([data-still])) {
@@ -165,15 +159,6 @@
   /* Inside the focus ring (as wide as --focus-ring-inset). */
   .row:focus-visible::before {
     left: var(--space-2);
-  }
-
-  .muted {
-    opacity: var(--opacity-muted);
-  }
-
-  /* An excluded row brightens under the pointer: it invites reading, still grey. */
-  .muted:hover:where(:not([data-still])) {
-    opacity: var(--opacity-muted-hover);
   }
 
   .leading,

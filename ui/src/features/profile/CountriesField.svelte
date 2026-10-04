@@ -12,10 +12,12 @@
   interface Props {
     id: string;
     values: string[];
+    /** Required and still empty: the amber edge, "Pflicht" in the placeholder. */
+    missing: boolean;
     invalid: boolean;
   }
 
-  let { id, values = $bindable(), invalid }: Props = $props();
+  let { id, values = $bindable(), missing, invalid }: Props = $props();
 
   const words = $derived(t.profile.field);
 
@@ -52,7 +54,11 @@
   bind:values
   options={COUNTRIES}
   noMatch={words.countryNone}
-  placeholder={words.countriesPlaceholder}
+  placeholder={missing
+    ? t.profile.required(words.countriesPlaceholder)
+    : words.countriesPlaceholder}
+  more={words.countriesMore}
+  {missing}
   {invalid}
   testid="profile-countries"
 />

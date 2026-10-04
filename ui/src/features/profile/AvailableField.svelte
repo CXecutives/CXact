@@ -87,7 +87,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-8);
   }
 
   /* The day is as wide as every number field (NumberField), its calendar beside it. */
@@ -98,6 +98,6 @@
   }
 
   .date > :global(:first-child) {
-    width: calc(var(--stat-min) - var(--space-48));
+    width: var(--number-width);
   }
 </style>

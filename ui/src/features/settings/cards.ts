@@ -1,19 +1,18 @@
-// Einstellungen as data: the cards in their order, each on its tab (Portale, Daten; user
-// decision 2026-10-03) with its heading, its block and its rows, and every button of a row.
-// SettingsView.svelte renders this list and nothing else, so adding, moving or removing a
-// setting is one entry here (docs/CHANGING.md). Texts are read from the catalog where they
-// render (`(t) => t.settings.…`).
+// Einstellungen as data: one page of three sections in their order (design round 3), each
+// with its heading and its block or its rows, and every button of a row. SettingsView.svelte
+// renders this list and nothing else, so adding, moving or removing a setting is one entry
+// here (docs/CHANGING.md). Texts are read from the catalog where they render
+// (`(t) => t.settings.…`).
 //
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
-// answer; every text button of a row is the same outlined button (secondary, 28 px), whether
-// it opens something or runs a command, and the ones that lose something for good are red
-// (`warns`: Zurücksetzen, like Entfernen of the mailbox); a locked button says why
-// (`locked`); the reset stands alone on its row. An info symbol only at "CXact sucht nach".
+// answer; every text button of a row is the same outlined button with the glyph of its
+// meaning, whether it opens something or runs a command, and the ones that lose something
+// for good are red (`warns`: Alle Daten zurücksetzen, like Entfernen of the mailbox); a
+// locked button says why (`locked`).
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, OpenTarget, Way } from '$lib/ipc/types';
-import type { SettingsTab } from '$lib/state/settings.svelte';
+import type { AppState, OpenTarget } from '$lib/ipc/types';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -63,64 +62,33 @@ export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
 export type CommandId = 'reset';
 
-/** A row with its buttons at the end. */
+/** A row: its one sentence, its buttons at the end. */
 export interface Row {
   id: string;
-  label: Text;
-  /** One sentence under the label. */
-  hint?: Text;
+  text: Text;
   actions: readonly ActionId[];
 }
 
-/** What a card shows besides its rows: the terms of the search (SearchTerms), the portals
- *  the app searches, or the mailbox card with the portals of its alert mails under it. */
-export type Block = 'terms' | 'search' | 'mailbox';
-/** The portals' cards, by how a portal brings its jobs (`PortalState.way`). */
-export type Portals = Exclude<Block, 'terms'>;
-export const portalsOf = (way: Way): Portals => (way === 'search' ? 'search' : 'mailbox');
+/** What a section shows besides rows: every portal (PortalRow), or the mailbox. */
+export type Block = 'portals' | 'mailbox';
 
-export interface CardSpec {
+export interface SectionSpec {
   id: string;
-  tab: SettingsTab;
-  /** Its heading above it (a card alone on its tab goes without: the tab names it). */
-  heading?: Text;
-  /** The one sentence of the info symbol beside the heading. */
-  info?: Text;
+  heading: Text;
   block?: Block;
   rows: readonly Row[];
-  /** A quiet line under the card. */
-  footnote?: Text;
 }
 
-export const CARDS: readonly CardSpec[] = [
-  {
-    id: 'terms',
-    tab: 'portals',
-    heading: (t) => t.settings.terms,
-    info: (t) => t.settings.termsInfo,
-    block: 'terms',
-    rows: [],
-  },
-  { id: 'search', tab: 'portals', heading: (t) => t.settings.search, block: 'search', rows: [] },
-  { id: 'mailbox', tab: 'portals', heading: (t) => t.settings.alerts, block: 'mailbox', rows: [] },
+export const SECTIONS: readonly SectionSpec[] = [
+  { id: 'portals', heading: (t) => t.settings.portals, block: 'portals', rows: [] },
+  { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
   {
     id: 'data',
-    tab: 'data',
+    heading: (t) => t.settings.data,
     rows: [
-      {
-        id: 'profiles',
-        label: (t) => t.settings.profiles,
-        hint: (t) => t.settings.profilesHint,
-        actions: ['profilesOpen'],
-      },
-      // The one action that deletes for good; what it deletes is said in its dialog.
-      {
-        id: 'reset-all',
-        label: (t) => t.settings.reset,
-        hint: (t) => t.settings.resetHint,
-        actions: ['reset'],
-      },
+      { id: 'profiles', text: (t) => t.settings.profilesHint, actions: ['profilesOpen'] },
+      // The one action that deletes for good; what it deletes is said in its dialog too.
+      { id: 'reset-all', text: (t) => t.settings.resetHint, actions: ['reset'] },
     ],
-    footnote: (t, state) => t.settings.version(state.version),
   },
 ];

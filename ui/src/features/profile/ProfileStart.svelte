@@ -1,8 +1,9 @@
 <!--
-  The start of the profile (a page, no dialog): the title on the first row ("Profil", or what
-  is wrong with a stored file that no longer reads), one sentence what the profile is for, and
-  the card of the two ways (shared/NewProfileWays). A file that no longer reads also offers its
-  folder, to fix it by hand.
+  The Profil without a profile: under the view's head one sentence what the profile is for
+  (or what is wrong with a stored file that no longer reads, with its folder at hand) and the
+  two ways in as tiles (shared/NewProfileWays): "Aus Lebenslauf" asks for the CV at once
+  (fromCv.svelte.ts), "Selbst ausfüllen" opens the empty form. What went wrong with the CV is
+  said under the tiles with its way on.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -10,9 +11,9 @@
   import { t } from '$lib/i18n/t';
   import type { ProfileInfo } from '$lib/ipc/types';
   import NewProfileWays from '../shared/NewProfileWays.svelte';
+  import { fromCv } from '../shared/fromCv.svelte';
 
   interface Props {
-    heading: string;
     text: string;
     /** The stored file no longer reads: its folder is at hand. */
     unreadable?: boolean;
@@ -22,21 +23,29 @@
     onopenfolder?: () => void;
   }
 
-  let {
-    heading,
-    text,
-    unreadable = false,
-    note,
-    onfilled,
-    onempty,
-    onopenfolder,
-  }: Props = $props();
+  let { text, unreadable = false, note, onfilled, onempty, onopenfolder }: Props = $props();
+
+  async function cv(): Promise<void> {
+    const info = await fromCv.run();
+    if (info !== null) onfilled(info);
+  }
 </script>
 
 <div class="start" data-testid="profile-empty">
-  <h1 class="title" data-first-row data-testid="profile-start-heading">{heading}</h1>
   <p class="text">{text}</p>
-  <NewProfileWays {onfilled} {onempty} />
+  <NewProfileWays oncv={() => void cv()} onself={onempty} testid="new-profile-ways" />
+  {#if fromCv.problem}
+    {@const problem = fromCv.problem}
+    <Notice
+      tone="danger"
+      variant="inline"
+      text={problem.text()}
+      action={problem.again
+        ? { label: problem.again(), testid: 'cv-again', onclick: () => void cv() }
+        : null}
+      testid="cv-error"
+    />
+  {/if}
   {#if unreadable && onopenfolder}
     <div>
       <Button
@@ -60,17 +69,8 @@
     gap: var(--space-16);
   }
 
-  /* The title on the first row of the window, like the profile's own. */
-  .title {
-    min-width: 0;
-    color: var(--text-heading);
-    font: var(--type-2xl);
-    letter-spacing: var(--tracking-tight);
-  }
-
   .text {
-    margin-top: calc(-1 * var(--space-8));
     color: var(--text-muted);
-    font: var(--type-sm);
+    font: var(--type-md);
   }
 </style>

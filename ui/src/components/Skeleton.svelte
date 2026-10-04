@@ -13,7 +13,7 @@
     /** Width in percent of the container (lines and blocks). */
     width?: number;
     /** Circle diameter. */
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md';
     /** Placed at once: stays invisible for --delay-placeholder before it fades in. */
     late?: boolean;
   }
@@ -77,9 +77,5 @@
 
   .circle.md {
     --circle: var(--ring-md);
-  }
-
-  .circle.lg {
-    --circle: var(--ring-lg);
   }
 </style>

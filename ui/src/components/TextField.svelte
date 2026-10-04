@@ -37,6 +37,8 @@
     placeholder?: string | null;
     id?: string | null;
     invalid?: boolean;
+    /** Required and still empty: an amber edge with a soft halo. */
+    missing?: boolean;
     disabled?: boolean;
     /** The ids of the texts that describe the field (default: the message of its Field,
      *  while it shows one). */
@@ -61,6 +63,7 @@
     placeholder = null,
     id = null,
     invalid = false,
+    missing = false,
     disabled = false,
     describedby = null,
     options = null,
@@ -179,6 +182,7 @@
   bind:this={box}
   class="field {kind}"
   class:invalid
+  class:missing={missing && !invalid}
   class:disabled
   class:trailed={trailing !== null}
   class:quiet
@@ -333,6 +337,12 @@
     border-color: var(--danger-strong);
   }
 
+  .missing,
+  .missing:hover {
+    border-color: var(--missing-edge);
+    box-shadow: var(--missing-ring);
+  }
+
   .disabled {
     opacity: var(--opacity-disabled);
   }
@@ -341,7 +351,7 @@
     flex: 1;
     min-width: 0;
     height: 100%;
-    padding: 0 var(--space-12);
+    padding: 0 var(--space-8);
     border: 0;
     background-color: transparent;
     color: var(--text);
@@ -360,14 +370,14 @@
 
   /* The magnifier lies over the input, so a click on it lands in the field. */
   .search .input {
-    padding-left: calc(var(--space-12) + var(--icon-sm) + var(--space-8));
+    padding-left: calc(var(--space-8) + var(--icon-sm) + var(--space-6));
   }
 
   .lead {
     position: absolute;
     top: 0;
     bottom: 0;
-    left: var(--space-12);
+    left: var(--space-8);
     display: inline-flex;
     align-items: center;
     color: var(--text-subtle);
@@ -381,7 +391,7 @@
 
   .trail {
     display: inline-flex;
-    padding-right: var(--space-4);
+    padding-right: var(--space-2);
   }
 
   /* The suggestions drop down under the field, over what follows, like the countries'. */
@@ -393,7 +403,7 @@
     left: 0;
     display: flex;
     flex-direction: column;
-    max-height: calc(6 * var(--control-sm) + 2 * var(--space-4));
+    max-height: calc(6 * var(--menu-row) + 2 * var(--space-4));
     padding: var(--space-4);
     overflow-y: auto;
     border: var(--border-width) solid var(--border);
@@ -410,7 +420,7 @@
     display: flex;
     flex: none;
     align-items: center;
-    height: var(--control-sm);
+    height: var(--menu-row);
     padding: 0 var(--space-8);
     border-radius: var(--radius-xs);
     color: var(--text);

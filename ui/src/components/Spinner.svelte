@@ -52,6 +52,6 @@
   }
 
   .lg {
-    --spinner-size: var(--icon-lg);
+    --spinner-size: var(--icon-xl);
   }
 </style>

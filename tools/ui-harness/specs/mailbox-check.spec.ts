@@ -4,7 +4,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, test, text } from './fixtures';
-import { expectMailboxState, showTab } from './helpers';
+import { expectMailboxState, reveal } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -12,7 +12,7 @@ async function changeMailbox(page: Page, query = WIN): Promise<void> {
   await open(page, query);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('settings')).toBeVisible();
-  await (await showTab(page, page.getByTestId('mailbox-change'))).click();
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
 }
 

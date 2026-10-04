@@ -1,11 +1,10 @@
 <!--
-  The account card on top of Alert-Mails (Einstellungen > Portale): the mail tile, the
-  connected address with its state under it, "Ändern" and "Entfernen" (the same kind of
-  button; Entfernen is red at rest and asks first), without a mailbox the row "Kein Postfach"
-  with "Verbinden" and the one sentence that the portals of alert mails rest without one (no
-  second Verbinden anywhere). Ändern and Verbinden open the form in a dialog named after the
-  button ("Postfach ändern", "Postfach verbinden") whose button is "Verbinden". The rows of
-  the portals of its alert mails follow in the same card (`children`, SettingsView).
+  The mailbox's row in Einstellungen > Postfach für Alert-Mails (in the section's card): the
+  mail tile, the connected address with its state under it, "Ändern" and "Entfernen" (the
+  same kind of button; Entfernen is red at rest and asks first), without a mailbox the row
+  "Kein Postfach" with "Verbinden" (the portals of alert mails say they need one). Ändern
+  and Verbinden open the form in a dialog named after the button ("Postfach ändern",
+  "Postfach verbinden") whose button is "Verbinden".
   The state is the answer to a saved mailbox ("Verbunden" after a green dot, no note, no
   toast). It says "Nicht erreichbar" or "Abgelehnt" after a red one only for a mail error of
   a fetch that finished after Gmail last accepted the mailbox (`mailbox.checkedAt`), with a
@@ -15,7 +14,6 @@
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
@@ -25,27 +23,15 @@
   import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
   import { unfold } from '$lib/motion/transitions';
-  import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
-  import type { Snippet } from 'svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
   interface Props {
     cfg: AppState;
     /** Why the mailbox cannot change now (the dry run, a run), or null. */
     locked: string | null;
-    testid?: string | null;
-    /** The rows under the mailbox's (the portals of its alert mails). */
-    children?: Snippet;
   }
-  let { cfg, locked, testid = null, children }: Props = $props();
-
-  /** The portals of alert mails, in the app's order: they rest without a mailbox. */
-  const alertPortals = $derived(
-    inPortalOrder(cfg.portals)
-      .filter((p) => p.way === 'alert')
-      .map((p) => p.portal),
-  );
+  let { cfg, locked }: Props = $props();
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -115,87 +101,79 @@
 
 {#snippet tile()}<IconTile tone="navy" icon="alertMail" size="sm" />{/snippet}
 
-<Card padding="rows" {testid}>
-  {#if cfg.mailbox.user}
-    <SettingRow
-      label={cfg.mailbox.user}
-      copyLabel
-      lead={tile}
-      hint={mailFailure === null
-        ? t.settings.connected
-        : mailFailure.kind === 'mailAuth'
-          ? t.settings.refused
-          : t.settings.unreachable}
-      dot={mailFailure === null ? 'success' : 'danger'}
-      testid="mailbox"
-    >
-      <div class="buttons">
-        <Button
-          variant="secondary"
-          icon="edit"
-          label={t.common.change}
-          disabled={locked !== null}
-          disabledReason={locked}
-          testid="mailbox-change"
-          onclick={openForm}
-        />
-        <Button
-          variant="secondary"
-          icon="trash"
-          label={t.common.remove}
-          disabled={locked !== null}
-          disabledReason={locked}
-          warns
-          testid="mailbox-remove"
-          onclick={() => {
-            removeError = null;
-            confirmRemove = true;
-          }}
-        />
-      </div>
-    </SettingRow>
-  {:else}
-    <SettingRow
-      label={t.settings.notConnected}
-      hint={t.settings.noMailbox(alertPortals)}
-      lead={tile}
-      testid="mailbox"
-    >
+{#if cfg.mailbox.user}
+  <SettingRow
+    label={cfg.mailbox.user}
+    copyLabel
+    lead={tile}
+    hint={mailFailure === null
+      ? t.settings.connected
+      : mailFailure.kind === 'mailAuth'
+        ? t.settings.refused
+        : t.settings.unreachable}
+    dot={mailFailure === null ? 'success' : 'danger'}
+    testid="mailbox"
+  >
+    <div class="buttons">
       <Button
         variant="secondary"
-        icon="signIn"
-        label={t.settings.connect}
+        icon="edit"
+        label={t.common.change}
         disabled={locked !== null}
         disabledReason={locked}
-        testid="mailbox-connect"
+        testid="mailbox-change"
         onclick={openForm}
       />
-    </SettingRow>
-  {/if}
-  {#if mailFailureText}
-    <div class="slot">
-      <div class="fold" transition:unfold>
-        <div class="note">
-          <Notice tone="danger" variant="inline" text={mailFailureText} testid="mailbox-failure" />
-        </div>
+      <Button
+        variant="secondary"
+        icon="trash"
+        label={t.common.remove}
+        disabled={locked !== null}
+        disabledReason={locked}
+        warns
+        testid="mailbox-remove"
+        onclick={() => {
+          removeError = null;
+          confirmRemove = true;
+        }}
+      />
+    </div>
+  </SettingRow>
+{:else}
+  <SettingRow label={t.settings.notConnected} lead={tile} testid="mailbox">
+    <Button
+      variant="secondary"
+      icon="signIn"
+      label={t.settings.connect}
+      disabled={locked !== null}
+      disabledReason={locked}
+      testid="mailbox-connect"
+      onclick={openForm}
+    />
+  </SettingRow>
+{/if}
+{#if mailFailureText}
+  <div class="slot">
+    <div class="fold" transition:unfold>
+      <div class="note">
+        <Notice tone="danger" variant="inline" text={mailFailureText} testid="mailbox-failure" />
       </div>
     </div>
-  {/if}
-  {#if cfg.mailbox.error}
-    <div class="slot">
-      <div class="fold" transition:unfold>
-        <div class="note">
-          <Notice
-            tone="danger"
-            variant="inline"
-            text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
-          />
-        </div>
+  </div>
+{/if}
+{#if cfg.mailbox.error}
+  <div class="slot">
+    <div class="fold" transition:unfold>
+      <div class="note">
+        <Notice
+          tone="danger"
+          variant="inline"
+          text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
+        />
       </div>
     </div>
-  {/if}
-  {@render children?.()}
-</Card>
+  </div>
+{/if}
 
 <Dialog
   bind:open={connecting}
@@ -222,12 +200,12 @@
 />
 
 <style>
-  /* The buttons of a row end on its trailing edge, 12 apart, one size (28). */
+  /* The buttons of a row end on its trailing edge, 8 apart, one size (24). */
   .buttons {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-12);
+    gap: var(--space-8);
   }
 
   /* A sentence of the card unfolds with the card's inset of what is not a row as its own

@@ -11,8 +11,8 @@
   rescore, a sign-in, the files). Profil and Einstellungen keep where they were scrolled to
   while the app runs (a return finds the same place). A start whose data cannot load says so
   and offers to try again, to restore a backup (the dialog of Einstellungen, whose restore
-  loads the app again), the log and the data folder; what the restore could not do stays a
-  note under them.
+  loads the app again) and the data folder; what the restore could not do stays a note under
+  them.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -66,7 +66,7 @@
     if (shell.docked) shell.peek = false;
   });
 
-  /** The log or the data folder, after a start that could not load its data. */
+  /** The data folder, after a start that could not load its data. */
   function openFolder(target: OpenTarget): void {
     invoke('open_target', { target }).catch((error: unknown) => {
       reportUiError(`open ${target.kind}: ${String(error)}`, null, null);
@@ -140,13 +140,6 @@
                 loading={restoring}
                 testid="restore-backup"
                 onclick={restoreBackup}
-              />
-              <Button
-                variant="link"
-                icon="folder"
-                label={t.common.openLog}
-                testid="open-log"
-                onclick={() => openFolder({ kind: 'logDir' })}
               />
               <Button
                 variant="link"
@@ -313,20 +306,6 @@
     overflow-y: scroll;
   }
 
-  /* The fade under the top bar: the view's colour into nothing at the top of a view that
-     scrolls, over the empty padding at rest and over the content once it scrolled under it. */
-  .view:not(.fixed)::before {
-    content: '';
-    position: sticky;
-    z-index: var(--z-sticky);
-    top: 0;
-    display: block;
-    height: var(--fade-height);
-    margin-bottom: calc(-1 * var(--fade-height));
-    background: var(--grad-fade);
-    pointer-events: none;
-  }
-
   .fixed {
     overflow: hidden;
   }
@@ -347,8 +326,8 @@
     min-height: 0;
   }
 
-  /* The quieter ways on after a failed start: a backup, the log and the data folder (they
-     wrap in a narrow window). */
+  /* The quieter ways on after a failed start: a backup and the data folder (they wrap in a
+     narrow window). */
   .ways {
     display: flex;
     flex-wrap: wrap;

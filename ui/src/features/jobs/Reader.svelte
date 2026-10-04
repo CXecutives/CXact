@@ -1,21 +1,25 @@
 <!--
-  The reader, unboxed on the sheet (max 720 px). Its sections and their order are data
-  (reader-sections.ts); each is rendered below by its key, and nothing stands in two of them:
+  The reader on the sheet: its head sticks at the top of the pane (PageHeader, a hairline
+  under it) while the rest scrolls beneath, in the job view's column (600 px). Its sections and
+  their order are data (reader-sections.ts); each is rendered below by its key, and nothing
+  stands in two of them:
   - head: the title (without gender tags), then the moves of the place as quiet icons like
     the row's tools (Aktuell Archivieren, Löschen; Archiv Zurückholen, Löschen; Papierkorb
     Wiederherstellen, Endgültig löschen; actions.ts rowTools) and the close "×" (the same at
     every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
     offers none while the next one loads.
-  - match: the ring (48, hollow; opening a job fills its arc once, the number stands at once)
+  - match: the ring (42, hollow; opening a job fills its arc once, the number stands at once)
     beside its band and an info symbol that says what the match is (the ring's own tooltip
-    names it; the symbol reaches it from the keyboard); every ring without a score says "Noch
-    nicht bewertet". No popover of what moved the score (user, 2026-10-01). An excluded job
-    shows one bordered box instead: the ban, "Ausgeschlossen", one sentence why from the
-    profile's side (its first violation; the row it violates says what the ad states) and
-    "Trotzdem bewerten" at its end (the approved draft, 2026-10-04).
-  - actions: three text buttons without glyphs, Anzeige öffnen (Offline-Anzeige öffnen for
+    names it; the symbol reaches it from the keyboard). A job not scored yet shows the ring's
+    dash and "Wird bewertet, sobald die Anzeige geladen ist." and no buttons. No popover of
+    what moved the score (user, 2026-10-01). An excluded job shows one neutral bordered box
+    instead: the red ban, "Ausgeschlossen" in red, one sentence why from the profile's side
+    (its first violation; the row it violates says what the ad states) and "Trotzdem
+    bewerten" at its end (design round 3).
+  - actions: the text buttons with their glyphs, Anzeige öffnen (Offline-Anzeige öffnen for
     an ad that is gone or closed: the portal's page still opens), Alert-Mail öffnen (only for
-    a job a mail brought), Prompt kopieren (not for a job without a score); the row wraps.
+    a job a mail brought), Prompt kopieren (not for a job without a score); an excluded job
+    keeps Anzeige öffnen and Prompt kopieren; the row wraps.
     Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and
     every failure is a toast.
@@ -52,6 +56,7 @@
   import Dialog from '$components/Dialog.svelte';
   import Icon from '$components/Icon.svelte';
   import InfoTip from '$components/InfoTip.svelte';
+  import PageHeader from '$components/PageHeader.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
@@ -127,6 +132,16 @@
   });
   const band = $derived(
     ring.status === 'scored' || ring.status === 'provisional' ? ring.band : null,
+  );
+  /** Not scored yet because its ad is still to come (to load, or on request): the ring's
+   *  dash and the sentence, no buttons. An ad that is gone or cannot be read says "Noch nicht
+   *  bewertet" and keeps its buttons. */
+  const unscored = $derived(
+    withRing &&
+      (ring.status === 'none' || ring.status === 'pending') &&
+      (job.detail.kind === 'pending' ||
+        job.detail.kind === 'failed' ||
+        job.detail.kind === 'onRequest'),
   );
   /** The ring's colour step (ScoreRing's decile), which the band's words take too. */
   const step = $derived(
@@ -293,9 +308,8 @@
 </script>
 
 {#snippet head()}
-  <header class="head">
-    <h1 class="title" data-testid="reader-title" data-copy>{heading}</h1>
-    <span class="close">
+  <PageHeader {heading} copy headingTestid="reader-title" column="reader" testid="reader-head">
+    {#snippet actions()}
       {#each tools as tool (tool.id)}
         <Button
           variant="ghost"
@@ -319,8 +333,8 @@
           onclick={onclose}
         />
       {/if}
-    </span>
-  </header>
+    {/snippet}
+  </PageHeader>
 {/snippet}
 
 {#snippet score()}
@@ -330,18 +344,22 @@
         <div class="excluded" data-testid="exclusion-box">
           <span class="ban" data-testid="reader-ban"><Icon name="excluded" size="md" /></span>
           <div class="lines">
-            <p class="band" data-testid="band">{t.score.excluded}</p>
+            <p class="band banned" data-testid="band">{t.score.excluded}</p>
             <p class="why-line" data-testid="exclusion">{exclusion}</p>
           </div>
           {#if includable}
             <Button
               variant="secondary"
+              icon="add"
               label={t.actions.include}
               testid="reader-include"
               onclick={(event) => void include(event)}
             />
           {/if}
         </div>
+      {:else if unscored}
+        <ScoreRing {ring} size="md" testid="reader-ring" />
+        <p class="why-line" data-testid="band">{t.reader.unscored}</p>
       {:else}
         <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
         <p class="band {band ?? 'none'} {step}" data-testid="band">
@@ -357,10 +375,11 @@
   <!-- Words, glyphs, what is off and what is not there come from the one table the row's
        menu reads too. -->
   {@const shows = showActions(job)}
-  {@const shown = SHOWS.filter((id) => !shows[id].hidden)}
+  {@const shown = SHOWS.filter((id) => !shows[id].hidden && !(excluded && id === 'mail'))}
   {#each shown as id (id)}
     <Button
       variant="secondary"
+      icon={shows[id].icon}
       label={shows[id].label}
       disabled={shows[id].reason !== null}
       disabledReason={shows[id].reason}
@@ -371,9 +390,11 @@
 {/snippet}
 
 {#snippet actionRow()}
-  <div class="actions" bind:this={actions} data-testid="reader-actions">
-    {@render showButtons()}
-  </div>
+  {#if !unscored}
+    <div class="actions" bind:this={actions} data-testid="reader-actions">
+      {@render showButtons()}
+    </div>
+  {/if}
 {/snippet}
 
 {#snippet details()}
@@ -511,21 +532,22 @@
     if (event.button === 0) seen(job.key);
   }}
 >
-  {#each READER_SECTIONS as section (section)}
-    {#if section === 'head'}
-      {@render head()}
-    {:else if section === 'match'}
-      {@render score()}
-    {:else if section === 'actions'}
-      {@render actionRow()}
-    {:else if section === 'details'}
-      {@render details()}
-    {:else if section === 'requirements'}
-      {@render requirements()}
-    {:else}
-      {@render ad()}
-    {/if}
-  {/each}
+  {@render head()}
+  <div class="body">
+    {#each READER_SECTIONS as section (section)}
+      {#if section === 'match'}
+        {@render score()}
+      {:else if section === 'actions'}
+        {@render actionRow()}
+      {:else if section === 'details'}
+        {@render details()}
+      {:else if section === 'requirements'}
+        {@render requirements()}
+      {:else}
+        {@render ad()}
+      {/if}
+    {/each}
+  </div>
 </article>
 
 <Dialog
@@ -544,39 +566,26 @@
   .reader {
     display: flex;
     flex-direction: column;
-    gap: var(--space-20);
+    min-height: 100%;
     container-type: inline-size;
   }
 
-  .head {
+  /* The job view's column under the head, its sections 20 apart. */
+  .body {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-8);
-  }
-
-  .title {
-    flex: 1;
-    min-width: 0;
-    color: var(--text-heading);
-    font: var(--type-2xl);
-    letter-spacing: var(--tracking-tight);
-    text-wrap: balance;
-  }
-
-  /* On the axis of the first title line; the glyph ends on the edge of the column. */
-  .close {
-    display: flex;
-    flex: none;
-    gap: var(--space-2);
-    margin-top: calc((var(--leading-2xl) - var(--control-field)) / 2);
-    margin-right: calc(-1 * var(--space-6));
+    flex-direction: column;
+    gap: var(--space-20);
+    width: 100%;
+    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
+    margin: 0 auto;
+    padding: var(--space-20) var(--pane-padding) var(--space-64);
   }
 
   /* The ring, or the ban, beside its words; the words centre on it. */
   .match {
     display: flex;
     align-items: center;
-    gap: var(--space-16);
+    gap: var(--space-12);
   }
 
   @container (width < 480px) {
@@ -597,11 +606,11 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-10);
     min-width: 0;
-    padding: var(--space-12) var(--space-16);
+    padding: var(--space-10) var(--card-padding);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-card);
   }
 
   .excluded .lines {
@@ -611,7 +620,11 @@
   .ban {
     display: inline-flex;
     flex: none;
-    color: var(--text-muted);
+    color: var(--ban);
+  }
+
+  .band.banned {
+    color: var(--ban);
   }
 
   .band {

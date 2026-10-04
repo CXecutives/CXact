@@ -3,51 +3,43 @@
   Zurück and Vor in the top bar, no job view button, the cream page; every switch of the view
   is refused while it stands). One step at a time from the table of steps.ts: near the top of
   the window, centred, the step indicator ("1 Profil", "2 Alert-Mails"; not on Willkommen) and
-  under it one white card (460 px; the profile's step takes the Profil's column) with the
-  step's heading (it takes the focus on every step, so a screen reader starts there), its one
-  sentence, its body (the snippet of its id) and at its foot Zurück at the left and the step's
-  one primary at the right. Enter is the primary while the step can go on; the mouse's back
-  button is Zurück (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360: the
-  card narrows, the page scrolls and the foot of a long card stays at the window's bottom.
+  under it one white card (420 px; a short form of the profile 520) with the step's heading
+  (it takes the focus on every step, so a screen reader starts there), its one sentence, its
+  body (the snippet of its id) and at its foot Zurück at the left and the step's one primary
+  at the right. Enter is the primary while the step can go on; the mouse's back button is
+  Zurück (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360: the card
+  narrows, the page scrolls and the foot of a long card stays at the window's bottom.
 
-  The steps (docs/PLAN.md, Block 4): Willkommen; Dein Profil (two tiles: the CV, recommended,
-  or by hand); Upload (a drop zone, Upload.svelte, and the sentence about the AI in the foot);
-  Auswertung (a spinner and "Abbrechen", or what went wrong as the heading with a warning
-  sign and its ways on at the right, the primary last, CV_PROBLEMS); Prüfen und ergänzen (the
-  Profil view in its setup mode: its "Weiter" saves); Alert-Mails, optional ("Überspringen" at
-  the left, "Verbinden" the primary; once connected the portals' rows with "Alert anlegen",
-  the same rows as in Einstellungen; Zurück and Überspringen stop a "Verbinden" that goes);
-  Fertig ("Alles eingerichtet" under a green tick, "Zu den Jobs", no search). After
-  "Zurücksetzen" what could not be deleted stands as a warning on Willkommen with the way to
-  the log; a clean reset says so once in a toast.
+  The steps (docs/PLAN.md, Block 4; design round 3): Willkommen; Wie legst du dein Profil an?
+  (two tiles side by side, "Aus Lebenslauf" and "Selbst ausfüllen": a click goes on);
+  Lebenslauf hochladen (the whole drop zone is one button and takes a dropped file,
+  Upload.svelte, and the sentence about the AI in the foot); Auswertung (a spinner and
+  "Abbrechen", or what went wrong as the heading with a warning sign and its ways on at the
+  right, the primary last, CV_PROBLEMS); Fast fertig after the CV and Dein Profil by hand (the
+  Profil view's short forms: the missing line, the rows; "Weiter" saves and waits while
+  something is missing, its tooltip says what); Alert-Mails, optional ("Überspringen" at the
+  left, "Verbinden" the primary; once connected the portals' rows with "Alert anlegen", the
+  same rows as in Einstellungen; Zurück and Überspringen stop a "Verbinden" that goes);
+  Fertig ("Alles eingerichtet" under a green tick, "Zu den Jobs", no search).
 -->
-<script lang="ts" module>
-  /** The toast of a clean reset shows once per start of the app. */
-  let told = false;
-</script>
-
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
   import Icon from '$components/Icon.svelte';
-  import Notice from '$components/Notice.svelte';
-  import RadioList, { type RadioListOption } from '$components/RadioList.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Steps from '$components/Steps.svelte';
   import { t } from '$lib/i18n/t';
-  import { errorText } from '$lib/i18n/texts';
   import { formKeys } from '$lib/input/input';
-  import { invoke } from '$lib/ipc/api';
   import { fade } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
-  import { toasts } from '$lib/state/toasts.svelte';
   import ProfileView from '../profile/ProfileView.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
+  import NewProfileWays from '../shared/NewProfileWays.svelte';
   import PortalRow from '../shared/PortalRow.svelte';
   import { onboarding } from './onboarding.svelte';
-  import { CV_PROBLEMS, stepOf, type CvWay, type StepId, type Way } from './steps';
+  import { CV_PROBLEMS, stepOf, type CvWay, type StepId } from './steps';
   import Upload from './Upload.svelte';
 
   const step = $derived(onboarding.step);
@@ -71,14 +63,12 @@
   /** The mailbox form signs in and counts (Zurück and Überspringen stop it first). */
   let checking = $state(false);
   let profileView = $state<ProfileView | null>(null);
+  /** What the short form of the profile still lacks, in words (Weiter waits and says it). */
+  let open = $state<string | null>(null);
   let mailboxForm = $state<MailboxForm | null>(null);
   let heading = $state<HTMLElement | null>(null);
   let root = $state<HTMLElement | null>(null);
 
-  const WAYS = $derived<RadioListOption<Way>[]>([
-    { id: 'cv', label: t.profile.fromCv, note: t.firstRun.wayCv, icon: 'document' },
-    { id: 'self', label: t.profile.byHand, icon: 'edit' },
-  ]);
   /** The portals of alert mails, in the app's order. */
   const alertPortals = $derived(
     inPortalOrder(app.state?.portals ?? []).filter((p) => p.way === 'alert'),
@@ -94,14 +84,7 @@
     self: () => onboarding.byHand(),
   };
 
-  onMount(() => {
-    onboarding.begin();
-    const reset = app.state?.resetReport ?? null;
-    if (reset !== null && reset.failed === 0 && !told) {
-      told = true;
-      toasts.show(t.settings.resetDone);
-    }
-  });
+  onMount(() => onboarding.begin());
 
   // Every step starts at its top with the focus on its heading.
   let shown: StepId | null = null;
@@ -122,10 +105,8 @@
       case 'welcome':
         onboarding.go('way');
         return;
-      case 'way':
-        onboarding.go(onboarding.way === 'cv' ? 'upload' : 'review');
-        return;
       case 'review':
+      case 'self':
         busy = true;
         try {
           if (await profileView?.next()) onboarding.go('alerts');
@@ -168,28 +149,21 @@
     onboarding.go('done');
   }
 
-  /** What could not be deleted by the reset: its way to the log. */
-  const resetLeft = $derived(app.state?.resetReport?.failed ?? 0);
-  let logError = $state<string | null>(null);
-  function openLog(): void {
-    logError = null;
-    invoke('open_target', { target: { kind: 'logDir' } }).catch(
-      (error: unknown) => (logError = errorText(error)),
-    );
-  }
-</script>
+  /** What the CV brought besides the short form ("Fast fertig"), from the stored profile. */
+  const brought = $derived.by(() => {
+    const form = app.state?.profile?.form ?? null;
+    return form === null
+      ? null
+      : {
+          competences: form.competences.filter((row) => row.name.trim() !== '').length,
+          tools: form.tools.length,
+          industries: form.industries.length,
+        };
+  });
 
-{#snippet welcome()}
-  {#if resetLeft > 0}
-    <Notice
-      tone="warning"
-      text={t.settings.resetPartly(resetLeft)}
-      action={{ label: t.common.openLog, icon: 'folder', onclick: openLog }}
-      testid="first-reset-report"
-    />
-    {#if logError}<Notice tone="danger" variant="inline" text={logError} />{/if}
-  {/if}
-{/snippet}
+  /** The short forms wait while something is missing (Enter puts the caret there). */
+  const waits = $derived((step === 'review' || step === 'self') && open !== null);
+</script>
 
 {#snippet alerts()}
   {#if app.hasMailbox}
@@ -204,21 +178,22 @@
 {/snippet}
 
 {#snippet body(id: StepId)}
-  {#if id === 'welcome'}
-    {@render welcome()}
-  {:else if id === 'way'}
-    <RadioList
-      tiles
-      options={WAYS}
-      value={onboarding.way}
-      label={t.firstRun.way}
+  {#if id === 'way'}
+    <NewProfileWays
+      oncv={() => onboarding.byCv()}
+      onself={() => onboarding.byHand()}
       testid="first-way"
-      onchange={(choice) => (onboarding.way = choice)}
     />
   {:else if id === 'upload'}
     <Upload onfile={(dropped) => void onboarding.read(dropped)} />
-  {:else if id === 'review'}
-    <ProfileView bind:this={profileView} onboarding />
+  {:else if id === 'review' || id === 'self'}
+    <ProfileView bind:this={profileView} setup={id} onmissing={(text) => (open = text)} />
+    {#if id === 'review' && brought !== null}
+      <p class="brought" data-testid="first-brought">
+        <span>{t.firstRun.fromCv(brought.competences, brought.tools, brought.industries)}</span>
+        <span class="later">{t.firstRun.later}</span>
+      </p>
+    {/if}
   {:else if id === 'alerts'}
     {@render alerts()}
   {/if}
@@ -229,7 +204,7 @@
   {#if step === 'reading' && !failed}
     <span class="mark" data-testid="cv-reading"><Spinner size="lg" label={null} /></span>
   {:else if step === 'done'}
-    <span class="mark done"><Icon name="success" size="xl" /></span>
+    <span class="mark done"><Icon name="success" size="mark" /></span>
   {/if}
   <div class="heading">
     {#if failed}<span class="sign"><Icon name="warning" size="md" /></span>{/if}
@@ -287,7 +262,10 @@
       <Button
         variant="primary"
         label={nextWords}
-        loading={(busy && step === 'review') || (checking && step === 'alerts')}
+        disabled={waits}
+        disabledReason={open}
+        loading={(busy && (step === 'review' || step === 'self')) ||
+          (checking && step === 'alerts')}
         testid="first-next"
         onclick={() => void next()}
       />
@@ -320,7 +298,7 @@
         in:fade
       >
         <div class="top">{@render head()}</div>
-        {#if step !== 'reading' && step !== 'done'}{@render body(step)}{/if}
+        {#if step !== 'reading' && step !== 'done' && step !== 'welcome'}{@render body(step)}{/if}
         <footer
           class="foot"
           class:alone={step === 'done'}
@@ -350,7 +328,7 @@
     width: 100%;
     max-width: calc(var(--setup-card) + 2 * var(--space-16));
     margin: 0 auto;
-    padding: var(--space-16) var(--space-16) var(--space-32);
+    padding: var(--setup-top) var(--space-16) var(--space-32);
   }
 
   .column.wide {
@@ -361,7 +339,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-    padding: var(--space-24) var(--space-24) 0;
+    padding: var(--space-20) var(--space-20) 0;
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-card);
     background-color: var(--surface);
@@ -429,7 +407,26 @@
     font: var(--type-sm);
   }
 
-  /* The foot of the card: 16 above (the card's gap less its own top), the card's 24 below;
+  /* What the CV brought besides: a quiet grey strip, "später im Profil" at its end. */
+  .brought {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-4) var(--space-12);
+    margin-top: calc(-1 * var(--space-4));
+    padding: var(--space-8) var(--space-12);
+    border-radius: var(--radius-control);
+    background-color: var(--surface-muted);
+    color: var(--text-muted);
+    font: var(--type-sm);
+  }
+
+  .later {
+    color: var(--text-subtle);
+  }
+
+  /* The foot of the card: 16 above (the card's gap less its own top), the card's 20 below;
      Zurück's words start on the card's edge. In a low window it stays at the bottom while the
      card scrolls under it, set apart by a hairline only then (`stuck`: it sticks one hairline
      below the window's edge, so the observer sees it cut). */
@@ -441,8 +438,8 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-12);
-    margin: calc(-1 * var(--space-12)) calc(-1 * var(--space-24)) 0;
-    padding: var(--space-12) var(--space-24) var(--space-24);
+    margin: calc(-1 * var(--space-12)) calc(-1 * var(--space-20)) 0;
+    padding: var(--space-12) var(--space-20) var(--space-20);
     border-top: var(--border-width) solid transparent;
     border-radius: 0 0 var(--radius-card) var(--radius-card);
     background-color: var(--surface);

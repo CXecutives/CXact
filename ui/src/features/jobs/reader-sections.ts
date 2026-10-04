@@ -7,24 +7,15 @@ import type { ProfileTerm } from '$lib/state/terms';
 import type { Verdict } from './terms';
 
 /**
- * The sections, top to bottom:
- * - head: the title and the close "×" (company, place, portal and day are rows of the
- *   Jobdetails);
+ * The sections under the reader's sticky head (the title, the moves and the close "×";
+ * company, place, portal and day are rows of the Jobdetails), top to bottom:
  * - match: the ring beside its band, or the ban of an excluded job with why;
- * - actions: Anzeige öffnen, Alert-Mail öffnen, Prompt kopieren ("Trotzdem bewerten" of an
- *   excluded job before them);
+ * - actions: Anzeige öffnen, Alert-Mail öffnen, Prompt kopieren;
  * - details: "Jobdetails";
  * - requirements: "Anforderungen", in the groups below;
  * - ad: the note on a text that is not all there, and the ad text.
  */
-export const READER_SECTIONS = [
-  'head',
-  'match',
-  'actions',
-  'details',
-  'requirements',
-  'ad',
-] as const;
+export const READER_SECTIONS = ['match', 'actions', 'details', 'requirements', 'ad'] as const;
 
 export interface RequirementGroup {
   kind: Extract<ReasonKind, 'met' | 'partial' | 'open' | 'check'>;

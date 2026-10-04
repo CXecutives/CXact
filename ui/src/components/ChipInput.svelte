@@ -23,8 +23,9 @@
   typing (Suggestions.svelte): nothing is marked until the arrows or the pointer mark one,
   Enter or a click takes the marked term as a chip, Esc closes the list; Enter without a
   mark and leaving the field take the typed text as always.
-  The field is as tall as a text field (32 px) with one line of chips. With `star` each chip
-  starts with a star that marks it (a preferred industry, ChipStar).
+  As tall as a text field (24 px) with one line of chips; with `star` each chip starts with
+  its star (a preferred industry, ChipStar); with chips its input says "+ Rolle" (`more`);
+  required and empty (`missing`) it has the amber edge and halo of every field of the form.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -52,6 +53,10 @@
     /** Accessible name when the field is not wrapped in a Field with a label. */
     label?: string | null;
     placeholder?: string | null;
+    /** The placeholder once it holds chips ("+ Rolle"). */
+    more?: string | null;
+    /** Required and still empty: the amber edge and halo. */
+    missing?: boolean;
     /** id of the text input, for the label of a Field. */
     id?: string | null;
     /** Default: the message of its Field, while it shows one. */
@@ -82,6 +87,8 @@
     values = $bindable(),
     label = null,
     placeholder = null,
+    more = null,
+    missing = false,
     id = null,
     describedby = null,
     invalid = false,
@@ -310,6 +317,7 @@
     bind:this={box}
     class="field"
     class:invalid
+    class:missing={missing && !invalid}
     class:entry
     class:filled={values.length > 0}
     role="presentation"
@@ -367,7 +375,7 @@
         aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
           .filter((part) => part !== null)
           .join(' ') || undefined}
-        placeholder={values.length === 0 ? (placeholder ?? undefined) : undefined}
+        placeholder={(values.length === 0 ? placeholder : more) ?? undefined}
         spellcheck={FIELD_ATTRIBUTES.spellcheck}
         autocorrect={FIELD_ATTRIBUTES.autocorrect}
         autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
@@ -424,9 +432,9 @@
 </div>
 
 <style>
-  /* One line of chips in a field: its height minus 2 x 4 padding and 2 x 1 edge. */
+  /* One line of chips in a field: its height minus 2 x 2 padding and 2 x 1 edge. */
   .chip-input {
-    --chip-line: calc(var(--control-field) - 2 * var(--space-4) - 2 * var(--border-width));
+    --chip-line: calc(var(--control-field) - 2 * var(--space-2) - 2 * var(--border-width));
 
     position: relative;
     display: flex;
@@ -447,7 +455,7 @@
 
   .entry {
     min-height: var(--control-field);
-    padding: var(--space-4);
+    padding: var(--space-2);
     border: var(--border-width) solid var(--border-strong);
     border-radius: var(--radius-control);
     background-color: var(--surface);
@@ -468,6 +476,12 @@
     border-color: var(--danger-strong);
   }
 
+  .missing,
+  .missing:hover {
+    border-color: var(--missing-edge);
+    box-shadow: var(--missing-ring);
+  }
+
   .chip {
     display: inline-flex;
     align-items: center;
@@ -475,7 +489,7 @@
     max-width: 100%;
     min-height: var(--chip-line);
     padding: 0 var(--space-2) 0 var(--space-8);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-inner);
     background-color: var(--active-surface);
     color: var(--active-text);
     font: var(--type-sm);
@@ -498,9 +512,9 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: min(var(--icon-md), var(--chip-line));
-    height: min(var(--icon-md), var(--chip-line));
-    border-radius: var(--radius-full);
+    width: calc(var(--chip-line) - 2 * var(--space-2));
+    height: calc(var(--chip-line) - 2 * var(--space-2));
+    border-radius: var(--radius-xs);
     color: var(--active-text);
     transition:
       background-color var(--dur-fast) var(--ease-standard),
@@ -520,7 +534,7 @@
     flex: 1 1 0;
     min-width: var(--space-48);
     height: var(--chip-line);
-    padding: 0 var(--space-8);
+    padding: 0 var(--space-6);
     border: 0;
     background-color: transparent;
     color: var(--text);
@@ -528,18 +542,8 @@
     outline: none;
   }
 
-  /* Next to chips the caret needs little room; while typing the field takes a line of
-     its own where the chips leave too little. */
+  /* Next to chips the input keeps room for its "+ Rolle". */
   .filled .input {
-    min-width: var(--space-8);
-  }
-
-  .filled .input:focus {
-    min-width: var(--space-64);
-  }
-
-  /* A field that searches its options keeps room to type next to its chips. */
-  .suggests .filled .input {
     min-width: var(--space-64);
   }
 
@@ -556,7 +560,7 @@
     left: 0;
     display: flex;
     flex-direction: column;
-    max-height: calc(6 * var(--control-sm) + 2 * var(--space-4));
+    max-height: calc(6 * var(--menu-row) + 2 * var(--space-4));
     padding: var(--space-4);
     overflow-y: auto;
     border: var(--border-width) solid var(--border);
@@ -573,7 +577,7 @@
     display: flex;
     flex: none;
     align-items: center;
-    height: var(--control-sm);
+    height: var(--menu-row);
     padding: 0 var(--space-8);
     border-radius: var(--radius-xs);
     color: var(--text);

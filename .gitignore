@@ -35,3 +35,6 @@ __pycache__/
 
 # Throwaway scripts of UI sweeps and drafts (never committed).
 /tools/ui-harness/zz-*.mjs
+
+# Screens of the acceptance pass (tools/ui-harness/zz-screens.mjs).
+/.screens/

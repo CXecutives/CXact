@@ -7,7 +7,8 @@
 import type { Catalog } from '$lib/i18n/de';
 import type { CvFailure } from '$lib/ipc/api';
 
-export type StepId = 'welcome' | 'way' | 'upload' | 'reading' | 'review' | 'alerts' | 'done';
+export type StepId =
+  'welcome' | 'way' | 'upload' | 'reading' | 'review' | 'self' | 'alerts' | 'done';
 /** How the profile comes: from the CV (the recommended way) or typed in. */
 export type Way = 'cv' | 'self';
 
@@ -31,7 +32,7 @@ export interface StepSpec {
   skip?: (walk: Walk) => boolean;
   /** The words of its primary button (null: the step's own control goes on). */
   next: ((t: Catalog, walk: Walk) => string) | null;
-  /** The profile's form needs the Profil view's column; the others keep the card's 460. */
+  /** A short form of the profile: the wider card (520); the others keep the card's 420. */
   wide?: true;
   /** A state rather than a form: its mark, heading and words centred in the card. */
   centred?: true;
@@ -47,11 +48,12 @@ export const STEPS: readonly StepSpec[] = [
     next: (t) => t.firstRun.begin,
   },
   {
+    // A click on a tile goes on.
     id: 'way',
     heading: (t) => t.firstRun.way,
     stage: 0,
     back: () => 'welcome',
-    next: (t) => t.firstRun.next,
+    next: null,
   },
   {
     id: 'upload',
@@ -72,10 +74,22 @@ export const STEPS: readonly StepSpec[] = [
     centred: true,
   },
   {
+    // After the CV: what only the user can say.
     id: 'review',
     heading: (t) => t.firstRun.review,
+    text: (t) => t.firstRun.reviewText,
     stage: 0,
-    back: (walk) => (walk.way === 'cv' ? 'upload' : 'way'),
+    back: () => 'upload',
+    next: (t) => t.firstRun.next,
+    wide: true,
+  },
+  {
+    // By hand: the most important.
+    id: 'self',
+    heading: (t) => t.firstRun.self,
+    text: (t) => t.firstRun.selfText,
+    stage: 0,
+    back: () => 'way',
     next: (t) => t.firstRun.next,
     wide: true,
   },
@@ -83,7 +97,7 @@ export const STEPS: readonly StepSpec[] = [
     id: 'alerts',
     heading: (t) => t.firstRun.alerts,
     stage: 1,
-    back: () => 'review',
+    back: (walk) => (walk.way === 'cv' ? 'review' : 'self'),
     // Without a mailbox: "Überspringen" at the left, "Verbinden" the primary.
     skip: (walk) => !walk.mailbox,
     next: (t, walk) => (walk.mailbox ? t.firstRun.next : t.settings.connect),

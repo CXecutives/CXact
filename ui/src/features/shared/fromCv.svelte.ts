@@ -3,7 +3,8 @@
 // profile at once (`fillFromCv`). While it runs the button turns; what went wrong is said in
 // one sentence with its way on (another try, another file), and the toast says when the
 // profile was filled. While the tries are used up (`AppState.cvUntil`) it is not offered: its
-// buttons say why ahead of the click (`limited`), and a dropped CV is not taken.
+// button says why ahead of the click (`limited`), a tile says it on the click, and a dropped
+// CV is not taken.
 
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
@@ -35,6 +36,12 @@ class FromCv {
    *  and stored, or null (closed dialog, a failure said). */
   async run(dropped = false): Promise<ProfileInfo | null> {
     if (this.busy) return null;
+    // No evaluation left today: said at once, nothing asked (the tiles of the start page
+    // have no way to wait).
+    if (this.limited) {
+      this.problem = problemOf(new CvError('limit'));
+      return null;
+    }
     this.busy = true;
     this.problem = null;
     try {

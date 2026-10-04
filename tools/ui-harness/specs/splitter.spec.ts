@@ -1,6 +1,6 @@
-// The handle between the list and the reader: the list keeps 320 px, the reader 440 px, and
-// the list takes at most 60 % of the content; the limits and the first width (40 % of the
-// content, at least 520 px where the reader keeps its room, at most 600 px) follow the window
+// The handle between the list and the reader: the list keeps --list-min, the reader
+// --reader-min, and the list takes at most 60 % of the content; the limits and the first width
+// (40 % of the content, between --list-first-min and --list-first-max) follow the window
 // and the sidebar and never shrink while the window grows; a kept width that does not fit
 // shows at the limit and comes back when there is room; a tooltip names what it does, over
 // what a double click does.
@@ -109,23 +109,26 @@ test('the handle shows its grip, no tooltip; a double click sets the first width
   const hit = page.getByTestId('list-splitter').locator('.hit');
   const box = (await hit.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  // Only the grip shows (no line along the border), 44 px long.
+  // Only the grip shows (no line along the border), as long as its token.
   await expect(hit.locator('.line')).toHaveCount(0);
-  expect((await hit.locator('.grip').boundingBox())!.height).toBe(44);
+  expect((await hit.locator('.grip').boundingBox())!.height).toBe(
+    await tokenPx(page, '--grip-height'),
+  );
   await expect(hit.locator('.grip')).toHaveCSS('opacity', '1');
   // No tooltip (hidden for now, user 2026-09-29): the cursor says it.
   await page.waitForTimeout(700);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await expect(hit).toHaveCSS('cursor', 'col-resize');
 
+  const first = (await limitsAt(page, 1360)).width;
   await drag(page, -100);
-  await expect.poll(async () => (await handle(page)).width).toBe(420);
+  await expect.poll(async () => (await handle(page)).width).toBe(first - 100);
   await page.reload();
-  expect((await handle(page)).width).toBe(420);
+  expect((await handle(page)).width).toBe(first - 100);
   await page.getByTestId('list-splitter').locator('.hit').dblclick();
-  await expect.poll(async () => (await handle(page)).width).toBe(520);
+  await expect.poll(async () => (await handle(page)).width).toBe(first);
   await page.reload();
-  expect((await handle(page)).width).toBe(520);
+  expect((await handle(page)).width).toBe(first);
 });
 
 test('at its narrowest the list header still shows every control in the column', async ({
@@ -133,7 +136,8 @@ test('at its narrowest the list header still shows every control in the column',
 }) => {
   await open(page, WIN);
   await drag(page, -2000);
-  await expect.poll(async () => (await handle(page)).width).toBe(320);
+  const min = await tokenPx(page, '--list-min');
+  await expect.poll(async () => (await handle(page)).width).toBe(min);
   const problems = await page.getByTestId('list-header').evaluate((header) => {
     const out: string[] = [];
     const column = header.getBoundingClientRect();

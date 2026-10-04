@@ -26,7 +26,7 @@
   data-testid={testid ?? 'info-tip'}
   use:tooltip={{ text, toggle: true }}
 >
-  <Icon name="info" size="sm" />
+  <Icon name="info" size="xs" />
 </button>
 
 <style>
@@ -36,9 +36,9 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: var(--control-sm);
-    height: var(--control-sm);
-    margin-block: calc((var(--leading-sm) - var(--control-sm)) / 2);
+    width: var(--info-tip);
+    height: var(--info-tip);
+    margin-block: calc((var(--leading-sm) - var(--info-tip)) / 2);
     border-radius: var(--radius-full);
     color: var(--text-subtle);
     transition:

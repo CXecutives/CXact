@@ -52,7 +52,7 @@ import {
   rowMenu,
   rows,
   settleMoves,
-  showTab,
+  reveal,
   sortEntryId,
   SORTS,
   stage,
@@ -128,20 +128,21 @@ test.describe('header', () => {
     for (const place of ['inbox', 'archive', 'trash'] as const) {
       await expect(page.getByTestId(`place-${place}`)).toHaveText(T.place[place]);
     }
-    // 39 px high, 15 px labels (one step above the sidebar's entries), the chosen one with the
-    // line under it; it slides to another choice.
+    // As high as a field, the 12 px labels of the one segmented look of the app (the choices
+    // of the Profil take it too), the chosen one on its white thumb; it slides to another
+    // choice.
     expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(
       await tokenPx(page, '--control-field'),
     );
     await expect(page.getByTestId('place-archive')).toHaveCSS(
       'font-size',
-      `${await tokenPx(page, '--font-place')}px`,
+      `${await tokenPx(page, '--font-tab')}px`,
     );
     const under = async (place: 'inbox' | 'archive'): Promise<void> => {
       const chosen = (await page.getByTestId(`place-${place}`).boundingBox())!;
       await expect
         .poll(async () => {
-          const line = (await page.getByTestId('places').locator('.line').boundingBox())!;
+          const line = (await page.getByTestId('places').locator('.thumb').boundingBox())!;
           return [line.x, line.width].map(Math.round);
         })
         .toEqual([chosen.x, chosen.width].map(Math.round));
@@ -295,22 +296,16 @@ test.describe('header', () => {
     }
   });
 
-  test('Alert-Mails lesen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
+  test('Jobs suchen and Abbrechen share one slot; the head keeps its hairline', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 600 });
     await open(page, `${WIN}&tick=200`);
-    const header = page.getByTestId('list-header');
-    const clear = 'rgba(0, 0, 0, 0)';
-    await expect(header).toHaveCSS('border-bottom-color', clear);
-    const scroller = page.getByTestId('list-scroll');
-    await expect
-      .poll(() => scroller.evaluate((node) => node.scrollHeight - node.clientHeight))
-      .toBeGreaterThan(100);
-    await scroller.evaluate((node) => node.scrollTo({ top: 100 }));
-    await expect(header).not.toHaveCSS('border-bottom-color', clear);
-    await scroller.evaluate((node) => node.scrollTo({ top: 0 }));
-    await expect(header).toHaveCSS('border-bottom-color', clear);
+    // The head of the list, like every view's head, has its hairline whether the list
+    // scrolls or not.
+    const head = page.getByTestId('list-header').locator('header');
+    await expect(head).toHaveCSS('border-bottom-width', '1px');
+    await expect(head).toHaveCSS('border-bottom-color', await tokenColour(page, '--border'));
     const width = (await page.getByTestId('search').boundingBox())!.width;
     await page.getByTestId('fetch').click();
     await expect(page.getByTestId('cancel-run')).toBeVisible();
@@ -1411,7 +1406,7 @@ test.describe('one list', () => {
   }) => {
     await open(page, WIN);
     await page.getByTestId('nav-settings').click();
-    await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
+    await (await reveal(page, page.getByTestId('mailbox-remove'))).click();
     await page
       .getByTestId('dialog-remove-mailbox')
       .getByRole('button', { name: 'Entfernen' })
@@ -1520,7 +1515,7 @@ test.describe('rows', () => {
   }) => {
     await open(page, WIN);
     const shows = [T.actions.open, T.actions.openAd, T.actions.mail, T.actions.prompt];
-    const showIcons = ['open', 'external', 'alertMail', 'copy'] as const;
+    const showIcons = ['readerShow', 'ad', 'alertMail', 'copy'] as const;
     // Aktuell.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
@@ -2164,7 +2159,8 @@ async function stopSampling(page: Page): Promise<Sample[]> {
   });
 }
 
-const INSET = 12;
+/** The bar keeps the row's top and bottom padding (--row-bar-inset, --list-row-pad). */
+const INSET = 8;
 const onRow = (sample: Sample): boolean =>
   sample.row !== null &&
   Math.abs(sample.top - (sample.row.top + INSET)) < 1 &&
@@ -2422,8 +2418,7 @@ test.describe('sidebar', () => {
   test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
     await open(page, WIN);
     await page.getByTestId('nav-profile').click();
-    const field = page.getByTestId('view-profile').getByRole('textbox').first();
-    await field.fill('Erika Muster');
+    await page.getByTestId('profile-wish-rate').fill('1.300');
     await page.getByTestId('nav-jobs').click();
     const dialog = page.getByTestId('dialog-leave-profile');
     await dialog.getByRole('button', { name: 'Abbrechen' }).click();

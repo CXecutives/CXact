@@ -35,7 +35,6 @@ import { app } from './app.svelte';
 import { NO_FILTER } from './filter';
 import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
-import { settingsTab } from './settings.svelte';
 import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
 import { viewport } from './viewport.svelte';
@@ -288,7 +287,7 @@ class RunStore {
     }
     if (summary.outcome.kind === 'failed') {
       const error = summary.outcome.error;
-      const fix = failureAction(summary, error, openLog);
+      const fix = failureAction(summary, error);
       toasts.show(
         t.error.text(error.kind, error.params),
         'warning',
@@ -341,15 +340,12 @@ export interface FailureAction {
 }
 
 /**
- * The one fitting action for a failed run, wherever it is said (its toast, the first-run
- * page): the mailbox settings for a mailbox problem, the log for an internal error, else a
- * retry; no retry is offered while another run goes (it could not start).
+ * The one fitting action for a failed run, wherever it is said (its toast, the list's run
+ * line): the mailbox settings for a mailbox problem, none for an internal error (the log is
+ * written quietly), else a retry; no retry is offered while another run goes (it could not
+ * start).
  */
-export function failureAction(
-  summary: RunSummary | null,
-  error: ErrorInfo,
-  openLog: () => void,
-): FailureAction | null {
+export function failureAction(summary: RunSummary | null, error: ErrorInfo): FailureAction | null {
   switch (error.kind) {
     case 'mailAuth':
     case 'mailMissing':
@@ -358,25 +354,16 @@ export function failureAction(
     case 'secretStore':
       return { label: t.run.checkMailbox, onclick: toMailbox };
     case 'internal':
-      return { label: t.common.openLog, icon: 'folder', onclick: openLog };
+      return null;
     default:
       if (run.active) return null;
       return { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) };
   }
 }
 
-/** "Postfach prüfen": Einstellungen at Portale, whose card Alert-Mails holds the mailbox. */
+/** "Postfach prüfen": Einstellungen, whose section Postfach für Alert-Mails holds it. */
 function toMailbox(): void {
-  settingsTab.value = 'portals';
   navigation.go('settings');
-}
-
-/** The log folder, from a toast of a failure (its own failure is a toast too). */
-
-function openLog(): void {
-  invoke('open_target', { target: { kind: 'logDir' } }).catch((failure: unknown) =>
-    toasts.show(errorText(failure), 'warning'),
-  );
 }
 
 export const run = new RunStore();

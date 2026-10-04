@@ -28,7 +28,6 @@
   import { t } from '$lib/i18n/t';
   import { duration } from '$lib/motion/motion';
   import { fade, rise, viewOut } from '$lib/motion/transitions';
-  import { inView } from '$lib/actions/inView';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
@@ -89,10 +88,6 @@
   const placeEmpty = $derived(
     jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
   );
-  /** The list is scrolled away from its top (the header shows its hairline). */
-  let scrolled = $state(false);
-  /** The same for the whole column, which scrolls in the one-column layout. */
-  let columnScrolled = $state(false);
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
@@ -213,13 +208,11 @@
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      <!-- One column scrolls the whole column under its pinned header: watched from its top. -->
-      <span class="top" use:inView={(place) => (columnScrolled = place === 'above')}></span>
+      <!-- One column scrolls the whole column under its pinned header. -->
       <div class="head">
-        <ListHeader bind:this={header} scrolled={scrolled || columnScrolled} />
+        <ListHeader bind:this={header} />
       </div>
       <div class="scroll" data-testid="list-scroll">
-        <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>
         <JobList onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
@@ -237,7 +230,14 @@
       <section class="right" data-testid="reader-pane" bind:this={right}>
         {#key stage.turn}
           <div class="stage" data-testid="stage" in:enter={stage.what !== NO_JOB} out:leave>
-            <div class="column" class:idle={stage.what === NO_JOB}>
+            <div
+              class="column"
+              class:idle={stage.what === NO_JOB}
+              class:job={stage.what !== NO_JOB &&
+                stage.what !== ERROR &&
+                stage.what !== WAITING &&
+                stage.what !== OPENING}
+            >
               {#if stage.what === NO_JOB}
                 <!-- No job open: the one empty state of every place (its icon, one sentence);
                    beside an empty list, which says it all, nothing. -->
@@ -341,12 +341,6 @@
     flex: none;
   }
 
-  /* Watched: once it has scrolled away, the list header draws its bottom line. */
-  .top {
-    flex: none;
-    height: 0;
-  }
-
   /* The list and the reader keep their scrollbar's room whether they scroll or not, like the
      views of the shell (Windows: a transparent track, the thumb only under the pointer;
      macOS overlay scrollbars take none): the rows end on the header's line, and the reader
@@ -358,21 +352,6 @@
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
-  }
-
-  /* The fade where a job scrolls away under the top bar: the sheet's colour into nothing,
-     invisible over the empty top at rest. */
-  .stage::before {
-    content: '';
-    position: sticky;
-    z-index: var(--z-sticky);
-    top: 0;
-    display: block;
-    flex: none;
-    height: var(--fade-height);
-    margin-bottom: calc(-1 * var(--fade-height));
-    background: var(--grad-fade);
-    pointer-events: none;
   }
 
   /* One cell: a leaving stage and the next one lie on top of each other. */
@@ -399,10 +378,26 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
-    max-width: var(--reader-width);
+    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
     margin: 0 auto 0
-      max(0%, round(down, calc((100% - var(--reader-width)) / 2), var(--border-width)));
-    padding: var(--pane-padding) var(--reader-padding) var(--space-64);
+      max(
+        0%,
+        round(
+          down,
+          calc((100% - var(--reader-width) - 2 * var(--pane-padding)) / 2),
+          var(--border-width)
+        )
+      );
+    padding: var(--head-pad) var(--pane-padding) var(--space-64);
+  }
+
+  /* A job: the reader takes the whole pane (its head's hairline runs from edge to edge) and
+     sets its own column. */
+  .column.job {
+    max-width: none;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   /* The chevron's ink lines up with the title below it: the button's padding and border
@@ -436,7 +431,7 @@
       overflow-y: scroll;
       border-right: 0;
       scroll-padding-top: calc(
-        var(--list-header-top) + var(--tabs-height) + var(--space-12) + var(--list-toolbar) +
+        2 * var(--head-pad) + var(--first-row) + var(--space-10) + var(--list-toolbar) +
           var(--space-8) + var(--control-field) + var(--pane-padding)
       );
     }

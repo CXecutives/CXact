@@ -1,31 +1,29 @@
 <!--
-  Einstellungen (centred 720): the title, the tabs Portale and Daten (user, 2026-10-03), each
-  with its cards of cards.ts. Portale: "CXact sucht nach" (the search's terms, SearchTerms,
-  with an info symbol and "Im Profil ändern" at the heading's end), "Jobportale" (the portals
-  the app searches, PortalRow), "Alert-Mails" (one card: the mailbox's row first, without a
-  mailbox "Ohne Postfach ruhen LinkedIn und freelance.de.", then the portals of alert mails).
-  Daten: the profile's folder and the reset, each with one sentence, and a quiet line with
-  the version. Every text button of a row is the same outlined button, and every row ends on
-  the card's inner edge. This file only renders the list and runs its commands; what a row
-  is, says and does is one entry in cards.ts.
+  Einstellungen: one page under the view's sticky head ("Einstellungen"), in the column of the
+  pages (640), three sections of cards.ts (design round 3): Portale (all ten portals in one
+  list, PortalRow: the eight the app searches, then LinkedIn and freelance.de), Postfach für
+  Alert-Mails (MailboxCard) and Daten (the profile's folder and the reset, each one sentence
+  and its button). Every text button of a row is the same outlined button with its glyph;
+  every row ends on the card's inner edge. This file only renders the list and runs its
+  commands; what a row is, says and does is one entry in cards.ts.
 
   A switch moves at once (the state is patched before the save) and is its own answer.
   Errors stay a note at the end of their card, which unfolds (the cards below glide down
-  instead of jumping). Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog
-  whose action fails stays open and says why inside. The dry run changes nothing, and a run
-  holds the mailbox and the reset, locked with the reason of that run instead of failing.
-  Opened from a job for one portal ("Anmeldung einrichten") the page shows Portale, glides to
-  the portal's row, focuses its sign-in and offers "Zurück zum Job" beside the tabs.
+  instead of jumping). Only "Alle Daten zurücksetzen" and "Entfernen" of the mailbox ask
+  first; a dialog whose action fails stays open and says why inside. The dry run changes
+  nothing, and a run holds the mailbox and the reset, locked with the reason of that run
+  instead of failing. Opened from a job for one portal ("Anmeldung einrichten") the page
+  glides to the portal's row, focuses its sign-in and offers "Zurück zum Job" in its head.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import InfoTip from '$components/InfoTip.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
+  import PageHeader from '$components/PageHeader.svelte';
+  import Section from '$components/Section.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
-  import Tabs, { type TabOption } from '$components/Tabs.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
@@ -37,23 +35,19 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
-  import { SETTINGS_TABS, settingsTab, type SettingsTab } from '$lib/state/settings.svelte';
   import { tick } from 'svelte';
   import {
     ACTIONS,
-    CARDS,
+    SECTIONS,
     ownOnly,
-    portalsOf,
     type Action,
     type ActionId,
     type CommandId,
     type Lock,
-    type Portals,
     type Row,
   } from './cards';
   import MailboxCard from './MailboxCard.svelte';
   import PortalRow from '../shared/PortalRow.svelte';
-  import SearchTerms from './SearchTerms.svelte';
 
   /** A note keeps what happened and says it when it shows. */
   type Feedback = { tone: NoticeTone; text: () => string };
@@ -65,29 +59,22 @@
   );
   /** The mailbox is outside the dry run's own data, and a run holds it. */
   const mailboxLocked = $derived(lock === null ? null : ownOnly(lock));
+  /** Every portal: the ones the app searches, then the ones of alert mails. */
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
-  const portalsIn = (card: Portals) => portals.filter((p) => portalsOf(p.way) === card);
-  const tabs = $derived<TabOption<SettingsTab>[]>(
-    SETTINGS_TABS.map((tab) => ({
-      id: tab,
-      label: t.settings[tab],
-      testid: `settings-tab-${tab}`,
-    })),
-  );
   let busy = $state<CommandId | null>(null);
-  /** The note at the end of each card, by card id. */
+  /** The note at the end of each card, by section id. */
   let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
   let resetError = $state<(() => string) | null>(null);
 
-  const note = (card: string, feedback: Feedback | null): void => {
-    notes[card] = feedback;
+  const note = (section: string, feedback: Feedback | null): void => {
+    notes[section] = feedback;
   };
 
-  function open(card: string, target: OpenTarget): void {
-    note(card, null);
+  function open(section: string, target: OpenTarget): void {
+    note(section, null);
     invoke('open_target', { target }).catch((error: unknown) =>
-      note(card, { tone: 'danger', text: () => errorText(error) }),
+      note(section, { tone: 'danger', text: () => errorText(error) }),
     );
   }
 
@@ -106,10 +93,10 @@
     }
   }
 
-  function act(card: string, id: ActionId): void {
+  function act(section: string, id: ActionId): void {
     const action: Action = ACTIONS[id];
     if (action.open !== undefined) {
-      open(card, action.open);
+      open(section, action.open);
       return;
     }
     resetError = null;
@@ -143,7 +130,6 @@
     if (portal === null || root === null || cfg === null) return;
     navigation.focusPortal = null;
     fromJob = jobs.selected !== null;
-    settingsTab.value = 'portals';
     const scope = root;
     void tick().then(() => {
       const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
@@ -158,26 +144,24 @@
   });
 </script>
 
-{#snippet row(card: string, item: Row)}
+{#snippet row(section: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    <SettingRow label={item.label(t, cfg)} hint={item.hint?.(t, cfg) ?? null} testid={item.id}>
-      <div class="buttons">
-        {#each item.actions as id (id)}
-          {@const action: Action = ACTIONS[id]}
-          {@const locked = action.locked?.(lock) ?? null}
-          <Button
-            variant="secondary"
-            icon={action.icon}
-            label={action.label(t, cfg)}
-            loading={busy === id}
-            disabled={locked !== null}
-            disabledReason={locked}
-            warns={action.warns ?? false}
-            testid={testidOf(id)}
-            onclick={() => act(card, id)}
-          />
-        {/each}
-      </div>
+    <SettingRow hint={item.text(t, cfg)} testid={item.id}>
+      {#each item.actions as id (id)}
+        {@const action: Action = ACTIONS[id]}
+        {@const locked = action.locked?.(lock) ?? null}
+        <Button
+          variant="secondary"
+          icon={action.icon}
+          label={action.label(t, cfg)}
+          loading={busy === id}
+          disabled={locked !== null}
+          disabledReason={locked}
+          warns={action.warns ?? false}
+          testid={testidOf(id)}
+          onclick={() => act(section, id)}
+        />
+      {/each}
     </SettingRow>
   {/if}
 {/snippet}
@@ -185,117 +169,73 @@
 <!-- The note at the end of a card unfolds, so the cards below glide down. The card's inset
      for what is not a row (Card) would jump at once: the note takes its own (a wrapper
      without a box of its own, `.slot`, keeps the card's margin off the folding box). -->
-{#snippet noteOf(card: string, feedback: Feedback)}
+{#snippet noteOf(section: string, feedback: Feedback)}
   <div class="slot">
     <div class="fold" transition:unfold>
       <div class="note">
-        <Notice tone={feedback.tone} variant="inline" text={feedback.text()} testid="{card}-note" />
+        <Notice
+          tone={feedback.tone}
+          variant="inline"
+          text={feedback.text()}
+          testid="{section}-note"
+        />
       </div>
     </div>
   </div>
 {/snippet}
 
 <div class="page" data-testid="settings" bind:this={root}>
-  {#if cfg === null}
-    {#if app.slow}
-      <Card
-        ><div class="skeleton">
-          <Skeleton width={40} /><Skeleton /><Skeleton width={70} />
-        </div></Card
-      >
-    {/if}
-  {:else}
-    {#if cfg.dryRun}
-      <Notice tone="info" text={t.settings.dryRun} />
-    {/if}
-
-    <h1 class="title" data-first-row data-testid="settings-heading">{t.settings.title}</h1>
-    <div class="tabbar">
-      <Tabs
-        options={tabs}
-        value={settingsTab.value}
-        label={t.settings.tabs}
-        testid="settings-tabs"
-        onchange={(tab) => (settingsTab.value = tab)}
-      />
+  <PageHeader
+    heading={t.settings.title}
+    headingTestid="settings-heading"
+    column="page"
+    testid="settings-head"
+  >
+    {#snippet actions()}
       {#if backToJob}
         <Button
-          variant="link"
+          variant="ghost"
+          icon="back"
           label={t.settings.backToJob}
           testid="back-to-job"
           onclick={goBackToJob}
         />
       {/if}
-    </div>
-    {#each SETTINGS_TABS as tab (tab)}
-      <div
-        class="panel"
-        class:gone={tab !== settingsTab.value}
-        role="tabpanel"
-        aria-label={t.settings[tab]}
-        data-testid="settings-panel-{tab}"
-      >
-        {#each CARDS.filter((card) => card.tab === tab) as card (card.id)}
-          {@const feedback = notes[card.id] ?? null}
-          {@const heading = card.heading?.(t, cfg) ?? null}
-          <section
-            class="section"
-            aria-label={heading ?? t.settings[tab]}
-            data-testid="settings-{card.id}"
-          >
-            {#if heading}
-              <div class="head">
-                <h2 class="heading">
-                  {heading}
-                  {#if card.info}
-                    <InfoTip
-                      text={card.info(t, cfg)}
-                      label={t.common.infoAbout(heading)}
-                      testid="info-{card.id}"
-                    />
-                  {/if}
-                </h2>
-                {#if card.block === 'terms' && app.hasProfile}
-                  <!-- Where the terms come from. -->
-                  <Button
-                    variant="link"
-                    label={t.settings.editTerms}
-                    testid="terms-edit"
-                    onclick={() => navigation.go('profile')}
-                  />
-                {/if}
-              </div>
-            {/if}
-            {#if card.block === 'terms'}
-              <SearchTerms />
-            {:else}
-              {#if card.block === 'mailbox'}
-                <!-- The mailbox's row first, the portals of its alert mails under it. -->
-                <MailboxCard {cfg} locked={mailboxLocked} testid="portals-mailbox">
-                  {#each portalsIn('mailbox') as portal (portal.portal)}
-                    <PortalRow {portal} />
-                  {/each}
-                </MailboxCard>
-              {:else}
-                <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
-                  {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-                  {#if card.block}
-                    {#each portalsIn(card.block) as portal (portal.portal)}
-                      <PortalRow {portal} />
-                    {/each}
-                  {/if}
-                  {#if feedback}{@render noteOf(card.id, feedback)}{/if}
-                </Card>
-              {/if}
-            {/if}
-            {#if card.footnote}
-              <p class="footnote" data-testid="{card.id}-footnote">{card.footnote(t, cfg)}</p>
-            {/if}
-          </section>
-        {/each}
-      </div>
-    {/each}
-  {/if}
+    {/snippet}
+  </PageHeader>
+  <div class="body">
+    {#if cfg === null}
+      {#if app.slow}
+        <Card
+          ><div class="skeleton">
+            <Skeleton width={40} /><Skeleton /><Skeleton width={70} />
+          </div></Card
+        >
+      {/if}
+    {:else}
+      {#if cfg.dryRun}
+        <Notice tone="info" text={t.settings.dryRun} />
+      {/if}
+      {#each SECTIONS as section (section.id)}
+        {@const feedback = notes[section.id] ?? null}
+        <Section
+          id="settings-{section.id}"
+          name={section.id}
+          heading={section.heading(t, cfg)}
+          testid="settings-{section.id}"
+          cardTestid="card-{section.id}"
+        >
+          {#if section.block === 'portals'}
+            {#each portals as portal (portal.portal)}<PortalRow {portal} />{/each}
+          {:else if section.block === 'mailbox'}
+            <MailboxCard {cfg} locked={mailboxLocked} />
+          {/if}
+          {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
+          {#if feedback}{@render noteOf(section.id, feedback)}{/if}
+        </Section>
+      {/each}
+    {/if}
+  </div>
 </div>
 
 <Dialog
@@ -303,7 +243,7 @@
   variant="danger"
   heading={t.settings.resetHeading}
   text={t.settings.resetText}
-  confirmLabel={t.settings.resetAction}
+  confirmLabel={t.settings.resetConfirm}
   busy={busy === 'reset'}
   error={resetError?.() ?? null}
   testid="dialog-reset"
@@ -312,73 +252,18 @@
 
 <style>
   .page {
+    min-height: 100%;
+  }
+
+  /* The column under the head: 640 wide, centred, the sections 24 apart. */
+  .body {
     container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-24);
-    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
+    max-width: calc(var(--page-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--pane-padding) var(--pane-padding) var(--page-end);
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-  }
-
-  /* The page's title on the first row of the window, like the Profil's. */
-  .title {
-    color: var(--text-heading);
-    font: var(--type-2xl);
-    letter-spacing: var(--tracking-tight);
-  }
-
-  /* A card's heading row: the heading at the left, its link at the right. */
-  .head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4) var(--space-16);
-  }
-
-  /* The heading of a card, an info symbol beside it where it has one. */
-  .heading {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    color: var(--text-heading);
-    font: var(--type-lg);
-  }
-
-  /* The tabs under the title, at their end the way back to the job she came from; 24 above
-     the first card. */
-  .tabbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-  }
-
-  /* The cards of a tab 32 apart, like the Profil's sections. */
-  .panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-32);
-  }
-
-  .panel.gone {
-    display: none;
-  }
-
-  /* The buttons of a row end on its trailing edge, 12 apart, one size (28, outlined). */
-  .buttons {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-12);
+    padding: var(--space-20) var(--pane-padding) var(--page-end);
   }
 
   .slot {
@@ -393,13 +278,6 @@
   .note {
     display: flex;
     padding-block: var(--space-12);
-  }
-
-  /* The version, quietly under the card. */
-  .footnote {
-    color: var(--text-subtle);
-    font: var(--type-sm);
-    font-variant-numeric: var(--numeric);
   }
 
   .skeleton {

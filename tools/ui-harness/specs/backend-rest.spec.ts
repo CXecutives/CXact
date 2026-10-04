@@ -7,7 +7,6 @@
 import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
 import { animationsDone, expect, open, test } from './fixtures';
-import { T } from './helpers';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -84,14 +83,6 @@ for (const [place, tab] of [
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
   });
 }
-
-test('Einstellungen names the version once, quietly at the end of Daten', async ({ page }) => {
-  await open(page, `${WIN}&view=settings`);
-  await expect(page.getByTestId('settings')).toBeVisible();
-  await page.getByTestId('settings-tab-data').click();
-  await expect(page.getByTestId('data-footnote')).toHaveText(T.settings.version('4.0.0'));
-  await expect(page.getByTestId('settings').getByText('4.0.0')).toHaveCount(1);
-});
 
 test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused, and leads back to the job', async ({
   page,

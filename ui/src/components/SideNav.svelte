@@ -97,9 +97,9 @@
   .item {
     display: flex;
     align-items: center;
-    gap: var(--space-12);
+    gap: var(--space-8);
     height: var(--control-md);
-    padding: 0 var(--space-12);
+    padding: 0 var(--space-8);
     border-radius: var(--radius-md);
     color: var(--text-muted);
     font: var(--type-tab);
