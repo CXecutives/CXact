@@ -17,18 +17,24 @@ use serde::Serialize;
 
 use super::atoms::fold;
 use super::lexicon::domains::DOMAINS;
-use super::lexicon::engine::CORE_CONCEPTS;
+use super::lexicon::engine::{CORE_CONCEPTS, LANGUAGES};
 use super::lexicon::{JOB_SKILL_VOCAB, wishes};
 
-/// The terms of the suggestions, each list sorted and without doubles (in any case).
+/// The terms of the suggestions, each list without doubles (in any case) and sorted, the
+/// languages the most common first.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Vocabulary {
-    /// Skills, methods, tools and roles: competences, their synonyms, tools, keywords.
+    /// Skills, methods and tools: competences and tools.
     pub skills: Vec<String>,
-    /// Industries: the profile's industries and the wished ones.
+    /// Industries.
     pub industries: Vec<String>,
+    /// Target roles: the names of the engine's role table (`lexicon::wishes::ROLE_GROUPS`).
+    pub roles: Vec<String>,
+    /// Languages by their German names, those the engine reads, the most common first
+    /// (`lexicon::engine::LANGUAGES`); the CV import names them the same way.
+    pub languages: Vec<String>,
 }
 
 /// The vocabulary, built once.
@@ -196,8 +202,10 @@ const UMLAUTS: &[(&str, &str)] = &[
     ("behord", "behörd"),
     ("bekampf", "bekämpf"),
     ("bevollmachtig", "bevollmächtig"),
+    ("danisch", "dänisch"),
     ("effektivitat", "effektivität"),
     ("einkaufer", "einkäufer"),
+    ("franzosisch", "französisch"),
     ("fuhr", "führ"),
     ("geldwasche", "geldwäsche"),
     ("geschaft", "geschäft"),
@@ -213,14 +221,17 @@ const UMLAUTS: &[(&str, &str)] = &[
     ("loyalitat", "loyalität"),
     ("massnahme", "maßnahme"),
     ("menu", "menü"),
+    ("niederlandisch", "niederländisch"),
     ("offentlich", "öffentlich"),
     ("pravention", "prävention"),
     ("profitabilitat", "profitabilität"),
     ("qualitat", "qualität"),
     ("ruckgewinn", "rückgewinn"),
+    ("rumanisch", "rumänisch"),
     ("rustzeit", "rüstzeit"),
     ("saulen", "säulen"),
     ("storung", "störung"),
+    ("turkisch", "türkisch"),
     ("ubertrag", "übertrag"),
     ("vergut", "vergüt"),
     ("vorstandin", "vorständin"),
@@ -317,9 +328,16 @@ fn build() -> Vocabulary {
         .chain(wishes::INDUSTRIES)
         .map(|(key, _)| *key)
         .chain(INDUSTRY_SKILLS.iter().copied());
+    let mut roles: Vec<String> = wishes::ROLE_GROUPS
+        .iter()
+        .flat_map(|group| group.iter().map(|name| (*name).to_owned()))
+        .collect();
+    roles.sort_by_cached_key(|role| fold(role));
     Vocabulary {
         skills: terms(skills),
         industries: terms(industries),
+        roles,
+        languages: LANGUAGES.iter().map(|stem| written(stem)).collect(),
     }
 }
 
@@ -471,7 +489,7 @@ mod tests {
     #[test]
     fn lists_are_sorted_single_and_without_hidden_keys() {
         let words = vocabulary();
-        for list in [&words.skills, &words.industries] {
+        for list in [&words.skills, &words.industries, &words.roles] {
             assert!(!list.is_empty());
             let folded: Vec<String> = list.iter().map(|term| fold(term)).collect();
             assert!(folded.windows(2).all(|w| w[0] < w[1]), "sorted, each once");
@@ -487,6 +505,22 @@ mod tests {
         assert!(words.skills.iter().any(|term| term == "Controlling"));
         assert!(words.industries.iter().any(|term| term == "Maschinenbau"));
         assert!(!words.skills.iter().any(|term| term == "Maschinenbau"));
+        assert!(
+            words
+                .roles
+                .iter()
+                .any(|term| term == "Chief Financial Officer")
+        );
+        for language in ["Deutsch", "Französisch", "Niederländisch", "Türkisch"] {
+            assert!(
+                words.languages.iter().any(|term| term == language),
+                "{language}"
+            );
+        }
+        assert_eq!(words.languages.len(), LANGUAGES.len());
+        for language in &words.languages {
+            assert!(LANGUAGES.contains(&fold(language).as_str()), "{language}");
+        }
     }
 
     /// The harness serves the same words (`tools/ui-harness/demo/vocabulary.json`): written
