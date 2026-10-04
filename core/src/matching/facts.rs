@@ -656,9 +656,8 @@ fn country(
         .unwrap_or(job.location);
     let location_folded = fold(location);
     // LinkedIn's workplace type in the location (`Wien, Österreich (Remote)`) is remote work.
-    let remote_full = facts_remote
-        || lex::FULL_REMOTE.iter().any(|w| folded.contains(w))
-        || contains_word(&location_folded, "remote");
+    let remote_full =
+        facts_remote || states_full_remote(folded) || contains_word(&location_folded, "remote");
     let located = outside(&location_countries(location));
     // The job's own place counts as home only where it is not outside the countries.
     let home = if located.is_empty() {
@@ -715,6 +714,21 @@ fn country(
         return vec![unclear(travel_out.clone(), spans_of(&travel, &travel_out))];
     }
     Vec::new()
+}
+
+/// Does a folded text state full remote work, in a clause that does not deny it (`We are
+/// unable to consider fully remote arrangements` states none)?
+fn states_full_remote(folded: &str) -> bool {
+    lex::FULL_REMOTE.iter().any(|phrase| {
+        folded.match_indices(phrase).any(|(at, _)| {
+            let clause = folded[..at]
+                .rfind(['.', '!', '?', ';', '\n'])
+                .map_or(0, |i| i + 1);
+            !folded[clause..at]
+                .split(|c: char| !c.is_alphanumeric())
+                .any(|w| lex::DENIALS.contains(&w))
+        })
+    })
 }
 
 /// A rate statement: highest amount, hourly or daily, EUR or not, freelance rate or wage.
@@ -1695,5 +1709,29 @@ mod tests {
         };
         let found = country(&allowed, &job, &segments(text), &fold(text));
         assert!(found.is_empty(), "{found:?}");
+    }
+
+    /// Full remote work denied in its clause is no remote work: the place abroad decides.
+    #[test]
+    fn denied_full_remote_work_is_none() {
+        let allowed = vec!["DE".to_owned()];
+        let decided = |text: &str| {
+            let job = JobFacts {
+                title: "Interim Finance Transformation Lead",
+                text,
+                location: "Amsterdam, North Holland, Netherlands",
+                portal: Portal::LinkedIn,
+                facts: None,
+                posted: None,
+            };
+            country(&allowed, &job, &segments(text), &fold(text))
+                .iter()
+                .any(|f| f.decided)
+        };
+        assert!(decided(
+            "We are unable to consider fully remote or mainly remote arrangements."
+        ));
+        assert!(decided("Kein 100 % remote möglich."));
+        assert!(!decided("The role is fully remote."));
     }
 }

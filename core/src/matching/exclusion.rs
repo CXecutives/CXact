@@ -536,7 +536,7 @@ impl Sentence<'_, '_> {
     fn passing(&self, hit: &Hit<'_>) -> bool {
         let denied = self
             .before(hit.first, DENIAL_REACH)
-            .any(|k| lex::EXCLUSION_DENIALS.contains(&self.text(k)));
+            .any(|k| lex::DENIALS.contains(&self.text(k)));
         let others = self.before(hit.first, OTHERS_REACH).any(|k| {
             let t = self.text(k);
             lex::EXCLUSION_OTHERS.iter().any(|w| t.starts_with(w))

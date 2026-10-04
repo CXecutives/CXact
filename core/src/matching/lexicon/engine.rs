@@ -3070,13 +3070,16 @@ pub(crate) const EXCLUSION_LINE_BREAKERS: &[&str] = &[
     "und", "sowie", "oder", "bzw", "and", "or", "der", "des", "den", "dem", "von", "fur", "mit",
     "of", "for", "with", "unserer", "unseres",
 ];
-/// Words before a condition word (`Schichtdienst`, `Außendienst`, `Provisionsbasis`) that make
-/// it a passing mention: a denial (two words before), the team or the company, supervising or
-/// training others, a requirement of experience (four words before, same clause).
-pub(crate) const EXCLUSION_DENIALS: &[&str] = &[
+/// Words that deny what follows them: an exclusion word two words after (`kein
+/// Schichtdienst`), full remote work in the same clause (`unable to consider fully remote`).
+pub(crate) const DENIALS: &[&str] = &[
     "kein", "keine", "keinen", "keiner", "keinem", "ohne", "nicht", "nie", "no", "not", "without",
-    "never",
+    "never", "cannot", "unable",
 ];
+/// Words before a condition word (`Schichtdienst`, `Außendienst`, `Provisionsbasis`) that make
+/// it a passing mention: a denial (two words before, `DENIALS`), the team or the company,
+/// supervising or training others, a requirement of experience (four words before, same
+/// clause).
 pub(crate) const EXCLUSION_OTHERS: &[&str] = &[
     "mitarbeiter",
     "mitarbeitend",
