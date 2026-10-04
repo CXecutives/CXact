@@ -1478,6 +1478,9 @@ pub struct AppState {
     pub portals: Vec<PortalState>,
     /// The last fetch - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
+    /// The day (`YYYY-MM-DD`, UTC) "Aus Lebenslauf ausfüllen" works again while its tries
+    /// are used up (`ai::tries_until`); `null` while it works.
+    pub cv_until: Option<String>,
     pub counts: JobCounts,
     pub match_pending: u32,
     pub data_dir: PathBuf,

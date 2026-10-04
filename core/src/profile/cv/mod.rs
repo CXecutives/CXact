@@ -31,6 +31,13 @@ use serde::{Deserialize, Serialize};
 
 pub use redact::redact;
 
+/// The file endings the file dialog offers (what [`read`] reads; a photo may come as
+/// several pages).
+pub const EXTENSIONS: [&str; 15] = [
+    "pdf", "docx", "docm", "dotx", "doc", "odt", "rtf", "txt", "md", "html", "htm", "jpg", "jpeg",
+    "png", "webp",
+];
+
 /// At most this many characters of text go to the worker (its own limit).
 pub const MAX_TEXT: usize = 100_000;
 /// At most this many photos of the pages.

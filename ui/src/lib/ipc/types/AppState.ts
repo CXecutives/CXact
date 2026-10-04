@@ -32,4 +32,9 @@ profile: ProfileInfo | null, portals: Array<PortalState>,
 /**
  * The last fetch - a rescore or a details run is none.
  */
-lastRun: RunSummary | null, counts: JobCounts, matchPending: number, dataDir: string, logDir: string, resetReport: ResetSummary | null, };
+lastRun: RunSummary | null, 
+/**
+ * The day (`YYYY-MM-DD`, UTC) "Aus Lebenslauf ausfüllen" works again while its tries
+ * are used up (`ai::tries_until`); `null` while it works.
+ */
+cvUntil: string | null, counts: JobCounts, matchPending: number, dataDir: string, logDir: string, resetReport: ResetSummary | null, };

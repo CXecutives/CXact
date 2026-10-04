@@ -5,6 +5,7 @@
 
 pub mod cv;
 mod form;
+mod import;
 mod search_terms;
 
 use std::path::{Path, PathBuf};
@@ -23,6 +24,7 @@ pub use form::{
     LanguageLevel, MAX_FOCUS, MIN_MONTHS, ProfileAvailability, ProfileCompetence, ProfileForm,
     ProfileIndustry, ProfileLanguage, WorkWish, Workload, file_value, missing_required, parse,
 };
+pub use import::{MAX_CV_COMPETENCES, MAX_CV_TOOLS, import as import_cv};
 pub use search_terms::{MAX_DEEP_TERMS, deep_search_terms};
 
 /// Folder and file names are a contract with the user's work folder - do not translate.

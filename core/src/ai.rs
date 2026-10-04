@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
+use jiff::civil::Date;
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
 use reqwest::{Client, Response};
 use serde::Deserialize;
@@ -26,6 +27,7 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use crate::profile::cv::{Cv, CvError, CvInput};
+use crate::store::Store;
 
 /// The worker's address (its route `POST /v1/cv`).
 pub const WORKER_URL: &str = "https://cxact-cv.cxact.workers.dev/v1/cv";
@@ -219,6 +221,40 @@ fn answer(success: bool, body: &[u8]) -> Result<CvAnswer, CvError> {
         // `invalid` would be a fault of this app; for the user it is the same.
         _ => CvError::Unavailable,
     })
+}
+
+/// The store key of the day the CV import works again once its tries are used up.
+const TRIES_UNTIL: &str = "cv.triesUntil";
+
+/// Notes what the worker said of the tries: none left (`remaining_today` 0, or the `limit`
+/// code) keeps the day it works again (`until`, `YYYY-MM-DD` UTC; tomorrow when it names
+/// none), else the note goes. Errors only go to the log.
+pub fn note_tries(store: &Store, remaining_today: u32, until: Option<&str>, today: Date) {
+    let result = if remaining_today == 0 {
+        let day = until
+            .and_then(|day| day.parse::<Date>().ok())
+            .or_else(|| today.tomorrow().ok())
+            .map(|day| day.to_string())
+            .unwrap_or_default();
+        store.kv_set(TRIES_UNTIL, &day)
+    } else {
+        store.kv_set(TRIES_UNTIL, "")
+    };
+    if let Err(e) = result {
+        log::warn!("cv: tries not noted: {e}");
+    }
+}
+
+/// The day (`YYYY-MM-DD`, UTC) the CV import works again while its tries are used up; `None`
+/// while it works (the Profil and the setup say so before the user picks a file).
+pub fn tries_until(store: &Store, today: Date) -> Option<String> {
+    let day = store
+        .kv_get(TRIES_UNTIL)
+        .ok()
+        .flatten()?
+        .parse::<Date>()
+        .ok()?;
+    (day > today).then(|| day.to_string())
 }
 
 /// The install id: read from [`INSTALL_ID_FILE`] in `data_dir`, created on first use (a
@@ -417,5 +453,35 @@ mod tests {
             serde_json::to_value(CvError::TooLarge).unwrap(),
             json!({"code": "tooLarge"})
         );
+    }
+
+    /// Tries used up keep the day the import works again until that day; a try left clears
+    /// it.
+    #[test]
+    fn the_day_the_tries_come_back() {
+        let store = Store::in_memory().unwrap();
+        let today: Date = "2026-10-04".parse().unwrap();
+        assert_eq!(tries_until(&store, today), None);
+        note_tries(&store, 0, Some("2026-10-05"), today);
+        assert_eq!(tries_until(&store, today).as_deref(), Some("2026-10-05"));
+        assert_eq!(tries_until(&store, "2026-10-05".parse().unwrap()), None);
+        note_tries(&store, 0, None, today);
+        assert_eq!(tries_until(&store, today).as_deref(), Some("2026-10-05"));
+        note_tries(&store, 1, None, today);
+        assert_eq!(tries_until(&store, today), None);
+    }
+
+    /// A CV error reaches the page as `cv` with its code and data.
+    #[test]
+    fn a_cv_error_is_a_code_with_its_data() {
+        let info = crate::error::ErrorInfo::from(&CvError::Limit {
+            until: "2026-10-05".into(),
+        });
+        assert_eq!(info.kind, crate::error::ErrorKind::Cv);
+        assert_eq!(info.params["reason"], "limit");
+        assert_eq!(info.params["until"], "2026-10-05");
+        let offline = crate::error::ErrorInfo::from(&CvError::Offline);
+        assert_eq!(offline.params["reason"], "offline");
+        assert_eq!(offline.params.len(), 1);
     }
 }

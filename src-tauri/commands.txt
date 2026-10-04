@@ -19,6 +19,7 @@ purge_jobs        { keys: JobKey[] }                                            
 empty_trash       {}                                                                 -> Deleted
 ai_prompt         { key: JobKey }                                                    -> string
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
+profile_from_cv   { dropped: boolean }                                               -> ProfileInfo | null
 asked_terms       {}                                                                 -> AskedTerm[]
 vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null

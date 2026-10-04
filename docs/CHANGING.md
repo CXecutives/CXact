@@ -192,7 +192,8 @@ The profile is Profil-JSON v19 (`core/src/profile/form.rs`, external contract: G
 2. The engine reads it from the form: a hard criterion in `matching::facts::HardCriteria::new`
    (and `criteria_info` in `matching/mod.rs`), a wish in `matching::wishes::Wishes::new`, an entry
    in `matching::profile::core_texts`.
-3. If the CV can say it: `cv-worker/schema.json` (`the_cv_schema_is_a_part_of_the_file` checks it).
+3. If the CV can say it: `cv-worker/schema.json` and `CV_KEYS` in `form.rs`
+   (`the_cv_schema_is_a_part_of_the_file` checks both), its merge in `profile/import.rs`.
 4. `cargo test -p jobalert-core ipc_types` rewrites `ProfileForm.ts` and `profile.ts`; the AI
    prompt's glossary (`GLOSSARY` in `core/src/export/ai_prompt/de.rs`) names the key.
 5. The UI: one entry in `ui/src/features/profile/sections.ts` and its texts in the catalog.

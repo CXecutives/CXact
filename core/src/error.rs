@@ -135,6 +135,10 @@ pub enum ErrorKind {
     PortalPaused,
     /// The hourly or daily cap of the portal is reached (`params.until`).
     PortalQuota,
+    /// "Aus Lebenslauf ausfüllen" failed: `params.reason` is the code of the CV import
+    /// (`profile::cv::CvError`: `unreadable`, `tooLarge`, `unsupported`, `limit` with `until`,
+    /// `paused`, `outdated`, `refused`, `unavailable`, `offline`, `timeout`).
+    Cv,
     /// A crash inside the app; details are in the log.
     Internal,
 }
@@ -287,6 +291,22 @@ impl From<&InvalidInput> for ErrorInfo {
             kind: ErrorKind::Invalid,
             params,
         }
+    }
+}
+
+impl From<&crate::profile::cv::CvError> for ErrorInfo {
+    /// `cv` with the code as `reason` and its data beside it (`until` of `limit`).
+    fn from(error: &crate::profile::cv::CvError) -> ErrorInfo {
+        let mut info = ErrorInfo::new(ErrorKind::Cv);
+        if let Ok(Value::Object(mut map)) = serde_json::to_value(error) {
+            if let Some(Value::Object(params)) = map.remove("params") {
+                info.params.extend(params);
+            }
+            if let Some(code) = map.remove("code") {
+                info.params.insert("reason".to_owned(), code);
+            }
+        }
+        info
     }
 }
 

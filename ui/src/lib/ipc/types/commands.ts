@@ -36,6 +36,7 @@ export type Commands = {
   empty_trash: { args: Record<string, never>; result: Deleted };
   ai_prompt: { args: { key: JobKey }; result: string };
   save_profile: { args: { save: ProfileSave }; result: ProfileInfo };
+  profile_from_cv: { args: { dropped: boolean }; result: ProfileInfo | null };
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
   vocabulary: { args: Record<string, never>; result: Vocabulary };
   set_unsaved: { args: { on: boolean }; result: null };

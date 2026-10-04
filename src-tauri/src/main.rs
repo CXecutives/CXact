@@ -273,6 +273,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         activity: Mutex::new(Activity::Idle),
         scoring: Scoring::default(),
         close_guard: CloseGuard::default(),
+        dropped: Mutex::new(None),
     });
     // The web view version goes to the log only: the UI does not need it, and for debugging
     // the log is more reliable than a screenshot.
@@ -462,6 +463,10 @@ mod lifecycle {
                     }
                     app.exit(0);
                 });
+            }
+            // Files dropped on the window: kept for the CV import (`profile_from_cv`).
+            WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) => {
+                win.state::<AppState>().note_drop(paths.clone());
             }
             WindowEvent::Destroyed => {
                 win.state::<AppState>().cancel_run();

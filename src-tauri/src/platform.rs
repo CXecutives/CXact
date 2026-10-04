@@ -134,7 +134,8 @@ pub fn app<R: Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
 ///
 /// File drops: Tauri's drag-drop handler stays on (`dragDropEnabled` in `tauri.conf.json`).
 /// It takes every drop away from the web view, which would otherwise open the file in place
-/// of the app, and reports it as an event nobody listens to - the drop is swallowed.
+/// of the app; the window keeps the dropped files for the CV import (`main.rs`,
+/// `profile_from_cv`) and the page only learns that something was dropped.
 pub fn harden<'a, R: Runtime, M: Manager<R>>(
     builder: WebviewWindowBuilder<'a, R, M>,
     config: &tauri::Config,

@@ -126,6 +126,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   portalUnavailable: (p) => `Keine Verbindung zu ${portalOf(p.portal)}.`,
   portalPaused: (p) => `${portalOf(p.portal)} pausiert gerade.`,
   portalQuota: (p) => `Das Limit für ${portalOf(p.portal)} ist erreicht.`,
+  cv: 'Der Lebenslauf ließ sich nicht auswerten.',
   internal: INTERNAL,
   unknown: INTERNAL,
 };

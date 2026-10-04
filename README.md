@@ -31,11 +31,11 @@ Builds are not published as releases; the CI workflow keeps the installer and th
 
 ## First start
 
-The app opens on Erste Schritte:
-1. Create the profile in the Profil view: start empty, upload a file, or copy the prompt with which any AI
-   writes the profile file from a CV.
+The app opens on the setup:
+1. Create the profile: from a CV ("Aus Lebenslauf ausfüllen": an AI reads it through CXact's own worker,
+   two a day, five a month per install) or by hand.
 2. Optionally connect the Gmail mailbox with an app password, needed only for alert mails.
-3. Run the first fetch.
+3. Done: the Jobs view; the first search starts when the user presses "Jobs suchen".
 
 The app speaks German.
 

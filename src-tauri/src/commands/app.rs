@@ -150,6 +150,10 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         profile: profile_info(state, &workspace),
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
         last_run,
+        cv_until: jobalert_core::ai::tries_until(
+            &state.store,
+            now.to_zoned(jiff::tz::TimeZone::UTC).date(),
+        ),
         counts,
         match_pending: state.match_pending(),
         log_dir: state.data_dir.join(jobalert_core::LOG_DIR),

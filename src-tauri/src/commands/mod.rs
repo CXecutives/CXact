@@ -10,6 +10,7 @@
 //! its entry below.
 
 mod app;
+mod cv;
 mod files;
 mod jobs;
 mod mailbox;
@@ -22,6 +23,7 @@ mod window;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::reset::ResetReport;
@@ -50,6 +52,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         jobs::empty_trash,
         jobs::ai_prompt,
         profile::save_profile,
+        cv::profile_from_cv,
         profile::asked_terms,
         profile::vocabulary,
         profile::set_unsaved,
@@ -97,6 +100,9 @@ pub struct AppState {
     pub mailbox_epoch: AtomicU64,
     /// Unsaved changes of the page keep the window from closing until the page has asked.
     pub close_guard: CloseGuard,
+    /// The files last dropped on the window and when (the CV import takes them,
+    /// `profile_from_cv`): the page never sends a path.
+    pub dropped: Mutex<Option<(Vec<PathBuf>, Instant)>>,
 }
 
 /// The page holds unsaved changes (the Profil view's form, `set_unsaved`): a close request
@@ -166,6 +172,8 @@ pub enum Activity {
     /// vault meanwhile, so none starts with the account that is just being replaced and
     /// writes its scan state after the switch cleared it.
     Mailbox(CancellationToken),
+    /// A CV is read and evaluated for the profile (cancellable).
+    Cv(CancellationToken),
 }
 
 /// What holds the app, by the name the page knows (a run by its kind); `None` while idle.
@@ -176,6 +184,7 @@ fn activity_name(activity: &Activity) -> Option<serde_json::Value> {
         Activity::Session(_) => Some("session".into()),
         Activity::Files => Some("files".into()),
         Activity::Mailbox(_) => Some("mailbox".into()),
+        Activity::Cv(_) => Some("cv".into()),
     }
 }
 
@@ -330,6 +339,19 @@ impl AppState {
         self.mailbox_epoch.load(Ordering::SeqCst)
     }
 
+    /// Keeps the files dropped on the window for the CV import.
+    pub fn note_drop(&self, paths: Vec<PathBuf>) {
+        *lock(&self.dropped) = Some((paths, Instant::now()));
+    }
+
+    /// The files dropped on the window within `fresh`, taken (a second import asks again).
+    fn take_drop(&self, fresh: std::time::Duration) -> Option<Vec<PathBuf>> {
+        lock(&self.dropped)
+            .take()
+            .filter(|(paths, at)| !paths.is_empty() && at.elapsed() <= fresh)
+            .map(|(paths, _)| paths)
+    }
+
     /// The dry run changes nothing outside its in-memory database.
     fn ensure_real(&self) -> CmdResult<()> {
         if self.dry_run {
@@ -343,7 +365,9 @@ impl AppState {
     pub fn cancel_run(&self) {
         match &*lock(&self.activity) {
             Activity::Run(run) => run.cancel(),
-            Activity::Session(cancel) | Activity::Mailbox(cancel) => cancel.cancel(),
+            Activity::Session(cancel) | Activity::Mailbox(cancel) | Activity::Cv(cancel) => {
+                cancel.cancel();
+            }
             Activity::Files | Activity::Idle => {}
         }
     }

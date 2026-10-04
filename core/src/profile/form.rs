@@ -30,6 +30,19 @@ pub(crate) mod key {
     pub const REGIONS: &str = "regionen";
 }
 
+/// The keys the CV import fills (the worker's `schema.json`, `the_cv_schema_is_a_part_of_the_file`):
+/// what a CV can tell.
+pub(crate) const CV_KEYS: [&str; 8] = [
+    key::ROLES,
+    "berufserfahrung_jahre",
+    key::COMPETENCES,
+    key::TOOLS,
+    key::INDUSTRIES,
+    key::LANGUAGES,
+    key::DEGREES,
+    key::CERTIFICATES,
+];
+
 /// At most this many competences carry the star (Schwerpunkte).
 pub const MAX_FOCUS: usize = 5;
 /// The most years of experience, in total and per competence.
@@ -953,6 +966,16 @@ mod tests {
         let schema: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
         let file = serde_json::to_value(File::of(&full())).unwrap();
+        let mut keys: Vec<&str> = schema["properties"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        let mut cv = CV_KEYS.to_vec();
+        keys.sort_unstable();
+        cv.sort_unstable();
+        assert_eq!(keys, cv, "the CV import's keys are the schema's");
         for (key, property) in schema["properties"].as_object().unwrap() {
             assert!(file.get(key).is_some(), "{key}");
             if let Some(items) = property["items"]["properties"].as_object() {
