@@ -1,10 +1,9 @@
 // Serves the preview copy of the UI (.preview, built by `npm run preview:refresh` with the
 // harness stub's demo data: no engine, no mails). The copy changes only when it is refreshed,
-// so work in progress never breaks it. With --open it opens the app in a window of its own once
-// it is ready (Microsoft Edge in app mode, no browser chrome; the default browser without
-// Edge); if the preview runs already (port taken), it only opens the window.
-import { exec, spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+// so work in progress never breaks it. With --open it opens the default browser once it is
+// ready; if the preview runs already (port taken), it only opens the browser. The app's own
+// window around the same UI is the demo window (tools/demo.cmd).
+import { exec } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
@@ -13,21 +12,8 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../.preview/', import.meta.url));
 const port = 5178;
 const url = `http://127.0.0.1:${port}/?platform=windows`;
-/** Edge where Windows installs it. */
-const edge = [process.env['ProgramFiles(x86)'], process.env.ProgramFiles, process.env.LOCALAPPDATA]
-  .filter(Boolean)
-  .map((dir) => join(dir, 'Microsoft', 'Edge', 'Application', 'msedge.exe'))
-  .find((path) => existsSync(path));
 const openBrowser = () => {
-  if (!process.argv.includes('--open')) return;
-  if (edge === undefined) {
-    exec(`start "" "${url}"`);
-    return;
-  }
-  spawn(edge, [`--app=${url}`, '--window-size=1360,900'], {
-    detached: true,
-    stdio: 'ignore',
-  }).unref();
+  if (process.argv.includes('--open')) exec(`start "" "${url}"`);
 };
 const types = {
   '.html': 'text/html; charset=utf-8',

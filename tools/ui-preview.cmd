@@ -1,6 +1,5 @@
 @echo off
-rem The app's UI with demo data in a window of its own (Edge in app mode, else the browser),
-rem to click through every screen and button without mails or the engine (the harness stub).
+rem The app's UI with demo data in the browser (the app's own window: tools\demo.cmd), to click through every screen and button without mails or the engine (the harness stub).
 rem It starts like the app's first open; the corner button jumps to other states. It serves
 rem the copy in .preview, which is refreshed only when a block is finished and green; without
 rem one it builds it first. Close this console to stop it.

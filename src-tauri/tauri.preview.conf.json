@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CXact Vorschau",
+  "identifier": "de.cxecutives.cxact.preview",
+  "build": {
+    "frontendDist": "../target/demo-ui",
+    "beforeBuildCommand": null
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "CXact Vorschau",
+        "width": 1360,
+        "height": 900,
+        "minWidth": 480,
+        "minHeight": 360,
+        "center": true,
+        "preventOverflow": true,
+        "visible": false,
+        "theme": "Light",
+        "backgroundColor": "#F8F6F4",
+        "dragDropEnabled": true,
+        "decorations": false,
+        "shadow": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": false
+  }
+}

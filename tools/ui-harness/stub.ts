@@ -5,6 +5,8 @@
 // profile as understood, the prompts) comes from demo/snapshot.json,
 // which core/tests/ui_demo_snapshot.rs writes from the invented ads of demo/ads.json; the stub
 // only keeps state (docs/CHANGING.md, "The preview's demo data"):
+// In the demo window (tools/demo.cmd: the app's real window around this stub) the window's
+// commands and events go to Tauri, every data command stays here.
 //
 //   window.__harness.calls          [command, args][]
 //   window.__harness.emit(event)    send a RunEvent the way Rust does (the run's channel,
@@ -245,6 +247,54 @@ class Sender {
 let pageSender: Sender | null = null;
 /** The channel of the run in progress (commands::run::RunHandle). */
 let runSender: Sender | null = null;
+
+/* ------------------------------------------------------------- demo window */
+
+/** What Tauri lays into the page when it runs around it (the demo window, tools/demo.cmd). */
+interface TauriInternals {
+  invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+  transformCallback: (callback: (event: { payload: unknown }) => void) => number;
+}
+
+/** The real Tauri around the page, or null in a browser and in the specs. The demo window is
+ *  the app's own window around this stub: the window's commands and events go to it (the
+ *  buttons, the caption, closing), every data command stays here. */
+const TAURI =
+  (window as unknown as { __TAURI_INTERNALS__?: TauriInternals }).__TAURI_INTERNALS__ ?? null;
+/** The commands of the window itself (commands/window.rs and the close guard). */
+const WINDOW_COMMANDS: ReadonlySet<string> = new Set([
+  'window_button',
+  'window_maximized',
+  'close_window',
+  'answer_close',
+  'set_unsaved',
+]);
+/** The events the real window sends (platform.rs, main.rs); the drops arrive through
+ *  `harness.fire` so the stub keeps the dropped files like the window does. */
+const WINDOW_EVENTS: ReadonlySet<string> = new Set([
+  'caption',
+  'window-state',
+  'close-requested',
+  'close-running',
+  'closing',
+  'tauri://focus',
+  'tauri://blur',
+]);
+const DROP_EVENTS = ['tauri://drag-enter', 'tauri://drag-leave', 'tauri://drag-drop'];
+
+/** Listens to an event of the real window (what @tauri-apps/api/event does). */
+async function listenTauri(
+  tauri: TauriInternals,
+  name: string,
+  handler: (event: { payload: unknown }) => void,
+): Promise<() => void> {
+  const id = await tauri.invoke('plugin:event|listen', {
+    event: name,
+    target: { kind: 'Any' },
+    handler: tauri.transformCallback(handler),
+  });
+  return () => void tauri.invoke('plugin:event|unlisten', { event: name, eventId: id });
+}
 
 /* ----------------------------------------------------------------- scenario */
 
@@ -2132,6 +2182,13 @@ export async function listen<T>(
   listeners.set(name, set);
   const wrapped = handler as (event: { payload: unknown }) => void;
   set.add(wrapped);
+  if (TAURI !== null && WINDOW_EVENTS.has(name)) {
+    const stop = await listenTauri(TAURI, name, wrapped);
+    return () => {
+      set.delete(wrapped);
+      stop();
+    };
+  }
   return () => set.delete(wrapped);
 }
 
@@ -2219,7 +2276,11 @@ const harness: Harness = {
 window.__harness = harness;
 initial();
 installPreviewMenu();
-if (PREVIEW) dropsAsTauri();
+if (TAURI !== null) {
+  for (const name of DROP_EVENTS) {
+    void listenTauri(TAURI, name, (event) => harness.fire(name, event.payload));
+  }
+} else if (PREVIEW) dropsAsTauri();
 if (DEMO_MODE) {
   addEventListener('pagehide', persist);
   setInterval(persist, 1000);
@@ -2304,6 +2365,8 @@ function nextTask(): Promise<void> {
 
 export async function invoke<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
   harness.calls.push([command, args]);
+  if (TAURI !== null && WINDOW_COMMANDS.has(command))
+    return (await TAURI.invoke(command, args)) as T;
   const handler = handlers[command as keyof Answered] as ((a: unknown) => unknown) | undefined;
   if (handler === undefined) throw fail('internal', { command });
   if (state.dryRun && DRY_RUN_REFUSED.has(command)) throw fail('dryRun');
