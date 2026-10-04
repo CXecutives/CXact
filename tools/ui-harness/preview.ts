@@ -1,8 +1,9 @@
-// The preview's menu (tools/ui-preview.cmd): a small button in the middle of the top bar that
-// opens the table below, to jump straight into a state of the app without clicking there:
-// every step of the setup, every failure of the CV, an empty list, a search that runs, no
-// fitting job, an excluded job, an open profile, no mailbox; "Von vorn" starts the state shown
-// again (the stub keeps its data in memory, the page's store is cleared too). It lives in the
+// The preview's menu (tools/ui-preview.cmd): a tiny quiet round button in the bottom right
+// corner that opens the table below, to jump straight into a state of the app without clicking
+// there: the first open (the default, a demo the whole way through), every step of the setup,
+// every failure of the CV, an empty list, a search that runs, no fitting job, an excluded job,
+// an open profile, no mailbox; "Von vorn" starts the state shown again (the stub keeps its data
+// in memory and the demo in sessionStorage, both are cleared with the page's store). It lives in the
 // stub, which only the harness build contains (vite.config.ts aliases @tauri-apps/api to it in
 // `--mode harness`), so the app never has it (specs/preview.spec.ts checks the release build).
 // The specs drive the same build without it (`navigator.webdriver`), `?menu` shows it anyway.
@@ -22,6 +23,7 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
   {
     heading: 'Einrichtung',
     entries: [
+      { label: 'Erster Start (Demo)', query: 'scenario=demo' },
       { label: 'Willkommen', query: `${SETUP}welcome` },
       { label: 'Weg wählen', query: `${SETUP}way` },
       { label: 'Upload', query: `${SETUP}upload` },
@@ -38,7 +40,9 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
       { label: 'Limit erreicht', query: `${CV}limit` },
       { label: 'Keine Verbindung', query: `${CV}offline` },
       { label: 'Datei unlesbar', query: `${CV}unreadable` },
-      { label: 'Pausiert', query: `${CV}unavailable` },
+      { label: 'Format unbekannt', query: `${CV}unsupported` },
+      { label: 'Nicht verfügbar', query: `${CV}unavailable` },
+      { label: 'Pausiert', query: `${CV}paused` },
       { label: 'Version veraltet', query: `${CV}outdated` },
     ],
   },
@@ -58,6 +62,7 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
     entries: [
       { label: 'Profil unvollständig', query: 'scenario=profile-incomplete&view=profile' },
       { label: 'Kein Profil', query: 'scenario=no-profile&view=profile' },
+      { label: 'Lebenslauf heute ausgeschöpft', query: 'scenario=default&view=profile&cv=used' },
     ],
   },
 ];
@@ -74,6 +79,7 @@ function addressOf(query: string): string {
 function openState(query: string | null): void {
   try {
     localStorage.clear();
+    sessionStorage.clear();
   } catch {
     // Without a store nothing was kept.
   }
@@ -90,13 +96,16 @@ export const preview = {
 
 const STYLE = `
   :host { all: initial; }
-  .corner { position: fixed; z-index: 2147483000; top: 4px; left: 50%; transform: translateX(-50%);
+  .corner { position: fixed; z-index: 2147483000; right: 3px; bottom: 3px;
     font: 13px/1.4 Inter, system-ui, sans-serif; color: var(--text, #222); }
   button { font: inherit; color: inherit; cursor: default; }
-  .open { height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--border, #ccc);
-    background: var(--surface, #fff); box-shadow: var(--sh-menu, 0 4px 16px rgb(0 0 0 / 15%)); }
-  .panel { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); width: 240px;
-    max-height: 80vh; overflow: auto;
+  .open { display: grid; place-items: center; width: 16px; height: 16px; padding: 0;
+    border-radius: 8px; border: 1px solid var(--border, #ccc); background: var(--surface, #fff);
+    color: var(--text-subtle, #888); opacity: 0.55; transition: opacity 120ms ease-out; }
+  .open:hover, .open[aria-expanded='true'] { opacity: 1; }
+  .open svg { width: 10px; height: 10px; }
+  .panel { position: absolute; right: 0; bottom: 22px; width: 240px;
+    max-height: calc(100vh - 60px); overflow: auto;
     padding: 8px; border-radius: 12px; border: 1px solid var(--border, #ccc);
     background: var(--surface, #fff); box-shadow: var(--sh-menu, 0 4px 16px rgb(0 0 0 / 15%)); }
   .panel[hidden] { display: none; }
@@ -107,6 +116,26 @@ const STYLE = `
   .entry:hover { background: var(--surface-hover, #f2f2f2); }
   .again { margin-top: 8px; border-top: 1px solid var(--border, #ddd); padding-top: 8px; }
 `;
+
+/** The button's glyph: three stacked lines (an SVG, no text). */
+function glyph(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const y of [4, 8, 12]) {
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', '3');
+    line.setAttribute('x2', '13');
+    line.setAttribute('y1', String(y));
+    line.setAttribute('y2', String(y));
+    line.setAttribute('stroke', 'currentColor');
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('stroke-linecap', 'round');
+    svg.append(line);
+  }
+  return svg;
+}
 
 /** Builds the menu once the page is there (only in the preview, or with `?menu`). */
 export function installPreviewMenu(): void {
@@ -127,8 +156,19 @@ export function installPreviewMenu(): void {
     panel.hidden = true;
     const toggle = document.createElement('button');
     toggle.className = 'open';
-    toggle.textContent = 'Vorschau';
-    toggle.addEventListener('click', () => (panel.hidden = !panel.hidden));
+    toggle.setAttribute('aria-label', 'Vorschau');
+    toggle.title = 'Vorschau';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.append(glyph());
+    const show = (open: boolean): void => {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+    };
+    toggle.addEventListener('click', () => show(toggle.getAttribute('aria-expanded') !== 'true'));
+    // A click anywhere else folds it again.
+    addEventListener('pointerdown', (event) => {
+      if (!event.composedPath().includes(host)) show(false);
+    });
     for (const group of PREVIEW_MENU) {
       const heading = document.createElement('h3');
       heading.textContent = group.heading;

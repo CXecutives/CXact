@@ -249,7 +249,18 @@ let runSender: Sender | null = null;
 /* ----------------------------------------------------------------- scenario */
 
 const params = new URLSearchParams(location.search);
-const scenario = params.get('scenario') ?? 'default';
+/** The preview in a browser (`tools/ui-preview.cmd`), not a spec driving it: waits like the
+ *  real app's and the preview menu (preview.ts). */
+const PREVIEW = !navigator.webdriver;
+/** Without a scenario the preview opens like the real app the first time (`demo`), the specs
+ *  the demo data. */
+const scenario = params.get('scenario') ?? (PREVIEW ? 'demo' : 'default');
+/** `demo`: the app as on its first open, the whole way through with fake data: the setup
+ *  from Willkommen, a CV that fills the profile but its Wunschrollen and Sprachen, the mailbox
+ *  connected or skipped, an empty list that the first "Jobs suchen" fills with the demo's
+ *  jobs (with a mailbox all of them, else the ones the search finds). The preview keeps its
+ *  state across reloads (sessionStorage) until "Von vorn" or another entry of the menu. */
+const DEMO_MODE = scenario === 'demo';
 /** `?platform=macos` shows the demo as a Mac shows it: keychain and Mac paths. */
 const MAC = params.get('platform') === 'macos';
 const VAULT = MAC ? 'macosKeychain' : 'windowsCredentialManager';
@@ -274,10 +285,7 @@ const HOME = MAC ? '/Users/demo' : 'C:/Users/demo';
 const DATA_DIR = MAC
   ? '/Users/demo/Library/Application Support/job-alert-monitor'
   : 'C:/Users/demo/AppData/Roaming/job-alert-monitor';
-/** The preview in a browser (`tools/ui-preview.cmd`), not a spec driving it: waits like the
- *  real app's and the preview menu (preview.ts). */
-const PREVIEW = !navigator.webdriver;
-const TICK = Number(params.get('tick') ?? (PREVIEW ? 300 : 40));
+const TICK = Number(params.get('tick') ?? (DEMO_MODE ? 150 : PREVIEW ? 300 : 40));
 const DELAY = scenario === 'slow' ? 900 : 0;
 /** How long the CV evaluation takes: in the specs short, in the preview about as long as a
  *  real one (`?cv=slow`: as long as a slow one). */
@@ -713,6 +721,7 @@ function restoreName(ms: number): string {
  * one row there.
  */
 const SCENARIOS: Readonly<Record<string, () => void>> = {
+  demo: () => SCENARIOS['first-run']!(),
   'first-run': () => {
     jobs = [];
     state.firstRun = true;
@@ -865,7 +874,9 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
   backups =
-    scenario === 'first-run' || scenario === 'reset' ? [] : structuredClone([...DEMO_BACKUPS]);
+    scenario === 'first-run' || scenario === 'reset' || DEMO_MODE
+      ? []
+      : structuredClone([...DEMO_BACKUPS]);
   // The last fetch brought a job whose page is still to come: the stub holds it before the
   // catch-up scores it (the list's jobs without a score stand first).
   for (const j of jobs) if (j.detail.kind === 'pending') j.match = null;
@@ -927,7 +938,56 @@ function initial(): void {
     }
   }
   for (const p of state.portals) p.lastAlert ??= lastAlertOf(p.portal);
+  if (DEMO_MODE) restore();
   refresh();
+}
+
+/* ------------------------------------------------------------ demo session */
+
+/** Where the preview keeps the demo across reloads (cleared by the menu, preview.ts). */
+const SESSION = 'cxact-preview-demo';
+
+interface Session {
+  state: NextAppState;
+  jobs: JobView[];
+  backups: Backup[];
+  tombstones: string[];
+  lastRunNumber: number;
+  seenIn: [string, number][];
+}
+
+/** The demo as it stands, kept for the next reload. */
+function persist(): void {
+  const session: Session = {
+    state: { ...state, running: null },
+    jobs,
+    backups,
+    tombstones: [...tombstones],
+    lastRunNumber,
+    seenIn: [...seenIn],
+  };
+  try {
+    sessionStorage.setItem(SESSION, JSON.stringify(session));
+  } catch {
+    // Without a store the next reload starts over.
+  }
+}
+
+/** The demo as the last page left it (a run that went is over). */
+function restore(): void {
+  let session: Session | null;
+  try {
+    session = JSON.parse(sessionStorage.getItem(SESSION) ?? 'null') as Session | null;
+  } catch {
+    session = null;
+  }
+  if (session === null) return;
+  state = { ...session.state, running: null };
+  jobs = session.jobs;
+  backups = session.backups;
+  for (const key of session.tombstones) tombstones.add(key);
+  lastRunNumber = session.lastRunNumber;
+  for (const [key, run] of session.seenIn) seenIn.set(key, run);
 }
 
 /**
@@ -1391,12 +1451,28 @@ function endRun(): void {
  *  it holds in any place, or deleted for good, is known and stays as it is (store::upsert:
  *  no page is loaded again, nothing turns new again), so a second fetch brings nothing. */
 function unknown(): JobView[] {
-  return DEMO.announced.filter((j) => find(j.key) === undefined && !tombstones.has(markKey(j.key)));
+  // The demo's first fetch brings every job of the demo, as their mails announce them.
+  const announced = DEMO_MODE
+    ? [
+        ...DEMO.jobs.map((j): JobView => ({
+          ...j,
+          match: null,
+          detail: { kind: 'pending', retryAt: null },
+        })),
+        ...DEMO.announced,
+      ]
+    : DEMO.announced;
+  return announced.filter((j) => find(j.key) === undefined && !tombstones.has(markKey(j.key)));
 }
 
 /** Those jobs once their page came and the engine scored them. */
 function arrived(fresh: readonly JobView[]): JobView[] {
-  return fresh.map((j) => structuredClone(DEMO.fetched[markKey(j.key)]!.job));
+  return fresh.map((j) =>
+    structuredClone(
+      DEMO.fetched[markKey(j.key)]?.job ??
+        DEMO.jobs.find((each) => markKey(each.key) === markKey(j.key))!,
+    ),
+  );
 }
 
 /** The number of the last run (the demo's last fetch is 41), and the run each job the
@@ -1905,8 +1981,13 @@ const handlers: Handlers = {
     if (failure === 'offline') throw fail('offline');
     if (failure === 'limit') state.cvUntil = CV_UNTIL;
     if (failure !== null) throw fail('cv' as ErrorInfo['kind'], { reason: failure });
-    const form = mergeCv(state.profile?.form ?? null);
-    state.profile = infoOf(form, [...CV_FIELDS]);
+    const stored = state.profile?.form ?? null;
+    // The demo's CV names no wished role and no language: two fields stay open to fill in.
+    const demoCv = DEMO_MODE && stored === null;
+    const merged = mergeCv(stored);
+    const form = demoCv ? { ...merged, roles: [], languages: [] } : merged;
+    const filled = CV_FIELDS.filter((f) => !demoCv || (f !== 'roles' && f !== 'languages'));
+    state.profile = infoOf(form, [...filled]);
     if (jobs.every((j) => j.match === null)) {
       for (const j of jobs) j.match = demoMatch(j);
     }
@@ -2139,6 +2220,10 @@ window.__harness = harness;
 initial();
 installPreviewMenu();
 if (PREVIEW) dropsAsTauri();
+if (DEMO_MODE) {
+  addEventListener('pagehide', persist);
+  setInterval(persist, 1000);
+}
 
 /**
  * In the preview a file dragged onto the page arrives like Tauri's drag and drop of the window
