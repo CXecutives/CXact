@@ -35,6 +35,16 @@ pub async fn save_profile(
     Ok(profile_info(&state, &workspace).unwrap_or_else(|| ProfileInfo::of(&info, None)))
 }
 
+/// The required fields a form not saved yet still lacks, by their names in the form
+/// (`profile::missing_required`: the missing line of a new profile).
+#[tauri::command]
+pub fn profile_missing(form: profile::ProfileForm) -> Vec<String> {
+    profile::missing_required(&form)
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
+}
+
 /// "Häufig verlangt": the terms the jobs of the last 30 days ask for most that the stored
 /// profile does not name (the dry run's sample profile in the dry run); none without a
 /// profile.

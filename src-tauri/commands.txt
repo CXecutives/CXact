@@ -20,6 +20,7 @@ empty_trash       {}                                                            
 ai_prompt         { key: JobKey }                                                    -> string
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
 profile_from_cv   { dropped: boolean }                                               -> ProfileInfo | null
+profile_missing   { form: ProfileForm }                                              -> string[]
 asked_terms       {}                                                                 -> AskedTerm[]
 search_terms      {}                                                                 -> SearchTerm[]
 vocabulary        {}                                                                 -> Vocabulary

@@ -13,6 +13,7 @@ import type { MoveBack } from "./MoveBack";
 import type { OpenTarget } from "./OpenTarget";
 import type { Place } from "./Place";
 import type { Portal } from "./Portal";
+import type { ProfileForm } from "./ProfileForm";
 import type { ProfileInfo } from "./ProfileInfo";
 import type { ProfileSave } from "./ProfileSave";
 import type { RunEvent } from "./RunEvent";
@@ -38,6 +39,7 @@ export type Commands = {
   ai_prompt: { args: { key: JobKey }; result: string };
   save_profile: { args: { save: ProfileSave }; result: ProfileInfo };
   profile_from_cv: { args: { dropped: boolean }; result: ProfileInfo | null };
+  profile_missing: { args: { form: ProfileForm }; result: string[] };
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
   search_terms: { args: Record<string, never>; result: SearchTerm[] };
   vocabulary: { args: Record<string, never>; result: Vocabulary };
