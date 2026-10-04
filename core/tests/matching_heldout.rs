@@ -188,6 +188,9 @@ struct Floor {
 /// keeps no title, USPs or career stations; the pairs the labels excluded only for remote work
 /// abroad or the region of permanent roles (rules v19 dropped) are relabeled. The floors below
 /// that moved follow the migrated profiles; on the same profiles engine 18 reaches no more.
+///
+/// Engine 19, second round (ESCO under the engine's words, the gap finder's fills, the error
+/// analysis, `docs/MATCHING.md`): the floors of sets 2 to 9 that rose follow.
 const HELDOUT1: Floor = Floor {
     ndcg10: 0.92,
     spearman: 0.74,
@@ -196,7 +199,7 @@ const HELDOUT1: Floor = Floor {
     grade3_buried: 0,
 };
 const HELDOUT4: Floor = Floor {
-    ndcg10: 0.82,
+    ndcg10: 0.83,
     spearman: 0.54,
     exclusion_precision: 1.0,
     exclusion_recall: 0.95,
@@ -206,7 +209,7 @@ const HELDOUT4: Floor = Floor {
 /// `Mindestens 8 Jahre` below the target of 10) now leads its list, and the target-year
 /// exclusions of P1, P4, sap and senior (S01, S05, S06, R02) are scored.
 const HELDOUT3: Floor = Floor {
-    ndcg10: 0.86,
+    ndcg10: 0.87,
     spearman: 0.47,
     exclusion_precision: 1.0,
     exclusion_recall: 0.90,
@@ -218,7 +221,7 @@ const HELDOUT3: Floor = Floor {
 /// per year).
 const HELDOUT6: Floor = Floor {
     ndcg10: 0.90,
-    spearman: 0.50,
+    spearman: 0.51,
     exclusion_precision: 1.0,
     exclusion_recall: 0.98,
     grade3_buried: 0,
@@ -227,7 +230,7 @@ const HELDOUT6: Floor = Floor {
 /// rule of set 3 (T04); the set-5 labels read a student wage as no salary. The labels of the
 /// two sets disagree, the engine keeps the set-3 rule, so the precision floor is below 1.
 const HELDOUT5: Floor = Floor {
-    ndcg10: 0.79,
+    ndcg10: 0.80,
     spearman: 0.48,
     exclusion_precision: 0.98,
     exclusion_recall: 0.95,
@@ -244,7 +247,7 @@ const HELDOUT7: Floor = Floor {
     ndcg10: 0.91,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.84,
+    exclusion_recall: 0.85,
     grade3_buried: 2,
 };
 /// The agency wage of version 16 costs the recall of set 7's reason (N03, N16, Q15, S05,
@@ -252,18 +255,18 @@ const HELDOUT7: Floor = Floor {
 /// role at the cap of 40) loses a point to the work mode `remote` its migrated profile wishes
 /// (`ueberwiegend` before).
 const HELDOUT8: Floor = Floor {
-    ndcg10: 0.92,
-    spearman: 0.39,
-    exclusion_precision: 0.97,
-    exclusion_recall: 0.82,
-    grade3_buried: 2,
+    ndcg10: 0.95,
+    spearman: 0.41,
+    exclusion_precision: 1.0,
+    exclusion_recall: 0.85,
+    grade3_buried: 0,
 };
 /// Set 9 after the one correction round of engine 16 (first contact 0.828, 0.407, 0.908,
 /// 0.923 and 4 buried; engine 15 0.814 and 5 buried): the target years the labels read
 /// differently between profiles (tooJunior for P7 and P8 against the labels, a senior title
 /// with fewer years than P9 and P12 ask for left in) stay as they are.
 const HELDOUT9: Floor = Floor {
-    ndcg10: 0.86,
+    ndcg10: 0.89,
     spearman: 0.44,
     exclusion_precision: 0.98,
     exclusion_recall: 0.85,
@@ -275,11 +278,11 @@ const HELDOUT9: Floor = Floor {
 /// Recall 1.0 and Spearman 0.64 until version 16, for the reason of set 7 (X06 for P2 is
 /// scored, 0.640 -> 0.639).
 const HELDOUT2: Floor = Floor {
-    ndcg10: 0.85,
-    spearman: 0.61,
+    ndcg10: 0.89,
+    spearman: 0.62,
     exclusion_precision: 1.0,
     exclusion_recall: 0.84,
-    grade3_buried: 1,
+    grade3_buried: 0,
 };
 
 /// Set 10 (customer service, CX, ITSM and marketing), its floors set after engine 19 as the
