@@ -1,4 +1,4 @@
-// Einstellungen as data: one page of three sections in their order (design B), each with its
+// Einstellungen as data: one page of sections in their order ("Native Gruppen"), each with its
 // heading and its block or its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render

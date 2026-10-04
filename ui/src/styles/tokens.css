@@ -316,7 +316,7 @@
   /* The fade under the top bar (user, 2026-09-27; back in design round 4): the view's colour
      into nothing. */
   --grad-fade: linear-gradient(hsl(var(--p-white)), hsl(var(--p-white) / 0));
-  /* The same over a page in its layout's ground (lib/design.ts). */
+  /* The same over the cream ground of Profil and Einstellungen. */
   --grad-fade-page: linear-gradient(var(--layout-page), transparent);
 
   /* ----------------------------------------------------------------- shadows */

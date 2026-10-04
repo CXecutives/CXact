@@ -1,8 +1,7 @@
 <!--
   Einstellungen: one page without a title (the sidebar names the place; user 2026-10-04), in
-  the column of the pages (600), laid out as the page's layout says (tokens.css
-  `--layout-*`; B "Luftig" by default), three sections of cards.ts, each with its heading,
-  its rows between hairlines: Jobportale (all ten portals in one list,
+  the column of the pages (600), in white rounded groups on the cream page ("Native
+  Gruppen"), the sections of cards.ts, each with its heading, its rows between hairlines: Jobportale (all ten portals in one list,
   PortalRow: the eight the app searches, then LinkedIn and freelance.de), Postfach
   (MailboxCard) and Daten (the profile's folder and the reset, each one sentence and its
   button). Every text button of a Daten row is the same outlined button with its glyph; every

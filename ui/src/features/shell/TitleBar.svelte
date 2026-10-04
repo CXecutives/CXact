@@ -155,7 +155,7 @@
     background-color: var(--bg);
   }
 
-  /* Profil and Einstellungen: the ground of their layout (lib/design.ts). */
+  /* Profil and Einstellungen: the cream ground of their groups. */
   .bar.page {
     background-color: var(--layout-page);
   }
