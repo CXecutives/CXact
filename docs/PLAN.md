@@ -34,7 +34,9 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   Schwerpunkte; the names job boards give the field the roles and Schwerpunkte lie in (the domain pack's
   `search`: `Kundenservice`, `Contact Center`, `Call Center`); Kompetenzen, those of that field first; Tools.
   A competence or tool the engine finds too broad to search alone, such as Projektmanagement,
-  Automatisierung or SAP, stays out). Each term is paged while new jobs come, up to 10 pages on Hays,
+  Automatisierung or SAP, stays out). Term learning (`fetch::terms`): a term whose last 3 runs brought no
+  fitting job is set aside and the next of the profile's terms takes its slot; it comes back after 30 days
+  or when the profile's terms change ("CXact sucht nach" lists the active terms). Each term is paged while new jobs come, up to 10 pages on Hays,
   freelancermap, Michael Page and GULP, each asked for the newest first (so a page without new jobs ends a
   term safely). A cut-short paging resumes at the next fetch within 7 days.
   SOLCOM, interim-x and FRATCH list all their projects; the app filters them. Amadeus Fire, interim-x and

@@ -120,7 +120,8 @@ pub struct RunContext {
     pub mail_error: Option<ErrorInfo>,
     /// The sources the app searches itself (switched on, `Way::Search`).
     pub search_portals: Vec<Portal>,
-    /// What it searches for: the profile's search terms (`profile::deep_search_terms`).
+    /// What it searches for: the profile's search terms (`profile::deep_search_terms`); the
+    /// search asks for those not set aside (`fetch::terms`).
     pub search_terms: Vec<String>,
     /// The contract types the profile allows beside projects (the sources' filters).
     pub contracts: Contracts,
@@ -1000,9 +1001,11 @@ async fn search_step<B: Backends>(
     // Screened as of the search's start.
     let now = clock();
     let screen = |keys: &[JobKey]| matcher.map_or(0, |m| score::screen(store, m, keys, now));
+    // The profile's terms without those set aside (term learning, `fetch::terms`).
+    let terms = crate::fetch::terms::active_terms(store, &ctx.search_terms, now)?;
     let plan = SearchPlan {
         portals: &ctx.search_portals,
-        terms: &ctx.search_terms,
+        terms: &terms,
         contracts: ctx.contracts,
         prescore: matcher.is_some().then_some(&*prescore),
         screen: Some(&screen),
@@ -1040,6 +1043,16 @@ async fn search_step<B: Backends>(
         },
     )
     .await;
+    // A search that ran to its end is a run of its terms.
+    if matches!(result, Ok(true)) {
+        crate::fetch::terms::record_run(
+            store,
+            &ctx.search_terms,
+            &terms,
+            &ctx.search_portals,
+            now,
+        )?;
+    }
     for (portal, counts) in found.iter() {
         log::info!(
             "run {run}: search {}: {} pages, {} hits, {} new ({} excluded by their title), {} \

@@ -16,6 +16,7 @@ pub mod policy;
 pub mod robots;
 pub mod search;
 pub mod site;
+pub mod terms;
 
 use std::collections::BTreeMap;
 use std::fmt;

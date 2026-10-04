@@ -138,7 +138,10 @@ async fn main() {
         Some(db) => Store::open(std::path::Path::new(&db)).expect("store"),
         None => Store::in_memory().expect("store"),
     };
-    println!("terms ({}): {terms:?}", terms.len());
+    // The terms the search asks for: the profile's without those set aside (`fetch::terms`).
+    let active = jobalert_core::fetch::terms::active_terms(&store, &terms, Timestamp::now())
+        .expect("the stored runs of the terms");
+    println!("terms ({}): {active:?}", active.len());
     let ctx = RunContext {
         workspace: std::env::temp_dir(),
         dry_run: false,
@@ -178,7 +181,7 @@ async fn main() {
         summary.outcome,
         Timestamp::now().duration_since(started)
     );
-    let report = report(&store, &policy, &portals, terms);
+    let report = report(&store, &policy, &portals, active);
     print(&report);
     if let Some(out) = value("--out") {
         std::fs::write(

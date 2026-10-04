@@ -1347,11 +1347,22 @@ pub struct SearchTerm {
     pub matched: Option<u32>,
 }
 
-/// The terms of the deep search for a profile (`profile::deep_search_terms`), each with the
-/// fitting jobs it brought at the last search of the sources (`fetch::search::term_jobs`).
+/// The terms the deep search asks for now (`profile::deep_search_terms` without those set
+/// aside, `fetch::terms`), each with the fitting jobs it brought at the last search of the
+/// sources (`fetch::search::term_jobs`).
 pub fn search_terms(store: &Store, form: &ProfileForm) -> crate::Result<Vec<SearchTerm>> {
+    search_terms_at(store, form, jiff::Timestamp::now())
+}
+
+/// [`search_terms`] at `now`.
+pub fn search_terms_at(
+    store: &Store,
+    form: &ProfileForm,
+    now: jiff::Timestamp,
+) -> crate::Result<Vec<SearchTerm>> {
     let found = crate::fetch::search::term_jobs(store)?;
-    crate::profile::deep_search_terms(form)
+    let candidates = crate::profile::deep_search_terms(form);
+    crate::fetch::terms::active_terms(store, &candidates, now)?
         .into_iter()
         .map(|term| {
             let matched = match found.get(&term) {

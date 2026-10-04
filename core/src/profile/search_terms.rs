@@ -13,15 +13,19 @@
 //! - the competences, those of that field first, the longest experience first; then the
 //!   tools.
 //!
-//! Each once, at most [`MAX_DEEP_TERMS`]. A competence or a tool the engine finds too broad to
+//! Each once, at most [`MAX_CANDIDATES`]; a search asks for the first [`MAX_DEEP_TERMS`] of them
+//! that it has not set aside (`fetch::terms`). A competence or a tool the engine finds too broad to
 //! search alone (`Projektmanagement`, `Personalführung`, `Automatisierung`, `SAP`,
 //! `matching::broad_search_term`) is left out. A phrase of more than [`MAX_TERM_WORDS`] words
 //! finds little on a job board and is left out too.
 
 use super::form::ProfileForm;
 
-/// So many terms the deep search asks each source for at most.
+/// So many terms the deep search asks each source for at most (`fetch::terms::active_terms`).
 pub const MAX_DEEP_TERMS: usize = 24;
+/// So many of the profile's terms there are at most: the next ones take the slots of those set
+/// aside (`fetch::terms`).
+pub const MAX_CANDIDATES: usize = 2 * MAX_DEEP_TERMS;
 /// A longer phrase is left out.
 const MAX_TERM_WORDS: usize = 4;
 
@@ -114,7 +118,8 @@ fn other_names(text: &str) -> Vec<String> {
     out
 }
 
-/// The deep search's terms for a profile form, in the order they are asked for.
+/// The deep search's terms for a profile form, in the order they are asked for (the first
+/// [`MAX_DEEP_TERMS`] not set aside, `fetch::terms::active_terms`).
 pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
     let mut terms = Terms::default();
     for role in &form.roles {
@@ -180,7 +185,7 @@ impl Terms {
         let words = term.split_whitespace().count();
         if term.chars().count() < 2
             || words > MAX_TERM_WORDS
-            || self.list.len() >= MAX_DEEP_TERMS
+            || self.list.len() >= MAX_CANDIDATES
             || !self.seen.insert(key(term))
         {
             return;
@@ -247,7 +252,7 @@ mod tests {
         assert!(!terms.iter().any(|t| t.starts_with("Rund elf")));
         let keys: std::collections::HashSet<_> = terms.iter().map(|t| key(t)).collect();
         assert_eq!(keys.len(), terms.len());
-        assert!(terms.len() <= MAX_DEEP_TERMS);
+        assert!(terms.len() <= MAX_CANDIDATES);
     }
 
     #[test]
@@ -257,7 +262,7 @@ mod tests {
             tools: (0..60).map(|n| format!("Thema {n}")).collect(),
             ..ProfileForm::default()
         };
-        assert_eq!(deep_search_terms(&form).len(), MAX_DEEP_TERMS);
+        assert_eq!(deep_search_terms(&form).len(), MAX_CANDIDATES);
     }
 
     /// A role ESCO knows brings its occupation's German and English name; a competence or a

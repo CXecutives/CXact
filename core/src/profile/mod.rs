@@ -25,7 +25,7 @@ pub use form::{
     ProfileIndustry, ProfileLanguage, WorkWish, Workload, file_value, missing_required, parse,
 };
 pub use import::{MAX_CV_COMPETENCES, MAX_CV_TOOLS, import as import_cv};
-pub use search_terms::{MAX_DEEP_TERMS, deep_search_terms};
+pub use search_terms::{MAX_CANDIDATES, MAX_DEEP_TERMS, deep_search_terms};
 
 /// Folder and file names are a contract with the user's work folder - do not translate.
 pub const PROFILE_DIR: &str = "profil";
