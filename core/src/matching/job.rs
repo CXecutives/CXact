@@ -1167,6 +1167,18 @@ mod tests {
     }
 
     /// Soft words of every kind of ad; a soft word alone; a sentence about the person.
+    /// The greeting under a recruiter's list closes it: no requirement follows.
+    #[test]
+    fn a_greeting_closes_the_requirements() {
+        let doc = read(
+            "Ihr Profil\n- Erste Führungserfahrung\n- Haben wir Ihr Interesse geweckt?\n\
+             - Dann senden Sie mir Ihr Profil\n- Viele Grüße\n- Max Muster\n",
+            &Vocab::all(),
+        );
+        let items: Vec<&str> = doc.items.iter().map(|i| i.text.as_str()).collect();
+        assert_eq!(items, ["Erste Führungserfahrung"]);
+    }
+
     #[test]
     fn soft_words_sentences_and_words_alone() {
         for soft in [
@@ -1180,6 +1192,11 @@ mod tests {
             "Arbeitsweise",
             "Working style",
             "Soft Skills",
+            "Hohe Kunden- und Serviceorientierung",
+            "Ausgeprägte Problemlösungskompetenz",
+            "Gestaltungswillen",
+            "Umsetzungsstärke",
+            "hohes Maß an Eigeninitiative",
         ] {
             assert_eq!(class(soft), Class::Soft, "{soft}");
         }

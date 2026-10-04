@@ -140,6 +140,9 @@ pub(crate) struct Skills {
     pub total_years: Option<u32>,
     /// Core plus the domain packs the competences switch on.
     pub vocab: Vocab,
+    /// The parts of the profile's hyphenated atoms (`contact`, `cent`, `leitung`): the words
+    /// of an ad that one of them joins are read as one atom ([`joined`]).
+    pub joins: Vec<Vec<String>>,
 }
 
 /// The same text once stripped as the core texts are.
@@ -261,6 +264,15 @@ impl Skills {
         let total_years = form
             .years
             .or_else(|| form.competences.iter().filter_map(|c| c.years).max());
+        let mut joins: Vec<Vec<String>> = entries
+            .iter()
+            .flat_map(|e| &e.atoms)
+            .filter(|a| a.contains('-'))
+            .map(|a| a.split('-').map(str::to_owned).collect::<Vec<_>>())
+            .filter(|parts| parts.len() >= 2 && parts.iter().all(|p| !p.is_empty()))
+            .collect();
+        joins.sort();
+        joins.dedup();
         Self {
             entries,
             languages,
@@ -270,8 +282,47 @@ impl Skills {
             folded: core.iter().map(|t| fold(&t.text)).collect(),
             total_years,
             vocab,
+            joins,
         }
     }
+}
+
+/// The atoms of an ad with the words a hyphenated profile atom joins read as one atom
+/// (`Contact Center` for the profile's `Call-Center-Leitung`: `contact-cent`), the longest
+/// run first: the ad writes apart what the profile writes as one word.
+fn joined(job: Vec<String>, joins: &[Vec<String>]) -> Vec<String> {
+    if joins.is_empty() || job.len() < 2 {
+        return job;
+    }
+    let job = &job;
+    let run = |at: usize| -> usize {
+        joins
+            .iter()
+            .flat_map(|parts| {
+                (0..parts.len()).map(move |start| {
+                    parts[start..]
+                        .iter()
+                        .zip(&job[at..])
+                        .take_while(|(p, j)| p == j)
+                        .count()
+                })
+            })
+            .max()
+            .unwrap_or(0)
+    };
+    let mut out = Vec::with_capacity(job.len());
+    let mut at = 0;
+    while at < job.len() {
+        let n = run(at);
+        if n >= 2 {
+            out.push(job[at..at + n].join("-"));
+            at += n;
+        } else {
+            out.push(job[at].clone());
+            at += 1;
+        }
+    }
+    out
 }
 
 /// How well the profile meets one item.
@@ -300,6 +351,25 @@ fn expand(atoms: &[String]) -> Vec<String> {
     out
 }
 
+/// A job atom against a profile atom ([`atoms::fit`]); an abbreviation the ad asks for is
+/// also met by a compound the profile names with it before a hyphen (`CRM` by
+/// `CRM-Einführung`, `KPI` by `KPI-Reporting`; `DIN` is no part of `DIN 276`, a code).
+fn atom_fit(job: &str, profile: &str) -> Fit {
+    match atoms::fit(job, profile) {
+        Fit::None
+            if job.len() == 3
+                && !atoms::is_generic(job)
+                && profile
+                    .strip_prefix(job)
+                    .and_then(|head| head.strip_prefix('-'))
+                    .is_some_and(|head| head.starts_with(|c: char| c.is_ascii_alphabetic())) =>
+        {
+            Fit::Specific
+        }
+        fit => fit,
+    }
+}
+
 /// A free-text entry (a long description): containing a requirement is weaker evidence than
 /// a competence entry.
 fn sentence_like(entry: &Entry) -> bool {
@@ -312,7 +382,7 @@ fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
     let best = |p: &String| {
         expanded
             .iter()
-            .map(|j| atoms::fit(j, p))
+            .map(|j| atom_fit(j, p))
             .max()
             .unwrap_or(Fit::None)
     };
@@ -325,7 +395,7 @@ fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
         .all(|(p, _)| atoms::is_generic(p));
     let whole_item = job
         .iter()
-        .all(|j| entry.iter().any(|p| atoms::fit(j, p) != Fit::None));
+        .all(|j| entry.iter().any(|p| atom_fit(j, p) != Fit::None));
     if matched == entry.len() && (!generic_only || whole_item) {
         return if fits.contains(&Fit::General) {
             (E_HALF, Via::General)
@@ -341,7 +411,7 @@ fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
         && content.iter().all(|j| {
             entry
                 .iter()
-                .any(|p| matches!(atoms::fit(j, p), Fit::Equal | Fit::Specific))
+                .any(|p| matches!(atom_fit(j, p), Fit::Equal | Fit::Specific))
         })
     {
         // Free text that mentions a skill (a USP sentence, a long description such as
@@ -365,7 +435,7 @@ fn covered(skills: &Skills, atom: &str) -> bool {
             .entries
             .iter()
             .flat_map(|e| &e.atoms)
-            .any(|p| atoms::fit(a, p) != Fit::None || atoms::fit(p, a) != Fit::None)
+            .any(|p| atom_fit(a, p) != Fit::None || atoms::fit(p, a) != Fit::None)
     };
     related(atom)
         || (atom.contains('-')
@@ -378,7 +448,7 @@ fn covered(skills: &Skills, atom: &str) -> bool {
 /// The ladder over all entries, or only over `only` (entry indices); `broad`: ESCO too (not
 /// for a soft skill, which counts half unproven anyway).
 fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool) -> ItemFit {
-    let job = atoms::atoms(text, &skills.vocab);
+    let job = joined(atoms::atoms(text, &skills.vocab), &skills.joins);
     if job.is_empty() {
         return NONE;
     }
@@ -415,13 +485,17 @@ fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool
             via: Via::Specific,
         };
     }
-    // Leadership asked for is met at least half by a leading role in the profile (only an
-    // item about leadership alone, not `8 Jahre Controlling, davon 3 mit Führung`).
+    // Leadership asked for is met at least half by a leading role or a competence of
+    // leadership in the profile (`Führung` for `Leadership`; only an item about leadership
+    // alone, not `8 Jahre Controlling, davon 3 mit Führung`). Leadership names no field: it
+    // never counts in full on its own.
     if best.value < E_HALF
         && leadership_only(&job)
         && let Some(index) = skills.entries.iter().position(|e| {
             let folded = fold(&e.text);
             atoms::raw_tokens(&folded).any(|t| lex::PROFILE_LEAD_WORDS.contains(&t))
+                || (e.path.starts_with(key::COMPETENCES)
+                    && e.atoms.iter().all(|a| leadership_atom(a)))
         })
     {
         best = ItemFit {
@@ -742,6 +816,39 @@ mod tests {
     use super::*;
     use crate::matching::profile::core_texts;
     use crate::profile::of_json;
+
+    /// A head of customer service as a CV names it: the field written apart meets the
+    /// profile's compound, an abbreviation its compound, a ticket system its name, and
+    /// leadership a competence of leadership in half; a tool name is no compound of a word.
+    #[test]
+    fn a_service_lead_meets_the_words_of_service_ads() {
+        let data = of_json(&json!({
+            "kernkompetenzen": [
+                {"kompetenz": "Customer Service Management"},
+                {"kompetenz": "Call Center Management"},
+                {"kompetenz": "KPI-Reporting"},
+                {"kompetenz": "CRM-Einführung"},
+                {"kompetenz": "Führung"}
+            ],
+            "methoden_tools": ["Zendesk", "Genesys Cloud", "DIN 276"]
+        }));
+        let skills = Skills::new(&core_texts(&data), &data);
+        let value = |text: &str| skill_fit_in(&skills, text, None, true).value;
+        for met in [
+            "Leitung Kundenservice",
+            "Erfahrung im Kundenservice",
+            "Erfahrung im Contact Center",
+            "Sicherer Umgang mit Kennzahlen",
+            "Erfahrung mit CRM-Systemen",
+            "Erfahrung im Umgang mit Ticketsystemen",
+        ] {
+            assert_eq!(value(met), E_FULL, "{met}");
+        }
+        assert_eq!(value("Leadership"), E_HALF);
+        assert_eq!(value("Erfahrung im Service Desk"), E_NONE);
+        // A code a number completes is no abbreviation of a compound.
+        assert_eq!(value("DIN 1946"), E_NONE);
+    }
 
     /// Knowledge of a product family (`SAP-Kenntnisse`) is met by an entry naming a product
     /// of it; a product of the family asked for is not (`SAP BW`).

@@ -432,6 +432,7 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
     "freude",
     "gelassen",
     "gespur",
+    "gestaltungswill",
     "hands-on-mental",
     "humor",
     "kommunikation",
@@ -440,6 +441,7 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
     "losungsorientier",
     "mentalitat",
     "mentality",
+    "mitarbeiterorientier",
     "motivation",
     "neugier",
     "organisationstalent",
@@ -447,8 +449,10 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
     "prasentationsfahig",
     "prasentationsstark",
     "proaktiv",
+    "problemlosung",
     "reliable",
     "selbststandig",
+    "serviceorientier",
     "sorgfalt",
     "sozialkompetenz",
     "structured",
@@ -456,6 +460,7 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
     "teamfahig",
     "teamplayer",
     "uberzeugungskraft",
+    "umsetzungsstark",
     "verbindlich",
     "verhandlungsgeschick",
     "verhandlungsstark",
@@ -2564,6 +2569,7 @@ pub(crate) const LIMITED_CONTRACT_VALUES: &[&str] = &[
     "freiberuflich",
     "freelance",
     "selbststandig",
+    "serviceorientier",
     "self-employed",
 ];
 /// Values of a page's career level or employment type field (exact, folded) that are
@@ -2877,6 +2883,7 @@ pub(crate) const SOFT_PHRASES: &[&str] = &[
     "build teams",
     "hands-on mentality",
     "hands-on mentalitat",
+    "hohes mass an",
 ];
 /// Legal forms of a company: a line naming one is about the company, no requirement.
 pub(crate) const LEGAL_FORMS: &[&str] = &[
@@ -2898,6 +2905,9 @@ pub(crate) const LEGAL_FORMS: &[&str] = &[
 ];
 pub(crate) const CLOSING_WORDS: &[&str] = &[
     "interessiert?",
+    "interesse geweckt",
+    "viele grusse",
+    "freundlichen grussen",
     "freuen wir uns auf",
     "freuen uns auf",
     "bitte beachten sie",

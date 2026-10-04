@@ -134,6 +134,17 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("leitung service center", "contact-center-leitung"),
         ("service center leiter", "contact-center-leitung"),
         ("service center leitung", "contact-center-leitung"),
+        // Managing the field is leading it, as in `Kundenservicemanagement`.
+        ("customer service management", "kundenservice-leitung"),
+        ("customer care management", "kundenservice-leitung"),
+        ("kundenservice management", "kundenservice-leitung"),
+        ("call center management", "contact-center-leitung"),
+        ("call centre management", "contact-center-leitung"),
+        ("callcenter management", "contact-center-leitung"),
+        ("callcentermanagement", "contact-center-leitung"),
+        ("contact center management", "contact-center-leitung"),
+        ("contact centre management", "contact-center-leitung"),
+        ("contactcenter management", "contact-center-leitung"),
         // Customer experience (`experience` is a stopword, so these keys stay; `CX` alone is
         // too short to keep, with a second word it counts; a key that spans `of` keeps it).
         ("customer experience", "customer-experience"),
@@ -281,6 +292,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("lost calls", "abbruchquote"),
         ("kpis", "kpi"),
         ("kennzahl", "kpi"),
+        ("servicekennzahl", "kpi"),
         ("key performance indicator", "kpi"),
         // Channels, bots and telephony (`AI` is read as `KI` before the keys).
         ("omni channel", "omnichannel"),
@@ -373,6 +385,12 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("servicenow csm", "servicenow-csm"),
         ("dynamics 365 customer service", "dynamics-customer-service"),
         ("dynamics customer service", "dynamics-customer-service"),
+        // A ticket system by its name: it meets a ticket system asked for, not another name.
+        ("zendesk", "zendesk-ticketsystem"),
+        ("freshdesk", "freshdesk-ticketsystem"),
+        ("ticketing", "ticketsystem"),
+        ("ticketing system", "ticketsystem"),
+        ("ticket system", "ticketsystem"),
         // AI in service.
         ("generative kunstliche intelligenz", "generative-ki"),
         ("genai", "generative-ki"),
