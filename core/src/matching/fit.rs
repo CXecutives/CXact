@@ -7,6 +7,7 @@ use super::atoms::{self, Fit, Vocab, fold};
 use super::job::{Class, Item, Stage, contains_word, language_of, names_degree};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
+use super::lexicon::esco::{self, Kind};
 use super::params::{E_FULL, E_HALF, E_NONE, SENTENCE_ATOMS};
 use super::profile::CoreText;
 use super::types::Via;
@@ -19,6 +20,107 @@ pub(crate) struct Entry {
     pub path: String,
     pub atoms: Vec<String>,
     pub years: Option<u32>,
+    /// What ESCO names in it (competences, tools and certificates only).
+    pub broad: Broad,
+}
+
+/// What ESCO, the broad layer under the engine's own words, names in a text
+/// (`esco::named`): skills and knowledge for the requirements, occupations for the target
+/// roles.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct Broad {
+    terms: Vec<BroadTerm>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BroadTerm {
+    id: u16,
+    /// Named by its preferred label.
+    preferred: bool,
+    /// The engine's own words (the core or a pack of the profile) give all its words a
+    /// meaning: they decide, ESCO does not.
+    known: bool,
+    /// Its share of the text's words that are not generic, in per-mille.
+    share: u16,
+}
+
+impl Broad {
+    pub(crate) fn of(text: &str, vocab: &Vocab, kinds: &[Kind]) -> Self {
+        let (words, named) = esco::named(text, kinds);
+        if named.is_empty() {
+            return Self::default();
+        }
+        let known = vocab.known(&words);
+        let content: Vec<usize> = (0..words.len())
+            .filter(|&i| !atoms::is_generic(&words[i]))
+            .collect();
+        let terms = named
+            .iter()
+            // A soft skill (`Kommunikation`) is no skill to match.
+            .filter(|n| {
+                !words[n.start..n.start + n.len]
+                    .iter()
+                    .any(|w| lex::SOFT_SKILLS.iter().any(|s| w.starts_with(s)))
+            })
+            .map(|n| {
+                let span = n.start..n.start + n.len;
+                let inside = content.iter().filter(|i| span.contains(i)).count();
+                BroadTerm {
+                    id: n.concept.id,
+                    preferred: n.preferred,
+                    known: span.clone().all(|i| known[i]),
+                    share: u16::try_from(1000 * inside / content.len().max(1)).unwrap_or(1000),
+                }
+            })
+            .collect();
+        Self { terms }
+    }
+
+    /// The skills and knowledge of a requirement or a profile entry.
+    pub(crate) fn skills(text: &str, vocab: &Vocab) -> Self {
+        Self::of(text, vocab, &[Kind::Skill, Kind::Knowledge])
+    }
+
+    /// The pairs of a term of `self` (the ad's side) and a term of `profile` that name one
+    /// concept, where the engine's own words leave the meaning of at least one of them to
+    /// ESCO, the profile names the concept by its preferred label (in its own language or the
+    /// other) and the concept is most of what each side says.
+    fn shared<'a>(
+        &'a self,
+        profile: &'a Broad,
+    ) -> impl Iterator<Item = (&'a BroadTerm, &'a BroadTerm)> + 'a {
+        self.terms
+            .iter()
+            .flat_map(|ad| profile.terms.iter().map(move |p| (ad, p)))
+            .filter(|(ad, p)| {
+                ad.id == p.id
+                    && p.preferred
+                    && !(ad.known && p.known)
+                    && 2 * ad.share > 1000
+                    && 2 * p.share > 1000
+            })
+    }
+
+    /// How a requirement (`self`) is met by a profile entry through a concept both name
+    /// ([`Broad::shared`]): in full when each names only that concept by its preferred label
+    /// (`Buchhaltung` and `Accounting`), else half (another name in the ad, such as a product
+    /// filed under the concept, or more than the concept).
+    fn meets(&self, entry: &Broad) -> Option<(u16, Via)> {
+        self.shared(entry)
+            .map(|(item, e)| {
+                if item.share == 1000 && e.share == 1000 && item.preferred {
+                    (E_FULL, Via::Synonym)
+                } else {
+                    (E_HALF, Via::Semantic)
+                }
+            })
+            .max_by_key(|(value, _)| *value)
+    }
+
+    /// Does a title (`self`) name an occupation of a target role ([`Broad::shared`])?
+    pub(crate) fn names(&self, role: &Broad) -> bool {
+        self.shared(role).next().is_some()
+    }
 }
 
 /// What the engine uses from the profile.
@@ -121,11 +223,22 @@ impl Skills {
                 .find(|c| strip_eq(&c.name, text))
                 .and_then(|c| c.years)
         };
+        // An industry is a setting and a language a requirement of its own, no skill.
+        let skill = |path: &str| {
+            [key::COMPETENCES, key::TOOLS, key::CERTIFICATES]
+                .iter()
+                .any(|k| path.starts_with(k))
+        };
         let mut entries: Vec<Entry> = core
             .iter()
             .map(|entry| Entry {
                 atoms: atoms::atoms(&entry.text, &vocab),
                 years: years(&entry.text),
+                broad: if skill(&entry.path) {
+                    Broad::skills(&entry.text, &vocab)
+                } else {
+                    Broad::default()
+                },
                 text: entry.text.clone(),
                 path: entry.path.clone(),
             })
@@ -262,12 +375,9 @@ fn covered(skills: &Skills, atom: &str) -> bool {
                 .all(related))
 }
 
-fn skill_fit(skills: &Skills, text: &str) -> ItemFit {
-    skill_fit_in(skills, text, None)
-}
-
-/// The ladder over all entries, or only over `only` (entry indices).
-fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>) -> ItemFit {
+/// The ladder over all entries, or only over `only` (entry indices); `broad`: ESCO too (not
+/// for a soft skill, which counts half unproven anyway).
+fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool) -> ItemFit {
     let job = atoms::atoms(text, &skills.vocab);
     if job.is_empty() {
         return NONE;
@@ -338,6 +448,24 @@ fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>) -> ItemFit 
         } else {
             best.value = E_HALF;
             best.via = Via::General;
+        }
+    }
+    // ESCO, the broad layer: a concept the item and an entry both name.
+    if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
+        let item = Broad::skills(text, &skills.vocab);
+        for (index, entry) in skills.entries.iter().enumerate() {
+            if only.is_some_and(|only| !only.contains(&index)) {
+                continue;
+            }
+            if let Some((value, via)) = item.meets(&entry.broad)
+                && value > best.value
+            {
+                best = ItemFit {
+                    value,
+                    entry: Some(index),
+                    via,
+                };
+            }
         }
     }
     best
@@ -460,7 +588,7 @@ pub(crate) fn focus_fit(skills: &Skills, item: &Item, only: &[usize]) -> ItemFit
         .iter()
         .flat_map(|alt| {
             only.iter()
-                .map(move |&index| skill_fit_in(skills, alt, Some(&[index])))
+                .map(move |&index| skill_fit_in(skills, alt, Some(&[index]), true))
         })
         .fold(
             NONE,
@@ -554,7 +682,7 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
         Class::Licence(word) => licence_fit(skills, word),
         Class::Soft | Class::Skill => alternatives(item)
             .iter()
-            .map(|alt| skill_fit(skills, alt))
+            .map(|alt| skill_fit_in(skills, alt, None, item.class == Class::Skill))
             .max_by_key(|f| f.value)
             .unwrap_or(NONE),
     };
@@ -624,24 +752,25 @@ mod tests {
         );
         let skills = Skills::new(&core_texts(&data), &data);
         assert_eq!(
-            skill_fit_in(&skills, "Sehr gute SAP-Kenntnisse", None).value,
+            skill_fit_in(&skills, "Sehr gute SAP-Kenntnisse", None, true).value,
             E_FULL
         );
         assert_eq!(
-            skill_fit_in(&skills, "Kenntnisse in SAP BW", None).value,
+            skill_fit_in(&skills, "Kenntnisse in SAP BW", None, true).value,
             E_NONE
         );
-        assert_eq!(skill_fit_in(&skills, "SAP", None).value, E_NONE);
+        assert_eq!(skill_fit_in(&skills, "SAP", None, true).value, E_NONE);
         // Leadership alone is met half by a leading role; inside another skill it is not.
         assert_eq!(
-            skill_fit_in(&skills, "Führungserfahrung", None).value,
+            skill_fit_in(&skills, "Führungserfahrung", None, true).value,
             E_HALF
         );
         assert_eq!(
             skill_fit_in(
                 &skills,
                 "8 Jahre Controlling, davon 3 mit Führungsverantwortung",
-                None
+                None,
+                true
             )
             .value,
             E_NONE
@@ -670,7 +799,7 @@ mod tests {
             "branchen": [{"branche": "Maschinenbau"}]
         }));
         let skills = Skills::new(&core_texts(&data), &data);
-        let fit = |text: &str| skill_fit_in(&skills, text, None).value;
+        let fit = |text: &str| skill_fit_in(&skills, text, None, true).value;
         assert_eq!(fit("Vertriebserfahrung im Maschinenbau"), E_NONE);
         assert_eq!(fit("Controlling im Maschinenbau"), E_FULL);
         assert_eq!(fit("Controlling in der Automobilindustrie"), E_HALF);
@@ -698,5 +827,43 @@ mod tests {
         assert_eq!(term("Personalcontrolling"), E_HALF);
         assert_eq!(term("Konzerncontrolling"), E_FULL);
         assert_eq!(term("Controlling"), E_FULL);
+    }
+
+    /// ESCO, the broad layer: a requirement and a profile entry the engine's own words do not
+    /// relate meet through a concept both name, when the profile names it by its preferred
+    /// label: in full when the ad does too and asks nothing else, else half.
+    #[test]
+    fn esco_relates_what_the_own_words_do_not() {
+        let fit = |profile: &str, item: &str| {
+            let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": profile}]}));
+            let skills = Skills::new(&core_texts(&data), &data);
+            let fit = skill_fit_in(&skills, item, None, true);
+            (fit.value, fit.via)
+        };
+        // The preferred labels in German and English.
+        assert_eq!(fit("Buchführung", "Accounting"), (E_FULL, Via::Synonym));
+        assert_eq!(
+            fit(
+                "Batteriemanagementsysteme",
+                "Experience with battery management systems"
+            ),
+            (E_FULL, Via::Synonym)
+        );
+        // Another name in the ad, or a product ESCO files under the concept: half.
+        assert_eq!(fit("Buchführung", "Buchhaltung"), (E_HALF, Via::Semantic));
+        assert_eq!(
+            fit("Datenvisualisierungssoftware", "Tableau"),
+            (E_HALF, Via::Semantic)
+        );
+        // Through another name in the profile: two products are no match.
+        assert_eq!(fit("Buchhaltung", "Accounting").0, E_NONE);
+        assert_eq!(fit("Power BI", "Tableau").0, E_NONE);
+        // Where the engine's own words know both, they decide.
+        assert_eq!(
+            fit("Projektleitung", "Projektmanagement"),
+            (E_HALF, Via::General)
+        );
+        // A soft skill is no concept to match.
+        assert_eq!(fit("Kommunikation", "Gesprächsführung").0, E_NONE);
     }
 }

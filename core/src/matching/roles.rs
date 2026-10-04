@@ -20,7 +20,9 @@ use std::sync::LazyLock;
 
 use super::atoms::{self, Fit, Vocab, fold, raw_tokens};
 use super::contract::ContractKind;
+use super::fit::Broad;
 use super::job::contains_word;
+use super::lexicon::esco::Kind;
 use super::lexicon::{self, wishes as lex};
 use super::seniority::junior_title;
 use crate::profile::{ProfileForm, key};
@@ -37,6 +39,8 @@ pub(crate) struct Role {
     lead: bool,
     /// At least one topic atom is specific (not generic).
     specific: bool,
+    /// The occupations ESCO names in it.
+    occupations: Broad,
 }
 
 /// The parts of a role or a title.
@@ -144,6 +148,7 @@ pub(crate) fn read(form: &ProfileForm, vocab: &Vocab) -> Vec<Role> {
             let p = parts(text, vocab);
             (!p.topic.is_empty()).then(|| Role {
                 specific: p.topic.iter().any(|a| !atoms::is_generic(a)),
+                occupations: occupations(text, vocab),
                 path: format!("{}[{i}]", key::ROLES),
                 text: text.clone(),
                 topic: p.topic,
@@ -152,6 +157,17 @@ pub(crate) fn read(form: &ProfileForm, vocab: &Vocab) -> Vec<Role> {
             })
         })
         .collect()
+}
+
+/// The occupations ESCO names in a role or a title, its contract words left out (`Interim`
+/// says nothing about the occupation).
+fn occupations(text: &str, vocab: &Vocab) -> Broad {
+    let folded = fold(text);
+    let words: Vec<&str> = folded
+        .split_whitespace()
+        .filter(|w| !lex::ROLE_CONTRACT_WORDS.contains(w))
+        .collect();
+    Broad::of(&words.join(" "), vocab, &[Kind::Occupation])
 }
 
 /// The best target role for a title: its index and whether it fits in full.
@@ -229,10 +245,21 @@ pub(crate) fn best(
         .enumerate()
         .filter_map(|(i, role)| role_fit(role, &parts, junior, interim).map(|full| (i, full)))
         .collect();
-    fits.iter()
+    let best = fits
+        .iter()
         .find(|(_, full)| *full)
         .or_else(|| fits.first())
-        .map(|&(role, full)| RoleFit { role, full })
+        .map(|&(role, full)| RoleFit { role, full });
+    if best.is_some() {
+        return best;
+    }
+    // ESCO, the broad layer: the title names an occupation of a role (half, it is ESCO's
+    // word alone).
+    let title = occupations(title, vocab);
+    roles
+        .iter()
+        .position(|role| title.names(&role.occupations))
+        .map(|role| RoleFit { role, full: false })
 }
 
 #[cfg(test)]
@@ -332,6 +359,18 @@ mod tests {
             }
         }
         assert_eq!(normalise("Interim Finanzvorständin"), "interim cfo");
+    }
+
+    /// A title the engine's own words do not relate to a role, but that names the role's
+    /// occupation in ESCO (the role by its preferred label), fits in half.
+    #[test]
+    fn esco_relates_a_title_to_a_role() {
+        let roles = ["Leiter der Buchhaltung"];
+        assert_eq!(
+            fit(&roles, "Accounting Manager", ContractKind::Permanent),
+            Some(("Leiter der Buchhaltung".to_owned(), false))
+        );
+        assert_eq!(fit(&roles, "Sales Manager", ContractKind::Permanent), None);
     }
 
     #[test]

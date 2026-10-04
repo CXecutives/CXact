@@ -40,6 +40,8 @@ pub(crate) struct Vocab {
     by_first: HashMap<String, Vec<usize>>,
     /// One-word keys by their form without a linking `s` (`werkleit` for `werksleit`).
     by_linking_s: HashMap<String, Vec<usize>>,
+    /// The concepts (values), sorted.
+    values: Vec<String>,
     packs: Vec<&'static str>,
 }
 
@@ -73,10 +75,14 @@ impl Vocab {
                 }
             }
         }
+        let mut values: Vec<String> = concepts.iter().map(|(_, value)| value.clone()).collect();
+        values.sort();
+        values.dedup();
         Self {
             concepts,
             by_first,
             by_linking_s,
+            values,
             packs: packs.iter().map(|d| d.name).collect(),
         }
     }
@@ -115,6 +121,23 @@ impl Vocab {
     /// Names of the switched-on packs.
     pub(crate) fn packs(&self) -> &[&'static str] {
         &self.packs
+    }
+
+    /// Which of these words (stemmed, as `esco::words` folds a text) the vocabulary gives a
+    /// meaning: the words of a key, and a concept written as itself.
+    pub(crate) fn known(&self, words: &[String]) -> Vec<bool> {
+        let mut known = vec![false; words.len()];
+        let mut at = 0;
+        while at < words.len() {
+            if let Some((n, _)) = self.concept_at(words, at) {
+                known[at..at + n].fill(true);
+                at += n;
+            } else {
+                known[at] = self.values.binary_search(&words[at]).is_ok();
+                at += 1;
+            }
+        }
+        known
     }
 
     /// The longest concept whose key starts at `at` (the first in `concepts` order); a

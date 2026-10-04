@@ -48,6 +48,8 @@ The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSIO
   competences, tools, languages, degrees, certificates and years of experience.
 - **The rest:** Schwerpunkte, target roles and wishes (rate, work mode, regions, preferred industries,
   availability, workload, duration).
+- **Words:** its own (a core and domain packs, German and English) and ESCO under them, the EU
+  classification of occupations, skills and knowledge.
 
 It gives a score of 0 to 100 in three bands, or an exclusion with its reason. An excluded job can be
 scored anyway ("Trotzdem bewerten"). Measured on a corpus and on held-out sets of invented ads

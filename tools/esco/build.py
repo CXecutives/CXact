@@ -23,7 +23,6 @@ What the file holds (read by core/src/matching/lexicon/esco.rs):
   A label stays out of the index (see `why_not`) when its key is empty, longer than
   MAX_WORDS words, one word of GENERIC, one word left of a longer label ("deep learning"
   folds to "learn"), or two words of VAGUE
-- per occupation its essential and optional skills
 
 The key is the engine's token stream without its concept tables, as `atoms` in
 core/src/matching/atoms.rs builds it: case folding, umlauts folded, gender endings and
@@ -33,14 +32,12 @@ a slash goes ("Kunden/Kundinnen"). This file mirrors that code and reads its wor
 the Rust sources; esco.rs has the same function, and its test checks every key here against
 it. When the engine's folding changes, run this script again (and mirror the change here).
 
-The file: the magic "ESCO", a format byte, then three sections, each a little-endian u32
+The file: the magic "ESCO", a format byte, then two sections, each a little-endian u32
 length and a zlib stream of UTF-8 text (one record per line, fields split by tabs):
   1. index:     "ESCO <version>", the concepts ("<kind><t>" per
                 line, in id order: kind o/s/k/l, t 1 for transversal), "=", then the keys,
                 sorted by bytes: "<key>\t<id>,<id>,..." (ids sorted)
   2. labels:    per concept id one line "<de labels>\t<en labels>", labels split by "|"
-  3. relations: per occupation id one line "<essential ids>\t<optional ids>", ids sorted and
-                written as differences to the one before
 """
 
 from __future__ import annotations
@@ -58,7 +55,7 @@ REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "core" / "src" / "matching" / "lexicon" / "esco.bin"
 DEFAULT_SOURCE = REPO / "core" / "tests" / "fixtures" / "private" / "esco"
 LEXICON = REPO / "core" / "src" / "matching" / "lexicon"
-FORMAT = 1
+FORMAT = 2
 
 # Keys of more words never occur in a job ad as they are (ESCO's long skill phrases).
 MAX_WORDS = 6
@@ -452,7 +449,6 @@ def main() -> None:
         if lang == "en":
             transversal = {r["conceptUri"] for r in rows(archive, "transversalSkillsCollection")}
             languages = {r["conceptUri"] for r in rows(archive, "languageSkillsCollection")}
-            relations = rows(archive, "occupationSkillRelations")
 
     for uri, c in concepts.items():
         if c.get("occupation"):
@@ -479,7 +475,6 @@ def main() -> None:
     ids = {u: i for i, u in enumerate(uris)}
     if len(uris) > 0xFFFF:
         sys.exit("more than 65535 concepts: esco.rs stores ids as u16")
-    occupations = sum(1 for u in uris if concepts[u]["kind"] == "occupation")
 
     # The index.
     index: dict[str, set[int]] = {}
@@ -519,30 +514,9 @@ def main() -> None:
         for u in uris
     )
 
-    essential: dict[int, set[int]] = {}
-    optional: dict[int, set[int]] = {}
-    for r in relations:
-        occupation, skill = ids.get(r["occupationUri"]), ids.get(r["skillUri"])
-        if occupation is None or skill is None:
-            continue
-        target = essential if r["relationType"] == "essential" else optional
-        target.setdefault(occupation, set()).add(skill)
-
-    def deltas(values: set[int]) -> str:
-        out, before = [], 0
-        for v in sorted(values):
-            out.append(str(v - before))
-            before = v
-        return ",".join(out)
-
-    section_relations = "".join(
-        deltas(essential.get(i, set())) + "\t" + deltas(optional.get(i, set())) + "\n"
-        for i in range(occupations)
-    )
-
     blob = bytearray(b"ESCO" + bytes([FORMAT]))
     sizes = []
-    for text in (section_index, section_labels, section_relations):
+    for text in (section_index, section_labels):
         packed = zlib.compress(text.encode("utf-8"), 9)
         sizes.append((len(text.encode("utf-8")), len(packed)))
         blob += struct.pack("<I", len(packed)) + packed
@@ -556,10 +530,8 @@ def main() -> None:
     print(f"labels de {labels['de']} en {labels['en']}; indexed de {indexed['de']} "
           f"en {indexed['en']}; left out: "
           + ", ".join(f"{sum(v.values())} {reason}" for reason, v in sorted(left_out.items())))
-    print(f"keys {len(index)}, relations essential "
-          f"{sum(len(v) for v in essential.values())} optional "
-          f"{sum(len(v) for v in optional.values())}")
-    for name, (raw, packed) in zip(("index", "labels", "relations"), sizes):
+    print(f"keys {len(index)}")
+    for name, (raw, packed) in zip(("index", "labels"), sizes):
         print(f"  {name}: {raw} bytes -> {packed}")
     print(f"{OUT.relative_to(REPO)}: {len(blob)} bytes")
     if "-v" in sys.argv:

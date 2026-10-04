@@ -82,7 +82,7 @@ there).
 | heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.982 |
 | heldout7 | 0.915 | 0.888 | 0.668 | 0.812 | 0.593 | 2 | 1.000 / 0.848 |
 | heldout8 | 0.930 | 0.910 | 0.795 | 0.816 | 0.776 | 2 | 1.000 / 0.824 |
-| heldout9 | 0.886 | 0.854 | 0.646 | 0.720 | 0.662 | 0 | 1.000 / 0.860 |
+| heldout9 | 0.886 | 0.854 | 0.647 | 0.720 | 0.662 | 0 | 1.000 / 0.860 |
 | heldout10 | 0.945 | 1.000 | 0.840 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
 
 Engine 19 reads Profil-JSON v19 through its typed form (`profile::ProfileForm`) and nothing else.
@@ -147,7 +147,7 @@ comes from the profile.
 | Other listings | the ad ends for the hard criteria and the seniority at the first heading of the other listings a portal shows under it (`facts::own_text`, `lexicon::OTHER_LISTINGS`: `Ähnliche Projekte (12)`, `Weitere Projekte von ...`, `Similar jobs`), a heading only with its words whole and followed by nothing, a count, a colon or a tail of `LISTING_TAILS`; the requirement parser stops there too, the stored and shown ad stays whole |
 | Items | AND at `,` `;` `und` `sowie` `&` `and` `inkl.`; OR alternatives at `oder` `bzw.` `or` ` / ` (an OR requirement is met when one branch is met); examples after `z. B.`/`e.g.` are alternatives of their head; negated items dropped; comma tails (`, gerne auch`, `, ob`) stay with their item, `in Wort und Schrift` never splits, the partners after `Zusammenarbeit mit`, `gegenüber` and `rund um` stay one item, parts joined by `und` keep the object the last one names |
 | Kinds | skill, language (CEFR level; weight 250 in `M`, a hygiene factor, full weight in the evidence `n`; an item that names a language among four or more other atoms is a skill line), degree, licence (`Zulassung als Steuerberater`), soft (weight 250, unproven = half; a sentence starting with `Sie`, `Du`, `You` that names no known skill is one soft item), frame (weight 0: rate, duration, place, `Vollzeit`, `Verlängerung`) |
-| Vocabulary | general core (languages, degrees, contract, remote and seniority words, general business pairs such as `project management` = `Projektmanagement`) plus domain packs (finance, sap, itProject, hr, procurement, data, pharma, operations, sales, legal, software, restructuring, consulting, energy) that switch on when at least `PACK_HITS` 2 tokens of the profile's competences start with a pack trigger; a pack never maps words for other profiles, only its broad companion words (`Personal`, `Lieferant`, `Kunde`, `Entwicklung`) are generic for every profile. |
+| Vocabulary | general core (languages, degrees, contract, remote and seniority words, general business pairs such as `project management` = `Projektmanagement`) plus domain packs (finance, sap, itProject, hr, procurement, data, pharma, operations, sales, legal, software, restructuring, consulting, energy, customerService, itService, marketing) that switch on when at least `PACK_HITS` 2 tokens of the profile's competences start with a pack trigger; a pack never maps words for other profiles, only its broad companion words (`Personal`, `Lieferant`, `Kunde`, `Entwicklung`) are generic for every profile; ESCO under them ("ESCO") |
 | Ladder | umlauts folded, light stemming, concepts, compounds (light modifier or head = equal, other modifier = half, profile more specific = full; a modifier of three letters or more, a hyphen marks a compound however short; with or without the linking `s`), two thirds of a long entry = half; frame and soft words are words, not prefixes (`Verfügbarkeit` is frame, `Vergütungsmanagement` a skill); `SQL-Kenntnisse` is the skill, `ISO 9001` keeps its number, short codes (`QP`, `R`, `5S`, `CI/CD`) survive the minimum length; generic atoms (`SAP`, `Management`, `Finance`, `Einführung`, `ERP`, `Unternehmen`, `Head`, `Chief`) never alone and never reach a compound; verbal particles are no modifiers (`Einführung`, `Durchführung` are no `Führung`); a USP sentence or a long free-text entry never proves a requirement; an ad that asks for more than the profile names (`Tableau im Reporting` against `Reporting`) is half; knowledge of a product family (`SAP-Kenntnisse`) is met by an entry naming a product of it; leadership asked for alone is met half by a leading role; an industry of the profile is the setting of a requirement, never its function; leading roles are one concept (`Head of Finance`, `VP Finance`, `Kaufmännischer Leiter` = CFO) |
 | Degrees | field (same = full, neighbouring such as business and business informatics = half, other = open), level (`Master` needs master level: `Diplom (Univ.)` counts as master, `Diplom (FH)` and a bachelor are half), `vergleichbar` accepts any field; `Promotion`, `Staatsexamen`, `MSc`, `PhD` are degrees, `Master Data` is none; `Qualified Person` and `Sachkundige Person` are one licence |
 | Languages, years | a language one level below the required one is half, further below open; English language names in profiles and ads. Years against the profile's own years (`berufserfahrung_jahre`, else the most years of a competence): general experience (`10 Jahre Berufserfahrung`, plain `Erfahrung`) met at or below them, from four fifths on in part, below open, not weighed without the profile's years; years in a topic (`3 Jahre S/4HANA`) use the competence's own years where the profile names it, else the profile's; a range counts from its lower end and keeps its upper end (`max`); a part of a total (`davon mindestens drei Jahre`) is no minimum |
@@ -308,6 +308,34 @@ word or as one word (`Call Center`, `Callcenter`). Words under four letters matc
 `-ent` noun from seven letters (`Werkstudierende`), `-mann` as `-frau`/`-leute`, `-um` as `-a`
 (`Praktika`, never `praktikable`). `Praktikum` and `Praktikant` are one family
 (`lexicon::EXCLUSION_WORD_FAMILIES`).
+
+## ESCO
+
+ESCO (the EU classification of occupations, skills and knowledge, German and English,
+`lexicon/esco.rs`, data `esco.bin` from `tools/esco/build.py`) is the broad layer under the
+engine's own words. `esco::named` finds the concepts a text names and keeps only what cannot name
+the wrong one: never a transversal concept, a one-word label only as the text writes it
+(`Security` is no `securities`, which the stemmer folds alike) and never a word the engine finds
+generic (`SAP`), a label of several concepts only for the one whose preferred label it is.
+
+- Requirements (`fit::Broad`): a requirement and a competence, tool or certificate the ladder
+  leaves apart meet through a concept both name, when the profile names it by its preferred label
+  (German or English), the engine's own words (the core and the profile's packs) leave the meaning
+  of at least one side to ESCO and the concept is most of what each side says: in full (`via`
+  `synonym`) when the ad names it by its preferred label too and asks nothing else (`Accounting`
+  for `Buchführung`), else half (`semantic`: another name in the ad, or a product ESCO files under
+  the concept, `Tableau` under data visualisation software). Two other names (`Tableau`, `Power
+  BI`) never meet; soft skills, industries and languages stay out.
+- Target roles (`roles::best`): a title that fits no role through the engine's words but names
+  the occupation a role names by its preferred label (contract words left out) fits in half
+  (`Accounting Manager` for `Leiter der Buchhaltung`).
+
+Measured on heldout1-10 and the corpus, one pair moves: heldout9 P8 S081 (grade 3) from 87 to 92,
+`battery management systems` for `Batteriemanagementsysteme`. The sets speak the engine's own
+words; ESCO is for the other words of real ads and profiles. Looser forms lost and stay out: every
+shared concept (`Power BI` for `Tableau`, `Kommunikation` for a line about an interview: heldout5,
+heldout7 and the corpus worse), a profile's other name of a concept (heldout5 P7 A08, `Internal
+Investigations` for an internal audit role).
 
 ## Domain packs
 
