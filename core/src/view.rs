@@ -2055,6 +2055,71 @@ mod tests {
 
     /// A range of remote shares is a work mode like one share (from 100 % remote, to 0 % on
     /// site, else hybrid), and the list orders by day rate: the highest first (in euros, an
+    /// "Nach Datum" and "Neu seit" go by the day a job came into CXact, whatever its alert
+    /// mail's date; within a day the newest mail first, then by portal.
+    #[test]
+    fn the_date_is_the_day_a_job_came() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let tz = jiff::tz::TimeZone::system();
+        let noon = Timestamp::now()
+            .to_zoned(tz.clone())
+            .date()
+            .at(12, 0, 0, 0)
+            .to_zoned(tz)
+            .unwrap()
+            .timestamp();
+        let yesterday = noon - jiff::SignedDuration::from_hours(24);
+        // (title, link, came, mail date)
+        let jobs = [
+            (
+                "Gestern",
+                "https://www.linkedin.com/jobs/view/4000000101/",
+                yesterday,
+                Some(noon),
+            ),
+            (
+                "Heute alt",
+                "https://www.linkedin.com/jobs/view/4000000102/",
+                noon,
+                Some(yesterday),
+            ),
+            (
+                "Heute neu",
+                "https://www.linkedin.com/jobs/view/4000000103/",
+                noon,
+                Some(noon),
+            ),
+            (
+                "Gesucht",
+                "https://www.freelancermap.de/nproj/3000001.html",
+                noon,
+                None,
+            ),
+        ];
+        for (title, url, came, date) in jobs {
+            let link = job_link(url).unwrap();
+            let posting = Posting::new(link.key, link.url, title, "", "");
+            let mail = MailRef {
+                subject: "x",
+                date,
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &posting, mail, came).unwrap();
+        }
+        let page = job_page(&store, &query(Place::Inbox, JobSort::Newest, 50, 0)).unwrap();
+        assert_eq!(
+            titles(&page),
+            ["Heute neu", "Heute alt", "Gesucht", "Gestern"]
+        );
+        let mut since = query(Place::Inbox, JobSort::Newest, 50, 0);
+        since.received_since = Some(noon.as_second() - 3600);
+        assert_eq!(
+            titles(&job_page(&store, &since).unwrap()),
+            ["Heute neu", "Heute alt", "Gesucht"]
+        );
+    }
+
     /// hourly one times 8), equal ones by date, the rest last; the unread filter narrows it
     /// and its counts like the rest of the filter.
     #[test]
@@ -2154,12 +2219,13 @@ mod tests {
             ))
             .unwrap();
             let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", "Köln");
+            let came = now - jiff::SignedDuration::from_hours(i % 60 * 24);
             let mail = MailRef {
                 subject: "x",
-                date: Some(now - jiff::SignedDuration::from_hours(i % 60 * 24)),
+                date: Some(came),
                 gmail_id: None,
             };
-            store.upsert_posting(run, &posting, mail, now).unwrap();
+            store.upsert_posting(run, &posting, mail, came).unwrap();
             let band_score = if i % 3 == 0 { 70 } else { 20 };
             matches.push((link.key, record(MatchStatus::Scored, band_score)));
         }

@@ -205,9 +205,9 @@ build.
   ("nothing deforms on press"). Check the open look of a menu button (`aria-expanded` keeps the wash).
 - [ ] The job view's action buttons: the user dislikes their words and size. Drafts: shorter words,
   icon buttons with tooltips beside Archivieren and Löschen, or one text button and a "…" menu.
-- [ ] The list's date shows when a job came into CXact (`first_seen_at`), for the row and the order "Nach
-  Datum". Today it is the alert mail's date where there is one (`COALESCE(mail_date, first_seen_at)` in
-  `store/jobs.rs` `page_order` and the row).
+- [x] The list's date shows when a job came into CXact (`first_seen_at`), for the row, the order "Nach
+  Datum" (the local day, then the newest mail, then the portal: `store/jobs.rs` `page_order`) and the
+  filter "Neu seit".
 - [ ] A leaner Profil (drafts; the backend has Profil-JSON v19 with its 19 fields since engine 19). Candidates:
   - Drop Suchbegriffe; the search derives its terms.
   - Drop the field Rolle; it repeats the profile's title, which is renamed in place.

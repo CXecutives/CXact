@@ -165,13 +165,18 @@ fn day_rate(p: &str) -> String {
 /// not scorable, newest first: the list's "Noch ohne Passung" on top, so every page it loads
 /// is complete), then the best score first, the excluded ones newest first;
 /// "rate" the highest day rate first ([`day_rate`]), the jobs without one last; "newest" the
-/// latest first sighting. The trash lists the latest trashed first.
+/// latest day a job came into CXact (its first sighting, the local day), within a day the
+/// newest alert mail first, then by portal, the latest sighting first. The trash lists the
+/// latest trashed first.
 fn page_order(query: &PageQuery, p: &str) -> String {
-    // "By date": the date of the alert mail; in the trash the day it went there.
+    // "By date": the day the job came; in the trash the moment it went there.
     let date = if query.place == Place::Trash {
-        format!("{p}trashed_at")
+        format!("{p}trashed_at DESC")
     } else {
-        format!("COALESCE({p}mail_date, {p}first_seen_at)")
+        format!(
+            "date({p}first_seen_at, 'unixepoch', 'localtime') DESC, {p}mail_date DESC, \
+             {p}portal, {p}first_seen_at DESC"
+        )
     };
     let (pending, by_match) = if query.by_match {
         // Only a scored job's ring shows its number: the ones without (not scored yet, not
@@ -194,7 +199,7 @@ fn page_order(query: &PageQuery, p: &str) -> String {
     // A closed ad (no applications any more) follows the open ones.
     format!(
         "({p}match_status IS 'excluded'), {pending}\
-         ({p}desc_status = 'ok' AND {p}desc_closed = 1), {by_match}{date} DESC, \
+         ({p}desc_status = 'ok' AND {p}desc_closed = 1), {by_match}{date}, \
          {p}portal, {p}job_id"
     )
 }
@@ -206,7 +211,7 @@ pub(super) const FILTER_VALUES: usize = 4;
 /// `?{first}` on in the order of [`ListFilter::values`]: JSON arrays of portal keys and of
 /// bands, the run and the first second of the days it came from (each `NULL` for none). The
 /// band of a score as `model::band` draws it; the day it came as "Nach Datum" orders the
-/// jobs (the alert mail's date, else the first sighting).
+/// jobs ("Neu seit": its first sighting in CXact).
 pub(super) fn filter_condition(first: usize) -> String {
     let [portals, bands, run, since] =
         std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
@@ -219,7 +224,7 @@ pub(super) fn filter_condition(first: usize) -> String {
                                       IN (SELECT value FROM json_each({bands}))))
          AND ({run} IS NULL OR (first_seen_run = {run}
                                 AND match_status IS NOT 'excluded'))
-         AND ({since} IS NULL OR COALESCE(mail_date, first_seen_at) >= {since})"
+         AND ({since} IS NULL OR first_seen_at >= {since})"
     )
 }
 
