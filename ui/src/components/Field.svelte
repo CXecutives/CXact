@@ -154,6 +154,10 @@
     min-height: var(--control-field);
   }
 
+  .inline .label {
+    align-self: center;
+  }
+
   /* As wide as its text: a click beside the label is a click beside the field, and that ends
      the field's focus (a click on the words still leads into the field). */
   .label {

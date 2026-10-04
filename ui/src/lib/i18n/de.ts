@@ -1129,20 +1129,8 @@ export const de = {
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
     /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
-     *  does not name, each with its number of jobs; "Hinzufügen" puts it into that field (an
-     *  unsaved change like any other). */
+     *  does not name, each with its number of jobs (a click puts it into that field). */
     asked: 'Häufig verlangt',
-    askedAdd: 'Hinzufügen',
-    askedIn: (value: number) => `in ${count(value, 'Job', 'Jobs')}`,
-    /** The field of the profile a term belongs to, quietly beside it. */
-    askedField: {
-      competence: 'Kompetenz',
-      tool: 'Tool',
-      industry: 'Branche',
-      language: 'Sprache',
-      certificate: 'Zertifikat',
-      degree: 'Abschluss',
-    } satisfies Record<TermField, string>,
     /** The three sections on one page. */
     section: {
       search: 'Was du suchst',

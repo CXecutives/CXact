@@ -4,7 +4,7 @@
   "Kenntnisse in Anaplan"), each under the field it belongs to (Kompetenzen, Werkzeuge und
   Methoden, Branchen, Sprachen, Zertifikate, Abschlüsse), as a quiet row of small buttons:
   the term and how many jobs ask for it. A click puts the term into this field of the form,
-  an unsaved change like any other (the save bar comes); its button goes, and so does a term
+  an unsaved change like any other (Speichern comes); its button goes, and so does a term
   the form names already in any field. The row shows only while it has a term, unfolds when
   it comes and folds away when it goes. The terms are asked once for all the fields, after
   every save (a new stored profile) and every finished run (a fetch, the rescore after a
@@ -153,7 +153,7 @@
     flex: none;
     color: var(--text-subtle);
     font: var(--type-sm);
-    line-height: var(--control-sm);
+    line-height: var(--control-field);
   }
 
   .terms {

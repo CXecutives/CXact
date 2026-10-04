@@ -56,7 +56,7 @@ const FEATURE_PUBLIC = {
   'ui/src/features/jobs/prompt.ts': 'copies the AI prompt of one job or a comparison',
   'ui/src/features/jobs/addToProfile.ts': 'takes a word of an ad into the profile, with undo',
   'ui/src/features/profile/ProfileView.svelte':
-    'the profile form, also as the setup step "Prüfen und ergänzen" (its onboarding mode)',
+    'the profile form, also as the short forms of the setup (Fast fertig, Dein Profil)',
 };
 
 /**

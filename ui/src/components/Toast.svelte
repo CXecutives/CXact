@@ -22,8 +22,8 @@
   A press on a toast never takes the focus (like a notification of the OS); a toast the
   keyboard reached gives the focus back to where it came from when
   it goes by its buttons. The stack lies above a bar that sticks to the bottom of the view
-  (the Profil's save bar): it measures what lies under its column at the window's bottom
-  edge whenever a toast comes or the view changes, and rises by it (--toast-bottom).
+  (the setup's foot in a low window): it measures what lies under its column at the window's
+  bottom edge whenever a toast comes or the view changes, and rises by it (--toast-bottom).
 -->
 <script lang="ts" module>
   import type { Action } from 'svelte/action';
@@ -158,7 +158,7 @@
   }
 
   /** How high a bar stuck to the window's bottom edge reaches under the stack's column (the
-   *  Profil's save bar): the stack rises above it. Hits in the app's own layers do not
+   *  setup's foot): the stack rises above it. Hits in the app's own layers do not
    *  count. */
   function barRoom(node: HTMLElement): number {
     const root = document.documentElement;
