@@ -23,8 +23,8 @@ use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
 use jobalert_core::store::Backup;
 use jobalert_core::view::{
-    self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
-    WorkspacePick, WorkspaceProfile,
+    self, JobQuery, JobSort, Mailbox, ProfileInfo, SettingsPatch, SettingsView, WorkspacePick,
+    WorkspaceProfile,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
@@ -173,14 +173,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         ),
         counts,
         match_pending: state.match_pending(),
-        log_dir: state.data_dir.join(jobalert_core::LOG_DIR),
-        data_dir: state.data_dir.clone(),
-        reset_report: lock(&state.reset_report)
-            .as_ref()
-            .map(|report| ResetSummary {
-                removed: report.removed,
-                failed: report.failed.len(),
-            }),
     })
 }
 

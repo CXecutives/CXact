@@ -22,7 +22,6 @@ save_profile      { save: ProfileSave }                                         
 profile_from_cv   { dropped: boolean }                                               -> ProfileInfo | null
 profile_missing   { form: ProfileForm }                                              -> string[]
 asked_terms       {}                                                                 -> AskedTerm[]
-search_terms      {}                                                                 -> SearchTerm[]
 vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null

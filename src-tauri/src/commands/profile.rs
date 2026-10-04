@@ -12,15 +12,14 @@ use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::matching::{self, Vocabulary};
 use jobalert_core::pipeline::dry_run;
 use jobalert_core::profile;
-use jobalert_core::view::{self, AskedTerm, ProfileInfo, ProfileSave, SearchTerm};
+use jobalert_core::view::{self, AskedTerm, ProfileInfo, ProfileSave};
 use tauri::{AppHandle, State, WebviewWindow};
 
 use super::app::profile_info;
 use super::{AppState, CmdResult, scoring};
 
 /// Saves the editor into the profile (without one it becomes the profile), keeps the previous
-/// file as the backup, ends the marks of what the CV filled and scores every job again (in the
-/// background).
+/// file as the backup and scores every job again (in the background).
 #[tauri::command]
 pub async fn save_profile(
     app: AppHandle,
@@ -30,7 +29,6 @@ pub async fn save_profile(
     state.ensure_real()?;
     let workspace = state.workspace()?;
     let info = profile::save_form(&workspace, &save.before, &save.after)?;
-    profile::set_ai_filled(&state.store, &[])?;
     scoring::profile_changed(&app, &state);
     Ok(profile_info(&state, &workspace).unwrap_or_else(|| ProfileInfo::of(&info, None)))
 }
@@ -63,22 +61,6 @@ pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>
         Some(&form),
         Timestamp::now(),
     )?)
-}
-
-/// "CXact sucht nach": the terms the search asks for, from the stored profile (the dry run's
-/// sample profile in the dry run), each with the fitting jobs it brought last; none without a
-/// profile.
-#[tauri::command]
-pub async fn search_terms(state: State<'_, AppState>) -> CmdResult<Vec<SearchTerm>> {
-    let form = if state.dry_run {
-        profile::parse(dry_run::PROFILE_JSON).ok()
-    } else {
-        profile::load(&state.workspace()?)?
-    };
-    Ok(match form {
-        Some(form) => view::search_terms(&state.store, &form)?,
-        None => Vec::new(),
-    })
 }
 
 /// The engine's words as terms, for the suggestions of the profile's fields (skills and

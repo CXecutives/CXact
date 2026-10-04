@@ -20,7 +20,7 @@
 //! without search terms (one list of all its roles) keeps only the hits whose title reaches
 //! [`PRESCORE_FLOOR`] with the profile. The new jobs of every page go through the plan's
 //! screen (the pre-filter of the pipeline: titles the engine excludes alone). What each term
-//! brought is kept per source ([`term_jobs`], "CXact sucht nach").
+//! brought is kept per source ([`term_yields`]: the term learning, `fetch::terms`).
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -182,19 +182,6 @@ pub fn term_yields(store: &Store, portal: Portal) -> crate::Result<BTreeMap<Stri
         .and_then(|text| serde_json::from_str::<Yield>(&text).ok())
         .unwrap_or_default()
         .terms)
-}
-
-/// The jobs each term brought at the last search of every source.
-pub fn term_jobs(store: &Store) -> crate::Result<BTreeMap<String, Vec<JobKey>>> {
-    let mut jobs: BTreeMap<String, Vec<JobKey>> = BTreeMap::new();
-    for portal in Portal::ALL {
-        for (term, found) in term_yields(store, portal)? {
-            jobs.entry(term)
-                .or_default()
-                .extend(found.jobs.into_iter().map(|id| JobKey { portal, id }));
-        }
-    }
-    Ok(jobs)
 }
 
 /// Keeps what the terms of this search brought, beside what the other terms of the profile
@@ -932,7 +919,6 @@ mod tests {
         let yields = term_yields(&store, HAYS).unwrap();
         assert_eq!(yields["CFO"].jobs, ["891480", "891481"]);
         assert_eq!((yields["CFO"].pages, yields["CFO"].new), (2, 2));
-        assert_eq!(term_jobs(&store).unwrap()["CFO"].len(), 2);
         // A source without terms: the title below the floor is no job.
         let interim = |id: &str| Hit {
             link: Portal::InterimX

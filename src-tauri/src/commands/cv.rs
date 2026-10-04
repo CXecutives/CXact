@@ -32,8 +32,8 @@ mod texts {
 }
 
 /// "Aus Lebenslauf ausfüllen": `dropped` takes the files last dropped on the window, else the
-/// file dialog asks (`None` when it is closed or the import cancelled). The stored profile,
-/// its `aiFilled` naming what the CV filled. Fails with `cv` and the import's code
+/// file dialog asks (`None` when it is closed or the import cancelled). The stored profile.
+/// Fails with `cv` and the import's code
 /// (`ErrorInfo::from(&CvError)`); `dryRun` in the dry run.
 #[tauri::command]
 pub async fn profile_from_cv(
@@ -113,7 +113,6 @@ async fn import(
     let Some((_, filled)) = profile::import_cv(&state.workspace()?, &answer.profile)? else {
         return Err(cv_error(&cv::CvError::Refused));
     };
-    profile::set_ai_filled(&state.store, &filled)?;
     log::info!("cv: profile filled ({} fields)", filled.len());
     Ok(Some(()))
 }

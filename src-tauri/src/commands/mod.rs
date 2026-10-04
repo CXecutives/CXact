@@ -26,7 +26,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use jobalert_core::error::{ErrorInfo, ErrorKind};
-use jobalert_core::reset::ResetReport;
 use jobalert_core::secrets::Vault;
 use jobalert_core::settings::Settings;
 use jobalert_core::store::Store;
@@ -55,7 +54,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         cv::profile_from_cv,
         profile::profile_missing,
         profile::asked_terms,
-        profile::search_terms,
         profile::vocabulary,
         profile::set_unsaved,
         profile::close_window,
@@ -85,7 +83,6 @@ pub struct AppState {
     pub default_workspace: PathBuf,
     pub dry_run: bool,
     pub user_agent: String,
-    pub reset_report: Mutex<Option<ResetReport>>,
     /// Gmail address from the vault. The vault (with the password) is thus read only once per
     /// start for the display - otherwise only for the mailbox scan.
     pub gmail_user: Mutex<GmailUser>,

@@ -1,7 +1,7 @@
 //! "Aus Lebenslauf ausfüllen": the CV worker's answer (`cv-worker/schema.json`, the part of the
 //! profile a CV can tell) read by the profile form with its caps and merged into the one
 //! profile, which is saved at once (a cancel after the answer never costs a try). What the CV
-//! filled is noted until the next save (`set_ai_filled`).
+//! filled is logged.
 //!
 //! The merge never overwrites: an entry the profile has (the same name, case aside) keeps its
 //! star, years and level; a new competence gets its star only while fewer than [`MAX_FOCUS`]

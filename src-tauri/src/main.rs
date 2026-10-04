@@ -246,7 +246,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     // A requested reset runs before anything else - nothing holds a file open yet - and so
     // does the reset of a database an earlier version wrote. The dry run never deletes
     // anything.
-    let reset_report = (mode == StartMode::Normal)
+    let reset = (mode == StartMode::Normal)
         .then(|| {
             let vault = Vault::app();
             jobalert_core::reset::perform_pending(&data_dir, &vault).or_else(|| {
@@ -257,7 +257,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     let store = open_store(mode, &data_dir)?;
     let store = Arc::new(store);
     // The sessions' storage outside the data folder (macOS data stores) goes too.
-    if reset_report.is_some() {
+    if reset.is_some() {
         session::forget_all(app.handle().clone(), data_dir.clone());
     }
     app.manage(AppState {
@@ -266,7 +266,6 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         data_dir,
         dry_run,
         user_agent: platform::USER_AGENT.to_owned(),
-        reset_report: Mutex::new(reset_report),
         gmail_user: Mutex::new(GmailUser::Unread),
         mailbox_check: Mutex::new(None),
         mailbox_epoch: AtomicU64::new(0),

@@ -72,7 +72,6 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             state.workspace()?.join(jobalert_core::profile::PROFILE_DIR),
             "folder",
         )?,
-        OpenTarget::LogDir => existing(state.data_dir.join(jobalert_core::LOG_DIR), "folder")?,
         OpenTarget::DataDir => existing(state.data_dir.clone(), "folder")?,
     };
     open::that_detached(&what).map_err(|e| {

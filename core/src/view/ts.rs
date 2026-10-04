@@ -30,9 +30,8 @@ use crate::view::{
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
     MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount, PortalLogin,
     PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave, ProfileSource,
-    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, ResetSummary, SearchTerm,
-    SettingsPatch, SettingsView, TermField, TextLayout, TextRange, VaultKind, WorkMode,
-    WorkspacePick, WorkspaceProfile,
+    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, SettingsPatch, SettingsView,
+    TermField, TextLayout, TextRange, VaultKind, WorkMode, WorkspacePick, WorkspaceProfile,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -195,7 +194,6 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<SettingsPatch>();
     f.add::<WorkspacePick>();
     f.add::<WorkspaceProfile>();
-    f.add::<SearchTerm>();
     f.add::<PortalPatch>();
     f.add::<PortalLogin>();
     f.add::<Quota>();
@@ -210,7 +208,6 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<TermField>();
     f.add::<AskedTerm>();
     f.add::<crate::matching::Vocabulary>();
-    f.add::<ResetSummary>();
     f.add::<BackupKind>();
     f.add::<Backup>();
     f.add::<AppState>();

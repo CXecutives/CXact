@@ -4,7 +4,6 @@ import type { Mailbox } from "./Mailbox";
 import type { Platform } from "./Platform";
 import type { PortalState } from "./PortalState";
 import type { ProfileInfo } from "./ProfileInfo";
-import type { ResetSummary } from "./ResetSummary";
 import type { RunSnapshot } from "./RunSnapshot";
 import type { RunSummary } from "./RunSummary";
 import type { SettingsView } from "./SettingsView";
@@ -38,4 +37,4 @@ lastRun: RunSummary | null,
  * The day (`YYYY-MM-DD`, UTC) "Aus Lebenslauf ausfüllen" works again while its tries
  * are used up (`ai::tries_until`); `null` while it works.
  */
-cvUntil: string | null, counts: JobCounts, matchPending: number, dataDir: string, logDir: string, resetReport: ResetSummary | null, };
+cvUntil: string | null, counts: JobCounts, matchPending: number, };

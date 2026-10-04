@@ -15,7 +15,6 @@ use jiff::Timestamp;
 
 use crate::error::{Error, InvalidInput, Result};
 use crate::export::write_atomic;
-use crate::store::Store;
 
 pub(crate) use form::key;
 #[cfg(test)]
@@ -33,9 +32,6 @@ pub const PROFILE_FILE: &str = "beraterprofil.json";
 /// The profile's previous version, kept next to it on every save (one backup, replaced each
 /// time).
 pub const BACKUP_FILE: &str = "beraterprofil.json.bak";
-
-/// The store key of the fields the CV import filled (until the next save).
-const AI_FILLED_KEY: &str = "profile.aiFilled";
 
 /// One save at a time: two saves close together (two terms added from the reader) each read
 /// the file the other one wrote, so neither drops what the other changed.
@@ -200,24 +196,6 @@ pub fn carry_over(old: &Path, new: &Path) -> Result<WorkspaceProfile> {
     }
     log::info!("profile copied into the new work folder");
     Ok(WorkspaceProfile::Copied)
-}
-
-/// The form fields the CV import filled, until the next save (the Profil marks them).
-pub fn ai_filled(store: &Store) -> Vec<String> {
-    store
-        .kv_get(AI_FILLED_KEY)
-        .ok()
-        .flatten()
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default()
-}
-
-/// Notes the form fields the CV import filled; an empty list clears them (a save does).
-pub fn set_ai_filled(store: &Store, fields: &[&str]) -> Result<()> {
-    store.kv_set(
-        AI_FILLED_KEY,
-        &serde_json::to_string(fields).unwrap_or_default(),
-    )
 }
 
 /// A profile of a test, written as the v19 JSON (anything else panics).
@@ -395,16 +373,5 @@ mod tests {
             assert!(stored.contains(term), "{term} lost: {stored:?}");
         }
         assert_eq!(stored.len(), 9, "{stored:?}");
-    }
-
-    #[test]
-    fn the_fields_the_cv_filled_until_the_next_save() {
-        let dir = workspace();
-        let store = Store::open(&dir.path().join("jobs.db")).unwrap();
-        assert!(ai_filled(&store).is_empty());
-        set_ai_filled(&store, &["roles", "competences"]).unwrap();
-        assert_eq!(ai_filled(&store), ["roles", "competences"]);
-        set_ai_filled(&store, &[]).unwrap();
-        assert!(ai_filled(&store).is_empty());
     }
 }

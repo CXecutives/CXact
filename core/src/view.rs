@@ -1250,8 +1250,6 @@ pub struct ProfileInfo {
     pub form: Option<ProfileForm>,
     /// The `ProfileForm` fields a usable profile still needs (core `missing_required`).
     pub missing: Vec<String>,
-    /// The `ProfileForm` fields the CV import filled, until the next save.
-    pub ai_filled: Vec<String>,
 }
 
 impl ProfileInfo {
@@ -1273,7 +1271,6 @@ impl ProfileInfo {
             parse_error: info.parse_error.as_ref().map(ErrorInfo::from),
             form: None,
             missing: Vec::new(),
-            ai_filled: Vec::new(),
         }
     }
 
@@ -1294,12 +1291,11 @@ impl ProfileInfo {
     }
 
     /// Adds what the engine understood of the profile, how far the jobs are scored with it
-    /// (an empty profile scores nothing, so nothing is pending) and what the CV filled.
+    /// (an empty profile scores nothing, so nothing is pending).
     pub fn understood_by(mut self, matcher: &LocalMatcher, store: &Store) -> crate::Result<Self> {
         let profile = matcher.profile();
         self.quality = Some(profile.quality().into());
         self.understood = Some(understanding(profile.summary()));
-        self.ai_filled = crate::profile::ai_filled(store);
         if matcher.usable() {
             self.scored_at = store.scored_at(matcher.rev())?;
             self.pending = store.match_pending(matcher.rev())?;
@@ -1365,44 +1361,6 @@ pub const ASKED_DAYS: i64 = 30;
 pub const MAX_ASKED: usize = 8;
 /// A term counts as often asked from this many jobs on (one job is no pattern).
 pub const MIN_ASKED: u32 = 2;
-
-/// A term the search asks the portals for (from the profile, in the search's order) and how
-/// many fitting jobs (scored in the mid or high band) it brought at the last search; `null`:
-/// not searched yet ("CXact sucht nach" in Einstellungen).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct SearchTerm {
-    pub term: String,
-    pub matched: Option<u32>,
-}
-
-/// The terms the deep search asks for now (`profile::deep_search_terms` without those set
-/// aside, `fetch::terms`), each with the fitting jobs it brought at the last search of the
-/// sources (`fetch::search::term_jobs`).
-pub fn search_terms(store: &Store, form: &ProfileForm) -> crate::Result<Vec<SearchTerm>> {
-    search_terms_at(store, form, jiff::Timestamp::now())
-}
-
-/// [`search_terms`] at `now`.
-pub fn search_terms_at(
-    store: &Store,
-    form: &ProfileForm,
-    now: jiff::Timestamp,
-) -> crate::Result<Vec<SearchTerm>> {
-    let found = crate::fetch::search::term_jobs(store)?;
-    let candidates = crate::profile::deep_search_terms(form);
-    crate::fetch::terms::active_terms(store, &candidates, now)?
-        .into_iter()
-        .map(|term| {
-            let matched = match found.get(&term) {
-                Some(keys) => Some(store.fitting(keys)?),
-                None => None,
-            };
-            Ok(SearchTerm { term, matched })
-        })
-        .collect()
-}
 
 /// A term the ads ask for that the profile does not cover, the field of the profile it
 /// belongs to, and in how many jobs ("Häufig verlangt" in the Profil).
@@ -1516,16 +1474,6 @@ fn named_terms(form: &ProfileForm) -> BTreeSet<String> {
     known
 }
 
-/// Result of "reset everything" after the restart.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ResetSummary {
-    pub removed: usize,
-    /// Entries that could not be deleted (details in the log).
-    pub failed: usize,
-}
-
 /// Everything the interface needs at the start (and after a reload).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1552,9 +1500,6 @@ pub struct AppState {
     pub cv_until: Option<String>,
     pub counts: JobCounts,
     pub match_pending: u32,
-    pub data_dir: PathBuf,
-    pub log_dir: PathBuf,
-    pub reset_report: Option<ResetSummary>,
 }
 
 // ---------------------------------------------------------------------- Commands
@@ -1601,7 +1546,6 @@ pub enum OpenTarget {
     Workspace,
     /// The folder of the profile file in the workspace (`profil`).
     ProfileDir,
-    LogDir,
 }
 
 /// A job an undo takes back to the place it came from (`move_back`).
@@ -2095,40 +2039,6 @@ mod tests {
 
     /// A range of remote shares is a work mode like one share (from 100 % remote, to 0 % on
     /// site, else hybrid), and the list orders by day rate: the highest first (in euros, an
-    /// "CXact sucht nach": each term of the profile with the fitting jobs it brought at the last
-    /// search, `null` before its first one.
-    #[test]
-    fn each_search_term_with_what_it_brought() {
-        let store = Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        let form = crate::profile::of_json(&serde_json::json!({"wunschrollen": ["Interim CFO"]}));
-        let terms = search_terms(&store, &form).unwrap();
-        assert!(terms.iter().all(|t| t.matched.is_none()), "{terms:?}");
-        assert_eq!(terms[0].term, "Interim CFO");
-        let mut keys = Vec::new();
-        for (id, score) in [("4000000201", 85), ("4000000202", 20)] {
-            let link = job_link(&format!("https://www.linkedin.com/jobs/view/{id}/")).unwrap();
-            let posting = Posting::new(link.key.clone(), link.url, "Interim CFO", "", "");
-            let mail = MailRef {
-                subject: "x",
-                date: None,
-                gmail_id: None,
-            };
-            store
-                .upsert_posting(run, &posting, mail, Timestamp::now())
-                .unwrap();
-            store
-                .save_matches(
-                    &[(link.key.clone(), record(MatchStatus::Scored, score))],
-                    "r",
-                    Timestamp::now(),
-                )
-                .unwrap();
-            keys.push(link.key);
-        }
-        assert_eq!(store.fitting(&keys).unwrap(), 1);
-    }
-
     /// "Nach Datum" and "Neu seit" go by the day a job came into CXact, whatever its alert
     /// mail's date; within a day the newest mail first, then by portal.
     #[test]

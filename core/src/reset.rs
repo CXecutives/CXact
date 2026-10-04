@@ -70,9 +70,8 @@ const SET_ASIDE: &str = "alt";
 /// Name start of the folders in the data folder that hold a database set aside.
 const OLD_DATA: &str = "alt-schema-";
 
-/// Result after the restart.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
+/// Result after the restart (logged; a report means the sessions' storage goes too).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ResetReport {
     /// What was deleted or set aside.
     pub removed: usize,
