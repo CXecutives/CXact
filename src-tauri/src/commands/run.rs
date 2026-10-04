@@ -199,7 +199,7 @@ fn run_context(
     let settings = state.settings()?;
     let fetch = request.kind.name().reads_mail();
     let enabled = settings.enabled_portals();
-    let workspace = settings.workspace_or(&state.default_workspace);
+    let workspace = state.workspace();
     let form = if state.dry_run {
         profile::parse(dry_run::PROFILE_JSON).ok()
     } else if fetch {

@@ -38,7 +38,6 @@ use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
 use crate::portal::{Contracts, FetchPath, JobKey, Portal};
 use crate::store::Store;
 use crate::text::truncate_chars;
-use crate::time;
 use crate::view::{Deleted, EmptyAlert, JobView, MAX_SUBJECT_CHARS};
 pub use local::LocalMatcher;
 pub use score::Matcher;
@@ -475,8 +474,6 @@ pub const MAX_EMPTY_ALERTS: usize = 10;
 /// Largest `Finished` event in bytes of JSON: Tauri channel messages above 8 KB bypass the
 /// ACL (a margin for the channel's own framing).
 pub const MAX_EVENT_BYTES: usize = 7 * 1024;
-/// Start of the last successful mailbox scan (Unix seconds).
-const LAST_FETCH_AT: &str = "last_fetch_at";
 
 /// What a run kind does.
 struct Plan<'a> {
@@ -578,7 +575,7 @@ pub async fn run<B: Backends>(
             .await;
             // A mailbox that fails skips the mail part only: the search and the ads go on.
             match result {
-                Ok(()) => remember_scan(store, started_at),
+                Ok(()) => {}
                 Err(ScanError::Mail(MailError::Cancelled)) => summary.outcome = Outcome::Cancelled,
                 Err(ScanError::Mail(e)) => summary.mail = Some(ErrorInfo::from(&e)),
                 Err(ScanError::Store(e)) => summary.outcome = failed(ErrorInfo::from(&e)),
@@ -1111,31 +1108,6 @@ pub fn delete_jobs(store: &Store, keys: &[JobKey], now: Timestamp) -> crate::Res
         count: u32::try_from(rows).unwrap_or(u32::MAX),
         keys: gone,
     })
-}
-
-/// After a successful mailbox scan: when it started (a failed scan does not overwrite it).
-fn remember_scan(store: &Store, at: Timestamp) {
-    if let Err(e) = store.kv_set(LAST_FETCH_AT, &time::to_db(at).to_string()) {
-        log::warn!("time of the mailbox scan not stored: {e}");
-    }
-}
-
-/// Has a fetch ever completed its mailbox step (a scan that read the mailbox)? Until then
-/// the app keeps its first-run page: a first fetch that failed (a wrong app password, no
-/// connection) or was cancelled before the mailbox was read leaves setup open. A database of
-/// an earlier version that fetched counts as done.
-pub fn has_completed_fetch(store: &Store) -> bool {
-    last_fetch_at(store).is_some()
-}
-
-/// Start of the last successful mailbox scan.
-pub fn last_fetch_at(store: &Store) -> Option<Timestamp> {
-    store
-        .kv_get(LAST_FETCH_AT)
-        .ok()
-        .flatten()
-        .and_then(|v| v.parse().ok())
-        .and_then(time::from_db)
 }
 
 #[cfg(test)]

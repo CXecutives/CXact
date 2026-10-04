@@ -61,22 +61,15 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         mailbox::remove_mailbox,
         portals::portal_login,
         portals::portal_logout,
-        app::pick_workspace,
         files::open_target,
         app::save_settings,
+        app::finish_onboarding,
         app::reset_all,
         app::list_backups,
         app::restore_backup,
         app::report_ui_error,
         app::clipboard_text,
     ]
-}
-
-/// Titles of the native file dialogs (the only words the backend shows itself).
-mod texts {
-    // User-facing text, German.
-    pub const PICK_WORKSPACE: &str = "Arbeitsordner wählen";
-    // end of user-facing text
 }
 
 /// State of the app, shared by all commands.
@@ -167,8 +160,7 @@ pub enum Activity {
     /// The session window is in use for signing in or out (cancellable).
     Session(CancellationToken),
     /// A file command writes or deletes the app's files (delete for good, empty the trash,
-    /// another work folder, restore a backup): nothing else writes them meanwhile - two
-    /// exports would fight over the Excel file.
+    /// restore a backup): nothing else writes them meanwhile.
     Files,
     /// The mailbox is being checked and stored, or removed (cancellable): no run reads the
     /// vault meanwhile, so none starts with the account that is just being replaced and
@@ -268,8 +260,9 @@ impl AppState {
         Ok(Settings::load(&self.store)?)
     }
 
-    fn workspace(&self) -> CmdResult<PathBuf> {
-        Ok(self.settings()?.workspace_or(&self.default_workspace))
+    /// The work folder (`settings::default_workspace`): its `profil/` holds the profile.
+    fn workspace(&self) -> PathBuf {
+        self.default_workspace.clone()
     }
 
     pub fn busy(&self) -> bool {

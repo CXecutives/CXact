@@ -1,4 +1,4 @@
-//! App state, settings, workspace, reset and UI error reports.
+//! App state, settings, the end of the setup, reset and UI error reports.
 
 // Tauri passes command arguments (`State` too) by value. Commands with file, vault or
 // database work are `async`: synchronous commands would run on the window thread and make
@@ -9,7 +9,7 @@
 )]
 
 use std::collections::VecDeque;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -18,18 +18,17 @@ use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::model::Place;
-use jobalert_core::pipeline::{self, Matcher as _, RunEvent, dry_run};
+use jobalert_core::pipeline::{self, RunEvent, dry_run};
 use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
 use jobalert_core::store::Backup;
 use jobalert_core::view::{
-    self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
-    WorkspacePick, WorkspaceProfile,
+    self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch,
 };
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, State, WebviewWindow};
+use tauri::{AppHandle, Manager, State};
 
-use super::{Activity, AppState, CmdResult, lock, scoring, texts};
+use super::{Activity, AppState, CmdResult, lock, scoring};
 
 /// UI error reports per minute that reach the log.
 const UI_ERRORS_PER_MINUTE: usize = 10;
@@ -105,7 +104,7 @@ pub(super) fn profile_info(state: &AppState, workspace: &std::path::Path) -> Opt
 /// Everything the page needs - without attaching to a run.
 fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     let settings = state.settings()?;
-    let workspace = settings.workspace_or(&state.default_workspace);
+    let workspace = state.workspace();
     let now = Timestamp::now();
     let policy = if state.dry_run {
         Policy::in_memory()
@@ -143,16 +142,10 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         version: env!("CARGO_PKG_VERSION").to_owned(),
         dry_run: state.dry_run,
         // The dry run comes with a mailbox and a sample profile: it starts in the app itself,
-        // never on the first-run page (the smoke probe on a fresh CI machine relies on it). The
-        // first-run page stays until a fetch has read the mailbox, also after a failed one.
-        first_run: !state.dry_run
-            && !pipeline::has_completed_fetch(&state.store)
-            && counts.inbox + counts.archive + counts.trash == 0,
+        // never in the setup (the smoke probe on a fresh CI machine relies on it). The setup
+        // stays until it reached "Alles eingerichtet" (`finish_onboarding`).
+        first_run: !state.dry_run && !settings.onboarded,
         running,
-        settings: SettingsView {
-            workspace_is_default: settings.workspace.is_none(),
-            workspace: workspace.clone(),
-        },
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
@@ -236,79 +229,14 @@ pub async fn save_settings(
     build_state(&state)
 }
 
-/// Folder dialog for the workspace; `None` if cancelled. The work moves along (user decision
-/// 2026-09-26): a folder without a profile gets a copy of the old folder's `profil/`, one
-/// with a profile of its own keeps it and the app uses it from now on. The app is held
-/// meanwhile, like a file command.
+/// The setup reached "Alles eingerichtet": the next start opens the Jobs view
+/// (`Settings::onboarded`; a reset deletes it with the database).
 #[tauri::command]
-pub async fn pick_workspace(
-    app: AppHandle,
-    window: WebviewWindow,
-    state: State<'_, AppState>,
-) -> CmdResult<Option<WorkspacePick>> {
-    state.ensure_idle()?;
-    let current = state.workspace()?;
-    let Some(folder) = rfd::AsyncFileDialog::new()
-        .set_title(texts::PICK_WORKSPACE)
-        .set_directory(current.parent().unwrap_or(&current))
-        .set_parent(&window)
-        .pick_folder()
-        .await
-    else {
-        return Ok(None);
-    };
-    let folder = folder.path().to_path_buf();
-    // Writable? Better a clear error now than later at a save of the profile. The dry run
-    // never writes anything outside its in-memory database.
-    if !state.dry_run {
-        let probe = folder.join(".job-alert-monitor-write-test");
-        std::fs::write(&probe, b"")
-            .map_err(|e| ErrorInfo::from(jobalert_core::Error::io(&folder, e)))?;
-        let _ = std::fs::remove_file(probe);
-    }
-    let files = state.claim_files(&app)?;
-    let profile = if state.dry_run {
-        WorkspaceProfile::None
-    } else {
-        take_profile(&current, &folder)?
-    };
-    let before = state.matcher().map(|m| m.rev().to_owned());
+pub async fn finish_onboarding(state: State<'_, AppState>) -> CmdResult<()> {
     let mut settings = state.settings()?;
-    settings.workspace = Some(folder.clone());
+    settings.onboarded = true;
     settings.save(&state.store)?;
-    // The profile lives in the workspace: another folder can mean another profile (its
-    // rescore starts once the app is free).
-    if state.matcher().map(|m| m.rev().to_owned()) != before {
-        scoring::profile_changed(&app, &state);
-    }
-    drop(files);
-    Ok(Some(WorkspacePick { folder, profile }))
-}
-
-/// The profile of a new work folder: its own, else a copy of the old folder's `profil/` (its
-/// files; nothing in the new folder is overwritten).
-fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
-    if profile::profile_path(new).is_file() {
-        return Ok(WorkspaceProfile::Own);
-    }
-    if old == new || !profile::profile_path(old).is_file() {
-        return Ok(WorkspaceProfile::None);
-    }
-    let io = |path: &Path, e| ErrorInfo::from(jobalert_core::Error::io(path, e));
-    let (from, to) = (
-        old.join(profile::PROFILE_DIR),
-        new.join(profile::PROFILE_DIR),
-    );
-    std::fs::create_dir_all(&to).map_err(|e| io(&to, e))?;
-    for entry in std::fs::read_dir(&from).map_err(|e| io(&from, e))? {
-        let entry = entry.map_err(|e| io(&from, e))?;
-        let target = to.join(entry.file_name());
-        if entry.path().is_file() && !target.exists() {
-            std::fs::copy(entry.path(), &target).map_err(|e| io(&target, e))?;
-        }
-    }
-    log::info!("profile copied into the new work folder");
-    Ok(WorkspaceProfile::Copied)
+    Ok(())
 }
 
 /// "Reset everything": leave the order, then restart - deleting happens at the start.
@@ -317,7 +245,7 @@ pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<
     state.ensure_idle()?;
     state.ensure_real()?;
     let plan = ResetPlan {
-        workspace: state.workspace()?,
+        workspace: state.workspace(),
     };
     reset::request(&state.data_dir, &plan)?;
     log::info!("reset requested, restarting");

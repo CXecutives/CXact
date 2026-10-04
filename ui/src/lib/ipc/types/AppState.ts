@@ -7,7 +7,6 @@ import type { ProfileInfo } from "./ProfileInfo";
 import type { ResetSummary } from "./ResetSummary";
 import type { RunSnapshot } from "./RunSnapshot";
 import type { RunSummary } from "./RunSummary";
-import type { SettingsView } from "./SettingsView";
 
 /**
  * Everything the interface needs at the start (and after a reload).
@@ -18,13 +17,14 @@ export type AppState = { platform: Platform,
  */
 version: string, dryRun: boolean, 
 /**
- * No run has finished yet and no job is known.
+ * The setup is not finished yet (`Settings::onboarded`; never in the dry run): the app
+ * shows the setup alone.
  */
 firstRun: boolean, 
 /**
  * The run in progress (after a reload the interface picks up from here).
  */
-running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, 
+running: RunSnapshot | null, mailbox: Mailbox, 
 /**
  * The profile.
  */

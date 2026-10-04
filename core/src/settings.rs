@@ -17,12 +17,11 @@ pub(crate) const KEY: &str = "settings";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    /// Workspace (the Arbeitsordner, the profiles'); `None` = default ([`default_workspace`]:
-    /// `Documents\CXact`). Only changeable through the folder dialog - never a path sent by
-    /// the frontend.
-    pub workspace: Option<PathBuf>,
     /// Switches per portal.
     pub portals: BTreeMap<Portal, PortalSwitches>,
+    /// The setup reached "Alles eingerichtet" (`finish_onboarding`): the app starts in the
+    /// Jobs view from then on. A reset deletes it with the database.
+    pub onboarded: bool,
 }
 
 /// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
@@ -48,11 +47,11 @@ impl Default for PortalSwitches {
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
-            workspace: None,
             portals: Portal::ALL
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
+            onboarded: false,
         }
     }
 }
@@ -139,17 +138,10 @@ impl Settings {
         }
         portal.access().path(switches.login_enabled)
     }
-
-    /// Workspace (chosen or default).
-    pub fn workspace_or(&self, default: &std::path::Path) -> PathBuf {
-        self.workspace
-            .clone()
-            .unwrap_or_else(|| default.to_path_buf())
-    }
 }
 
-/// The default workspace in `documents`: `CXact`. A workspace chosen in the settings wins
-/// ([`Settings::workspace_or`]).
+/// The work folder in `documents`: `CXact` (its `profil/` holds the profile). It cannot be
+/// changed (user decision 2026-10-03).
 pub fn default_workspace(documents: &Path) -> PathBuf {
     documents.join("CXact")
 }
@@ -202,6 +194,23 @@ mod tests {
         assert!(partial.portal(Portal::FreelanceDe).login_enabled);
         assert!(partial.portal(Portal::FreelanceDe).enabled);
         assert!(partial.portal(Portal::LinkedIn).enabled);
+    }
+
+    /// The setup is open until it is finished; a stored file of an earlier version (with its
+    /// own work folder) reads without it.
+    #[test]
+    fn the_setup_is_open_until_finished() {
+        let store = Store::in_memory().unwrap();
+        assert!(!Settings::load(&store).unwrap().onboarded);
+        store
+            .kv_set(KEY, r#"{"workspace":"D:\Daten","fetchMail":true}"#)
+            .unwrap();
+        let mut old = Settings::load(&store).unwrap();
+        assert!(!old.onboarded);
+        old.onboarded = true;
+        old.save(&store).unwrap();
+        assert!(Settings::load(&store).unwrap().onboarded);
+        assert!(!store.kv_get(KEY).unwrap().unwrap().contains("workspace"));
     }
 
     /// Broken JSON gives the defaults for convenience, but never switches a portal on:

@@ -60,7 +60,7 @@ impl AppState {
         if self.dry_run {
             return Some(dry_run::matcher());
         }
-        let workspace = self.workspace().ok()?;
+        let workspace = self.workspace();
         let path = profile::profile_path(&workspace);
         let stamp = std::fs::metadata(&path)
             .ok()
@@ -99,9 +99,7 @@ impl AppState {
         if self.dry_run {
             return true;
         }
-        let Ok(workspace) = self.workspace() else {
-            return false;
-        };
+        let workspace = self.workspace();
         if !workspace.is_dir() {
             return false;
         }

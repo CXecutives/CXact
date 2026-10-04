@@ -40,8 +40,8 @@ and current: replace what changes, drop what no longer holds.
 - Windows dev PC: Git Bash, PowerShell 5.1, Python as `py -3.14`. macOS is checked only through the
   `macos-latest` CI runner.
 - The clone lives in `Documents\CXact`, the app's default work folder (`settings::default_workspace`).
-  The real app's Arbeitsordner is set elsewhere in Einstellungen > Daten; `profil/` and `auswertung/` are
-  ignored by git either way.
+  The user's installed 3.x app has its Arbeitsordner set elsewhere; from 4.0 the work folder cannot be
+  changed. `profil/` and `auswertung/` are ignored by git either way.
 - After a fresh clone (`CLAUDE.md` "Commands"), `core/tests/fixtures/private/` comes from the old folder if
   needed. The tests that need it skip without it.
 - `.claude/launch.json` holds the two preview servers:

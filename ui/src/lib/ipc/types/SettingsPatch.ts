@@ -2,7 +2,6 @@
 import type { PortalPatch } from "./PortalPatch";
 
 /**
- * Changes of the settings. `null` = unchanged; the workspace only changes through the
- * folder dialog (`pick_workspace`).
+ * Changes of the settings: the portal switches (`null` = unchanged).
  */
 export type SettingsPatch = { portals: Array<PortalPatch>, };

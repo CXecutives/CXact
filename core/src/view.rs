@@ -1019,39 +1019,7 @@ pub struct PortalCount {
     pub count: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct SettingsView {
-    /// Effective workspace (chosen or default).
-    pub workspace: PathBuf,
-    pub workspace_is_default: bool,
-}
-
-/// Another work folder (`pick_workspace`): the folder, and what became of the profile there.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct WorkspacePick {
-    pub folder: PathBuf,
-    pub profile: WorkspaceProfile,
-}
-
-/// The profile after a change of the work folder.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub enum WorkspaceProfile {
-    /// The new folder had none: the old folder's `profil/` came along.
-    Copied,
-    /// The new folder brings its own profile, which the app uses from now on.
-    Own,
-    /// Neither folder has a profile.
-    None,
-}
-
-/// Changes of the settings. `null` = unchanged; the workspace only changes through the
-/// folder dialog (`pick_workspace`).
+/// Changes of the settings: the portal switches (`null` = unchanged).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -1499,11 +1467,11 @@ pub struct AppState {
     /// The app's version (`3.0.0`).
     pub version: String,
     pub dry_run: bool,
-    /// No run has finished yet and no job is known.
+    /// The setup is not finished yet (`Settings::onboarded`; never in the dry run): the app
+    /// shows the setup alone.
     pub first_run: bool,
     /// The run in progress (after a reload the interface picks up from here).
     pub running: Option<RunSnapshot>,
-    pub settings: SettingsView,
     pub mailbox: Mailbox,
     /// The profile.
     pub profile: Option<ProfileInfo>,

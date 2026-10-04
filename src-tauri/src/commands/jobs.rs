@@ -134,7 +134,7 @@ fn prompt_profile(state: &AppState) -> CmdResult<profile::ProfileForm> {
     let profile = if state.dry_run {
         profile::parse(dry_run::PROFILE_JSON).ok()
     } else {
-        profile::load(&state.workspace()?)?
+        profile::load(&state.workspace())?
     };
     profile.ok_or_else(|| not_found("profile"))
 }

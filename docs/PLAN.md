@@ -107,9 +107,10 @@ pre-assessment to any AI chat for a deeper check.
     browser and a switch.
   - Postfach: the account card (mail tile, the address, "Verbunden" after a green dot, Ändern, Entfernen),
     under it the card of the alert sources (sign-in where offered, then "Alert anlegen").
-  - Daten: the work folder (Ändern, Öffnen) and "Alle Daten zurücksetzen".
-- **Erste Schritte** (until the first completed fetch): 1 Profil, 2 Postfach (optional, only the alert
-  mails need it), 3 the first fetch in the words of its way.
+  - Daten: the work folder (Öffnen; it is always `Documents\CXact`, `settings::default_workspace`) and
+    "Alle Daten zurücksetzen".
+- **Erste Schritte** (until the setup is finished, `Settings::onboarded`, saved by `finish_onboarding`; a
+  reset brings it back): 1 Profil, 2 Postfach (optional, only the alert mails need it), 3 Fertig.
 - **Shell:**
   - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
     Einstellungen. Zurück and Vor also walk the tabs of Profil and Einstellungen.
