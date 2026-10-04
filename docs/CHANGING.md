@@ -332,7 +332,7 @@ and profiles: an external contract, never translated):
   with the engine's stopwords, fillers and synonyms: after a change there, run
   `py -3.14 tools/esco/build.py` (the key test of `esco.rs` fails until then).
 
-Where words are missing: `cargo run -p jobalert-core --release --example vocab_gaps` lists
+Where words are missing: `cargo run -p jobalert-core --example vocab_gaps` lists
 the words of every ad's requirements and titles (the corpus, the held-out sets and the private
 real pages and mails) that neither the engine nor ESCO knows, by frequency. Fill from the top;
 a word that occurs nowhere stays out.

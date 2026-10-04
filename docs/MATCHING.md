@@ -407,7 +407,8 @@ shared concept (`Power BI` for `Tableau`, `Kommunikation` for a line about an in
 heldout7 and the corpus worse), a profile's other name of a concept (heldout5 P7 A08, `Internal
 Investigations` for an internal audit role).
 
-The gap finder (`core/examples/vocab_gaps.rs`, `matching::vocabulary_gaps`) runs over every ad
+The gap finder (`core/examples/vocab_gaps.rs`, `matching::vocabulary_gaps`, in debug builds only:
+the shipped app carries the fixed vocabulary alone) runs over every ad
 there is (the corpus, the held-out sets, the private real pages and mails) and lists the words
 of the skill requirements and titles that neither the engine's words (every pack, the word lists)
 nor ESCO know, by frequency: the vocabulary is filled from the top, a word that occurs nowhere

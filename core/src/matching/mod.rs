@@ -14,6 +14,9 @@ mod factors;
 pub(crate) mod facts;
 mod fit;
 mod focus;
+/// The gap finder (`core/examples/vocab_gaps.rs`), a developer's tool: in debug builds only, so
+/// the shipped app carries the fixed vocabulary alone.
+#[cfg(debug_assertions)]
 mod gaps;
 mod job;
 mod layout;
@@ -43,6 +46,7 @@ use sha2::{Digest, Sha256};
 
 use crate::profile::ProfileForm;
 
+#[cfg(debug_assertions)]
 pub use gaps::{Gap, JobGaps, vocabulary_gaps};
 pub use layout::{TextLayout, text_layout};
 pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
