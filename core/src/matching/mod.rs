@@ -403,6 +403,17 @@ pub fn assess(
     Some(explain::assessment(&profile.engine, job.text, &evaluation))
 }
 
+/// Is a term too broad to be searched for on its own (the deep search leaves it out)?
+pub(crate) fn broad_search_term(term: &str) -> bool {
+    atoms::broad_search_term(term)
+}
+
+/// The names of the ESCO occupation a role names as a whole, German then English (the deep
+/// search asks for them).
+pub(crate) fn occupation_names(role: &str) -> Vec<String> {
+    lexicon::esco::occupation_names(role)
+}
+
 /// Cheap relevance of a job from its title (per-mille), to order fetches before any text
 /// is known: the title against the profile's field and its target roles (`Interim CFO`,
 /// `Head of Finance`), as the engine reads a title. The location is not used yet.

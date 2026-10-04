@@ -67,8 +67,8 @@ mail, store, engine, view, UI:
 1. `mail/` reads the alert mails of the portals that are on (IMAP); `portal/` turns them
    into job links. Then `fetch/search.rs` searches the sources that have a search
    (`PortalAdapter::search_urls`, `Way::Search`) side by side with the deep search's terms
-   (`profile::deep_search_terms`: the roles and their other names, the Schwerpunkte,
-   competences and tools, at most 24), each term deeper
+   (`profile::deep_search_terms`: the roles with their other names and ESCO occupation names,
+   the Schwerpunkte, competences and tools that are not too broad alone, at most 24), each term deeper
    (`search_page_url`) while its pages bring new jobs, a cut-short paging going on at the
    next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
    Crawl-delay the least gap); the hits are jobs without a mail (`Store::record_found`). A

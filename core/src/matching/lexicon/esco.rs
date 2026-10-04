@@ -515,6 +515,61 @@ fn preferred_key(id: u16, key: &str) -> bool {
     folded(id).preferred.iter().flatten().any(|k| k == key)
 }
 
+/// The names of the occupation a text names as a whole (`Contact Center Manager`): its
+/// preferred label in German and in English, each in one form ([`one_form`]). Empty when the
+/// text is no occupation's label, or a label of several occupations none of which prefers it.
+pub(crate) fn occupation_names(text: &str) -> Vec<String> {
+    let index = &*INDEX;
+    let wanted = key(text);
+    let Ok(at) = index.keys.binary_search(&wanted.as_str()) else {
+        return Vec::new();
+    };
+    let candidates: Vec<u16> = index
+        .ids(at)
+        .iter()
+        .copied()
+        .filter(|&id| concept(id).kind == Kind::Occupation)
+        .collect();
+    let preferred: Vec<u16> = candidates
+        .iter()
+        .copied()
+        .filter(|&id| preferred_key(id, &wanted))
+        .collect();
+    let id = match (candidates.as_slice(), preferred.as_slice()) {
+        ([only], _) | (_, [only]) => *only,
+        _ => return Vec::new(),
+    };
+    let mut names: Vec<String> = Vec::new();
+    for lang in [Lang::De, Lang::En] {
+        let preferred = all_labels(id, lang)
+            .next()
+            .filter(|(_, hidden)| !hidden)
+            .map(|(label, _)| one_form(label));
+        if let Some(name) = preferred
+            && !names.iter().any(|n| key(n) == key(&name))
+        {
+            names.push(name);
+        }
+    }
+    names
+}
+
+/// One form of a label that names two around a slash: `Finanzdirektor/Finanzdirektorin` ->
+/// `Finanzdirektor`, `Leiter/Leiterin Finanzen` -> `Leiter Finanzen`.
+fn one_form(label: &str) -> String {
+    let Some((before, after)) = label.split_once('/') else {
+        return label.trim().to_owned();
+    };
+    let (before, after) = (before.trim(), after.trim());
+    let words = |text: &str| text.split_whitespace().count();
+    if words(before) < words(after) {
+        let rest = after.split_once(' ').map_or("", |(_, rest)| rest);
+        format!("{before} {rest}")
+    } else {
+        before.to_owned()
+    }
+}
+
 /// Every label of a concept in one language with whether it is hidden (a misspelling or
 /// an old term, never shown): the preferred one first, then the alternative ones, then
 /// the hidden ones.
@@ -585,6 +640,21 @@ mod tests {
         );
         assert!(index.keys.windows(2).all(|w| w[0] < w[1]), "keys sorted");
         assert!(index.keys.len() > 100_000, "{}", index.keys.len());
+    }
+
+    /// An occupation's names for the search: one form each, nothing for a text that is no
+    /// occupation's label.
+    #[test]
+    fn occupation_names_in_one_form() {
+        assert_eq!(
+            one_form("Finanzdirektor/Finanzdirektorin"),
+            "Finanzdirektor"
+        );
+        assert_eq!(one_form("Leiter/Leiterin Finanzen"), "Leiter Finanzen");
+        assert_eq!(one_form("project manager"), "project manager");
+        let names = occupation_names("Projektmanager");
+        assert_eq!(names, ["Projektmanager", "project manager"]);
+        assert!(occupation_names("Rund elf Jahre Treasury").is_empty());
     }
 
     #[test]

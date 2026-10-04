@@ -27,8 +27,10 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   LinkedIn is never searched or scraped beyond the links in the user's own alert mails.
 - Every source can be switched off (Einstellungen > Suche, Postfach). freelance.de can sign in through its
   own window (`session.rs`), so the fetch reads ads that need a sign-in.
-- Deep search: up to 24 terms from the profile (`profile::deep_search_terms`: Wunschrollen with the other
-  names of the engine's role table, Schwerpunkte, Kompetenzen, Tools). Each term is paged while new jobs come, up to 10 pages on Hays,
+- Deep search: up to 24 terms from the profile alone (`profile::deep_search_terms`: Wunschrollen with the
+  other names of the engine's role table and their ESCO occupation's German and English name, Schwerpunkte,
+  Kompetenzen, Tools; a competence or tool the engine finds too broad to search alone, such as
+  Projektmanagement or SAP, stays out). Each term is paged while new jobs come, up to 10 pages on Hays,
   freelancermap, Michael Page and GULP. A cut-short paging resumes at the next fetch within 7 days.
   SOLCOM, interim-x and FRATCH list all their projects; the app filters them. A title pre-score that knows
   the target roles orders what is fetched first.

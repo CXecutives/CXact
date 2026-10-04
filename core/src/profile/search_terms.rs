@@ -1,12 +1,13 @@
-//! The terms of the deep search (user decision 2026-10-01: "tief und viel"): what the
-//! sources are searched for, built from the profile when a fetch starts: each target role,
-//! the role without its contract words (`Interim CFO` -> `CFO`) and the other names job boards
-//! give it (`CFO` -> `Finanzvorstand`, `Head of Finance`); then the Schwerpunkte, the
-//! competences (the longest experience first) and the tools - each once, at most
-//! [`MAX_DEEP_TERMS`]. A phrase of more than [`MAX_TERM_WORDS`] words finds little on a job
-//! board and is left out.
-//! The role names are the engine's (`matching::lexicon::wishes::ROLE_GROUPS`, the one table
-//! of them).
+//! The terms of the deep search (user decision 2026-10-01: "tief und viel"), derived from the
+//! profile alone when a fetch starts (2026-10-03: no search terms of their own): each target
+//! role, the role without its contract words (`Interim CFO` -> `CFO`), the other names job
+//! boards give it (the engine's role table, `matching::lexicon::wishes::ROLE_GROUPS`) and its
+//! ESCO occupation's German and English name (`Contact Center Manager` -> `Leiter des
+//! Kundendienstes`); then the Schwerpunkte, the competences (the longest experience first) and
+//! the tools - each once, at most [`MAX_DEEP_TERMS`]. A competence or a tool the engine finds
+//! too broad to search alone (`Projektmanagement`, `Personalführung`, `SAP`,
+//! `matching::broad_search_term`) is left out: roles and specialities go first. A phrase of more
+//! than [`MAX_TERM_WORDS`] words finds little on a job board and is left out too.
 
 use super::form::ProfileForm;
 
@@ -75,15 +76,20 @@ pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
     let mut terms = Terms::default();
     for role in &form.roles {
         terms.add(role);
-        if let Some(core) = core(role) {
-            terms.add(&core);
+        let core = core(role);
+        if let Some(core) = &core {
+            terms.add(core);
         }
         for name in other_names(role) {
             terms.add(name);
         }
+        let occupation = crate::matching::occupation_names(core.as_deref().unwrap_or(role));
+        for name in &occupation {
+            terms.add(name);
+        }
     }
     for focus in form.focus() {
-        terms.add(&focus.name);
+        terms.add_specific(&focus.name);
         for name in other_names(&focus.name) {
             terms.add(name);
         }
@@ -91,10 +97,10 @@ pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
     let mut competences: Vec<_> = form.competences.iter().collect();
     competences.sort_by_key(|competence| std::cmp::Reverse(competence.years.unwrap_or(0)));
     for competence in &competences {
-        terms.add(&competence.name);
+        terms.add_specific(&competence.name);
     }
     for tool in &form.tools {
-        terms.add(tool);
+        terms.add_specific(tool);
     }
     terms.list
 }
@@ -107,6 +113,13 @@ struct Terms {
 }
 
 impl Terms {
+    /// Adds a term unless the engine finds it too broad to search alone ([`Terms::add`]).
+    fn add_specific(&mut self, term: &str) {
+        if !crate::matching::broad_search_term(term) {
+            self.add(term);
+        }
+    }
+
     /// Adds a term unless it is known, too long, empty, or the list is full.
     fn add(&mut self, term: &str) {
         let term = term.trim();
@@ -191,6 +204,42 @@ mod tests {
             ..ProfileForm::default()
         };
         assert_eq!(deep_search_terms(&form).len(), MAX_DEEP_TERMS);
+    }
+
+    /// A role ESCO knows brings its occupation's German and English name; a competence or a
+    /// tool too broad to search alone stays out, a role never does.
+    #[test]
+    fn esco_names_and_no_broad_terms() {
+        let form = ProfileForm {
+            roles: vec!["Contact Center Manager".into(), "Interim Manager".into()],
+            competences: vec![
+                competence("Projektmanagement", 20, true),
+                competence("Personalführung", 15, false),
+                competence("Generative KI", 2, false),
+                competence("Workforce Management", 8, false),
+            ],
+            tools: vec!["SAP".into(), "Genesys".into()],
+            ..ProfileForm::default()
+        };
+        let terms = deep_search_terms(&form);
+        for wanted in [
+            "Contact Center Manager",
+            "Leiter des Kundendienstes",
+            "contact centre manager",
+            "Interim Manager",
+            "Workforce Management",
+            "Genesys",
+        ] {
+            assert!(terms.iter().any(|t| t == wanted), "{wanted} in {terms:?}");
+        }
+        for broad in [
+            "Projektmanagement",
+            "Personalführung",
+            "Generative KI",
+            "SAP",
+        ] {
+            assert!(!terms.iter().any(|t| t == broad), "{broad} in {terms:?}");
+        }
     }
 
     #[test]

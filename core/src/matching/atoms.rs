@@ -427,6 +427,27 @@ pub(crate) fn is_generic(atom: &str) -> bool {
             .is_ok()
 }
 
+/// Every pack's concepts, for reading a search term whatever profile asks for it.
+static ALL_PACKS: LazyLock<Vocab> = LazyLock::new(Vocab::all);
+
+/// Is a term too broad to be searched for on its own (`Projektmanagement`,
+/// `Personalführung`, `Generative KI`, `SAP`)? It is when every atom of it is a word the
+/// engine finds generic, a concept of general business work (`lex::CORE_CONCEPTS`),
+/// leadership, a soft skill or a word too broad for a search (`lex::SEARCH_BROAD_ATOMS`); a
+/// term without an atom is too.
+pub(crate) fn broad_search_term(term: &str) -> bool {
+    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
+    atoms(term, &ALL_PACKS).iter().all(|atom| {
+        is_generic(atom)
+            || general.contains(&atom.as_str())
+            || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
+            || lex::SOFT_SKILLS.iter().any(|soft| atom.starts_with(soft))
+            || lex::SEARCH_BROAD_ATOMS
+                .iter()
+                .any(|word| *word == atom || stem(word) == *atom)
+    })
+}
+
 /// Relation of a job atom to a profile atom.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum Fit {
