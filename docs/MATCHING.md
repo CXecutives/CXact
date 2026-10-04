@@ -203,6 +203,14 @@ half weight (a buried grade 3 in heldout4, heldout5 below its floor), general bu
 full by a competence of leadership (grade-0 heads of sales rose on heldout5), a tool name as no
 compound (heldout2 lost a must its profile met through a tool).
 
+Projects as a contract type to choose (2026-10-04, still engine 19): `vertragsarten` may leave out
+`projekt` (at least one type; a missing key allows all). Without it an interim or project role is
+excluded (`project {excluded, stated, type}` as a violation, criterion `noProject`): stated by the
+ad or from a source that lists projects only; an ad that offers a permanent role and freelance
+work both is a check; a stated permanent role or temporary agency work meets the criterion. Every
+fixture profile allows projects: corpus and held-out reports are unchanged, and so is the
+fingerprint of a profile that allows them (only `projects excluded` joins it).
+
 ## The engine
 
 Integer-only, per-mille throughout; `core/src/matching/{job,atoms,fit,facts,contract,permanent,
@@ -223,7 +231,7 @@ comes from the profile.
 | Languages, years | a language one level below the required one is half, further below open; English language names in profiles and ads. Years against the profile's own years (`berufserfahrung_jahre`, else the most years of a competence): general experience (`10 Jahre Berufserfahrung`, plain `Erfahrung`) met at or below them, from four fifths on in part, below open, not weighed without the profile's years; years in a topic (`3 Jahre S/4HANA`) use the competence's own years where the profile names it, else the profile's; a range counts from its lower end and keeps its upper end (`max`); a part of a total (`davon mindestens drei Jahre`) is no minimum |
 | Contract type | stated (`Festanstellung`, `Jahresgehalt`, `Werkvertrag`, `Tagessatz`, `Interim`, `permanent, full-time`, a page's limited employment type `Befristet`, `Contract`, `Freiberuflich`) > hints (benefits, `Why join us`, work permit: permanent, inferred) > portal (freelance portals: interim); both stated = unclear; an agency without details = unclear with `anueRisk`; denied interim wording is no interim signal; `Vakanzüberbrückung`, `übergangsweise` and `fractional` are interim; employment pay (an hourly wage, `Stundenlohn`, `iGZ`, `equal pay`, a pay scale; never a part of another word such as `Lohnbuchhaltung`) states an employment; reason `contractType {type, inferred}` |
 | Hard criteria | read in the ad's own text only. ANÜ: decided when the contract is offered through it, not as an option (`freiberuflich oder ANÜ`), denied (also in English), a topic of the requirements (`Erfahrung mit Arbeitnehmerüberlassung`, `ANÜ-Erfahrung`), the business of the company or the field of a staffing role; the title counts like a contract sentence. Country: the country of the on-site clause decides, second sites and travel are a check, remote work for a place abroad is never decided (full remote work denied in its clause, `unable to consider fully remote`, is none). Day rate: an amount next to a currency or rate unit or after a rate word, in every spelling (`110 EUR/h`, `€420/day - €520/day`, `EUR 1,050 to 1,180`), the upper end of a range compared, an hourly rate x 8 (`HOURS_PER_DAY`); employment pay and the pay of temporary agency work are never a day rate; not for permanent roles. Availability against the stated start |
-| Permanent roles | minimum salary: upper bound with the bonus share its sentence names, EUR per year (LinkedIn's salary chip states a permanent role and its salary; employment pay per hour x 2,080); decided only for a stated permanent role (`salary`), else a check; no salary = `salaryUnknown`; a salary in another currency is never compared (a `salary` check). Without `festanstellung` among the contract types the engine excludes a stated permanent role (`permanent` as a violation, criterion `noPermanent`), an inferred one is a check |
+| Permanent roles | minimum salary: upper bound with the bonus share its sentence names, EUR per year (LinkedIn's salary chip states a permanent role and its salary; employment pay per hour x 2,080); decided only for a stated permanent role (`salary`), else a check; no salary = `salaryUnknown`; a salary in another currency is never compared (a `salary` check). Without `festanstellung` among the contract types the engine excludes a stated permanent role (`permanent` as a violation, criterion `noPermanent`), an inferred one is a check. Without `projekt` it excludes an interim or project role (`project`, criterion `noProject`), one offered next to a permanent role is a check |
 | Seniority | `seniority.rs`, whatever topic the highest years name: a closed range whose upper end is at most half the profile's years, and from `JUNIOR_ROLE_YEARS` 5 on a junior title, a junior or entry level of the page (an internship, a working student) or a must that asks for first experience, is `overqualified` (met in part, never an exclusion); an assistant or associate level without years is `seniorityUnclear`; a junior role caps a profile of `SENIOR_YEARS` 10 or more at `JUNIOR_CAP` 40 |
 | Formal duties | a must degree of another field or a missing licence = `formalOpen` check with a cap of 40; decided only when worded as mandatory (`zwingend`, `unabdingbar`, `mandatory`); no degree in the profile = a check |
 | Relevance | title fit and a BM25F-like lexical score (title 3, requirement lines 2, rest 1) of the ad against the profile's query; an atom only named in an entry long enough to be a sentence weighs half; languages, contract words and quantities are no part of the query |
@@ -243,7 +251,7 @@ not read at all. An empty value turns its rule off.
 | Key | Meaning |
 |---|---|
 | `wunschrollen` | target roles, matched against the title |
-| `vertragsarten` | `projekt` always; without `festanstellung` a stated permanent role is excluded, without `zeitarbeit` temporary agency work |
+| `vertragsarten` | at least one of `projekt`, `festanstellung`, `zeitarbeit` (missing: all); without `projekt` an interim or project role is excluded, without `festanstellung` a stated permanent role, without `zeitarbeit` temporary agency work |
 | `tagessatz_wunsch` | wished day rate (EUR); never a minimum |
 | `tagessatz_min` | minimum day rate (EUR) |
 | `mindestgehalt` | minimum annual salary (EUR) of permanent roles and temporary agency work; none without both |

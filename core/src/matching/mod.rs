@@ -196,6 +196,7 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
         ),
         info(CriterionKey::NoAnue, c.anue_excluded, json!({})),
         info(CriterionKey::NoPermanent, c.permanent_excluded, json!({})),
+        info(CriterionKey::NoProject, c.project_excluded, json!({})),
         info(
             CriterionKey::Availability,
             true,
@@ -354,7 +355,7 @@ fn fingerprint(engine: &EngineProfile) -> String {
     roles.sort();
     let mut exclusions: Vec<String> = c.exclusion_words.iter().map(|w| atoms::fold(w)).collect();
     exclusions.sort();
-    let canonical = format!(
+    let mut canonical = format!(
         "engine {ENGINE_VERSION}\nentries {}\nlanguages {languages:?}\ndegree {:?} {}\nyears {:?}\n\
          min {:?}\ncountries {countries:?}\nanue {}\npermanent {}\navailable {:?}\n\
          salary {:?}\npacks {:?}\n\
@@ -375,6 +376,14 @@ fn fingerprint(engine: &EngineProfile) -> String {
         c.workload_max,
         c.min_months,
     );
+    // Only when set: the profiles of every earlier version allowed projects and keep their
+    // fingerprint (no rescore of the same scores).
+    if c.project_excluded {
+        canonical.push_str(
+            "projects excluded
+",
+        );
+    }
     let digest = Sha256::digest(canonical.as_bytes());
     digest.iter().take(8).fold(String::new(), |mut hex, b| {
         let _ = write!(hex, "{b:02x}");

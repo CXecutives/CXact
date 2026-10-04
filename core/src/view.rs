@@ -2686,6 +2686,7 @@ Rahmenbedingungen:
                 ("countries", true),
                 ("noAnue", true),
                 ("noPermanent", false),
+                ("noProject", false),
                 ("availability", true),
                 ("minSalary", false),
                 ("workload", false),

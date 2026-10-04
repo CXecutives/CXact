@@ -1,7 +1,9 @@
 //! Hard criteria of the engine (V10-V13), structured facts first. A violation is
 //! decided only on clear wording; everything unclear becomes a check:
 //! ANÜ (named, not negated, not optional) · permanent employment (excluded by the profile:
-//! a stated permanent role, not an inferred one or one that offers interim too) · work
+//! a stated permanent role, not an inferred one or one that offers interim too) · projects
+//! and interim work (excluded by the profile: an interim role, not one that offers a
+//! permanent role too) · work
 //! country (location, on-site sentence, not fully remote) · day rate (EUR, upper bound,
 //! hourly x 8; not for employment pay: a permanent role, temporary agency work or a wage) ·
 //! availability (never decided: a gap or a vague start is a check).
@@ -41,6 +43,8 @@ pub(crate) struct HardCriteria {
     pub anue_excluded: bool,
     /// Festanstellung is not among the contract types.
     pub permanent_excluded: bool,
+    /// Projekt (projects and interim work) is not among the contract types.
+    pub project_excluded: bool,
     pub available: Availability,
     /// Minimum annual salary (EUR) for permanent roles and temporary agency work.
     pub min_salary: Option<u64>,
@@ -92,6 +96,7 @@ impl HardCriteria {
             countries: (!countries.is_empty()).then_some(countries),
             anue_excluded: !form.temporary,
             permanent_excluded: !form.permanent,
+            project_excluded: !form.project,
             available: match form.available.day() {
                 Some(day) => Availability::From(day),
                 None => Availability::Now,
@@ -278,6 +283,9 @@ pub(crate) fn check(
             Finding::new(ReasonCode::Permanent, false, None, json!({}), Vec::new())
         });
     }
+    if criteria.project_excluded {
+        findings.extend(project(contract));
+    }
     if criteria.anue_excluded {
         if anue_findings.is_empty() && contract.kind == ContractKind::Unclear && contract.agency {
             findings.push(Finding::new(
@@ -301,6 +309,24 @@ pub(crate) fn check(
         findings.extend(availability(date, job, segments));
     }
     findings
+}
+
+/// A project or interim role while the profile excludes them: decided for an interim role
+/// (stated by the ad, or a source that lists projects only), a check for an ad that states a
+/// permanent role and interim work both; nothing for any other role.
+fn project(contract: &Contract) -> Option<Finding> {
+    let decided = match contract.kind {
+        ContractKind::Interim => true,
+        ContractKind::Unclear if contract.stated_permanent => false,
+        _ => return None,
+    };
+    Some(Finding::new(
+        ReasonCode::Project,
+        decided,
+        Some(CriterionKey::NoProject),
+        json!({ "excluded": true, "stated": decided, "type": contract.code }),
+        contract.spans.clone(),
+    ))
 }
 
 /// ANÜ named (decided), optional or hidden; empty when not mentioned.

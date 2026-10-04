@@ -827,6 +827,7 @@ fn every_code() -> Vec<ReasonCode> {
         C::AvailabilityGap,
         C::StartVague,
         C::Permanent,
+        C::Project,
         C::FormalOpen,
         C::LowEvidence,
         C::ShortText,
@@ -861,6 +862,7 @@ fn every_code() -> Vec<ReasonCode> {
             | C::AvailabilityGap
             | C::StartVague
             | C::Permanent
+            | C::Project
             | C::FormalOpen
             | C::LowEvidence
             | C::ShortText
@@ -955,6 +957,7 @@ fn every_reason() -> Assessment {
         CriterionKey::Countries,
         CriterionKey::NoAnue,
         CriterionKey::NoPermanent,
+        CriterionKey::NoProject,
         CriterionKey::Availability,
         CriterionKey::MinSalary,
         CriterionKey::Workload,

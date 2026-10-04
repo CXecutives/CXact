@@ -58,14 +58,16 @@ pub const MIN_MONTHS: [u8; 4] = [0, 3, 6, 12];
 const HOME_COUNTRY: &str = "DE";
 
 /// The editable profile (Profil-JSON v19): what the consultant looks for, what she brings,
-/// what does not fit. `date` is `dd.mm.yyyy`; `permanent` and `temporary` allow Festanstellung
-/// and Zeitarbeit (projects and interim work, `projekt`, are always on).
+/// what does not fit. `date` is `dd.mm.yyyy`; `project`, `permanent` and `temporary` allow
+/// projects and interim work, Festanstellung and Zeitarbeit (at least one of them).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileForm {
     /// `wunschrollen`.
     pub roles: Vec<String>,
+    /// `vertragsarten` names `projekt` (projects and interim work).
+    pub project: bool,
     /// `vertragsarten` names `festanstellung`.
     pub permanent: bool,
     /// `vertragsarten` names `zeitarbeit`.
@@ -114,11 +116,12 @@ pub struct ProfileForm {
 }
 
 impl Default for ProfileForm {
-    /// A new profile: Festanstellung and Zeitarbeit allowed, Deutschland, from now on, no wish
-    /// of work mode, workload or duration.
+    /// A new profile: every contract type allowed, Deutschland, from now on, no wish of work
+    /// mode, workload or duration.
     fn default() -> Self {
         ProfileForm {
             roles: Vec::new(),
+            project: true,
             permanent: true,
             temporary: true,
             day_rate_wish: None,
@@ -315,6 +318,7 @@ impl ProfileForm {
         let positive = |n: Option<u32>| n.filter(|n| *n > 0);
         ProfileForm {
             roles: clean(&self.roles),
+            project: self.project,
             permanent: self.permanent,
             temporary: self.temporary,
             day_rate_wish: positive(self.day_rate_wish),
@@ -350,8 +354,8 @@ impl ProfileForm {
 
 /// The fields a usable profile still needs, by their names in the form (`roles`, `countries`,
 /// `competences`, `languages`), in the form's order: the one source for the onboarding, the
-/// Profil's "Noch n Angaben offen" and whether a search can start. The contract types always
-/// hold `projekt` (projects and interim work), so they are never missing.
+/// Profil's "Noch n Angaben offen" and whether a search can start. The contract types are
+/// never missing: a form without any is refused ([`validate`]).
 pub fn missing_required(form: &ProfileForm) -> Vec<&'static str> {
     let form = form.normalized();
     [
@@ -419,6 +423,10 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
             return Err(at(field, None, None));
         }
     }
+    // At least one contract type; the refusal names the first of them.
+    if !(form.project || form.permanent || form.temporary) {
+        return Err(at("project", None, None));
+    }
     if form.available.day().is_none() && form.available != ProfileAvailability::Now {
         return Err(at("available", None, None));
     }
@@ -480,6 +488,7 @@ pub(crate) fn merge(now: &ProfileForm, before: &ProfileForm, after: &ProfileForm
     }
     ProfileForm {
         roles: list(&now.roles, &before.roles, &after.roles, text),
+        project: pick(&now.project, &before.project, &after.project),
         permanent: pick(&now.permanent, &before.permanent, &after.permanent),
         temporary: pick(&now.temporary, &before.temporary, &after.temporary),
         day_rate_wish: pick(
@@ -661,7 +670,10 @@ const NOW: &str = "sofort";
 
 impl File {
     fn of(form: &ProfileForm) -> File {
-        let mut contracts = vec![Contract::Projekt];
+        let mut contracts = Vec::new();
+        if form.project {
+            contracts.push(Contract::Projekt);
+        }
         if form.permanent {
             contracts.push(Contract::Festanstellung);
         }
@@ -733,16 +745,9 @@ impl File {
         }
     }
 
-    /// The form of the file; `projekt` (projects and interim work) is always on, so a list of contract types
-    /// without it is no profile of this app.
+    /// The form of the file; a missing `vertragsarten` allows every contract type, an empty one
+    /// is refused ([`validate`]: at least one).
     fn form(self) -> Result<ProfileForm, InvalidInput> {
-        if !self.vertragsarten.contains(&Contract::Projekt) {
-            return Err(InvalidInput::ProfileValue {
-                field: "permanent".to_owned(),
-                row: None,
-                max: None,
-            });
-        }
         let available = if self.verfuegbar_ab.trim() == NOW {
             ProfileAvailability::Now
         } else {
@@ -752,6 +757,7 @@ impl File {
         };
         validate(&ProfileForm {
             roles: self.wunschrollen,
+            project: self.vertragsarten.contains(&Contract::Projekt),
             permanent: self.vertragsarten.contains(&Contract::Festanstellung),
             temporary: self.vertragsarten.contains(&Contract::Zeitarbeit),
             day_rate_wish: self.tagessatz_wunsch,
@@ -856,8 +862,8 @@ pub(crate) fn typescript() -> String {
          /** The most entries of a list, and characters of an entry. */\n\
          export const MAX_ITEMS = {MAX_ITEMS};\n\
          export const MAX_TEXT = {MAX_TEXT};\n\n\
-         /** The form of a new profile (`ProfileForm::default()`): Festanstellung and Zeitarbeit\n \
-         *  allowed, Deutschland, from now on, no wish of work mode, workload or duration. */\n\
+         /** The form of a new profile (`ProfileForm::default()`): every contract type allowed,\n \
+         *  Deutschland, from now on, no wish of work mode, workload or duration. */\n\
          export const EMPTY_FORM: ProfileForm = {empty};\n"
     )
 }
@@ -870,6 +876,7 @@ mod tests {
         let texts = |items: &[&str]| items.iter().map(|t| (*t).to_owned()).collect::<Vec<_>>();
         ProfileForm {
             roles: texts(&["Interim CFO", "Head of Controlling"]),
+            project: true,
             permanent: true,
             temporary: false,
             day_rate_wish: Some(1_200),
@@ -992,7 +999,8 @@ mod tests {
     }
 
     /// A missing key reads as a new profile has it; a missing `vertragsarten` allows every
-    /// contract type; anything else that is no v19 does not read.
+    /// contract type, an empty one none and does not read; anything else that is no v19 does
+    /// not read.
     #[test]
     fn what_reads_and_what_does_not() {
         let form = parse(r#"{"wunschrollen": ["Interim CFO"]}"#).unwrap();
@@ -1005,7 +1013,6 @@ mod tests {
         );
         for text in [
             r#"{"vertragsarten": []}"#,
-            r#"{"vertragsarten": ["festanstellung"]}"#,
             r#"{"stationen": []}"#,
             r#"{"kernkompetenzen": [{"kompetenz": "X", "auch": ["Y"]}]}"#,
             r#"{"sprachen": [{"sprache": "Englisch", "niveau": "gut"}]}"#,
@@ -1028,6 +1035,33 @@ mod tests {
             ProfileForm::default(),
             "a byte order mark"
         );
+    }
+
+    /// Any one contract type makes a profile; `projekt` may go like the others.
+    #[test]
+    fn the_contract_types_without_projects() {
+        let permanent = parse(r#"{"vertragsarten": ["festanstellung"]}"#).unwrap();
+        assert!(!permanent.project && permanent.permanent && !permanent.temporary);
+        let value: serde_json::Value = serde_json::from_str(&write(&permanent)).unwrap();
+        assert_eq!(
+            value["vertragsarten"],
+            serde_json::json!(["festanstellung"])
+        );
+        let none = ProfileForm {
+            project: false,
+            permanent: false,
+            temporary: false,
+            ..ProfileForm::default()
+        };
+        assert_eq!(
+            validate(&none),
+            Err(InvalidInput::ProfileValue {
+                field: "project".into(),
+                row: None,
+                max: None,
+            })
+        );
+        assert!(missing_required(&none).contains(&"roles"));
     }
 
     #[test]

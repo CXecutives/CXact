@@ -9,7 +9,7 @@ Unten stehen mein Profil, die Anzeige und die Vorbewertung der App, danach die A
 Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat meiner App:
 
 - `wunschrollen`: Rollen, die ich suche
-- `vertragsarten`: erlaubte Vertragsarten: `projekt` (Projekt und Interim, immer), `festanstellung`, `zeitarbeit` (Arbeitnehmerüberlassung); was fehlt, schließt eine Stelle aus
+- `vertragsarten`: erlaubte Vertragsarten: `projekt` (Projekt und Interim), `festanstellung`, `zeitarbeit` (Arbeitnehmerüberlassung); was fehlt, schließt eine Stelle aus
 - `tagessatz_wunsch`: gewünschter Tagessatz in Euro, nie ein Ausschluss
 - `tagessatz_min`: niedrigster Tagessatz in Euro
 - `mindestgehalt`: niedrigstes Jahresgehalt einer Festanstellung oder Zeitarbeit in Euro

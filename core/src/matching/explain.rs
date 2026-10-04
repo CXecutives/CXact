@@ -533,6 +533,20 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
         } else {
             unset(CriterionKey::NoPermanent)
         },
+        if c.project_excluded {
+            // Met only where the ad states a permanent role or temporary agency work.
+            let ok = ad.contract_stated
+                && matches!(ad.contract, ContractKind::Permanent | ContractKind::Anue);
+            let params = if ok {
+                json!({ "contract": ad.contract_code })
+            } else {
+                json!({})
+            };
+            let span = ad.contract_span.as_ref().filter(|_| ok);
+            criterion(CriterionKey::NoProject, told(ok), &params, span, text)
+        } else {
+            unset(CriterionKey::NoProject)
+        },
         start_state(ad, text),
         match c.min_salary {
             Some(min) if employment => salary_state(min, ad, text),

@@ -172,6 +172,10 @@ pub enum ReasonCode {
     AvailabilityGap,
     StartVague,
     Permanent,
+    /// A project or interim role while the profile allows neither (`excluded`, `stated`,
+    /// `type` freelance or interim): decided for a role the ad or its source makes one, a
+    /// check where the ad offers a permanent role too.
+    Project,
     /// A formal requirement (degree field, licence) the profile does not hold: a check
     /// with a score cap, decided only when the ad makes it mandatory.
     FormalOpen,
@@ -286,6 +290,8 @@ pub enum CriterionKey {
     MinSalary,
     /// Permanent employment excluded (`vertragsarten` without `festanstellung`).
     NoPermanent,
+    /// Projects and interim work excluded (`vertragsarten` without `projekt`).
+    NoProject,
     /// Days per week the consultant works (`auslastung`).
     Workload,
     /// Minimum duration of an engagement (`mindestlaufzeit_monate`).

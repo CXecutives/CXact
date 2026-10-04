@@ -20,7 +20,7 @@ const GLOSSARY: &[(&str, &str)] = &[
     ("wunschrollen", "Rollen, die ich suche"),
     (
         "vertragsarten",
-        "erlaubte Vertragsarten: `projekt` (Projekt und Interim, immer), `festanstellung`, `zeitarbeit` (Arbeitnehmerüberlassung); was fehlt, schließt eine Stelle aus",
+        "erlaubte Vertragsarten: `projekt` (Projekt und Interim), `festanstellung`, `zeitarbeit` (Arbeitnehmerüberlassung); was fehlt, schließt eine Stelle aus",
     ),
     (
         "tagessatz_wunsch",
@@ -416,6 +416,7 @@ impl Wording for German {
             }
             CriterionKey::NoAnue => "Keine Arbeitnehmerüberlassung".to_owned(),
             CriterionKey::NoPermanent => "Keine Festanstellung".to_owned(),
+            CriterionKey::NoProject => "Keine Projekte und kein Interim".to_owned(),
             CriterionKey::Availability => match text_param(profile, "from") {
                 Some(from) => format!("Verfügbar {}", with_start(&self.start(from))),
                 None => "Verfügbarkeit".to_owned(),
@@ -479,8 +480,10 @@ impl Wording for German {
                     text_param(ad, "location").map(|place| format!("Ort {place}"))
                 }
             }
-            CriterionKey::NoAnue | CriterionKey::NoPermanent => text_param(ad, "contract")
-                .map(|kind| format!("Vertragsart {}", self.contract(kind, false))),
+            CriterionKey::NoAnue | CriterionKey::NoPermanent | CriterionKey::NoProject => {
+                text_param(ad, "contract")
+                    .map(|kind| format!("Vertragsart {}", self.contract(kind, false)))
+            }
             CriterionKey::Availability => {
                 text_param(ad, "start").map(|start| format!("Start {}", self.start(start)))
             }
@@ -573,6 +576,20 @@ impl Wording for German {
                 }
                 _ => "Das klingt nach einer Festanstellung.".to_owned(),
             },
+            ReasonCode::Project => {
+                let role = if text_param(p, "type") == Some("interim") {
+                    "ein Interim-Mandat"
+                } else {
+                    "ein Projekt"
+                };
+                if flag(p, "stated") {
+                    format!("Die Stelle ist {role}, das Profil schließt Projekte und Interim aus.")
+                } else {
+                    format!(
+                        "Die Stelle bietet auch {role} an, das Profil schließt Projekte und Interim aus."
+                    )
+                }
+            }
             ReasonCode::Salary => match (int(p, "salary"), int(p, "min")) {
                 _ if text_param(p, "currency").is_some_and(|c| c != "EUR") => format!(
                     "Das Gehalt ist in {} angegeben, nicht in Euro.",

@@ -154,7 +154,7 @@ Ihr Profil:
 
 Wir bieten eine unbefristete Festanstellung in Vollzeit.";
 
-/// The profile with these contract types allowed (`projekt` always).
+/// The profile with these contract types allowed beside `projekt`.
 fn allowing(permanent: bool, temporary: bool) -> CompiledProfile {
     compile_profile(&ProfileForm {
         permanent,
@@ -254,6 +254,99 @@ fn permanent_employment_can_be_excluded() {
         .collect();
     assert!(set.contains(&CriterionKey::NoPermanent), "{set:?}");
     assert!(!set.contains(&CriterionKey::NoAnue), "{set:?}");
+}
+
+/// Projects and interim work not among the contract types: an interim role (stated, or from
+/// a source that lists projects only) is excluded with its contract type; an ad that offers a
+/// permanent role and freelance work both is a check; a stated permanent role meets the
+/// criterion. With `projekt` allowed (every default profile) nothing changes.
+#[test]
+fn projects_and_interim_work_can_be_excluded() {
+    let excluded = compile_profile(&ProfileForm {
+        project: false,
+        permanent: true,
+        temporary: true,
+        ..profile()
+    });
+    let a = assess_with(&excluded, "Interim Controller (m/w/d)", STATED);
+    assert_eq!(a.verdict, Verdict::Excluded);
+    assert_eq!(
+        criterion(&a, CriterionKey::NoProject).status,
+        CriterionStatus::Violated
+    );
+    let reason = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::Project)
+        .expect("the project reason");
+    assert_eq!(reason.kind, ReasonKind::Violation);
+    assert_eq!(reason.params["stated"], true);
+    assert_eq!(reason.params["excluded"], true);
+    assert_eq!(reason.params["type"], "interim");
+    // A source of projects only: its role without any contract words is a project.
+    let plain = "Ihre Aufgaben:
+- Aufbau des Konzernreportings nach IFRS
+
+Ihr Profil:
+- Erfahrung im Controlling";
+    let job = JobInput {
+        title: "Controller (m/w/d)",
+        company: "",
+        location: "Hamburg",
+        portal: Portal::Freelancermap,
+        text: plain,
+        facts: None,
+        posted: None,
+        kind: TextKind::Full,
+    };
+    let a = assess(&excluded, &job, None).expect("assessed");
+    assert_eq!(a.verdict, Verdict::Excluded);
+    let reason = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::Project)
+        .expect("the project reason");
+    assert_eq!(reason.params["type"], "freelance");
+    // Offered as a permanent role and as freelance work: a check only.
+    let both = PERMANENT.replace(
+        "Wir bieten eine unbefristete Festanstellung in Vollzeit.",
+        "Festanstellung oder freiberuflich, Tagessatz nach Absprache.",
+    );
+    let a = assess_with(&excluded, "Leiter Controlling (m/w/d)", &both);
+    assert_ne!(a.verdict, Verdict::Excluded);
+    assert_eq!(
+        criterion(&a, CriterionKey::NoProject).status,
+        CriterionStatus::Check
+    );
+    // A stated permanent role meets it with the ad's contract type.
+    let a = assess_with(&excluded, "Leiter Controlling (m/w/d)", PERMANENT);
+    assert!(a.reasons.iter().all(|r| r.code != ReasonCode::Project));
+    let state = criterion(&a, CriterionKey::NoProject);
+    assert_eq!(state.status, CriterionStatus::Ok);
+    assert_eq!(state.params["contract"], "permanent");
+    // With `projekt` allowed: inactive, no reason, the interim role as it was.
+    let a = assess_with(
+        &compile_profile(&profile()),
+        "Interim Controller (m/w/d)",
+        STATED,
+    );
+    assert_ne!(a.verdict, Verdict::Excluded);
+    assert_eq!(
+        criterion(&a, CriterionKey::NoProject).status,
+        CriterionStatus::Inactive
+    );
+    assert!(a.reasons.iter().all(|r| r.code != ReasonCode::Project));
+    // The profile summary names the criterion only where the profile says so.
+    let set = |p: &CompiledProfile| -> Vec<CriterionKey> {
+        p.summary()
+            .criteria
+            .iter()
+            .filter(|c| c.set)
+            .map(|c| c.key)
+            .collect()
+    };
+    assert!(set(&excluded).contains(&CriterionKey::NoProject));
+    assert!(!set(&compile_profile(&profile())).contains(&CriterionKey::NoProject));
 }
 
 /// A short requirement line that starts like a heading of the other listings ("Ähnliche

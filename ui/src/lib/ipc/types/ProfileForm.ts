@@ -2,14 +2,18 @@
 
 /**
  * The editable profile (Profil-JSON v19): what the consultant looks for, what she brings,
- * what does not fit. `date` is `dd.mm.yyyy`; `permanent` and `temporary` allow Festanstellung
- * and Zeitarbeit (projects and interim work, `projekt`, are always on).
+ * what does not fit. `date` is `dd.mm.yyyy`; `project`, `permanent` and `temporary` allow
+ * projects and interim work, Festanstellung and Zeitarbeit (at least one of them).
  */
 export type ProfileForm = { 
 /**
  * `wunschrollen`.
  */
 roles: Array<string>, 
+/**
+ * `vertragsarten` names `projekt` (projects and interim work).
+ */
+project: boolean, 
 /**
  * `vertragsarten` names `festanstellung`.
  */
