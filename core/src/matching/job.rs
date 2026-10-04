@@ -1583,6 +1583,30 @@ mod tests {
         assert_eq!(heading_kind("Projektanbieter"), Some(HeadingKind::Neutral));
     }
 
+    /// An offer, the start or the steps after the application end the requirements.
+    #[test]
+    fn offers_and_next_steps_are_no_requirements() {
+        let doc = read(
+            "Dein Profil\n- SAP FI\n\nWas wir dir bieten\n- 30 Tage Urlaub\n\nSo geht es weiter\n\
+             Nach deiner Bewerbung meldet sich unser Team.\n",
+            &Vocab::all(),
+        );
+        let texts: Vec<&str> = doc.items.iter().map(|i| i.text.as_str()).collect();
+        assert_eq!(texts, ["SAP FI"]);
+        for heading in [
+            "Was wir Ihnen bieten",
+            "Dein Start",
+            "Ihr Start",
+            "So geht's weiter",
+        ] {
+            assert_eq!(
+                heading_kind(heading),
+                Some(HeadingKind::Neutral),
+                "{heading}"
+            );
+        }
+    }
+
     /// Parts joined by `und` share the object the last one names: no bare `Erfahrung im
     /// Aufbau` is left.
     #[test]

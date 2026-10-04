@@ -81,7 +81,7 @@ there).
 | heldout5 | 0.802 | 0.967 | 0.721 | 0.848 | 0.703 | 0 | 0.987 / 0.955 |
 | heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.982 |
 | heldout7 | 0.918 | 0.888 | 0.668 | 0.812 | 0.593 | 2 | 1.000 / 0.848 |
-| heldout8 | 0.940 | 0.910 | 0.799 | 0.868 | 0.776 | 1 | 1.000 / 0.824 |
+| heldout8 | 0.953 | 0.957 | 0.819 | 0.868 | 0.776 | 0 | 1.000 / 0.824 |
 | heldout9 | 0.898 | 0.854 | 0.659 | 0.755 | 0.680 | 0 | 1.000 / 0.860 |
 | heldout10 | 0.945 | 1.000 | 0.842 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
 
@@ -143,7 +143,7 @@ comes from the profile.
 
 | Step | Rule |
 |---|---|
-| Reading | Must/nice/other headings incl. English (`Why join us`, `What we offer` end requirements), a heading in two languages (`Aufgaben / Tasks`), tender headings (`Muss-`, `Soll-`, `Kann-Anforderungen`), inline (`Anforderungen: ...`), frame sections; closing lines (`Interessiert? ...`), portal footers (`Projekt-ID`, `Eingestellt am`, `Branche`, `Karrierestufe`), the portal's tags (a bare `Skills` heading), tag and notice lines (`Hinweis`, `Datenschutz`) and company lines (legal form, founding year) are no requirements; nice cues (`von Vorteil`, `is an advantage`, `hilfreich`) make a nice-to-have, per item; requirement sentences only without a must section; vocabulary only when nothing else was found |
+| Reading | Must/nice/other headings incl. English (`Why join us`, `What we offer`, `Was wir dir bieten`, `Dein Start`, `So geht es weiter` end requirements), a heading in two languages (`Aufgaben / Tasks`), tender headings (`Muss-`, `Soll-`, `Kann-Anforderungen`), inline (`Anforderungen: ...`), frame sections; closing lines (`Interessiert? ...`), portal footers (`Projekt-ID`, `Eingestellt am`, `Branche`, `Karrierestufe`), the portal's tags (a bare `Skills` heading), tag and notice lines (`Hinweis`, `Datenschutz`) and company lines (legal form, founding year) are no requirements; nice cues (`von Vorteil`, `is an advantage`, `hilfreich`) make a nice-to-have, per item; requirement sentences only without a must section; vocabulary only when nothing else was found |
 | Other listings | the ad ends for the hard criteria and the seniority at the first heading of the other listings a portal shows under it (`facts::own_text`, `lexicon::OTHER_LISTINGS`: `Ähnliche Projekte (12)`, `Weitere Projekte von ...`, `Similar jobs`), a heading only with its words whole and followed by nothing, a count, a colon or a tail of `LISTING_TAILS`; the requirement parser stops there too, the stored and shown ad stays whole |
 | Items | AND at `,` `;` `und` `sowie` `&` `and` `inkl.`; OR alternatives at `oder` `bzw.` `or` ` / ` (an OR requirement is met when one branch is met); examples after `z. B.`/`e.g.` are alternatives of their head; negated items dropped; comma tails (`, gerne auch`, `, ob`) stay with their item, `in Wort und Schrift` never splits, the partners after `Zusammenarbeit mit`, `gegenüber` and `rund um` stay one item, parts joined by `und` keep the object the last one names |
 | Kinds | skill, language (CEFR level; weight 250 in `M`, a hygiene factor, full weight in the evidence `n`; an item that names a language among four or more other atoms is a skill line), degree, licence (`Zulassung als Steuerberater`), soft (weight 250, unproven = half; a sentence starting with `Sie`, `Du`, `You` that names no known skill is one soft item), frame (weight 0: rate, duration, place, `Vollzeit`, `Verlängerung`) |
