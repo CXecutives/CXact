@@ -74,16 +74,16 @@ there).
 
 | Set | NDCG@10 | P@5 | Spearman relevant | Concordance 2v3 | Concordance 1v2 | Buried | Exclusions P / R |
 |---|---|---|---|---|---|---|---|
-| heldout1 | 0.923 | 1.000 | 0.776 | 0.743 | 0.621 | 0 | 1.000 / 0.971 |
-| heldout2 | 0.857 | 0.850 | 0.676 | 0.577 | 0.726 | 1 | 1.000 / 0.845 |
-| heldout3 | 0.865 | 0.967 | 0.521 | 0.483 | 0.718 | 0 | 1.000 / 0.900 |
-| heldout4 | 0.821 | 0.843 | 0.558 | 0.481 | 0.812 | 0 | 1.000 / 0.959 |
-| heldout5 | 0.797 | 0.967 | 0.713 | 0.783 | 0.703 | 0 | 0.987 / 0.955 |
+| heldout1 | 0.923 | 1.000 | 0.782 | 0.755 | 0.621 | 0 | 1.000 / 0.971 |
+| heldout2 | 0.877 | 0.850 | 0.686 | 0.625 | 0.726 | 1 | 1.000 / 0.845 |
+| heldout3 | 0.871 | 0.967 | 0.634 | 0.578 | 0.718 | 0 | 1.000 / 0.900 |
+| heldout4 | 0.832 | 0.843 | 0.570 | 0.500 | 0.826 | 0 | 1.000 / 0.959 |
+| heldout5 | 0.802 | 0.967 | 0.721 | 0.848 | 0.703 | 0 | 0.987 / 0.955 |
 | heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.982 |
-| heldout7 | 0.915 | 0.888 | 0.668 | 0.812 | 0.593 | 2 | 1.000 / 0.848 |
-| heldout8 | 0.930 | 0.910 | 0.795 | 0.816 | 0.776 | 2 | 1.000 / 0.824 |
-| heldout9 | 0.886 | 0.854 | 0.647 | 0.720 | 0.662 | 0 | 1.000 / 0.860 |
-| heldout10 | 0.945 | 1.000 | 0.840 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
+| heldout7 | 0.918 | 0.888 | 0.668 | 0.812 | 0.593 | 2 | 1.000 / 0.848 |
+| heldout8 | 0.940 | 0.910 | 0.799 | 0.868 | 0.776 | 1 | 1.000 / 0.824 |
+| heldout9 | 0.898 | 0.854 | 0.659 | 0.755 | 0.680 | 0 | 1.000 / 0.860 |
+| heldout10 | 0.945 | 1.000 | 0.842 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
 
 Engine 19 reads Profil-JSON v19 through its typed form (`profile::ProfileForm`) and nothing else.
 Every fixture profile was migrated in one pass: contract types from the excluded ones, `titel` to
@@ -344,6 +344,22 @@ nor ESCO know, by frequency: the vocabulary is filled from the top, a word that 
 stays out. A code written in capitals (`VOB`) and a compound of a known head
 (`Transformationsprojekt`) count as known, as the engine reads them. Before the fills: 1,825 of
 3,136 skill requirements known in full (58.1 %).
+
+Filled so far, every word measured alone and with the others (a word that lost on any set stays
+out: `Verständnis`, `bis`, `beim`, `mehreren`, `großen`, the number words, `Aufbau`, `Planung`,
+`Umsetzung`):
+- 102 function words of German and English requirements are fillers (`davon`, `mehrere`,
+  `gegenüber`, `überwiegend`, `which`, `ideally`, `both`, `via`): they no longer halve a met
+  requirement as something more the ad asks for.
+- 19 activity and setting words are generic atoms, too broad to meet a requirement alone
+  (`Erstellung`, `Umstellung`, `Anwendung`, `Zusammenarbeit`, `Erfolg`, `Transaktion`,
+  `Transition`, `international`, `reguliert`).
+
+Known in full after the fills: 1,933 of 3,122 (61.9 %). NDCG@10 against the round's start
+(engine 19 with ESCO): heldout2 0.857 to 0.877, heldout3 0.865 to 0.871, heldout4 0.821 to
+0.832, heldout5 0.797 to 0.802, heldout7 0.915 to 0.918, heldout8 0.930 to 0.940 (one buried
+grade-3 job less), heldout9 0.886 to 0.898; Spearman over the relevant pairs up on eight sets
+(heldout3 0.521 to 0.634), concordance 2v3 up on seven; the rest the same.
 
 ## Domain packs
 

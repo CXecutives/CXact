@@ -735,7 +735,9 @@ mod tests {
         assert!(is_generic(&a("Partner")));
         assert_eq!(fit(&a("Herstellung"), &a("Erstellung")), Fit::None);
         assert_eq!(fit(&a("Erstellung"), &a("Herstellung")), Fit::None);
-        assert_eq!(fit(&a("Berichterstellung"), &a("Erstellung")), Fit::General);
+        assert_eq!(fit(&a("Tourenplanung"), &a("Planung")), Fit::General);
+        // `Erstellung` alone is too broad: it reaches no compound (`Berichterstellung`).
+        assert_eq!(fit(&a("Berichterstellung"), &a("Erstellung")), Fit::None);
     }
 
     /// `SQL-Kenntnisse` is SQL; `ISO 9001` and `ISO 13485` differ; short skills stay.

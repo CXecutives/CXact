@@ -31,8 +31,9 @@ use sha2::Digest as _;
 /// the version line too: with `engine 16` in front the rows give `501e5e88adf66bd7`. Version
 /// 18: K47 and K51 of senior and wish are scored (the years below the profile's never exclude),
 /// no score moved. Version 19: the profiles are Profil-JSON v19 (migrated), the region of
-/// permanent roles is no rule (K33 and K43 of senior and wish), a table of role names.
-const GOLDEN_DIGEST: &str = "aef89e52a4aa7d74";
+/// permanent roles is no rule (K33 and K43 of senior and wish), a table of role names; the
+/// function words and generic activity words of the gap finder (K12 of five profiles).
+const GOLDEN_DIGEST: &str = "8dd34978102a144a";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")
