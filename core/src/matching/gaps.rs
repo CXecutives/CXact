@@ -6,13 +6,14 @@
 //! when a word list of the engine has it (the general vocabulary, the tools, the role names,
 //! lead, level and contract words, leadership, experience and knowledge words, numbers,
 //! industries, degrees, languages, soft skills, the frame, a pack's triggers), when ESCO names
-//! it as the engine trusts ESCO (`esco::named`: a skill, knowledge or an occupation) or when it
-//! is too generic to say anything (`SAP`, `Manager`).
+//! it as the engine trusts ESCO (`esco::named`: a skill, knowledge or an occupation), when it is
+//! a code the engine matches as written (`VOB`), a compound of a known head
+//! (`Transformationsprojekt`) or too generic to say anything (`SAP`, `Manager`).
 
 use std::collections::BTreeSet;
 use std::sync::LazyLock;
 
-use super::atoms::{Vocab, is_generic};
+use super::atoms::{Vocab, is_generic, stem};
 use super::job::{self, Class, Stage};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::esco::{self, Kind};
@@ -73,7 +74,8 @@ static KNOWN: LazyLock<BTreeSet<String>> = LazyLock::new(|| {
     phrases.flat_map(esco::words).collect()
 });
 
-/// Word starts the engine knows: soft skills, the frame, languages, the packs' triggers.
+/// Word starts the engine knows (soft skills, leadership, the frame, languages, the packs'
+/// triggers), stemmed like the words they start.
 static KNOWN_STARTS: LazyLock<Vec<String>> = LazyLock::new(|| {
     lex::SOFT_SKILLS
         .iter()
@@ -81,14 +83,47 @@ static KNOWN_STARTS: LazyLock<Vec<String>> = LazyLock::new(|| {
         .chain(lex::FRAME_WORDS)
         .chain(lex::LANGUAGES)
         .chain(DOMAINS.iter().flat_map(|d| d.triggers.iter()))
-        .map(|start| (*start).to_owned())
+        .map(|start| stem(start))
         .collect()
 });
 
-/// The words of a text that neither the engine nor ESCO knows (a code with a number, such as
-/// `iso-27001`, counts as known).
+/// The words of a text written as a code (`VOB`, `HOAI`, `ISTQB`: two to six capitals, as
+/// `job::known_skill` reads a code), folded and stemmed: names the engine matches as written.
+fn codes(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter(|w| {
+            let letters = w.chars().filter(|c| c.is_alphabetic()).count();
+            (2..=6).contains(&letters) && w.chars().all(|c| !c.is_lowercase())
+        })
+        .flat_map(esco::words)
+        .collect()
+}
+
+/// A word one of the engine's tables knows, or too generic to say anything.
+fn known(word: &str) -> bool {
+    is_generic(word)
+        || KNOWN.contains(word)
+        || lex::LIGHT_HEADS.contains(&word)
+        || KNOWN_STARTS
+            .iter()
+            .any(|start| word.starts_with(start.as_str()))
+}
+
+/// A compound the engine relates to a word it knows: a known head after a modifier of three
+/// letters or more (`Krankenhausfinanzierung`, `Transformationsprojekt`), as the ladder reads
+/// compounds.
+fn known_compound(word: &str) -> bool {
+    word.char_indices()
+        .map(|(at, _)| at)
+        .filter(|&at| at >= 3 && word.len() - at >= 5)
+        .any(|at| known(&word[at..]))
+}
+
+/// The words of a text that neither the engine nor ESCO knows (a code, also one with a
+/// number such as `iso-27001`, counts as known).
 fn unknown_words(text: &str) -> Vec<String> {
     let (words, named) = esco::named(text, &[Kind::Skill, Kind::Knowledge, Kind::Occupation]);
+    let codes = codes(text);
     let in_esco = |at: usize| {
         named
             .iter()
@@ -98,12 +133,10 @@ fn unknown_words(text: &str) -> Vec<String> {
         .iter()
         .enumerate()
         .filter(|(at, word)| {
-            !is_generic(word)
-                && !word.chars().any(|c| c.is_ascii_digit())
-                && !KNOWN.contains(*word)
-                && !KNOWN_STARTS
-                    .iter()
-                    .any(|start| word.starts_with(start.as_str()))
+            !word.chars().any(|c| c.is_ascii_digit())
+                && !known(word)
+                && !known_compound(word)
+                && !codes.contains(*word)
                 && !in_esco(*at)
         })
         .map(|(_, word)| word.clone())

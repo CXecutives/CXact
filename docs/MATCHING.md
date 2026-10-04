@@ -341,7 +341,9 @@ The gap finder (`core/examples/vocab_gaps.rs`, `matching::vocabulary_gaps`) runs
 there is (the corpus, the held-out sets, the private real pages and mails) and lists the words
 of the skill requirements and titles that neither the engine's words (every pack, the word lists)
 nor ESCO know, by frequency: the vocabulary is filled from the top, a word that occurs nowhere
-stays out. Before the fills: 1,544 of 3,136 skill requirements known in full (49.2 %).
+stays out. A code written in capitals (`VOB`) and a compound of a known head
+(`Transformationsprojekt`) count as known, as the engine reads them. Before the fills: 1,825 of
+3,136 skill requirements known in full (58.1 %).
 
 ## Domain packs
 
