@@ -1141,8 +1141,8 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   const labelBox = (await label.boundingBox())!;
   const beside: [string, () => Promise<void>][] = [
     [
-      'the empty part of the label line',
-      () => page.mouse.click(box.x + box.width - 4, labelBox.y + labelBox.height / 2),
+      'the empty part of the label column',
+      () => page.mouse.click(labelBox.x + labelBox.width + 8, labelBox.y + labelBox.height / 2),
     ],
     ['the heading', () => page.getByTestId('section-skills').getByRole('heading').first().click()],
     [

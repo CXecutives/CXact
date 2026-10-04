@@ -67,6 +67,8 @@ export type CommandId = 'reset';
 export interface Row {
   id: string;
   label: Text;
+  /** One sentence under the label. */
+  hint?: Text;
   actions: readonly ActionId[];
 }
 
@@ -105,9 +107,19 @@ export const CARDS: readonly CardSpec[] = [
     id: 'data',
     tab: 'data',
     rows: [
-      { id: 'profiles', label: (t) => t.settings.profiles, actions: ['profilesOpen'] },
+      {
+        id: 'profiles',
+        label: (t) => t.settings.profiles,
+        hint: (t) => t.settings.profilesHint,
+        actions: ['profilesOpen'],
+      },
       // The one action that deletes for good; what it deletes is said in its dialog.
-      { id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
+      {
+        id: 'reset-all',
+        label: (t) => t.settings.reset,
+        hint: (t) => t.settings.resetHint,
+        actions: ['reset'],
+      },
     ],
     footnote: (t, state) => t.settings.version(state.version),
   },

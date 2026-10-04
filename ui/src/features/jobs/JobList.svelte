@@ -116,12 +116,20 @@
    *  that fits, that and the way to the profile; before any, what "Jobs suchen" does. */
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const emptyInbox = $derived.by(
-    (): { heading: string | null; text: string | null; profile: boolean } => {
-      if (run.fetching) return { heading: null, text: t.list.emptyWhileRun, profile: false };
-      if (lastFetch?.outcome.kind === 'completed') {
-        return { heading: t.list.noMatch, text: null, profile: true };
+    (): { icon: IconName; heading: string | null; text: string | null; profile: boolean } => {
+      if (run.fetching) {
+        return { icon: 'inbox', heading: null, text: t.list.emptyWhileRun, profile: false };
       }
-      return { heading: t.list.emptyHeading, text: t.list.emptyText, profile: false };
+      if (lastFetch?.outcome.kind === 'completed') {
+        return { icon: 'inbox', heading: t.list.noMatch, text: null, profile: true };
+      }
+      const searched = (app.state?.portals ?? []).filter((p) => p.way === 'search' && p.enabled);
+      return {
+        icon: 'search',
+        heading: t.list.emptyHeading,
+        text: t.list.emptyText(searched.length),
+        profile: false,
+      };
     },
   );
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
@@ -495,7 +503,7 @@
       {:else}
         <!-- A search that goes, none yet, or one that found nothing that fits. -->
         <EmptyState
-          icon="inbox"
+          icon={emptyInbox.icon}
           tone="neutral"
           heading={emptyInbox.heading}
           text={emptyInbox.text}

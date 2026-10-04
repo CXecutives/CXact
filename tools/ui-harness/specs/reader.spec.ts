@@ -546,27 +546,23 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    // The list's ban at the ring's size: the empty ring, the ban in its middle.
-    const ban = stage(page).getByTestId('reader-ban');
-    await expect(ban.locator('.ban svg')).toHaveCount(1);
-    const size = await page.evaluate(() =>
-      Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ring-md')),
-    );
-    expect(Math.round((await ban.boundingBox())!.width)).toBe(size);
+    // One bordered box: the ban, Ausgeschlossen, why and Trotzdem bewerten at its end.
+    const box = stage(page).getByTestId('exclusion-box');
+    await expect(box.getByTestId('reader-ban').locator('svg')).toHaveCount(1);
+    await expect(box.getByTestId('reader-include')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
-    // Its first violation, once, from the profile's side; no box, no way into the ad.
+    // Its first violation, once, from the profile's side; no way into the ad.
     await expect(stage(page).getByTestId('exclusion')).toHaveText(
       T.reader.criterion.noAnue.exclusion,
     );
-    await expect(stage(page).getByTestId('exclusion-box')).toHaveCount(0);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
     // The head says why: no verdicts in the rows and no Anforderungen (user, 2026-10-03).
     expect(await cell(page, 'contract')).toEqual(['Zeitarbeit', '']);
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // Trotzdem bewerten: its real match and a toast that takes it back. It stands before the
-    // ad, the alert mail and the prompt; the head has the moves of its place.
+    // Trotzdem bewerten: its real match and a toast that takes it back. The row under the box
+    // has the ad, the alert mail and the prompt; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
     expect(
@@ -574,7 +570,7 @@ test.describe('an excluded job', () => {
         .getByTestId('reader-actions')
         .locator('.btn')
         .evaluateAll((all) => all.map((button) => button.getAttribute('data-testid'))),
-    ).toEqual(['reader-include', 'open-ad', 'reader-mail', 'reader-prompt']);
+    ).toEqual(['open-ad', 'reader-mail', 'reader-prompt']);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();

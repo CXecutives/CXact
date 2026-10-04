@@ -4,8 +4,8 @@
   button; Entfernen is red at rest and asks first), without a mailbox the row "Kein Postfach"
   with "Verbinden" and the one sentence that the portals of alert mails rest without one (no
   second Verbinden anywhere). Ändern and Verbinden open the form in a dialog named after the
-  button ("Postfach ändern", "Postfach verbinden") whose button is "Verbinden". The portals of
-  its alert mails are a card of their own below it (SettingsView).
+  button ("Postfach ändern", "Postfach verbinden") whose button is "Verbinden". The rows of
+  the portals of its alert mails follow in the same card (`children`, SettingsView).
   The state is the answer to a saved mailbox ("Verbunden" after a green dot, no note, no
   toast). It says "Nicht erreichbar" or "Abgelehnt" after a red one only for a mail error of
   a fetch that finished after Gmail last accepted the mailbox (`mailbox.checkedAt`), with a
@@ -27,6 +27,7 @@
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
+  import type { Snippet } from 'svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
   interface Props {
@@ -34,8 +35,10 @@
     /** Why the mailbox cannot change now (the dry run, a run), or null. */
     locked: string | null;
     testid?: string | null;
+    /** The rows under the mailbox's (the portals of its alert mails). */
+    children?: Snippet;
   }
-  let { cfg, locked, testid = null }: Props = $props();
+  let { cfg, locked, testid = null, children }: Props = $props();
 
   /** The portals of alert mails, in the app's order: they rest without a mailbox. */
   const alertPortals = $derived(
@@ -191,6 +194,7 @@
       </div>
     </div>
   {/if}
+  {@render children?.()}
 </Card>
 
 <Dialog

@@ -1,8 +1,9 @@
 <!--
   The profile as one form on one page (user decision 2026-10-03, variant 3): the three
   sections of `sections.ts` in their order (Was du suchst, Was du mitbringst, Was nicht passt),
-  each under its heading in a card, each field as the table describes it. Every field has its
-  label (13/500) and, only where docs/PLAN.md places one, an info symbol beside it (never with
+  each under its heading in a card, each field as the table describes it, its label in a
+  column of its own at the left (Field `side`, where the card is wide enough). Every field has
+  its label (13/500) and, only where docs/PLAN.md places one, an info symbol beside it (never with
   a hint); a field the CV filled carries a small navy dot until the next save. Every control
   is 32 px high, every number field one width with its unit beside it; a number is formatted
   when its field is left. A value that is too large, a 0 where at least 1 counts, a day that
@@ -281,6 +282,7 @@
       {@const advice = c.advice?.(form) ?? null}
       <div data-field={fields} transition:fade>
         <Field
+          side
           label={words[c.label]}
           for="{id}-{c.key}"
           hint={advice === null ? null : words[advice]}
@@ -302,7 +304,14 @@
   {:else if c.kind === 'chips'}
     {@const error = errorOf(c.key)}
     <div data-field={fields}>
-      <Field label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} mark={markOf(c)} {error}>
+      <Field
+        side
+        label={words[c.label]}
+        for="{id}-{c.key}"
+        info={infoOf(c)}
+        mark={markOf(c)}
+        {error}
+      >
         <ChipInput
           id="{id}-{c.key}"
           bind:values={form[c.key]}
@@ -313,11 +322,13 @@
           testid={c.testid}
         />
       </Field>
-      {#if c.asked && !onboarding}<AskedTerms field={c.asked} home={c.testid} />{/if}
+      {#if c.asked && !onboarding}<div class="under">
+          <AskedTerms field={c.asked} home={c.testid} />
+        </div>{/if}
     </div>
   {:else if c.kind === 'segments'}
     <div data-field={fields}>
-      <Field label={words[c.label]} info={infoOf(c)} mark={markOf(c)} error={errorOf(c.key)}>
+      <Field side label={words[c.label]} info={infoOf(c)} mark={markOf(c)} error={errorOf(c.key)}>
         <Segmented
           options={WORK_MODES}
           value={form.workMode}
@@ -329,7 +340,7 @@
     </div>
   {:else if c.kind === 'select'}
     <div class="choose" data-field={fields}>
-      <Field label={words[c.label]} mark={markOf(c)} error={errorOf(c.key)}>
+      <Field side label={words[c.label]} mark={markOf(c)} error={errorOf(c.key)}>
         {#if c.key === 'workload'}
           <MenuButton
             options={WORKLOADS}
@@ -353,7 +364,7 @@
     </div>
   {:else if c.kind === 'contracts'}
     <div data-field={fields}>
-      <Field label={words.contracts} info={infoOf(c)} mark={markOf(c)}>
+      <Field side label={words.contracts} info={infoOf(c)} mark={markOf(c)}>
         <div class="checks" data-testid="profile-contracts">
           <Button
             variant="secondary"
@@ -380,28 +391,38 @@
   {:else if c.kind === 'countries'}
     {@const error = errorOf('countries')}
     <div data-field={fields}>
-      <Field label={words.countries} for="{id}-countries" info={infoOf(c)} mark={markOf(c)} {error}>
+      <Field
+        side
+        label={words.countries}
+        for="{id}-countries"
+        info={infoOf(c)}
+        mark={markOf(c)}
+        {error}
+      >
         <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
       </Field>
     </div>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
     <div data-field={fields}>
-      <Field label={words.available} mark={markOf(c)} {error}>
+      <Field side label={words.available} mark={markOf(c)} {error}>
         <AvailableField invalid={error !== null} />
       </Field>
     </div>
   {:else if c.kind === 'competences'}
     <div data-field={fields}>
-      <Field label={words.competences} info={infoOf(c)} mark={markOf(c)}>
+      <Field side label={words.competences} info={infoOf(c)} mark={markOf(c)}>
         <CompetenceList bind:rows={form.competences} error={listError('competences')} />
       </Field>
-      {#if !onboarding}<AskedTerms field="competence" home="competence-add" />{/if}
+      {#if !onboarding}<div class="under">
+          <AskedTerms field="competence" home="competence-add" />
+        </div>{/if}
     </div>
   {:else if c.kind === 'industries'}
     {@const error = errorOf('industries')}
     <div data-field={fields}>
       <Field
+        side
         label={words.industries}
         for="{id}-industries"
         info={infoOf(c)}
@@ -418,14 +439,18 @@
           testid="profile-industries"
         />
       </Field>
-      {#if !onboarding}<AskedTerms field="industry" home="profile-industries" />{/if}
+      {#if !onboarding}<div class="under">
+          <AskedTerms field="industry" home="profile-industries" />
+        </div>{/if}
     </div>
   {:else if c.kind === 'languages'}
     <div data-field={fields}>
-      <Field label={words.languages} mark={markOf(c)}>
+      <Field side label={words.languages} mark={markOf(c)}>
         <LanguageList bind:rows={form.languages} error={listError('languages')} />
       </Field>
-      {#if !onboarding}<AskedTerms field="language" home="language-add" />{/if}
+      {#if !onboarding}<div class="under">
+          <AskedTerms field="language" home="language-add" />
+        </div>{/if}
     </div>
   {/if}
 {/snippet}
@@ -478,17 +503,19 @@
     gap: var(--space-32);
   }
 
+  /* "Häufig verlangt" under a field starts in the controls' column. */
+  @container (width >= 520px) {
+    .under {
+      padding-inline-start: calc(var(--label-column) + var(--space-16));
+    }
+  }
+
+  /* The fields of a pair one under the other, each with its label in the label column. */
   .pair {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
     gap: var(--space-16);
-  }
-
-  @container (width >= 520px) {
-    .pair {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
   }
 
   /* A select is as wide as a number field, or its column where that is narrower. */

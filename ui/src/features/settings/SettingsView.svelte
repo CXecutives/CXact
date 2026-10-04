@@ -1,9 +1,10 @@
 <!--
-  Einstellungen (centred 720): the tabs Portale and Daten (user, 2026-10-03), each with its
-  cards of cards.ts. Portale: "CXact sucht nach" (the search's terms, SearchTerms, with an
-  info symbol), "Jobportale" (the portals the app searches, PortalRow), "Alert-Mails" (the
-  mailbox card on top, without a mailbox "Ohne Postfach ruhen LinkedIn und freelance.de.",
-  then the portals of alert mails). Daten: the profiles' folder, the reset, a quiet line with
+  Einstellungen (centred 720): the title, the tabs Portale and Daten (user, 2026-10-03), each
+  with its cards of cards.ts. Portale: "CXact sucht nach" (the search's terms, SearchTerms,
+  with an info symbol and "Im Profil ändern" at the heading's end), "Jobportale" (the portals
+  the app searches, PortalRow), "Alert-Mails" (one card: the mailbox's row first, without a
+  mailbox "Ohne Postfach ruhen LinkedIn und freelance.de.", then the portals of alert mails).
+  Daten: the profile's folder and the reset, each with one sentence, and a quiet line with
   the version. Every text button of a row is the same outlined button, and every row ends on
   the card's inner edge. This file only renders the list and runs its commands; what a row
   is, says and does is one entry in cards.ts.
@@ -159,7 +160,7 @@
 
 {#snippet row(card: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    <SettingRow label={item.label(t, cfg)} testid={item.id}>
+    <SettingRow label={item.label(t, cfg)} hint={item.hint?.(t, cfg) ?? null} testid={item.id}>
       <div class="buttons">
         {#each item.actions as id (id)}
           {@const action: Action = ACTIONS[id]}
@@ -208,7 +209,8 @@
       <Notice tone="info" text={t.settings.dryRun} />
     {/if}
 
-    <div class="tabbar" data-first-row>
+    <h1 class="title" data-first-row data-testid="settings-heading">{t.settings.title}</h1>
+    <div class="tabbar">
       <Tabs
         options={tabs}
         value={settingsTab.value}
@@ -242,32 +244,49 @@
             data-testid="settings-{card.id}"
           >
             {#if heading}
-              <h2 class="heading">
-                {heading}
-                {#if card.info}
-                  <InfoTip
-                    text={card.info(t, cfg)}
-                    label={t.common.infoAbout(heading)}
-                    testid="info-{card.id}"
+              <div class="head">
+                <h2 class="heading">
+                  {heading}
+                  {#if card.info}
+                    <InfoTip
+                      text={card.info(t, cfg)}
+                      label={t.common.infoAbout(heading)}
+                      testid="info-{card.id}"
+                    />
+                  {/if}
+                </h2>
+                {#if card.block === 'terms' && app.hasProfile}
+                  <!-- Where the terms come from. -->
+                  <Button
+                    variant="link"
+                    label={t.settings.editTerms}
+                    testid="terms-edit"
+                    onclick={() => navigation.go('profile')}
                   />
                 {/if}
-              </h2>
+              </div>
             {/if}
             {#if card.block === 'terms'}
               <SearchTerms />
             {:else}
               {#if card.block === 'mailbox'}
-                <MailboxCard {cfg} locked={mailboxLocked} testid="mailbox-account" />
-              {/if}
-              <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
-                {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-                {#if card.block}
-                  {#each portalsIn(card.block) as portal (portal.portal)}
+                <!-- The mailbox's row first, the portals of its alert mails under it. -->
+                <MailboxCard {cfg} locked={mailboxLocked} testid="portals-mailbox">
+                  {#each portalsIn('mailbox') as portal (portal.portal)}
                     <PortalRow {portal} />
                   {/each}
-                {/if}
-                {#if feedback}{@render noteOf(card.id, feedback)}{/if}
-              </Card>
+                </MailboxCard>
+              {:else}
+                <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
+                  {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
+                  {#if card.block}
+                    {#each portalsIn(card.block) as portal (portal.portal)}
+                      <PortalRow {portal} />
+                    {/each}
+                  {/if}
+                  {#if feedback}{@render noteOf(card.id, feedback)}{/if}
+                </Card>
+              {/if}
             {/if}
             {#if card.footnote}
               <p class="footnote" data-testid="{card.id}-footnote">{card.footnote(t, cfg)}</p>
@@ -308,6 +327,22 @@
     gap: var(--space-12);
   }
 
+  /* The page's title on the first row of the window, like the Profil's. */
+  .title {
+    color: var(--text-heading);
+    font: var(--type-2xl);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  /* A card's heading row: the heading at the left, its link at the right. */
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4) var(--space-16);
+  }
+
   /* The heading of a card, an info symbol beside it where it has one. */
   .heading {
     display: flex;
@@ -317,8 +352,8 @@
     font: var(--type-lg);
   }
 
-  /* The tabs on the first row of the window (base.css), at their end the way back to the
-     job she came from; 24 above the first card, like the Profil's. */
+  /* The tabs under the title, at their end the way back to the job she came from; 24 above
+     the first card. */
   .tabbar {
     display: flex;
     align-items: center;

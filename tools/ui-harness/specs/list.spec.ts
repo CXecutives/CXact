@@ -1341,7 +1341,7 @@ test.describe('one list', () => {
     // Before the first search: "Noch keine Jobs" and what "Jobs suchen" does.
     await open(page, `${WIN}&scenario=fresh`);
     await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyHeading);
-    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyText);
+    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyText(8));
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
     // After a search that found nothing that fits: that, and the way to the profile.
     await open(page, `${WIN}&scenario=empty`);

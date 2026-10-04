@@ -46,6 +46,23 @@ const str = (value: unknown): string =>
 const num = (value: unknown): number => (typeof value === 'number' ? value : Number(value) || 0);
 const n = (value: number): string => formatNumber(value);
 /** German plural for a count. */
+/** A small number as a word ("acht Portale"), a larger one in digits. */
+const NUMBER_WORDS = [
+  'kein',
+  'ein',
+  'zwei',
+  'drei',
+  'vier',
+  'fünf',
+  'sechs',
+  'sieben',
+  'acht',
+  'neun',
+  'zehn',
+  'elf',
+  'zwölf',
+];
+const numberWord = (value: number): string => NUMBER_WORDS[value] ?? formatNumber(value);
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
 
@@ -862,7 +879,9 @@ export const de = {
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
     /** Aktuell before any job came, and after a search that found none that fits. */
     emptyHeading: 'Noch keine Jobs',
-    emptyText: '„Jobs suchen“ durchsucht die Portale nach deinem Profil.',
+    /** Before the first search: how many portals it searches (the ones switched on). */
+    emptyText: (portals: number) =>
+      `„Jobs suchen“ durchsucht ${portals === 1 ? 'ein Portal' : `${numberWord(portals)} Portale`}. Die erste Suche dauert ein paar Minuten.`,
     noMatch: 'Noch keine passenden Jobs gefunden',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
     /** The filter of the inbox leaves nothing in the list. */
@@ -1382,6 +1401,7 @@ export const de = {
     },
   },
   settings: {
+    title: 'Einstellungen',
     /** The name of the tabs (Portale, Daten) for a screen reader, and the tabs. */
     tabs: 'Bereiche der Einstellungen',
     portals: 'Portale',
@@ -1440,8 +1460,9 @@ export const de = {
     checkAlert: 'Alert prüfen',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
-    /** The row of the profiles' folder. */
-    profiles: 'Profile',
+    /** The row of the profile's folder and its one sentence. */
+    profiles: 'Profil',
+    profilesHint: 'Dein Profil liegt als Datei in einem Ordner.',
     /** The database's copies (the failed start offers them). */
     backupHeading: 'Sicherung wiederherstellen',
     backupAction: 'Wiederherstellen',
@@ -1457,6 +1478,7 @@ export const de = {
     backupUndone: 'Der vorherige Stand ist zurück.',
     /** The row of the reset, its button and its dialog. */
     reset: 'Alle Daten',
+    resetHint: 'Löscht alles, CXact startet mit der Einrichtung neu.',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText:

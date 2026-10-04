@@ -143,17 +143,16 @@ test('the tabs Portale and Daten, the tab bar on the first row, each tab with it
   expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['profiles', 'reset-all']);
   await expect(page.getByTestId('data-footnote')).toHaveText(T.settings.version('4.0.0'));
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  // The tab bar stands on the first row, its tabs centred on the sidebar's first entry
-  // (macOS too), 24 above the first section.
-  const bar = page.getByTestId('settings').locator('[data-first-row]');
+  // The title stands on the first row, centred on the sidebar's first entry (macOS too),
+  // the tabs under it, 24 above the first section.
+  const title = page.getByTestId('settings').locator('[data-first-row]');
   for (const query of [WIN, MAC]) {
     await settings(page, query);
-    await expect(bar.getByTestId('settings-tabs')).toBeVisible();
+    await expect(title).toHaveText(T.settings.title);
     const line = middle(await page.getByTestId('nav-jobs').boundingBox());
-    expect(middle(await bar.boundingBox()), query).toBe(line);
-    expect(middle(await page.getByTestId('settings-tabs').boundingBox()), query).toBe(line);
+    expect(middle(await title.boundingBox()), query).toBe(line);
     const [above, first] = await Promise.all([
-      bar.boundingBox(),
+      page.getByTestId('settings-tabs').boundingBox(),
       page.getByTestId('settings-terms').boundingBox(),
     ]);
     expect(Math.round(first!.y - (above!.y + above!.height)), query).toBe(24);
@@ -262,12 +261,14 @@ test('narrow, a row puts its control under the label only where the two do not f
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
   await showTab(page, page.getByTestId('reset-all'));
-  // Label and control side by side, one line, like the wider rows.
+  // Label and control side by side, like the wider rows.
   for (const id of ['reset-all']) {
-    const box = (await page.getByTestId(id).boundingBox())!;
-    expect(Math.round(box.height), id).toBe(
-      (await tokenPx(page, '--control-md')) + 2 * (await tokenPx(page, '--space-12')),
-    );
+    const row = page.getByTestId(id);
+    const [text, control] = await Promise.all([
+      row.locator('.text').boundingBox(),
+      row.locator('.control').boundingBox(),
+    ]);
+    expect(control!.x, id).toBeGreaterThanOrEqual(text!.x + text!.width);
   }
   // At the smallest window the label keeps its room: the button stands beside it or goes
   // under it, never over it.
@@ -414,13 +415,12 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
   expect(await ids(page, 'portals-mailbox', '[data-testid^="portal-"]')).toEqual(
     ALERT_PORTALS.map((portal) => `portal-${portal}`),
   );
-  // Jobportale one card; Alert-Mails the card of its account, under it the one of its
-  // portals.
+  // Jobportale one card; Alert-Mails one card, the mailbox's row first, its portals under it.
   expect(await ids(page, 'settings-search', '.card')).toEqual(['portals-search']);
-  expect(await ids(page, 'settings-mailbox', '.card')).toEqual([
-    'mailbox-account',
-    'portals-mailbox',
-  ]);
+  expect(await ids(page, 'settings-mailbox', '.card')).toEqual(['portals-mailbox']);
+  await expect(
+    page.getByTestId('portals-mailbox').locator('[data-setting-row]').first(),
+  ).toHaveAttribute('data-testid', 'mailbox');
   for (const [portal, brought] of [
     ['freelance', 2],
     ['linkedin', 2],

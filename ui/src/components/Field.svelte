@@ -8,7 +8,9 @@
   Beside the label an info symbol (`info`, InfoTip: only where docs/PLAN.md places one, and
   never with a hint) and a small navy dot (`mark`, its words for a screen reader: a value the
   CV import filled). Without `for` the field holds a group of controls (rows, choices) that
-  its label names.
+  its label names. `side`: where its container is wide enough (520 px), the label stands in a
+  column of its own at the left, centred on the control's first line, and the control and
+  its helper line in the column beside it (the Profil's form).
 -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
@@ -30,6 +32,8 @@
     /** A way on that belongs to the hint (opens a page), at the end of the helper line. */
     action?: { label: string; icon?: IconName; testid?: string; onclick: () => void } | null;
     error?: string | null;
+    /** The label in a column of its own at the left (where the container is wide enough). */
+    side?: boolean;
     children: Snippet;
   }
 
@@ -41,6 +45,7 @@
     mark = null,
     action = null,
     error = null,
+    side = false,
     children,
   }: Props = $props();
 
@@ -51,6 +56,7 @@
 
 <div
   class="field"
+  class:side
   role={target === null ? 'group' : undefined}
   aria-labelledby={target === null ? `${own}-label` : undefined}
 >
@@ -103,6 +109,29 @@
     align-items: center;
     gap: var(--space-6);
     min-width: 0;
+  }
+
+  @container (width >= 520px) {
+    .side {
+      display: grid;
+      grid-template-columns: var(--label-column) minmax(0, 1fr);
+      align-items: start;
+      gap: var(--space-6) var(--space-16);
+    }
+
+    .side > .top {
+      grid-row: 1;
+      grid-column: 1;
+      min-height: var(--control-field);
+    }
+
+    .side .label {
+      align-self: center;
+    }
+
+    .side > :not(.top) {
+      grid-column: 2;
+    }
   }
 
   .mark {

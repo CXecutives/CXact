@@ -485,6 +485,8 @@
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
   --form-width: 560px;
+  /* The labels' column of a form that sets them beside their controls (the Profil). */
+  --label-column: 140px;
   /* The setup (features/first-run): one centred card this wide (the profile's step takes the
      Profil's column), the step indicator above it with its numbered dots and their edge. */
   --setup-card: 460px;
@@ -494,8 +496,6 @@
   --step-line: 40px;
   /* The dashed edge of a drop zone (the CV's upload). */
   --drop-edge: 1.5px;
-  /* The columns of the search's terms in Einstellungen (they wrap with the width). */
-  --terms-column: 200px;
   /* Rows and their washes: a row's hover wash is the row's own box, and rows run edge to
      edge inside their container. A container that insets its content sets --row-inset to
      that inset; its rows bleed out by it and pad their content in by it, so wash, divider
@@ -550,7 +550,7 @@
   --badge-height: 18px;
   /* The narrowest count pill: 4 and 12 weigh the same. */
   --count-min: 20px;
-  --meter-sm: 2px;
+  --meter-sm: 4px;
   --meter-md: 6px;
   --meter-lg: 8px;
   --toggle-width: 36px;

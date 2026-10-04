@@ -178,21 +178,28 @@ test('each field under its section with its label', async ({ page }) => {
       await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
     }
   }
-  // Side by side: the rates, the countries and regions, the selects, the degrees and
-  // certificates.
-  for (const [a, b] of [
-    ['dayRateWish', 'dayRateMin'],
-    ['countries', 'regions'],
-    ['workload', 'minMonths'],
-    ['degrees', 'certificates'],
-  ]) {
-    const [left, right] = [
-      await field(page, a!).boundingBox(),
-      await field(page, b!).boundingBox(),
-    ];
-    expect(Math.abs(left!.y - right!.y), `${a} ${b}`).toBeLessThan(2);
-    expect(right!.x).toBeGreaterThan(left!.x + left!.width);
+  // Every label in one column at the left, its control beside it on the same line (the
+  // approved draft, variant 3): the pairs stand one under the other.
+  const lefts = new Set<number>();
+  for (const name of ['roles', 'dayRateWish', 'dayRateMin', 'countries', 'regions', 'years']) {
+    const scope = page.locator(`[data-field~="${name}"]`);
+    const [words, control] = await Promise.all([
+      label(scope).boundingBox(),
+      scope.locator('input').first().boundingBox(),
+    ]);
+    lefts.add(Math.round(words!.x));
+    expect(control!.x, name).toBeGreaterThan(words!.x + words!.width);
+    expect(
+      Math.abs(words!.y + words!.height / 2 - (control!.y + control!.height / 2)),
+      name,
+    ).toBeLessThan(4);
   }
+  expect(lefts.size).toBe(1);
+  const [wish, min] = [
+    await field(page, 'dayRateWish').boundingBox(),
+    await field(page, 'dayRateMin').boundingBox(),
+  ];
+  expect(min!.y).toBeGreaterThan(wish!.y + wish!.height);
 });
 
 test('the stored profile fills every field', async ({ page }) => {

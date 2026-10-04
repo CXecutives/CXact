@@ -1,8 +1,8 @@
 <!--
   "CXact sucht nach" in Einstellungen > Portale: the terms the search asks every portal for
   (from the profile, in the search's order, `search_terms`), each with what it brought in the
-  last search ("zuletzt 3 passende") or "neu" before its first, in columns that wrap; under
-  them "Im Profil ändern", the way to where they come from. Without a usable profile one
+  last search ("zuletzt 3 passende") or "neu" before its first, each a small bordered box in
+  rows that wrap ("Im Profil ändern" stands at the heading's end, SettingsView). Without a usable profile one
   sentence and "Profil anlegen". Asked again whenever the app state changes (a save of the
   profile, a finished search); the last answer stays for the next visit, so the page never
   grows under a kept scroll place.
@@ -75,14 +75,6 @@
     {#if error}
       <Notice tone="danger" variant="inline" text={error()} testid="terms-error" />
     {/if}
-    <span class="edit">
-      <Button
-        variant="link"
-        label={t.settings.editTerms}
-        testid="terms-edit"
-        onclick={() => navigation.go('profile')}
-      />
-    </span>
   {/if}
 </Card>
 
@@ -100,24 +92,28 @@
     font: var(--type-body);
   }
 
-  /* Columns that wrap with the width; each term with its yield quietly after it. */
+  /* Small bordered boxes in rows that wrap; each term with its yield quietly after it. */
   .terms {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--terms-column), 1fr));
-    gap: var(--space-8) var(--space-16);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
   }
 
   .term {
-    display: flex;
+    display: inline-flex;
     align-items: baseline;
     gap: var(--space-8);
     min-width: 0;
+    max-width: 100%;
+    padding: var(--space-4) var(--space-12);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-sm);
   }
 
   .word {
     overflow: hidden;
     color: var(--text);
-    font: var(--type-body);
+    font: var(--type-md);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -127,10 +123,5 @@
     color: var(--text-muted);
     font: var(--type-sm);
     font-variant-numeric: var(--numeric);
-  }
-
-  .edit {
-    display: flex;
-    margin-top: var(--space-12);
   }
 </style>

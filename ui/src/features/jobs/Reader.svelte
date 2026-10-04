@@ -10,12 +10,13 @@
     beside its band and an info symbol that says what the match is (the ring's own tooltip
     names it; the symbol reaches it from the keyboard); every ring without a score says "Noch
     nicht bewertet". No popover of what moved the score (user, 2026-10-01). An excluded job
-    shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
-    profile's side (its first violation; the row it violates says what the ad states).
+    shows one bordered box instead: the ban, "Ausgeschlossen", one sentence why from the
+    profile's side (its first violation; the row it violates says what the ad states) and
+    "Trotzdem bewerten" at its end (the approved draft, 2026-10-04).
   - actions: three text buttons without glyphs, Anzeige öffnen (Offline-Anzeige öffnen for
     an ad that is gone or closed: the portal's page still opens), Alert-Mail öffnen (only for
     a job a mail brought), Prompt kopieren (not for a job without a score); the row wraps.
-    An excluded job has "Trotzdem bewerten" before them. Moving the job away from one of the
+    Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and
     every failure is a toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
@@ -326,10 +327,20 @@
   {#if withRing}
     <div class="match" data-testid="reader-match">
       {#if excluded}
-        <ScoreRing ring={{ status: 'off' }} size="md" ban testid="reader-ban" />
-        <div class="lines">
-          <p class="band" data-testid="band">{t.score.excluded}</p>
-          <p class="why-line" data-testid="exclusion">{exclusion}</p>
+        <div class="excluded" data-testid="exclusion-box">
+          <span class="ban" data-testid="reader-ban"><Icon name="excluded" size="md" /></span>
+          <div class="lines">
+            <p class="band" data-testid="band">{t.score.excluded}</p>
+            <p class="why-line" data-testid="exclusion">{exclusion}</p>
+          </div>
+          {#if includable}
+            <Button
+              variant="secondary"
+              label={t.actions.include}
+              testid="reader-include"
+              onclick={(event) => void include(event)}
+            />
+          {/if}
         </div>
       {:else}
         <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
@@ -361,15 +372,6 @@
 
 {#snippet actionRow()}
   <div class="actions" bind:this={actions} data-testid="reader-actions">
-    {#if includable}
-      <Button
-        variant="secondary"
-        icon="add"
-        label={t.actions.include}
-        testid="reader-include"
-        onclick={(event) => void include(event)}
-      />
-    {/if}
     {@render showButtons()}
   </div>
 {/snippet}
@@ -588,6 +590,28 @@
     flex-direction: column;
     gap: var(--space-2);
     min-width: 0;
+  }
+
+  /* An excluded job: one bordered box with the ban, why, and "Trotzdem bewerten" at its end. */
+  .excluded {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--space-12);
+    min-width: 0;
+    padding: var(--space-12) var(--space-16);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .excluded .lines {
+    flex: 1;
+  }
+
+  .ban {
+    display: inline-flex;
+    flex: none;
+    color: var(--text-muted);
   }
 
   .band {
