@@ -1,32 +1,21 @@
 <!--
-  First run (full page) on the white sheet, in the column of every view: the app mark beside
-  its name and the steps of steps.ts that tick themselves: a usable profile (made in the
-  Profil view, whose editor also takes a file), the mailbox (optional, for the alert mails),
-  fetch. No sentence introduces them: each step is its name and the controls it needs. The
-  next open step that is not optional carries the one primary button; the fetch stays locked
-  with its reason while it cannot run (run.fetchBlocked) and says the words of its way
-  ("Jobs suchen", "Alert-Mails lesen"). After "Alles zurücksetzen" the app starts here again: a clean reset says so
-  once in a toast, one that left something stands as a warning above the steps with the way
-  to the log. Compact enough that all three steps are in view at 1280 x 720 on both OS; the
-  sidebar works as always, with Jobs current while this page stands for it.
+  The setup, a mode of the shell of its own (App.svelte: no sidebar, no sidebar button, no
+  Zurück and Vor in the top bar, no job view button; every switch of the view is refused while
+  it stands). One step at a time from the table of steps.ts, in one centred column (a form's
+  measure; the profile's step takes the Profil's): the step's heading (it takes the focus on
+  every step, so a screen reader starts there), its one sentence, its body (the snippet of its
+  id) and at the bottom of the window Zurück and the step's one primary. Enter is the primary
+  while the step can go on; the mouse's back button is Zurück (onboarding.svelte.ts). Usable
+  down to the window's minimum, 480 x 360: the column scrolls, the buttons stay at the bottom.
 
-  A vertical stepper: 28 px markers (the current one in the tooltip's dark, "you are here";
-  upcoming ones outlined; done ones green with a check) joined by a hairline that fills green
-  below a done step. Ticking a step is a class change, so it moves only while the page is
-  open: the marker cross-fades to its check, which draws itself, the line fills downwards,
-  the next marker turns dark and the done text rises in. Nothing plays when the page appears.
-
-  The mailbox step says "Optional" after its name and names the sources of alert mails that
-  are on, in the UI's order, since their mails must go
-  to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
-  no longer names them, since the list under it does: each of them with the alert mails
-  "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
-  found none. The profile step happens in the Profil view: "Neues Profil" opens its start page with the
-  three ways (the empty form, a file, the prompt for an AI), each going on there for review;
-  after the first save the Profil view's toast offers the way on. The fetch says only what is
-  wrong: for the mailbox no alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
-  only after a completed one), with the fitting action where there is one besides the fetch.
-  Every main action is 32 px.
+  The steps (docs/PLAN.md, Block 4): Willkommen; Weg wählen (the CV, recommended, or by hand);
+  Upload (shared drop zone, Upload.svelte); Auswertung (a spinner and "Abbrechen", or what went
+  wrong in one sentence with its ways on, CV_PROBLEMS); Prüfen und ergänzen (the Profil view in
+  its setup mode: its "Weiter" saves); Alert-Mails, optional ("Überspringen"; the mailbox form,
+  then the portals' rows with "Alert anlegen", the same rows as in Einstellungen; Zurück and
+  Überspringen stop a "Verbinden" that goes); Fertig ("Alles eingerichtet", "Zu den Jobs", no
+  search). After "Zurücksetzen" what could not be deleted stands as a warning on Willkommen
+  with the way to the log; a clean reset says so once in a toast.
 -->
 <script lang="ts" module>
   /** The toast of a clean reset shows once per start of the app. */
@@ -34,527 +23,362 @@
 </script>
 
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import BrandMark from '$components/BrandMark.svelte';
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
-  import Icon from '$components/Icon.svelte';
+  import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
+  import RadioList, { type RadioListOption } from '$components/RadioList.svelte';
+  import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
+  import { formKeys } from '$lib/input/input';
   import { invoke } from '$lib/ipc/api';
-  import type { OpenTarget, Portal } from '$lib/ipc/types';
-  import { rise } from '$lib/motion/transitions';
+  import { fade } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
-  import { navigation } from '$lib/state/navigation.svelte';
-  import { settingsTab } from '$lib/state/settings.svelte';
-  import { failureAction, fetchLook, isFetch, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
+  import ProfileView from '../profile/ProfileView.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
-  import { STEPS, type StepId } from './steps';
+  import PortalRow from '../shared/PortalRow.svelte';
+  import { onboarding } from './onboarding.svelte';
+  import { CV_PROBLEMS, stepOf, type CvWay, type StepId, type Way } from './steps';
+  import Upload from './Upload.svelte';
 
-  /** Done, per step, as the page shows it now. */
-  const done = $derived(
-    Object.fromEntries(STEPS.map((step) => [step.id, step.done()])) as Record<StepId, boolean>,
+  const step = $derived(onboarding.step);
+  const spec = $derived(stepOf(step));
+  const walk = $derived(onboarding.walk);
+  const back = $derived(spec.back(walk));
+  const nextWords = $derived(spec.next?.(t, walk) ?? null);
+  /** Without a mailbox the form's "Verbinden" is the step's primary, "Überspringen" beside. */
+  const nextVariant = $derived(step === 'alerts' && !app.hasMailbox ? 'secondary' : 'primary');
+
+  let busy = $state(false);
+  /** The mailbox form signs in and counts (Zurück and Überspringen stop it first). */
+  let checking = $state(false);
+  let profileView = $state<ProfileView | null>(null);
+  let mailboxForm = $state<MailboxForm | null>(null);
+  let heading = $state<HTMLElement | null>(null);
+  let root = $state<HTMLElement | null>(null);
+
+  const WAYS = $derived<RadioListOption<Way>[]>([
+    { id: 'cv', label: t.profile.fromCv, note: t.profile.fromCvHint },
+    { id: 'self', label: t.profile.byHand },
+  ]);
+  /** The portals of alert mails, in the app's order. */
+  const alertPortals = $derived(
+    inPortalOrder(app.state?.portals ?? []).filter((p) => p.way === 'alert'),
   );
-  /** The step whose action is the primary one: the first that is neither done nor optional. */
-  const current = $derived(STEPS.find((step) => !done[step.id] && !step.optional)?.id ?? null);
-  const fetchWords = $derived(fetchLook());
+  const cvWords: Record<CvWay, () => string> = {
+    retry: () => t.common.retry,
+    otherFile: () => t.profile.otherFile,
+    self: () => t.profile.byHand,
+  };
+  const cvDoes: Record<CvWay, () => void> = {
+    retry: () => onboarding.retry(),
+    otherFile: () => void onboarding.read(null),
+    self: () => onboarding.byHand(),
+  };
 
-  const profile = $derived(app.state?.profile ?? null);
-  /** Why an existing profile does not count yet (null: there is none, or it is fine). */
-  const profileProblem = $derived(
-    profile === null || done.profile
-      ? null
-      : profile.parseError
-        ? t.profile.unreadable
-        : t.firstRun.profileEmpty,
-  );
-  /** What the profile looks for: its first wished role, else the view's title. */
-  const profileName = $derived(profile?.form?.roles[0]?.trim() || t.profile.title);
-
-  /** The sources whose alerts are wanted (switched on, the ones of alert mails; the app
-   *  searches the others itself), in the UI's order. */
-  const portals = $derived(
-    inPortalOrder(app.state?.portals ?? []).filter((p) => p.enabled && p.way === 'alert'),
-  );
-  /** What "Verbinden" found per portal in this session (null: not asked in this session). */
-  const check = $derived(app.state?.mailbox.check ?? null);
-  const mailsOf = (portal: Portal): number | null =>
-    check?.perPortal.find((count) => count.portal === portal)?.count ?? null;
-  /** "Verbinden" found no alert mail of any portal: a fetch would find nothing yet. */
-  const noAlerts = $derived(check !== null && check.total === 0);
-
-  /** Steps ticked while this page is open: only their check draws (never at mount). */
-  let ticked = $state<Partial<Record<StepId, boolean>>>({});
-  let before = untrack(() => ({ ...done }));
-  /** Where each step's actions are: a step's form that had the focus goes, the first button
-   *  of the step that is current now takes it (an optional one is skipped). */
-  const actions: Partial<Record<StepId, HTMLElement>> = {};
-  $effect(() => {
-    const now = { ...done };
-    const ticks = STEPS.filter((step) => now[step.id] && !before[step.id]);
-    for (const step of ticks) ticked[step.id] = true;
-    const next = STEPS.find((step) => !now[step.id] && !step.optional);
-    if (ticks.length > 0 && next !== undefined && document.activeElement === document.body) {
-      queueMicrotask(() => actions[next.id]?.querySelector('button')?.focus());
-    }
-    before = now;
-  });
-
-  /** The Profil view: a new profile begins on its start page, an existing one opens as it is. */
-  function openProfile(): void {
-    navigation.go('profile');
-  }
-
-  /** Where the step's link or button failed to open (said in the step). */
-  let openError = $state<{ step: StepId; text: () => string } | null>(null);
-  function open(step: StepId, target: OpenTarget): void {
-    openError = null;
-    invoke('open_target', { target }).catch(
-      (error: unknown) => (openError = { step, text: () => errorText(error) }),
-    );
-  }
-
-  /** The first fetch that failed (this session, else the last one the app knows): its words
-   *  and the fitting action (none where "Alert-Mails lesen" is the way on). */
-  const failed = $derived.by(() => {
-    if (run.active) return null;
-    const last = run.summary ?? app.state?.lastRun ?? null;
-    if (last === null || !isFetch(last.kind) || last.outcome.kind !== 'failed') return null;
-    const error = last.outcome.error;
-    return {
-      text: t.error.text(error.kind, error.params),
-      action: failureAction(last, error, () => open('fetch', { kind: 'logDir' })),
-    };
-  });
-
-  /** After "Alles zurücksetzen": what it could not delete stays a warning with the way to
-   *  the log (each item is named there); a clean reset says so once. */
-  const reset = $derived(app.state?.resetReport ?? null);
-  const resetLeft = $derived(reset !== null && reset.failed > 0 && !done.mailbox);
   onMount(() => {
+    onboarding.begin();
+    const reset = app.state?.resetReport ?? null;
     if (reset !== null && reset.failed === 0 && !told) {
       told = true;
       toasts.show(t.settings.resetDone);
     }
   });
+
+  // Every step starts at its top with the focus on its heading.
+  let shown: StepId | null = null;
+  $effect(() => {
+    const now = step;
+    if (now === shown) return;
+    shown = now;
+    void tick().then(() => {
+      root?.scrollTo({ top: 0 });
+      heading?.focus({ preventScroll: true });
+    });
+  });
+
+  /** The step's primary (Enter while it can go on). */
+  async function next(): Promise<void> {
+    if (busy || nextWords === null) return;
+    switch (step) {
+      case 'welcome':
+        onboarding.go('way');
+        return;
+      case 'way':
+        onboarding.go(onboarding.way === 'cv' ? 'upload' : 'review');
+        return;
+      case 'review':
+        busy = true;
+        try {
+          if (await profileView?.next()) onboarding.go('alerts');
+        } finally {
+          busy = false;
+        }
+        return;
+      case 'alerts':
+        // A "Verbinden" that goes stops first.
+        mailboxForm?.cancel();
+        onboarding.go('done');
+        return;
+      case 'done':
+        onboarding.leave();
+        return;
+      default:
+        return;
+    }
+  }
+
+  function goBack(): void {
+    mailboxForm?.cancel();
+    onboarding.back();
+  }
+
+  /** What could not be deleted by the reset: its way to the log. */
+  const resetLeft = $derived(app.state?.resetReport?.failed ?? 0);
+  let logError = $state<string | null>(null);
+  function openLog(): void {
+    logError = null;
+    invoke('open_target', { target: { kind: 'logDir' } }).catch(
+      (error: unknown) => (logError = errorText(error)),
+    );
+  }
 </script>
 
-{#snippet marker(index: number, id: StepId)}
-  <span
-    class="marker"
-    class:done={done[id]}
-    class:drawn={ticked[id] === true}
-    class:current={current === id}
-    aria-hidden="true"
-  >
-    <span class="number">{index + 1}</span>
-    <span class="check"><Icon name="check" size="sm" /></span>
-  </span>
-{/snippet}
-
-{#snippet problem(text: string, testid: string)}
-  <!-- In the place and size of the hint, with the glyph and tone of a warning. -->
-  <p class="hint problem" data-testid={testid}>
-    <Icon name="warning" size="sm" /><span>{text}</span>
-  </p>
-{/snippet}
-
-{#snippet mailbox()}
-  {#if done.mailbox}
-    <!-- The address the portals' alert mails must go to (text to copy), then per portal what
-         "Verbinden" found, or its page to set up an alert. -->
-    <div class="head">
-      <h2 class="name">{t.firstRun.mailbox}</h2>
-      <p class="done-text" data-copy in:rise>{app.state?.mailbox.user}</p>
-    </div>
-    {#if portals.length > 0}
-      <p class="hint" data-testid="first-mailbox-hint">{t.firstRun.mailboxDone}</p>
-      <ul class="alerts" data-testid="first-alerts">
-        {#each portals as portal (portal.portal)}
-          {@const mails = mailsOf(portal.portal)}
-          <li class="alert" data-testid="first-portal-{portal.portal}">
-            <span class="portal">{t.portal[portal.portal]}</span>
-            {#if mails !== null && mails > 0}
-              <span class="count" data-testid="first-mails-{portal.portal}"
-                >{t.firstRun.alertMails(mails)}</span
-              >
-            {:else}
-              <Button
-                variant="link"
-                icon="external"
-                external
-                label={t.firstRun.createAlert}
-                testid="first-alert-{portal.portal}"
-                onclick={() => open('mailbox', { kind: 'portalSetup', portal: portal.portal })}
-              />
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  {:else}
-    <div class="head">
-      <h2 class="name">
-        {t.firstRun.mailbox}<span class="optional" data-testid="first-mailbox-optional"
-          >{t.profile.optional}</span
-        >
-      </h2>
-      {#if portals.length > 0}
-        <p class="hint" data-testid="first-mailbox-hint">
-          {t.firstRun.mailboxText(portals.map((p) => p.portal))}
-        </p>
-      {/if}
-    </div>
-    <MailboxForm quiet />
+{#snippet welcome()}
+  {#if resetLeft > 0}
+    <Notice
+      tone="warning"
+      text={t.settings.resetPartly(resetLeft)}
+      action={{ label: t.common.openLog, icon: 'folder', onclick: openLog }}
+      testid="first-reset-report"
+    />
+    {#if logError}<Notice tone="danger" variant="inline" text={logError} />{/if}
   {/if}
-  {#if !app.hasPortal}
-    <!-- Every source is off: nothing would be read (the words of the locked fetch). -->
-    {@render problem(t.toolbar.needsPortal, 'first-no-portal')}
-    <div class="actions">
+{/snippet}
+
+{#snippet way()}
+  <RadioList
+    options={WAYS}
+    value={onboarding.way}
+    label={t.firstRun.way}
+    testid="first-way"
+    onchange={(id) => (onboarding.way = id)}
+  />
+{/snippet}
+
+{#snippet reading()}
+  {#if onboarding.failure !== null || onboarding.error !== null}
+    {@const ways =
+      onboarding.failure === null ? (['self'] as const) : CV_PROBLEMS[onboarding.failure]}
+    <div class="problem" data-testid="cv-problem">
+      <IconTile icon="warning" tone="danger" size="lg" />
+      <p class="sentence" data-testid="cv-error">
+        {onboarding.failure === null ? onboarding.error : t.profile.cvError[onboarding.failure]}
+      </p>
+      <div class="ways">
+        {#each ways as id, index (id)}
+          <Button
+            variant={index === 0 ? 'primary' : 'secondary'}
+            label={cvWords[id]()}
+            testid="cv-{id}"
+            onclick={cvDoes[id]}
+          />
+        {/each}
+      </div>
+    </div>
+  {:else}
+    <div class="reading" data-testid="cv-reading">
+      <Spinner size="lg" label={null} />
+      <p class="quiet">{t.profile.fromCvHint}</p>
       <Button
         variant="secondary"
-        icon="settings"
-        label={t.firstRun.openSettings}
-        testid="first-open-settings"
-        onclick={() => {
-          settingsTab.value = app.fetchWay === 'mail' ? 'mailbox' : 'search';
-          navigation.go('settings');
-        }}
+        label={t.common.cancel}
+        testid="cv-cancel"
+        onclick={() => onboarding.cancelReading()}
       />
     </div>
   {/if}
 {/snippet}
 
-{#snippet profileStep()}
-  <div class="head">
-    <h2 class="name">{t.firstRun.profile}</h2>
-    {#if done.profile}
-      <p class="done-text" in:rise>{profileName}</p>
-    {:else if profileProblem}
-      {@render problem(profileProblem, 'first-profile-problem')}
-    {/if}
-  </div>
-  {#if !done.profile}
-    <!-- A new profile starts as the empty form (the recommended way), from a file, or from the
-         prompt for an AI; an existing one that does not count yet opens as it is. -->
-    <div class="actions" bind:this={actions.profile}>
-      {#if profile}
-        <Button
-          variant={current === 'profile' ? 'primary' : 'secondary'}
-          icon="document"
-          label={t.list.openProfile}
-          testid="first-profile"
-          onclick={openProfile}
-        />
-      {:else}
-        <Button
-          variant={current === 'profile' ? 'primary' : 'secondary'}
-          icon="add"
-          label={t.list.createProfile}
-          testid="first-profile"
-          onclick={openProfile}
-        />
-      {/if}
-    </div>
-  {/if}
-{/snippet}
-
-{#snippet fetch()}
-  <div class="head">
-    <h2 class="name">{t.firstRun.fetch}</h2>
-    {#if noAlerts && app.fetchWay === 'mail'}
-      {@render problem(t.firstRun.noAlerts, 'first-no-alerts')}
-    {/if}
-  </div>
-  <div class="actions" bind:this={actions.fetch}>
-    <Button
-      variant={current === 'fetch' ? 'primary' : 'secondary'}
-      icon={fetchWords.icon}
-      label={fetchWords.label}
-      disabled={run.fetchBlocked !== null}
-      disabledReason={run.fetchBlocked}
-      testid="first-fetch"
-      onclick={() => void run.start({ kind: 'fetch' })}
-    />
-  </div>
-  {#if run.startError}
-    <Notice tone="danger" variant="inline" text={run.startError} />
-  {:else if failed}
-    <Notice
-      tone="danger"
-      variant="inline"
-      text={failed.text}
-      action={failed.action}
-      testid="first-fetch-failed"
-    />
+{#snippet alerts()}
+  {#if app.hasMailbox}
+    <p class="address" data-copy data-testid="first-address">{app.state?.mailbox.user}</p>
+    <p class="text">{t.firstRun.alertsDone}</p>
+    <Card padding="rows" testid="first-alerts">
+      {#each alertPortals as portal (portal.portal)}<PortalRow {portal} />{/each}
+    </Card>
+  {:else}
+    <p class="text">{t.firstRun.alertsText(alertPortals.map((p) => p.portal))}</p>
+    <MailboxForm bind:this={mailboxForm} bind:busy={checking} />
   {/if}
 {/snippet}
 
 {#snippet body(id: StepId)}
-  {#if id === 'mailbox'}
-    {@render mailbox()}
-  {:else if id === 'profile'}
-    {@render profileStep()}
-  {:else}
-    {@render fetch()}
-  {/if}
-  {#if openError?.step === id}
-    <Notice tone="danger" variant="inline" text={openError.text()} testid="open-error" />
+  {#if id === 'welcome'}
+    {@render welcome()}
+  {:else if id === 'way'}
+    {@render way()}
+  {:else if id === 'upload'}
+    <Upload onfile={(path) => void onboarding.read(path)} />
+  {:else if id === 'reading'}
+    {@render reading()}
+  {:else if id === 'review'}
+    <ProfileView bind:this={profileView} onboarding />
+  {:else if id === 'alerts'}
+    {@render alerts()}
   {/if}
 {/snippet}
 
-<div class="hero" data-testid="first-run">
-  <div class="column">
-    <header class="intro">
-      <BrandMark size="lg" />
-      <h1 class="title">{t.app.name}</h1>
-    </header>
+{#snippet primary()}
+  {#if nextWords !== null}
+    <Button
+      variant={nextVariant}
+      label={nextWords}
+      loading={busy && step === 'review'}
+      testid="first-next"
+      onclick={() => void next()}
+    />
+  {/if}
+{/snippet}
 
-    {#if resetLeft && reset}
-      <Notice
-        tone="warning"
-        text={t.settings.resetPartly(reset.failed)}
-        action={{
-          label: t.common.openLog,
-          icon: 'folder',
-          onclick: () => open('mailbox', { kind: 'logDir' }),
-        }}
-        testid="first-reset-report"
-      />
-    {/if}
-
-    <Card padding="md">
-      <ol class="steps" aria-label={t.firstRun.steps}>
-        {#each STEPS as step, index (step.id)}
-          <li
-            class="step"
-            class:done={done[step.id]}
-            aria-current={current === step.id ? 'step' : undefined}
-            data-testid="step-{step.id}"
-            data-done={done[step.id]}
-          >
-            <div class="rail">
-              {@render marker(index, step.id)}
-              {#if index < STEPS.length - 1}<span class="line"><span class="fill"></span></span
-                >{/if}
-            </div>
-            <div class="body">{@render body(step.id)}</div>
-          </li>
-        {/each}
-      </ol>
-    </Card>
+<div
+  class="setup"
+  bind:this={root}
+  data-testid="first-run"
+  data-step={step}
+  use:formKeys={{ save: () => void next() }}
+>
+  <div class="column" class:wide={spec.wide}>
+    {#key step}
+      <section class="step" aria-labelledby="first-step-heading" in:fade>
+        {#if step === 'welcome'}<BrandMark size="lg" />{/if}
+        <h1
+          class="title"
+          id="first-step-heading"
+          tabindex="-1"
+          bind:this={heading}
+          data-testid="first-heading"
+        >
+          {spec.heading(t)}
+        </h1>
+        {#if spec.text}<p class="text">{spec.text(t)}</p>{/if}
+        {@render body(step)}
+      </section>
+    {/key}
   </div>
+  {#if back !== null || nextWords !== null}
+    <footer class="bar" class:wide={spec.wide} data-testid="first-bar">
+      <span class="back">
+        {#if back !== null}
+          <Button variant="ghost" label={t.common.back} testid="first-back" onclick={goBack} />
+        {/if}
+      </span>
+      <span class="next">{@render primary()}</span>
+    </footer>
+  {/if}
 </div>
 
 <style>
-  /* The one inner padding of every content column, so the card lines up with the Profil and
-     Einstellungen cards it leads to. */
-  .hero {
-    min-height: 100%;
-    padding: var(--pane-padding) var(--pane-padding) var(--space-24);
+  /* The column scrolls; the buttons stay at the bottom of the window. */
+  .setup {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
   }
 
   .column {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-20);
-    max-width: var(--reader-width);
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: calc(var(--form-width) + 2 * var(--pane-padding));
     margin: 0 auto;
+    padding: var(--space-32) var(--pane-padding) var(--space-24);
   }
 
-  /* The mark beside the name, like the app's lockup: one row, not two. */
-  .intro {
+  .column.wide {
+    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
+  }
+
+  .step {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-12);
+    flex-direction: column;
+    gap: var(--space-16);
   }
 
   .title {
     color: var(--text-heading);
     font: var(--type-2xl);
     letter-spacing: var(--tracking-tight);
+    outline: none;
   }
 
-  /* No gap between the steps: the hairline runs on from one marker to the next. */
-  .steps {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .step {
-    display: flex;
-    gap: var(--space-16);
-  }
-
-  .rail {
-    display: flex;
-    flex: none;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .line {
-    position: relative;
-    flex: 1;
-    width: var(--border-width);
-    margin: var(--space-4) 0;
-    overflow: hidden;
-    background-color: var(--border);
-  }
-
-  /* The done part of the line fills downwards (a transform, so never at mount). */
-  .fill {
-    position: absolute;
-    inset: 0;
-    background-color: var(--success);
-    transform: scaleY(0);
-    transform-origin: top;
-    transition: transform var(--dur-slow) var(--ease-emphasized);
-  }
-
-  .step.done .fill {
-    transform: none;
-  }
-
-  .marker {
-    display: inline-grid;
-    place-items: center;
-    width: var(--control-sm);
-    height: var(--control-sm);
-    border: var(--border-width) solid var(--border-strong);
-    border-radius: var(--radius-full);
+  .text,
+  .address {
     color: var(--text-muted);
-    font: var(--type-sm);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: var(--numeric);
-    transition:
-      background-color var(--dur-fast) var(--ease-standard),
-      border-color var(--dur-fast) var(--ease-standard),
-      color var(--dur-fast) var(--ease-standard);
+    font: var(--type-body);
   }
 
-  /* Number and check share the cell and cross-fade. */
-  .number,
-  .check {
-    display: inline-flex;
-    grid-area: 1 / 1;
-    transition: opacity var(--dur-slow) var(--ease-standard);
+  .address {
+    color: var(--text);
+    font-weight: var(--weight-medium);
   }
 
-  .check,
-  .done .number {
-    opacity: 0;
-  }
-
-  .done .check {
-    opacity: 1;
-  }
-
-  /* A step ticked while the page is open draws its check once (a class set by a change). */
-  .drawn .check :global(path) {
-    stroke-dasharray: var(--draw-length);
-    animation: draw var(--dur-slow) var(--ease-out) both;
-  }
-
-  .marker.current {
-    border-color: var(--surface-inverse);
-    background-color: var(--surface-inverse);
-    color: var(--text-inverse);
-  }
-
-  .marker.done {
-    border-color: var(--success);
-    background-color: var(--success-soft);
-    color: var(--success);
-  }
-
-  /* The heading's line centred on the 28 px marker; the space below a step keeps the line. */
-  .body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: var(--space-8);
-    min-width: 0;
-    padding-top: var(--space-2);
-    padding-bottom: var(--space-20);
-  }
-
-  .step:last-child .body {
-    padding-bottom: 0;
-  }
-
-  /* The step's name and, 4 px below it, its hint or what is done. */
-  .head {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .name {
-    color: var(--text-heading);
-    font: var(--type-lg);
-  }
-
-  /* A step that is not needed says so after its name, quietly (like a Profil section). */
-  .optional {
-    margin-inline-start: var(--space-8);
-    color: var(--text-subtle);
-    font: var(--type-sm);
-  }
-
-  .hint,
-  .count {
+  .quiet {
     color: var(--text-muted);
     font: var(--type-sm);
   }
 
-  .done-text {
-    color: var(--text-muted);
-    font: var(--type-md);
-  }
-
-  /* The glyph sits on the first line when the sentence wraps. */
+  .reading,
   .problem {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-6);
-    color: var(--text);
-  }
-
-  .problem > :global(:first-child) {
-    color: var(--warning);
-    margin-top: calc((var(--leading-sm) - var(--icon-sm)) / 2);
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8) var(--space-16);
-  }
-
-  /* Each portal with what "Verbinden" found, or its page to set up an alert, one per line. */
-  .alerts {
-    display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    align-items: center;
+    gap: var(--space-16);
+    padding-block: var(--space-24);
+    text-align: center;
   }
 
-  .alert {
+  .sentence {
+    color: var(--text);
+    font: var(--type-body);
+  }
+
+  .ways {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4) var(--space-12);
-    min-height: var(--control-field);
+    justify-content: center;
+    gap: var(--space-12);
   }
 
-  .portal {
-    min-width: var(--stat-min);
-    color: var(--text);
-    font: var(--type-sm);
+  /* Zurück at the left, the primary at the right, on the column's edges; sticky at the
+     bottom of the window over the content that scrolls under it. */
+  .bar {
+    position: sticky;
+    z-index: var(--z-sticky);
+    bottom: 0;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+    max-width: calc(var(--form-width) + 2 * var(--pane-padding));
+    margin: 0 auto;
+    padding: var(--space-12) var(--pane-padding);
+    background-color: var(--surface);
+  }
+
+  .bar.wide {
+    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
+  }
+
+  .back,
+  .next {
+    display: flex;
   }
 </style>

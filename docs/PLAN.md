@@ -11,11 +11,11 @@ the layers in `docs/ARCHITECTURE.md`, the engine in `docs/MATCHING.md`, how to w
 A desktop app for Windows and macOS (Tauri 2, a Rust core, a Svelte 5 UI) for an interim manager or a
 freelance consultant. It finds jobs and scores each one against the consultant's profile.
 
-The fetch runs only when the user presses it, one of two ways the menu beside the button chooses (never
-both; the search by default, `Settings::fetches_mail`):
-- **"Jobs suchen"** searches the sources that allow it itself, with terms from the active profile.
-- **"Alert-Mails lesen"** reads the job alert mails of LinkedIn and freelance.de from Gmail (IMAP, an app
-  password in the OS keychain), since the last fetch, the first one 30 days back.
+The fetch runs only when the user presses it, one button, **"Jobs suchen"**, in one run:
+- First it reads the job alert mails of LinkedIn and freelance.de from Gmail, when a mailbox is connected
+  (IMAP, an app password in the OS keychain), since the last fetch, the first one 30 days back. A Gmail or
+  keychain failure skips only this part, with a warning and "Postfach prüfen".
+- Then it searches the portals that allow it itself, with terms from the profile.
 
 Every new job's ad is fetched and scored by the matching engine. The list sorts by match, date or day rate.
 
@@ -25,7 +25,7 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   Their public search, as their robots.txt allows (read at run time, kept a day in `policy.json`).
 - By alert mail: LinkedIn and freelance.de. A job link of any other source in an alert mail is read too.
   LinkedIn is never searched or scraped beyond the links in the user's own alert mails.
-- Every source can be switched off (Einstellungen > Suche, Postfach). freelance.de can sign in through its
+- Every portal can be switched off (Einstellungen > Portale). freelance.de can sign in through its
   own window (`session.rs`), so the fetch reads ads that need a sign-in.
 - Deep search: up to 24 terms from the profile (`profile::deep_search_terms`: Wunschrollen, Schwerpunkte,
   the proposed or stored Suchbegriffe). Each term is paged while new jobs come, up to 10 pages on Hays,
@@ -57,18 +57,26 @@ pre-assessment to any AI chat for a deeper check.
 ## Screens
 
 - **Jobs:**
-  - The places Aktuell, Archiv, Papierkorb as tabs. The fetch with its way menu (a chevron) at the right,
-    "Papierkorb leeren" in the Papierkorb.
+  - The places Aktuell, Archiv, Papierkorb as tabs. "Jobs suchen" at the right, the view's one primary,
+    with or without a mailbox; "Papierkorb leeren" in the Papierkorb. While it runs one line under the
+    header ("Portale werden durchsucht, 3 von 8 fertig", under it "Bisher 12 neue Jobs") with a thin bar
+    that never moves back, and a small spinner at Jobs in the sidebar. An empty Aktuell says "Noch keine
+    Jobs"; after a search without a fitting job "Noch keine passenden Jobs gefunden" with "Profil
+    öffnen"; the end toast says "Keine neuen passenden Jobs, n ausgeschlossen".
   - The search over every word, and the funnel: the order Übereinstimmung, Datum or Tagessatz; the filters
-    Quelle, Übereinstimmung and Gefunden (Heute, 7, 30 Tage).
+    Portal, Übereinstimmung and Neu seit (Heute, 7, 30 Tagen). The date is the day a job came into CXact
+    (`first_seen_at`).
   - One row height. A row holds the ring, the unread dot, the title, the company, the place, the pay and the
     date. Excluded jobs stand behind a divider.
   - The job view, right of the list or in place of it when narrow:
     - The head: the title, Archivieren and Löschen as icon buttons, close.
-    - The ring with its band words, then the actions: "Trotzdem bewerten" for an excluded job, Anzeige
-      öffnen, Alert-Mail öffnen (only for a job a mail brought), Prompt kopieren.
-    - The Jobdetails table with the verdict icons, the Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
-      erfüllt; a missing term goes into the profile with a plus) and the ad's text.
+    - The ring (its name in its tooltip) with its band words and an info symbol, then three text buttons
+      that wrap: Anzeige öffnen, Alert-Mail öffnen (only for a job a mail brought), Prompt kopieren (only
+      for a job with a score); "Trotzdem bewerten" before them for an excluded job.
+    - The Jobdetails table with the verdict icons (a row with only "–" shows only where a verdict judges
+      it; "Gefunden" quiet), the Anforderungen (Erfüllt, Teilweise erfüllt, Nicht erfüllt; a missing term
+      goes into the profile with a plus) and the ad's text. An excluded job shows neither verdicts nor
+      Anforderungen: its head says why.
   - Moves have an undo toast. Delete for good stays in the Papierkorb.
 - **Profil:**
   - One profile. Without one, a page with two ways: Aus Lebenslauf ausfüllen (an AI evaluates the CV,
@@ -92,14 +100,19 @@ pre-assessment to any AI chat for a deeper check.
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's
     JSON in the work folder (`profil/`), keeping unknown keys, with one backup.
-- **Einstellungen**, on tabs like the Profil:
-  - Suche: the eight search sources, each a compact row with its tile, the calls of today, open in the
-    browser and a switch.
-  - Postfach: the account card (mail tile, the address, "Verbunden" after a green dot, Ändern, Entfernen),
-    under it the card of the alert sources (sign-in where offered, then "Alert anlegen").
-  - Daten: the work folder (Ändern, Öffnen) and "Alle Daten zurücksetzen".
-- **Erste Schritte** (until the first completed fetch): 1 Profil, 2 Postfach (optional, only the alert
-  mails need it), 3 the first fetch in the words of its way.
+- **Einstellungen**, on two tabs like the Profil:
+  - Portale: "CXact sucht nach" (the search's terms, each with "zuletzt n passende" or "neu", and "Im
+    Profil ändern"); Jobportale (the eight portals, each a compact row with its tile, "Zuletzt n neue
+    Jobs", open in the browser and a switch); Alert-Mails (the account card on top, without a mailbox
+    "Ohne Postfach ruhen LinkedIn und freelance.de.", then LinkedIn and freelance.de with "Alert
+    anlegen", freelance.de with its sign-in).
+  - Daten: Profile ("Ordner öffnen"), "Alle Daten zurücksetzen", a quiet line with the version.
+- **Setup** (`features/first-run`, until it was finished once, `onboarded`): a mode of the shell of its
+  own, without the sidebar and the top bar's buttons, every switch of the view refused. Its steps from a
+  table: Willkommen, Weg wählen (the CV or by hand), Upload (drop zone, "Wird von einer KI
+  ausgewertet."), Auswertung (its failures in one sentence with their ways on), Prüfen und ergänzen (the
+  Profil's form, "Weiter" saves), Alert-Mails (optional), Fertig ("Alles eingerichtet", "Zu den
+  Jobs"). It resumes from what is stored; Enter is "Weiter"; usable at 480 x 360.
 - **Shell:**
   - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
     Einstellungen. Zurück and Vor also walk the tabs of Einstellungen.
@@ -125,8 +138,8 @@ pre-assessment to any AI chat for a deeper check.
     plus.
 - **Controls:** one button height, 28 px (only a button inside a field is lower). Menus open from a chevron
   button.
-- **Texts:** the rules in `CLAUDE.md`. The fetch's words are "Jobs suchen" and "Alert-Mails lesen"; the
-  first place is "Aktuell".
+- **Texts:** the rules in `CLAUDE.md`. The fetch's words are "Jobs suchen"; the first place is
+  "Aktuell".
 - **Data:** SQLite in the OS app data folder (schema 8, no migrations). A database of schema 1 to 7 is
   reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the database, `backups/`,
   the sessions and the Gmail entry go, the old profiles are set aside as `profil.alt`, `policy.json`
@@ -161,8 +174,8 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Archiv, Zurückholen (out of the Archiv)
 - Papierkorb, Löschen, Endgültig löschen, Wiederherstellen
 - Übereinstimmung (Hohe, Mittlere, Geringe)
-- Quelle, Suche, Alert-Mails
-- Jobs suchen, Alert-Mails lesen, Abruf
+- Portal (never Quelle), Jobportale, Alert-Mails
+- Jobs suchen, Suche (never Abruf)
 - bewerten, neu bewerten
 - Ausgeschlossen, Trotzdem bewerten
 - Anforderungen, Pflicht, Optional
@@ -186,16 +199,17 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 Asked by the user on 2026-10-02. Start with drafts for the visible points, decide them in one round, then
 build.
 
-- [ ] An excluded or not yet scored job shows no analysis: no verdict icons in the Jobdetails, no
+- [x] An excluded or not yet scored job shows no analysis: no verdict icons in the Jobdetails, no
   Anforderungen; only the ad and "Trotzdem bewerten" until it is scored.
-- [ ] No press shrink: pressing a button must not scale it (`Button.svelte`, `.btn:active:hover` with
+- [x] No press shrink: pressing a button must not scale it (`Button.svelte`, `.btn:active:hover` with
   `--btn-press`). It looks odd on the small chevron buttons; drop it at least there, likely everywhere
   ("nothing deforms on press"). Check the open look of a menu button (`aria-expanded` keeps the wash).
-- [ ] The job view's action buttons: the user dislikes their words and size. Drafts: shorter words,
+- [x] The job view's action buttons: the user dislikes their words and size. Drafts: shorter words,
   icon buttons with tooltips beside Archivieren and Löschen, or one text button and a "…" menu.
 - [ ] The list's date shows when a job came into CXact (`first_seen_at`), for the row and the order "Nach
   Datum". Today it is the alert mail's date where there is one (`COALESCE(mail_date, first_seen_at)` in
-  `store/jobs.rs` `page_order` and the row).
+  `store/jobs.rs` `page_order` and the row). The UI and the preview use `first_seen_at` already; core's
+  order and filter follow.
 - [ ] A leaner Profil (drafts). Candidates:
   - Drop Suchbegriffe; the search derives its terms.
   - Drop the field Rolle; it repeats the profile's title, which is renamed in place.
@@ -209,6 +223,6 @@ build.
   still within each source's robots.txt and stops. Show in Einstellungen > Suche what CXact searches for
   and what each query brings. Measure before and after with the user's real profile: hits per source and
   term, the share of high matches, duplicates, known jobs it missed.
-- [ ] Optional: a calmer "Gefunden" line in the Jobdetails; hide Jobdetails rows that only say "–".
+- [x] Optional: a calmer "Gefunden" line in the Jobdetails; hide Jobdetails rows that only say "–".
 - [ ] The release installers (`npx tauri build`, `docs/CHANGING.md` "Release a version"); the user
   starts them.

@@ -1,12 +1,11 @@
 <!--
   "Papierkorb leeren" in the list header's action cell: outlined in the red of every button
-  that deletes and as wide as the fetch as it stands ("Jobs suchen" or "Alert-Mails lesen";
-  an unseen one sets the width; user, 2026-09-29), at the cell's right edge.
+  that deletes and at least as wide as "Jobs suchen" (an unseen one sets the width; user,
+  2026-09-29), at the cell's right edge.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
-  import { fetchLook } from '$lib/state/run.svelte';
 
   interface Props {
     disabled: boolean;
@@ -20,7 +19,7 @@
 
 <span class="cell">
   <span class="sizer" aria-hidden="true" inert>
-    <Button variant="secondary" {...fetchLook()} />
+    <Button variant="secondary" icon="search" label={t.toolbar.searchNow} />
   </span>
   <span class="own">
     <Button
@@ -48,7 +47,7 @@
     grid-area: 1 / 1;
   }
 
-  /* Holds the width of "Alert-Mails lesen", unseen. */
+  /* Holds the width of "Jobs suchen", unseen. */
   .sizer {
     visibility: hidden;
   }

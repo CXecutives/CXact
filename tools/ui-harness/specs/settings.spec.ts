@@ -1,6 +1,6 @@
-// Einstellungen against the stub: the tabs in their order (Suche, Postfach, Daten) and the
-// cards of each, their rows flush on one edge, the mailbox and its dialog, the sources with
-// their calls, the work folder, the backups and the reset.
+// Einstellungen against the stub: the tabs in their order (Portale, Daten) and the cards of
+// each, their rows flush on one edge, the search's terms, the mailbox and its dialog, the
+// portals with what they brought, the profiles' folder, the version and the reset.
 
 import type { Locator, Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
@@ -20,7 +20,7 @@ const WIN = '?platform=windows';
 const MAC = '?platform=macos';
 
 /** The tabs of Einstellungen in their order (lib/state/settings.svelte.ts). */
-const TABS = ['search', 'mailbox', 'data'] as const;
+const TABS = ['portals', 'data'] as const;
 type Tab = (typeof TABS)[number];
 
 /* ------------------------------------------------------------------ helpers */
@@ -102,67 +102,81 @@ const middle = (box: { y: number; height: number } | null): number =>
 
 /* ---------------------------------------------------------------- the page */
 
-test('the tabs in their order, the tab bar on the first row, each tab with its cards', async ({
+test('the tabs Portale and Daten, the tab bar on the first row, each tab with its cards', async ({
   page,
 }) => {
   await settings(page);
-  // By the fetch's two ways (user decision 2026-10-01): Suche, then Postfach with the
-  // sources of its alert mails, then Daten; like the Profil's, the first one shows.
   const tabs = page.getByTestId('settings-tabs').getByRole('tab');
-  await expect(tabs).toHaveText([T.settings.search, T.settings.mailbox, T.settings.data]);
+  await expect(tabs).toHaveText([T.settings.portals, T.settings.data]);
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
-  // No headings above the cards: the tab names them, each section is named for a screen
-  // reader. No Zeitraum.
-  await expect(page.getByTestId('settings').locator('h2')).toHaveCount(0);
-  await expect(page.getByTestId('settings')).not.toContainText('Zeitraum');
-  // Each tab its cards (by the rows they hold), the first 24 under the tab bar; one panel
-  // shows at a time, and nothing asks for a primary.
-  const cards: Record<Tab, string[][]> = {
-    search: [SEARCHED.map((portal) => `portal-${portal}`)],
-    mailbox: [['mailbox'], ALERT_PORTALS.map((portal) => `portal-${portal}`)],
-    data: [['folder', 'reset-all']],
-  };
-  const bar = page.getByTestId('settings').locator('[data-first-row]');
-  for (const tab of TABS) {
-    const panel = await showSettingsTab(page, tab);
-    await expect(tabs.nth(TABS.indexOf(tab))).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('tabpanel')).toHaveCount(1);
-    await expect(panel).toHaveAccessibleName(T.settings[tab]);
-    const section = panel.locator(':scope > section');
-    await expect(section).toHaveAttribute('data-testid', `settings-${tab}`);
-    await expect(section).toHaveAccessibleName(T.settings[tab]);
-    const rows = await section
-      .locator('.card')
-      .evaluateAll((nodes) =>
-        nodes.map((card) =>
-          [...card.querySelectorAll('[data-setting-row]')].map(
-            (row) => row.getAttribute('data-testid') ?? '',
-          ),
-        ),
-      );
-    expect(rows, tab).toEqual(cards[tab]);
-    const [above, first] = await Promise.all([
-      bar.boundingBox(),
-      section.locator('.card').first().boundingBox(),
-    ]);
-    expect(Math.round(first!.y - (above!.y + above!.height)), tab).toBe(24);
-    expect(await visibleCount(page, '.btn.primary'), tab).toBe(0);
-  }
-  // What went is gone.
-  for (const gone of ['Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
-    await expect(page.getByTestId('settings')).not.toContainText(gone);
-  }
-  // No version line (user decision 2026-09-27).
-  await expect(page.getByTestId('version')).toHaveCount(0);
+  // Portale: CXact sucht nach (its info symbol beside it), Jobportale and Alert-Mails, each
+  // under its heading; the mailbox on top of the alert mails' portals.
+  const portals = await showSettingsTab(page, 'portals');
+  await expect(page.getByRole('tabpanel')).toHaveCount(1);
+  await expect(portals.locator('h2')).toHaveText([
+    T.settings.terms,
+    T.settings.search,
+    T.settings.alerts,
+  ]);
+  await expect(page.getByTestId('info-terms')).toHaveAccessibleName(
+    T.common.infoAbout(T.settings.terms),
+  );
+  expect(await ids(page, 'settings-panel-portals', ':scope > section')).toEqual([
+    'settings-terms',
+    'settings-search',
+    'settings-mailbox',
+  ]);
+  expect(await ids(page, 'settings-search', '[data-setting-row]')).toEqual(
+    SEARCHED.map((portal) => `portal-${portal}`),
+  );
+  expect(await ids(page, 'settings-mailbox', '[data-setting-row]')).toEqual([
+    'mailbox',
+    ...ALERT_PORTALS.map((portal) => `portal-${portal}`),
+  ]);
+  // The info symbols of the page: only at CXact sucht nach.
+  await expect(page.getByTestId('settings').locator('[data-testid^="info-"]')).toHaveCount(1);
+  expect(await visibleCount(page, '.btn.primary')).toBe(0);
+  // Daten: the profiles' folder and the reset, the version quietly under them; the tab names
+  // the card.
+  const data = await showSettingsTab(page, 'data');
+  await expect(data.locator('h2')).toHaveCount(0);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['profiles', 'reset-all']);
+  await expect(page.getByTestId('data-footnote')).toHaveText(T.settings.version('4.0.0'));
+  expect(await visibleCount(page, '.btn.primary')).toBe(0);
   // The tab bar stands on the first row, its tabs centred on the sidebar's first entry
-  // (macOS too).
+  // (macOS too), 24 above the first section.
+  const bar = page.getByTestId('settings').locator('[data-first-row]');
   for (const query of [WIN, MAC]) {
     await settings(page, query);
     await expect(bar.getByTestId('settings-tabs')).toBeVisible();
     const line = middle(await page.getByTestId('nav-jobs').boundingBox());
     expect(middle(await bar.boundingBox()), query).toBe(line);
     expect(middle(await page.getByTestId('settings-tabs').boundingBox()), query).toBe(line);
+    const [above, first] = await Promise.all([
+      bar.boundingBox(),
+      page.getByTestId('settings-terms').boundingBox(),
+    ]);
+    expect(Math.round(first!.y - (above!.y + above!.height)), query).toBe(24);
   }
+});
+
+test('CXact sucht nach: the terms with what they brought, the way to the profile', async ({
+  page,
+}) => {
+  await settings(page);
+  const terms = page.getByTestId('search-term');
+  await expect(terms.first()).toContainText('Interim CFO');
+  await expect(terms.first()).toContainText(T.settings.termMatched(6));
+  await expect(page.getByTestId('search-terms')).toContainText(T.settings.termNew);
+  expect((await calls(page, 'search_terms')).length).toBeGreaterThan(0);
+  await page.getByTestId('terms-edit').click();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+  // Without a profile: one sentence and "Profil anlegen".
+  await settings(page, `${WIN}&scenario=no-profile`);
+  await expect(page.getByTestId('search-terms')).toContainText(T.settings.noTerms);
+  await expect(page.getByTestId('search-term')).toHaveCount(0);
+  await page.getByTestId('terms-create-profile').click();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
 });
 
 test('button styles: every text button of a row is outlined, what deletes for good is red', async ({
@@ -172,7 +186,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
   // Every button with words in a row of a card, tab by tab: the one outlined kind, 28 px
   // like all.
   const kinds = await eachTab(page, (panel) =>
-    panel.locator('.card button.btn:not(.icon-only)').evaluateAll((nodes) =>
+    panel.locator('.card button.btn:not(.icon-only):not(.link)').evaluateAll((nodes) =>
       nodes.map((node) => ({
         id: node.getAttribute('data-testid'),
         secondary: node.classList.contains('secondary'),
@@ -186,8 +200,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'setup-linkedin',
     'sign-in-freelance',
     'setup-freelance',
-    'folder-change',
-    'folder-open',
+    'profiles-open',
     'reset',
   ]);
   const height = await tokenPx(page, '--control-field');
@@ -199,7 +212,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     ['mailbox-remove', true],
     ['reset', true],
     ['mailbox-change', false],
-    ['folder-open', false],
+    ['profiles-open', false],
   ] as const) {
     const button = await showTab(page, page.getByTestId(id));
     if (warns) {
@@ -223,11 +236,11 @@ test('button styles: every text button of a row is outlined, what deletes for go
         ),
       ),
   );
-  // The sources, the mailbox, the work folder and the reset.
+  // The portals, the mailbox, the profiles' folder and the reset.
   expect(ends).toHaveLength(SEARCHED.length + 1 + ALERT_PORTALS.length + 2);
   expect(new Set(ends).size).toBe(1);
   // The sources' rows sit edge to edge like every other row: no inset above the first.
-  await showSettingsTab(page, 'search');
+  await showSettingsTab(page, 'portals');
   const [card, first] = await Promise.all([
     page.getByTestId('portals-search').boundingBox(),
     page.getByTestId('portal-hays').boundingBox(),
@@ -256,57 +269,28 @@ test('narrow, a row puts its control under the label only where the two do not f
       (await tokenPx(page, '--control-md')) + 2 * (await tokenPx(page, '--space-12')),
     );
   }
-  // At the smallest window the path of the work folder keeps its room: the buttons stand
-  // beside it or go under it, never over it.
+  // At the smallest window the label keeps its room: the button stands beside it or goes
+  // under it, never over it.
   await page.setViewportSize({ width: 480, height: 800 });
-  const folder = page.getByTestId('folder');
+  const profiles = page.getByTestId('profiles');
   const [text, control] = await Promise.all([
-    folder.locator('.text').boundingBox(),
-    folder.locator('.control').boundingBox(),
+    profiles.locator('.text').boundingBox(),
+    profiles.locator('.control').boundingBox(),
   ]);
   const under = control!.y >= text!.y + text!.height;
   const beside = control!.x >= text!.x + text!.width;
   expect(under || beside).toBe(true);
 });
 
-test('narrow, the sign-in goes under the calls and the path breaks only at a separator', async ({
-  page,
-}) => {
+test('narrow, the sign-in goes to a line of its own under the portal', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 800 });
   await settings(page);
-  // The sign-in goes to a line of its own under the calls.
   await showTab(page, page.getByTestId('sign-in-freelance'));
-  const [signIn, quota] = await Promise.all([
+  const [signIn, note] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
-    page.getByTestId('quota-freelance').boundingBox(),
+    page.getByTestId('note-freelance').boundingBox(),
   ]);
-  expect(signIn!.y).toBeGreaterThanOrEqual(quota!.y + quota!.height);
-  // The path wraps after a "/", never at the hyphen of "Job-Alerts"; it copies whole.
-  const path = await showTab(page, page.getByTestId('folder').locator('[data-copy]'));
-  const ends = await path.evaluate((node) => {
-    const chars: { char: string; top: number }[] = [];
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-    for (let text = walker.nextNode() as Text | null; text; text = walker.nextNode() as Text) {
-      for (let index = 0; index < text.data.length; index += 1) {
-        const range = document.createRange();
-        range.setStart(text, index);
-        range.setEnd(text, index + 1);
-        const box = range.getBoundingClientRect();
-        if (box.width > 0) chars.push({ char: text.data[index]!, top: Math.round(box.top) });
-      }
-    }
-    return chars.filter((each, index) => (chars[index + 1]?.top ?? each.top) > each.top + 2);
-  });
-  expect(ends.length).toBeGreaterThan(0);
-  for (const end of ends) expect(end.char).toMatch(/[/\\]/);
-  const copied = await path.evaluate((node) => {
-    const range = document.createRange();
-    range.selectNodeContents(node);
-    getSelection()!.removeAllRanges();
-    getSelection()!.addRange(range);
-    return getSelection()!.toString().trim();
-  });
-  expect(copied).toBe('C:/Users/demo/Documents/Job-Alerts');
+  expect(signIn!.y).toBeGreaterThanOrEqual(note!.y + note!.height);
 });
 
 /* ---------------------------------------------------------------- Postfach */
@@ -341,10 +325,14 @@ test('mailbox: Ändern opens the form in a dialog; Verbinden saves, Esc gives th
   const dialog = page.getByTestId('dialog-mailbox');
   await expect(dialog.getByRole('heading')).toHaveText(T.settings.changeHeading);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.connect);
-  // The address stays, so the caret waits in the app password; the two Google pages below.
+  // The address stays, so the caret waits in the app password; its info symbol beside it
+  // and Google's page of the app passwords below.
   await expect(page.getByTestId('mailbox-password')).toBeFocused();
   await expect(page.getByTestId('mailbox-user')).toHaveValue('alerts.demo@gmail.com');
-  await expect(dialog.getByTestId('two-step')).toBeVisible();
+  await expect(dialog.getByTestId('info-tip')).toHaveAccessibleName(
+    T.common.infoAbout(T.settings.password),
+  );
+  await expect(dialog.getByTestId('two-step')).toHaveCount(0);
   await expect(dialog.getByTestId('create-password')).toBeVisible();
   await expect(dialog).not.toContainText('16 Buchstaben');
   await page.keyboard.press('Escape');
@@ -406,7 +394,7 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   await expectMailboxState(page, T.settings.connected, 'success');
 });
 
-test('Postfach: the connection first, then the sources of its alert mails', async ({ page }) => {
+test('Alert-Mails: the connection first, then the portals of its alert mails', async ({ page }) => {
   await settings(page);
   const rows = page.getByTestId('settings-mailbox').locator('[data-setting-row]');
   expect(
@@ -426,32 +414,39 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
   expect(await ids(page, 'portals-mailbox', '[data-testid^="portal-"]')).toEqual(
     ALERT_PORTALS.map((portal) => `portal-${portal}`),
   );
-  // Suche one card; Postfach the card of its account, under it the one of its sources.
+  // Jobportale one card; Alert-Mails the card of its account, under it the one of its
+  // portals.
   expect(await ids(page, 'settings-search', '.card')).toEqual(['portals-search']);
   expect(await ids(page, 'settings-mailbox', '.card')).toEqual([
     'mailbox-account',
     'portals-mailbox',
   ]);
-  for (const [portal, used, cap] of [
-    ['freelance', 11, 100],
-    ['linkedin', 23, 100],
-    ['freelancermap', 86, 1500],
-    ['hays', 18, 1500],
-    ['michaelpage', 6, 1500],
-    ['solcom', 6, 1500],
-    ['gulp', 0, 1500],
-    ['amadeusfire', 0, 1500],
-    ['interimx', 0, 1500],
-    ['fratch', 0, 1500],
+  for (const [portal, brought] of [
+    ['freelance', 2],
+    ['linkedin', 2],
+    ['freelancermap', 3],
+    ['hays', null],
+    ['michaelpage', null],
+    ['solcom', null],
+    ['gulp', null],
+    ['amadeusfire', null],
+    ['interimx', null],
+    ['fratch', null],
   ] as const) {
-    // The calls of today in one quiet line, no meter.
+    // What the last search brought from it in one quiet line (the limits are the run's to
+    // say), no meter, no calls.
     const row = await showTab(page, page.getByTestId(`portal-${portal}`));
-    await expect(page.getByTestId(`quota-${portal}`)).toHaveText(T.settings.quota(used, cap));
+    if (brought === null) await expect(page.getByTestId(`last-new-${portal}`)).toHaveCount(0);
+    else
+      await expect(page.getByTestId(`last-new-${portal}`)).toHaveText(T.settings.lastNew(brought));
     await expect(row.getByRole('progressbar')).toHaveCount(0);
+    await expect(row).not.toContainText('Aufrufen');
     await expect(row.getByTestId(`open-portal-${portal}`)).toBeVisible();
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);
   }
-  // Only freelance.de offers a sign-in; no intro sentence, no "Details holen".
+  // Only freelance.de offers a sign-in, and says what it adds; no "Details holen".
+  await expect(page.getByTestId('note-freelance')).toHaveText(T.settings.portalNote('freelance')!);
+  await expect(page.locator('[data-testid^="note-"]')).toHaveCount(1);
   await expect(page.getByTestId('view-settings').locator('[data-testid^="sign-in-"]')).toHaveCount(
     1,
   );
@@ -496,8 +491,8 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
-  // Off, the row keeps its calls; no toast answers a switch.
-  await expect(page.getByTestId('quota-linkedin')).toBeVisible();
+  // Off, the row keeps what it brought; no toast answers a switch.
+  await expect(page.getByTestId('last-new-linkedin')).toBeVisible();
   await expect(page.getByTestId('toast')).toHaveCount(0);
   expect(await saved(page)).toEqual([
     patch({ portals: [{ portal: 'linkedin', enabled: false, loginEnabled: null }] }),
@@ -563,7 +558,7 @@ test('portals: a pause or an empty alert mail is one quiet line', async ({ page 
   await settings(page, `${WIN}&scenario=paused`);
   const pause = await showTab(page, page.getByTestId('health-linkedin'));
   await expect(pause).toHaveText(
-    'Die Quelle bremst die Aufrufe, der Abruf macht ab 11:05 von selbst weiter.',
+    'Das Portal bremst die Aufrufe, die Suche macht ab 11:05 von selbst weiter.',
   );
   await expect(pause).toHaveClass(/info/);
   const mails = page.getByTestId('health-freelance');
@@ -600,49 +595,35 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   await expect(page.getByText(T.settings.alertQuiet(9))).toHaveCount(0);
 });
 
-/* ------------------------------------------------------------------ Export */
-
-test('the work folder in Daten: its path, Ändern and Öffnen; a folder that does not open says so', async ({
+test('without a mailbox the portals of alert mails rest: one sentence, one Verbinden', async ({
   page,
 }) => {
-  await settings(page);
-  const folder = await showTab(page, page.getByTestId('folder'));
-  await expect(folder).toContainText(T.settings.folder);
-  await expect(folder.locator('[data-copy]')).toHaveText('C:/Users/demo/Documents/Job-Alerts');
-  await expect(folder.getByRole('button')).toHaveText([T.common.change, T.common.open]);
-  await page.getByTestId('folder-open').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'workspace' } });
-  // A folder that does not open says so at the end of its card.
-  await failNext(page, 'open_target');
-  await page.getByTestId('folder-open').click();
-  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
-});
-
-test('another work folder takes the profile along; its own profile is said', async ({ page }) => {
-  await settings(page, `${WIN}&folder=other`);
-  await (await showTab(page, page.getByTestId('folder-change'))).click();
-  await expect(page.getByTestId('settings-data')).toContainText('C:/Users/demo/Documents/Jobs');
-  await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.folderMoved));
-  await settings(page, `${WIN}&folder=own`);
-  await (await showTab(page, page.getByTestId('folder-change'))).click();
-  await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.folderOwnProfile));
+  await settings(page, `${WIN}&scenario=no-mailbox`);
+  await expect(page.getByTestId('mailbox')).toContainText(
+    T.settings.noMailbox(['linkedin', 'freelance']),
+  );
+  await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
 });
 
 /* ------------------------------------------------------------------- Daten */
 
-test('Daten: only Alle Daten zurücksetzen; no Sicherung, no Protokoll, no data path', async ({
+test('Daten: Profile with Ordner öffnen, Alle Daten zurücksetzen; no Sicherung, no path', async ({
   page,
 }) => {
   await settings(page);
   const data = page.getByTestId('settings-data');
-  // The work folder stands here while the export is hidden.
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['profiles', 'reset-all']);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
-  for (const gone of ['backup-restore', 'logs-open']) {
+  for (const gone of ['backup-restore', 'logs-open', 'folder-change']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
-  await expect(data.locator('[data-copy]')).toHaveCount(1);
-  await expect(data).not.toContainText('Excel');
+  await expect(data.locator('[data-copy]')).toHaveCount(0);
+  await (await showTab(page, page.getByTestId('profiles-open'))).click();
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'profileDir' } });
+  // A folder that does not open says so at the end of its card.
+  await failNext(page, 'open_target');
+  await page.getByTestId('profiles-open').click();
+  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
@@ -651,9 +632,9 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
   const dialog = page.getByTestId('dialog-reset');
   await expect(dialog.getByRole('button', { name: T.common.cancel })).toBeFocused();
   await expect(dialog.getByRole('heading')).toHaveText(T.settings.resetHeading);
-  // What it does in its order: it deletes, then it starts anew.
+  // What it does in two short sentences: it deletes, then the setup starts anew.
   await expect(dialog).toContainText(T.settings.resetText);
-  await expect(dialog.getByTestId('dialog-items').locator('li')).toHaveText(T.settings.resetItems);
+  await expect(dialog.getByTestId('dialog-items')).toHaveCount(0);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.resetAction);
   await failNext(page, 'reset_all');
   await dialog.getByTestId('dialog-confirm').click();
@@ -665,9 +646,9 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
 
 /* ------------------------------------------------------------------- locks */
 
-test('a run holds the mailbox, the folder and the sign-in, with its reason', async ({ page }) => {
+test('a run holds the mailbox, the reset and the sign-in, with its reason', async ({ page }) => {
   await settings(page, `${WIN}&scenario=running`);
-  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
+  for (const id of ['mailbox-change', 'mailbox-remove', 'reset']) {
     expect(await reason(page, id), id).toBe(T.error.text('busy', { activity: 'fetch' }));
   }
   // A rescore says its own reason; the sign-out waits too.
@@ -687,12 +668,6 @@ test('the dry run keeps to its own data and says so', async ({ page }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
   await expect(page.getByTestId('settings')).toContainText('probelauf@example.org');
   expect(await reason(page, 'mailbox-remove')).toBe('Im Probelauf geht das nicht.');
-});
-
-test('macOS shows Mac paths', async ({ page }) => {
-  await settings(page, MAC);
-  await expect(page.getByTestId('settings-data')).toContainText('/Users/demo/Documents/Job-Alerts');
-  await expect(page.getByTestId('settings')).not.toContainText('C:/');
 });
 
 /* ---------------------------------------------------------------- baselines */

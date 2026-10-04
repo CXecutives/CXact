@@ -16,19 +16,60 @@
 
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type { Commands, ErrorInfo, ErrorKind, ProfileInfo, RunEvent } from './types';
+import type {
+  Commands,
+  ErrorInfo,
+  ErrorKind,
+  NewJobs,
+  Portal,
+  ProfileInfo,
+  RunEvent,
+  RunSummary,
+} from './types';
+
+/** A term the search asks the portals for (from the profile) and how many fitting jobs it
+ *  brought in the last search (null: not searched yet, "neu"). */
+export interface SearchTerm {
+  term: string;
+  matched: number | null;
+}
 
 /**
  * Commands the interface needs that the backend adds next, in the shape of `Commands`; each
  * moves into src-tauri/commands.txt (and out of here) once the backend has it.
- * - `profile_from_cv`: "Aus Lebenslauf ausfüllen". The backend asks for the CV with its own
- *   file dialog (the CV formats), reads it, has it evaluated and merges the answer into the
- *   one profile (or makes it), saved at once. The stored profile (its `aiFilled` names what
- *   the CV filled), or null when the dialog was closed. Fails with `{kind: 'cv', params:
- *   {reason}}` (`CvFailure`).
+ * - `profile_from_cv`: "Aus Lebenslauf ausfüllen". `path`: the file dropped on the upload
+ *   (onFileDrop), else null and the backend asks for the CV with its own file dialog (the CV
+ *   formats). It reads the file, has it evaluated and merges the answer into the one profile
+ *   (or makes it), saved at once. The stored profile (its `aiFilled` names what the CV
+ *   filled), or null when the dialog was closed. Fails with `{kind: 'cv', params: {reason}}`
+ *   (`CvFailure`).
+ * - `search_terms`: the terms the search asks for, in its order (profile::deep_search_terms),
+ *   each with what it brought last (Einstellungen > Portale, "CXact sucht nach").
+ * - `finish_onboarding`: the setup reached "Alles eingerichtet": saves `onboarded`, so the
+ *   next start opens the Jobs view (`AppState.firstRun` = not onboarded, outside the dry run).
  */
 export type NextCommands = {
-  profile_from_cv: { args: Record<string, never>; result: ProfileInfo | null };
+  profile_from_cv: { args: { path: string | null }; result: ProfileInfo | null };
+  search_terms: { args: Record<string, never>; result: SearchTerm[] };
+  finish_onboarding: { args: Record<string, never>; result: null };
+};
+
+/**
+ * Run events the interface needs that the backend adds next (they join `RunEvent`):
+ * - `sourceDone`: a portal's search finished (the portals run side by side) with so many new
+ *   jobs that are not excluded; the run snapshot replays them.
+ */
+export type SourceDone = { type: 'sourceDone'; portal: Portal; new: number };
+export type NextRunEvent = RunEvent | SourceDone;
+
+/**
+ * Fields of the run summary the backend adds next: `mail`, why the mail part of a search was
+ * skipped (Gmail or the keychain failed; the search still ran), and `newJobs.excluded`, how
+ * many new jobs it excluded.
+ */
+export type NextRunSummary = Omit<RunSummary, 'newJobs'> & {
+  mail?: ErrorInfo | null;
+  newJobs: (NewJobs & { excluded?: number }) | null;
 };
 type AllCommands = Commands & NextCommands;
 
@@ -103,9 +144,9 @@ const isCvFailure = (value: unknown): value is CvFailure =>
  * dialog was closed. Rejects with a CvError (no network counts as `offline`), anything else
  * with an IpcError.
  */
-export async function fillFromCv(): Promise<ProfileInfo | null> {
+export async function fillFromCv(path: string | null = null): Promise<ProfileInfo | null> {
   try {
-    return await invoke('profile_from_cv');
+    return await invoke('profile_from_cv', { path });
   } catch (error) {
     if (!(error instanceof IpcError)) throw error;
     if (error.kind === 'offline') throw new CvError('offline');
@@ -116,12 +157,12 @@ export async function fillFromCv(): Promise<ProfileInfo | null> {
   }
 }
 
-type RunHandler = (event: RunEvent) => void;
+type RunHandler = (event: NextRunEvent) => void;
 const runHandlers = new Set<RunHandler>();
 
 /** A fresh channel for one command call; its events go to every run handler. */
-function channel(): Channel<RunEvent> {
-  const next = new Channel<RunEvent>();
+function channel(): Channel<NextRunEvent> {
+  const next = new Channel<NextRunEvent>();
   next.onmessage = (event) => {
     for (const handler of runHandlers) handler(event);
   };
@@ -264,6 +305,32 @@ export function onWindowState(handler: (maximized: boolean) => void): () => void
  */
 export function onNavigate(handler: (view: string) => void): () => void {
   return subscribe(() => listen<string>('navigate', (event) => handler(event.payload)));
+}
+
+/** Where a drag of files over the window stands (Tauri's drag and drop of the window). */
+export type FileDrag = { kind: 'over' } | { kind: 'leave' } | { kind: 'drop'; paths: string[] };
+
+/**
+ * Files dragged over the window and dropped (the upload of the setup): Tauri's window
+ * events, with the paths of what was dropped. Returns an unsubscribe function.
+ */
+export function onFileDrag(handler: (drag: FileDrag) => void): () => void {
+  const stops = [
+    subscribe(() => listen('tauri://drag-enter', () => handler({ kind: 'over' }))),
+    subscribe(() => listen('tauri://drag-leave', () => handler({ kind: 'leave' }))),
+    subscribe(() =>
+      listen<{ paths?: unknown } | null>('tauri://drag-drop', (event) => {
+        const paths = event.payload?.paths;
+        handler({
+          kind: 'drop',
+          paths: Array.isArray(paths) ? paths.filter((p) => typeof p === 'string') : [],
+        });
+      }),
+    ),
+  ];
+  return () => {
+    for (const stop of stops) stop();
+  };
 }
 
 /**

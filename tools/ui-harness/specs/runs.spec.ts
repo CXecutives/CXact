@@ -24,7 +24,7 @@ async function emit(page: Page, ...events: unknown[]): Promise<void> {
 test('a rescore the app starts shows as a rescore: no run line, the fetch waits', async ({
   page,
 }) => {
-  await open(page, `${WIN}&way=mail&tick=15`);
+  await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(page.getByTestId('toast-text')).toHaveText(DONE);
@@ -48,7 +48,7 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
 });
 
 test('the end toast counts the run: the new jobs that are not excluded', async ({ page }) => {
-  await open(page, `${WIN}&way=mail&tick=15`);
+  await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   // Three new jobs came in, one of them excluded: two new.
@@ -58,7 +58,7 @@ test('the end toast counts the run: the new jobs that are not excluded', async (
 test('the end toast names the new jobs of the high band; Zeigen lists exactly those, chips to take off', async ({
   page,
 }) => {
-  await open(page, `${WIN}&way=mail&tick=15`);
+  await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   // One word for one, the plural for more, none at 0, the high ones only when there are.
@@ -68,7 +68,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
     T.toast.runDone(5, 1),
     T.toast.runDone(5, 2),
   ]).toEqual([
-    'Keine neuen Jobs',
+    'Keine neuen passenden Jobs',
     '1 neuer Job',
     '5 neue Jobs, 1 mit hoher Übereinstimmung',
     '5 neue Jobs, 2 mit hoher Übereinstimmung',
@@ -101,7 +101,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
 test('from another view Zeigen opens Aktuell without its search, filtered to the new jobs', async ({
   page,
 }) => {
-  await open(page, `${WIN}&way=mail&tick=15`);
+  await open(page, `${WIN}&tick=15`);
   await page.getByTestId('search').fill('Controller');
   await page.getByTestId('fetch').click();
   await page.getByTestId('nav-settings').click();
@@ -120,7 +120,7 @@ test('from another view Zeigen opens Aktuell without its search, filtered to the
 });
 
 test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
-  await open(page, `${WIN}&way=mail&tick=15`);
+  await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
@@ -145,16 +145,33 @@ test('a details run shows its line and brings no fetch toast', async ({ page }) 
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 
-test('a failed first fetch does not claim the alert mails were empty', async ({ page }) => {
-  // The mailbox way: without a profile the search would wait (it needs one).
-  await open(page, `${WIN}&scenario=mailbox-only&way=mail&mail=offline&tick=15`);
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await page.getByTestId('first-fetch').click();
+test('both parts work: the mails first, then the portals; the end toast counts both', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('fetch').click();
   await runFinished(page);
-  // Only a completed fetch ends the setup: its last step says why this one failed.
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await expect(page.getByTestId('first-fetch-failed')).toContainText('Gmail ist nicht erreichbar.');
-  await expect(page.getByText('enthielten bisher keine Jobs')).toHaveCount(0);
+  // linkedin.com and freelance.de came by mail, freelancermap by the search.
+  const { active } = await stubList(page, {});
+  expect(active).toEqual(expect.arrayContaining(['linkedin-4100200399', 'freelancermap-2899']));
+  await expect(page.getByTestId('toast-text')).toHaveText(DONE);
+});
+
+test('the mail part fails, the search works: it ends completed, the mailbox is to check', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&mail=offline&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  // The search's job came, the mails' did not.
+  const { active } = await stubList(page, {});
+  expect(active).toContain('freelancermap-2899');
+  expect(active).not.toContain('linkedin-4100200399');
+  const warning = page.getByTestId('toast').filter({ hasText: 'Gmail ist nicht erreichbar.' });
+  await expect(warning.getByTestId('toast-action')).toHaveText(T.run.checkMailbox);
+  await expect(page.getByTestId('toast').filter({ hasText: T.toast.runDone(1) })).toHaveCount(1);
+  await warning.getByTestId('toast-action').click();
+  await expect(page.getByTestId('settings-tab-portals')).toHaveAttribute('aria-selected', 'true');
 });
 
 test('the reader stays with the selected job while a run updates the one before', async ({
@@ -281,16 +298,4 @@ test('an archived job leaves the list and every count but the archive', async ({
   // The archive lists it.
   await page.getByTestId('place-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
-});
-
-test('what went wrong is a toast once, not a note: a failed fetch', async ({ page }) => {
-  const toast = page.getByTestId('toast');
-  // A fetch without Gmail: the failure's words, no second way to fetch beside "Postfach
-  // abrufen".
-  await open(page, `${WIN}&tick=15&mail=offline`);
-  await page.getByTestId('fetch').click();
-  await runFinished(page);
-  await expect(toast.getByTestId('toast-text')).toHaveText('Gmail ist nicht erreichbar.');
-  await expect(toast.getByTestId('toast-action')).toHaveCount(0);
-  await expect(page.getByTestId('fetch')).toBeEnabled();
 });

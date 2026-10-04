@@ -62,6 +62,7 @@
   import { tick, untrack } from 'svelte';
   import Icon from './Icon.svelte';
   import { cssVars } from '$lib/actions/cssVars';
+  import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { formatPercent } from '$lib/i18n/format';
   import { duration, isReducedMotion, play } from '$lib/motion/motion';
@@ -174,6 +175,7 @@
   role="img"
   aria-label={label}
   data-testid={testid ?? undefined}
+  use:tooltip={label}
 >
   {@render face()}
 </span>

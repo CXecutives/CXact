@@ -3,9 +3,9 @@
   at the field they belong to (empty fields are said before anything is sent); when Gmail
   refuses the pair, both fields are marked, the password shakes once and the one sentence
   stands above the button. The password never leaves this form except to save_mailbox (it
-  goes straight into the OS keychain). Under both fields the two Google pages in the order
-  she needs them: the 2-step verification, then the app password. The first run shows the
-  form in its step with its one button "Verbinden"; Einstellungen shows it in a dialog
+  goes straight into the OS keychain). The app password has an info symbol (what it is), and
+  under the fields "App-Passwort erstellen" opens Google's page. The setup shows the form in
+  its step Alert-Mails with its one button "Verbinden"; Einstellungen shows it in a dialog
   (`dialog`), whose buttons are the dialog's: it calls `save` and `cancel`. A saved mailbox
   needs no note: its badge "Verbunden" (Einstellungen) or its ticked step (first run) is the
   answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
@@ -123,7 +123,7 @@
     }
   }
 
-  function openPage(kind: 'appPasswordPage' | 'twoStepPage'): void {
+  function openPage(kind: 'appPasswordPage'): void {
     invoke('open_target', { target: { kind } }).catch(
       (error: unknown) => (formError = () => errorText(error)),
     );
@@ -141,7 +141,12 @@
         testid="mailbox-user"
       />
     </Field>
-    <Field label={t.settings.password} for="{id}-password" error={passwordError?.() ?? null}>
+    <Field
+      label={t.settings.password}
+      for="{id}-password"
+      info={t.settings.passwordInfo}
+      error={passwordError?.() ?? null}
+    >
       <TextField
         bind:this={passwordField}
         id="{id}-password"
@@ -153,16 +158,8 @@
       />
     </Field>
   </div>
-  <!-- The two pages in the order she needs them. -->
+  <!-- Google's page of the app passwords. -->
   <div class="links">
-    <Button
-      variant="link"
-      icon="external"
-      external
-      label={t.settings.twoStepAction}
-      testid="two-step"
-      onclick={() => openPage('twoStepPage')}
-    />
     <Button
       variant="link"
       icon="external"

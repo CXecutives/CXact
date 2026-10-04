@@ -6,15 +6,15 @@
 // place (Aktuell, Archiv, Papierkorb) and kept per user like the order. The order of the list
 // (SORTS) is the first group of the same menu, "Sortierung", but no part of the filter: it
 // sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group lists every value of
-// its dimension or is not there at all (user decision 2026-09-27): Quelle and Übereinstimmung
+// its dimension or is not there at all (user decision 2026-09-27): Portal and Übereinstimmung
 // (Hoch, Mittel, Gering) take several choices at once, any of them lets a job through;
-// Gefunden (Heute, Letzte 7 Tage, Letzte 30 Tage) one (user decision 2026-10-01). None is
-// checked while a group filters nothing; a second click turns a choice off, and in Gefunden
-// another one takes over. There is no contract, work mode, deadline or pay filter (user
+// Neu seit (Heute, 7 Tagen, 30 Tagen: the day the job came into CXact) one (user decision
+// 2026-10-01). None is checked while a group filters nothing; a second click turns a choice
+// off, and in Neu seit another one takes over. There is no contract, work mode, deadline or pay filter (user
 // decision 2026-10-01: only what is used); the reader's Jobdetails name them, the order by
 // Tagessatz stays.
 // Beside the groups the "Zeigen" of a fetch's toast narrows the list to the new jobs of that
-// fetch (`run`, the chip "Aus dem letzten Abruf"): no entry of the menu, never kept, gone
+// fetch (`run`, the chip "Aus der letzten Suche"): no entry of the menu, never kept, gone
 // with "Filter zurücksetzen" and the next fetch.
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
@@ -25,7 +25,7 @@ import type { Band, JobQuery, JobSort, JobView, Portal } from '../ipc/types';
 /** The bands the filter offers, the highest first. */
 export const BANDS: readonly Band[] = ['high', 'mid', 'low'];
 
-/** The days "Gefunden" offers: today, the last 7 and the last 30 (today among them). */
+/** The days "Neu seit" offers: today, the last 7 and the last 30 (today among them). */
 export const RECEIVED = ['today', 'days7', 'days30'] as const;
 export type Received = (typeof RECEIVED)[number];
 
@@ -55,7 +55,7 @@ export const NO_FILTER: ListFilter = {
  *  mail app's unread mark). */
 export const isNew = (job: JobView): boolean => job.unread && job.match?.status !== 'excluded';
 
-/** The first second of the days a choice of "Gefunden" lets through, in the user's time
+/** The first second of the days a choice of "Neu seit" lets through, in the user's time
  *  zone: the start of today, of the day 6 or 29 days before it (Unix seconds). */
 export function receivedSince(received: Received, now: Date): number {
   const back = received === 'today' ? 0 : received === 'days7' ? 6 : 29;
@@ -63,11 +63,11 @@ export function receivedSince(received: Received, now: Date): number {
   return Math.floor(day.getTime() / 1000);
 }
 
-/** When a job came, as "Nach Datum" orders it: the alert mail's date, else its first
- *  sighting (Unix seconds). */
-const cameAt = (job: JobView): number => Date.parse(job.mailDate ?? job.firstSeenAt) / 1000;
+/** When a job came into CXact, as "Nach Datum" orders it: its first sighting (Unix
+ *  seconds). */
+const cameAt = (job: JobView): number => Date.parse(job.firstSeenAt) / 1000;
 
-/** The filter's part of a JobQuery (`now` for the days of "Gefunden"). */
+/** The filter's part of a JobQuery (`now` for the days of "Neu seit"). */
 export function toQuery(
   filter: ListFilter,
   now = new Date(),

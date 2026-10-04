@@ -1,13 +1,12 @@
-// What the shell shows: the first-run page while nothing was ever fetched (and no run goes)
-// instead of the Jobs view. A mailbox removed later does not bring it back: the jobs stay
-// in view, "Alert-Mails lesen" waits for a mailbox and the list says how to connect one.
+// What the shell shows: the setup (a mode of its own, without the sidebar and the buttons of
+// the top bar) until it was finished once (`AppState.firstRun`, core's `onboarded`; after
+// "Zurücksetzen" it comes again), else the views.
 // And the frame around the views, like the Claude app's: the sidebar docked or folded away
 // by its button (a narrow window folds it by itself; its button then floats it over the
 // view), and the job view beside the list shown or hidden. Both choices are kept per user
 // (in this web view: a store that cannot be read or written keeps them for the session).
 
 import { app } from './app.svelte';
-import { run } from './run.svelte';
 import { viewport } from './viewport.svelte';
 
 const SIDEBAR = 'sidebar-open';
@@ -47,9 +46,9 @@ class Shell {
    *  stands beside it (the top bar continues it); null without one. Set by JobsView. */
   listSeam = $state<number | null>(null);
 
-  /** The sidebar stands beside the view. */
+  /** The sidebar stands beside the view (never in the setup). */
   get docked(): boolean {
-    return this.#sidebar && !viewport.fold;
+    return this.#sidebar && !viewport.fold && !this.firstRun;
   }
 
   /** Its button, a plain switch: docks or folds it; in a narrow window it floats it out and
@@ -79,14 +78,9 @@ class Shell {
     keep(READER, open);
   }
 
-  /** Until `start_run` answers the first-run page stays (a failed start never flashes);
-   *  while the first fetch goes the Jobs view shows it, and only a completed one ends the
-   *  setup (a failed or cancelled first fetch brings the page back, its step 3 says why). */
+  /** The setup stands in place of the views ("Zu den Jobs" ends it). */
   get firstRun(): boolean {
-    const state = app.state;
-    const going = run.active && !run.starting;
-    const completed = run.summary?.outcome.kind === 'completed';
-    return state !== null && state.firstRun && !going && !completed;
+    return app.state?.firstRun ?? false;
   }
 }
 

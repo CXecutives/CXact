@@ -5,11 +5,11 @@ jobs and scores each one against a consultant's profile.
 
 ## What it does
 
-- **Jobs suchen** searches the public job search of Hays, freelancermap, Michael Page, SOLCOM, GULP,
-  Amadeus Fire, interim-x and FRATCH. The terms come from the active profile. Each term is paged while new
-  jobs come, within what each source's robots.txt allows.
-- **Alert-Mails lesen** reads the job alert mails of LinkedIn and freelance.de from a Gmail mailbox
-  (read-only IMAP; the Gmail app password is stored only in the OS keychain).
+- **Jobs suchen** first reads the job alert mails of LinkedIn and freelance.de from a Gmail mailbox, when
+  one is connected (read-only IMAP; the Gmail app password is stored only in the OS keychain), then searches
+  the public job search of Hays, freelancermap, Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x and
+  FRATCH. The terms come from the profile. Each term is paged while new jobs come, within what each
+  portal's robots.txt allows.
 - Every new job's ad is fetched politely. Every source can be switched off, and each has its pauses and
   limits.
 - Every job is scored locally against the profile by an explainable, integer-only rule engine:
@@ -31,11 +31,11 @@ Builds are not published as releases; the CI workflow keeps the installer and th
 
 ## First start
 
-The app opens on Erste Schritte:
-1. Create the profile in the Profil view: start empty, upload a file, or copy the prompt with which any AI
-   writes the profile file from a CV.
-2. Optionally connect the Gmail mailbox with an app password, needed only for alert mails.
-3. Run the first fetch.
+The app opens with its setup, one step at a time:
+1. Choose how the profile comes: from a CV (evaluated by an AI) or filled in by hand.
+2. Check and complete the profile.
+3. Optionally connect the Gmail mailbox with an app password, needed only for alert mails.
+4. "Alles eingerichtet": the Jobs view, where "Jobs suchen" starts the first search.
 
 The app speaks German.
 

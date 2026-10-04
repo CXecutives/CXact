@@ -83,12 +83,12 @@ const sidebarWidth = async (page: Page): Promise<number> =>
 
 const tooltip = (page: Page) => page.getByRole('tooltip');
 
-/** Einstellungen on Postfach, chosen with the arrows like a keyboard user would (a click
- *  would make the next focus() a pointer's, which shows no tooltip). */
+/** Einstellungen on Portale (the mailbox's tab), chosen with the arrows like a keyboard user
+ *  would (a click would make the next focus() a pointer's, which shows no tooltip). */
 async function mailboxTabByKeys(page: Page): Promise<void> {
-  await page.getByTestId('settings-tab-search').focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(page.getByTestId('settings-panel-mailbox')).toBeVisible();
+  await page.getByTestId('settings-tab-data').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByTestId('settings-panel-portals')).toBeVisible();
 }
 
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
@@ -580,19 +580,6 @@ test('the app starts in Jobs; three views, their names without tooltips, no stat
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
 
-test('before the first fetch Jobs is the setup page; every entry works as always', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=first-run&view=start`);
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('sidebar').locator('[aria-disabled="true"]')).toHaveCount(0);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-});
-
 for (const os of [WIN, MAC]) {
   test(`below 1100 px the sidebar folds away; its button floats it out, nothing on hover ${os}`, async ({
     page,
@@ -800,7 +787,8 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await page.setViewportSize({ width: 1100, height: 400 });
   await open(page, `${WIN}&view=settings`);
   const view = (id: string) => page.getByTestId(`view-${id}`);
-  // Suche, the tab it opens on, scrolls that far at this height.
+  // Portale, the tab it opens on, scrolls that far at this height (once its terms came).
+  await expect(page.getByTestId('search-term').first()).toBeVisible();
   await view('settings').evaluate((node) => (node.scrollTop = 200));
   await page.getByTestId('nav-profile').click();
   await viewsSettled(page);
@@ -1151,7 +1139,7 @@ test('the closing note names what the window waits for', async ({ page }) => {
   await open(page, WIN);
   await page.evaluate(() => window.__harness.fire('closing', null));
   await expect(page.getByTestId('closing')).toHaveText(
-    'Der Abruf wird beendet, dann schließt die App.',
+    'Die Suche wird beendet, dann schließt die App.',
   );
 });
 
@@ -1237,7 +1225,7 @@ test('Tab passes disabled switches; a disabled button that says why stays a Tab 
   await settings(page, `${WIN}&scenario=dry-run`);
   const landed: { id: string; role: string | null; tag: string }[] = [];
   // Through every tab of the page (one shows at a time).
-  for (const tab of ['search', 'mailbox', 'data']) {
+  for (const tab of ['portals', 'data']) {
     await page.getByTestId(`settings-tab-${tab}`).click();
     await page.getByTestId('nav-settings').focus();
     for (let stop = 0; stop < 40; stop += 1) {
@@ -1357,7 +1345,7 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
     locator.evaluate((node) => node.getBoundingClientRect().right);
   // Each on its own tab (one shows at a time, all of one width).
   const toggle = await edge(await showTab(page, page.getByTestId('toggle-enabled-linkedin')));
-  for (const id of ['folder-open', 'reset']) {
+  for (const id of ['profiles-open', 'reset']) {
     const button = await edge(await showTab(page, page.getByTestId(id)));
     expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
   }
@@ -1542,22 +1530,25 @@ test('under reduced motion nothing scales or pops', async ({ page }) => {
   await open(page, `${WIN}&view=profile`);
   const tokens = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
-    return ['--scale-press', '--scale-pop', '--move-xs', '--dur-hover'].map((name) =>
+    return ['--scale-pop', '--move-xs', '--dur-hover'].map((name) =>
       parseFloat(style.getPropertyValue(name)),
     );
   });
-  expect(tokens).toEqual([1, 1, 0, 0]);
+  expect(tokens).toEqual([1, 0, 0]);
   // Clicked without the pointer over it (no tooltip comes).
   await page.evaluate(() =>
     document.querySelector<HTMLElement>('[data-testid="competence-star"]')!.click(),
   );
   const scripted = await page.evaluate(
-    // A transition that runs in no time (the save bar comes) moves nothing.
+    // What comes meanwhile (the save bar) only fades: nothing moves or scales.
     () =>
       document
         .getAnimations()
         .filter((a) => !(a instanceof CSSAnimation))
-        .filter((a) => Number((a.effect as KeyframeEffect).getTiming().duration) > 0).length,
+        .filter((a) => Number((a.effect as KeyframeEffect).getTiming().duration) > 0)
+        .filter((a) =>
+          (a.effect as KeyframeEffect).getKeyframes().some((frame) => 'transform' in frame),
+        ).length,
   );
   expect(scripted).toBe(0);
 });
@@ -1720,13 +1711,37 @@ test('toasts stay while hovered and leave on their own', async ({ page }) => {
   await expect(toasts).toHaveCount(0, { timeout: 6000 });
 });
 
-// Every view in every scenario, the first run included (its sidebar reaches Profil and
-// Einstellungen; Jobs is the setup page there).
+// Every view in every scenario, and every step of the setup (a mode without the sidebar).
 for (const [width, height] of [
   [480, 360],
   [780, 560],
 ] as const) {
-  for (const scenario of ['default', 'first-run', 'running', 'no-profile']) {
+  for (const step of ['welcome', 'way', 'upload', 'reading', 'review', 'alerts', 'done']) {
+    test(`nothing clipped or scrolling sideways at ${width}x${height}: setup ${step}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height });
+      await open(page, `?platform=windows&scenario=first-run&step=${step}`);
+      await page.waitForTimeout(300);
+      const wide = await page.evaluate(() =>
+        [...document.querySelectorAll('.view, .view *')]
+          .filter(
+            (node) =>
+              node.scrollWidth > node.clientWidth + 1 &&
+              getComputedStyle(node).overflowX !== 'visible' &&
+              getComputedStyle(node).textOverflow !== 'ellipsis' &&
+              node.closest('[role="progressbar"], [aria-hidden="true"]') === null &&
+              !node.matches('input, textarea'),
+          )
+          .map((node) => `${node.tagName}.${node.className}`),
+      );
+      expect(wide).toEqual([]);
+      // Its primary or Zurück stays in reach at the bottom of the window.
+      const bar = page.getByTestId('first-bar');
+      if ((await bar.count()) > 0) await expect(bar).toBeInViewport();
+    });
+  }
+  for (const scenario of ['default', 'running', 'no-profile']) {
     for (const tab of ['nav-jobs', 'nav-profile', 'nav-settings'] as const) {
       test(`nothing clipped or scrolling sideways at ${width}x${height}: ${scenario} ${tab}`, async ({
         page,

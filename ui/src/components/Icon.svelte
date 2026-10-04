@@ -60,7 +60,6 @@
   import LogIn from '@lucide/svelte/icons/log-in';
   import LogOut from '@lucide/svelte/icons/log-out';
   import Mail from '@lucide/svelte/icons/mail';
-  import MailOpen from '@lucide/svelte/icons/mail-open';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import PanelLeft from '@lucide/svelte/icons/panel-left';
   import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
@@ -132,7 +131,6 @@
     'log-in': LogIn,
     'log-out': LogOut,
     mail: Mail,
-    'mail-open': MailOpen,
     'map-pin': MapPin,
     'panel-left': PanelLeft,
     'panel-left-close': PanelLeftClose,

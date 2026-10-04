@@ -1,7 +1,9 @@
 <!--
-  One source in the card Suche or of the Postfach's alert mails, the same compact row for
-  each (user, 2026-10-01): its tile and name, under it the calls of today in one quiet line
-  ("Heute 23 von 100 Aufrufen", counted from midnight), "Anmelden" or "Abmelden" where the
+  One portal in the card Jobportale or Alert-Mails of Einstellungen > Portale (and the
+  setup's Alert-Mails), the same compact row for each (user, 2026-10-01): its tile and name,
+  under it in one quiet line what the last search brought from it ("Zuletzt 4 neue Jobs";
+  the limits are said by the run's status) and the portal's own note where it has one
+  (freelance.de: what the sign-in adds), "Anmelden" or "Abmelden" where the
   portal offers a sign-in, then for a source of alert mails "Alert anlegen" (its page in the
   browser; in one column in every row, whether a sign-in stands before it), the portal in the
   browser (in one column in every row) and its switch (the name
@@ -77,11 +79,13 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** The calls of today. */
-  const quota = $derived.by(() => {
-    const q = portal.quota;
-    return q === null ? null : t.settings.quota(q.usedDay, q.capDay);
+  /** What the last search brought from it (nothing before one, or when it was not asked). */
+  const lastNew = $derived.by(() => {
+    const line = app.state?.lastRun?.perPortal.find((p) => p.portal === portal.portal);
+    return line === undefined ? null : t.settings.lastNew(line.new);
   });
+  /** The portal's own note (freelance.de: what the sign-in adds). */
+  const note = $derived(t.settings.portalNote(portal.portal));
   /** A sign-in is stored (in the session window's profile). */
   const stored = $derived(portal.signedIn === true);
   /** Signed in as the fetch sees it: a stored sign-in it does not use counts as none while
@@ -158,8 +162,11 @@
   <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
   <div class="text">
     <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
-    {#if quota}
-      <span class="quota" data-testid="quota-{portal.portal}">{quota}</span>
+    {#if note}
+      <span class="quiet" data-testid="note-{portal.portal}">{note}</span>
+    {/if}
+    {#if lastNew}
+      <span class="quiet" data-testid="last-new-{portal.portal}">{lastNew}</span>
     {/if}
     {#if health && portal.enabled}
       <div class="fold" transition:unfold>
@@ -298,7 +305,7 @@
     font-weight: var(--weight-medium);
   }
 
-  .quota {
+  .quiet {
     color: var(--text-muted);
     font: var(--type-sm);
     font-variant-numeric: var(--numeric);

@@ -71,19 +71,23 @@ Commit them together with tokens.css.
   neutral desktops (dark, mid grey, white).
 - Test mails and pages in `core/tests/fixtures/` keep the colours of whoever wrote them.
 
-## Add or change a setting or a first-run step
+## Add or change a setting or a step of the setup
 
 - Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
-  their order (Suche, Postfach, Daten), each with its rows (a source lands in Suche or, under
-  the connection, in Postfach by its `way()`). A setting is one row there: its buttons, a
-  switch or a value, its texts from the catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
+  their order on their tab (Portale: CXact sucht nach, Jobportale, Alert-Mails; Daten), each
+  with its heading, its info symbol, its block (the search's terms, or the portals by their
+  `way()`), its rows and a quiet footnote (the version). A setting is one row there: its
+  buttons, its texts from the catalog. A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`).
 - The work folder of a new install is `Documents\CXact` (`default_workspace` in
-  `core/src/settings.rs`). "Öffnen" makes a missing folder first.
-- A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
-  is done) and its snippet of the same id in `FirstRunView.svelte`.
+  `core/src/settings.rs`). "Ordner öffnen" makes a missing folder first.
+- A step of the setup is one entry in `STEPS` of `ui/src/features/first-run/steps.ts` (order,
+  heading, sentence, where Zurück leads, the words of its primary) and its snippet of the same
+  id in `FirstRunView.svelte`; `onboarding.svelte.ts` walks them. A failure of the CV's
+  evaluation and its ways on is one row of `CV_PROBLEMS` there, its sentence in
+  `profile.cvError`.
 
 ## Keys
 
@@ -97,7 +101,7 @@ menu names a key.
 ## Change the job list: its filter, its order, the job's menu
 
 - **The filter**: `FILTER_GROUPS` in `ui/src/lib/state/filter.ts`, the groups in their order
-  (Quelle, Übereinstimmung, Gefunden), each with its choices, its words and what lets a job
+  (Portal, Übereinstimmung, Neu seit), each with its choices, its words and what lets a job
   through, and whether it takes several choices at once (`multi`). The funnel's menu, the
   chips under the header, the query and the harness
   read it; the filter is the same in every place. Another group is one entry there, its field
@@ -323,6 +327,12 @@ score, a reason or a prompt into the stub by hand.
   `tools/ui-harness/demo/profile.json`.
 - The stub keeps only state: moving, reading, deleting, the list's filter, runs, scenarios and
   errors.
+- A state to look at in the preview (an empty list, a failure, a step of the setup) is one entry
+  in `SCENARIOS` of the stub (what differs from the default; `?scenario=`) and one row of
+  `PREVIEW_MENU` in `tools/ui-harness/preview.ts` (its words and its address: `scenario`,
+  `step`, `cv`, `open`, `view`). The menu shows only in the browser preview (the specs pass
+  `?menu` to see it) and never reaches the app: it lives in the stub, which only the harness
+  build contains (`specs/preview.spec.ts` checks the release build).
 - Specs read engine values (a score, a reason, a count) from the snapshot
   (`tools/ui-harness/specs/demo.ts`), never as literals, so a regenerated snapshot keeps them
   green.

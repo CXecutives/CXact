@@ -7,9 +7,12 @@
   unless the window is low) and the form, whose save bar shows while it holds a change. A save
   is answered by a toast once the bar has gone, with what its rescore changed (saveEffect.ts).
   Leaving the view or closing the window with unsaved changes asks once ("Änderungen
-  speichern?", the heading alone). During setup the toast of the first save offers "Weiter
-  zum ersten Abruf", which starts the fetch, or without a mailbox "Weiter zum Postfach", which
-  goes back to the setup page.
+  speichern?", the heading alone).
+  In the setup (`onboarding`, its step "Prüfen und ergänzen") the page is only the form and the
+  line of what is still open: no title, no "Aus Lebenslauf ausfüllen", no jump links, no save
+  bar and no "Häufig verlangt"; the setup's "Weiter" saves (`next`) and goes on only once
+  nothing required is open (else the caret goes to the first open field); Esc does nothing;
+  closing the window with unsaved changes still asks.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -32,6 +35,12 @@
   import ProfileStart from './ProfileStart.svelte';
   import { watchSave } from './saveEffect';
   import { FIELD_ORDER, SECTIONS, blank } from './sections';
+
+  interface Props {
+    /** The setup's step "Prüfen und ergänzen": only the form, its "Weiter" saves. */
+    onboarding?: boolean;
+  }
+  let { onboarding = false }: Props = $props();
 
   const profile = $derived(app.state?.profile ?? null);
   const stored = $derived(profile?.form ?? null);
@@ -72,24 +81,9 @@
     show?.();
   }
 
-  /** The toast of a save; during setup it leads on: to the first fetch with a mailbox, else
-   *  back to the setup page, whose next step is the mailbox. */
+  /** The toast of a save (the setup's next step is its answer there). */
   function savedToast(text: string): void {
-    const next =
-      app.state?.firstRun && app.hasProfile
-        ? {
-            label: app.hasMailbox ? t.profile.next : t.profile.nextMailbox,
-            onclick: () => void onward(),
-          }
-        : null;
-    toasts.show(text, 'success', next);
-  }
-
-  /** The setup page, or the Jobs view that shows the first fetch, which starts at once when
-   *  nothing holds it (a start that fails is said in the last step of the setup page). */
-  async function onward(): Promise<void> {
-    navigation.go('jobs');
-    if (app.hasMailbox && run.fetchBlocked === null) await run.start({ kind: 'fetch' });
+    if (!onboarding) toasts.show(text, 'success');
   }
   /** Where the user wanted to go with unsaved changes: a view, or closing the window. */
   let leaving = $state<ViewId | 'close' | null>(null);
@@ -126,6 +120,8 @@
   }
 
   onMount(() => {
+    // The setup's form starts empty where there is no profile yet.
+    if (onboarding && editor.origin === null) editor.create();
     const release = navigation.guard((next) => {
       if (!editor.dirty) return true;
       leaving = next;
@@ -285,6 +281,24 @@
   /** The fields the CV filled, while the form shows the stored profile. */
   const aiFilled = $derived(editor.origin === 'stored' ? (profile?.aiFilled ?? []) : []);
 
+  /**
+   * The setup's "Weiter": saves what changed (a new form always), then `true` once nothing
+   * required is open in the stored profile; else the caret goes to the first open field.
+   */
+  export async function next(): Promise<boolean> {
+    if (busy !== null) return false;
+    if (editor.dirty || editor.origin === 'new') {
+      if (panel !== null && !panel.ready()) return false;
+      if (!(await save())) return false;
+    }
+    const open = FIELD_ORDER.filter((field) => (profile?.missing ?? []).includes(field));
+    if (profile === null || open.length > 0) {
+      await panel?.focusField(open[0] ?? FIELD_ORDER[0] ?? '');
+      return false;
+    }
+    return true;
+  }
+
   /** A jump link: its section's heading at the top, under the links, with the focus. */
   function jump(id: string): void {
     const heading = document.getElementById(`profile-section-${id}-heading`);
@@ -293,9 +307,33 @@
   }
 </script>
 
-<div class="page" data-testid="profile">
+<div class="page" class:bare={onboarding} data-testid="profile">
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
+  {:else if onboarding}
+    {#if editor.origin !== null}
+      <ProfileHeader
+        bare
+        open={missing.length}
+        filled={aiFilled.length > 0}
+        rescoring={false}
+        pending={0}
+        dirty={editor.dirty}
+        note={note?.() ?? null}
+        onfirst={() => void panel?.focusField(missing[0] ?? '')}
+        oncv={() => undefined}
+      />
+      <ProfileEditor
+        bind:this={panel}
+        onboarding
+        {fieldError}
+        {aiFilled}
+        busy={busy === 'save'}
+        note={saveNote?.() ?? null}
+        onsave={() => void next()}
+        ondiscard={discard}
+      />
+    {/if}
   {:else if editor.origin === null}
     <ProfileStart
       heading={profile?.parseError ? t.profile.unreadable : t.profile.title}
@@ -371,6 +409,14 @@
      otherwise the room under the last section stays (--page-end). */
   .page:has(> :global([data-save-bar])) {
     padding-bottom: 0;
+  }
+
+  /* In the setup the column is the setup's. */
+  .page.bare {
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
   }
 
   /* The jump links stay at the top of the view while the page scrolls; in a low window

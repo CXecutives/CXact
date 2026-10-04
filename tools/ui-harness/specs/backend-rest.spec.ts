@@ -7,6 +7,7 @@
 import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
 import { animationsDone, expect, open, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -84,11 +85,12 @@ for (const [place, tab] of [
   });
 }
 
-test('Einstellungen names no version of the app (user decision 2026-09-27)', async ({ page }) => {
+test('Einstellungen names the version once, quietly at the end of Daten', async ({ page }) => {
   await open(page, `${WIN}&view=settings`);
   await expect(page.getByTestId('settings')).toBeVisible();
-  await expect(page.getByTestId('version')).toHaveCount(0);
-  await expect(page.getByTestId('settings')).not.toContainText('3.0.0');
+  await page.getByTestId('settings-tab-data').click();
+  await expect(page.getByTestId('data-footnote')).toHaveText(T.settings.version('4.0.0'));
+  await expect(page.getByTestId('settings').getByText('4.0.0')).toHaveCount(1);
 });
 
 test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused, and leads back to the job', async ({
@@ -103,9 +105,9 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
   await expect(page.getByTestId('portal-freelance')).toBeInViewport();
+  // The way back stands beside the tabs (scrolled away with them while the row is in view).
   const back = page.getByTestId('back-to-job');
   await expect(back).toHaveText('Zurück zum Job');
-  await expect(back).toBeInViewport();
   await back.click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(stage(page).getByTestId('reader-title')).toHaveText(title);

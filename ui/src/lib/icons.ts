@@ -36,8 +36,6 @@ export const ICONS = {
   details: 'download',
 
   // Runs.
-  /** Read the new alert mails (Alert-Mails lesen): the open envelope (user, 2026-10-01). */
-  fetch: 'mail-open',
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',
   /** Stop a run. */

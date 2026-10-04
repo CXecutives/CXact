@@ -658,8 +658,8 @@ test('the list search clears on Esc; a click on its magnifier lands in the field
 });
 
 test('the password eye and the search clear keep the caret in the field', async ({ page }) => {
-  // The app password of the first-run page, the search of the list.
-  await open(page, `${WIN}&scenario=first-run`);
+  // The app password of the setup's Alert-Mails, the search of the list.
+  await open(page, `${WIN}&scenario=setup-profile`);
   const password = page.getByTestId('mailbox-password');
   await password.fill('abcd efgh');
   await page.keyboard.press('End');
@@ -1031,18 +1031,18 @@ test('nothing drags but the handle and the drag regions; a double click selects 
 });
 
 test('the page keys glide in one short tween; under reduced motion they jump', async ({ page }) => {
-  // Low enough that Suche, the tab Einstellungen opens on, scrolls far (less than a page:
-  // PageDown goes to its end).
+  // Low enough that Portale, the tab Einstellungen opens on, scrolls far (a page and more:
+  // End goes to its end).
   await page.setViewportSize({ width: 1100, height: 400 });
   const room = (): Promise<number> =>
     page.getByTestId('view-settings').evaluate((node) => node.scrollHeight - node.clientHeight);
-  const name = (): Locator => page.getByTestId('portal-hays').getByText(T.portal.hays);
+  const name = (): Locator => page.getByTestId('settings-terms').locator('h2');
   // Reduced motion: at once.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, `${WIN}&view=settings`);
   // A click on plain text: the focus is nowhere, the keys scroll the pane clicked last.
   await name().click();
-  await page.keyboard.press('PageDown');
+  await page.keyboard.press('End');
   expect(await room()).toBeGreaterThan(200);
   expect(await scrollTop(page, 'view-settings')).toBe(await room());
   // Otherwise one tween, seen on the page's own clock: it stands still from the key on and
@@ -1054,7 +1054,7 @@ test('the page keys glide in one short tween; under reduced motion they jump', a
   await page.clock.install({ time: NOW });
   await page.clock.pauseAt(new Date(NOW.getTime() + 1000));
   const tops = [await scrollTop(page, 'view-settings')];
-  await page.keyboard.press('PageDown');
+  await page.keyboard.press('End');
   tops.push(await scrollTop(page, 'view-settings'));
   for (let frame = 1; frame <= 16; frame += 1) {
     await page.clock.runFor(16);
@@ -1431,7 +1431,7 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   await open(page, WIN);
   const targets = [
     page.getByTestId('place-archive'),
-    page.getByTestId('fetch-ways'),
+    page.getByTestId('fetch'),
     page.getByTestId('filter'),
     page.getByTestId('nav-settings'),
   ];
@@ -1454,12 +1454,12 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   expect(await calls(page, 'move_jobs')).toHaveLength(0);
 });
 
-test("a middle click activates nothing: tabs, the fetch and its menu, the funnel, a row tool, the reader's", async ({
+test("a middle click activates nothing: tabs, the fetch, the funnel, a row tool, the reader's", async ({
   page,
 }) => {
   await open(page, WIN);
   // In the header (no scroll area there: no autoscroll either).
-  for (const id of ['place-archive', 'fetch-ways', 'filter', 'fetch']) {
+  for (const id of ['place-archive', 'filter', 'fetch']) {
     await page.getByTestId(id).click({ button: 'middle' });
     await page.waitForTimeout(100);
     await expect(menuOpen(page), id).toHaveCount(0);

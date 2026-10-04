@@ -59,8 +59,9 @@ test('the stamp of a mail list: the time today, Gestern, Vorgestern, then weekda
 }) => {
   await open(page, WIN);
   const stamp = (key: string): Locator => row(page, key).getByTestId('row-date');
-  // Today (the fixed clock stands at 24.09., 09:30 in Berlin): the time of the alert mail.
-  await expect(stamp('freelancermap-2801')).toHaveText('07:30');
+  // Today (the fixed clock stands at 24.09., 09:30 in Berlin): the time the job came into
+  // CXact (not its alert mail's).
+  await expect(stamp('freelancermap-2801')).toHaveText('08:24');
   await expect(stamp('freelancermap-2803')).toHaveText('00:30');
   // The two days before in words, capitalised like the start of a line.
   await expect(stamp('linkedin-4100200302')).toHaveText('Gestern');
@@ -379,19 +380,11 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     for (const [, testid] of SHOWN) reader.push(await state(stage(page).getByTestId(testid)));
     return { menu, reader };
   };
-  // A job without an alert mail offers none (user, 2026-10-01: no button at all).
+  // A job without an alert mail offers none (user, 2026-10-01: no button at all), and one
+  // without a score no prompt.
   const failed = await offered('freelancermap-2805');
-  expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, `${T.actions.prompt} true`]);
+  expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, 'none']);
   expect(failed.reader).toEqual(failed.menu);
-  // Both say why the prompt waits, in the reader's words.
-  const prompt = stage(page).getByTestId('reader-prompt');
-  await prompt.hover();
-  await expect(page.getByRole('tooltip')).toHaveText(T.reader.promptNoText);
-  await page.mouse.move(0, 0);
-  await rowMenu(page, 'freelancermap-2805');
-  await page.getByTestId('menu-item-prompt').hover();
-  await expect(page.getByRole('tooltip')).toHaveText(T.reader.promptNoText);
-  await page.keyboard.press('Escape');
   const closed = await offered('linkedin-4100200304');
   expect(closed.menu).toEqual([
     `${T.actions.mail} on`,

@@ -1,10 +1,11 @@
 <!--
-  The account card of the Postfach tab: the mail tile, the connected address with its state
-  under it, "Ändern" and "Entfernen" (the same kind of button; Entfernen is red at rest and
-  asks first), without a mailbox the row "Kein Postfach" with "Verbinden". Ändern and
-  Verbinden open the form in a dialog named after the button ("Postfach ändern", "Postfach
-  verbinden") whose button is "Verbinden". The sources of its alert mails are a card of their
-  own below it (SettingsView).
+  The account card on top of Alert-Mails (Einstellungen > Portale): the mail tile, the
+  connected address with its state under it, "Ändern" and "Entfernen" (the same kind of
+  button; Entfernen is red at rest and asks first), without a mailbox the row "Kein Postfach"
+  with "Verbinden" and the one sentence that the portals of alert mails rest without one (no
+  second Verbinden anywhere). Ändern and Verbinden open the form in a dialog named after the
+  button ("Postfach ändern", "Postfach verbinden") whose button is "Verbinden". The portals of
+  its alert mails are a card of their own below it (SettingsView).
   The state is the answer to a saved mailbox ("Verbunden" after a green dot, no note, no
   toast). It says "Nicht erreichbar" or "Abgelehnt" after a red one only for a mail error of
   a fetch that finished after Gmail last accepted the mailbox (`mailbox.checkedAt`), with a
@@ -24,6 +25,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
   import { unfold } from '$lib/motion/transitions';
+  import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
@@ -34,6 +36,13 @@
     testid?: string | null;
   }
   let { cfg, locked, testid = null }: Props = $props();
+
+  /** The portals of alert mails, in the app's order: they rest without a mailbox. */
+  const alertPortals = $derived(
+    inPortalOrder(cfg.portals)
+      .filter((p) => p.way === 'alert')
+      .map((p) => p.portal),
+  );
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -143,7 +152,12 @@
       </div>
     </SettingRow>
   {:else}
-    <SettingRow label={t.settings.notConnected} lead={tile} testid="mailbox">
+    <SettingRow
+      label={t.settings.notConnected}
+      hint={t.settings.noMailbox(alertPortals)}
+      lead={tile}
+      testid="mailbox"
+    >
       <Button
         variant="secondary"
         icon="signIn"

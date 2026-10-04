@@ -5,7 +5,6 @@
 import type { IconName } from '$components/Icon.svelte';
 import { t } from '$lib/i18n/t';
 import type { JobView } from '$lib/ipc/types';
-import { app } from '$lib/state/app.svelte';
 
 /** What shows the job: its alert mail, its ad, the prompt of it for an AI chat. */
 export type ShowId = 'mail' | 'open-ad' | 'prompt';
@@ -29,8 +28,8 @@ export const SHOWS: readonly ShowId[] = ['open-ad', 'mail', 'prompt'];
  * Alert-Mail öffnen, only for a job an alert mail brought (user, 2026-10-01: a job of the
  * search has none, the button is not there); Anzeige öffnen, which says Offline-Anzeige
  * öffnen for an ad that is gone or takes no applications (the portal's page still opens);
- * Prompt kopieren, off without a profile to judge the job by or without the ad's text (a
- * preview is one).
+ * Prompt kopieren, only for a job with a score (scored or excluded; none without a profile)
+ * and off without the ad's text (a preview is one).
  */
 export function showActions(job: JobView): Record<ShowId, ShowAction> {
   const offline = job.detail.kind === 'gone' || job.closed;
@@ -54,8 +53,8 @@ export function showActions(job: JobView): Record<ShowId, ShowAction> {
       id: 'prompt',
       label: t.actions.prompt,
       icon: 'copy',
-      reason: !app.hasProfile ? t.actions.promptNoProfile : text ? null : t.reader.promptNoText,
-      hidden: false,
+      reason: text ? null : t.reader.promptNoText,
+      hidden: job.match === null || job.match.status === 'unscorable',
     },
   };
 }

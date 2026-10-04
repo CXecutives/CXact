@@ -7,21 +7,25 @@
     every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
     offers none while the next one loads.
   - match: the ring (48, hollow; opening a job fills its arc once, the number stands at once)
-    beside its band; every ring without a score says "Noch nicht bewertet". The ring only
-    shows (user, 2026-10-01: no popover of what moved the score). An excluded job
+    beside its band and an info symbol that says what the match is (the ring's own tooltip
+    names it; the symbol reaches it from the keyboard); every ring without a score says "Noch
+    nicht bewertet". No popover of what moved the score (user, 2026-10-01). An excluded job
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
-  - actions: Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
-    or closed: the portal's page still opens), Alert-Mail öffnen, Prompt kopieren, all
-    alike; an excluded job has "Trotzdem bewerten" before them. Moving the job away from one
-    of the reader's buttons hands the focus to the same button of the next job. Every result
-    and every failure is a toast.
+  - actions: three text buttons without glyphs, Anzeige öffnen (Offline-Anzeige öffnen for
+    an ad that is gone or closed: the portal's page still opens), Alert-Mail öffnen (only for
+    a job a mail brought), Prompt kopieren (not for a job without a score); the row wraps.
+    An excluded job has "Trotzdem bewerten" before them. Moving the job away from one of the
+    reader's buttons hands the focus to the same button of the next job. Every result and
+    every failure is a toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
-    table (lib/facts.ts): the ad's value ("–" where it says nothing; for an ad the app never
-    read in full only what it knows), a quiet note, and the verdict as an icon whose tooltip
-    is the reason that decided it (the ban where it excludes the job). The contact's e-mail
-    is a link: a new mail to it in the default mail program, the job's title its subject.
-  - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
+    table (lib/facts.ts): the ad's value (a row the ad says nothing about shows "–" only
+    where a verdict judges it; for an ad the app never read in full only what it knows), a
+    quiet note, and the verdict as an icon whose tooltip is the reason that decided it (none
+    for an excluded job: its head says why). "Gefunden" stays quiet. The contact's e-mail is
+    a link: a new mail to it in the default mail program, the job's title its subject.
+  - requirements (not for an excluded job): "Anforderungen" in the groups of
+    reader-sections.ts, a quiet count after
     each title; a missing must that is a term has a small "+" into its field of the profile
     (addToProfile.ts); once it is there, a quiet check stands in place of its cross.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
@@ -46,6 +50,7 @@
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Icon from '$components/Icon.svelte';
+  import InfoTip from '$components/InfoTip.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
@@ -94,9 +99,11 @@
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   const match = $derived(detail.match);
   const withRing = $derived(app.hasProfile);
+  /** The engine excludes the job (its head says why; no verdicts, no requirements). */
+  const excluded = $derived((match?.status ?? job.match?.status) === 'excluded');
   /** A match to judge the rows by (without one, or one that could not score the ad, they show
-   *  the ad's side only, as the ring says "Noch nicht bewertet"). */
-  const judged = $derived(withRing && match !== null && match.status !== 'unscorable');
+   *  the ad's side only, as the ring says "Noch nicht bewertet"; an excluded job shows none). */
+  const judged = $derived(withRing && match !== null && match.status !== 'unscorable' && !excluded);
   const ring = $derived(
     ringState(job.match, job.match === null && Boolean(app.state?.matchPending), job.detail.kind),
   );
@@ -105,7 +112,6 @@
   const all = $derived(match?.reasons ?? []);
   const criteria = $derived(match?.criteria ?? []);
 
-  const excluded = $derived((match?.status ?? job.match?.status) === 'excluded');
   /** Why the engine excludes the job, in one sentence: its first violation, else the note. A
    *  violation a row of the Jobdetails judges speaks from the profile's side (its criterion's
    *  sentence, "Du schließt Zeitarbeit aus."); the row's tooltip says what the ad states. */
@@ -132,9 +138,14 @@
   /** The ad is gone or takes no applications: "Anzeige öffnen" says so (the portal's page
    *  still opens), and the Jobdetails once, since the day the app read the closed page. */
   const offline = $derived(detailKind === 'gone' || job.closed);
+  /** Every name a row of the Jobdetails can have (the names' column is as wide as the
+   *  longest). */
+  const NAMES = $derived([
+    ...new Set([...Object.values(t.reader.term), t.reader.salaryName, t.reader.hourlyName]),
+  ]);
   /** The rows of the Jobdetails (terms.ts); for an ad the app never read in full (none, or a
    *  preview) only what it knows (what the ad says is not known yet, no "–" claims it says
-   *  nothing). */
+   *  nothing), and a "–" only where a verdict judges the row. */
   const rows = $derived(
     termRows({
       job,
@@ -144,7 +155,10 @@
       textLength: detail.text?.length ?? 0,
       now: clock.now,
       offline: offline ? { since: job.closed ? detail.fetchedAt : null } : null,
-    }).filter((row) => (detail.text !== null && detailKind !== 'teaser') || !row.missing),
+    }).filter(
+      (row) =>
+        !row.missing || (detail.text !== null && detailKind !== 'teaser' && row.verdict !== null),
+    ),
   );
 
   const byWeight = (a: Reason, b: Reason): number =>
@@ -262,10 +276,7 @@
    *  move hands the focus on. */
   const tools = $derived(rowTools(job, { move: act, purge: askPurge, report: fail }));
 
-  /** The action row stays one line: where the labels do not fit, the buttons turn into icons
-   *  one after the other, from the last: the longest and least used first (the prompt, then
-   *  Anzeige öffnen, then Alert-Mail öffnen; their tooltips name them). Tried again whenever
-   *  the row's width changes (before the frame is painted). */
+  /** The action row (it wraps where its buttons do not fit). */
   let actions = $state<HTMLElement | null>(null);
   /** The test id of each button that shows the job, and what it does. */
   const SHOW_TESTIDS: Record<ShowId, string> = {
@@ -278,51 +289,6 @@
     mail: () => openTarget({ kind: 'gmail', key: job.key }),
     prompt: () => void copyJobPrompt(job.key).then(fail),
   };
-  /** How many of the buttons show only their icon, from the last. */
-  let iconsOnly = $state(0);
-
-  /** The last button starts above the bottom of the first. */
-  function oneLine(row: HTMLElement): boolean {
-    const first = row.firstElementChild;
-    const last = row.lastElementChild;
-    return !(first instanceof HTMLElement && last instanceof HTMLElement)
-      ? true
-      : last.offsetTop < first.offsetTop + first.offsetHeight;
-  }
-
-  /** The longest form of the actions that keeps the row on one line (the newest try wins
-   *  when the width changes again meanwhile). */
-  let fitting = 0;
-  async function fit(row: HTMLElement): Promise<void> {
-    const attempt = ++fitting;
-    for (let icons = 0; icons <= SHOWS.length; icons += 1) {
-      if (attempt !== fitting) return;
-      iconsOnly = icons;
-      await tick();
-      if (attempt !== fitting || oneLine(row)) return;
-    }
-  }
-
-  $effect(() => {
-    const row = actions;
-    if (row === null) return;
-    let width = -1;
-    let frame = 0;
-    const observer = new ResizeObserver(([entry]) => {
-      const next = entry?.contentRect.width ?? 0;
-      if (next === width) return;
-      width = next;
-      // In the next frame, before it is painted: changing the row inside the callback would
-      // make the observer report again in the same frame (a loop).
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => void fit(row));
-    });
-    observer.observe(row);
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(frame);
-    };
-  });
 </script>
 
 {#snippet head()}
@@ -370,6 +336,7 @@
         <p class="band {band ?? 'none'} {step}" data-testid="band">
           {band ? t.score.band[band] : t.score.none}
         </p>
+        <InfoTip text={t.score.info} label={t.score.infoLabel} testid="band-info" />
       {/if}
     </div>
   {/if}
@@ -380,12 +347,10 @@
        menu reads too. -->
   {@const shows = showActions(job)}
   {@const shown = SHOWS.filter((id) => !shows[id].hidden)}
-  {#each shown as id, index (id)}
+  {#each shown as id (id)}
     <Button
       variant="secondary"
-      icon={shows[id].icon}
       label={shows[id].label}
-      iconOnly={index >= shown.length - iconsOnly}
       disabled={shows[id].reason !== null}
       disabledReason={shows[id].reason}
       testid={SHOW_TESTIDS[id]}
@@ -414,6 +379,11 @@
     <h2 class="section">{t.reader.details}</h2>
     <!-- Name, the ad's value and whether it fits as an icon (the reason in its tooltip). -->
     <ul class="terms" class:bare={!withRing} aria-label={t.reader.details} data-testid="criteria">
+      <!-- Every name a row can have, unseen and without height: the names' column keeps its
+           width whichever rows a job shows, so the values never move between jobs. -->
+      <li class="sizer" role="presentation" aria-hidden="true">
+        {#each NAMES as name (name)}<span class="sizer-name">{name}</span>{/each}
+      </li>
       {#each rows as row (row.key)}
         <li
           class="term"
@@ -453,6 +423,7 @@
               <span
                 class="value"
                 class:missing={row.missing}
+                class:quiet={row.key === 'portal'}
                 class:urgent={row.urgent}
                 data-copy={row.missing ? null : ''}>{row.value}</span
               >
@@ -466,7 +437,7 @@
 {/snippet}
 
 {#snippet requirements()}
-  {#if match && match.status !== 'unscorable' && withRing}
+  {#if match && match.status !== 'unscorable' && withRing && !excluded}
     <section class="block why" data-testid="why" in:fade>
       <h2 class="section">{t.reader.why}</h2>
       {#if groups.length === 0}
@@ -712,6 +683,23 @@
     text-align: start;
   }
 
+  /* In the names' column only, no height, and no gap of its own below it. */
+  .sizer {
+    display: flex;
+    grid-column: 1;
+    flex-direction: column;
+    height: 0;
+    margin-bottom: calc(-1 * var(--space-8));
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  /* As wide as a row's name with its icon before it. */
+  .sizer-name {
+    padding-inline-start: calc(var(--icon-sm) + var(--space-8));
+    white-space: nowrap;
+  }
+
   .terms.bare {
     grid-template-columns: max-content minmax(0, max-content);
     column-gap: var(--space-24);
@@ -763,6 +751,11 @@
   .value.missing,
   .term-note {
     color: var(--text-subtle);
+  }
+
+  /* How and when the job came: quieter than what the ad says. */
+  .value.quiet {
+    color: var(--text-muted);
   }
 
   /* A deadline within a week, or past. */

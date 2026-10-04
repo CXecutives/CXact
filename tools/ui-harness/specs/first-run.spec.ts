@@ -1,323 +1,218 @@
-// The first-run page (Erste Schritte) against the stub: the steps that tick themselves, the
-// mailbox form with its "Verbinden", the portals it names, the profile step, the first fetch
-// and the report of a reset.
+// The setup (features/first-run) against the stub: a mode of the shell of its own, its steps
+// from the table, every switch of the view refused, Zurück (and the mouse's back button), the
+// CV's upload, evaluation and failures, the review in the Profil's setup mode, the optional
+// Alert-Mails, Fertig, resuming from what is stored, the report of a reset and the smallest
+// window.
 
 import type { Page } from '@playwright/test';
-import { calls, expect, open, runFinished, test, visibleCount } from './fixtures';
-import {
-  ALERT_PORTALS,
-  chooseWay,
-  failNext,
-  fillRequired,
-  PORTALS,
-  showTab,
-  T,
-  tokenPx,
-} from './helpers';
+import { calls, expect, open, test } from './fixtures';
+import { fillRequired, T, WIN, MAC } from './helpers';
 
-const WIN = '?platform=windows';
-const MAC = '?platform=macos';
+const heading = (page: Page) => page.getByTestId('first-heading');
+const next = (page: Page) => page.getByTestId('first-next');
 
-/** The target of the last open_target. */
-async function lastOpened(page: Page): Promise<unknown> {
-  return (await calls(page, 'open_target')).at(-1)?.[1];
+/** The step the setup shows. */
+async function expectStep(page: Page, words: string): Promise<void> {
+  await expect(heading(page)).toHaveText(words);
 }
 
-test('three steps that tick themselves, the profile first; the first search waits for it', async ({
+/** The mouse's back button, as the OS sends it (button 3). */
+async function mouseBack(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const init = { bubbles: true, cancelable: true, button: 3 };
+    document.body.dispatchEvent(new MouseEvent('mousedown', init));
+    document.body.dispatchEvent(new MouseEvent('mouseup', init));
+  });
+}
+
+test('the setup is a mode of its own: no sidebar, no buttons in the top bar', async ({ page }) => {
+  for (const os of [WIN, MAC]) {
+    await open(page, `${os}&scenario=first-run`);
+    await expect(page.getByTestId('first-run')).toBeVisible();
+    await expectStep(page, T.firstRun.welcome);
+    await expect(heading(page)).toBeFocused();
+    for (const gone of [
+      'sidebar',
+      'sidebar-floating',
+      'toggle-sidebar',
+      'history-back',
+      'history-forward',
+      'toggle-reader',
+    ]) {
+      await expect(page.getByTestId(gone)).toHaveCount(0);
+    }
+    // One colour, no seam: the bar is the view's.
+    await expect(page.getByTestId('title-bar')).not.toHaveClass(/docked/);
+    await expect(page.getByTestId('first-back')).toHaveCount(0);
+    await expect(next(page)).toHaveText(T.firstRun.begin);
+  }
+});
+
+test('every switch of the view is refused while it stands; Zurück and the mouse go back', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=first-run`);
-  const first = page.getByTestId('first-run');
-  await expect(first).toBeVisible();
-  // No sentence introduces the page: the mark, the name and the steps.
-  await expect(first.locator('header')).toHaveText(T.app.name);
-  await expect(first).not.toContainText('Alles bleibt auf diesem Rechner');
-  // The profile first (the search needs it), then the mailbox, which only the alert mails
-  // need: it says so and pulls no caret; its Verbinden is no primary. The setup stands for
-  // Jobs in the sidebar.
-  const steps = await first
-    .locator('[data-testid^="step-"]')
-    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
-  expect(steps).toEqual(['step-profile', 'step-mailbox', 'step-fetch']);
-  await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
-  expect(await visibleCount(page, '.btn.primary')).toBe(1);
-  await expect(page.getByTestId('first-profile')).toHaveClass(/primary/);
-  await expect(page.getByTestId('first-mailbox-optional')).toHaveText(T.profile.optional);
-  await expect(page.getByTestId('mailbox-save')).not.toHaveClass(/primary/);
-  await expect(page.getByTestId('mailbox-user')).not.toBeFocused();
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  // The two Google pages in the order she needs them, no sentence about app passwords.
-  const form = page.getByTestId('mailbox-form');
-  await expect(form.locator('.links .btn')).toHaveText([
-    T.settings.twoStepAction,
-    T.settings.createPassword,
-  ]);
-  await expect(form).not.toContainText('16 Buchstaben');
-  await page.getByTestId('two-step').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'twoStepPage' } });
-  // "Verbinden", as in Einstellungen, with its glyph like every action of the steps. Empty
-  // fields are said at once, both, without Gmail.
-  await expect(page.getByTestId('mailbox-save')).toHaveText(T.settings.connect);
-  await expect(page.getByTestId('mailbox-save').locator('[data-icon]')).toHaveAttribute(
-    'data-icon',
-    'signIn',
-  );
-  await page.getByTestId('mailbox-save').click();
-  await expect(form).toContainText(T.settings.addressMissing);
-  await expect(form).toContainText(T.settings.passwordMissing);
-  await expect(page.getByTestId('mailbox-user')).toBeFocused();
-  expect(await calls(page, 'save_mailbox')).toHaveLength(0);
-  // The portals whose alert mails must come here, in the UI's order.
-  await expect(page.getByTestId('first-mailbox-hint')).toHaveText(
-    T.firstRun.mailboxText(ALERT_PORTALS),
-  );
-  // The first fetch searches the sources, with the profile's terms, in the words of the list's
-  // button: without a profile it waits and says why (it never falls back to the mailbox).
-  await expect(page.getByTestId('first-fetch')).toHaveText(T.toolbar.searchNow);
-  await expect(page.getByTestId('first-fetch')).toHaveAttribute('aria-disabled', 'true');
-  await page.getByTestId('first-fetch').hover();
-  await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsProfile);
-  await page.mouse.move(0, 0);
+  // The native menu (macOS Cmd+,) asks for Einstellungen: nothing happens.
+  await page.evaluate(() => window.__harness.fire('navigate', 'settings'));
+  await expect(page.getByTestId('first-run')).toBeVisible();
+  await expect(page.getByTestId('view-settings')).toHaveCount(0);
+  // Enter is the primary.
+  await page.keyboard.press('Enter');
+  await expectStep(page, T.firstRun.way);
+  await expect(heading(page)).toBeFocused();
+  // The mouse's back button is Zurück; Willkommen has none.
+  await mouseBack(page);
+  await expectStep(page, T.firstRun.welcome);
+  await mouseBack(page);
+  await expectStep(page, T.firstRun.welcome);
+  await next(page).click();
+  await page.getByTestId('first-back').click();
+  await expectStep(page, T.firstRun.welcome);
+});
 
-  await page.getByTestId('mailbox-user').fill('alerts.demo');
+test('the CV: upload, evaluation, review; Weiter saves and goes on to the alert mails', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await next(page).click();
+  // The CV is the recommended way, chosen at once.
+  await expect(page.getByTestId('first-way').getByRole('radio', { checked: true })).toContainText(
+    T.profile.fromCv,
+  );
+  await next(page).click();
+  await expectStep(page, T.firstRun.upload);
+  await expect(page.getByTestId('upload-zone')).toContainText(T.firstRun.formats);
+  await expect(page.getByTestId('upload-ai')).toHaveText(T.profile.fromCvHint);
+  // The step's own button goes on: no Weiter.
+  await expect(next(page)).toHaveCount(0);
+  await page.getByTestId('upload-pick').click();
+  await expectStep(page, T.firstRun.reading);
+  await expect(page.getByTestId('cv-reading')).toBeVisible();
+  await expect(page.getByTestId('first-back')).toHaveCount(0);
+  await expectStep(page, T.firstRun.review);
+  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ path: null });
+  // The Profil's form in its setup mode: no title, no CV button, no save bar.
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  for (const gone of ['profile-heading', 'profile-from-cv', 'profile-jumps', 'profile-save-bar']) {
+    await expect(page.getByTestId(gone)).toHaveCount(0);
+  }
+  await expect(page.getByTestId('profile-ai-filled')).toBeVisible();
+  // Zurück skips the evaluation.
+  await page.getByTestId('first-back').click();
+  await expectStep(page, T.firstRun.upload);
+  // A dropped file is read from its path.
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await expectStep(page, T.firstRun.review);
+  expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({
+    path: 'C:/Users/demo/Lebenslauf.pdf',
+  });
+  await next(page).click();
+  await expectStep(page, T.firstRun.alerts);
+});
+
+test('a failed evaluation says one sentence and its ways on; Abbrechen goes back', async ({
+  page,
+}) => {
+  const cases = [
+    ['limit', 'limit', ['self']],
+    ['offline', 'offline', ['retry', 'self']],
+    ['unreadable', 'unreadable', ['otherFile', 'self']],
+    ['unavailable', 'paused', ['self']],
+    ['outdated', 'outdated', ['self']],
+  ] as const;
+  for (const [cv, reason, ways] of cases) {
+    await open(page, `${WIN}&scenario=first-run&step=reading&cv=${cv}`);
+    await expect(page.getByTestId('cv-error')).toHaveText(T.profile.cvError[reason]);
+    const buttons = page.getByTestId('cv-problem').locator('.btn');
+    await expect(buttons).toHaveCount(ways.length);
+    for (const [index, way] of ways.entries()) {
+      await expect(buttons.nth(index)).toHaveAttribute('data-testid', `cv-${way}`);
+    }
+    await expect(buttons.first()).toHaveClass(/primary/);
+  }
+  // "Selbst ausfüllen": the empty form.
+  await page.getByTestId('cv-self').click();
+  await expectStep(page, T.firstRun.review);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  // Abbrechen while it evaluates: back to the upload.
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  await page.getByTestId('cv-cancel').click();
+  await expectStep(page, T.firstRun.upload);
+});
+
+test('by hand: Weiter goes on only once nothing required is open; Esc does nothing', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=way`);
+  await page.getByTestId('first-way').getByRole('radio', { name: T.profile.byHand }).click();
+  await next(page).click();
+  await expectStep(page, T.firstRun.review);
+  await page.getByTestId('profile-roles').locator('input').focus();
+  await page.keyboard.press('Escape');
+  await expectStep(page, T.firstRun.review);
+  // Saved, but required fields are open: the caret goes to the first of them.
+  await next(page).click();
+  await expect(page.getByTestId('profile-open')).toBeVisible();
+  await expectStep(page, T.firstRun.review);
+  // The stored profile has no competence row left: one is added first.
+  await page.getByTestId('competence-add').click();
+  await fillRequired(page);
+  await next(page).click();
+  await expectStep(page, T.firstRun.alerts);
+  // Back to the review: what was typed is still there.
+  await page.getByTestId('first-back').click();
+  await expect(page.getByTestId('profile-roles')).toContainText('Interim CFO');
+});
+
+test('Alert-Mails: skipped, or connected with the portals rows; Fertig opens the jobs', async ({
+  page,
+}) => {
+  // A usable profile and no mailbox: the setup resumes at Alert-Mails.
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await expectStep(page, T.firstRun.alerts);
+  await expect(page.getByTestId('mailbox-save')).toHaveClass(/primary/);
+  await expect(next(page)).toHaveText(T.firstRun.skip);
+  await expect(next(page)).not.toHaveClass(/primary/);
+  await next(page).click();
+  await expectStep(page, T.firstRun.done);
+  expect(await calls(page, 'finish_onboarding')).toHaveLength(1);
+  await expect(page.getByTestId('cv-reading')).toHaveCount(0);
+  await next(page).click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('toggle-sidebar')).toBeVisible();
+  expect(await calls(page, 'start_run')).toHaveLength(0);
+
+  // Connected: the address and the portals' rows with "Alert anlegen", then Weiter.
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcdabcdabcdabcd');
   await page.getByTestId('mailbox-save').click();
-  await expect(form).toContainText('Die Adresse ist unvollständig.');
-  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
-  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
-  await page.getByTestId('mailbox-password').press('Enter');
-  await expect(page.getByTestId('step-mailbox')).toHaveAttribute('data-done', 'true');
-  // The profile stays the current step, the ticked check draws, the focus waits on the
-  // profile's action.
-  await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
-  await expect(page.getByTestId('step-mailbox').locator('.marker')).toHaveClass(/drawn/);
-  await expect(page.getByTestId('first-profile')).toBeFocused();
-  await expect(page.getByTestId('first-fetch')).toHaveAttribute('aria-disabled', 'true');
-  // The address is text to copy; per portal what "Verbinden" found, or its page to set up an
-  // alert where it found none, in the UI's order.
-  await expect(page.getByTestId('step-mailbox').locator('.done-text')).toHaveAttribute(
-    'data-copy',
-    '',
-  );
-  // The list names the portals, so the sentence above it no longer does.
-  await expect(page.getByTestId('first-mailbox-hint')).toHaveText(T.firstRun.mailboxDone);
-  await expect(page.getByTestId('first-mailbox-hint')).not.toContainText('freelance.de');
-  const portals = await page
-    .getByTestId('first-alerts')
-    .locator('li')
-    .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
-  // The sources of alert mails only: the app searches the others itself.
-  expect(portals).toEqual(ALERT_PORTALS.map((portal) => `first-portal-${portal}`));
-  await expect(page.getByTestId('first-mails-linkedin')).toHaveText('20 Alert-Mails');
-  // The others offer the page to set up an alert.
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveText([
-    T.firstRun.createAlert,
-  ]);
-  await page.getByTestId('first-alert-freelance').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  // Each step is its name and the controls it needs: no sentence explains a step.
-  for (const step of ['step-profile', 'step-fetch']) {
-    await expect(page.getByTestId(step).locator('.hint')).toHaveCount(0);
-  }
+  await expect(page.getByTestId('first-address')).toHaveText('alerts.demo@gmail.com');
+  await expect(page.getByTestId('first-alerts')).toContainText(T.settings.setUpAlert);
+  await expect(next(page)).toHaveText(T.firstRun.next);
+  await expect(next(page)).toHaveClass(/primary/);
+  await next(page).click();
+  await expectStep(page, T.firstRun.done);
 });
 
-test('a step done before the page opened is simply there', async ({ page }) => {
-  await open(page, `${WIN}&scenario=mailbox-only`);
-  const mailbox = page.getByTestId('step-mailbox');
-  await expect(mailbox).toHaveAttribute('data-done', 'true');
-  await expect(mailbox.locator('.marker')).not.toHaveClass(/drawn/);
-  await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
-  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
-  // Connected in an earlier session: nothing counted, every portal offers its page.
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(
-    ALERT_PORTALS.length,
-  );
-});
-
-test('step 1 names the portals that are on; none on leads to Einstellungen', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  await page.getByTestId('nav-settings').click();
-  await (await showTab(page, page.getByTestId('toggle-enabled-linkedin'))).click();
-  await page.getByTestId('nav-jobs').click();
-  const step = page.getByTestId('step-mailbox');
-  await expect(step.getByTestId('first-mailbox-hint')).toHaveText(
-    T.firstRun.mailboxText(ALERT_PORTALS.filter((portal) => portal !== 'linkedin')),
-  );
-  // The compound never breaks at its hyphen.
-  expect(T.firstRun.mailboxText(['freelance'])).toContain('Gmail‑Adresse');
-  await expect(page.getByTestId('first-no-portal')).toHaveCount(0);
-  await page.getByTestId('nav-settings').click();
-  for (const portal of PORTALS.filter((portal) => portal !== 'linkedin')) {
-    await (await showTab(page, page.getByTestId(`toggle-enabled-${portal}`))).click();
-  }
-  await page.getByTestId('nav-jobs').click();
-  // The words of the locked fetch, not a sentence of its own.
-  await expect(page.getByTestId('first-no-portal')).toHaveText(T.toolbar.needsPortal);
-  await expect(step.getByTestId('first-mailbox-hint')).toHaveCount(0);
-  await page.getByTestId('first-open-settings').click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-});
-
-test('no alert mail in 30 days says to set up an alert first, for the mailbox', async ({
+test('after a reset: what stayed on Willkommen with the log, a clean one in a toast', async ({
   page,
 }) => {
-  await open(page, `${WIN}&scenario=first-run&alerts=none&way=mail`);
-  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
-  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
-  await page.getByTestId('mailbox-password').press('Enter');
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(
-    ALERT_PORTALS.length,
-  );
-  await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
-});
-
-test('the profile step offers "Profil anlegen", the start page of the Profil view', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=mailbox-only`);
-  const step = page.getByTestId('step-profile');
-  // The same button as on the list's empty state: 29 px with its glyph, the primary.
-  await expect(step.getByRole('button')).toHaveText([T.list.createProfile]);
-  const create = step.getByTestId('first-profile');
-  await expect(create).toHaveClass(/primary/);
-  await expect(create).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
-  await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
-  // It leads to the start page of the Profil view; the empty form stores nothing yet.
-  await create.click();
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  await chooseWay(page, 'empty');
-  await fillRequired(page);
-  expect(await calls(page, 'save_profile')).toHaveLength(0);
-  await page.getByTestId('profile-save').click();
-  // Saved during the setup: the toast leads on to the first fetch.
-  const toast = page.getByTestId('toast').filter({ hasText: T.profile.saved });
-  await expect(toast.getByTestId('toast-action')).toHaveText(T.profile.next);
-  await page.getByTestId('nav-jobs').click();
-  await expect(step).toHaveAttribute('data-done', 'true');
-  await expect(step.locator('.done-text')).toHaveText('Interim CFO');
-});
-
-test('a profile that does not count keeps step 2 open and says why', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run-empty-profile`);
-  await expect(page.getByTestId('step-profile')).toHaveAttribute('data-done', 'false');
-  await expect(page.getByTestId('first-profile')).toHaveClass(/primary/);
-  await expect(page.getByTestId('first-fetch')).not.toHaveClass(/primary/);
-  const problem = page.getByTestId('first-profile-problem');
-  await expect(problem).toHaveText(T.firstRun.profileEmpty);
-  await expect(problem.locator('svg')).toHaveCount(1);
-  const openProfile = page.getByTestId('first-profile');
-  await expect(openProfile).toHaveText(T.list.openProfile);
-  await expect(openProfile.locator('[data-icon]')).toHaveAttribute('data-icon', 'document');
-});
-
-test('every view opens; the sidebar is the same as always, Jobs leads back', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  const nav = page.getByTestId('sidebar').locator('nav');
-  await expect(nav.locator('xpath=ancestor-or-self::*[@inert]')).toHaveCount(0);
-  await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(0);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-  await page.getByTestId('nav-profile').click();
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await expect(page.locator('[data-testid^="nav-"][aria-current="page"]')).toHaveCount(1);
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-});
-
-test('after the first fetch the list opens on its inbox', async ({ page }) => {
-  // An empty profile has nothing to search for: the first fetch reads the mailbox.
-  await open(page, `${WIN}&scenario=mailbox-only&way=mail`);
-  await page.getByTestId('first-profile').click();
-  await chooseWay(page, 'empty');
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await page.getByTestId('first-fetch').click();
-  await runFinished(page);
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-  await expect(
-    page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first(),
-  ).toBeVisible();
-});
-
-test('a failed first fetch keeps the page and says why', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-fetch-failed`);
-  const step = page.getByTestId('step-fetch');
-  await expect(step.getByTestId('first-fetch-failed')).toBeVisible();
-  // Fetching again completes and ends the setup.
-  await page.getByTestId('first-fetch').click();
-  await expect(page.getByTestId('first-run')).toHaveCount(0, { timeout: 15_000 });
-});
-
-test('the three steps are in view at 1280 x 720 on both systems', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 720 });
-  /** How far a control ends below the bottom of the view (0 or less: in view). */
-  const below = (id: string): Promise<number> =>
-    page.getByTestId(id).evaluate((node) => {
-      const view = node.closest('.view')!.getBoundingClientRect();
-      return node.getBoundingClientRect().bottom - view.bottom;
-    });
-  for (const platform of ['windows', 'macos']) {
-    await open(page, `?platform=${platform}&scenario=first-run`);
-    expect(await below('first-fetch')).toBeLessThanOrEqual(0);
-    // After a reset that left something its warning stands above: the action is in view.
-    await open(page, `?platform=${platform}&scenario=reset`);
-    expect(await below('mailbox-save')).toBeLessThanOrEqual(0);
-  }
-});
-
-test('it opens at its top, no caret pulled into the optional mailbox', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
-  for (const query of [`${WIN}&scenario=reset`, `${MAC}&scenario=first-run`]) {
-    await open(page, query);
-    await expect(page.getByTestId('first-profile')).toBeVisible();
-    await expect(page.getByTestId('mailbox-user')).not.toBeFocused();
-    const top = await page
-      .getByTestId('first-run')
-      .evaluate((node) => node.closest('.view')?.scrollTop ?? -1);
-    expect(top).toBe(0);
-    await expect(page.getByTestId('first-profile')).toBeInViewport();
-  }
-});
-
-test('a refused app password says so in the form', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
-  await page.getByTestId('mailbox-password').fill('fals chfa lsch fals');
-  await page.getByTestId('mailbox-password').press('Enter');
-  // Said once above the button; both fields are marked, since either may be wrong.
-  await expect(page.getByTestId('mailbox-error')).toHaveText(
-    'Gmail lehnt Adresse oder App-Passwort ab.',
-  );
-  for (const id of ['mailbox-user', 'mailbox-password']) {
-    await expect(page.getByTestId(id)).toHaveAttribute('aria-invalid', 'true');
-  }
-  await expect(page.getByTestId('step-mailbox')).toHaveAttribute('data-done', 'false');
-});
-
-test('reset: a clean one says so once; one that left something warns with the log', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=reset&reset=clean`);
-  await expect(page.getByTestId('toast')).toHaveText(/Die App ist zurückgesetzt\./);
-  await expect(page.getByTestId('first-reset-report')).toHaveCount(0);
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('toast')).toHaveCount(1);
-
   await open(page, `${WIN}&scenario=reset`);
-  const report = page.getByTestId('first-reset-report');
-  await expect(report).toContainText(T.settings.resetPartly(1));
-  await expect(report).toHaveClass(/warning/);
-  await expect(page.getByTestId('toast')).toHaveCount(0);
-  // What stayed is named in the log.
-  const log = report.getByRole('button', { name: T.common.openLog });
-  await log.click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'logDir' } });
-  // A folder that does not open says so in its place.
-  await failNext(page, 'open_target');
-  await log.click();
-  await expect(page.getByTestId('open-error')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await expect(page.getByTestId('first-reset-report')).toContainText(T.settings.resetPartly(1));
+  await open(page, `${WIN}&scenario=reset&reset=clean`);
+  await expect(page.getByTestId('first-reset-report')).toHaveCount(0);
+  await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.resetDone));
+});
+
+test('the smallest window keeps every step usable', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 360 });
+  await open(page, `${WIN}&scenario=first-run&step=review`);
+  await expectStep(page, T.firstRun.review);
+  await expect(next(page)).toBeInViewport();
+  await expect(page.getByTestId('first-back')).toBeInViewport();
+  const width = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(width).toBeLessThanOrEqual(480);
 });

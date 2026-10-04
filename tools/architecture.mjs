@@ -44,7 +44,6 @@ const LARGE = {
   'ui/src/lib/state/jobs.svelte.ts': [1100, 'known large: query, selection and moves apart'],
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],
   'ui/src/components/ChipInput.svelte': [600, 'known large: its editing keys into input.ts'],
-  'ui/src/features/first-run/FirstRunView.svelte': [600, 'known large: one file per step'],
 };
 
 /** lib modules that are UI helpers by design and may import a component (none today). */
@@ -56,6 +55,8 @@ const FEATURE_PUBLIC = {
     'the actions of a job (move, open, delete for good) every job row offers',
   'ui/src/features/jobs/prompt.ts': 'copies the AI prompt of one job or a comparison',
   'ui/src/features/jobs/addToProfile.ts': 'takes a word of an ad into the profile, with undo',
+  'ui/src/features/profile/ProfileView.svelte':
+    'the profile form, also as the setup step "Prüfen und ergänzen" (its onboarding mode)',
 };
 
 /**

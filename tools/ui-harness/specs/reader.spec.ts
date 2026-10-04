@@ -160,9 +160,9 @@ test.describe('the head and the match', () => {
     expect(await top('reader-actions')).toBeLessThan(await top('terms'));
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
-    // How and when it came: the alert mail's moment ends the row (no row "Eingegangen").
+    // How and when it came: the moment it came into CXact ends the row.
     expect(await cell(page, 'portal')).toEqual([
-      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 07:30',
+      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 08:24',
       '',
     ]);
     // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
@@ -560,14 +560,11 @@ test.describe('an excluded job', () => {
     );
     await expect(stage(page).getByTestId('exclusion-box')).toHaveCount(0);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
-    // The rows that exclude it wear the ban, their tooltip says what the ad states.
-    expect(await cell(page, 'contract')).toEqual(['Zeitarbeit', 'violated']);
-    const verdict = term(page, 'contract').getByTestId('verdict').locator('.reason');
-    await expect(verdict).toHaveAttribute('data-kind', 'violation');
-    await expect(verdict).toHaveAttribute('aria-label', T.score.excluded);
-    // Years never exclude: three years of a field the profile does not name have no verdict.
+    // The head says why: no verdicts in the rows and no Anforderungen (user, 2026-10-03).
+    expect(await cell(page, 'contract')).toEqual(['Zeitarbeit', '']);
+    await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
-    await expect(why(page)).not.toContainText('Zeitarbeit');
+    await expect(why(page)).toHaveCount(0);
     // Trotzdem bewerten: its real match and a toast that takes it back. It stands before the
     // ad, the alert mail and the prompt; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
@@ -610,7 +607,7 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('exclusion')).toHaveText(
       T.reason.code.exclusionWord({ word: 'Werkstudent' }),
     );
-    await expect(why(page)).not.toContainText('Ausschlusswörter');
+    await expect(why(page)).toHaveCount(0);
   });
 
   test('a country outside the profile: the head says it from the profile, the row the place', async ({
@@ -620,18 +617,20 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('exclusion')).toHaveText(
       T.reader.criterion.countries.exclusion,
     );
-    expect(await cell(page, 'place')).toEqual(['Zürich', 'violated']);
+    expect(await cell(page, 'place')).toEqual(['Zürich', '']);
   });
 });
 
 test.describe('Jobdetails', () => {
-  test('the rows in their order with an icon each, "/" where the ad says nothing', async ({
+  test('the rows in their order with an icon each; a row the ad says nothing of only with a verdict', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
     await expect(stage(page).getByTestId('terms').locator('h2')).toHaveText('Jobdetails');
-    expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(ROWS);
-    expect(await terms(page).locator('.term-name .icon svg').count()).toBe(ROWS.length);
+    // The ad says nothing of its workload and nothing judges it: no row "–".
+    const shown = ROWS.filter((name) => name !== 'Auslastung');
+    expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(shown);
+    expect(await terms(page).locator('.term-name .icon svg').count()).toBe(shown.length);
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     expect(await cell(page, 'mode')).toEqual(['60 % remote', 'met']);
@@ -640,13 +639,13 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'rate')).toEqual(['1.200 €/Tag', 'met']);
     expect(await cell(page, 'start')).toEqual(['ab sofort', 'met']);
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
-    // The ad says nothing of its workload, and nothing judges it.
-    expect(await cell(page, 'workload')).toEqual([T.reader.missing, '']);
-    // How and when it came: the alert mail's moment ends the row (no row "Eingegangen").
+    await expect(term(page, 'workload')).toHaveCount(0);
+    // How and when it came: the moment it came into CXact ends the row, quietly.
     expect(await cell(page, 'portal')).toEqual([
-      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 07:30',
+      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 08:24',
       '',
     ]);
+    await expect(term(page, 'portal').locator('.value')).toHaveClass(/quiet/);
     // No row "Eingegangen" (user, 2026-10-01): the moment stands in "Gefunden".
     await expect(term(page, 'received')).toHaveCount(0);
     // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
@@ -681,12 +680,8 @@ test.describe('Jobdetails', () => {
     expect(partial[0]).toBe(await tokenColour(page, '--verdict-partial'));
     // Met in part: the amber minus in a circle.
     expect(partial[1]).toContain('lucide-circle-minus');
-    await openJob(page, 'freelance-900412');
-    const excludes = await look(page, 'contract');
-    expect(excludes[0]).toBe(await tokenColour(page, '--verdict-unmet'));
-    expect(excludes[1]).toContain('lucide-ban');
     // One glyph per verdict.
-    expect(new Set([met[1], unknown[1], partial[1], excludes[1]]).size).toBe(4);
+    expect(new Set([met[1], unknown[1], partial[1]]).size).toBe(3);
   });
 
   test('the verdicts stand in one column between the names and the values, in the requirements metrics', async ({
@@ -694,7 +689,7 @@ test.describe('Jobdetails', () => {
   }) => {
     await openAt(page, 'freelancermap-2801');
     const boxes = await terms(page).evaluate((list) =>
-      [...list.querySelectorAll('li')].map((li) => {
+      [...list.querySelectorAll('li.term')].map((li) => {
         const line = li.querySelector('.term-line')!;
         return {
           key: li.getAttribute('data-row'),
@@ -775,10 +770,10 @@ test.describe('Jobdetails', () => {
     await expect(term(page, 'contact').getByTestId('contact-mail')).toHaveText(
       'jobs@gruenwerk.example',
     );
-    // An ad that names neither.
+    // An ad that names neither: nothing judges them, so no rows.
     await openJob(page, 'freelancermap-2804');
-    expect(await cell(page, 'deadline')).toEqual([T.reader.missing, '']);
-    expect(await cell(page, 'contact')).toEqual([T.reader.missing, '']);
+    await expect(term(page, 'deadline')).toHaveCount(0);
+    await expect(term(page, 'contact')).toHaveCount(0);
   });
 
   test('one form per fact: a start date, a workload, pay near the wish, the work mode', async ({
@@ -821,9 +816,9 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'experience')).toEqual(['10 Jahre', '']);
     const open = why(page).getByTestId('reasons-open');
     await expect(open).toContainText('Mindestens 10 Jahre Berufserfahrung im Rechnungswesen');
-    // A working student job for 20 years of experience: its level by its word, met in part.
+    // A working student job: its level by its word; it is excluded, so no verdict.
     await openJob(page, 'freelancermap-2807');
-    expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, 'partial']);
+    expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, '']);
   });
 
   test('no verdict icon has a tooltip, in the Jobdetails and among the Anforderungen', async ({
@@ -924,7 +919,8 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'duration')).toEqual(['unbefristet', '']);
     // The ad states the type and the profile takes permanent jobs: met, not "unklar".
     expect(await cell(page, 'contract')).toEqual(['Festanstellung', 'met']);
-    expect(await cell(page, 'experience')).toEqual([T.reader.missing, '']);
+    // The ad names no experience and nothing judges it: no row.
+    await expect(term(page, 'experience')).toHaveCount(0);
   });
 
   test('an ad the app never read in full shows only what it knows', async ({ page }) => {
@@ -960,7 +956,12 @@ test.describe('Jobdetails', () => {
     await open(page, `${WIN}&scenario=no-profile`);
     await openJob(page, 'freelancermap-2801');
     await expect(stage(page).getByTestId('reader-match')).toHaveCount(0);
-    expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(ROWS);
+    // Without verdicts no row says "–": what the ad states, and how it came.
+    const names = await terms(page).locator('.term-name').allInnerTexts();
+    expect(names).toEqual(ROWS.filter((name) => names.includes(name)));
+    expect(names).toEqual(expect.arrayContaining(['Unternehmen', 'Gefunden']));
+    await expect(terms(page).locator('.value.missing')).toHaveCount(0);
+
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     const columns = await terms(page).evaluate(
       (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
@@ -1268,7 +1269,7 @@ test.describe('the ad', () => {
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
     // An ad that is online says nothing of it.
     await openJob(page, 'freelancermap-2801');
-    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.reader.open);
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.actions.openAd);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
   });
 

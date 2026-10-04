@@ -1,60 +1,58 @@
 <!--
-  Einstellungen (centred 720): the tabs Suche, Postfach and Daten like the Profil's (user,
-  2026-10-01), each with its cards of cards.ts (Suche its sources, Postfach the card of its
-  account and under it the card of the sources of its alert mails, Daten the work folder and
-  the reset). Every text button of a row is the same outlined button, and every row ends on
-  the card's inner edge (its buttons or switch flush with the rows above and below). This
-  file only renders the list and runs its commands; what a row is, says and does is one entry
-  in cards.ts.
+  Einstellungen (centred 720): the tabs Portale and Daten (user, 2026-10-03), each with its
+  cards of cards.ts. Portale: "CXact sucht nach" (the search's terms, SearchTerms, with an
+  info symbol), "Jobportale" (the portals the app searches, PortalRow), "Alert-Mails" (the
+  mailbox card on top, without a mailbox "Ohne Postfach ruhen LinkedIn und freelance.de.",
+  then the portals of alert mails). Daten: the profiles' folder, the reset, a quiet line with
+  the version. Every text button of a row is the same outlined button, and every row ends on
+  the card's inner edge. This file only renders the list and runs its commands; what a row
+  is, says and does is one entry in cards.ts.
 
-  A switch moves at once (the state is patched before the save) and is its own answer. A
-  success that shows nowhere else is a toast (another export folder); errors and warnings
-  stay a note at the end of their card, which unfolds (the cards below glide down instead of
-  jumping).
-  Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog whose action fails
-  stays open and says why inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
-  change) holds the mailbox, the folder and the files, so what they cannot do is locked with
-  the reason of that run instead of failing. Opened from a job for one source
-  ("Anmeldung einrichten") the page shows that source's tab, glides to its row, focuses its
-  sign-in and offers "Zurück zum Job" beside the tabs.
+  A switch moves at once (the state is patched before the save) and is its own answer.
+  Errors stay a note at the end of their card, which unfolds (the cards below glide down
+  instead of jumping). Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog
+  whose action fails stays open and says why inside. The dry run changes nothing, and a run
+  holds the mailbox and the reset, locked with the reason of that run instead of failing.
+  Opened from a job for one portal ("Anmeldung einrichten") the page shows Portale, glides to
+  the portal's row, focuses its sign-in and offers "Zurück zum Job" beside the tabs.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
+  import InfoTip from '$components/InfoTip.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import Tabs, { type TabOption } from '$components/Tabs.svelte';
-  import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import type { OpenTarget } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
-  import { app, settingsPatch } from '$lib/state/app.svelte';
+  import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { SETTINGS_TABS, settingsTab, type SettingsTab } from '$lib/state/settings.svelte';
-  import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
   import {
     ACTIONS,
     CARDS,
-    sourcesOf,
+    ownOnly,
+    portalsOf,
     type Action,
     type ActionId,
     type CommandId,
     type Lock,
+    type Portals,
     type Row,
-    type Sources,
-    type Switch,
   } from './cards';
   import MailboxCard from './MailboxCard.svelte';
-  import PortalRow from './PortalRow.svelte';
+  import PortalRow from '../shared/PortalRow.svelte';
+  import SearchTerms from './SearchTerms.svelte';
 
   /** A note keeps what happened and says it when it shows. */
   type Feedback = { tone: NoticeTone; text: () => string };
@@ -65,9 +63,9 @@
     cfg === null ? null : { state: cfg, t, running: run.active, busyText: run.busyText },
   );
   /** The mailbox is outside the dry run's own data, and a run holds it. */
-  const mailboxLocked = $derived(lock === null ? null : ACTIONS.folderChange.locked(lock));
+  const mailboxLocked = $derived(lock === null ? null : ownOnly(lock));
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
-  const sourcesIn = (card: Sources) => portals.filter((p) => sourcesOf(p.way) === card);
+  const portalsIn = (card: Portals) => portals.filter((p) => portalsOf(p.way) === card);
   const tabs = $derived<TabOption<SettingsTab>[]>(
     SETTINGS_TABS.map((tab) => ({
       id: tab,
@@ -80,66 +78,20 @@
   let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
   let resetError = $state<(() => string) | null>(null);
-  /** Only the answer to the latest save may replace the state (quick double flips). */
-  let saves = 0;
 
   const note = (card: string, feedback: Feedback | null): void => {
     notes[card] = feedback;
   };
-  const failed = (card: string, error: unknown): void =>
-    note(card, { tone: 'danger', text: () => errorText(error) });
-
-  /** A switch: the page follows at once, the save after; a failure loads the stored state
-   *  again (the switch goes back) and says why in its card. */
-  async function save(card: string, change: Partial<SettingsPatch>): Promise<void> {
-    const mine = ++saves;
-    note(card, null);
-    try {
-      const next = await invoke('save_settings', { patch: settingsPatch(change) });
-      if (mine === saves) app.set(next);
-    } catch (error) {
-      failed(card, error);
-      void app.load();
-    }
-  }
-
-  function flip(card: string, toggle: Switch, on: boolean): Promise<void> {
-    if (cfg === null) return Promise.resolve();
-    toggle.set(cfg, on);
-    return save(card, toggle.patch(on));
-  }
 
   function open(card: string, target: OpenTarget): void {
     note(card, null);
-    invoke('open_target', { target }).catch((error: unknown) => failed(card, error));
+    invoke('open_target', { target }).catch((error: unknown) =>
+      note(card, { tone: 'danger', text: () => errorText(error) }),
+    );
   }
 
-  /** Runs a command of a card: its failure is said in the card, its success by the command. */
-  async function command(card: string, id: CommandId, work: () => Promise<void>): Promise<void> {
-    busy = id;
-    note(card, null);
-    try {
-      await work();
-    } catch (error) {
-      failed(card, error);
-    } finally {
-      busy = null;
-    }
-  }
-
-  /** Another export folder: the profile comes along (or the folder's own is used) and the
-   *  files are written there at once (pick_workspace); the toast says which. */
-  const pickFolder = (card: string): Promise<void> =>
-    command(card, 'folderChange', async () => {
-      const picked = await invoke('pick_workspace');
-      if (picked === null) return;
-      await app.load();
-      if (picked.profile === 'own') toasts.show(t.settings.folderOwnProfile, 'info');
-      else if (picked.profile === 'copied') toasts.show(t.settings.folderMoved);
-      else toasts.show(t.settings.folderFiles);
-    });
-
-  /** On success the app restarts empty; a failure stays in the dialog, which tries again. */
+  /** On success the app restarts with the setup; a failure stays in the dialog, which tries
+   *  again. */
   async function reset(): Promise<void> {
     busy = 'reset';
     resetError = null;
@@ -159,14 +111,8 @@
       open(card, action.open);
       return;
     }
-    const commands: Record<CommandId, () => void> = {
-      folderChange: () => void pickFolder(card),
-      reset: () => {
-        resetError = null;
-        confirmReset = true;
-      },
-    };
-    commands[id as CommandId]();
+    resetError = null;
+    confirmReset = true;
   }
 
   const testidOf = (id: string): string => id.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -196,7 +142,7 @@
     if (portal === null || root === null || cfg === null) return;
     navigation.focusPortal = null;
     fromJob = jobs.selected !== null;
-    settingsTab.value = sourcesOf(cfg.portals.find((p) => p.portal === portal)?.way ?? 'alert');
+    settingsTab.value = 'portals';
     const scope = root;
     void tick().then(() => {
       const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
@@ -213,14 +159,7 @@
 
 {#snippet row(card: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    {@const toggle = item.toggle ?? null}
-    <SettingRow
-      label={item.label(t, cfg)}
-      hint={item.path?.(cfg) ?? item.hint?.(t, cfg) ?? null}
-      copy={item.path !== undefined}
-      for={toggle === null ? null : `switch-${toggle.id}`}
-      testid={item.id}
-    >
+    <SettingRow label={item.label(t, cfg)} testid={item.id}>
       <div class="buttons">
         {#each item.actions as id (id)}
           {@const action: Action = ACTIONS[id]}
@@ -237,15 +176,6 @@
             onclick={() => act(card, id)}
           />
         {/each}
-        {#if toggle}
-          <Toggle
-            id="switch-{toggle.id}"
-            checked={toggle.on(cfg)}
-            label={item.label(t, cfg)}
-            testid="toggle-{toggle.id}"
-            onchange={(on) => flip(card, toggle, on)}
-          />
-        {/if}
       </div>
     </SettingRow>
   {/if}
@@ -305,21 +235,43 @@
       >
         {#each CARDS.filter((card) => card.tab === tab) as card (card.id)}
           {@const feedback = notes[card.id] ?? null}
+          {@const heading = card.heading?.(t, cfg) ?? null}
           <section
             class="section"
-            aria-label={card.heading(t, cfg)}
+            aria-label={heading ?? t.settings[tab]}
             data-testid="settings-{card.id}"
           >
-            {#if card.block === 'mailbox'}
-              <MailboxCard {cfg} locked={mailboxLocked} testid="mailbox-account" />
+            {#if heading}
+              <h2 class="heading">
+                {heading}
+                {#if card.info}
+                  <InfoTip
+                    text={card.info(t, cfg)}
+                    label={t.common.infoAbout(heading)}
+                    testid="info-{card.id}"
+                  />
+                {/if}
+              </h2>
             {/if}
-            <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
-              {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-              {#if card.block}
-                {#each sourcesIn(card.block) as portal (portal.portal)}<PortalRow {portal} />{/each}
+            {#if card.block === 'terms'}
+              <SearchTerms />
+            {:else}
+              {#if card.block === 'mailbox'}
+                <MailboxCard {cfg} locked={mailboxLocked} testid="mailbox-account" />
               {/if}
-              {#if feedback}{@render noteOf(card.id, feedback)}{/if}
-            </Card>
+              <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
+                {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
+                {#if card.block}
+                  {#each portalsIn(card.block) as portal (portal.portal)}
+                    <PortalRow {portal} />
+                  {/each}
+                {/if}
+                {#if feedback}{@render noteOf(card.id, feedback)}{/if}
+              </Card>
+            {/if}
+            {#if card.footnote}
+              <p class="footnote" data-testid="{card.id}-footnote">{card.footnote(t, cfg)}</p>
+            {/if}
           </section>
         {/each}
       </div>
@@ -332,7 +284,6 @@
   variant="danger"
   heading={t.settings.resetHeading}
   text={t.settings.resetText}
-  items={t.settings.resetItems}
   confirmLabel={t.settings.resetAction}
   busy={busy === 'reset'}
   error={resetError?.() ?? null}
@@ -357,6 +308,15 @@
     gap: var(--space-12);
   }
 
+  /* The heading of a card, an info symbol beside it where it has one. */
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    color: var(--text-heading);
+    font: var(--type-lg);
+  }
+
   /* The tabs on the first row of the window (base.css), at their end the way back to the
      job she came from; 24 above the first card, like the Profil's. */
   .tabbar {
@@ -366,17 +326,18 @@
     gap: var(--space-12);
   }
 
+  /* The cards of a tab 32 apart, like the Profil's sections. */
   .panel {
     display: flex;
     flex-direction: column;
+    gap: var(--space-32);
   }
 
   .panel.gone {
     display: none;
   }
 
-  /* The buttons of a row end on its trailing edge, 12 apart, one size (28, outlined); a
-     switch after them. */
+  /* The buttons of a row end on its trailing edge, 12 apart, one size (28, outlined). */
   .buttons {
     display: flex;
     flex-wrap: wrap;
@@ -397,6 +358,13 @@
   .note {
     display: flex;
     padding-block: var(--space-12);
+  }
+
+  /* The version, quietly under the card. */
+  .footnote {
+    color: var(--text-subtle);
+    font: var(--type-sm);
+    font-variant-numeric: var(--numeric);
   }
 
   .skeleton {

@@ -1,10 +1,12 @@
 <!--
-  The run under the list header, one slim line in place of the old run card. While a fetch or
-  the details of an ad run: a thin progress bar and one line of what happens ("Postfach wird
-  gelesen", "Anzeigen 12 von 30", "Jobs werden bewertet"). A count moves on in place (tabular
-  numbers); the next step cross-fades with the last in the same cell. "Abbrechen" stands in
-  the header. What a fetch brought is a toast at its end ("5 neue Jobs"), and so is what went
-  wrong (lib/state/run.svelte.ts); its details are in the log. The line unfolds and folds away
+  The run under the list header, one slim line. While a fetch or the details of an ad run: a
+  thin progress bar and what happens ("Postfach wird gelesen", "Portale werden durchsucht, 3
+  von 8 fertig", "12 von 30 Anzeigen geladen", "Jobs werden bewertet"), no portal named since
+  the portals run side by side; under it, once the portals brought some, "Bisher 12 neue
+  Jobs". The bar follows the portals that are done, then the ads, and never moves back
+  (lib/state/run.svelte.ts). A count moves on in place (tabular numbers); the next step
+  cross-fades with the last in the same cell. "Abbrechen" stands in the header. What a fetch
+  brought is a toast at its end, and so is what went wrong. The line unfolds and folds away
   (lib/motion unfold), so the list below glides; its rows never flicker.
 -->
 <script lang="ts">
@@ -22,9 +24,9 @@
           ? t.run.line.ads(progress.done, progress.total)
           : t.run.line.adsStart;
       case 'search':
-        return run.status?.code === 'searching' && run.status.portal !== null
-          ? t.run.line.search(t.portal[run.status.portal])
-          : t.run.line.searchStart;
+        return run.portalsTotal > 0
+          ? t.run.line.portals(run.portalsDone, run.portalsTotal)
+          : t.run.line.portalsStart;
       case 'score':
         return t.run.line.scoring;
       default:
@@ -49,6 +51,11 @@
         {#key run.step}<span class="doing" data-testid="run-text" in:fade out:leave>{doing}</span
           >{/key}
       </span>
+      {#if run.newSoFar > 0}
+        <span class="doing so-far" data-testid="run-new" transition:fade
+          >{t.run.line.newSoFar(run.newSoFar)}</span
+        >
+      {/if}
     </div>
   </div>
 {/if}
@@ -81,5 +88,9 @@
     font-variant-numeric: var(--numeric);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .so-far {
+    min-height: var(--leading-sm);
   }
 </style>

@@ -1,11 +1,10 @@
-// The two menus of the list header (ListHeader.svelte) as the list stands now: the funnel's
-// "Sortieren und filtern" and "Abruf einstellen" of the icon button beside the fetch (what it
-// reads). Both read the tables (lib/state/filter.ts, FETCH_WAYS) and the catalog; the header
-// opens them.
+// The funnel's menu of the list header (ListHeader.svelte), "Sortieren und filtern", as the
+// list stands now. It reads the table (lib/state/filter.ts) and the catalog; the header opens
+// it.
 
 import { t } from '$lib/i18n/t';
 import type { Portal } from '$lib/ipc/types';
-import { app, FETCH_WAYS } from '$lib/state/app.svelte';
+import { app } from '$lib/state/app.svelte';
 import {
   chooseIn,
   chosenOf,
@@ -21,7 +20,7 @@ import type { MenuEntry } from '$lib/state/menu.svelte';
  * The entries of the funnel's menu: "Sortierung" first (without a usable profile only by
  * date, saying why), then the table's groups in their order behind a line, each under its
  * heading where it has one: the chosen entries checked, a second click turns one off (the
- * choices of Quelle and Übereinstimmung are check items, several at once; those of another
+ * choices of Portal and Übereinstimmung are check items, several at once; those of another
  * group radio items; a group of one is a switch, and switches follow each other on one
  * line); a group without entries (no portal) is left out; every choice keeps the menu open. The way back at the end, off while no filter is on (the order does not
  * count). `portals`: the portals the menu offers, in the UI's order.
@@ -76,23 +75,4 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
     },
   );
   return entries;
-}
-
-/**
- * "Abruf einstellen": what the fetch reads (user decision 2026-10-01), the search or the
- * mailbox, never both, the current one checked. A choice is saved at once
- * (lib/state/app.svelte.ts) and names the button; a save that failed says so under the
- * header.
- */
-export function wayEntries(): MenuEntry[] {
-  const current = app.fetchWay;
-  return FETCH_WAYS.map((way): MenuEntry => ({
-    id: `way-${way}`,
-    label: t.toolbar.wayName[way],
-    checked: current === way,
-    run: () =>
-      void app.setFetchWay(way).then((error) => {
-        if (error !== null) jobs.actionError = error;
-      }),
-  }));
 }

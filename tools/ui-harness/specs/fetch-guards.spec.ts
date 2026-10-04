@@ -8,7 +8,7 @@ import { PORTALS, showTab, T } from './helpers';
 
 const WIN = '?platform=windows';
 
-test('every portal may be switched off; Abrufen then waits for one and says why', async ({
+test('every portal may be switched off; Jobs suchen then waits for one and says why', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -29,7 +29,6 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   await page.getByTestId('nav-jobs').click();
   const fetch = page.getByTestId('fetch');
   await expect(fetch).toHaveAttribute('aria-disabled', 'true');
-  await expect(fetch).not.toHaveClass(/primary/);
   await fetch.hover();
   await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsPortal);
   await fetch.click({ force: true });
@@ -38,7 +37,7 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   await expect(page.getByTestId('start-error')).toHaveCount(0);
   await expect(page.getByText('Abruf fehlgeschlagen')).toHaveCount(0);
 
-  // One portal back on: Abrufen is the primary action again.
+  // One portal back on: Jobs suchen goes again, the view's primary throughout.
   await page.getByTestId('nav-settings').click();
   await (await showTab(page, page.getByTestId('toggle-enabled-freelancermap'))).click();
   await page.getByTestId('nav-jobs').click();

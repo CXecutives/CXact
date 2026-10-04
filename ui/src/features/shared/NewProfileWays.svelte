@@ -3,7 +3,7 @@
   Lebenslauf ausfüllen" (the CV is evaluated by an AI and the profile saved at once,
   fromCv.svelte.ts) and "Selbst ausfüllen" (the empty form, stored on "Speichern"). What went
   wrong with the CV is said at the end of the card with its way on. The Profil view shows it
-  without a profile; the first-run page leads there.
+  without a profile.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';

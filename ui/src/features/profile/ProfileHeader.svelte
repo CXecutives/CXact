@@ -6,7 +6,8 @@
   and each one quiet line: the required fields still empty ("Noch 2 Angaben offen" with "Zum
   ersten", which puts the caret there), the dot of the fields the CV filled ("aus dem
   Lebenslauf"), the rescore a save started; then what went wrong with the CV (with its way on)
-  and a failure of the view.
+  and a failure of the view. In the setup (`bare`) only those lines: the setup's step names
+  the page and the CV had its own step.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -29,25 +30,39 @@
     /** "Zum ersten": the caret into the first empty required field. */
     onfirst: () => void;
     oncv: () => void;
+    /** The setup: no title, no "Aus Lebenslauf ausfüllen". */
+    bare?: boolean;
   }
 
-  let { open, filled, rescoring, pending, dirty, note, onfirst, oncv }: Props = $props();
+  let {
+    open,
+    filled,
+    rescoring,
+    pending,
+    dirty,
+    note,
+    onfirst,
+    oncv,
+    bare = false,
+  }: Props = $props();
 </script>
 
 <div class="box" data-testid="profile-head">
-  <div class="head" data-first-row>
-    <h1 class="name" data-testid="profile-heading">{t.profile.title}</h1>
-    <Button
-      variant="secondary"
-      icon="pickFile"
-      label={t.profile.fromCv}
-      loading={fromCv.busy}
-      disabled={dirty}
-      disabledReason={t.profile.saveFirst}
-      testid="profile-from-cv"
-      onclick={oncv}
-    />
-  </div>
+  {#if !bare}
+    <div class="head" data-first-row>
+      <h1 class="name" data-testid="profile-heading">{t.profile.title}</h1>
+      <Button
+        variant="secondary"
+        icon="pickFile"
+        label={t.profile.fromCv}
+        loading={fromCv.busy}
+        disabled={dirty}
+        disabledReason={t.profile.saveFirst}
+        testid="profile-from-cv"
+        onclick={oncv}
+      />
+    </div>
+  {/if}
   {#if open > 0 || filled || rescoring}
     <div class="lines">
       {#if open > 0}
@@ -74,9 +89,9 @@
     </div>
   {/if}
 </div>
-{#if fromCv.problem || note}
+{#if (fromCv.problem && !bare) || note}
   <div class="notes">
-    {#if fromCv.problem}
+    {#if fromCv.problem && !bare}
       {@const problem = fromCv.problem}
       <Notice
         tone="danger"

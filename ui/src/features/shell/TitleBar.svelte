@@ -12,7 +12,8 @@
   buttons' zones, --titlebar-tools-start and --titlebar-tools-end, to the page;
   src-tauri/src/platform.rs. macOS and the gaps between the buttons: Tauri's drag script). A
   press on a button here never takes the focus, like on a native title bar. Both side buttons
-  are plain switches.
+  are plain switches. In the setup the bar is one colour without a seam and holds none of its
+  buttons (only the caption buttons on Windows); all of it moves the window.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -31,12 +32,11 @@
   const drawn = drawsWindowButtons();
   /** The job view's button stands in every view, like the bar's other buttons (user,
    *  2026-09-29): dimmed where there is no job view to show or hide (Profil, Einstellungen,
-   *  the setup page, a start whose data did not load, one column without a job), and then
+   *  a start whose data did not load, one column without a job), and then
    *  without a tooltip: it names no action it cannot do (its accessible name stays). */
   const readerIdle = $derived(
     app.state === null ||
       navigation.current !== 'jobs' ||
-      shell.firstRun ||
       (viewport.narrow && jobs.selected === null),
   );
   /** A click hides the job view: it stands beside the list, or in one column a job stands in
@@ -83,52 +83,60 @@
     <span class="lights" data-testid="traffic-lights" data-tauri-drag-region></span>
   {/if}
   <span class="tools start" data-tauri-drag-region>
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="sidebar"
-      hoverIcon={shell.docked ? 'sidebarHide' : 'sidebarShow'}
-      label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
-      testid="toggle-sidebar"
-      onclick={() => shell.toggleSidebar()}
-    />
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="historyBack"
-      label={t.nav.back}
-      disabled={!history.canBack}
-      testid="history-back"
-      onclick={() => history.back()}
-    />
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="historyForward"
-      label={t.nav.forward}
-      disabled={!history.canForward}
-      testid="history-forward"
-      onclick={() => history.forward()}
-    />
+    {#if !shell.firstRun}
+      {@render startTools()}
+    {/if}
   </span>
   <span class="fill" data-tauri-drag-region></span>
   <span class="tools end" data-tauri-drag-region>
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="readerPane"
-      hoverIcon={readerShown ? 'readerHide' : 'readerShow'}
-      label={readerShown ? t.nav.readerHide : t.nav.readerShow}
-      disabled={readerIdle}
-      plain={readerIdle}
-      testid="toggle-reader"
-      onclick={toggleReader}
-    />
+    {#if !shell.firstRun}
+      <Button
+        variant="ghost"
+        iconOnly
+        icon="readerPane"
+        hoverIcon={readerShown ? 'readerHide' : 'readerShow'}
+        label={readerShown ? t.nav.readerHide : t.nav.readerShow}
+        disabled={readerIdle}
+        plain={readerIdle}
+        testid="toggle-reader"
+        onclick={toggleReader}
+      />
+    {/if}
   </span>
   {#if drawn}
     <WindowButtons />
   {/if}
 </div>
+
+{#snippet startTools()}
+  <Button
+    variant="ghost"
+    iconOnly
+    icon="sidebar"
+    hoverIcon={shell.docked ? 'sidebarHide' : 'sidebarShow'}
+    label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
+    testid="toggle-sidebar"
+    onclick={() => shell.toggleSidebar()}
+  />
+  <Button
+    variant="ghost"
+    iconOnly
+    icon="historyBack"
+    label={t.nav.back}
+    disabled={!history.canBack}
+    testid="history-back"
+    onclick={() => history.back()}
+  />
+  <Button
+    variant="ghost"
+    iconOnly
+    icon="historyForward"
+    label={t.nav.forward}
+    disabled={!history.canForward}
+    testid="history-forward"
+    onclick={() => history.forward()}
+  />
+{/snippet}
 
 <style>
   .bar {

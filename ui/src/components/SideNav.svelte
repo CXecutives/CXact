@@ -1,6 +1,7 @@
 <!--
   The navigation of the sidebar: icon and label per view, no counts (the list says how many
-  are new).
+  are new); an entry whose view is busy (a search fills Jobs) shows a small spinner at its
+  end.
   The active entry sits on one white pill that slides to it (180 ms, emphasized; the
   sibling of the segmented thumb), its label ink and its icon in the accent. An idle entry
   takes a much fainter wash on hover and keeps its icon, so the two never look alike. While
@@ -14,6 +15,8 @@
     label: string;
     icon: IconName;
     testid?: string;
+    /** Its view is busy: the spinner's accessible name (null or absent: not busy). */
+    busy?: string | null;
   }
 </script>
 
@@ -21,6 +24,7 @@
   import { cssVars } from '$lib/actions/cssVars';
   import { settled } from '$lib/motion/settled.svelte';
   import Icon from './Icon.svelte';
+  import Spinner from './Spinner.svelte';
 
   interface Props {
     items: readonly SideNavItem<Id>[];
@@ -51,6 +55,7 @@
         <Icon name={item.icon} size="md" />
       </span>
       <span class="label">{item.label}</span>
+      {#if item.busy}<Spinner size="sm" label={item.busy} />{/if}
     </button>
   {/each}
 </nav>

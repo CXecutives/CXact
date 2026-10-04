@@ -277,8 +277,8 @@ const TERMS: Record<TermKey, Term> = {
     read: ({ code }) => ({ value: text(code('industryWish')?.params.industry) }),
   },
   // How and when the job came (user decision 2026-10-01: "Gefunden"): the search of its
-  // source, its alert mail, both, then the sources it is also on and the moment; quietly
-  // after them an ad that is no longer online (once, here).
+  // portal, its alert mail, both, then the portals it is also on and the moment it came into
+  // CXact; quietly after them an ad that is no longer online (once, here).
   portal: {
     ...NONE,
     read: ({ job, offline, now }) => {
@@ -290,9 +290,8 @@ const TERMS: Record<TermKey, Term> = {
       const also = job.alsoOn
         .filter((portal) => portal !== job.portal)
         .map((portal) => t.portal[portal]);
-      // When it came: the alert mail's moment, else its first sighting ("16:49",
-      // "gestern 08:12"), at the end.
-      const when = formatMoment(job.mailDate ?? job.firstSeenAt, now);
+      // When it came into CXact ("16:49", "gestern 08:12"), at the end.
+      const when = formatMoment(job.firstSeenAt, now);
       return {
         value: [
           ...(ways.length > 0 ? ways : [own]),

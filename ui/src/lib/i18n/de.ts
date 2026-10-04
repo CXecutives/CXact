@@ -6,10 +6,10 @@
 // "X: Y", no exclamation marks, no text twice. A sentence speaks to the user as "du", and an
 // instruction in a sentence is a du imperative ("Verbinde erst ein Postfach."); a button
 // stays an infinitive ("Postfach verbinden"). A control a sentence names stands in quotes
-// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Quelle, Übereinstimmung
+// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
-// erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs abrufen (the button: the mails and the
-// sources' search; what it does is the Abruf), Anzeige laden, Arbeitsordner, Ausgeschlossen, Trotzdem
+// erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs suchen (the button: the mails, then the
+// portals' search; what it does is the Suche), Anzeige laden, Arbeitsordner, Ausgeschlossen, Trotzdem
 // bewerten, Neu, Aktuell (the place of the active jobs, user 2026-10-01), Archiv (Zurückholen:
 // back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
@@ -37,15 +37,7 @@ import type {
 } from '../ipc/types';
 import type { CvFailure } from '../ipc/api';
 import { PORTAL_LABEL } from '../ipc/types/portals';
-import {
-  NBSP,
-  NB_HYPHEN,
-  formatEuro,
-  formatMoment,
-  formatMoney,
-  formatNumber,
-  formatPercent,
-} from './format';
+import { formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
 type Params = Record<string, string | number | boolean | null>;
 type Text = string | ((params: Params) => string);
@@ -74,7 +66,7 @@ const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbo
 const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
 
 const busy: Record<Busy, string> = {
-  fetch: 'Gerade läuft schon ein Abruf.',
+  fetch: 'Gerade läuft schon eine Suche.',
   details: 'Gerade werden schon Anzeigen geladen.',
   rescore: 'Die Jobs werden gerade neu bewertet.',
   session: 'Gerade läuft eine Anmeldung.',
@@ -83,7 +75,7 @@ const busy: Record<Busy, string> = {
 };
 
 const closing: Record<Busy, string> = {
-  fetch: 'Der Abruf wird beendet, dann schließt die App.',
+  fetch: 'Die Suche wird beendet, dann schließt die App.',
   details: 'Das Laden der Anzeigen wird beendet, dann schließt die App.',
   rescore: 'Das Bewerten wird beendet, dann schließt die App.',
   session: 'Die Anmeldung wird beendet, dann schließt die App.',
@@ -160,7 +152,7 @@ const profileField = (): Record<string, string> => {
 const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(value);
 
 const invalid: Record<InvalidInput['reason'], Text> = {
-  noPortal: 'Mindestens eine Quelle muss aktiv sein.',
+  noPortal: 'Mindestens ein Portal muss aktiv sein.',
   noSearchTerms: 'Für die Suche braucht CXact ein Profil.',
   profileNotUtf8: 'Die Datei ist keine Textdatei.',
   profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
@@ -173,12 +165,12 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
 const pause: Record<PauseReason, string> = {
-  throttled: 'die Quelle bremst die Aufrufe',
-  blocked: 'die Quelle blockiert die Aufrufe',
+  throttled: 'das Portal bremst die Aufrufe',
+  blocked: 'das Portal blockiert die Aufrufe',
   layoutChanged: 'die Seiten sehen anders aus als erwartet',
-  stateUnreadable: 'der Stand der Quelle ist nicht lesbar',
-  network: 'die Quelle ist nicht erreichbar',
-  challenged: 'die Quelle verlangt eine Prüfung',
+  stateUnreadable: 'der Stand des Portals ist nicht lesbar',
+  network: 'das Portal ist nicht erreichbar',
+  challenged: 'das Portal verlangt eine Prüfung',
 };
 
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
@@ -718,8 +710,6 @@ export const de = {
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
     prompt: 'Prompt kopieren',
-    /** Without a usable profile there is nothing to judge the job by. */
-    promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */
     include: 'Trotzdem bewerten',
     archive: 'Archivieren',
@@ -770,6 +760,9 @@ export const de = {
     none: 'Noch nicht bewertet',
     /** A ring without a usable profile. */
     off: 'Ohne Profil keine Übereinstimmung',
+    /** The info symbol beside the band words of the job view. */
+    info: 'Wie gut der Job zu deinem Profil passt.',
+    infoLabel: 'Mehr zur Übereinstimmung',
     band: {
       high: 'Hohe Übereinstimmung',
       mid: 'Mittlere Übereinstimmung',
@@ -793,17 +786,10 @@ export const de = {
     closed: 'Beendet',
   },
   toolbar: {
-    /** The fetch when its menu chose only the search, only the mailbox. */
+    /** The one fetch: the alert mails (with a mailbox), then the portals' search. */
     searchNow: 'Jobs suchen',
-    fetchMailbox: 'Alert-Mails lesen',
-    /** The icon button beside the fetch and its menu: what the fetch reads. */
-    fetchSettings: 'Abruf einstellen',
-    wayName: {
-      search: 'Suche',
-      mail: 'Alert-Mails',
-    },
     cancel: 'Abbrechen',
-    progress: 'Fortschritt des Abrufs',
+    progress: 'Fortschritt der Suche',
     /** The first group of the funnel's menu: the order of the list. */
     sortHeading: 'Sortierung',
     /** The order of the list in words (the funnel's menu). */
@@ -819,7 +805,7 @@ export const de = {
     filter: 'Sortieren und filtern',
     /** The chosen parts of the filter as chips under the toolbar (their group's name). */
     chips: 'Filter',
-    portalHeading: 'Quelle',
+    portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',
     /** The bands under their heading; as a chip, where the heading is not beside it, each
      *  says the ring's name of its band (`score.band`). */
@@ -830,39 +816,39 @@ export const de = {
     } satisfies Record<Band, string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
-    /** A switch of its own behind a line: the jobs not opened yet (hidden for now). */
-    /** The days a job was found on (the alert mail's date, else its first sighting), and the
-     *  chips of the choices. */
-    receivedHeading: 'Gefunden',
+    /** The day a job came into CXact (its first sighting), and the chips of the choices. */
+    receivedHeading: 'Neu seit',
     received: {
       today: 'Heute',
-      days7: 'Letzte 7 Tage',
-      days30: 'Letzte 30 Tage',
+      days7: '7 Tagen',
+      days30: '30 Tagen',
     },
     receivedChip: {
-      today: 'Heute gefunden',
-      days7: 'Letzte 7 Tage',
-      days30: 'Letzte 30 Tage',
+      today: 'Neu seit heute',
+      days7: 'Neu seit 7 Tagen',
+      days30: 'Neu seit 30 Tagen',
     },
     /** The chip of a fetch's "Zeigen": only the new jobs of that fetch. */
-    lastFetch: 'Aus dem letzten Abruf',
+    lastFetch: 'Aus der letzten Suche',
     filterReset: 'Filter zurücksetzen',
-    needsMailbox: 'Verbinde erst ein Postfach.',
-    /** Every portal is switched off in Einstellungen: nothing to fetch from. */
-    needsPortal: 'Schalte erst eine Quelle ein.',
-    /** The search has nothing to search for without a profile. */
-    needsProfile: 'Für die Suche braucht CXact ein Profil.',
+    /** Nothing to read: every portal is off (and no mailbox for the alert mails). */
+    needsPortal: 'Schalte erst ein Portal ein.',
+    /** The search has nothing to search for without a usable profile. */
+    needsProfile: 'Lege erst ein Profil an.',
   },
   run: {
     /** The one line under the list header while a fetch goes: what happens now. */
     line: {
       mailbox: 'Postfach wird gelesen',
-      /** The sources' own search: the source asked now. */
-      search: (portal: string) => `Suche bei ${portal}`,
-      searchStart: 'Quellen werden durchsucht',
+      /** The portals' search: they run side by side, so no portal is named. */
+      portals: (done: number, total: number) =>
+        `Portale werden durchsucht, ${n(done)} von ${n(total)} fertig`,
+      portalsStart: 'Portale werden durchsucht',
       ads: (done: number, total: number) => `${n(done)} von ${n(total)} Anzeigen geladen`,
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
+      /** Under the line: the new jobs (not excluded) the finished portals brought so far. */
+      newSoFar: (value: number) => `Bisher ${count(value, 'neuer Job', 'neue Jobs')}`,
     },
     /** A failed fetch's way to the mailbox's settings. */
     checkMailbox: 'Postfach prüfen',
@@ -874,8 +860,10 @@ export const de = {
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
-    emptyAll: 'Nach dem ersten Abruf stehen die Jobs hier.',
-    emptyAfterRun: 'Die Alert-Mails enthielten bisher keine Jobs.',
+    /** Aktuell before any job came, and after a search that found none that fits. */
+    emptyHeading: 'Noch keine Jobs',
+    emptyText: '„Jobs suchen“ durchsucht die Portale nach deinem Profil.',
+    noMatch: 'Noch keine passenden Jobs gefunden',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
     /** The filter of the inbox leaves nothing in the list. */
     noFilterHit: 'Kein Job passt zum Filter.',
@@ -883,7 +871,6 @@ export const de = {
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',
     openProfile: 'Profil öffnen',
-    noMailbox: 'Ohne Postfach kommen keine neuen Jobs dazu.',
     /** No usable profile: said once, at the top of the list. */
     noProfile: 'Ohne Profil keine Übereinstimmung.',
     profileUnreadable: PROFILE_UNREADABLE,
@@ -891,7 +878,6 @@ export const de = {
     profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',
     /** A profile the app understands little of: one calm line on top of the list. */
     thinProfile: 'Wenig Inhalt im Profil, die Übereinstimmung bleibt grob.',
-    connectMailbox: 'Postfach verbinden',
   },
   /** The facts of a job in their one form each (the reader's Jobdetails, the list row; the
    *  order and the icons are the table of lib/facts.ts): a date "24.09.", a start "ab 01.11.",
@@ -995,7 +981,6 @@ export const de = {
     } satisfies Record<Exclude<TermVerdict, 'unset'>, string>,
     criterion: criteria,
     note,
-    open: 'Anzeige öffnen',
     /** "Anzeige öffnen" of an ad that is gone or takes no applications (the portal's page
      *  still opens). */
     openOffline: 'Offline-Anzeige öffnen',
@@ -1009,12 +994,10 @@ export const de = {
     close: 'Schließen',
     /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',
-    prompt: 'Prompt kopieren',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
     setUpSignIn: 'Anmeldung einrichten',
-    promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     promptNoText: 'Der Text der Anzeige fehlt noch.',
     /** Loads the whole ad (a preview, a missing one). */
     fetchDetails: 'Anzeige laden',
@@ -1041,14 +1024,14 @@ export const de = {
       paused: (reason: PauseReason, iso: string | null) => {
         const why = pause[reason].charAt(0).toUpperCase() + pause[reason].slice(1);
         return iso
-          ? `${why}, der Abruf macht ab ${formatMoment(iso)} von selbst weiter.`
-          : `${why}, der nächste Abruf versucht es von selbst wieder.`;
+          ? `${why}, die Suche macht ab ${formatMoment(iso)} von selbst weiter.`
+          : `${why}, die nächste Suche versucht es von selbst wieder.`;
       },
       quota: (iso: string) =>
-        `Das Limit ist erreicht, der Abruf macht ab ${formatMoment(iso)} von selbst weiter.`,
+        `Das Limit ist erreicht, die Suche macht ab ${formatMoment(iso)} von selbst weiter.`,
       emptyMails,
       pages:
-        'Die Seiten der Quelle sehen anders aus, der nächste Abruf versucht es von selbst wieder.',
+        'Die Seiten des Portals sehen anders aus, die nächste Suche versucht es von selbst wieder.',
       login: 'Die Anmeldung ist abgelaufen, melde dich neu an.',
     },
   },
@@ -1109,16 +1092,12 @@ export const de = {
       return parts.length === 0 ? 'Profil gespeichert' : `Profil gespeichert, ${parts.join(', ')}`;
     },
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
-    next: 'Weiter zum ersten Abruf',
-    /** The same place without a mailbox: back to the setup page. */
-    nextMailbox: 'Weiter zum Postfach',
     warning,
     save: 'Speichern',
     discard: 'Verwerfen',
     leaveHeading: 'Änderungen speichern?',
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
-    optional: 'Optional',
     /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
      *  does not name, each with its number of jobs; "Hinzufügen" puts it into that field (an
      *  unsaved change like any other). */
@@ -1400,13 +1379,32 @@ export const de = {
     },
   },
   settings: {
-    /** The name of the tabs (Suche, Postfach, Daten) for a screen reader. */
+    /** The name of the tabs (Portale, Daten) for a screen reader, and the tabs. */
     tabs: 'Bereiche der Einstellungen',
-    mailbox: 'Postfach',
-    /** The card of the sources the app searches itself. */
-    search: 'Suche',
-    /** The card of the app's data: its backups, its log, the reset. */
+    portals: 'Portale',
     data: 'Daten',
+    /** The card of the terms the search asks the portals for, its info symbol, each term's
+     *  last yield, and the way to change them. */
+    terms: 'CXact sucht nach',
+    termsInfo: 'Die Begriffe kommen aus deinem Profil und gehen an jedes Jobportal.',
+    termMatched: (value: number) => `zuletzt ${n(value)} passende`,
+    termNew: 'neu',
+    editTerms: 'Im Profil ändern',
+    noTerms: 'Ohne Profil hat die Suche keine Begriffe.',
+    /** The card of the portals the app searches itself, and the card of the alert mails. */
+    search: 'Jobportale',
+    alerts: 'Alert-Mails',
+    /** Without a mailbox the portals of alert mails rest (named in the app's order). */
+    noMailbox: (portals: readonly Portal[]) =>
+      `Ohne Postfach ruhen ${joined(portals.map((p) => portalName[p]))}.`,
+    /** What the last search brought from a portal (its row). */
+    lastNew: (value: number) =>
+      value === 0
+        ? 'Zuletzt keine neuen Jobs'
+        : `Zuletzt ${count(value, 'neuer Job', 'neue Jobs')}`,
+    /** A portal's own note under its name (only where it adds something). */
+    portalNote: (portal: Portal): string | null =>
+      portal === 'freelance' ? 'Mit Anmeldung auch Anzeigen nur für Mitglieder.' : null,
     /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
     backToJob: 'Zurück zum Job',
     connected: 'Verbunden',
@@ -1418,19 +1416,17 @@ export const de = {
     mailRefused: 'Gmail lehnt Adresse oder App-Passwort ab, trag sie über „Ändern“ neu ein.',
     address: 'Gmail-Adresse',
     password: 'App-Passwort',
+    /** The info symbol beside it. */
+    passwordInfo: 'Ein Passwort von Google nur für CXact, nicht dein Gmail-Passwort.',
     createPassword: 'App-Passwort erstellen',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',
-    /** Google's own words for its 2-step verification. */
-    twoStepAction: 'Bestätigung in zwei Schritten einschalten',
     connect: 'Verbinden',
     /** The dialog of "Verbinden", and of "Ändern" (named after the button that opens it). */
     connectHeading: 'Postfach verbinden',
     changeHeading: 'Postfach ändern',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    /** The calls of a portal today (counted from midnight). */
-    quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Aufrufen`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
@@ -1441,13 +1437,9 @@ export const de = {
     checkAlert: 'Alert prüfen',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
-    folder: 'Arbeitsordner',
-    /** Another work folder: the profile came along, or the folder has its own, or none. */
-    folderMoved: 'Das Profil liegt im neuen Ordner.',
-    folderFiles: 'Der neue Arbeitsordner ist gewählt.',
-    folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
-    /** The row of the database's copies, and its dialog. */
-    backup: 'Sicherung',
+    /** The row of the profiles' folder. */
+    profiles: 'Profile',
+    /** The database's copies (the failed start offers them). */
     backupHeading: 'Sicherung wiederherstellen',
     backupAction: 'Wiederherstellen',
     backupNone: 'Es gibt noch keine Sicherung.',
@@ -1464,50 +1456,52 @@ export const de = {
     reset: 'Alle Daten',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
-    resetText: 'Die App löscht Folgendes und startet dann neu.',
-    /** Everything the reset deletes, one item each (the dialog's list): the database, its
-     *  copies, every profile, the keychain entry, the portal sign-ins and the app's files. */
-    resetItems: [
-      'die Jobs und die Einstellungen',
-      'die Sicherungen',
-      'die Profile',
-      'das App-Passwort',
-      'die Anmeldungen bei den Quellen',
-      'die Dateien der App im Arbeitsordner',
-    ] as string[],
+    resetText:
+      'Löscht Jobs, Profile, Postfach und Anmeldungen. CXact startet mit der Einrichtung neu.',
     resetDone: 'Die App ist zurückgesetzt.',
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
     resetPartly: (value: number) =>
       `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
     dryRun: 'Probelauf, es werden keine Daten verändert.',
+    /** The quiet line at the end of Daten. */
+    version: (version: string) => `Version ${version}`,
   },
+
+  /** The setup (features/first-run/steps.ts): each step's heading, its one sentence where it
+   *  has one, and its buttons. */
   firstRun: {
-    steps: 'Erste Schritte',
-    mailbox: 'Postfach',
-    /** Where the jobs come from: the portals switched on by name, in the app's order. */
-    mailboxText: (portals: readonly Portal[]) =>
-      `Die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} müssen an diese Gmail${NB_HYPHEN}Adresse${NBSP}gehen.`,
-    /** Connected: the portals stand in the list under it, so the sentence does not name them. */
-    mailboxDone: 'Die Alert-Mails der Quellen müssen an diese Adresse gehen.',
-    openSettings: 'Einstellungen öffnen',
-    /** Per portal after connecting: the alert mails "Verbinden" found, else its page to set
-     *  up an alert. */
-    alertMails: (value: number) => count(value, 'Alert-Mail', 'Alert-Mails'),
-    createAlert: 'Alert anlegen',
-    /** "Verbinden" found no alert mail of any portal: a fetch would find nothing. */
-    noAlerts: 'In den letzten 30 Tagen kam keine Alert-Mail an, leg erst einen Alert an.',
-    profile: 'Profil',
-    /** A profile that still needs required fields: the step stays open. */
-    profileEmpty: 'Im Profil fehlen noch Angaben.',
-    fetch: 'Erster Abruf',
+    welcome: 'Willkommen bei CXact',
+    welcomeText: 'CXact findet Projekte und Jobs, die zu deinem Profil passen.',
+    begin: 'Einrichten',
+    next: 'Weiter',
+    way: 'Wie entsteht dein Profil?',
+    upload: 'Lebenslauf hochladen',
+    /** The drop zone: what it takes, and the formats it reads. */
+    drop: 'Zieh deinen Lebenslauf hierher.',
+    pick: 'Datei wählen',
+    formats: 'PDF, Word, ODT, RTF, Text oder Fotos',
+    reading: 'Auswertung',
+    review: 'Prüfen und ergänzen',
+    reviewText: 'Ergänze, was noch fehlt.',
+    alerts: 'Alert-Mails',
+    /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
+    alertsText: (portals: readonly Portal[]) =>
+      `Mit einem Postfach liest CXact auch die Alert-Mails von ${joined(portals.map((p) => portalName[p]))}.`,
+    /** Connected: the address the portals' alerts must go to, and their rows. */
+    alertsDone: 'Leg bei den Portalen Alerts an diese Adresse an.',
+    skip: 'Überspringen',
+    done: 'Alles eingerichtet',
+    doneText: 'Starte mit „Jobs suchen“ deine erste Suche.',
+    toJobs: 'Zu den Jobs',
   },
+
   shell: {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
     /** Closing the window while a fetch runs asks first; its button closes anyway. */
     closeHeading: 'Trotzdem schließen?',
-    closeText: 'Der Abruf läuft noch.',
+    closeText: 'Die Suche läuft noch.',
     closeAction: 'Schließen',
   },
   /** The calendar beside a day field (Verfügbar ab): the week starts on Monday. */
@@ -1537,8 +1531,8 @@ export const de = {
    *  sentence ends with one. */
   toast: {
     rescored: 'Jobs neu bewertet',
-    /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
-    prompt: 'Prompt kopiert',
+    /** The job as a prompt for any AI chat (no brand named). */
+    prompt: 'Prompt kopiert. Füg ihn in einen KI-Chat ein.',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Zurückgeholt',
@@ -1548,11 +1542,13 @@ export const de = {
     deleted: 'Endgültig gelöscht',
     included: 'Trotzdem bewertet',
     trashEmptied: 'Papierkorb geleert',
-    /** At the end of a fetch: what it brought (new, not excluded), and how many of them are
-     *  in the high band. */
-    runDone: (value: number, high = 0) =>
+    /** At the end of a search: what it brought (new, not excluded), how many of them are in
+     *  the high band, and without one that fits how many it excluded. */
+    runDone: (value: number, high = 0, excluded = 0) =>
       value === 0
-        ? 'Keine neuen Jobs'
+        ? excluded > 0
+          ? `Keine neuen passenden Jobs, ${n(excluded)} ausgeschlossen`
+          : 'Keine neuen passenden Jobs'
         : high === 0
           ? count(value, 'neuer Job', 'neue Jobs')
           : `${count(value, 'neuer Job', 'neue Jobs')}, ${n(high)} mit hoher Übereinstimmung`,

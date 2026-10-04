@@ -9,19 +9,21 @@
 // - `summary`: the last finished fetch of this session. It means the same as
 //   `app.state.lastRun` ("the last fetch"), so `run.summary ?? app.state.lastRun` is the last
 //   fetch wherever it is read (sidebar, failed-fetch retry, empty list).
-// What a fetch brought is a toast at its end ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in
-// every view; its "Zeigen" opens Aktuell filtered to exactly the jobs it counts. What went
-// wrong is a toast too, once, with its way on; the other details of a run (each mail, each
-// portal) are in the log, not on screen.
+// One fetch, "Jobs suchen": it reads the alert mails first (with a mailbox), then searches the
+// portals side by side; the run line counts the portals that are done and the new jobs they
+// brought so far, and its bar never moves back. What a fetch brought is a toast at its end
+// ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in every view; its "Zeigen" opens Aktuell
+// filtered to exactly the jobs it counts. What went wrong is a toast too, once, with its way
+// on (a mail part that failed while the search ran says "Postfach prüfen"); the other details
+// of a run (each mail, each portal) are in the log, not on screen.
 
 import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
 import { errorText } from '../i18n/texts';
-import { invoke, IpcError, onRun } from '../ipc/api';
+import { invoke, IpcError, onRun, type NextRunEvent, type NextRunSummary } from '../ipc/api';
 import type {
   ErrorInfo,
   Portal,
-  RunEvent,
   RunKindName,
   RunRequest,
   RunSnapshot,
@@ -29,7 +31,7 @@ import type {
   StatusCode,
   Step,
 } from '../ipc/types';
-import { app, type FetchWay } from './app.svelte';
+import { app } from './app.svelte';
 import { NO_FILTER } from './filter';
 import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
@@ -46,6 +48,10 @@ export interface Progress {
 /** A mailbox run: what "the last fetch" means (`app.state.lastRun`). */
 export const isFetch = (kind: RunKindName): boolean => kind === 'fetch';
 
+/** The share of the bar each part of a fetch fills: the portals' search, then loading the
+ *  ads, then scoring them. Reading the mails stays indeterminate. */
+const SHARE = { search: 0.5, fetch: 0.4 } as const;
+
 class RunStore {
   active = $state(false);
   kind = $state<RunKindName | null>(null);
@@ -55,13 +61,16 @@ class RunStore {
   loginNeeded = $state<Portal | null>(null);
   /** The last finished fetch of this session (see above). */
   summary = $state<RunSummary | null>(null);
-  /** An error of `start_run` itself (busy, no mailbox ...). */
-  #startFailure = $state.raw<{ error: unknown } | null>(null);
-  /** `start_run` is on its way: nothing is known yet (the first-run page stays until then). */
-  starting = $state(false);
   cancelling = $state(false);
+  /** The portals of this search that are done, of how many it searches, and the new jobs
+   *  (not excluded) they brought so far (`sourceDone`). */
+  portalsDone = $state(0);
+  portalsTotal = $state(0);
+  newSoFar = $state(0);
+  /** How far the run is, 0 to 1 (null: indeterminate); it never moves back. */
+  fraction = $state<number | null>(null);
 
-  #listeners = new Set<(event: RunEvent) => void>();
+  #listeners = new Set<(event: NextRunEvent) => void>();
   #installed = false;
   /** The last run the page started (a retry starts it again). */
   #request: RunRequest | null = null;
@@ -78,7 +87,7 @@ class RunStore {
   }
 
   /** Other stores that react to run events (the job list). */
-  listen(listener: (event: RunEvent) => void): () => void {
+  listen(listener: (event: NextRunEvent) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   }
@@ -99,30 +108,19 @@ class RunStore {
     return this.active && this.kind !== 'rescore';
   }
 
-  /** The words of a failed `start_run`, or null. */
-  get startError(): string | null {
-    return this.#startFailure === null ? null : errorText(this.#startFailure.error);
-  }
-
   /** Why an action waits while a run goes, by its kind (a fetch, the ads of a details run, a
    *  rescore): the words of the backend's busy error. */
   get busyText(): string {
     return t.error.text('busy', { activity: this.kind });
   }
 
-  /** Why the fetch cannot start now (what its menu chose: "Jobs suchen" the search,
-   *  "Alert-Mails lesen" the mailbox), in the order it is fixed: a run holds the app; for the
-   *  search no source of it switched on or no profile to search with; for the mails no
-   *  mailbox or no source of alert mails switched on; null when it can. The backend refuses
-   *  the same. */
+  /** Why "Jobs suchen" cannot start now, in the order it is fixed: a run holds the app; no
+   *  usable profile; nothing to read (no portal it searches, no alert mails with a mailbox);
+   *  null when it can. The backend refuses the same. */
   get fetchBlocked(): string | null {
     if (this.active) return this.busyText;
-    if (app.fetchWay === 'search') {
-      if (!app.searches) return t.toolbar.needsPortal;
-      return app.hasProfile ? null : t.toolbar.needsProfile;
-    }
-    if (!app.hasMailbox) return t.toolbar.needsMailbox;
-    return app.alerts ? null : t.toolbar.needsPortal;
+    if (!app.hasProfile) return t.toolbar.needsProfile;
+    return app.readable ? null : t.toolbar.needsPortal;
   }
 
   /** Why a run that fetches the full ads of chosen jobs ("Anzeige laden") cannot start now:
@@ -141,13 +139,34 @@ class RunStore {
     this.status = null;
     this.loginNeeded = null;
     this.cancelling = false;
-    if (kind !== 'rescore') this.#startFailure = null;
+    this.portalsDone = 0;
+    this.portalsTotal =
+      app.state?.portals.filter((p) => p.enabled && p.way === 'search').length ?? 0;
+    this.newSoFar = 0;
+    this.fraction = null;
+  }
+
+  /** The bar after an event: the portals done fill the first share, the ads loaded the
+   *  next, the scoring the rest; it only moves on. */
+  private advance(): void {
+    const part = (step: Step): number => {
+      const p = this.progress[step];
+      return p && p.total > 0 ? Math.min(1, p.done / p.total) : 0;
+    };
+    let now: number | null = null;
+    if (this.step === 'search' && this.portalsTotal > 0) {
+      now = SHARE.search * Math.min(1, this.portalsDone / this.portalsTotal);
+    } else if (this.step === 'fetch') {
+      now = SHARE.search + SHARE.fetch * part('fetch');
+    } else if (this.step === 'score') {
+      now = SHARE.search + SHARE.fetch + (1 - SHARE.search - SHARE.fetch) * part('score');
+    }
+    if (now !== null) this.fraction = Math.max(this.fraction ?? 0, now);
   }
 
   async start(request: RunRequest): Promise<boolean> {
     if (this.active) return false;
     this.#request = request;
-    this.starting = true;
     this.begin(request.kind);
     const epoch = this.#epoch;
     try {
@@ -158,12 +177,9 @@ class RunStore {
         this.active = false;
         this.kind = null;
       }
-      this.#startFailure = { error };
       toasts.show(errorText(error), 'warning');
       if (error instanceof IpcError && error.kind === 'busy') void app.load();
       return false;
-    } finally {
-      this.starting = false;
     }
   }
 
@@ -203,20 +219,11 @@ class RunStore {
       await invoke('cancel_run');
     } catch (error) {
       this.cancelling = false;
-      this.#startFailure = { error };
+      toasts.show(errorText(error), 'warning');
     }
   }
 
-  /** Overall progress of the current step (null = indeterminate). */
-  get fraction(): number | null {
-    const step = this.step;
-    if (step === null) return null;
-    const p = this.progress[step];
-    if (!p || p.total === 0) return null;
-    return p.done / p.total;
-  }
-
-  handle(event: RunEvent, live = true): void {
+  handle(event: NextRunEvent, live = true): void {
     switch (event.type) {
       case 'started':
         if (!live) break;
@@ -235,8 +242,17 @@ class RunStore {
             [event.step]: { done: event.done, total: event.total },
           };
         }
+        this.advance();
         break;
       }
+      case 'sourceDone':
+        if (!this.active) break;
+        this.step = 'search';
+        this.portalsDone += 1;
+        this.portalsTotal = Math.max(this.portalsTotal, this.portalsDone);
+        this.newSoFar += event.new;
+        this.advance();
+        break;
       case 'status':
         if (!this.active) break;
         this.status = { code: event.code, portal: event.portal, until: event.until };
@@ -259,8 +275,17 @@ class RunStore {
   }
 
   /** What went wrong in a finished run, once as a toast: a failure with its own way on (where
-   *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again). */
+   *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again); a mail
+   *  part that failed while the search ran says why with "Postfach prüfen". */
   private tellTrouble(summary: RunSummary): void {
+    const mail = (summary as NextRunSummary).mail ?? null;
+    if (summary.outcome.kind === 'completed' && mail !== null) {
+      toasts.show(t.error.text(mail.kind, mail.params), 'warning', {
+        label: t.run.checkMailbox,
+        onclick: toMailbox,
+        undo: false,
+      });
+    }
     if (summary.outcome.kind === 'failed') {
       const error = summary.outcome.error;
       const fix = failureAction(summary, error, openLog);
@@ -288,14 +313,18 @@ class RunStore {
     if (summary.outcome.kind === 'completed') {
       if (isFetch(kind)) {
         const inList = navigation.current === 'jobs' && !shell.listHidden;
-        const brought = summary.newJobs ?? { count: 0, high: 0 };
+        const brought = (summary as NextRunSummary).newJobs ?? { count: 0, high: 0 };
         const show =
           brought.count > 0
             ? { label: t.toast.show, onclick: () => this.showNew(summary), undo: false }
             : inList
               ? null
               : { label: t.toast.show, onclick: () => this.show(), undo: false };
-        toasts.show(t.toast.runDone(brought.count, brought.high), 'success', show);
+        toasts.show(
+          t.toast.runDone(brought.count, brought.high, brought.excluded ?? 0),
+          'success',
+          show,
+        );
       } else if (kind === 'rescore' && navigation.current === 'settings') {
         toasts.show(t.toast.rescored);
       }
@@ -306,7 +335,7 @@ class RunStore {
 
 export interface FailureAction {
   label: string;
-  /** The glyph the action has everywhere (a retry loads again, like Alert-Mails lesen). */
+  /** The glyph the action has everywhere (a retry loads again). */
   icon?: IconMeaning;
   onclick: () => void;
 }
@@ -314,8 +343,7 @@ export interface FailureAction {
 /**
  * The one fitting action for a failed run, wherever it is said (its toast, the first-run
  * page): the mailbox settings for a mailbox problem, the log for an internal error, else a
- * retry. A failed fetch gets none while "Alert-Mails lesen" is there to do the same (with a
- * mailbox), and no retry is offered while another run goes (it could not start).
+ * retry; no retry is offered while another run goes (it could not start).
  */
 export function failureAction(
   summary: RunSummary | null,
@@ -328,23 +356,23 @@ export function failureAction(
     case 'mailNotGmail':
     case 'secretCorrupt':
     case 'secretStore':
-      return {
-        label: t.run.checkMailbox,
-        onclick: () => {
-          settingsTab.value = 'mailbox';
-          navigation.go('settings');
-        },
-      };
+      return { label: t.run.checkMailbox, onclick: toMailbox };
     case 'internal':
       return { label: t.common.openLog, icon: 'folder', onclick: openLog };
     default:
       if (run.active) return null;
-      if (summary !== null && isFetch(summary.kind) && app.hasMailbox) return null;
       return { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) };
   }
 }
 
+/** "Postfach prüfen": Einstellungen at Portale, whose card Alert-Mails holds the mailbox. */
+function toMailbox(): void {
+  settingsTab.value = 'portals';
+  navigation.go('settings');
+}
+
 /** The log folder, from a toast of a failure (its own failure is a toast too). */
+
 function openLog(): void {
   invoke('open_target', { target: { kind: 'logDir' } }).catch((failure: unknown) =>
     toasts.show(errorText(failure), 'warning'),
@@ -352,15 +380,3 @@ function openLog(): void {
 }
 
 export const run = new RunStore();
-
-/** The fetch's words and glyph as its menu chose (user decision 2026-10-01): "Jobs suchen"
- *  the search, "Alert-Mails lesen" the mailbox (the glyph of every fetch, not the mail's); the
- *  list's button, its empty states and the first run's step say the same. */
-export function fetchLook(way: FetchWay = app.fetchWay): {
-  label: string;
-  icon: 'fetch' | 'search';
-} {
-  return way === 'search'
-    ? { label: t.toolbar.searchNow, icon: 'search' }
-    : { label: t.toolbar.fetchMailbox, icon: 'fetch' };
-}

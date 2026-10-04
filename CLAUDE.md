@@ -21,7 +21,8 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
   the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the
   traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
-  click maximizes). The sidebar docks or folds away like Claude's (its button a plain switch, nothing on hover;
+  click maximizes; during the setup, a mode of the shell of its own without the sidebar, the bar is one colour
+  without a seam and holds none of these buttons). The sidebar docks or folds away like Claude's (its button a plain switch, nothing on hover;
   folds by itself below 1100 px, where its button floats it out; kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
   and jobs shown (`lib/state/history.svelte.ts`); hiding the job view closes its job. Windows: no native title bar (`decorations: false`, the
   shadow, rounded corners and resize borders stay); the page draws Minimieren, Maximieren and Schließen
@@ -39,7 +40,7 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   editing keys (word and line moves, delete word, Home/End, Shift selection, undo/redo, copy/paste/cut/select all),
   Tab, Enter, Esc. No browser context menu, no zoom, no reload, no find/print. All input handling in
   `ui/src/lib/input/input.ts`, per-OS key conventions in `ui/src/lib/platform.ts`. Motion is quick (<= 180 ms, ring
-  fill <= 400 ms), ease-out, no bounce; nothing deforms on press; no grey washes behind switch rows.
+  fill <= 400 ms), ease-out, no bounce; nothing deforms or shrinks on press; no grey washes behind switch rows.
 - Styling only via tokens in `ui/src/styles/tokens.css`; controls only from `ui/src/components/`; Tauri only via
   `ui/src/lib/ipc/api.ts`; motion only via `ui/src/lib/motion/`. At most one primary button per view. Lint enforces it.
 - UI text (German only, `ui/src/lib/i18n/de.ts`): little text, only what is needed, plain and human. No AI-style writing: no dashes or
@@ -77,7 +78,8 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 - Colours: after a change to `tokens.css`, `npm run regen` rewrites the window and icon colours
   (`docs/CHANGING.md` "Change the look").
 - The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
-  every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with
+  every screen and button clickable without mails; its menu "Vorschau" at the top jumps into every state,
+  `tools/ui-harness/preview.ts`, harness build only). It serves the copy in `.preview/`: refresh it with
   `npm run preview:refresh` only when a block is finished and green, then tell the user to reload it.
 - Engine changes: `docs/CHANGING.md` "Add words to the engine" (both reports, `ENGINE_VERSION`,
   `docs/MATCHING.md`).

@@ -165,7 +165,7 @@ test.describe('header', () => {
     // group).
     await expect.poll(() => middlesApart(page, 'search', 'filter')).toBeLessThanOrEqual(1);
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
-    const end = await rightOf(page, 'fetch-ways');
+    const end = await rightOf(page, 'fetch');
     expect(await rightOf(page, 'filter')).toBe(end);
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
@@ -202,90 +202,35 @@ test.describe('header', () => {
     await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('the fetch has Abruf einstellen beside it: the search or the mailbox, its words follow', async ({
+  test('one fetch, Jobs suchen, the primary with or without a mailbox; Abbrechen in its slot', async ({
     page,
   }) => {
     await open(page, `${WIN}&tick=15`);
     const fetch = page.getByTestId('fetch');
-    const ways = page.getByTestId('fetch-ways');
-    // Beside the action: the same row and height, 8 px apart; the fetch is the view's
-    // primary, its menu's button an outlined square with its icon.
-    const main = (await fetch.boundingBox())!;
-    const part = (await ways.boundingBox())!;
-    expect(part.y).toBe(main.y);
-    expect(part.height).toBe(main.height);
-    expect(part.width).toBe(part.height);
-    expect(Math.round(part.x - (main.x + main.width))).toBe(8);
     await expect(fetch).toHaveClass(/primary/);
-    // The search by default: "Jobs suchen".
     await expect(fetch).toHaveText(T.toolbar.searchNow);
     expect(T.toolbar.searchNow).toBe('Jobs suchen');
     await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.search}`));
-    await expect(ways).toHaveClass(/secondary/);
-    // Its button opens a menu: the chevron of every menu (user 2026-10-01).
-    await expect(ways.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.expand}`));
-    await expect(ways).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
-    await expect(ways).toHaveAttribute('aria-haspopup', 'menu');
-    // Its menu (user decision 2026-10-01): the search or the alert mails, never both, one
-    // checked.
-    await ways.click();
-    const menu = page.getByTestId('menu');
-    await expect(menu).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
-    await expect(ways).toHaveAttribute('aria-expanded', 'true');
-    await expect(menu.getByTestId('menu-heading')).toHaveCount(0);
-    await expect(menu.locator('[role^="menuitem"]')).toHaveText([
-      T.toolbar.wayName.search,
-      T.toolbar.wayName.mail,
-    ]);
-    for (const way of ['way-search', 'way-mail']) {
-      await expect(menuItem(page, way)).toHaveAttribute('role', 'menuitemradio');
-    }
-    await expect(menuItem(page, 'way-search')).toHaveAttribute('aria-checked', 'true');
-    await expect(menuItem(page, 'way-mail')).toHaveAttribute('aria-checked', 'false');
-    // Right edge on the control's.
-    const box = (await menu.boundingBox())!;
-    expect(Math.abs(box.x + box.width - (part.x + part.width))).toBeLessThanOrEqual(1);
-    // Postfach: saved at once, the menu closes, the button says "Alert-Mails lesen" with the
-    // glyph of every fetch (not the mail's).
-    await menuItem(page, 'way-mail').click();
-    await expect(menu).toHaveCount(0);
-    await expect(fetch).toHaveText(T.toolbar.fetchMailbox);
-    // Its words set the slot's width: measured as it stands now.
+    // No menu of ways beside it.
+    await expect(page.getByTestId('fetch-ways')).toHaveCount(0);
     const words = (await fetch.boundingBox())!;
-    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.fetch}`));
-    await expect
-      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
-      .toMatchObject({ patch: { fetchMail: true, fetchSearch: false, portals: [] } });
-    // The fetch sends no way of its own: the backend reads the saved one.
     await page.evaluate(() => (window.__harness.holdAfter = 3));
     await fetch.click();
-    // "Abbrechen" takes its slot (the widest of the words sets it) and the menu's button
-    // stays beside it, off: nothing moves.
+    // "Abbrechen" takes its slot: nothing moves.
     const cancel = page.getByTestId('cancel-run');
     await expect(cancel).toBeVisible();
     const slot = (await cancel.boundingBox())!;
-    expect([slot.x, slot.y, slot.width, slot.height]).toEqual([
-      words.x,
-      words.y,
-      words.width,
-      words.height,
-    ]);
+    expect(slot.x + slot.width).toBe(words.x + words.width);
+    expect(slot.y).toBe(words.y);
     const sent = (await calls(page, 'start_run')).at(-1)?.[1] as { request: object };
     expect(sent.request).toEqual({ kind: 'fetch' });
-    await expect(ways).toBeDisabled();
-    expect((await ways.boundingBox())!).toEqual(part);
     await cancel.click();
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
-    await expect(ways).toBeEnabled();
-    // Back to the search: "Jobs suchen" again.
-    await ways.click();
-    await expect(menuItem(page, 'way-mail')).toHaveAttribute('aria-checked', 'true');
-    await menuItem(page, 'way-search').click();
-    await expect(fetch).toHaveText(T.toolbar.searchNow);
-    await expect
-      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
-      .toMatchObject({ patch: { fetchMail: false, fetchSearch: true } });
+    // Without a mailbox it stays the primary (the search needs none).
+    await open(page, `${WIN}&scenario=no-mailbox`);
+    await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
+    await expect(page.getByTestId('fetch')).toBeEnabled();
   });
 
   test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
@@ -437,7 +382,7 @@ test.describe('header', () => {
       // The row under the tabs holds the search and the funnel; the run line follows it.
       const search = (await page.getByTestId('search').boundingBox())!;
       await expect(funnel(page)).toBeVisible();
-      await animationsDone(page);
+      await motionSettled(page);
       const at = (await line.boundingBox())!;
       expect(at.y - (search.y + search.height)).toBeLessThanOrEqual(16);
       expect(Math.abs((await under()) - usual)).toBeLessThan(1);
@@ -1393,15 +1338,23 @@ test.describe('one list', () => {
   test('an empty inbox says what comes: an icon and one sentence, the header fetches', async ({
     page,
   }) => {
+    // Before the first search: "Noch keine Jobs" and what "Jobs suchen" does.
+    await open(page, `${WIN}&scenario=fresh`);
+    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyHeading);
+    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyText);
+    await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
+    // After a search that found nothing that fits: that, and the way to the profile.
     await open(page, `${WIN}&scenario=empty`);
     const empty = page.getByTestId('empty-all');
     await expect(empty).toBeVisible();
+    await expect(empty).toHaveText(new RegExp(T.list.noMatch));
     // The place's own icon, like the empty Archiv and Papierkorb.
     await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
       new RegExp(`lucide-${ICONS.inbox}`),
     );
-    // No second "Alert-Mails lesen": the header's stands right above it.
-    await expect(empty.getByRole('button')).toHaveCount(0);
+    // One way on, secondary: the header's "Jobs suchen" stands right above it.
+    await expect(empty.getByRole('button')).toHaveText([T.list.openProfile]);
+    await expect(empty.locator('.btn.primary')).toHaveCount(0);
     await expect(page.getByTestId('fetch')).toBeVisible();
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
@@ -1421,33 +1374,6 @@ test.describe('one list', () => {
     // While the fetch goes the list says the jobs come, and offers no second fetch.
     await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyWhileRun);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
-  });
-
-  test('an empty inbox without a mailbox says so once and leads to the mailbox card', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1360, height: 600 });
-    await open(page, `${WIN}&way=mail&scenario=empty`);
-    await page.getByTestId('nav-settings').click();
-    await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
-    await page
-      .getByTestId('dialog-remove-mailbox')
-      .getByRole('button', { name: T.common.remove })
-      .click();
-    await expect(page.getByTestId('mailbox-connect')).toBeVisible();
-    // Einstellungen left on Suche, the mailbox card out of sight: the way back opens it at
-    // the mailbox card anyway.
-    await page.getByTestId('settings-tab-search').click();
-    await expect(page.getByTestId('settings-mailbox')).toBeHidden();
-    await page.getByTestId('nav-jobs').click();
-    const empty = page.getByTestId('empty-all');
-    await expect(empty).toContainText(T.list.noMailbox);
-    await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
-    await empty.getByRole('button', { name: T.list.connectMailbox }).click();
-    await expect(page.getByTestId('view-settings')).toBeVisible();
-    await expect(page.getByTestId('settings-tab-mailbox')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('settings-mailbox')).toBeInViewport();
-    await expect(page.getByTestId('mailbox-connect')).toBeFocused();
   });
 
   test('without a profile: newest first, one line leads to the start of a new profile', async ({
@@ -1492,41 +1418,20 @@ test.describe('one list', () => {
       .click();
     await page.getByTestId('nav-jobs').click();
     await expect(rows(page).first()).toBeVisible();
-    // The sources' search goes on without a mailbox: no note. The mailbox waits for one and
-    // says so, at the fetch and above the list.
+    // The portals' search goes on without a mailbox: no note, the fetch stays the primary.
     const fetch = page.getByTestId('fetch');
     await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(fetch).toHaveClass(/primary/);
     await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
-    await page.getByTestId('fetch-ways').click();
-    await menuItem(page, 'way-mail').click();
-    await expect(fetch).toHaveAttribute('aria-disabled', 'true');
-    await fetch.hover();
-    await expect(page.getByRole('tooltip')).toContainText(T.toolbar.needsMailbox);
-    await page.mouse.move(0, 0);
-    await expect(page.getByTestId('no-mailbox')).toContainText(T.list.noMailbox);
-    await page.getByTestId('fetch-ways').click();
-    await menuItem(page, 'way-search').click();
-    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
-    await page.getByTestId('fetch-ways').click();
-    await menuItem(page, 'way-mail').click();
-    await page.getByTestId('no-mailbox').getByRole('button').click();
-    await expect(page.getByTestId('view-settings')).toBeVisible();
   });
 
-  test('without a profile Jobs suchen waits and says why; the mailbox needs none', async ({
-    page,
-  }) => {
+  test('without a profile Jobs suchen waits and says why', async ({ page }) => {
     await open(page, `${WIN}&scenario=no-profile`);
-    // The search never falls back to the mailbox: it has nothing to search for.
     const fetch = page.getByTestId('fetch');
     await expect(fetch).toHaveAttribute('aria-disabled', 'true');
     await fetch.hover();
     await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsProfile);
-    await page.mouse.move(0, 0);
-    await page.getByTestId('fetch-ways').click();
-    await menuItem(page, 'way-mail').click();
-    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    await fetch.click({ force: true });
     expect(await calls(page, 'start_run')).toHaveLength(0);
   });
 
@@ -2058,7 +1963,7 @@ test.describe('run line', () => {
   test('a fetch: a slim bar and one line under the header, then a toast of what it brought', async ({
     page,
   }) => {
-    await open(page, `${WIN}&way=mail&tick=60`);
+    await open(page, `${WIN}&tick=60`);
     // The rows already there stay the same elements while the run brings new ones.
     await rows(page)
       .first()
@@ -2092,17 +1997,19 @@ test.describe('run line', () => {
     const counted = await now();
     await expect.poll(now, { intervals: [10], timeout: 10_000 }).not.toBe(counted);
     if (count.test(await now())) await expect(text).toHaveAttribute('data-kept', 'yes');
+    // The portals run side by side: counted, never named.
     const words = new Set<string>([
       T.run.line.mailbox,
-      T.run.line.searchStart,
-      T.run.line.search(T.portal.hays),
-      T.run.line.search(T.portal.freelancermap),
+      T.run.line.portalsStart,
+      ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((done) => T.run.line.portals(done, 8)),
       T.run.line.adsStart,
       T.run.line.scoring,
     ]);
     for (const text of said) {
       expect(words.has(text) || /^\d+ von \d+ Anzeigen geladen$/.test(text), text).toBe(true);
     }
+    // What the portals brought so far, under the line (freelancermap's job).
+    expect(T.run.line.newSoFar(1)).toBe('Bisher 1 neuer Job');
     await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(before.length);
     await expect(list(page).locator('[data-kept="yes"]')).toHaveCount(1);
     await runFinished(page);
@@ -2113,16 +2020,22 @@ test.describe('run line', () => {
     await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
     // The run re-sorts the list once it has finished: the new jobs in their places.
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
-    // One word for one, the plural for more, none at 0.
-    expect([T.toast.runDone(0), T.toast.runDone(1), T.toast.runDone(2, 1)]).toEqual([
-      'Keine neuen Jobs',
+    // One word for one, the plural for more; none at 0, with the excluded ones counted.
+    expect([
+      T.toast.runDone(0),
+      T.toast.runDone(0, 0, 3),
+      T.toast.runDone(1),
+      T.toast.runDone(2, 1),
+    ]).toEqual([
+      'Keine neuen passenden Jobs',
+      'Keine neuen passenden Jobs, 3 ausgeschlossen',
       '1 neuer Job',
       '2 neue Jobs, 1 mit hoher Übereinstimmung',
     ]);
   });
 
   test('elsewhere the end toast leads to the list', async ({ page }) => {
-    await open(page, `${WIN}&way=mail&tick=15`);
+    await open(page, `${WIN}&tick=15`);
     await page.getByTestId('fetch').click();
     await page.getByTestId('nav-settings').click();
     await runFinished(page);
@@ -2134,7 +2047,9 @@ test.describe('run line', () => {
   test('a run that is on its way: the step and its count', async ({ page }) => {
     await open(page, `${WIN}&scenario=running`);
     await expect(page.getByTestId('run-text')).toHaveText(T.run.line.ads(5, 7));
-    await expect(page.getByTestId('run-progress')).toHaveAttribute('aria-valuenow', '71');
+    // The bar: the portals' half is done, then the ads (5 of 7) fill their share.
+    await expect(page.getByTestId('run-progress')).toHaveAttribute('aria-valuenow', '79');
+
     await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 

@@ -71,7 +71,8 @@ mail, store, engine, view, UI:
    (`search_page_url`) while its pages bring new jobs, a cut-short paging going on at the
    next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
    Crawl-delay the least gap); the hits are jobs without a mail (`Store::record_found`). A
-   fetch reads the mailbox or searches, never both (`Settings::fetches_mail`).
+   fetch, "Jobs suchen", reads the alert mails first (with a mailbox), then searches the portals;
+   a part that cannot run is skipped, and a mail part that fails says so (`RunSummary.mail`).
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
    before every request (search pages and robots.txt too) and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the

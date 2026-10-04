@@ -483,6 +483,8 @@
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
   --form-width: 560px;
+  /* The columns of the search's terms in Einstellungen (they wrap with the width). */
+  --terms-column: 200px;
   /* Rows and their washes: a row's hover wash is the row's own box, and rows run edge to
      edge inside their container. A container that insets its content sets --row-inset to
      that inset; its rows bleed out by it and pad their content in by it, so wash, divider
@@ -678,10 +680,6 @@
   --move-md: 4px;
   --move-lg: 8px;
   --scale-enter: 0.98;
-  /* While the left button is down, buttons (text and icon alike) give a little, uniformly;
-     nothing ever stretches or changes shape. Larger surfaces (tiles, cards, rows, switches)
-     only darken. */
-  --scale-press: 0.98;
   /* The one-shot pop of the star on pin (keyframes 1, 1.18, 1): state feedback, not a hover.
      No icon moves on hover (user, 2026-09-25). */
   --scale-pop: 1.18;
@@ -733,7 +731,6 @@
   --move-md: 0px;
   --move-lg: 0px;
   --scale-enter: 1;
-  --scale-press: 1;
   --scale-pop: 1;
   --loop-state: paused;
 }

@@ -23,7 +23,8 @@
     icon?: IconName | null;
     tone?: TileTone;
     heading?: string | null;
-    text: string;
+    /** One sentence; a heading may stand alone. */
+    text?: string | null;
     /** The one primary action of the state. */
     action?: EmptyAction | null;
     secondary?: EmptyAction | null;
@@ -36,7 +37,7 @@
     icon = null,
     tone = 'neutral',
     heading = null,
-    text,
+    text = null,
     action = null,
     secondary = null,
     quiet = false,
@@ -52,7 +53,7 @@
   {/if}
   <div class="copy">
     {#if heading}<h2 class="heading">{heading}</h2>{/if}
-    <p class="text">{text}</p>
+    {#if text}<p class="text">{text}</p>{/if}
   </div>
   {#if action || secondary}
     <div class="actions">

@@ -1,18 +1,11 @@
 // The app state from the backend (`app_state`): settings, mailbox, profile, portals, last
 // run. Loaded once at start and again after anything that changes it (a finished run,
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
-// than --dur-fast, so a quick start never flashes placeholders. What a fetch reads (the
-// menu beside it: the search or the mailbox) is saved from here through the settings patch.
+// than --dur-fast, so a quick start never flashes placeholders.
 
-import { errorText } from '../i18n/texts';
 import { invoke } from '../ipc/api';
 import type { AppState, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
 import { tokenMs } from '../tokens';
-
-/** What a fetch reads, in the order of its menu: the search or the mailbox, never both
- *  (user decision 2026-10-01; the settings' `fetchSearch` and `fetchMail`). */
-export const FETCH_WAYS = ['search', 'mail'] as const;
-export type FetchWay = (typeof FETCH_WAYS)[number];
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
@@ -52,36 +45,6 @@ class AppStore {
     this.state = next;
   }
 
-  /** Only the answer to the latest save may replace the state (quick choices in a row). */
-  #saves = 0;
-
-  /** What a fetch reads: the mailbox only while its switch alone is on, else the search
-   *  (core's `Settings::fetches_mail`). */
-  get fetchWay(): FetchWay {
-    const state = this.state;
-    return state !== null && state.fetchMail && !state.fetchSearch ? 'mail' : 'search';
-  }
-
-  /**
-   * Another way of the fetch: the page follows at once, the save after. Resolves with the
-   * error text of a save that failed (the stored state is loaded again), or null.
-   */
-  async setFetchWay(way: FetchWay): Promise<string | null> {
-    const state = this.state;
-    if (state === null || this.fetchWay === way) return null;
-    const mine = ++this.#saves;
-    const change = { fetchMail: way === 'mail', fetchSearch: way === 'search' };
-    Object.assign(state, change);
-    try {
-      const next = await invoke('save_settings', { patch: settingsPatch(change) });
-      if (mine === this.#saves) this.set(next);
-      return null;
-    } catch (error) {
-      void this.load();
-      return errorText(error);
-    }
-  }
-
   /** Portal health from a run event, without a reload. */
   setHealth(portal: Portal, health: PortalHealth): void {
     const state = this.state;
@@ -94,20 +57,20 @@ class AppStore {
     return Boolean(this.state?.mailbox.user);
   }
 
-  /** At least one portal is switched on (a fetch without one is refused by the backend). */
-  get hasPortal(): boolean {
-    return this.state?.portals.some((p) => p.enabled) ?? false;
-  }
-
-  /** A source the app searches itself is switched on: "Jobs abrufen" works without a
-   *  mailbox too, "Jobs suchen" works at all. */
+  /** A portal the app searches itself is switched on. */
   get searches(): boolean {
     return this.state?.portals.some((p) => p.enabled && p.way === 'search') ?? false;
   }
 
-  /** A source of alert mails is switched on ("Alert-Mails lesen" has one to read). */
+  /** A portal of alert mails is switched on. */
   get alerts(): boolean {
     return this.state?.portals.some((p) => p.enabled && p.way === 'alert') ?? false;
+  }
+
+  /** "Jobs suchen" has something to read: a portal it searches, or alert mails with a
+   *  mailbox (core's run_context skips the part that cannot run). */
+  get readable(): boolean {
+    return this.searches || (this.hasMailbox && this.alerts);
   }
 
   /** A usable profile: it reads and names everything core needs (`missing_required`). */

@@ -1,8 +1,8 @@
 <!--
   The button of the app: primary | secondary | ghost | danger | link. Native
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
-  icon stays still and behaves alike (no nudges, user 2026-09-25), a press lets the button
-  give a little (0.98, 60 ms) and settles back in 150 ms; no stretch, lift, glow or bounce.
+  icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
+  (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
   - One height for every button, 28 px (user 2026-10-01, core/tests/ui_contract.rs): in rows,
     tools, bars, dialogs and empty states alike; the small type, every glyph 15 px. Only a
     button inside a field (`inField`) is a notch lower, a part of the field.
@@ -209,7 +209,6 @@
     font: var(--btn-type);
     font-weight: var(--weight-medium);
     white-space: nowrap;
-    --btn-press: var(--scale-press);
     --btn-pad: var(--space-12);
     --btn-gap: var(--space-6);
     --btn-type: var(--type-sm);
@@ -304,7 +303,6 @@
     .btn:not([aria-disabled='true'], .loading):active:hover {
     border-color: var(--btn-border-active);
     background-color: var(--btn-bg-active);
-    transform: scale(var(--btn-press));
     transition-duration: var(--dur-instant);
   }
 
@@ -423,7 +421,6 @@
     --btn-fg-hover: var(--link-hover);
     --btn-shadow: none;
     --btn-pad: 0;
-    --btn-press: 1;
 
     transition:
       color var(--dur-base) var(--ease-standard),

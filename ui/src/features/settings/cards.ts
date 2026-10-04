@@ -1,19 +1,18 @@
-// Einstellungen as data: the cards in their order (Suche, Postfach, Daten; by the fetch's two
-// ways, user decision 2026-10-01), each on its tab (Suche, Postfach, Daten,
-// like the Profil's) with its name and its rows, and every button of a row. SettingsView.svelte
-// renders this list and nothing else, so adding, moving or removing a setting is one entry
-// here (docs/CHANGING.md). Texts are read from the catalog where they render
-// (`(t) => t.settings.…`).
+// Einstellungen as data: the cards in their order, each on its tab (Portale, Daten; user
+// decision 2026-10-03) with its heading, its block and its rows, and every button of a row.
+// SettingsView.svelte renders this list and nothing else, so adding, moving or removing a
+// setting is one entry here (docs/CHANGING.md). Texts are read from the catalog where they
+// render (`(t) => t.settings.…`).
 //
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
-// answer; every text button of a row is the same outlined button (secondary, 28
-// px), whether it opens something or runs a command, and the ones that lose
-// something for good are red (`warns`: Zurücksetzen, like Entfernen of the mailbox); a
-// locked button says why (`locked`); the reset stands alone on the last row.
+// answer; every text button of a row is the same outlined button (secondary, 28 px), whether
+// it opens something or runs a command, and the ones that lose something for good are red
+// (`warns`: Zurücksetzen, like Entfernen of the mailbox); a locked button says why
+// (`locked`); the reset stands alone on its row. An info symbol only at "CXact sucht nach".
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, OpenTarget, SettingsPatch, Way } from '$lib/ipc/types';
+import type { AppState, OpenTarget, Way } from '$lib/ipc/types';
 import type { SettingsTab } from '$lib/state/settings.svelte';
 
 /** What a row reads: the catalog of the moment and the app state. */
@@ -25,7 +24,7 @@ export interface Lock {
   t: Catalog;
   /** A run goes (a fetch or a rescore). */
   running: boolean;
-  /** Why a run holds the app, by its kind ("Gerade läuft schon ein Abruf."). */
+  /** Why a run holds the app, by its kind ("Gerade läuft schon eine Suche."). */
   busyText: string;
 }
 
@@ -40,20 +39,15 @@ export interface Action {
   warns?: boolean;
 }
 
-/** Why the dry run refuses a change of what is outside its own data. */
-const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
+/** Why the dry run refuses a change of what is outside its own data, and a run holds it. */
+export const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
   state.dryRun ? t.error.text('dryRun', {}) : running ? busyText : null;
 
 export const ACTIONS = {
-  folderChange: {
-    label: (t) => t.common.change,
-    icon: 'edit',
-    locked: ownOnly,
-  },
-  folderOpen: {
-    label: (t) => t.common.open,
+  profilesOpen: {
+    label: (t) => t.common.openFolder,
     icon: 'folder',
-    open: { kind: 'workspace' },
+    open: { kind: 'profileDir' },
   },
   // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
   // deleting a job for good).
@@ -67,63 +61,54 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'folderChange' | 'reset';
+export type CommandId = 'reset';
 
-/** A switch of a row: on or off at once (the state is patched before the save). */
-export interface Switch {
-  id: string;
-  on: (state: AppState) => boolean;
-  patch: (on: boolean) => Partial<SettingsPatch>;
-  /** The state as it will be (the switch follows before the answer). */
-  set: (state: AppState, on: boolean) => void;
-}
-
-/** A row with its buttons at the end, and a switch after them. */
+/** A row with its buttons at the end. */
 export interface Row {
   id: string;
   label: Text;
-  /** A value under the label to copy (a path). */
-  path?: (state: AppState) => string;
-  /** One short sentence under the label (what its switch does). */
-  hint?: Text;
   actions: readonly ActionId[];
-  toggle?: Switch;
 }
 
-/** A card: its rows, and for the two ways of the fetch a block of their own: Suche its
- *  sources, Postfach the card of its account and under it the sources of its alert mails. */
+/** What a card shows besides its rows: the terms of the search (SearchTerms), the portals
+ *  the app searches, or the mailbox card with the portals of its alert mails under it. */
+export type Block = 'terms' | 'search' | 'mailbox';
+/** The portals' cards, by how a portal brings its jobs (`PortalState.way`). */
+export type Portals = Exclude<Block, 'terms'>;
+export const portalsOf = (way: Way): Portals => (way === 'search' ? 'search' : 'mailbox');
+
 export interface CardSpec {
   id: string;
   tab: SettingsTab;
-  heading: Text;
-  block?: Sources;
+  /** Its heading above it (a card alone on its tab goes without: the tab names it). */
+  heading?: Text;
+  /** The one sentence of the info symbol beside the heading. */
+  info?: Text;
+  block?: Block;
   rows: readonly Row[];
+  /** A quiet line under the card. */
+  footnote?: Text;
 }
 
-/** The cards of the sources, by how a source brings its jobs (`PortalState.way`). */
-export type Sources = 'search' | 'mailbox';
-export const sourcesOf = (way: Way): Sources => (way === 'search' ? 'search' : 'mailbox');
-
-/** The work folder (the profiles). */
-const folder: Row = {
-  id: 'folder',
-  label: (t) => t.settings.folder,
-  path: (state) => state.settings.workspace,
-  actions: ['folderChange', 'folderOpen'],
-};
-
 export const CARDS: readonly CardSpec[] = [
-  { id: 'search', tab: 'search', heading: (t) => t.settings.search, block: 'search', rows: [] },
-  { id: 'mailbox', tab: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
+  {
+    id: 'terms',
+    tab: 'portals',
+    heading: (t) => t.settings.terms,
+    info: (t) => t.settings.termsInfo,
+    block: 'terms',
+    rows: [],
+  },
+  { id: 'search', tab: 'portals', heading: (t) => t.settings.search, block: 'search', rows: [] },
+  { id: 'mailbox', tab: 'portals', heading: (t) => t.settings.alerts, block: 'mailbox', rows: [] },
   {
     id: 'data',
     tab: 'data',
-    heading: (t) => t.settings.data,
     rows: [
-      // The one action that deletes for good; what it deletes is said in its dialog (user
-      // decision 2026-09-27: no Sicherung and no Protokoll rows here).
-      folder,
+      { id: 'profiles', label: (t) => t.settings.profiles, actions: ['profilesOpen'] },
+      // The one action that deletes for good; what it deletes is said in its dialog.
       { id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
     ],
+    footnote: (t, state) => t.settings.version(state.version),
   },
 ];

@@ -170,10 +170,9 @@
   const excluded = $derived(job.match?.status === 'excluded');
   /** Not opened yet and not excluded: the dot and the heavier title, in every place. */
   const fresh = $derived(isNew(job));
-  /** In the Papierkorb the moment the job went there (the date the trash sorts by). */
-  const when = $derived(
-    (job.place === 'trash' ? job.trashedAt : null) ?? job.mailDate ?? job.firstSeenAt,
-  );
+  /** The day the job came into CXact; in the Papierkorb the moment it went there (the date
+   *  the trash sorts by). */
+  const when = $derived((job.place === 'trash' ? job.trashedAt : null) ?? job.firstSeenAt);
   const current = $derived(now ?? clock.now);
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);

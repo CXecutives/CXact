@@ -18,21 +18,20 @@
   job's row is in view again. A job action that fails says so in the list header. Every
   empty state is one pattern at one place: an icon and one short sentence, centred, at most
   one way out (secondary: the header holds the view's primary). A filter that leaves nothing
-  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell without a mailbox
-  (while the fetch reads the mails) offers "Postfach verbinden", which opens Einstellungen at
-  the mailbox card. Without a mailbox one slim note at the top says
-  how to connect one (unless the empty Aktuell says it); without a usable profile one says
+  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell says "Noch keine
+  Jobs" and what "Jobs suchen" does; after a search that found nothing that fits "Noch keine
+  passenden Jobs gefunden" with "Profil öffnen"; while a search fills it, that the jobs come
+  one by one. Without a usable profile one says
   that there is no match without it and leads to the Profil view (the rings stay, empty); a
   thin profile one calm line that the match stays rough. A list that fails to load says only
   that, with a retry (the header hides its tools).
 -->
 <script lang="ts">
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import type { EmptyAction } from '$components/EmptyState.svelte';
   import JobRow from '$components/JobRow.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
@@ -49,8 +48,6 @@
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
-  import { glideIntoView } from '$lib/motion/scroll';
-  import { settingsTab } from '$lib/state/settings.svelte';
   import RowBar from './RowBar.svelte';
 
   interface Props {
@@ -115,12 +112,17 @@
   const filterEmptied = $derived(
     jobs.filtered && (jobs.overviewCounts ?? jobs.counts)[jobs.place] > 0,
   );
-  // "No jobs in the alert mails" only after a fetch that read the mailbox.
+  /** An empty Aktuell: while a search fills it, what comes; after one that found nothing
+   *  that fits, that and the way to the profile; before any, what "Jobs suchen" does. */
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
-  const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
-  /** The one sentence of an empty inbox. */
-  const emptyInbox = $derived(
-    run.active ? t.list.emptyWhileRun : mailRead ? t.list.emptyAfterRun : t.list.emptyAll,
+  const emptyInbox = $derived.by(
+    (): { heading: string | null; text: string | null; profile: boolean } => {
+      if (run.fetching) return { heading: null, text: t.list.emptyWhileRun, profile: false };
+      if (lastFetch?.outcome.kind === 'completed') {
+        return { heading: t.list.noMatch, text: null, profile: true };
+      }
+      return { heading: t.list.emptyHeading, text: t.list.emptyText, profile: false };
+    },
   );
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
   // No profile: the fit needs one. One that is there but cannot be used is named.
@@ -141,41 +143,7 @@
   function toProfile(): void {
     navigation.go('profile');
   }
-  /** The fetch reads the mailbox and none is connected: no new jobs come (the search needs
-   *  none). */
-  const mailboxMissing = $derived(app.state !== null && !app.hasMailbox && app.fetchWay === 'mail');
 
-  /** Einstellungen at the mailbox card, its "Verbinden" focused (the view keeps no other
-   *  scroll place for this way). */
-  function toMailbox(): void {
-    settingsTab.value = 'mailbox';
-    navigation.go('settings', false, () => {
-      void tick().then(() =>
-        requestAnimationFrame(() => {
-          const card = document.querySelector<HTMLElement>('[data-testid="settings-mailbox"]');
-          if (card === null) return;
-          glideIntoView(card, 'nearest');
-          card
-            .querySelector<HTMLElement>('[data-testid="mailbox-connect"]')
-            ?.focus({ preventScroll: true });
-        }),
-      );
-    });
-  }
-
-  /** The way on from an empty Aktuell (secondary: the header holds the view's primary, the
-   *  fetch): without a mailbox to connect one. */
-  const emptyAction = $derived<EmptyAction | null>(
-    mailboxMissing ? { label: t.list.connectMailbox, onclick: toMailbox } : null,
-  );
-  /** The empty Aktuell says the list stays empty without a mailbox (not the note too). */
-  const emptyInboxShown = $derived(
-    jobs.place === 'inbox' &&
-      jobs.status === 'ready' &&
-      jobs.visible.length === 0 &&
-      !searching &&
-      !filterEmptied,
-  );
   /** A profile the app understands little of: the fit is rough, said once on top. */
   const profileThin = $derived(app.hasProfile && app.state?.profile?.quality === 'thin');
   // Jobs without a match get one soon while a run goes or a rescore is pending.
@@ -433,18 +401,6 @@
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
 >
-  {#if mailboxMissing && !emptyInboxShown}
-    <div class="note">
-      <Notice
-        tone="info"
-        variant="row"
-        text={t.list.noMailbox}
-        action={{ label: t.list.connectMailbox, onclick: toMailbox }}
-        testid="no-mailbox"
-      />
-    </div>
-  {/if}
-
   {#if profileMissing}
     <div class="note">
       <Notice
@@ -537,12 +493,13 @@
           testid="empty-place-{place}"
         />
       {:else}
-        <!-- A fetch that goes, none yet, or one that read no jobs: what comes, and the way on. -->
+        <!-- A search that goes, none yet, or one that found nothing that fits. -->
         <EmptyState
           icon="inbox"
           tone="neutral"
-          text={mailboxMissing ? t.list.noMailbox : emptyInbox}
-          secondary={emptyAction}
+          heading={emptyInbox.heading}
+          text={emptyInbox.text}
+          secondary={emptyInbox.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
           testid="empty-all"
         />
       {/if}

@@ -1,7 +1,8 @@
-// Which of the three views is shown. No router: the app has exactly these. It starts in Jobs;
-// before the first fetch Jobs shows the setup page. The native menu may ask for a view too (macOS: Cmd+, opens the settings). A view with unsaved
-// work (the Profil editor) holds a guard: it may keep the switch and ask first, then switch
-// itself; what was to happen with the switch waits for it. The places of the jobs (Aktuell,
+// Which of the three views is shown. No router: the app has exactly these. It starts in Jobs.
+// The native menu may ask for a view too (macOS: Cmd+, opens the settings). While the setup
+// stands (App.svelte locks it) every switch is refused: the menu, a toast's action, a link. A
+// view with unsaved work (the Profil editor) holds a guard: it may keep the switch and ask
+// first, then switch itself; what was to happen with the switch waits for it. The places of the jobs (Aktuell,
 // Archiv, Papierkorb) are tabs of the Jobs view, not views (lib/state/jobs.svelte.ts).
 
 import { onNavigate } from '../ipc/api';
@@ -36,6 +37,8 @@ class Navigation {
   focusPortal = $state<Portal | null>(null);
   #installed = false;
   #guard: LeaveGuard | null = null;
+  /** True while no view may be chosen (the setup). */
+  #locked: () => boolean = () => false;
   /** What waits for a switch the guard kept (it runs once that switch happens). */
   #pending: { view: ViewId; then: () => void } | null = null;
 
@@ -45,6 +48,7 @@ class Navigation {
    * already current switches at once. Returns whether it happened now.
    */
   go(view: ViewId, force = false, then?: () => void): boolean {
+    if (!force && this.#locked()) return false;
     if (!force && view !== this.current && this.#guard !== null && !this.#guard(view)) {
       this.#pending = then === undefined ? null : { view, then };
       return false;
@@ -64,7 +68,13 @@ class Navigation {
     };
   }
 
+  /** No view may be chosen while `locked` says so (the setup; only a forced switch passes). */
+  lock(locked: () => boolean): void {
+    this.#locked = locked;
+  }
+
   /** Follow the native menu (App.svelte, once). */
+
   install(): void {
     if (this.#installed) return;
     this.#installed = true;

@@ -83,7 +83,7 @@ test('CRED-2: a mistyped app password is named at once, also while a fetch runs'
   // In the right shape it waits for the fetch, which the form says; the dialog stays.
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await dialog(page).getByTestId('dialog-confirm').click();
-  await expect(page.getByTestId('mailbox-form')).toContainText('Gerade läuft schon ein Abruf.');
+  await expect(page.getByTestId('mailbox-form')).toContainText('Gerade läuft schon eine Suche.');
   await expect(dialog(page)).toBeVisible();
   expect(await calls(page, 'save_mailbox')).toHaveLength(2);
   await page.evaluate(() => (window.__harness.holdAfter = null));

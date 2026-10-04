@@ -1,6 +1,6 @@
 <!--
   Closing the window while a fetch runs asks first (src-tauri/src/main.rs sends
-  `close-running`): "Trotzdem schließen?" over "Der Abruf läuft noch." with Schließen and
+  `close-running`): "Trotzdem schließen?" over "Die Suche läuft noch." with Schließen and
   Abbrechen.
   Schließen cancels the fetch and closes once it has stopped (the closing note of App.svelte
   says so meanwhile); Abbrechen keeps the window and the fetch. A fetch that ends while the

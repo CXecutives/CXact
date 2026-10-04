@@ -2,7 +2,7 @@
 // searches first (Hays, freelancermap, Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x,
 // FRATCH), then the ones of alert mails (LinkedIn, freelance.de).
 // A table of the UI, not core's `Portal::ALL` (the order the backend works in): Einstellungen
-// and the first-run page list them in this order.
+// and the setup list them in this order.
 
 import type { Portal } from './ipc/types';
 

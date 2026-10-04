@@ -15,7 +15,8 @@
   toast) or discarded. While it shows, the toasts rise above it (the toast stack measures
   it). An untouched new form goes back to the ways in with Esc. Enter in a field saves, as in
   every form (in the row lists it goes to the next row, in a chip field it adds what was
-  typed).
+  typed). In the setup (`onboarding`) there is no save bar and no "Häufig verlangt"; Enter is
+  the setup's "Weiter" (`onsave`, also without a change) and Esc does nothing.
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -63,9 +64,20 @@
     ondiscard: () => void;
     /** The save bar has left (after a save: the view's toast comes now). */
     onbargone?: () => void;
+    /** The setup: no save bar, no "Häufig verlangt", Enter goes on. */
+    onboarding?: boolean;
   }
 
-  let { fieldError, aiFilled, busy, note, onsave, ondiscard, onbargone }: Props = $props();
+  let {
+    fieldError,
+    aiFilled,
+    busy,
+    note,
+    onsave,
+    ondiscard,
+    onbargone,
+    onboarding = false,
+  }: Props = $props();
 
   // Text typed into a chip field of the form counts as a change.
   editor.typed.share();
@@ -234,7 +246,11 @@
 <div
   class="editor"
   bind:this={root}
-  use:formKeys={untouched ? { save, cancel: ondiscard } : { save }}
+  use:formKeys={onboarding
+    ? { save: () => !busy && onsave() }
+    : untouched
+      ? { save, cancel: ondiscard }
+      : { save }}
   onfocusin={keepClear}
   data-testid="profile-form"
 >
@@ -297,7 +313,7 @@
           testid={c.testid}
         />
       </Field>
-      {#if c.asked}<AskedTerms field={c.asked} home={c.testid} />{/if}
+      {#if c.asked && !onboarding}<AskedTerms field={c.asked} home={c.testid} />{/if}
     </div>
   {:else if c.kind === 'segments'}
     <div data-field={fields}>
@@ -380,7 +396,7 @@
       <Field label={words.competences} info={infoOf(c)} mark={markOf(c)}>
         <CompetenceList bind:rows={form.competences} error={listError('competences')} />
       </Field>
-      <AskedTerms field="competence" home="competence-add" />
+      {#if !onboarding}<AskedTerms field="competence" home="competence-add" />{/if}
     </div>
   {:else if c.kind === 'industries'}
     {@const error = errorOf('industries')}
@@ -402,19 +418,19 @@
           testid="profile-industries"
         />
       </Field>
-      <AskedTerms field="industry" home="profile-industries" />
+      {#if !onboarding}<AskedTerms field="industry" home="profile-industries" />{/if}
     </div>
   {:else if c.kind === 'languages'}
     <div data-field={fields}>
       <Field label={words.languages} mark={markOf(c)}>
         <LanguageList bind:rows={form.languages} error={listError('languages')} />
       </Field>
-      <AskedTerms field="language" home="language-add" />
+      {#if !onboarding}<AskedTerms field="language" home="language-add" />{/if}
     </div>
   {/if}
 {/snippet}
 
-{#if editor.dirty}
+{#if editor.dirty && !onboarding}
   <div
     class="bar"
     bind:this={bar}

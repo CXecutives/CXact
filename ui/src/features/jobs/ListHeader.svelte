@@ -2,12 +2,10 @@
   The header of the list column, the same in the three places. First row: the places as tabs
   (Aktuell, Archiv, Papierkorb, their names only; another place starts without the search,
   like a folder of a mail app) and at its right end the place's one action: in the
-  Aktuell the fetch of the way its menu chose ("Jobs suchen" with the magnifier, "Alert-Mails
-  lesen" with the open envelope), the one primary of the Jobs view, as wide in both ways, with
-  an outlined chevron button beside it that opens the menu of the two ways (the current one
-  checked; a choice is saved at once, lib/state/app.svelte.ts); "Abbrechen" stands in the
-  fetch's place while a fetch goes (the widest of them sets the slot), the menu's button stays
-  beside it, off; in the other places "Abbrechen" stands where it stands in Aktuell, so
+  Aktuell "Jobs suchen" with the magnifier (the alert mails, then the portals), the one
+  primary of the Jobs view, with or without a mailbox; "Abbrechen" stands in its place while
+  a fetch goes (the wider of them sets the slot); in the other places "Abbrechen" stands where
+  it stands in Aktuell, so
   it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
   while the app scores the jobs anew, and while its way cannot run, saying why. In the
   Papierkorb "Papierkorb leeren" (outlined with the red of every button that deletes, as
@@ -18,7 +16,7 @@
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
   sets none), the one control of the order and the filter: its menu holds, under small
   headings, "Sortierung" (Nach Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter
-  table (lib/state/filter.ts: Quelle, Übereinstimmung, Gefunden, each with every value of its
+  table (lib/state/filter.ts: Portal, Übereinstimmung, Neu seit, each with every value of its
   dimension; the portals in the UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter is
   on (so the menu never changes its height). The menu stays open while choosing (several
   groups in one go, the check marks move with each choice) and closes on a press outside,
@@ -30,8 +28,8 @@
   stand as small chips under the row, each with its × (the row unfolds and folds away, the
   list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
   what went wrong. The bottom hairline shows only once the list below is scrolled. Under the
-  rows one sentence says when a job action of the list failed (a move, its undo, the choice
-  of the way); it goes with the next list or the next action that works.
+  rows one sentence says when a job action of the list failed (a move, its undo); it goes
+  with the next list or the next action that works.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -48,11 +46,10 @@
   import { activeFilters, dropFrom, NO_FILTER, type ActiveFilter } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu } from '$lib/state/menu.svelte';
-  import { FETCH_WAYS } from '$lib/state/app.svelte';
-  import { fetchLook, run } from '$lib/state/run.svelte';
+  import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
-  import { funnelEntries, wayEntries } from './headerMenus';
+  import { funnelEntries } from './headerMenus';
   import RunLine from './RunLine.svelte';
   import TrashAction from './TrashAction.svelte';
 
@@ -154,33 +151,12 @@
 
   /* ----------------------------------------------------------------------- fetch */
 
-  /** The menu of what a fetch reads is open (its button keeps its hover look). */
-  let wayOpen = $state(false);
-  /** "Jobs abrufen" shows: in Aktuell while no fetch goes (elsewhere it only holds
-   *  the cell's width, so "Abbrechen" stands where it stands in Aktuell). */
+  /** "Jobs suchen" shows: in Aktuell while no fetch goes (elsewhere it only holds the cell's
+   *  width, so "Abbrechen" stands where it stands in Aktuell). */
   const fetchShown = $derived(place === 'inbox' && !run.fetching);
   /** The fetch's buttons show: in Aktuell, and "Abbrechen" in every place while a fetch
    *  goes. */
   const fetchGroup = $derived(place === 'inbox' || run.fetching);
-  /** The fetch's colour: the view's primary once a fetch can bring jobs. */
-  const fetchVariant = $derived(app.hasMailbox && app.hasPortal ? 'primary' : 'secondary');
-
-  const way = $derived(fetchLook());
-
-  /** "Abruf einstellen" below the fetch and its button, its right edge on the button's. */
-  function openWays(event: MouseEvent): void {
-    const control = (event.currentTarget as HTMLElement | null)?.closest('.fetch');
-    if (!control || menuState.open !== null) return;
-    wayOpen = true;
-    openMenu({
-      label: t.toolbar.fetchSettings,
-      anchor: { kind: 'below', rect: control.getBoundingClientRect(), align: 'end' },
-      entries: wayEntries(),
-      refresh: wayEntries,
-      fromKeyboard: event.detail === 0,
-      onclose: () => (wayOpen = false),
-    });
-  }
 
   /* ----------------------------------------------------------------------- trash */
 
@@ -221,23 +197,16 @@
   }
 </script>
 
-{#snippet fetchButtons(inbox: boolean)}
-  <!-- The fetch and "Abbrechen" share one slot, as wide as the widest of them and of the
-       fetch's other way (unseen), so the button keeps one size whichever way its menu chose:
-       nothing moves; the menu's button beside them is off while a fetch goes and holds its
-       room outside Aktuell. -->
+{#snippet fetchButtons()}
+  <!-- The fetch and "Abbrechen" share one slot, as wide as the wider of them: nothing
+       moves. -->
   <span class="fetch">
     <span class="run">
-      {#each FETCH_WAYS as other (other)}
-        <span class="swap sizer" inert aria-hidden="true"
-          ><Button variant="secondary" {...fetchLook(other)} wide /></span
-        >
-      {/each}
       <span class="swap" class:shown={fetchShown} inert={!fetchShown}>
         <Button
-          variant={fetchVariant}
-          icon={way.icon}
-          label={way.label}
+          variant="primary"
+          icon="search"
+          label={t.toolbar.searchNow}
           disabled={run.fetchBlocked !== null}
           disabledReason={run.fetchBlocked}
           wide
@@ -257,20 +226,6 @@
         />
       </span>
     </span>
-    <span class="swap" class:shown={inbox} inert={!inbox}>
-      <Button
-        variant="secondary"
-        iconOnly
-        icon="expand"
-        label={t.toolbar.fetchSettings}
-        menu
-        expanded={inbox && wayOpen}
-        disabled={run.fetching}
-        disabledReason={run.busyText}
-        testid={inbox ? 'fetch-ways' : null}
-        onclick={openWays}
-      />
-    </span>
   </span>
 {/snippet}
 
@@ -287,10 +242,10 @@
       <!-- One cell in every place, as wide as the widest of what it holds (the fetch's
            buttons hold its width where they do not show); only the one that fits the place
            and the run shows and takes clicks: "Abbrechen" while a fetch goes, wherever the
-           list is (a fetch that ends at once simply shows "Alert-Mails lesen" again). -->
+           list is (a fetch that ends at once simply shows "Jobs suchen" again). -->
       <span class="action" data-testid="place-action">
         <span class="slot" class:shown={fetchGroup} inert={!fetchGroup}>
-          {@render fetchButtons(place === 'inbox')}
+          {@render fetchButtons()}
         </span>
         {#if emptiable}
           <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
@@ -444,13 +399,11 @@
     opacity: 1;
   }
 
-  /* The fetch (or "Abbrechen") and the button of its menu beside it. */
   .fetch {
     display: flex;
-    gap: var(--space-8);
   }
 
-  /* "Alert-Mails lesen" and "Abbrechen" in one cell, both as wide as the wider. */
+  /* "Jobs suchen" and "Abbrechen" in one cell, both as wide as the wider. */
   .run {
     display: grid;
   }
@@ -468,10 +421,6 @@
 
   .swap.shown {
     opacity: 1;
-  }
-
-  .sizer {
-    visibility: hidden;
   }
 
   .unfold {

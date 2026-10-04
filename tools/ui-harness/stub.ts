@@ -78,14 +78,12 @@ import type {
   JobView,
   MailboxCheck,
   MoveBack,
-  Origin,
   Place,
   PortalState,
   ProfileForm,
   ProfileInfo,
   ProfileUnderstanding,
   Reason,
-  RunEvent,
   RunRequest,
   RunSummary,
   ScoreDelta,
@@ -99,11 +97,18 @@ import {
   MAX_YEARS,
   NUMBER_LIMITS,
 } from '../../ui/src/lib/ipc/types/profile';
-import type { CvFailure, NextCommands } from '../../ui/src/lib/ipc/api';
+import type {
+  CvFailure,
+  NextCommands,
+  NextRunEvent as RunEvent,
+  NextRunSummary,
+  SearchTerm,
+} from '../../ui/src/lib/ipc/api';
 import snapshot from './demo/snapshot.json';
 // The engine's words of the suggestions (written by core's matching::vocabulary test).
 import VOCABULARY from './demo/vocabulary.json';
 import type { Snapshot } from './snapshot';
+import { installPreviewMenu, preview } from './preview';
 
 interface Harness {
   calls: [string, unknown][];
@@ -266,13 +271,14 @@ const HOME = MAC ? '/Users/demo' : 'C:/Users/demo';
 const DATA_DIR = MAC
   ? '/Users/demo/Library/Application Support/job-alert-monitor'
   : 'C:/Users/demo/AppData/Roaming/job-alert-monitor';
-const TICK = Number(params.get('tick') ?? 40);
-/** `?way=mail`: the fetch reads the mailbox (the menu's "Postfach"); else it searches. */
-const MAIL_WAY = params.get('way') === 'mail';
+/** The preview in a browser (`tools/ui-preview.cmd`), not a spec driving it: waits like the
+ *  real app's and the preview menu (preview.ts). */
+const PREVIEW = !navigator.webdriver;
+const TICK = Number(params.get('tick') ?? (PREVIEW ? 300 : 40));
 const DELAY = scenario === 'slow' ? 900 : 0;
-/** How long the CV evaluation takes in the preview and the specs (`?cv=slow`: like a real
- *  one). */
-const CV_WAIT = 1500;
+/** How long the CV evaluation takes: in the specs short, in the preview about as long as a
+ *  real one (`?cv=slow`: as long as a slow one). */
+const CV_WAIT = PREVIEW ? 8000 : 1500;
 /** `?cv=` as the failure of the evaluation it plays. */
 const CV_FAILURE: Readonly<Record<string, CvFailure>> = {
   limit: 'limit',
@@ -671,6 +677,8 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 
 let jobs: JobView[] = [];
 let state: AppState;
+/** `searching`: a search starts once the page asked for the state. */
+let autorun = false;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
 let backups: Backup[] = [];
 
@@ -690,6 +698,161 @@ function restoreName(ms: number): string {
   return `jobs.before-restore-${digits.slice(0, 8)}-${digits.slice(8, 14)}-${digits.slice(14, 17)}.db`;
 }
 
+/**
+ * The scenarios (`?scenario=`), one entry each: what differs from the default state. The
+ * preview's menu (preview.ts) names the ones worth a look; a new state is one entry here and
+ * one row there.
+ */
+const SCENARIOS: Readonly<Record<string, () => void>> = {
+  'first-run': () => {
+    jobs = [];
+    state.firstRun = true;
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.profile = null;
+    state.lastRun = null;
+  },
+  // The setup with a usable profile and no mailbox: it begins at Alert-Mails.
+  'setup-profile': () => {
+    jobs = [];
+    state.firstRun = true;
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.lastRun = null;
+  },
+  // Before the first search: Aktuell holds nothing yet.
+  fresh: () => {
+    jobs = [];
+    state.lastRun = null;
+  },
+  // A search starts right after the page loaded (the preview watches it run).
+  searching: () => {
+    autorun = true;
+  },
+  // No mailbox: the alert mails rest, the search goes on.
+  'no-mailbox': () => {
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+  },
+  'no-minimum': () => {
+    state.profile = { ...PROFILE, form: { ...DEMO_FORM, dayRateMin: null } };
+  },
+  'no-profile': () => {
+    state.profile = null;
+    for (const j of jobs) j.match = null;
+  },
+  concept: () => {
+    // Five jobs for design reviews: high, medium, low, not scored, excluded.
+    const keep = [
+      'freelancermap:2801',
+      'freelance:900411',
+      'freelancermap:2804',
+      'linkedin:4100200302',
+      'freelance:900412',
+    ];
+    jobs = jobs.filter((j) => keep.includes(`${j.key.portal}:${j.key.id}`));
+  },
+  empty: () => {
+    jobs = [];
+    state.lastRun = {
+      ...lastRun(),
+      perPortal: lastRun().perPortal.map((p) => ({ ...p, new: 0 })),
+      newJobs: { count: 0, high: 0 },
+      emptyAlerts: [],
+    };
+  },
+  offline: () => {
+    state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
+  },
+  paused: () => {
+    state.portals[0]!.health = { kind: 'paused', until: later(95), reason: 'throttled' };
+    state.portals[1]!.health = { kind: 'layoutSuspect', emptyMails: 2, pages: 0 };
+    // Alert mails without jobs ask her to look (core's PortalHealth::action_needed).
+    state.portals[1]!.actionNeeded = true;
+    // Near the day's limit: the meter turns ochre.
+    state.portals[2]!.quota = { usedHour: 12, capHour: 40, usedDay: 92, capDay: 100 };
+  },
+  reset: () => {
+    // After "reset everything" the app starts empty: the first-run page, with the report.
+    jobs = [];
+    state.firstRun = true;
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.profile = null;
+    state.lastRun = null;
+    state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
+  },
+  'session-left': () => {
+    // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
+    state.portals[1]!.signedIn = true;
+  },
+  'dry-run': () => {
+    state.dryRun = true;
+    state.mailbox = {
+      user: 'probelauf@example.org',
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
+  },
+  'profile-broken': () => {
+    state.profile = {
+      ...PROFILE,
+      quality: null,
+      understood: null,
+      parseError: { kind: 'invalid', params: { reason: 'profileNotJson', line: 12, column: 3 } },
+      form: null,
+    };
+    // Like the backend at the start: the scores of a profile that no longer reads go.
+    for (const job of jobs) job.match = null;
+  },
+  'profile-thin': () => {
+    // A complete profile that names few terms: the match stays rough.
+    state.profile = infoOf({
+      ...structuredClone(DEMO_FORM),
+      competences: [
+        { name: 'Controlling', years: 18, focus: false },
+        { name: 'Treasury', years: null, focus: false },
+      ],
+      tools: ['IFRS'],
+      industries: [],
+      degrees: [],
+      certificates: [],
+    });
+  },
+  'profile-incomplete': () => {
+    // A profile without a wished role and a language: two required fields are open.
+    state.profile = infoOf({
+      ...structuredClone(DEMO_FORM),
+      roles: [],
+      competences: [
+        { name: 'Controlling', years: 18, focus: false },
+        { name: 'Treasury', years: null, focus: false },
+      ],
+      languages: [],
+    });
+  },
+  running: () => {
+    state.running = {
+      kind: 'fetch',
+      startedAt: at(0.05),
+      replay: [
+        { type: 'progress', step: 'scan', portal: null, done: 9, total: 9 },
+        { type: 'progress', step: 'fetch', portal: null, done: 5, total: 7 },
+        {
+          type: 'portalHealth',
+          portal: 'freelance',
+          health: { kind: 'paused', until: later(12), reason: 'throttled' },
+          actionNeeded: false,
+        },
+        { type: 'status', code: 'waiting', portal: 'linkedin', until: later(0.7) },
+      ],
+    };
+  },
+  'quiet-alert': () => {
+    // freelance.de sent its last alert mail nine days before the last fetch: its alert
+    // may have run out.
+    state.portals[1]!.lastAlert = at(9 * 24);
+  },
+};
+
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
   backups =
@@ -700,7 +863,7 @@ function initial(): void {
   state = {
     platform: MAC ? 'macos' : 'windows',
     // The app's version (src-tauri's CARGO_PKG_VERSION, the workspace's).
-    version: '3.0.0',
+    version: '4.0.0',
     dryRun: false,
     firstRun: false,
     running: null,
@@ -731,8 +894,8 @@ function initial(): void {
       portal('interimx', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
       portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
-    fetchMail: MAIL_WAY,
-    fetchSearch: !MAIL_WAY,
+    fetchMail: true,
+    fetchSearch: true,
     lastRun: lastRun(),
     counts: countsOf([]),
     matchPending: 0,
@@ -740,154 +903,18 @@ function initial(): void {
     logDir: `${DATA_DIR}/logs`,
     resetReport: null,
   };
-  switch (scenario) {
-    case 'first-run':
-      jobs = [];
-      state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
-      state.profile = null;
-      state.lastRun = null;
-      break;
-    case 'mailbox-only':
-      jobs = [];
-      state.firstRun = true;
-      state.profile = null;
-      state.lastRun = null;
-      break;
-    case 'first-fetch-failed':
-      // A failed first fetch keeps the setup page (only a completed one ends it).
-      jobs = [];
-      state.firstRun = true;
-      state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
-      break;
-    case 'first-run-empty-profile':
-      // A profile that names no competences: nothing can be scored with it.
-      jobs = [];
-      state.firstRun = true;
-      state.lastRun = null;
-      state.profile = infoOf({ ...DEMO_FORM, competences: [], languages: [] });
-      break;
-    case 'no-minimum':
-      state.profile = { ...PROFILE, form: { ...DEMO_FORM, dayRateMin: null } };
-      break;
-    case 'no-profile':
-      state.profile = null;
-      for (const j of jobs) j.match = null;
-      break;
-    case 'concept': {
-      // Five jobs for design reviews: high, medium, low, not scored, excluded.
-      const keep = [
-        'freelancermap:2801',
-        'freelance:900411',
-        'freelancermap:2804',
-        'linkedin:4100200302',
-        'freelance:900412',
-      ];
-      jobs = jobs.filter((j) => keep.includes(`${j.key.portal}:${j.key.id}`));
-      break;
+  SCENARIOS[scenario]?.();
+  // `?open=portal:id`: that job is open when the page comes (the store the app keeps it in).
+  const [openPortal, openId] = (params.get('open') ?? '').split(':');
+  if (openPortal && openId) {
+    try {
+      localStorage.setItem(
+        `jobs-open:${state.settings.workspace}`,
+        JSON.stringify({ key: { portal: openPortal, id: openId }, place: 'inbox' }),
+      );
+    } catch {
+      // Without a store no job is open.
     }
-    case 'empty':
-      jobs = [];
-      state.lastRun = {
-        ...lastRun(),
-        perPortal: lastRun().perPortal.map((p) => ({ ...p, new: 0 })),
-        newJobs: { count: 0, high: 0 },
-        emptyAlerts: [],
-      };
-      break;
-    case 'offline':
-      state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
-      break;
-    case 'paused':
-      state.portals[0]!.health = { kind: 'paused', until: later(95), reason: 'throttled' };
-      state.portals[1]!.health = { kind: 'layoutSuspect', emptyMails: 2, pages: 0 };
-      // Alert mails without jobs ask her to look (core's PortalHealth::action_needed).
-      state.portals[1]!.actionNeeded = true;
-      // Near the day's limit: the meter turns ochre.
-      state.portals[2]!.quota = { usedHour: 12, capHour: 40, usedDay: 92, capDay: 100 };
-      break;
-    case 'reset':
-      // After "reset everything" the app starts empty: the first-run page, with the report.
-      jobs = [];
-      state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
-      state.profile = null;
-      state.lastRun = null;
-      state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
-      break;
-    case 'session-left':
-      // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
-      state.portals[1]!.signedIn = true;
-      break;
-    case 'dry-run':
-      state.dryRun = true;
-      state.mailbox = {
-        user: 'probelauf@example.org',
-        vault: VAULT,
-        error: null,
-        check: null,
-        checkedAt: null,
-      };
-      break;
-    case 'profile-broken':
-      state.profile = {
-        ...PROFILE,
-        quality: null,
-        understood: null,
-        parseError: { kind: 'invalid', params: { reason: 'profileNotJson', line: 12, column: 3 } },
-        form: null,
-      };
-      // Like the backend at the start: the scores of a profile that no longer reads go.
-      for (const job of jobs) job.match = null;
-      break;
-    case 'profile-thin':
-      // A complete profile that names few terms: the match stays rough.
-      state.profile = infoOf({
-        ...structuredClone(DEMO_FORM),
-        competences: [
-          { name: 'Controlling', years: 18, focus: false },
-          { name: 'Treasury', years: null, focus: false },
-        ],
-        tools: ['IFRS'],
-        industries: [],
-        degrees: [],
-        certificates: [],
-      });
-      break;
-    case 'profile-incomplete':
-      // A profile without a wished role and a language: two required fields are open.
-      state.profile = infoOf({
-        ...structuredClone(DEMO_FORM),
-        roles: [],
-        competences: [
-          { name: 'Controlling', years: 18, focus: false },
-          { name: 'Treasury', years: null, focus: false },
-        ],
-        languages: [],
-      });
-      break;
-    case 'running':
-      state.running = {
-        kind: 'fetch',
-        startedAt: at(0.05),
-        replay: [
-          { type: 'progress', step: 'scan', portal: null, done: 9, total: 9 },
-          { type: 'progress', step: 'fetch', portal: null, done: 5, total: 7 },
-          {
-            type: 'portalHealth',
-            portal: 'freelance',
-            health: { kind: 'paused', until: later(12), reason: 'throttled' },
-            actionNeeded: false,
-          },
-          { type: 'status', code: 'waiting', portal: 'linkedin', until: later(0.7) },
-        ],
-      };
-      break;
-    case 'quiet-alert':
-      // freelance.de sent its last alert mail nine days before the last fetch: its alert
-      // may have run out.
-      state.portals[1]!.lastAlert = at(9 * 24);
-      break;
   }
   for (const p of state.portals) p.lastAlert ??= lastAlertOf(p.portal);
   refresh();
@@ -963,9 +990,9 @@ function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   }
   const portals = query.portals ?? [];
   if (portals.length > 0 && !portals.includes(j.key.portal)) return false;
-  // The day it came (store::filter_condition): the alert mail's date, else its first sighting.
+  // "Neu seit" (store::filter_condition): the moment it came into CXact.
   if (query.receivedSince !== null && query.receivedSince !== undefined) {
-    if (Date.parse(j.mailDate ?? j.firstSeenAt) / 1000 < query.receivedSince) return false;
+    if (Date.parse(j.firstSeenAt) / 1000 < query.receivedSince) return false;
   }
   const bands = query.bands ?? [];
   if (bands.length === 0) return true;
@@ -1055,6 +1082,13 @@ function matchesSearch(j: JobView, words: readonly string[]): boolean {
 }
 
 /** The same order and counts as store::job_page (one statement, list and counts agree). */
+/** The day of a moment in the user's time zone, as YYYY-MM-DD (orders as a string). */
+function localDay(iso: string): string {
+  const day = new Date(iso);
+  const two = (value: number): string => String(value).padStart(2, '0');
+  return `${day.getFullYear()}-${two(day.getMonth() + 1)}-${two(day.getDate())}`;
+}
+
 function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   if (scenario === 'list-error') throw fail('db');
   if (query.offset > 0 && harness.failPages > 0) {
@@ -1063,10 +1097,12 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   }
   const words = searchWords(query.search);
   const base = jobs.filter((j) => matchesSearch(j, words) && inFilter(j, query));
-  // The filter narrows the counts like the list (store::job_page). By date: the mail's, in
-  // the trash the day the job went there.
+  // The filter narrows the counts like the list (store::job_page). By date: the day the job
+  // came into CXact (within a day by its alert mail's date, then by portal), in the trash the
+  // moment it went there.
+  const days = new Map(base.map((j) => [j, localDay(j.firstSeenAt)]));
   const date = (j: JobView): string =>
-    query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (j.mailDate ?? j.firstSeenAt);
+    query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (days.get(j) ?? '');
   // store::page_order: the excluded last; by match every job whose ring shows no number
   // first (not scored yet and not scorable together, on top of the list, so every page is
   // complete); a closed ad after the open ones; then the best score, the ones without a
@@ -1101,6 +1137,12 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
       const da = date(a);
       const db = date(b);
       if (da !== db) return da < db ? 1 : -1;
+      if (query.place !== 'trash') {
+        const ma = a.mailDate ?? '';
+        const mb = b.mailDate ?? '';
+        if (ma !== mb) return ma < mb ? 1 : -1;
+        if (a.portal !== b.portal) return a.portal < b.portal ? -1 : 1;
+      }
       return a.key.id.localeCompare(b.key.id);
     });
   return {
@@ -1180,6 +1222,25 @@ function askedTerms(): AskedTerm[] {
     .sort(([ka, a], [kb, b]) => b.count - a.count || (ka < kb ? -1 : ka > kb ? 1 : 0))
     .slice(0, 8)
     .map(([, entry]) => entry);
+}
+
+/** `search_terms` like profile::deep_search_terms: the wished roles, the focus competences,
+ *  then the others and the tools, at most 24, each with what it brought in the last search
+ *  (the demo's counts; none before a search: "neu"). */
+function searchTerms(): SearchTerm[] {
+  const form = state.profile?.form;
+  if (!form) return [];
+  const named = [
+    ...form.roles,
+    ...form.competences.filter((c) => c.focus).map((c) => c.name),
+    ...form.competences.filter((c) => !c.focus).map((c) => c.name),
+    ...form.tools,
+  ].filter((term, index, all) => term.trim() !== '' && all.indexOf(term) === index);
+  const searched = state.lastRun !== null;
+  return named.slice(0, 24).map((term, index) => ({
+    term,
+    matched: searched && index < 8 ? [6, 4, 3, 3, 2, 1, 0, 1][index]! : null,
+  }));
 }
 
 /* ------------------------------------------------------------------- detail */
@@ -1333,15 +1394,35 @@ function arrived(fresh: readonly JobView[]): JobView[] {
 let lastRunNumber = 41;
 const seenIn = new Map<string, number>();
 
-/** The scripted fetch of one way (run_context: the search or the mailbox, never both): the
- *  mailbox reads the three alert mails and brings the jobs they name, the search asks Hays
- *  and freelancermap and brings the jobs it finds (freelancermap's). */
-function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
-  const way: Origin = mail ? 'mail' : 'search';
-  const fresh = unknown().filter((j) => j.origins.includes(way));
+/** What "Jobs suchen" reads (run_context): the alert mails with a mailbox and a portal of
+ *  them on, the portals' search with a usable profile and a portal of it on. */
+function readable(): { mail: boolean; search: boolean } {
+  const profile = state.profile;
+  const usable = profile !== null && profile.parseError === null && profile.missing.length === 0;
+  return {
+    mail: state.mailbox.user !== null && state.portals.some((p) => p.enabled && p.way === 'alert'),
+    search: (usable || state.dryRun) && state.portals.some((p) => p.enabled && p.way === 'search'),
+  };
+}
+
+/** The scripted "Jobs suchen" (run_context): the mailbox reads the three alert mails and
+ *  brings the jobs they name, then every portal of the search that is on is asked (side by
+ *  side: each says when it is done, with its new jobs that are not excluded) and brings what
+ *  it finds (freelancermap's). `mailFailure`: Gmail cannot be reached, so the mail part is
+ *  skipped and the summary says why (`mail`), the search runs anyway. */
+function script(kind: RunSummary['kind'], mailFailure: ErrorInfo | null = null): RunEvent[] {
+  const ways = readable();
+  const mail = ways.mail && mailFailure === null;
+  const fresh = unknown().filter(
+    (j) => (mail && j.origins.includes('mail')) || (ways.search && j.origins.includes('search')),
+  );
   const total = fresh.length;
   const number = ++lastRunNumber;
   for (const j of fresh) seenIn.set(markKey(j.key), number);
+  // Their pages and scores; without a profile nothing is scored (the backend has no matcher).
+  const profiled = state.profile !== null;
+  const done = arrived(fresh);
+  const excluded = (j: JobView): boolean => profiled && j.match?.status === 'excluded';
   const reading: RunEvent[] = [
     { type: 'status', code: 'connectingMail', portal: null, until: null },
     { type: 'status', code: 'searchingMail', portal: null, until: null },
@@ -1374,16 +1455,28 @@ function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
     },
     { type: 'progress', step: 'scan', portal: null, done: 3, total: 3 },
   ];
-  // The sources' own search: a page of each, named while it is asked.
-  const searching: RunEvent[] = [
-    { type: 'status', code: 'searching', portal: 'hays', until: null },
-    { type: 'progress', step: 'search', portal: 'hays', done: 1, total: 2 },
-    { type: 'status', code: 'searching', portal: 'freelancermap', until: null },
-    { type: 'progress', step: 'search', portal: 'freelancermap', done: 2, total: 2 },
-  ];
+  // The portals' search: each one that is on, done in its turn with what it brought.
+  const searched = state.portals.filter((p) => p.enabled && p.way === 'search');
+  const searching: RunEvent[] = searched.flatMap((p, index): RunEvent[] => [
+    { type: 'status', code: 'searching', portal: p.portal, until: null },
+    {
+      type: 'progress',
+      step: 'search',
+      portal: p.portal,
+      done: index + 1,
+      total: searched.length,
+    },
+    {
+      type: 'sourceDone',
+      portal: p.portal,
+      new: done.filter((j) => j.portal === p.portal && j.origins.includes('search') && !excluded(j))
+        .length,
+    },
+  ]);
   const events: RunEvent[] = [
     { type: 'started', kind },
-    ...(mail ? reading : searching),
+    ...(mail ? reading : []),
+    ...(ways.search ? searching : []),
     ...fresh.map((j): RunEvent => ({
       type: 'jobUpdated',
       job: structuredClone(j),
@@ -1393,11 +1486,11 @@ function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
   if (total > 0) {
     events.push(
       { type: 'status', code: 'fetchingDetails', portal: fresh[0]!.portal, until: null },
-      ...Array.from({ length: total + 1 }, (_, done): RunEvent => ({
+      ...Array.from({ length: total + 1 }, (_, step): RunEvent => ({
         type: 'progress',
         step: 'fetch',
         portal: null,
-        done,
+        done: step,
         total,
       })),
     );
@@ -1417,9 +1510,6 @@ function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
       { type: 'progress', step: 'score', portal: null, done: 0, total },
     );
   }
-  // Their pages and scores; without a profile nothing is scored (the backend has no matcher).
-  const profiled = state.profile !== null;
-  const done = arrived(fresh);
   done.forEach((j, i) => {
     events.push({
       type: 'jobUpdated',
@@ -1428,47 +1518,49 @@ function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
     });
     events.push({ type: 'progress', step: 'score', portal: null, done: i + 1, total });
   });
-  events.push({
-    type: 'finished',
-    summary: {
-      ...lastRun(),
-      run: number,
-      kind,
-      startedAt: at(0.05),
-      finishedAt: at(0),
-      // Each portal's mail names one job, the search finds freelancermap's: new the first
-      // time, known after (a known job loads no page again).
-      perPortal: (mail
-        ? (['linkedin', 'freelance', 'freelancermap'] as const)
-        : (['freelancermap'] as const)
-      ).map((portal) => {
-        const now = fresh.filter((j) => j.portal === portal).length;
-        return {
-          portal,
-          new: now,
-          known: 1 - now,
-          dup: 0,
-          fetched: now,
-          failed: 0,
-          gone: 0,
-          skipped: 0,
-          stopped:
-            portal === 'freelance' && now > 0
-              ? { kind: 'paused' as const, until: later(15), reason: 'throttled' as const }
-              : null,
-        };
-      }),
-      // The new jobs as store::new_jobs counts them: the excluded ones are none, the high
-      // ones apart (without a profile none is excluded and none is high).
-      newJobs: {
-        count: done.filter((j) => !profiled || j.match?.status !== 'excluded').length,
-        high: profiled
-          ? done.filter((j) => j.match?.status === 'scored' && j.match.band === 'high').length
-          : 0,
-      },
-      emptyAlerts: [],
+  // Each portal's mail names one job, the search finds freelancermap's: new the first time,
+  // known after (a known job loads no page again).
+  const portals = [
+    ...(mail ? (['linkedin', 'freelance'] as const) : []),
+    ...searched.map((p) => p.portal),
+  ];
+  const summary: NextRunSummary = {
+    ...lastRun(),
+    run: number,
+    kind,
+    startedAt: at(0.05),
+    finishedAt: at(0),
+    scan: mail ? lastRun().scan : null,
+    perPortal: portals.map((portal) => {
+      const now = fresh.filter((j) => j.portal === portal).length;
+      return {
+        portal,
+        new: now,
+        known: portal === 'freelancermap' ? 1 - now : 0,
+        dup: 0,
+        fetched: now,
+        failed: 0,
+        gone: 0,
+        skipped: 0,
+        stopped:
+          portal === 'freelance' && now > 0
+            ? { kind: 'paused' as const, until: later(15), reason: 'throttled' as const }
+            : null,
+      };
+    }),
+    // The new jobs as store::new_jobs counts them: the excluded ones apart, the high ones
+    // among the rest (without a profile none is excluded and none is high).
+    newJobs: {
+      count: done.filter((j) => !excluded(j)).length,
+      high: profiled
+        ? done.filter((j) => j.match?.status === 'scored' && j.match.band === 'high').length
+        : 0,
+      excluded: done.filter(excluded).length,
     },
-  });
+    mail: mailFailure,
+    emptyAlerts: [],
+  };
+  events.push({ type: 'finished', summary });
   return events;
 }
 
@@ -1524,39 +1616,30 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   const kind = request.kind;
   if (running) throw fail('busy');
   if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
-  // A mailbox run needs a portal to read (commands/run.rs run_context).
-  if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
-    throw fail('invalid', { reason: 'noPortal' });
-  }
-  // The search or the mailbox, never both (run_context): the mailbox only while its switch
-  // alone is on; the mailbox's fetch needs one.
-  const mail = state.fetchMail && !state.fetchSearch;
-  if (mail && state.mailbox.user === null && kind !== 'rescore' && kind !== 'details') {
-    throw fail('mailMissing');
-  }
-  // The search never falls back to the mailbox (run_context): a source of it switched on and
-  // a profile to search with, or it does not start.
-  if (isFetch(kind) && !mail && !state.dryRun) {
-    if (!state.portals.some((p) => p.enabled && p.way === 'search')) {
-      throw fail('invalid', { reason: 'noPortal' });
-    }
+  // run_context: the mails without a mailbox and the search without a profile or a portal
+  // of it are skipped; refused only when neither can run.
+  const ways = readable();
+  if (isFetch(kind) && !ways.mail && !ways.search) {
     const profile = state.profile;
-    if (profile === null || profile.parseError !== null || profile.missing.length > 0) {
-      throw fail('invalid', { reason: 'noSearchTerms' });
-    }
+    const usable = profile !== null && profile.parseError === null && profile.missing.length === 0;
+    throw fail('invalid', { reason: usable ? 'noPortal' : 'noSearchTerms' });
   }
+  // Gmail cannot be reached: with the search the mail part is skipped (the summary says
+  // why), without it the run fails.
+  const mailFailure =
+    MAIL_OFFLINE || NO_INTERNET ? fail(NO_INTERNET ? 'offline' : 'mailConnect') : null;
   running = true;
   runningKind = kind;
   runSender = sender?.hold() ?? null;
   harness.done = false;
   const events =
-    (MAIL_OFFLINE || NO_INTERNET) && isFetch(kind)
+    mailFailure !== null && isFetch(kind) && !ways.search
       ? offlineScript(NO_INTERNET ? 'offline' : 'mailConnect')
       : request.kind === 'rescore'
         ? rescoreScript()
         : request.kind === 'details'
           ? detailsScript(request.keys)
-          : script(request.kind, mail);
+          : script(request.kind, ways.mail ? mailFailure : null);
   let index = 0;
   const step = (): void => {
     if (!running) return;
@@ -1635,8 +1718,6 @@ function apply(event: RunEvent): void {
     else if (!tombstones.has(markKey(event.job.key))) jobs.unshift(event.job);
     refresh();
   } else if (event.type === 'finished') {
-    // Only a completed fetch ends the setup (a failed first fetch keeps the setup page).
-    if (event.summary.outcome.kind === 'completed') state.firstRun = false;
     // "The last fetch": a rescore or a details run never replaces it (pipeline::run).
     if (isFetch(event.summary.kind)) {
       state.lastRun = event.summary;
@@ -1680,7 +1761,9 @@ type Retired =
   | 'duplicate_profile'
   | 'rename_profile'
   | 'delete_profile'
-  | 'restore_profile';
+  | 'restore_profile'
+  | 'pick_workspace';
+
 type Answered = Omit<Commands, Retired> & NextCommands;
 type Args<K extends keyof Answered> = Omit<Answered[K]['args'], 'channel'>;
 type Handlers = {
@@ -1703,8 +1786,13 @@ const handlers: Handlers = {
       throw fail('db');
     }
     if (sender !== null) attachPage(sender);
+    if (autorun) {
+      autorun = false;
+      setTimeout(() => harness.appRun('fetch'), 600);
+    }
     return structuredClone(state);
   },
+
   start_run: ({ request }) => {
     startRun(request, sender);
     return null;
@@ -1798,7 +1886,7 @@ const handlers: Handlers = {
   // at once, after the time an evaluation takes; `?cv=` fails like the evaluation.
   profile_from_cv: async () => {
     const cv = params.get('cv');
-    await new Promise((resolve) => setTimeout(resolve, cv === 'slow' ? 10_000 : CV_WAIT));
+    await new Promise((resolve) => setTimeout(resolve, cv === 'slow' ? 20_000 : CV_WAIT));
     if (cv === 'none') return null;
     const failure = cv === null || cv === 'slow' ? null : (CV_FAILURE[cv] ?? null);
     if (failure === 'offline') throw fail('offline');
@@ -1810,6 +1898,12 @@ const handlers: Handlers = {
     }
     refresh();
     return structuredClone(state.profile);
+  },
+  search_terms: () => searchTerms(),
+  // Fertig of the setup: the next start opens the Jobs view.
+  finish_onboarding: () => {
+    state.firstRun = false;
+    return null;
   },
   asked_terms: () => askedTerms(),
   vocabulary: () => structuredClone(VOCABULARY),
@@ -1878,20 +1972,7 @@ const handlers: Handlers = {
     if (p) p.signedIn = false;
     return true;
   },
-  // Like core: the profile comes along into a folder without one (`folder=other`), a folder
-  // with its own keeps it (`folder=own`); the files are written there at once.
-  pick_workspace: () => {
-    const kind = params.get('folder');
-    if (kind !== 'other' && kind !== 'own') return null;
-    const folder = `${HOME}/Documents/Jobs`;
-    state.settings = {
-      ...state.settings,
-      workspace: folder,
-      workspaceIsDefault: false,
-    };
-    const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
-    return { folder, profile };
-  },
+
   open_target: ({ target }) => {
     // A new mail only to the contact an ad names (commands/files.rs).
     if (target.kind === 'contactMail' && !find(target.key)?.match?.facts.contactEmail) {
@@ -1907,15 +1988,13 @@ const handlers: Handlers = {
       if (change.loginEnabled !== null) p.loginEnabled = change.loginEnabled;
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
-    if (patch.fetchMail !== null && patch.fetchMail !== undefined) {
-      state.fetchMail = patch.fetchMail;
-    }
-    if (patch.fetchSearch !== null && patch.fetchSearch !== undefined) {
-      state.fetchSearch = patch.fetchSearch;
-    }
     return structuredClone(state);
   },
-  reset_all: () => null,
+  // The app starts again with the setup (in the preview: the page, as after a reset).
+  reset_all: () => {
+    if (PREVIEW) setTimeout(() => preview.restart('reset'), 400);
+    return null;
+  },
   list_backups: () => structuredClone(backups),
   // Like core: the state it replaces is copied first (the undo), the newest three such copies
   // kept; a name that is no copy is not found. The demo data stays as it is.
@@ -2038,6 +2117,35 @@ const harness: Harness = {
 };
 window.__harness = harness;
 initial();
+installPreviewMenu();
+if (PREVIEW) dropsAsTauri();
+
+/**
+ * In the preview a file dragged onto the page arrives like Tauri's drag and drop of the window
+ * (the app never sees the browser's drop events): `tauri://drag-enter`, `-leave`, `-drop` with
+ * the file's name as its path.
+ */
+function dropsAsTauri(): void {
+  let depth = 0;
+  const fire = (name: string, payload: unknown): void => harness.fire(name, payload);
+  addEventListener('dragenter', (event) => {
+    event.preventDefault();
+    if (depth++ === 0) fire('tauri://drag-enter', { paths: [] });
+  });
+  addEventListener('dragover', (event) => event.preventDefault());
+  addEventListener('dragleave', () => {
+    if (--depth <= 0) {
+      depth = 0;
+      fire('tauri://drag-leave', null);
+    }
+  });
+  addEventListener('drop', (event) => {
+    event.preventDefault();
+    depth = 0;
+    const files = [...(event.dataTransfer?.files ?? [])].map((file) => file.name);
+    fire('tauri://drag-drop', { paths: files });
+  });
+}
 
 /* --------------------------------------------------------------------- core */
 
