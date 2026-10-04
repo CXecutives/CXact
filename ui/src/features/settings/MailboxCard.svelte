@@ -203,7 +203,7 @@
   onconfirm={() => void connect()}
   oncancel={() => form?.cancel()}
 >
-  <MailboxForm bind:this={form} bind:busy={checking} dialog autofocus />
+  <MailboxForm bind:this={form} bind:busy={checking} autofocus />
 </Dialog>
 <Dialog
   bind:open={confirmRemove}

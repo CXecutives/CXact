@@ -4,11 +4,10 @@
   refuses the pair, both fields are marked, the password shakes once and the one sentence
   stands above the button. The password never leaves this form except to save_mailbox (it
   goes straight into the OS keychain). The app password has an info symbol (what it is), and
-  under the fields "App-Passwort erstellen" opens Google's page. The setup shows the form in
-  its step Alert-Mails with its one button "Verbinden"; Einstellungen shows it in a dialog
-  (`dialog`), whose buttons are the dialog's: it calls `save` and `cancel`. A saved mailbox
-  needs no note: its badge "Verbunden" (Einstellungen) or its ticked step (first run) is the
-  answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
+  under the fields "App-Passwort erstellen" opens Google's page. Einstellungen shows it in a
+  dialog and the setup in its card: their buttons ("Verbinden") call `save` and `cancel`. A
+  saved mailbox needs no note: its badge "Verbunden" (Einstellungen) or its ticked step (first
+  run) is the answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
   live: they stop the check (`cancel_run`, the backend holds the app for it); the stop itself
   says nothing.
 -->
@@ -19,31 +18,18 @@
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
-  import { formKeys } from '$lib/input/input';
   import { invoke, IpcError } from '$lib/ipc/api';
   import { app } from '$lib/state/app.svelte';
   import { onMount } from 'svelte';
 
   interface Props {
-    /**
-     * The caret starts in the first empty field once the form appears: the address, or the
-     * app password next to an address that is there. On the first run only while the focus
-     * has nowhere else to be; in a dialog always.
-     */
+    /** The caret starts in the first empty field once the form appears: the address, or the
+     *  app password next to an address that is there (the dialog of Einstellungen). */
     autofocus?: boolean;
-    /** In a dialog: no buttons of its own, the dialog's call `save` and `cancel`. */
-    dialog?: boolean;
-    /** A check is on its way (the dialog's button turns meanwhile). */
+    /** A check is on its way (the button that called `save` turns meanwhile). */
     busy?: boolean;
-    /** Its Verbinden is a secondary button (an optional step of the first run). */
-    quiet?: boolean;
   }
-  let {
-    autofocus = false,
-    dialog = false,
-    busy = $bindable(false),
-    quiet = false,
-  }: Props = $props();
+  let { autofocus = false, busy = $bindable(false) }: Props = $props();
 
   const id = $props.id();
   let user = $state(app.state?.mailbox.user ?? '');
@@ -60,16 +46,13 @@
   const focus = (field: 'user' | 'password', preventScroll = false): void =>
     document.getElementById(`${id}-${field}`)?.focus({ preventScroll });
 
-  // Once the form is laid out (a field focused before that is scrolled to by WebKit anyway).
-  // The first run keeps the page where it is (the reset's report stays in view at a small
-  // window); a dialog has just taken the focus for its own and gives it to the field.
+  // Once the form is laid out (a field focused before that is scrolled to by WebKit anyway):
+  // the dialog has just taken the focus for its own and gives it to the field.
   onMount(() => {
     if (!autofocus) return;
-    const frame = requestAnimationFrame(() => {
-      if (dialog || document.activeElement === document.body) {
-        focus(user.trim() === '' ? 'user' : 'password', true);
-      }
-    });
+    const frame = requestAnimationFrame(() =>
+      focus(user.trim() === '' ? 'user' : 'password', true),
+    );
     return () => cancelAnimationFrame(frame);
   });
 
@@ -174,24 +157,8 @@
   {/if}
 {/snippet}
 
-{#if dialog}
-  <!-- The dialog's own keys answer Enter and Esc. -->
-  <div class="form" data-testid="mailbox-form">{@render body()}</div>
-{:else}
-  <div class="form" data-testid="mailbox-form" use:formKeys={{ save: () => void save() }}>
-    {@render body()}
-    <div class="actions">
-      <Button
-        variant={quiet ? 'secondary' : 'primary'}
-        icon="signIn"
-        label={t.settings.connect}
-        loading={busy}
-        testid="mailbox-save"
-        onclick={() => void save()}
-      />
-    </div>
-  </div>
-{/if}
+<!-- The keys of the dialog or the setup around it answer Enter and Esc. -->
+<div class="form" data-testid="mailbox-form">{@render body()}</div>
 
 <style>
   .form {
@@ -226,10 +193,5 @@
     .fields {
       grid-template-columns: 1fr 1fr;
     }
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
   }
 </style>

@@ -1474,27 +1474,35 @@ export const de = {
    *  has one, and its buttons. */
   firstRun: {
     welcome: 'Willkommen bei CXact',
-    welcomeText: 'CXact findet Projekte und Jobs, die zu deinem Profil passen.',
-    begin: 'Einrichten',
+    welcomeText:
+      'CXact findet Projekt- und Interim-Jobs und bewertet sie nach deinem Profil. Die Einrichtung dauert zwei Minuten.',
+    begin: 'Los geht’s',
     next: 'Weiter',
-    way: 'Wie entsteht dein Profil?',
+    /** The step indicator above the card: its name and its two stages. */
+    stepsLabel: 'Einrichtung',
+    stages: ['Profil', 'Alert-Mails'] as string[],
+    way: 'Dein Profil',
+    /** The second line of the tile "Aus Lebenslauf ausfüllen". */
+    wayCv: 'Eine KI füllt das Profil aus.',
     upload: 'Lebenslauf hochladen',
-    /** The drop zone: what it takes, and the formats it reads. */
-    drop: 'Zieh deinen Lebenslauf hierher.',
-    pick: 'Datei wählen',
-    formats: 'PDF, Word, ODT, RTF, Text oder Fotos',
-    reading: 'Auswertung',
+    /** The drop zone: what it takes ("auswählen" is the link to the file dialog), and the
+     *  formats it reads. */
+    drop: 'Datei hierher ziehen oder',
+    pick: 'auswählen',
+    formats: 'PDF, Word, OpenDocument, RTF, Text oder Foto',
+    reading: 'Lebenslauf wird ausgewertet',
+    readingText: 'Etwa eine halbe Minute.',
     review: 'Prüfen und ergänzen',
-    reviewText: 'Ergänze, was noch fehlt.',
     alerts: 'Alert-Mails',
+    optional: 'optional',
     /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
     alertsText: (portals: readonly Portal[]) =>
-      `Mit einem Postfach liest CXact auch die Alert-Mails von ${joined(portals.map((p) => portalName[p]))}.`,
+      `Jobs von ${joined(portals.map((p) => portalName[p]))} kommen per Mail. CXact liest sie aus deinem Gmail.`,
     /** Connected: the address the portals' alerts must go to, and their rows. */
     alertsDone: 'Leg bei den Portalen Alerts an diese Adresse an.',
     skip: 'Überspringen',
     done: 'Alles eingerichtet',
-    doneText: 'Starte mit „Jobs suchen“ deine erste Suche.',
+    doneText: 'Dein Profil steht.',
     toJobs: 'Zu den Jobs',
   },
 

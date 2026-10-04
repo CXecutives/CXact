@@ -41,10 +41,15 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
     ]) {
       await expect(page.getByTestId(gone)).toHaveCount(0);
     }
-    // One colour, no seam: the bar is the view's.
+    // One colour, no seam: the bar is the cream page's.
     await expect(page.getByTestId('title-bar')).not.toHaveClass(/docked/);
+    await expect(page.getByTestId('title-bar')).toHaveClass(/setup/);
     await expect(page.getByTestId('first-back')).toHaveCount(0);
-    await expect(next(page)).toHaveText(T.firstRun.begin);
+    // Willkommen has no step indicator; the primary sits in the card's foot.
+    await expect(page.getByTestId('first-steps')).toHaveCount(0);
+    await expect(page.getByTestId('first-card').getByTestId('first-next')).toHaveText(
+      T.firstRun.begin,
+    );
   }
 });
 
@@ -60,6 +65,9 @@ test('every switch of the view is refused while it stands; Zurück and the mouse
   await page.keyboard.press('Enter');
   await expectStep(page, T.firstRun.way);
   await expect(heading(page)).toBeFocused();
+  await expect(page.getByTestId('first-steps').locator('[aria-current="step"]')).toContainText(
+    T.firstRun.stages[0]!,
+  );
   // The mouse's back button is Zurück; Willkommen has none.
   await mouseBack(page);
   await expectStep(page, T.firstRun.welcome);
@@ -83,12 +91,13 @@ test('the CV: upload, evaluation, review; Weiter saves and goes on to the alert 
   await expectStep(page, T.firstRun.upload);
   await expect(page.getByTestId('upload-zone')).toContainText(T.firstRun.formats);
   await expect(page.getByTestId('upload-ai')).toHaveText(T.profile.fromCvHint);
-  // The step's own button goes on: no Weiter.
+  // The zone's link goes on: no Weiter.
   await expect(next(page)).toHaveCount(0);
   await page.getByTestId('upload-pick').click();
   await expectStep(page, T.firstRun.reading);
   await expect(page.getByTestId('cv-reading')).toBeVisible();
   await expect(page.getByTestId('first-back')).toHaveCount(0);
+  await expect(page.getByTestId('cv-cancel')).toBeVisible();
   await expectStep(page, T.firstRun.review);
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
   // The Profil's form in its setup mode: no title, no CV button, no save bar.
@@ -125,13 +134,19 @@ test('a failed evaluation says one sentence and its ways on; Abbrechen goes back
   for (const [cv, reason, ways] of cases) {
     await open(page, `${WIN}&scenario=first-run&step=reading&cv=${cv}`);
     await expect(page.getByTestId('cv-error')).toHaveText(T.profile.cvError[reason]);
-    const buttons = page.getByTestId('cv-problem').locator('.btn');
+    // The ways at the right, the primary (the table's first) last; Zurück at the left.
+    const buttons = page.getByTestId('cv-problem').locator('.btn[data-testid^="cv-"]');
     await expect(buttons).toHaveCount(ways.length);
-    for (const [index, way] of ways.entries()) {
+    for (const [index, way] of [...ways].reverse().entries()) {
       await expect(buttons.nth(index)).toHaveAttribute('data-testid', `cv-${way}`);
     }
-    await expect(buttons.first()).toHaveClass(/primary/);
+    await expect(buttons.last()).toHaveClass(/primary/);
+    await expect(page.getByTestId('first-back')).toBeVisible();
   }
+  // Zurück after a failure: back to the upload.
+  await page.getByTestId('first-back').click();
+  await expectStep(page, T.firstRun.upload);
+  await open(page, `${WIN}&scenario=first-run&step=reading&cv=outdated`);
   // "Selbst ausfüllen": the empty form.
   await page.getByTestId('cv-self').click();
   await expectStep(page, T.firstRun.review);
@@ -161,8 +176,9 @@ test('by hand: Weiter goes on only once nothing required is open; Esc does nothi
   await fillRequired(page);
   await next(page).click();
   await expectStep(page, T.firstRun.alerts);
-  // Back to the review: what was typed is still there.
-  await page.getByTestId('first-back').click();
+  // Back to the review (the mouse; the card has Überspringen in Zurück's place): what was
+  // typed is still there.
+  await mouseBack(page);
   await expect(page.getByTestId('profile-roles')).toContainText('Interim CFO');
 });
 
@@ -172,11 +188,15 @@ test('Alert-Mails: skipped, or connected with the portals rows; Fertig opens the
   // A usable profile and no mailbox: the setup resumes at Alert-Mails.
   await open(page, `${WIN}&scenario=setup-profile`);
   await expectStep(page, T.firstRun.alerts);
-  await expect(page.getByTestId('mailbox-save')).toHaveClass(/primary/);
-  await expect(next(page)).toHaveText(T.firstRun.skip);
-  await expect(next(page)).not.toHaveClass(/primary/);
-  await next(page).click();
+  // "Verbinden" is the primary, "Überspringen" at the left in Zurück's place.
+  await expect(next(page)).toHaveText(T.settings.connect);
+  await expect(next(page)).toHaveClass(/primary/);
+  await expect(page.getByTestId('first-back')).toHaveCount(0);
+  await page.getByTestId('first-skip').click();
   await expectStep(page, T.firstRun.done);
+  // Fertig: both stages done, no Zurück.
+  await expect(page.getByTestId('first-steps').locator('[data-state="done"]')).toHaveCount(2);
+  await expect(page.getByTestId('first-back')).toHaveCount(0);
   expect(await calls(page, 'finish_onboarding')).toHaveLength(1);
   await expect(page.getByTestId('cv-reading')).toHaveCount(0);
   await next(page).click();
@@ -188,7 +208,7 @@ test('Alert-Mails: skipped, or connected with the portals rows; Fertig opens the
   await open(page, `${WIN}&scenario=setup-profile`);
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcdabcdabcdabcd');
-  await page.getByTestId('mailbox-save').click();
+  await next(page).click();
   await expect(page.getByTestId('first-address')).toHaveText('alerts.demo@gmail.com');
   await expect(page.getByTestId('first-alerts')).toContainText(T.settings.setUpAlert);
   await expect(next(page)).toHaveText(T.firstRun.next);

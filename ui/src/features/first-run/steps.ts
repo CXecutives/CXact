@@ -1,5 +1,5 @@
-// The setup as data: its steps in their order, each with its heading, its one sentence, where
-// Zurück leads and the words of its one primary button; and the failures of the CV with their
+// The setup as data: its steps in their order, each with its heading, its one sentence, its
+// place in the step indicator, where Zurück leads and the words of its one primary button; and the failures of the CV with their
 // sentence and their ways on. FirstRunView.svelte renders this table (each step's body is its
 // snippet of the same id), onboarding.svelte.ts walks it. Adding, moving or removing a step
 // is one entry here and its snippet; a new failure is one row of CV_PROBLEMS.
@@ -22,12 +22,19 @@ export interface StepSpec {
   heading: (t: Catalog) => string;
   /** One sentence under the heading, or none. */
   text?: (t: Catalog) => string;
+  /** Where the step stands in the indicator above the card (0 Profil, 1 Alert-Mails, 2 both
+   *  done); null hides it (Willkommen). */
+  stage: number | null;
   /** Where Zurück leads (null: no Zurück; the evaluation is never a step to go back to). */
   back: (walk: Walk) => StepId | null;
+  /** The left button is "Überspringen" (to Fertig) instead of Zurück. */
+  skip?: (walk: Walk) => boolean;
   /** The words of its primary button (null: the step's own control goes on). */
   next: ((t: Catalog, walk: Walk) => string) | null;
-  /** The profile's form needs the Profil view's column; the others keep a form's measure. */
+  /** The profile's form needs the Profil view's column; the others keep the card's 460. */
   wide?: true;
+  /** A state rather than a form: its mark, heading and words centred in the card. */
+  centred?: true;
 }
 
 export const STEPS: readonly StepSpec[] = [
@@ -35,31 +42,39 @@ export const STEPS: readonly StepSpec[] = [
     id: 'welcome',
     heading: (t) => t.firstRun.welcome,
     text: (t) => t.firstRun.welcomeText,
+    stage: null,
     back: () => null,
     next: (t) => t.firstRun.begin,
   },
   {
     id: 'way',
     heading: (t) => t.firstRun.way,
+    stage: 0,
     back: () => 'welcome',
     next: (t) => t.firstRun.next,
   },
   {
     id: 'upload',
     heading: (t) => t.firstRun.upload,
+    stage: 0,
     back: () => 'way',
     next: null,
   },
   {
     id: 'reading',
     heading: (t) => t.firstRun.reading,
+    text: (t) => t.firstRun.readingText,
+    stage: 0,
+    // "Abbrechen" (and the mouse's back button) go back to the upload; after a failure
+    // Zurück does (onboarding.back).
     back: () => null,
     next: null,
+    centred: true,
   },
   {
     id: 'review',
     heading: (t) => t.firstRun.review,
-    text: (t) => t.firstRun.reviewText,
+    stage: 0,
     back: (walk) => (walk.way === 'cv' ? 'upload' : 'way'),
     next: (t) => t.firstRun.next,
     wide: true,
@@ -67,16 +82,20 @@ export const STEPS: readonly StepSpec[] = [
   {
     id: 'alerts',
     heading: (t) => t.firstRun.alerts,
+    stage: 1,
     back: () => 'review',
-    // Without a mailbox the form's "Verbinden" is the step's primary, "Überspringen" beside.
-    next: (t, walk) => (walk.mailbox ? t.firstRun.next : t.firstRun.skip),
+    // Without a mailbox: "Überspringen" at the left, "Verbinden" the primary.
+    skip: (walk) => !walk.mailbox,
+    next: (t, walk) => (walk.mailbox ? t.firstRun.next : t.settings.connect),
   },
   {
     id: 'done',
     heading: (t) => t.firstRun.done,
     text: (t) => t.firstRun.doneText,
-    back: () => 'alerts',
+    stage: 2,
+    back: () => null,
     next: (t) => t.firstRun.toJobs,
+    centred: true,
   },
 ];
 
@@ -88,7 +107,7 @@ export const isStep = (value: string | null): value is StepId =>
 export type CvWay = 'retry' | 'otherFile' | 'self';
 
 /** The failures of the evaluation, one sentence each (the catalog's) and the ways on, the
- *  first one the primary (docs/PLAN.md, Block 4). */
+ *  first one the primary (docs/PLAN.md, Block 4; it stands last, at the card's right edge). */
 export const CV_PROBLEMS: Readonly<Record<CvFailure, readonly CvWay[]>> = {
   limit: ['self'],
   offline: ['retry', 'self'],

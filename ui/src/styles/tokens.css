@@ -400,6 +400,8 @@
   --icon-sm: 15px;
   --icon-md: 19px;
   --icon-lg: 24px;
+  /* The one large mark of a state (the setup's Fertig). */
+  --icon-xl: 40px;
   /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
      large one as strong as a small one for its size (user, 2026-10-01). */
   --icon-stroke: 2;
@@ -483,6 +485,15 @@
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
   --form-width: 560px;
+  /* The setup (features/first-run): one centred card this wide (the profile's step takes the
+     Profil's column), the step indicator above it with its numbered dots and their edge. */
+  --setup-card: 460px;
+  --setup-card-wide: calc(var(--reader-width) + 2 * var(--space-24));
+  --step-dot: 22px;
+  --step-edge: 1.5px;
+  --step-line: 40px;
+  /* The dashed edge of a drop zone (the CV's upload). */
+  --drop-edge: 1.5px;
   /* The columns of the search's terms in Einstellungen (they wrap with the width). */
   --terms-column: 200px;
   /* Rows and their washes: a row's hover wash is the row's own box, and rows run edge to

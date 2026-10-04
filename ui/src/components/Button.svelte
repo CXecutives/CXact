@@ -21,6 +21,7 @@
     (input.ts); 14 px text like a field. turned: the glyph stands half a turn (180 ms).
   - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
     filter narrows it; the chips say what). link: navy text that underlines on hover.
+  - inText: a link inside a sentence (the upload's "auswählen"), in the sentence's type.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
   - warns: a quiet (secondary or ghost) button whose action deletes or loses something
@@ -69,6 +70,8 @@
     wide?: boolean;
     /** Sits inside a text field: skipped by Tab, a click keeps the focus in the field. */
     inField?: boolean;
+    /** A link inside a sentence: the sentence's type and line. */
+    inText?: boolean;
     /** A glyph after the label (the chevron of a menu button). */
     trailing?: IconName | null;
     /** It opens a menu (announced as such). */
@@ -106,6 +109,7 @@
     external = false,
     wide = false,
     inField = false,
+    inText = false,
     trailing = null,
     menu = false,
     expanded = false,
@@ -143,6 +147,7 @@
   class="btn {variant}"
   class:icon-only={iconOnly}
   class:in-field={inField}
+  class:in-text={inText}
   class:wide={wide && !iconOnly}
   class:loading
   class:turned
@@ -470,6 +475,12 @@
   /* A choice reads like the field beside it: 14 px text. */
   .btn[role='radio'] {
     --btn-type: var(--type-field);
+  }
+
+  /* A link in a sentence takes the sentence's type and line. */
+  .in-text {
+    --btn-height: auto;
+    --btn-type: inherit;
   }
 
   .icon-only {

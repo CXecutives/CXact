@@ -70,6 +70,7 @@
   class="bar"
   class:drawn
   class:docked={shell.docked}
+  class:setup={shell.firstRun}
   data-testid="title-bar"
   data-tauri-drag-region
   data-press-only
@@ -146,6 +147,11 @@
     align-items: center;
     height: var(--titlebar-height);
     background-color: var(--surface);
+  }
+
+  /* The setup's page is the cream one: the bar wears it too. */
+  .bar.setup {
+    background-color: var(--bg);
   }
 
   /* The sidebar's colour as far as the docked sidebar reaches, its seam at the edge. */
