@@ -32,14 +32,14 @@ use jiff::{SignedDuration, Timestamp};
 use tokio_util::sync::CancellationToken;
 
 use crate::model::DescStatus;
-use crate::portal::{Access, Facts, Hit, JobKey, JobLink, PORTALS, Portal, PortalAdapter};
+use crate::portal::{Access, Facts, Hit, JobKey, JobLink, PORTALS, Portal, PortalAdapter, Way};
 use crate::store::{JobRow, Store};
 // A poisoned safety state is no reason to abort the run: its counters are valid, and
 // without them there would be no cap at all.
 use crate::sync::lock;
 use crate::time::sleep_cancellable as sleep_for;
 use http::HttpFetcher;
-use policy::{Allowance, NET_RETRY, PauseKind, PauseReason, Policy};
+use policy::{Allowance, NET_RETRY, PauseKind, PauseReason, Policy, limits};
 pub use policy::{MAX_AGE, RETRY_AFTER};
 use robots::Robots;
 use url::Url;
@@ -537,6 +537,8 @@ pub enum StopReason {
     Challenged,
     /// Network trouble (second failure after a retry).
     Network { cause: Cause },
+    /// The search found no page its robots.txt allows (every page refused, none asked).
+    Refused,
 }
 
 impl StopReason {
@@ -556,6 +558,10 @@ impl StopReason {
             StopReason::Challenged => PortalHealth::Paused {
                 until: None,
                 reason: PauseReason::Challenged,
+            },
+            StopReason::Refused => PortalHealth::Paused {
+                until: None,
+                reason: PauseReason::Robots,
             },
             StopReason::Network { .. } => PortalHealth::Paused {
                 until: None,
@@ -586,6 +592,7 @@ impl StopReason {
             StopReason::Network { cause } => {
                 format!("{key}: network trouble ({cause}), {skipped} left")
             }
+            StopReason::Refused => format!("{key}: robots.txt allowed no search page"),
         }
     }
 }
@@ -895,9 +902,12 @@ pub async fn fetch_all<F: PageFetcher>(
                     need_sign_in.insert(portal, teasers);
                 }
             }
-            // The automatic queue goes by pre-score; chosen jobs keep the user's order.
+            // The automatic queue goes by pre-score, a searched source's at most a share of its
+            // daily cap in one run: the titles that fit least wait for a later run with room;
+            // chosen jobs keep the user's order.
             if matches!(selection, Selection::Queue(_)) {
                 order(&mut jobs, prescore);
+                keep_budget(portal, &mut jobs);
             }
             if !jobs.is_empty() {
                 work.push((portal, jobs, fetcher));
@@ -964,6 +974,25 @@ pub async fn fetch_all<F: PageFetcher>(
     }
     report_sign_in_needed(summary, need_sign_in, on_event);
     Ok(completed)
+}
+
+/// So many ads of a searched source one run reads by itself at most: half its daily cap, so
+/// the search and later runs of the day keep room.
+pub fn run_budget(portal: Portal) -> usize {
+    (limits(portal).per_day / 2).max(1)
+}
+
+/// A searched source's queue (in pre-score order) cut to its [`run_budget`].
+fn keep_budget(portal: Portal, jobs: &mut Vec<JobRow>) {
+    let budget = run_budget(portal);
+    if portal.way() == Way::Search && jobs.len() > budget {
+        log::info!(
+            "{}: {} ads wait for a later run (the run's share of the daily cap)",
+            portal.key(),
+            jobs.len() - budget
+        );
+        jobs.truncate(budget);
+    }
 }
 
 /// "Details holen" on a teaser without the sign-in: nothing was requested, and the user

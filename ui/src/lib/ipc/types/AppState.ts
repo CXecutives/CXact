@@ -30,14 +30,6 @@ running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox,
  */
 profile: ProfileInfo | null, portals: Array<PortalState>, 
 /**
- * The fetch reads the alert mails (the menu beside the button).
- */
-fetchMail: boolean, 
-/**
- * The fetch searches the sources (the menu beside the button).
- */
-fetchSearch: boolean, 
-/**
  * The last fetch - a rescore or a details run is none.
  */
 lastRun: RunSummary | null, counts: JobCounts, matchPending: number, dataDir: string, logDir: string, resetReport: ResetSummary | null, };

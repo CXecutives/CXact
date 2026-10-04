@@ -16,12 +16,12 @@ use jobalert_core::fetch::Fetchers;
 use jobalert_core::fetch::http::HttpFetcher;
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::mail::imap::{Credentials, Gmail, MailError};
-use jobalert_core::pipeline::dry_run::DryRunBackends;
+use jobalert_core::pipeline::dry_run::{self, DryRunBackends};
 use jobalert_core::pipeline::{
     self, Backends, Matcher, Outcome, RunContext, RunEvent, RunKindName, RunRequest, RunSnapshot,
     RunSummary,
 };
-use jobalert_core::portal::{FetchPath, Portal, Way};
+use jobalert_core::portal::{Contracts, FetchPath, Portal, Way};
 use jobalert_core::profile;
 use jobalert_core::secrets::Vault;
 use jobalert_core::store::Store;
@@ -65,6 +65,8 @@ struct Snapshot {
     progress: Option<RunEvent>,
     /// Latest health event per portal.
     health: Vec<(Portal, RunEvent)>,
+    /// The sources whose search is over (`SourceDone`), in their order.
+    sources_done: Vec<RunEvent>,
     login: Option<RunEvent>,
     alerts: VecDeque<RunEvent>,
 }
@@ -77,6 +79,7 @@ impl Snapshot {
             status: None,
             progress: None,
             health: Vec::new(),
+            sources_done: Vec::new(),
             login: None,
             alerts: VecDeque::new(),
         }
@@ -91,6 +94,7 @@ impl Snapshot {
                 self.health.push((*portal, event.clone()));
             }
             RunEvent::LoginNeeded { .. } => self.login = Some(event.clone()),
+            RunEvent::SourceDone { .. } => self.sources_done.push(event.clone()),
             RunEvent::Alert { .. } => {
                 if self.alerts.len() == ALERTS_KEPT {
                     self.alerts.pop_front();
@@ -104,6 +108,7 @@ impl Snapshot {
     fn to_view(&self) -> RunSnapshot {
         let mut replay: Vec<RunEvent> = self.alerts.iter().cloned().collect();
         replay.extend(self.health.iter().map(|(_, e)| e.clone()));
+        replay.extend(self.sources_done.iter().cloned());
         replay.extend(
             [&self.progress, &self.login, &self.status]
                 .into_iter()
@@ -179,35 +184,37 @@ impl Backends for AppBackends {
     }
 }
 
-/// Settings and Gmail access of a run. Only the mailbox step needs Gmail: fetching job
-/// details also works when the vault entry is unreadable right now. A mailbox run needs a
-/// portal to read: with every portal switched off it is refused here ("at least one portal
-/// must be active"), never started only to be stored as a failed fetch. The dry run never
-/// reads the vault: its mailbox is made up.
+/// Settings, profile and Gmail access of a run. A fetch ("Jobs suchen") reads the alert mails
+/// with a mailbox and searches the sources with the profile's terms; it is refused here, in
+/// the order the page shows it (`run.fetchBlocked`): without a usable profile
+/// (`profile::missing_required`), then with nothing to read (no source to search, no
+/// mailbox). A keychain that cannot be read only skips the mail part (`RunSummary::mail`).
+/// Only the mailbox step needs Gmail: fetching job details also works when the vault entry is
+/// unreadable right now. The dry run never reads the vault: its mailbox is made up, and its
+/// search is made up too ([`dry_run::search_plan`]).
 fn run_context(
     state: &AppState,
     request: &RunRequest,
 ) -> CmdResult<(RunContext, Option<Credentials>)> {
     let settings = state.settings()?;
-    let scans = request.kind.name().reads_mail();
+    let fetch = request.kind.name().reads_mail();
     let enabled = settings.enabled_portals();
-    if scans && enabled.is_empty() {
-        return Err(ErrorInfo::from(&InvalidInput::NoPortal));
-    }
-    // What the menu beside the fetch chose (user decision 2026-10-01): the search or the
-    // mailbox, never both. The dry run has no search: its made-up mails stand in for either.
-    let mail = settings.fetches_mail();
-    let reads_mail = mail || state.dry_run;
-    let searches = !mail;
-    let credentials = if state.dry_run || !scans || !reads_mail {
-        None
-    } else {
-        Vault::app().load_gmail()?
-    };
     let workspace = settings.workspace_or(&state.default_workspace);
-    // A fetch searches the sources that have a search (not the dry run: its made-up mails are
-    // all it has), with the active profile's search terms.
-    let search_portals: Vec<Portal> = if scans && !state.dry_run && searches {
+    let form = if state.dry_run {
+        profile::parse(dry_run::PROFILE_JSON).ok()
+    } else if fetch {
+        profile::load(&workspace)?
+    } else {
+        None
+    };
+    if fetch
+        && !form
+            .as_ref()
+            .is_some_and(|form| profile::missing_required(form).is_empty())
+    {
+        return Err(ErrorInfo::from(&InvalidInput::NoSearchTerms));
+    }
+    let mut search_portals: Vec<Portal> = if fetch {
         enabled
             .iter()
             .copied()
@@ -216,38 +223,48 @@ fn run_context(
     } else {
         Vec::new()
     };
-    let search_terms = if search_portals.is_empty() {
-        Vec::new()
-    } else {
-        profile::load(&workspace)?
-            .map(|form| profile::deep_search_terms(&form))
-            .unwrap_or_default()
+    let mut search_terms = match &form {
+        Some(form) if !search_portals.is_empty() => profile::deep_search_terms(form),
+        _ => Vec::new(),
     };
-    // The search never falls back to the mailbox: with no source of it switched on or nothing
-    // to search for (no profile yet) the fetch does not start, and says why.
-    if scans && !state.dry_run && searches {
-        if search_portals.is_empty() {
-            return Err(ErrorInfo::from(&InvalidInput::NoPortal));
-        }
-        if search_terms.is_empty() {
-            return Err(ErrorInfo::from(&InvalidInput::NoSearchTerms));
-        }
+    if state.dry_run {
+        (search_portals, search_terms) = dry_run::search_plan(&search_portals, &search_terms);
     }
+    let (credentials, mail_error) = if fetch && !state.dry_run {
+        match Vault::app().load_gmail() {
+            Ok(credentials) => (credentials, None),
+            Err(e) => (None, Some(ErrorInfo::from(e))),
+        }
+    } else {
+        (None, None)
+    };
+    let read_mail = fetch
+        && !enabled.is_empty()
+        && (state.dry_run || credentials.is_some() || mail_error.is_some());
+    if fetch && !read_mail && (search_portals.is_empty() || search_terms.is_empty()) {
+        return Err(ErrorInfo::from(&InvalidInput::NoPortal));
+    }
+    let contracts = form
+        .as_ref()
+        .map_or_else(Contracts::default, |form| Contracts {
+            permanent: form.permanent,
+            temporary: form.temporary,
+        });
     let ctx = RunContext {
         workspace,
         dry_run: state.dry_run,
-        portals: settings.enabled_portals(),
+        portals: enabled,
         fetch_portals: settings.fetch_portals(),
         sign_in: Portal::ALL
             .into_iter()
             .filter(|&p| settings.fetch_path(p) == Some(FetchPath::Session))
             .collect(),
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
-        // Without a mailbox a fetch only searches (with nothing to search the scan says the
-        // mailbox is missing).
-        read_mail: reads_mail && (state.dry_run || credentials.is_some()),
+        read_mail,
+        mail_error,
         search_portals,
         search_terms,
+        contracts,
     };
     Ok((ctx, credentials))
 }

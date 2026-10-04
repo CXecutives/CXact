@@ -94,6 +94,9 @@ pub enum PauseReason {
     /// Signed in, but the portal showed a security check - the portal rests until the next
     /// run (the app never solves a check itself).
     Challenged,
+    /// The source's robots.txt allowed none of its search pages in this run: nothing was
+    /// searched there (no pause; the next run reads it again).
+    Robots,
 }
 
 impl From<PauseKind> for PauseReason {

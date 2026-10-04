@@ -23,11 +23,6 @@ pub struct Settings {
     pub workspace: Option<PathBuf>,
     /// Switches per portal.
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// The fetch reads the alert mails (the menu beside the button, user decision
-    /// 2026-10-01): with `fetch_search` off, see [`Settings::fetches_mail`].
-    pub fetch_mail: bool,
-    /// The fetch searches the sources the app searches itself (the same menu).
-    pub fetch_search: bool,
 }
 
 /// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
@@ -58,8 +53,6 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
-            fetch_mail: true,
-            fetch_search: true,
         }
     }
 }
@@ -114,13 +107,6 @@ impl Settings {
         self
     }
 
-    /// The fetch reads the mailbox instead of searching: one of the two, never both (user
-    /// decision 2026-10-01, "nur Postfach oder Suche"). The mailbox only while its switch alone
-    /// is on; both on (the defaults, a file of an earlier version) or both off search.
-    pub fn fetches_mail(&self) -> bool {
-        self.fetch_mail && !self.fetch_search
-    }
-
     /// The switches of a portal.
     pub fn portal(&self, portal: Portal) -> PortalSwitches {
         self.portals.get(&portal).copied().unwrap_or_default()
@@ -170,25 +156,6 @@ pub fn default_workspace(documents: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    /// The fetch searches or reads the mailbox, never both: the mailbox only while its switch
-    /// alone is on, so the defaults and a file with both switches search.
-    #[test]
-    fn the_fetch_reads_the_mailbox_only_while_its_switch_alone_is_on() {
-        let way = |fetch_mail, fetch_search| {
-            Settings {
-                fetch_mail,
-                fetch_search,
-                ..Settings::default()
-            }
-            .fetches_mail()
-        };
-        assert!(!Settings::default().fetches_mail(), "the search by default");
-        assert!(way(true, false));
-        assert!(!way(false, true));
-        assert!(!way(true, true));
-        assert!(!way(false, false));
-    }
-
     use super::*;
 
     #[test]
@@ -203,7 +170,6 @@ mod tests {
                 login_enabled: true,
             },
         );
-        s.fetch_mail = false;
         s.save(&store).unwrap();
         let back = Settings::load(&store).unwrap();
         assert_eq!(
@@ -214,7 +180,6 @@ mod tests {
                 login_enabled: false,
             }
         );
-        assert!(!back.fetch_mail);
         assert_eq!(
             back.enabled_portals(),
             [
@@ -237,7 +202,6 @@ mod tests {
         assert!(partial.portal(Portal::FreelanceDe).login_enabled);
         assert!(partial.portal(Portal::FreelanceDe).enabled);
         assert!(partial.portal(Portal::LinkedIn).enabled);
-        assert!(partial.fetch_mail && partial.fetch_search);
     }
 
     /// Broken JSON gives the defaults for convenience, but never switches a portal on:
@@ -258,7 +222,6 @@ mod tests {
         let back = Settings::load(&store).unwrap();
         assert!(back.fetch_portals().is_empty());
         assert!(back.enabled_portals().is_empty());
-        assert!(back.fetch_search, "the rest: defaults");
         let shared = std::sync::Arc::new(store);
         shared.kv_set(KEY, "{kaputt").unwrap();
         let paths = crate::pipeline::stored_paths(shared);

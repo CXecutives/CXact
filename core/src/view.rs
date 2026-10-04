@@ -1057,12 +1057,6 @@ pub enum WorkspaceProfile {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    /// The fetch reads the alert mails.
-    #[serde(default)]
-    pub fetch_mail: Option<bool>,
-    /// The fetch searches the sources.
-    #[serde(default)]
-    pub fetch_search: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1084,12 +1078,6 @@ impl SettingsPatch {
             if let Some(on) = patch.login_enabled {
                 switches.login_enabled = on;
             }
-        }
-        if let Some(on) = self.fetch_mail {
-            settings.fetch_mail = on;
-        }
-        if let Some(on) = self.fetch_search {
-            settings.fetch_search = on;
         }
     }
 }
@@ -1506,10 +1494,6 @@ pub struct ResetSummary {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "flat facts of the app for the page, one JSON field each (IPC contract)"
-)]
 pub struct AppState {
     pub platform: Platform,
     /// The app's version (`3.0.0`).
@@ -1524,10 +1508,6 @@ pub struct AppState {
     /// The profile.
     pub profile: Option<ProfileInfo>,
     pub portals: Vec<PortalState>,
-    /// The fetch reads the alert mails (the menu beside the button).
-    pub fetch_mail: bool,
-    /// The fetch searches the sources (the menu beside the button).
-    pub fetch_search: bool,
     /// The last fetch - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
     pub counts: JobCounts,
@@ -2058,7 +2038,7 @@ mod tests {
             q.bands = band.into_iter().collect();
             job_page(&store, &q).unwrap()
         };
-        let (count, high) = store.new_jobs(run).unwrap();
+        let (count, high, _) = store.new_jobs(run).unwrap();
         let all = page(None);
         assert_eq!(
             titles(&all),

@@ -3,4 +3,4 @@
 /**
  * Why a portal pauses or stopped - a code for the interface.
  */
-export type PauseReason = "throttled" | "blocked" | "layoutChanged" | "stateUnreadable" | "network" | "challenged";
+export type PauseReason = "throttled" | "blocked" | "layoutChanged" | "stateUnreadable" | "network" | "challenged" | "robots";

@@ -649,7 +649,7 @@ mod tests {
         );
         assert_eq!(
             store.new_jobs(run).unwrap(),
-            (0, 0),
+            (0, 0, 0),
             "no new job of the run"
         );
     }

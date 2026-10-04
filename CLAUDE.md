@@ -48,7 +48,7 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   (no sparkles, no gradient text, no glow for decoration).
 - The backend never sends prose: notices, errors and status are `{code, params}`; texts live in the UI catalog.
 - Scraping stays conservative: links from the user's alert mails, and the public search of the sources that
-  allow it (`Way::Search`, the profile's Suchbegriffe), never more than their robots.txt allows (read at run time;
+  allow it (`Way::Search`, the terms derived from the profile), never more than their robots.txt allows (read at run time;
   every request of the searched sources). Every request through `admit` (policy.json), stop on
   429/999/403/captcha/login wall, never bypass captchas or 2FA. Every source can be switched off.
 - Run events stay below 8 KB (Tauri channel messages above 8 KB bypass the ACL). async-imap logs LOGIN on trace:

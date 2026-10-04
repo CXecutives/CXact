@@ -108,6 +108,48 @@ fn judge_guarded(matcher: &dyn Matcher, job: &JobRow, text: Option<&str>) -> Opt
         .unwrap_or_else(|| Some(Judgement::from(engine_failed())))
 }
 
+/// The reasons that exclude a job from its title alone, the engine deciding (the screen
+/// before any ad is read): an exclusion word in the title, Zeitarbeit in the title while the
+/// profile does not allow it. A place, a junior level or Festanstellung never screen a job
+/// out: their ad decides.
+pub const TITLE_DECIDED: [&str; 2] = ["exclusionWord", "anue"];
+
+/// Screens new jobs before their ads are read: each is judged from its title alone and kept
+/// as excluded where the engine excludes it for a [`TITLE_DECIDED`] reason (its ad is then
+/// not read: `Store::fetch_queue`); the others stay unjudged until their ad. How many it
+/// excluded. Errors only go to the log.
+pub fn screen(store: &Store, matcher: &dyn Matcher, keys: &[JobKey], now: Timestamp) -> usize {
+    let mut excluded = Vec::new();
+    for key in keys {
+        let Ok(Some(job)) = store.job(key) else {
+            continue;
+        };
+        let Some(Some(judged)) = guarded(key, || matcher.judge(&job, None)) else {
+            continue;
+        };
+        if title_decided(&judged.record) {
+            excluded.push((key.clone(), judged));
+        }
+    }
+    let count = excluded.len();
+    if count > 0
+        && let Err(e) = store.save_judgements(&excluded, matcher.rev(), now)
+    {
+        log::warn!("screened jobs not stored: {e}");
+        return 0;
+    }
+    count
+}
+
+/// Is the record an exclusion the title alone decides ([`TITLE_DECIDED`])?
+pub fn title_decided(record: &MatchRecord) -> bool {
+    record.status == MatchStatus::Excluded
+        && record
+            .note
+            .as_ref()
+            .is_some_and(|note| TITLE_DECIDED.contains(&note.code.as_str()))
+}
+
 /// Scores one job right after its details changed. Errors only go to the log - the fetch
 /// goes on, and the catch-up step tries again.
 pub(super) fn score_one(

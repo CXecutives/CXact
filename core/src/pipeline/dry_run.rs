@@ -31,6 +31,18 @@ pub fn matcher() -> Arc<LocalMatcher> {
     MATCHER.clone()
 }
 
+/// The dry run's made-up search, quick enough for the smoke probe: Hays alone (where its
+/// pages answer, [`DryRunPages`]) with the first of the terms.
+pub fn search_plan(portals: &[Portal], terms: &[String]) -> (Vec<Portal>, Vec<String>) {
+    let portals: Vec<Portal> = portals
+        .iter()
+        .copied()
+        .filter(|&portal| portal == Portal::Hays)
+        .collect();
+    let terms = terms.iter().take(1).cloned().collect();
+    (portals, terms)
+}
+
 /// Sample alerts per portal (invented companies).
 const MAILS: [(Portal, &str, &str, &str); 3] = [
     (

@@ -34,8 +34,10 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         sign_in: vec![Portal::FreelanceDe],
         mailbox: None,
         read_mail: true,
+        mail_error: None,
         search_portals: Vec::new(),
         search_terms: Vec::new(),
+        contracts: Contracts::default(),
     }
 }
 
@@ -369,9 +371,10 @@ async fn the_scan_logs_out() {
     assert!(LOGGED_OUT.load(Ordering::SeqCst));
 }
 
-/// If the mailbox fails, nothing is fetched - the export still runs.
+/// A failing mailbox only skips the mail part: the run completes, its summary says why, and
+/// the ads are still read.
 #[tokio::test(start_paused = true)]
-async fn mail_failure_skips_fetch_but_exports() {
+async fn mail_failure_skips_only_the_mail_part() {
     struct Failing;
     impl Backends for Failing {
         type Mail = DryRunMail;
@@ -397,8 +400,9 @@ async fn mail_failure_skips_fetch_but_exports() {
         &c,
     )
     .await;
-    assert!(matches!(&s.outcome, Outcome::Failed { error } if error.kind == ErrorKind::MailAuth));
-    assert!(s.fetch.is_none());
+    assert_eq!(s.outcome, Outcome::Completed);
+    assert!(matches!(&s.mail, Some(error) if error.kind == ErrorKind::MailAuth));
+    assert!(s.fetch.is_some());
     assert_eq!(finished(&events), 1);
     // The Gmail reply is for the log only, never in the summary.
     let json = serde_json::to_string(&s).unwrap();
@@ -1306,6 +1310,16 @@ async fn a_fetch_counts_its_new_jobs() {
             expected.high += 1;
         }
     }
+    expected.excluded = first_seen
+        .iter()
+        .filter(|job| {
+            store.dup_of(&job.key).unwrap().is_none()
+                && job
+                    .match_
+                    .as_ref()
+                    .is_some_and(|m| m.status == crate::model::MatchStatus::Excluded)
+        })
+        .count();
     assert_eq!(s.new_jobs, Some(expected));
     let scan = s.scan.as_ref().unwrap();
     assert!(expected.high >= 1, "the sample has a job that fits well");
@@ -1497,4 +1511,84 @@ fn a_purge_counts_the_rows_it_deleted() {
     let all = store.trashed_keys().unwrap();
     let deleted = delete_jobs(&store, &all, now).unwrap();
     assert_eq!(deleted.count, 2);
+}
+
+/// The screen drops only what the engine decides from the title alone: every title it
+/// excludes stays excluded with any ad the engine could read, for an exclusion word or for
+/// Zeitarbeit the profile does not allow; a junior level, Festanstellung or a place never
+/// screen a job out. A screened job's ad is not read until the user lets it fit anyway.
+#[test]
+fn the_screen_drops_only_decided_exclusions() {
+    let form = crate::profile::of_json(&serde_json::json!({
+        "wunschrollen": ["Interim CFO"],
+        "vertragsarten": ["projekt", "festanstellung"],
+        "kernkompetenzen": [{"kompetenz": "Controlling", "jahre": 15}],
+        "sprachen": [{"sprache": "Deutsch", "niveau": "Muttersprache"}],
+        "ausschlusswoerter": ["Werkstudent"],
+    }));
+    let matcher = LocalMatcher::from_form(&form);
+    let store = Store::in_memory().unwrap();
+    let run = store.begin_run().unwrap();
+    let now = Timestamp::now();
+    let titles = [
+        ("1001", "Werkstudent Controlling (m/w/d)", true),
+        (
+            "1002",
+            "Controller (m/w/d) in Arbeitnehmerüberlassung",
+            true,
+        ),
+        // The engine does not read Zeitarbeit from this title alone: the screen neither.
+        ("1003", "Zeitarbeit: Buchhalter (m/w/d)", false),
+        ("1004", "Interim CFO (m/w/d)", false),
+        ("1005", "Junior Controller (m/w/d)", false),
+        ("1006", "CFO in Festanstellung", false),
+        ("1007", "Controller (m/w/d) in Zürich", false),
+    ];
+    let postings: Vec<crate::model::Posting> = titles
+        .iter()
+        .map(|(id, title, _)| {
+            let url = Portal::Hays.adapter().canonical_url(id).unwrap();
+            let link = Portal::Hays.adapter().job_link(&url).unwrap();
+            crate::model::Posting::new(link.key, link.url, title, "", "Hamburg")
+        })
+        .collect();
+    store.record_found(run, &postings, now).unwrap();
+    let keys = store.unjudged_of_run(run).unwrap();
+    assert_eq!(keys.len(), titles.len());
+    let excluded = score::screen(&store, &matcher, &keys, now);
+    assert_eq!(excluded, 2);
+    let ad = "Aufgaben\nVerantwortung für Controlling und Reporting.\nProfil\nMehrjährige \
+              Erfahrung im Controlling, sehr gute Deutschkenntnisse.";
+    for (id, title, dropped) in titles {
+        let key = JobKey {
+            portal: Portal::Hays,
+            id: id.to_owned(),
+        };
+        let job = store.job(&key).unwrap().unwrap();
+        let screened = job.match_.as_ref().is_some_and(score::title_decided);
+        assert_eq!(screened, dropped, "{title}");
+        if screened {
+            // With an ad the engine excludes it all the same.
+            let full = matcher.assess(&job, Some(ad)).unwrap();
+            assert_eq!(full.status, crate::model::MatchStatus::Excluded, "{title}");
+        } else {
+            assert!(job.match_.is_none(), "{title}: unjudged until its ad");
+        }
+    }
+    // The ads of the screened jobs are not read; one the user lets fit anyway is.
+    let queued = |store: &Store| -> Vec<String> {
+        store
+            .fetch_queue(now, crate::fetch::MAX_AGE, crate::fetch::RETRY_AFTER)
+            .unwrap()
+            .into_iter()
+            .map(|job| job.key.id)
+            .collect()
+    };
+    assert_eq!(queued(&store), ["1003", "1004", "1005", "1006", "1007"]);
+    let werkstudent = JobKey {
+        portal: Portal::Hays,
+        id: "1001".into(),
+    };
+    store.set_override(&werkstudent, true).unwrap();
+    assert!(queued(&store).contains(&"1001".to_owned()));
 }

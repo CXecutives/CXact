@@ -74,6 +74,10 @@ impl PortalAdapter for Fratch {
     }
 
     /// The list of its open projects, once; none without a term, like every search.
+    fn searches_terms(&self) -> bool {
+        false
+    }
+
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         if terms.iter().all(|term| term.trim().is_empty()) {
             return Vec::new();

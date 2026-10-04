@@ -259,8 +259,9 @@ than the ads (Amadeus Fire) name that host's robots.txt in `search_robots_url()`
 (GULP) gives the JSON body in `search_body(url)`; the term rides in the address's query. First check by hand that its robots.txt allows the
 search and the ads; the app checks it again at run time. Fixtures: a shortened search page
 and ad in the adapter's tests, the real pages under `core/tests/fixtures/private/pages`
-(ignored tests `the_real_*`); `cargo run -p jobalert-core --example live_search -- <terms>`
-asks the live pages once. Its row lands in the card Suche of Einstellungen by its `way`.
+(ignored tests `the_real_*`); `cargo run -p jobalert-core --example live_search -- --profile
+<file> --sources <key>` runs a real search with its ads and scores (`--terms`, `--out`, `--compare`
+compare two term lists). Its row lands in the card Suche of Einstellungen by its `way`.
 
 ## Change a threshold or a default
 

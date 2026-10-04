@@ -99,7 +99,9 @@ impl PortalAdapter for Gulp {
 
     /// The query as the page sends it: the term, the newest first, in German; the page's
     /// index counts from 0 (measured 2026-10-01: `1` is the second page, so the first one
-    /// was never read before).
+    /// was never read before). No contract filter: its `projectTypes` name where a project
+    /// comes from (`AGENCY`, `TALENT_FINDER`, `DIREKT`, read 2026-10-04), not its contract, and
+    /// every one is a project.
     fn search_body(&self, url: &Url) -> Option<String> {
         let term = url
             .query_pairs()

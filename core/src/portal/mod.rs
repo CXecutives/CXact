@@ -44,6 +44,16 @@ use crate::fetch::policy::Limits;
 use crate::fetch::site::PortalSite;
 use crate::fetch::{Cause, PageOutcome};
 
+/// The contract types a profile allows beside projects and interim work (always allowed):
+/// what a source's search may filter by ([`PortalAdapter::contract_filter`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Contracts {
+    /// Festanstellung.
+    pub permanent: bool,
+    /// Zeitarbeit (temporary agency work).
+    pub temporary: bool,
+}
+
 /// A portal. The order is the one of the interface and the export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Portal {
@@ -219,10 +229,26 @@ pub trait PortalAdapter: Send + Sync {
         let _ = (first, page);
         None
     }
-    /// The pages of the source's own search for the profile's terms (none: no search).
+    /// The pages of the source's own search for the profile's terms (none: no search),
+    /// without a filter.
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         let _ = terms;
         Vec::new()
+    }
+    /// A search page of [`Self::search_urls`] with the source's filter by contract type for
+    /// what the profile allows beside projects and interim work (`None`: no filter takes away
+    /// anything here). A filter only takes away what the engine surely excludes (user decision
+    /// 2026-10-03): never by remote work or country. Its robots.txt refusing the filtered page,
+    /// the search asks for the page without it (`fetch::search`).
+    fn contract_filter(&self, url: &Url, contracts: Contracts) -> Option<Url> {
+        let _ = (url, contracts);
+        None
+    }
+    /// The search asks for the profile's terms; `false` for a source whose one list holds all
+    /// its roles whatever the terms (Amadeus Fire, interim-x, FRATCH): only its hits whose title
+    /// fits the profile are kept (`fetch::search::PRESCORE_FLOOR`).
+    fn searches_terms(&self) -> bool {
+        true
     }
     /// A search page answered with 200: its hits, or what it shows instead (a check, a
     /// wall, a page the parser does not know).

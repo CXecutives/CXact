@@ -594,9 +594,10 @@ impl Store {
     ) -> Result<Vec<JobRow>> {
         let conn = self.conn();
         let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job WHERE {FETCHABLE} AND {DUE}
+            "SELECT {JOB_COLUMNS} FROM job WHERE {FETCHABLE} AND {DUE} AND NOT {}
              ORDER BY desc_status = 'failed', COALESCE(mail_date, first_seen_at) DESC, portal, job_id"
-        ))?;
+        ,
+            screened_out()))?;
         let rows = stmt.query_map(due_params(now, max_age, retry_after), job_row)?;
         rows.map(|r| r?).collect()
     }
@@ -784,6 +785,21 @@ const DUE: &str = "COALESCE(mail_date, first_seen_at) >= ?1
          OR (desc_status = 'failed' AND COALESCE(desc_attempted_at, 0) <= ?2)
          OR (desc_status = 'teaser' AND desc_attempts < ?3
              AND (desc_attempts = 0 OR COALESCE(desc_attempted_at, 0) <= ?2)))";
+
+/// An open job its title alone excludes (the screen, `pipeline::score::TITLE_DECIDED`), which
+/// the user did not let fit anyway: not due.
+fn screened_out() -> String {
+    let codes: Vec<String> = crate::pipeline::score::TITLE_DECIDED
+        .iter()
+        .map(|code| format!("'{code}'"))
+        .collect();
+    format!(
+        "(desc_status = 'missing' AND match_status IS 'excluded'
+          AND COALESCE(override_include, 0) = 0
+          AND json_extract(match_note, '$.code') IN ({}))",
+        codes.join(", ")
+    )
+}
 
 fn due_params(now: Timestamp, max_age: SignedDuration, retry_after: SignedDuration) -> [i64; 3] {
     [

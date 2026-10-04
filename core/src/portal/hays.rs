@@ -1,7 +1,9 @@
 //! Hays (hays.de): the largest agency for freelance projects in Germany. The app searches its
-//! public job search itself (user decision 2026-10-01), limited to projects for freelancers
-//! (`joblevel=3`, "Freiberuflich für ein Projekt"), served as HTML with `mrew=1&e=false`; the
-//! robots.txt allows the search and the ads (checked at run time).
+//! public job search itself (user decision 2026-10-01), served as HTML with `mrew=1&e=false`:
+//! limited to projects for freelancers (`joblevel=3`, "Contracting") when the profile allows
+//! neither Festanstellung nor Zeitarbeit, else every job (its filter takes one contract type
+//! only: 1 Arbeitnehmerüberlassung, 2 Festanstellung, 3 Contracting, 4 and 5 students; read
+//! 2026-10-04). The robots.txt allows the search and the ads (checked at run time).
 //!
 //! A hit is `div.search__result` with its link, its title and its place; an ad is
 //! `/jobsuche/stellenangebote-jobs-detail-<slug>-<id>/1` (the slug is not read: any one opens
@@ -14,7 +16,7 @@ use scraper::{ElementRef, Html};
 use url::Url;
 
 use super::{
-    Access, Css, Facts, Hit, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
+    Access, Contracts, Css, Facts, Hit, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
     host_and_segments, host_is, selector, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
@@ -26,6 +28,8 @@ pub(super) struct Hays;
 const DOMAIN: &str = "hays.de";
 const DETAIL_PREFIX: &str = "stellenangebote-jobs-detail-";
 const PARSER_VERSION: u32 = 1;
+/// The search's contract type "Contracting" (`joblevel`).
+const CONTRACTING: &str = "3";
 
 impl PortalAdapter for Hays {
     fn portal(&self) -> Portal {
@@ -128,8 +132,7 @@ impl PortalAdapter for Hays {
         facts(&Html::parse_document(html))
     }
 
-    /// One page per term: projects for freelancers only, newest first (the search's own
-    /// order), as HTML.
+    /// One page per term, newest first (the search's own order), as HTML.
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         terms
             .iter()
@@ -138,7 +141,6 @@ impl PortalAdapter for Hays {
                     Url::parse("https://www.hays.de/jobsuche/stellenangebote-jobs").ok()?;
                 url.query_pairs_mut()
                     .append_pair("q", term)
-                    .append_pair("joblevel", "3")
                     .append_pair("mrew", "1")
                     .append_pair("e", "false");
                 Some(url)
@@ -146,15 +148,44 @@ impl PortalAdapter for Hays {
             .collect()
     }
 
-    /// Its further pages as its own links name them (measured 2026-10-01): the contracting
-    /// jobs, page `n` in the path, the term in the query.
+    /// Projects for freelancers only (`joblevel=3`) while the profile allows neither
+    /// Festanstellung nor Zeitarbeit; the filter takes one contract type, so with either of
+    /// them the search keeps every job.
+    fn contract_filter(&self, url: &Url, contracts: Contracts) -> Option<Url> {
+        if contracts.permanent || contracts.temporary {
+            return None;
+        }
+        let mut filtered = Url::parse("https://www.hays.de/jobsuche/stellenangebote-jobs").ok()?;
+        {
+            let mut query = filtered.query_pairs_mut();
+            for (name, value) in url.query_pairs() {
+                query.append_pair(&name, &value);
+                if name == "q" {
+                    query.append_pair("joblevel", CONTRACTING);
+                }
+            }
+        }
+        Some(filtered)
+    }
+
+    /// Its further pages as its own links name them (measured 2026-10-01 and 2026-10-04):
+    /// page `n` in the path (below `/j/Contracting/3` for the contracting jobs), the term in
+    /// the query.
     fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
         let term = first
             .query_pairs()
             .find(|(name, _)| name == "q")
             .map(|(_, value)| value.into_owned())?;
+        let contracting = first
+            .query_pairs()
+            .any(|(name, value)| name == "joblevel" && value == CONTRACTING);
+        let path = if contracting {
+            format!("j/Contracting/{CONTRACTING}/p/{page}")
+        } else {
+            format!("p/{page}/")
+        };
         let mut url = Url::parse(&format!(
-            "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/{page}"
+            "https://www.hays.de/jobsuche/stellenangebote-jobs/{path}"
         ))
         .ok()?;
         url.query_pairs_mut()
@@ -312,14 +343,36 @@ mod tests {
       <h3>Profil</h3><ul><li>Mehrjährige Erfahrung als SAP Stream Lead im Bereich SAP PM/EAM</li></ul></div>
     </body></html>"#;
 
-    /// Its further pages as its own links name them (measured 2026-10-01).
+    /// Its further pages as its own links name them (measured 2026-10-01 and 2026-10-04),
+    /// with the contract filter only for a profile of projects alone.
     #[test]
     fn the_search_pages_like_its_links() {
         let first = Hays.search_urls(&["Interim CFO".to_owned()]).remove(0);
         assert_eq!(
             Hays.search_page_url(&first, 2).unwrap().as_str(),
+            "https://www.hays.de/jobsuche/stellenangebote-jobs/p/2/?q=Interim+CFO&e=false&ij=false"
+        );
+        let projects = Hays.contract_filter(&first, Contracts::default()).unwrap();
+        assert_eq!(
+            projects.as_str(),
+            "https://www.hays.de/jobsuche/stellenangebote-jobs?q=Interim+CFO&joblevel=3&mrew=1&e=false"
+        );
+        assert_eq!(
+            Hays.search_page_url(&projects, 2).unwrap().as_str(),
             "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2?q=Interim+CFO&e=false&ij=false"
         );
+        for contracts in [
+            Contracts {
+                permanent: true,
+                temporary: false,
+            },
+            Contracts {
+                permanent: false,
+                temporary: true,
+            },
+        ] {
+            assert_eq!(Hays.contract_filter(&first, contracts), None);
+        }
     }
 
     #[test]
@@ -344,11 +397,11 @@ mod tests {
             Hays.search_page(r#"<div class="search__results"></div>"#),
             Ok(Vec::new())
         );
-        // One term, one page: projects for freelancers, as HTML.
+        // One term, one page, as HTML.
         let urls = Hays.search_urls(&["SAP FI/CO".to_owned()]);
         assert_eq!(
             urls[0].as_str(),
-            "https://www.hays.de/jobsuche/stellenangebote-jobs?q=SAP+FI%2FCO&joblevel=3&mrew=1&e=false"
+            "https://www.hays.de/jobsuche/stellenangebote-jobs?q=SAP+FI%2FCO&mrew=1&e=false"
         );
     }
 

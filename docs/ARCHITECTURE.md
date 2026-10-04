@@ -56,7 +56,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
-| Defaults of the settings (`fetchMail`, `fetchSearch`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
+| Defaults of the settings (the portal switches) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
 | Engine words | `core/src/matching/lexicon/` | the engine |
 
@@ -72,7 +72,8 @@ mail, store, engine, view, UI:
    (`search_page_url`) while its pages bring new jobs, a cut-short paging going on at the
    next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
    Crawl-delay the least gap); the hits are jobs without a mail (`Store::record_found`). A
-   fetch reads the mailbox or searches, never both (`Settings::fetches_mail`).
+   fetch reads the mailbox (with one) and searches, in one run; the new jobs go through the
+   screen (`pipeline::score::screen`) before their ads are read.
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
    before every request (search pages and robots.txt too) and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the

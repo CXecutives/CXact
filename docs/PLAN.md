@@ -11,11 +11,12 @@ the layers in `docs/ARCHITECTURE.md`, the engine in `docs/MATCHING.md`, how to w
 A desktop app for Windows and macOS (Tauri 2, a Rust core, a Svelte 5 UI) for an interim manager or a
 freelance consultant. It finds jobs and scores each one against the consultant's profile.
 
-The fetch runs only when the user presses it, one of two ways the menu beside the button chooses (never
-both; the search by default, `Settings::fetches_mail`):
-- **"Jobs suchen"** searches the sources that allow it itself, with terms from the active profile.
-- **"Alert-Mails lesen"** reads the job alert mails of LinkedIn and freelance.de from Gmail (IMAP, an app
-  password in the OS keychain), since the last fetch, the first one 30 days back.
+The fetch runs only when the user presses "Jobs suchen" (one run, `RunKind::Fetch`):
+- With a connected mailbox it first reads the job alert mails of LinkedIn and freelance.de from Gmail
+  (IMAP, an app password in the OS keychain), since the last fetch, the first one 30 days back. A mailbox
+  that fails (Gmail, the keychain) only skips this part; the run says so (`RunSummary::mail`).
+- Then it searches the sources that allow it itself, with terms derived from the profile.
+- It is refused without a usable profile (`profile::missing_required`), then with nothing to read.
 
 Every new job's ad is fetched and scored by the matching engine. The list sorts by match, date or day rate.
 
@@ -32,8 +33,20 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   Kompetenzen, Tools; a competence or tool the engine finds too broad to search alone, such as
   Projektmanagement or SAP, stays out). Each term is paged while new jobs come, up to 10 pages on Hays,
   freelancermap, Michael Page and GULP. A cut-short paging resumes at the next fetch within 7 days.
-  SOLCOM, interim-x and FRATCH list all their projects; the app filters them. A title pre-score that knows
-  the target roles orders what is fetched first.
+  SOLCOM, interim-x and FRATCH list all their projects; the app filters them. Amadeus Fire, interim-x and
+  FRATCH (one list whatever the terms) keep only the titles whose pre-score reaches `PRESCORE_FLOOR`
+  (measured on the held-out sets: no high-band job below it). A title pre-score that knows the target
+  roles orders what is fetched first; one run reads at most half a searched source's daily cap of ads
+  (`fetch::run_budget`), the titles that fit least wait for a later run.
+- A source filters only by contract type: Hays to Contracting when the profile allows neither
+  Festanstellung nor Zeitarbeit (its robots.txt refusing that page, the term goes without the filter).
+  GULP's `projectTypes` name where a project comes from, not its contract: no filter. No remote or country
+  filter. A source whose robots.txt refused every page reports it instead of "ok" with no jobs.
+- The screen before any ad (`pipeline::score::screen`): a new job whose title alone the engine excludes
+  (an exclusion word, Zeitarbeit the profile does not allow) is kept as excluded without its ad; "Trotzdem
+  bewerten" reads it. A place, a junior level or Festanstellung never screen a job out.
+- What each term brought per source is kept (`fetch::search::term_jobs`, "CXact sucht nach").
+  `core/examples/live_search.rs` runs a real search with fetch and scores and compares two term lists.
 - The pace, within the scraping rules of `CLAUDE.md` (`admit`, `fetch/policy.rs`): search sources run at
   2.5 to 5 s, capped at 300 an hour and 1,500 a day each, never below robots.txt's Crawl-delay.
 - Rejected for good: jobs.ch, karriere.at, eFinancialCareers and StepStone (their terms forbid automated

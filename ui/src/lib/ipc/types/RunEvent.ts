@@ -13,7 +13,7 @@ import type { Step } from "./Step";
  * `job_detail`). Struct variants only - with `tag = "type"` a newtype variant would merge
  * into the tag.
  */
-export type RunEvent = { "type": "started", kind: RunKindName, } | { "type": "progress", step: Step, portal: Portal | null, done: number, total: number, } | { "type": "status", code: StatusCode, portal: Portal | null, until: string | null, } | { "type": "alert", portal: Portal, subject: string, date: string | null, postings: number, 
+export type RunEvent = { "type": "started", kind: RunKindName, } | { "type": "sourceDone", portal: Portal, new: number, } | { "type": "progress", step: Step, portal: Portal | null, done: number, total: number, } | { "type": "status", code: StatusCode, portal: Portal | null, until: string | null, } | { "type": "alert", portal: Portal, subject: string, date: string | null, postings: number, 
 /**
  * Gmail message id (hexadecimal) - opened through `open_target`.
  */

@@ -1,7 +1,11 @@
-//! One click: mailbox or search -> new jobs -> job details -> scores.
+//! One click ("Jobs suchen"): the alert mails (with a mailbox) and the search -> new jobs ->
+//! job details -> scores.
 //!
 //! The run kinds pick the steps (`RunKind`); the portals come from the settings, never from
-//! the page. Every run starts with exactly one `Started` (its kind: the
+//! the page. A failing mailbox (Gmail, the keychain) only skips the mail part: the run goes
+//! on and its summary says why (`RunSummary::mail`). The new jobs of a run go through a
+//! screen before any ad is read ([`score::screen`]): a title the engine excludes alone (an
+//! exclusion word, Zeitarbeit the profile does not allow) is excluded without its ad. Every run starts with exactly one `Started` (its kind: the
 //! page also follows runs it did not start) and ends with exactly one `Finished`; the summary
 //! of a fetch is also stored as `last_run_summary` - "the last fetch" for the page, which a
 //! rescore or a details run never replaces. Events carry codes
@@ -24,14 +28,14 @@ use tokio_util::sync::CancellationToken;
 
 use crate::error::{ErrorInfo, InvalidInput};
 use crate::fetch::policy::Policy;
-use crate::fetch::search::{SearchCounts, SearchEvent, search_all};
+use crate::fetch::search::{SearchCounts, SearchEvent, SearchPlan, search_all};
 use crate::fetch::{
     FetchEvent, FetchSummary, PageFetcher, PortalHealth, Prescore, Selection, fetch_all,
     neutral_prescore,
 };
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
-use crate::portal::{FetchPath, JobKey, Portal};
+use crate::portal::{Contracts, FetchPath, JobKey, Portal};
 use crate::store::Store;
 use crate::text::truncate_chars;
 use crate::time;
@@ -58,8 +62,8 @@ pub struct RunRequest {
 )]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum RunKind {
-    /// The alert mails of the enabled portals in the range the settings choose
-    /// (`fetchRange`), their job details.
+    /// "Jobs suchen": the alert mails of the enabled portals (with a mailbox) and the search
+    /// of the sources, then the job details.
     Fetch,
     /// Job details of exactly these jobs (older ones too).
     Details { keys: Vec<JobKey> },
@@ -112,10 +116,15 @@ pub struct RunContext {
     pub mailbox: Option<String>,
     /// Whether a fetch reads the mailbox (`false`: none is connected, the run only searches).
     pub read_mail: bool,
+    /// Why the mailbox cannot be read in this run (the keychain failed): the mail part is
+    /// skipped with it as [`RunSummary::mail`].
+    pub mail_error: Option<ErrorInfo>,
     /// The sources the app searches itself (switched on, `Way::Search`).
     pub search_portals: Vec<Portal>,
-    /// What it searches for: the active profile's search terms.
+    /// What it searches for: the profile's search terms (`profile::deep_search_terms`).
     pub search_terms: Vec<String>,
+    /// The contract types the profile allows beside projects (the sources' filters).
+    pub contracts: Contracts,
 }
 
 impl RunContext {
@@ -214,6 +223,9 @@ pub enum RunEvent {
     /// The first event of every run: its kind (the rescores the app starts by itself
     /// included).
     Started { kind: RunKindName },
+    /// A source's search is over (the sources run side by side): so many new jobs that are
+    /// not excluded.
+    SourceDone { portal: Portal, new: usize },
     Progress {
         step: Step,
         portal: Option<Portal>,
@@ -347,15 +359,16 @@ pub struct ScoreDelta {
     pub high_after: u32,
 }
 
-/// The jobs a mailbox run brought - the "neue Jobs" of the run card: first seen in the run
-/// (a job several portals announce counts once, as its original), excluded ones left out;
-/// `high`: how many of them are scored in the high band.
+/// The jobs a fetch brought - the "neue Jobs" of the run's toast: first seen in the run (a
+/// job several portals announce counts once, as its original), excluded ones left out;
+/// `high`: how many of them are scored in the high band; `excluded`: the new ones excluded.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct NewJobs {
     pub count: usize,
     pub high: usize,
+    pub excluded: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -368,6 +381,10 @@ pub struct RunSummary {
     pub dry_run: bool,
     pub started_at: Timestamp,
     pub finished_at: Timestamp,
+    /// Why the mail part of a fetch was skipped (Gmail or the keychain failed; the search
+    /// still ran): the run still completes.
+    #[serde(default)]
+    pub mail: Option<ErrorInfo>,
     pub scan: Option<ScanCounts>,
     pub per_portal: Vec<PortalSummary>,
     /// Set by a mailbox run (summaries of earlier versions have none).
@@ -393,6 +410,7 @@ impl RunSummary {
             dry_run,
             started_at,
             finished_at: started_at,
+            mail: None,
             scan: None,
             per_portal: Vec::new(),
             new_jobs: None,
@@ -418,6 +436,12 @@ impl RunSummary {
                 continue;
             }
             if let Outcome::Failed { error } = &mut summary.outcome
+                && !error.params.is_empty()
+            {
+                error.params.clear();
+                continue;
+            }
+            if let Some(error) = &mut summary.mail
                 && !error.params.is_empty()
             {
                 error.params.clear();
@@ -466,15 +490,13 @@ impl<'a> Plan<'a> {
     fn of(kind: &'a RunKind, ctx: &'a RunContext) -> Plan<'a> {
         let queue = Some(Selection::Queue(&ctx.fetch_portals));
         match kind {
-            RunKind::Fetch => {
-                let search = !ctx.search_portals.is_empty() && !ctx.search_terms.is_empty();
-                Plan {
-                    // Without a mailbox a fetch only searches; with neither the scan says why.
-                    scan: (ctx.read_mail || !search).then_some(Scope::New),
-                    search,
-                    fetch: queue,
-                }
-            }
+            RunKind::Fetch => Plan {
+                // The mail part with a mailbox whose keychain entry reads, the search with
+                // sources and terms (`run_context` refuses a fetch with neither).
+                scan: (ctx.read_mail && ctx.mail_error.is_none()).then_some(Scope::New),
+                search: !ctx.search_portals.is_empty() && !ctx.search_terms.is_empty(),
+                fetch: queue,
+            },
             RunKind::Details { keys } => Plan {
                 scan: None,
                 search: false,
@@ -525,7 +547,10 @@ pub async fn run<B: Backends>(
     log::info!("run {run}: {:?} started", summary.kind);
     let plan = Plan::of(&request.kind, ctx);
     let mut postings: BTreeMap<Portal, usize> = BTreeMap::new();
-    // The scan of this run succeeded: its facts are the Info sheet's.
+    let matcher = backends.matcher();
+    if request.kind == RunKind::Fetch {
+        summary.mail.clone_from(&ctx.mail_error);
+    }
 
     if let Some(scope) = plan.scan {
         let before_scan = last_scan_run(store).unwrap_or(0);
@@ -551,15 +576,17 @@ pub async fn run<B: Backends>(
                 &mut emit,
             )
             .await;
-            summary.outcome = match result {
-                Ok(()) => {
-                    remember_scan(store, started_at);
-                    Outcome::Completed
-                }
-                Err(ScanError::Mail(MailError::Cancelled)) => Outcome::Cancelled,
-                Err(ScanError::Mail(e)) => failed(ErrorInfo::from(&e)),
-                Err(ScanError::Store(e)) => failed(ErrorInfo::from(&e)),
-            };
+            // A mailbox that fails skips the mail part only: the search and the ads go on.
+            match result {
+                Ok(()) => remember_scan(store, started_at),
+                Err(ScanError::Mail(MailError::Cancelled)) => summary.outcome = Outcome::Cancelled,
+                Err(ScanError::Mail(e)) => summary.mail = Some(ErrorInfo::from(&e)),
+                Err(ScanError::Store(e)) => summary.outcome = failed(ErrorInfo::from(&e)),
+            }
+            if let Some(matcher) = &matcher {
+                let fresh = store.unjudged_of_run(run).unwrap_or_default();
+                score::screen(store, &**matcher, &fresh, clock());
+            }
             if scanned.mails_checked == 0 {
                 let _ = store.kv_set(LAST_SCAN_RUN, &before_scan.to_string());
             }
@@ -576,12 +603,12 @@ pub async fn run<B: Backends>(
 
     // The search: after the mailbox (or in its place without one), before the ads are read,
     // so its hits are fetched in the same run; a mailbox that failed does not stop it.
-    if plan.search && summary.outcome != Outcome::Cancelled {
+    if plan.search && summary.outcome == Outcome::Completed {
         let mut found = BTreeMap::new();
         let searched = search_step(
             backends,
             ctx,
-            (store, policy, run),
+            (store, policy, run, matcher.as_deref()),
             cancel,
             &clock,
             &mut found,
@@ -604,13 +631,10 @@ pub async fn run<B: Backends>(
         }
     }
 
-    let matcher = backends.matcher();
     let mut tally = Tally::default();
-    // The ads are read after a completed scan, or after the search whatever the mailbox did.
-    let fetch_now = summary.outcome == Outcome::Completed
-        || (summary.search.is_some() && summary.outcome != Outcome::Cancelled);
+    // The ads are read after the mail part and the search (whatever the mailbox did).
     if let Some(selection) = plan.fetch
-        && fetch_now
+        && summary.outcome == Outcome::Completed
     {
         let mut fetched = FetchSummary::default();
         let outcome = fetch_step(
@@ -625,10 +649,7 @@ pub async fn run<B: Backends>(
             &mut emit,
         )
         .await;
-        // A failure of the mailbox stays the run's outcome.
-        if summary.outcome == Outcome::Completed {
-            summary.outcome = outcome;
-        }
+        summary.outcome = outcome;
         summary.fetch = Some(fetched);
     }
     summary.per_portal = per_portal(store, run, &postings, summary.fetch.as_ref());
@@ -659,9 +680,15 @@ pub async fn run<B: Backends>(
         });
     }
 
-    if summary.scan.is_some() || summary.search.is_some() {
+    if request.kind == RunKind::Fetch {
         match store.new_jobs(run) {
-            Ok((count, high)) => summary.new_jobs = Some(NewJobs { count, high }),
+            Ok((count, high, excluded)) => {
+                summary.new_jobs = Some(NewJobs {
+                    count,
+                    high,
+                    excluded,
+                });
+            }
             Err(e) => log::warn!("run {run}: new jobs not counted: {e}"),
         }
     }
@@ -957,11 +984,12 @@ async fn fetch_step<B: Backends>(
 }
 
 /// The sources' own search: [`search_all`] with the run's events (the source being
-/// searched, the waits, a stop as the source's health).
+/// searched, the waits, a stop as the source's health, a source done), the profile's title
+/// pre-score and the screen of the new jobs (with a matcher).
 async fn search_step<B: Backends>(
     backends: &mut B,
     ctx: &RunContext,
-    (store, policy, run): (&Store, &Mutex<Policy>, i64),
+    (store, policy, run, matcher): (&Store, &Mutex<Policy>, i64, Option<&dyn Matcher>),
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
     found: &mut BTreeMap<Portal, SearchCounts>,
@@ -971,10 +999,21 @@ async fn search_step<B: Backends>(
     // A source stays on while the settings keep it switched on.
     let live = backends.live_paths();
     let on = |portal: Portal| live.as_ref().is_none_or(|now| now(portal).is_some());
+    let prescore = backends.prescore();
+    // Screened as of the search's start.
+    let now = clock();
+    let screen = |keys: &[JobKey]| matcher.map_or(0, |m| score::screen(store, m, keys, now));
+    let plan = SearchPlan {
+        portals: &ctx.search_portals,
+        terms: &ctx.search_terms,
+        contracts: ctx.contracts,
+        prescore: matcher.is_some().then_some(&*prescore),
+        screen: Some(&screen),
+    };
     let result = search_all(
         |portal| backends.pages(portal, FetchPath::Guest),
         (store, policy, run),
-        (&ctx.search_portals, &ctx.search_terms, &on),
+        (&plan, &on),
         cancel,
         clock,
         found,
@@ -1000,16 +1039,19 @@ async fn search_step<B: Backends>(
                 log::info!("run {run}: search {}", reason.log_line(portal, 0));
                 emit(health_event(portal, reason.health()));
             }
+            SearchEvent::SourceDone { portal, new } => emit(RunEvent::SourceDone { portal, new }),
         },
     )
     .await;
     for (portal, counts) in found.iter() {
         log::info!(
-            "run {run}: search {}: {} pages, {} hits, {} new, {} refused by robots.txt",
+            "run {run}: search {}: {} pages, {} hits, {} new ({} excluded by their title), {} \
+             refused by robots.txt",
             portal.key(),
             counts.pages,
             counts.hits,
             counts.new,
+            counts.excluded,
             counts.refused
         );
     }

@@ -27,7 +27,9 @@ mod metrics;
 
 use std::path::{Path, PathBuf};
 
-use jobalert_core::matching::{Assessment, JobInput, TextKind, Verdict, assess, compile_profile};
+use jobalert_core::matching::{
+    Assessment, JobInput, TextKind, Verdict, assess, compile_profile, prescore,
+};
 use jobalert_core::portal::Portal;
 use metrics::{Metrics, Outcome, Pair};
 use serde_json::Value;
@@ -41,6 +43,8 @@ struct Row {
     profile: String,
     job: String,
     pair: Pair,
+    /// The title's pre-score for the profile (`matching::prescore`).
+    prescore: u16,
 }
 
 struct SetRun {
@@ -123,6 +127,7 @@ fn run_set(name: &str) -> SetRun {
                 profile: profile_name.clone(),
                 job: job.file.clone(),
                 pair,
+                prescore: prescore(&profile, &job.title, &job.location),
             });
             pairs.push(pair);
         }
@@ -334,6 +339,22 @@ fn check(name: &str, floor: &Floor) {
         t.grade3_low <= floor.grade3_buried,
         "buried grade-3 jobs:\n{report}"
     );
+    // A source without search terms keeps only the titles that reach the floor: no job of
+    // the high band falls below it.
+    let lost: Vec<String> = run
+        .rows
+        .iter()
+        .filter(|r| {
+            r.pair.outcome == Outcome::Scored
+                && r.pair.score >= jobalert_core::model::HIGH_FROM
+                && r.prescore < jobalert_core::fetch::search::PRESCORE_FLOOR
+        })
+        .map(|r| format!("{} {} ({})", r.profile, r.job, r.prescore))
+        .collect();
+    assert!(
+        lost.is_empty(),
+        "high-band jobs below the pre-score floor: {lost:?}"
+    );
 }
 
 #[test]
@@ -422,6 +443,45 @@ fn heldout_report() {
     for line in lines {
         println!("{line}");
     }
+}
+
+/// The pre-scores of the titles by grade (`-- --ignored prescore_report --nocapture`): what
+/// the floor of the sources without a search term may drop.
+#[test]
+#[ignore = "report"]
+fn prescore_report() {
+    let mut by_grade: [Vec<u16>; 4] = Default::default();
+    let mut high = Vec::new();
+    for name in SETS {
+        for r in run_set(name).rows {
+            if r.pair.label_excluded {
+                continue;
+            }
+            by_grade[usize::from(r.pair.grade.min(3))].push(r.prescore);
+            if r.pair.outcome == Outcome::Scored && r.pair.score >= 70 {
+                high.push((r.prescore, format!("{name} {} {}", r.profile, r.job)));
+            }
+        }
+    }
+    for (grade, scores) in by_grade.iter_mut().enumerate() {
+        scores.sort_unstable();
+        let at = |q: usize| scores.get(scores.len() * q / 100).copied().unwrap_or(0);
+        println!(
+            "grade {grade}: {} pairs, min {} p5 {} p10 {} p25 {} median {}",
+            scores.len(),
+            scores.first().copied().unwrap_or(0),
+            at(5),
+            at(10),
+            at(25),
+            at(50)
+        );
+        for floor in [50, 100, 150, 200, 250, 300] {
+            let below = scores.iter().filter(|s| **s < floor).count();
+            println!("  below {floor}: {below}");
+        }
+    }
+    high.sort();
+    println!("lowest high matches: {:?}", &high[..high.len().min(10)]);
 }
 
 /// One row of the per-set table of `docs/MATCHING.md`.

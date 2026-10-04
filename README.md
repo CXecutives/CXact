@@ -6,10 +6,10 @@ jobs and scores each one against a consultant's profile.
 ## What it does
 
 - **Jobs suchen** searches the public job search of Hays, freelancermap, Michael Page, SOLCOM, GULP,
-  Amadeus Fire, interim-x and FRATCH. The terms come from the active profile. Each term is paged while new
-  jobs come, within what each source's robots.txt allows.
-- **Alert-Mails lesen** reads the job alert mails of LinkedIn and freelance.de from a Gmail mailbox
-  (read-only IMAP; the Gmail app password is stored only in the OS keychain).
+  Amadeus Fire, interim-x and FRATCH. The terms come from the profile. Each term is paged while new
+  jobs come, within what each source's robots.txt allows. With a connected Gmail mailbox the same run
+  first reads the job alert mails of LinkedIn and freelance.de (read-only IMAP; the Gmail app password is
+  stored only in the OS keychain).
 - Every new job's ad is fetched politely. Every source can be switched off, and each has its pauses and
   limits.
 - Every job is scored locally against the profile by an explainable, integer-only rule engine:

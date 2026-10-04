@@ -86,6 +86,10 @@ impl PortalAdapter for AmadeusFire {
 
     /// The directory, once (its interim roles are all finance: the terms pick nothing out);
     /// none without a term, like every search.
+    fn searches_terms(&self) -> bool {
+        false
+    }
+
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         if terms.iter().all(|term| term.trim().is_empty()) {
             return Vec::new();

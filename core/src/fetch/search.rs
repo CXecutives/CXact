@@ -13,6 +13,14 @@
 //! The sources are searched side by side, each at its own pace. A term whose paging a stop or
 //! a cancel cut short goes on where it stopped at the source's next search within
 //! [`RESUME_FRESH`] (its first page is always asked again: new jobs stand there).
+//!
+//! A source filters by contract type only ([`PortalAdapter::contract_filter`]); its robots.txt
+//! refusing the filtered page, the term is asked without the filter. A source whose robots.txt
+//! refused every page tells so ([`StopReason::Refused`]) instead of an empty "ok". A source
+//! without search terms (one list of all its roles) keeps only the hits whose title reaches
+//! [`PRESCORE_FLOOR`] with the profile. The new jobs of every page go through the plan's
+//! screen (the pre-filter of the pipeline: titles the engine excludes alone). What each term
+//! brought is kept per source ([`term_jobs`], "CXact sucht nach").
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -29,11 +37,11 @@ use url::Url;
 
 use super::policy::{PauseKind, PauseReason, Policy};
 use super::{
-    Admission, Blocker, Cause, PageFetcher, PageOutcome, PortalOnFn, SUSPICIOUS_STREAK, StopReason,
-    admit, robots_path, search_robots_of,
+    Admission, Blocker, Cause, PageFetcher, PageOutcome, PortalOnFn, PrescoreFn, SUSPICIOUS_STREAK,
+    StopReason, admit, robots_path, search_robots_of,
 };
 use crate::model::Posting;
-use crate::portal::Portal;
+use crate::portal::{Contracts, JobKey, Portal};
 use crate::store::{Seen, Store};
 use crate::sync::lock;
 
@@ -46,6 +54,8 @@ pub struct SearchCounts {
     pub hits: usize,
     /// Jobs the list did not know yet.
     pub new: usize,
+    /// Of those, the ones the screen excluded from their title alone.
+    pub excluded: usize,
     /// Pages left out: their robots.txt does not allow them.
     pub refused: usize,
     /// Why the source's search stopped early, where it did.
@@ -65,7 +75,34 @@ pub enum SearchEvent {
     Waiting { portal: Portal, until: Timestamp },
     /// The source's search stopped early.
     Stopped { portal: Portal, reason: StopReason },
+    /// The source's search is over: so many new jobs that are not excluded.
+    SourceDone { portal: Portal, new: usize },
 }
+
+/// What a run searches: the sources, the terms, the contract types the profile allows, the
+/// profile's title pre-score and the screen of the new jobs.
+pub struct SearchPlan<'a> {
+    pub portals: &'a [Portal],
+    pub terms: &'a [String],
+    pub contracts: Contracts,
+    /// The profile's title pre-score: the hits of a source without search terms below
+    /// [`PRESCORE_FLOOR`] are left out (`None`: every hit is kept).
+    pub prescore: Option<&'a PrescoreFn>,
+    /// Takes the new jobs of a page and says how many of them it excluded from their title
+    /// alone (`None`: none).
+    pub screen: Option<&'a Screen<'a>>,
+}
+
+/// The screen of a search's new jobs: how many of them it excluded from their title alone.
+pub type Screen<'a> = dyn Fn(&[JobKey]) -> usize + Sync + 'a;
+
+/// The first pages of a source's search with the term each asks for.
+type FirstPages = Vec<(Option<String>, Url)>;
+
+/// The least title pre-score (per mille) a hit of a source without search terms needs to be
+/// kept. Measured on the held-out sets (`matching_heldout`, `prescore_report`): it drops about
+/// three quarters of the titles graded 0 and nearly no grade-3 or high-band job.
+pub const PRESCORE_FLOOR: u16 = 50;
 
 /// So many pages of one term a source is asked for at most.
 pub const MAX_PAGES: u32 = 10;
@@ -113,12 +150,76 @@ fn save_resume(
     )
 }
 
+/// So many jobs of one term the yield keeps per source.
+const YIELD_JOBS: usize = 300;
+
+/// What each term brought at a source's last search (the store's key/value table, per
+/// source): its jobs (the ids at that source), new or known.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct Yield {
+    terms: BTreeMap<String, TermYield>,
+}
+
+/// What one term brought at a source.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TermYield {
+    pub pages: u32,
+    pub hits: u32,
+    pub new: u32,
+    /// The ids of its jobs at the source (at most [`YIELD_JOBS`]).
+    pub jobs: Vec<String>,
+}
+
+fn yield_key(portal: Portal) -> String {
+    format!("search_yield:{}", portal.key())
+}
+
+/// What each term brought at a source's last search.
+pub fn term_yields(store: &Store, portal: Portal) -> crate::Result<BTreeMap<String, TermYield>> {
+    Ok(store
+        .kv_get(&yield_key(portal))?
+        .and_then(|text| serde_json::from_str::<Yield>(&text).ok())
+        .unwrap_or_default()
+        .terms)
+}
+
+/// The jobs each term brought at the last search of every source.
+pub fn term_jobs(store: &Store) -> crate::Result<BTreeMap<String, Vec<JobKey>>> {
+    let mut jobs: BTreeMap<String, Vec<JobKey>> = BTreeMap::new();
+    for portal in Portal::ALL {
+        for (term, found) in term_yields(store, portal)? {
+            jobs.entry(term)
+                .or_default()
+                .extend(found.jobs.into_iter().map(|id| JobKey { portal, id }));
+        }
+    }
+    Ok(jobs)
+}
+
+/// Keeps what the terms of this search brought, beside what the other terms of the profile
+/// brought before (a term no longer searched goes).
+fn save_yield(
+    store: &Store,
+    portal: Portal,
+    terms: &[String],
+    searched: BTreeMap<String, TermYield>,
+) -> crate::Result<()> {
+    let mut kept = term_yields(store, portal)?;
+    kept.retain(|term, _| terms.contains(term));
+    kept.extend(searched);
+    store.kv_set(
+        &yield_key(portal),
+        &serde_json::to_string(&Yield { terms: kept }).unwrap_or_default(),
+    )
+}
+
 /// What the searches of the sources share: the store, the rules, the run, the cancel, the
 /// clock, the switches, and the run's page count (done, total) that grows as pages are added.
 struct Shared<'a, C: Fn() -> Timestamp> {
     store: &'a Store,
     policy: &'a Mutex<Policy>,
     run: i64,
+    plan: &'a SearchPlan<'a>,
     on: &'a PortalOnFn<'a>,
     cancel: &'a CancellationToken,
     clock: &'a C,
@@ -132,37 +233,60 @@ enum Ended {
     Cancelled,
 }
 
-/// Searches every source of `portals` that has a search for `terms`, side by side; `false`
-/// when the run was cancelled. A source switched off during the run stops before its next
-/// page.
+/// The first pages of a source's search, each with the term it asks for (`None`: the one
+/// list of a source without search terms).
+fn first_pages(portal: Portal, terms: &[String]) -> FirstPages {
+    let adapter = portal.adapter();
+    if !adapter.searches_terms() {
+        return adapter
+            .search_urls(terms)
+            .into_iter()
+            .map(|url| (None, url))
+            .collect();
+    }
+    terms
+        .iter()
+        .flat_map(|term| {
+            adapter
+                .search_urls(std::slice::from_ref(term))
+                .into_iter()
+                .map(move |url| (Some(term.clone()), url))
+        })
+        .collect()
+}
+
+/// Searches every source of the plan that has a search, side by side; `false` when the run
+/// was cancelled. A source switched off during the run stops before its next page.
 pub async fn search_all<F: PageFetcher>(
     mut pages: impl FnMut(Portal) -> Result<F, String>,
     (store, policy, run): (&Store, &Mutex<Policy>, i64),
-    (portals, terms, on): (&[Portal], &[String], &PortalOnFn<'_>),
+    (plan, on): (&SearchPlan<'_>, &PortalOnFn<'_>),
     cancel: &CancellationToken,
     clock: impl Fn() -> Timestamp,
     found: &mut BTreeMap<Portal, SearchCounts>,
     mut on_event: impl FnMut(SearchEvent),
 ) -> crate::Result<bool> {
-    let plan: Vec<(Portal, Vec<Url>)> = portals
+    let work_plan: Vec<(Portal, FirstPages)> = plan
+        .portals
         .iter()
-        .map(|&portal| (portal, portal.adapter().search_urls(terms)))
+        .map(|&portal| (portal, first_pages(portal, plan.terms)))
         .filter(|(_, urls)| !urls.is_empty())
         .collect();
     let shared = Shared {
         store,
         policy,
         run,
+        plan,
         on,
         cancel,
         clock: &clock,
         done: AtomicUsize::new(0),
-        total: AtomicUsize::new(plan.iter().map(|(_, urls)| urls.len()).sum()),
+        total: AtomicUsize::new(work_plan.iter().map(|(_, urls)| urls.len()).sum()),
     };
     // Only sources switched on get a fetch path - built before the start: if one fails, no
     // source begins.
     let mut work = Vec::new();
-    for (portal, urls) in plan {
+    for (portal, urls) in work_plan {
         found.entry(portal).or_default();
         if !on(portal) {
             shared.done.fetch_add(urls.len(), Ordering::Relaxed);
@@ -224,7 +348,7 @@ pub async fn search_all<F: PageFetcher>(
 )]
 async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     portal: Portal,
-    urls: Vec<Url>,
+    urls: FirstPages,
     mut fetcher: F,
     shared: &Shared<'_, C>,
     notes: mpsc::UnboundedSender<SearchEvent>,
@@ -233,6 +357,7 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
         store,
         policy,
         run,
+        plan,
         on,
         cancel,
         clock,
@@ -255,12 +380,14 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
         Err(Blocker::Stop(reason)) => {
             stopped(&mut counts, portal, Some(reason), &send);
             shared.done.fetch_add(planned, Ordering::Relaxed);
+            send(SearchEvent::SourceDone { portal, new: 0 });
             return Ok((portal, counts, Ended::Completed));
         }
         Err(Blocker::Page(outcome)) => {
             let reason = stop_reason(policy, portal, &outcome, clock())?;
             stopped(&mut counts, portal, reason, &send);
             shared.done.fetch_add(planned, Ordering::Relaxed);
+            send(SearchEvent::SourceDone { portal, new: 0 });
             return Ok((portal, counts, Ended::Completed));
         }
     };
@@ -268,9 +395,23 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     let resume = load_resume(store, portal, clock())?;
     // The terms whose paging this search cuts short, and where it goes on.
     let mut left: BTreeMap<String, u32> = BTreeMap::new();
+    // What each term brought.
+    let mut yields: BTreeMap<String, TermYield> = BTreeMap::new();
     let mut ended = Ended::Completed;
     let mut first_pages = urls.into_iter();
-    'terms: for first in first_pages.by_ref() {
+    'terms: for (term, first) in first_pages.by_ref() {
+        // The filter by contract type where the robots.txt allows it, else none.
+        let first = match adapter.contract_filter(&first, plan.contracts) {
+            Some(filtered) if robots.allows(&robots_path(&filtered)) => filtered,
+            Some(_) => {
+                log::info!(
+                    "{}: robots.txt does not allow the filtered search, asked without the filter",
+                    portal.key()
+                );
+                first
+            }
+            None => first,
+        };
         let resume_at = resume.pages.get(first.as_str()).copied();
         let mut page = 1;
         let mut url = first.clone();
@@ -313,7 +454,8 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
             let (hits, new, reason) = match result {
                 Ok(hits) => {
                     lock(policy).clear_suspicious(portal);
-                    let postings: Vec<Posting> = hits
+                    let all = hits.len();
+                    let mut postings: Vec<Posting> = hits
                         .into_iter()
                         .map(|hit| {
                             Posting::new(
@@ -325,11 +467,40 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
                             )
                         })
                         .collect();
+                    // One list of all roles: only the titles that fit the profile.
+                    if term.is_none()
+                        && let Some(prescore) = plan.prescore
+                    {
+                        postings.retain(|p| prescore(&p.title, &p.location) >= PRESCORE_FLOOR);
+                    }
                     let seen = store.record_found(run, &postings, now)?;
-                    let new = seen.iter().filter(|seen| **seen == Seen::New).count();
-                    counts.hits += postings.len();
-                    counts.new += new;
-                    (postings.len(), new, None)
+                    let fresh: Vec<JobKey> = postings
+                        .iter()
+                        .zip(&seen)
+                        .filter(|(_, seen)| **seen == Seen::New)
+                        .map(|(posting, _)| posting.key.clone())
+                        .collect();
+                    if !fresh.is_empty()
+                        && let Some(screen) = plan.screen
+                    {
+                        counts.excluded += screen(&fresh);
+                    }
+                    counts.hits += all;
+                    counts.new += fresh.len();
+                    if let Some(term) = &term {
+                        let entry = yields.entry(term.clone()).or_default();
+                        entry.pages += 1;
+                        entry.hits += u32::try_from(postings.len()).unwrap_or(u32::MAX);
+                        entry.new += u32::try_from(fresh.len()).unwrap_or(u32::MAX);
+                        for posting in &postings {
+                            if entry.jobs.len() < YIELD_JOBS
+                                && !entry.jobs.contains(&posting.key.id)
+                            {
+                                entry.jobs.push(posting.key.id.clone());
+                            }
+                        }
+                    }
+                    (all, fresh.len(), None)
                 }
                 Err(PageOutcome::Cancelled) => {
                     lock(policy).save()?;
@@ -371,6 +542,15 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
         .done
         .fetch_add(first_pages.count(), Ordering::Relaxed);
     save_resume(store, portal, left, clock())?;
+    save_yield(store, portal, plan.terms, yields)?;
+    // Every page refused and none asked: no "ok" with no jobs.
+    if counts.pages == 0 && counts.refused > 0 && counts.stop.is_none() {
+        stopped(&mut counts, portal, Some(StopReason::Refused), &send);
+    }
+    send(SearchEvent::SourceDone {
+        portal,
+        new: counts.new.saturating_sub(counts.excluded),
+    });
     Ok((portal, counts, ended))
 }
 
@@ -520,6 +700,24 @@ mod tests {
         words: &[String],
         on: &PortalOnFn<'_>,
     ) -> (bool, BTreeMap<Portal, SearchCounts>, Vec<SearchEvent>) {
+        let plan = SearchPlan {
+            portals,
+            terms: words,
+            contracts: Contracts::default(),
+            prescore: None,
+            screen: None,
+        };
+        search_with(fakes, store, policy, &plan, on).await
+    }
+
+    /// Runs the search of a plan with one fake per source.
+    async fn search_with(
+        fakes: &mut BTreeMap<Portal, Fake>,
+        store: &Store,
+        policy: &Mutex<Policy>,
+        plan: &SearchPlan<'_>,
+        on: &PortalOnFn<'_>,
+    ) -> (bool, BTreeMap<Portal, SearchCounts>, Vec<SearchEvent>) {
         let mut found = BTreeMap::new();
         let mut events = Vec::new();
         let start = Timestamp::now();
@@ -530,7 +728,7 @@ mod tests {
         let done = search_all(
             |portal| Ok(fakes.remove(&portal).unwrap_or_default()),
             (store, policy, 1),
-            (portals, words, on),
+            (plan, on),
             &cancel,
             clock,
             &mut found,
@@ -539,6 +737,186 @@ mod tests {
         .await
         .unwrap();
         (done, found, events)
+    }
+
+    /// A profile of projects alone filters Hays by contract type; where its robots.txt
+    /// refuses the filtered page, the term is asked without the filter.
+    #[tokio::test(start_paused = true)]
+    async fn the_contract_filter_and_its_robots() {
+        let on = |_: Portal| true;
+        for (rules, wanted) in [
+            ("User-agent: *\nDisallow: /login/", "joblevel=3"),
+            (
+                "User-agent: *\nDisallow: /jobsuche/stellenangebote-jobs?q=CFO&joblevel=3",
+                "q=CFO&mrew=1",
+            ),
+        ] {
+            let store = Store::in_memory().unwrap();
+            let policy = Mutex::new(Policy::in_memory());
+            let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+            let mut fakes = BTreeMap::from([(
+                HAYS,
+                Fake {
+                    robots: Some(rules.into()),
+                    asked: asked.clone(),
+                    ..Fake::default()
+                },
+            )]);
+            let (_, found, _) =
+                search(&mut fakes, &store, &policy, &[HAYS], &terms(&["CFO"]), &on).await;
+            let asked = lock(&asked);
+            assert_eq!(asked.len(), 1, "{rules}");
+            assert!(asked[0].as_str().contains(wanted), "{}", asked[0]);
+            assert_eq!(found[&HAYS].refused, 0);
+        }
+        // With Festanstellung allowed, no filter at all.
+        let store = Store::in_memory().unwrap();
+        let policy = Mutex::new(Policy::in_memory());
+        let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let mut fakes = BTreeMap::from([(
+            HAYS,
+            Fake {
+                asked: asked.clone(),
+                ..Fake::default()
+            },
+        )]);
+        let words = terms(&["CFO"]);
+        let plan = SearchPlan {
+            portals: &[HAYS],
+            terms: &words,
+            contracts: Contracts {
+                permanent: true,
+                temporary: false,
+            },
+            prescore: None,
+            screen: None,
+        };
+        search_with(&mut fakes, &store, &policy, &plan, &on).await;
+        assert!(!lock(&asked)[0].as_str().contains("joblevel"));
+    }
+
+    /// A source whose robots.txt refuses every page says so instead of an empty "ok"; every
+    /// source ends with what it brought.
+    #[tokio::test(start_paused = true)]
+    async fn every_page_refused_is_told() {
+        let store = Store::in_memory().unwrap();
+        let policy = Mutex::new(Policy::in_memory());
+        let mut fakes = BTreeMap::from([(
+            HAYS,
+            Fake {
+                robots: Some("User-agent: *\nDisallow: /jobsuche/".into()),
+                ..Fake::default()
+            },
+        )]);
+        let on = |_: Portal| true;
+        let (_, found, events) = search(
+            &mut fakes,
+            &store,
+            &policy,
+            &[HAYS],
+            &terms(&["CFO", "Treasury"]),
+            &on,
+        )
+        .await;
+        assert_eq!((found[&HAYS].pages, found[&HAYS].refused), (0, 2));
+        assert_eq!(found[&HAYS].stop, Some(StopReason::Refused));
+        assert!(events.contains(&SearchEvent::Stopped {
+            portal: HAYS,
+            reason: StopReason::Refused
+        }));
+        assert_eq!(
+            events.last(),
+            Some(&SearchEvent::SourceDone {
+                portal: HAYS,
+                new: 0
+            })
+        );
+    }
+
+    /// A source without search terms keeps only the titles that reach the floor; the screen
+    /// takes the new jobs and its exclusions leave the count of what a source brought; each
+    /// term's jobs are kept.
+    #[tokio::test(start_paused = true)]
+    async fn the_floor_the_screen_and_what_each_term_brought() {
+        let store = Store::in_memory().unwrap();
+        let policy = Mutex::new(Policy::in_memory());
+        let on = |_: Portal| true;
+        // Hays: two new jobs, the screen excludes one.
+        let mut fakes = BTreeMap::from([(
+            HAYS,
+            Fake {
+                answers: VecDeque::from([Ok(vec![hit("891480"), hit("891481")]), Ok(Vec::new())]),
+                ..Fake::default()
+            },
+        )]);
+        let words = terms(&["CFO"]);
+        let screened = Mutex::new(Vec::new());
+        let screen = |keys: &[JobKey]| {
+            lock(&screened).extend_from_slice(keys);
+            1
+        };
+        let low = |title: &str, _: &str| if title.ends_with("891481") { 0 } else { 500 };
+        let plan = SearchPlan {
+            portals: &[HAYS],
+            terms: &words,
+            contracts: Contracts::default(),
+            prescore: Some(&low),
+            screen: Some(&screen),
+        };
+        let (_, found, events) = search_with(&mut fakes, &store, &policy, &plan, &on).await;
+        // A source with terms keeps every hit, whatever its pre-score.
+        assert_eq!((found[&HAYS].new, found[&HAYS].excluded), (2, 1));
+        assert_eq!(lock(&screened).len(), 2);
+        assert!(events.contains(&SearchEvent::SourceDone {
+            portal: HAYS,
+            new: 1
+        }));
+        let yields = term_yields(&store, HAYS).unwrap();
+        assert_eq!(yields["CFO"].jobs, ["891480", "891481"]);
+        assert_eq!((yields["CFO"].pages, yields["CFO"].new), (2, 2));
+        assert_eq!(term_jobs(&store).unwrap()["CFO"].len(), 2);
+        // A source without terms: the title below the floor is no job.
+        let interim = |id: &str| Hit {
+            link: Portal::InterimX
+                .adapter()
+                .canonical_url(id)
+                .and_then(|url| Portal::InterimX.adapter().job_link(&url))
+                .unwrap(),
+            title: format!("Interim CFO {id}"),
+            company: String::new(),
+            location: String::new(),
+        };
+        let mut fakes = BTreeMap::from([(
+            Portal::InterimX,
+            Fake {
+                answers: VecDeque::from([Ok(vec![interim("11"), interim("891481")])]),
+                ..Fake::default()
+            },
+        )]);
+        let plan = SearchPlan {
+            portals: &[Portal::InterimX],
+            terms: &words,
+            contracts: Contracts::default(),
+            prescore: Some(&low),
+            screen: None,
+        };
+        let (_, found, _) = search_with(&mut fakes, &store, &policy, &plan, &on).await;
+        assert_eq!(
+            (found[&Portal::InterimX].hits, found[&Portal::InterimX].new),
+            (2, 1)
+        );
+        assert!(
+            store
+                .job(&JobKey {
+                    portal: Portal::InterimX,
+                    id: "891481".into()
+                })
+                .unwrap()
+                .is_none()
+        );
+        // The terms of a later search keep what the earlier ones brought.
+        assert!(term_yields(&store, Portal::InterimX).unwrap().is_empty());
+        assert_eq!(term_yields(&store, HAYS).unwrap()["CFO"].jobs.len(), 2);
     }
 
     #[tokio::test(start_paused = true)]

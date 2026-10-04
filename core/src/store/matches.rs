@@ -8,7 +8,7 @@ use super::Store;
 use super::jobs::{JOB_COLUMNS, JobRow, job_row};
 use crate::error::Result;
 use crate::model::{HIGH_FROM, KeyFacts, MatchRecord, MatchStatus, Notice};
-use crate::portal::JobKey;
+use crate::portal::{JobKey, Portal};
 use crate::text::truncate_chars;
 use crate::time::{from_db, to_db};
 
@@ -341,21 +341,41 @@ impl Store {
         Ok(at.and_then(from_db))
     }
 
-    /// The jobs a mailbox run brought and how many of them are scored in the high band: first
-    /// seen in `run`, a job several portals announce once (as its original), excluded ones
-    /// left out - the numbers of the run card.
-    pub fn new_jobs(&self, run: i64) -> Result<(usize, usize)> {
-        let (count, high): (i64, i64) = self.conn().query_row(
-            "SELECT COUNT(*), COALESCE(SUM(match_status IS 'scored' AND match_score >= ?2), 0)
-             FROM job WHERE first_seen_run = ?1 AND dup_of IS NULL
-                        AND match_status IS NOT 'excluded'",
+    /// The jobs a fetch brought, how many of them are scored in the high band, and how many
+    /// new ones are excluded: first seen in `run`, a job several portals announce once (as its
+    /// original), excluded ones apart - the numbers of the run's toast.
+    pub fn new_jobs(&self, run: i64) -> Result<(usize, usize, usize)> {
+        let (count, high, excluded): (i64, i64, i64) = self.conn().query_row(
+            "SELECT COALESCE(SUM(match_status IS NOT 'excluded'), 0),
+                    COALESCE(SUM(match_status IS 'scored' AND match_score >= ?2), 0),
+                    COALESCE(SUM(match_status IS 'excluded'), 0)
+             FROM job WHERE first_seen_run = ?1 AND dup_of IS NULL",
             params![run, HIGH_FROM],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )?;
-        Ok((
-            usize::try_from(count).unwrap_or(0),
-            usize::try_from(high).unwrap_or(0),
-        ))
+        let size = |n: i64| usize::try_from(n).unwrap_or(0);
+        Ok((size(count), size(high), size(excluded)))
+    }
+
+    /// The jobs first seen in `run` that have neither their ad nor a judgement yet (what the
+    /// screen of a run reads, `pipeline::score::screen`).
+    pub fn unjudged_of_run(&self, run: i64) -> Result<Vec<JobKey>> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare_cached(
+            "SELECT portal, job_id FROM job
+             WHERE first_seen_run = ?1 AND desc_status = 'missing' AND match_status IS NULL",
+        )?;
+        let rows = stmt.query_map(params![run], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+        })?;
+        let mut keys = Vec::new();
+        for row in rows {
+            let (portal, id) = row?;
+            if let Some(portal) = Portal::from_key(&portal) {
+                keys.push(JobKey { portal, id });
+            }
+        }
+        Ok(keys)
     }
 
     /// Revision a job was scored with (tests and checks).

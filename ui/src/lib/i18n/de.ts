@@ -192,6 +192,7 @@ const pause: Record<PauseReason, string> = {
   stateUnreadable: 'der Stand der Quelle ist nicht lesbar',
   network: 'die Quelle ist nicht erreichbar',
   challenged: 'die Quelle verlangt eine Prüfung',
+  robots: 'die robots.txt der Quelle erlaubt die Suche nicht',
 };
 
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
