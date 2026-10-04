@@ -113,10 +113,15 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     };
     let last_scan_run = pipeline::last_scan_run(&state.store)?;
     let empty_mails = state.store.zero_posting_mails(last_scan_run)?;
-    let last_alerts = state.store.last_alerts().unwrap_or_else(|e| {
-        log::warn!("last alert mails not read: {e}");
-        Vec::new()
-    });
+    // The alert mails of the last 30 days per portal, unknown while the mailbox was never read.
+    let since = now - jiff::SignedDuration::from_hours(24 * view::ALERT_MAIL_DAYS);
+    let alerts = match state.store.portal_alerts(since) {
+        Ok(alerts) => (last_scan_run > 0).then_some(alerts),
+        Err(e) => {
+            log::warn!("alert mails per portal not read: {e}");
+            None
+        }
+    };
     let counts = view::job_page(
         &state.store,
         &JobQuery {
@@ -148,7 +153,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         running,
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
-        portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
+        portals: view::portal_states(&policy, &settings, &empty_mails, alerts.as_deref(), now),
         last_run,
         cv_until: jobalert_core::ai::tries_until(
             &state.store,

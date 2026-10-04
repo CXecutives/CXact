@@ -29,4 +29,9 @@ actionNeeded: boolean, quota: Quota | null,
  * The date of its last alert mail the app read (`null`: none yet); the settings warn
  * when it is long ago.
  */
-lastAlert: string | null, };
+lastAlert: string | null, 
+/**
+ * How many of its alert mails the app read in the last [`ALERT_MAIL_DAYS`] days (`null`:
+ * unknown, the mailbox was never read).
+ */
+alertMails: number | null, };

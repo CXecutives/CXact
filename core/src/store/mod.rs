@@ -31,7 +31,7 @@ mod schema;
 pub use backup::{BACKUP_DIR, Backup, BackupKind, backup_dir};
 pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen};
 pub use matches::Judgement;
-pub use overview::BandCounts;
+pub use overview::{BandCounts, PortalAlerts};
 
 /// A database an earlier version wrote (schema 1 to 7): what the reset that replaces it
 /// reads first.
