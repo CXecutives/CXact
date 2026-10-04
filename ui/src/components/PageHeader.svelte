@@ -1,13 +1,13 @@
 <!--
-  The head of a view (design round 3), one for the job list, the job view, Profil and
-  Einstellungen: on white with a hairline under it, in a view that scrolls it stays at the top
-  while the content scrolls beneath it (sticky). Its first row lies on the first row of the
-  window (the sidebar's first entry is centred on it): the view's title (16/22, navy; a job's
-  title may take two lines and is text to copy) or what leads instead of it (the list's place
-  tabs), and at its end the view's actions, centred on the first line. Below it the head may
-  hold more (`children`: the list's search, its filter's chips and the run's line). Its
-  content takes the view's column (`column`: the pages' or the job view's), centred in the
-  full width, so the hairline runs from edge to edge of the view.
+  The head of a view, one for the job list, the job view, Profil and Einstellungen. It scrolls
+  with its view (design round 4: no sticky heads; the view's content goes under the top bar's
+  fade). Its first row lies on the first row of the window (the sidebar's first entry is
+  centred on it): the view's title (17/24, navy; a job's title may take two lines and is text
+  to copy) or what leads instead of it (the list's place tabs), and at its end the view's
+  actions, centred on the first line. Below it the head may hold more (`children`: the list's
+  search, its filter's chips and the run's line). Its content takes the view's column
+  (`column`: the pages' or the job view's), centred in the full width. The list's head stands
+  above its own scroller and draws a hairline under it once the list scrolled (`line`).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -24,6 +24,8 @@
     /** The column the content takes: the pages' (Profil, Einstellungen), the job view's, or
      *  the full width (the list). */
     column?: 'page' | 'reader' | null;
+    /** A hairline under it (the list's head, once the list scrolled beneath it). */
+    line?: boolean;
     testid?: string | null;
     children?: Snippet;
   }
@@ -35,12 +37,13 @@
     lead = null,
     actions = null,
     column = null,
+    line = false,
     testid = null,
     children,
   }: Props = $props();
 </script>
 
-<header class="head" data-testid={testid ?? undefined}>
+<header class="head" class:line data-testid={testid ?? undefined}>
   <div class="inner {column ?? ''}">
     <div class="row">
       {#if heading !== null}
@@ -61,14 +64,15 @@
 
 <style>
   .head {
-    position: sticky;
-    z-index: var(--z-sticky);
-    top: 0;
     flex: none;
     padding: var(--head-pad) var(--pane-padding);
-    border-bottom: var(--border-width) solid var(--border);
-    background-color: var(--surface);
+    border-bottom: var(--border-width) solid transparent;
     container-type: inline-size;
+    transition: border-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .line {
+    border-bottom-color: var(--border);
   }
 
   .inner {

@@ -296,16 +296,17 @@ test.describe('header', () => {
     }
   });
 
-  test('Jobs suchen and Abbrechen share one slot; the head keeps its hairline', async ({
+  test('Jobs suchen and Abbrechen share one slot; the head draws its hairline once scrolled', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 600 });
     await open(page, `${WIN}&tick=200`);
-    // The head of the list, like every view's head, has its hairline whether the list
-    // scrolls or not.
+    // The head of the list draws its hairline only once the list scrolled under it.
     const head = page.getByTestId('list-header').locator('header');
-    await expect(head).toHaveCSS('border-bottom-width', '1px');
+    await expect(head).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
+    await page.getByTestId('list-scroll').evaluate((node) => node.scrollTo({ top: 200 }));
     await expect(head).toHaveCSS('border-bottom-color', await tokenColour(page, '--border'));
+    await page.getByTestId('list-scroll').evaluate((node) => node.scrollTo({ top: 0 }));
     const width = (await page.getByTestId('search').boundingBox())!.width;
     await page.getByTestId('fetch').click();
     await expect(page.getByTestId('cancel-run')).toBeVisible();
@@ -2160,7 +2161,7 @@ async function stopSampling(page: Page): Promise<Sample[]> {
 }
 
 /** The bar keeps the row's top and bottom padding (--row-bar-inset, --list-row-pad). */
-const INSET = 8;
+const INSET = 9;
 const onRow = (sample: Sample): boolean =>
   sample.row !== null &&
   Math.abs(sample.top - (sample.row.top + INSET)) < 1 &&

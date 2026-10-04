@@ -77,7 +77,7 @@
       <span class="icon"><Icon name={ICON[kind]} size="sm" /></span>
     {/if}
     <span class="label">{label}</span>
-    {#if optional}<Badge label={t.reason.weight.nice} tone="neutral" />{/if}
+    {#if optional}<Badge label={t.reason.weight.nice} />{/if}
   </span>
 {/if}
 

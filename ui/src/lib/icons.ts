@@ -32,6 +32,8 @@ export const ICONS = {
   external: 'external-link',
   /** Mail: an alert mail (open it, read the older ones) and the mailbox they come to. */
   alertMail: 'mail',
+  /** Set up an alert at a portal (Alert anlegen). */
+  alertAdd: 'bell-plus',
   /** Load the whole ad (Anzeige laden). */
   details: 'download',
 

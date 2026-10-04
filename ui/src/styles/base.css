@@ -1,7 +1,7 @@
 /*
  * Reset and app-wide defaults. It is a tool, not a web page: text is selectable only in
  * fields and where a user would copy it (`data-copy`), no dragging, no rubber-band
- * scrolling, and the arrow cursor everywhere like in a native app (the hand only on links).
+ * scrolling, and the arrow cursor everywhere like in a native app (never the hand).
  */
 
 /* Inter ships with the app (nothing is loaded from the network) and looks the same on
@@ -93,11 +93,6 @@ button {
   background: transparent;
   border: 0;
   text-align: inherit;
-}
-
-/* Native controls keep the arrow; only a link that leaves the app shows the hand. */
-a {
-  cursor: pointer;
 }
 
 img,

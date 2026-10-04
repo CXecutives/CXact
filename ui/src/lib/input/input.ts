@@ -88,9 +88,10 @@ const MODAL = '[aria-modal="true"]';
 const FORM = '[data-form-keys]';
 /** Controls that Space presses. */
 const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
-/** Controls that Enter presses: buttons only. A switch or a radio toggles with Space, like the
- *  native ones; Enter there goes on to the form (its default action). */
-const ENTER_PRESSES = 'button:not([role="switch"], [role="radio"]), [role="button"]';
+/** Controls that Enter presses: buttons only. A switch, a radio or a checkbox toggles with
+ *  Space, like the native ones; Enter there goes on to the form (its default action). */
+const ENTER_PRESSES =
+  'button:not([role="switch"], [role="radio"], [role="checkbox"]), [role="button"]';
 /** Controls a press does not focus: in the sidebar and the list's header
  *  (`data-press-only`), like the toolbar of Mail and Finder. */
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';

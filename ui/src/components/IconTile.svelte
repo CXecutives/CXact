@@ -96,7 +96,7 @@
 
   .sm {
     --tile-size: var(--tile-sm);
-    --tile-radius: var(--radius-sm);
+    --tile-radius: var(--radius-md);
     --tile-type: var(--type-xs);
   }
 

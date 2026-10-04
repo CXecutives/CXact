@@ -40,7 +40,6 @@ const LARGE = {
   'ui/src/lib/input/input.ts': [1800, 'the one place of all input handling (CLAUDE.md)'],
   // Known large files: split along their parts when next touched.
   'ui/src/features/jobs/Reader.svelte': [1000, 'known large: its sections become files'],
-  'ui/src/features/profile/ProfileEditor.svelte': [600, 'known large: one file per control'],
   'ui/src/lib/state/jobs.svelte.ts': [1100, 'known large: query, selection and moves apart'],
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],
   'ui/src/components/ChipInput.svelte': [600, 'known large: its editing keys into input.ts'],

@@ -15,7 +15,8 @@
   competence) it suggests terms the same way (Suggestions.svelte), but nothing is marked
   until the arrows or the pointer mark one: Enter without a mark goes on to the form.
   `trailing` puts a small control inside the field at its right end, like the picker button
-  of a native date field (the calendar of Verfügbar ab); it keeps its own Tab stop.
+  of a native date field (the calendar of Verfügbar ab); it keeps its own Tab stop. `suffix`
+  is a quiet unit at the field's right end (`€`, `Jahre`), read with the value.
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
@@ -50,6 +51,8 @@
     testid?: string | null;
     /** A small control inside the field at its right end (a calendar's button). */
     trailing?: Snippet | null;
+    /** A unit at the right end inside the field (`€`), quiet; its id joins the description. */
+    suffix?: string | null;
     /** Reads like text until pointed at or edited (the Profil's name and role under its
      *  title). */
     quiet?: boolean;
@@ -70,6 +73,7 @@
     suggestions = undefined,
     testid = null,
     trailing = null,
+    suffix = null,
     quiet = false,
     oninput,
   }: Props = $props();
@@ -199,7 +203,9 @@
     id={id ?? undefined}
     aria-label={label ?? undefined}
     aria-invalid={invalid ? 'true' : undefined}
-    aria-describedby={describedby ?? described() ?? undefined}
+    aria-describedby={[describedby ?? described(), suffix !== null ? `${own}-suffix` : null]
+      .filter((part) => part !== null)
+      .join(' ') || undefined}
     placeholder={placeholder ?? undefined}
     {disabled}
     data-testid={testid ?? undefined}
@@ -281,6 +287,8 @@
     </span>
   {:else if trailing}
     <span class="trail">{@render trailing()}</span>
+  {:else if suffix !== null}
+    <span class="suffix" id="{own}-suffix">{suffix}</span>
   {/if}
 </div>
 
@@ -392,6 +400,15 @@
   .trail {
     display: inline-flex;
     padding-right: var(--space-2);
+  }
+
+  /* The unit reads with the value, quieter, the field's right padding after it. */
+  .suffix {
+    flex: none;
+    padding-right: var(--space-8);
+    color: var(--text-muted);
+    font: var(--type-field);
+    pointer-events: none;
   }
 
   /* The suggestions drop down under the field, over what follows, like the countries'. */

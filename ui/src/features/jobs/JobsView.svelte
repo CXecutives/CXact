@@ -1,14 +1,12 @@
 <!--
   The Jobs view on the white sheet of the shell: left the list column with its header (the
-  places, "Jobs suchen", the search, the order and the filter), the run panel and the
-  list; a hairline; right the reader, or with nothing selected its empty state. Nothing floats: no cards, no
-  shadows. Both columns start at the same line; the handle between them resizes the list
-  (the width is kept) from 320 px up to 60 % of the content, as long as the reader keeps
-  440 px; the limits follow the window and the sidebar, and never shrink while the window
-  grows (also across the rail's breakpoint). Below 900 px one column: the list
-  under its pinned header, or the reader with its "×" (the mouse's back button too).
-  The run's line is part of the header (RunLine). Closing a job from inside the reader hands
-  the focus to its row.
+  places, "Jobs suchen", the search, the order and the filter; a hairline under it once the
+  list scrolled), the run panel and the list; a hairline; right the reader (under the top
+  bar's fade), or with nothing selected its empty state. No cards, no shadows. The handle
+  between the columns resizes the list (kept) within limits that follow the window and the
+  sidebar and never shrink while the window grows. Below 900 px one column: the list under
+  its pinned header, or the reader with its "×" (the mouse's back button too).
+  The run's line is part of the header. Closing a job from the reader focuses its row.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps what it shows (the empty state or the previous job), so it
@@ -28,6 +26,7 @@
   import { t } from '$lib/i18n/t';
   import { duration } from '$lib/motion/motion';
   import { fade, rise, viewOut } from '$lib/motion/transitions';
+  import { inView } from '$lib/actions/inView';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
@@ -88,6 +87,10 @@
   const placeEmpty = $derived(
     jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
   );
+  /** The list is scrolled away from its top (the header shows its hairline). */
+  let scrolled = $state(false);
+  /** The same for the whole column, which scrolls in the one-column layout. */
+  let columnScrolled = $state(false);
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
@@ -208,11 +211,13 @@
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      <!-- One column scrolls the whole column under its pinned header. -->
+      <!-- One column scrolls the whole column under its pinned header: watched from its top. -->
+      <span class="top" use:inView={(place) => (columnScrolled = place === 'above')}></span>
       <div class="head">
-        <ListHeader bind:this={header} />
+        <ListHeader bind:this={header} scrolled={scrolled || columnScrolled} />
       </div>
       <div class="scroll" data-testid="list-scroll">
+        <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>
         <JobList onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
@@ -341,6 +346,12 @@
     flex: none;
   }
 
+  /* Watched: once it has scrolled away, the list header draws its bottom line. */
+  .top {
+    flex: none;
+    height: 0;
+  }
+
   /* The list and the reader keep their scrollbar's room whether they scroll or not, like the
      views of the shell (Windows: a transparent track, the thumb only under the pointer;
      macOS overlay scrollbars take none): the rows end on the header's line, and the reader
@@ -352,6 +363,21 @@
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
+  }
+
+  /* The fade where a job scrolls away under the top bar: the sheet's colour into nothing,
+     invisible over the empty top at rest. */
+  .stage::before {
+    content: '';
+    position: sticky;
+    z-index: var(--z-sticky);
+    top: 0;
+    display: block;
+    flex: none;
+    height: var(--fade-height);
+    margin-bottom: calc(-1 * var(--fade-height));
+    background: var(--grad-fade);
+    pointer-events: none;
   }
 
   /* One cell: a leaving stage and the next one lie on top of each other. */

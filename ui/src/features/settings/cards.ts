@@ -1,5 +1,5 @@
-// Einstellungen as data: one page of three sections in their order (design round 3), each
-// with its heading and its block or its rows, and every button of a row. SettingsView.svelte
+// Einstellungen as data: one page of three sections in their order (design B), each with its
+// heading, its info sentence, and its block or its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`).
@@ -43,8 +43,14 @@ export const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
   state.dryRun ? t.error.text('dryRun', {}) : running ? busyText : null;
 
 export const ACTIONS = {
-  profilesOpen: {
-    label: (t) => t.common.openFolder,
+  // Another folder for the profile (the folder dialog; the profile comes along).
+  folderChange: {
+    label: (t) => t.common.change,
+    icon: 'edit',
+    locked: ownOnly,
+  },
+  folderOpen: {
+    label: (t) => t.common.open,
     icon: 'folder',
     open: { kind: 'profileDir' },
   },
@@ -60,12 +66,17 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'reset';
+export type CommandId = 'folderChange' | 'reset';
 
-/** A row: its one sentence, its buttons at the end. */
+/** A row: its tile, its label, under it its one sentence or a path to copy, its buttons at
+ *  the end. */
 export interface Row {
   id: string;
-  text: Text;
+  tile: IconName;
+  label: Text;
+  hint?: Text;
+  /** A path under the label, to copy. */
+  path?: Text;
   actions: readonly ActionId[];
 }
 
@@ -75,20 +86,47 @@ export type Block = 'portals' | 'mailbox';
 export interface SectionSpec {
   id: string;
   heading: Text;
+  /** The sentence of the info symbol after the heading. */
+  info?: Text;
   block?: Block;
   rows: readonly Row[];
 }
 
 export const SECTIONS: readonly SectionSpec[] = [
-  { id: 'portals', heading: (t) => t.settings.portals, block: 'portals', rows: [] },
-  { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
+  {
+    id: 'portals',
+    heading: (t) => t.settings.portals,
+    info: (t) => t.settings.portalsInfo,
+    block: 'portals',
+    rows: [],
+  },
+  {
+    id: 'mailbox',
+    heading: (t) => t.settings.mailbox,
+    info: (t) => t.settings.mailboxInfo,
+    block: 'mailbox',
+    rows: [],
+  },
   {
     id: 'data',
     heading: (t) => t.settings.data,
+    info: (t) => t.settings.dataInfo,
     rows: [
-      { id: 'profiles', text: (t) => t.settings.profilesHint, actions: ['profilesOpen'] },
+      {
+        id: 'folder',
+        tile: 'folder',
+        label: (t) => t.settings.folder,
+        path: (_t, state) => state.settings.workspace,
+        actions: ['folderChange', 'folderOpen'],
+      },
       // The one action that deletes for good; what it deletes is said in its dialog too.
-      { id: 'reset-all', text: (t) => t.settings.resetHint, actions: ['reset'] },
+      {
+        id: 'reset-all',
+        tile: 'trash',
+        label: (t) => t.settings.resetAction,
+        hint: (t) => t.settings.resetHint,
+        actions: ['reset'],
+      },
     ],
   },
 ];

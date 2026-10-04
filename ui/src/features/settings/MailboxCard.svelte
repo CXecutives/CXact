@@ -1,8 +1,8 @@
 <!--
-  The mailbox's row in Einstellungen > Postfach für Alert-Mails (in the section's card): the
-  mail tile, the connected address with its state under it, "Ändern" and "Entfernen" (the
-  same kind of button; Entfernen is red at rest and asks first), without a mailbox the row
-  "Kein Postfach" with "Verbinden" (the portals of alert mails say they need one). Ändern
+  The mailbox's row in Einstellungen > Postfach: the mail on a neutral tile, the connected
+  address with its state under it, "Ändern" and "Entfernen" (the same kind of button;
+  Entfernen is red at rest and asks first), without a mailbox the row "Kein Postfach" with
+  what that means and "Verbinden" (the portals of alert mails say they need one). Ändern
   and Verbinden open the form in a dialog named after the button ("Postfach ändern",
   "Postfach verbinden") whose button is "Verbinden".
   The state is the answer to a saved mailbox ("Verbunden" after a green dot, no note, no
@@ -99,7 +99,7 @@
   }
 </script>
 
-{#snippet tile()}<IconTile tone="navy" icon="alertMail" size="sm" />{/snippet}
+{#snippet tile()}<IconTile icon="alertMail" size="sm" />{/snippet}
 
 {#if cfg.mailbox.user}
   <SettingRow
@@ -140,7 +140,12 @@
     </div>
   </SettingRow>
 {:else}
-  <SettingRow label={t.settings.notConnected} lead={tile} testid="mailbox">
+  <SettingRow
+    label={t.settings.notConnected}
+    hint={t.settings.notConnectedHint}
+    lead={tile}
+    testid="mailbox"
+  >
     <Button
       variant="secondary"
       icon="signIn"

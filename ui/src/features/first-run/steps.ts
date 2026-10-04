@@ -32,8 +32,9 @@ export interface StepSpec {
   skip?: (walk: Walk) => boolean;
   /** The words of its primary button (null: the step's own control goes on). */
   next: ((t: Catalog, walk: Walk) => string) | null;
-  /** A short form of the profile: the wider card (520); the others keep the card's 420. */
-  wide?: true;
+  /** The whole profile (design round 4): the white page in the pages' column instead of the
+   *  card (440). */
+  page?: true;
   /** A state rather than a form: its mark, heading and words centred in the card. */
   centred?: true;
 }
@@ -74,24 +75,22 @@ export const STEPS: readonly StepSpec[] = [
     centred: true,
   },
   {
-    // After the CV: what only the user can say.
+    // After the CV: the whole profile as the AI filled it, to check.
     id: 'review',
     heading: (t) => t.firstRun.review,
-    text: (t) => t.firstRun.reviewText,
     stage: 0,
     back: () => 'upload',
     next: (t) => t.firstRun.next,
-    wide: true,
+    page: true,
   },
   {
-    // By hand: the most important.
+    // By hand: the whole profile, empty.
     id: 'self',
     heading: (t) => t.firstRun.self,
-    text: (t) => t.firstRun.selfText,
     stage: 0,
     back: () => 'way',
     next: (t) => t.firstRun.next,
-    wide: true,
+    page: true,
   },
   {
     id: 'alerts',

@@ -3,8 +3,8 @@
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
   (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
-  - One height for every button, 24 px (design round 3, core/tests/ui_contract.rs): in rows,
-    tools, bars, dialogs and empty states alike; the app's text in medium, every glyph 14 px.
+  - One height for every button, 26 px (design round 4, core/tests/ui_contract.rs): in rows,
+    tools, bars, dialogs and empty states alike; the app's text in medium, every glyph 15 px.
     Only a button inside a field (`inField`) is a notch lower, a part of the field. A text
     button carries the glyph of its meaning (lib/icons.ts).
   - At most one primary per view (checked by core/tests/ui_contract.rs).
@@ -65,8 +65,6 @@
     turned?: boolean;
     /** A small dot at the glyph's corner: something of it is on (an active filter). */
     dot?: boolean;
-    /** Opens something outside the app (a link shows the hand then). */
-    external?: boolean;
     /** Fill the width of the container. */
     wide?: boolean;
     /** Sits inside a text field: skipped by Tab, a click keeps the focus in the field. */
@@ -107,7 +105,6 @@
     radio = null,
     turned = false,
     dot = false,
-    external = false,
     wide = false,
     inField = false,
     inText = false,
@@ -152,7 +149,6 @@
   class:wide={wide && !iconOnly}
   class:loading
   class:turned
-  class:external
   class:default={isDefault}
   class:warns
   class:deletes
@@ -457,12 +453,8 @@
     transition-duration: var(--dur-instant);
   }
 
-  .link.external {
-    cursor: pointer;
-  }
-
   /* --------------------------------------------------------------- sizes */
-  /* One height, one type: 24 px; inside a field a notch lower, within its frame. */
+  /* One height, one type: 26 px; inside a field a notch lower, within its frame. */
   .btn {
     --btn-height: var(--control-field);
   }

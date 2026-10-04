@@ -1,12 +1,11 @@
 <!--
-  A whole number in a text field (years, euros, percent): digits only, an empty field is no
-  value. Money is grouped like everywhere in the app (`1.100`, the euro sign stands in the
-  label); the grouping comes back when the field is left, so typing never moves the caret.
+  A whole number in a text field (years, euros): digits only, an empty field is no value.
+  Money is grouped like everywhere in the app (`1.100`); the grouping comes back when the field is left, so typing never moves the caret.
   A decimal part is cut off, never joined to the digits (`7,5` years count 7), and once the
   field is left a note under it says so; in money a group of three digits after a point or
   comma is a thousands separator (`1.100`, `1,100`), one or two digits are cents (`950,50`).
-  Every number field has the same width (or its column's, if that is narrower); a compact one
-  holds a day of the week (the workload's von and bis stand on one line).
+  It fills the width its place gives it (a column of the form, the years of a competence);
+  its unit stands quiet at its right end inside it (`€`, `Jahre`).
 -->
 <script lang="ts">
   import TextField from '$components/TextField.svelte';
@@ -18,9 +17,7 @@
     value: number | null;
     /** Euros: grouped (`1.100`), cents cut off with a note. */
     money?: boolean;
-    /** One or two digits (a day of the week): a narrow field. */
-    compact?: boolean;
-    /** The unit right of the field (`€`, `Jahre`, `%`). */
+    /** The unit at the field's right end (`€`, `Jahre`). */
     unit?: string | null;
     id?: string | null;
     label?: string | null;
@@ -35,7 +32,6 @@
   let {
     value = $bindable(),
     money = false,
-    compact = false,
     unit = null,
     id = null,
     label = null,
@@ -88,7 +84,7 @@
     rounded = cut;
   }}
 >
-  <span class="box" class:compact>
+  <span class="box">
     <TextField
       bind:value={text}
       {id}
@@ -96,12 +92,8 @@
       {placeholder}
       {invalid}
       {disabled}
-      describedby={[
-        rounded ? `${noteId}-rounded` : (describedby ?? described()),
-        unit ? `${noteId}-unit` : null,
-      ]
-        .filter((part) => part !== null)
-        .join(' ') || null}
+      describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
+      suffix={unit}
       {testid}
       oninput={(next) => {
         const clean = next.replace(/[^\d.,]/g, '');
@@ -113,7 +105,6 @@
       }}
     />
   </span>
-  {#if unit}<span class="unit" id="{noteId}-unit">{unit}</span>{/if}
 </span>
 {#if rounded}
   <p class="note" id="{noteId}-rounded" data-testid={testid ? `${testid}-rounded` : undefined}>
@@ -124,27 +115,12 @@
 <style>
   .number {
     display: flex;
-    align-items: center;
-    gap: var(--space-6);
     min-width: 0;
   }
 
-  /* One width for every number field, the width of the day of Verfügbar ab too. */
   .box {
-    flex: none;
-    width: var(--number-width);
-    max-width: 100%;
-  }
-
-  .box.compact {
-    width: var(--space-64);
-  }
-
-  /* The unit reads with the value: the text of the field. */
-  .unit {
-    flex: none;
-    color: var(--text-muted);
-    font: var(--type-field);
+    flex: 1;
+    min-width: 0;
   }
 
   .note {

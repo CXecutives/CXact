@@ -74,6 +74,8 @@
   /* The edge of a required field that is still empty: the rings' yellow a step deeper, so it
      reads as an edge on white. */
   --p-warning-edge: 40 82% 52%;
+  /* Words that warn (a portal that waits for a mailbox): the rings' amber deep enough to read. */
+  --p-warning-ink: 32 85% 31%;
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-danger-700: 350.4 84.3% 34.9%;
@@ -230,6 +232,7 @@
   --success-soft: hsl(var(--p-success-soft));
   --warning: var(--score-ring-5);
   --warning-soft: hsl(var(--p-warning-soft));
+  --warning-text: hsl(var(--p-warning-ink));
   /* A required field that is still empty: an amber edge and a soft amber halo around it;
      the flash that marks the field a link of the missing line led to takes the halo's
      colour as a wash. */
@@ -307,8 +310,12 @@
   --brand-radius: 22.37%;
 
   /* --------------------------------------------------------------- gradients */
-  /* One, for the light of a loading placeholder. No decorative gradients. */
+  /* Two, for the light of a loading placeholder and the fade under the top bar. No
+     decorative gradients. */
   --grad-shimmer: linear-gradient(90deg, transparent, hsl(var(--p-white) / 0.6), transparent);
+  /* The fade under the top bar (user, 2026-09-27; back in design round 4): the view's colour
+     into nothing. */
+  --grad-fade: linear-gradient(hsl(var(--p-white)), hsl(var(--p-white) / 0));
 
   /* ----------------------------------------------------------------- shadows */
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
@@ -384,8 +391,8 @@
   --radius-lg: 10px;
   --radius-xl: 14px;
   --radius-full: 9999px;
-  /* Buttons, fields and the track of a choice (design round 3: 24 px high, 7 round). */
-  --radius-control: 7px;
+  /* Buttons, fields and the track of a choice (design round 4: 26 px high, 8 round). */
+  --radius-control: 8px;
   /* What lies inside a control's track (the thumb of a choice): the track's radius less its
      2 px inset, so the two curves stay parallel. */
   --radius-inner: calc(var(--radius-control) - var(--space-2));
@@ -409,37 +416,40 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  /* Design round 3 (user, 2026-10-04): two steps smaller than before, a calm desktop scale.
-     Every button, field and choice of a few is 24 px high (--control-field); a button inside
-     a field or a link in a line is a notch lower (--control-sm); the sidebar's entries 26. */
-  --control-sm: 20px;
-  --control-field: 24px;
-  --control-md: 26px;
+  /* Design round 4 (user, 2026-10-04): one step smaller than the first scale, a calm desktop
+     scale. Every button, field and choice of a few is 26 px high (--control-field); a button
+     inside a field or a link in a line is a notch lower (--control-sm); the sidebar's entries
+     28. */
+  --control-sm: 22px;
+  --control-field: 26px;
+  --control-md: 28px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
      centred in it, so their middles lie on one line across the window). */
-  --control-lg: 28px;
-  --icon-xs: 11px;
+  --control-lg: 30px;
+  --icon-xs: 12px;
   /* The round hit area of an info symbol beside a label: a little more than its glyph. */
-  --info-tip: 17px;
-  --icon-sm: 14px;
+  --info-tip: 18px;
+  --icon-sm: 15px;
   /* The sidebar's glyphs, the sign before a failure's sentence. */
-  --icon-md: 17px;
+  --icon-md: 18px;
   /* The glyph on top of a choice tile (the setup's two ways). */
-  --icon-lg: 20px;
+  --icon-lg: 22px;
   /* The glyph of a drop zone. */
-  --icon-xl: 22px;
+  --icon-xl: 24px;
   /* The one large mark of a state (the setup's Fertig). */
-  --icon-mark: 36px;
+  --icon-mark: 38px;
   /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
      large one as strong as a small one for its size (user, 2026-10-01). */
   --icon-stroke: 2;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
-  --row-place-max: 150px;
-  /* The vertical padding of a row: a list row's two lines (title and company) and a row of a
-     card (a setting, a field of the profile) with its 24 px control. */
-  --list-row-pad: 8px;
-  --row-pad: 7px;
+  --row-place-max: 160px;
+  /* The vertical padding of a row: a list row's two lines (title and company), and a row of
+     a page's section (a setting, a portal) with its 26 px control, roomy (design B). */
+  --list-row-pad: 9px;
+  --row-pad: 6px;
+  /* The least height of such a row (a setting, a portal; design B). */
+  --row-min: 44px;
   /* Mail-style rows: the title line and the company line beside the ring. */
   --row-height: calc(
     2 * var(--list-row-pad) + var(--leading-title) + var(--space-2) + var(--leading-sm)
@@ -478,14 +488,14 @@
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps
      its room) and at most --list-first-max. */
-  --list-min: 300px;
-  --list-first-min: 460px;
-  --list-first-max: 540px;
-  --reader-min: 400px;
+  --list-min: 310px;
+  --list-first-min: 480px;
+  --list-first-max: 560px;
+  --reader-min: 420px;
   /* The job view's column: a comfortable line for the ad's text. */
-  --reader-width: 600px;
-  /* The column of Profil and Einstellungen. */
-  --page-width: 640px;
+  --reader-width: 640px;
+  /* The column of Profil and Einstellungen (and the setup's profile). */
+  --page-width: 600px;
   /* The column handle: the strip that catches the pointer (over the reader's padding, never
      over the list's scrollbar) and the small grip centred on the border. */
   --splitter-hit: 8px;
@@ -495,43 +505,48 @@
      text of a field, a fixed icon column, keys right and quiet. It opens this far below
      its button and keeps --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
-  --menu-row: 26px;
+  --menu-row: 28px;
   /* A group's small heading (the filter menu's Sortierung, Portal, Passung). */
-  --menu-heading: 22px;
+  --menu-heading: 24px;
   --menu-pad: var(--space-4);
   --menu-inset: var(--space-8);
-  --menu-icon: 18px;
-  --menu-min: 180px;
+  --menu-icon: 20px;
+  --menu-min: 190px;
   /* The widest a menu grows (a long name, a profile's, ends in an ellipsis there). */
-  --menu-max: 400px;
+  --menu-max: 420px;
   --menu-radius: var(--radius-md);
   --menu-row-radius: var(--radius-xs);
   /* A popover under its button (the Profil's "Aus Lebenslauf ausfüllen"). */
-  --popover-width: 300px;
+  --popover-width: 320px;
   --grip-width: 4px;
-  --grip-height: 36px;
+  --grip-height: 40px;
   /* The list handle's grip: grey at rest, a shade darker while dragged (no navy line). */
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
-  --form-width: 480px;
-  /* The labels' column of a form that sets them beside their controls: the Profil, and the
-     setup's short form (its card is narrower). */
-  --label-column: 128px;
-  --label-column-setup: 118px;
-  /* A number field (a rate, the years) and a day field: one width, the unit beside it. */
-  --number-width: 92px;
+  --form-width: 500px;
+  /* A number field beside its unit (the years) and a day field: one width. */
+  --number-width: 96px;
   /* The years of a competence (two digits and "Jahre" as the placeholder). */
-  --years-width: 56px;
-  /* The setup (features/first-run): one centred card this wide (the steps with a form take
-     the wider one), the step indicator above it with its numbered dots and their edge. */
-  --setup-card: 420px;
-  --setup-card-wide: 520px;
+  --years-width: 64px;
+  /* The fields of a page (design B, the Profil): the label above its control, this far
+     apart; one field below the other this far; two small fields side by side this far. */
+  --label-gap: 5px;
+  --field-gap: 14px;
+  --pair-gap: var(--space-16);
+  /* The sections of a page: a hairline and this much room above each heading but the first,
+     and this much under the heading's line. */
+  --section-top: 18px;
+  --section-head-gap: 10px;
+  /* The setup (features/first-run): one centred card this wide (the profile takes the
+     page's column instead), the step indicator above it with its numbered dots and their
+     edge. */
+  --setup-card: 440px;
   /* The room above the setup's column: a little more in a tall window, so the card stands
      in the upper third rather than on the top bar. */
   --setup-top: clamp(24px, 9vh, 96px);
-  --step-dot: 20px;
+  --step-dot: 22px;
   --step-edge: 1.5px;
-  --step-line: 32px;
+  --step-line: 36px;
   /* The dashed edge of a drop zone (the CV's upload). */
   --drop-edge: 1.5px;
   /* Rows and their washes: a row's hover wash is the row's own box, and rows run edge to
@@ -557,9 +572,9 @@
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
   --head-pad: var(--space-12);
-  --ring-sm: 28px;
+  --ring-sm: 30px;
   --ring-sm-stroke: 3.5px;
-  --ring-md: 42px;
+  --ring-md: 44px;
   --ring-md-stroke: 4.5px;
   --border-width: 1px;
   --focus-width: 2px;
@@ -567,12 +582,12 @@
      that marks the field a link of the missing line led to). */
   --halo-width: 3px;
   --brand-mark-xs: var(--icon-sm);
-  --brand-mark-sm: 22px;
-  --brand-mark: 26px;
-  --brand-mark-lg: 36px;
+  --brand-mark-sm: 24px;
+  --brand-mark: 28px;
+  --brand-mark-lg: 38px;
   --tile-sm: 28px;
-  --tile-md: 32px;
-  --tile-lg: 44px;
+  --tile-md: 34px;
+  --tile-lg: 48px;
   /* The unread dot of a list row sits on the ring axis in the pane padding; the dot of a
      state (Verbunden) beside its words. */
   --dot-unread: 6px;
@@ -585,85 +600,99 @@
   --tooltip-gap: 6px;
   --tracking-tooltip: 0.01em;
   --viewport-gap: 8px;
-  --badge-height: 16px;
+  --badge-height: 17px;
   /* The narrowest count pill: 4 and 12 weigh the same. */
-  --count-min: 18px;
+  --count-min: 19px;
   --meter-sm: 4px;
   --meter-md: 6px;
   --meter-lg: 8px;
-  --toggle-width: 28px;
-  --toggle-height: 16px;
-  --toggle-thumb: 12px;
-  --toggle-travel: 12px;
+  --toggle-width: 32px;
+  --toggle-height: 18px;
+  --toggle-thumb: 14px;
+  --toggle-travel: 14px;
   --row-bar: 3px;
   /* The selection bar keeps the row's top and bottom padding. */
   --row-bar-inset: var(--list-row-pad);
-  --dialog-width: 400px;
-  --stat-min: 160px;
+  --dialog-width: 420px;
+  --stat-min: 170px;
   /* Sidebar and the toast stack. */
-  --sidebar-width: 156px;
+  --sidebar-width: 180px;
   /* The sidebar's handle keeps it between these. */
-  --sidebar-min: 140px;
-  --sidebar-max: 280px;
+  --sidebar-min: 160px;
+  --sidebar-max: 300px;
   /* The sidebar of a narrow window floats this far in from the window's edges. */
   --peek-inset: 6px;
   /* One width for every toast: the longest sentence ("2 neue Jobs, 1 mit hoher
      Übereinstimmung") with its action and ×. */
-  --toast-width: 380px;
+  --toast-width: 400px;
   /* How far the toast stack rises above the bottom edge of the window beside its gap
      (components/Toast.svelte measures a bar that sticks to the bottom of the view). */
   --toast-bottom: 0px;
+  /* The fade under the top bar where a view scrolls beneath it. */
+  --fade-height: 20px;
+  /* The floating bar at the foot of a page (the Profil's unsaved changes): this far above
+     the window's bottom edge, at most this wide. */
+  --float-gap: var(--space-16);
+  --float-max: 560px;
   /* One step of the sliding nav pill: an item plus the 2 px gap. */
   --nav-step: calc(var(--control-md) + var(--space-2));
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/28 and 36/42. */
-  --ring-sm-scale: 1.286;
-  --ring-md-scale: 0.857;
+     scaled into viewBox units: 36/30 and 36/44. */
+  --ring-sm-scale: 1.2;
+  --ring-md-scale: 0.818;
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* A path to copy (the profile's folder): the system's monospace. */
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
 
   --weight-regular: 430;
   --weight-medium: 500;
   --weight-semibold: 580;
   --numeric: tabular-nums;
-  /* Design round 3 (user, 2026-10-04): body 12/16, small 11/15, list titles 12.5/17,
-     section headings 12.5 semibold, view titles 16/22. */
+  /* Design round 4 (user, 2026-10-04): body 12.5/17, small 11.5/16, list titles 13/18, view
+     titles 17/24; design B: the labels of a page's fields 12 medium, its section headings 14
+     semibold. */
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 10.5px;
   --leading-2xs: 14px;
   /* Dates, stamps, the numbers of the step indicator. */
-  --font-xs: 10.5px;
-  --leading-xs: 14px;
-  /* Small text: hints, labels of a form, the second line of a row. */
-  --font-sm: 11px;
-  --leading-sm: 15px;
+  --font-xs: 11px;
+  --leading-xs: 15px;
+  /* Small text: hints, the second line of a row, a section's line. */
+  --font-sm: 11.5px;
+  --leading-sm: 16px;
+  /* The label of a field (above it) and of a switch (beside it), medium. */
+  --font-label: 12px;
+  --leading-label: 16px;
   /* The text in fields. */
-  --font-field: 12px;
-  --leading-field: 16px;
+  --font-field: 12.5px;
+  --leading-field: 17px;
   /* The text of the app. */
-  --font-md: 12px;
-  --leading-md: 16px;
+  --font-md: 12.5px;
+  --leading-md: 17px;
   /* List titles on a tight line, so two lines stay one block. */
-  --font-title: 12.5px;
-  --leading-title: 17px;
+  --font-title: 13px;
+  --leading-title: 18px;
   /* The sidebar entries and the places above the list (weight 500). */
-  --font-tab: 12px;
-  --leading-tab: 16px;
+  --font-tab: 12.5px;
+  --leading-tab: 17px;
   /* Running text (the ad, a dialog's sentence): the text's size on a roomier line. */
-  --font-body: 12px;
-  --leading-body: 18px;
+  --font-body: 12.5px;
+  --leading-body: 19px;
   /* Section headings (semibold, navy). */
-  --font-lg: 12.5px;
-  --leading-lg: 17px;
+  --font-lg: 14px;
+  --leading-lg: 20px;
   /* The title of a view, a step of the setup, the job view. */
-  --font-xl: 16px;
-  --leading-xl: 22px;
+  --font-xl: 17px;
+  --leading-xl: 24px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
   --type-xs: var(--weight-regular) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --type-sm: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
+  --type-label: var(--weight-medium) var(--font-label) / var(--leading-label) var(--font-sans);
+  --type-mono: var(--weight-regular) var(--font-xs) / var(--leading-sm) var(--font-mono);
   --type-field: var(--weight-regular) var(--font-field) / var(--leading-field) var(--font-sans);
   --type-md: var(--weight-regular) var(--font-md) / var(--leading-md) var(--font-sans);
   --type-title: var(--weight-medium) var(--font-title) / var(--leading-title) var(--font-sans);
@@ -744,6 +773,19 @@
   --opacity-wait: 0.35;
   /* A link while it is pressed. */
   --opacity-press: 0.7;
+}
+
+/* A dark surface (the floating bar of the Profil's unsaved changes, on --surface-inverse):
+   what stands on it takes the light ink, its links a light navy, its quiet buttons a light
+   wash, the keyboard's ring white. */
+[data-surface='inverse'] {
+  --text: var(--text-inverse);
+  --text-muted: var(--text-inverse-muted);
+  --link: hsl(var(--p-navy-200));
+  --link-hover: var(--text-inverse);
+  --quiet-hover: hsl(var(--p-white) / 0.1);
+  --quiet-press: hsl(var(--p-white) / 0.16);
+  --focus-ring: 0 0 0 var(--focus-width) hsl(var(--p-white));
 }
 
 /* No focus ring on what a pointer press focused until a key that moves or acts (lib/input/

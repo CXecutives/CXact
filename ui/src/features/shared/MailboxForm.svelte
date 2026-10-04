@@ -146,7 +146,6 @@
     <Button
       variant="link"
       icon="external"
-      external
       label={t.settings.createPassword}
       testid="create-password"
       onclick={() => openPage('appPasswordPage')}

@@ -23,7 +23,7 @@
   typing (Suggestions.svelte): nothing is marked until the arrows or the pointer mark one,
   Enter or a click takes the marked term as a chip, Esc closes the list; Enter without a
   mark and leaving the field take the typed text as always.
-  As tall as a text field (24 px) with one line of chips; with `star` each chip starts with
+  As tall as a text field (26 px) with one line of chips; with `star` each chip starts with
   its star (a preferred industry, ChipStar); with chips its input says "+ Rolle" (`more`);
   required and empty (`missing`) it has the amber edge and halo of every field of the form.
 -->

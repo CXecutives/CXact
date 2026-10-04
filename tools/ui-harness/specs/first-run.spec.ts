@@ -1,9 +1,8 @@
 // The setup (features/first-run) against the stub: a mode of the shell of its own, its steps
 // from the table, every switch of the view refused, Zurück (and the mouse's back button), the
-// two ways as tiles, the CV's upload, evaluation and failures, the short forms of the Profil
-// ("Fast fertig" after the CV, "Dein Profil" by hand) whose Weiter waits while something is
-// missing, the optional Alert-Mails, Fertig, resuming from what is stored and the smallest
-// window.
+// two ways as tiles, the CV's upload, evaluation and failures, the whole Profil page ("Profil
+// prüfen" after the CV, "Profil ausfüllen" by hand) whose Weiter marks what is missing and says
+// it, the optional Alert-Mails, Fertig, resuming from what is stored and the smallest window.
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, test } from './fixtures';
@@ -79,7 +78,7 @@ test('every switch of the view is refused while it stands; Zurück and the mouse
   await expectStep(page, T.firstRun.welcome);
 });
 
-test('the CV: its tile, the upload, the evaluation, Fast fertig; Weiter goes on', async ({
+test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter goes on', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=first-run`);
@@ -106,13 +105,12 @@ test('the CV: its tile, the upload, the evaluation, Fast fertig; Weiter goes on'
   await expect(page.getByTestId('cv-cancel')).toBeVisible();
   await expectStep(page, T.firstRun.review);
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
-  // The Profil's short form: no title, no CV button, no Speichern; what the CV brought
-  // besides in a quiet strip.
+  // The whole Profil page: its three sections, without its head, the CV button and the bar.
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  for (const gone of ['profile-heading', 'profile-from-cv', 'profile-save']) {
+  await expect(page.locator('[data-section]')).toHaveCount(3);
+  for (const gone of ['profile-heading', 'profile-from-cv', 'profile-save-bar']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
-  await expect(page.getByTestId('first-brought')).toContainText(T.firstRun.later);
   // Zurück skips the evaluation.
   await page.getByTestId('first-back').click();
   await expectStep(page, T.firstRun.upload);
@@ -163,41 +161,42 @@ test('a failed evaluation says one sentence and its ways on; Abbrechen goes back
   await expectStep(page, T.firstRun.upload);
 });
 
-test('by hand: Weiter waits while something is missing and says what; Esc does nothing', async ({
+test('by hand: Weiter marks what is missing and says it beside itself; Esc does nothing', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=first-run&step=way`);
   await page.getByTestId('way-self').click();
   await expectStep(page, T.firstRun.self);
-  await page.getByTestId('profile-roles').locator('input').focus();
+  await expect(page.locator('[data-section]')).toHaveCount(3);
+  const roles = page.getByTestId('profile-roles').locator('input');
+  await roles.focus();
   await page.keyboard.press('Escape');
   await expectStep(page, T.firstRun.self);
-  // Wunschrollen, Kompetenzen and Sprachen are missing: the line says so, Weiter waits and
-  // its tooltip says what.
-  const words = T.profile.field;
-  const lacking = T.profile.missing([words.roles, words.competences, words.languages]);
-  await expect(page.getByTestId('profile-missing')).toBeVisible();
-  await expect(next(page)).toHaveAttribute('aria-disabled', 'true');
-  await next(page).hover();
-  await expect(page.getByRole('tooltip')).toHaveText(lacking);
-  // Enter in a field puts the caret into the first that is missing.
-  await page.getByTestId('profile-roles').locator('input').press('Enter');
-  await expectStep(page, T.firstRun.self);
-  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
-  const roles = page.getByTestId('profile-roles').locator('input');
-  await roles.fill('Interim CFO');
-  await roles.press('Enter');
-  const competences = page.getByTestId('profile-competence-names').locator('input');
-  await competences.fill('Controlling');
-  await competences.press('Enter');
-  await page.getByTestId('language-name').click();
-  await page.getByTestId('menu-item-Deutsch').click();
+  // Nothing warns up front; Weiter is always on.
+  const missing = page.getByTestId('first-bar').getByTestId('profile-missing');
   await expect(page.getByTestId('profile-missing')).toHaveCount(0);
   await expect(next(page)).not.toHaveAttribute('aria-disabled', 'true');
+  // Weiter: Wunschrollen, Kompetenzen and Sprachen marked and said beside it, the caret in the
+  // first; the step stays.
+  const words = T.profile.field;
+  await next(page).click();
+  await expectStep(page, T.firstRun.self);
+  for (const name of [words.roles, words.competences, words.languages]) {
+    await expect(missing).toContainText(name);
+  }
+  await expect(roles).toBeFocused();
+  await expect(page.locator('[data-field~="roles"]')).toHaveAttribute('data-missing', '');
+  await roles.fill('Interim CFO');
+  await roles.press('Enter');
+  await expect(missing).not.toContainText(words.roles);
+  await page.getByTestId('competence-name').first().fill('Controlling');
+  await page.getByTestId('language-name').first().click();
+  await page.getByTestId('menu-item-Deutsch').click();
+  await expect(page.getByTestId('profile-missing')).toHaveCount(0);
   await next(page).click();
   await expectStep(page, T.firstRun.alerts);
-  // Back to the short form (the mouse; the card has Überspringen in Zurück's place): what
-  // was typed is still there.
+  // Back to the profile (the mouse; the card has Überspringen in Zurück's place): what was
+  // typed is still there.
   await mouseBack(page);
   await expectStep(page, T.firstRun.self);
   await expect(page.getByTestId('profile-roles')).toContainText('Interim CFO');

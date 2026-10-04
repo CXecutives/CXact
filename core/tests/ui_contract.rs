@@ -376,6 +376,27 @@ fn forbidden_css_features() {
     );
 }
 
+/// A native app shows the arrow over buttons, tiles, chips and links, never the hand (design
+/// round 4, 2026-10-04); fields keep the text cursor. Stylelint refuses it in a stylesheet,
+/// this also in markup and scripts.
+#[test]
+fn no_hand_cursor() {
+    let all = scanned(MIN_FILES);
+    fail(
+        &find(
+            &all,
+            &[
+                "cursor: pointer",
+                "cursor:pointer",
+                "'pointer'",
+                "\"pointer\"",
+            ],
+            |_| false,
+        ),
+        "no hand cursor anywhere (the arrow, like a native app)",
+    );
+}
+
 #[test]
 fn a_pressed_look_only_under_the_pointer() {
     // A control shows its pressed state only while the pointer is on it: pressed, then moved
@@ -1396,7 +1417,7 @@ fn icons_by_meaning() {
     );
 }
 
-/// Buttons have one height, 24 px (design round 3, 2026-10-04): no size to choose (a button
+/// Buttons have one height, 26 px (design round 4, 2026-10-04): no size to choose (a button
 /// inside a field is a notch lower, a part of it), every glyph one size, one type.
 #[test]
 fn buttons_have_one_height() {
@@ -1421,7 +1442,7 @@ fn buttons_have_one_height() {
             }
         }
     }
-    fail(&problems, "buttons have one height (24 px)");
+    fail(&problems, "buttons have one height (26 px)");
 }
 
 /// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only
@@ -1686,13 +1707,14 @@ fn coral_only_in_its_roles() {
             "var(--nav-active-icon",
             &["components/SideNav.svelte", "components/Tabs.svelte"],
         ),
-        // New: the soft count and the coral tone of a badge, a tile and a stat.
+        // New: the soft count and the coral tone of a tile and a stat; the check of a chosen
+        // option of a choice of several (Vertragsart, design round 4).
         (
             "var(--accent",
             &[
-                "components/Badge.svelte",
                 "components/IconTile.svelte",
                 "components/StatTile.svelte",
+                "components/Segmented.svelte",
             ],
         ),
     ];

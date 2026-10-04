@@ -306,6 +306,20 @@
     overflow-y: scroll;
   }
 
+  /* The fade under the top bar: the view's colour into nothing at the top of a view that
+     scrolls, over the empty padding at rest and over the content once it scrolled under it. */
+  .view:not(.fixed)::before {
+    content: '';
+    position: sticky;
+    z-index: var(--z-sticky);
+    top: 0;
+    display: block;
+    height: var(--fade-height);
+    margin-bottom: calc(-1 * var(--fade-height));
+    background: var(--grad-fade);
+    pointer-events: none;
+  }
+
   .fixed {
     overflow: hidden;
   }

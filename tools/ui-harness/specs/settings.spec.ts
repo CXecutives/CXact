@@ -81,7 +81,7 @@ const middle = (box: { y: number; height: number } | null): number =>
 
 /* ---------------------------------------------------------------- the page */
 
-test('one page: Portale, Postfach für Alert-Mails and Daten under the sticky head', async ({
+test('one page: Jobportale, Postfach and Daten, each heading with its info symbol', async ({
   page,
 }) => {
   await settings(page);
@@ -102,14 +102,24 @@ test('one page: Portale, Postfach für Alert-Mails and Daten under the sticky he
     [...SEARCHED, ...ALERT_PORTALS].map((portal) => `portal-${portal}`),
   );
   expect(await ids(page, 'settings-mailbox', '[data-setting-row]')).toEqual(['mailbox']);
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['profiles', 'reset-all']);
-  // No info symbols, no version, no search terms; no primary.
-  await expect(view.locator('[data-testid^="info-"]')).toHaveCount(0);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
+  // An info symbol after each heading (no line under it), no other; no version, no search
+  // terms; no primary.
+  await expect(view.locator('[data-testid^="info-"]')).toHaveCount(3);
+  for (const [id, info] of [
+    ['portals', T.settings.portalsInfo],
+    ['mailbox', T.settings.mailboxInfo],
+    ['data', T.settings.dataInfo],
+  ] as const) {
+    const tip = page.getByTestId(`settings-${id}`).getByTestId('info-tip');
+    await tip.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(info);
+  }
   await expect(view).not.toContainText('Version');
   await expect(page.getByTestId('search-terms')).toHaveCount(0);
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  // The title stands on the first row, centred on the sidebar's first entry (macOS too),
-  // in the head that stays while the page scrolls.
+  // The title stands on the first row, centred on the sidebar's first entry (macOS too);
+  // the head scrolls with the page, without a hairline.
   const title = page.getByTestId('settings-heading');
   for (const query of [WIN, MAC]) {
     await settings(page, query);
@@ -118,21 +128,21 @@ test('one page: Portale, Postfach für Alert-Mails and Daten under the sticky he
     expect(Math.abs(middle(await title.boundingBox()) - line), query).toBeLessThanOrEqual(1);
   }
   const head = page.getByTestId('settings-head');
-  await expect(head).toHaveCSS('border-bottom-width', '1px');
+  await expect(head).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
   const top = (await head.boundingBox())!.y;
   await page.setViewportSize({ width: 1360, height: 500 });
   await page.getByTestId('view-settings').evaluate((node) => node.scrollTo({ top: 300 }));
-  await expect.poll(async () => (await head.boundingBox())!.y).toBe(top);
+  await expect.poll(async () => (await head.boundingBox())!.y).toBeLessThan(top);
 });
 test('button styles: the text buttons of a row are outlined, the calls of a portal quiet; red deletes', async ({
   page,
 }) => {
   await settings(page);
   const view = page.getByTestId('settings');
-  // Every button with words in a row of a card: outlined, a portal's calls quiet; 24 px
-  // like all, each with the glyph of its meaning.
+  // Every button with words in a row: outlined, a portal's calls quiet; one height like
+  // all, each with the glyph of its meaning.
   const kinds = await view
-    .locator('.card button.btn:not(.icon-only):not(.link)')
+    .locator('[data-setting-row] button.btn:not(.icon-only):not(.link)')
     .evaluateAll((nodes) =>
       nodes.map((node) => ({
         id: node.getAttribute('data-testid'),
@@ -147,19 +157,20 @@ test('button styles: the text buttons of a row are outlined, the calls of a port
     ['setup-freelance', 'ghost'],
     ['mailbox-change', 'secondary'],
     ['mailbox-remove', 'secondary'],
-    ['profiles-open', 'secondary'],
+    ['folder-change', 'secondary'],
+    ['folder-open', 'secondary'],
     ['reset', 'secondary'],
   ]);
   const height = await tokenPx(page, '--control-field');
   expect(kinds.filter((kind) => !kind.icon || kind.height !== height)).toEqual([]);
   // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
-  // Entfernen and Alle Daten zurücksetzen.
+  // Entfernen and Alles zurücksetzen.
   const danger = await colour(page, '--danger-strong');
   for (const [id, warns] of [
     ['mailbox-remove', true],
     ['reset', true],
     ['mailbox-change', false],
-    ['profiles-open', false],
+    ['folder-open', false],
   ] as const) {
     const button = await reveal(page, page.getByTestId(id));
     if (warns) {
@@ -167,7 +178,7 @@ test('button styles: the text buttons of a row are outlined, the calls of a port
       await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
     } else await expect(button, id).not.toHaveCSS('color', danger);
   }
-  await expect(page.getByTestId('profiles-open').locator('[data-icon]')).toHaveAttribute(
+  await expect(page.getByTestId('folder-open').locator('[data-icon]')).toHaveAttribute(
     'data-icon',
     'folder',
   );
@@ -188,13 +199,7 @@ test('button styles: the text buttons of a row are outlined, the calls of a port
   // The portals, the mailbox, the profile's folder and the reset.
   expect(ends).toHaveLength(SEARCHED.length + ALERT_PORTALS.length + 1 + 2);
   expect(new Set(ends).size).toBe(1);
-  // The rows sit edge to edge: no inset above the first.
-  const [card, first] = await Promise.all([
-    page.getByTestId('card-portals').boundingBox(),
-    page.getByTestId('portal-hays').boundingBox(),
-  ]);
-  expect(Math.round(first!.y - card!.y)).toBe(1);
-  // Every button of the page is at most 24 px high.
+  // Every button of the page is at most as high as a field.
   const heights = await view
     .locator('button:not([role="switch"]):not([role="radio"])')
     .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height)));
@@ -219,7 +224,7 @@ test('narrow, a row puts its control under the label only where the two do not f
   // At the smallest window the label keeps its room: the button stands beside it or goes
   // under it, never over it.
   await page.setViewportSize({ width: 480, height: 800 });
-  const profiles = page.getByTestId('profiles');
+  const profiles = page.getByTestId('folder');
   const [text, control] = await Promise.all([
     profiles.locator('.text').boundingBox(),
     profiles.locator('.control').boundingBox(),
@@ -340,25 +345,25 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   await expectMailboxState(page, T.settings.connected, 'success');
 });
 
-test('Postfach für Alert-Mails: the mailbox alone; its portals stand last in Portale', async ({
-  page,
-}) => {
+test('Postfach: the mailbox alone; its portals stand last in Jobportale', async ({ page }) => {
   await settings(page);
-  expect(await ids(page, 'card-mailbox', '[data-setting-row]')).toEqual(['mailbox']);
-  const portals = await ids(page, 'card-portals', '[data-setting-row]');
+  expect(await ids(page, 'settings-mailbox', '[data-setting-row]')).toEqual(['mailbox']);
+  const portals = await ids(page, 'settings-portals', '[data-setting-row]');
   expect(portals.slice(-ALERT_PORTALS.length)).toEqual(
     ALERT_PORTALS.map((portal) => `portal-${portal}`),
   );
 });
 /* ------------------------------------------------------------ Suche, Postfach */
 
-test('portals: one list in the order of the UI, each with its way, its state and its calls', async ({
+test('portals: two groups in the order of the UI, each portal with its state and its calls', async ({
   page,
 }) => {
   await settings(page);
-  expect(await ids(page, 'card-portals', '[data-testid^="portal-"]')).toEqual(
+  expect(await ids(page, 'settings-portals', '[data-testid^="portal-"]')).toEqual(
     [...SEARCHED, ...ALERT_PORTALS].map((portal) => `portal-${portal}`),
   );
+  await expect(page.getByTestId('portals-search')).toHaveText(T.settings.way.search);
+  await expect(page.getByTestId('portals-alert')).toHaveText(T.settings.way.alert);
   for (const [portal, state] of [
     ['freelancermap', T.settings.lastNew(3)],
     ['hays', null],
@@ -371,14 +376,10 @@ test('portals: one list in the order of the UI, each with its way, its state and
     ['linkedin', T.settings.alertMails(24)],
     ['freelance', T.settings.alertMails(11)],
   ] as const) {
-    // How it brings its jobs, and its state in one quiet line; no meter, no calls counted.
+    // Its state in one quiet line, its two capitals on its tile; no meter, no calls counted.
     const row = await reveal(page, page.getByTestId(`portal-${portal}`));
-    const way = SEARCHED.includes(portal) ? 'search' : 'alert';
-    await expect(row.locator('.badge')).toHaveText(T.settings.way[way]);
-    await expect(row.locator('.badge')).toHaveAttribute(
-      'data-tone',
-      way === 'search' ? 'outline' : 'navy',
-    );
+    await expect(row.locator('.badge')).toHaveCount(0);
+    await expect(row.locator('.monogram')).toHaveText(/^[A-Z]{2}$/);
     if (state === null) await expect(page.getByTestId(`status-${portal}`)).toHaveCount(0);
     else await expect(page.getByTestId(`status-${portal}`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
@@ -537,25 +538,31 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
 });
 /* ------------------------------------------------------------------- Daten */
 
-test('Daten: the folder of the profile and the reset, one sentence each; no Sicherung, no path', async ({
+test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles zurücksetzen', async ({
   page,
 }) => {
-  await settings(page);
+  await settings(page, `${WIN}&folder=other`);
   const data = page.getByTestId('settings-data');
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['profiles', 'reset-all']);
-  await expect(page.getByTestId('profiles')).toContainText(T.settings.profilesHint);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
+  const folder = page.getByTestId('folder');
+  await expect(folder).toContainText(T.settings.folder);
+  await expect(folder.locator('[data-copy]')).toContainText('Job-Alerts');
+  await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetAction);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
-  for (const gone of ['backup-restore', 'logs-open', 'folder-change']) {
+  for (const gone of ['backup-restore', 'logs-open']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
-  await expect(data.locator('[data-copy]')).toHaveCount(0);
-  await (await reveal(page, page.getByTestId('profiles-open'))).click();
+  await (await reveal(page, page.getByTestId('folder-open'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'profileDir' } });
-  // A folder that does not open says so at the end of its card.
+  // A folder that does not open says so at the end of its section.
   await failNext(page, 'open_target');
-  await page.getByTestId('profiles-open').click();
+  await page.getByTestId('folder-open').click();
   await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
+  // Ändern: the folder dialog; the profile comes along and the toast says so.
+  await page.getByTestId('folder-change').click();
+  await expect(page.getByTestId('toast-text')).toHaveText(T.settings.folderMoved);
+  await expect(data.locator('[data-copy]')).toContainText('Documents/Jobs');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
@@ -567,7 +574,7 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
   // What it does in two short sentences: it deletes, then the setup starts anew.
   await expect(dialog).toContainText(T.settings.resetText);
   await expect(dialog.getByTestId('dialog-items')).toHaveCount(0);
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.resetConfirm);
+  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.resetAction);
   await failNext(page, 'reset_all');
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog.getByTestId('dialog-error')).toHaveText('Die Datenbank meldet einen Fehler.');

@@ -1,25 +1,34 @@
 <!--
-  Profil: the one profile of the app as a form on one page under the view's sticky head
-  (PageHeader): "Profil" at the left, its actions at the right (ProfileActions: Verwerfen and
-  Speichern while the form holds a change, "Aus Lebenslauf ausfüllen" with its popover). A CV
-  dropped anywhere on the page (Tauri's drag and drop of the window, the same path as the
-  setup's upload; the page never sends a path) is evaluated the same way while that button
-  would take it; the page shows a dashed edge while such a file is over it. The CV fills the
-  profile at once ("Profil ausgefüllt. Bitte prüfen.").
-  Under the head the column (640): what went wrong with the CV or the last save, the rescore
-  a save started, the line of what is still missing (its names lead to their fields), and the
-  three sections. Without a profile the two ways in (ProfileStart); a file that no longer
-  reads says so in the same place, with its folder at hand. A save is answered by a toast
-  with what its rescore changed (saveEffect.ts). Leaving the view or closing the window with
-  unsaved changes asks once ("Änderungen speichern?", the heading alone).
-  What is missing follows the form: a new or changed form asks core what it still lacks
+  Profil: the one profile of the app as one airy page (design B) under the view's head
+  (PageHeader, it scrolls with the page under the top bar's fade): "Profil" at the left, "Aus
+  Lebenslauf ausfüllen" with its popover at the right (ProfileActions). A CV dropped anywhere
+  on the page (Tauri's drag and drop of the window, the same path as the setup's upload; the
+  page never sends a path) is evaluated the same way while that button would take it; the
+  page shows a dashed edge while such a file is over it. The CV fills the profile at once
+  ("Profil ausgefüllt. Bitte prüfen.").
+  Under the head the column (600): what went wrong with the CV or the last save, the rescore
+  a save started, and the three sections. While the form holds a change a dark bar floats at
+  the foot (SaveBar): "Ungespeicherte Änderungen", Verwerfen and Speichern (the view's one
+  primary). Without a profile the two ways in (ProfileStart); a file that no longer reads says
+  so in the same place, with its folder at hand. A save is answered by a toast with what its
+  rescore changed (saveEffect.ts). Leaving the view or closing the window with unsaved
+  changes asks once ("Änderungen speichern?", the heading alone).
+  What is missing (design round 4): nothing warns up front. Speichern saves anyway; while
+  required fields are still empty they then get the amber edge and halo, the caret goes to
+  the first one and the floating bar says "Es fehlt noch …" (the names lead to their fields)
+  until they are filled. A new or changed form asks core what it still lacks
   (`profileMissing`, a moment after the last edit), the stored profile names its own
   (`missing`).
-  In the setup (`setup`: "review" after the CV, "self" by hand) the page is only the missing
-  line and the short form; the setup's "Weiter" saves (`next`) and waits while something is missing (`onmissing` says
-  what);
-  Esc does nothing; closing the window with unsaved changes still asks.
+  In the setup (`setup`) the page is the same form without the head, the bar and "Häufig
+  verlangt"; the setup's "Weiter" (`next`) marks what is missing the same way and goes on only
+  once nothing is (`onflag` hands the sentence's names to the setup's foot); Esc does
+  nothing; closing the window with unsaved changes still asks.
 -->
+<script lang="ts" module>
+  /** A required field that is still empty, with its name. */
+  export type MissingField = { field: string; name: string };
+</script>
+
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
   import Notice from '$components/Notice.svelte';
@@ -38,21 +47,20 @@
   import { onMount, tick, untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
   import { draftMissing } from './draftMissing.svelte';
-  import MissingLine from './MissingLine.svelte';
   import ProfileActions from './ProfileActions.svelte';
   import ProfileEditor, { type FieldError } from './ProfileEditor.svelte';
   import ProfileStart from './ProfileStart.svelte';
+  import SaveBar from './SaveBar.svelte';
   import { refused, watchSave } from './saveEffect';
-  import { FIELD_ORDER, blank, withMissing, type SetupForm } from './sections';
+  import { FIELD_ORDER, blank } from './sections';
 
   interface Props {
-    /** The setup's short form (null: the page). */
-    setup?: SetupForm | null;
-    /** What is still missing, in words, whenever it changes (the setup's Weiter waits and
-     *  says it); null: nothing. */
-    onmissing?: (text: string | null) => void;
+    /** The setup's page: the form alone, its "Weiter" saves (`next`). */
+    setup?: boolean;
+    /** The fields the missing sentence names once a press asked for them (null: none). */
+    onflag?: (fields: readonly MissingField[] | null) => void;
   }
-  let { setup = null, onmissing }: Props = $props();
+  let { setup = false, onflag }: Props = $props();
 
   const profile = $derived(app.state?.profile ?? null);
   const stored = $derived(profile?.form ?? null);
@@ -116,7 +124,7 @@
 
   onMount(() => {
     // The setup's form starts empty where there is no profile yet.
-    if (setup !== null && editor.origin === null) editor.create();
+    if (setup && editor.origin === null) editor.create();
     const release = navigation.guard((next) => {
       if (!editor.dirty) return true;
       leaving = next;
@@ -124,7 +132,7 @@
     });
     const stopClose = onCloseRequested(() => void closeRequested());
     // The setup takes its CV on its own upload step.
-    const stopDrag = setup !== null ? () => undefined : onFileDrag(dragged);
+    const stopDrag = setup ? () => undefined : onFileDrag(dragged);
     return () => {
       release();
       stopClose();
@@ -204,7 +212,7 @@
       if (form) editor.edit(form);
       else editor.close();
       // The setup's next step is its answer there.
-      if (setup === null) void effect.said().then((text) => toasts.show(text, 'success'));
+      if (!setup) void effect.said().then((text) => toasts.show(text, 'success'));
       else effect.stop();
       return true;
     } catch (error) {
@@ -213,8 +221,8 @@
       if (at === null) {
         saveNote = () => errorText(error);
       } else {
-        // Said at its field without its name again; the line on top says it where the
-        // field is not on the page.
+        // Said at its field without its name again; the bar says it where the field is not
+        // on the page.
         fieldError = {
           field: at.field,
           row: at.row,
@@ -228,10 +236,15 @@
     }
   }
 
-  /** "Speichern" (and Enter in a field): a value that holds the save is said first. */
-  function trySave(): void {
+  /** "Speichern" (and Enter in a field): a value that holds the save is said first; what is
+   *  missing is marked, and the profile is saved anyway. */
+  async function trySave(): Promise<void> {
     if (!editor.dirty || busy) return;
-    if (panel?.ready()) void save();
+    if (!panel?.ready()) return;
+    const open = missing.length > 0;
+    if (open) flagged = true;
+    const done = await save();
+    if (done && open && missing.length > 0) void jump(missing[0]!, false);
   }
 
   /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
@@ -239,6 +252,7 @@
   function discard(): void {
     saveNote = null;
     fieldError = null;
+    flagged = false;
     editor.discard(stored);
     if (editor.origin === null) void caretTo('way-cv');
   }
@@ -280,40 +294,39 @@
         (draft.fields() ?? profile?.missing ?? []).includes(field) && blank(editor.after, field),
     ),
   );
+  /** A press asked for them (Speichern, the setup's Weiter): they are marked and said until
+   *  they are filled. */
+  let flagged = $state(false);
+  $effect(() => {
+    if (flagged && missing.length === 0) flagged = false;
+  });
+  const marked = $derived(flagged ? missing : []);
   /** Their names (each field's label). */
-  const missingNames = $derived(
-    missing.map((field) => ({
+  const markedNames = $derived(
+    marked.map((field) => ({
       field,
       name: (t.profile.field as Record<string, unknown>)[field] as string,
     })),
   );
   $effect(() => {
-    onmissing?.(
-      missing.length === 0 ? null : t.profile.missing(missingNames.map((each) => each.name)),
-    );
+    onflag?.(markedNames.length === 0 ? null : markedNames);
   });
 
-  /** Every field that was missing while the setup's form stood: its row stays once filled. */
-  let ever = $state<string[]>([]);
-  $effect(() => {
-    const now = missing.filter((field) => !untrack(() => ever).includes(field));
-    if (now.length > 0) untrack(() => (ever = [...ever, ...now]));
-  });
-  /** The setup's short form, with the required fields it does not hold that were missing. */
-  const setupRows = $derived(setup === null ? null : withMissing(setup, ever));
-
-  function jump(field: string): void {
-    void panel?.focusField(field, true);
+  /** A field of the form: the caret in it (with `flash` it lights up once). */
+  export function jump(field: string, flash = true): Promise<boolean> {
+    return panel?.focusField(field, flash) ?? Promise.resolve(false);
   }
 
   /**
-   * The setup's "Weiter": saves what changed (a new form always), then `true` once nothing
-   * required is open in the stored profile; else the caret goes to the first open field.
+   * The setup's "Weiter": what is missing is marked and the caret goes to the first one;
+   * else it saves what changed (a new form always) and is `true` once nothing required is
+   * open in the stored profile.
    */
   export async function next(): Promise<boolean> {
     if (busy) return false;
     if (missing.length > 0) {
-      jump(missing[0]!);
+      flagged = true;
+      void jump(missing[0]!, false);
       return false;
     }
     if (editor.dirty || editor.origin === 'new') {
@@ -322,15 +335,19 @@
     }
     const left = FIELD_ORDER.filter((field) => (profile?.missing ?? []).includes(field));
     if (profile === null || left.length > 0) {
-      jump(left[0] ?? FIELD_ORDER[0] ?? '');
+      flagged = true;
+      void jump(left[0] ?? FIELD_ORDER[0] ?? '', false);
       return false;
     }
     return true;
   }
+
+  /** The floating bar: a change, a failed save, or what is missing after a save. */
+  const barShown = $derived(editor.dirty || saveNote !== null || marked.length > 0);
 </script>
 
 {#snippet notes()}
-  {#if fromCv.problem && setup === null}
+  {#if fromCv.problem && !setup}
     {@const problem = fromCv.problem}
     <Notice
       tone="danger"
@@ -343,28 +360,27 @@
     />
   {/if}
   {#if note}<Notice tone="danger" variant="inline" text={note()} testid="profile-note" />{/if}
-  {#if saveNote}
-    <Notice tone="danger" variant="inline" text={saveNote()} testid="profile-save-error" />
-  {/if}
-  {#if rescoring && setup === null}
+  {#if rescoring && !setup}
     <p class="quiet" data-testid="profile-rescoring">
       <Spinner size="sm" label={null} />{t.profile.rescoring(profile?.pending ?? 0)}
     </p>
   {/if}
-  {#if missing.length > 0}<MissingLine fields={missingNames} onjump={jump} />{/if}
 {/snippet}
 
 {#if app.state === null}
   <!-- The shell shows nothing until the state is known. -->
-{:else if setup !== null}
+{:else if setup}
   {#if editor.origin !== null}
     <div class="setup" data-testid="profile">
       {@render notes()}
+      {#if saveNote}
+        <Notice tone="danger" variant="inline" text={saveNote()} testid="profile-save-error" />
+      {/if}
       <ProfileEditor
         bind:this={panel}
-        rows={setupRows}
+        setup
         {fieldError}
-        {missing}
+        missing={marked}
         onsave={() => void next()}
         ondiscard={discard}
       />
@@ -382,14 +398,7 @@
     >
       {#snippet actions()}
         {#if editor.origin !== null}
-          <ProfileActions
-            dirty={editor.dirty}
-            {busy}
-            held={panel?.held() ?? false}
-            ondiscard={discard}
-            onsave={trySave}
-            oncv={() => void fillFromCv()}
-          />
+          <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
         {/if}
       {/snippet}
     </PageHeader>
@@ -410,12 +419,24 @@
         <ProfileEditor
           bind:this={panel}
           {fieldError}
-          {missing}
-          onsave={trySave}
+          missing={marked}
+          onsave={() => void trySave()}
           ondiscard={discard}
         />
       {/if}
     </div>
+    {#if barShown && editor.origin !== null}
+      <SaveBar
+        dirty={editor.dirty}
+        {busy}
+        held={panel?.held() ?? false}
+        failure={saveNote?.() ?? null}
+        missing={markedNames}
+        onjump={(field) => void jump(field)}
+        onsave={() => void trySave()}
+        ondiscard={discard}
+      />
+    {/if}
   </div>
 {/if}
 
@@ -433,18 +454,27 @@
 />
 
 <style>
+  /* At least as high as the view, so the floating bar stands at its foot under a short page. */
   .page {
+    display: flex;
+    flex-direction: column;
     min-height: 100%;
   }
 
-  /* The column under the head: 640 wide, centred, the room of the page's end below. */
+  /* The column under the head: 600 wide, centred, the room of the page's end below. */
   .body {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
+    width: 100%;
     max-width: calc(var(--page-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--space-20) var(--pane-padding) var(--page-end);
+    padding: var(--space-8) var(--pane-padding) var(--page-end);
+  }
+
+  /* With the floating bar, the bar ends the page: its own room replaces the page's end. */
+  .page:has(> :global([data-testid='profile-save-bar'])) .body {
+    padding-bottom: 0;
   }
 
   /* A CV over the page: a dashed edge inside the view. */
@@ -457,7 +487,7 @@
   .setup {
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
+    gap: var(--space-16);
   }
 
   .quiet {

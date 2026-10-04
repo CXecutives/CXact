@@ -1,6 +1,6 @@
 <!--
-  The header of the list column, the same in the three places: the view's head (PageHeader,
-  on white with a hairline under it, the list scrolls beneath it). First row: the places as
+  The header of the list column, the same in the three places: the view's head (PageHeader)
+  above the list, with a hairline under it once the list scrolled beneath it. First row: the places as
   tabs (Aktuell, Archiv, Papierkorb, their names only, the one segmented look of the app;
   another place starts without the search, like a folder of a mail app) and at its right end
   the place's one action: in the
@@ -54,6 +54,12 @@
   import { funnelEntries } from './headerMenus';
   import RunLine from './RunLine.svelte';
   import TrashAction from './TrashAction.svelte';
+
+  interface Props {
+    /** The list is scrolled away from its top: the header shows its hairline. */
+    scrolled?: boolean;
+  }
+  let { scrolled = false }: Props = $props();
 
   const place = $derived(jobs.place);
   /** The jobs of every place, whatever the search and the filter. */
@@ -226,7 +232,7 @@
 {/snippet}
 
 <div class="header" data-testid="list-header" data-press-only>
-  <PageHeader>
+  <PageHeader line={scrolled}>
     {#snippet lead()}
       <span class="places" bind:this={placesBox}>
         <Segmented

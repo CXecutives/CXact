@@ -35,7 +35,7 @@ import type {
   Way,
   WorkMode,
 } from '../ipc/types';
-import type { CvFailure, NextPauseReason } from '../ipc/api';
+import type { ContractKey, CvFailure, NextPauseReason } from '../ipc/api';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import { formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
@@ -144,10 +144,10 @@ const profileField = (): Record<string, string> => {
   const { field } = de.profile;
   return {
     roles: field.roles,
-    permanent: field.permanent,
-    temporary: field.temporary,
-    dayRateWish: field.dayRateWishName,
-    dayRateMin: field.dayRateMinName,
+    permanent: field.contracts,
+    temporary: field.contracts,
+    dayRateWish: field.dayRateWish,
+    dayRateMin: field.dayRateMin,
     minSalary: field.minSalary,
     workMode: field.workMode,
     countries: field.countries,
@@ -1095,15 +1095,14 @@ export const de = {
       unavailable: 'Die Auswertung ist gerade nicht verfügbar.',
     } satisfies Record<CvFailure, string>,
     otherFile: 'Andere Datei wählen',
-    /** The required fields still empty, one line on top: its words before the names (each a
-     *  link to its field), what stands before each name, and the whole sentence (the tooltip
-     *  of the setup's Weiter). */
+    /** The required fields still empty, said once Speichern or the setup's Weiter was
+     *  pressed: its words before the names (each a link to its field) and what stands before
+     *  each name. */
     missingLead: 'Es fehlt noch',
     missingBefore: (index: number, total: number) =>
       index === 0 ? ' ' : index === total - 1 ? ' und ' : ', ',
-    missing: (names: readonly string[]) => `Es fehlt noch ${joined([...names])}.`,
-    /** The placeholder of a required field that is still empty. */
-    required: (placeholder: string) => `Pflicht, ${placeholder}`,
+    /** The floating bar while the form holds a change. */
+    unsaved: 'Ungespeicherte Änderungen',
     /** The toast of a save. */
     saved: 'Profil gespeichert',
     /** The same toast with what the rescore of the save changed in Aktuell: the jobs
@@ -1131,28 +1130,28 @@ export const de = {
     /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
      *  does not name, each with its number of jobs (a click puts it into that field). */
     asked: 'Häufig verlangt',
-    /** The three sections on one page. */
+    /** The three sections on one page, and the sentence of each one's info symbol. */
     section: {
       search: 'Was du suchst',
       skills: 'Was du mitbringst',
       exclusions: 'Was nicht passt',
+    },
+    sectionInfo: {
+      search: 'Danach sucht und bewertet CXact.',
+      skills: 'Das gleicht CXact mit den Anforderungen ab.',
+      exclusions: 'Diese Jobs blendet CXact aus.',
     },
     field: {
       roles: 'Wunschrollen',
       rolesPlaceholder: 'z. B. Interim CFO',
       /** After the chips of a list field: its input takes one more. */
       rolesMore: '+ Rolle',
-      /** The two contract types beside Projekt und Interim, each a switch; the sentence of
-       *  the first. */
-      permanent: 'Festanstellungen',
-      temporary: 'Zeitarbeit',
-      contractsText: 'Projekt und Interim sind immer dabei.',
-      /** The day rate's row and its two fields; their names in an error. */
-      dayRate: 'Tagessatz',
-      dayRateWish: 'Wunsch',
-      dayRateMin: 'Minimum',
-      dayRateWishName: 'Wunschtagessatz',
-      dayRateMinName: 'Mindesttagessatz',
+      /** The contract types, a choice of several; one at least stays. */
+      contracts: 'Vertragsart',
+      keepOneContract: 'Mindestens eine Vertragsart',
+      /** The day rate's two fields, side by side. */
+      dayRateWish: 'Tagessatz Wunsch',
+      dayRateMin: 'Tagessatz Minimum',
       minSalary: 'Mindestgehalt',
       workMode: 'Arbeitsmodell',
       countries: 'Länder',
@@ -1223,7 +1222,7 @@ export const de = {
     /** The info symbols beside a label, one sentence each (only these places, docs/PLAN.md). */
     info: {
       roles: 'Danach sucht CXact.',
-      contracts: 'Was du nicht einschaltest, wird ausgeschlossen.',
+      contracts: 'Was du nicht wählst, wird ausgeschlossen.',
       dayRate: 'Unter dem Minimum wird ein Job ausgeschlossen.',
       workMode: 'Nur ein Wunsch, schließt nie aus.',
       countries: 'Andere Länder werden ausgeschlossen. Remote gilt überall.',
@@ -1236,6 +1235,12 @@ export const de = {
       euro: '€',
       years: 'Jahre',
     },
+    /** The contract types of Vertragsart. */
+    contract: {
+      project: 'Projekt und Interim',
+      permanent: 'Festanstellung',
+      temporary: 'Zeitarbeit',
+    } satisfies Record<ContractKey, string>,
     workMode: {
       any: ANY,
       remote: 'Remote',
@@ -1407,25 +1412,28 @@ export const de = {
   },
   settings: {
     title: 'Einstellungen',
-    /** The three sections of the page. */
-    portals: 'Portale',
-    mailbox: 'Postfach für Alert-Mails',
+    /** The three sections of the page, each with the sentence of its info symbol. */
+    portals: 'Jobportale',
+    portalsInfo: 'Hier sucht CXact und liest deine Alert-Mails.',
+    mailbox: 'Postfach',
+    mailboxInfo: 'Für Alert-Mails von allen Portalen.',
     data: 'Daten',
-    /** How a portal brings its jobs, a small label beside its name. */
+    dataInfo: 'Dein Profil und alles, was CXact speichert.',
+    /** How CXact uses a portal: the two groups of the list. */
     way: {
-      search: 'Suche',
-      alert: 'Alert-Mail',
+      search: 'Suche und Alert-Mails',
+      alert: 'Nur Alert-Mails',
     } satisfies Record<Way, string>,
-    /** A portal of alert mails without a mailbox (its row's second line). */
+    /** A portal's state, its row's second line: one of alert mails without a mailbox, how
+     *  many alert mails of it came in the last 30 days, resting until a moment, what the last
+     *  search brought. */
     needsMailbox: 'Braucht ein Postfach',
-    /** How many alert mails of a portal the app read in the last 30 days. */
     alertMails: (value: number) =>
       value === 0
         ? 'Keine Alert-Mails in 30 Tagen'
         : `${count(value, 'Alert-Mail', 'Alert-Mails')} in 30 Tagen`,
-    /** A portal that rests until a moment (its row's second line). */
     pausedUntil: (iso: string) => `Pausiert bis ${formatMoment(iso)}`,
-    /** What the last search brought from a portal (its row). */
+    noSearchYet: 'Noch keine Suche',
     lastNew: (value: number) =>
       value === 0
         ? 'Zuletzt keine neuen Jobs'
@@ -1435,6 +1443,7 @@ export const de = {
     connected: 'Verbunden',
     /** The row of the mailbox while none is connected. */
     notConnected: 'Kein Postfach',
+    notConnectedHint: 'Ohne Postfach liest CXact keine Alert-Mails.',
     /** The last fetch could not reach Gmail, or Gmail refused the password. */
     unreachable: 'Nicht erreichbar',
     refused: 'Abgelehnt',
@@ -1462,8 +1471,11 @@ export const de = {
     checkAlert: 'Alert prüfen',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
-    /** The row of the profile's folder: its one sentence. */
-    profilesHint: 'Dein Profil liegt als Datei in einem Ordner.',
+    /** The row of the profile's folder (its path under it), and what a change did. */
+    folder: 'Profil-Ordner',
+    folderMoved: 'Das Profil liegt im neuen Ordner.',
+    folderFiles: 'Der neue Ordner ist gewählt.',
+    folderOwnProfile: 'CXact nutzt das Profil aus diesem Ordner.',
     /** The database's copies (the failed start offers them). */
     backupHeading: 'Sicherung wiederherstellen',
     backupAction: 'Wiederherstellen',
@@ -1479,11 +1491,10 @@ export const de = {
     backupUndone: 'Der vorherige Stand ist zurück.',
     /** The row of the reset: its one sentence, its button and its dialog. */
     resetHint: 'Löscht Jobs, Profil, Postfach und Anmeldungen.',
-    resetAction: 'Alle Daten zurücksetzen',
+    resetAction: 'Alles zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText:
       'Löscht Jobs, Profil, Postfach und Anmeldungen. CXact startet mit der Einrichtung neu.',
-    resetConfirm: 'Zurücksetzen',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
   },
 
@@ -1502,16 +1513,9 @@ export const de = {
     upload: 'Lebenslauf hochladen',
     reading: 'Lebenslauf wird ausgewertet',
     readingText: 'Etwa eine halbe Minute.',
-    /** After the CV: what only the user can say. */
-    review: 'Fast fertig',
-    reviewText: 'Diese Angaben kann nur du machen.',
-    /** What the CV filled beyond the short form, in a quiet strip under it. */
-    fromCv: (competences: number, tools: number, industries: number) =>
-      `${count(competences, 'Kompetenz', 'Kompetenzen')}, ${count(tools, 'Tool', 'Tools')} und ${count(industries, 'Branche', 'Branchen')} aus deinem Lebenslauf`,
-    later: 'später im Profil',
-    /** By hand: the short form. */
-    self: 'Dein Profil',
-    selfText: 'Das Wichtigste, den Rest kannst du später im Profil ergänzen.',
+    /** The whole profile: filled by the AI to check, or empty to fill in. */
+    review: 'Profil prüfen',
+    self: 'Profil ausfüllen',
     alerts: 'Alert-Mails',
     optional: 'optional',
     /** What a mailbox brings: the portals of alert mails by name, in the app's order. */

@@ -1330,21 +1330,18 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
     locator.evaluate((node) => node.getBoundingClientRect().right);
   // Each on its own tab (one shows at a time, all of one width).
   const toggle = await edge(await reveal(page, page.getByTestId('toggle-enabled-linkedin')));
-  for (const id of ['profiles-open', 'reset']) {
+  for (const id of ['folder-open', 'reset']) {
     const button = await edge(await reveal(page, page.getByTestId(id)));
     expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
   }
 });
 
-test('a notice banner shares the inset of the cards and draws no line of its own', async ({
-  page,
-}) => {
+test('a notice banner stands in the page column and draws no line of its own', async ({ page }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
-  const icon = (await banner.locator(':scope > .icon').boundingBox())!.x;
-  const reset = await reveal(page, page.getByTestId('reset-all'));
-  const label = (await reset.locator('.hint').first().boundingBox())!.x;
-  expect(icon).toBe(label);
+  const edge = (await banner.boundingBox())!.x;
+  const heading = (await page.getByTestId('settings-heading').boundingBox())!.x;
+  expect(Math.abs(edge - heading)).toBeLessThanOrEqual(1);
   const same = async (notice: Locator): Promise<boolean> =>
     notice.evaluate((node) => {
       const style = getComputedStyle(node);

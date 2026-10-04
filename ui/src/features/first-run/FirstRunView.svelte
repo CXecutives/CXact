@@ -3,7 +3,7 @@
   Zurück and Vor in the top bar, no job view button, the cream page; every switch of the view
   is refused while it stands). One step at a time from the table of steps.ts: near the top of
   the window, centred, the step indicator ("1 Profil", "2 Alert-Mails"; not on Willkommen) and
-  under it one white card (420 px; a short form of the profile 520) with the step's heading
+  under it one white card (440 px) with the step's heading
   (it takes the focus on every step, so a screen reader starts there), its one sentence, its
   body (the snippet of its id) and at its foot Zurück at the left and the step's one primary
   at the right. Enter is the primary while the step can go on; the mouse's back button is
@@ -15,9 +15,10 @@
   Lebenslauf hochladen (the whole drop zone is one button and takes a dropped file,
   Upload.svelte, and the sentence about the AI in the foot); Auswertung (a spinner and
   "Abbrechen", or what went wrong as the heading with a warning sign and its ways on at the
-  right, the primary last, CV_PROBLEMS); Fast fertig after the CV and Dein Profil by hand (the
-  Profil view's short forms: the missing line, the rows; "Weiter" saves and waits while
-  something is missing, its tooltip says what); Alert-Mails, optional ("Überspringen" at the
+  right, the primary last, CV_PROBLEMS); Profil prüfen after the CV and Profil ausfüllen by
+  hand (design round 4: the whole Profil page on white in the pages' column instead of the
+  card, the foot at the window's bottom; "Weiter" is always on, marks what is missing and says
+  it beside itself, and goes on once nothing is); Alert-Mails, optional ("Überspringen" at the
   left, "Verbinden" the primary; once connected the portals' rows with "Alert anlegen", the
   same rows as in Einstellungen; Zurück and Überspringen stop a "Verbinden" that goes);
   Fertig ("Alles eingerichtet" under a green tick, "Zu den Jobs", no search).
@@ -34,7 +35,8 @@
   import { fade } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
-  import ProfileView from '../profile/ProfileView.svelte';
+  import MissingLine from '../shared/MissingLine.svelte';
+  import ProfileView, { type MissingField } from '../profile/ProfileView.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
   import NewProfileWays from '../shared/NewProfileWays.svelte';
   import PortalRow from '../shared/PortalRow.svelte';
@@ -63,8 +65,8 @@
   /** The mailbox form signs in and counts (Zurück and Überspringen stop it first). */
   let checking = $state(false);
   let profileView = $state<ProfileView | null>(null);
-  /** What the short form of the profile still lacks, in words (Weiter waits and says it). */
-  let open = $state<string | null>(null);
+  /** What the profile still lacks once Weiter asked (said beside it). */
+  let flagged = $state<readonly MissingField[] | null>(null);
   let mailboxForm = $state<MailboxForm | null>(null);
   let heading = $state<HTMLElement | null>(null);
   let root = $state<HTMLElement | null>(null);
@@ -148,21 +150,6 @@
     mailboxForm?.cancel();
     onboarding.go('done');
   }
-
-  /** What the CV brought besides the short form ("Fast fertig"), from the stored profile. */
-  const brought = $derived.by(() => {
-    const form = app.state?.profile?.form ?? null;
-    return form === null
-      ? null
-      : {
-          competences: form.competences.filter((row) => row.name.trim() !== '').length,
-          tools: form.tools.length,
-          industries: form.industries.length,
-        };
-  });
-
-  /** The short forms wait while something is missing (Enter puts the caret there). */
-  const waits = $derived((step === 'review' || step === 'self') && open !== null);
 </script>
 
 {#snippet alerts()}
@@ -187,13 +174,7 @@
   {:else if id === 'upload'}
     <Upload onfile={(dropped) => void onboarding.read(dropped)} />
   {:else if id === 'review' || id === 'self'}
-    <ProfileView bind:this={profileView} setup={id} onmissing={(text) => (open = text)} />
-    {#if id === 'review' && brought !== null}
-      <p class="brought" data-testid="first-brought">
-        <span>{t.firstRun.fromCv(brought.competences, brought.tools, brought.industries)}</span>
-        <span class="later">{t.firstRun.later}</span>
-      </p>
-    {/if}
+    <ProfileView bind:this={profileView} setup onflag={(fields) => (flagged = fields)} />
   {:else if id === 'alerts'}
     {@render alerts()}
   {/if}
@@ -239,6 +220,11 @@
       <Button variant="ghost" label={t.common.back} testid="first-back" onclick={goBack} />
     {/if}
   </span>
+  {#if spec.page && flagged !== null}
+    <span class="flag">
+      <MissingLine fields={flagged} onjump={(field) => void profileView?.jump(field)} />
+    </span>
+  {/if}
   <span class="side end">
     {#if step === 'upload'}
       <span class="quiet" data-testid="upload-ai">{t.profile.fromCvHint}</span>
@@ -262,8 +248,6 @@
       <Button
         variant="primary"
         label={nextWords}
-        disabled={waits}
-        disabledReason={open}
         loading={(busy && (step === 'review' || step === 'self')) ||
           (checking && step === 'alerts')}
         testid="first-next"
@@ -275,12 +259,13 @@
 
 <div
   class="setup"
+  class:white={spec.page}
   bind:this={root}
   data-testid="first-run"
   data-step={step}
   use:formKeys={{ save: () => void next() }}
 >
-  <div class="column" class:wide={spec.wide}>
+  <div class="column" class:page={spec.page}>
     {#if spec.stage !== null}
       <Steps
         steps={t.firstRun.stages}
@@ -292,6 +277,7 @@
     {#key step}
       <section
         class="card"
+        class:page={spec.page}
         class:centred={spec.centred && !failed}
         aria-labelledby="first-step-heading"
         data-testid={failed ? 'cv-problem' : 'first-card'}
@@ -331,8 +317,50 @@
     padding: var(--setup-top) var(--space-16) var(--space-32);
   }
 
-  .column.wide {
-    max-width: calc(var(--setup-card-wide) + 2 * var(--space-16));
+  /* The whole profile: the white page in the pages' column, no card. */
+  .setup.white {
+    background-color: var(--surface);
+  }
+
+  .column.page {
+    max-width: calc(var(--page-width) + 2 * var(--pane-padding));
+    padding-inline: var(--pane-padding);
+    padding-bottom: 0;
+  }
+
+  .card.page {
+    gap: var(--space-20);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .card.page {
+    container-type: inline-size;
+  }
+
+  .card.page .foot {
+    flex-wrap: wrap;
+    margin: 0 calc(-1 * var(--pane-padding));
+    padding: var(--space-12) var(--pane-padding) var(--space-16);
+    border-radius: 0;
+  }
+
+  /* What is still missing, beside Weiter; in a narrow window on a line of its own above
+     Zurück and Weiter. */
+  .flag {
+    display: flex;
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  @container (width < 560px) {
+    .flag {
+      order: -1;
+      flex-basis: 100%;
+      justify-content: flex-start;
+    }
   }
 
   .card {
@@ -405,25 +433,6 @@
   .quiet {
     color: var(--text-muted);
     font: var(--type-sm);
-  }
-
-  /* What the CV brought besides: a quiet grey strip, "später im Profil" at its end. */
-  .brought {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-4) var(--space-12);
-    margin-top: calc(-1 * var(--space-4));
-    padding: var(--space-8) var(--space-12);
-    border-radius: var(--radius-control);
-    background-color: var(--surface-muted);
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  .later {
-    color: var(--text-subtle);
   }
 
   /* The foot of the card: 16 above (the card's gap less its own top), the card's 20 below;

@@ -1882,8 +1882,7 @@ type Retired =
   | 'duplicate_profile'
   | 'rename_profile'
   | 'delete_profile'
-  | 'restore_profile'
-  | 'pick_workspace';
+  | 'restore_profile';
 
 type Answered = Omit<Commands, Retired> & NextCommands;
 type Args<K extends keyof Answered> = Omit<Answered[K]['args'], 'channel'>;
@@ -2103,6 +2102,14 @@ const handlers: Handlers = {
     return true;
   },
 
+  pick_workspace: () => {
+    const kind = params.get('folder');
+    if (kind !== 'other' && kind !== 'own') return null;
+    const folder = `${HOME}/Documents/Jobs`;
+    state.settings = { ...state.settings, workspace: folder, workspaceIsDefault: false };
+    const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
+    return { folder, profile };
+  },
   open_target: ({ target }) => {
     // A new mail only to the contact an ad names (commands/files.rs).
     if (target.kind === 'contactMail' && !find(target.key)?.match?.facts.contactEmail) {

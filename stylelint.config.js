@@ -160,6 +160,9 @@ export default {
     'selector-disallowed-list': ['/::view-transition/'],
     'declaration-property-value-disallowed-list': {
       '/.*/': ['/var\\(--p-/'],
+      // A native app shows the arrow over buttons, tiles and links, never the hand (design
+      // round 4); fields keep the text cursor.
+      cursor: ['pointer'],
     },
     'declaration-property-value-allowed-list': {
       transition: [transitionShorthand(ANIMATABLE)],

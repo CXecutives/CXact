@@ -1,10 +1,9 @@
 <!--
-  One portal in the list of Einstellungen > Portale (and the setup's Alert-Mails), the same
-  compact row for each (design round 3): its tile, its name with a small label of how it
-  brings its jobs ("Suche" in a grey outline, "Alert-Mail" in navy), under it one quiet line
-  of its state (what the last search brought, "Zuletzt 4 neue Jobs"; for a portal of alert
-  mails how many came in 30 days, or "Braucht ein Postfach" without one; "Pausiert bis …"
-  while it rests), then the portal in the browser, its calls as quiet buttons where they
+  One portal in the list of Einstellungen > Jobportale (and the setup's Alert-Mails), the same
+  airy row for each (design B): its tile (the navy tint, its two capitals), its name, under it
+  one quiet line of its state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
+  30 Tagen", or "Braucht ein Postfach" in the warning's ink without one, its switch dimmed;
+  "Pausiert bis …" while it rests), then the portal in the browser, its calls as quiet buttons where they
   apply ("Anmelden" or "Abmelden" where the portal offers a sign-in, "Alert anlegen" for a
   portal of alert mails: its page in the browser) and its switch (the name names the switch
   but, like every text next to a switch, does not switch it); at the smallest window the
@@ -22,7 +21,6 @@
   says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
-  import Badge from '$components/Badge.svelte';
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
@@ -31,8 +29,8 @@
   import { errorText, healthAdvice } from '$lib/i18n/texts';
   import { invoke, type NextPortalState } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
-  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
+  import { PORTAL_MARK } from '$lib/portals';
   import { app, settingsPatch } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
 
@@ -80,10 +78,10 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** Its state in one quiet line: resting until a moment, a portal of alert mails without a
-   *  mailbox, how many alert mails came in 30 days, or what the last search brought from it
-   *  (nothing before one, or when it was not asked). */
-  const status = $derived.by((): string | null => {
+  /** Its state: resting until a moment, a portal of alert mails without a mailbox, how many
+   *  alert mails came in 30 days, or what the last search brought from it ("noch keine
+   *  Suche" before the first, nothing when it was not asked). */
+  const standing = $derived.by((): string | null => {
     const now = portal.health;
     if (now.kind === 'paused' && now.until !== null) return t.settings.pausedUntil(now.until);
     if (now.kind === 'quotaReached') return t.settings.pausedUntil(now.until);
@@ -92,9 +90,14 @@
       const mails = (portal as NextPortalState).alertMails;
       return mails === undefined || mails === null ? null : t.settings.alertMails(mails);
     }
-    const line = app.state?.lastRun?.perPortal.find((p) => p.portal === portal.portal);
+    const last = app.state?.lastRun ?? null;
+    if (last === null) return t.settings.noSearchYet;
+    const line = last.perPortal.find((p) => p.portal === portal.portal);
     return line === undefined ? null : t.settings.lastNew(line.new);
   });
+  /** A portal of alert mails without a mailbox: its line in the warning's ink, its switch
+   *  dimmed (it stays on and works once a mailbox is there). */
+  const waiting = $derived(portal.way === 'alert' && !app.hasMailbox);
   /** Its problem in one sentence, where the state line does not say it already. */
   const problem = $derived(
     health !== null &&
@@ -177,19 +180,11 @@
 <!-- A row of the card like a SettingRow (edge to edge, its own padding: `data-setting-row`
      keeps the card's inset for other content off it). -->
 <div class="row" data-setting-row data-testid="portal-{portal.portal}">
-  <span class="lead"
-    ><IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" /></span
-  >
+  <span class="lead"><IconTile tone="navy" monogram={PORTAL_MARK[portal.portal]} size="sm" /></span>
   <div class="text">
-    <span class="title">
-      <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
-      <Badge
-        label={t.settings.way[portal.way]}
-        tone={portal.way === 'alert' ? 'navy' : 'outline'}
-      />
-    </span>
-    {#if status}
-      <span class="quiet" data-testid="status-{portal.portal}">{status}</span>
+    <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
+    {#if standing}
+      <span class="quiet" class:waiting data-testid="status-{portal.portal}">{standing}</span>
     {/if}
     {#if problem}
       <div class="fold" transition:unfold>
@@ -267,7 +262,7 @@
       {#if portal.way === 'alert'}
         <Button
           variant="ghost"
-          icon="alertMail"
+          icon="alertAdd"
           label={t.settings.setUpAlert}
           testid="setup-{portal.portal}"
           onclick={() => open('setup')}
@@ -285,7 +280,7 @@
       onclick={() => open('home')}
     />
   </span>
-  <span class="tools">
+  <span class="tools" class:dim={waiting}>
     <Toggle
       {id}
       checked={portal.enabled}
@@ -333,13 +328,6 @@
     min-height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
   }
 
-  .title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    min-width: 0;
-  }
-
   .name {
     color: var(--text);
     font: var(--type-md);
@@ -349,6 +337,14 @@
   .quiet {
     color: var(--text-muted);
     font: var(--type-sm);
+  }
+
+  .quiet.waiting {
+    color: var(--warning-text);
+  }
+
+  .tools.dim {
+    opacity: var(--opacity-muted);
   }
 
   .fold {

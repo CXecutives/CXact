@@ -19,6 +19,7 @@
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
+  import BellPlus from '@lucide/svelte/icons/bell-plus';
   import BookOpen from '@lucide/svelte/icons/book-open';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
@@ -90,6 +91,7 @@
     award: Award,
     ban: Ban,
     banknote: Banknote,
+    'bell-plus': BellPlus,
     'book-open': BookOpen,
     briefcase: Briefcase,
     'building-2': Building2,

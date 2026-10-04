@@ -12,7 +12,7 @@
   interface Props {
     id: string;
     values: string[];
-    /** Required and still empty: the amber edge, "Pflicht" in the placeholder. */
+    /** Marked as missing: the amber edge. */
     missing: boolean;
     invalid: boolean;
   }
@@ -54,9 +54,7 @@
   bind:values
   options={COUNTRIES}
   noMatch={words.countryNone}
-  placeholder={missing
-    ? t.profile.required(words.countriesPlaceholder)
-    : words.countriesPlaceholder}
+  placeholder={words.countriesPlaceholder}
   more={words.countriesMore}
   {missing}
   {invalid}

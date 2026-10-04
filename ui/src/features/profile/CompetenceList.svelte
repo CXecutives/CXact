@@ -1,10 +1,10 @@
 <!--
   The core competences: one row each with the star of a Schwerpunkt (outlined, filled while
   marked), the competence and its years at the right ("Jahre" as their placeholder), then
-  "Kompetenz hinzufügen". The star says what a click does (mark, or remove the Schwerpunkt).
+  the quiet row "Kompetenz hinzufügen". The star says what a click does (mark, or remove the Schwerpunkt).
   At most five: a sixth star is disabled and its tooltip says why, as does the star of a row
   without a competence. The x of a row needs no tooltip. Without a competence a blank field
-  stands instead (with "Pflicht" and the amber edge while it is required): what is typed
+  stands instead (with the amber edge while it is marked as missing): what is typed
   there becomes the first row. A value that is too large (the years) or that the backend refused
   marks its row. Enter goes to the next row, adds one after the last and ends the list on an
   empty last row (rows.ts); it never saves the profile. Removing a row puts no caret anywhere
@@ -25,7 +25,7 @@
 
   interface Props {
     rows: Competence[];
-    /** Required and still empty: the blank field is amber and says "Pflicht". */
+    /** Marked as missing: the blank field shows the amber edge. */
     missing?: boolean;
     /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
@@ -83,9 +83,7 @@
         value=""
         id="{id}-name-0"
         label={words.competence}
-        placeholder={missing
-          ? t.profile.required(words.competencePlaceholder)
-          : words.competencePlaceholder}
+        placeholder={words.competencePlaceholder}
         {missing}
         testid="competence-blank"
         oninput={(text) => void begin(text)}
@@ -120,11 +118,7 @@
           bind:value={row.name}
           id="{id}-name-{index}"
           label={words.competence}
-          placeholder={rows.length === 1
-            ? missing
-              ? t.profile.required(words.competencePlaceholder)
-              : words.competencePlaceholder
-            : null}
+          placeholder={rows.length === 1 ? words.competencePlaceholder : null}
           missing={missing && index === 0 && !named}
           invalid={wrong}
           describedby={wrong ? `${id}-error` : null}
@@ -160,7 +154,7 @@
   {#if rows.length > 0}
     <span class="add indent" data-remove-fallback>
       <Button
-        variant="secondary"
+        variant="ghost"
         icon="add"
         label={words.addCompetence}
         testid="competence-add"
@@ -198,8 +192,13 @@
     height: var(--control-field);
   }
 
-  /* Under the rows the button lines up with the competence column. */
-  .add.indent,
+  /* Under the rows the quiet add row and an error line up with the competence column (the
+     add's glyph on the names' text). */
+  .add.indent {
+    display: flex;
+    margin-left: calc(var(--control-field) + var(--space-6) - var(--space-2));
+  }
+
   .error {
     margin-left: calc(var(--control-field) + var(--space-6));
   }

@@ -62,7 +62,6 @@
     border-radius: var(--radius-lg);
     background-color: var(--surface);
     text-align: start;
-    cursor: pointer;
     transition:
       border-color var(--dur-base) var(--ease-out),
       background-color var(--dur-base) var(--ease-out);

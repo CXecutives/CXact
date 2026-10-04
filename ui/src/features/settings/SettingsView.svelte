@@ -1,15 +1,16 @@
 <!--
-  Einstellungen: one page under the view's sticky head ("Einstellungen"), in the column of the
-  pages (640), three sections of cards.ts (design round 3): Portale (all ten portals in one
-  list, PortalRow: the eight the app searches, then LinkedIn and freelance.de), Postfach für
-  Alert-Mails (MailboxCard) and Daten (the profile's folder and the reset, each one sentence
-  and its button). Every text button of a row is the same outlined button with its glyph;
-  every row ends on the card's inner edge. This file only renders the list and runs its
-  commands; what a row is, says and does is one entry in cards.ts.
+  Einstellungen: one airy white page (design B) under its head ("Einstellungen"), in the
+  column of the pages (600), three sections of cards.ts, each with its heading and one quiet
+  line, its rows between hairlines and no card: Jobportale (all ten portals in one list,
+  PortalRow: the eight the app searches, then LinkedIn and freelance.de), Postfach
+  (MailboxCard) and Daten (the profile's folder and the reset, each one sentence and its
+  button). Every text button of a Daten row is the same outlined button with its glyph; every
+  row ends on the column's edge. This file only renders the list and runs its commands; what
+  a row is, says and does is one entry in cards.ts.
 
   A switch moves at once (the state is patched before the save) and is its own answer.
-  Errors stay a note at the end of their card, which unfolds (the cards below glide down
-  instead of jumping). Only "Alle Daten zurücksetzen" and "Entfernen" of the mailbox ask
+  Errors stay a note at the end of their section, which unfolds (the sections below glide
+  down instead of jumping). Only "Alle Daten zurücksetzen" and "Entfernen" of the mailbox ask
   first; a dialog whose action fails stays open and says why inside. The dry run changes
   nothing, and a run holds the mailbox and the reset, locked with the reason of that run
   instead of failing. Opened from a job for one portal ("Anmeldung einrichten") the page
@@ -17,7 +18,7 @@
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import Card from '$components/Card.svelte';
+  import IconTile from '$components/IconTile.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import PageHeader from '$components/PageHeader.svelte';
@@ -27,7 +28,7 @@
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { OpenTarget } from '$lib/ipc/types';
+  import type { OpenTarget, Way } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
@@ -35,6 +36,7 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
+  import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
   import {
     ACTIONS,
@@ -59,7 +61,10 @@
   );
   /** The mailbox is outside the dry run's own data, and a run holds it. */
   const mailboxLocked = $derived(lock === null ? null : ownOnly(lock));
-  /** Every portal: the ones the app searches, then the ones of alert mails. */
+  /** The two groups of portals: the ones the app searches (and reads alert mails of), then
+   *  the ones of alert mails only. */
+  const WAYS: readonly Way[] = ['search', 'alert'];
+  /** Every portal, in the UI's order (lib/portals.ts). */
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
   let busy = $state<CommandId | null>(null);
   /** The note at the end of each card, by section id. */
@@ -93,10 +98,33 @@
     }
   }
 
+  /** Another folder for the profile (the folder dialog): it comes along, or the folder's
+   *  own is used; the toast says which. */
+  async function pickFolder(section: string): Promise<void> {
+    note(section, null);
+    busy = 'folderChange';
+    try {
+      const picked = await invoke('pick_workspace');
+      if (picked === null) return;
+      await app.load();
+      if (picked.profile === 'own') toasts.show(t.settings.folderOwnProfile, 'info');
+      else if (picked.profile === 'copied') toasts.show(t.settings.folderMoved);
+      else toasts.show(t.settings.folderFiles);
+    } catch (error) {
+      note(section, { tone: 'danger', text: () => errorText(error) });
+    } finally {
+      busy = null;
+    }
+  }
+
   function act(section: string, id: ActionId): void {
     const action: Action = ACTIONS[id];
     if (action.open !== undefined) {
       open(section, action.open);
+      return;
+    }
+    if (id === 'folderChange') {
+      void pickFolder(section);
       return;
     }
     resetError = null;
@@ -146,7 +174,14 @@
 
 {#snippet row(section: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    <SettingRow hint={item.text(t, cfg)} testid={item.id}>
+    {#snippet tile()}<IconTile icon={item.tile} size="sm" />{/snippet}
+    <SettingRow
+      label={item.label(t, cfg)}
+      hint={item.path?.(t, cfg) ?? item.hint?.(t, cfg) ?? null}
+      copy={item.path !== undefined}
+      lead={tile}
+      testid={item.id}
+    >
       {#each item.actions as id (id)}
         {@const action: Action = ACTIONS[id]}
         {@const locked = action.locked?.(lock) ?? null}
@@ -166,20 +201,16 @@
   {/if}
 {/snippet}
 
-<!-- The note at the end of a card unfolds, so the cards below glide down. The card's inset
-     for what is not a row (Card) would jump at once: the note takes its own (a wrapper
-     without a box of its own, `.slot`, keeps the card's margin off the folding box). -->
+<!-- The note at the end of a section unfolds, so the sections below glide down. -->
 {#snippet noteOf(section: string, feedback: Feedback)}
-  <div class="slot">
-    <div class="fold" transition:unfold>
-      <div class="note">
-        <Notice
-          tone={feedback.tone}
-          variant="inline"
-          text={feedback.text()}
-          testid="{section}-note"
-        />
-      </div>
+  <div class="fold" transition:unfold>
+    <div class="note">
+      <Notice
+        tone={feedback.tone}
+        variant="inline"
+        text={feedback.text()}
+        testid="{section}-note"
+      />
     </div>
   </div>
 {/snippet}
@@ -206,11 +237,9 @@
   <div class="body">
     {#if cfg === null}
       {#if app.slow}
-        <Card
-          ><div class="skeleton">
-            <Skeleton width={40} /><Skeleton /><Skeleton width={70} />
-          </div></Card
-        >
+        <div class="skeleton">
+          <Skeleton width={40} /><Skeleton /><Skeleton width={70} />
+        </div>
       {/if}
     {:else}
       {#if cfg.dryRun}
@@ -222,11 +251,16 @@
           id="settings-{section.id}"
           name={section.id}
           heading={section.heading(t, cfg)}
+          info={section.info?.(t, cfg) ?? null}
           testid="settings-{section.id}"
-          cardTestid="card-{section.id}"
         >
           {#if section.block === 'portals'}
-            {#each portals as portal (portal.portal)}<PortalRow {portal} />{/each}
+            {#each WAYS as way (way)}
+              <h3 class="group" data-testid="portals-{way}">{t.settings.way[way]}</h3>
+              {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
+                <PortalRow {portal} />
+              {/each}
+            {/each}
           {:else if section.block === 'mailbox'}
             <MailboxCard {cfg} locked={mailboxLocked} />
           {/if}
@@ -243,7 +277,7 @@
   variant="danger"
   heading={t.settings.resetHeading}
   text={t.settings.resetText}
-  confirmLabel={t.settings.resetConfirm}
+  confirmLabel={t.settings.resetAction}
   busy={busy === 'reset'}
   error={resetError?.() ?? null}
   testid="dialog-reset"
@@ -255,19 +289,28 @@
     min-height: 100%;
   }
 
-  /* The column under the head: 640 wide, centred, the sections 24 apart. */
+  /* The column under the head: 600 wide, centred; a section's hairline as far from what
+     ends the section before as from its own heading. */
   .body {
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: var(--space-24);
+    gap: var(--section-top);
     max-width: calc(var(--page-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--space-20) var(--pane-padding) var(--page-end);
+    padding: var(--space-8) var(--pane-padding) var(--page-end);
   }
 
-  .slot {
-    display: contents;
+  /* A group of portals: a small heading over its rows. */
+  .group {
+    padding-top: var(--space-12);
+    color: var(--text-muted);
+    font: var(--type-sm);
+    font-weight: var(--weight-semibold);
+  }
+
+  .group:first-child {
+    padding-top: 0;
   }
 
   .fold {

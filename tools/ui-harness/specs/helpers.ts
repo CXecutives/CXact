@@ -27,18 +27,9 @@ export const MAC = '?platform=macos';
 /** Every source in the UI's order (lib/portals.ts). */
 export const ALL_PORTALS = PORTAL_ORDER;
 /** The sources the app searches itself (Einstellungen, Suche); the others bring alert mails. */
-export const SEARCHED: readonly Portal[] = [
-  'hays',
-  'freelancermap',
-  'michaelpage',
-  'solcom',
-  'gulp',
-  'amadeusfire',
-  'interimx',
-  'fratch',
-];
-export const ALERT_PORTALS: readonly Portal[] = PORTAL_ORDER.filter(
-  (portal) => !SEARCHED.includes(portal),
+export const ALERT_PORTALS: readonly Portal[] = ['linkedin', 'freelance'];
+export const SEARCHED: readonly Portal[] = PORTAL_ORDER.filter(
+  (portal) => !ALERT_PORTALS.includes(portal),
 );
 /** The sources the funnel's menu lists, in the UI's order: every one switched on (all of
  *  them in the stub), jobs or not yet (user 2026-10-01). */

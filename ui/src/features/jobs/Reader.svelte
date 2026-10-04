@@ -1,6 +1,6 @@
 <!--
-  The reader on the sheet: its head sticks at the top of the pane (PageHeader, a hairline
-  under it) while the rest scrolls beneath, in the job view's column (600 px). Its sections and
+  The reader on the sheet: its head (PageHeader) and the rest scroll as one under the top
+  bar's fade, in the job view's column (640 px). Its sections and
   their order are data (reader-sections.ts); each is rendered below by its key, and nothing
   stands in two of them:
   - head: the title (without gender tags), then the moves of the place as quiet icons like
@@ -8,7 +8,7 @@
     Wiederherstellen, Endgültig löschen; actions.ts rowTools) and the close "×" (the same at
     every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
     offers none while the next one loads.
-  - match: the ring (42, hollow; opening a job fills its arc once, the number stands at once)
+  - match: the ring (44, hollow; opening a job fills its arc once, the number stands at once)
     beside its band and an info symbol that says what the match is (the ring's own tooltip
     names it; the symbol reaches it from the keyboard). A job not scored yet shows the ring's
     dash and "Wird bewertet, sobald die Anzeige geladen ist." and no buttons. No popover of
@@ -436,7 +436,6 @@
                       ><Button
                         variant="link"
                         label={part}
-                        external
                         testid="contact-mail"
                         onclick={() => openTarget({ kind: 'contactMail', key: job.key })}
                       /></span

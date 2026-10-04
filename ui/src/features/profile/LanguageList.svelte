@@ -3,8 +3,8 @@
   fields (the common languages by their German names, as the engine reads them; the levels in
   plain words with their CEFR level), then "Sprache hinzufügen", whose menu lists the common
   languages not chosen yet; a new row starts at B2, the level the engine assumes. Without a
-  language a blank row stands instead (its select says "Sprache wählen", with "Pflicht" and
-  the amber edge while it is required): choosing a language makes it the first row. A language
+  language a blank row stands instead (its select says "Sprache wählen", with the amber
+  edge while it is marked as missing): choosing a language makes it the first row. A language
   of the profile that is no common one (from the CV) stays as it is. The x of a row needs no
   tooltip; removing a row puts no caret anywhere (input.ts removeBy). A value the backend
   refused is said under the rows.
@@ -20,7 +20,7 @@
 
   interface Props {
     rows: Language[];
-    /** Required and still empty: the blank row's select is amber and says "Pflicht". */
+    /** Marked as missing: the blank row's select shows the amber edge. */
     missing?: boolean;
     /** A value the backend refused and why. */
     error?: { row: number | null; text: string } | null;
@@ -87,9 +87,7 @@
         <MenuButton
           options={BLANK}
           value=""
-          placeholder={missing
-            ? t.profile.required(words.languagePlaceholder)
-            : words.languagePlaceholder}
+          placeholder={words.languagePlaceholder}
           {missing}
           menuLabel={words.language}
           field
@@ -150,7 +148,7 @@
   {#if rows.length > 0}
     <span class="add" bind:this={adder} data-remove-fallback>
       <Button
-        variant="secondary"
+        variant="ghost"
         icon="add"
         label={words.addLanguage}
         menu
@@ -162,6 +160,12 @@
 </div>
 
 <style>
+  /* The quiet add row: its glyph on the fields' text. */
+  .add {
+    display: flex;
+    margin-left: calc(-1 * var(--space-2));
+  }
+
   /* language | level | remove in one grid for every row: the levels as wide as the widest
      of them, the languages take the rest; the blank row has nothing to remove. */
   .list {

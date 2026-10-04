@@ -80,6 +80,13 @@ export type NextAppState = AppState & { cvUntil?: string | null };
  *  the portal the app read in the last 30 days (its row in Einstellungen; null: unknown). */
 export type NextPortalState = PortalState & { alertMails?: number | null };
 
+/** Fields of the profile's form the backend adds next: `project`, whether project and interim
+ *  jobs are wanted (Vertragsart, beside `permanent` and `temporary`; missing: wanted). At
+ *  least one of the three stays on. */
+export type NextProfileForm = ProfileForm & { project?: boolean };
+/** The three contract types of Vertragsart, each a value of the form. */
+export type ContractKey = 'project' | 'permanent' | 'temporary';
+
 /** Why a portal pauses, with what the backend adds next: `robots`, its robots.txt forbids
  *  the next page. */
 export type NextPauseReason = PauseReason | 'robots';

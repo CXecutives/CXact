@@ -102,7 +102,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-16);
-    min-height: calc(var(--control-field) + 2 * var(--row-pad));
+    min-height: var(--row-min);
     margin-inline: calc(-1 * var(--row-inset));
     padding: var(--row-pad) var(--row-inset);
     border-bottom: var(--border-width) solid var(--border);
@@ -180,6 +180,11 @@
 
   .path {
     overflow-wrap: anywhere;
+  }
+
+  /* A path to copy in the system's monospace, small. */
+  .hint.path {
+    font: var(--type-mono);
   }
 
   /* A part of a path is kept whole and moves to the next line as one; only a part wider than

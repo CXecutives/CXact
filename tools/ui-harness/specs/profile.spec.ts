@@ -1,7 +1,8 @@
-// The Profil view against the stub, in one spec: the sticky head (the title, the CV button
-// and its popover, Verwerfen and Speichern only while something changed), the line of what is
-// still missing, the form as the table of sections.ts lays it out (three sections on one page,
-// each row with its words and control, the info symbols at their places), the two ways in, the
+// The Profil view against the stub, in one spec: the head (the title, the CV button and its
+// popover), the floating bar (Verwerfen and Speichern only while something changed), what is
+// still missing once Speichern was pressed, the form as the table of sections.ts lays it out
+// (three sections on one page, each field with its label above, the info symbols at their
+// places), the two ways in, the
 // CV and its failures, saving (answered by a toast), discarding,
 // leaving and closing with unsaved changes, values that hold the save, refused values, a
 // quiet hint where values contradict each other, and "Häufig verlangt". The stub's demo
@@ -39,10 +40,17 @@ const countryInput = (page: Page): Locator => countries(page).locator('input');
 const options = (page: Page): Locator => page.getByTestId('profile-countries-options');
 const roles = (page: Page): Locator => page.getByTestId('profile-roles');
 const saves = async (page: Page): Promise<number> => (await calls(page, 'save_profile')).length;
-/** The switch of a contract type (Festanstellungen, Zeitarbeit). */
-const contract = (page: Page, id: 'permanent' | 'temporary'): Locator =>
-  page.getByTestId(`profile-${id}`);
-/** The line of what is still missing. */
+/** A contract type of Vertragsart (a checkbox of the choice of several). */
+const contract = (page: Page, id: 'project' | 'permanent' | 'temporary'): Locator =>
+  page.getByTestId(`contract-${id}`);
+/** The floating bar of unsaved changes. */
+const bar = (page: Page): Locator => page.getByTestId('profile-save-bar');
+/** The sentence of what is still missing, as it reads. */
+const sentence = (names: readonly string[]): string =>
+  `${T.profile.missingLead}${names
+    .map((name, index) => `${T.profile.missingBefore(index, names.length)}${name}`)
+    .join('')}.`;
+/** The sentence of what is still missing. */
 const missing = (page: Page): Locator => page.getByTestId('profile-missing');
 /** "Aus Lebenslauf ausfüllen" and the drop zone of its popover: the file dialog of the CV. */
 async function pickCv(page: Page): Promise<void> {
@@ -109,7 +117,7 @@ async function tooltipOf(page: Page, target: Locator): Promise<string> {
 
 // ------------------------------------------------------------------ the head
 
-test('the head: "Profil" with "Aus Lebenslauf ausfüllen", Speichern only with a change', async ({
+test('the head: "Profil" with "Aus Lebenslauf ausfüllen"; Speichern floats only with a change', async ({
   page,
 }) => {
   await profile(page);
@@ -121,18 +129,19 @@ test('the head: "Profil" with "Aus Lebenslauf ausfüllen", Speichern only with a
   // Speichern is the view's one primary.
   await expect(cv).toHaveClass(/secondary/);
   await expect(head.getByRole('button')).toHaveCount(1);
-  // A complete profile: nothing missing.
+  // A complete profile: nothing missing, no bar.
   await expect(missing(page)).toHaveCount(0);
+  await expect(bar(page)).toHaveCount(0);
   await page.getByTestId('profile-wish-rate').fill('1.250');
-  await expect(head.getByRole('button')).toHaveText([
-    T.profile.save,
-    T.profile.discard,
-    T.profile.fromCv,
-  ]);
+  await expect(bar(page)).toContainText(T.profile.unsaved);
+  await expect(bar(page).getByRole('button')).toHaveText([T.profile.save, T.profile.discard]);
+  await expect(head.getByRole('button')).toHaveCount(1);
   await expect(save(page)).toHaveClass(/primary/);
   await expect(discard(page)).toHaveClass(/ghost/);
 });
-test('three sections on one page in their order, under the head that stays', async ({ page }) => {
+test('three sections on one page in their order, each heading with its info symbol', async ({
+  page,
+}) => {
   await profile(page);
   const ids = ['search', 'skills', 'exclusions'] as const;
   await expect(page.locator('[data-section]')).toHaveCount(3);
@@ -140,25 +149,28 @@ test('three sections on one page in their order, under the head that stays', asy
     const section = page.locator('[data-section]').nth(index);
     await expect(section).toHaveAttribute('data-section', id);
     await expect(section.getByRole('heading', { level: 2 })).toHaveText(T.profile.section[id]);
+    const tip = section.locator('.head').getByTestId('info-tip');
+    await expect(tip).toHaveAccessibleName(T.common.infoAbout(T.profile.section[id]));
+    expect(await tooltipOf(page, tip)).toBe(T.profile.sectionInfo[id]);
   }
-  await expect(page.getByTestId('profile-jumps')).toHaveCount(0);
-  // The head stays at the top while the page scrolls under it.
+  // The head scrolls away with the page, without a hairline (design round 4).
   const head = page.getByTestId('profile-head');
+  await page.getByTestId('view-profile').evaluate((view) => view.scrollTo({ top: 0 }));
   const top = (await head.boundingBox())!.y;
   await page.getByTestId('view-profile').evaluate((view) => view.scrollTo({ top: 600 }));
-  await expect.poll(async () => (await head.boundingBox())!.y).toBe(top);
-  await expect(head).toHaveCSS('border-bottom-width', '1px');
+  await expect.poll(async () => (await head.boundingBox())!.y).toBeLessThan(top);
+  await expect(head).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
 });
-test('each field under its section with its label', async ({ page }) => {
+test('each field under its section with its label above it', async ({ page }) => {
   await profile(page);
   const words = T.profile.field;
   const layout: Record<string, [string, string][]> = {
     search: [
       ['roles', words.roles],
-      ['permanent', words.permanent],
-      ['temporary', words.temporary],
+      ['permanent', words.contracts],
       ['minSalary', words.minSalary],
-      ['dayRateWish', words.dayRate],
+      ['dayRateWish', words.dayRateWish],
+      ['dayRateMin', words.dayRateMin],
       ['workMode', words.workMode],
       ['countries', words.countries],
       ['regions', words.regions],
@@ -184,37 +196,29 @@ test('each field under its section with its label', async ({ page }) => {
       await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
     }
   }
-  // Every label in one column at the left, its control beside it on the same line, a
-  // hairline between the rows (the approved draft of design round 3).
-  const lefts = new Set<number>();
+  // Every label above its control, on the control's left edge (design B).
   for (const name of ['roles', 'dayRateWish', 'countries', 'regions', 'years']) {
-    const scope = page.locator(`[data-field~="${name}"]`);
+    const scope = field(page, name);
     const [words, control] = await Promise.all([
       label(scope).boundingBox(),
-      scope.locator('input').first().boundingBox(),
+      scope.locator('.control').first().boundingBox(),
     ]);
-    lefts.add(Math.round(words!.x));
-    expect(control!.x, name).toBeGreaterThan(words!.x + words!.width);
-    expect(
-      Math.abs(words!.y + words!.height / 2 - (control!.y + control!.height / 2)),
-      name,
-    ).toBeLessThan(4);
+    expect(control!.y, name).toBeGreaterThan(words!.y + words!.height);
+    expect(Math.abs(control!.x - words!.x), name).toBeLessThan(12);
   }
-  expect(lefts.size).toBe(1);
-  await expect(field(page, 'roles')).toHaveCSS('border-bottom-width', '1px');
-  // Wunsch and Minimum stand side by side in the rate's row, the euro after the last.
+  // Wunsch and Minimum side by side, each with its euro inside.
   const [wish, min] = [
     await page.getByTestId('profile-wish-rate').boundingBox(),
     await page.getByTestId('profile-min-rate').boundingBox(),
   ];
   expect(Math.abs(min!.y - wish!.y)).toBeLessThan(2);
   expect(min!.x).toBeGreaterThan(wish!.x + wish!.width);
-  await expect(field(page, 'dayRateWish')).toContainText(words.dayRateWish);
-  await expect(field(page, 'dayRateWish')).toContainText(words.dayRateMin);
+  await expect(field(page, 'dayRateWish')).toContainText(T.profile.unit.euro);
 });
 test('the stored profile fills every field', async ({ page }) => {
   await profile(page);
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
+  await expect(contract(page, 'project')).toHaveAttribute('aria-checked', 'true');
   await expect(contract(page, 'permanent')).toHaveAttribute('aria-checked', 'true');
   await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByTestId('profile-wish-rate')).toHaveValue('1.200');
@@ -264,16 +268,17 @@ test('info symbols only at their places, their sentence on hover, keyboard focus
   await profile(page);
   const places: [string, keyof typeof T.profile.info, string][] = [
     ['roles', 'roles', T.profile.field.roles],
-    ['permanent', 'contracts', T.profile.field.permanent],
-    ['dayRateWish', 'dayRate', T.profile.field.dayRate],
+    ['permanent', 'contracts', T.profile.field.contracts],
+    ['dayRateMin', 'dayRate', T.profile.field.dayRateMin],
     ['workMode', 'workMode', T.profile.field.workMode],
     ['countries', 'countries', T.profile.field.countries],
     ['competences', 'competences', T.profile.field.competences],
     ['industries', 'industries', T.profile.field.industries],
     ['exclusionWords', 'exclusionWords', T.profile.field.exclusionWords],
   ];
+  // Beside the fields' labels, and after the three section headings.
   const tips = page.getByTestId('profile-form').getByTestId('info-tip');
-  await expect(tips).toHaveCount(places.length);
+  await expect(tips).toHaveCount(places.length + 3);
   for (const [name, info, words] of places) {
     const tip = field(page, name).getByTestId('info-tip').first();
     await expect(tip, name).toHaveAccessibleName(T.common.infoAbout(words));
@@ -296,16 +301,21 @@ test('info symbols only at their places, their sentence on hover, keyboard focus
 
 // ------------------------------------------------------------------ the controls
 
-test('Festanstellungen and Zeitarbeit are switches beside one sentence; the salary comes with them', async ({
+test('Vertragsart is a choice of several, one stays; the salary comes with Festanstellung or Zeitarbeit', async ({
   page,
 }) => {
   await profile(page);
-  await expect(field(page, 'permanent')).toContainText(T.profile.field.contractsText);
-  await expect(contract(page, 'permanent')).toHaveAccessibleName(T.profile.field.permanent);
-  await expect(contract(page, 'temporary')).toHaveAccessibleName(T.profile.field.temporary);
+  const choice = page.getByTestId('profile-contracts');
+  await expect(choice).toHaveAttribute('role', 'group');
+  await expect(choice.getByRole('checkbox')).toHaveText([
+    T.profile.contract.project,
+    T.profile.contract.permanent,
+    T.profile.contract.temporary,
+  ]);
   const salary = page.getByTestId('profile-min-salary');
   await expect(salary).toBeVisible();
   await contract(page, 'permanent').click();
+  await expect(contract(page, 'permanent')).toHaveAttribute('aria-checked', 'false');
   await expect(salary).toHaveCount(0);
   await contract(page, 'temporary').click();
   await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'true');
@@ -314,8 +324,11 @@ test('Festanstellungen and Zeitarbeit are switches beside one sentence; the sala
   await save(page).click();
   const sent = await lastSave(page);
   expect(sent.after).toMatchObject({ permanent: false, temporary: true, minSalary: 90000 });
-  // Without both the salary is not kept.
+  // Without both the salary is not kept; the last chosen type stays and says why.
   await contract(page, 'temporary').click();
+  await contract(page, 'project').click();
+  await expect(contract(page, 'project')).toHaveAttribute('aria-checked', 'true');
+  expect(await tooltipOf(page, contract(page, 'project'))).toBe(T.profile.field.keepOneContract);
   await save(page).click();
   expect((await lastSave(page)).after).toMatchObject({ temporary: false, minSalary: null });
 });
@@ -323,12 +336,10 @@ test('the rates side by side; a wish under the minimum says so quietly', async (
   await profile(page);
   await page.getByTestId('profile-wish-rate').fill('900');
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.field.belowMinRate);
-  // The info symbol gives way to the hint (never both).
-  await expect(field(page, 'dayRateWish').getByTestId('info-tip')).toHaveCount(0);
+  await expect(field(page, 'dayRateMin').getByTestId('info-tip')).toHaveCount(1);
   await expect(save(page)).not.toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('profile-wish-rate').fill('1.300');
   await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.belowMinRate);
-  await expect(field(page, 'dayRateWish').getByTestId('info-tip')).toHaveCount(1);
 });
 
 test('Arbeitsmodell, Verfügbar ab, Auslastung and Mindestlaufzeit are one segmented look', async ({
@@ -490,7 +501,7 @@ test('Sprachen: a menu adds a common language at B2, the level in plain words', 
 
 // ------------------------------------------------------------------ what is still open
 
-test('the missing line names what is open; each name leads to its field, which flashes', async ({
+test('nothing warns up front; Speichern saves anyway and marks what is missing', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-incomplete');
@@ -505,26 +516,26 @@ test('the missing line names what is open; each name leads to its field, which f
           .replace(/ ([.,])/g, '$1')
           .trim(),
       );
-  await expect.poll(said).toBe(T.profile.missing([words.roles, words.languages]));
-  // An empty required field: the amber edge, "Pflicht" in its placeholder.
-  await expect(roles(page).locator('input')).toHaveAttribute(
-    'placeholder',
-    T.profile.required(words.rolesPlaceholder),
-  );
+  await expect(missing(page)).toHaveCount(0);
+  await expect(field(page, 'roles')).not.toHaveAttribute('data-missing', '');
+  await expect(roles(page).locator('input')).toHaveAttribute('placeholder', words.rolesPlaceholder);
+  // A change, then Speichern: saved, the empty required fields marked, the caret in the first.
+  await contract(page, 'temporary').click();
+  await save(page).click();
+  await lastSave(page);
+  await expect.poll(said).toBe(sentence([words.roles, words.languages]));
   await expect(field(page, 'roles')).toHaveAttribute('data-missing', '');
-  await missing(page).getByTestId('missing-roles').click();
   await expect(roles(page).locator('input')).toBeFocused();
-  await expect(field(page, 'roles')).toHaveAttribute('data-flash', '');
-  await roles(page).locator('input').fill('Interim CFO');
-  await roles(page).locator('input').press('Enter');
-  await expect.poll(said).toBe(T.profile.missing([words.languages]));
-  // Without a language a blank row stands: its select says "Pflicht".
+  await expect(save(page)).toHaveCount(0);
+  // Each name leads to its field, which flashes.
   const blank = page.getByTestId('language-blank');
-  await expect(blank.getByTestId('language-name')).toHaveText(
-    T.profile.required(words.languagePlaceholder),
-  );
   await missing(page).getByTestId('missing-languages').click();
   await expect(blank.getByTestId('language-name')).toBeFocused();
+  await expect(field(page, 'languages')).toHaveAttribute('data-flash', '');
+  await roles(page).locator('input').fill('Interim CFO');
+  await roles(page).locator('input').press('Enter');
+  await expect.poll(said).toBe(sentence([words.languages]));
+  await expect(field(page, 'roles')).not.toHaveAttribute('data-missing', '');
   await blank.getByTestId('language-name').click();
   await menuItem(page, 'Deutsch').click();
   await expect(missing(page)).toHaveCount(0);
@@ -689,9 +700,9 @@ test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once co
 }) => {
   await create(page);
   await expect(roles(page).locator('input')).toBeFocused();
-  // Before the first save core names what the new form still lacks.
-  await expect(missing(page)).toBeVisible();
-  expect(await calls(page, 'profile_missing')).not.toHaveLength(0);
+  // Core is asked what the new form still lacks; nothing warns before Speichern.
+  await expect.poll(async () => (await calls(page, 'profile_missing')).length).toBeGreaterThan(0);
+  await expect(missing(page)).toHaveCount(0);
   await expect(page.getByTestId('competence-row')).toHaveCount(1);
   await expect(page.getByTestId('language-row')).toHaveCount(0);
   await expect(save(page)).toHaveCount(0);
