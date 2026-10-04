@@ -397,9 +397,10 @@ out: `Verständnis`, `bis`, `beim`, `mehreren`, `großen`, the number words, `Au
   the typo `Kentnisse`.
 - Treasury and accounting pairs in the finance pack (`FX hedging` = `Devisensicherung`,
   `refinancing`, `payment transactions`, `subledger`, `tax audit`); `fractional` in a title is a
-  contract word like `Interim`; 19 tools and one certificate for the terms of the Profil and the
-  reader (`Helm`, `ArgoCD`, `BlackLine`, `Migration Cockpit`, `Universal Journal`, `AUTOSAR`,
-  `ISTQB`). No set moved by these.
+  contract word like `Interim`, `Specialist` a level word like `Expert`, `Direktion` a lead word,
+  `Advisor` generic like `Consultant`; 19 tools and one certificate for the terms of the Profil
+  and the reader (`Helm`, `ArgoCD`, `BlackLine`, `Migration Cockpit`, `Universal Journal`,
+  `AUTOSAR`, `ISTQB`). No set moved by these.
 
 Known in full after the fills: 1,975 of 3,070 (64.3 %; 61.9 % after the function words). NDCG@10 against the round's start
 (engine 19 with ESCO): heldout2 0.857 to 0.877, heldout3 0.865 to 0.871, heldout4 0.821 to

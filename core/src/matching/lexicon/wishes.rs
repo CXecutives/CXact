@@ -10,6 +10,7 @@
 pub(crate) const LEAD_WORDS: &[&str] = &[
     "chief",
     "director",
+    "direktion",
     "direktor",
     "direktorin",
     "head",
@@ -22,7 +23,15 @@ pub(crate) const LEAD_WORDS: &[&str] = &[
 /// Compound endings of a leading role (`Bereichsleiter`, `Gesamtprojektleitung`).
 pub(crate) const LEAD_ENDINGS: &[&str] = &["leiter", "leiterin", "leitung"];
 /// Title words of a level that a target role neither needs nor excludes.
-pub(crate) const LEVEL_WORDS: &[&str] = &["principal", "senior", "sme", "expert", "experte"];
+pub(crate) const LEVEL_WORDS: &[&str] = &[
+    "principal",
+    "senior",
+    "sme",
+    "expert",
+    "experte",
+    "specialist",
+    "spezialist",
+];
 /// Words of a contract type inside a target role (`Interim CFO`): met by the title or by
 /// an interim contract.
 pub(crate) const ROLE_CONTRACT_WORDS: &[&str] = &[

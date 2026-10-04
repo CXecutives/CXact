@@ -201,6 +201,7 @@ pub(crate) const FILLERS: &[&str] = &[
 /// Atoms that never meet a requirement on their own (sorted; stemmed forms such as
 /// `financ`, `manag` included, since atoms are stemmed).
 pub(crate) const GENERIC_ATOMS: &[&str] = &[
+    "advisor",
     "analys",
     "analyse",
     "anwendung",
