@@ -50,7 +50,8 @@ use crate::sync::lock;
 pub struct SearchCounts {
     /// Search pages requested.
     pub pages: usize,
-    /// Hits on them (a job on two pages counts twice).
+    /// Hits on them that were kept (a job on two pages counts twice; a source without search
+    /// terms keeps those above [`PRESCORE_FLOOR`]).
     pub hits: usize,
     /// Jobs the list did not know yet.
     pub new: usize,
@@ -485,7 +486,7 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
                     {
                         counts.excluded += screen(&fresh);
                     }
-                    counts.hits += all;
+                    counts.hits += postings.len();
                     counts.new += fresh.len();
                     if let Some(term) = &term {
                         let entry = yields.entry(term.clone()).or_default();
@@ -903,7 +904,7 @@ mod tests {
         let (_, found, _) = search_with(&mut fakes, &store, &policy, &plan, &on).await;
         assert_eq!(
             (found[&Portal::InterimX].hits, found[&Portal::InterimX].new),
-            (2, 1)
+            (1, 1)
         );
         assert!(
             store
