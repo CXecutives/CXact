@@ -44,8 +44,8 @@
     },
     "H08": {
       "grade": 2,
-      "excluded": true,
-      "reason": "Leading a 250-person DACH customer service with outsourcers fits her field, but it is a permanent role in Munich; her permanent places are Hamburg only and the ad names no remote share.",
+      "excluded": false,
+      "reason": "Leading a 250-person DACH customer service with outsourcers fits her field, but it is a permanent role in Munich; her permanent places are Hamburg only and the ad names no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "unbefristeten Festanstellung"
     },
     "H09": {
@@ -242,8 +242,8 @@
     },
     "H41": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Not customer service; a permanent role in Köln is outside her place Hamburg.",
+      "excluded": false,
+      "reason": "Not customer service; a permanent role in Köln is outside her place Hamburg. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "unbefristeter Festanstellung"
     },
     "H42": {
@@ -870,8 +870,8 @@
     },
     "H41": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Not ITSM; permanent in Köln is outside his places.",
+      "excluded": false,
+      "reason": "Not ITSM; permanent in Köln is outside his places. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "unbefristeter Festanstellung"
     },
     "H42": {

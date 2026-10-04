@@ -1,388 +1,165 @@
-//! The profile editor's form: exactly the profile keys the matching engine and the AI prompts
-//! use, read the way the engine reads them, and written back by merging
-//! into the JSON the form came from. Only fields that differ from what the editor started
-//! with are written; every other key, its value and the order of the keys stay as they were.
-//! A key under its English name (`focus_areas`, `target_roles`, `preferences`, `languages`,
-//! the English criteria) is read like the engine reads it and written back where it is,
-//! never as a German duplicate next to it. A value the engine cannot read can be removed on
-//! its own ([`UnreadableField`], "Wert entfernen").
+//! The profile (Profil-JSON v19, user decision 2026-10-03): one flat file with German keys,
+//! read into one typed form that the editor, the engine, the search and the CV import share.
+//! Nothing else is read: a file with another key, a value of another type or a value out of
+//! range does not read at all (the Profil view offers to start a new one), so no hidden data
+//! can steer the engine.
 //!
-//! The profile keys are an external contract (hand-made profiles, the CV prompt's answer) - do
-//! not translate.
+//! The file keys and values are an external contract (hand-made files, the CV worker's
+//! `schema.json`) - do not translate. [`key`] names the keys the engine writes into its paths.
 
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
 
-use super::json::Json;
 use crate::error::InvalidInput;
-use crate::matching;
-use crate::matching::facts::{self, Availability, HardCriteria};
-use crate::matching::lexicon::{self, engine as lex};
 
-const KEY_NAME: &str = "name";
-const KEY_TITLE: &str = "titel";
-const KEY_DEGREE: &str = "abschluss";
-const KEY_EDUCATION: &str = "ausbildung";
-const KEY_COMPETENCES: &str = "kernkompetenzen";
-const KEY_COMPETENCE: &str = "kompetenz";
-const KEY_TOOLS: &str = "methoden_tools";
-const KEY_CERTIFICATES: &str = "zertifizierungen";
-const KEY_INDUSTRIES: &str = "branchen";
-const KEY_STRENGTHS: &str = "alleinstellungsmerkmale";
-const KEY_KEYWORDS: &str = "keywords";
-/// The search terms of the app's own search (user decision 2026-10-01; the engine does not
-/// read them).
-pub(crate) const KEYS_SEARCH_TERMS: &[&str] = &["suchbegriffe", "search_terms"];
-/// The most search terms the app searches for (each one request per search source).
-pub const MAX_SEARCH_TERMS: usize = 8;
-/// The value of `ausgeschlossene_vertragsarten` the form writes for permanent employment.
-const CONTRACT_PERMANENT: &str = "festanstellung";
-/// A native language in a list under English keys (`level`).
-const LEVEL_NATIVE_EN: &str = "native";
-/// At most this many competences are marked as the ones that matter most.
+/// File keys the engine names in the JSON paths of its evidence (`kernkompetenzen[3].kompetenz`)
+/// and of the wishes; `the_file_keys_are_the_engine_keys` checks them against the file.
+pub(crate) mod key {
+    pub const ROLES: &str = "wunschrollen";
+    pub const COMPETENCES: &str = "kernkompetenzen";
+    pub const COMPETENCE: &str = "kompetenz";
+    pub const TOOLS: &str = "methoden_tools";
+    pub const INDUSTRIES: &str = "branchen";
+    pub const INDUSTRY: &str = "branche";
+    pub const LANGUAGES: &str = "sprachen";
+    pub const LANGUAGE: &str = "sprache";
+    pub const DEGREES: &str = "abschluesse";
+    pub const CERTIFICATES: &str = "zertifizierungen";
+    pub const DAY_RATE_WISH: &str = "tagessatz_wunsch";
+    pub const WORK_MODE: &str = "arbeitsmodell";
+    pub const REGIONS: &str = "regionen";
+}
+
+/// At most this many competences carry the star (Schwerpunkte).
 pub const MAX_FOCUS: usize = 5;
-
-/// Upper bounds of the numbers (anything above is a typing error).
-const MAX_YEARS: u32 = 70;
+/// The most years of experience, in total and per competence.
+pub const MAX_YEARS: u32 = 70;
 const MAX_DAY_RATE: u32 = 100_000;
 const MAX_SALARY: u32 = 10_000_000;
-const MAX_PERCENT: u32 = 100;
-/// Days of a working week (the workload in days per week). The days and the months are
-/// `u32` like every number of the form, so a typed 300 reaches `validate` and is refused at
-/// its field instead of failing to deserialize.
-const MAX_WEEK_DAYS: u32 = 5;
-/// Longest minimum duration of an engagement in months.
-const MAX_MONTHS: u32 = 120;
-/// A single value and a list stay within what a profile ever holds.
-const MAX_TEXT: usize = 1_000;
-const MAX_ITEMS: usize = 300;
+/// The most entries of a list, and characters of an entry.
+pub const MAX_ITEMS: usize = 300;
+pub const MAX_TEXT: usize = 1_000;
+/// The minimum durations a profile chooses from, in months (0: any).
+pub const MIN_MONTHS: [u8; 4] = [0, 3, 6, 12];
+/// The country of a new profile.
+const HOME_COUNTRY: &str = "DE";
 
-/// The unit a number criterion is shown with (the interface has its words,
-/// `t.profile.unit`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-enum Unit {
-    Euro,
-    Percent,
-    /// Days per week.
-    Days,
-    Months,
-}
-
-/// What a hard criterion holds, and how the form reaches it.
-#[derive(Clone, Copy)]
-enum Kind {
-    /// A whole number up to `max` (zero counts as none), shown with its unit.
-    Number {
-        max: u32,
-        #[cfg_attr(
-            not(test),
-            expect(dead_code, reason = "the interface's description reads it")
-        )]
-        unit: Unit,
-        slot: fn(&mut ProfileCriteria) -> &mut Option<u32>,
-        read: fn(&HardCriteria) -> Option<u32>,
-    },
-    /// Words, each once (`upper`: codes in capitals, the countries).
-    Words {
-        upper: bool,
-        slot: fn(&mut ProfileCriteria) -> &mut Vec<String>,
-        read: fn(&HardCriteria) -> Vec<String>,
-    },
-    /// The switches for ANÜ and permanent employment (`no_anue`, `no_permanent`).
-    Contracts,
-    /// `available`, a day or "now"; read and written in the criteria and the preferences.
-    Available,
-    /// `remote_outside`, yes or no (missing counts as yes).
-    RemoteOutside,
-}
-
-/// One hard criterion of the form: the field that names it, the engine's keys (the first
-/// is written for a new value) and what it holds.
-struct Criterion {
-    field: UnreadableField,
-    keys: &'static [&'static str],
-    kind: Kind,
-}
-
-/// Every hard criterion, in the order a new profile writes them (the profile template).
-/// Normalizing, the limits, reading, writing, "Wert entfernen" and the interface's
-/// description (`ui/src/lib/ipc/types/profile.ts`) follow this table: a new number or word
-/// criterion is a field of [`ProfileCriteria`], a variant of [`UnreadableField`] and a row
-/// here (`docs/CHANGING.md`).
-const CRITERIA: [Criterion; 12] = [
-    Criterion {
-        field: UnreadableField::MinDayRate,
-        keys: lexicon::KEYS_MIN_RATE,
-        kind: Kind::Number {
-            max: MAX_DAY_RATE,
-            unit: Unit::Euro,
-            slot: |c| &mut c.min_day_rate,
-            read: |h| h.min_rate.and_then(|n| u32::try_from(n).ok()),
-        },
-    },
-    Criterion {
-        field: UnreadableField::Countries,
-        keys: lexicon::KEYS_COUNTRIES,
-        kind: Kind::Words {
-            upper: true,
-            slot: |c| &mut c.countries,
-            read: |h| h.countries.clone().unwrap_or_default(),
-        },
-    },
-    Criterion {
-        field: UnreadableField::Contracts,
-        keys: lexicon::KEYS_EXCLUDED_CONTRACTS,
-        kind: Kind::Contracts,
-    },
-    Criterion {
-        field: UnreadableField::Available,
-        keys: lexicon::KEYS_AVAILABLE,
-        kind: Kind::Available,
-    },
-    Criterion {
-        field: UnreadableField::RemoteOutside,
-        keys: lexicon::KEYS_REMOTE_OUTSIDE,
-        kind: Kind::RemoteOutside,
-    },
-    Criterion {
-        field: UnreadableField::MinSalary,
-        keys: lexicon::KEYS_MIN_SALARY,
-        kind: Kind::Number {
-            max: MAX_SALARY,
-            unit: Unit::Euro,
-            slot: |c| &mut c.min_salary,
-            read: |h| h.min_salary.and_then(|n| u32::try_from(n).ok()),
-        },
-    },
-    Criterion {
-        field: UnreadableField::PermanentPlaces,
-        keys: lexicon::KEYS_PERMANENT_PLACES,
-        kind: Kind::Words {
-            upper: false,
-            slot: |c| &mut c.permanent_places,
-            read: |h| h.places.clone().unwrap_or_default(),
-        },
-    },
-    Criterion {
-        field: UnreadableField::PermanentRemoteMin,
-        keys: lexicon::KEYS_PERMANENT_REMOTE,
-        kind: Kind::Number {
-            max: MAX_PERCENT,
-            unit: Unit::Percent,
-            slot: |c| &mut c.permanent_remote_min,
-            read: |h| h.remote_min.and_then(|n| u32::try_from(n).ok()),
-        },
-    },
-    Criterion {
-        field: UnreadableField::WorkloadMinDays,
-        keys: lexicon::KEYS_WORKLOAD_MIN,
-        kind: Kind::Number {
-            max: MAX_WEEK_DAYS,
-            unit: Unit::Days,
-            slot: |c| &mut c.workload_min_days,
-            read: |h| h.workload_min.map(u32::from),
-        },
-    },
-    Criterion {
-        field: UnreadableField::WorkloadMaxDays,
-        keys: lexicon::KEYS_WORKLOAD_MAX,
-        kind: Kind::Number {
-            max: MAX_WEEK_DAYS,
-            unit: Unit::Days,
-            slot: |c| &mut c.workload_max_days,
-            read: |h| h.workload_max.map(u32::from),
-        },
-    },
-    Criterion {
-        field: UnreadableField::MinMonths,
-        keys: lexicon::KEYS_MIN_MONTHS,
-        kind: Kind::Number {
-            max: MAX_MONTHS,
-            unit: Unit::Months,
-            slot: |c| &mut c.min_months,
-            read: |h| h.min_months.map(u32::from),
-        },
-    },
-    Criterion {
-        field: UnreadableField::ExclusionWords,
-        keys: lexicon::KEYS_EXCLUSION_WORDS,
-        kind: Kind::Words {
-            upper: false,
-            slot: |c| &mut c.exclusion_words,
-            read: |h| h.exclusion_words.clone(),
-        },
-    },
-];
-
-/// The editable profile.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// The editable profile (Profil-JSON v19): what the consultant looks for, what she brings,
+/// what does not fit. `date` is `dd.mm.yyyy`; `permanent` and `temporary` allow Festanstellung
+/// and Zeitarbeit (projects and interim work, `projekt`, are always on).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileForm {
-    /// `name` (the consultant's name; the engine never reads it, the AI prompts leave it out).
-    pub name: String,
-    /// `titel`, the professional role.
-    pub title: String,
-    /// `kernkompetenzen[]` with `kompetenz`, `jahre` and `auch`.
+    /// `wunschrollen`.
+    pub roles: Vec<String>,
+    /// `vertragsarten` names `festanstellung`.
+    pub permanent: bool,
+    /// `vertragsarten` names `zeitarbeit`.
+    pub temporary: bool,
+    /// `tagessatz_wunsch`: nudges the score.
+    pub day_rate_wish: Option<u32>,
+    /// `tagessatz_min`: below it a job is excluded.
+    pub day_rate_min: Option<u32>,
+    /// `mindestgehalt` (Festanstellung and Zeitarbeit; none without both).
+    pub min_salary: Option<u32>,
+    /// `arbeitsmodell`: a wish, never an exclusion.
+    #[cfg_attr(test, ts(inline))]
+    pub work_mode: WorkWish,
+    /// `laender`, ISO codes.
+    pub countries: Vec<String>,
+    /// `regionen`: a wish.
+    pub regions: Vec<String>,
+    /// `verfuegbar_ab`.
+    #[cfg_attr(test, ts(inline))]
+    pub available: ProfileAvailability,
+    /// `auslastung`.
+    #[cfg_attr(test, ts(inline))]
+    pub workload: Workload,
+    /// `mindestlaufzeit_monate`, one of [`MIN_MONTHS`].
+    #[cfg_attr(test, ts(type = "0 | 3 | 6 | 12"))]
+    pub min_months: u8,
+    /// `kernkompetenzen`, the starred ones the Schwerpunkte.
+    #[cfg_attr(test, ts(inline))]
     pub competences: Vec<ProfileCompetence>,
-    /// `alleinstellungsmerkmale[]`.
-    pub strengths: Vec<String>,
-    /// `keywords[]`.
-    pub keywords: Vec<String>,
+    /// `methoden_tools`.
+    pub tools: Vec<String>,
     /// `berufserfahrung_jahre`.
     pub years: Option<u32>,
-    /// `abschluss` and `ausbildung[].abschluss`.
-    pub degrees: Vec<String>,
-    /// `branchen[].branche`.
-    pub industries: Vec<String>,
-    /// `methoden_tools[].name`.
-    pub tools: Vec<String>,
-    /// `zertifizierungen[].name`.
-    pub certificates: Vec<String>,
-    /// `sprachen[]` with `sprache` and `niveau` (`languages[]` with `language` and `level`).
+    /// `branchen`, the starred ones preferred.
+    #[cfg_attr(test, ts(inline))]
+    pub industries: Vec<ProfileIndustry>,
+    /// `sprachen`.
+    #[cfg_attr(test, ts(inline))]
     pub languages: Vec<ProfileLanguage>,
-    /// `schwerpunkte[]` (`focus_areas`): the competences that matter most, the first five.
-    pub focus: Vec<String>,
-    /// `wunschrollen[]` (`target_roles`): the roles the consultant is looking for.
-    pub roles: Vec<String>,
-    /// `suchbegriffe[]` (`search_terms`): what the app searches the sources for; without
-    /// them the target roles and the Schwerpunkte ([`search_terms`]).
-    pub search_terms: Vec<String>,
-    /// The search terms are the app's proposal (none stored): the Profil marks them so; a
-    /// change of them makes them the consultant's own.
-    #[serde(default)]
-    pub search_terms_proposed: bool,
-    /// `einsatzpraeferenzen` (`preferences`): wishes, they only nudge the score.
-    pub wishes: ProfileWishes,
-    /// `harte_kriterien` (with the `einsatzpraeferenzen` fallbacks).
-    pub criteria: ProfileCriteria,
+    /// `abschluesse`, a degree with its field in one entry.
+    pub degrees: Vec<String>,
+    /// `zertifizierungen`.
+    pub certificates: Vec<String>,
+    /// `ausschlusswoerter`: a job naming one is excluded.
+    pub exclusion_words: Vec<String>,
 }
 
-/// Wishes of the consultant (`einsatzpraeferenzen`): unlike the hard criteria they never
-/// exclude a job.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ProfileWishes {
-    /// `tagessatz_wunsch` (`desired_day_rate`), EUR per day.
-    pub day_rate: Option<u32>,
-    /// `remote`.
-    pub remote: Option<RemoteWish>,
-    /// `regionen[]` (`regions`), preferred cities or regions.
-    pub regions: Vec<String>,
-    /// `branchen[]` (`industries`) inside `einsatzpraeferenzen`, preferred industries.
-    pub industries: Vec<String>,
-}
-
-/// How much remote work the consultant wishes for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub enum RemoteWish {
-    Full,
-    Mostly,
-    Partly,
-    OnSite,
-}
-
-impl RemoteWish {
-    /// The value as the profile writes it (`einsatzpraeferenzen.remote`).
-    pub fn text(self) -> &'static str {
-        match self {
-            RemoteWish::Full => "voll",
-            RemoteWish::Mostly => "ueberwiegend",
-            RemoteWish::Partly => "teilweise",
-            RemoteWish::OnSite => "vor_ort",
-        }
-    }
-
-    /// The written value, or the free text older profiles have (`mindestens 50 %`,
-    /// `100 % remote`, `hybrid`, `vor Ort`): a share of 100 is full, above half mostly,
-    /// above zero partly, zero on site. `None` when it says neither.
-    pub fn read(text: &str) -> Option<RemoteWish> {
-        let folded = text
-            .trim()
-            .to_lowercase()
-            .replace('\u{fc}', "ue")
-            .replace('\u{e4}', "ae");
-        let exact = [
-            RemoteWish::Full,
-            RemoteWish::Mostly,
-            RemoteWish::Partly,
-            RemoteWish::OnSite,
-        ]
-        .into_iter()
-        .find(|wish| wish.text() == folded);
-        if exact.is_some() {
-            return exact;
-        }
-        let digits: String = folded
-            .chars()
-            .skip_while(|c| !c.is_ascii_digit())
-            .take_while(char::is_ascii_digit)
-            .collect();
-        if let Ok(share) = digits.parse::<u32>() {
-            return Some(match share {
-                0 => RemoteWish::OnSite,
-                1..=50 => RemoteWish::Partly,
-                51..=99 => RemoteWish::Mostly,
-                _ => RemoteWish::Full,
-            });
-        }
-        let has = |words: &[&str]| words.iter().any(|w| folded.contains(w));
-        if has(&[
-            "vor ort",
-            "vor_ort",
-            "vor-ort",
-            "onsite",
-            "on-site",
-            "praesenz",
-            "kein remote",
-            "keine remote",
-            "no remote",
-            "nicht remote",
-        ]) {
-            Some(RemoteWish::OnSite)
-        } else if has(&["ueberwiegend", "mostly", "mainly"]) {
-            Some(RemoteWish::Mostly)
-        } else if has(&["teilweise", "hybrid", "partly", "partial"]) {
-            Some(RemoteWish::Partly)
-        } else if has(&["voll", "full", "komplett", "remote"]) {
-            Some(RemoteWish::Full)
-        } else {
-            None
+impl Default for ProfileForm {
+    /// A new profile: Festanstellung and Zeitarbeit allowed, Deutschland, from now on, no wish
+    /// of work mode, workload or duration.
+    fn default() -> Self {
+        ProfileForm {
+            roles: Vec::new(),
+            permanent: true,
+            temporary: true,
+            day_rate_wish: None,
+            day_rate_min: None,
+            min_salary: None,
+            work_mode: WorkWish::Any,
+            countries: vec![HOME_COUNTRY.to_owned()],
+            regions: Vec::new(),
+            available: ProfileAvailability::Now,
+            workload: Workload::Any,
+            min_months: 0,
+            competences: Vec::new(),
+            tools: Vec::new(),
+            years: None,
+            industries: Vec::new(),
+            languages: Vec::new(),
+            degrees: Vec::new(),
+            certificates: Vec::new(),
+            exclusion_words: Vec::new(),
         }
     }
 }
 
-/// One core competence.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// One competence with its years; `focus` = the star (a Schwerpunkt).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileCompetence {
     pub name: String,
     pub years: Option<u32>,
-    /// Other words for the same competence (`auch`).
-    pub aliases: Vec<String>,
-    /// Index of the entry in the JSON the form was read from; `null` for a new one.
-    pub origin: Option<u32>,
+    pub focus: bool,
+}
+
+/// One industry of the consultant's experience; `preferred` = the star.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct ProfileIndustry {
+    pub name: String,
+    pub preferred: bool,
 }
 
 /// One language with its level.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileLanguage {
     pub language: String,
-    pub level: Option<LanguageLevel>,
-    /// Index of the entry in the JSON the form was read from; `null` for a new one.
-    pub origin: Option<u32>,
+    #[cfg_attr(test, ts(inline))]
+    pub level: LanguageLevel,
 }
 
 /// CEFR level or native.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum LanguageLevel {
     A1,
@@ -391,11 +168,26 @@ pub enum LanguageLevel {
     B2,
     C1,
     C2,
+    #[serde(rename = "native")]
     Native,
 }
 
 impl LanguageLevel {
-    fn from_engine(level: u8) -> Option<LanguageLevel> {
+    /// The level of the engine's scale (1 = A1 to 6 = C2, 7 native).
+    pub(crate) fn engine(self) -> u8 {
+        match self {
+            LanguageLevel::A1 => 1,
+            LanguageLevel::A2 => 2,
+            LanguageLevel::B1 => 3,
+            LanguageLevel::B2 => 4,
+            LanguageLevel::C1 => 5,
+            LanguageLevel::C2 => 6,
+            LanguageLevel::Native => 7,
+        }
+    }
+
+    /// The level of the engine's scale; `None` outside it.
+    pub(crate) fn of_engine(level: u8) -> Option<LanguageLevel> {
         Some(match level {
             1 => LanguageLevel::A1,
             2 => LanguageLevel::A2,
@@ -407,80 +199,31 @@ impl LanguageLevel {
             _ => return None,
         })
     }
-
-    /// The level as the profile writes it (`niveau`).
-    pub(crate) fn text(self) -> &'static str {
-        match self {
-            LanguageLevel::A1 => "A1",
-            LanguageLevel::A2 => "A2",
-            LanguageLevel::B1 => "B1",
-            LanguageLevel::B2 => "B2",
-            LanguageLevel::C1 => "C1",
-            LanguageLevel::C2 => "C2",
-            LanguageLevel::Native => "Muttersprache",
-        }
-    }
 }
 
-/// The hard criteria (a missing value switches its rule off).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// The work mode the consultant wishes (`arbeitsmodell`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ProfileCriteria {
-    /// `min_tagessatz` (read with the fallback `einsatzpraeferenzen.tagessatz_ab`).
-    pub min_day_rate: Option<u32>,
-    /// `laender`, ISO codes (`DE`, `AT`, ...).
-    pub countries: Vec<String>,
-    /// `ausgeschlossene_vertragsarten` names `anue`.
-    pub no_anue: bool,
-    /// `ausgeschlossene_vertragsarten` names `festanstellung`.
-    pub no_permanent: bool,
-    /// `verfuegbar_ab`.
-    pub available: ProfileAvailability,
-    /// `remote_ausserhalb_erlaubt`; missing counts as allowed, as the engine reads it.
-    pub remote_outside: bool,
-    /// `min_jahresgehalt` (permanent roles).
-    pub min_salary: Option<u32>,
-    /// `festanstellung_orte` (permanent roles).
-    pub permanent_places: Vec<String>,
-    /// `festanstellung_remote_min`, percent (permanent roles).
-    pub permanent_remote_min: Option<u32>,
-    /// `auslastung_min_tage`, days per week (1 to 5).
-    #[serde(default)]
-    pub workload_min_days: Option<u32>,
-    /// `auslastung_max_tage`, days per week (1 to 5).
-    #[serde(default)]
-    pub workload_max_days: Option<u32>,
-    /// `min_laufzeit_monate`, the minimum duration of an engagement in months.
-    #[serde(default)]
-    pub min_months: Option<u32>,
-    /// `ausschlusswoerter`, words that exclude an ad.
-    #[serde(default)]
-    pub exclusion_words: Vec<String>,
+pub enum WorkWish {
+    Any,
+    Remote,
+    Hybrid,
+    Onsite,
 }
 
-impl Default for ProfileCriteria {
-    fn default() -> Self {
-        ProfileCriteria {
-            min_day_rate: None,
-            countries: Vec::new(),
-            no_anue: false,
-            no_permanent: false,
-            available: ProfileAvailability::Unset,
-            remote_outside: true,
-            min_salary: None,
-            permanent_places: Vec::new(),
-            permanent_remote_min: None,
-            workload_min_days: None,
-            workload_max_days: None,
-            min_months: None,
-            exclusion_words: Vec::new(),
-        }
-    }
+/// The workload the consultant wants (`auslastung`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum Workload {
+    Any,
+    Fulltime,
+    Parttime,
 }
 
-/// When the consultant is available.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// When the consultant is available (`verfuegbar_ab`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(
     tag = "kind",
     rename_all = "camelCase",
@@ -488,217 +231,130 @@ impl Default for ProfileCriteria {
 )]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum ProfileAvailability {
-    #[default]
-    Unset,
     Now,
-    /// From a day (`date` as `YYYY-MM-DD`).
+    /// From a day (`date` as `dd.mm.yyyy`).
     From {
         date: String,
     },
 }
 
-/// A field of the form that can hold a value the engine could not read from the file
-/// (`criterionNotUnderstood`, `availabilityNotUnderstood`). "Wert entfernen" names it: saving
-/// then removes every key behind it wherever the engine reads it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub enum UnreadableField {
-    MinDayRate,
-    Countries,
-    /// `ausgeschlossene_vertragsarten` (the switches for ANÜ and permanent employment).
-    Contracts,
-    RemoteOutside,
-    Available,
-    MinSalary,
-    PermanentPlaces,
-    PermanentRemoteMin,
-    Focus,
-    Roles,
-    WishDayRate,
-    Remote,
-    Regions,
-    WishIndustries,
-    /// `auslastung_min_tage` (days per week, 1 to 5).
-    WorkloadMinDays,
-    /// `auslastung_max_tage` (days per week, 1 to 5, not below the minimum).
-    WorkloadMaxDays,
-    /// `min_laufzeit_monate`.
-    MinMonths,
-    /// `ausschlusswoerter`.
-    ExclusionWords,
-}
-
-/// Where the keys of a field live.
-enum Place {
-    /// Top-level keys.
-    Top(&'static [&'static str]),
-    /// Keys of the criteria sections (`harte_kriterien`, `hard_criteria`).
-    Criteria(&'static [&'static str]),
-    /// Keys of the preferences sections (`einsatzpraeferenzen`, `preferences`).
-    Preferences(&'static [&'static str]),
-    /// Keys of both.
-    Both(&'static [&'static str]),
-}
-
-impl UnreadableField {
-    const ALL: [UnreadableField; 18] = [
-        UnreadableField::MinDayRate,
-        UnreadableField::Countries,
-        UnreadableField::Contracts,
-        UnreadableField::RemoteOutside,
-        UnreadableField::Available,
-        UnreadableField::MinSalary,
-        UnreadableField::PermanentPlaces,
-        UnreadableField::PermanentRemoteMin,
-        UnreadableField::Focus,
-        UnreadableField::Roles,
-        UnreadableField::WishDayRate,
-        UnreadableField::Remote,
-        UnreadableField::Regions,
-        UnreadableField::WishIndustries,
-        UnreadableField::WorkloadMinDays,
-        UnreadableField::WorkloadMaxDays,
-        UnreadableField::MinMonths,
-        UnreadableField::ExclusionWords,
-    ];
-
-    /// Where its keys are: a hard criterion's from [`CRITERIA`], the others here.
-    fn place(self) -> Place {
+impl ProfileAvailability {
+    /// The day it starts; `None` for now (and for a date that does not read).
+    pub(crate) fn day(&self) -> Option<Date> {
         match self {
-            UnreadableField::Focus => Place::Top(lexicon::KEYS_FOCUS),
-            UnreadableField::Roles => Place::Top(lexicon::KEYS_TARGET_ROLES),
-            UnreadableField::WishDayRate => Place::Preferences(lexicon::KEYS_RATE_WISH),
-            UnreadableField::Remote => Place::Preferences(lexicon::KEYS_REMOTE_WISH),
-            UnreadableField::Regions => Place::Preferences(lexicon::KEYS_REGIONS),
-            UnreadableField::WishIndustries => Place::Preferences(lexicon::KEYS_INDUSTRIES),
-            criterion => {
-                let row = CRITERIA
-                    .iter()
-                    .find(|row| row.field == criterion)
-                    .expect("every other field is a row of CRITERIA");
-                match row.kind {
-                    Kind::Available => Place::Both(row.keys),
-                    _ => Place::Criteria(row.keys),
-                }
-            }
+            ProfileAvailability::Now => None,
+            ProfileAvailability::From { date } => german_date(date),
         }
     }
+}
 
-    /// The name the interface gives the field (the field of the form it belongs to).
-    fn name(self) -> String {
-        serde_json::to_value(self)
-            .ok()
-            .and_then(|value| value.as_str().map(str::to_owned))
-            .unwrap_or_default()
+/// A `dd.mm.yyyy` date.
+fn german_date(text: &str) -> Option<Date> {
+    let mut parts = text.trim().split('.');
+    let (day, month, year) = (parts.next()?, parts.next()?, parts.next()?);
+    if parts.next().is_some() || day.len() != 2 || month.len() != 2 || year.len() != 4 {
+        return None;
     }
-
-    /// The field of a key the engine reports as not understood (`criterionNotUnderstood`);
-    /// `None` for a key the form does not show.
-    pub fn of_key(key: &str) -> Option<UnreadableField> {
-        Self::ALL.into_iter().find(|field| {
-            let (Place::Top(keys)
-            | Place::Criteria(keys)
-            | Place::Preferences(keys)
-            | Place::Both(keys)) = field.place();
-            keys.contains(&key)
-        })
-    }
+    Date::new(year.parse().ok()?, month.parse().ok()?, day.parse().ok()?).ok()
 }
 
 impl ProfileForm {
-    /// Values trimmed, empty ones dropped, list entries once (case-insensitive), zero where
-    /// the engine ignores it as none.
+    /// Values trimmed, empty entries dropped, every list entry once (case-insensitive, the
+    /// first wins), codes in capitals, zero as none, the salary only with Festanstellung or
+    /// Zeitarbeit.
     #[must_use]
     pub fn normalized(&self) -> ProfileForm {
-        ProfileForm {
-            name: self.name.trim().to_owned(),
-            title: self.title.trim().to_owned(),
-            competences: self
-                .competences
-                .iter()
-                .filter(|row| !row.name.trim().is_empty())
-                .map(|row| ProfileCompetence {
-                    name: row.name.trim().to_owned(),
-                    years: row.years,
-                    aliases: clean(&row.aliases),
-                    origin: row.origin,
-                })
-                .collect(),
-            strengths: clean(&self.strengths),
-            keywords: clean(&self.keywords),
-            years: self.years,
-            degrees: clean(&self.degrees),
-            industries: clean(&self.industries),
-            tools: clean(&self.tools),
-            certificates: clean(&self.certificates),
-            languages: self
-                .languages
-                .iter()
-                .filter(|row| !row.language.trim().is_empty())
-                .map(|row| ProfileLanguage {
-                    language: row.language.trim().to_owned(),
+        let mut competences: Vec<ProfileCompetence> = Vec::new();
+        for row in &self.competences {
+            let name = row.name.trim();
+            if !name.is_empty() && !competences.iter().any(|c| same(&c.name, name)) {
+                competences.push(ProfileCompetence {
+                    name: name.to_owned(),
+                    ..row.clone()
+                });
+            }
+        }
+        let mut industries: Vec<ProfileIndustry> = Vec::new();
+        for row in &self.industries {
+            let name = row.name.trim();
+            if !name.is_empty() && !industries.iter().any(|i| same(&i.name, name)) {
+                industries.push(ProfileIndustry {
+                    name: name.to_owned(),
+                    preferred: row.preferred,
+                });
+            }
+        }
+        let mut languages: Vec<ProfileLanguage> = Vec::new();
+        for row in &self.languages {
+            let language = row.language.trim();
+            if !language.is_empty() && !languages.iter().any(|l| same(&l.language, language)) {
+                languages.push(ProfileLanguage {
+                    language: language.to_owned(),
                     level: row.level,
-                    origin: row.origin,
-                })
-                .collect(),
-            focus: clean(&self.focus),
+                });
+            }
+        }
+        let countries: Vec<String> = self
+            .countries
+            .iter()
+            .map(|c| c.trim().to_uppercase())
+            .collect();
+        let positive = |n: Option<u32>| n.filter(|n| *n > 0);
+        ProfileForm {
             roles: clean(&self.roles),
-            search_terms: clean(&self.search_terms),
-            search_terms_proposed: self.search_terms_proposed,
-            wishes: ProfileWishes {
-                day_rate: self.wishes.day_rate.filter(|n| *n > 0),
-                remote: self.wishes.remote,
-                regions: clean(&self.wishes.regions),
-                industries: clean(&self.wishes.industries),
+            permanent: self.permanent,
+            temporary: self.temporary,
+            day_rate_wish: positive(self.day_rate_wish),
+            day_rate_min: positive(self.day_rate_min),
+            min_salary: positive(self.min_salary).filter(|_| self.permanent || self.temporary),
+            work_mode: self.work_mode,
+            countries: clean(&countries),
+            regions: clean(&self.regions),
+            available: match &self.available {
+                ProfileAvailability::Now => ProfileAvailability::Now,
+                ProfileAvailability::From { date } => ProfileAvailability::From {
+                    date: date.trim().to_owned(),
+                },
             },
-            criteria: self.criteria.normalized(),
+            workload: self.workload,
+            min_months: self.min_months,
+            competences,
+            tools: clean(&self.tools),
+            years: self.years,
+            industries,
+            languages,
+            degrees: clean(&self.degrees),
+            certificates: clean(&self.certificates),
+            exclusion_words: clean(&self.exclusion_words),
         }
     }
 
-    /// Anything about the person (wishes and hard criteria are preferences, not a profile).
-    pub fn has_content(&self) -> bool {
-        let empty = ProfileForm {
-            roles: self.roles.clone(),
-            search_terms: self.search_terms.clone(),
-            wishes: self.wishes.clone(),
-            criteria: self.criteria.clone(),
-            ..ProfileForm::default()
-        };
-        self.normalized() != empty.normalized()
+    /// The competences with the star, in their order.
+    pub fn focus(&self) -> impl Iterator<Item = &ProfileCompetence> {
+        self.competences.iter().filter(|c| c.focus)
     }
 }
 
-impl ProfileCriteria {
-    /// Numbers of zero as none, words trimmed and each once (codes in capitals), the day of
-    /// the availability trimmed.
-    fn normalized(&self) -> ProfileCriteria {
-        let mut out = self.clone();
-        for row in &CRITERIA {
-            match row.kind {
-                Kind::Number { slot, .. } => {
-                    let number = slot(&mut out);
-                    *number = number.filter(|n| *n > 0);
-                }
-                Kind::Words { upper, slot, .. } => {
-                    let words = slot(&mut out);
-                    let typed: Vec<String> = if upper {
-                        words.iter().map(|w| w.trim().to_uppercase()).collect()
-                    } else {
-                        words.clone()
-                    };
-                    *words = clean(&typed);
-                }
-                Kind::Available => {
-                    if let ProfileAvailability::From { date } = &mut out.available {
-                        *date = date.trim().to_owned();
-                    }
-                }
-                Kind::Contracts | Kind::RemoteOutside => {}
-            }
-        }
-        out
-    }
+/// The fields a usable profile still needs, by their names in the form (`roles`, `countries`,
+/// `competences`, `languages`), in the form's order: the one source for the onboarding, the
+/// Profil's "Noch n Angaben offen" and whether a search can start. The contract types always
+/// hold `projekt` (projects and interim work), so they are never missing.
+pub fn missing_required(form: &ProfileForm) -> Vec<&'static str> {
+    let form = form.normalized();
+    [
+        ("roles", form.roles.is_empty()),
+        ("countries", form.countries.is_empty()),
+        ("competences", form.competences.is_empty()),
+        ("languages", form.languages.is_empty()),
+    ]
+    .into_iter()
+    .filter(|(_, missing)| *missing)
+    .map(|(field, _)| field)
+    .collect()
+}
+
+fn same(a: &str, b: &str) -> bool {
+    a.trim().to_lowercase() == b.trim().to_lowercase()
 }
 
 /// Trimmed, non-empty, each entry once (case-insensitive, the first spelling wins).
@@ -706,7 +362,7 @@ fn clean(items: &[String]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for item in items {
         let text = item.trim();
-        if !text.is_empty() && !out.iter().any(|o| o.to_lowercase() == text.to_lowercase()) {
+        if !text.is_empty() && !out.iter().any(|o| same(o, text)) {
             out.push(text.to_owned());
         }
     }
@@ -714,8 +370,8 @@ fn clean(items: &[String]) -> Vec<String> {
 }
 
 /// The form normalized, or the first value out of range: `field` names it, `row` the entry
-/// of a list of rows (competences, languages; counted in the normalized list, without its
-/// empty rows).
+/// of a list of rows (competences, industries, languages; counted in the normalized list),
+/// `max` the highest number (or count) it takes.
 pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> {
     let form = form.normalized();
     let at = |field: &str, row: Option<usize>, max: Option<u32>| InvalidInput::ProfileValue {
@@ -723,1081 +379,463 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
         row: row.and_then(|r| u32::try_from(r).ok()),
         max,
     };
-    let fail = |field: &str, row: Option<usize>| at(field, row, None);
-    let within = |value: Option<u32>, max: u32| value.is_none_or(|n| n <= max);
     let fits = |items: &[String]| {
         items.len() <= MAX_ITEMS && items.iter().all(|t| t.chars().count() <= MAX_TEXT)
     };
-    let one = |text: &String| fits(std::slice::from_ref(text));
+    let long = |text: &str| text.chars().count() > MAX_TEXT;
     for (value, max, field) in [
         (form.years, MAX_YEARS, "years"),
-        (form.wishes.day_rate, MAX_DAY_RATE, "wishDayRate"),
+        (form.day_rate_wish, MAX_DAY_RATE, "dayRateWish"),
+        (form.day_rate_min, MAX_DAY_RATE, "dayRateMin"),
+        (form.min_salary, MAX_SALARY, "minSalary"),
     ] {
-        if !within(value, max) {
+        if value.is_some_and(|n| n > max) {
             return Err(at(field, None, Some(max)));
         }
     }
-    if form.focus.len() > MAX_FOCUS {
-        return Err(at("focus", None, u32::try_from(MAX_FOCUS).ok()));
-    }
-    if !fits(&form.focus) {
-        return Err(fail("focus", None));
-    }
     for (items, field) in [
         (&form.roles, "roles"),
-        (&form.search_terms, "searchTerms"),
-        (&form.wishes.regions, "regions"),
-        (&form.wishes.industries, "wishIndustries"),
+        (&form.countries, "countries"),
+        (&form.regions, "regions"),
+        (&form.tools, "tools"),
+        (&form.degrees, "degrees"),
+        (&form.certificates, "certificates"),
+        (&form.exclusion_words, "exclusionWords"),
     ] {
         if !fits(items) {
-            return Err(fail(field, None));
+            return Err(at(field, None, None));
         }
     }
-    if !one(&form.name) {
-        return Err(fail("name", None));
+    if form.available.day().is_none() && form.available != ProfileAvailability::Now {
+        return Err(at("available", None, None));
     }
-    if !one(&form.title) {
-        return Err(fail("title", None));
+    if !MIN_MONTHS.contains(&form.min_months) {
+        return Err(at("minMonths", None, None));
     }
     if form.competences.len() > MAX_ITEMS {
-        return Err(fail("competences", None));
+        return Err(at("competences", None, None));
     }
     for (i, row) in form.competences.iter().enumerate() {
-        if !within(row.years, MAX_YEARS) {
+        if row.years.is_some_and(|y| y > MAX_YEARS) {
             return Err(at("competences", Some(i), Some(MAX_YEARS)));
         }
-        if !one(&row.name) || !fits(&row.aliases) {
-            return Err(fail("competences", Some(i)));
+        if long(&row.name) {
+            return Err(at("competences", Some(i), None));
         }
     }
-    for (items, field) in [
-        (&form.strengths, "strengths"),
-        (&form.keywords, "keywords"),
-        (&form.degrees, "degrees"),
-        (&form.industries, "industries"),
-        (&form.tools, "tools"),
-        (&form.certificates, "certificates"),
-    ] {
-        if !fits(items) {
-            return Err(fail(field, None));
-        }
+    if form.focus().count() > MAX_FOCUS {
+        return Err(at("competences", None, u32::try_from(MAX_FOCUS).ok()));
+    }
+    if form.industries.len() > MAX_ITEMS {
+        return Err(at("industries", None, None));
+    }
+    if let Some(i) = form.industries.iter().position(|row| long(&row.name)) {
+        return Err(at("industries", Some(i), None));
     }
     if form.languages.len() > MAX_ITEMS {
-        return Err(fail("languages", None));
+        return Err(at("languages", None, None));
     }
-    if let Some(i) = form.languages.iter().position(|row| !one(&row.language)) {
-        return Err(fail("languages", Some(i)));
+    if let Some(i) = form.languages.iter().position(|row| long(&row.language)) {
+        return Err(at("languages", Some(i), None));
     }
-    validate_criteria(&form.criteria)?;
     Ok(form)
 }
 
-/// The hard criteria within their limits: every number up to its maximum, the words within
-/// what a profile holds, a day that reads, and the workload's second day not below the
-/// first.
-fn validate_criteria(c: &ProfileCriteria) -> Result<(), InvalidInput> {
-    let at = |field: UnreadableField, max: Option<u32>| InvalidInput::ProfileValue {
-        field: field.name(),
-        row: None,
-        max,
-    };
-    let mut c = c.clone();
-    for row in &CRITERIA {
-        match row.kind {
-            Kind::Number { max, slot, .. } => {
-                if slot(&mut c).is_some_and(|n| n > max) {
-                    return Err(at(row.field, Some(max)));
-                }
-            }
-            Kind::Words { slot, .. } => {
-                let words = slot(&mut c);
-                if words.len() > MAX_ITEMS || words.iter().any(|t| t.chars().count() > MAX_TEXT) {
-                    return Err(at(row.field, None));
-                }
-            }
-            Kind::Available => {
-                if let ProfileAvailability::From { date } = &c.available
-                    && date.parse::<Date>().is_err()
-                {
-                    return Err(at(row.field, None));
-                }
-            }
-            Kind::Contracts | Kind::RemoteOutside => {}
+/// The form `after` made of `before`, applied to `now` (the stored profile, which may have
+/// changed since `before` was read, e.g. by a term added from the reader): every field the
+/// editor changed takes its value from `after`, every other one stays as `now` has it; a
+/// list the editor changed is rebased ([`rebase`]), so a save on an older copy never drops
+/// an entry that came in meanwhile nor brings back one that went.
+pub(crate) fn merge(now: &ProfileForm, before: &ProfileForm, after: &ProfileForm) -> ProfileForm {
+    fn pick<T: Clone + PartialEq>(now: &T, before: &T, after: &T) -> T {
+        if after == before { now } else { after }.clone()
+    }
+    fn list<T: Clone + PartialEq>(
+        now: &[T],
+        before: &[T],
+        after: &[T],
+        name: fn(&T) -> &str,
+    ) -> Vec<T> {
+        if after == before {
+            now.to_vec()
+        } else {
+            rebase(now, before, after, name)
         }
     }
-    if let (Some(min), Some(max)) = (c.workload_min_days, c.workload_max_days)
-        && max < min
-    {
-        return Err(at(UnreadableField::WorkloadMaxDays, None));
+    fn text(t: &String) -> &str {
+        t
     }
-    Ok(())
-}
-
-// ------------------------------------------------------------------------------ reading
-
-/// The item keys the engine reads from a profile list (`methoden_tools` -> `name`, ...).
-fn sub_keys(list: &str) -> &'static [&'static str] {
-    lexicon::PROFILE_LISTS
-        .iter()
-        .find(|(key, _)| *key == list)
-        .map_or(&[], |(_, subs)| *subs)
-}
-
-/// The text of a list item: a string, or the first of `subs` in an object.
-fn item_text<'a>(item: &'a Json, subs: &[&str]) -> Option<&'a str> {
-    let text = match item {
-        Json::String(text) => text.as_str(),
-        Json::Object(_) => subs.iter().find_map(|key| item.get(key)?.as_str())?,
-        _ => return None,
-    };
-    Some(text.trim()).filter(|t| !t.is_empty())
-}
-
-fn items<'a>(doc: &'a Json, key: &str) -> &'a [Json] {
-    doc.get(key).and_then(Json::as_array).unwrap_or_default()
-}
-
-fn text_at(doc: &Json, key: &str) -> String {
-    doc.get(key)
-        .and_then(Json::as_str)
-        .unwrap_or_default()
-        .to_owned()
-}
-
-fn read_list(doc: &Json, key: &str) -> Vec<String> {
-    let subs = sub_keys(key);
-    items(doc, key)
-        .iter()
-        .filter_map(|item| item_text(item, subs))
-        .map(str::to_owned)
-        .collect()
-}
-
-fn whole(value: &Json) -> Option<u32> {
-    match value {
-        Json::Number(n) => n.as_u64().and_then(|n| u32::try_from(n).ok()),
-        _ => None,
-    }
-}
-
-/// The first of `keys` with a whole number (like the engine).
-fn number_at(item: &Json, keys: &[&str]) -> Option<u32> {
-    keys.iter().find_map(|key| whole(item.get(key)?))
-}
-
-/// The first of `keys` that `item` holds with a value (not null), and that value.
-fn first<'a>(item: &'a Json, keys: &[&'static str]) -> Option<(&'static str, &'a Json)> {
-    keys.iter().find_map(|key| {
-        item.get(key)
-            .filter(|v| **v != Json::Null)
-            .map(|v| (*key, v))
-    })
-}
-
-/// The key to write in `item`: the first of `keys` it holds, else the first (German) one.
-fn key_in(item: &Json, keys: &[&'static str]) -> &'static str {
-    keys.iter()
-        .copied()
-        .find(|key| item.get(key).is_some())
-        .unwrap_or(keys[0])
-}
-
-/// The list the engine reads among `keys` (the first that is a list), else the first key.
-fn list_key(doc: &Json, keys: &[&'static str]) -> &'static str {
-    keys.iter()
-        .copied()
-        .find(|key| doc.get(key).and_then(Json::as_array).is_some())
-        .unwrap_or_else(|| key_in(doc, keys))
-}
-
-/// The preferences section the engine reads (German or English), else the German one.
-fn preferences_key(doc: &Json) -> &'static str {
-    lexicon::KEY_PREFERENCES_ALIASES
-        .iter()
-        .copied()
-        .find(|key| doc.get(key).is_some_and(Json::is_object))
-        .unwrap_or(lexicon::KEY_PREFERENCES)
-}
-
-/// Alternative terms of a competence from every alias key (like the engine).
-fn aliases_of(item: &Json) -> Vec<String> {
-    lexicon::KEYS_ALIASES
-        .iter()
-        .flat_map(|key| items(item, key))
-        .filter_map(Json::as_str)
-        .map(|t| t.trim().to_owned())
-        .collect()
-}
-
-fn index(i: usize) -> Option<u32> {
-    u32::try_from(i).ok()
-}
-
-fn read_competences(doc: &Json) -> Vec<ProfileCompetence> {
-    items(doc, KEY_COMPETENCES)
-        .iter()
-        .enumerate()
-        .filter_map(|(i, item)| {
-            Some(ProfileCompetence {
-                name: item_text(item, &[KEY_COMPETENCE])?.to_owned(),
-                years: number_at(item, lex::KEYS_YEARS),
-                aliases: aliases_of(item),
-                origin: index(i),
-            })
-        })
-        .collect()
-}
-
-/// `sprachen[]` (`languages[]`) with `sprache` (`language`, `name`) and `niveau` (`level`).
-fn read_languages(doc: &Json) -> Vec<ProfileLanguage> {
-    items(doc, list_key(doc, lex::KEYS_LANGUAGES))
-        .iter()
-        .enumerate()
-        .filter_map(|(i, item)| {
-            Some(ProfileLanguage {
-                language: item_text(item, lex::KEYS_LANGUAGE)?.to_owned(),
-                level: first(item, lex::KEYS_LEVEL)
-                    .and_then(|(_, level)| level.as_str())
-                    .and_then(matching::language_level)
-                    .and_then(LanguageLevel::from_engine),
-                origin: index(i),
-            })
-        })
-        .collect()
-}
-
-/// `abschluss` (a text or a list of texts), then `ausbildung[].abschluss`.
-fn read_degrees(doc: &Json) -> Vec<String> {
-    let top = match doc.get(KEY_DEGREE) {
-        Some(Json::String(text)) => vec![text.clone()],
-        Some(Json::Array(items)) => items
-            .iter()
-            .filter_map(Json::as_str)
-            .map(str::to_owned)
-            .collect(),
-        _ => Vec::new(),
-    };
-    let education = items(doc, KEY_EDUCATION)
-        .iter()
-        .filter_map(|item| item.get(KEY_DEGREE)?.as_str())
-        .map(str::to_owned);
-    top.into_iter().chain(education).collect()
-}
-
-/// Texts of a list the way the engine reads Schwerpunkte, target roles and the listed
-/// wishes: strings, or objects with a text under one of `KEYS_ITEM_TEXT`.
-fn read_texts(list: Option<&Json>) -> Vec<String> {
-    list.and_then(Json::as_array)
-        .unwrap_or_default()
-        .iter()
-        .filter_map(|item| item_text(item, lexicon::KEYS_ITEM_TEXT))
-        .map(str::to_owned)
-        .collect()
-}
-
-/// The texts of the first of `keys` with a value.
-fn read_texts_at(doc: &Json, keys: &[&'static str]) -> Vec<String> {
-    read_texts(first(doc, keys).map(|(_, value)| value))
-}
-
-fn read_wishes(doc: &Json) -> ProfileWishes {
-    let section = doc.get(preferences_key(doc));
-    let at = |keys: &[&'static str]| section.and_then(|s| first(s, keys).map(|(_, v)| v));
-    ProfileWishes {
-        day_rate: at(lexicon::KEYS_RATE_WISH).and_then(whole),
-        remote: at(lexicon::KEYS_REMOTE_WISH)
-            .and_then(Json::as_str)
-            .and_then(RemoteWish::read),
-        regions: read_texts(at(lexicon::KEYS_REGIONS)),
-        industries: read_texts(at(lexicon::KEYS_INDUSTRIES)),
-    }
-}
-
-fn read_criteria(doc: &Json) -> ProfileCriteria {
-    let h = matching::hard_criteria(&doc.to_value());
-    let mut c = ProfileCriteria {
-        no_anue: h.anue_excluded,
-        no_permanent: h.permanent_excluded,
-        available: match &h.available {
-            Availability::Unset => ProfileAvailability::Unset,
-            Availability::Now => ProfileAvailability::Now,
-            Availability::From(day) => ProfileAvailability::From {
-                date: day.to_string(),
-            },
-        },
-        remote_outside: h.remote_outside != Some(false),
-        ..ProfileCriteria::default()
-    };
-    for row in &CRITERIA {
-        match row.kind {
-            Kind::Number { slot, read, .. } => *slot(&mut c) = read(&h),
-            Kind::Words { slot, read, .. } => *slot(&mut c) = read(&h),
-            Kind::Contracts | Kind::Available | Kind::RemoteOutside => {}
-        }
-    }
-    c
-}
-
-/// What the app searches the sources for: the stored search terms, else the target roles as
-/// written and then the Schwerpunkte; each term once (case aside), at most
-/// [`MAX_SEARCH_TERMS`].
-pub fn search_terms(stored: &[String], roles: &[String], focus: &[String]) -> Vec<String> {
-    let stored = clean(stored);
-    let source: Vec<String> = if stored.is_empty() {
-        roles.iter().chain(focus).cloned().collect()
-    } else {
-        stored
-    };
-    let mut seen = std::collections::HashSet::new();
-    let mut terms = Vec::new();
-    for term in source.iter().map(|term| term.trim()) {
-        if term.is_empty() || !seen.insert(term.to_lowercase()) {
-            continue;
-        }
-        terms.push(term.to_owned());
-        if terms.len() == MAX_SEARCH_TERMS {
-            break;
-        }
-    }
-    terms
-}
-
-/// The form of a profile document, read the way the engine reads it. Of more than
-/// `MAX_FOCUS` Schwerpunkte the form takes the first ones, as the engine does.
-pub(crate) fn read(doc: &Json) -> ProfileForm {
-    let mut focus = read_texts_at(doc, lexicon::KEYS_FOCUS);
-    focus.truncate(MAX_FOCUS);
-    let roles = read_texts_at(doc, lexicon::KEYS_TARGET_ROLES);
-    let stored_terms = read_texts_at(doc, KEYS_SEARCH_TERMS);
-    let search_terms = search_terms(&stored_terms, &roles, &focus);
-    // A proposal only where there is one (an empty profile proposes nothing).
-    let search_terms_proposed = stored_terms.is_empty() && !search_terms.is_empty();
     ProfileForm {
-        name: text_at(doc, KEY_NAME),
-        title: text_at(doc, KEY_TITLE),
-        competences: read_competences(doc),
-        strengths: read_list(doc, KEY_STRENGTHS),
-        keywords: read_list(doc, KEY_KEYWORDS),
-        years: number_at(doc, lexicon::KEYS_TOTAL_YEARS),
-        degrees: read_degrees(doc),
-        industries: read_list(doc, KEY_INDUSTRIES),
-        tools: read_list(doc, KEY_TOOLS),
-        certificates: read_list(doc, KEY_CERTIFICATES),
-        languages: read_languages(doc),
-        focus,
-        roles,
-        search_terms,
-        search_terms_proposed,
-        wishes: read_wishes(doc),
-        criteria: read_criteria(doc),
+        roles: list(&now.roles, &before.roles, &after.roles, text),
+        permanent: pick(&now.permanent, &before.permanent, &after.permanent),
+        temporary: pick(&now.temporary, &before.temporary, &after.temporary),
+        day_rate_wish: pick(
+            &now.day_rate_wish,
+            &before.day_rate_wish,
+            &after.day_rate_wish,
+        ),
+        day_rate_min: pick(&now.day_rate_min, &before.day_rate_min, &after.day_rate_min),
+        min_salary: pick(&now.min_salary, &before.min_salary, &after.min_salary),
+        work_mode: pick(&now.work_mode, &before.work_mode, &after.work_mode),
+        countries: list(&now.countries, &before.countries, &after.countries, text),
+        regions: list(&now.regions, &before.regions, &after.regions, text),
+        available: pick(&now.available, &before.available, &after.available),
+        workload: pick(&now.workload, &before.workload, &after.workload),
+        min_months: pick(&now.min_months, &before.min_months, &after.min_months),
+        competences: list(
+            &now.competences,
+            &before.competences,
+            &after.competences,
+            |c| &c.name,
+        ),
+        tools: list(&now.tools, &before.tools, &after.tools, text),
+        years: pick(&now.years, &before.years, &after.years),
+        industries: list(
+            &now.industries,
+            &before.industries,
+            &after.industries,
+            |i| &i.name,
+        ),
+        languages: list(&now.languages, &before.languages, &after.languages, |l| {
+            &l.language
+        }),
+        degrees: list(&now.degrees, &before.degrees, &after.degrees, text),
+        certificates: list(
+            &now.certificates,
+            &before.certificates,
+            &after.certificates,
+            text,
+        ),
+        exclusion_words: list(
+            &now.exclusion_words,
+            &before.exclusion_words,
+            &after.exclusion_words,
+            text,
+        ),
     }
-    .normalized()
 }
 
-/// More Schwerpunkte in the document than the form holds: saving writes the ones it shows.
-fn focus_overflows(doc: &Json) -> bool {
-    read_texts_at(doc, lexicon::KEYS_FOCUS).len() > MAX_FOCUS
-}
-
-// ------------------------------------------------------------------------------ writing
-
-/// Writes into `doc` every field of `after` that differs from `before` (the form as the
-/// editor received it), after removing the values of `clear` wherever they are. Fields in
-/// canonical order, so a new profile reads like the profile template; a key that is
-/// new in an existing profile goes to its end.
-pub(crate) fn merge(
-    doc: &mut Json,
-    before: &ProfileForm,
-    after: &ProfileForm,
-    clear: &[UnreadableField],
-) {
-    let before = before.normalized();
-    let after = after.normalized();
-    if !doc.is_object() {
-        *doc = Json::object();
-    }
-    remove_fields(doc, clear);
-    if after.name != before.name {
-        set_text(doc, KEY_NAME, &after.name);
-    }
-    if after.title != before.title {
-        set_text(doc, KEY_TITLE, &after.title);
-    }
-    if after.roles != before.roles {
-        let key = key_in(doc, lexicon::KEYS_TARGET_ROLES);
-        write_free_list(doc, key, &after.roles);
-    }
-    // Stored only once changed: until then they follow the roles and the Schwerpunkte.
-    if after.search_terms != before.search_terms {
-        let key = key_in(doc, KEYS_SEARCH_TERMS);
-        write_free_list(doc, key, &after.search_terms);
-    }
-    if after.years != before.years {
-        write_number(doc, lexicon::KEYS_TOTAL_YEARS, after.years);
-    }
-    if after.degrees != before.degrees {
-        write_degrees(doc, &after.degrees);
-    }
-    if after.competences != before.competences {
-        write_competences(doc, &before.competences, &after.competences);
-    }
-    if after.focus != before.focus || focus_overflows(doc) {
-        let key = key_in(doc, lexicon::KEYS_FOCUS);
-        write_free_list(doc, key, &after.focus);
-    }
-    for (key, old, new) in [
-        (KEY_TOOLS, &before.tools, &after.tools),
-        (KEY_CERTIFICATES, &before.certificates, &after.certificates),
-        (KEY_INDUSTRIES, &before.industries, &after.industries),
-    ] {
-        if new != old {
-            write_list(doc, key, new);
-        }
-    }
-    if after.languages != before.languages {
-        write_languages(doc, &before.languages, &after.languages);
-    }
-    if after.strengths != before.strengths {
-        write_list(doc, KEY_STRENGTHS, &after.strengths);
-    }
-    // The keywords also change one term at a time from the reader and the overview (adding
-    // a missing term to the profile, and its undo), each on the copy of the form it was
-    // shown, several close together. A change made on a copy the file no longer matches is
-    // applied to what the file holds now, so it never drops or brings back a term another
-    // change made.
-    if after.keywords != before.keywords {
-        let now = clean(&read_list(doc, KEY_KEYWORDS));
-        write_list(
-            doc,
-            KEY_KEYWORDS,
-            &rebase(&now, &before.keywords, &after.keywords),
-        );
-    }
-    write_wishes(doc, &before.wishes, &after.wishes);
-    write_criteria(doc, &before.criteria, &after.criteria);
-}
-
-/// The list `after` made of `before`, applied to `now` (the file's list, which may have
-/// changed since `before` was read; on an unchanged file this is `after` as it is). The
-/// terms of `after` in its order and spelling, without a term the file dropped meanwhile;
-/// a term `after` took over unchanged keeps the spelling the file has now. A term the file
-/// gained meanwhile stays, after the term it follows in the file. Texts compare as
-/// [`clean`] compares them. `ui-harness/stub.ts` (`mergeKeywords`) does the same.
-fn rebase(now: &[String], before: &[String], after: &[String]) -> Vec<String> {
-    let find = |list: &[String], text: &str| {
-        let text = text.to_lowercase();
-        list.iter().position(|item| item.to_lowercase() == text)
-    };
-    let mut out: Vec<String> = Vec::new();
-    for text in after {
-        match (find(before, text), find(now, text)) {
+/// The list `after` made of `before`, applied to `now`; entries are the same by their
+/// `name` (case-insensitive). The entries of `after` in its order, without one the file
+/// dropped meanwhile; an entry `after` took over unchanged keeps what the file has now (its
+/// spelling, years, star, level). An entry the file gained meanwhile stays, after the entry
+/// it follows in the file.
+fn rebase<T: Clone + PartialEq>(
+    now: &[T],
+    before: &[T],
+    after: &[T],
+    name: fn(&T) -> &str,
+) -> Vec<T> {
+    let find = |list: &[T], wanted: &T| list.iter().position(|item| same(name(item), name(wanted)));
+    let mut out: Vec<T> = Vec::new();
+    for item in after {
+        match (find(before, item), find(now, item)) {
             (Some(_), None) => {}
-            (Some(old), Some(current)) if before[old] == *text => out.push(now[current].clone()),
-            _ => out.push(text.clone()),
+            (Some(old), Some(current)) if before[old] == *item => out.push(now[current].clone()),
+            _ => out.push(item.clone()),
         }
     }
     let mut at = 0;
-    for text in now {
-        if let Some(found) = find(&out, text) {
+    for item in now {
+        if let Some(found) = find(&out, item) {
             at = found + 1;
-        } else if find(before, text).is_none() {
-            out.insert(at, text.clone());
+        } else if find(before, item).is_none() {
+            out.insert(at, item.clone());
             at += 1;
         }
     }
     out
 }
 
-/// Removes every key behind the fields, in every section the engine reads it from.
-fn remove_fields(doc: &mut Json, fields: &[UnreadableField]) {
-    for field in fields {
-        match field.place() {
-            Place::Top(keys) => {
-                for key in keys {
-                    doc.remove(key);
-                }
-            }
-            Place::Criteria(keys) => remove_all(doc, lexicon::KEY_CRITERIA_ALIASES, keys),
-            Place::Preferences(keys) => remove_all(doc, lexicon::KEY_PREFERENCES_ALIASES, keys),
-            Place::Both(keys) => {
-                remove_all(doc, lexicon::KEY_CRITERIA_ALIASES, keys);
-                remove_all(doc, lexicon::KEY_PREFERENCES_ALIASES, keys);
-            }
+// ---------------------------------------------------------------------------------- the file
+
+/// The file as written: the keys in the order of the form, every key always.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct File {
+    wunschrollen: Vec<String>,
+    vertragsarten: Vec<Contract>,
+    tagessatz_wunsch: Option<u32>,
+    tagessatz_min: Option<u32>,
+    mindestgehalt: Option<u32>,
+    arbeitsmodell: FileWorkMode,
+    laender: Vec<String>,
+    regionen: Vec<String>,
+    verfuegbar_ab: String,
+    auslastung: FileWorkload,
+    mindestlaufzeit_monate: u8,
+    kernkompetenzen: Vec<FileCompetence>,
+    methoden_tools: Vec<String>,
+    berufserfahrung_jahre: Option<u32>,
+    branchen: Vec<FileIndustry>,
+    sprachen: Vec<FileLanguage>,
+    abschluesse: Vec<String>,
+    zertifizierungen: Vec<String>,
+    ausschlusswoerter: Vec<String>,
+}
+
+impl Default for File {
+    /// A missing key reads as the value of a new profile (the CV import's answer holds only
+    /// what a CV can tell).
+    fn default() -> Self {
+        File::of(&ProfileForm::default())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum Contract {
+    Projekt,
+    Festanstellung,
+    Zeitarbeit,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FileWorkMode {
+    Egal,
+    Remote,
+    Hybrid,
+    VorOrt,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FileWorkload {
+    Egal,
+    Vollzeit,
+    Teilzeit,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileCompetence {
+    kompetenz: String,
+    #[serde(default)]
+    jahre: Option<u32>,
+    #[serde(default)]
+    schwerpunkt: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileIndustry {
+    branche: String,
+    #[serde(default)]
+    wunsch: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileLanguage {
+    sprache: String,
+    niveau: FileLevel,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+enum FileLevel {
+    A1,
+    A2,
+    B1,
+    B2,
+    C1,
+    C2,
+    Muttersprache,
+}
+
+/// `verfuegbar_ab` of a profile available now.
+const NOW: &str = "sofort";
+
+impl File {
+    fn of(form: &ProfileForm) -> File {
+        let mut contracts = vec![Contract::Projekt];
+        if form.permanent {
+            contracts.push(Contract::Festanstellung);
         }
-    }
-}
-
-/// Removes `keys` from each of the `sections`.
-fn remove_all(doc: &mut Json, sections: &[&str], keys: &[&str]) {
-    for section in sections {
-        for key in keys {
-            remove_in(doc, section, key);
+        if form.temporary {
+            contracts.push(Contract::Zeitarbeit);
         }
-    }
-}
-
-/// The wishes inside the preferences section the profile uses (created only when there is
-/// something to write), each under the key that is there.
-fn write_wishes(doc: &mut Json, before: &ProfileWishes, after: &ProfileWishes) {
-    let section = preferences_key(doc);
-    let key_of =
-        |doc: &Json, keys: &[&'static str]| doc.get(section).map_or(keys[0], |s| key_in(s, keys));
-    if after.day_rate != before.day_rate {
-        let keys = lexicon::KEYS_RATE_WISH;
-        if let Some(rate) = after.day_rate {
-            let key = key_of(doc, keys);
-            doc.object_mut(section).set(key, Json::number(rate));
-        } else {
-            remove_all(doc, &[section], keys);
-        }
-    }
-    if after.remote != before.remote {
-        let keys = lexicon::KEYS_REMOTE_WISH;
-        if let Some(wish) = after.remote {
-            let key = key_of(doc, keys);
-            doc.object_mut(section).set(key, Json::text(wish.text()));
-        } else {
-            remove_all(doc, &[section], keys);
-        }
-    }
-    for (keys, old, new) in [
-        (lexicon::KEYS_REGIONS, &before.regions, &after.regions),
-        (
-            lexicon::KEYS_INDUSTRIES,
-            &before.industries,
-            &after.industries,
-        ),
-    ] {
-        if new == old {
-            continue;
-        }
-        if new.is_empty() {
-            remove_all(doc, &[section], keys);
-        } else {
-            let key = key_of(doc, keys);
-            // Plain texts, whatever the same key means at the top level.
-            write_free_list(doc.object_mut(section), key, new);
-        }
-    }
-}
-
-fn set_text(doc: &mut Json, key: &str, text: &str) {
-    if text.is_empty() {
-        doc.remove(key);
-    } else {
-        doc.set(key, Json::text(text));
-    }
-}
-
-fn put_list(doc: &mut Json, key: &str, items: Vec<Json>) {
-    if items.is_empty() {
-        doc.remove(key);
-    } else {
-        doc.set(key, Json::Array(items));
-    }
-}
-
-/// A number under the first of `keys` that is there (else the first); `None` removes all of
-/// them, so no alias brings the old value back.
-fn write_number(item: &mut Json, keys: &[&'static str], value: Option<u32>) {
-    match value {
-        Some(n) => {
-            let key = key_in(item, keys);
-            item.set(key, Json::number(n));
-        }
-        None => {
-            for key in keys {
-                item.remove(key);
-            }
-        }
-    }
-}
-
-/// Texts under the first of `keys` that is there (else the first); the other keys go, since
-/// the engine reads all of them.
-fn write_texts(item: &mut Json, keys: &[&'static str], texts: &[String]) {
-    let key = key_in(item, keys);
-    for other in keys.iter().filter(|k| **k != key) {
-        item.remove(other);
-    }
-    if texts.is_empty() {
-        item.remove(key);
-    } else {
-        item.set(key, Json::texts(texts));
-    }
-}
-
-/// A top-level list of the profile, items read as the engine reads them.
-fn write_list(doc: &mut Json, key: &str, texts: &[String]) {
-    write_texts_list(doc, key, sub_keys(key), texts);
-}
-
-/// A list of plain texts (Schwerpunkte, target roles, listed wishes); a list that holds
-/// objects keeps them and gets new ones under the key it uses.
-fn write_free_list(doc: &mut Json, key: &str, texts: &[String]) {
-    let objects = items(doc, key).iter().any(Json::is_object);
-    let subs: &[&str] = if objects {
-        lexicon::KEYS_ITEM_TEXT
-    } else {
-        &[]
-    };
-    write_texts_list(doc, key, subs, texts);
-}
-
-/// A list of texts: items with the same text stay as they are (with their other keys), new
-/// ones follow the style of the list, items the form cannot show stay at the end.
-fn write_texts_list(doc: &mut Json, key: &str, subs: &[&str], texts: &[String]) {
-    let old = items(doc, key).to_vec();
-    let mut used = vec![false; old.len()];
-    let mut out = Vec::new();
-    for text in texts {
-        let same = old
-            .iter()
-            .enumerate()
-            .find(|(i, item)| !used[*i] && item_text(item, subs) == Some(text.as_str()))
-            .map(|(i, _)| i);
-        match same {
-            Some(i) => {
-                used[i] = true;
-                out.push(old[i].clone());
-            }
-            None => out.push(new_item(&old, subs, text)),
-        }
-    }
-    out.extend(
-        old.iter()
-            .enumerate()
-            .filter(|(i, item)| !used[*i] && item_text(item, subs).is_none())
-            .map(|(_, item)| item.clone()),
-    );
-    put_list(doc, key, out);
-}
-
-/// A new list item: a text in a list of texts, else an object under the key the list uses.
-fn new_item(old: &[Json], subs: &[&str], text: &str) -> Json {
-    let Some(first) = subs.first() else {
-        return Json::text(text);
-    };
-    if !old.is_empty() && old.iter().all(|item| matches!(item, Json::String(_))) {
-        return Json::text(text);
-    }
-    let key = old
-        .iter()
-        .find_map(|item| subs.iter().find(|k| item.get(k).is_some()))
-        .unwrap_or(first);
-    let mut item = Json::object();
-    item.set(key, Json::text(text));
-    item
-}
-
-/// Rows keep their entry (`origin`) with all its other keys; rows without one are new.
-fn write_rows<R: PartialEq>(
-    doc: &mut Json,
-    list: (&str, &[&str]),
-    rows: (&[R], &[R]),
-    origin: impl Fn(&R) -> Option<u32>,
-    update: impl Fn(&Json, Option<&R>, &R) -> Json,
-) {
-    let (key, main) = list;
-    let (before, after) = rows;
-    let old = items(doc, key).to_vec();
-    let mut used = vec![false; old.len()];
-    let mut out = Vec::new();
-    for row in after {
-        let slot = origin(row)
-            .and_then(|o| usize::try_from(o).ok())
-            .filter(|o| *o < old.len() && !used[*o]);
-        let item = match slot {
-            Some(o) => {
-                used[o] = true;
-                let prior = before.iter().find(|b| origin(b) == origin(row));
-                if prior == Some(row) {
-                    old[o].clone()
-                } else {
-                    update(&old[o], prior, row)
-                }
-            }
-            None => update(&Json::Null, None, row),
-        };
-        out.push(item);
-    }
-    out.extend(
-        old.iter()
-            .enumerate()
-            .filter(|(i, item)| !used[*i] && item_text(item, main).is_none())
-            .map(|(_, item)| item.clone()),
-    );
-    put_list(doc, key, out);
-}
-
-fn write_competences(doc: &mut Json, before: &[ProfileCompetence], after: &[ProfileCompetence]) {
-    write_rows(
-        doc,
-        (KEY_COMPETENCES, &[KEY_COMPETENCE]),
-        (before, after),
-        |row| row.origin,
-        |item, prior, row| {
-            if matches!(item, Json::String(_)) && row.years.is_none() && row.aliases.is_empty() {
-                return Json::text(&row.name);
-            }
-            // A text entry that gains years or aliases becomes an object with every field.
-            let (mut item, prior) = if item.is_object() {
-                (item.clone(), prior)
-            } else {
-                (Json::object(), None)
-            };
-            if prior.map(|p| &p.name) != Some(&row.name) {
-                item.set(KEY_COMPETENCE, Json::text(&row.name));
-            }
-            if prior.map(|p| p.years) != Some(row.years) {
-                write_number(&mut item, lex::KEYS_YEARS, row.years);
-            }
-            if prior.map(|p| &p.aliases) != Some(&row.aliases) {
-                write_texts(&mut item, lexicon::KEYS_ALIASES, &row.aliases);
-            }
-            item
-        },
-    );
-}
-
-/// The item keys a language list uses (the first object's), else the German ones.
-fn language_keys(list: &[Json]) -> (&'static str, &'static str) {
-    let sample = list.iter().find(|item| item.is_object());
-    let pick = |keys: &[&'static str]| sample.map_or(keys[0], |item| key_in(item, keys));
-    (pick(lex::KEYS_LANGUAGE), pick(lex::KEYS_LEVEL))
-}
-
-fn write_languages(doc: &mut Json, before: &[ProfileLanguage], after: &[ProfileLanguage]) {
-    let key = list_key(doc, lex::KEYS_LANGUAGES);
-    let (name_key, level_key) = language_keys(items(doc, key));
-    let level_text = |level: LanguageLevel| {
-        if level == LanguageLevel::Native && level_key != lex::KEY_LEVEL {
-            LEVEL_NATIVE_EN
-        } else {
-            level.text()
-        }
-    };
-    write_rows(
-        doc,
-        (key, lex::KEYS_LANGUAGE),
-        (before, after),
-        |row| row.origin,
-        |item, prior, row| {
-            if matches!(item, Json::String(_)) && row.level.is_none() {
-                return Json::text(&row.language);
-            }
-            let (mut item, prior) = if item.is_object() {
-                (item.clone(), prior)
-            } else {
-                (Json::object(), None)
-            };
-            if prior.map(|p| &p.language) != Some(&row.language) {
-                let at = key_in(&item, lex::KEYS_LANGUAGE);
-                let at = if item.get(at).is_some() { at } else { name_key };
-                item.set(at, Json::text(&row.language));
-            }
-            if prior.map(|p| p.level) != Some(row.level) {
-                let at = key_in(&item, lex::KEYS_LEVEL);
-                let at = if item.get(at).is_some() {
-                    at
-                } else {
-                    level_key
-                };
-                match row.level {
-                    Some(level) => item.set(at, Json::text(level_text(level))),
-                    None => {
-                        for key in lex::KEYS_LEVEL {
-                            item.remove(key);
-                        }
-                    }
-                }
-            }
-            item
-        },
-    );
-}
-
-/// Degrees live in `abschluss` and in `ausbildung[].abschluss`: kept ones stay where they
-/// are, removed ones go, a single new one becomes `abschluss`, more go into `ausbildung`.
-fn write_degrees(doc: &mut Json, degrees: &[String]) {
-    let mut left: Vec<&String> = degrees.iter().collect();
-    let mut take = |text: &str| match left.iter().position(|d| d.as_str() == text.trim()) {
-        Some(at) => {
-            left.remove(at);
-            true
-        }
-        None => false,
-    };
-    if let Some(Json::Array(entries)) = doc.get_mut(KEY_EDUCATION) {
-        entries.retain(|entry| match entry.get(KEY_DEGREE).and_then(Json::as_str) {
-            Some(text) => take(text),
-            None => true,
-        });
-    }
-    let top = match doc.get(KEY_DEGREE) {
-        Some(Json::String(text)) => Some(Json::String(text.clone())).filter(|_| take(text)),
-        Some(Json::Array(entries)) => {
-            let kept: Vec<Json> = entries
+        File {
+            wunschrollen: form.roles.clone(),
+            vertragsarten: contracts,
+            tagessatz_wunsch: form.day_rate_wish,
+            tagessatz_min: form.day_rate_min,
+            mindestgehalt: form.min_salary,
+            arbeitsmodell: match form.work_mode {
+                WorkWish::Any => FileWorkMode::Egal,
+                WorkWish::Remote => FileWorkMode::Remote,
+                WorkWish::Hybrid => FileWorkMode::Hybrid,
+                WorkWish::Onsite => FileWorkMode::VorOrt,
+            },
+            laender: form.countries.clone(),
+            regionen: form.regions.clone(),
+            verfuegbar_ab: match &form.available {
+                ProfileAvailability::Now => NOW.to_owned(),
+                ProfileAvailability::From { date } => date.clone(),
+            },
+            auslastung: match form.workload {
+                Workload::Any => FileWorkload::Egal,
+                Workload::Fulltime => FileWorkload::Vollzeit,
+                Workload::Parttime => FileWorkload::Teilzeit,
+            },
+            mindestlaufzeit_monate: form.min_months,
+            kernkompetenzen: form
+                .competences
                 .iter()
-                .filter(|entry| entry.as_str().is_none_or(&mut take))
-                .cloned()
-                .collect();
-            Some(Json::Array(kept)).filter(|k| k.as_array().is_some_and(|a| !a.is_empty()))
-        }
-        other => other.cloned(),
-    };
-    match top {
-        Some(value) => doc.set(KEY_DEGREE, value),
-        None => {
-            doc.remove(KEY_DEGREE);
-        }
-    }
-    if matches!(doc.get(KEY_EDUCATION), Some(Json::Array(entries)) if entries.is_empty()) {
-        doc.remove(KEY_EDUCATION);
-    }
-    if left.is_empty() {
-        return;
-    }
-    match doc.get(KEY_EDUCATION) {
-        None if doc.get(KEY_DEGREE).is_none() && left.len() == 1 => {
-            doc.set(KEY_DEGREE, Json::text(left[0]));
-        }
-        None | Some(Json::Array(_)) => {
-            let mut entries = items(doc, KEY_EDUCATION).to_vec();
-            for text in left {
-                let mut entry = Json::object();
-                entry.set(KEY_DEGREE, Json::text(text));
-                entries.push(entry);
-            }
-            doc.set(KEY_EDUCATION, Json::Array(entries));
-        }
-        // `ausbildung` holds something else: the new degrees join `abschluss`.
-        Some(_) => {
-            let mut list = match doc.get(KEY_DEGREE) {
-                Some(Json::Array(entries)) => entries.clone(),
-                Some(Json::String(text)) => vec![Json::text(text)],
-                _ => Vec::new(),
-            };
-            list.extend(left.into_iter().map(|t| Json::text(t)));
-            doc.set(KEY_DEGREE, Json::Array(list));
+                .map(|c| FileCompetence {
+                    kompetenz: c.name.clone(),
+                    jahre: c.years,
+                    schwerpunkt: c.focus,
+                })
+                .collect(),
+            methoden_tools: form.tools.clone(),
+            berufserfahrung_jahre: form.years,
+            branchen: form
+                .industries
+                .iter()
+                .map(|i| FileIndustry {
+                    branche: i.name.clone(),
+                    wunsch: i.preferred,
+                })
+                .collect(),
+            sprachen: form
+                .languages
+                .iter()
+                .map(|l| FileLanguage {
+                    sprache: l.language.clone(),
+                    niveau: match l.level {
+                        LanguageLevel::A1 => FileLevel::A1,
+                        LanguageLevel::A2 => FileLevel::A2,
+                        LanguageLevel::B1 => FileLevel::B1,
+                        LanguageLevel::B2 => FileLevel::B2,
+                        LanguageLevel::C1 => FileLevel::C1,
+                        LanguageLevel::C2 => FileLevel::C2,
+                        LanguageLevel::Native => FileLevel::Muttersprache,
+                    },
+                })
+                .collect(),
+            abschluesse: form.degrees.clone(),
+            zertifizierungen: form.certificates.clone(),
+            ausschlusswoerter: form.exclusion_words.clone(),
         }
     }
-}
 
-fn remove_in(doc: &mut Json, section: &str, key: &str) {
-    if let Some(section) = doc.get_mut(section) {
-        section.remove(key);
-    }
-}
-
-/// Where a criterion is (German or English section and key, with a value), else
-/// `harte_kriterien` with the German key.
-fn criterion_at(doc: &Json, keys: &[&'static str]) -> (&'static str, &'static str) {
-    lexicon::KEY_CRITERIA_ALIASES
-        .iter()
-        .find_map(|section| {
-            let values = doc.get(section)?;
-            first(values, keys).map(|(key, _)| (*section, key))
-        })
-        .unwrap_or((lexicon::KEY_CRITERIA, keys[0]))
-}
-
-/// A criterion where it is (see [`criterion_at`]); `None` removes it everywhere.
-fn write_criterion(doc: &mut Json, keys: &[&'static str], value: Option<Json>) {
-    match value {
-        Some(value) => {
-            let (section, key) = criterion_at(doc, keys);
-            doc.object_mut(section).set(key, value);
+    /// The form of the file; `projekt` (projects and interim work) is always on, so a list of contract types
+    /// without it is no profile of this app.
+    fn form(self) -> Result<ProfileForm, InvalidInput> {
+        if !self.vertragsarten.contains(&Contract::Projekt) {
+            return Err(InvalidInput::ProfileValue {
+                field: "permanent".to_owned(),
+                row: None,
+                max: None,
+            });
         }
-        None => remove_all(doc, lexicon::KEY_CRITERIA_ALIASES, keys),
-    }
-}
-
-/// The availability where the engine reads it (the criteria, else the preferences, German
-/// and English), else `harte_kriterien.verfuegbar_ab`; `None` removes it everywhere.
-fn write_available(doc: &mut Json, text: Option<String>) {
-    let keys = lexicon::KEYS_AVAILABLE;
-    let Some(text) = text else {
-        remove_all(doc, lexicon::KEY_CRITERIA_ALIASES, keys);
-        remove_all(doc, lexicon::KEY_PREFERENCES_ALIASES, keys);
-        return;
-    };
-    let non_empty = |value: &Json| value.as_str().is_some_and(|t| !t.trim().is_empty());
-    let found = lexicon::KEY_CRITERIA_ALIASES
-        .iter()
-        .chain(lexicon::KEY_PREFERENCES_ALIASES)
-        .find_map(|section| {
-            let values = doc.get(section)?;
-            keys.iter()
-                .find(|key| values.get(key).is_some_and(non_empty))
-                .map(|key| (*section, *key))
-        });
-    let (section, key) = found.unwrap_or((lexicon::KEY_CRITERIA, keys[0]));
-    doc.object_mut(section).set(key, Json::String(text));
-}
-
-/// A profile value excludes ANÜ, as the engine reads it.
-fn names_anue(item: &Json) -> bool {
-    facts::excludes_anue(&item.to_value()) == Some(true)
-}
-
-/// A profile value excludes permanent employment, as the engine reads it.
-fn names_permanent(item: &Json) -> bool {
-    facts::excludes_permanent(&item.to_value())
-}
-
-/// The excluded contract types where they are: switching one on adds its value, switching
-/// it off removes every entry that names it; other entries stay.
-fn write_contracts(doc: &mut Json, before: &ProfileCriteria, after: &ProfileCriteria) {
-    if after.no_anue == before.no_anue && after.no_permanent == before.no_permanent {
-        return;
-    }
-    let (section, key) = criterion_at(doc, lexicon::KEYS_EXCLUDED_CONTRACTS);
-    let mut kinds: Vec<Json> = match doc.get(section).and_then(|s| s.get(key)) {
-        Some(Json::Array(list)) => list.clone(),
-        Some(text @ Json::String(_)) => vec![text.clone()],
-        _ => Vec::new(),
-    };
-    for (on, was, names, value) in [
-        (
-            after.no_anue,
-            before.no_anue,
-            names_anue as fn(&Json) -> bool,
-            lexicon::CONTRACT_ANUE,
-        ),
-        (
-            after.no_permanent,
-            before.no_permanent,
-            names_permanent,
-            CONTRACT_PERMANENT,
-        ),
-    ] {
-        if on == was {
-            continue;
-        }
-        if on {
-            if !kinds.iter().any(names) {
-                kinds.push(Json::text(value));
-            }
+        let available = if self.verfuegbar_ab.trim() == NOW {
+            ProfileAvailability::Now
         } else {
-            kinds.retain(|kind| !names(kind));
-        }
-    }
-    if kinds.is_empty() {
-        remove_in(doc, section, key);
-    } else {
-        doc.object_mut(section).set(key, Json::Array(kinds));
+            ProfileAvailability::From {
+                date: self.verfuegbar_ab,
+            }
+        };
+        validate(&ProfileForm {
+            roles: self.wunschrollen,
+            permanent: self.vertragsarten.contains(&Contract::Festanstellung),
+            temporary: self.vertragsarten.contains(&Contract::Zeitarbeit),
+            day_rate_wish: self.tagessatz_wunsch,
+            day_rate_min: self.tagessatz_min,
+            min_salary: self.mindestgehalt,
+            work_mode: match self.arbeitsmodell {
+                FileWorkMode::Egal => WorkWish::Any,
+                FileWorkMode::Remote => WorkWish::Remote,
+                FileWorkMode::Hybrid => WorkWish::Hybrid,
+                FileWorkMode::VorOrt => WorkWish::Onsite,
+            },
+            countries: self.laender,
+            regions: self.regionen,
+            available,
+            workload: match self.auslastung {
+                FileWorkload::Egal => Workload::Any,
+                FileWorkload::Vollzeit => Workload::Fulltime,
+                FileWorkload::Teilzeit => Workload::Parttime,
+            },
+            min_months: self.mindestlaufzeit_monate,
+            competences: self
+                .kernkompetenzen
+                .into_iter()
+                .map(|c| ProfileCompetence {
+                    name: c.kompetenz,
+                    years: c.jahre,
+                    focus: c.schwerpunkt,
+                })
+                .collect(),
+            tools: self.methoden_tools,
+            years: self.berufserfahrung_jahre,
+            industries: self
+                .branchen
+                .into_iter()
+                .map(|i| ProfileIndustry {
+                    name: i.branche,
+                    preferred: i.wunsch,
+                })
+                .collect(),
+            languages: self
+                .sprachen
+                .into_iter()
+                .map(|l| ProfileLanguage {
+                    language: l.sprache,
+                    level: match l.niveau {
+                        FileLevel::A1 => LanguageLevel::A1,
+                        FileLevel::A2 => LanguageLevel::A2,
+                        FileLevel::B1 => LanguageLevel::B1,
+                        FileLevel::B2 => LanguageLevel::B2,
+                        FileLevel::C1 => LanguageLevel::C1,
+                        FileLevel::C2 => LanguageLevel::C2,
+                        FileLevel::Muttersprache => LanguageLevel::Native,
+                    },
+                })
+                .collect(),
+            degrees: self.abschluesse,
+            certificates: self.zertifizierungen,
+            exclusion_words: self.ausschlusswoerter,
+        })
     }
 }
 
-/// `2026-11-01` -> `01.11.2026`, the way the engine reads a start.
-fn german_date(iso: &str) -> String {
-    match iso.parse::<Date>() {
-        Ok(day) => format!("{:02}.{:02}.{:04}", day.day(), day.month(), day.year()),
-        Err(_) => iso.to_owned(),
-    }
+/// The profile in a file's text (without a byte order mark): every key of v19 or none, every
+/// value of its type and within its limits.
+pub fn parse(text: &str) -> Result<ProfileForm, InvalidInput> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    let file: File = serde_json::from_str(text).map_err(|e| InvalidInput::ProfileNotJson {
+        line: e.line(),
+        column: e.column(),
+    })?;
+    file.form()
 }
 
-fn write_criteria(doc: &mut Json, before: &ProfileCriteria, after: &ProfileCriteria) {
-    let (mut old, mut new) = (before.clone(), after.clone());
-    for row in &CRITERIA {
-        match row.kind {
-            Kind::Number { slot, .. } => {
-                let value = *slot(&mut new);
-                if value != *slot(&mut old) {
-                    write_criterion(doc, row.keys, value.map(Json::number));
-                }
-            }
-            Kind::Words { slot, .. } => {
-                let words = slot(&mut new).clone();
-                if words != *slot(&mut old) {
-                    let value = (!words.is_empty()).then(|| Json::texts(&words));
-                    write_criterion(doc, row.keys, value);
-                }
-            }
-            Kind::Contracts => write_contracts(doc, before, after),
-            Kind::Available => {
-                if after.available != before.available {
-                    write_available(
-                        doc,
-                        match &after.available {
-                            ProfileAvailability::Unset => None,
-                            ProfileAvailability::Now => Some(lexicon::AVAILABLE_NOW.to_owned()),
-                            ProfileAvailability::From { date } => Some(german_date(date)),
-                        },
-                    );
-                }
-            }
-            Kind::RemoteOutside => {
-                if after.remote_outside != before.remote_outside {
-                    write_criterion(doc, row.keys, Some(Json::Bool(after.remote_outside)));
-                }
-            }
-        }
-    }
-    // A minimum day rate taken away goes from the preferences too (`tagessatz_ab`).
-    if before.min_day_rate.is_some() && after.min_day_rate.is_none() {
-        remove_all(
-            doc,
-            lexicon::KEY_PREFERENCES_ALIASES,
-            &[lexicon::KEY_RATE_FROM],
-        );
-    }
+/// The file of a form as JSON (what the AI prompt shows of the profile).
+pub fn file_value(form: &ProfileForm) -> serde_json::Value {
+    serde_json::to_value(File::of(form)).unwrap_or_default()
 }
 
-/// The interface's description of the form (`ui/src/lib/ipc/types/profile.ts`, written by
-/// `view/ts.rs`): the number criteria with their limit and unit, the word criteria, the
-/// fields whose value of the file can be removed, the limits of the lists and the empty form.
+/// The file's text of a valid form (pretty, a line break at the end).
+pub(crate) fn write(form: &ProfileForm) -> String {
+    let mut text = serde_json::to_string_pretty(&File::of(form)).unwrap_or_default();
+    text.push('\n');
+    text
+}
+
+/// The values the interface shares with the form (`profile.ts`).
 #[cfg(test)]
 pub(crate) fn typescript() -> String {
-    use std::fmt::Write as _;
-
-    fn json(value: impl Serialize) -> String {
-        serde_json::to_string(&value).unwrap_or_default()
-    }
-    let quoted = |value: String| format!("\"{value}\"");
-    let mut numbers = String::new();
-    let mut words = String::new();
-    for row in &CRITERIA {
-        match row.kind {
-            Kind::Number { max, unit, .. } => {
-                let _ = writeln!(
-                    numbers,
-                    "  {}: {{ max: {max}, unit: {} }},",
-                    row.field.name(),
-                    json(unit)
-                );
-            }
-            Kind::Words { upper, .. } => {
-                let _ = writeln!(words, "  {}: {{ upper: {upper} }},", row.field.name());
-            }
-            Kind::Contracts | Kind::Available | Kind::RemoteOutside => {}
-        }
-    }
-    let units: Vec<String> = [Unit::Euro, Unit::Percent, Unit::Days, Unit::Months]
-        .iter()
-        .map(json)
-        .collect();
-    let fields: Vec<String> = UnreadableField::ALL
-        .iter()
-        .map(|field| quoted(field.name()))
-        .collect();
     let empty = serde_json::to_string_pretty(&ProfileForm::default()).unwrap_or_default();
     format!(
-        "import type {{ ProfileForm }} from \"./ProfileForm\";\n\
-         import type {{ UnreadableField }} from \"./UnreadableField\";\n\n\
-         /** The unit a number criterion is shown with (the catalog's `profile.unit`). */\n\
-         export type CriterionUnit = {};\n\n\
-         /** The number criteria of the form: the largest value the backend takes, the unit. */\n\
-         export const NUMBER_CRITERIA = {{\n{numbers}}} as const satisfies Record<string, \
-         {{ max: number; unit: CriterionUnit }}>;\n\
-         export type NumberCriterion = keyof typeof NUMBER_CRITERIA;\n\n\
-         /** The word criteria of the form (`upper`: codes in capitals). */\n\
-         export const WORD_CRITERIA = {{\n{words}}} as const satisfies Record<string, \
-         {{ upper: boolean }}>;\n\
-         export type WordCriterion = keyof typeof WORD_CRITERIA;\n\n\
-         /** Every field whose value of the file can be removed on its own. */\n\
-         export const UNREADABLE_FIELDS: readonly UnreadableField[] = [{}];\n\n\
+        "import type {{ ProfileForm }} from \"./ProfileForm\";\n\n\
+         /** The largest value of each number of the form (core's form limits). */\n\
+         export const NUMBER_LIMITS = {{\n  \
+         dayRateWish: {MAX_DAY_RATE},\n  dayRateMin: {MAX_DAY_RATE},\n  \
+         minSalary: {MAX_SALARY},\n  years: {MAX_YEARS},\n\
+         }} as const satisfies Partial<Record<keyof ProfileForm, number>>;\n\
+         export type NumberField = keyof typeof NUMBER_LIMITS;\n\n\
          /** At most this many competences are Schwerpunkte. */\n\
          export const MAX_FOCUS = {MAX_FOCUS};\n\
          /** The most years of experience, in total and per competence. */\n\
@@ -1805,506 +843,255 @@ pub(crate) fn typescript() -> String {
          /** The most entries of a list, and characters of an entry. */\n\
          export const MAX_ITEMS = {MAX_ITEMS};\n\
          export const MAX_TEXT = {MAX_TEXT};\n\n\
-         /** The empty form (`ProfileForm::default()`). */\n\
-         export const EMPTY_FORM: ProfileForm = {empty};\n",
-        units.join(" | "),
-        fields.join(", "),
+         /** The form of a new profile (`ProfileForm::default()`): Festanstellung and Zeitarbeit\n \
+         *  allowed, Deutschland, from now on, no wish of work mode, workload or duration. */\n\
+         export const EMPTY_FORM: ProfileForm = {empty};\n"
     )
 }
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{Value, json};
-
     use super::*;
-    use crate::matching::{ProfileWarningCode, compile_profile};
 
-    fn doc(value: &Value) -> Json {
-        serde_json::from_str(&value.to_string()).unwrap()
+    pub(crate) fn full() -> ProfileForm {
+        let texts = |items: &[&str]| items.iter().map(|t| (*t).to_owned()).collect::<Vec<_>>();
+        ProfileForm {
+            roles: texts(&["Interim CFO", "Head of Controlling"]),
+            permanent: true,
+            temporary: false,
+            day_rate_wish: Some(1_200),
+            day_rate_min: Some(1_000),
+            min_salary: Some(150_000),
+            work_mode: WorkWish::Hybrid,
+            countries: texts(&["DE", "AT"]),
+            regions: texts(&["Hamburg"]),
+            available: ProfileAvailability::From {
+                date: "01.11.2026".into(),
+            },
+            workload: Workload::Fulltime,
+            min_months: 6,
+            competences: vec![
+                ProfileCompetence {
+                    name: "Controlling".into(),
+                    years: Some(15),
+                    focus: true,
+                },
+                ProfileCompetence {
+                    name: "Treasury".into(),
+                    years: None,
+                    focus: false,
+                },
+            ],
+            tools: texts(&["SAP S/4HANA"]),
+            years: Some(18),
+            industries: vec![ProfileIndustry {
+                name: "Pharma".into(),
+                preferred: true,
+            }],
+            languages: vec![ProfileLanguage {
+                language: "Deutsch".into(),
+                level: LanguageLevel::Native,
+            }],
+            degrees: texts(&["Diplom-Kauffrau, BWL"]),
+            certificates: texts(&["PMP"]),
+            exclusion_words: texts(&["Werkstudent"]),
+        }
     }
 
-    /// `UnreadableField::ALL` names every field once (the interface's list is written from
-    /// it), each has its keys, and a hard criterion is one row of `CRITERIA`.
     #[test]
-    fn every_field_is_listed_once_and_has_its_keys() {
-        use std::collections::BTreeSet;
-        use ts_rs::TS as _;
+    fn the_file_reads_back_as_written() {
+        let form = full();
+        let text = write(&form);
+        assert_eq!(parse(&text).unwrap(), form);
+        let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(
+            value["vertragsarten"],
+            serde_json::json!(["projekt", "festanstellung"])
+        );
+        assert_eq!(value["arbeitsmodell"], "hybrid");
+        assert_eq!(value["auslastung"], "vollzeit");
+        assert_eq!(value["verfuegbar_ab"], "01.11.2026");
+        assert_eq!(value["sprachen"][0]["niveau"], "Muttersprache");
+        assert_eq!(value["kernkompetenzen"][0]["schwerpunkt"], true);
+        assert_eq!(value["branchen"][0]["wunsch"], true);
+        // The default form writes every key and reads back the same.
+        let empty = write(&ProfileForm::default());
+        assert_eq!(parse(&empty).unwrap(), ProfileForm::default());
+        assert!(empty.contains("\"verfuegbar_ab\": \"sofort\""), "{empty}");
+    }
 
-        let union = UnreadableField::inline(&ts_rs::Config::new());
-        let variants: BTreeSet<&str> = union.split(" | ").collect();
-        let listed: Vec<String> = UnreadableField::ALL
-            .iter()
-            .map(|field| format!("\"{}\"", field.name()))
-            .collect();
-        let unique: BTreeSet<&str> = listed.iter().map(String::as_str).collect();
-        assert_eq!(unique.len(), listed.len(), "each field once");
-        assert_eq!(unique, variants, "ALL names every variant");
-        for field in UnreadableField::ALL {
-            let _ = field.place();
-            let rows = CRITERIA.iter().filter(|row| row.field == field).count();
-            assert!(rows <= 1, "{field:?} is one row");
+    /// The keys the engine names are keys of the file.
+    #[test]
+    fn the_file_keys_are_the_engine_keys() {
+        let value = serde_json::to_value(File::of(&full())).unwrap();
+        for k in [
+            key::ROLES,
+            key::COMPETENCES,
+            key::TOOLS,
+            key::INDUSTRIES,
+            key::LANGUAGES,
+            key::DEGREES,
+            key::CERTIFICATES,
+            key::DAY_RATE_WISH,
+            key::WORK_MODE,
+            key::REGIONS,
+        ] {
+            assert!(value.get(k).is_some(), "{k}");
+        }
+        assert!(value[key::COMPETENCES][0].get(key::COMPETENCE).is_some());
+        assert!(value[key::INDUSTRIES][0].get(key::INDUSTRY).is_some());
+        assert!(value[key::LANGUAGES][0].get(key::LANGUAGE).is_some());
+    }
+
+    /// The CV worker's answer (`cv-worker/schema.json`) is a part of the file: every key of
+    /// it, with the item keys of its lists, is a key of the file, and its language levels are
+    /// the file's.
+    #[test]
+    fn the_cv_schema_is_a_part_of_the_file() {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cv-worker/schema.json");
+        let schema: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let file = serde_json::to_value(File::of(&full())).unwrap();
+        for (key, property) in schema["properties"].as_object().unwrap() {
+            assert!(file.get(key).is_some(), "{key}");
+            if let Some(items) = property["items"]["properties"].as_object() {
+                for item in items.keys() {
+                    assert!(file[key][0].get(item).is_some(), "{key}[].{item}");
+                }
+            }
+        }
+        let levels = &schema["properties"]["sprachen"]["items"]["properties"]["niveau"]["enum"];
+        for level in levels.as_array().unwrap() {
+            let text = format!(r#"{{"sprachen": [{{"sprache": "Deutsch", "niveau": {level}}}]}}"#);
+            assert!(parse(&text).is_ok(), "{level}");
         }
     }
 
-    /// Without the origins of the rows (a form read back from a written file has new ones).
-    fn plain(form: &ProfileForm) -> ProfileForm {
-        let mut form = form.normalized();
-        for row in &mut form.competences {
-            row.origin = None;
+    /// A missing key reads as a new profile has it; a missing `vertragsarten` allows every
+    /// contract type; anything else that is no v19 does not read.
+    #[test]
+    fn what_reads_and_what_does_not() {
+        let form = parse(r#"{"wunschrollen": ["Interim CFO"]}"#).unwrap();
+        assert_eq!(
+            form,
+            ProfileForm {
+                roles: vec!["Interim CFO".into()],
+                ..ProfileForm::default()
+            }
+        );
+        for text in [
+            r#"{"vertragsarten": []}"#,
+            r#"{"vertragsarten": ["festanstellung"]}"#,
+            r#"{"stationen": []}"#,
+            r#"{"kernkompetenzen": [{"kompetenz": "X", "auch": ["Y"]}]}"#,
+            r#"{"sprachen": [{"sprache": "Englisch", "niveau": "gut"}]}"#,
+            r#"{"verfuegbar_ab": "31.02.2026"}"#,
+            r#"{"verfuegbar_ab": "2026-11-01"}"#,
+            r#"{"mindestlaufzeit_monate": 4}"#,
+            r#"{"tagessatz_min": 1000000}"#,
+            "[1]",
+            "{kaputt",
+        ] {
+            assert!(parse(text).is_err(), "{text}");
         }
-        for row in &mut form.languages {
-            row.origin = None;
-        }
-        form
+        let six = (0..6)
+            .map(|n| format!(r#"{{"kompetenz": "K{n}", "schwerpunkt": true}}"#))
+            .collect::<Vec<_>>()
+            .join(",");
+        assert!(parse(&format!(r#"{{"kernkompetenzen": [{six}]}}"#)).is_err());
+        assert_eq!(
+            parse("\u{feff}{}").unwrap(),
+            ProfileForm::default(),
+            "a byte order mark"
+        );
     }
 
-    fn texts(items: &[&str]) -> Vec<String> {
+    #[test]
+    fn the_salary_goes_without_permanent_and_temporary_work() {
+        let form = ProfileForm {
+            permanent: false,
+            temporary: false,
+            min_salary: Some(100_000),
+            ..ProfileForm::default()
+        };
+        assert_eq!(form.normalized().min_salary, None);
+        let temporary = ProfileForm {
+            temporary: true,
+            ..form
+        };
+        assert_eq!(temporary.normalized().min_salary, Some(100_000));
+    }
+
+    #[test]
+    fn the_required_fields() {
+        assert_eq!(
+            missing_required(&ProfileForm::default()),
+            ["roles", "competences", "languages"]
+        );
+        let none = ProfileForm {
+            countries: vec![" ".into()],
+            ..ProfileForm::default()
+        };
+        assert_eq!(
+            missing_required(&none),
+            ["roles", "countries", "competences", "languages"]
+        );
+        assert!(missing_required(&full()).is_empty());
+    }
+
+    fn names(items: &[&str]) -> Vec<String> {
         items.iter().map(|t| (*t).to_owned()).collect()
     }
 
-    /// A profile under English keys, as the engine reads it too.
-    fn english_profile() -> Json {
-        doc(&json!({
-            "kernkompetenzen": [{"kompetenz": "Controlling"}, {"kompetenz": "Treasury"}],
-            "focus_areas": ["Controlling"],
-            "target_roles": ["Interim CFO"],
-            "preferences": {
-                "desired_day_rate": 1100,
-                "remote": "hybrid",
-                "regions": ["Hamburg"],
-                "industries": ["Chemie"]
-            },
-            "languages": [{"language": "English", "level": "C1"}],
-            "hard_criteria": {
-                "min_day_rate": 900,
-                "countries": ["DE"],
-                "excluded_contract_types": ["anue"],
-                "remote_outside_allowed": false,
-                "available_from": "2026-11-01"
-            }
-        }))
-    }
-
-    /// The search terms follow the roles and the Schwerpunkte until they are stored; stored,
-    /// they stay as written, each once, at most eight.
+    /// A save on an older copy keeps what came in between and takes out only what it took
+    /// out itself, in every list; a row the editor did not touch keeps the file's values.
     #[test]
-    fn search_terms_follow_the_roles_until_stored() {
-        let mut profile = doc(&json!({
-            "wunschrollen": ["Interim CFO", "interim cfo", "Head of Finance"],
-            "schwerpunkte": ["Controlling"],
-            "kernkompetenzen": [{"kompetenz": "Controlling"}]
-        }));
-        let before = read(&profile);
-        assert_eq!(
-            before.search_terms,
-            ["Interim CFO", "Head of Finance", "Controlling"]
-        );
-        // Another change leaves them unstored: they still follow the roles.
-        let mut after = before.clone();
-        after.years = Some(12);
-        merge(&mut profile, &before, &after, &[]);
-        assert!(profile.get("suchbegriffe").is_none());
-        // Changed, they are stored and stay.
-        let mut changed = read(&profile);
-        changed.search_terms = ["SAP FI/CO", "Interim CFO", "sap fi/co"]
-            .map(String::from)
-            .to_vec();
-        let unchanged = read(&profile);
-        merge(&mut profile, &unchanged, &changed, &[]);
-        let stored = read(&profile);
-        assert_eq!(stored.search_terms, ["SAP FI/CO", "Interim CFO"]);
-        let many: Vec<String> = (1..=12).map(|n| format!("Rolle {n}")).collect();
-        assert_eq!(search_terms(&many, &[], &[]).len(), MAX_SEARCH_TERMS);
-    }
-
-    /// A profile under English keys fills the form.
-    #[test]
-    fn english_keys_fill_the_form() {
-        let before = read(&english_profile());
-        assert_eq!(before.focus, ["Controlling"]);
-        assert_eq!(before.roles, ["Interim CFO"]);
-        assert_eq!(
-            before.wishes,
-            ProfileWishes {
-                day_rate: Some(1100),
-                remote: Some(RemoteWish::Partly),
-                regions: texts(&["Hamburg"]),
-                industries: texts(&["Chemie"]),
-            }
-        );
-        assert_eq!(before.languages[0].language, "English");
-        assert_eq!(before.languages[0].level, Some(LanguageLevel::C1));
-        let c = &before.criteria;
-        assert_eq!(
-            (c.min_day_rate, c.countries.as_slice()),
-            (Some(900), &texts(&["DE"])[..])
-        );
-        assert!(c.no_anue && !c.no_permanent && !c.remote_outside);
-        assert_eq!(
-            c.available,
-            ProfileAvailability::From {
-                date: "2026-11-01".into()
-            }
-        );
-    }
-
-    /// Every change of a profile under English keys goes back under the key that is there:
-    /// no German key appears next to an English one.
-    #[test]
-    fn english_keys_are_written_where_they_are() {
-        let mut profile = english_profile();
-        let before = read(&profile);
-        let mut after = before.clone();
-        after.focus.push("Treasury".into());
-        after.roles.push("Head of Controlling".into());
-        after.wishes = ProfileWishes {
-            day_rate: Some(1200),
-            remote: Some(RemoteWish::Full),
-            regions: texts(&["Hamburg", "Berlin"]),
-            industries: texts(&["Chemie", "Pharma"]),
+    fn a_save_on_an_older_copy_keeps_what_came_in_between() {
+        let p0 = ProfileForm {
+            tools: names(&["SAP", "IFRS"]),
+            ..full()
         };
-        after.languages[0].level = Some(LanguageLevel::C2);
-        after.languages.push(ProfileLanguage {
-            language: "German".into(),
-            level: Some(LanguageLevel::Native),
-            origin: None,
+        // Meanwhile the reader adds a tool, a language and gives Treasury its years.
+        let mut now = p0.clone();
+        now.tools.push("HGB".into());
+        now.languages.push(ProfileLanguage {
+            language: "Englisch".into(),
+            level: LanguageLevel::C1,
         });
-        after.criteria.min_day_rate = Some(1000);
-        after.criteria.countries.push("AT".into());
-        after.criteria.no_anue = false;
-        after.criteria.no_permanent = true;
-        after.criteria.remote_outside = true;
-        after.criteria.available = ProfileAvailability::Now;
-        merge(&mut profile, &before, &after, &[]);
-
-        let value = profile.to_value();
-        for german in [
-            "schwerpunkte",
-            "wunschrollen",
-            "einsatzpraeferenzen",
-            "sprachen",
-            "harte_kriterien",
-        ] {
-            assert!(value.get(german).is_none(), "{german}: {value}");
-        }
-        assert_eq!(value["focus_areas"], json!(["Controlling", "Treasury"]));
-        assert_eq!(
-            value["target_roles"],
-            json!(["Interim CFO", "Head of Controlling"])
-        );
-        assert_eq!(
-            value["preferences"],
-            json!({
-                "desired_day_rate": 1200,
-                "remote": "voll",
-                "regions": ["Hamburg", "Berlin"],
-                "industries": ["Chemie", "Pharma"]
-            })
-        );
-        assert_eq!(
-            value["languages"],
-            json!([
-                {"language": "English", "level": "C2"},
-                {"language": "German", "level": "native"}
-            ])
-        );
-        assert_eq!(
-            value["hard_criteria"],
-            json!({
-                "min_day_rate": 1000,
-                "countries": ["DE", "AT"],
-                "excluded_contract_types": ["festanstellung"],
-                "remote_outside_allowed": true,
-                "available_from": "sofort"
-            })
-        );
-        // Unstored, the search terms follow the new roles and Schwerpunkte.
-        after.search_terms = search_terms(&[], &after.roles, &after.focus);
-        assert_eq!(plain(&read(&profile)), plain(&after));
-    }
-
-    /// Every value the engine cannot read names a field of the form; removing the field's
-    /// value takes its keys out wherever they are, and nothing else.
-    #[test]
-    fn a_value_that_does_not_read_can_be_removed() {
-        let mut profile = doc(&json!({
-            "name": "Erika Beispiel",
-            "kernkompetenzen": [{"kompetenz": "Controlling"}],
-            "schwerpunkte": 7,
-            "target_roles": "CFO",
-            "harte_kriterien": {
-                "min_tagessatz": "viel",
-                "laender": "Atlantis",
-                "ausgeschlossene_vertragsarten": 5,
-                "remote_ausserhalb_erlaubt": "vielleicht",
-                "zielprofil_min_jahre": "senior",
-                "festanstellung_orte": [],
-                "festanstellung_remote_min": "viel",
-                "auslastung_min_tage": "viel",
-                "auslastung_max_tage": 9,
-                "min_laufzeit_monate": "lang",
-                "ausschlusswoerter": 5
-            },
-            "hard_criteria": {"min_salary": "hoch"},
-            "einsatzpraeferenzen": {
-                "verfuegbar_ab": "bald",
-                "tagessatz_wunsch": "hoch",
-                "remote": "egal",
-                "regionen": 5,
-                "branchen": {}
-            }
-        }));
-        let warnings = compile_profile(&profile.to_value())
-            .summary()
-            .warnings
-            .clone();
-        let mut fields: Vec<UnreadableField> = warnings
-            .iter()
-            .filter_map(|w| match w.code {
-                ProfileWarningCode::AvailabilityNotUnderstood => Some(UnreadableField::Available),
-                ProfileWarningCode::CriterionNotUnderstood => {
-                    let key = w.params["key"].as_str().unwrap();
-                    Some(UnreadableField::of_key(key).unwrap_or_else(|| panic!("{key}")))
-                }
-                _ => None,
-            })
-            .collect();
-        fields.sort_by_key(|f| format!("{f:?}"));
-        fields.dedup();
-        assert_eq!(fields.len(), UnreadableField::ALL.len(), "{warnings:?}");
-
-        let form = read(&profile);
-        merge(&mut profile, &form, &form, &fields);
-        let value = profile.to_value();
-        assert_eq!(
-            value,
-            json!({
-                "name": "Erika Beispiel",
-                "kernkompetenzen": [{"kompetenz": "Controlling"}],
-                // The retired target years are read no more, and kept as they are.
-                "harte_kriterien": {"zielprofil_min_jahre": "senior"},
-                "hard_criteria": {},
-                "einsatzpraeferenzen": {}
-            })
-        );
-        let left = compile_profile(&value).summary().warnings.clone();
-        assert!(
-            !left.iter().any(|w| matches!(
-                w.code,
-                ProfileWarningCode::CriterionNotUnderstood
-                    | ProfileWarningCode::AvailabilityNotUnderstood
-            )),
-            "{left:?}"
-        );
-        assert_eq!(UnreadableField::of_key("hobbys"), None);
-        // The English keys and the spelling with an umlaut name the same fields.
-        for (key, field) in [
-            ("workload_min_days", UnreadableField::WorkloadMinDays),
-            ("workload_max_days", UnreadableField::WorkloadMaxDays),
-            ("min_duration_months", UnreadableField::MinMonths),
-            ("exclusion_words", UnreadableField::ExclusionWords),
-            ("ausschlusswörter", UnreadableField::ExclusionWords),
-        ] {
-            assert_eq!(UnreadableField::of_key(key), Some(field), "{key}");
-        }
-    }
-
-    /// Of more than five Schwerpunkte the form takes the first five, as the engine does, and
-    /// saving writes those five (the file then says what the form showed).
-    #[test]
-    fn more_than_five_focus_are_trimmed_and_saved() {
-        let names = ["A1", "B2", "C3", "D4", "E5", "F6", "G7"].map(|n| format!("Kompetenz {n}"));
-        let mut profile = doc(&json!({
-            "kernkompetenzen": names.iter().map(|n| json!({"kompetenz": n})).collect::<Vec<_>>(),
-            "schwerpunkte": names,
-        }));
-        let codes = |profile: &Json| -> Vec<ProfileWarningCode> {
-            compile_profile(&profile.to_value())
-                .summary()
-                .warnings
-                .iter()
-                .map(|w| w.code)
-                .collect()
+        now.competences[1].years = Some(8);
+        // The editor still holds p0: it drops IFRS, adds Konsolidierung as a tool and a
+        // competence and sets the minimum rate.
+        let mut after = p0.clone();
+        after.tools = names(&["SAP", "Konsolidierung"]);
+        after.competences.push(ProfileCompetence {
+            name: "Konsolidierung".into(),
+            years: Some(5),
+            focus: false,
+        });
+        after.day_rate_min = Some(1_100);
+        let merged = merge(&now, &p0, &after);
+        assert_eq!(merged.tools, ["SAP", "HGB", "Konsolidierung"]);
+        assert_eq!(merged.languages.len(), 2, "the language stays");
+        assert_eq!(merged.competences[1].years, Some(8), "untouched row");
+        assert_eq!(merged.competences[2].name, "Konsolidierung");
+        assert_eq!(merged.day_rate_min, Some(1_100));
+        // On an unchanged file the save is the form as it is, order and all.
+        let turned = ProfileForm {
+            tools: names(&["IFRS", "SAP"]),
+            ..p0.clone()
         };
-        assert!(codes(&profile).contains(&ProfileWarningCode::FocusTrimmed));
-        let form = read(&profile);
-        assert_eq!(form.focus, names[..MAX_FOCUS]);
-        assert!(validate(&form).is_ok(), "the trimmed form saves");
-        merge(&mut profile, &form, &form, &[]);
-        assert_eq!(
-            profile.to_value()["schwerpunkte"],
-            json!(names[..MAX_FOCUS])
-        );
-        assert!(!codes(&profile).contains(&ProfileWarningCode::FocusTrimmed));
-        // Five or fewer: an unchanged form writes nothing.
-        let same = profile.clone();
-        merge(&mut profile, &form, &form, &[]);
-        assert_eq!(profile, same);
-    }
-
-    /// A number out of range, or too many Schwerpunkte, names the limit (the page says it).
-    #[test]
-    fn validation_names_the_limit() {
-        let max = |form: &ProfileForm| match validate(form) {
-            Err(InvalidInput::ProfileValue { field, max, .. }) => (field, max),
-            other => panic!("{other:?}"),
+        assert_eq!(merge(&p0, &p0, &turned), turned);
+        // An entry the file dropped meanwhile does not come back.
+        let dropped = ProfileForm {
+            tools: names(&["SAP"]),
+            ..p0.clone()
         };
-        let mut form = ProfileForm::default();
-        form.criteria.permanent_remote_min = Some(150);
-        assert_eq!(max(&form), ("permanentRemoteMin".to_owned(), Some(100)));
-        form.criteria.permanent_remote_min = None;
-        form.competences = vec![ProfileCompetence {
-            name: "Controlling".into(),
-            years: Some(75),
-            aliases: Vec::new(),
-            origin: None,
-        }];
-        assert_eq!(max(&form), ("competences".to_owned(), Some(70)));
-        form.competences.clear();
-        form.focus = (1..=6).map(|n| format!("Thema {n}")).collect();
-        assert_eq!(max(&form), ("focus".to_owned(), Some(5)));
-        form.focus = vec!["x".repeat(2_000)];
-        assert_eq!(max(&form), ("focus".to_owned(), None));
-    }
-
-    /// Days and months far out of range still arrive (the field takes nine digits) and are
-    /// refused at their field with the limit; a second day below the first has no limit.
-    #[test]
-    fn engine16_limits_are_refused_at_their_field() {
-        let refused = |criteria: Value| {
-            let mut value = serde_json::to_value(ProfileForm::default()).unwrap();
-            for (key, v) in criteria.as_object().unwrap() {
-                value["criteria"][key] = v.clone();
-            }
-            let form: ProfileForm = serde_json::from_value(value).expect("the save arrives");
-            match validate(&form) {
-                Err(InvalidInput::ProfileValue { field, max, .. }) => (field, max),
-                other => panic!("{other:?}"),
-            }
+        let edited = ProfileForm {
+            day_rate_wish: Some(1_300),
+            tools: names(&["SAP", "IFRS", "Excel"]),
+            ..p0.clone()
         };
-        let at = |field: &str, max: Option<u32>| (field.to_owned(), max);
-        assert_eq!(
-            refused(json!({"workloadMinDays": 300})),
-            at("workloadMinDays", Some(5))
-        );
-        assert_eq!(
-            refused(json!({"workloadMaxDays": 999_999_999})),
-            at("workloadMaxDays", Some(5))
-        );
-        assert_eq!(
-            refused(json!({"minMonths": 70_000})),
-            at("minMonths", Some(120))
-        );
-        assert_eq!(
-            refused(json!({"workloadMinDays": 4, "workloadMaxDays": 3})),
-            at("workloadMaxDays", None)
-        );
-        let mut form = ProfileForm::default();
-        form.criteria.workload_min_days = Some(3);
-        form.criteria.workload_max_days = Some(5);
-        form.criteria.min_months = Some(120);
-        assert!(validate(&form).is_ok());
-    }
-
-    /// A value out of range names its field, and in a list of rows the row (counted without
-    /// the empty rows the form drops).
-    #[test]
-    fn validation_names_the_field_and_the_row() {
-        let error = |form: &ProfileForm| match validate(form) {
-            Err(InvalidInput::ProfileValue { field, row, .. }) => (field, row),
-            other => panic!("{other:?}"),
-        };
-        let row = |name: &str, years: Option<u32>| ProfileCompetence {
-            name: name.into(),
-            years,
-            aliases: Vec::new(),
-            origin: None,
-        };
-        let mut form = ProfileForm {
-            competences: vec![
-                row("", None),
-                row("Controlling", Some(12)),
-                row("IFRS", Some(71)),
-            ],
-            ..ProfileForm::default()
-        };
-        assert_eq!(error(&form), ("competences".to_owned(), Some(1)));
-        form.competences[2].years = Some(8);
-        form.competences[1].aliases = vec!["x".repeat(MAX_TEXT + 1)];
-        assert_eq!(error(&form), ("competences".to_owned(), Some(0)));
-        form.competences[1].aliases.clear();
-        form.languages = vec![
-            ProfileLanguage {
-                language: "Englisch".into(),
-                level: None,
-                origin: None,
-            },
-            ProfileLanguage {
-                language: "y".repeat(MAX_TEXT + 1),
-                level: None,
-                origin: None,
-            },
-        ];
-        assert_eq!(error(&form), ("languages".to_owned(), Some(1)));
-        form.languages.pop();
-        form.criteria.min_day_rate = Some(MAX_DAY_RATE + 1);
-        assert_eq!(error(&form), ("minDayRate".to_owned(), None));
-        form.criteria.min_day_rate = Some(950);
-        assert!(validate(&form).is_ok());
-    }
-
-    /// The remote switch reads a missing key as allowed, like the engine; only a change
-    /// writes it, where it is.
-    #[test]
-    fn remote_abroad_is_allowed_unless_the_profile_says_no() {
-        let empty = doc(&json!({}));
-        assert!(read(&empty).criteria.remote_outside);
-        assert!(ProfileForm::default().criteria.remote_outside);
-        let no = doc(&json!({"harte_kriterien": {"remote_ausserhalb_erlaubt": false}}));
-        assert!(!read(&no).criteria.remote_outside);
-
-        let mut profile = empty.clone();
-        let form = read(&profile);
-        merge(&mut profile, &form, &form, &[]);
-        assert_eq!(profile, empty, "unchanged: nothing written");
-        let mut off = form.clone();
-        off.criteria.remote_outside = false;
-        merge(&mut profile, &form, &off, &[]);
-        assert_eq!(
-            profile.to_value(),
-            json!({"harte_kriterien": {"remote_ausserhalb_erlaubt": false}})
-        );
-    }
-
-    /// The two excluded contract types share one list: each switch adds or removes only its
-    /// own entries, also when the list is a single text.
-    #[test]
-    fn contract_switches_share_one_list() {
-        let mut profile =
-            doc(&json!({"harte_kriterien": {"ausgeschlossene_vertragsarten": "ANÜ"}}));
-        let before = read(&profile);
-        assert!(before.criteria.no_anue && !before.criteria.no_permanent);
-        let mut after = before.clone();
-        after.criteria.no_permanent = true;
-        merge(&mut profile, &before, &after, &[]);
-        assert_eq!(
-            profile.to_value()["harte_kriterien"]["ausgeschlossene_vertragsarten"],
-            json!(["ANÜ", "festanstellung"])
-        );
-        let before = read(&profile);
-        let mut after = before.clone();
-        after.criteria.no_anue = false;
-        merge(&mut profile, &before, &after, &[]);
-        assert_eq!(
-            profile.to_value()["harte_kriterien"]["ausgeschlossene_vertragsarten"],
-            json!(["festanstellung"])
-        );
-        let read_back = read(&profile).criteria;
-        assert!(!read_back.no_anue && read_back.no_permanent);
-        let before = read(&profile);
-        let mut none = before.clone();
-        none.criteria.no_permanent = false;
-        merge(&mut profile, &before, &none, &[]);
-        assert_eq!(profile.to_value(), json!({"harte_kriterien": {}}));
+        assert_eq!(merge(&dropped, &p0, &edited).tools, ["SAP", "Excel"]);
     }
 }

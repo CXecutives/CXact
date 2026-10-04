@@ -68,8 +68,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IFRS 16 accounting role unrelated to HR, based in 'Amsterdam, Remote' while remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "IFRS 16 accounting role unrelated to HR, based in 'Amsterdam, Remote' while remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -798,8 +798,8 @@
     },
     "J05": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Group accounting is unrelated to pharma quality, and 'Eine unbefristete Festanstellung' in Garching is outside her permanent places; 'Bis zu drei Tage mobiles Arbeiten' proves no remote share.",
+      "excluded": false,
+      "reason": "Group accounting is unrelated to pharma quality, and 'Eine unbefristete Festanstellung' in Garching is outside her permanent places; 'Bis zu drei Tage mobiles Arbeiten' proves no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J06": {
@@ -840,8 +840,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IFRS 16 accounting role unrelated to QA, based in 'Amsterdam, Remote' while remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "IFRS 16 accounting role unrelated to QA, based in 'Amsterdam, Remote' while remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -1140,8 +1140,8 @@
     },
     "M14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "ICU nurse job unrelated to QA, permanent at '3.950 €/Monat - 4.850 €/Monat', far below the 135000 minimum.",
+      "excluded": false,
+      "reason": "ICU nurse job unrelated to QA, permanent at '3.950 €/Monat - 4.850 €/Monat', far below the 135000 minimum. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M15": {
@@ -1612,8 +1612,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Lease accounting for an Amsterdam client where \"The assignment is fully remote\", and remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "Lease accounting for an Amsterdam client where \"The assignment is fully remote\", and remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -1998,8 +1998,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Lease accounting for an Amsterdam client where \"The assignment is fully remote\", and remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "Lease accounting for an Amsterdam client where \"The assignment is fully remote\", and remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -2330,8 +2330,8 @@
     },
     "J03": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Internal audit is unrelated, and 'This is a permanent, full-time role based in Basel' is outside his permanent places with no stated remote share.",
+      "excluded": false,
+      "reason": "Internal audit is unrelated, and 'This is a permanent, full-time role based in Basel' is outside his permanent places with no stated remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J04": {
@@ -2684,8 +2684,8 @@
     },
     "M14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent nursing job at '3.950 €/Monat - 4.850 €/Monat'.",
+      "excluded": false,
+      "reason": "Permanent nursing job at '3.950 €/Monat - 4.850 €/Monat'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M15": {
@@ -3102,8 +3102,8 @@
     },
     "J03": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Internal audit is unrelated, and 'This is a permanent, full-time role based in Basel' is outside her permanent places with no stated remote share.",
+      "excluded": false,
+      "reason": "Internal audit is unrelated, and 'This is a permanent, full-time role based in Basel' is outside her permanent places with no stated remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J04": {
@@ -3114,8 +3114,8 @@
     },
     "J05": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Group accounting is unrelated to marketing, and 'Eine unbefristete Festanstellung' in Garching is outside her permanent places; 'Bis zu drei Tage mobiles Arbeiten' proves no remote share.",
+      "excluded": false,
+      "reason": "Group accounting is unrelated to marketing, and 'Eine unbefristete Festanstellung' in Garching is outside her permanent places; 'Bis zu drei Tage mobiles Arbeiten' proves no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J06": {
@@ -3228,8 +3228,8 @@
     },
     "K08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT infrastructure is unrelated to marketing, and the 'Permanent position | full-time, 38.5 hours per week | Vienna' is outside her Hamburg places with only 'up to two days of home office per week'.",
+      "excluded": false,
+      "reason": "IT infrastructure is unrelated to marketing, and the 'Permanent position | full-time, 38.5 hours per week | Vienna' is outside her Hamburg places with only 'up to two days of home office per week'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "K09": {
@@ -3456,8 +3456,8 @@
     },
     "M14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Nursing job in an 'Unbefristeter Arbeitsvertrag' at '3.950 €/Monat - 4.850 €/Monat', below her salary floor.",
+      "excluded": false,
+      "reason": "Nursing job in an 'Unbefristeter Arbeitsvertrag' at '3.950 €/Monat - 4.850 €/Monat', below her salary floor. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M15": {
@@ -3542,8 +3542,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Accounting role based in 'Amsterdam, Remote', and remote work abroad is not allowed for him.",
+      "excluded": false,
+      "reason": "Accounting role based in 'Amsterdam, Remote', and remote work abroad is not allowed for him. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -4314,8 +4314,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Lease accounting is outside her field, and it is remote work for a foreign client, which she does not allow: 'retail group headquartered in Amsterdam', 'The assignment is fully remote'.",
+      "excluded": false,
+      "reason": "Lease accounting is outside her field, and it is remote work for a foreign client, which she does not allow: 'retail group headquartered in Amsterdam', 'The assignment is fully remote'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -4700,8 +4700,8 @@
     },
     "J12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Lease accounting is unrelated, and it is remote work for a foreign client, which he does not allow: 'retail group headquartered in Amsterdam', 'The assignment is fully remote'.",
+      "excluded": false,
+      "reason": "Lease accounting is unrelated, and it is remote work for a foreign client, which he does not allow: 'retail group headquartered in Amsterdam', 'The assignment is fully remote'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -4868,8 +4868,8 @@
     },
     "L08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Supply chain planning is unrelated, and it is remote work for a foreign client: 'headquartered in Warsaw', '100 % remote, no travel required'.",
+      "excluded": false,
+      "reason": "Supply chain planning is unrelated, and it is remote work for a foreign client: 'headquartered in Warsaw', '100 % remote, no travel required'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "L09": {
@@ -5086,8 +5086,8 @@
     },
     "J12": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Adjacent IFRS 16 project for an Amsterdam client and 'The assignment is fully remote', but he allows no remote work abroad.",
+      "excluded": false,
+      "reason": "Adjacent IFRS 16 project for an Amsterdam client and 'The assignment is fully remote', but he allows no remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J13": {
@@ -5418,8 +5418,8 @@
     },
     "J03": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Building an internal audit function is finance-adjacent but not her core, and 'This is a permanent, full-time role based in Basel' is outside her permanent places with no stated remote share.",
+      "excluded": false,
+      "reason": "Building an internal audit function is finance-adjacent but not her core, and 'This is a permanent, full-time role based in Basel' is outside her permanent places with no stated remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "J04": {
@@ -5544,8 +5544,8 @@
     },
     "K08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT infrastructure is another field, and the 'Permanent position | full-time, 38.5 hours per week | Vienna' is outside her permanent places with only 'up to two days of home office per week'.",
+      "excluded": false,
+      "reason": "IT infrastructure is another field, and the 'Permanent position | full-time, 38.5 hours per week | Vienna' is outside her permanent places with only 'up to two days of home office per week'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "K09": {
@@ -5772,8 +5772,8 @@
     },
     "M14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent nursing job at '3.950 €/Monat - 4.850 €/Monat'.",
+      "excluded": false,
+      "reason": "Permanent nursing job at '3.950 €/Monat - 4.850 €/Monat'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M15": {

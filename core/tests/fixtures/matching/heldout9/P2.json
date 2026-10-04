@@ -1,195 +1,213 @@
 {
-  "name": "Stefan Beispielberg",
-  "email": "stefan.beispielberg@example.invalid",
-  "telefon": "+49 171 0000000",
-  "titel": "Interim Manager und Berater für Ertragssteigerung im Mittelstand",
-  "abschluss": "Diplom-Wirtschaftsingenieur (Univ.)",
-  "berufserfahrung_jahre": 24,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Wirtschaftsingenieur (Univ.)",
-      "fach": "Wirtschaftsingenieurwesen mit den Schwerpunkten Controlling und Produktionswirtschaft",
-      "hochschule": "Beispieluniversität",
-      "jahr": 2002
-    }
+  "wunschrollen": [
+    "Interim Manager Ergebnisverbesserung",
+    "Interim kaufmännischer Geschäftsführer",
+    "Projektleitung Performance Improvement",
+    "Berater Pricing und Controlling"
   ],
-  "stationen": [
-    {
-      "zeitraum": "2014 - heute",
-      "rolle": "Interim Manager und Berater für Ergebnisverbesserung (selbstständig)",
-      "schwerpunkte": [
-        "Neunzehn Interimsmandate und Projekte in inhabergeführten Industrie- und Handelsunternehmen mit 80 bis 1.200 Mitarbeitenden",
-        "Ergebnisverbesserungsprogramme mit durchschnittlich 3,5 Prozentpunkten EBIT-Steigerung innerhalb von zwölf Monaten",
-        "Neuaufstellung von Preisstrategie, Kalkulation und Konditionensystemen",
-        "Aufbau von Controlling, Deckungsbeitragsrechnung und KPI-Cockpits",
-        "Restrukturierung light mit Kostensenkung, Liquiditätssicherung und Bankenkommunikation",
-        "Mehrere Mandate als Interim kaufmännischer Geschäftsführer"
-      ]
-    },
-    {
-      "zeitraum": "2008 - 2014",
-      "rolle": "Kaufmännischer Geschäftsführer eines Familienunternehmens der Metallverarbeitung mit 650 Mitarbeitenden",
-      "schwerpunkte": [
-        "Verantwortung für Finanzen, Controlling, Einkauf, IT und Personal",
-        "Einführung einer Deckungsbeitragsrechnung je Kunde und Produktgruppe",
-        "Kostensenkungsprogramm über 6 Mio. EUR in der Krise 2009",
-        "Strategieprozess mit der Gesellschafterfamilie und Nachfolgeregelung"
-      ]
-    },
-    {
-      "zeitraum": "2002 - 2008",
-      "rolle": "Berater und zuletzt Senior Manager bei einer Mittelstandsberatung",
-      "schwerpunkte": [
-        "Kostenmanagement und Gemeinkostensenkung",
-        "Pricing-Projekte in Industrie und Großhandel",
-        "Vertriebseffizienz und Vertriebscontrolling"
-      ]
-    }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
   ],
+  "tagessatz_wunsch": 1250,
+  "tagessatz_min": 1100,
+  "mindestgehalt": 170000,
+  "arbeitsmodell": "hybrid",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Baden-Württemberg",
+    "Bayern",
+    "DACH"
+  ],
+  "verfuegbar_ab": "15.10.2026",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Ergebnisverbesserung",
       "jahre": 12,
-      "auch": ["Ertragssteigerung", "Profitabilitätssteigerung", "Performance Improvement", "EBIT-Verbesserung"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Kostensenkung",
       "jahre": 18,
-      "auch": ["Kostenmanagement", "Kostenreduktion", "Cost Reduction", "Gemeinkostensenkung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Pricing",
       "jahre": 14,
-      "auch": ["Preisstrategie", "Preismanagement", "Pricing Excellence", "Konditionenmanagement"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Aufbau Controlling",
       "jahre": 15,
-      "auch": ["Controlling-Aufbau", "Controllingsystem", "Unternehmenssteuerung"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "KPI-Systeme",
       "jahre": 14,
-      "auch": ["Kennzahlensysteme", "KPI-Cockpit", "Balanced Scorecard", "Kennzahlen"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Vertriebssteuerung",
       "jahre": 10,
-      "auch": ["Sales Performance", "Vertriebscontrolling", "Vertriebseffizienz"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Restrukturierung",
       "jahre": 10,
-      "auch": ["Sanierung", "Turnaround", "Restrukturierung light"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Strategie für inhabergeführte Unternehmen",
       "jahre": 12,
-      "auch": ["Unternehmensstrategie", "Strategieentwicklung", "Familienunternehmen"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Interim Management",
       "jahre": 12,
-      "auch": ["Management auf Zeit", "Interimsmandate", "Interim-Geschäftsführung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Deckungsbeitragsrechnung",
       "jahre": 18,
-      "auch": ["Produktkalkulation", "Kalkulation", "Margenanalyse"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Liquiditätsplanung",
       "jahre": 15,
-      "auch": ["Liquiditätsmanagement", "13-Wochen-Liquiditätsplanung", "Working Capital Management"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Unternehmensplanung",
       "jahre": 18,
-      "auch": ["Budgetierung", "Mittelfristplanung", "Forecast"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Einkaufsoptimierung",
       "jahre": 9,
-      "auch": ["Materialkostensenkung", "Einkauf"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Produktivitätssteigerung",
       "jahre": 8,
-      "auch": ["Lean Management", "Operational Excellence"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Management Reporting",
       "jahre": 18,
-      "auch": ["Berichtswesen", "Reporting"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Bankenkommunikation",
       "jahre": 10,
-      "auch": ["Finanzierung", "Bankengespräche"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Kaufmännische Leitung",
       "jahre": 9,
-      "auch": ["kaufmännische Geschäftsführung", "CFO-Funktion"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Changemanagement",
       "jahre": 12,
-      "auch": ["Change Management", "Veränderungsmanagement"]
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "Excel"
-    },
-    {
-      "name": "Power BI"
-    },
-    {
-      "name": "Qlik Sense"
-    },
-    {
-      "name": "Microsoft Dynamics 365 Business Central"
-    },
-    {
-      "name": "SAP Business One"
-    },
-    {
-      "name": "DATEV"
-    },
-    {
-      "name": "Corporate Planner"
-    },
-    {
-      "name": "LucaNet"
-    }
+    "Excel",
+    "Power BI",
+    "Qlik Sense",
+    "Microsoft Dynamics 365 Business Central",
+    "SAP Business One",
+    "DATEV",
+    "Corporate Planner",
+    "LucaNet",
+    "Controlling",
+    "KPI",
+    "Mittelstand",
+    "Familienunternehmen",
+    "Ertragssteigerung",
+    "Profitabilitätssteigerung",
+    "Performance Improvement",
+    "EBIT-Verbesserung",
+    "Kostenmanagement",
+    "Kostenreduktion",
+    "Cost Reduction",
+    "Gemeinkostensenkung",
+    "Preisstrategie",
+    "Preismanagement",
+    "Pricing Excellence",
+    "Konditionenmanagement",
+    "Controlling-Aufbau",
+    "Controllingsystem",
+    "Unternehmenssteuerung",
+    "Kennzahlensysteme",
+    "KPI-Cockpit",
+    "Balanced Scorecard",
+    "Kennzahlen",
+    "Sales Performance",
+    "Vertriebscontrolling",
+    "Vertriebseffizienz",
+    "Sanierung",
+    "Turnaround",
+    "Restrukturierung light",
+    "Unternehmensstrategie",
+    "Strategieentwicklung",
+    "Management auf Zeit",
+    "Interimsmandate",
+    "Interim-Geschäftsführung",
+    "Produktkalkulation",
+    "Kalkulation",
+    "Margenanalyse",
+    "Liquiditätsmanagement",
+    "13-Wochen-Liquiditätsplanung",
+    "Working Capital Management",
+    "Budgetierung",
+    "Mittelfristplanung",
+    "Forecast",
+    "Materialkostensenkung",
+    "Einkauf",
+    "Lean Management",
+    "Operational Excellence",
+    "Berichtswesen",
+    "Reporting",
+    "Finanzierung",
+    "Bankengespräche",
+    "kaufmännische Geschäftsführung",
+    "CFO-Funktion",
+    "Change Management",
+    "Veränderungsmanagement"
   ],
-  "zertifizierungen": [
-    {
-      "name": "Zertifizierter Restrukturierungs- und Sanierungsberater"
-    },
-    {
-      "name": "Controller (IHK)"
-    }
-  ],
+  "berufserfahrung_jahre": 24,
   "branchen": [
     {
-      "branche": "Metallverarbeitung"
+      "branche": "Metallverarbeitung",
+      "wunsch": true
     },
     {
-      "branche": "Maschinenbau"
+      "branche": "Maschinenbau",
+      "wunsch": true
     },
     {
-      "branche": "Kunststofftechnik"
+      "branche": "Kunststofftechnik",
+      "wunsch": false
     },
     {
-      "branche": "Baustoffe"
+      "branche": "Baustoffe",
+      "wunsch": false
     },
     {
-      "branche": "Großhandel"
+      "branche": "Großhandel",
+      "wunsch": true
     },
     {
-      "branche": "Lebensmittelherstellung"
+      "branche": "Lebensmittelherstellung",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -202,75 +220,12 @@
       "niveau": "C1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Neunzehn Mandate zur Ergebnisverbesserung in inhabergeführten Unternehmen",
-    "Setzt Preiserhöhungen durch, ohne die wichtigsten Kunden zu verlieren",
-    "Hat selbst sechs Jahre ein Familienunternehmen kaufmännisch geführt"
+  "abschluesse": [
+    "Diplom-Wirtschaftsingenieur (Univ.)"
   ],
-  "keywords": [
-    "Ergebnisverbesserung",
-    "Kostensenkung",
-    "Pricing",
-    "Controlling",
-    "KPI",
-    "Deckungsbeitragsrechnung",
-    "Restrukturierung",
-    "Interim Management",
-    "Mittelstand",
-    "Familienunternehmen"
+  "zertifizierungen": [
+    "Zertifizierter Restrukturierungs- und Sanierungsberater",
+    "Controller (IHK)"
   ],
-  "schwerpunkte": [
-    "Ergebnisverbesserung",
-    "Pricing",
-    "Aufbau Controlling",
-    "Restrukturierung light"
-  ],
-  "wunschrollen": [
-    "Interim Manager Ergebnisverbesserung",
-    "Interim kaufmännischer Geschäftsführer",
-    "Projektleitung Performance Improvement",
-    "Berater Pricing und Controlling"
-  ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 1250,
-    "remote": "teilweise",
-    "regionen": [
-      "Baden-Württemberg",
-      "Bayern",
-      "DACH"
-    ],
-    "branchen": [
-      "Maschinenbau",
-      "Metallverarbeitung",
-      "Großhandel"
-    ]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 1100,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": false,
-    "verfuegbar_ab": "ab 15.10.2026",
-    "min_jahresgehalt": 170000,
-    "festanstellung_orte": [
-      "Stuttgart",
-      "Esslingen am Neckar",
-      "Ludwigsburg",
-      "Böblingen",
-      "Sindelfingen",
-      "Leonberg",
-      "Waiblingen",
-      "Fellbach",
-      "Filderstadt",
-      "Leinfelden-Echterdingen"
-    ],
-    "festanstellung_remote_min": 60,
-    "zielprofil_min_jahre": 10
-  }
+  "ausschlusswoerter": []
 }

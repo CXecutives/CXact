@@ -7,11 +7,12 @@ use std::ops::Range;
 
 use super::atoms::{self, Fit, Vocab, fold};
 use super::fit::Skills;
-use super::lexicon::engine::{self as lex, KEY_USP};
+use super::lexicon::engine as lex;
 use super::params::{
     BM25_B, BM25_K1, BM25_LENGTH, FIELD_REQUIREMENTS, FIELD_REST, FIELD_TITLE, GENERIC_WEIGHT,
     RELEVANCE_HALF, SENTENCE_ATOMS, SPECIFIC_WEIGHT,
 };
+use crate::profile::key;
 
 fn counts(text: &str, vocab: &Vocab) -> BTreeMap<String, u64> {
     let mut map = BTreeMap::new();
@@ -32,8 +33,7 @@ fn occurrences(counts: &BTreeMap<String, u64>, profile_atom: &str) -> u64 {
 }
 
 /// Distinct profile atoms with their static weight: specific 1000, generic 200; an atom
-/// only named in free text counts half (a USP, a career station, an entry long enough to be
-/// a sentence). Languages are no field, and contract words and quantities say nothing about
+/// only named in free text counts half (an entry long enough to be a sentence). Languages are no field, and contract words and quantities say nothing about
 /// it: they stay out.
 pub(crate) fn query(skills: &Skills) -> Vec<(String, u64)> {
     let noise = |a: &str| {
@@ -46,11 +46,10 @@ pub(crate) fn query(skills: &Skills) -> Vec<(String, u64)> {
     let mut atoms: Vec<(String, bool)> = skills
         .entries
         .iter()
-        .filter(|e| !e.path.starts_with(lex::KEY_LANGUAGES))
+        .filter(|e| !e.path.starts_with(key::LANGUAGES))
         .flat_map(|e| {
-            let free_text = e.path.starts_with(KEY_USP)
-                || e.path.starts_with(lex::KEY_STATIONS)
-                || e.atoms.iter().filter(|a| !atoms::is_generic(a)).count() >= SENTENCE_ATOMS;
+            let free_text =
+                e.atoms.iter().filter(|a| !atoms::is_generic(a)).count() >= SENTENCE_ATOMS;
             e.atoms
                 .iter()
                 .filter(move |a| !noise(a))
@@ -261,15 +260,15 @@ mod tests {
     /// (an entry long enough to be a sentence) counts half.
     #[test]
     fn the_query_holds_the_field() {
-        let data = serde_json::json!({
+        let data = crate::profile::of_json(&serde_json::json!({
             "kernkompetenzen": [
                 {"kompetenz": "Controlling"},
                 {"kompetenz": "Interim Management"},
                 {"kompetenz": "Rund elf Jahre Treasury, Cash Management, Liquiditätsplanung und Factoring"}
             ],
             "sprachen": [{"sprache": "Englisch", "niveau": "C1"}]
-        });
-        let skills = Skills::new(&super::super::profile::core_texts(&data), &data, &[]);
+        }));
+        let skills = Skills::new(&super::super::profile::core_texts(&data), &data);
         let query = query(&skills);
         let weight = |text: &str| {
             let atom = atoms::atoms(text, &skills.vocab).remove(0);

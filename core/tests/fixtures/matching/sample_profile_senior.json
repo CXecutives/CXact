@@ -1,201 +1,208 @@
 {
-  "name": "Carla Exempel",
-  "email": "carla.exempel@example.invalid",
-  "telefon": "+49 160 0000000",
-  "titel": "Interim CFO und Transformationsleitung",
-  "berufserfahrung_jahre": 30,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Kauffrau (Univ.)",
-      "fach": "Betriebswirtschaftslehre mit den Schwerpunkten Controlling und Finanzierung",
-      "hochschule": "Beispieluniversität",
-      "jahr": 1995
-    }
+  "wunschrollen": [
+    "Interim CFO und Transformationsleitung"
   ],
-  "stationen": [
-    {
-      "zeitraum": "2012 - heute",
-      "rolle": "Interim CFO und Transformationsleitung (selbstständig)",
-      "schwerpunkte": [
-        "Interim-Mandate in Industrie und Handel",
-        "Restrukturierung und Sanierung",
-        "Post Merger Integration und Carve-out"
-      ]
-    },
-    {
-      "zeitraum": "2004 - 2012",
-      "rolle": "Kaufmännische Geschäftsführerin einer Industriegruppe",
-      "schwerpunkte": [
-        "Konzernabschluss nach IFRS und HGB",
-        "Treasury und Finanzierung"
-      ]
-    },
-    {
-      "zeitraum": "1995 - 2004",
-      "rolle": "Senior Managerin Transaction Services in einer Wirtschaftsprüfungsgesellschaft",
-      "schwerpunkte": [
-        "Financial Due Diligence",
-        "Unternehmensbewertung"
-      ]
-    }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
   ],
+  "tagessatz_wunsch": null,
+  "tagessatz_min": 1000,
+  "mindestgehalt": 150000,
+  "arbeitsmodell": "egal",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Interim Management",
       "jahre": 14,
-      "auch": ["Interim-Mandate", "Interim CFO"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Finanztransformation",
       "jahre": 15,
-      "auch": ["Finance Transformation", "Transformation der Finanzorganisation"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Controlling",
       "jahre": 28,
-      "auch": ["Financial Controlling", "FP&A"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Konzernrechnungslegung nach IFRS",
-      "jahre": 22
+      "jahre": 22,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Jahresabschlüsse nach HGB",
-      "jahre": 28
+      "jahre": 28,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Konsolidierung",
-      "jahre": 20
+      "jahre": 20,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Monatsabschlüsse",
-      "jahre": 25
+      "jahre": 25,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Budgetierung",
-      "jahre": 25
+      "jahre": 25,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Forecast",
-      "jahre": 25
+      "jahre": 25,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Unternehmensplanung",
-      "jahre": 25
+      "jahre": 25,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Liquiditätsplanung",
-      "jahre": 20
+      "jahre": 20,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Treasury",
       "jahre": 15,
-      "auch": ["Cash Management", "Finanzierung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Working Capital Management",
-      "jahre": 15
+      "jahre": 15,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Restrukturierung",
       "jahre": 15,
-      "auch": ["Sanierung", "Turnaround"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Post Merger Integration",
-      "jahre": 12
+      "jahre": 12,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Carve-out",
-      "jahre": 10
+      "jahre": 10,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "M&A-Transaktionen",
       "jahre": 15,
-      "auch": ["Mergers & Acquisitions", "Due Diligence"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Management Reporting",
       "jahre": 28,
-      "auch": ["Berichtswesen", "Konzernreporting"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Changemanagement",
-      "jahre": 15
+      "jahre": 15,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 25
+      "jahre": 25,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Programmmanagement",
-      "jahre": 12
+      "jahre": 12,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Prozessoptimierung im Finanzbereich",
-      "jahre": 18
+      "jahre": 18,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Shared Service Center",
-      "jahre": 8
+      "jahre": 8,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Finance Business Partnering",
-      "jahre": 15
+      "jahre": 15,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Kostenrechnung",
       "jahre": 20,
-      "auch": ["Kostenstellenrechnung", "Kostenträgerrechnung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Führung von Finanzteams",
-      "jahre": 20
+      "jahre": 20,
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "SAP S/4HANA"
-    },
-    {
-      "name": "SAP FI/CO"
-    },
-    {
-      "name": "SAP BPC"
-    },
-    {
-      "name": "LucaNet"
-    },
-    {
-      "name": "Power BI"
-    },
-    {
-      "name": "Excel"
-    }
+    "SAP S/4HANA",
+    "SAP FI/CO",
+    "SAP BPC",
+    "LucaNet",
+    "Power BI",
+    "Excel",
+    "IFRS",
+    "HGB",
+    "CFO",
+    "Großkonzern",
+    "Konzernabschluss",
+    "Transformation",
+    "Reporting",
+    "Interim-Mandate",
+    "Interim CFO",
+    "Finance Transformation",
+    "Transformation der Finanzorganisation",
+    "Financial Controlling",
+    "FP&A",
+    "Cash Management",
+    "Finanzierung",
+    "Sanierung",
+    "Turnaround",
+    "Mergers & Acquisitions",
+    "Due Diligence",
+    "Berichtswesen",
+    "Konzernreporting",
+    "Kostenstellenrechnung",
+    "Kostenträgerrechnung"
   ],
-  "zertifizierungen": [
-    {
-      "name": "Zertifizierte Restrukturierungs- und Sanierungsberaterin"
-    },
-    {
-      "name": "PRINCE2 Practitioner"
-    }
-  ],
+  "berufserfahrung_jahre": 30,
   "branchen": [
     {
-      "branche": "Maschinenbau"
+      "branche": "Maschinenbau",
+      "wunsch": false
     },
     {
-      "branche": "Automobilzulieferer"
+      "branche": "Automobilzulieferer",
+      "wunsch": false
     },
     {
-      "branche": "Chemie"
+      "branche": "Chemie",
+      "wunsch": false
     },
     {
-      "branche": "Handel"
+      "branche": "Handel",
+      "wunsch": false
     },
     {
-      "branche": "Private-Equity-Portfoliounternehmen"
+      "branche": "Private-Equity-Portfoliounternehmen",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -212,53 +219,12 @@
       "niveau": "B1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Mehr als 30 Interim-Mandate als CFO und Transformationsleitung",
-    "Neuaufstellung von Finanzorganisationen in Krisensituationen"
+  "abschluesse": [
+    "Diplom-Kauffrau (Univ.), Betriebswirtschaftslehre mit den Schwerpunkten Controlling und Finanzierung"
   ],
-  "keywords": [
-    "IFRS",
-    "HGB",
-    "CFO",
-    "Großkonzern",
-    "Konzernabschluss",
-    "Treasury",
-    "Restrukturierung",
-    "Transformation",
-    "Reporting"
+  "zertifizierungen": [
+    "Zertifizierte Restrukturierungs- und Sanierungsberaterin",
+    "PRINCE2 Practitioner"
   ],
-  "harte_kriterien": {
-    "min_tagessatz": 1000,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "sofort",
-    "min_jahresgehalt": 150000,
-    "festanstellung_orte": [
-      "München",
-      "Augsburg",
-      "Ingolstadt",
-      "Landshut",
-      "Rosenheim",
-      "Freising",
-      "Erding",
-      "Dachau",
-      "Fürstenfeldbruck",
-      "Starnberg",
-      "Garching",
-      "Unterschleißheim",
-      "Ismaning",
-      "Unterföhring",
-      "Ottobrunn",
-      "Germering"
-    ],
-    "festanstellung_remote_min": 60,
-    "zielprofil_min_jahre": 10
-  }
+  "ausschlusswoerter": []
 }

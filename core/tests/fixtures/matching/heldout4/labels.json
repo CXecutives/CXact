@@ -746,8 +746,8 @@
     },
     "U04": {
       "grade": 0,
-      "excluded": true,
-      "reason": "\"Permanent full-time contract\" in Berlin, outside permanent_locations, \"2 days per week in our Berlin office\" proves no remote share",
+      "excluded": false,
+      "reason": "\"Permanent full-time contract\" in Berlin, outside permanent_locations, \"2 days per week in our Berlin office\" proves no remote share Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "U05": {
@@ -758,8 +758,8 @@
     },
     "U06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "\"Unbefristete Festanstellung\" in Heilbronn, outside permanent_locations, \"bis zu 2 Tagen\" mobile = 40% below 60%",
+      "excluded": false,
+      "reason": "\"Unbefristete Festanstellung\" in Heilbronn, outside permanent_locations, \"bis zu 2 Tagen\" mobile = 40% below 60% Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "U07": {
@@ -926,8 +926,8 @@
     },
     "X06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "\"Festanstellung\" in Frankfurt outside region, \"bis zu 2 Tagen remote\" = 40% below 60%",
+      "excluded": false,
+      "reason": "\"Festanstellung\" in Frankfurt outside region, \"bis zu 2 Tagen remote\" = 40% below 60% Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "X07": {
@@ -2204,8 +2204,8 @@
     },
     "U06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "'Unbefristete Festanstellung' in Heilbronn, 'bis zu 2 Tagen' mobile < 60 %",
+      "excluded": false,
+      "reason": "'Unbefristete Festanstellung' in Heilbronn, 'bis zu 2 Tagen' mobile < 60 % Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "U07": {

@@ -13,7 +13,7 @@ const FILES: [(&str, usize); 4] = [
     ("src-tauri/src/main.rs", 12),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/platform.rs", 15),
-    ("src-tauri/src/commands/mod.rs", 3),
+    ("src-tauri/src/commands/mod.rs", 1),
 ];
 
 const START: &str = "User-facing text, German";

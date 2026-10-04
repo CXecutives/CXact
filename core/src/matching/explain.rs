@@ -10,7 +10,7 @@ use super::ad_facts::{self, AdFacts, currency_code, start_code};
 use super::contract::ContractKind;
 use super::engine::{EngineProfile, Evaluation, Scored};
 use super::factors;
-use super::facts::{Availability, HardCriteria, Start};
+use super::facts::{HardCriteria, Start};
 use super::fit;
 use super::job::{Class, Stage};
 use super::limits;
@@ -533,20 +533,10 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
         } else {
             unset(CriterionKey::NoPermanent)
         },
-        if c.available == Availability::Unset {
-            unset(CriterionKey::Availability)
-        } else {
-            start_state(ad, text)
-        },
+        start_state(ad, text),
         match c.min_salary {
             Some(min) if employment => salary_state(min, ad, text),
             _ => unset(CriterionKey::MinSalary),
-        },
-        if c.places.is_some() && permanent {
-            let ok = remote_full || !ad.location.is_empty();
-            criterion(CriterionKey::PermanentRegion, told(ok), &place, None, text)
-        } else {
-            unset(CriterionKey::PermanentRegion)
         },
         workload_state(c, ad, text),
         match c.min_months {

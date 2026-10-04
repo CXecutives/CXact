@@ -1,8 +1,4 @@
 {
-  "name": "Torsten Probemann",
-  "email": "torsten.probemann@example.invalid",
-  "telefon": "+49 170 0000000",
-  "titel": "Interim CIO und IT-Programmmanager",
   "wunschrollen": [
     "Interim CIO",
     "Interim IT-Leiter",
@@ -11,164 +7,194 @@
     "Programmmanager IT-Transformation",
     "Programmleiter ERP"
   ],
-  "berufserfahrung_jahre": 22,
-  "abschluss": "Diplom-Wirtschaftsinformatiker (Univ.)",
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
+  ],
+  "tagessatz_wunsch": 1400,
+  "tagessatz_min": 1200,
+  "mindestgehalt": null,
+  "arbeitsmodell": "remote",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Rhein-Main",
+    "München",
+    "Zürich",
+    "Wien"
+  ],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Interim IT-Management",
       "jahre": 11,
-      "auch": ["Interim CIO", "IT-Leitung", "Head of IT"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "IT-Strategie",
       "jahre": 16,
-      "auch": ["IT-Roadmap", "Digitalstrategie", "Enterprise Architecture"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Programmmanagement",
       "jahre": 15,
-      "auch": ["Multiprojektmanagement", "PMO", "Programmleitung"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Cloud-Migration",
       "jahre": 8,
-      "auch": ["Cloud Transformation", "Azure Migration", "AWS Migration", "Hybrid Cloud"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "ERP-Einführung",
       "jahre": 14,
-      "auch": ["ERP-Rollout", "SAP-Einführung", "S/4HANA Migration", "Template-Rollout"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "IT-Governance",
       "jahre": 12,
-      "auch": ["IT-Compliance", "COBIT", "IT-Risikomanagement"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Providermanagement",
       "jahre": 13,
-      "auch": ["Vendor Management", "Dienstleistersteuerung", "Lieferantenmanagement IT"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "IT-Sourcing",
       "jahre": 10,
-      "auch": ["Outsourcing", "Ausschreibung", "Vertragsverhandlung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "IT-Kostenmanagement",
       "jahre": 14,
-      "auch": ["IT-Controlling", "IT-Budget", "IT-Kostensenkung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Informationssicherheit",
       "jahre": 7,
-      "auch": ["ISMS", "ISO 27001", "NIS2"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "IT-Infrastruktur",
       "jahre": 18,
-      "auch": ["Rechenzentrum", "Netzwerk", "Workplace"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Post Merger Integration",
       "jahre": 6,
-      "auch": ["IT-Integration", "Carve-out", "IT-Separation"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Changemanagement",
       "jahre": 9,
-      "auch": ["Veränderungsmanagement"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Stakeholdermanagement",
-      "jahre": 15
+      "jahre": 15,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Agile Transformation",
       "jahre": 5,
-      "auch": ["SAFe", "Scrum"]
+      "schwerpunkt": false
     }
-  ],
-  "schwerpunkte": [
-    "Interim IT-Management",
-    "Programmmanagement",
-    "Cloud-Migration",
-    "ERP-Einführung",
-    "IT-Governance"
   ],
   "methoden_tools": [
-    {
-      "name": "SAP S/4HANA"
-    },
-    {
-      "name": "Microsoft Azure"
-    },
-    {
-      "name": "AWS"
-    },
-    {
-      "name": "ServiceNow"
-    },
-    {
-      "name": "ITIL 4"
-    },
-    {
-      "name": "COBIT 2019"
-    },
-    {
-      "name": "TOGAF"
-    },
-    {
-      "name": "PRINCE2"
-    },
-    {
-      "name": "Jira"
-    },
-    {
-      "name": "Confluence"
-    },
-    {
-      "name": "MS Project"
-    }
+    "SAP S/4HANA",
+    "Microsoft Azure",
+    "AWS",
+    "ServiceNow",
+    "ITIL 4",
+    "COBIT 2019",
+    "TOGAF",
+    "PRINCE2",
+    "Jira",
+    "Confluence",
+    "MS Project",
+    "CIO",
+    "IT-Leiter",
+    "IT-Transformation",
+    "Cloud",
+    "SAP",
+    "ERP",
+    "Governance",
+    "Sourcing",
+    "Vendor Management",
+    "Mittelstand",
+    "Konzern",
+    "Interim CIO",
+    "IT-Leitung",
+    "Head of IT",
+    "IT-Roadmap",
+    "Digitalstrategie",
+    "Enterprise Architecture",
+    "Multiprojektmanagement",
+    "PMO",
+    "Programmleitung",
+    "Cloud Transformation",
+    "Azure Migration",
+    "AWS Migration",
+    "Hybrid Cloud",
+    "ERP-Rollout",
+    "SAP-Einführung",
+    "S/4HANA Migration",
+    "Template-Rollout",
+    "IT-Compliance",
+    "COBIT",
+    "IT-Risikomanagement",
+    "Dienstleistersteuerung",
+    "Lieferantenmanagement IT",
+    "Outsourcing",
+    "Ausschreibung",
+    "Vertragsverhandlung",
+    "IT-Controlling",
+    "IT-Budget",
+    "IT-Kostensenkung",
+    "ISMS",
+    "ISO 27001",
+    "NIS2",
+    "Rechenzentrum",
+    "Netzwerk",
+    "Workplace",
+    "IT-Integration",
+    "Carve-out",
+    "IT-Separation",
+    "Veränderungsmanagement",
+    "SAFe",
+    "Scrum"
   ],
-  "zertifizierungen": [
-    {
-      "name": "ITIL 4 Managing Professional"
-    },
-    {
-      "name": "PMP (PMI)"
-    },
-    {
-      "name": "PRINCE2 Practitioner"
-    },
-    {
-      "name": "TOGAF 9 Certified"
-    },
-    {
-      "name": "COBIT 2019 Foundation"
-    },
-    {
-      "name": "AWS Certified Cloud Practitioner"
-    }
-  ],
+  "berufserfahrung_jahre": 22,
   "branchen": [
     {
-      "branche": "Handel"
+      "branche": "Handel",
+      "wunsch": true
     },
     {
-      "branche": "Logistik"
+      "branche": "Logistik",
+      "wunsch": false
     },
     {
-      "branche": "Finanzdienstleistungen"
+      "branche": "Finanzdienstleistungen",
+      "wunsch": true
     },
     {
-      "branche": "Energie"
+      "branche": "Energie",
+      "wunsch": true
     },
     {
-      "branche": "Maschinenbau"
+      "branche": "Maschinenbau",
+      "wunsch": false
     },
     {
-      "branche": "Pharma"
+      "branche": "Pharma",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -185,50 +211,16 @@
       "niveau": "B1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Übernimmt IT-Leitungen kurzfristig und stabilisiert den Betrieb in den ersten 30 Tagen",
-    "Hat drei konzernweite ERP-Rollouts und zwei Rechenzentrumsexits in die Cloud verantwortet",
-    "Verhandelt Rahmenverträge mit großen IT-Dienstleistern und senkt IT-Kosten messbar"
+  "abschluesse": [
+    "Diplom-Wirtschaftsinformatiker (Univ.)"
   ],
-  "keywords": [
-    "CIO",
-    "IT-Leiter",
-    "IT-Transformation",
-    "Cloud",
-    "SAP",
-    "ERP",
-    "Governance",
-    "Sourcing",
-    "Vendor Management",
-    "Mittelstand",
-    "Konzern"
+  "zertifizierungen": [
+    "ITIL 4 Managing Professional",
+    "PMP (PMI)",
+    "PRINCE2 Practitioner",
+    "TOGAF 9 Certified",
+    "COBIT 2019 Foundation",
+    "AWS Certified Cloud Practitioner"
   ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 1400,
-    "remote": "ueberwiegend",
-    "regionen": [
-      "Rhein-Main",
-      "München",
-      "Zürich",
-      "Wien"
-    ],
-    "branchen": [
-      "Handel",
-      "Finanzdienstleistungen",
-      "Energie"
-    ]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 1200,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "sofort"
-  }
+  "ausschlusswoerter": []
 }

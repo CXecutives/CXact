@@ -298,8 +298,8 @@
     },
     "A10": {
       "grade": 0,
-      "excluded": true,
-      "reason": "outside field; permanent, Hanover outside festanstellung_orte \"(On-site)\"",
+      "excluded": false,
+      "reason": "outside field; permanent, Hanover outside festanstellung_orte \"(On-site)\" Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "B01": {
@@ -310,8 +310,8 @@
     },
     "B02": {
       "grade": 2,
-      "excluded": true,
-      "reason": "Pricing Schwerpunkt \"Preisstrategie\" fits, but permanent \"Jahreszielgehalt zwischen 105.000 € und 125.000 €\" below 140000; Bielefeld \"Bis zu 2 Tage mobiles Arbeiten\"",
+      "excluded": false,
+      "reason": "Pricing Schwerpunkt \"Preisstrategie\" fits, but permanent \"Jahreszielgehalt zwischen 105.000 € und 125.000 €\" below 140000; Bielefeld \"Bis zu 2 Tage mobiles Arbeiten\" Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "B03": {
@@ -424,8 +424,8 @@
     },
     "D02": {
       "grade": 0,
-      "excluded": true,
-      "reason": "outside field; permanent, Bielefeld outside festanstellung_orte \"Bis zu zwei Tage mobiles Arbeiten\"",
+      "excluded": false,
+      "reason": "outside field; permanent, Bielefeld outside festanstellung_orte \"Bis zu zwei Tage mobiles Arbeiten\" Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "D03": {
@@ -2234,8 +2234,8 @@
     },
     "A10": {
       "grade": 1,
-      "excluded": true,
-      "reason": "\"Permanent position\" in \"Hanover ... (On-site)\" outside festanstellung_orte, no remote share",
+      "excluded": false,
+      "reason": "\"Permanent position\" in \"Hanover ... (On-site)\" outside festanstellung_orte, no remote share Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "B01": {
@@ -2348,8 +2348,8 @@
     },
     "D02": {
       "grade": 1,
-      "excluded": true,
-      "reason": "\"unbefristeten Arbeitsvertrag\" in Bielefeld, \"Bis zu zwei Tage mobiles Arbeiten\" outside region",
+      "excluded": false,
+      "reason": "\"unbefristeten Arbeitsvertrag\" in Bielefeld, \"Bis zu zwei Tage mobiles Arbeiten\" outside region Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "D03": {

@@ -1,95 +1,166 @@
 {
-  "name": "Lena Testfall",
-  "titel": "Cloud Architect und DevOps Engineer",
   "wunschrollen": [
     "Cloud Architect",
     "Cloud-Architektin",
     "Senior DevOps Engineer",
     "Platform Engineer"
   ],
-  "berufserfahrung_jahre": 14,
-  "ausbildung": [
-    { "abschluss": "Master of Science Informatik" }
+  "vertragsarten": [
+    "projekt"
   ],
+  "tagessatz_wunsch": 950,
+  "tagessatz_min": 800,
+  "mindestgehalt": null,
+  "arbeitsmodell": "remote",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 3,
   "kernkompetenzen": [
-    { "kompetenz": "Cloud-Architektur", "jahre": 8, "auch": ["Cloud Architecture"] },
-    { "kompetenz": "Amazon Web Services", "jahre": 8, "auch": ["AWS"] },
-    { "kompetenz": "Microsoft Azure", "jahre": 5, "auch": ["Azure"] },
-    { "kompetenz": "Kubernetes", "jahre": 7, "auch": ["K8s"] },
-    { "kompetenz": "Infrastructure as Code", "jahre": 7, "auch": ["IaC"] },
-    { "kompetenz": "DevOps", "jahre": 9 },
-    { "kompetenz": "CI/CD", "jahre": 9, "auch": ["Continuous Integration", "Continuous Delivery"] },
-    { "kompetenz": "Containerisierung", "jahre": 8, "auch": ["Containerization"] },
-    { "kompetenz": "Cloud-Migration", "jahre": 6, "auch": ["Cloud Migration"] },
-    { "kompetenz": "Site Reliability Engineering", "jahre": 4, "auch": ["SRE"] },
-    { "kompetenz": "Linux-Administration", "jahre": 14, "auch": ["Linux Administration"] },
-    { "kompetenz": "Observability", "jahre": 5, "auch": ["Monitoring"] },
-    { "kompetenz": "Cloud Security", "jahre": 5, "auch": ["Cloud-Sicherheit"] },
-    { "kompetenz": "Netzwerkarchitektur", "jahre": 6, "auch": ["Network Architecture"] }
-  ],
-  "schwerpunkte": [
-    "Cloud-Architektur",
-    "Kubernetes",
-    "Infrastructure as Code",
-    "Cloud-Migration"
+    {
+      "kompetenz": "Cloud-Architektur",
+      "jahre": 8,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Amazon Web Services",
+      "jahre": 8,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Microsoft Azure",
+      "jahre": 5,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Kubernetes",
+      "jahre": 7,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Infrastructure as Code",
+      "jahre": 7,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "DevOps",
+      "jahre": 9,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "CI/CD",
+      "jahre": 9,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Containerisierung",
+      "jahre": 8,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Cloud-Migration",
+      "jahre": 6,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Site Reliability Engineering",
+      "jahre": 4,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Linux-Administration",
+      "jahre": 14,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Observability",
+      "jahre": 5,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Cloud Security",
+      "jahre": 5,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Netzwerkarchitektur",
+      "jahre": 6,
+      "schwerpunkt": false
+    }
   ],
   "methoden_tools": [
-    { "name": "Terraform" },
-    { "name": "Docker" },
-    { "name": "Helm" },
-    { "name": "GitLab CI" },
-    { "name": "GitHub Actions" },
-    { "name": "Ansible" },
-    { "name": "Prometheus" },
-    { "name": "Grafana" },
-    { "name": "Python" },
-    { "name": "Bash" }
-  ],
-  "zertifizierungen": [
-    { "name": "AWS Certified Solutions Architect Professional" },
-    { "name": "Certified Kubernetes Administrator (CKA)" },
-    { "name": "Microsoft Certified: Azure Solutions Architect Expert" }
-  ],
-  "branchen": [
-    { "branche": "Banken" },
-    { "branche": "Versicherungen" },
-    { "branche": "E-Commerce" }
-  ],
-  "sprachen": [
-    { "sprache": "Deutsch", "niveau": "Muttersprache" },
-    { "sprache": "Englisch", "niveau": "C1" }
-  ],
-  "alleinstellungsmerkmale": [
-    "Migrierte 120 Anwendungen eines Versicherers in eine AWS-Landing-Zone ohne Ausfall.",
-    "Baute für eine Bank eine Kubernetes-Plattform für 40 Entwicklungsteams auf."
-  ],
-  "keywords": [
+    "Terraform",
+    "Docker",
+    "Helm",
+    "GitLab CI",
+    "GitHub Actions",
+    "Ansible",
+    "Prometheus",
+    "Grafana",
+    "Python",
+    "Bash",
     "Landing Zone",
     "GitOps",
     "Argo CD",
     "EKS",
     "AKS",
     "BAIT",
-    "DORA"
+    "DORA",
+    "Cloud Architecture",
+    "AWS",
+    "Azure",
+    "K8s",
+    "IaC",
+    "Continuous Integration",
+    "Continuous Delivery",
+    "Containerization",
+    "Cloud Migration",
+    "SRE",
+    "Linux Administration",
+    "Monitoring",
+    "Cloud-Sicherheit",
+    "Network Architecture"
   ],
-  "stationen": [
-    { "zeitraum": "01/2018 bis heute", "rolle": "Freiberufliche Cloud Architect", "schwerpunkte": ["Cloud-Architektur", "Cloud-Migration", "Kubernetes"] },
-    { "zeitraum": "09/2012 bis 12/2017", "rolle": "DevOps Engineer", "schwerpunkte": ["CI/CD", "Linux-Administration"] }
+  "berufserfahrung_jahre": 14,
+  "branchen": [
+    {
+      "branche": "Banken",
+      "wunsch": true
+    },
+    {
+      "branche": "Versicherungen",
+      "wunsch": true
+    },
+    {
+      "branche": "E-Commerce",
+      "wunsch": false
+    }
   ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 950,
-    "remote": "voll",
-    "branchen": ["Banken", "Versicherungen"]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 800,
-    "laender": ["DE", "AT", "CH"],
-    "remote_ausserhalb_erlaubt": true,
-    "ausgeschlossene_vertragsarten": ["anue", "festanstellung"],
-    "verfuegbar_ab": "sofort",
-    "auslastung_min_tage": 3,
-    "auslastung_max_tage": 5,
-    "min_laufzeit_monate": 3,
-    "ausschlusswoerter": ["Werkstudent", "Praktikum"]
-  }
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    }
+  ],
+  "abschluesse": [
+    "Master of Science Informatik"
+  ],
+  "zertifizierungen": [
+    "AWS Certified Solutions Architect Professional",
+    "Certified Kubernetes Administrator (CKA)",
+    "Microsoft Certified: Azure Solutions Architect Expert"
+  ],
+  "ausschlusswoerter": [
+    "Werkstudent",
+    "Praktikum"
+  ]
 }

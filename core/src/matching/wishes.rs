@@ -1,6 +1,6 @@
-//! Wishes of `einsatzpraeferenzen` (`ENGINE_VERSION` 4): day rate, remote share, regions and
-//! industries. Each wish is off while its key is missing; a wish never excludes (exclusions
-//! stay in `harte_kriterien`).
+//! Wishes of the profile (`ENGINE_VERSION` 4, the v19 fields since 19): day rate, work mode,
+//! regions and the starred industries. Each wish is off while it is empty; a wish never
+//! excludes (exclusions are the hard criteria).
 //!
 //! Every wish ends in a state: met adds its points, clearly missed takes them, near and
 //! unknown change nothing. The points are `WISH_RATE`, `WISH_REMOTE`, `WISH_REGION` and
@@ -10,10 +10,9 @@
 //! - Day rate (`tagessatz_wunsch`, not for permanent roles): the upper bound of the stated
 //!   EUR rate per day (hourly x 8) at or above the wish is met, at least `WISH_RATE_NEAR`
 //!   of it near, below that missed; no rate or another currency is unknown.
-//! - Remote (`remote`: `voll`, `ueberwiegend`, `teilweise`, `vor_ort`, or old free text such
-//!   as `mindestens 50 %`, read by the profile editor's parser: a share of 100 is `voll`,
-//!   above half `ueberwiegend`, above zero `teilweise`) as a minimum share (100, 60, 20)
-//!   against the ad's remote share (facts, `N % remote`, office or remote days, full-remote
+//! - Work mode (`arbeitsmodell`: `remote` at least fully remote, `hybrid` at least partly,
+//!   `vor_ort` on site, `egal` no wish) as a minimum share (100, 20) against the ad's remote
+//!   share (facts, `N % remote`, office or remote days, full-remote
 //!   wording, hybrid wording, on site only): met when the share is at least the minimum,
 //!   missed when the ad is on site only or its share stays more than `REMOTE_MARGIN` below
 //!   it; `vor_ort` is met up to `ONSITE_MAX` percent.
@@ -22,7 +21,8 @@
 //!   on-site sentence is met; another known place (larger German cities, states, foreign
 //!   cities and countries) is missed, or near with at least `REGION_REMOTE_NEAR` percent
 //!   remote; no known place (a country of the profile only, a small town) is unknown.
-//! - Industries (`branchen`) against the title, the company (LinkedIn only: on the
+//! - Industries (the starred `branchen`, preferred among those of the experience) against the
+//!   title, the company (LinkedIn only: on the
 //!   freelance portals it is the posting agency) and the ad's text outside requirements
 //!   and tasks: a wished industry named is met, only other industries named is missed,
 //!   none named is unknown.
@@ -35,17 +35,15 @@ use serde_json::{Value, json};
 use super::atoms::{self, Fit, Vocab, fold};
 use super::contract::ContractKind;
 use super::facts::{self, JobFacts, Segment, fact};
-use super::focus::texts;
 use super::job::contains_word;
-use super::lexicon::{self, engine as core_lex, wishes as lex};
+use super::lexicon::{engine as core_lex, wishes as lex};
 use super::params::{
-    HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_MOSTLY,
-    REMOTE_NAMED_SHARE, REMOTE_PARTLY, WISH_INDUSTRY, WISH_RATE, WISH_RATE_NEAR, WISH_REGION,
-    WISH_REMOTE, WORKDAYS,
+    HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
+    REMOTE_PARTLY, WISH_INDUSTRY, WISH_RATE, WISH_RATE_NEAR, WISH_REGION, WISH_REMOTE, WORKDAYS,
 };
 use super::types::{ReasonCode, ReasonKind, WishInfo, WishKey};
 use crate::portal::Portal;
-use crate::profile::RemoteWish as Level;
+use crate::profile::{ProfileForm, WorkWish, key};
 
 /// The remote share a profile wishes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,19 +55,29 @@ pub(crate) enum RemoteWish {
 }
 
 impl RemoteWish {
-    /// Params of the wish: the minimum share, on site, and the level of the profile editor
-    /// (`full`, `mostly`, `partly`, `onSite`).
+    /// Params of the wish: the minimum share, on site, and the work mode of the profile
+    /// (`remote`, `hybrid`, `onsite`).
     fn params(self) -> Value {
         match self {
             RemoteWish::Min(min) => {
-                let level = match min {
-                    REMOTE_FULL => "full",
-                    REMOTE_MOSTLY => "mostly",
-                    _ => "partly",
+                let level = if min == REMOTE_FULL {
+                    "remote"
+                } else {
+                    "hybrid"
                 };
                 json!({ "min": min, "onsite": false, "level": level })
             }
-            RemoteWish::OnSite => json!({ "min": null, "onsite": true, "level": "onSite" }),
+            RemoteWish::OnSite => json!({ "min": null, "onsite": true, "level": "onsite" }),
+        }
+    }
+
+    /// The wish of a work mode; none for `Any`.
+    fn of(mode: WorkWish) -> Option<RemoteWish> {
+        match mode {
+            WorkWish::Any => None,
+            WorkWish::Remote => Some(RemoteWish::Min(REMOTE_FULL)),
+            WorkWish::Hybrid => Some(RemoteWish::Min(REMOTE_PARTLY)),
+            WorkWish::Onsite => Some(RemoteWish::OnSite),
         }
     }
 }
@@ -97,49 +105,6 @@ pub(crate) struct Wishes {
     industry: Vec<Industry>,
     /// Per wish reason: the profile value as written and its JSON path.
     sources: Vec<(ReasonCode, String, String)>,
-}
-
-/// The wishes section: `einsatzpraeferenzen` (or `preferences`), with its key.
-fn section(data: &Value) -> Option<(&'static str, &Value)> {
-    lexicon::KEY_PREFERENCES_ALIASES
-        .iter()
-        .find_map(|key| data.get(*key).filter(|v| v.is_object()).map(|v| (*key, v)))
-}
-
-/// A profile value as written (a list joined with commas).
-fn as_text(value: &Value) -> String {
-    match value {
-        Value::String(text) => text.clone(),
-        Value::Array(list) => list
-            .iter()
-            .map(as_text)
-            .filter(|t| !t.is_empty())
-            .collect::<Vec<_>>()
-            .join(", "),
-        Value::Null => String::new(),
-        other => other.to_string(),
-    }
-}
-
-fn entry<'a>(section: &'a Value, keys: &[&'static str]) -> Option<(&'static str, &'a Value)> {
-    keys.iter()
-        .find_map(|k| section.get(*k).filter(|v| !v.is_null()).map(|v| (*k, v)))
-}
-
-/// The remote wish of a value, read like the profile editor reads it (one parser for the
-/// four levels and the old free text such as `mindestens 50 %`), as a minimum share.
-pub(crate) fn remote_wish(value: &Value) -> Option<RemoteWish> {
-    let text = match value {
-        Value::String(text) => text.clone(),
-        Value::Number(n) => format!("{n} %"),
-        _ => return None,
-    };
-    Some(match Level::read(&text)? {
-        Level::Full => RemoteWish::Min(REMOTE_FULL),
-        Level::Mostly => RemoteWish::Min(REMOTE_MOSTLY),
-        Level::Partly => RemoteWish::Min(REMOTE_PARTLY),
-        Level::OnSite => RemoteWish::OnSite,
-    })
 }
 
 /// Every place a known region, state or country stands for, and all known places.
@@ -247,47 +212,56 @@ fn industries_in(text: &str) -> Vec<(&'static str, String)> {
 }
 
 impl Wishes {
-    /// Reads the wishes; keys present with a value that cannot be read are returned.
-    pub(crate) fn new(data: &Value, vocab: &Vocab) -> (Self, Vec<(&'static str, String)>) {
+    /// Reads the wishes of a profile.
+    pub(crate) fn new(form: &ProfileForm, vocab: &Vocab) -> Self {
         let mut wishes = Wishes::default();
-        let mut unreadable = Vec::new();
-        let Some((name, section)) = section(data) else {
-            return (wishes, unreadable);
-        };
-        for (code, keys) in [
-            (ReasonCode::DayRateWish, lexicon::KEYS_RATE_WISH),
-            (ReasonCode::RemoteWish, lexicon::KEYS_REMOTE_WISH),
-            (ReasonCode::RegionWish, lexicon::KEYS_REGIONS),
-            (ReasonCode::IndustryWish, lexicon::KEYS_INDUSTRIES),
+        let preferred: Vec<String> = form
+            .industries
+            .iter()
+            .filter(|i| i.preferred)
+            .map(|i| i.name.trim().to_owned())
+            .filter(|t| !t.is_empty())
+            .collect();
+        let regions: Vec<String> = form
+            .regions
+            .iter()
+            .map(|r| r.trim().to_owned())
+            .filter(|t| !t.is_empty())
+            .collect();
+        wishes.rate = form.day_rate_wish.filter(|n| *n > 0).map(u64::from);
+        wishes.remote = RemoteWish::of(form.work_mode);
+        wishes.regions = (!regions.is_empty()).then_some(regions);
+        wishes.industries = (!preferred.is_empty()).then_some(preferred);
+        if let Some(rate) = wishes.rate {
+            wishes.sources.push((
+                ReasonCode::DayRateWish,
+                rate.to_string(),
+                key::DAY_RATE_WISH.to_owned(),
+            ));
+        }
+        if wishes.remote.is_some() {
+            let mode = serde_json::to_value(form.work_mode)
+                .ok()
+                .and_then(|v| v.as_str().map(str::to_owned))
+                .unwrap_or_default();
+            wishes
+                .sources
+                .push((ReasonCode::RemoteWish, mode, key::WORK_MODE.to_owned()));
+        }
+        for (code, list, path) in [
+            (ReasonCode::RegionWish, &wishes.regions, key::REGIONS),
+            (
+                ReasonCode::IndustryWish,
+                &wishes.industries,
+                key::INDUSTRIES,
+            ),
         ] {
-            if let Some((key, value)) = entry(section, keys) {
+            if let Some(list) = list {
                 wishes
                     .sources
-                    .push((code, as_text(value), format!("{name}.{key}")));
+                    .push((code, list.join(", "), path.to_owned()));
             }
         }
-        if let Some((key, value)) = entry(section, lexicon::KEYS_RATE_WISH) {
-            wishes.rate = facts::number(value).filter(|n| *n > 0);
-            if wishes.rate.is_none() {
-                unreadable.push((key, value.to_string()));
-            }
-        }
-        if let Some((key, value)) = entry(section, lexicon::KEYS_REMOTE_WISH) {
-            wishes.remote = remote_wish(value);
-            if wishes.remote.is_none() {
-                unreadable.push((key, value.to_string()));
-            }
-        }
-        let mut list = |keys: &[&'static str]| {
-            let (key, value) = entry(section, keys)?;
-            let list = texts(value).filter(|l| !l.is_empty());
-            if list.is_none() {
-                unreadable.push((key, value.to_string()));
-            }
-            list
-        };
-        wishes.regions = list(lexicon::KEYS_REGIONS);
-        wishes.industries = list(lexicon::KEYS_INDUSTRIES);
         let mut places: Vec<String> = wishes
             .regions
             .iter()
@@ -313,7 +287,7 @@ impl Wishes {
                 }
             })
             .collect();
-        (wishes, unreadable)
+        wishes
     }
 
     /// The wishes as understood (`set` and the values).
@@ -855,30 +829,17 @@ mod tests {
     use crate::matching::facts::segments;
 
     #[test]
-    fn remote_wishes_and_old_free_text() {
-        let wish = |v: Value| remote_wish(&v);
-        assert_eq!(wish(json!("voll")), Some(RemoteWish::Min(REMOTE_FULL)));
+    fn work_modes_as_remote_wishes() {
+        assert_eq!(RemoteWish::of(WorkWish::Any), None);
         assert_eq!(
-            wish(json!("ueberwiegend")),
-            Some(RemoteWish::Min(REMOTE_MOSTLY))
+            RemoteWish::of(WorkWish::Remote),
+            Some(RemoteWish::Min(REMOTE_FULL))
         );
         assert_eq!(
-            wish(json!("überwiegend")),
-            Some(RemoteWish::Min(REMOTE_MOSTLY))
-        );
-        assert_eq!(
-            wish(json!("teilweise")),
+            RemoteWish::of(WorkWish::Hybrid),
             Some(RemoteWish::Min(REMOTE_PARTLY))
         );
-        assert_eq!(wish(json!("vor_ort")), Some(RemoteWish::OnSite));
-        assert_eq!(
-            wish(json!("mindestens 50 %")),
-            Some(RemoteWish::Min(REMOTE_PARTLY))
-        );
-        assert_eq!(wish(json!("100%")), Some(RemoteWish::Min(100)));
-        assert_eq!(wish(json!(0)), Some(RemoteWish::OnSite));
-        assert_eq!(wish(json!("gern")), None);
-        assert_eq!(wish(json!(true)), None);
+        assert_eq!(RemoteWish::of(WorkWish::Onsite), Some(RemoteWish::OnSite));
     }
 
     fn share(location: &str, text: &str, facts: Option<&Value>) -> Option<(u64, u64)> {
@@ -1017,7 +978,7 @@ mod tests {
         ] {
             assert!(list.iter().all(|w| folded(w)), "{list:?}");
         }
-        for (phrase, replacement) in lex::ROLE_PHRASES {
+        for (phrase, replacement) in lex::ROLE_WORD_PHRASES {
             assert!(folded(phrase) && folded(replacement), "{phrase}");
         }
     }

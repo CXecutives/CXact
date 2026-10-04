@@ -44,8 +44,8 @@
     },
     "N08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT programme director, not HR; Warsaw role 'Fully remote from any EU country' is remote abroad, which she does not allow.",
+      "excluded": false,
+      "reason": "IT programme director, not HR; Warsaw role 'Fully remote from any EU country' is remote abroad, which she does not allow. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -266,8 +266,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data and analytics lead for an Amsterdam firm 'Fully remote from anywhere in the EU', remote abroad she does not allow.",
+      "excluded": false,
+      "reason": "Data and analytics lead for an Amsterdam firm 'Fully remote from anywhere in the EU', remote abroad she does not allow. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -792,8 +792,8 @@
     },
     "N04": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Tax role, not pharma quality; 'A permanent position' 'based in Zurich' with 'one home-office day per week' breaks her permanent location and remote rules.",
+      "excluded": false,
+      "reason": "Tax role, not pharma quality; 'A permanent position' 'based in Zurich' with 'one home-office day per week' breaks her permanent location and remote rules. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N05": {
@@ -816,8 +816,8 @@
     },
     "N08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT programme director, not pharma quality; Warsaw role 'Fully remote from any EU country' is remote abroad, which she does not allow.",
+      "excluded": false,
+      "reason": "IT programme director, not pharma quality; Warsaw role 'Fully remote from any EU country' is remote abroad, which she does not allow. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -948,8 +948,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent nursing job at 'zwischen 3.900 und 4.800 €' per month, far below her minimum annual salary.",
+      "excluded": false,
+      "reason": "Permanent nursing job at 'zwischen 3.900 und 4.800 €' per month, far below her minimum annual salary. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q15": {
@@ -1032,14 +1032,14 @@
     },
     "R12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT role, 'Full-time · Permanent' in Hamburg, which is outside her permanent locations.",
+      "excluded": false,
+      "reason": "IT role, 'Full-time · Permanent' in Hamburg, which is outside her permanent locations. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data and analytics lead for an Amsterdam firm 'Fully remote from anywhere in the EU', remote abroad she does not allow.",
+      "excluded": false,
+      "reason": "Data and analytics lead for an Amsterdam firm 'Fully remote from anywhere in the EU', remote abroad she does not allow. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -1098,8 +1098,8 @@
     },
     "S07": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Marketing role with an 'unbefristeten Arbeitsvertrag' in Hamburg and 'Zwei Tage mobiles Arbeiten', outside her permanent location and remote rules.",
+      "excluded": false,
+      "reason": "Marketing role with an 'unbefristeten Arbeitsvertrag' in Hamburg and 'Zwei Tage mobiles Arbeiten', outside her permanent location and remote rules. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "S08": {
@@ -1810,8 +1810,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data leadership role unrelated; \"Amsterdam (Remote)\" is outside her countries and remote abroad is not allowed.",
+      "excluded": false,
+      "reason": "Data leadership role unrelated; \"Amsterdam (Remote)\" is outside her countries and remote abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -1974,8 +1974,8 @@
     },
     "N08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT programme role unrelated to compliance; place of work \"Warsaw, Mazowieckie, Poland (Remote)\" is outside DE and AT.",
+      "excluded": false,
+      "reason": "IT programme role unrelated to compliance; place of work \"Warsaw, Mazowieckie, Poland (Remote)\" is outside DE and AT. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -2196,8 +2196,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data leadership role unrelated; \"Amsterdam (Remote)\" is outside DE and AT and remote abroad is not allowed.",
+      "excluded": false,
+      "reason": "Data leadership role unrelated; \"Amsterdam (Remote)\" is outside DE and AT and remote abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -2336,8 +2336,8 @@
     },
     "N04": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Head of group tax is unrelated to sales, and 'A permanent position' that 'is based in Zurich' (On-site) is outside his permanent places with no remote share.",
+      "excluded": false,
+      "reason": "Head of group tax is unrelated to sales, and 'A permanent position' that 'is based in Zurich' (On-site) is outside his permanent places with no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N05": {
@@ -2492,8 +2492,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Nursing job; excluded as 'Unbefristeter Arbeitsvertrag' at '3.900 €/Monat - 4.800 €/Monat', below 140000 per year.",
+      "excluded": false,
+      "reason": "Nursing job; excluded as 'Unbefristeter Arbeitsvertrag' at '3.900 €/Monat - 4.800 €/Monat', below 140000 per year. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q15": {
@@ -2576,8 +2576,8 @@
     },
     "R12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Head of IT is unrelated to sales, and the 'Permanent' role in 'Hamburg, Germany (Hybrid)' is outside his permanent places; hybrid proves no remote share.",
+      "excluded": false,
+      "reason": "Head of IT is unrelated to sales, and the 'Permanent' role in 'Hamburg, Germany (Hybrid)' is outside his permanent places; hybrid proves no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R13": {
@@ -2642,8 +2642,8 @@
     },
     "S07": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Head of marketing for a consumer food brand is only partly his B2B field; 'Einen unbefristeten Arbeitsvertrag' in Hamburg is outside his places and 'Zwei Tage mobiles Arbeiten pro Woche' is 40 %, below his 60 %.",
+      "excluded": false,
+      "reason": "Head of marketing for a consumer food brand is only partly his B2B field; 'Einen unbefristeten Arbeitsvertrag' in Hamburg is outside his places and 'Zwei Tage mobiles Arbeiten pro Woche' is 40 %, below his 60 %. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "S08": {
@@ -2746,8 +2746,8 @@
     },
     "N08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT programme director role is unrelated, and it is a remote role for a Polish employer: \"Warsaw, Mazowieckie, Poland (Remote)\".",
+      "excluded": false,
+      "reason": "IT programme director role is unrelated, and it is a remote role for a Polish employer: \"Warsaw, Mazowieckie, Poland (Remote)\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -3108,8 +3108,8 @@
     },
     "N04": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Group tax leadership is unrelated to marketing, and 'A permanent position' that 'is based in Zurich' (On-site) is outside her permanent places with no remote share.",
+      "excluded": false,
+      "reason": "Group tax leadership is unrelated to marketing, and 'A permanent position' that 'is based in Zurich' (On-site) is outside her permanent places with no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N05": {
@@ -3264,8 +3264,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Nursing job with permanent salary far below her minimum: \"3.900 €/Monat - 4.800 €/Monat\".",
+      "excluded": false,
+      "reason": "Nursing job with permanent salary far below her minimum: \"3.900 €/Monat - 4.800 €/Monat\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q15": {
@@ -3518,8 +3518,8 @@
     },
     "N08": {
       "grade": 1,
-      "excluded": true,
-      "reason": "ERP and TMS consolidation at a logistics group is only partly relevant to a logistics head, and it is remote abroad: \"Warsaw, Mazowieckie, Poland (Remote)\".",
+      "excluded": false,
+      "reason": "ERP and TMS consolidation at a logistics group is only partly relevant to a logistics head, and it is remote abroad: \"Warsaw, Mazowieckie, Poland (Remote)\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -3740,8 +3740,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data team leadership is unrelated, and it is remote for a Dutch employer: \"Amsterdam (Remote)\".",
+      "excluded": false,
+      "reason": "Data team leadership is unrelated, and it is remote for a Dutch employer: \"Amsterdam (Remote)\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -4290,8 +4290,8 @@
     },
     "N08": {
       "grade": 0,
-      "excluded": true,
-      "reason": "IT programme role is unrelated and based in 'Warsaw, Mazowieckie, Poland (Remote)', and she does not accept remote work abroad.",
+      "excluded": false,
+      "reason": "IT programme role is unrelated and based in 'Warsaw, Mazowieckie, Poland (Remote)', and she does not accept remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -4512,8 +4512,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data leadership is unrelated and the role is 'Amsterdam (Remote)', while she does not accept remote work abroad.",
+      "excluded": false,
+      "reason": "Data leadership is unrelated and the role is 'Amsterdam (Remote)', while she does not accept remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -4676,8 +4676,8 @@
     },
     "N08": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Programme management fits but SAP ERP consolidation in logistics is another domain; the role is 'Warsaw, Mazowieckie, Poland (Remote)' and remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "Programme management fits but SAP ERP consolidation in logistics is another domain; the role is 'Warsaw, Mazowieckie, Poland (Remote)' and remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -4898,8 +4898,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data leadership is unrelated and the role is 'Amsterdam (Remote)', while he does not accept remote work abroad.",
+      "excluded": false,
+      "reason": "Data leadership is unrelated and the role is 'Amsterdam (Remote)', while he does not accept remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -5062,8 +5062,8 @@
     },
     "N08": {
       "grade": 1,
-      "excluded": true,
-      "reason": "S/4HANA programme leadership is only partly relevant to an FI/CO consultant; excluded as a Polish role 'Fully remote from any EU country' while remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "S/4HANA programme leadership is only partly relevant to an FI/CO consultant; excluded as a Polish role 'Fully remote from any EU country' while remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N09": {
@@ -5284,8 +5284,8 @@
     },
     "R13": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data leadership role; excluded as a Dutch role 'Fully remote from anywhere in the EU' while remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "Data leadership role; excluded as a Dutch role 'Fully remote from anywhere in the EU' while remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "R14": {
@@ -5424,8 +5424,8 @@
     },
     "N04": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Group tax leadership is adjacent to finance but needs a tax adviser specialism she lacks; 'A permanent position' that 'is based in Zurich' (On-site) is outside her permanent places with no remote share.",
+      "excluded": false,
+      "reason": "Group tax leadership is adjacent to finance but needs a tax adviser specialism she lacks; 'A permanent position' that 'is based in Zurich' (On-site) is outside her permanent places with no remote share. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "N05": {
@@ -5580,8 +5580,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Nursing job; excluded as a permanent job at '3.900 €/Monat - 4.800 €/Monat', below 150000 per year.",
+      "excluded": false,
+      "reason": "Nursing job; excluded as a permanent job at '3.900 €/Monat - 4.800 €/Monat', below 150000 per year. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q15": {
@@ -5730,8 +5730,8 @@
     },
     "S07": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Consumer marketing is outside finance; 'Einen unbefristeten Arbeitsvertrag' in Hamburg is outside her places and 'Zwei Tage mobiles Arbeiten pro Woche' is 40 %, below her 60 %.",
+      "excluded": false,
+      "reason": "Consumer marketing is outside finance; 'Einen unbefristeten Arbeitsvertrag' in Hamburg is outside her places and 'Zwei Tage mobiles Arbeiten pro Woche' is 40 %, below her 60 %. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "S08": {

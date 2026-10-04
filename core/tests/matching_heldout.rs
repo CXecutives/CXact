@@ -4,7 +4,7 @@
 //! fix systematic gaps, so they are regression gates now, not an unseen measurement.
 //! Set 10 (customer service and contact center, customer experience, IT service management
 //! and marketing, the fields of the domain packs `customerService`, `itService` and
-//! `marketing`) is reported only; it has no gate yet.
+//! `marketing`) has its gate since engine 19.
 //!
 //! Every set runs the engine over all labelled (profile, job) pairs and computes the
 //! metrics of `docs/MATCHING.md` (NDCG@10/20, P@5 against what each profile can reach,
@@ -68,8 +68,8 @@ fn run_set(name: &str) -> SetRun {
     let mut per_profile = Vec::new();
     for (index, (profile_name, own)) in all_labels.iter().enumerate() {
         let path = profile_path(&dir, profile_name);
-        let data: Value =
-            serde_json::from_str(&std::fs::read_to_string(&path).expect("profile")).expect("json");
+        let data = jobalert_core::profile::parse(&std::fs::read_to_string(&path).expect("profile"))
+            .expect("a v19 profile");
         let profile = compile_profile(&data);
         let mut pairs = Vec::new();
         for job in &jobs {
@@ -183,9 +183,14 @@ struct Floor {
 /// profile's own years and never exclude, so the pairs the labels exclude only for the retired
 /// target years (`zielprofil_min_jahre`) are scored now. The recall floors (and NDCG@10 and
 /// Spearman where those pairs reach the top) follow.
+///
+/// Engine 19 (Profil-JSON v19, `docs/MATCHING.md`): every profile is migrated to v19, which
+/// keeps no title, USPs or career stations; the pairs the labels excluded only for remote work
+/// abroad or the region of permanent roles (rules v19 dropped) are relabeled. The floors below
+/// that moved follow the migrated profiles; on the same profiles engine 18 reaches no more.
 const HELDOUT1: Floor = Floor {
     ndcg10: 0.92,
-    spearman: 0.75,
+    spearman: 0.74,
     exclusion_precision: 1.0,
     exclusion_recall: 0.97,
     grade3_buried: 0,
@@ -222,7 +227,7 @@ const HELDOUT6: Floor = Floor {
 /// rule of set 3 (T04); the set-5 labels read a student wage as no salary. The labels of the
 /// two sets disagree, the engine keeps the set-3 rule, so the precision floor is below 1.
 const HELDOUT5: Floor = Floor {
-    ndcg10: 0.81,
+    ndcg10: 0.79,
     spearman: 0.48,
     exclusion_precision: 0.98,
     exclusion_recall: 0.95,
@@ -239,17 +244,19 @@ const HELDOUT7: Floor = Floor {
     ndcg10: 0.91,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.85,
+    exclusion_recall: 0.84,
     grade3_buried: 2,
 };
 /// The agency wage of version 16 costs the recall of set 7's reason (N03, N16, Q15, S05,
-/// S16); the rules of set 9 bring it back to 0.850.
+/// S16); the rules of set 9 bring it back to 0.850. Engine 19: P10's S07 (a hybrid permanent
+/// role at the cap of 40) loses a point to the work mode `remote` its migrated profile wishes
+/// (`ueberwiegend` before).
 const HELDOUT8: Floor = Floor {
-    ndcg10: 0.93,
+    ndcg10: 0.92,
     spearman: 0.39,
     exclusion_precision: 0.97,
-    exclusion_recall: 0.83,
-    grade3_buried: 1,
+    exclusion_recall: 0.82,
+    grade3_buried: 2,
 };
 /// Set 9 after the one correction round of engine 16 (first contact 0.828, 0.407, 0.908,
 /// 0.923 and 4 buried; engine 15 0.814 and 5 buried): the target years the labels read
@@ -259,7 +266,7 @@ const HELDOUT9: Floor = Floor {
     ndcg10: 0.86,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.86,
+    exclusion_recall: 0.85,
     grade3_buried: 0,
 };
 /// Engine 9 moved set 2 from 0.864 to 0.856: a language met is a light fit now, so off-field
@@ -273,6 +280,16 @@ const HELDOUT2: Floor = Floor {
     exclusion_precision: 1.0,
     exclusion_recall: 0.84,
     grade3_buried: 1,
+};
+
+/// Set 10 (customer service, CX, ITSM and marketing), its floors set after engine 19 as the
+/// plan decided.
+const HELDOUT10: Floor = Floor {
+    ndcg10: 0.94,
+    spearman: 0.70,
+    exclusion_precision: 1.0,
+    exclusion_recall: 1.0,
+    grade3_buried: 0,
 };
 
 fn misses(run: &SetRun) -> String {
@@ -361,7 +378,12 @@ fn heldout9_holds_its_gates() {
     check("heldout9", &HELDOUT9);
 }
 
-/// Every held-out set (set 10 in the report only, without a gate).
+#[test]
+fn heldout10_holds_its_gates() {
+    check("heldout10", &HELDOUT10);
+}
+
+/// Every held-out set.
 const SETS: [&str; 10] = [
     "heldout1",
     "heldout2",

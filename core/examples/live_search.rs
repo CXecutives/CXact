@@ -38,7 +38,7 @@ async fn main() {
     let terms = match args.as_slice() {
         [flag, path] if flag == "--profile" => {
             let text = std::fs::read_to_string(path).expect("the profile file");
-            let form = jobalert_core::profile::form_of(&text).expect("a profile");
+            let form = jobalert_core::profile::parse(&text).expect("a v19 profile");
             jobalert_core::profile::deep_search_terms(&form)
         }
         [] => vec!["Interim CFO".to_owned()],

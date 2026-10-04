@@ -33,15 +33,53 @@ pub(crate) const ROLE_CONTRACT_WORDS: &[&str] = &[
     "interim",
     "interimistisch",
 ];
-/// Paraphrases of a role title, applied to role and title before they are compared
-/// (phrase -> replacement, whole words).
-pub(crate) const ROLE_PHRASES: &[(&str, &str)] = &[
-    ("chief financial officer", "cfo"),
-    ("finanzvorstand", "cfo"),
-    ("finanzvorstandin", "cfo"),
-    ("kaufmannischer geschaftsfuhrer", "cfo"),
-    ("kaufmannische geschaftsfuhrerin", "cfo"),
-    ("kaufmannische geschaftsfuhrung", "cfo"),
+/// Names of one role as people and job boards write them, in their written form: the one
+/// table of role names. The engine reads every name of a group as the group's first name
+/// (role and title alike, `matching::roles`), the search asks for each of them
+/// (`profile::deep_search_terms`), and the Profil suggests them as target roles.
+pub(crate) const ROLE_GROUPS: &[&[&str]] = &[
+    &[
+        "CFO",
+        "Chief Financial Officer",
+        "Finanzvorstand",
+        "Finanzvorständin",
+        "Kaufmännischer Geschäftsführer",
+        "Kaufmännische Geschäftsführerin",
+        "Kaufmännische Geschäftsführung",
+    ],
+    &[
+        "Head of Finance",
+        "Finance Director",
+        "Leiter Finanzen",
+        "Kaufmännischer Leiter",
+    ],
+    &[
+        "Head of Controlling",
+        "Leiter Controlling",
+        "Controlling Manager",
+    ],
+    &[
+        "Head of Accounting",
+        "Leiter Rechnungswesen",
+        "Leiter Buchhaltung",
+    ],
+    &["Head of Treasury", "Treasurer", "Leiter Treasury"],
+    &["CEO", "Geschäftsführer", "Managing Director"],
+    &["COO", "Chief Operating Officer", "Head of Operations"],
+    &["CHRO", "Head of HR", "Personalleiter"],
+    &[
+        "CIO",
+        "Chief Information Officer",
+        "IT-Leiter",
+        "IT-Leitung",
+        "Head of IT",
+    ],
+    &["Projektleiter", "Projektmanager", "Project Manager"],
+    &["Programmmanager", "Program Manager"],
+];
+/// Paraphrases of words inside a role or a title, applied before the role names (phrase ->
+/// replacement, folded, whole words).
+pub(crate) const ROLE_WORD_PHRASES: &[(&str, &str)] = &[
     ("head of", "head"),
     ("leiter der", "leiter"),
     ("leiterin der", "leiterin"),

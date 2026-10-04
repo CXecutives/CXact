@@ -23,8 +23,8 @@ use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
 use jobalert_core::store::Backup;
 use jobalert_core::view::{
-    self, JobQuery, JobSort, Mailbox, ProfileEntry, ProfileInfo, ResetSummary, SettingsPatch,
-    SettingsView, WorkspacePick, WorkspaceProfile,
+    self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
+    WorkspacePick, WorkspaceProfile,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
@@ -75,10 +75,12 @@ pub(super) fn profile_info(state: &AppState, workspace: &std::path::Path) -> Opt
             parse_error: None,
         };
         ProfileInfo::of(&sample, Some(dry_run::PROFILE_NAME.to_owned()))
-            .with_form(profile::form_of(dry_run::PROFILE_JSON))
+            .with_form(profile::parse(dry_run::PROFILE_JSON).ok())
     } else {
         match profile::info(workspace) {
-            Ok(info) => ProfileInfo::of(&info?, None).with_form(profile::stored_form(workspace)),
+            Ok(info) => {
+                ProfileInfo::of(&info?, None).with_form(profile::load(workspace).ok().flatten())
+            }
             Err(e) => {
                 log::warn!("profile not readable: {e}");
                 return None;
@@ -98,26 +100,6 @@ pub(super) fn profile_info(state: &AppState, workspace: &std::path::Path) -> Opt
             Some(info)
         }
     }
-}
-
-/// The profiles of the work folder for the switcher; the dry run has its sample profile
-/// only.
-pub(super) fn profile_entries(
-    state: &AppState,
-    workspace: &std::path::Path,
-) -> CmdResult<Vec<ProfileEntry>> {
-    if state.dry_run {
-        let role = profile::form_of(dry_run::PROFILE_JSON)
-            .map(|form| form.title.trim().to_owned())
-            .filter(|title| !title.is_empty());
-        return Ok(vec![ProfileEntry {
-            id: 1,
-            name: None,
-            role,
-            active: true,
-        }]);
-    }
-    Ok(view::profile_entries(workspace)?)
 }
 
 /// Everything the page needs - without attaching to a run.
@@ -173,10 +155,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         },
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
-        profiles: profile_entries(state, &workspace).unwrap_or_else(|e| {
-            log::warn!("profiles not listed: {e:?}");
-            Vec::new()
-        }),
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
         fetch_mail: settings.fetch_mail,
         fetch_search: settings.fetch_search,

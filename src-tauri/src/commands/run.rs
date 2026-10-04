@@ -219,7 +219,7 @@ fn run_context(
     let search_terms = if search_portals.is_empty() {
         Vec::new()
     } else {
-        profile::stored_form(&workspace)
+        profile::load(&workspace)?
             .map(|form| profile::deep_search_terms(&form))
             .unwrap_or_default()
     };

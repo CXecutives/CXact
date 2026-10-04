@@ -12,6 +12,7 @@ use crate::matching::{
 };
 use crate::model::{DescStatus, MatchRecord, MatchStatus, Notice, is_usable_title};
 use crate::portal::Facts;
+use crate::profile::ProfileForm;
 use crate::store::{JobRow, Judgement};
 
 /// Met requirements quoted in the list row.
@@ -44,9 +45,9 @@ impl LocalMatcher {
         LocalMatcher { profile, rev }
     }
 
-    /// Compiles a profile file's JSON (anything that is no object gives an empty profile).
-    pub fn from_json(value: &Value) -> LocalMatcher {
-        LocalMatcher::new(matching::compile_profile(value))
+    /// Compiles a profile.
+    pub fn from_form(form: &ProfileForm) -> LocalMatcher {
+        LocalMatcher::new(matching::compile_profile(form))
     }
 
     pub fn profile(&self) -> &CompiledProfile {
@@ -360,8 +361,8 @@ mod tests {
     use crate::portal::{JobKey, job_link};
     use crate::store::{MailRef, Store};
 
-    fn profile() -> Value {
-        serde_json::from_str(super::super::dry_run::PROFILE_JSON).unwrap()
+    fn profile() -> ProfileForm {
+        crate::profile::parse(super::super::dry_run::PROFILE_JSON).unwrap()
     }
 
     /// A stored job with `text` as its description (none if empty).
@@ -405,17 +406,17 @@ Rahmenbedingungen:
 
     #[test]
     fn the_revision_names_engine_and_profile() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let rev = matcher.rev();
         let prefix = format!("e{}.{INPUTS}:", matching::ENGINE_VERSION);
         assert!(rev.starts_with(&prefix), "{rev}");
         assert_eq!(rev.len(), prefix.len() + 16);
-        assert_eq!(rev, LocalMatcher::from_json(&profile()).rev(), "stable");
+        assert_eq!(rev, LocalMatcher::from_form(&profile()).rev(), "stable");
         let mut other = profile();
-        other["keywords"] = json!(["Treasury"]);
-        assert_ne!(rev, LocalMatcher::from_json(&other).rev());
+        other.tools.push("Treasury".into());
+        assert_ne!(rev, LocalMatcher::from_form(&other).rev());
         assert!(matcher.usable());
-        let empty = LocalMatcher::from_json(&json!({"name": "Nur ein Name"}));
+        let empty = LocalMatcher::from_form(&ProfileForm::default());
         assert!(!empty.usable());
         let (store, key) = job("Interim CFO", "Hamburg", FIT);
         let row = store.job(&key).unwrap().unwrap();
@@ -428,7 +429,7 @@ Rahmenbedingungen:
 
     #[test]
     fn a_scored_job_keeps_counts_and_two_met_quotes() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let record = assess(&matcher, "Interim CFO (m/w/d)", "Hamburg", FIT);
         assert_eq!(record.status, MatchStatus::Scored);
         assert!(record.score >= 40, "{record:?}");
@@ -454,7 +455,7 @@ Rahmenbedingungen:
     /// or a partly met requirement is none of them.
     #[test]
     fn the_open_terms_are_musts_then_nice_ones() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let text = "Wir suchen einen Interim CFO (m/w/d).
 
 Anforderungen:
@@ -507,7 +508,7 @@ Rahmenbedingungen:
     /// sentence of the ad and a frame condition give none.
     #[test]
     fn the_term_of_an_open_requirement() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let text = "Wir suchen einen Interim CFO (m/w/d).
 
 Anforderungen:
@@ -559,7 +560,7 @@ Wünschenswert:
 
     #[test]
     fn the_note_says_why_excluded_unscorable_or_what_to_check() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let excluded = assess(
             &matcher,
             "Interim CFO",
@@ -612,7 +613,7 @@ Wünschenswert:
     /// page head names excludes the job, and a teaser is judged as one.
     #[test]
     fn stored_facts_and_the_teaser_reach_the_engine() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let (store, key) = job("Interim CFO (m/w/d)", "Hamburg", FIT);
         let row = store.job(&key).unwrap().unwrap();
         let plain = matcher.assess(&row, Some(FIT)).unwrap();
@@ -640,7 +641,7 @@ Wünschenswert:
     /// New page facts make a stored score stale.
     #[test]
     fn other_facts_score_the_job_again() {
-        let matcher = LocalMatcher::from_json(&profile());
+        let matcher = LocalMatcher::from_form(&profile());
         let (store, key) = job("Interim CFO (m/w/d)", "Hamburg", FIT);
         let row = store.job(&key).unwrap().unwrap();
         let record = matcher.assess(&row, Some(FIT)).unwrap();

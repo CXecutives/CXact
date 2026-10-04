@@ -163,7 +163,7 @@ writes `commands.ts`. Never edit them by hand. The PascalCase files are the IPC 
 | `commands.ts` | `src-tauri/commands.txt` | every command, its arguments and its result |
 | `bands.ts` | `core/src/model.rs` | `HIGH_FROM`, `MID_FROM`, `BAND_FROM`, `bandOf` |
 | `portals.ts`, `Portal.ts` | the registry in `core/src/portal/` | `PORTALS` (the order), `PORTAL_LABEL`, `PORTAL_MONOGRAM` |
-| `profile.ts` | `CRITERIA` in `core/src/profile/form.rs` | `NUMBER_CRITERIA` (limit, unit), `WORD_CRITERIA`, `UNREADABLE_FIELDS`, `MAX_FOCUS`, the list limits, `EMPTY_FORM` |
+| `profile.ts` | `core/src/profile/form.rs` | `NUMBER_LIMITS`, `MAX_FOCUS`, `MAX_YEARS`, the list limits, `EMPTY_FORM` |
 
 ## Add or remove a command
 
@@ -181,33 +181,21 @@ writes `commands.ts`. Never edit them by hand. The PascalCase files are the IPC 
 capability against the table. Removing a command is the same in reverse; the stub, the
 harness specs and the callers of `invoke` fail to compile until nothing names it.
 
-## Add a profile criterion
+## Add a profile field
 
-A number or a list of words under `harte_kriterien`:
+The profile is Profil-JSON v19 (`core/src/profile/form.rs`, external contract: German keys):
 
-1. The engine reads it first: its keys (`KEYS_...`) in `core/src/matching/lexicon/` and its
-   value in `matching::facts::HardCriteria`.
-2. `core/src/profile/form.rs`: a field of `ProfileCriteria`, a variant of `UnreadableField`
-   (and in `UnreadableField::ALL`), a limit (`MAX_...`) if it is a new one, and one row of
-   `CRITERIA` in the order a new profile writes it: `Kind::Number { max, unit, slot, read }`
-   or `Kind::Words { upper, slot, read }`. Normalizing, the limit, reading, writing and
-   "Wert entfernen" follow the row; a test fails while `ALL` or the table misses a field.
-3. `cargo test -p jobalert-core ipc_types` rewrites `ProfileCriteria.ts`,
-   `UnreadableField.ts` and `profile.ts`.
-4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
-   (`{ kind: 'number', key, label, testid }` or `{ kind: 'chips', ... }`; its unit and limit
-   come from core) and its label (and hint, placeholder) in the catalog (`profile.field`).
-   `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` and the stub's validation
-   need nothing.
-5. The AI prompt for a new profile (`core/src/profile/prompt.rs`): its key in the skeleton's
-   `harte_kriterien`, in the order of `CRITERIA`, and one rule line
-   (and, if the CV cannot say it, one question of "Der Ablauf"); a test fails while the
-   skeleton misses a field of the form or a key has no rule.
-
-A criterion of another kind (a switch, a choice) is a new `Kind` variant: the compiler
-names every `match row.kind` that has to handle it; in the UI `normalizedCriteria` and
-`fieldValue` of `profile.svelte.ts` take it by hand, a switch is one `kind: 'switch'` entry of
-the section's switches, anything else a control kind of `sections.ts` with its component.
+1. `core/src/profile/form.rs`: the field of `ProfileForm` (camelCase on the IPC side), its key in
+   `File` (and its conversion in `File::of` and `File::form`), a limit in `validate` if it takes
+   one, the rebase in `merge`, and in `missing_required` if a usable profile needs it. A key the
+   engine names in a path goes into `key`.
+2. The engine reads it from the form: a hard criterion in `matching::facts::HardCriteria::new`
+   (and `criteria_info` in `matching/mod.rs`), a wish in `matching::wishes::Wishes::new`, an entry
+   in `matching::profile::core_texts`.
+3. If the CV can say it: `cv-worker/schema.json` (`the_cv_schema_is_a_part_of_the_file` checks it).
+4. `cargo test -p jobalert-core ipc_types` rewrites `ProfileForm.ts` and `profile.ts`; the AI
+   prompt's glossary (`GLOSSARY` in `core/src/export/ai_prompt/de.rs`) names the key.
+5. The UI: one entry in `ui/src/features/profile/sections.ts` and its texts in the catalog.
 
 ## Change the Profil form
 

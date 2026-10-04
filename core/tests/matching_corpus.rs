@@ -19,6 +19,7 @@ use jobalert_core::matching::{
     compile_profile,
 };
 use jobalert_core::portal::Portal;
+use jobalert_core::profile::{ProfileForm, WorkWish, parse};
 use serde_json::Value;
 use sha2::Digest as _;
 
@@ -29,25 +30,9 @@ use sha2::Digest as _;
 /// `6e4d9945276f410c`. Version 17 (the deadline and the contact, no score moved) changed only
 /// the version line too: with `engine 16` in front the rows give `501e5e88adf66bd7`. Version
 /// 18: K47 and K51 of senior and wish are scored (the years below the profile's never exclude),
-/// no score moved.
-const GOLDEN_DIGEST: &str = "28d901d2ad056e1d";
-
-/// SHA-256 (16 hex) over the results of the four profiles without the version-4 keys
-/// (`schwerpunkte`, `wunschrollen`, the wishes in `einsatzpraeferenzen`; the IT profile's
-/// old `remote` text is taken out) on K01-K52, without the engine version. It stayed at the
-/// `ENGINE_VERSION` 3 value `cc7ce7f0ce68f654` while the version-4 inputs were added (with
-/// the line `engine 3` in front these rows gave its golden digest `df1d52ce75759f41`):
-/// without their keys the new inputs change nothing. The held-out fixes of version 4 move
-/// these rows on purpose; each such change updates this value (`docs/MATCHING.md`).
-const V3_ROWS_DIGEST: &str = "2458d856e0a3f24e";
-
-/// The profiles of `V3_ROWS_DIGEST` and the jobs it covers.
-const V3_PROFILES: &[&str] = &["fin", "it", "senior", "sap"];
-const V3_JOBS: usize = 52;
-
-/// Keys of the version-4 inputs (`einsatzpraeferenzen` holds older keys as well).
-const V4_KEYS: &[&str] = &["schwerpunkte", "wunschrollen"];
-const V4_PREFERENCE_KEYS: &[&str] = &["tagessatz_wunsch", "remote", "regionen", "branchen"];
+/// no score moved. Version 19: the profiles are Profil-JSON v19 (migrated), the region of
+/// permanent roles is no rule (K33 and K43 of senior and wish), a table of role names.
+const GOLDEN_DIGEST: &str = "aef89e52a4aa7d74";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")
@@ -56,6 +41,11 @@ fn fixtures() -> PathBuf {
 fn read_json(path: &Path) -> Value {
     let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+fn read_profile(path: &Path) -> ProfileForm {
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    parse(&text).unwrap_or_else(|e| panic!("{}: {e:?}", path.display()))
 }
 
 /// The engine on local private ads: no panic, one line per job.
@@ -72,8 +62,7 @@ fn engine_on_local_data() {
         .values()
         .filter_map(Value::as_str)
     {
-        let data = read_json(&root.join(name));
-        let profile = compile_profile(&data);
+        let profile = compile_profile(&read_profile(&root.join(name)));
         let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
             .expect("folder")
             .filter_map(|e| e.ok().map(|e| e.path()))
@@ -288,38 +277,19 @@ struct Row {
     gated: bool,
 }
 
-/// A profile without the version-4 keys.
-fn without_v4_keys(mut profile: Value) -> Value {
-    if let Some(map) = profile.as_object_mut() {
-        for key in V4_KEYS {
-            map.remove(*key);
-        }
-        if let Some(preferences) = map
-            .get_mut("einsatzpraeferenzen")
-            .and_then(Value::as_object_mut)
-        {
-            for key in V4_PREFERENCE_KEYS {
-                preferences.remove(*key);
-            }
-        }
-    }
-    profile
-}
-
 fn run() -> Run {
     run_with(|_, profile| profile)
 }
 
-/// The corpus with every profile passed through `prepare` (profile key, profile JSON).
-fn run_with(prepare: impl Fn(&str, Value) -> Value) -> Run {
+/// The corpus with every profile passed through `prepare` (profile key, profile).
+fn run_with(prepare: impl Fn(&str, ProfileForm) -> ProfileForm) -> Run {
     let root = fixtures();
     let (corpus, jobs) = corpus();
     let mut rows = Vec::new();
     for (key, file) in corpus["profiles"].as_object().expect("profiles") {
         let file = file.as_str().expect("profile file");
         let profile_since = since(&corpus["profileSince"][key]);
-        let data = prepare(key, read_json(&root.join(file)));
-        let profile = compile_profile(&data);
+        let profile = compile_profile(&prepare(key, read_profile(&root.join(file))));
         for job in &jobs {
             let input = JobInput {
                 title: &job.file.title,
@@ -468,51 +438,18 @@ fn golden_digest_of_all_corpus_results() {
     assert_eq!(hex, GOLDEN_DIGEST, "corpus results changed:\n{canonical}");
 }
 
-/// Profiles without the version-4 keys: every new input is off while its key is missing, so
-/// only deliberate engine changes move their rows (see `V3_ROWS_DIGEST`).
-#[test]
-fn profiles_without_the_new_keys_score_as_before() {
-    let run = run_with(|key, profile| {
-        if V3_PROFILES.contains(&key) {
-            without_v4_keys(profile)
-        } else {
-            profile
-        }
-    });
-    let jobs: Vec<String> = (1..=V3_JOBS).map(|n| format!("K{n:02}")).collect();
-    let mut canonical = String::new();
-    for row in run
-        .rows
-        .iter()
-        .filter(|r| V3_PROFILES.contains(&r.profile.as_str()) && jobs.contains(&r.job))
-    {
-        digest_line(&mut canonical, row);
-    }
-    assert_eq!(
-        canonical.lines().count(),
-        V3_PROFILES.len() * V3_JOBS,
-        "rows"
-    );
-    let hex = hex16(&canonical);
-    assert_eq!(hex, V3_ROWS_DIGEST, "old profiles changed:\n{canonical}");
-}
-
 /// The target role and the wishes never lift a job into the high band (80) while fewer
 /// than half of its musts are met: every corpus row against the same profile without them.
 #[test]
 fn wishes_never_lift_a_weak_job_into_the_high_band() {
     let with = run();
     let without = run_with(|_, mut profile| {
-        if let Some(map) = profile.as_object_mut() {
-            map.remove("wunschrollen");
-            if let Some(preferences) = map
-                .get_mut("einsatzpraeferenzen")
-                .and_then(Value::as_object_mut)
-            {
-                for key in V4_PREFERENCE_KEYS {
-                    preferences.remove(*key);
-                }
-            }
+        profile.roles.clear();
+        profile.day_rate_wish = None;
+        profile.work_mode = WorkWish::Any;
+        profile.regions.clear();
+        for industry in &mut profile.industries {
+            industry.preferred = false;
         }
         profile
     });
@@ -556,7 +493,7 @@ fn engine_is_fast_enough() {
     }
     let root = fixtures();
     let (_, jobs) = corpus();
-    let profile = compile_profile(&read_json(&root.join("sample_profile.json")));
+    let profile = compile_profile(&read_profile(&root.join("sample_profile.json")));
     let mut times = Vec::with_capacity(2000);
     let started = Instant::now();
     for i in 0..2000 {

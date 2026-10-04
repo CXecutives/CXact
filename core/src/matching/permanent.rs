@@ -1,27 +1,17 @@
-//! Rules for permanent roles (only when the profile sets them): minimum annual salary and
-//! the region (places plus a minimum remote share). Decided only for a stated permanent
-//! role with clear wording; an inferred permanent role, an unclear contract (an agency
-//! without details) or unclear wording gives a check.
+//! The rule for permanent roles (only when the profile sets it): the minimum annual salary.
+//! Decided only for a stated permanent role with clear wording; an inferred permanent role,
+//! an unclear contract (an agency without details) or unclear wording gives a check.
 //!
 //! Salary: EUR per year, the upper bound counts (`110.000 bis 130.000 €` -> 130,000) with the
 //! bonus share its sentence names (`plus bis zu 20 % Bonus`), `ab 100.000` is only a lower
 //! bound, a monthly amount is a check, one in another currency is not compared with a minimum
 //! in euros (a check, like a day rate in another currency).
-//! Region: a profile place in the location field or a location line
-//! (`Standort: Frankfurt oder München`) is inside; a stated remote share of at least the
-//! minimum (`80 % remote`,
-//! `fully remote`) accepts any place; hybrid wording or office days are no proof; a
-//! location that names only the country is unclear.
 
-use std::ops::Range;
-
-use serde_json::{Value, json};
+use serde_json::json;
 
 use super::ad_facts::currency_code;
-use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
-use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact, hourly_pay_in};
-use super::job::contains_word;
+use super::facts::{Finding, HardCriteria, Segment, hourly_pay_in};
 use super::lexicon::engine as lex;
 use super::params::HOURS_PER_YEAR;
 use super::types::{CriterionKey, ReasonCode};
@@ -329,162 +319,53 @@ pub(crate) fn place_words(folded: &str) -> Vec<&str> {
         .collect()
 }
 
-/// Region rule for permanent roles.
-pub(crate) fn region(
-    criteria: &HardCriteria,
-    contract: &Contract,
-    job: &JobFacts<'_>,
-    segments: &[Segment],
-    folded: &str,
-) -> Vec<Finding> {
-    let (Some(places), Some(may_decide)) = (&criteria.places, scope(contract)) else {
-        return Vec::new();
-    };
-    let remote_min = criteria.remote_min.unwrap_or(100);
-    let raw_location = fact(job.facts, super::fact_key::LOCATION)
-        .and_then(Value::as_str)
-        .unwrap_or(job.location)
-        .trim();
-    let location = fold(raw_location);
-    // Proof of enough remote work.
-    let facts_remote = fact(job.facts, super::fact_key::REMOTE_PERCENT).and_then(Value::as_u64);
-    let remote_full = lex::FULL_REMOTE.iter().any(|w| folded.contains(w))
-        || lex::REMOTE_FULL_EXTRA.iter().any(|w| folded.contains(w))
-        || contains_word(&location, "remote");
-    let remote_share = segments
-        .iter()
-        .filter(|(_, f)| lex::REMOTE_WORDS.iter().any(|w| f.contains(w)))
-        .flat_map(|(_, f)| percents(f))
-        .chain(facts_remote)
-        .max();
-    if remote_full || remote_share.is_some_and(|p| p >= remote_min) {
-        return Vec::new();
-    }
-    let folded_places: Vec<String> = places.iter().map(|p| fold(p)).collect();
-    let inside = |text: &str| folded_places.iter().any(|p| contains_word(text, p));
-    let lines: Vec<&Segment> = segments
-        .iter()
-        .filter(|(_, f)| lex::LOCATION_LINES.iter().any(|w| f.starts_with(w)))
-        .collect();
-    if inside(&location) || lines.iter().any(|(_, f)| inside(f)) {
-        return Vec::new();
-    }
-    let onsite: Vec<&Segment> = segments
-        .iter()
-        .filter(|(_, f)| lex::ONSITE_WORDS.iter().any(|w| f.contains(w)))
-        .collect();
-    if onsite.iter().any(|(_, f)| inside(f)) {
-        return Vec::new();
-    }
-    // A named place outside the region: the location field, a location line, or a larger
-    // city in an on-site sentence.
-    let line_place = lines.iter().find(|(_, f)| {
-        let rest = f.split_once(':').map_or("", |(_, r)| r);
-        !place_words(rest).is_empty()
-    });
-    let city = onsite.iter().find_map(|(r, f)| {
-        lex::GERMAN_CITIES
-            .iter()
-            .find(|c| contains_word(f, c))
-            .map(|c| ((*c).to_owned(), r.clone()))
-    });
-    let quote = |range: &Range<usize>| job.text.get(range.clone()).unwrap_or("").trim().to_owned();
-    let outside: Option<(String, Vec<Range<usize>>)> = if !place_words(&location).is_empty() {
-        Some((raw_location.to_owned(), Vec::new()))
-    } else if let Some((range, _)) = line_place {
-        Some((quote(range), vec![range.clone()]))
-    } else {
-        city.map(|(_, r)| (quote(&r), vec![r]))
-    };
-    let key = Some(CriterionKey::PermanentRegion);
-    match outside {
-        Some((place, spans)) if contract.kind == ContractKind::Permanent => vec![Finding::new(
-            ReasonCode::PermanentRegion,
-            may_decide,
-            key,
-            json!({ "location": place, "remoteMin": criteria.remote_min, "remote": remote_share }),
-            spans,
-        )],
-        Some((place, spans)) => vec![Finding::new(
-            ReasonCode::PermanentRegionUnclear,
-            false,
-            key,
-            json!({ "location": place }),
-            spans,
-        )],
-        None => vec![Finding::new(
-            ReasonCode::PermanentRegionUnclear,
-            false,
-            key,
-            json!({ "location": raw_location }),
-            Vec::new(),
-        )],
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::matching::atoms::fold;
     use crate::matching::contract::infer;
-    use crate::matching::facts::{anue, segments};
-    use crate::matching::profile;
+    use crate::matching::facts::{JobFacts, anue, segments};
     use crate::portal::Portal;
 
-    /// Region findings of a LinkedIn ad for a profile with Munich and 60 % remote.
-    fn region_of(location: &str, text: &str) -> Vec<(ReasonCode, bool)> {
-        let data = serde_json::json!({ "harte_kriterien": {
-            "festanstellung_orte": ["München", "Freising"],
-            "festanstellung_remote_min": 60,
-            "min_jahresgehalt": 150_000
-        }});
-        let criteria = HardCriteria::new(&profile::criteria(&data), &data);
+    /// Salary findings of a LinkedIn ad for a profile with a minimum of 150,000 a year.
+    fn salary_of(text: &str) -> Vec<(ReasonCode, bool)> {
+        let form = crate::profile::ProfileForm {
+            min_salary: Some(150_000),
+            ..crate::profile::ProfileForm::default()
+        };
+        let criteria = HardCriteria::new(&form);
         let job = JobFacts {
             title: "Head of Controlling (m/w/d)",
             text,
-            location,
+            location: "München",
             portal: Portal::LinkedIn,
             facts: None,
             posted: None,
         };
         let segments = segments(text);
         let contract = infer(&job, &segments, &anue(&job, &segments));
-        region(&criteria, &contract, &job, &segments, &fold(text))
+        salary(&criteria, &contract, job.title, &segments)
             .into_iter()
-            .chain(salary(&criteria, &contract, job.title, &segments))
             .map(|f| (f.code, f.decided))
             .collect()
     }
 
     #[test]
-    fn permanent_region_and_salary() {
+    fn permanent_salary() {
         let permanent = "Wir bieten eine unbefristete Festanstellung.";
-        let with = |extra: &str| format!("{permanent}\n{extra}");
-        assert_eq!(
-            region_of("Frankfurt am Main, Hessen, Deutschland", permanent),
-            [
-                (ReasonCode::PermanentRegion, true),
-                (ReasonCode::SalaryUnknown, false)
-            ]
-        );
-        let hybrid = with("Hybrides Arbeiten mit bis zu drei Tagen mobilem Arbeiten pro Woche.");
-        assert_eq!(
-            region_of("Frankfurt am Main", &hybrid)[0],
-            (ReasonCode::PermanentRegion, true)
-        );
-        let remote = with("Die Position ist zu 80 % remote möglich. Jahresgehalt 160.000 €.");
-        assert!(region_of("Hamburg", &remote).is_empty());
-        let or_munich = with("Standort: Frankfurt am Main oder München. Jahresgehalt 170.000 €.");
-        assert!(region_of("Frankfurt am Main", &or_munich).is_empty());
-        assert_eq!(
-            region_of("Deutschland", permanent)[0],
-            (ReasonCode::PermanentRegionUnclear, false)
-        );
+        let with = |extra: &str| {
+            format!(
+                "{permanent}
+{extra}"
+            )
+        };
+        assert_eq!(salary_of(permanent), [(ReasonCode::SalaryUnknown, false)]);
+        assert!(salary_of(&with("Jahresgehalt 160.000 €.")).is_empty());
         let low = with("Jahresgehalt von 110.000 bis 130.000 € zuzüglich Bonus.");
-        assert_eq!(region_of("Freising", &low), [(ReasonCode::Salary, true)]);
+        assert_eq!(salary_of(&low), [(ReasonCode::Salary, true)]);
         let from = with("Gehalt ab 100.000 € brutto.");
-        assert_eq!(region_of("München", &from), [(ReasonCode::Salary, false)]);
-        let interim = "Interim-Mandat, Tagessatz 1.200 € pro Tag.";
-        assert!(region_of("Hamburg", interim).is_empty());
+        assert_eq!(salary_of(&from), [(ReasonCode::Salary, false)]);
+        assert!(salary_of("Interim-Mandat, Tagessatz 1.200 € pro Tag.").is_empty());
     }
 
     /// LinkedIn's salary chip states a permanent role and its salary; a bonus share in the
@@ -492,23 +373,21 @@ mod tests {
     #[test]
     fn salary_chips_and_bonus_shares() {
         assert_eq!(
-            region_of("München", "120.000 €/Jahr - 140.000 €/Jahr"),
+            salary_of("120.000 €/Jahr - 140.000 €/Jahr"),
             [(ReasonCode::Salary, true)]
         );
         let permanent = "Wir bieten eine unbefristete Festanstellung.";
         let with = |extra: &str| format!("{permanent}\n{extra}");
         assert!(
-            region_of(
-                "München",
-                &with("Jahresgehalt 120.000 bis 130.000 € plus bis zu 20 % Bonus.")
-            )
+            salary_of(&with(
+                "Jahresgehalt 120.000 bis 130.000 € plus bis zu 20 % Bonus."
+            ))
             .is_empty()
         );
         assert_eq!(
-            region_of(
-                "München",
-                &with("Jahresgehalt 120.000 bis 130.000 € zzgl. Bonus, 100 % remote möglich.")
-            ),
+            salary_of(&with(
+                "Jahresgehalt 120.000 bis 130.000 € zzgl. Bonus, 100 % remote möglich."
+            )),
             [(ReasonCode::Salary, true)]
         );
     }
@@ -543,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn remote_shares() {
+    fn percents_and_place_words() {
         assert_eq!(percents("die position ist zu 80 % remote moglich"), [80]);
         assert!(percents("bis zu drei tage mobiles arbeiten pro woche").is_empty());
         assert_eq!(

@@ -8,62 +8,69 @@ Unten stehen mein Profil, die Anzeige und die Vorbewertung der App, danach die A
 
 Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat meiner App:
 
-- `harte_kriterien`: Schwellen für Ausschluss und Prüfung; jede gilt nur, wenn sie gesetzt ist
-- `min_tagessatz`: niedrigster Tagessatz in Euro
-- `laender`: erlaubte Einsatzländer als Ländercodes
-- `ausgeschlossene_vertragsarten`: `anue` schließt Arbeitnehmerüberlassung aus, `festanstellung` eine Festanstellung
-- `verfuegbar_ab`: frühester Start
-- `schwerpunkte`: auf oberster Ebene meine drei bis fünf Kernkompetenzen, in `stationen` die Themen einer Station
 - `wunschrollen`: Rollen, die ich suche
-- `einsatzpraeferenzen`: Wünsche, nie ein Ausschluss: `tagessatz_wunsch`, `remote`, `regionen`, `branchen`
-- `auch`: andere Begriffe für dieselbe Kompetenz
-- `jahre`: Jahre Erfahrung
+- `vertragsarten`: erlaubte Vertragsarten: `projekt` (Projekt und Interim, immer), `festanstellung`, `zeitarbeit` (Arbeitnehmerüberlassung); was fehlt, schließt eine Stelle aus
+- `tagessatz_wunsch`: gewünschter Tagessatz in Euro, nie ein Ausschluss
+- `tagessatz_min`: niedrigster Tagessatz in Euro
+- `mindestgehalt`: niedrigstes Jahresgehalt einer Festanstellung oder Zeitarbeit in Euro
+- `arbeitsmodell`: gewünschtes Arbeitsmodell (`egal`, `remote`, `hybrid`, `vor_ort`), nie ein Ausschluss
+- `laender`: erlaubte Einsatzländer als Ländercodes; voll remote passt überall
+- `regionen`: gewünschte Regionen, nie ein Ausschluss
+- `verfuegbar_ab`: frühester Start
+- `auslastung`: `vollzeit` mindestens vier Tage pro Woche, `teilzeit` höchstens drei
+- `mindestlaufzeit_monate`: kürzeste Laufzeit eines Einsatzes in Monaten (0 = egal)
+- `kernkompetenzen`: meine Kompetenzen mit Jahren Erfahrung (`jahre`); `schwerpunkt` markiert die bis zu fünf, für die ich gebucht werden will
+- `methoden_tools`: Tools und Methoden; sie belegen Anforderungen wie Kompetenzen
+- `berufserfahrung_jahre`: Jahre Berufserfahrung insgesamt; gegen sie zählen die Jahre, die eine Anzeige verlangt
+- `branchen`: Branchen meiner Erfahrung; `wunsch` markiert die, in denen ich bevorzugt arbeite
+- `sprachen`: Sprachen mit Niveau
+- `abschluesse`: Abschlüsse mit Fach
+- `zertifizierungen`: Zertifikate
+- `ausschlusswoerter`: Wörter, die eine Anzeige ausschließen, wenn sie die Stelle selbst beschreiben
 
 ```json
 {
-  "alleinstellungsmerkmale": [
-    "Aufbau eines Konzernreportings, mehr unter oder"
-  ],
-  "einsatzpraeferenzen": {
-    "remote": "teilweise",
-    "tagessatz_wunsch": 1300
-  },
-  "harte_kriterien": {
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "laender": [
-      "DE",
-      "AT"
-    ],
-    "min_tagessatz": 1100,
-    "verfuegbar_ab": "01.12.2026"
-  },
+  "abschluesse": [],
+  "arbeitsmodell": "hybrid",
+  "auslastung": "egal",
+  "ausschlusswoerter": [],
+  "berufserfahrung_jahre": null,
+  "branchen": [],
   "kernkompetenzen": [
     {
-      "auch": [
-        "Financial Controlling"
-      ],
       "jahre": 12,
-      "kompetenz": "Controlling"
+      "kompetenz": "Controlling",
+      "schwerpunkt": true
     },
     {
       "jahre": 8,
-      "kompetenz": "Konzernabschluss nach HGB"
+      "kompetenz": "Konzernabschluss nach HGB",
+      "schwerpunkt": false
     }
+  ],
+  "laender": [
+    "DE",
+    "AT"
   ],
   "methoden_tools": [
-    {
-      "name": "SAP S/4HANA"
-    }
+    "SAP S/4HANA",
+    "Aufbau eines Konzernreportings, mehr unter oder"
   ],
-  "schwerpunkte": [
-    "Controlling"
+  "mindestgehalt": null,
+  "mindestlaufzeit_monate": 0,
+  "regionen": [],
+  "sprachen": [],
+  "tagessatz_min": 1100,
+  "tagessatz_wunsch": 1300,
+  "verfuegbar_ab": "01.12.2026",
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
   ],
-  "titel": "Interim Manager Finanzen",
   "wunschrollen": [
     "Interim CFO"
-  ]
+  ],
+  "zertifizierungen": []
 }
 ```
 
@@ -146,15 +153,16 @@ Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter de
 2. Erfinde nichts. Stütze jede Aussage über die Anzeige auf ein wörtliches Zitat aus ihr, höchstens etwa 15 Wörter, in ihrer Sprache. Über mich gilt nur, was im Profil steht; nenne den Eintrag, mit Jahren, wo das Profil sie nennt. Was Anzeige oder Profil nicht sagen, ist unklar oder nicht angegeben, nie eine Annahme. Eine Schätzung, etwa ein marktüblicher Tagessatz, nennst du ausdrücklich Schätzung.
 3. Nimm jede Anforderung der Anzeige als eigene Zeile, auch die, die aus den Aufgaben folgen (Führung, Reisebereitschaft, Sprachniveau). Ein Sammelbegriff wie „passende Skills“ ersetzt keine Zeile.
 4. Gewicht: Muss (verlangt), Kann (idealerweise, von Vorteil, wünschenswert, ein Plus, nice to have) oder Formal (das Fach eines Abschlusses, eine Zulassung, ein Zertifikat, das sich nicht kurzfristig erwerben lässt). Werkzeuge und Programmiersprachen sind Muss oder Kann, nie Formal. Eine formale Pflicht, die die Anzeige zwingend verlangt (zwingend, unabdingbar, mandatory) und das Profil nicht erfüllt, schließt aus.
-5. Stand: erfüllt, wenn das Profil es belegt (Kompetenz mit Jahren, Tool, Abschluss, Zertifikat, Station); teilweise, wenn es nur einen allgemeineren Eintrag oder weniger Jahre belegt; fehlt, wenn es nichts dazu enthält; unklar, wenn die Anzeige zu vage ist. Eine Oder-Anforderung ist erfüllt, wenn ein Zweig erfüllt ist; Aufzählungen mit z. B. oder e.g. sind Alternativen. Englische und deutsche Begriffe für dieselbe Kompetenz und die Begriffe unter `auch` zählen wie die Kompetenz selbst. Diplom (Univ.) erfüllt einen Master, Diplom (FH) oder Bachelor ist gegen einen Master teilweise, „vergleichbar“ lässt jedes Fach zu.
+5. Stand: erfüllt, wenn das Profil es belegt (Kompetenz mit Jahren, Tool, Abschluss, Zertifikat); teilweise, wenn es nur einen allgemeineren Eintrag oder weniger Jahre belegt; fehlt, wenn es nichts dazu enthält; unklar, wenn die Anzeige zu vage ist. Eine Oder-Anforderung ist erfüllt, wenn ein Zweig erfüllt ist; Aufzählungen mit z. B. oder e.g. sind Alternativen. Englische und deutsche Begriffe für dieselbe Kompetenz zählen wie die Kompetenz selbst. Diplom (Univ.) erfüllt einen Master, Diplom (FH) oder Bachelor ist gegen einen Master teilweise, „vergleichbar“ lässt jedes Fach zu.
 6. Die harten Kriterien prüfst du mit den Schwellen aus dem Profil. Was davon ausschließt, sagt die Bewertungsregel.
    - Vertragsart: Interim oder Projekt bei Tagessatz, freiberuflich, Werkvertrag, Contract oder der Frage nach Verfügbarkeit oder Auslastung; Festanstellung, wenn die Anzeige sie nennt (Festanstellung, unbefristet, Jahresgehalt). Benefits oder die Frage nach einer Arbeitserlaubnis lassen eine Festanstellung nur vermuten, dann ist jede Regel der Festanstellung ein Punkt zum Prüfen.
-   - Vergütung: ein Tagessatz gegen `min_tagessatz`, nie gegen `tagessatz_wunsch`. Eine Spanne zählt mit ihrem oberen Ende, ein Stundensatz mal 8, eine andere Währung ist teilweise. Ein Jahresgehalt (oberes Ende) zählt nur bei einer genannten Festanstellung, gegen `min_jahresgehalt`.
+   - Vertragsarten: eine genannte Festanstellung schließt aus, wenn `festanstellung` fehlt, eine genannte Arbeitnehmerüberlassung, wenn `zeitarbeit` fehlt.
+   - Vergütung: ein Tagessatz gegen `tagessatz_min`, nie gegen `tagessatz_wunsch`. Eine Spanne zählt mit ihrem oberen Ende, ein Stundensatz mal 8, eine andere Währung ist teilweise. Ein Jahresgehalt (oberes Ende) zählt nur bei einer genannten Festanstellung, gegen `mindestgehalt`.
    - Seniorität gegen `berufserfahrung_jahre`, nie ein Ausschluss: verlangte Jahre bis dahin sind erfüllt, ab vier Fünfteln davon teilweise, darunter fehlen sie. Jahre in einem Thema („3 Jahre S/4HANA“) zählen gegen die Jahre dieser Kompetenz, wo das Profil sie nennt. Eine klar jüngere Rolle (eine geschlossene Spanne bis zur Hälfte meiner Jahre, ein Junior-Titel, ein Praktikum, Werkstudent, Trainee oder Berufseinstieg) ist teilweise, ich bin dann überqualifiziert. Ohne `berufserfahrung_jahre` kein Urteil.
    - Verfügbarkeit: ein Start vor `verfuegbar_ab` ist teilweise, nie ein Ausschluss.
-   - Auslastung und Laufzeit: mehr Tage pro Woche als `auslastung_max_tage`, weniger als `auslastung_min_tage` oder eine Laufzeit unter `min_laufzeit_monate` sind teilweise, nie ein Ausschluss.
-   - Einsatzort: ein Land außerhalb von `laender` schließt aus, bei einer voll remote Stelle nur, wenn `remote_ausserhalb_erlaubt` auf `false` steht. Bei einer Festanstellung passt ein Ort aus `festanstellung_orte`, außerhalb davon ein genannter Remote-Anteil von mindestens `festanstellung_remote_min` Prozent; sonst schließt der Ort eine genannte Festanstellung aus. Hybrid, flexibel oder einzelne mobile Tage belegen keinen Remote-Anteil.
-7. Die Vorbewertung der App ist ein Wortabgleich. Sie übersieht Synonyme, Oder-Zweige und Belege in den Stationen und hält manchmal Floskeln für Anforderungen. Bestätige, korrigiere oder ergänze jeden ihrer Punkte und sag, wo du abweichst und warum. Was sie zum Prüfen offenlässt, entscheidest du mit einem Zitat oder lässt es unklar.
+   - Auslastung und Laufzeit: eine Auslastung, die nicht zu `auslastung` passt, oder eine Laufzeit unter `mindestlaufzeit_monate` sind teilweise, nie ein Ausschluss.
+   - Einsatzort: ein Land außerhalb von `laender` schließt aus, eine voll remote Stelle nie. Hybrid, flexibel oder einzelne mobile Tage machen eine Stelle nicht voll remote.
+7. Die Vorbewertung der App ist ein Wortabgleich. Sie übersieht Synonyme und Oder-Zweige und hält manchmal Floskeln für Anforderungen. Bestätige, korrigiere oder ergänze jeden ihrer Punkte und sag, wo du abweichst und warum. Was sie zum Prüfen offenlässt, entscheidest du mit einem Zitat oder lässt es unklar.
 8. Die Punktzahl folgt der Bewertungsregel unten, mit ihren Obergrenzen.
 
 # Bewertungsregel
@@ -196,8 +204,8 @@ kostet bei Interim und Projekten nichts.
 - Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa einen Punkt.
 - Eine unklare Vertragsart ist ein Punkt zum Prüfen, nie ein Ausschluss, auch wenn das Profil
   Festanstellungen ausschließt.
-- Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Gehalt und Ort werden wie bei einer
-  Festanstellung geprüft, nur als offene Punkte, und das Risiko der Arbeitnehmerüberlassung wird genannt.
+- Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Das Gehalt wird wie bei einer
+  Festanstellung geprüft, nur als offener Punkt, und das Risiko der Arbeitnehmerüberlassung wird genannt.
 - Arbeitnehmerüberlassung (auch ANÜ, Überlassung) schließt aus, wenn das Profil sie ausschließt. Als
   eine von mehreren Möglichkeiten oder nur angedeutet (Payrolling, Equal Pay, iGZ, BAP) ist sie ein
   offener Punkt.
@@ -205,10 +213,11 @@ kostet bei Interim und Projekten nichts.
 ## Ausschluss
 
 - Ein Ausschluss braucht ein wörtliches Zitat aus der Anzeige, das ihn belegt.
-- Nur harte Kriterien schließen aus. Das sind Arbeitnehmerüberlassung, eine genannte Festanstellung,
-  wenn das Profil Festanstellungen ausschließt, ein Tagessatz unter min_tagessatz, ein Land außerhalb
-  von laender, ein Gehalt unter min_jahresgehalt oder ein Ort außerhalb der Region bei einer
-  genannten Festanstellung, eine zwingende formale Pflicht und ein Wort aus ausschlusswoerter.
+- Nur harte Kriterien schließen aus. Das sind Arbeitnehmerüberlassung ohne zeitarbeit in
+  vertragsarten, eine genannte Festanstellung ohne festanstellung in vertragsarten, ein Tagessatz
+  unter tagessatz_min, ein Land außerhalb von laender (eine voll remote Stelle nie), ein Gehalt unter
+  mindestgehalt bei einer genannten Festanstellung, eine zwingende formale Pflicht und ein Wort aus
+  ausschlusswoerter.
 - Ein Ausschlusswort schließt nur aus, wenn es die Stelle selbst beschreibt, also im Titel, in der
   Karrierestufe der Portalseite oder in einem Satz über die angebotene Rolle und ihre Bedingungen.
   Erwähnt die Anzeige es nur, etwa beim Team, bei Menschen, die die Rolle betreut, in einer
@@ -216,11 +225,11 @@ kostet bei Interim und Projekten nichts.
 
 ## Schwerpunkte, Wunschrollen und Wünsche
 
-- Schwerpunkte (schwerpunkte) sind die drei bis fünf Kernkompetenzen. Ein Muss-Punkt, den ein
+- Schwerpunkte (schwerpunkt in kernkompetenzen) sind die bis zu fünf wichtigsten Kompetenzen. Ein Muss-Punkt, den ein
   Schwerpunkt erfüllt, zählt doppelt.
 - Eine passende Wunschrolle (wunschrollen) ist ein Plus von höchstens einem Punkt. Sie hebt keine
   Obergrenze auf.
-- Wünsche (tagessatz_wunsch, remote, regionen und branchen in einsatzpraeferenzen) schließen nie
+- Wünsche (tagessatz_wunsch, arbeitsmodell, regionen und branchen mit wunsch) schließen nie
   aus und bewegen die Bewertung zusammen höchstens einen Punkt nach oben oder unten. Nennt die
   Anzeige einen Wert nicht, zählt der Wunsch nicht.
 - Wunschrolle und Wünsche heben keinen Job auf 8 oder mehr, wenn weniger als die Hälfte der
@@ -255,7 +264,7 @@ Nur was Anzeige oder Profil hergeben, etwa ein Risiko der Arbeitnehmerüberlassu
 Zwei bis fünf Fragen an Kunde oder Agentur, die über die Bewerbung entscheiden.
 
 ## Vergütung und Konditionen
-Tagessatz gegen `min_tagessatz` und `tagessatz_wunsch` (bei einer Festanstellung das Gehalt gegen `min_jahresgehalt`), dazu Dauer, Auslastung, Remote-Anteil und Start. Nennt die Anzeige keine Vergütung, eine realistische Spanne für diese Rolle, als Schätzung markiert.
+Tagessatz gegen `tagessatz_min` und `tagessatz_wunsch` (bei einer Festanstellung das Gehalt gegen `mindestgehalt`), dazu Dauer, Auslastung, Remote-Anteil und Start. Nennt die Anzeige keine Vergütung, eine realistische Spanne für diese Rolle, als Schätzung markiert.
 
 ## Für die Bewerbung
 Zwei bis vier Punkte: die stärksten Belege aus dem Profil für die Kernanforderungen, mit Jahren oder Branchen, und höchstens ein Punkt, den ich offen ansprechen sollte.

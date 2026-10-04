@@ -21,9 +21,7 @@ fn profile() -> Value {
             {"kompetenz": "Reporting", "jahre": 12}
         ],
         "berufserfahrung_jahre": 20,
-        "einsatzpraeferenzen": {
-            "branchen": ["Maschinenbau"]
-        }
+        "branchen": [{"branche": "Maschinenbau", "wunsch": true}]
     })
 }
 
@@ -47,7 +45,8 @@ fn run(facts: &Value) -> Assessment {
         posted: None,
         kind: TextKind::Full,
     };
-    assess(&compile_profile(&profile()), &job, None).expect("assessed")
+    let profile = jobalert_core::profile::parse(&profile().to_string()).expect("a v19 profile");
+    assess(&compile_profile(&profile), &job, None).expect("assessed")
 }
 
 fn has(a: &Assessment, code: ReasonCode, kind: ReasonKind) -> bool {

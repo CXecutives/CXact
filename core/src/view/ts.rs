@@ -7,7 +7,7 @@
 //! Beside the types, the decisions the interface shares with the backend are written as
 //! values, one lower-case module each (never edited by hand, [`values`]): `bands.ts` (the
 //! band thresholds), `portals.ts` (the portals' names and marks), `profile.ts` (the form's
-//! criteria, limits and empty form).
+//! limits and empty form).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -29,11 +29,10 @@ use crate::view::{
     AppState, AskedTerm, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
     MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount, PortalLogin,
-    PortalPatch, PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria,
-    ProfileDraft, ProfileEntry, ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality,
-    ProfileSave, ProfileSource, ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind,
-    ReasonWeight, RemoteWish, ResetSummary, SettingsPatch, SettingsView, TermField, TextLayout,
-    TextRange, UnreadableField, VaultKind, WorkMode, WorkspacePick, WorkspaceProfile,
+    PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave, ProfileSource,
+    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, ResetSummary, SettingsPatch,
+    SettingsView, TermField, TextLayout, TextRange, VaultKind, WorkMode, WorkspacePick,
+    WorkspaceProfile,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -204,17 +203,8 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ProfileSource>();
     f.add::<ProfileUnderstanding>();
     f.add::<ProfileInfo>();
-    f.add::<ProfileEntry>();
     f.add::<LanguageLevel>();
-    f.add::<ProfileAvailability>();
-    f.add::<ProfileCompetence>();
-    f.add::<ProfileLanguage>();
-    f.add::<ProfileCriteria>();
-    f.add::<RemoteWish>();
-    f.add::<ProfileWishes>();
-    f.add::<UnreadableField>();
     f.add::<ProfileForm>();
-    f.add::<ProfileDraft>();
     f.add::<ProfileSave>();
     f.add::<TermField>();
     f.add::<AskedTerm>();

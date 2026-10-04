@@ -1,206 +1,219 @@
 {
-  "name": "Andrea Musterhuber",
-  "email": "andrea.musterhuber@example.invalid",
-  "telefon": "+49 151 0000000",
-  "titel": "Freiberufliche Embedded- und Functional-Safety-Ingenieurin Automotive",
-  "abschluss": "Diplom-Ingenieurin (FH) Elektrotechnik",
-  "berufserfahrung_jahre": 18,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Ingenieurin (FH)",
-      "fach": "Elektrotechnik mit dem Schwerpunkt Automatisierungs- und Informationstechnik",
-      "hochschule": "Beispielhochschule für Technik",
-      "jahr": 2008
-    },
-    {
-      "abschluss": "Functional Safety Engineer (TÜV)",
-      "fach": "Funktionale Sicherheit im Automobilbereich nach ISO 26262",
-      "jahr": 2016
-    }
+  "wunschrollen": [
+    "Functional Safety Engineer",
+    "Functional Safety Manager",
+    "AUTOSAR-Integratorin",
+    "Embedded-Software-Entwicklerin Automotive",
+    "Technische Teilprojektleitung Steuergeräte"
   ],
-  "stationen": [
-    {
-      "zeitraum": "2017 - heute",
-      "rolle": "Freiberufliche Embedded- und Functional-Safety-Ingenieurin",
-      "schwerpunkte": [
-        "Technische Sicherheitskonzepte und Sicherheitsanalysen (FMEA, FTA, FMEDA, DFA) für Lenkungs-, Brems- und Batteriesteuergeräte bis ASIL D",
-        "AUTOSAR-Classic-Basissoftware-Konfiguration und Integration mit Vector MICROSAR und EB tresos auf Infineon AURIX",
-        "Hardware-Software-Integration und Inbetriebnahme von Steuergeräte-Mustern, Fehlersuche mit Lauterbach TRACE32",
-        "Anforderungsmanagement in IBM DOORS und Polarion ALM, Traceability bis zum Test",
-        "Vorbereitung von Automotive-SPICE-Assessments auf Level 2 in drei Projekten",
-        "Technische Teilprojektleitung für ein Batteriemanagementsystem eines Nutzfahrzeugherstellers"
-      ]
-    },
-    {
-      "zeitraum": "2012 - 2017",
-      "rolle": "Software-Entwicklerin Steuergeräte bei einem Tier-1-Zulieferer für Fahrwerkssysteme",
-      "schwerpunkte": [
-        "Embedded-C-Entwicklung nach MISRA C für ein elektrisches Lenkungssteuergerät",
-        "Konfiguration der AUTOSAR-Kommunikationsstacks für CAN und LIN",
-        "Diagnose nach UDS und Software-Integrationstests am HIL"
-      ]
-    },
-    {
-      "zeitraum": "2008 - 2012",
-      "rolle": "Entwicklungsingenieurin Hardware-Software-Integration bei einem Zulieferer für Karosserieelektronik",
-      "schwerpunkte": [
-        "Inbetriebnahme von Mikrocontroller-Plattformen (NXP, Renesas) für Tür- und Sitzsteuergeräte",
-        "LIN-Kommunikation und Busanalyse mit CANoe",
-        "Erstellung von Testspezifikationen und Prüfberichten"
-      ]
-    }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
   ],
+  "tagessatz_wunsch": 950,
+  "tagessatz_min": 850,
+  "mindestgehalt": 110000,
+  "arbeitsmodell": "hybrid",
+  "laender": [
+    "DE",
+    "AT"
+  ],
+  "regionen": [
+    "Baden-Württemberg",
+    "Bayern",
+    "Region Stuttgart",
+    "München"
+  ],
+  "verfuegbar_ab": "01.11.2026",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Embedded-C-Programmierung",
       "jahre": 18,
-      "auch": ["Embedded C", "C", "Embedded Software", "Embedded-Softwareentwicklung", "Mikrocontroller-Programmierung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "AUTOSAR Classic",
       "jahre": 12,
-      "auch": ["AUTOSAR", "AUTOSAR-Basissoftware", "BSW-Konfiguration", "RTE", "MICROSAR"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Funktionale Sicherheit nach ISO 26262",
       "jahre": 10,
-      "auch": ["ISO 26262", "Functional Safety", "FuSa", "Safety Engineering", "funktionale Sicherheit"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Automotive SPICE",
       "jahre": 9,
-      "auch": ["ASPICE", "SPICE", "Automotive-SPICE-Assessments"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "CAN und LIN",
       "jahre": 18,
-      "auch": ["CAN", "LIN", "CAN FD", "Bussysteme", "Fahrzeugbussysteme"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Hardware-Software-Integration",
       "jahre": 16,
-      "auch": ["HW/SW-Integration", "Steuergeräte-Integration", "ECU-Integration", "Inbetriebnahme von Steuergeräten"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Requirements Engineering",
       "jahre": 12,
-      "auch": ["Anforderungsmanagement", "Requirements Management", "Anforderungsanalyse"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "IBM DOORS",
       "jahre": 11,
-      "auch": ["DOORS", "DOORS Next"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Polarion ALM",
       "jahre": 5,
-      "auch": ["Polarion"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Sicherheitsanalysen",
       "jahre": 10,
-      "auch": ["FMEA", "FTA", "Fehlerbaumanalyse", "FMEDA", "DFA"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Technisches Sicherheitskonzept",
       "jahre": 8,
-      "auch": ["Technical Safety Concept", "Functional Safety Concept", "Sicherheitskonzept", "Safety Case"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Software-Integrationstest und Verifikation",
       "jahre": 13,
-      "auch": ["Integrationstest", "HIL-Test", "Unit-Test", "Verifikation und Validierung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "MISRA C",
       "jahre": 13,
-      "auch": ["MISRA", "statische Codeanalyse"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Fahrzeugdiagnose nach UDS",
       "jahre": 9,
-      "auch": ["UDS", "ISO 14229", "Diagnose"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Mikrocontroller-Plattformen",
       "jahre": 16,
-      "auch": ["Infineon AURIX", "TriCore", "NXP S32K", "Renesas RH850"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Batteriemanagementsysteme",
       "jahre": 4,
-      "auch": ["BMS", "Hochvoltbatterie"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Technische Teilprojektleitung",
       "jahre": 5,
-      "auch": ["Teilprojektleitung", "technische Projektleitung"]
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "AUTOSAR Classic und Embedded C",
+      "jahre": null,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Requirements Engineering mit DOORS und Polarion",
+      "jahre": null,
+      "schwerpunkt": true
     }
   ],
   "methoden_tools": [
-    {
-      "name": "Vector CANoe"
-    },
-    {
-      "name": "Vector CANalyzer"
-    },
-    {
-      "name": "Vector DaVinci Configurator"
-    },
-    {
-      "name": "EB tresos"
-    },
-    {
-      "name": "IBM DOORS"
-    },
-    {
-      "name": "Polarion ALM"
-    },
-    {
-      "name": "Lauterbach TRACE32"
-    },
-    {
-      "name": "Tessy"
-    },
-    {
-      "name": "Polyspace"
-    },
-    {
-      "name": "medini analyze"
-    },
-    {
-      "name": "dSPACE HIL"
-    },
-    {
-      "name": "Git"
-    },
-    {
-      "name": "Jenkins"
-    }
+    "Vector CANoe",
+    "Vector CANalyzer",
+    "Vector DaVinci Configurator",
+    "EB tresos",
+    "Lauterbach TRACE32",
+    "Tessy",
+    "Polyspace",
+    "medini analyze",
+    "dSPACE HIL",
+    "Git",
+    "Jenkins",
+    "Embedded C",
+    "AUTOSAR",
+    "ISO 26262",
+    "ASPICE",
+    "CAN",
+    "LIN",
+    "Steuergeräte",
+    "DOORS",
+    "Polarion",
+    "Functional Safety",
+    "C",
+    "Embedded Software",
+    "Embedded-Softwareentwicklung",
+    "Mikrocontroller-Programmierung",
+    "AUTOSAR-Basissoftware",
+    "BSW-Konfiguration",
+    "RTE",
+    "MICROSAR",
+    "FuSa",
+    "Safety Engineering",
+    "funktionale Sicherheit",
+    "SPICE",
+    "Automotive-SPICE-Assessments",
+    "CAN FD",
+    "Bussysteme",
+    "Fahrzeugbussysteme",
+    "HW/SW-Integration",
+    "Steuergeräte-Integration",
+    "ECU-Integration",
+    "Inbetriebnahme von Steuergeräten",
+    "Anforderungsmanagement",
+    "Requirements Management",
+    "Anforderungsanalyse",
+    "DOORS Next",
+    "FMEA",
+    "FTA",
+    "Fehlerbaumanalyse",
+    "FMEDA",
+    "DFA",
+    "Technical Safety Concept",
+    "Functional Safety Concept",
+    "Sicherheitskonzept",
+    "Safety Case",
+    "Integrationstest",
+    "HIL-Test",
+    "Unit-Test",
+    "Verifikation und Validierung",
+    "MISRA",
+    "statische Codeanalyse",
+    "UDS",
+    "ISO 14229",
+    "Diagnose",
+    "Infineon AURIX",
+    "TriCore",
+    "NXP S32K",
+    "Renesas RH850",
+    "BMS",
+    "Hochvoltbatterie",
+    "Teilprojektleitung",
+    "technische Projektleitung"
   ],
-  "zertifizierungen": [
-    {
-      "name": "Functional Safety Engineer Automotive (TÜV)"
-    },
-    {
-      "name": "IREB CPRE Foundation Level"
-    },
-    {
-      "name": "ISTQB Certified Tester Foundation Level"
-    }
-  ],
+  "berufserfahrung_jahre": 18,
   "branchen": [
     {
-      "branche": "Automobilindustrie"
+      "branche": "Automobilindustrie",
+      "wunsch": false
     },
     {
-      "branche": "Automobilzulieferer"
+      "branche": "Automobilzulieferer",
+      "wunsch": true
     },
     {
-      "branche": "Nutzfahrzeuge"
+      "branche": "Nutzfahrzeuge",
+      "wunsch": false
     },
     {
-      "branche": "Elektromobilität"
+      "branche": "Elektromobilität",
+      "wunsch": true
     }
   ],
   "sprachen": [
@@ -213,77 +226,15 @@
       "niveau": "C1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Verbindet Embedded-C- und AUTOSAR-Praxis mit funktionaler Sicherheit bis ASIL D",
-    "Hat Steuergeräte vom ersten Muster bis zur Serienfreigabe integriert",
-    "Drei Projekte erfolgreich durch Automotive-SPICE-Assessments auf Level 2 gebracht"
+  "abschluesse": [
+    "Diplom-Ingenieurin (FH) Elektrotechnik",
+    "Diplom-Ingenieurin (FH), Elektrotechnik mit dem Schwerpunkt Automatisierungs- und Informationstechnik",
+    "Functional Safety Engineer (TÜV), Funktionale Sicherheit im Automobilbereich nach ISO 26262"
   ],
-  "keywords": [
-    "Embedded C",
-    "AUTOSAR",
-    "ISO 26262",
-    "ASPICE",
-    "CAN",
-    "LIN",
-    "Steuergeräte",
-    "DOORS",
-    "Polarion",
-    "Functional Safety"
+  "zertifizierungen": [
+    "Functional Safety Engineer Automotive (TÜV)",
+    "IREB CPRE Foundation Level",
+    "ISTQB Certified Tester Foundation Level"
   ],
-  "schwerpunkte": [
-    "Funktionale Sicherheit nach ISO 26262",
-    "AUTOSAR Classic und Embedded C",
-    "Hardware-Software-Integration",
-    "Requirements Engineering mit DOORS und Polarion"
-  ],
-  "wunschrollen": [
-    "Functional Safety Engineer",
-    "Functional Safety Manager",
-    "AUTOSAR-Integratorin",
-    "Embedded-Software-Entwicklerin Automotive",
-    "Technische Teilprojektleitung Steuergeräte"
-  ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 950,
-    "remote": "hybrid, bis 50 % remote",
-    "regionen": [
-      "Baden-Württemberg",
-      "Bayern",
-      "Region Stuttgart",
-      "München"
-    ],
-    "branchen": [
-      "Automobilzulieferer",
-      "Elektromobilität"
-    ]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 850,
-    "laender": [
-      "DE",
-      "AT"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": false,
-    "verfuegbar_ab": "2026-11-01",
-    "min_jahresgehalt": 110000,
-    "festanstellung_orte": [
-      "Stuttgart",
-      "Sindelfingen",
-      "Böblingen",
-      "Leonberg",
-      "Ludwigsburg",
-      "Esslingen am Neckar",
-      "Leinfelden-Echterdingen",
-      "Weissach",
-      "Heilbronn",
-      "Ulm",
-      "München",
-      "Ingolstadt"
-    ],
-    "festanstellung_remote_min": 60,
-    "zielprofil_min_jahre": 6
-  }
+  "ausschlusswoerter": []
 }

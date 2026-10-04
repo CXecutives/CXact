@@ -6,7 +6,7 @@
 //! journal, WAL and shared-memory files and its copies (`backups/`), the profiles of the
 //! session windows (freelance.de sign-in; on macOS the app removes their `WKWebView` data
 //! stores right after the start, which needs the running app), the Gmail access in the
-//! keychain and, in the workspace, every profile in `profil/`, and what earlier resets set
+//! keychain and, in the workspace, the profile and its backup in `profil/`, and what earlier resets set
 //! aside (`profil.alt*`, `alt-schema-*`). `policy.json` stays - a block pause must not be
 //! clickable away. Foreign files stay untouched. The database goes last: while it is there,
 //! a later attempt can still finish the rest.
@@ -175,9 +175,9 @@ fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault, mode: Mode) -> Rese
     dispose(&data_dir.join(BACKUP_DIR), &old, &mut report);
     match mode {
         Mode::Everything => {
-            // What earlier resets set aside, every profile, its backup, the index of the
-            // profiles and remains of an interrupted write - a profile may carry name and
-            // contact data. Foreign files in the folder stay.
+            // What earlier resets set aside, the profile, its backup and remains of an
+            // interrupted write - a profile may carry personal data. Foreign files in the
+            // folder stay.
             let mut doomed = entries(data_dir, |name| name.starts_with(OLD_DATA));
             doomed.extend(files_in(&profile_dir, |name| {
                 is_app_file(name) || is_tmp(name)
@@ -405,15 +405,9 @@ mod tests {
         std::fs::write(data.join("session-freelance/Default/Cookies"), b"c").unwrap();
         std::fs::create_dir_all(data.join("backups")).unwrap();
         std::fs::write(data.join("backups/jobs-2026-09-19.db"), b"copy").unwrap();
-        // Every profile, the backups (one of a deleted profile) and the index.
+        // The profile and its backup.
         std::fs::create_dir_all(workspace.join("profil")).unwrap();
-        for name in [
-            "beraterprofil.json",
-            "beraterprofil.json.bak",
-            "beraterprofil-2.json",
-            "beraterprofil-3.json.bak",
-            "profilliste.json",
-        ] {
+        for name in ["beraterprofil.json", "beraterprofil.json.bak"] {
             std::fs::write(workspace.join("profil").join(name), b"{}").unwrap();
         }
         std::fs::write(workspace.join("profil").join(".jam-p1q2r3.tmp"), b"halb").unwrap();
@@ -435,7 +429,6 @@ mod tests {
             "the copies go with the database"
         );
         assert!(!data.join("session-freelance").exists());
-        assert!(!plan.workspace.join("profil/beraterprofil-2.json").exists());
         assert!(
             !plan.workspace.join("profil").exists(),
             "profile, its backup and a half-written file go, and the folder with them"
@@ -552,11 +545,7 @@ mod tests {
         // The work folder of the old settings: its profiles set aside, not deleted.
         let ws = &plan.workspace;
         assert!(!ws.join("profil").exists());
-        for name in [
-            "beraterprofil.json",
-            "beraterprofil-2.json",
-            "profilliste.json",
-        ] {
+        for name in ["beraterprofil.json", "beraterprofil.json.bak"] {
             assert!(ws.join("profil.alt").join(name).exists(), "{name}");
         }
         assert!(ws.join("Profil_Erika.json").exists());

@@ -41,14 +41,13 @@ The app speaks German.
 
 ## The profile
 
-The Profil view edits the profile as a form, on the tabs Wünsche, Können, Erfahrung and Ausschlüsse.
-Several profiles can live side by side in the work folder's `profil/`; the title's menu chooses the active
-one, and every job is scored again with it.
+The Profil view edits the one profile as a form. It lives in the work folder as
+`profil/beraterprofil.json` (Profil-JSON v19: flat German keys, `core/src/profile/form.rs`); every job is
+scored again after a save.
 
-Saving writes only the changed fields into the JSON file. It keeps every other key as it is and leaves the
-previous version beside it. The keys are German; English keys are read too. A competence can carry an
-`auch` list of alternative terms. Everything personal lives only in this file, never in the app or its
-code.
+Saving writes the form into the file and leaves the previous version beside it. A file with another key or
+a value out of range does not read; the Profil then offers to start anew. Everything personal lives only in
+this file, never in the app or its code.
 
 ## Privacy and sources
 

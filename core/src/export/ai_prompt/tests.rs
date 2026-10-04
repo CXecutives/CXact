@@ -16,59 +16,29 @@ use crate::store::MailRef;
 
 // ------------------------------------------------------------------------- invented data
 
-/// A profile full of contact data in every place real files hold it.
-fn profile() -> Value {
-    json!({
-        "name": "Max Mustermann",
-        "Vorname": "Max",
-        "email": "max.mustermann@example.org",
-        "telefon": "+49 170 1234567",
-        "adresse": { "strasse": "Musterweg 12", "plz": "20095", "ort": "Hamburg" },
-        "linkedin": "https://www.linkedin.com/in/max-mustermann",
-        "links": ["https://max-mustermann.example.org"],
-        "kontakt": { "e-mail": "privat@example.org", "mobil": "0151 7654321" },
-        "titel": "Interim Manager Finanzen",
+/// A profile with contact data in a value (a CV's sentence copied into a tool).
+fn profile() -> ProfileForm {
+    crate::profile::of_json(&json!({
+        "wunschrollen": ["Interim CFO"],
+        "vertragsarten": ["projekt", "festanstellung"],
+        "tagessatz_wunsch": 1300,
+        "tagessatz_min": 1100,
+        "arbeitsmodell": "hybrid",
+        "laender": ["DE", "AT"],
+        "verfuegbar_ab": "01.12.2026",
         "kernkompetenzen": [
-            { "kompetenz": "Controlling", "jahre": 12, "auch": ["Financial Controlling"] },
+            { "kompetenz": "Controlling", "jahre": 12, "schwerpunkt": true },
             { "kompetenz": "Konzernabschluss nach HGB", "jahre": 8 }
         ],
-        "methoden_tools": [{ "name": "SAP S/4HANA" }],
-        "referenzen": [
-            { "name": "Erika Beispiel", "email": "erika@example.org",
-              "testimonial": "Max hat unser Reporting in 100 Tagen neu gebaut." }
-        ],
-        "alleinstellungsmerkmale": [
+        "methoden_tools": [
+            "SAP S/4HANA",
             "Aufbau eines Konzernreportings, mehr unter www.max-mustermann.example.org oder max@example.org"
-        ],
-        "harte_kriterien": {
-            "min_tagessatz": 1100,
-            "laender": ["DE", "AT"],
-            "ausgeschlossene_vertragsarten": ["anue"],
-            "verfuegbar_ab": "01.12.2026"
-        },
-        "schwerpunkte": ["Controlling"],
-        "wunschrollen": ["Interim CFO"],
-        "einsatzpraeferenzen": { "tagessatz_wunsch": 1300, "remote": "teilweise" }
-    })
+        ]
+    }))
 }
 
 /// What must never reach a prompt.
-const PRIVATE: [&str; 14] = [
-    "Max Mustermann",
-    "\"Max\"",
-    "max.mustermann@example.org",
-    "+49 170",
-    "Musterweg",
-    "20095",
-    "linkedin.com/in",
-    "max-mustermann.example.org",
-    "privat@example.org",
-    "0151",
-    "erika@example.org",
-    "Erika Beispiel",
-    "unser Reporting in 100 Tagen",
-    "max@example.org",
-];
+const PRIVATE: [&str; 2] = ["max-mustermann.example.org", "max@example.org"];
 
 const AD: &str = "Für die Hanseatic Holding GmbH suchen wir ab 01.11.2026 einen Interim CFO (m/w/d) für neun Monate.
 
@@ -293,14 +263,14 @@ fn reasons() -> (Built, u16) {
         (K::Partial, Weight::Info, C::DayRateWish),
         None,
         json!({ "state": "near", "rate": 1250, "wish": 1300, "hourly": false, "points": 1 }),
-        Some(("1300", "einsatzpraeferenzen.tagessatz_wunsch", Via::Exact)),
+        Some(("1300", "tagessatz_wunsch", Via::Exact)),
         Some("Tagessatz bis 1.250 €"),
     );
     b.reason(
         (K::Met, Weight::Info, C::RemoteWish),
         None,
-        json!({ "state": "met", "share": 60, "level": "partly", "points": 3 }),
-        Some(("teilweise", "einsatzpraeferenzen.remote", Via::Exact)),
+        json!({ "state": "met", "share": 60, "level": "hybrid", "points": 3 }),
+        Some(("hybrid", "arbeitsmodell", Via::Exact)),
         Some("Remote-Anteil 60 %"),
     );
     (b, gap)
@@ -571,12 +541,7 @@ fn no_contact_data_reaches_a_prompt() {
     }
     assert!(!prompt.contains("max@example.org"));
     // What the analysis needs stays, and the profile part is valid JSON.
-    for kept in [
-        "Controlling",
-        "SAP S/4HANA",
-        "min_tagessatz",
-        "Interim Manager Finanzen",
-    ] {
+    for kept in ["Controlling", "SAP S/4HANA", "tagessatz_min", "Interim CFO"] {
         assert!(prompt.contains(kept), "{kept} missing");
     }
     let json = prompt
@@ -585,65 +550,45 @@ fn no_contact_data_reaches_a_prompt() {
         .and_then(|rest| rest.split("\n```").next())
         .unwrap();
     let parsed: Value = serde_json::from_str(json).unwrap();
-    assert!(parsed.get("email").is_none() && parsed.get("name").is_none());
+    assert_eq!(parsed["tagessatz_min"], 1100);
 }
 
 #[test]
-fn the_glossary_names_only_the_keys_the_profile_holds() {
+fn the_glossary_names_the_keys_of_the_profile() {
     let view = view();
     let de = ai_prompt(&profile(), item(&view, Some(AD), None));
-    assert!(de.contains("- `min_tagessatz`: niedrigster Tagessatz in Euro"));
-    assert!(de.contains("- `einsatzpraeferenzen`: Wünsche, nie ein Ausschluss"));
-    assert!(
-        !de.contains("`min_jahresgehalt`:"),
-        "the profile sets no salary"
-    );
-    let bare = ai_prompt(&json!({}), item(&view, Some(AD), None));
-    assert!(
-        !bare.contains(de_words().glossary_intro),
-        "no glossary without keys"
-    );
-    // The limits, the exclusion words and the keywords, under their real keys.
-    let mut full = profile();
-    full["harte_kriterien"]["auslastung_min_tage"] = json!(3);
-    full["harte_kriterien"]["auslastung_max_tage"] = json!(5);
-    full["harte_kriterien"]["min_laufzeit_monate"] = json!(6);
-    full["harte_kriterien"]["ausschlusswoerter"] = json!(["Werkstudent"]);
-    full["keywords"] = json!(["IFRS 16"]);
-    let prompt = ai_prompt(&full, item(&view, Some(AD), None));
+    assert!(de.contains(de_words().glossary_intro));
     for key in [
-        "auslastung_min_tage",
-        "auslastung_max_tage",
-        "min_laufzeit_monate",
+        "wunschrollen",
+        "vertragsarten",
+        "tagessatz_min",
+        "arbeitsmodell",
+        "auslastung",
+        "mindestlaufzeit_monate",
+        "kernkompetenzen",
+        "methoden_tools",
+        "branchen",
         "ausschlusswoerter",
-        "keywords",
     ] {
-        assert!(prompt.contains(&format!("- `{key}`: ")), "{key}");
+        assert!(de.contains(&format!("- `{key}`: ")), "{key}");
     }
 }
 
 /// The method and the answer say what the engine does: the workload and the duration are
-/// checks, never exclusions, and fully remote work abroad fits unless the profile rules it
-/// out (a missing `remote_ausserhalb_erlaubt` allows it, only `false` excludes).
+/// checks, never exclusions, and fully remote work fits in any country.
 #[test]
-fn limits_are_checks_and_remote_work_abroad_fits_unless_ruled_out() {
+fn limits_are_checks_and_remote_work_fits_anywhere() {
     let view = view();
     let a = assessment();
     let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
     for part in [
-        "`min_laufzeit_monate` sind teilweise, nie ein Ausschluss",
-        "bei einer voll remote Stelle nur, wenn `remote_ausserhalb_erlaubt` auf `false` steht",
+        "`mindestlaufzeit_monate` sind teilweise, nie ein Ausschluss",
+        "ein Land außerhalb von `laender` schließt aus, eine voll remote Stelle nie",
         "verletzt ist nur, was nach der Bewertungsregel ausschließt",
+        "- Einsatzland DE, AT oder voll remote: erfüllt, Ort Hamburg",
     ] {
         assert!(de.contains(part), "{part}");
     }
-    let mut strict = profile();
-    strict["harte_kriterien"]["remote_ausserhalb_erlaubt"] = json!(false);
-    let de = ai_prompt(&strict, item(&view, Some(AD), Some(&a)));
-    assert!(
-        de.contains("- Einsatzland DE, AT: erfüllt, Ort Hamburg"),
-        "{de}"
-    );
 }
 
 #[test]
@@ -654,10 +599,10 @@ fn years_are_read_at_the_entry_or_its_competence() {
         Some(12)
     );
     assert_eq!(
-        entry_years(&profile, "kernkompetenzen[0].auch[0]"),
-        Some(12)
+        entry_years(&profile, "kernkompetenzen[1].kompetenz"),
+        Some(8)
     );
-    assert_eq!(entry_years(&profile, "methoden_tools[0].name"), None);
+    assert_eq!(entry_years(&profile, "methoden_tools[0]"), None);
     assert_eq!(entry_years(&profile, "kernkompetenzen[9].kompetenz"), None);
     assert_eq!(entry_years(&profile, "nichts"), None);
 }
@@ -772,11 +717,13 @@ fn a_fence_is_longer_than_any_backticks_in_the_ad() {
 #[test]
 fn long_texts_are_cut() {
     let mut big = profile();
-    big["kernkompetenzen"] = Value::Array(
-        (0..2000)
-            .map(|i| json!({ "kompetenz": format!("Kompetenz {i}"), "jahre": 3 }))
-            .collect(),
-    );
+    big.competences = (0..2000)
+        .map(|i| crate::profile::ProfileCompetence {
+            name: format!("Kompetenz {i}"),
+            years: Some(3),
+            focus: false,
+        })
+        .collect();
     let text = "Anforderung ".repeat(5_000);
     let view = view();
     let prompt = ai_prompt(&big, item(&view, Some(&text), None));
@@ -885,8 +832,6 @@ fn every_code() -> Vec<ReasonCode> {
         C::ShortText,
         C::Salary,
         C::SalaryUnknown,
-        C::PermanentRegion,
-        C::PermanentRegionUnclear,
         C::SeniorityUnclear,
         C::Overqualified,
         C::ContractType,
@@ -921,8 +866,6 @@ fn every_code() -> Vec<ReasonCode> {
             | C::ShortText
             | C::Salary
             | C::SalaryUnknown
-            | C::PermanentRegion
-            | C::PermanentRegionUnclear
             | C::SeniorityUnclear
             | C::Overqualified
             | C::ContractType
@@ -1014,7 +957,6 @@ fn every_reason() -> Assessment {
         CriterionKey::NoPermanent,
         CriterionKey::Availability,
         CriterionKey::MinSalary,
-        CriterionKey::PermanentRegion,
         CriterionKey::Workload,
         CriterionKey::Duration,
         CriterionKey::ExclusionWords,
@@ -1059,15 +1001,13 @@ fn every_reason() -> Assessment {
 #[test]
 fn no_engine_code_reaches_a_prompt() {
     let every = every_reason();
-    let rich = json!({
-        "harte_kriterien": {
-            "min_tagessatz": 1000, "laender": ["DE"], "min_jahresgehalt": 120_000,
-            "festanstellung_orte": ["München", "Augsburg", "Landshut", "Freising", "Erding", "Dachau"],
-            "festanstellung_remote_min": 60, "zielprofil_min_jahre": 10,
-            "verfuegbar_ab": "sofort", "ausgeschlossene_vertragsarten": ["anue", "festanstellung"]
-        },
+    let rich = crate::profile::of_json(&json!({
+        "vertragsarten": ["projekt"],
+        "tagessatz_min": 1000, "laender": ["DE"],
+        "auslastung": "teilzeit", "mindestlaufzeit_monate": 6,
+        "ausschlusswoerter": ["Werkstudent"],
         "kernkompetenzen": [{ "kompetenz": "Controlling", "jahre": 5 }]
-    });
+    }));
     // camelCase with two small letters in front (the rubric's "iGZ" is a German abbreviation).
     let camel = regex::Regex::new(r"\b[a-z]{2,}[A-Z][A-Za-z]*\b").unwrap();
     let path = regex::Regex::new(r"[a-z_]+\[\d+\]").unwrap();
@@ -1118,7 +1058,7 @@ fn the_rubric_leaves_out_the_other_listings_under_an_ad() {
 // ------------------------------------------------------------------------- the real engine
 
 /// A stored job with `text`, assessed by the real engine through [`PromptSource::load`].
-fn stored(url: &str, title: &str, text: &str, profile: &Value) -> PromptSource {
+fn stored(url: &str, title: &str, text: &str, profile: &ProfileForm) -> PromptSource {
     let store = Store::in_memory().unwrap();
     let run = store.begin_run().unwrap();
     let link = job_link(url).unwrap();
@@ -1140,7 +1080,7 @@ fn stored(url: &str, title: &str, text: &str, profile: &Value) -> PromptSource {
 
 #[test]
 fn the_real_engine_behind_a_stored_job() {
-    let profile: Value = serde_json::from_str(crate::pipeline::dry_run::PROFILE_JSON).unwrap();
+    let profile = crate::profile::parse(crate::pipeline::dry_run::PROFILE_JSON).unwrap();
     let fits = stored(
         "https://www.freelancermap.de/nproj/2999101.html",
         "Interim CFO (m/w/d)",
@@ -1178,7 +1118,7 @@ fn the_real_engine_behind_a_stored_job() {
         "https://www.freelancermap.de/nproj/2999103.html",
         "Controller",
         "Text",
-        &json!({}),
+        &ProfileForm::default(),
     );
     assert!(bare.assessment.is_none());
 }

@@ -40,6 +40,8 @@ use std::fmt::Write as _;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+use crate::profile::ProfileForm;
+
 pub use layout::{TextLayout, text_layout};
 pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;
@@ -47,7 +49,6 @@ pub use vocabulary::{Vocabulary, vocabulary};
 
 use engine::EngineProfile;
 use facts::{Availability, HardCriteria};
-use params::FOCUS_MAX;
 
 /// Version of the scoring behaviour; part of the match revision (`match_rev`). 4: the
 /// Schwerpunkte, target roles and wishes of the profile. 5: frame and soft words as words
@@ -79,8 +80,12 @@ use params::FOCUS_MAX;
 /// the profile's own years (`berufserfahrung_jahre`), never an exclusion, a clearly junior
 /// role over-qualified; the target years (`zielprofil_min_jahre`) read no more; pay and
 /// duration as the ad states them (ranges, hourly amounts, weeks, a bonus, a salary in
-/// another currency unclear).
-pub const ENGINE_VERSION: u32 = 18;
+/// another currency unclear). 19: the profile is Profil-JSON v19, read through its typed form
+/// only (no free key walk, no synonyms of a competence, no USPs or career stations); the
+/// contract types, the work mode (`hybrid` at least partly remote), the workload (full time at
+/// least four days, part time at most three) and the starred industries; remote work abroad
+/// and the region of permanent roles are no rules any more.
+pub const ENGINE_VERSION: u32 = 19;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.
@@ -143,17 +148,15 @@ impl CompiledProfile {
     }
 }
 
-/// Prepares a profile (any JSON; a non-object gives an `Empty` profile).
-pub fn compile_profile(value: &Value) -> CompiledProfile {
-    let empty = Value::Object(Map::new());
-    let data = if value.is_object() { value } else { &empty };
-    let engine = EngineProfile::new(data);
-    let quality = match engine.skills.competences().count() {
+/// Prepares a profile.
+pub fn compile_profile(form: &ProfileForm) -> CompiledProfile {
+    let engine = EngineProfile::new(form);
+    let quality = match engine.skills.entries.len() {
         0 => ProfileQuality::Empty,
         n if n < THIN_BELOW => ProfileQuality::Thin,
         _ => ProfileQuality::Good,
     };
-    let summary = summarize(&engine, data, quality);
+    let summary = summarize(&engine, quality);
     let fingerprint = fingerprint(&engine);
     CompiledProfile {
         engine,
@@ -171,7 +174,6 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
         params: params.as_object().cloned().unwrap_or_default(),
     };
     let available = match c.available {
-        Availability::Unset => Value::Null,
         Availability::Now => json!("now"),
         Availability::From(day) => json!(day.to_string()),
     };
@@ -184,24 +186,19 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
         info(
             CriterionKey::Countries,
             c.countries.is_some(),
-            json!({ "countries": c.countries, "remoteOutsideAllowed": c.remote_outside }),
+            json!({ "countries": c.countries }),
         ),
         info(CriterionKey::NoAnue, c.anue_excluded, json!({})),
         info(CriterionKey::NoPermanent, c.permanent_excluded, json!({})),
         info(
             CriterionKey::Availability,
-            c.available != Availability::Unset,
+            true,
             json!({ "from": available }),
         ),
         info(
             CriterionKey::MinSalary,
             c.min_salary.is_some(),
             json!({ "min": c.min_salary }),
-        ),
-        info(
-            CriterionKey::PermanentRegion,
-            c.places.is_some(),
-            json!({ "places": c.places, "remoteMin": c.remote_min }),
         ),
         info(
             CriterionKey::Workload,
@@ -221,33 +218,18 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
     ]
 }
 
-fn summarize(engine: &EngineProfile, data: &Value, quality: ProfileQuality) -> ProfileSummary {
+fn summarize(engine: &EngineProfile, quality: ProfileQuality) -> ProfileSummary {
     let core = &engine.core;
-    let mut sources: BTreeMap<String, (u16, bool)> = BTreeMap::new();
+    let mut sources: BTreeMap<String, u16> = BTreeMap::new();
     for entry in core {
-        let slot = sources
-            .entry(path_pattern(&entry.path))
-            .or_insert((0, true));
-        slot.0 = slot.0.saturating_add(1);
-        slot.1 &= !entry.explicit;
+        let count = sources.entry(path_pattern(&entry.path)).or_insert(0);
+        *count = count.saturating_add(1);
     }
     let criteria = criteria_info(&engine.criteria);
-    let warnings = warnings(engine, data, quality, &criteria);
+    let warnings = warnings(core.len(), quality, &criteria);
     let wishes = wishes_info(engine);
     let skills = &engine.skills;
-    let aliases = skills
-        .entries
-        .iter()
-        .filter_map(|e| {
-            Some(AliasInfo {
-                competence: e.alias_of.clone()?,
-                alias: e.text.clone(),
-                path: e.path.clone(),
-            })
-        })
-        .collect();
     ProfileSummary {
-        aliases,
         packs: skills
             .vocab
             .packs()
@@ -264,11 +246,7 @@ fn summarize(engine: &EngineProfile, data: &Value, quality: ProfileQuality) -> P
             .collect(),
         sources: sources
             .into_iter()
-            .map(|(path, (count, guessed))| SourceInfo {
-                path,
-                count,
-                guessed,
-            })
+            .map(|(path, count)| SourceInfo { path, count })
             .collect(),
         criteria,
         warnings,
@@ -276,16 +254,12 @@ fn summarize(engine: &EngineProfile, data: &Value, quality: ProfileQuality) -> P
     }
 }
 
-/// What the user should fix or know about the profile.
+/// What the user should know about the profile: too few competences, no criterion.
 fn warnings(
-    engine: &EngineProfile,
-    data: &Value,
+    competences: usize,
     quality: ProfileQuality,
     criteria: &[CriterionInfo],
 ) -> Vec<ProfileWarning> {
-    let c = &engine.criteria;
-    let core = &engine.core;
-    let availability_raw = facts::availability_text(data);
     let warn = |code, params: Value| ProfileWarning {
         code,
         params: params.as_object().cloned().unwrap_or_default(),
@@ -296,47 +270,13 @@ fn warnings(
         ProfileQuality::Thin => {
             warnings.push(warn(
                 ProfileWarningCode::FewCompetences,
-                json!({ "count": core.len() }),
+                json!({ "count": competences }),
             ));
         }
         ProfileQuality::Good => {}
     }
     if criteria.iter().all(|c| !c.set) {
         warnings.push(warn(ProfileWarningCode::NoCriteria, json!({})));
-    }
-    if let Some(raw) = availability_raw.filter(|_| c.available == Availability::Unset) {
-        warnings.push(warn(
-            ProfileWarningCode::AvailabilityNotUnderstood,
-            json!({ "value": raw }),
-        ));
-    }
-    for (key, value) in &c.not_understood {
-        warnings.push(warn(
-            ProfileWarningCode::CriterionNotUnderstood,
-            json!({ "key": key, "value": value }),
-        ));
-    }
-    if c.remote_min.is_some() && c.places.is_none() {
-        warnings.push(warn(ProfileWarningCode::RegionWithoutPlaces, json!({})));
-    }
-    let ignored = facts::ignored_criteria_keys(data);
-    if !ignored.is_empty() {
-        warnings.push(warn(
-            ProfileWarningCode::IgnoredKeys,
-            json!({ "keys": ignored }),
-        ));
-    }
-    for (key, value) in &engine.unreadable {
-        warnings.push(warn(
-            ProfileWarningCode::CriterionNotUnderstood,
-            json!({ "key": key, "value": value }),
-        ));
-    }
-    if engine.focus_count > FOCUS_MAX {
-        warnings.push(warn(
-            ProfileWarningCode::FocusTrimmed,
-            json!({ "count": engine.focus_count, "max": FOCUS_MAX }),
-        ));
     }
     warnings
 }
@@ -402,8 +342,6 @@ fn fingerprint(engine: &EngineProfile) -> String {
     let c = &engine.criteria;
     let mut countries = c.countries.clone().unwrap_or_default();
     countries.sort();
-    let mut places: Vec<String> = c.places.iter().flatten().map(|p| atoms::fold(p)).collect();
-    places.sort();
     // Schwerpunkte keep their order (the first ones add relevance); roles do not.
     let focus: Vec<String> = engine.focus.iter().map(|f| atoms::fold(&f.text)).collect();
     let mut roles: Vec<String> = engine.roles.iter().map(|r| atoms::fold(&r.text)).collect();
@@ -412,8 +350,8 @@ fn fingerprint(engine: &EngineProfile) -> String {
     exclusions.sort();
     let canonical = format!(
         "engine {ENGINE_VERSION}\nentries {}\nlanguages {languages:?}\ndegree {:?} {}\nyears {:?}\n\
-         min {:?}\ncountries {countries:?}\nremote {:?}\nanue {}\npermanent {}\navailable {:?}\n\
-         salary {:?}\nplaces {places:?}\nremoteMin {:?}\npacks {:?}\n\
+         min {:?}\ncountries {countries:?}\nanue {}\npermanent {}\navailable {:?}\n\
+         salary {:?}\npacks {:?}\n\
          focus {focus:?}\nroles {roles:?}\nwishes {}\nworkload {:?} {:?}\nmonths {:?}\n\
          exclusions {exclusions:?}\n",
         entries.join("|"),
@@ -421,12 +359,10 @@ fn fingerprint(engine: &EngineProfile) -> String {
         engine.skills.degree_level,
         engine.skills.total_years,
         c.min_rate,
-        c.remote_outside,
         c.anue_excluded,
         c.permanent_excluded,
         c.available,
         c.min_salary,
-        c.remote_min,
         engine.skills.vocab.packs(),
         engine.wishes.canonical(),
         c.workload_min,
@@ -440,16 +376,10 @@ fn fingerprint(engine: &EngineProfile) -> String {
     })
 }
 
-/// The hard criteria exactly as the engine reads them from a profile (the profile editor
-/// shows and writes these).
-pub(crate) fn hard_criteria(data: &Value) -> HardCriteria {
-    HardCriteria::new(&profile::criteria(data), data)
-}
-
 /// The hard criteria of a profile with their thresholds, as the profile summary names them
 /// (the AI prompts state them next to the ad's values).
-pub(crate) fn profile_criteria(data: &Value) -> Vec<CriterionInfo> {
-    criteria_info(&hard_criteria(data))
+pub(crate) fn profile_criteria(form: &ProfileForm) -> Vec<CriterionInfo> {
+    criteria_info(&HardCriteria::new(form))
 }
 
 /// A language level as the engine reads it: CEFR 1 (A1) to 6 (C2), 7 native.

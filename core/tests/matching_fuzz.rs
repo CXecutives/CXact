@@ -25,7 +25,6 @@ const PROFILES: &[&str] = &[
     "sample_profile_senior.json",
     "sample_profile_senior_wishes.json",
     "sample_profile_sap_wishes.json",
-    "legacy_edge_profile.json",
 ];
 
 /// Tokens the requirement splitter cuts at or looks for.
@@ -55,8 +54,8 @@ fn profiles() -> Vec<(&'static str, CompiledProfile)> {
         .iter()
         .map(|name| {
             let text = std::fs::read_to_string(fixtures().join(name)).expect("profile");
-            let value: Value = serde_json::from_str(&text).expect("json");
-            (*name, compile_profile(&value))
+            let form = jobalert_core::profile::parse(&text).expect("a v19 profile");
+            (*name, compile_profile(&form))
         })
         .collect()
 }

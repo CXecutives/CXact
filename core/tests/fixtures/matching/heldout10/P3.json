@@ -1,191 +1,189 @@
 {
-  "name": "Michael Platzhalter",
-  "email": "michael.platzhalter@example.invalid",
-  "telefon": "+49 151 1111111",
-  "titel": "IT Service Manager und ITIL-Prozessberater",
-  "abschluss": "Diplom-Informatiker (FH)",
-  "berufserfahrung_jahre": 19,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Informatiker (FH)",
-      "fach": "Wirtschaftsinformatik",
-      "hochschule": "Beispielhochschule für Technik",
-      "jahr": 2006
-    }
-  ],
-  "stationen": [
-    {
-      "zeitraum": "2016 - heute",
-      "rolle": "Freiberuflicher ITSM-Berater und Interim Service Manager",
-      "schwerpunkte": [
-        "Einführung von ServiceNow ITSM mit Incident, Problem, Change und CMDB bei einem Versicherer und einem Automobilzulieferer",
-        "Prozessdesign nach ITIL 4 für Service Level Management, Request Fulfilment und Knowledge Management",
-        "Interim-Leitung eines Service Desks mit 60 Mitarbeitenden und einem externen 1st-Level-Dienstleister",
-        "Aufbau eines SIAM-Modells für fünf IT-Dienstleister mit gemeinsamen SLAs und OLAs",
-        "Service Transition für die Übernahme von 300 Anwendungen in den Regelbetrieb"
-      ]
-    },
-    {
-      "zeitraum": "2010 - 2016",
-      "rolle": "Leiter Service Desk und Service Management bei einem IT-Dienstleister einer Versicherungsgruppe",
-      "schwerpunkte": [
-        "Führung von 1st und 2nd Level Support mit 45 Mitarbeitenden",
-        "Major Incident Management und Problem Management für die Kernsysteme",
-        "Monatliches Service-Reporting an die Fachbereiche"
-      ]
-    },
-    {
-      "zeitraum": "2006 - 2010",
-      "rolle": "Incident und Problem Manager bei einem Rechenzentrumsbetreiber",
-      "schwerpunkte": [
-        "Bearbeitung und Koordination von Störungen nach ITIL v3",
-        "Ursachenanalysen und Verbesserungsmaßnahmen"
-      ]
-    }
-  ],
-  "kernkompetenzen": [
-    {
-      "kompetenz": "IT-Service-Management",
-      "jahre": 17,
-      "auch": ["ITSM", "IT Service Management", "Servicemanagement"]
-    },
-    {
-      "kompetenz": "ITIL 4",
-      "jahre": 17,
-      "auch": ["ITIL", "ITIL v3", "ITIL-Prozesse"]
-    },
-    {
-      "kompetenz": "Incident Management",
-      "jahre": 19,
-      "auch": ["Störungsmanagement", "Major Incident Management"]
-    },
-    {
-      "kompetenz": "Problem Management",
-      "jahre": 15,
-      "auch": ["Problemmanagement", "Root Cause Analysis"]
-    },
-    {
-      "kompetenz": "Change Management nach ITIL",
-      "jahre": 12,
-      "auch": ["Change Enablement", "Change Advisory Board", "Release Management"]
-    },
-    {
-      "kompetenz": "Service Level Management",
-      "jahre": 12,
-      "auch": ["SLA-Management", "SLAs", "OLAs", "Service-Reporting"]
-    },
-    {
-      "kompetenz": "Service Desk Organisation",
-      "jahre": 12,
-      "auch": ["Leitung Service Desk", "Helpdesk", "1st Level Support", "2nd Level Support"]
-    },
-    {
-      "kompetenz": "ServiceNow ITSM",
-      "jahre": 8,
-      "auch": ["ServiceNow", "Now Platform"]
-    },
-    {
-      "kompetenz": "Service Transition",
-      "jahre": 8,
-      "auch": ["Transition Management", "Betriebsübergabe"]
-    },
-    {
-      "kompetenz": "Dienstleistersteuerung",
-      "jahre": 10,
-      "auch": ["SIAM", "Multi-Provider-Management", "Vendor Management"]
-    },
-    {
-      "kompetenz": "CMDB und Configuration Management",
-      "jahre": 8,
-      "auch": ["CMDB", "Configuration Management"]
-    },
-    {
-      "kompetenz": "Knowledge Management",
-      "jahre": 6,
-      "auch": ["Wissensmanagement"]
-    },
-    {
-      "kompetenz": "Projektleitung",
-      "jahre": 10,
-      "auch": ["Projektmanagement"]
-    },
-    {
-      "kompetenz": "KPI-Reporting",
-      "jahre": 12,
-      "auch": ["Service-KPIs", "Power BI"]
-    }
-  ],
-  "methoden_tools": [
-    { "name": "ServiceNow" },
-    { "name": "Jira Service Management" },
-    { "name": "BMC Remedy" },
-    { "name": "TOPdesk" },
-    { "name": "Confluence" },
-    { "name": "Power BI" }
-  ],
-  "zertifizierungen": [
-    { "name": "ITIL 4 Managing Professional" },
-    { "name": "ITIL 4 Strategic Leader" },
-    { "name": "ServiceNow Certified System Administrator" },
-    { "name": "PRINCE2 Foundation" }
-  ],
-  "branchen": [
-    { "branche": "Versicherungen" },
-    { "branche": "Banken" },
-    { "branche": "Automotive" },
-    { "branche": "IT-Dienstleistung" },
-    { "branche": "Öffentlicher Sektor" }
-  ],
-  "sprachen": [
-    { "sprache": "Deutsch", "niveau": "Muttersprache" },
-    { "sprache": "Englisch", "niveau": "B2" }
-  ],
-  "alleinstellungsmerkmale": [
-    "Hat ITIL-Prozesse in ServiceNow von der Konzeption bis zum Regelbetrieb verantwortet",
-    "Steuert mehrere IT-Dienstleister mit einem gemeinsamen SLA-Modell",
-    "Kennt den Service Desk aus eigener Leitungserfahrung"
-  ],
-  "keywords": [
-    "ITSM",
-    "ITIL",
-    "ServiceNow",
-    "Service Desk",
-    "Incident Management",
-    "Problem Management",
-    "SLA",
-    "SIAM",
-    "Service Transition"
-  ],
-  "schwerpunkte": [
-    "IT-Service-Management",
-    "ITIL 4",
-    "ServiceNow ITSM",
-    "Service Desk Organisation"
-  ],
   "wunschrollen": [
     "IT Service Manager",
     "ITSM Consultant",
     "Interim Head of Service Desk",
     "Service Delivery Manager"
   ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 900,
-    "remote": "ueberwiegend",
-    "regionen": ["München", "Bayern", "remote in Deutschland"],
-    "branchen": ["Versicherungen", "Automotive"]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 750,
-    "laender": ["DE"],
-    "ausgeschlossene_vertragsarten": [],
-    "remote_ausserhalb_erlaubt": false,
-    "verfuegbar_ab": "sofort",
-    "min_jahresgehalt": 95000,
-    "festanstellung_orte": ["München", "Augsburg"],
-    "festanstellung_remote_min": 60,
-    "auslastung_min_tage": 3,
-    "auslastung_max_tage": 5,
-    "min_laufzeit_monate": 3,
-    "ausschlusswoerter": ["Werkstudent", "Rufbereitschaft", "Schichtdienst"]
-  }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung",
+    "zeitarbeit"
+  ],
+  "tagessatz_wunsch": 900,
+  "tagessatz_min": 750,
+  "mindestgehalt": 95000,
+  "arbeitsmodell": "remote",
+  "laender": [
+    "DE"
+  ],
+  "regionen": [
+    "München",
+    "Bayern",
+    "remote in Deutschland"
+  ],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 3,
+  "kernkompetenzen": [
+    {
+      "kompetenz": "IT-Service-Management",
+      "jahre": 17,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "ITIL 4",
+      "jahre": 17,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Incident Management",
+      "jahre": 19,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Problem Management",
+      "jahre": 15,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Change Management nach ITIL",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Service Level Management",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Service Desk Organisation",
+      "jahre": 12,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "ServiceNow ITSM",
+      "jahre": 8,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Service Transition",
+      "jahre": 8,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Dienstleistersteuerung",
+      "jahre": 10,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "CMDB und Configuration Management",
+      "jahre": 8,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Knowledge Management",
+      "jahre": 6,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Projektleitung",
+      "jahre": 10,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "KPI-Reporting",
+      "jahre": 12,
+      "schwerpunkt": false
+    }
+  ],
+  "methoden_tools": [
+    "ServiceNow",
+    "Jira Service Management",
+    "BMC Remedy",
+    "TOPdesk",
+    "Confluence",
+    "Power BI",
+    "ITSM",
+    "ITIL",
+    "Service Desk",
+    "SLA",
+    "SIAM",
+    "IT Service Management",
+    "Servicemanagement",
+    "ITIL v3",
+    "ITIL-Prozesse",
+    "Störungsmanagement",
+    "Major Incident Management",
+    "Problemmanagement",
+    "Root Cause Analysis",
+    "Change Enablement",
+    "Change Advisory Board",
+    "Release Management",
+    "SLA-Management",
+    "SLAs",
+    "OLAs",
+    "Service-Reporting",
+    "Leitung Service Desk",
+    "Helpdesk",
+    "1st Level Support",
+    "2nd Level Support",
+    "Now Platform",
+    "Transition Management",
+    "Betriebsübergabe",
+    "Multi-Provider-Management",
+    "Vendor Management",
+    "CMDB",
+    "Configuration Management",
+    "Wissensmanagement",
+    "Projektmanagement",
+    "Service-KPIs"
+  ],
+  "berufserfahrung_jahre": 19,
+  "branchen": [
+    {
+      "branche": "Versicherungen",
+      "wunsch": true
+    },
+    {
+      "branche": "Banken",
+      "wunsch": false
+    },
+    {
+      "branche": "Automotive",
+      "wunsch": true
+    },
+    {
+      "branche": "IT-Dienstleistung",
+      "wunsch": false
+    },
+    {
+      "branche": "Öffentlicher Sektor",
+      "wunsch": false
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "B2"
+    }
+  ],
+  "abschluesse": [
+    "Diplom-Informatiker (FH)"
+  ],
+  "zertifizierungen": [
+    "ITIL 4 Managing Professional",
+    "ITIL 4 Strategic Leader",
+    "ServiceNow Certified System Administrator",
+    "PRINCE2 Foundation"
+  ],
+  "ausschlusswoerter": [
+    "Werkstudent",
+    "Rufbereitschaft",
+    "Schichtdienst"
+  ]
 }

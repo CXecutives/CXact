@@ -18,15 +18,7 @@ set_override      { key: JobKey; include: boolean }                             
 purge_jobs        { keys: JobKey[] }                                                 -> Deleted
 empty_trash       {}                                                                 -> Deleted
 ai_prompt         { key: JobKey }                                                    -> string
-pick_profile      {}                                                                 -> ProfileDraft | null
-profile_prompt    {}                                                                 -> string
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
-switch_profile    { id: number }                                                     -> ProfileEntry[]
-create_profile    {}                                                                 -> ProfileEntry[]
-duplicate_profile { id: number; name: string | null }                                -> ProfileEntry[]
-rename_profile    { id: number; name: string }                                       -> ProfileEntry[]
-delete_profile    { id: number }                                                     -> boolean
-restore_profile   { id: number | null }                                              -> boolean
 asked_terms       {}                                                                 -> AskedTerm[]
 vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null

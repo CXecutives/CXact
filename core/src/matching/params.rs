@@ -105,9 +105,8 @@ pub(crate) const NO_ITEMS_CAP: u8 = 60;
 pub(crate) const LIFT_CAP: u64 = 790;
 /// A day rate of at least this share of the wish (per-mille) is near, below it missed.
 pub(crate) const WISH_RATE_NEAR: u64 = 950;
-/// Remote wishes as minimum remote shares (percent): `voll`, `ueberwiegend`, `teilweise`.
+/// Work modes as minimum remote shares (percent): `remote`, `hybrid`.
 pub(crate) const REMOTE_FULL: u64 = 100;
-pub(crate) const REMOTE_MOSTLY: u64 = 60;
 pub(crate) const REMOTE_PARTLY: u64 = 20;
 /// `vor_ort`: the largest remote share that still means presence on site.
 pub(crate) const ONSITE_MAX: u64 = 60;

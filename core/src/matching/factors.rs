@@ -167,9 +167,9 @@ mod tests {
         "kernkompetenzen": [
             {"kompetenz": "Controlling"}, {"kompetenz": "Reporting nach IFRS"},
             {"kompetenz": "Konsolidierung"}, {"kompetenz": "Liquiditätsplanung"},
-            {"kompetenz": "Restrukturierung"}, {"kompetenz": "Treasury"}
+            {"kompetenz": "Restrukturierung", "schwerpunkt": true},
+            {"kompetenz": "Treasury", "schwerpunkt": true}
         ],
-        "schwerpunkte": ["Restrukturierung", "Treasury"],
         "wunschrollen": ["Interim CFO"]
     }"#;
 
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn the_lines_say_what_moved_the_score_in_reading_order() {
-        let profile = compile_profile(&serde_json::from_str(PROFILE).unwrap());
+        let profile = compile_profile(&crate::profile::parse(PROFILE).unwrap());
         let a = assess(&profile, &job("Interim CFO (m/w/d)", AD), None).unwrap();
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
         assert_eq!(
@@ -206,8 +206,8 @@ mod tests {
     #[test]
     fn a_permanent_role_and_a_cap_say_so_and_the_lines_stay_five() {
         // A senior profile (20 years) and a junior role: the junior cap holds the score.
-        let mut data: serde_json::Value = serde_json::from_str(PROFILE).unwrap();
-        data["berufserfahrung_jahre"] = json!(20);
+        let mut data = crate::profile::parse(PROFILE).unwrap();
+        data.years = Some(20);
         let profile = compile_profile(&data);
         let requirements = AD.split_once("\n\n").map_or(AD, |(_, rest)| rest);
         let ad = format!(
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn an_unscorable_job_has_none() {
-        let profile = compile_profile(&serde_json::from_str(PROFILE).unwrap());
+        let profile = compile_profile(&crate::profile::parse(PROFILE).unwrap());
         let a = assess(&profile, &job("Projekt", "Kurz."), None).unwrap();
         assert!(a.factors.is_empty());
     }

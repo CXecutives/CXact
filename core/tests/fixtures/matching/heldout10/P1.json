@@ -1,200 +1,219 @@
 {
-  "name": "Katrin Beispielhaus",
-  "email": "katrin.beispielhaus@example.invalid",
-  "telefon": "+49 160 0000000",
-  "titel": "Interim Managerin Kundenservice und Contact Center",
-  "abschluss": "Diplom-Kauffrau (Univ.)",
-  "berufserfahrung_jahre": 23,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Kauffrau",
-      "fach": "Betriebswirtschaftslehre mit Schwerpunkt Dienstleistungsmanagement",
-      "hochschule": "Beispieluniversität",
-      "jahr": 2003
-    }
-  ],
-  "stationen": [
-    {
-      "zeitraum": "2016 - heute",
-      "rolle": "Selbstständige Interim Managerin für Kundenservice und Contact Center",
-      "schwerpunkte": [
-        "Interim-Leitung Kundenservice eines Energieversorgers mit 420 Mitarbeitenden an drei Standorten und zwei externen Dienstleistern",
-        "Neuaufstellung des Contact Centers eines Telekommunikationsanbieters: Servicelevel von 58 auf 82 Prozent, AHT minus 14 Prozent",
-        "Ausschreibung und Wechsel des Outsourcing-Partners für 180 Agents inklusive Transition und Dienstleistersteuerung",
-        "Einführung von Workforce Management mit NICE IEX und Genesys Cloud CX, Forecasting und Kapazitätsplanung",
-        "Aufbau eines Beschwerdemanagements mit Eskalationsstufen und Ursachenanalyse für einen Versicherer",
-        "Programmleitung Chatbot und Voicebot im Kundenservice mit Conversational AI, Agent Assist und Wissensdatenbank"
-      ]
-    },
-    {
-      "zeitraum": "2009 - 2016",
-      "rolle": "Bereichsleiterin Kundenservice bei einem Versandhändler mit 600 Servicemitarbeitenden",
-      "schwerpunkte": [
-        "Omnichannel-Kundenservice über Telefon, E-Mail, Chat und Messenger, eigene Standorte und zwei Dienstleister",
-        "Steuerung über Servicelevel, Erreichbarkeit, FCR, NPS und Kundenzufriedenheit",
-        "Qualitätsmonitoring, Coaching-Programme und Schulungskonzepte für Teamleitungen",
-        "Konsolidierung von vier auf zwei Standorte in Abstimmung mit dem Betriebsrat"
-      ]
-    },
-    {
-      "zeitraum": "2003 - 2009",
-      "rolle": "Leiterin Workforce Management und Servicesteuerung bei einem Mobilfunkanbieter",
-      "schwerpunkte": [
-        "Personaleinsatzplanung, Volumenprognose und Echtzeitsteuerung für 1.100 Agents",
-        "Einführung eines Skill-Based-Routings und einer neuen IVR",
-        "Berichtswesen zu Service-KPIs für die Geschäftsführung"
-      ]
-    }
-  ],
-  "kernkompetenzen": [
-    {
-      "kompetenz": "Leitung Kundenservice",
-      "jahre": 16,
-      "auch": ["Head of Customer Service", "Kundenservice-Leitung", "Customer Care Management", "Leitung Kundendialog"]
-    },
-    {
-      "kompetenz": "Contact Center Management",
-      "jahre": 20,
-      "auch": ["Callcenter-Leitung", "Contact-Center-Steuerung", "Standortleitung Contact Center"]
-    },
-    {
-      "kompetenz": "Workforce Management",
-      "jahre": 20,
-      "auch": ["WFM", "Personaleinsatzplanung", "Forecasting", "Kapazitätsplanung", "Echtzeitsteuerung"]
-    },
-    {
-      "kompetenz": "Dienstleistersteuerung",
-      "jahre": 12,
-      "auch": ["Outsourcing", "BPO", "Vendor Management", "Dienstleisterausschreibung", "Make-or-Buy"]
-    },
-    {
-      "kompetenz": "Customer Experience",
-      "jahre": 10,
-      "auch": ["CX", "Kundenzufriedenheit", "NPS", "Customer Journey"]
-    },
-    {
-      "kompetenz": "Beschwerdemanagement",
-      "jahre": 12,
-      "auch": ["Complaint Management", "Eskalationsmanagement"]
-    },
-    {
-      "kompetenz": "Service-KPIs",
-      "jahre": 20,
-      "auch": ["AHT", "FCR", "Servicelevel", "Erreichbarkeit", "KPI-Steuerung"]
-    },
-    {
-      "kompetenz": "Omnichannel-Kundenservice",
-      "jahre": 12,
-      "auch": ["Multichannel", "Chat", "Messaging", "E-Mail-Management", "Telefonie"]
-    },
-    {
-      "kompetenz": "Chatbots und Voicebots",
-      "jahre": 5,
-      "auch": ["Conversational AI", "KI im Kundenservice", "IVR", "Agent Assist", "Generative KI"]
-    },
-    {
-      "kompetenz": "Qualitätsmanagement im Service",
-      "jahre": 14,
-      "auch": ["Qualitätsmonitoring", "Coaching", "Schulung"]
-    },
-    {
-      "kompetenz": "Restrukturierung von Serviceorganisationen",
-      "jahre": 9,
-      "auch": ["Standortkonsolidierung", "Kostensenkung", "Serviceorganisation"]
-    },
-    {
-      "kompetenz": "Changemanagement",
-      "jahre": 12,
-      "auch": ["Change Management", "Veränderungsmanagement"]
-    },
-    {
-      "kompetenz": "Projektmanagement",
-      "jahre": 15,
-      "auch": ["Programmleitung", "Projektleitung"]
-    },
-    {
-      "kompetenz": "Wissensmanagement",
-      "jahre": 6,
-      "auch": ["Knowledge Management", "Wissensdatenbank"]
-    },
-    {
-      "kompetenz": "Back Office",
-      "jahre": 10,
-      "auch": ["Backoffice", "Sachbearbeitung", "Vorgangsbearbeitung"]
-    }
-  ],
-  "methoden_tools": [
-    { "name": "Genesys Cloud CX" },
-    { "name": "NICE CXone" },
-    { "name": "NICE IEX" },
-    { "name": "injixo" },
-    { "name": "Salesforce Service Cloud" },
-    { "name": "Zendesk" },
-    { "name": "Avaya" },
-    { "name": "Power BI" },
-    { "name": "Microsoft Excel" }
-  ],
-  "zertifizierungen": [
-    { "name": "COPC Implementation Leader" },
-    { "name": "Lean Six Sigma Green Belt" },
-    { "name": "Systemischer Coach" }
-  ],
-  "branchen": [
-    { "branche": "Energie" },
-    { "branche": "Telekommunikation" },
-    { "branche": "Versandhandel und E-Commerce" },
-    { "branche": "Versicherungen" }
-  ],
-  "sprachen": [
-    { "sprache": "Deutsch", "niveau": "Muttersprache" },
-    { "sprache": "Englisch", "niveau": "C1" }
-  ],
-  "alleinstellungsmerkmale": [
-    "Führt Kundenservice mit eigenen Standorten und Dienstleistern aus einer Hand",
-    "Bringt Servicelevel und Kosten in wenigen Monaten messbar ins Lot",
-    "Hat Chatbots und Voicebots im laufenden Betrieb eingeführt"
-  ],
-  "keywords": [
-    "Kundenservice",
-    "Contact Center",
-    "Callcenter",
-    "Workforce Management",
-    "Outsourcing",
-    "Servicelevel",
-    "Kundendialog",
-    "Customer Care",
-    "Interim Management"
-  ],
-  "schwerpunkte": [
-    "Leitung Kundenservice",
-    "Contact Center Management",
-    "Workforce Management",
-    "Dienstleistersteuerung"
-  ],
   "wunschrollen": [
     "Interim Head of Customer Service",
     "Interim Leitung Kundenservice",
     "Interim Contact Center Director",
     "Programmleitung Service-Transformation"
   ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 1250,
-    "remote": "teilweise",
-    "regionen": ["Norddeutschland", "Nordrhein-Westfalen", "DACH"],
-    "branchen": ["Energie", "Telekommunikation", "Versicherungen"]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 1000,
-    "laender": ["DE", "AT", "CH"],
-    "ausgeschlossene_vertragsarten": ["anue"],
-    "remote_ausserhalb_erlaubt": false,
-    "verfuegbar_ab": "sofort",
-    "min_jahresgehalt": 140000,
-    "festanstellung_orte": ["Hamburg"],
-    "festanstellung_remote_min": 80,
-    "auslastung_min_tage": 3,
-    "auslastung_max_tage": 5,
-    "min_laufzeit_monate": 3,
-    "ausschlusswoerter": ["Werkstudent", "Praktikum", "Provisionsbasis"]
-  }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
+  ],
+  "tagessatz_wunsch": 1250,
+  "tagessatz_min": 1000,
+  "mindestgehalt": 140000,
+  "arbeitsmodell": "hybrid",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Norddeutschland",
+    "Nordrhein-Westfalen",
+    "DACH"
+  ],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 3,
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Leitung Kundenservice",
+      "jahre": 16,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Contact Center Management",
+      "jahre": 20,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Workforce Management",
+      "jahre": 20,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Dienstleistersteuerung",
+      "jahre": 12,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Customer Experience",
+      "jahre": 10,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Beschwerdemanagement",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Service-KPIs",
+      "jahre": 20,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Omnichannel-Kundenservice",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Chatbots und Voicebots",
+      "jahre": 5,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Qualitätsmanagement im Service",
+      "jahre": 14,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Restrukturierung von Serviceorganisationen",
+      "jahre": 9,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Changemanagement",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Projektmanagement",
+      "jahre": 15,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Wissensmanagement",
+      "jahre": 6,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Back Office",
+      "jahre": 10,
+      "schwerpunkt": false
+    }
+  ],
+  "methoden_tools": [
+    "Genesys Cloud CX",
+    "NICE CXone",
+    "NICE IEX",
+    "injixo",
+    "Salesforce Service Cloud",
+    "Zendesk",
+    "Avaya",
+    "Power BI",
+    "Microsoft Excel",
+    "Kundenservice",
+    "Contact Center",
+    "Callcenter",
+    "Outsourcing",
+    "Servicelevel",
+    "Kundendialog",
+    "Customer Care",
+    "Interim Management",
+    "Head of Customer Service",
+    "Kundenservice-Leitung",
+    "Customer Care Management",
+    "Leitung Kundendialog",
+    "Callcenter-Leitung",
+    "Contact-Center-Steuerung",
+    "Standortleitung Contact Center",
+    "WFM",
+    "Personaleinsatzplanung",
+    "Forecasting",
+    "Kapazitätsplanung",
+    "Echtzeitsteuerung",
+    "BPO",
+    "Vendor Management",
+    "Dienstleisterausschreibung",
+    "Make-or-Buy",
+    "CX",
+    "Kundenzufriedenheit",
+    "NPS",
+    "Customer Journey",
+    "Complaint Management",
+    "Eskalationsmanagement",
+    "AHT",
+    "FCR",
+    "Erreichbarkeit",
+    "KPI-Steuerung",
+    "Multichannel",
+    "Chat",
+    "Messaging",
+    "E-Mail-Management",
+    "Telefonie",
+    "Conversational AI",
+    "KI im Kundenservice",
+    "IVR",
+    "Agent Assist",
+    "Generative KI",
+    "Qualitätsmonitoring",
+    "Coaching",
+    "Schulung",
+    "Standortkonsolidierung",
+    "Kostensenkung",
+    "Serviceorganisation",
+    "Change Management",
+    "Veränderungsmanagement",
+    "Programmleitung",
+    "Projektleitung",
+    "Knowledge Management",
+    "Wissensdatenbank",
+    "Backoffice",
+    "Sachbearbeitung",
+    "Vorgangsbearbeitung"
+  ],
+  "berufserfahrung_jahre": 23,
+  "branchen": [
+    {
+      "branche": "Energie",
+      "wunsch": true
+    },
+    {
+      "branche": "Telekommunikation",
+      "wunsch": true
+    },
+    {
+      "branche": "Versandhandel und E-Commerce",
+      "wunsch": false
+    },
+    {
+      "branche": "Versicherungen",
+      "wunsch": true
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    }
+  ],
+  "abschluesse": [
+    "Diplom-Kauffrau (Univ.)",
+    "Diplom-Kauffrau, Betriebswirtschaftslehre mit Schwerpunkt Dienstleistungsmanagement"
+  ],
+  "zertifizierungen": [
+    "COPC Implementation Leader",
+    "Lean Six Sigma Green Belt",
+    "Systemischer Coach"
+  ],
+  "ausschlusswoerter": [
+    "Werkstudent",
+    "Praktikum",
+    "Provisionsbasis"
+  ]
 }

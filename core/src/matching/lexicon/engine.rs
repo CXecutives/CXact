@@ -955,21 +955,6 @@ pub(crate) const NUMBER_WORDS: &[(&str, u32)] = &[
     ("ten", 10),
 ];
 
-/// Profile keys of the engine (German JSON keys of the profile format).
-pub(crate) const KEY_LANGUAGES: &str = "sprachen";
-pub(crate) const KEY_LANGUAGE: &str = "sprache";
-pub(crate) const KEY_LEVEL: &str = "niveau";
-/// English keys of the language list, its entries and their level.
-pub(crate) const KEYS_LANGUAGES: &[&str] = &[KEY_LANGUAGES, "languages"];
-pub(crate) const KEYS_LANGUAGE: &[&str] = &[KEY_LANGUAGE, "language", "name"];
-pub(crate) const KEYS_LEVEL: &[&str] = &[KEY_LEVEL, "level"];
-pub(crate) const KEYS_YEARS: &[&str] = &["jahre", "years", "erfahrung_jahre"];
-/// Free-text USPs (`alleinstellungsmerkmale`).
-pub(crate) const KEY_USP: &str = "alleinstellungsmerkmal";
-/// Career stations (`stationen`): their bullets are free text, weaker evidence like a USP.
-pub(crate) const KEY_STATIONS: &str = "stationen";
-/// Industries of the profile (`branchen`): the setting of a requirement, never its function.
-pub(crate) const KEY_INDUSTRY_LIST: &str = "branchen";
 /// Profile atoms that say nothing about the field in the relevance query: contract words
 /// written as one word and quantities (the number words count as well).
 pub(crate) const QUERY_NOISE: &[&str] = &["davon", "elf", "interimmanagement", "jeden", "rund"];
@@ -1839,10 +1824,6 @@ pub(crate) const START_WORDS: &[&str] = &[
     "asap",
     "starting",
 ];
-/// "Remote from <country>".
-pub(crate) const REMOTE_FROM: &[&str] = &["remote aus", "remote from"];
-/// The consultant is available now.
-pub(crate) const NOW_WORD: &str = "sofort";
 
 /// Month names -> month number (case-folded, without umlauts).
 pub(crate) const MONTHS: &[(&str, i8)] = &[
@@ -2557,15 +2538,6 @@ pub(crate) const LOCATION_LINES: &[&str] = &[
     "dienstort",
     "location",
     "ort:",
-];
-/// Words of a remote share.
-pub(crate) const REMOTE_WORDS: &[&str] = &[
-    "remote",
-    "homeoffice",
-    "home-office",
-    "home office",
-    "mobil",
-    "work from home",
 ];
 /// Fully remote wording for permanent roles (on top of [`FULL_REMOTE`]).
 pub(crate) const REMOTE_FULL_EXTRA: &[&str] = &[

@@ -20,10 +20,10 @@ use jobalert_core::export::{PromptSource, ai_prompt};
 use jobalert_core::model::{AlertMail, Place, Posting};
 use jobalert_core::pipeline::{LocalMatcher, Matcher};
 use jobalert_core::portal::{JobKey, Portal};
+use jobalert_core::profile::ProfileForm;
 use jobalert_core::store::Store;
 use jobalert_core::view::{self, JobQuery, JobSort, JobView};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 /// The fixed "now" of the preview (`NOW` in stub.ts and in the specs' fixtures).
 const NOW: &str = "2026-09-24T07:30:00Z";
@@ -282,7 +282,7 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
 fn job_prompts(
     store: &Store,
     matcher: &LocalMatcher,
-    profile: &Value,
+    profile: &ProfileForm,
     keys: &[JobKey],
 ) -> BTreeMap<String, String> {
     keys.iter()
@@ -300,7 +300,7 @@ struct Demo {
     /// The ads' texts by `portal:id`.
     texts: BTreeMap<String, String>,
     profile_text: String,
-    profile: Value,
+    profile: ProfileForm,
     matcher: LocalMatcher,
     store: Store,
 }
@@ -319,8 +319,8 @@ impl Demo {
             .filter(|ad| !ad.text.is_empty())
             .map(|ad| (format!("{}:{}", ad.portal, ad.id), ad.text.join("\n")))
             .collect();
-        let profile: Value = serde_json::from_str(&profile_text).unwrap();
-        let matcher = LocalMatcher::from_json(&profile);
+        let profile = jobalert_core::profile::parse(&profile_text).unwrap();
+        let matcher = LocalMatcher::from_form(&profile);
         assert!(matcher.usable(), "the demo profile scores");
         Demo {
             ads,
@@ -374,7 +374,7 @@ impl Demo {
             parse_error: None,
         };
         view::ProfileInfo::of(&info, Some(file_name.to_owned()))
-            .with_form(jobalert_core::profile::form_of(&self.profile_text))
+            .with_form(jobalert_core::profile::parse(&self.profile_text).ok())
             .understood_by(&self.matcher, &self.store)
             .unwrap()
     }

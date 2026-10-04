@@ -516,8 +516,8 @@
     },
     "E06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "permanent \"Unbefristete Festanstellung\" in Mannheim, not a permanent location; \"Bis zu zwei Tage Homeoffice\" below 60 % remote",
+      "excluded": false,
+      "reason": "permanent \"Unbefristete Festanstellung\" in Mannheim, not a permanent location; \"Bis zu zwei Tage Homeoffice\" below 60 % remote Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "E07": {
@@ -642,8 +642,8 @@
     },
     "G07": {
       "grade": 0,
-      "excluded": true,
-      "reason": "permanent \"in Festanstellung\" in Region Ingolstadt, outside permanent locations, no stated remote share",
+      "excluded": false,
+      "reason": "permanent \"in Festanstellung\" in Region Ingolstadt, outside permanent locations, no stated remote share Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "G08": {
@@ -678,8 +678,8 @@
     },
     "H03": {
       "grade": 0,
-      "excluded": true,
-      "reason": "\"permanent, full-time position based at our headquarters in Nuremberg\", \"Up to two days of mobile work\" below 60 %",
+      "excluded": false,
+      "reason": "\"permanent, full-time position based at our headquarters in Nuremberg\", \"Up to two days of mobile work\" below 60 % Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "H04": {
@@ -696,8 +696,8 @@
     },
     "H06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "\"Die Position ist unbefristet zu besetzen\" in Kassel, outside permanent locations, only \"an einzelnen Tagen mobil\"",
+      "excluded": false,
+      "reason": "\"Die Position ist unbefristet zu besetzen\" in Kassel, outside permanent locations, only \"an einzelnen Tagen mobil\" Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "H07": {
@@ -720,8 +720,8 @@
     },
     "H10": {
       "grade": 0,
-      "excluded": true,
-      "reason": "\"Permanent, full-time role\" in Berlin, outside permanent locations, hybrid only",
+      "excluded": false,
+      "reason": "\"Permanent, full-time role\" in Berlin, outside permanent locations, hybrid only Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     }
   },
@@ -1484,8 +1484,8 @@
     },
     "E06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent in Mannheim, 'Bis zu zwei Tage Homeoffice' below 60 % remote",
+      "excluded": false,
+      "reason": "Permanent in Mannheim, 'Bis zu zwei Tage Homeoffice' below 60 % remote Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "E07": {
@@ -1646,8 +1646,8 @@
     },
     "H03": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent in Nürnberg, 'Up to two days of mobile work' below 60 %",
+      "excluded": false,
+      "reason": "Permanent in Nürnberg, 'Up to two days of mobile work' below 60 % Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "H04": {
@@ -1664,8 +1664,8 @@
     },
     "H06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent 'unbefristet' in Kassel, only 'an einzelnen Tagen mobil'",
+      "excluded": false,
+      "reason": "Permanent 'unbefristet' in Kassel, only 'an einzelnen Tagen mobil' Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "H07": {
@@ -1688,8 +1688,8 @@
     },
     "H10": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent in Berlin (Hybrid), no remote share",
+      "excluded": false,
+      "reason": "Permanent in Berlin (Hybrid), no remote share Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     }
   },
@@ -2584,8 +2584,8 @@
     },
     "H06": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Permanent 'unbefristet' in Kassel, only 'an einzelnen Tagen mobil'",
+      "excluded": false,
+      "reason": "Permanent 'unbefristet' in Kassel, only 'an einzelnen Tagen mobil' Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "H07": {
@@ -2608,8 +2608,8 @@
     },
     "H10": {
       "grade": 2,
-      "excluded": true,
-      "reason": "'Permanent' role in Berlin (Hybrid), outside region, no remote share",
+      "excluded": false,
+      "reason": "'Permanent' role in Berlin (Hybrid), outside region, no remote share Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "E04": {
@@ -2656,8 +2656,8 @@
     },
     "H03": {
       "grade": 2,
-      "excluded": true,
-      "reason": "Strong controlling content, but \"permanent, full-time position based at our headquarters in Nuremberg\" outside festanstellung_orte, \"Up to two days of mobile work\" no remote share; permanent second category",
+      "excluded": false,
+      "reason": "Strong controlling content, but \"permanent, full-time position based at our headquarters in Nuremberg\" outside festanstellung_orte, \"Up to two days of mobile work\" no remote share; permanent second category Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     }
   }

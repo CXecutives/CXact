@@ -37,8 +37,8 @@ kostet bei Interim und Projekten nichts.
 - Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa einen Punkt.
 - Eine unklare Vertragsart ist ein Punkt zum Prüfen, nie ein Ausschluss, auch wenn das Profil
   Festanstellungen ausschließt.
-- Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Gehalt und Ort werden wie bei einer
-  Festanstellung geprüft, nur als offene Punkte, und das Risiko der Arbeitnehmerüberlassung wird genannt.
+- Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Das Gehalt wird wie bei einer
+  Festanstellung geprüft, nur als offener Punkt, und das Risiko der Arbeitnehmerüberlassung wird genannt.
 - Arbeitnehmerüberlassung (auch ANÜ, Überlassung) schließt aus, wenn das Profil sie ausschließt. Als
   eine von mehreren Möglichkeiten oder nur angedeutet (Payrolling, Equal Pay, iGZ, BAP) ist sie ein
   offener Punkt.
@@ -46,10 +46,11 @@ kostet bei Interim und Projekten nichts.
 ## Ausschluss
 
 - Ein Ausschluss braucht ein wörtliches Zitat aus der Anzeige, das ihn belegt.
-- Nur harte Kriterien schließen aus. Das sind Arbeitnehmerüberlassung, eine genannte Festanstellung,
-  wenn das Profil Festanstellungen ausschließt, ein Tagessatz unter min_tagessatz, ein Land außerhalb
-  von laender, ein Gehalt unter min_jahresgehalt oder ein Ort außerhalb der Region bei einer
-  genannten Festanstellung, eine zwingende formale Pflicht und ein Wort aus ausschlusswoerter.
+- Nur harte Kriterien schließen aus. Das sind Arbeitnehmerüberlassung ohne zeitarbeit in
+  vertragsarten, eine genannte Festanstellung ohne festanstellung in vertragsarten, ein Tagessatz
+  unter tagessatz_min, ein Land außerhalb von laender (eine voll remote Stelle nie), ein Gehalt unter
+  mindestgehalt bei einer genannten Festanstellung, eine zwingende formale Pflicht und ein Wort aus
+  ausschlusswoerter.
 - Ein Ausschlusswort schließt nur aus, wenn es die Stelle selbst beschreibt, also im Titel, in der
   Karrierestufe der Portalseite oder in einem Satz über die angebotene Rolle und ihre Bedingungen.
   Erwähnt die Anzeige es nur, etwa beim Team, bei Menschen, die die Rolle betreut, in einer
@@ -57,11 +58,11 @@ kostet bei Interim und Projekten nichts.
 
 ## Schwerpunkte, Wunschrollen und Wünsche
 
-- Schwerpunkte (schwerpunkte) sind die drei bis fünf Kernkompetenzen. Ein Muss-Punkt, den ein
+- Schwerpunkte (schwerpunkt in kernkompetenzen) sind die bis zu fünf wichtigsten Kompetenzen. Ein Muss-Punkt, den ein
   Schwerpunkt erfüllt, zählt doppelt.
 - Eine passende Wunschrolle (wunschrollen) ist ein Plus von höchstens einem Punkt. Sie hebt keine
   Obergrenze auf.
-- Wünsche (tagessatz_wunsch, remote, regionen und branchen in einsatzpraeferenzen) schließen nie
+- Wünsche (tagessatz_wunsch, arbeitsmodell, regionen und branchen mit wunsch) schließen nie
   aus und bewegen die Bewertung zusammen höchstens einen Punkt nach oben oder unten. Nennt die
   Anzeige einen Wert nicht, zählt der Wunsch nicht.
 - Wunschrolle und Wünsche heben keinen Job auf 8 oder mehr, wenn weniger als die Hälfte der

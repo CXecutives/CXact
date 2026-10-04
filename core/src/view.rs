@@ -6,7 +6,7 @@
 //! Company and location are cleaned here (the database holds the raw mail values).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use jiff::Timestamp;
@@ -25,8 +25,8 @@ use crate::model::{
 use crate::pipeline::{LocalMatcher, Matcher, RunSnapshot, RunSummary, local};
 use crate::portal::{JobKey, Portal, Way};
 pub use crate::profile::{
-    LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
-    ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
+    LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileForm, ProfileIndustry,
+    ProfileLanguage, WorkWish, Workload,
 };
 use crate::settings::{PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
@@ -699,11 +699,15 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
 }
 
 /// The params of a reason for the reader; an open requirement the profile could take also
-/// names its term and field (`term`, `field`: `pipeline::local::open_term`), what the
-/// reader's "+" adds.
+/// names its term and field (`term`, `field`: `pipeline::local::open_term`) and a language
+/// its level (`level`), what the reader's "+" adds.
 fn reason_params(reason: &matching::Reason) -> serde_json::Map<String, serde_json::Value> {
     let mut params = local::flat_params(&reason.params);
     if let Some(core) = local::open_term(reason) {
+        let level = term_level(&core, reason.label.as_deref().unwrap_or(&core.term));
+        if let Some(level) = level.and_then(|l| serde_json::to_value(l).ok()) {
+            params.insert("level".into(), level);
+        }
         params.insert("term".into(), core.term.into());
         params.insert("field".into(), core.field.name().into());
     }
@@ -1215,7 +1219,7 @@ impl From<matching::ProfileQuality> for ProfileQuality {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileSource {
-    /// JSON path pattern (`kernkompetenzen[].kompetenz`, `stationen[].rolle`).
+    /// JSON path pattern (`kernkompetenzen[].kompetenz`, `methoden_tools[]`).
     pub path: String,
     /// Terms read there.
     pub count: u32,
@@ -1228,7 +1232,7 @@ pub struct ProfileSource {
 pub struct ProfileUnderstanding {
     pub competence_count: u32,
     pub competences: Vec<String>,
-    /// Where the terms come from, also parts the form does not show (`stationen`).
+    /// Where the terms come from.
     pub sources: Vec<ProfileSource>,
     pub criteria: Vec<Notice>,
     pub warnings: Vec<Notice>,
@@ -1238,12 +1242,6 @@ pub struct ProfileUnderstanding {
     pub years: Option<u32>,
     /// Degrees as written in the profile.
     pub degrees: Vec<String>,
-    /// `schwerpunkte`: the competences that matter most.
-    pub focus: Vec<String>,
-    /// `wunschrollen`: the roles the consultant is looking for.
-    pub roles: Vec<String>,
-    /// `einsatzpraeferenzen`: wishes, they nudge the score and never exclude.
-    pub wishes: ProfileWishes,
 }
 
 /// The stored consultant profile.
@@ -1260,10 +1258,14 @@ pub struct ProfileInfo {
     pub scored_at: Option<Timestamp>,
     /// Jobs still waiting for a score with this profile.
     pub pending: u32,
-    /// The file is no valid JSON object any more (edited by hand).
+    /// The file does not read as a profile (edited by hand, or of another version).
     pub parse_error: Option<ErrorInfo>,
     /// The profile as the editor shows it (`null` while the file does not read).
     pub form: Option<ProfileForm>,
+    /// The `ProfileForm` fields a usable profile still needs (core `missing_required`).
+    pub missing: Vec<String>,
+    /// The `ProfileForm` fields the CV import filled, until the next save.
+    pub ai_filled: Vec<String>,
 }
 
 impl ProfileInfo {
@@ -1284,63 +1286,40 @@ impl ProfileInfo {
             pending: 0,
             parse_error: info.parse_error.as_ref().map(ErrorInfo::from),
             form: None,
+            missing: Vec::new(),
+            ai_filled: Vec::new(),
         }
     }
 
-    /// Adds the form of the editor.
+    /// Adds the form of the editor and what it still needs.
     #[must_use]
     pub fn with_form(mut self, form: Option<ProfileForm>) -> Self {
+        self.missing = form
+            .as_ref()
+            .map(|f| {
+                crate::profile::missing_required(f)
+                    .into_iter()
+                    .map(str::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default();
         self.form = form;
         self
     }
 
-    /// Adds what the engine understood of the profile and how far the jobs are scored with
-    /// it (an empty profile scores nothing, so nothing is pending).
+    /// Adds what the engine understood of the profile, how far the jobs are scored with it
+    /// (an empty profile scores nothing, so nothing is pending) and what the CV filled.
     pub fn understood_by(mut self, matcher: &LocalMatcher, store: &Store) -> crate::Result<Self> {
         let profile = matcher.profile();
         self.quality = Some(profile.quality().into());
-        let mut understood = understanding(profile.summary());
-        // The newer profile inputs, as the form reads them.
-        if let Some(form) = &self.form {
-            understood.focus.clone_from(&form.focus);
-            understood.roles.clone_from(&form.roles);
-            understood.wishes = form.wishes.clone();
-        }
-        self.understood = Some(understood);
+        self.understood = Some(understanding(profile.summary()));
+        self.ai_filled = crate::profile::ai_filled(store);
         if matcher.usable() {
             self.scored_at = store.scored_at(matcher.rev())?;
             self.pending = store.match_pending(matcher.rev())?;
         }
         Ok(self)
     }
-}
-
-/// A profile of the work folder as the switcher of the Profil view lists it (one of them
-/// active; `profile::list`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ProfileEntry {
-    /// Its number (`beraterprofil.json` is 1); the page's "Profil 2" without a name or role.
-    pub id: u32,
-    /// The name the user gave it ("Umbenennen").
-    pub name: Option<String>,
-    /// Its role (`titel`, else its first `wunschrollen`): its name without one of its own.
-    pub role: Option<String>,
-    pub active: bool,
-}
-
-/// The profiles of the work folder for the switcher, in the order of their numbers.
-pub fn profile_entries(workspace: &Path) -> crate::Result<Vec<ProfileEntry>> {
-    Ok(crate::profile::list(workspace)?
-        .into_iter()
-        .map(|entry| ProfileEntry {
-            id: entry.id,
-            role: crate::profile::role(&entry.path),
-            name: entry.name,
-            active: entry.active,
-        })
-        .collect())
 }
 
 /// The "understood" card: competences, where they were found (path patterns), every hard
@@ -1373,77 +1352,25 @@ pub fn understanding(summary: &ProfileSummary) -> ProfileUnderstanding {
         packs: summary.packs.clone(),
         years: summary.years,
         degrees: summary.degrees.clone(),
-        focus: Vec::new(),
-        roles: Vec::new(),
-        wishes: ProfileWishes::default(),
     }
 }
 
-/// A warning of the engine about the profile; a value it could not read also names the
-/// form field that holds it (`field`, an [`UnreadableField`]), so the editor says it there.
+/// A warning of the engine about the profile.
 fn profile_warning(warning: &matching::ProfileWarning) -> Notice {
-    let mut params = local::flat_params(&warning.params);
-    let field = match warning.code {
-        matching::ProfileWarningCode::AvailabilityNotUnderstood => Some(UnreadableField::Available),
-        matching::ProfileWarningCode::CriterionNotUnderstood => warning
-            .params
-            .get("key")
-            .and_then(serde_json::Value::as_str)
-            .and_then(UnreadableField::of_key),
-        _ => None,
-    };
-    if let Some(field) = field {
-        params.insert("field".into(), local::code_name(&field).into());
-    }
     Notice {
         code: local::code_name(&warning.code),
-        params,
+        params: local::flat_params(&warning.params),
     }
 }
 
-/// A profile read for the editor from a chosen file or a pasted answer: nothing is stored
-/// until the user saves it. `understood` says what the engine reads in it (its warnings
-/// show before saving).
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ProfileDraft {
-    pub form: ProfileForm,
-    /// The JSON saving merges the form into: the file's or the answer's, for an update from a
-    /// CV the stored profile with the answer's career stations.
-    pub source: String,
-    pub quality: ProfileQuality,
-    pub understood: ProfileUnderstanding,
-}
-
-impl From<crate::profile::Draft> for ProfileDraft {
-    fn from(draft: crate::profile::Draft) -> ProfileDraft {
-        let mut understood = understanding(&draft.summary);
-        understood.focus.clone_from(&draft.form.focus);
-        understood.roles.clone_from(&draft.form.roles);
-        understood.wishes = draft.form.wishes.clone();
-        ProfileDraft {
-            form: draft.form,
-            source: draft.source,
-            quality: draft.quality.into(),
-            understood,
-        }
-    }
-}
-
-/// Saving the editor: the form as it was handed out (`before`) and as the user left it;
-/// only what differs is written. `source` is the JSON of a draft (`{}` for a new profile),
-/// `null` for the stored profile. `clear` names the values the app could not read that the
-/// user removed ("Wert entfernen"): their keys go wherever they are.
+/// Saving the editor: the form as it was handed out (`before`) and as the user left it; what
+/// the user changed is applied to the stored profile (`profile::save_form`).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileSave {
     pub before: ProfileForm,
     pub after: ProfileForm,
-    pub source: Option<String>,
-    #[serde(default)]
-    pub clear: Vec<UnreadableField>,
 }
 
 /// The days "Häufig verlangt" looks back.
@@ -1464,6 +1391,17 @@ pub struct AskedTerm {
     pub term: String,
     pub field: TermField,
     pub count: u32,
+    /// The level a language goes into the profile with: the one the ad asks for, else B2 (the
+    /// engine's assumed level); none for any other field.
+    pub level: Option<LanguageLevel>,
+}
+
+/// The level a language term goes into the profile with (`AskedTerm::level`); none for any
+/// other field.
+fn term_level(core: &CoreTerm, label: &str) -> Option<LanguageLevel> {
+    (core.field == TermField::Language)
+        .then(|| LanguageLevel::of_engine(matching::language_level(label).unwrap_or(4)))
+        .flatten()
 }
 
 /// "Häufig verlangt" at `now`: the terms of the open requirements of the scored jobs of the
@@ -1484,13 +1422,13 @@ pub fn asked_terms(
         .unwrap_or(Timestamp::UNIX_EPOCH);
     let known = form.map(named_terms).unwrap_or_default();
     let mut cores: HashMap<String, Option<CoreTerm>> = HashMap::new();
-    // Per key the term of the newest job (the store's order) and the count.
-    let mut counted: BTreeMap<String, (CoreTerm, u32)> = BTreeMap::new();
+    // Per key the term of the newest job (the store's order), the count and the level.
+    let mut counted: BTreeMap<String, (CoreTerm, u32, Option<LanguageLevel>)> = BTreeMap::new();
     for labels in store.asked_terms(since)? {
         let mut seen = BTreeSet::new();
         for label in labels {
             let core = cores
-                .entry(label)
+                .entry(label.clone())
                 .or_insert_with_key(|l| matching::core_term(l));
             let Some(core) = core.as_ref() else {
                 continue;
@@ -1501,7 +1439,7 @@ pub fn asked_terms(
             }
             let entry = counted
                 .entry(key.to_owned())
-                .or_insert_with(|| (core.clone(), 0));
+                .or_insert_with(|| (core.clone(), 0, term_level(core, &label)));
             // An ad that names the field says more than one that names the term alone
             // ("Branchenerfahrung Handel", "Handel").
             if entry.0.field == TermField::Competence {
@@ -1510,40 +1448,38 @@ pub fn asked_terms(
             entry.1 += 1;
         }
     }
-    let mut asked: Vec<(CoreTerm, u32)> = counted
+    let mut asked: Vec<(CoreTerm, u32, Option<LanguageLevel>)> = counted
         .into_values()
-        .filter(|(_, count)| *count >= MIN_ASKED)
+        .filter(|(_, count, _)| *count >= MIN_ASKED)
         .collect();
-    asked.sort_by(|(a, n), (b, m)| {
+    asked.sort_by(|(a, n, _), (b, m, _)| {
         m.cmp(n)
             .then_with(|| matching::term_key(&a.term).cmp(&matching::term_key(&b.term)))
     });
     Ok(asked
         .into_iter()
         .take(MAX_ASKED)
-        .map(|(core, count)| AskedTerm {
+        .map(|(core, count, level)| AskedTerm {
             term: core.term,
             field: core.field,
             count,
+            level,
         })
         .collect())
 }
 
-/// What the profile names already, by the keys of its terms: every competence and its
-/// synonyms, keyword, tool, certificate, degree, industry (a wished one too) and language,
-/// by its words and by its term (`Englisch` names `English`, `Energiewirtschaft` names
-/// `Energie`, see `matching::CoreTerm::key`).
+/// What the profile names already, by the keys of its terms: every competence, tool,
+/// certificate, degree, industry and language, by its words and by its term (`Englisch`
+/// names `English`, `Energiewirtschaft` names `Energie`, see `matching::CoreTerm::key`).
 fn named_terms(form: &ProfileForm) -> BTreeSet<String> {
     let entries = form
         .competences
         .iter()
-        .flat_map(|c| std::iter::once(&c.name).chain(&c.aliases))
-        .chain(&form.keywords)
+        .map(|c| &c.name)
         .chain(&form.tools)
         .chain(&form.certificates)
         .chain(&form.degrees)
-        .chain(&form.industries)
-        .chain(&form.wishes.industries)
+        .chain(form.industries.iter().map(|i| &i.name))
         .chain(form.languages.iter().map(|l| &l.language));
     let mut known = BTreeSet::new();
     for entry in entries {
@@ -1585,10 +1521,8 @@ pub struct AppState {
     pub running: Option<RunSnapshot>,
     pub settings: SettingsView,
     pub mailbox: Mailbox,
-    /// The active profile.
+    /// The profile.
     pub profile: Option<ProfileInfo>,
-    /// Every profile of the work folder, the active one marked (empty without one).
-    pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
     /// The fetch reads the alert mails (the menu beside the button).
     pub fetch_mail: bool,
@@ -2513,7 +2447,7 @@ Rahmenbedingungen:
             .unwrap();
         assert_eq!(later.match_.unwrap().at, t1, "current score: stored time");
         // Without a usable profile there is no match to explain.
-        let empty = LocalMatcher::from_json(&serde_json::json!({}));
+        let empty = LocalMatcher::from_form(&ProfileForm::default());
         let none = job_detail(&store, &key, Some(&empty), true, t2)
             .unwrap()
             .unwrap();
@@ -2665,7 +2599,6 @@ Rahmenbedingungen:
                 ("noPermanent", false),
                 ("availability", true),
                 ("minSalary", false),
-                ("permanentRegion", false),
                 ("workload", false),
                 ("duration", false),
                 ("exclusionWords", false),
@@ -2682,15 +2615,19 @@ Rahmenbedingungen:
             info.scored_at.map(Timestamp::as_second),
             Some(now.as_second())
         );
-        let thin = LocalMatcher::from_json(&serde_json::json!({"keywords": ["SAP FI"]}));
+        let thin = LocalMatcher::from_form(&ProfileForm {
+            tools: vec!["SAP FI".into()],
+            countries: Vec::new(),
+            ..ProfileForm::default()
+        });
         let info = ProfileInfo::of(&file, None)
             .understood_by(&thin, &store)
             .unwrap();
         assert_eq!(info.quality, Some(ProfileQuality::Thin));
         let warnings = info.understood.unwrap().warnings;
         let codes: Vec<&str> = warnings.iter().map(|w| w.code.as_str()).collect();
-        assert_eq!(codes, ["fewCompetences", "noCriteria"]);
-        let empty = LocalMatcher::from_json(&serde_json::json!({}));
+        assert_eq!(codes, ["fewCompetences"]);
+        let empty = LocalMatcher::from_form(&ProfileForm::default());
         let info = ProfileInfo::of(&file, None)
             .understood_by(&empty, &store)
             .unwrap();
@@ -2775,10 +2712,10 @@ Rahmenbedingungen:
         form.competences.push(ProfileCompetence {
             name: "Microsoft Power-BI".into(),
             years: None,
-            aliases: vec!["power bi".into()],
-            origin: None,
+            focus: false,
         });
-        form.keywords.push("Kanban".into());
+        form.tools.push("power bi".into());
+        form.tools.push("Kanban".into());
         form.tools.push("scrum".into());
         form.certificates.push("C++".into());
         assert_eq!(
@@ -2794,8 +2731,8 @@ Rahmenbedingungen:
 
     /// "Häufig verlangt" counts the ads' terms, not their words: "Kenntnisse in Anaplan" and
     /// "Anaplan-Erfahrung" are one tool, "Branchenerfahrung Energie" and "Energy sector
-    /// experience" one industry; each comes with its field, and what the profile names in any
-    /// field (a synonym of it too) is none of them.
+    /// experience" one industry; each comes with its field (a language with its level), and
+    /// what the profile names in any field is none of them.
     #[test]
     fn the_asked_terms_are_core_terms_with_their_field() {
         let now: Timestamp = "2026-09-26T10:00:00Z".parse().unwrap();
@@ -2826,6 +2763,12 @@ Rahmenbedingungen:
                 .map(|a| (a.term, a.field, a.count))
                 .collect()
         };
+        let levels: Vec<Option<LanguageLevel>> = asked_terms(&store, None, now)
+            .unwrap()
+            .into_iter()
+            .map(|a| a.level)
+            .collect();
+        assert_eq!(levels, [None, None, Some(LanguageLevel::C1), None, None]);
         let list = |items: &[(&str, TermField, u32)]| -> Vec<(String, TermField, u32)> {
             items
                 .iter()
@@ -2845,17 +2788,18 @@ Rahmenbedingungen:
         );
         let mut form = ProfileForm::default();
         form.tools.push("anaplan".into());
-        form.industries.push("Energiewirtschaft".into());
+        form.industries.push(ProfileIndustry {
+            name: "Energiewirtschaft".into(),
+            preferred: false,
+        });
         form.languages.push(ProfileLanguage {
             language: "English".into(),
-            level: None,
-            origin: None,
+            level: LanguageLevel::C1,
         });
         form.competences.push(ProfileCompetence {
-            name: "Planung".into(),
+            name: "Jedox".into(),
             years: None,
-            aliases: vec!["Jedox".into()],
-            origin: None,
+            focus: false,
         });
         assert_eq!(
             asked(Some(&form)),
@@ -2864,7 +2808,7 @@ Rahmenbedingungen:
     }
 
     /// The reader's reasons name the term and field of an open requirement the profile could
-    /// take; a met one names none.
+    /// take (a language its level); a met one names none.
     #[test]
     fn the_reader_names_the_term_of_an_open_requirement() {
         let text = "Wir suchen einen Interim CFO (m/w/d).
@@ -2872,7 +2816,8 @@ Rahmenbedingungen:
 Anforderungen:
 - Erfahrung im Controlling
 - Kenntnisse in Anaplan
-- Branchenerfahrung Energie";
+- Branchenerfahrung Energie
+- Verhandlungssichere Spanischkenntnisse";
         let matcher = crate::pipeline::dry_run::matcher();
         let (store, key) = job_with_text(text);
         let detail = job_detail(&store, &key, Some(&matcher), false, Timestamp::now())
@@ -2900,6 +2845,12 @@ Anforderungen:
             (Some("Energie".into()), Some("industry".into()))
         );
         assert_eq!(named("Erfahrung im Controlling"), (None, None));
+        let spanish = detail
+            .reasons
+            .iter()
+            .find(|r| r.label == "Verhandlungssichere Spanischkenntnisse")
+            .unwrap();
+        assert_eq!(spanish.params.get("level"), Some(&"C1".into()));
     }
 
     /// At most eight terms, and only of the last 30 days.

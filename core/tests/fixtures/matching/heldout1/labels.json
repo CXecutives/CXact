@@ -376,8 +376,8 @@
     },
     "B06": {
       "grade": 0,
-      "excluded": true,
-      "reason": "'Permanent full-time position' in Zuerich with 3 on-site days, outside Munich region",
+      "excluded": false,
+      "reason": "'Permanent full-time position' in Zuerich with 3 on-site days, outside Munich region Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "B08": {

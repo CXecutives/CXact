@@ -3,28 +3,22 @@
 //! two thirds of a long phrase = 0.5, generic atoms never alone (V1-V4, V15), language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
-use std::collections::BTreeMap;
-
-use serde_json::Value;
-
 use super::atoms::{self, Fit, Vocab, fold};
-use super::job::{Class, Item, Stage, contains_word, language_of, level_in, names_degree};
+use super::job::{Class, Item, Stage, contains_word, language_of, names_degree};
 use super::lexicon::domains::DOMAINS;
-use super::lexicon::{self, engine as lex};
+use super::lexicon::engine as lex;
 use super::params::{E_FULL, E_HALF, E_NONE, SENTENCE_ATOMS};
 use super::profile::CoreText;
 use super::types::Via;
+use crate::profile::{ProfileForm, key};
 
-/// A profile entry (core competence, tool, certificate, ...), or an alternative term of
-/// one (`auch`), which counts like a synonym of that entry.
+/// A profile entry (competence, tool, certificate, ...).
 #[derive(Debug, Clone)]
 pub(crate) struct Entry {
     pub text: String,
     pub path: String,
     pub atoms: Vec<String>,
     pub years: Option<u32>,
-    /// The competence this alias belongs to.
-    pub alias_of: Option<String>,
 }
 
 /// What the engine uses from the profile.
@@ -46,19 +40,9 @@ pub(crate) struct Skills {
     pub vocab: Vocab,
 }
 
-fn years_of(value: &Value) -> Option<u32> {
-    lex::KEYS_YEARS
-        .iter()
-        .find_map(|k| value.get(*k).and_then(Value::as_u64))
-        .and_then(|y| u32::try_from(y).ok())
-}
-
-/// Total years of experience stated at the top level (`berufserfahrung_jahre`).
-fn total_years_of(data: &Value) -> Option<u32> {
-    lexicon::KEYS_TOTAL_YEARS
-        .iter()
-        .find_map(|k| data.get(*k).and_then(Value::as_u64))
-        .and_then(|y| u32::try_from(y).ok())
+/// The same text once stripped as the core texts are.
+fn strip_eq(a: &str, b: &str) -> bool {
+    super::normalize::strip(a) == b
 }
 
 /// Degree fields named in a folded text; a match inside a longer match does not count.
@@ -116,138 +100,44 @@ fn family_only(text: &str, family: &str) -> bool {
         })
 }
 
-/// Languages of the profile with their CEFR level (4 when the level is not readable).
-fn languages_of(data: &Value) -> Vec<(String, u8)> {
-    let field = |item: &Value, keys: &[&str]| {
-        keys.iter()
-            .find_map(|k| item.get(*k).and_then(Value::as_str))
-            .map(str::to_owned)
-    };
-    lex::KEYS_LANGUAGES
+/// Languages of the profile with their CEFR level, those the engine knows.
+fn languages_of(form: &ProfileForm) -> Vec<(String, u8)> {
+    form.languages
         .iter()
-        .find_map(|k| data.get(*k).and_then(Value::as_array))
-        .into_iter()
-        .flatten()
-        .filter_map(|item| {
-            let name = fold(&field(item, lex::KEYS_LANGUAGE)?);
+        .filter_map(|row| {
+            let name = fold(&row.language);
             let first = atoms::raw_tokens(&name).next()?.to_owned();
-            let language = language_of(&first)?;
-            let level = field(item, lex::KEYS_LEVEL)
-                .as_deref()
-                .and_then(level_in)
-                .unwrap_or(4);
-            Some((language.to_owned(), level))
+            Some((language_of(&first)?.to_owned(), row.level.engine()))
         })
         .collect()
 }
 
-/// Alternative terms of profile competences: (competence, alias, path, years).
-fn aliases(data: &Value, core: &[String]) -> Vec<(String, String, String, Option<u32>)> {
-    let mut out = Vec::new();
-    let Value::Object(map) = data else { return out };
-    for (list, value) in map {
-        for (index, item) in value.as_array().into_iter().flatten().enumerate() {
-            let Value::Object(fields) = item else {
-                continue;
-            };
-            let Some(competence) = fields
-                .values()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .find(|text| core.iter().any(|c| c == text))
-            else {
-                continue;
-            };
-            for key in lexicon::KEYS_ALIASES {
-                let terms = fields.get(*key).and_then(Value::as_array);
-                for (j, term) in terms.into_iter().flatten().enumerate() {
-                    let Some(term) = term.as_str().map(str::trim).filter(|t| !t.is_empty()) else {
-                        continue;
-                    };
-                    out.push((
-                        competence.to_owned(),
-                        term.to_owned(),
-                        format!("{list}[{index}].{key}[{j}]"),
-                        years_of(item),
-                    ));
-                }
-            }
-        }
-    }
-    out
-}
-
 impl Skills {
-    /// `extra`: competences (text, JSON path) that must be entries although the profile
-    /// walk did not find them (Schwerpunkte under an English key or in objects).
-    pub(crate) fn new(core: &[CoreText], data: &Value, extra: &[(String, String)]) -> Self {
-        // Years per competence text: list items with a `jahre` number.
-        let mut years: BTreeMap<String, u32> = BTreeMap::new();
-        if let Value::Object(map) = data {
-            for value in map.values() {
-                for item in value.as_array().into_iter().flatten() {
-                    let Some(y) = years_of(item) else { continue };
-                    for text in item
-                        .as_object()
-                        .into_iter()
-                        .flat_map(|o| o.values())
-                        .filter_map(Value::as_str)
-                    {
-                        years.insert(text.trim().to_owned(), y);
-                    }
-                }
-            }
-        }
-        let core_texts: Vec<String> = core.iter().map(|c| c.text.clone()).collect();
-        let aliases = aliases(data, &core_texts);
-        let folded_core: Vec<String> = core_texts.iter().map(|t| fold(t)).collect();
-        let extra: Vec<&(String, String)> = extra
-            .iter()
-            .filter(|(text, _)| !folded_core.contains(&fold(text)))
-            .collect();
-        let vocab = Vocab::for_texts(
-            core_texts
+    pub(crate) fn new(core: &[CoreText], form: &ProfileForm) -> Self {
+        let vocab = Vocab::for_texts(core.iter().map(|c| c.text.as_str()));
+        let years = |text: &str| {
+            form.competences
                 .iter()
-                .map(String::as_str)
-                .chain(aliases.iter().map(|(_, alias, _, _)| alias.as_str()))
-                .chain(extra.iter().map(|(text, _)| text.as_str())),
-        );
+                .find(|c| strip_eq(&c.name, text))
+                .and_then(|c| c.years)
+        };
         let mut entries: Vec<Entry> = core
             .iter()
-            .map(|competence| Entry {
-                atoms: atoms::atoms(&competence.text, &vocab),
-                years: years.get(&competence.text).copied(),
-                text: competence.text.clone(),
-                path: competence.path.clone(),
-                alias_of: None,
+            .map(|entry| Entry {
+                atoms: atoms::atoms(&entry.text, &vocab),
+                years: years(&entry.text),
+                text: entry.text.clone(),
+                path: entry.path.clone(),
             })
             .collect();
-        entries.extend(
-            aliases
-                .into_iter()
-                .map(|(competence, alias, path, alias_years)| Entry {
-                    atoms: atoms::atoms(&alias, &vocab),
-                    years: alias_years.or_else(|| years.get(&competence).copied()),
-                    text: alias,
-                    path,
-                    alias_of: Some(competence),
-                }),
-        );
-        entries.extend(extra.iter().map(|(text, path)| Entry {
-            atoms: atoms::atoms(text, &vocab),
-            years: None,
-            text: text.clone(),
-            path: path.clone(),
-            alias_of: None,
-        }));
         entries.retain(|e| !e.atoms.is_empty());
-        let languages = languages_of(data);
+        let languages = languages_of(form);
         let mut degree_fields: Option<Vec<&'static str>> = None;
         let (mut degree_level, mut degrees) = (0, Vec::new());
         for competence in core {
             let folded = fold(&competence.text);
             let tokens: Vec<&str> = atoms::raw_tokens(&folded).collect();
-            let is_degree = competence.path.ends_with("abschluss") || names_degree(&tokens);
+            let is_degree = competence.path.starts_with(key::DEGREES) || names_degree(&tokens);
             if is_degree {
                 let fields = degree_fields.get_or_insert_with(Vec::new);
                 fields.extend(degree_fields_in(&folded));
@@ -255,24 +145,19 @@ impl Skills {
                 degrees.push(competence.text.clone());
             }
         }
-        let total_years = total_years_of(data)
-            .or_else(|| years_of(data))
-            .or_else(|| years.values().copied().max());
+        let total_years = form
+            .years
+            .or_else(|| form.competences.iter().filter_map(|c| c.years).max());
         Self {
             entries,
             languages,
             degree_fields,
             degree_level,
             degrees,
-            folded: core_texts.iter().map(|t| fold(t)).collect(),
+            folded: core.iter().map(|t| fold(&t.text)).collect(),
             total_years,
             vocab,
         }
-    }
-
-    /// Competences without their aliases.
-    pub(crate) fn competences(&self) -> impl Iterator<Item = &Entry> {
-        self.entries.iter().filter(|e| e.alias_of.is_none())
     }
 }
 
@@ -302,11 +187,10 @@ fn expand(atoms: &[String]) -> Vec<String> {
     out
 }
 
-/// A free-text entry (a USP sentence, a long description): containing a requirement is
-/// weaker evidence than a competence entry.
+/// A free-text entry (a long description): containing a requirement is weaker evidence than
+/// a competence entry.
 fn sentence_like(entry: &Entry) -> bool {
-    entry.path.starts_with(lex::KEY_USP)
-        || entry.atoms.iter().filter(|a| !atoms::is_generic(a)).count() >= SENTENCE_ATOMS
+    entry.atoms.iter().filter(|a| !atoms::is_generic(a)).count() >= SENTENCE_ATOMS
 }
 
 /// One entry against the atoms of one alternative.
@@ -448,7 +332,7 @@ fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>) -> ItemFit 
         let industry = best
             .entry
             .and_then(|e| skills.entries.get(e))
-            .is_some_and(|e| e.path.starts_with(lex::KEY_INDUSTRY_LIST));
+            .is_some_and(|e| e.path.starts_with(key::INDUSTRIES));
         if industry {
             best = NONE;
         } else {
@@ -729,13 +613,16 @@ mod tests {
 
     use super::*;
     use crate::matching::profile::core_texts;
+    use crate::profile::of_json;
 
     /// Knowledge of a product family (`SAP-Kenntnisse`) is met by an entry naming a product
     /// of it; a product of the family asked for is not (`SAP BW`).
     #[test]
     fn a_family_is_met_by_its_products() {
-        let data = json!({"kernkompetenzen": [{"kompetenz": "SAP S/4HANA"}, {"kompetenz": "CFO"}]});
-        let skills = Skills::new(&core_texts(&data), &data, &[]);
+        let data = of_json(
+            &json!({"kernkompetenzen": [{"kompetenz": "SAP S/4HANA"}, {"kompetenz": "CFO"}]}),
+        );
+        let skills = Skills::new(&core_texts(&data), &data);
         assert_eq!(
             skill_fit_in(&skills, "Sehr gute SAP-Kenntnisse", None).value,
             E_FULL
@@ -765,8 +652,10 @@ mod tests {
     /// Person`).
     #[test]
     fn licences_under_any_name() {
-        let data = json!({"kernkompetenzen": [{"kompetenz": "Sachkundige Person nach § 15 AMG"}]});
-        let skills = Skills::new(&core_texts(&data), &data, &[]);
+        let data = of_json(
+            &json!({"kernkompetenzen": [{"kompetenz": "Sachkundige Person nach § 15 AMG"}]}),
+        );
+        let skills = Skills::new(&core_texts(&data), &data);
         assert_eq!(licence_fit(&skills, "qualified person").value, E_FULL);
         assert_eq!(licence_fit(&skills, "sachkundige person").value, E_FULL);
         assert_eq!(licence_fit(&skills, "steuerberater").value, E_NONE);
@@ -776,11 +665,11 @@ mod tests {
     /// `Vertrieb im Maschinenbau` is not met, even half, by the industry `Maschinenbau`.
     #[test]
     fn an_industry_is_the_setting_not_the_function() {
-        let data = json!({
+        let data = of_json(&json!({
             "kernkompetenzen": [{"kompetenz": "Controlling"}],
             "branchen": [{"branche": "Maschinenbau"}]
-        });
-        let skills = Skills::new(&core_texts(&data), &data, &[]);
+        }));
+        let skills = Skills::new(&core_texts(&data), &data);
         let fit = |text: &str| skill_fit_in(&skills, text, None).value;
         assert_eq!(fit("Vertriebserfahrung im Maschinenbau"), E_NONE);
         assert_eq!(fit("Controlling im Maschinenbau"), E_FULL);
@@ -792,8 +681,8 @@ mod tests {
     #[test]
     fn a_teaser_term_in_another_field_is_half() {
         let term = |profile: &str| {
-            let data = json!({"kernkompetenzen": [{"kompetenz": profile}]});
-            let skills = Skills::new(&core_texts(&data), &data, &[]);
+            let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": profile}]}));
+            let skills = Skills::new(&core_texts(&data), &data);
             let item = Item {
                 span: None,
                 text: "controlling".to_owned(),

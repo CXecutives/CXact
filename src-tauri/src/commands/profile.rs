@@ -1,59 +1,26 @@
-//! The consultant profiles: the editor's form is saved by merging it into the active
-//! profile's file; a chosen file (also the one an AI wrote with the app's prompt) fills the
-//! form first. Several
-//! profiles, one active: list, switch (every job is scored again), create, duplicate,
-//! rename, delete (it becomes the backup) and restore, load a file as a new one. While the
-//! form holds unsaved changes, closing the window asks; so it does while a fetch runs
-//! (`answer_close`).
+//! The consultant profile: the editor's form is saved into the one profile file (what the user
+//! changed, applied to what the file holds by then). While the form holds unsaved changes,
+//! closing the window asks; so it does while a fetch runs (`answer_close`).
 
 #![expect(
     clippy::needless_pass_by_value,
     reason = "Tauri passes command arguments by value"
 )]
 
-use std::path::Path;
-
 use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::matching::{self, Vocabulary};
 use jobalert_core::pipeline::dry_run;
 use jobalert_core::profile;
-use jobalert_core::view::{self, AskedTerm, ProfileDraft, ProfileEntry, ProfileInfo, ProfileSave};
+use jobalert_core::view::{self, AskedTerm, ProfileInfo, ProfileSave};
 use tauri::{AppHandle, State, WebviewWindow};
 
-use super::app::{profile_entries, profile_info};
-use super::{AppState, CmdResult, not_found, scoring, texts};
+use super::app::profile_info;
+use super::{AppState, CmdResult, scoring};
 
-/// Chooses a profile file and reads it into the form for review; nothing is stored until
-/// the user saves. `None` if cancelled.
-#[tauri::command]
-pub async fn pick_profile(
-    window: WebviewWindow,
-    state: State<'_, AppState>,
-) -> CmdResult<Option<ProfileDraft>> {
-    let workspace = state.workspace()?;
-    let Some(file) = rfd::AsyncFileDialog::new()
-        .set_title(texts::PICK_PROFILE)
-        .add_filter(texts::PROFILE_FILTER, &["json"])
-        .set_directory(&workspace)
-        .set_parent(&window)
-        .pick_file()
-        .await
-    else {
-        return Ok(None);
-    };
-    Ok(Some(profile::draft_from_file(file.path())?.into()))
-}
-
-/// The prompt that has any AI write a profile file from a CV (copied by the page).
-#[tauri::command]
-pub async fn profile_prompt() -> CmdResult<String> {
-    Ok(profile::cv_prompt())
-}
-
-/// Saves the editor: merges the form into the active profile (or the draft it came from;
-/// without any profile it becomes the first), keeps the previous file as the backup and
-/// scores every job again (in the background).
+/// Saves the editor into the profile (without one it becomes the profile), keeps the previous
+/// file as the backup, ends the marks of what the CV filled and scores every job again (in the
+/// background).
 #[tauri::command]
 pub async fn save_profile(
     app: AppHandle,
@@ -62,138 +29,10 @@ pub async fn save_profile(
 ) -> CmdResult<ProfileInfo> {
     state.ensure_real()?;
     let workspace = state.workspace()?;
-    let info = profile::save_form(
-        &workspace,
-        save.source.as_deref(),
-        &save.before,
-        &save.after,
-        &save.clear,
-    )?;
+    let info = profile::save_form(&workspace, &save.before, &save.after)?;
+    profile::set_ai_filled(&state.store, &[])?;
     scoring::profile_changed(&app, &state);
     Ok(profile_info(&state, &workspace).unwrap_or_else(|| ProfileInfo::of(&info, None)))
-}
-
-/// Every job is scored again when the active profile is another one than `before` (in the
-/// background, like after a save).
-fn after_change(app: &AppHandle, state: &AppState, workspace: &Path, before: Option<u32>) {
-    match profile::active_id(workspace) {
-        Ok(now) if now == before => {}
-        Ok(_) => scoring::profile_changed(app, state),
-        Err(e) => {
-            log::warn!("active profile not read after a change: {e}");
-            scoring::profile_changed(app, state);
-        }
-    }
-}
-
-/// Makes profile `id` the active one; every job is scored again with it.
-#[tauri::command]
-pub async fn switch_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: u32,
-) -> CmdResult<Vec<ProfileEntry>> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    let before = profile::active_id(&workspace)?;
-    if !profile::switch(&workspace, id)? {
-        return Err(not_found("profile"));
-    }
-    after_change(&app, &state, &workspace, before);
-    profile_entries(&state, &workspace)
-}
-
-/// A new empty profile, active from now on (nothing scores with it until it names
-/// competences).
-#[tauri::command]
-pub async fn create_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> CmdResult<Vec<ProfileEntry>> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    let before = profile::active_id(&workspace)?;
-    let id = profile::create(&workspace)?;
-    log::info!("profile {id} created");
-    after_change(&app, &state, &workspace, before);
-    profile_entries(&state, &workspace)
-}
-
-/// A copy of profile `id` named `name` (the page's words for a copy), active from now on.
-#[tauri::command]
-pub async fn duplicate_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: u32,
-    name: Option<String>,
-) -> CmdResult<Vec<ProfileEntry>> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    let before = profile::active_id(&workspace)?;
-    let Some(copy) = profile::duplicate(&workspace, id, name.as_deref())? else {
-        return Err(not_found("profile"));
-    };
-    log::info!("profile {id} copied as {copy}");
-    after_change(&app, &state, &workspace, before);
-    profile_entries(&state, &workspace)
-}
-
-/// Names profile `id`; an empty name gives it back its default (its role or its number).
-#[tauri::command]
-pub async fn rename_profile(
-    state: State<'_, AppState>,
-    id: u32,
-    name: String,
-) -> CmdResult<Vec<ProfileEntry>> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    if !profile::rename(&workspace, id, &name)? {
-        return Err(not_found("profile"));
-    }
-    profile_entries(&state, &workspace)
-}
-
-/// Deletes profile `id` (it becomes the backup next to it, so `restore_profile` brings it
-/// back); the active one gives way to the next, the last one leaves none. `false` if there
-/// is no such profile.
-#[tauri::command]
-pub async fn delete_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: u32,
-) -> CmdResult<bool> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    let before = profile::active_id(&workspace)?;
-    let deleted = profile::delete(&workspace, id)?;
-    if deleted {
-        log::info!("profile {id} deleted");
-        after_change(&app, &state, &workspace, before);
-    }
-    Ok(deleted)
-}
-
-/// Brings back profile `id` (the undo of its deletion), or with `null` the active profile's
-/// backup (the undo of another file saved over it; the two swap); the profile is the active
-/// one then. `false` without a backup.
-#[tauri::command]
-pub async fn restore_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: Option<u32>,
-) -> CmdResult<bool> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    let before = profile::active_id(&workspace)?;
-    let Some(id) = id.or(before) else {
-        return Ok(false);
-    };
-    let restored = profile::restore(&workspace, id)?;
-    if restored {
-        // The same profile with its other file is another profile too.
-        scoring::profile_changed(&app, &state);
-    }
-    Ok(restored)
 }
 
 /// "Häufig verlangt": the terms the jobs of the last 30 days ask for most that the stored
@@ -202,9 +41,9 @@ pub async fn restore_profile(
 #[tauri::command]
 pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>> {
     let form = if state.dry_run {
-        profile::form_of(dry_run::PROFILE_JSON)
+        profile::parse(dry_run::PROFILE_JSON).ok()
     } else {
-        profile::stored_form(&state.workspace()?)
+        profile::load(&state.workspace()?)?
     };
     let Some(form) = form else {
         return Ok(Vec::new());

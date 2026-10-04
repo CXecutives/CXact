@@ -621,8 +621,11 @@ mod tests {
 
     /// The words that exclude with `words` in the profile, and the passages they highlight.
     fn excluded(words: &[&str], title: &str, levels: &[&str], text: &str) -> Vec<String> {
-        let data = json!({ "harte_kriterien": { "ausschlusswoerter": words } });
-        let criteria = HardCriteria::new(&crate::matching::profile::criteria(&data), &data);
+        let form = crate::profile::ProfileForm {
+            exclusion_words: words.iter().map(|w| (*w).to_owned()).collect(),
+            ..crate::profile::ProfileForm::default()
+        };
+        let criteria = HardCriteria::new(&form);
         let levels: Vec<String> = levels.iter().map(|l| fold(l)).collect();
         check(&criteria, title, &levels, &segments(text), &[])
             .into_iter()

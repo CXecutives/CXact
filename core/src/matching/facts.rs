@@ -18,17 +18,16 @@ use serde_json::{Value, json};
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::job::{contains_word, sentences};
-use super::lexicon::{self, engine as lex};
+use super::lexicon::engine as lex;
 use super::normalize::splitlines;
 use super::params::HOURS_PER_DAY;
-use super::profile::Criteria;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
 use crate::portal::Portal;
+use crate::profile::{ProfileForm, Workload};
 
 /// When the consultant is available.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Availability {
-    Unset,
     Now,
     From(Date),
 }
@@ -38,17 +37,13 @@ pub(crate) enum Availability {
 pub(crate) struct HardCriteria {
     pub min_rate: Option<i128>,
     pub countries: Option<Vec<String>>,
-    pub remote_outside: Option<bool>,
+    /// Zeitarbeit (ANÜ) is not among the contract types.
     pub anue_excluded: bool,
-    /// `ausgeschlossene_vertragsarten` names permanent employment (`festanstellung`).
+    /// Festanstellung is not among the contract types.
     pub permanent_excluded: bool,
     pub available: Availability,
-    /// Minimum annual salary (EUR) for permanent roles.
+    /// Minimum annual salary (EUR) for permanent roles and temporary agency work.
     pub min_salary: Option<u64>,
-    /// Places of the region for permanent roles (as written; matched folded).
-    pub places: Option<Vec<String>>,
-    /// Remote share (percent) that makes a permanent role outside the region acceptable.
-    pub remote_min: Option<u64>,
     /// Days per week (1 to 5) the consultant works at least and at most.
     pub workload_min: Option<u8>,
     pub workload_max: Option<u8>,
@@ -56,92 +51,15 @@ pub(crate) struct HardCriteria {
     pub min_months: Option<u16>,
     /// Words that exclude an ad, as written.
     pub exclusion_words: Vec<String>,
-    /// Keys present with a value that cannot be read: (key, value).
-    pub not_understood: Vec<(&'static str, String)>,
 }
 
-/// Longest minimum duration read (ten years).
-const MAX_MIN_MONTHS: u64 = 120;
-/// Days of a working week.
-const WEEK_DAYS: u64 = 5;
-
-/// A list of texts or one text split at `,` and `;` (trimmed, without empty entries).
-fn texts_of(value: &Value) -> Option<Vec<String>> {
-    let entries: Vec<&str> = match value {
-        Value::Array(items) => items.iter().map(Value::as_str).collect::<Option<_>>()?,
-        Value::String(text) => text.split([',', ';']).collect(),
-        _ => return None,
-    };
-    let mut out: Vec<String> = Vec::new();
-    for entry in entries.iter().map(|e| e.trim()).filter(|e| !e.is_empty()) {
-        if !out.iter().any(|o| fold(o) == fold(entry)) {
-            out.push(entry.to_owned());
-        }
-    }
-    Some(out)
-}
-
-/// A profile value of the new criteria: first key found in `harte_kriterien` (or the
-/// English section), German key first.
-fn criterion<'a>(data: &'a Value, keys: &[&'static str]) -> Option<(&'static str, &'a Value)> {
-    lexicon::KEY_CRITERIA_ALIASES.iter().find_map(|section| {
-        let section = data.get(*section)?;
-        keys.iter()
-            .find_map(|k| section.get(*k).filter(|v| !v.is_null()).map(|v| (*k, v)))
-    })
-}
-
-/// A whole number from a JSON number or a string (`150000`, `150.000`, `150k`, `60 %`).
-pub(crate) fn number(value: &Value) -> Option<u64> {
-    if let Some(n) = value.as_u64() {
-        return Some(n);
-    }
-    if let Some(f) = value.as_f64() {
-        // Profile values are small positive numbers; fractions are cut.
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        return (f >= 0.0).then_some(f as u64);
-    }
-    let text = fold(value.as_str()?);
-    let text = text
-        .trim()
-        .trim_end_matches('%')
-        .trim_end_matches('€')
-        .trim();
-    let (digits, factor) = match text.strip_suffix('k') {
-        Some(rest) => (rest.trim(), 1000),
-        None => (text, 1),
-    };
-    let digits: String = digits
-        .chars()
-        .filter(|c| !matches!(c, '.' | ',' | ' ' | '\''))
-        .collect();
-    digits.parse::<u64>().ok()?.checked_mul(factor)
-}
-
-/// Countries of a criteria value: a list, or one text (`DE` or `DE, AT`).
-fn countries_of(value: &Value) -> Option<Vec<String>> {
-    let entries: Vec<&str> = match value {
-        Value::Array(items) => items
-            .iter()
-            .map(Value::as_str)
-            .collect::<Option<Vec<_>>>()?,
-        Value::String(text) => text
-            .split([',', ';', '/'])
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .collect(),
-        _ => return None,
-    };
-    let list = entries
-        .iter()
-        .map(|entry| country_code(entry))
-        .collect::<Option<Vec<String>>>()?;
-    (!list.is_empty()).then_some(list)
-}
+/// The days a full-time engagement takes at least, a part-time one at most (Auslastung).
+const FULLTIME_DAYS: u8 = 4;
+const PARTTIME_DAYS: u8 = 3;
 
 /// A country of the profile as its ISO code: a two-letter code as written ("UK" is GB), or a
 /// country name the engine knows ("Deutschland", "Österreich", "Switzerland"); `None` for
-/// anything else, so an unknown name is reported instead of excluding every country.
+/// anything else, so an unknown name is never a country.
 pub(crate) fn country_code(entry: &str) -> Option<String> {
     let text = entry.trim();
     if text.len() == 2 && text.chars().all(|c| c.is_ascii_alphabetic()) {
@@ -155,263 +73,39 @@ pub(crate) fn country_code(entry: &str) -> Option<String> {
         .map(|(_, code)| (*code).to_owned())
 }
 
-/// Does a criteria value exclude temporary agency work (a list or a text naming ANÜ)?
-pub(crate) fn excludes_anue(value: &Value) -> Option<bool> {
-    let texts: Vec<String> = match value {
-        Value::Array(items) => items.iter().filter_map(Value::as_str).map(fold).collect(),
-        Value::String(text) => vec![fold(text)],
-        _ => return None,
-    };
-    Some(texts.iter().any(|t| {
-        t.trim() == lexicon::CONTRACT_ANUE
-            || lex::ANUE_PARTS.iter().any(|p| t.contains(p))
-            || contains_word(t, "anu")
-    }))
-}
-
-/// Words of `ausgeschlossene_vertragsarten` that exclude permanent employment (external
-/// contract - do not translate: values of the profile, German and English).
-const CONTRACT_PERMANENT: &[&str] = &["festanstellung", "permanent"];
-
-/// Does a criteria value exclude permanent employment (a list or a text naming it)?
-pub(crate) fn excludes_permanent(value: &Value) -> bool {
-    let texts: Vec<String> = match value {
-        Value::Array(items) => items.iter().filter_map(Value::as_str).map(fold).collect(),
-        Value::String(text) => vec![fold(text)],
-        _ => return false,
-    };
-    texts
-        .iter()
-        .any(|t| CONTRACT_PERMANENT.iter().any(|word| t.contains(word)))
-}
-
-/// The excluded contract types: temporary agency work and permanent employment. A value
-/// that names neither in a readable way is reported as not understood.
-fn excluded_contracts(
-    criteria: &Criteria,
-    data: &Value,
-    not_understood: &mut Vec<(&'static str, String)>,
-) -> (bool, bool) {
-    let found = criterion(data, lexicon::KEYS_EXCLUDED_CONTRACTS);
-    let anue = criteria.anue_excluded == Some(true)
-        || found.is_some_and(|(key, value)| {
-            let excluded = excludes_anue(value);
-            if excluded.is_none() {
-                not_understood.push((key, value.to_string()));
-            }
-            excluded == Some(true)
-        });
-    let permanent = found.is_some_and(|(_, value)| excludes_permanent(value));
-    (anue, permanent)
-}
-
-/// A yes or no of a criteria value (`true`, `"ja"`, `"yes"`).
-fn yes_no(value: &Value) -> Option<bool> {
-    match value {
-        Value::Bool(b) => Some(*b),
-        Value::String(text) => match fold(text).trim() {
-            "ja" | "yes" | "true" => Some(true),
-            "nein" | "no" | "false" => Some(false),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
 impl HardCriteria {
-    pub(crate) fn new(criteria: &Criteria, data: &Value) -> Self {
-        let mut not_understood = Vec::new();
-        let available = match availability_text(data) {
-            None => Availability::Unset,
-            Some(text) => match parse_start(text) {
-                Some(Start::Date(from)) => Availability::From(from),
-                _ if fold(text).contains(lex::NOW_WORD) || fold(text).contains("now") => {
-                    Availability::Now
-                }
-                _ => Availability::Unset,
-            },
-        };
-        // The old keys also under `hard_criteria`, with their English names and values of
-        // another type. The minimum rate, else (also for a minimum of 0) the old fallback
-        // `einsatzpraeferenzen.tagessatz_ab`.
-        let fallback = || {
-            lexicon::KEY_PREFERENCES_ALIASES
-                .iter()
-                .find_map(|s| data.get(*s)?.get(lexicon::KEY_RATE_FROM))
-                .and_then(number)
-                .filter(|n| *n > 0)
-                .map(i128::from)
-        };
-        let min_rate = match criterion(data, lexicon::KEYS_MIN_RATE) {
-            None => criteria.min_day_rate.filter(|m| *m > 0).or_else(fallback),
-            Some((key, value)) => match number(value) {
-                Some(n) if n > 0 => Some(i128::from(n)),
-                Some(_) => fallback(),
-                None => {
-                    if value.as_str().is_none_or(|s| !s.trim().is_empty()) {
-                        not_understood.push((key, value.to_string()));
-                    }
-                    fallback()
-                }
-            },
-        };
-        // The old reader keeps the entries as written (upper case): names become codes
-        // here; a list with an unknown name goes the checked way below and is reported.
-        let countries = criteria
+    /// The hard criteria of a profile: Vollzeit asks for at least [`FULLTIME_DAYS`] a week,
+    /// Teilzeit for at most [`PARTTIME_DAYS`].
+    pub(crate) fn new(form: &ProfileForm) -> Self {
+        let countries: Vec<String> = form
             .countries
-            .clone()
-            .filter(|c| !c.is_empty())
-            .and_then(|list| {
-                list.iter()
-                    .map(|entry| country_code(entry))
-                    .collect::<Option<Vec<String>>>()
-            })
-            .or_else(|| {
-                let (key, value) = criterion(data, lexicon::KEYS_COUNTRIES)?;
-                let list = countries_of(value);
-                if list.is_none() {
-                    not_understood.push((key, value.to_string()));
-                }
-                list
-            });
-        let (anue_excluded, permanent_excluded) =
-            excluded_contracts(criteria, data, &mut not_understood);
-        let remote_outside = criteria.remote_outside_allowed.or_else(|| {
-            let (key, value) = criterion(data, lexicon::KEYS_REMOTE_OUTSIDE)?;
-            let allowed = yes_no(value);
-            if allowed.is_none() {
-                not_understood.push((key, value.to_string()));
-            }
-            allowed
-        });
-        let mut read = |keys: &[&'static str]| {
-            let (key, value) = criterion(data, keys)?;
-            let n = number(value).filter(|n| *n > 0);
-            if n.is_none() {
-                not_understood.push((key, value.to_string()));
-            }
-            n
+            .iter()
+            .filter_map(|c| country_code(c))
+            .collect();
+        let (workload_min, workload_max) = match form.workload {
+            Workload::Any => (None, None),
+            Workload::Fulltime => (Some(FULLTIME_DAYS), None),
+            Workload::Parttime => (None, Some(PARTTIME_DAYS)),
         };
-        let min_salary = read(lexicon::KEYS_MIN_SALARY);
-        let remote_min = read(lexicon::KEYS_PERMANENT_REMOTE).map(|p| p.min(100));
-        let places = places_of(data, &mut not_understood);
-        let (workload_min, workload_max, min_months, exclusion_words) =
-            engagement_limits(data, &mut not_understood);
         Self {
-            min_rate,
-            countries,
-            remote_outside,
-            anue_excluded,
-            permanent_excluded,
-            available,
-            min_salary,
-            places,
-            remote_min,
+            min_rate: form.day_rate_min.filter(|n| *n > 0).map(i128::from),
+            countries: (!countries.is_empty()).then_some(countries),
+            anue_excluded: !form.temporary,
+            permanent_excluded: !form.permanent,
+            available: match form.available.day() {
+                Some(day) => Availability::From(day),
+                None => Availability::Now,
+            },
+            min_salary: form
+                .min_salary
+                .filter(|n| *n > 0 && (form.permanent || form.temporary))
+                .map(u64::from),
             workload_min,
             workload_max,
-            min_months,
-            exclusion_words,
-            not_understood,
+            min_months: (form.min_months > 0).then_some(u16::from(form.min_months)),
+            exclusion_words: form.exclusion_words.clone(),
         }
     }
-}
-
-/// The places of the region for permanent roles (a list of texts; an empty one is not
-/// understood).
-fn places_of(
-    data: &Value,
-    not_understood: &mut Vec<(&'static str, String)>,
-) -> Option<Vec<String>> {
-    criterion(data, lexicon::KEYS_PERMANENT_PLACES).and_then(|(key, value)| {
-        let list: Vec<String> = value
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .map(str::trim)
-            .filter(|p| !p.is_empty())
-            .map(str::to_owned)
-            .collect();
-        if list.is_empty() {
-            not_understood.push((key, value.to_string()));
-            None
-        } else {
-            Some(list)
-        }
-    })
-}
-
-/// Days per week (at least, at most), the minimum duration in months and the exclusion
-/// words of a profile; values that cannot be read go to `not_understood`.
-fn engagement_limits(
-    data: &Value,
-    not_understood: &mut Vec<(&'static str, String)>,
-) -> (Option<u8>, Option<u8>, Option<u16>, Vec<String>) {
-    let mut days = |keys: &[&'static str]| {
-        let (key, value) = criterion(data, keys)?;
-        let n = number(value).filter(|n| (1..=WEEK_DAYS).contains(n));
-        if n.is_none() {
-            not_understood.push((key, value.to_string()));
-        }
-        n.and_then(|n| u8::try_from(n).ok())
-    };
-    let workload_min = days(lexicon::KEYS_WORKLOAD_MIN);
-    let mut workload_max = days(lexicon::KEYS_WORKLOAD_MAX);
-    // A maximum below the minimum is no range.
-    if let (Some(min), Some(max)) = (workload_min, workload_max)
-        && max < min
-        && let Some((key, value)) = criterion(data, lexicon::KEYS_WORKLOAD_MAX)
-    {
-        not_understood.push((key, value.to_string()));
-        workload_max = None;
-    }
-    let min_months = criterion(data, lexicon::KEYS_MIN_MONTHS).and_then(|(key, value)| {
-        let n = number(value).filter(|n| (1..=MAX_MIN_MONTHS).contains(n));
-        if n.is_none() {
-            not_understood.push((key, value.to_string()));
-        }
-        n.and_then(|n| u16::try_from(n).ok())
-    });
-    let exclusion_words = criterion(data, lexicon::KEYS_EXCLUSION_WORDS)
-        .and_then(|(key, value)| {
-            let words = texts_of(value);
-            if words.is_none() {
-                not_understood.push((key, value.to_string()));
-            }
-            words
-        })
-        .unwrap_or_default();
-    (workload_min, workload_max, min_months, exclusion_words)
-}
-
-/// Keys of the criteria sections the engine does not read (a typo, an unknown rule).
-pub(crate) fn ignored_criteria_keys(data: &Value) -> Vec<String> {
-    lexicon::KEY_CRITERIA_ALIASES
-        .iter()
-        .filter_map(|section| data.get(*section)?.as_object())
-        .flat_map(|map| map.keys())
-        .filter(|key| {
-            !lexicon::KEYS_ALL_CRITERIA
-                .iter()
-                .any(|keys| keys.contains(&key.as_str()))
-        })
-        .cloned()
-        .collect()
-}
-
-/// The profile's availability text (hard criteria first, then preferences; German keys
-/// and sections first, English after).
-pub(crate) fn availability_text(data: &Value) -> Option<&str> {
-    lexicon::KEY_CRITERIA_ALIASES
-        .iter()
-        .chain(lexicon::KEY_PREFERENCES_ALIASES)
-        .flat_map(|section| {
-            lexicon::KEYS_AVAILABLE
-                .iter()
-                .map(move |key| (section, key))
-        })
-        .filter_map(|(section, key)| data.get(*section)?.get(*key)?.as_str())
-        .find(|s| !s.trim().is_empty())
 }
 
 /// A decided violation, a check, or a frame row (met or partial).
@@ -597,7 +291,7 @@ pub(crate) fn check(
         findings.extend(anue_findings);
     }
     if let Some(allowed) = &criteria.countries {
-        findings.extend(country(criteria, allowed, job, segments, folded));
+        findings.extend(country(allowed, job, segments, folded));
     }
     // The pay of an employment or of temporary agency work is no day rate.
     if !matches!(contract.kind, ContractKind::Permanent | ContractKind::Anue) {
@@ -943,7 +637,6 @@ fn word_at(folded: &str, at: usize, len: usize) -> bool {
 }
 
 fn country(
-    criteria: &HardCriteria,
     allowed: &[String],
     job: &JobFacts<'_>,
     segments: &[(Range<usize>, String)],
@@ -966,12 +659,6 @@ fn country(
     let remote_full = facts_remote
         || lex::FULL_REMOTE.iter().any(|w| folded.contains(w))
         || contains_word(&location_folded, "remote");
-    let home_allowed = segments.iter().any(|(_, f)| {
-        lex::REMOTE_FROM.iter().any(|w| f.contains(w))
-            && countries_in(f)
-                .iter()
-                .any(|c| allowed.iter().any(|a| a == c))
-    });
     let located = outside(&location_countries(location));
     // The job's own place counts as home only where it is not outside the countries.
     let home = if located.is_empty() {
@@ -1023,18 +710,6 @@ fn country(
     }
     if !onsite_out.is_empty() {
         return vec![unclear(onsite_out.clone(), spans_of(&onsite, &onsite_out))];
-    }
-    // Remote work for a place abroad the profile rules out (`remote_ausserhalb_erlaubt`
-    // false) is decided; an ad that allows working from an allowed country is not.
-    if !located.is_empty() && criteria.remote_outside == Some(false) && !home_allowed {
-        let params = json!({ "outside": located, "allowed": allowed });
-        return vec![Finding::new(
-            ReasonCode::Country,
-            true,
-            Some(CriterionKey::Countries),
-            params,
-            Vec::new(),
-        )];
     }
     if !travel_out.is_empty() {
         return vec![unclear(travel_out.clone(), spans_of(&travel, &travel_out))];
@@ -1557,16 +1232,20 @@ mod tests {
 
     #[test]
     fn country_names_in_a_profile_become_codes_and_unknown_ones_are_no_rule() {
+        let codes = |countries: &[&str]| {
+            let form = ProfileForm {
+                countries: countries.iter().map(|c| (*c).to_owned()).collect(),
+                ..ProfileForm::default()
+            };
+            HardCriteria::new(&form).countries
+        };
         assert_eq!(
-            countries_of(&json!(["Deutschland", "Österreich", "UK", "ch"])),
+            codes(&["Deutschland", "Österreich", "UK", "ch"]),
             Some(vec!["DE".into(), "AT".into(), "GB".into(), "CH".into()])
         );
-        assert_eq!(
-            countries_of(&json!("Germany, Switzerland")),
-            Some(vec!["DE".into(), "CH".into()])
-        );
-        // An unknown name never turns into a code that excludes every job.
-        assert_eq!(countries_of(&json!(["Deutschland", "Atlantis"])), None);
+        // An unknown name is no country; none at all is no rule.
+        assert_eq!(codes(&["Deutschland", "Atlantis"]), Some(vec!["DE".into()]));
+        assert_eq!(codes(&[]), None);
         assert_eq!(country_code("DEUTSCHLAND").as_deref(), Some("DE"));
     }
 
@@ -1913,50 +1592,49 @@ mod tests {
         assert_eq!(parse_start("Start: 31.02.2026"), None);
     }
 
+    /// The contract types, the workload and the duration as the engine reads them.
     #[test]
-    fn criteria_under_english_keys_and_other_types() {
-        let read =
-            |data: Value| HardCriteria::new(&crate::matching::profile::criteria(&data), &data);
-        let english = read(serde_json::json!({ "hard_criteria": {
-            "min_day_rate": "1.050 €",
-            "countries": "DE, CH",
-            "excluded_contract_types": ["ANÜ"],
-            "remote_outside_allowed": "nein",
-            "available_from": "2026-11-01"
-        }}));
-        assert_eq!(english.min_rate, Some(1050));
+    fn the_criteria_of_the_form() {
+        let form = ProfileForm {
+            permanent: false,
+            temporary: true,
+            day_rate_min: Some(1_050),
+            min_salary: Some(90_000),
+            workload: Workload::Parttime,
+            min_months: 6,
+            available: crate::profile::ProfileAvailability::From {
+                date: "01.11.2026".into(),
+            },
+            ..ProfileForm::default()
+        };
+        let c = HardCriteria::new(&form);
+        assert_eq!(c.min_rate, Some(1050));
+        assert!(c.permanent_excluded && !c.anue_excluded);
+        assert_eq!(c.min_salary, Some(90_000), "for temporary agency work");
         assert_eq!(
-            english.countries,
-            Some(vec!["DE".to_owned(), "CH".to_owned()])
+            (c.workload_min, c.workload_max),
+            (None, Some(PARTTIME_DAYS))
         );
-        assert!(english.anue_excluded);
-        assert_eq!(english.remote_outside, Some(false));
+        assert_eq!(c.min_months, Some(6));
         assert_eq!(
-            english.available,
+            c.available,
             Availability::From(Date::new(2026, 11, 1).unwrap())
         );
-        let german = read(serde_json::json!({ "hard_criteria": {
-            "min_tagessatz": 1050, "laender": ["DE"], "ausgeschlossene_vertragsarten": ["anue"]
-        }}));
-        assert_eq!(german.min_rate, Some(1050));
-        assert!(german.anue_excluded);
-        let odd = read(serde_json::json!({ "harte_kriterien": {
-            "min_tagessatz": "viel", "min_jahresgehalt": "99999999999999999k", "tagessatz_max": 2
-        }}));
-        let keys: Vec<&str> = odd.not_understood.iter().map(|(k, _)| *k).collect();
-        assert_eq!(keys, ["min_tagessatz", "min_jahresgehalt"]);
+        let full = HardCriteria::new(&ProfileForm {
+            workload: Workload::Fulltime,
+            ..ProfileForm::default()
+        });
         assert_eq!(
-            ignored_criteria_keys(
-                &serde_json::json!({ "harte_kriterien": { "tagessatz_max": 2 } })
-            ),
-            ["tagessatz_max"]
+            (full.workload_min, full.workload_max),
+            (Some(FULLTIME_DAYS), None)
         );
+        assert_eq!(full.available, Availability::Now);
+        assert_eq!(full.min_months, None);
     }
 
     /// Country findings of an ad in Cologne for a profile that works in Germany.
     fn country_codes(text: &str) -> Vec<(ReasonCode, bool)> {
-        let data = serde_json::json!({ "harte_kriterien": { "laender": ["DE"] } });
-        let criteria = HardCriteria::new(&super::super::profile::criteria(&data), &data);
+        let criteria = HardCriteria::new(&ProfileForm::default());
         let allowed = criteria.countries.clone().expect("countries");
         let job = JobFacts {
             title: "Projektleitung",
@@ -1966,7 +1644,7 @@ mod tests {
             facts: None,
             posted: None,
         };
-        country(&criteria, &allowed, &job, &segments(text), &fold(text))
+        country(&allowed, &job, &segments(text), &fold(text))
             .into_iter()
             .map(|f| (f.code, f.decided))
             .collect()
@@ -2001,32 +1679,21 @@ mod tests {
         );
     }
 
-    /// Remote work for a place abroad is decided where the profile rules it out
-    /// (`remote_ausserhalb_erlaubt` false), a check where it allows it; a location that
-    /// says remote is remote work.
+    /// Remote work for a place abroad is a check, never an exclusion (remote work counts
+    /// everywhere since Profil v19); a location that says remote is remote work.
     #[test]
-    fn remote_work_abroad_follows_the_profile() {
-        let codes = |outside_allowed: bool| {
-            let data = serde_json::json!({ "harte_kriterien": {
-                "laender": ["DE"], "remote_ausserhalb_erlaubt": outside_allowed
-            }});
-            let criteria = HardCriteria::new(&super::super::profile::criteria(&data), &data);
-            let allowed = criteria.countries.clone().expect("countries");
-            let text = "Das Team sitzt in Zürich, die Arbeit ist remote.";
-            let job = JobFacts {
-                title: "Data Engineer",
-                text,
-                location: "Zürich, Schweiz (Remote)",
-                portal: Portal::LinkedIn,
-                facts: None,
-                posted: None,
-            };
-            country(&criteria, &allowed, &job, &segments(text), &fold(text))
-                .into_iter()
-                .map(|f| (f.code, f.decided))
-                .collect::<Vec<_>>()
+    fn remote_work_abroad_is_no_exclusion() {
+        let allowed = vec!["DE".to_owned()];
+        let text = "Das Team sitzt in Zürich, die Arbeit ist remote.";
+        let job = JobFacts {
+            title: "Data Engineer",
+            text,
+            location: "Zürich, Schweiz (Remote)",
+            portal: Portal::LinkedIn,
+            facts: None,
+            posted: None,
         };
-        assert_eq!(codes(false), [(ReasonCode::Country, true)]);
-        assert!(codes(true).is_empty(), "{:?}", codes(true));
+        let found = country(&allowed, &job, &segments(text), &fold(text));
+        assert!(found.is_empty(), "{found:?}");
     }
 }

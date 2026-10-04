@@ -1,125 +1,146 @@
 {
-  "name": "Erika Beispiel",
-  "email": "erika.beispiel@example.invalid",
-  "telefon": "+49 170 0000000",
-  "abschluss": "Diplom-Kauffrau (Univ.)",
+  "wunschrollen": [],
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
+  ],
+  "tagessatz_wunsch": null,
+  "tagessatz_min": 1000,
+  "mindestgehalt": null,
+  "arbeitsmodell": "egal",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Interim Management",
-      "jahre": 12
+      "jahre": 12,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Controlling",
-      "jahre": 18
+      "jahre": 18,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Konzernrechnungslegung nach IFRS",
-      "jahre": 14
+      "jahre": 14,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Konsolidierung",
-      "jahre": 11
+      "jahre": 11,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Monatsabschlüsse",
-      "jahre": 16
+      "jahre": 16,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Jahresabschlüsse",
-      "jahre": 16
+      "jahre": 16,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Budgetierung",
-      "jahre": 16
+      "jahre": 16,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Forecast",
-      "jahre": 16
+      "jahre": 16,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Liquiditätsplanung",
-      "jahre": 10
+      "jahre": 10,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Working Capital Management",
-      "jahre": 7
+      "jahre": 7,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Business Transformation",
-      "jahre": 9
+      "jahre": 9,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Restrukturierung",
-      "jahre": 8
+      "jahre": 8,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Changemanagement",
-      "jahre": 7
+      "jahre": 7,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Post Merger Integration",
-      "jahre": 6
+      "jahre": 6,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Carve-out",
-      "jahre": 5
+      "jahre": 5,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 15
+      "jahre": 15,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Prozessoptimierung im Finanzbereich",
-      "jahre": 9
+      "jahre": 9,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Shared Service Center",
-      "jahre": 5
+      "jahre": 5,
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "SAP S/4HANA"
-    },
-    {
-      "name": "SAP FI/CO"
-    },
-    {
-      "name": "LucaNet"
-    },
-    {
-      "name": "Power BI"
-    },
-    {
-      "name": "Excel"
-    },
-    {
-      "name": "Lean Management"
-    },
-    {
-      "name": "Design Thinking"
-    }
+    "SAP S/4HANA",
+    "SAP FI/CO",
+    "LucaNet",
+    "Power BI",
+    "Excel",
+    "Lean Management",
+    "Design Thinking",
+    "IFRS",
+    "HGB",
+    "Konzernabschluss",
+    "Transformation",
+    "Großkonzern",
+    "CFO"
   ],
-  "zertifizierungen": [
-    {
-      "name": "Certified Interim Manager (DDIM)"
-    },
-    {
-      "name": "Projektmanagement-Fachfrau (GPM)"
-    }
-  ],
+  "berufserfahrung_jahre": null,
   "branchen": [
     {
-      "branche": "Maschinenbau"
+      "branche": "Maschinenbau",
+      "wunsch": false
     },
     {
-      "branche": "Automotive"
+      "branche": "Automotive",
+      "wunsch": false
     },
     {
-      "branche": "Chemie"
+      "branche": "Chemie",
+      "wunsch": false
     },
     {
-      "branche": "Konsumgüter"
+      "branche": "Konsumgüter",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -133,32 +154,15 @@
     },
     {
       "sprache": "Französisch",
-      "niveau": "Grundkenntnisse"
+      "niveau": "A2"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Aufbau von Konzernreportings in weniger als 100 Tagen",
-    "Verbindet Zahlenwerk mit Veränderungsarbeit"
+  "abschluesse": [
+    "Diplom-Kauffrau (Univ.)"
   ],
-  "keywords": [
-    "IFRS",
-    "HGB",
-    "Konzernabschluss",
-    "Transformation",
-    "Großkonzern",
-    "CFO"
+  "zertifizierungen": [
+    "Certified Interim Manager (DDIM)",
+    "Projektmanagement-Fachfrau (GPM)"
   ],
-  "harte_kriterien": {
-    "min_tagessatz": 1000,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "sofort"
-  }
+  "ausschlusswoerter": []
 }

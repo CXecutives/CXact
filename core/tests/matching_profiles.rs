@@ -1,24 +1,25 @@
-//! Profiles beyond the corpus: a field without any domain pack (the general core alone
-//! plus the profile's own `auch` terms), the summary of the new profile keys (English
-//! aliases, warnings, packs, aliases) and formal duties (licences).
+//! Profiles beyond the corpus: a field without any domain pack (the general core alone plus
+//! the profile's own terms), the summary of the profile (packs, years, degrees, criteria)
+//! and formal duties (licences).
 
 use std::path::Path;
 
 use jobalert_core::matching::{
-    Assessment, CriterionKey, JobInput, ProfileQuality, ProfileWarningCode, ReasonCode, ReasonKind,
-    TextKind, Verdict, assess, compile_profile,
+    Assessment, CriterionKey, JobInput, ProfileQuality, ReasonCode, ReasonKind, TextKind, Verdict,
+    assess, compile_profile,
 };
 use jobalert_core::portal::Portal;
-use serde_json::{Value, json};
+use jobalert_core::profile::{ProfileForm, parse};
+use serde_json::json;
 
-fn fixture(name: &str) -> Value {
+fn fixture(name: &str) -> ProfileForm {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/matching")
         .join(name);
-    serde_json::from_str(&std::fs::read_to_string(path).expect("fixture")).expect("json")
+    parse(&std::fs::read_to_string(path).expect("fixture")).expect("a v19 profile")
 }
 
-fn run(profile: &Value, title: &str, text: &str) -> Assessment {
+fn run(profile: &ProfileForm, title: &str, text: &str) -> Assessment {
     let job = JobInput {
         title,
         company: "Muster AG",
@@ -36,26 +37,29 @@ fn has(a: &Assessment, code: ReasonCode, kind: ReasonKind) -> bool {
     a.reasons.iter().any(|r| r.code == code && r.kind == kind)
 }
 
-/// An invented clinical project manager: no domain pack, own alternative terms.
-fn clinical() -> Value {
-    json!({
-        "name": "Nora Beispiel",
+/// An invented clinical project manager: no domain pack, own terms in English too.
+fn clinical() -> ProfileForm {
+    let value = json!({
         "kernkompetenzen": [
-            {"kompetenz": "Klinische Studienleitung", "jahre": 12,
-             "auch": ["Clinical Trial Management", "Studienmanagement"]},
-            {"kompetenz": "Good Clinical Practice", "jahre": 12, "auch": ["GCP"]},
-            {"kompetenz": "Monitoring klinischer Prüfungen", "jahre": 8,
-             "auch": ["Clinical Monitoring"]},
+            {"kompetenz": "Klinische Studienleitung", "jahre": 12},
+            {"kompetenz": "Good Clinical Practice", "jahre": 12},
+            {"kompetenz": "Monitoring klinischer Prüfungen", "jahre": 8},
             {"kompetenz": "Projektmanagement", "jahre": 15},
-            {"kompetenz": "Zulassungsstrategie", "jahre": 6, "auch": ["Regulatory Affairs"]},
+            {"kompetenz": "Zulassungsstrategie", "jahre": 6},
             {"kompetenz": "Pharmakovigilanz", "jahre": 5}
+        ],
+        "methoden_tools": [
+            "Clinical Trial Management", "Studienmanagement", "GCP", "Clinical Monitoring",
+            "Regulatory Affairs"
         ],
         "sprachen": [
             {"sprache": "Deutsch", "niveau": "Muttersprache"},
             {"sprache": "Englisch", "niveau": "C1"}
         ],
-        "harte_kriterien": {"laender": ["DE"], "ausgeschlossene_vertragsarten": ["anue"]}
-    })
+        "vertragsarten": ["projekt", "festanstellung"],
+        "laender": ["DE"]
+    });
+    parse(&value.to_string()).expect("a v19 profile")
 }
 
 const CLINICAL_AD: &str = "About the role\n\
@@ -91,12 +95,16 @@ fn the_core_alone_serves_an_unrelated_field() {
     );
     assert_eq!(fit.verdict, Verdict::Scored);
     assert!(fit.score >= 80, "clinical ad scored {}", fit.score);
-    let alias = fit
+    let tool = fit
         .reasons
         .iter()
-        .find_map(|r| r.evidence.as_ref().filter(|e| e.path.contains(".auch[")))
-        .expect("an alias meets a requirement");
-    assert_eq!(alias.path, "kernkompetenzen[0].auch[0]");
+        .find_map(|r| {
+            r.evidence
+                .as_ref()
+                .filter(|e| e.path.starts_with("methoden_tools["))
+        })
+        .expect("an English term meets a requirement");
+    assert_eq!(tool.path, "methoden_tools[0]");
     let other = run(&profile, "Interim Konzerncontroller (m/w/d)", FINANCE_AD);
     assert!(other.score <= 25, "finance ad scored {}", other.score);
     assert!(has(&other, ReasonCode::ContractType, ReasonKind::Met));
@@ -113,11 +121,18 @@ fn packs_follow_the_competences() {
 }
 
 #[test]
-fn the_summary_shows_the_new_keys() {
+fn the_summary_shows_years_degrees_and_criteria() {
     let senior = compile_profile(&fixture("sample_profile_senior.json"));
     let summary = senior.summary();
     assert_eq!(summary.years, Some(30));
-    assert_eq!(summary.degrees, ["Diplom-Kauffrau (Univ.)"]);
+    assert!(
+        summary
+            .degrees
+            .iter()
+            .any(|d| d.starts_with("Diplom-Kauffrau (Univ.)")),
+        "{:?}",
+        summary.degrees
+    );
     let criterion = |key| {
         summary
             .criteria
@@ -126,57 +141,8 @@ fn the_summary_shows_the_new_keys() {
             .expect("criterion")
     };
     assert_eq!(criterion(CriterionKey::MinSalary).params["min"], 150_000);
-    let region = criterion(CriterionKey::PermanentRegion);
-    assert!(region.set);
-    assert_eq!(region.params["remoteMin"], 60);
-    assert!(summary.aliases.iter().any(|a| a.competence == "Controlling"
-        && a.alias == "FP&A"
-        && a.path == "kernkompetenzen[2].auch[1]"));
-    // The retired target years (`zielprofil_min_jahre`) the file still has warn of nothing.
     assert!(summary.warnings.is_empty(), "{:?}", summary.warnings);
-    // Aliases are no extra competences.
-    assert_eq!(
-        senior.quality(),
-        jobalert_core::matching::ProfileQuality::Good
-    );
-
-    let sap = compile_profile(&fixture("sample_profile_sap.json"));
-    let set = |key| sap.summary().criteria.iter().any(|c| c.key == key && c.set);
-    assert!(set(CriterionKey::MinSalary));
-    assert!(!set(CriterionKey::PermanentRegion), "no places: rule off");
-}
-
-#[test]
-fn english_keys_and_unreadable_values() {
-    let profile = json!({
-        "kernkompetenzen": [
-            {"kompetenz": "Controlling"}, {"kompetenz": "Konsolidierung"},
-            {"kompetenz": "Treasury"}, {"kompetenz": "Budgetierung"}, {"kompetenz": "Forecast"}
-        ],
-        "hard_criteria": {
-            "min_annual_salary": "120k",
-            "permanent_remote_min": 60,
-            "target_min_years": "viele",
-            "workload_min_days": "viele"
-        }
-    });
-    let compiled = compile_profile(&profile);
-    let summary = compiled.summary();
-    let salary = summary
-        .criteria
-        .iter()
-        .find(|c| c.key == CriterionKey::MinSalary)
-        .expect("salary");
-    assert_eq!(salary.params["min"], 120_000);
-    let codes: Vec<ProfileWarningCode> = summary.warnings.iter().map(|w| w.code).collect();
-    assert!(codes.contains(&ProfileWarningCode::RegionWithoutPlaces));
-    let unreadable = summary
-        .warnings
-        .iter()
-        .find(|w| w.code == ProfileWarningCode::CriterionNotUnderstood)
-        .expect("unreadable value");
-    // The retired target years are not read, so not reported either.
-    assert_eq!(unreadable.params["key"], "workload_min_days");
+    assert_eq!(senior.quality(), ProfileQuality::Good);
 }
 
 #[test]
@@ -285,8 +251,8 @@ Rahmendaten:
 - Auslastung: 3 Tage pro Woche
 - Tagessatz: 1.200 € pro Tag";
 
-/// The test profiles for the user (`tools/test-profiles/`) load the way the file picker
-/// loads them, are understood without a warning, set their criteria and score an ad.
+/// The test profiles (`tools/test-profiles/`) read as v19, are understood without a warning,
+/// set their criteria and score an ad.
 #[test]
 fn the_test_profiles_load_and_score() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../tools/test-profiles");
@@ -301,15 +267,15 @@ fn the_test_profiles_load_and_score() {
             .expect("name")
             .to_string_lossy()
             .into_owned();
-        let draft = jobalert_core::profile::draft_from_file(&path).expect("loads");
-        assert_eq!(draft.quality, ProfileQuality::Good, "{name}");
+        let form = parse(&std::fs::read_to_string(&path).expect("file")).expect("loads");
+        let compiled = compile_profile(&form);
+        assert_eq!(compiled.quality(), ProfileQuality::Good, "{name}");
         assert!(
-            draft.summary.warnings.is_empty(),
+            compiled.summary().warnings.is_empty(),
             "{name}: {:?}",
-            draft.summary.warnings
+            compiled.summary().warnings
         );
-        let value: Value = serde_json::from_str(&draft.source).expect("json");
-        let a = run(&value, "Interim Projektleitung (m/w/d)", TEST_PROFILE_AD);
+        let a = run(&form, "Interim Projektleitung (m/w/d)", TEST_PROFILE_AD);
         assert_eq!(a.verdict, Verdict::Scored, "{name}: {:?}", a.reasons);
         names.push(name);
     }
@@ -325,7 +291,7 @@ fn the_test_profiles_load_and_score() {
         ]
     );
     let text = std::fs::read_to_string(dir.join("interim-cfo.json")).expect("file");
-    let cfo = compile_profile(&serde_json::from_str::<Value>(&text).expect("json"));
+    let cfo = compile_profile(&parse(&text).expect("a v19 profile"));
     let set: Vec<CriterionKey> = cfo
         .summary()
         .criteria
@@ -341,7 +307,6 @@ fn the_test_profiles_load_and_score() {
             CriterionKey::NoAnue,
             CriterionKey::Availability,
             CriterionKey::MinSalary,
-            CriterionKey::PermanentRegion,
             CriterionKey::Duration,
             CriterionKey::ExclusionWords
         ]

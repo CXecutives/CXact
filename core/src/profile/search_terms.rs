@@ -1,76 +1,19 @@
 //! The terms of the deep search (user decision 2026-10-01: "tief und viel"): what the
-//! sources are searched for, built from the profile when a fetch starts. The consultant's own
-//! Suchbegriffe (or the proposal from roles and Schwerpunkte) come first, as written; then
-//! each target role, the role without its contract words (`Interim CFO` -> `CFO`) and the
-//! other names job boards give it (`CFO` -> `Finanzvorstand`, `Head of Finance`); then the
-//! Schwerpunkte, the competences (the longest experience first) with their synonyms, the
-//! Stichworte and the tools - each once, at most [`MAX_DEEP_TERMS`]. A phrase of more than
-//! [`MAX_TERM_WORDS`] words finds little on a job board and is left to the consultant's own
-//! terms.
-//!
-//! The role names below are an external contract - do not translate: they are the words the
-//! job boards use.
+//! sources are searched for, built from the profile when a fetch starts: each target role,
+//! the role without its contract words (`Interim CFO` -> `CFO`) and the other names job boards
+//! give it (`CFO` -> `Finanzvorstand`, `Head of Finance`); then the Schwerpunkte, the
+//! competences (the longest experience first) and the tools - each once, at most
+//! [`MAX_DEEP_TERMS`]. A phrase of more than [`MAX_TERM_WORDS`] words finds little on a job
+//! board and is left out.
+//! The role names are the engine's (`matching::lexicon::wishes::ROLE_GROUPS`, the one table
+//! of them).
 
 use super::form::ProfileForm;
 
 /// So many terms the deep search asks each source for at most.
 pub const MAX_DEEP_TERMS: usize = 24;
-/// A longer phrase (from the competences, not the consultant's own terms) is left out.
+/// A longer phrase is left out.
 const MAX_TERM_WORDS: usize = 4;
-
-/// Names of one role as job boards write them, each group searched together: a role, focus
-/// or competence that names one of them (as whole words, in any case) brings the others.
-const ROLE_NAMES: &[&[&str]] = &[
-    &[
-        "CFO",
-        "Chief Financial Officer",
-        "Finanzvorstand",
-        "Kaufmännischer Geschäftsführer",
-        "Kaufmännischer Leiter",
-        "Head of Finance",
-        "Finance Director",
-        "Leiter Finanzen",
-    ],
-    &[
-        "Head of Controlling",
-        "Leiter Controlling",
-        "Controlling Manager",
-    ],
-    &[
-        "Head of Accounting",
-        "Leiter Rechnungswesen",
-        "Leiter Buchhaltung",
-    ],
-    &[
-        "Treasury",
-        "Treasurer",
-        "Head of Treasury",
-        "Cash Management",
-    ],
-    &[
-        "Konzernrechnungslegung",
-        "Konsolidierung",
-        "Group Reporting",
-        "Group Accounting",
-    ],
-    &[
-        "Restrukturierung",
-        "Restructuring",
-        "Sanierung",
-        "Turnaround",
-    ],
-    &["CEO", "Geschäftsführer", "Managing Director"],
-    &["COO", "Chief Operating Officer", "Head of Operations"],
-    &["CHRO", "Head of HR", "Personalleiter"],
-    &[
-        "CIO",
-        "Chief Information Officer",
-        "IT-Leiter",
-        "Head of IT",
-    ],
-    &["Projektleiter", "Projektmanager", "Project Manager"],
-    &["Programmmanager", "Program Manager", "PMO"],
-];
 
 /// Words of the contract, not of the role: left out for the role's core.
 const CONTRACT_WORDS: &[&str] = &[
@@ -121,7 +64,7 @@ fn core(role: &str) -> Option<String> {
 /// The other names of every role group `text` names.
 fn other_names(text: &str) -> impl Iterator<Item = &'static str> {
     let text = key(text);
-    ROLE_NAMES
+    crate::matching::lexicon::wishes::ROLE_GROUPS
         .iter()
         .filter(move |group| group.iter().any(|name| names(&text, &key(name))))
         .flat_map(|group| group.iter().copied())
@@ -130,36 +73,28 @@ fn other_names(text: &str) -> impl Iterator<Item = &'static str> {
 /// The deep search's terms for a profile form, in the order they are asked for.
 pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
     let mut terms = Terms::default();
-    for term in &form.search_terms {
-        terms.add(term, true);
-    }
     for role in &form.roles {
-        terms.add(role, false);
+        terms.add(role);
         if let Some(core) = core(role) {
-            terms.add(&core, false);
+            terms.add(&core);
         }
         for name in other_names(role) {
-            terms.add(name, false);
+            terms.add(name);
         }
     }
-    for focus in &form.focus {
-        terms.add(focus, false);
-        for name in other_names(focus) {
-            terms.add(name, false);
+    for focus in form.focus() {
+        terms.add(&focus.name);
+        for name in other_names(&focus.name) {
+            terms.add(name);
         }
     }
     let mut competences: Vec<_> = form.competences.iter().collect();
     competences.sort_by_key(|competence| std::cmp::Reverse(competence.years.unwrap_or(0)));
     for competence in &competences {
-        terms.add(&competence.name, false);
+        terms.add(&competence.name);
     }
-    for competence in &competences {
-        for alias in &competence.aliases {
-            terms.add(alias, false);
-        }
-    }
-    for word in form.keywords.iter().chain(&form.tools) {
-        terms.add(word, false);
+    for tool in &form.tools {
+        terms.add(tool);
     }
     terms.list
 }
@@ -172,12 +107,12 @@ struct Terms {
 }
 
 impl Terms {
-    /// Adds a term unless it is known, too long (not `own`), empty, or the list is full.
-    fn add(&mut self, term: &str, own: bool) {
+    /// Adds a term unless it is known, too long, empty, or the list is full.
+    fn add(&mut self, term: &str) {
         let term = term.trim();
         let words = term.split_whitespace().count();
         if term.chars().count() < 2
-            || (!own && words > MAX_TERM_WORDS)
+            || words > MAX_TERM_WORDS
             || self.list.len() >= MAX_DEEP_TERMS
             || !self.seen.insert(key(term))
         {
@@ -192,43 +127,36 @@ mod tests {
     use super::*;
     use crate::profile::ProfileCompetence;
 
-    fn competence(name: &str, years: u32, aliases: &[&str]) -> ProfileCompetence {
+    fn competence(name: &str, years: u32, focus: bool) -> ProfileCompetence {
         ProfileCompetence {
             name: name.to_owned(),
             years: Some(years),
-            aliases: aliases.iter().map(|a| (*a).to_owned()).collect(),
-            origin: None,
+            focus,
         }
     }
 
     #[test]
-    fn own_terms_first_then_roles_with_their_names_then_the_rest() {
+    fn roles_with_their_names_then_the_rest() {
         let form = ProfileForm {
-            search_terms: vec![
-                "Interim CFO".into(),
-                "Konzernrechnungslegung nach IFRS".into(),
-            ],
             roles: vec!["Interim CFO".into(), "Head of Controlling".into()],
-            focus: vec!["Restrukturierung".into()],
             competences: vec![
-                competence("Liquiditätsplanung", 10, &[]),
-                competence("Controlling", 18, &["Financial Controlling"]),
+                competence("Liquiditätsplanung", 10, false),
+                competence("Controlling", 18, false),
+                competence("Restrukturierung", 5, true),
                 competence(
                     "Rund elf Jahre Treasury, Cash Management und Factoring",
                     11,
-                    &[],
+                    false,
                 ),
             ],
-            keywords: vec!["IFRS".into(), "HGB".into()],
             tools: vec!["SAP S/4HANA".into(), "LucaNet".into()],
             ..ProfileForm::default()
         };
         let terms = deep_search_terms(&form);
         assert_eq!(
-            terms[..4],
+            terms[..3],
             [
                 "Interim CFO",
-                "Konzernrechnungslegung nach IFRS",
                 // The role without its contract word, then its other names.
                 "CFO",
                 "Chief Financial Officer",
@@ -236,19 +164,17 @@ mod tests {
         );
         for wanted in [
             "Finanzvorstand",
-            "Head of Finance",
+            "Kaufmännische Geschäftsführung",
             "Leiter Controlling",
-            "Sanierung",
             "Controlling",
             "Liquiditätsplanung",
-            "Financial Controlling",
-            "IFRS",
             "LucaNet",
         ] {
             assert!(terms.iter().any(|t| t == wanted), "{wanted} in {terms:?}");
         }
-        // The longest experience first among the competences.
+        // The Schwerpunkte before the competences, the longest experience first among these.
         let at = |t: &str| terms.iter().position(|x| x == t).unwrap();
+        assert!(at("Restrukturierung") < at("Controlling"));
         assert!(at("Controlling") < at("Liquiditätsplanung"));
         // A sentence is no search term; every term once, in any case.
         assert!(!terms.iter().any(|t| t.starts_with("Rund elf")));
@@ -261,7 +187,7 @@ mod tests {
     fn at_most_so_many_and_an_empty_profile_searches_nothing() {
         assert!(deep_search_terms(&ProfileForm::default()).is_empty());
         let form = ProfileForm {
-            keywords: (0..60).map(|n| format!("Thema {n}")).collect(),
+            tools: (0..60).map(|n| format!("Thema {n}")).collect(),
             ..ProfileForm::default()
         };
         assert_eq!(deep_search_terms(&form).len(), MAX_DEEP_TERMS);

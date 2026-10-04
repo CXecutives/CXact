@@ -56,8 +56,8 @@
     },
     "S022": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent head of controlling is outside her field, and Bielefeld with two remote days is outside her permanent places and below 80 % remote.",
+      "excluded": false,
+      "reason": "Permanent head of controlling is outside her field, and Bielefeld with two remote days is outside her permanent places and below 80 % remote. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Arbeitsort Bielefeld"
     },
     "S023": {
@@ -242,8 +242,8 @@
     },
     "S061": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent platform engineer is outside her field; Hamburg with 60 % remote is outside her places and below 80 %.",
+      "excluded": false,
+      "reason": "Permanent platform engineer is outside her field; Hamburg with 60 % remote is outside her places and below 80 %. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "60 % mobiles Arbeiten, Büro in der HafenCity"
     },
     "S062": {
@@ -428,8 +428,8 @@
     },
     "S098": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent data centre construction lead is outside her field; Eschborn with two remote days is outside her places and below 80 %.",
+      "excluded": false,
+      "reason": "Permanent data centre construction lead is outside her field; Eschborn with two remote days is outside her places and below 80 %. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Mobiles Arbeiten an bis zu zwei Tagen pro Woche"
     },
     "S101": {
@@ -566,8 +566,8 @@
     },
     "S127": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent CFO is outside her field; Hamburg with two remote days is outside her places and below 80 %.",
+      "excluded": false,
+      "reason": "Permanent CFO is outside her field; Hamburg with two remote days is outside her places and below 80 %. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Präsenz in der Zentrale in Hamburg"
     },
     "S128": {
@@ -1144,8 +1144,8 @@
     },
     "S127": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Permanent CFO touches his commercial lead experience, but PE, M&A and IFRS are required; Hamburg with two remote days is outside his places and below 60 %.",
+      "excluded": false,
+      "reason": "Permanent CFO touches his commercial lead experience, but PE, M&A and IFRS are required; Hamburg with two remote days is outside his places and below 60 %. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Präsenz in der Zentrale in Hamburg"
     },
     "S128": {
@@ -4102,8 +4102,8 @@
     },
     "S022": {
       "grade": 0,
-      "excluded": true,
-      "reason": "A head of controlling role is outside her automotive embedded and safety field; the permanent role in Bielefeld is outside her permanent places and two home office days are 40 %, below her 60 %: \"Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Arbeitsort Bielefeld\".",
+      "excluded": false,
+      "reason": "A head of controlling role is outside her automotive embedded and safety field; the permanent role in Bielefeld is outside her permanent places and two home office days are 40 %, below her 60 %: \"Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Arbeitsort Bielefeld\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Arbeitsort Bielefeld"
     },
     "S023": {
@@ -4330,8 +4330,8 @@
     },
     "S068": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Analytics engineering with Snowflake and dbt is outside her automotive embedded and safety field; it is a remote role for a Swiss employer and she does not accept remote work abroad: \"Zurich, Zurich, Switzerland (Remote)\".",
+      "excluded": false,
+      "reason": "Analytics engineering with Snowflake and dbt is outside her automotive embedded and safety field; it is a remote role for a Swiss employer and she does not accept remote work abroad: \"Zurich, Zurich, Switzerland (Remote)\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Zurich, Zurich, Switzerland (Remote)"
     },
     "S071": {
@@ -4474,8 +4474,8 @@
     },
     "S098": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Data centre construction project leadership is outside her automotive embedded and safety field; the permanent role in Eschborn is outside her permanent places and two home office days are 40 %, below her 60 %: \"Mobiles Arbeiten an bis zu zwei Tagen pro Woche\".",
+      "excluded": false,
+      "reason": "Data centre construction project leadership is outside her automotive embedded and safety field; the permanent role in Eschborn is outside her permanent places and two home office days are 40 %, below her 60 %: \"Mobiles Arbeiten an bis zu zwei Tagen pro Woche\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Mobiles Arbeiten an bis zu zwei Tagen pro Woche"
     },
     "S101": {
@@ -4612,8 +4612,8 @@
     },
     "S127": {
       "grade": 0,
-      "excluded": true,
-      "reason": "A permanent CFO role is outside her automotive embedded and safety field; the permanent role in Hamburg is outside her permanent places and two home office days are 40 %, below her 60 %: \"Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Präsenz in der Zentrale in Hamburg\".",
+      "excluded": false,
+      "reason": "A permanent CFO role is outside her automotive embedded and safety field; the permanent role in Hamburg is outside her permanent places and two home office days are 40 %, below her 60 %: \"Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Präsenz in der Zentrale in Hamburg\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche, Präsenz in der Zentrale in Hamburg"
     },
     "S128": {
@@ -5486,8 +5486,8 @@
     },
     "S068": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Analytics engineering, unrelated, and remote for a Swiss company while she allows no work outside DE and AT.",
+      "excluded": false,
+      "reason": "Analytics engineering, unrelated, and remote for a Swiss company while she allows no work outside DE and AT. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Zurich, Zurich, Switzerland (Remote)"
     },
     "S071": {
@@ -5768,8 +5768,8 @@
     },
     "S127": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Permanent CFO role, unrelated, located in Hamburg outside her permanent places.",
+      "excluded": false,
+      "reason": "Permanent CFO role, unrelated, located in Hamburg outside her permanent places. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Präsenz in der Zentrale in Hamburg"
     },
     "S128": {
@@ -6924,8 +6924,8 @@
     },
     "S127": {
       "grade": 2,
-      "excluded": true,
-      "reason": "CFO of a PE-owned logistics group with buy-and-build, refinancing and IFRS fits her core, but the permanent job is in Hamburg outside her places with two remote days, below her 60 percent.",
+      "excluded": false,
+      "reason": "CFO of a PE-owned logistics group with buy-and-build, refinancing and IFRS fits her core, but the permanent job is in Hamburg outside her places with two remote days, below her 60 percent. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": "Präsenz in der Zentrale in Hamburg"
     },
     "S128": {

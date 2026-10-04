@@ -182,12 +182,6 @@ pub enum ReasonCode {
     Salary,
     /// A permanent role without a salary statement.
     SalaryUnknown,
-    /// A permanent role outside the profile's region without enough remote share
-    /// (`location`): decided for a stated permanent role, a check when inferred.
-    PermanentRegion,
-    /// The work location of a permanent role is unclear (country only, none given, or an
-    /// unclear contract type).
-    PermanentRegionUnclear,
     /// An assistant or associate level without years may be below the profile's years of
     /// experience (`level`, `have`); a check.
     SeniorityUnclear,
@@ -208,8 +202,8 @@ pub enum ReasonCode {
     /// Day rate wish (`state` met, near, missed or unknown, `points`, `wish`, `rate`,
     /// `hourly`, `currency`).
     DayRateWish,
-    /// Remote wish (`state`, `points`, `min` or `onsite`, `level` full, mostly, partly or
-    /// onSite, the ad's share `share` or `from`/`to`).
+    /// Work mode wish (`state`, `points`, `min` or `onsite`, `level` remote, hybrid or
+    /// onsite, the ad's share `share` or `from`/`to`).
     RemoteWish,
     /// Region wish (`state`, `points`, `location`, `remote`).
     RegionWish,
@@ -288,15 +282,13 @@ pub enum CriterionKey {
     Countries,
     NoAnue,
     Availability,
-    /// Minimum annual salary for permanent roles.
+    /// Minimum annual salary for permanent roles and temporary agency work.
     MinSalary,
-    /// Places (and minimum remote share) for permanent roles.
-    PermanentRegion,
-    /// Permanent employment excluded (`ausgeschlossene_vertragsarten` names `festanstellung`).
+    /// Permanent employment excluded (`vertragsarten` without `festanstellung`).
     NoPermanent,
-    /// Days per week the consultant works (`auslastung_min_tage`, `auslastung_max_tage`).
+    /// Days per week the consultant works (`auslastung`).
     Workload,
-    /// Minimum duration of an engagement (`min_laufzeit_monate`).
+    /// Minimum duration of an engagement (`mindestlaufzeit_monate`).
     Duration,
     /// Words that exclude an ad (`ausschlusswoerter`).
     ExclusionWords,
@@ -350,8 +342,6 @@ pub struct SourceInfo {
     /// Path pattern, e.g. `kernkompetenzen[].kompetenz`.
     pub path: String,
     pub count: u16,
-    /// Found by key name only (not a known profile structure).
-    pub guessed: bool,
 }
 
 /// A hard criterion as understood from the profile.
@@ -378,32 +368,23 @@ pub enum ProfileWarningCode {
     NoCompetences,
     FewCompetences,
     NoCriteria,
-    AvailabilityNotUnderstood,
-    /// A criterion key is present but its value cannot be read (`key`, `value`).
-    CriterionNotUnderstood,
-    /// A remote minimum for permanent roles without places: the region rule stays off.
-    RegionWithoutPlaces,
-    /// More Schwerpunkte than count (`count`, `max`): the first ones are used.
-    FocusTrimmed,
-    /// Keys of a criteria section the engine does not read (`keys`).
-    IgnoredKeys,
 }
 
-/// A wish of the profile (`einsatzpraeferenzen`).
+/// A wish of the profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WishKey {
-    /// Schwerpunkte (`schwerpunkte`).
+    /// Schwerpunkte (the starred `kernkompetenzen`).
     Focus,
     /// Target roles (`wunschrollen`).
     TargetRoles,
     /// Wished day rate (`tagessatz_wunsch`).
     DayRate,
-    /// Wished remote share (`remote`).
+    /// Wished work mode (`arbeitsmodell`).
     Remote,
     /// Wished regions (`regionen`).
     Regions,
-    /// Wished industries (`branchen`).
+    /// Preferred industries (the starred `branchen`).
     Industries,
 }
 
@@ -416,18 +397,6 @@ pub struct WishInfo {
     pub params: Map<String, Value>,
 }
 
-/// An alternative term of a profile competence (`auch` / `aliases`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AliasInfo {
-    /// The competence as written.
-    pub competence: String,
-    /// The alternative term.
-    pub alias: String,
-    /// JSON path of the alias, e.g. `kernkompetenzen[2].auch[0]`.
-    pub path: String,
-}
-
 /// "What the app understood" of the profile.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -438,8 +407,6 @@ pub struct ProfileSummary {
     pub sources: Vec<SourceInfo>,
     pub criteria: Vec<CriterionInfo>,
     pub warnings: Vec<ProfileWarning>,
-    /// Alternative terms of competences.
-    pub aliases: Vec<AliasInfo>,
     /// Domain packs switched on by the profile's competences (e.g. `finance`, `sap`).
     pub packs: Vec<String>,
     /// Total years of professional experience, if stated.

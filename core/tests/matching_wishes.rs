@@ -1,43 +1,65 @@
-//! The version-4 inputs of the profile, one test per feature: Schwerpunkte (`schwerpunkte`),
-//! target roles (`wunschrollen`) and the wishes of `einsatzpraeferenzen` (day rate, remote,
-//! regions, industries). Each is off without its key, visible as a reason with code and
+//! The Schwerpunkte, target roles and wishes of the profile, one test per feature: the
+//! starred competences, `wunschrollen` and the wishes (day rate, work mode, regions, the
+//! starred industries). Each is off while it is empty, visible as a reason with code and
 //! params, bounded, and never an exclusion.
 
 use std::path::Path;
 
 use jobalert_core::matching::{
-    Assessment, JobInput, ProfileWarningCode, Reason, ReasonCode, ReasonKind, TextKind, Verdict,
-    WishKey, assess, compile_profile,
+    Assessment, JobInput, Reason, ReasonCode, ReasonKind, TextKind, Verdict, WishKey, assess,
+    compile_profile,
 };
 use jobalert_core::portal::Portal;
+use jobalert_core::profile::{ProfileForm, ProfileIndustry, WorkWish, parse};
 use serde_json::{Value, json};
 
-/// An invented interim finance consultant without any version-4 key.
-fn base() -> Value {
-    json!({
+/// An invented interim finance consultant without Schwerpunkte, target roles or wishes.
+fn base() -> ProfileForm {
+    let value = json!({
         "kernkompetenzen": [
             {"kompetenz": "Controlling", "jahre": 15},
             {"kompetenz": "Konzernrechnungslegung nach IFRS", "jahre": 12},
-            {"kompetenz": "Treasury", "jahre": 10, "auch": ["Cash Management"]},
+            {"kompetenz": "Treasury", "jahre": 10},
             {"kompetenz": "Restrukturierung", "jahre": 8},
             {"kompetenz": "Budgetierung", "jahre": 12},
             {"kompetenz": "Forecast", "jahre": 12}
         ],
-        "harte_kriterien": {
-            "min_tagessatz": 800,
-            "laender": ["DE"],
-            "ausgeschlossene_vertragsarten": ["anue"]
-        }
-    })
+        "vertragsarten": ["projekt", "festanstellung"],
+        "tagessatz_min": 800,
+        "laender": ["DE"]
+    });
+    parse(&value.to_string()).expect("a v19 profile")
 }
 
-/// The base profile with extra top-level keys (`einsatzpraeferenzen` merged).
-fn with(extra: &Value) -> Value {
+/// The base profile with these competences starred.
+fn focus(names: &[&str]) -> ProfileForm {
     let mut profile = base();
-    for (key, value) in extra.as_object().expect("object") {
-        profile[key] = value.clone();
+    for competence in &mut profile.competences {
+        competence.focus = names.contains(&competence.name.as_str());
     }
     profile
+}
+
+/// The base profile with these target roles.
+fn roles(names: &[&str]) -> ProfileForm {
+    ProfileForm {
+        roles: names.iter().map(|r| (*r).to_owned()).collect(),
+        ..base()
+    }
+}
+
+/// The base profile with these industries preferred.
+fn preferring(industries: &[&str]) -> ProfileForm {
+    ProfileForm {
+        industries: industries
+            .iter()
+            .map(|name| ProfileIndustry {
+                name: (*name).to_owned(),
+                preferred: true,
+            })
+            .collect(),
+        ..base()
+    }
 }
 
 struct Ad<'a> {
@@ -56,7 +78,7 @@ const AD: Ad<'static> = Ad {
     text: "",
 };
 
-fn run(profile: &Value, ad: &Ad<'_>) -> Assessment {
+fn run(profile: &ProfileForm, ad: &Ad<'_>) -> Assessment {
     let job = JobInput {
         title: ad.title,
         company: ad.company,
@@ -108,7 +130,7 @@ fn ad(text: &str) -> Ad<'_> {
 #[test]
 fn a_schwerpunkt_the_ad_demands_counts_double_and_raises_relevance() {
     let plain = run(&base(), &ad(TREASURY_TEXT));
-    let focus = with(&json!({ "schwerpunkte": ["Treasury"] }));
+    let focus = focus(&["Treasury"]);
     let a = run(&focus, &ad(TREASURY_TEXT));
     assert!(a.score > plain.score, "{} vs {}", a.score, plain.score);
     let r = reason(&a, ReasonCode::Focus).expect("focus reason");
@@ -118,7 +140,7 @@ fn a_schwerpunkt_the_ad_demands_counts_double_and_raises_relevance() {
     assert_eq!(r.params["relevance"], 100);
     assert_eq!(
         r.evidence.as_ref().expect("evidence").path,
-        "schwerpunkte[0]"
+        "kernkompetenzen[2].kompetenz"
     );
     assert!(!r.ranges.is_empty(), "the requirement is highlighted");
     let requirement = a
@@ -127,30 +149,17 @@ fn a_schwerpunkt_the_ad_demands_counts_double_and_raises_relevance() {
         .find(|r| r.label.as_deref() == Some("Erfahrung im Treasury"))
         .expect("requirement");
     assert_eq!(requirement.params["focus"], "Treasury");
-    // The alternative term of the competence belongs to the Schwerpunkt.
-    let cash = run(
-        &focus,
-        &ad(
-            "Ihr Profil\n- Erfahrung im Cash Management\n- Erfahrung im Controlling\n\
-             - Kenntnisse in der Zollabwicklung\nRahmenbedingungen\nTagessatz 1.100 € pro Tag\n",
-        ),
-    );
-    assert!(
-        reason(&cash, ReasonCode::Focus).is_some(),
-        "{:?}",
-        cash.reasons
-    );
 }
 
 #[test]
 fn an_ad_that_demands_no_schwerpunkt_gets_nothing() {
-    let focus = with(&json!({ "schwerpunkte": ["Treasury", "Restrukturierung"] }));
+    let focus = focus(&["Treasury", "Restrukturierung"]);
     let plain = run(&base(), &ad(CONTROLLING_TEXT));
     let a = run(&focus, &ad(CONTROLLING_TEXT));
     assert_eq!(a.score, plain.score);
     assert!(reason(&a, ReasonCode::Focus).is_none());
     // A broader requirement inside the Schwerpunkt does not demand it.
-    let ifrs = with(&json!({ "schwerpunkte": ["Konzernrechnungslegung nach IFRS"] }));
+    let ifrs = self::focus(&["Konzernrechnungslegung nach IFRS"]);
     let text = "Ihr Profil\n- Kenntnisse in IFRS\n- Erfahrung im Controlling\n\
                 - Kenntnisse in der Zollabwicklung\nRahmenbedingungen\nTagessatz 1.100 € pro Tag\n";
     assert_eq!(run(&ifrs, &ad(text)).score, run(&base(), &ad(text)).score);
@@ -163,7 +172,7 @@ fn a_schwerpunkt_in_the_title_raises_relevance() {
         title: "Interim Treasury Manager (m/w/d)",
         ..ad(CONTROLLING_TEXT)
     };
-    let focus = with(&json!({ "schwerpunkte": ["Treasury"] }));
+    let focus = focus(&["Treasury"]);
     let a = run(&focus, &title);
     let r = reason(&a, ReasonCode::Focus).expect("focus from the title");
     assert_eq!(r.params["inTitle"], true);
@@ -172,7 +181,7 @@ fn a_schwerpunkt_in_the_title_raises_relevance() {
 
 #[test]
 fn target_roles_full_half_and_none() {
-    let roles = with(&json!({ "wunschrollen": ["Interim CFO", "Head of Finance"] }));
+    let roles = roles(&["Interim CFO", "Head of Finance"]);
     let titled = |title: &'static str| Ad {
         title,
         ..ad(CONTROLLING_TEXT)
@@ -209,7 +218,7 @@ fn target_roles_full_half_and_none() {
 
 #[test]
 fn a_target_role_never_lifts_a_capped_or_excluded_ad() {
-    let roles = with(&json!({ "wunschrollen": ["Interim CFO"] }));
+    let roles = roles(&["Interim CFO"]);
     let off_field = Ad {
         title: "Interim CFO (m/w/d) Klinikverbund",
         text: "Ihr Profil\n- Erfahrung in der Krankenhausbuchhaltung\n\
@@ -229,13 +238,12 @@ fn a_target_role_never_lifts_a_capped_or_excluded_ad() {
     assert_eq!(run(&roles, &anue).verdict, Verdict::Excluded);
 }
 
-fn wishes(preferences: &Value) -> Value {
-    with(&json!({ "einsatzpraeferenzen": preferences }))
-}
-
 #[test]
 fn day_rate_wish_met_near_missed_unknown() {
-    let profile = wishes(&json!({ "tagessatz_wunsch": 1000 }));
+    let profile = ProfileForm {
+        day_rate_wish: Some(1000),
+        ..base()
+    };
     let text = |rate: &str| {
         format!(
             "Ihr Profil\n- Erfahrung im Treasury\n- Erfahrung im Controlling\n\
@@ -282,47 +290,45 @@ fn day_rate_wish_met_near_missed_unknown() {
 }
 
 #[test]
-fn remote_wish_levels_and_old_free_text() {
-    let case = |wish: Value, frame: &str| {
+fn work_mode_wishes() {
+    let case = |mode: WorkWish, frame: &str| {
         let body = format!(
             "Ihr Profil\n- Erfahrung im Treasury\n- Erfahrung im Controlling\n\
              Rahmenbedingungen\nTagessatz 1.100 € pro Tag\n{frame}\n"
         );
-        let profile = wishes(&json!({ "remote": wish }));
+        let profile = ProfileForm {
+            work_mode: mode,
+            ..base()
+        };
         let ad = Ad { text: &body, ..AD };
         state(&run(&profile, &ad), ReasonCode::RemoteWish)
     };
-    assert_eq!(case(json!("voll"), "Einsatz zu 100 % remote"), "met");
-    assert_eq!(case(json!("voll"), "Einsatz zu 80 % remote"), "near");
-    assert_eq!(case(json!("voll"), "Einsatz zu 60 % remote"), "missed");
+    // Remote: at least fully remote.
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 100 % remote"), "met");
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 80 % remote"), "near");
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 60 % remote"), "missed");
+    assert_eq!(case(WorkWish::Remote, "Start ab sofort"), "unknown");
+    // Hybrid: at least partly remote.
+    assert_eq!(case(WorkWish::Hybrid, "Remote-Anteil 40 %"), "met");
     assert_eq!(
-        case(json!("ueberwiegend"), "Zwei Tage pro Woche vor Ort"),
+        case(WorkWish::Hybrid, "Hybrides Arbeiten nach Absprache"),
         "met"
     );
     assert_eq!(
-        case(json!("ueberwiegend"), "Hybrides Arbeiten nach Absprache"),
-        "near"
-    );
-    assert_eq!(
-        case(json!("teilweise"), "Einsatz vor Ort in Hamburg"),
+        case(WorkWish::Hybrid, "Einsatz vor Ort in Hamburg"),
         "missed"
     );
-    assert_eq!(case(json!("ueberwiegend"), "Remote-Anteil 40 %"), "near");
-    // Old free text reads like the profile editor reads it (up to half: `teilweise`).
-    assert_eq!(case(json!("mindestens 50 %"), "Remote-Anteil 40 %"), "met");
-    assert_eq!(
-        case(json!("mindestens 50 %"), "Einsatz vor Ort in Hamburg"),
-        "missed"
-    );
-    assert_eq!(case(json!("80 % remote"), "Einsatz zu 60 % remote"), "met");
-    assert_eq!(case(json!("vor_ort"), "Einsatz zu 100 % remote"), "missed");
-    assert_eq!(case(json!("vor_ort"), "Einsatz vor Ort in Hamburg"), "met");
-    assert_eq!(case(json!("voll"), "Start ab sofort"), "unknown");
+    // On site.
+    assert_eq!(case(WorkWish::Onsite, "Einsatz zu 100 % remote"), "missed");
+    assert_eq!(case(WorkWish::Onsite, "Einsatz vor Ort in Hamburg"), "met");
 }
 
 #[test]
 fn region_wish_places_states_and_remote_only() {
-    let profile = wishes(&json!({ "regionen": ["Bayern", "Frankfurt am Main"] }));
+    let profile = ProfileForm {
+        regions: vec!["Bayern".into(), "Frankfurt am Main".into()],
+        ..base()
+    };
     let case = |location: &'static str, frame: &str| {
         let body = format!(
             "Ihr Profil\n- Erfahrung im Treasury\n- Erfahrung im Controlling\n\
@@ -362,7 +368,7 @@ fn region_wish_places_states_and_remote_only() {
 
 #[test]
 fn industry_wish_from_intro_company_and_title() {
-    let profile = wishes(&json!({ "branchen": ["Automobilindustrie", "Versicherungen"] }));
+    let profile = preferring(&["Automobilindustrie", "Versicherungen"]);
     let case = |ad: &Ad<'_>| state(&run(&profile, ad), ReasonCode::IndustryWish);
     let text = |intro: &str| {
         format!(
@@ -376,7 +382,7 @@ fn industry_wish_from_intro_company_and_title() {
     let retail = text("Ein Handelskonzern aus dem Norden.");
     assert_eq!(case(&ad(&retail)), "missed");
     // Tasks say nothing about the client's industry.
-    let banks = wishes(&json!({ "branchen": ["Banken"] }));
+    let banks = preferring(&["Banken"]);
     let plain = text("Ein Mittelständler.");
     assert_eq!(
         state(&run(&banks, &ad(&plain)), ReasonCode::IndustryWish),
@@ -398,12 +404,12 @@ fn industry_wish_from_intro_company_and_title() {
 
 #[test]
 fn wishes_are_bounded_and_never_exclude() {
-    let profile = wishes(&json!({
-        "tagessatz_wunsch": 1500,
-        "remote": "voll",
-        "regionen": ["München"],
-        "branchen": ["Automobilindustrie"]
-    }));
+    let profile = ProfileForm {
+        day_rate_wish: Some(1500),
+        work_mode: WorkWish::Remote,
+        regions: vec!["München".into()],
+        ..preferring(&["Automobilindustrie"])
+    };
     let missed = Ad {
         location: "Hamburg, Deutschland",
         text: "Über uns\nEin Handelskonzern.\n\nIhr Profil\n- Erfahrung im Treasury\n\
@@ -430,17 +436,20 @@ fn wishes_are_bounded_and_never_exclude() {
     }
 }
 
+/// A change of the base profile.
+type Change = Box<dyn Fn(&mut ProfileForm)>;
+
 #[test]
-fn the_summary_and_the_fingerprint_follow_the_keys() {
+fn the_summary_and_the_fingerprint_follow_the_fields() {
     let plain = compile_profile(&base());
     assert!(plain.summary().wishes.iter().all(|w| !w.set));
     assert_eq!(plain.summary().wishes.len(), 6);
-    let full = wishes(&json!({
-        "tagessatz_wunsch": "1.300 €",
-        "remote": "mindestens 60 %",
-        "regionen": ["München"],
-        "branchen": ["Maschinenbau"]
-    }));
+    let full = ProfileForm {
+        day_rate_wish: Some(1300),
+        work_mode: WorkWish::Hybrid,
+        regions: vec!["München".into()],
+        ..preferring(&["Maschinenbau"])
+    };
     let compiled = compile_profile(&full);
     let set = |key| {
         compiled
@@ -452,75 +461,33 @@ fn the_summary_and_the_fingerprint_follow_the_keys() {
             .clone()
     };
     assert_eq!(set(WishKey::DayRate).params["wish"], 1300);
-    assert_eq!(set(WishKey::Remote).params["min"], 60);
+    assert_eq!(set(WishKey::Remote).params["min"], 20);
+    assert_eq!(set(WishKey::Remote).params["level"], "hybrid");
     assert!(set(WishKey::Regions).set && set(WishKey::Industries).set);
     let mut seen = vec![plain.fingerprint()];
-    for extra in [
-        json!({ "schwerpunkte": ["Treasury"] }),
-        json!({ "wunschrollen": ["Interim CFO"] }),
-        json!({ "einsatzpraeferenzen": { "tagessatz_wunsch": 1200 } }),
-        json!({ "einsatzpraeferenzen": { "remote": "voll" } }),
-        json!({ "einsatzpraeferenzen": { "regionen": ["Hamburg"] } }),
-        json!({ "einsatzpraeferenzen": { "branchen": ["Chemie"] } }),
-    ] {
-        let fingerprint = compile_profile(&with(&extra)).fingerprint();
-        assert!(!seen.contains(&fingerprint), "{extra}");
+    let changes: [(&str, Change); 6] = [
+        ("focus", Box::new(|p| p.competences[2].focus = true)),
+        ("role", Box::new(|p| p.roles = vec!["Interim CFO".into()])),
+        ("rate", Box::new(|p| p.day_rate_wish = Some(1200))),
+        ("mode", Box::new(|p| p.work_mode = WorkWish::Remote)),
+        ("region", Box::new(|p| p.regions = vec!["Hamburg".into()])),
+        (
+            "industry",
+            Box::new(|p| {
+                p.industries = vec![ProfileIndustry {
+                    name: "Chemie".into(),
+                    preferred: true,
+                }];
+            }),
+        ),
+    ];
+    for (name, change) in changes {
+        let mut profile = base();
+        change(&mut profile);
+        let fingerprint = compile_profile(&profile).fingerprint();
+        assert!(!seen.contains(&fingerprint), "{name}");
         seen.push(fingerprint);
     }
-}
-
-#[test]
-fn unreadable_and_too_many_values_are_warnings() {
-    let profile = with(&json!({
-        "schwerpunkte": ["Controlling", "Treasury", "Forecast", "Budgetierung",
-                         "Restrukturierung", "Konzernrechnungslegung nach IFRS", "Cash Management"],
-        "wunschrollen": "CFO",
-        "einsatzpraeferenzen": { "tagessatz_wunsch": "viel", "remote": "gern", "regionen": [] }
-    }));
-    let compiled = compile_profile(&profile);
-    let warnings = &compiled.summary().warnings;
-    let trimmed = warnings
-        .iter()
-        .find(|w| w.code == ProfileWarningCode::FocusTrimmed)
-        .expect("trimmed");
-    assert_eq!(
-        (
-            trimmed.params["count"].as_u64(),
-            trimmed.params["max"].as_u64()
-        ),
-        (Some(7), Some(5))
-    );
-    let keys: Vec<&str> = warnings
-        .iter()
-        .filter(|w| w.code == ProfileWarningCode::CriterionNotUnderstood)
-        .filter_map(|w| w.params["key"].as_str())
-        .collect();
-    for key in ["wunschrollen", "tagessatz_wunsch", "remote", "regionen"] {
-        assert!(keys.contains(&key), "{key} in {keys:?}");
-    }
-    // English keys, and a Schwerpunkt the walk did not find becomes a competence.
-    let english = with(&json!({
-        "focus_areas": ["Liquiditätsplanung"],
-        "target_roles": ["Head of Finance"],
-        "preferences": { "desired_day_rate": 1200, "regions": ["Hamburg"], "industries": ["Chemie"] }
-    }));
-    let compiled = compile_profile(&english);
-    assert!(
-        compiled
-            .summary()
-            .wishes
-            .iter()
-            .all(|w| w.key == WishKey::Remote || w.set)
-    );
-    let a = run(
-        &english,
-        &ad(
-            "Ihr Profil\n- Erfahrung in der Liquiditätsplanung\n- Erfahrung im Controlling\n\
-             Rahmenbedingungen\nTagessatz 1.300 € pro Tag\n",
-        ),
-    );
-    let r = reason(&a, ReasonCode::Focus).expect("focus from focus_areas");
-    assert_eq!(r.evidence.as_ref().unwrap().path, "focus_areas[0]");
 }
 
 /// Every reason and warning code of the engine has a text in the UI catalog.

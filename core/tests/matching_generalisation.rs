@@ -23,7 +23,12 @@ fn run(profile: &Value, title: &str, text: &str) -> Assessment {
         posted: None,
         kind: TextKind::Full,
     };
-    assess(&compile_profile(profile), &job, None).expect("assessed")
+    assess(&compile_profile(&form(profile)), &job, None).expect("assessed")
+}
+
+/// A profile written as v19 JSON.
+fn form(profile: &Value) -> jobalert_core::profile::ProfileForm {
+    jobalert_core::profile::parse(&profile.to_string()).expect("a v19 profile")
 }
 
 fn finance() -> Value {
@@ -35,14 +40,12 @@ fn finance() -> Value {
             {"kompetenz": "Treasury", "jahre": 10}
         ],
         "sprachen": [
-            {"sprache": "Dutch", "niveau": "Native"},
+            {"sprache": "Dutch", "niveau": "Muttersprache"},
             {"sprache": "English", "niveau": "C2"}
         ],
         "berufserfahrung_jahre": 15,
-        "harte_kriterien": {
-            "min_jahresgehalt": 95000,
-            "festanstellung_orte": ["München"]
-        }
+        "laender": [],
+        "mindestgehalt": 95000
     })
 }
 
@@ -108,8 +111,7 @@ fn seniority_is_the_same_for_every_profile() {
     assert_ne!(a.verdict, Verdict::Excluded);
 }
 
-/// A student role is employment: its stated hourly wage decides the salary criterion, its
-/// place is only a check (the role is inferred from the title).
+/// A student role is employment: its stated hourly wage decides the salary criterion.
 #[test]
 fn a_student_role_is_employment_and_its_wage_decides() {
     let a = run(
@@ -122,10 +124,6 @@ fn a_student_role_is_employment_and_its_wage_decides() {
     let codes: Vec<(ReasonCode, ReasonKind)> = a.reasons.iter().map(|r| (r.code, r.kind)).collect();
     assert!(
         codes.contains(&(ReasonCode::Salary, ReasonKind::Violation)),
-        "{codes:?}"
-    );
-    assert!(
-        !codes.contains(&(ReasonCode::PermanentRegion, ReasonKind::Violation)),
         "{codes:?}"
     );
 }
@@ -147,7 +145,7 @@ fn a_short_teaser_is_judged_from_its_title() {
             posted: None,
             kind,
         };
-        assess(&compile_profile(&profile), &job, None).expect("assessed")
+        assess(&compile_profile(&form(&profile)), &job, None).expect("assessed")
     };
     let cfo = teaser("Interim CFO (m/w/d)", TextKind::Teaser);
     assert_eq!(cfo.verdict, Verdict::Scored);
@@ -331,6 +329,6 @@ fn an_open_title_word_caps_a_teaser() {
         posted: None,
         kind: TextKind::Teaser,
     };
-    let a = assess(&compile_profile(&finance()), &job, None).expect("assessed");
+    let a = assess(&compile_profile(&form(&finance())), &job, None).expect("assessed");
     assert!(a.score <= 60, "{} {:#?}", a.score, a.reasons);
 }

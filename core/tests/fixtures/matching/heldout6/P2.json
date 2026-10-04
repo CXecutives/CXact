@@ -1,212 +1,173 @@
 {
-  "name": "Daan Voorbeeld",
-  "email": "daan.voorbeeld@example.invalid",
-  "telefon": "+31 6 00000000",
-  "titel": "Senior Supply Chain and Procurement Manager",
-  "abschluss": "MSc Supply Chain Management",
-  "berufserfahrung_jahre": 12,
-  "ausbildung": [
-    {
-      "abschluss": "MSc Supply Chain Management",
-      "fach": "Operations and Supply Chain Management",
-      "hochschule": "Example University of Technology",
-      "jahr": 2014
-    },
-    {
-      "abschluss": "BSc International Business",
-      "fach": "Logistics and Economics",
-      "jahr": 2012
-    }
+  "wunschrollen": [
+    "Senior Supply Chain and Procurement Manager"
   ],
-  "stationen": [
-    {
-      "zeitraum": "2021 - present",
-      "rolle": "Freelance Supply Chain and Procurement Manager",
-      "schwerpunkte": [
-        "Interim Category Manager for indirect spend at a food manufacturer (EUR 60m addressable spend)",
-        "Procurement transformation and SAP Ariba roll-out for a mid-sized chemicals group",
-        "Redesign of the monthly S&OP cycle for a consumer electronics distributor",
-        "Supplier risk assessment and dual sourcing after semiconductor shortages"
-      ]
-    },
-    {
-      "zeitraum": "2017 - 2021",
-      "rolle": "Procurement Manager Direct Materials at a packaging manufacturer",
-      "schwerpunkte": [
-        "Category strategies for resins and corrugated board, spend of EUR 180m",
-        "Negotiation of framework agreements with index-based price clauses",
-        "Supplier development and quarterly business reviews with the top 20 suppliers"
-      ]
-    },
-    {
-      "zeitraum": "2014 - 2017",
-      "rolle": "Supply Chain Analyst and Demand Planner at a logistics service provider",
-      "schwerpunkte": [
-        "Statistical demand forecasting and inventory optimisation for retail customers",
-        "Road freight tenders for Benelux and Germany"
-      ]
-    }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung",
+    "zeitarbeit"
   ],
+  "tagessatz_wunsch": null,
+  "tagessatz_min": 850,
+  "mindestgehalt": null,
+  "arbeitsmodell": "hybrid",
+  "laender": [
+    "NL",
+    "BE",
+    "DE"
+  ],
+  "regionen": [],
+  "verfuegbar_ab": "01.11.2026",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Strategic Sourcing",
       "jahre": 9,
-      "auch": ["Strategic Procurement", "Sourcing Strategy"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Category Management",
       "jahre": 8,
-      "auch": ["Category Strategy"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Supplier Management",
       "jahre": 9,
-      "auch": ["Supplier Relationship Management", "Supplier Development", "SRM"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Contract Negotiation",
       "jahre": 9,
-      "auch": ["Framework Agreements"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Procurement Transformation",
-      "jahre": 5
+      "jahre": 5,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Sales and Operations Planning",
       "jahre": 6,
-      "auch": ["S&OP", "Integrated Business Planning"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Demand Planning",
       "jahre": 5,
-      "auch": ["Demand Forecasting"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Inventory Optimisation",
       "jahre": 7,
-      "auch": ["Inventory Management", "Safety Stock Planning"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Supplier Risk Management",
-      "jahre": 5
+      "jahre": 5,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Spend Analysis",
-      "jahre": 8
+      "jahre": 8,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Cost Reduction",
       "jahre": 9,
-      "auch": ["Savings Programmes", "Should Costing"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Logistics Tendering",
       "jahre": 4,
-      "auch": ["Freight Tenders"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Source-to-Pay",
       "jahre": 6,
-      "auch": ["Procure-to-Pay", "P2P"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Project Management",
-      "jahre": 8
+      "jahre": 8,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Stakeholder Management",
-      "jahre": 10
+      "jahre": 10,
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "SAP MM"
-    },
-    {
-      "name": "SAP S/4HANA"
-    },
-    {
-      "name": "SAP Ariba"
-    },
-    {
-      "name": "Coupa"
-    },
-    {
-      "name": "Kinaxis RapidResponse"
-    },
-    {
-      "name": "Power BI"
-    },
-    {
-      "name": "Excel with Power Query"
-    },
-    {
-      "name": "Lean Six Sigma"
-    }
+    "SAP MM",
+    "SAP S/4HANA",
+    "SAP Ariba",
+    "Coupa",
+    "Kinaxis RapidResponse",
+    "Power BI",
+    "Excel with Power Query",
+    "Lean Six Sigma",
+    "Procurement",
+    "Supply Chain",
+    "S&OP",
+    "Remote",
+    "Strategic Procurement",
+    "Sourcing Strategy",
+    "Category Strategy",
+    "Supplier Relationship Management",
+    "Supplier Development",
+    "SRM",
+    "Framework Agreements",
+    "Integrated Business Planning",
+    "Demand Forecasting",
+    "Inventory Management",
+    "Safety Stock Planning",
+    "Savings Programmes",
+    "Should Costing",
+    "Freight Tenders",
+    "Procure-to-Pay",
+    "P2P"
   ],
-  "zertifizierungen": [
-    {
-      "name": "APICS CSCP (Certified Supply Chain Professional)"
-    },
-    {
-      "name": "MCIPS (Chartered Institute of Procurement & Supply)"
-    },
-    {
-      "name": "Lean Six Sigma Green Belt"
-    }
-  ],
+  "berufserfahrung_jahre": 12,
   "branchen": [
     {
-      "branche": "Food and Beverage"
+      "branche": "Food and Beverage",
+      "wunsch": false
     },
     {
-      "branche": "Chemicals"
+      "branche": "Chemicals",
+      "wunsch": false
     },
     {
-      "branche": "Packaging"
+      "branche": "Packaging",
+      "wunsch": false
     },
     {
-      "branche": "Consumer Electronics"
+      "branche": "Consumer Electronics",
+      "wunsch": false
     },
     {
-      "branche": "Logistics"
+      "branche": "Logistics",
+      "wunsch": false
     }
   ],
   "sprachen": [
     {
       "sprache": "Dutch",
-      "niveau": "Native"
+      "niveau": "Muttersprache"
     },
     {
       "sprache": "English",
       "niveau": "C2"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Delivered EUR 14m of audited savings across three interim assignments",
-    "Connects procurement and planning, so sourcing decisions hold up in the S&OP"
+  "abschluesse": [
+    "MSc Supply Chain Management",
+    "BSc International Business, Logistics and Economics"
   ],
-  "keywords": [
-    "Procurement",
-    "Supply Chain",
-    "Strategic Sourcing",
-    "Category Management",
-    "S&OP",
-    "SAP Ariba",
-    "Remote"
+  "zertifizierungen": [
+    "APICS CSCP (Certified Supply Chain Professional)",
+    "MCIPS (Chartered Institute of Procurement & Supply)",
+    "Lean Six Sigma Green Belt"
   ],
-  "einsatzpraeferenzen": {
-    "remote": "fully remote preferred, on site up to 2 days per month"
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 850,
-    "laender": [
-      "NL",
-      "BE",
-      "DE"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "2026-11-01"
-  }
+  "ausschlusswoerter": []
 }

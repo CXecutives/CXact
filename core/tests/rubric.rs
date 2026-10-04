@@ -52,22 +52,29 @@ fn the_bands_cover_one_to_ten() {
     );
 }
 
-/// The rubric rules on the profile's own keys, and on no retired one: the engine reads the
-/// years an ad asks for against `berufserfahrung_jahre` only (engine 18).
+/// The rubric rules on the profile's own keys (Profil-JSON v19), and on no retired one.
 #[test]
 fn the_rubric_names_the_profile_keys() {
     let rubric = read(RUBRIC);
     for key in [
-        "min_tagessatz",
+        "vertragsarten",
+        "tagessatz_min",
         "laender",
-        "min_jahresgehalt",
+        "mindestgehalt",
         "ausschlusswoerter",
-        "schwerpunkte",
+        "schwerpunkt",
         "wunschrollen",
         "tagessatz_wunsch",
-        "einsatzpraeferenzen",
+        "arbeitsmodell",
     ] {
         assert!(rubric.contains(key), "{key}");
     }
-    assert!(!rubric.contains("zielprofil"), "a retired key");
+    for retired in [
+        "zielprofil",
+        "einsatzpraeferenzen",
+        "harte_kriterien",
+        "min_tagessatz",
+    ] {
+        assert!(!rubric.contains(retired), "a retired key: {retired}");
+    }
 }

@@ -32,7 +32,6 @@ use jobalert_core::model::is_usable_title;
 use jobalert_core::portal::Portal;
 use jobalert_core::time::local_date;
 use jobalert_core::view::slug_title;
-use serde_json::Value;
 
 type Res<T> = Result<T, Box<dyn Error>>;
 
@@ -150,8 +149,8 @@ fn run_profile(
     labels: &Labels,
 ) -> Res<Option<ProfileRun>> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let data: Value =
-        serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    let data =
+        jobalert_core::profile::parse(&text).map_err(|e| format!("{}: {e:?}", path.display()))?;
     let profile = matching::compile_profile(&data);
     let name = gold::profile_key(path);
     let own = labels::for_profile(labels, &name);

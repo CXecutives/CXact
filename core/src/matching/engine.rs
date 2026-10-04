@@ -41,6 +41,7 @@ use super::sections::ReqKind;
 use super::seniority;
 use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict};
 use super::wishes::{self, WishResult, Wishes};
+use crate::profile::ProfileForm;
 
 /// A profile prepared for the engine.
 pub(crate) struct EngineProfile {
@@ -51,31 +52,22 @@ pub(crate) struct EngineProfile {
     pub query: Vec<(String, u64)>,
     /// The query plus the topics of the target roles: what the title may name.
     pub title_query: Vec<(String, u64)>,
-    /// Schwerpunkte (at most `FOCUS_MAX`, those the profile entries carry).
+    /// Schwerpunkte: the starred competences (at most `FOCUS_MAX`).
     pub focus: Vec<Focus>,
-    /// How many Schwerpunkte the profile names.
-    pub focus_count: usize,
     pub roles: Vec<Role>,
     pub wishes: Wishes,
-    /// Keys of Schwerpunkte, target roles and wishes present with a value that cannot be
-    /// read: (key, value).
-    pub unreadable: Vec<(&'static str, String)>,
 }
 
 impl EngineProfile {
-    pub(crate) fn new(data: &Value) -> Self {
-        let core = profile::core_texts(data);
-        let declared = focus::declared(data);
-        let skills = Skills::new(&core, data, &declared.items);
-        let criteria = HardCriteria::new(&profile::criteria(data), data);
+    pub(crate) fn new(form: &ProfileForm) -> Self {
+        let core = profile::core_texts(form);
+        let skills = Skills::new(&core, form);
+        let criteria = HardCriteria::new(form);
         let query = relevance::query(&skills);
-        let (focus, mut unreadable) = focus::resolve(&skills, &declared.items);
-        unreadable.extend(declared.unreadable);
-        let (roles, roles_unreadable) = roles::read(data, &skills.vocab);
-        unreadable.extend(roles_unreadable);
+        let focus = focus::of_profile(&skills, form);
+        let roles = roles::read(form, &skills.vocab);
         let title_query = relevance::title_query(&query, &roles::topics(&roles));
-        let (wishes, wishes_unreadable) = Wishes::new(data, &skills.vocab);
-        unreadable.extend(wishes_unreadable);
+        let wishes = Wishes::new(form, &skills.vocab);
         Self {
             core,
             skills,
@@ -83,10 +75,8 @@ impl EngineProfile {
             query,
             title_query,
             focus,
-            focus_count: declared.count,
             roles,
             wishes,
-            unreadable,
         }
     }
 }
@@ -355,9 +345,6 @@ fn criteria_findings(
         &contract,
         facts.title,
         segments,
-    ));
-    findings.extend(permanent::region(
-        criteria, &contract, facts, segments, folded,
     ));
     (findings, contract)
 }

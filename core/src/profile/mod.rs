@@ -1,58 +1,42 @@
-//! Consultant profiles: JSON files in `profil/` of the workspace (the place and format of the
-//! old program's profile, `beraterprofil.json` the first of them), one of them active
-//! ([`set`]: several profiles, the active one, their names). Everything here without a
-//! profile's number works on the active one. The Profil view edits it through a form
-//! ([`form`]): saving merges the form into the file, so keys the form does not know, their
-//! values and the order of the keys stay; the previous file stays next to it as the one
-//! backup. Deleting a profile makes it that backup, so it can be restored; restoring over a
-//! profile (the undo of another file that replaced it) swaps the two. A chosen file fills the
-//! form first, the user reviews it and saves; the file an AI wrote from a CV with the app's
-//! [`prompt`] loads the same way, also as the AI's answer saved as it came ([`answer`]). No
-//! network: everything stays on the computer.
+//! The consultant profile: one file in `profil/` of the workspace, `beraterprofil.json`
+//! (Profil-JSON v19, [`form`]; user decision 2026-10-03: one profile only). Saving writes the
+//! editor's form, rebased on what the file holds by then, and keeps the previous file next to
+//! it as the one backup (`beraterprofil.json.bak`).
 
-mod answer;
 pub mod cv;
 mod form;
-mod json;
-pub mod prompt;
 mod search_terms;
-mod set;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use jiff::Timestamp;
-use serde_json::Value;
 
 use crate::error::{Error, InvalidInput, Result};
 use crate::export::write_atomic;
-use crate::matching::{self, ProfileQuality, ProfileSummary};
+use crate::store::Store;
 
+pub(crate) use form::key;
 #[cfg(test)]
 pub(crate) use form::typescript as form_typescript;
 pub use form::{
-    LanguageLevel, MAX_FOCUS, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
-    ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
+    LanguageLevel, MAX_FOCUS, MIN_MONTHS, ProfileAvailability, ProfileCompetence, ProfileForm,
+    ProfileIndustry, ProfileLanguage, WorkWish, Workload, file_value, missing_required, parse,
 };
-use json::Json;
 pub use search_terms::{MAX_DEEP_TERMS, deep_search_terms};
-pub use set::{
-    Entry as ProfileEntry, INDEX_FILE, MAX_NAME, create, delete, duplicate, file_name, id_of,
-    import, is_app_file, list, rename, restore, role, switch,
-};
 
-/// Folder and file name are a contract with the user's work folder (the old program's) - do
-/// not translate. The first profile's file (the one of earlier versions).
+/// Folder and file names are a contract with the user's work folder - do not translate.
 pub const PROFILE_DIR: &str = "profil";
 pub const PROFILE_FILE: &str = "beraterprofil.json";
-/// The first profile's previous version, kept next to it on every save (one backup, replaced
-/// each time); every profile has its own (`<file>.bak`).
+/// The profile's previous version, kept next to it on every save (one backup, replaced each
+/// time).
 pub const BACKUP_FILE: &str = "beraterprofil.json.bak";
 
-/// One change of the profile files at a time: a save, a switch, a new profile. Two saves
-/// close together (two terms added from the reader) each read the file the other one wrote,
-/// so neither drops what the other changed, and no switch falls between the read and the
-/// write of a save.
+/// The store key of the fields the CV import filled (until the next save).
+const AI_FILLED_KEY: &str = "profile.aiFilled";
+
+/// One save at a time: two saves close together (two terms added from the reader) each read
+/// the file the other one wrote, so neither drops what the other changed.
 static WRITING: Mutex<()> = Mutex::new(());
 
 fn writing() -> MutexGuard<'static, ()> {
@@ -65,34 +49,62 @@ pub struct ProfileInfo {
     pub path: PathBuf,
     pub bytes: u64,
     pub saved_at: Option<Timestamp>,
-    /// The file is no valid JSON object any more (edited by hand).
+    /// The file does not read as a profile (edited by hand, or of another version).
     pub parse_error: Option<InvalidInput>,
 }
 
-/// The file of the active profile; without any profile, the file a new one gets.
+/// The profile's file.
 pub fn profile_path(workspace: &Path) -> PathBuf {
-    set::active_path(workspace)
+    workspace.join(PROFILE_DIR).join(PROFILE_FILE)
+}
+
+/// The profile's one backup.
+pub fn backup_path(workspace: &Path) -> PathBuf {
+    workspace.join(PROFILE_DIR).join(BACKUP_FILE)
+}
+
+/// A file the app keeps in the profile folder: the profile and its backup (what a reset
+/// deletes).
+pub fn is_app_file(name: &str) -> bool {
+    name == PROFILE_FILE || name == BACKUP_FILE
+}
+
+fn read(workspace: &Path) -> Result<Option<Vec<u8>>> {
+    let path = profile_path(workspace);
+    match std::fs::read(&path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(Error::io(&path, e)),
+    }
+}
+
+/// The profile in a file's bytes.
+fn form_of(bytes: &[u8]) -> std::result::Result<ProfileForm, InvalidInput> {
+    parse(std::str::from_utf8(bytes).map_err(|_| InvalidInput::ProfileNotUtf8)?)
 }
 
 /// The stored profile; `None` if there is none.
 pub fn info(workspace: &Path) -> Result<Option<ProfileInfo>> {
-    let path = profile_path(workspace);
-    let bytes = match std::fs::read(&path) {
-        Ok(bytes) => bytes,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(e) => return Err(Error::io(&path, e)),
+    let Some(bytes) = read(workspace)? else {
+        return Ok(None);
     };
-    let parse_error = parse_object(&bytes).err();
+    let path = profile_path(workspace);
     let saved_at = std::fs::metadata(&path)
         .and_then(|m| m.modified())
         .ok()
         .and_then(|t| Timestamp::try_from(t).ok());
     Ok(Some(ProfileInfo {
         bytes: bytes.len() as u64,
+        parse_error: form_of(&bytes).err(),
         path,
         saved_at,
-        parse_error,
     }))
+}
+
+/// The stored profile's form; `None` if there is none or it does not read (the profile info
+/// names the error).
+pub fn load(workspace: &Path) -> Result<Option<ProfileForm>> {
+    Ok(read(workspace)?.and_then(|bytes| form_of(&bytes).ok()))
 }
 
 /// The ISO code of a country entry of a profile as the engine reads it: a two-letter code,
@@ -104,7 +116,7 @@ pub fn country_code(name: &str) -> Option<String> {
 
 /// The ISO codes of every country the engine tells apart in a job ad, by a country or a
 /// city name of its lexicon (a German city without a country is in Germany), sorted: the
-/// countries a profile can choose (`laender`). The UI catalogs name each of them
+/// countries a profile can choose (`laender`). The UI catalog names each of them
 /// (`profile.country`), which `core/tests/countries.rs` checks.
 pub fn country_codes() -> Vec<&'static str> {
     use crate::matching::lexicon::engine as lex;
@@ -119,348 +131,99 @@ pub fn country_codes() -> Vec<&'static str> {
     codes
 }
 
-/// The stored profile as JSON; `None` if there is none or it is no valid JSON object (the
-/// profile info names the error).
-pub fn load(workspace: &Path) -> Result<Option<Value>> {
-    let path = profile_path(workspace);
-    match std::fs::read(&path) {
-        Ok(bytes) => Ok(parse_object(&bytes).ok()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(Error::io(&path, e)),
-    }
-}
-
-/// The one backup of the active profile.
-pub fn backup_path(workspace: &Path) -> PathBuf {
-    set::backup_of(&profile_path(workspace))
-}
-
-/// The number of the active profile; `None` without a profile.
-pub fn active_id(workspace: &Path) -> Result<Option<u32>> {
-    Ok(list(workspace)?
-        .into_iter()
-        .find(|entry| entry.active)
-        .map(|entry| entry.id))
-}
-
-/// A profile read for the editor: the form, the JSON text it came from (saving merges the
-/// form into it) and what the engine understands of it (its warnings show before saving).
-#[derive(Debug, Clone, PartialEq)]
-pub struct Draft {
-    pub form: ProfileForm,
-    pub source: String,
-    pub quality: ProfileQuality,
-    pub summary: ProfileSummary,
-}
-
-fn draft(doc: &Json, source: &str) -> Draft {
-    let compiled = matching::compile_profile(&doc.to_value());
-    Draft {
-        form: form::read(doc),
-        source: source.to_owned(),
-        quality: compiled.quality(),
-        summary: compiled.summary().clone(),
-    }
-}
-
-/// A profile file the user chose, for review in the editor (nothing is stored yet).
-pub fn draft_from_file(path: &Path) -> Result<Draft> {
-    let bytes = std::fs::read(path).map_err(|e| Error::io(path, e))?;
-    Ok(draft_from_text(utf8(&bytes)?)?)
-}
-
-/// The text of a chosen file for review in the editor ([`read_file`]).
-pub(crate) fn draft_from_text(text: &str) -> std::result::Result<Draft, InvalidInput> {
-    let (doc, source) = read_file(text)?;
-    Ok(draft(&doc, &source))
-}
-
-/// The profile in the text of a chosen file, with the JSON text a save goes into. A JSON
-/// object the form reads is taken as it is (its keys the form does not know and their order
-/// stay). Else the text may be an AI's answer to the [`prompt`] saved as it came: the profile
-/// in it as [`answer`] finds it (inside a code block, between sentences, repaired, in the
-/// skeleton's shape). Else a JSON object stays as it is, and a text that is none says why.
-/// Empty values go either way: the keys of the skeleton an AI left empty (`""`, `[]`,
-/// `null`) would otherwise be values the engine cannot read.
-pub(crate) fn read_file(text: &str) -> std::result::Result<(Json, String), InvalidInput> {
-    let strict = parse_doc(text);
-    if let Ok(doc) = &strict
-        && form::read(doc).has_content()
-    {
-        return Ok(without_empty(doc, text));
-    }
-    if let Some(found) = answer::read(text) {
-        return Ok(found);
-    }
-    strict.map(|doc| without_empty(&doc, text))
-}
-
-/// A document without its empty values, with its text: the file's own when nothing went.
-fn without_empty(doc: &Json, text: &str) -> (Json, String) {
-    let mut doc = doc.clone();
-    if answer::drop_empty(&mut doc) {
-        let source = doc.to_pretty().trim_end().to_owned();
-        (doc, source)
-    } else {
-        (doc, text.to_owned())
-    }
-}
-
-/// The prompt that has any AI write a profile from a CV (see [`prompt`]).
-pub fn cv_prompt() -> String {
-    prompt::text(crate::time::local_date(Timestamp::now()))
-}
-
-/// The form of the stored profile; `None` without a readable one.
-pub fn stored_form(workspace: &Path) -> Option<ProfileForm> {
-    let bytes = std::fs::read(profile_path(workspace)).ok()?;
-    form_of(utf8(&bytes).ok()?)
-}
-
-/// The form of a profile text; `None` if it is no JSON object.
-pub fn form_of(text: &str) -> Option<ProfileForm> {
-    parse_doc(text).ok().map(|doc| form::read(&doc))
-}
-
-/// Saves the editor's form into the active profile (without any profile it becomes the
-/// first one). `before` is the form as the editor received it: only fields that differ from
-/// it are written. They go into `source` (the JSON of a chosen file or a pasted answer, `{}`
-/// for a new profile) or, without one, into the stored profile. The previous file becomes
-/// the one backup next to it; the file is replaced atomically. One save at a time
-/// ([`WRITING`]).
+/// Saves the editor's form (without a profile it becomes the profile). `before` is the form
+/// as the editor received it: what the user changed is applied to what the file holds now
+/// ([`form::merge`]); a file that does not read is replaced. The previous file becomes the
+/// one backup next to it; the file is replaced atomically, and not touched when nothing
+/// changes. One save at a time ([`WRITING`]).
 pub fn save_form(
     workspace: &Path,
-    source: Option<&str>,
     before: &ProfileForm,
     after: &ProfileForm,
-    clear: &[UnreadableField],
 ) -> Result<ProfileInfo> {
     let _one_at_a_time = writing();
     let after = form::validate(after)?;
-    let path = profile_path(workspace);
-    let previous = match std::fs::read(&path) {
-        Ok(bytes) => Some(bytes),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-        Err(e) => return Err(Error::io(&path, e)),
+    let before = before.normalized();
+    let previous = read(workspace)?;
+    let now = previous.as_deref().and_then(|bytes| form_of(bytes).ok());
+    let form = match &now {
+        // A rebase that breaks a limit (a sixth star) saves what the user saw.
+        Some(now) => form::validate(&form::merge(now, &before, &after)).unwrap_or(after),
+        None => after,
     };
-    let mut doc = match (source, &previous) {
-        (Some(text), _) => parse_doc(text.strip_prefix('\u{feff}').unwrap_or(text))?,
-        (None, Some(bytes)) => parse_doc(utf8(bytes)?)?,
-        (None, None) => Json::object(),
-    };
-    let unchanged = doc.clone();
-    form::merge(&mut doc, before, &after, clear);
-    // Nothing to write: the stored file stays exactly as it is (no reformatting).
-    let keep = source.is_none() && previous.is_some() && doc == unchanged;
-    if !keep {
+    let text = form::write(&form);
+    if previous.as_deref() != Some(text.as_bytes()) {
         if let Some(old) = &previous {
-            write_atomic(&set::backup_of(&path), old)?;
+            write_atomic(&backup_path(workspace), old)?;
         }
-        write_atomic(&path, doc.to_pretty().as_bytes())?;
-        if previous.is_none() {
-            set::forget_name(workspace, &path);
-        }
+        write_atomic(&profile_path(workspace), text.as_bytes())?;
     }
     info(workspace)?.ok_or_else(|| Error::Corrupt("profile unreadable right after saving".into()))
 }
 
-/// Text of the file without a byte order mark.
-fn utf8(bytes: &[u8]) -> std::result::Result<&str, InvalidInput> {
-    let text = std::str::from_utf8(bytes).map_err(|_| InvalidInput::ProfileNotUtf8)?;
-    Ok(text.strip_prefix('\u{feff}').unwrap_or(text))
+/// The form fields the CV import filled, until the next save (the Profil marks them).
+pub fn ai_filled(store: &Store) -> Vec<String> {
+    store
+        .kv_get(AI_FILLED_KEY)
+        .ok()
+        .flatten()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
 }
 
-/// The file must be a JSON object.
-fn parse_object(bytes: &[u8]) -> std::result::Result<Value, InvalidInput> {
-    let value: Value =
-        serde_json::from_str(utf8(bytes)?).map_err(|e| InvalidInput::ProfileNotJson {
-            line: e.line(),
-            column: e.column(),
-        })?;
-    if value.is_object() {
-        Ok(value)
-    } else {
-        Err(InvalidInput::ProfileNotObject {
-            found: json_kind(&value).into(),
-        })
-    }
+/// Notes the form fields the CV import filled; an empty list clears them (a save does).
+pub fn set_ai_filled(store: &Store, fields: &[&str]) -> Result<()> {
+    store.kv_set(
+        AI_FILLED_KEY,
+        &serde_json::to_string(fields).unwrap_or_default(),
+    )
 }
 
-/// A profile text as an ordered document; it must be a JSON object.
-fn parse_doc(text: &str) -> std::result::Result<Json, InvalidInput> {
-    let doc: Json = serde_json::from_str(text).map_err(|e| InvalidInput::ProfileNotJson {
-        line: e.line(),
-        column: e.column(),
-    })?;
-    if doc.is_object() {
-        Ok(doc)
-    } else {
-        Err(InvalidInput::ProfileNotObject {
-            found: json_kind(&doc.to_value()).into(),
-        })
-    }
-}
-
-fn json_kind(value: &Value) -> &'static str {
-    match value {
-        Value::Object(_) => "object",
-        Value::Array(_) => "array",
-        Value::String(_) => "string",
-        Value::Number(_) => "number",
-        Value::Bool(_) => "boolean",
-        Value::Null => "null",
-    }
+/// A profile of a test, written as the v19 JSON (anything else panics).
+#[cfg(test)]
+pub(crate) fn of_json(value: &serde_json::Value) -> ProfileForm {
+    parse(&value.to_string()).unwrap_or_else(|e| panic!("no v19 profile ({e:?}): {value}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::matching::CriterionKey;
 
     fn workspace() -> tempfile::TempDir {
         tempfile::tempdir().unwrap()
-    }
-
-    fn store(dir: &Path, text: &str) {
-        std::fs::create_dir_all(dir.join(PROFILE_DIR)).unwrap();
-        std::fs::write(profile_path(dir), text).unwrap();
     }
 
     fn stored(dir: &Path) -> String {
         std::fs::read_to_string(profile_path(dir)).unwrap()
     }
 
-    fn keys(text: &str) -> Vec<String> {
-        match serde_json::from_str::<Json>(text).unwrap() {
-            Json::Object(entries) => entries.into_iter().map(|(k, _)| k).collect(),
-            _ => Vec::new(),
+    fn form(tools: &[&str]) -> ProfileForm {
+        ProfileForm {
+            roles: vec!["Interim CFO".into()],
+            tools: tools.iter().map(|t| (*t).to_owned()).collect(),
+            ..ProfileForm::default()
         }
-    }
-
-    fn fixture(name: &str) -> String {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/matching")
-            .join(name);
-        std::fs::read_to_string(path).unwrap()
-    }
-
-    /// Without origins (a form read back from a saved file has them, a new one has not).
-    fn plain(form: &ProfileForm) -> ProfileForm {
-        let mut form = form.normalized();
-        for row in &mut form.competences {
-            row.origin = None;
-        }
-        for row in &mut form.languages {
-            row.origin = None;
-        }
-        form
-    }
-
-    /// A hand-made profile: keys the form does not know, in an unusual order, with an
-    /// unknown key inside a competence and a criterion under its English key.
-    const HAND_MADE: &str = r#"{
-  "zeta_notiz": "bleibt",
-  "name": "Erika Beispiel",
-  "stationen": [{"rolle": "Interim CFO", "jahr": 2020}],
-  "kernkompetenzen": [
-    {"kompetenz": "Controlling", "jahre": 18, "beschreibung": "Konzern"},
-    "Treasury"
-  ],
-  "keywords": ["IFRS", {"frei": "Objekt"}],
-  "hard_criteria": {"min_salary": "150k", "eigene_regel": true},
-  "harte_kriterien": {"ausgeschlossene_vertragsarten": ["werkvertrag"], "laender": ["DE"]},
-  "einsatzpraeferenzen": {"tagessatz_ab": 950, "remote": "mindestens 50 %"}
-}"#;
-
-    #[test]
-    fn saving_merges_and_keeps_unknown_keys_values_and_order() {
-        let dir = workspace();
-        store(dir.path(), HAND_MADE);
-        let before = stored_form(dir.path()).unwrap();
-        assert_eq!(before.competences.len(), 2);
-        assert_eq!(before.competences[0].years, Some(18));
-        assert_eq!(before.criteria.min_day_rate, Some(950), "fallback read");
-        assert_eq!(
-            before.criteria.min_salary,
-            Some(150_000),
-            "English key read"
-        );
-        assert_eq!(before.keywords, ["IFRS"]);
-
-        let mut after = before.clone();
-        after.competences[0].years = Some(19);
-        after.competences[1].aliases = vec!["Cash Management".into()];
-        after.keywords.push("HGB".into());
-        after.criteria.no_anue = true;
-        after.criteria.min_salary = Some(160_000);
-        save_form(dir.path(), None, &before, &after, &[]).unwrap();
-
-        let text = stored(dir.path());
-        assert_eq!(
-            keys(&text),
-            [
-                "zeta_notiz",
-                "name",
-                "stationen",
-                "kernkompetenzen",
-                "keywords",
-                "hard_criteria",
-                "harte_kriterien",
-                "einsatzpraeferenzen"
-            ],
-            "{text}"
-        );
-        let value: Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(value["zeta_notiz"], "bleibt");
-        assert_eq!(value["stationen"][0]["jahr"], 2020);
-        let first = &value["kernkompetenzen"][0];
-        assert_eq!(first["jahre"], 19);
-        assert_eq!(first["beschreibung"], "Konzern", "unknown key in an entry");
-        assert_eq!(
-            value["kernkompetenzen"][1],
-            serde_json::json!({"kompetenz": "Treasury", "auch": ["Cash Management"]}),
-            "a text entry with aliases becomes an object"
-        );
-        assert_eq!(
-            value["keywords"],
-            serde_json::json!(["IFRS", "HGB", {"frei": "Objekt"}])
-        );
-        assert_eq!(
-            value["hard_criteria"]["min_salary"], 160_000,
-            "where it was"
-        );
-        assert_eq!(value["hard_criteria"]["eigene_regel"], true);
-        assert!(value["harte_kriterien"].get("min_jahresgehalt").is_none());
-        assert_eq!(
-            value["harte_kriterien"]["ausgeschlossene_vertragsarten"],
-            serde_json::json!(["werkvertrag", "anue"])
-        );
-        assert_eq!(
-            value["einsatzpraeferenzen"]["tagessatz_ab"], 950,
-            "untouched"
-        );
-        assert_eq!(value["einsatzpraeferenzen"]["remote"], "mindestens 50 %");
-
-        // Read back, the form is what the user left.
-        assert_eq!(plain(&stored_form(dir.path()).unwrap()), plain(&after));
     }
 
     #[test]
     fn the_previous_file_becomes_the_one_backup() {
         let dir = workspace();
-        store(dir.path(), HAND_MADE);
-        let before = stored_form(dir.path()).unwrap();
-        let mut first = before.clone();
-        first.title = "Interim CFO".into();
-        save_form(dir.path(), None, &before, &first, &[]).unwrap();
+        let empty = ProfileForm::default();
+        let first = form(&["SAP"]);
+        save_form(dir.path(), &empty, &first).unwrap();
+        assert!(!backup_path(dir.path()).exists(), "nothing to keep yet");
+        let saved_once = stored(dir.path());
+        assert_eq!(load(dir.path()).unwrap(), Some(first.clone()));
+        let second = form(&["SAP", "IFRS"]);
+        save_form(dir.path(), &first, &second).unwrap();
         assert_eq!(
             std::fs::read_to_string(backup_path(dir.path())).unwrap(),
-            HAND_MADE
+            saved_once
         );
-        let saved_once = stored(dir.path());
-        let mut second = first.clone();
-        second.title = "CFO".into();
-        save_form(dir.path(), None, &first, &second, &[]).unwrap();
+        // Saving what the file holds writes nothing.
+        let written = stored(dir.path());
+        save_form(dir.path(), &second, &second).unwrap();
+        assert_eq!(stored(dir.path()), written);
         assert_eq!(
             std::fs::read_to_string(backup_path(dir.path())).unwrap(),
             saved_once
@@ -471,83 +234,37 @@ mod tests {
             .collect();
         files.sort();
         assert_eq!(files, [PROFILE_FILE, BACKUP_FILE], "exactly one backup");
-
-        // Deleting the profile makes it the backup; restoring brings it back as it was.
-        let last = stored(dir.path());
-        let first_backup = dir.path().join(PROFILE_DIR).join(BACKUP_FILE);
-        assert!(delete(dir.path(), 1).unwrap());
-        assert!(info(dir.path()).unwrap().is_none(), "no profile");
-        assert_eq!(std::fs::read_to_string(&first_backup).unwrap(), last);
-        assert!(!delete(dir.path(), 1).unwrap(), "nothing left to delete");
-        assert!(restore(dir.path(), 1).unwrap());
-        assert_eq!(stored(dir.path()), last);
-        assert!(!first_backup.exists());
-        assert!(!restore(dir.path(), 1).unwrap(), "no backup left");
-
-        // "Reset everything" after a deletion leaves neither the profile nor its backup.
-        assert!(delete(dir.path(), 1).unwrap());
-        let data = dir.path().join("data");
-        std::fs::create_dir_all(&data).unwrap();
-        let plan = crate::reset::ResetPlan {
-            workspace: dir.path().to_path_buf(),
-        };
-        crate::reset::request(&data, &plan).unwrap();
-        let vault = crate::secrets::Vault::for_tests("profile-remove-reset");
-        let report = crate::reset::perform_pending(&data, &vault).unwrap();
-        assert!(report.failed.is_empty(), "{report:?}");
-        assert!(!dir.path().join(PROFILE_DIR).exists(), "nothing left");
-    }
-
-    #[test]
-    fn an_unchanged_form_leaves_the_file_as_written() {
-        let dir = workspace();
-        let compact = "{\"keywords\":[\"SAP\"],\"name\":\"X\"}";
-        store(dir.path(), compact);
-        let form = stored_form(dir.path()).unwrap();
-        save_form(dir.path(), None, &form, &form, &[]).unwrap();
-        assert_eq!(stored(dir.path()), compact, "not even reformatted");
-        assert!(!backup_path(dir.path()).exists());
+        assert!(files.iter().all(|f| is_app_file(f)));
     }
 
     #[test]
     fn invalid_input_is_refused_with_a_code_and_nothing_is_written() {
         let dir = workspace();
         let empty = ProfileForm::default();
-        let refused = |source: Option<&str>, form: &ProfileForm| -> InvalidInput {
-            match save_form(dir.path(), source, &empty, form, &[]).unwrap_err() {
-                Error::Invalid(input) => input,
-                other => panic!("{other:?}"),
-            }
+        let refused = |form: &ProfileForm| match save_form(dir.path(), &empty, form).unwrap_err() {
+            Error::Invalid(input) => input,
+            other => panic!("{other:?}"),
+        };
+        let rate = ProfileForm {
+            day_rate_min: Some(1_000_000),
+            ..empty.clone()
         };
         assert_eq!(
-            refused(Some("{\"name\": }"), &empty),
-            InvalidInput::ProfileNotJson {
-                line: 1,
-                column: 10
-            }
-        );
-        assert_eq!(
-            refused(Some("[1, 2]"), &empty),
-            InvalidInput::ProfileNotObject {
-                found: "array".into()
-            }
-        );
-        let mut rate = empty.clone();
-        rate.criteria.min_day_rate = Some(1_000_000);
-        assert_eq!(
-            refused(Some("{}"), &rate),
+            refused(&rate),
             InvalidInput::ProfileValue {
-                field: "minDayRate".into(),
+                field: "dayRateMin".into(),
                 row: None,
                 max: Some(100_000)
             }
         );
-        let mut date = empty.clone();
-        date.criteria.available = ProfileAvailability::From {
-            date: "31.02.2026".into(),
+        let date = ProfileForm {
+            available: ProfileAvailability::From {
+                date: "31.02.2026".into(),
+            },
+            ..empty.clone()
         };
         assert_eq!(
-            refused(Some("{}"), &date),
+            refused(&date),
             InvalidInput::ProfileValue {
                 field: "available".into(),
                 row: None,
@@ -555,591 +272,69 @@ mod tests {
             }
         );
         assert!(info(dir.path()).unwrap().is_none(), "nothing stored");
+    }
 
-        // A chosen file that is no profile says why.
-        let file = dir.path().join("x.json");
-        for (bytes, expected) in [
-            (&b"{\"name\": }"[..], "profileNotJson"),
-            (&b"[1]"[..], "profileNotObject"),
+    /// A file that does not read is named, loads as none, and a save replaces it (its bytes
+    /// stay as the backup).
+    #[test]
+    fn a_file_that_does_not_read() {
+        let dir = workspace();
+        assert_eq!(load(dir.path()).unwrap(), None);
+        std::fs::create_dir_all(dir.path().join(PROFILE_DIR)).unwrap();
+        for (bytes, reason) in [
+            (&b"{kaputt"[..], "profileNotJson"),
+            (&b"{\"keywords\": [\"SAP\"]}"[..], "profileNotJson"),
             (&[0xff, 0xfe, 0x00][..], "profileNotUtf8"),
         ] {
-            std::fs::write(&file, bytes).unwrap();
-            let error = draft_from_file(&file).unwrap_err();
-            let info = crate::error::ErrorInfo::from(&error);
-            assert_eq!(info.params["reason"], expected, "{error:?}");
+            std::fs::write(profile_path(dir.path()), bytes).unwrap();
+            let error = info(dir.path()).unwrap().unwrap().parse_error.unwrap();
+            let info = crate::error::ErrorInfo::from(&Error::Invalid(error));
+            assert_eq!(info.params["reason"], reason);
+            assert_eq!(load(dir.path()).unwrap(), None);
         }
-    }
-
-    #[test]
-    fn a_chosen_file_fills_the_form_and_saving_keeps_its_keys() {
-        let dir = workspace();
-        store(dir.path(), "{\"name\": \"Alt\", \"hobbys\": [\"Segeln\"]}");
-        let file = dir.path().join("Profil_Neu.json");
-        std::fs::write(&file, format!("\u{feff}{HAND_MADE}")).unwrap();
-        let draft = draft_from_file(&file).unwrap();
-        assert_eq!(draft.form.name, "Erika Beispiel");
-        assert_eq!(draft.quality, ProfileQuality::Thin);
-        assert!(!draft.source.starts_with('\u{feff}'));
-        save_form(
-            dir.path(),
-            Some(&draft.source),
-            &draft.form,
-            &draft.form,
-            &[],
-        )
-        .unwrap();
-        let text = stored(dir.path());
-        assert!(
-            !text.contains("hobbys"),
-            "the chosen file replaces the old one"
-        );
-        assert!(text.contains("\"zeta_notiz\": \"bleibt\""));
-        assert!(backup_path(dir.path()).exists());
-
-        // Rückgängig: the old profile comes back, the chosen one becomes the backup, and a
-        // second undo swaps them again.
-        assert!(restore(dir.path(), 1).unwrap());
-        assert!(stored(dir.path()).contains("hobbys"));
-        let backup = std::fs::read_to_string(backup_path(dir.path())).unwrap();
-        assert_eq!(backup, text);
-        assert!(restore(dir.path(), 1).unwrap());
-        assert_eq!(stored(dir.path()), text);
-        let mut files: Vec<String> = std::fs::read_dir(dir.path().join(PROFILE_DIR))
-            .unwrap()
-            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-            .collect();
-        files.sort();
-        assert_eq!(files, [PROFILE_FILE, BACKUP_FILE], "nothing left aside");
-    }
-
-    /// A file an AI wrote, or its answer saved as it came, loads: the profile JSON inside a
-    /// code block, between sentences or after a byte order mark.
-    #[test]
-    fn a_saved_answer_of_an_ai_loads_as_a_file() {
-        let json = "{\"name\": \"Erika\", \"kernkompetenzen\": [{\"kompetenz\": \"Controlling\"}]}";
-        for text in [
-            json.to_owned(),
-            format!("```json\n{json}\n```"),
-            format!("Hier ist das Profil.\n\n```\n{json}\n```\n\nViel Erfolg."),
-            format!("Gern, hier ist es: {json} Sag Bescheid."),
-            format!("```json\n{{kaputt\n```\nOder so\n```json\n{json}\n```"),
-        ] {
-            let draft = draft_from_text(&text).unwrap_or_else(|e| panic!("{e:?}: {text}"));
-            assert_eq!(draft.form.competences[0].name, "Controlling");
-            assert_eq!(draft.source, json);
-        }
-        let dir = workspace();
-        let file = dir.path().join(PROFILE_FILE);
-        std::fs::write(&file, format!("\u{feff}```json\n{json}\n```\n")).unwrap();
-        assert_eq!(draft_from_file(&file).unwrap().source, json);
-
-        // A file that is no profile says why the JSON does not read.
-        for text in ["", "Das kann ich nicht.", &json[..json.len() - 10]] {
-            assert!(
-                matches!(
-                    draft_from_text(text),
-                    Err(InvalidInput::ProfileNotJson { .. })
-                ),
-                "{text}"
-            );
-        }
+        let new = form(&["SAP"]);
+        save_form(dir.path(), &ProfileForm::default(), &new).unwrap();
+        assert_eq!(load(dir.path()).unwrap(), Some(new));
         assert_eq!(
-            draft_from_text("[1, 2]").map(|d| d.source),
-            Err(InvalidInput::ProfileNotObject {
-                found: "array".into()
-            })
+            std::fs::read(backup_path(dir.path())).unwrap(),
+            [0xff, 0xfe, 0x00]
         );
     }
 
-    /// An answer pasted from an AI reads like a chosen file; a text that holds no profile
-    /// the form reads is none.
-    #[test]
-    fn an_answer_saved_as_the_file_reads_like_a_file() {
-        let json = r#"{"titel": "Interim CFO", "kernkompetenzen": [{"kompetenz": "Controlling", "jahre": 12}]}"#;
-        let answer = format!(
-            "Hier ist dein Profil:
-```json
-{json}
-```
-Viel Erfolg."
-        );
-        let draft = draft_from_text(&answer).expect("the profile in the answer");
-        assert_eq!(draft.form.title, "Interim CFO");
-        assert_eq!(draft.form.competences[0].name, "Controlling");
-        assert!(draft_from_text("Das kann ich nicht.").is_err());
-    }
-
-    /// The keys an AI left empty go, so none is a value the engine cannot read; a profile
-    /// without empty values keeps its text, and every file keeps its own keys and order.
-    #[test]
-    fn a_file_loses_its_empty_values_only() {
-        let empty = "{\"zeta\": 1, \"name\": \"Erika\", \"titel\": \"\", \"harte_kriterien\": \
-                     {\"laender\": [], \"min_tagessatz\": null, \"festanstellung_orte\": []}}";
-        let draft = draft_from_text(empty).unwrap();
-        assert_eq!(draft.source, "{\n  \"zeta\": 1,\n  \"name\": \"Erika\"\n}");
-        assert!(
-            !draft
-                .summary
-                .warnings
-                .iter()
-                .any(|w| w.code == matching::ProfileWarningCode::CriterionNotUnderstood),
-            "{:?}",
-            draft.summary.warnings
-        );
-        assert_eq!(draft_from_text(HAND_MADE).unwrap().source, HAND_MADE);
-        // A JSON object without anything of a CV loads as it is.
-        let criteria = "{\"harte_kriterien\": {\"laender\": [\"DE\"]}}";
-        assert_eq!(draft_from_text(criteria).unwrap().source, criteria);
-        assert_eq!(draft_from_text("{}").unwrap().source, "{}");
-    }
-
-    /// A file loaded as a new profile is the profile of a saved answer, its empty values
-    /// dropped; a file without one is refused and nothing is written.
-    #[test]
-    fn a_saved_answer_is_imported_as_its_profile() {
-        let dir = workspace();
-        let file = dir.path().join("antwort.txt");
-        std::fs::write(
-            &file,
-            "Hier ist es.\n```json\n{\"name\": \"Erika\", \"titel\": \"\", \"keywords\": [\"IFRS\"]}\n```",
-        )
-        .unwrap();
-        let id = import(dir.path(), &file).unwrap();
-        let path = dir.path().join(PROFILE_DIR).join(file_name(id));
-        assert_eq!(
-            std::fs::read_to_string(path).unwrap(),
-            "{\n  \"name\": \"Erika\",\n  \"keywords\": [\n    \"IFRS\"\n  ]\n}"
-        );
-        std::fs::write(&file, "Nein.").unwrap();
-        assert!(matches!(
-            import(dir.path(), &file),
-            Err(Error::Invalid(InvalidInput::ProfileNotJson { .. }))
-        ));
-        assert_eq!(list(dir.path()).unwrap().len(), 1);
-    }
-
-    /// Every field of the form filled.
-    fn full_form() -> ProfileForm {
-        let row = |name: &str, years: Option<u32>, aliases: &[&str]| ProfileCompetence {
-            name: name.into(),
-            years,
-            aliases: aliases.iter().map(|a| (*a).to_owned()).collect(),
-            origin: None,
-        };
-        let texts = |items: &[&str]| items.iter().map(|t| (*t).to_owned()).collect::<Vec<_>>();
-        ProfileForm {
-            name: "Erika Beispiel".into(),
-            title: "Interim Managerin Finanzen".into(),
-            competences: vec![
-                row("Controlling", Some(12), &["Financial Controlling"]),
-                row("Konzernrechnungslegung nach IFRS", Some(8), &[]),
-                row("Liquiditätsplanung", None, &[]),
-                row("Projektmanagement", Some(10), &[]),
-                row("Restrukturierung", None, &["Sanierung"]),
-            ],
-            strengths: texts(&["Aufbau eines Konzernreportings in 100 Tagen"]),
-            keywords: texts(&["IFRS", "HGB"]),
-            years: Some(15),
-            degrees: texts(&["Diplom-Kauffrau (Univ.)"]),
-            industries: texts(&["Maschinenbau"]),
-            tools: texts(&["SAP S/4HANA", "Power BI"]),
-            certificates: texts(&["PMP"]),
-            languages: vec![
-                ProfileLanguage {
-                    language: "Deutsch".into(),
-                    level: Some(LanguageLevel::Native),
-                    origin: None,
-                },
-                ProfileLanguage {
-                    language: "Englisch".into(),
-                    level: Some(LanguageLevel::C1),
-                    origin: None,
-                },
-            ],
-            focus: texts(&["Controlling", "Restrukturierung"]),
-            roles: texts(&["Interim CFO", "Head of Controlling"]),
-            // Untouched: the search terms follow the roles and are not written.
-            search_terms: Vec::new(),
-            search_terms_proposed: true,
-            wishes: ProfileWishes {
-                day_rate: Some(1_100),
-                remote: Some(RemoteWish::Mostly),
-                regions: texts(&["Hamburg"]),
-                industries: texts(&["Chemie"]),
-            },
-            criteria: ProfileCriteria {
-                min_day_rate: Some(900),
-                countries: texts(&["DE", "AT", "CH"]),
-                no_anue: true,
-                no_permanent: true,
-                available: ProfileAvailability::From {
-                    date: "2026-11-01".into(),
-                },
-                remote_outside: true,
-                min_salary: Some(120_000),
-                permanent_places: texts(&["Hamburg", "Berlin"]),
-                permanent_remote_min: Some(50),
-                workload_min_days: Some(3),
-                workload_max_days: Some(5),
-                min_months: Some(6),
-                exclusion_words: texts(&["Werkstudent", "Praktikum"]),
-            },
-        }
-    }
-
-    /// A new profile from the empty form: the keys in the order of the profile template and
-    /// an engine that understands all of it (good quality, every criterion, no warning).
-    #[test]
-    fn a_new_profile_from_the_empty_form() {
-        let dir = workspace();
-        let after = full_form();
-        save_form(dir.path(), Some("{}"), &ProfileForm::default(), &after, &[]).unwrap();
-        let text = stored(dir.path());
-        assert_eq!(
-            keys(&text),
-            [
-                "name",
-                "titel",
-                "wunschrollen",
-                "berufserfahrung_jahre",
-                "abschluss",
-                "kernkompetenzen",
-                "schwerpunkte",
-                "methoden_tools",
-                "zertifizierungen",
-                "branchen",
-                "sprachen",
-                "alleinstellungsmerkmale",
-                "keywords",
-                "einsatzpraeferenzen",
-                "harte_kriterien"
-            ]
-        );
-        let value: Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(
-            value["einsatzpraeferenzen"],
-            serde_json::json!({
-                "tagessatz_wunsch": 1100,
-                "remote": "ueberwiegend",
-                "regionen": ["Hamburg"],
-                "branchen": ["Chemie"]
-            }),
-            "wishes are plain values, the remote wish one of four words"
-        );
-        assert_eq!(
-            value["branchen"],
-            serde_json::json!([{"branche": "Maschinenbau"}])
-        );
-        assert!(text.contains("\"verfuegbar_ab\": \"01.11.2026\""), "{text}");
-        assert!(text.contains("\"niveau\": \"Muttersprache\""), "{text}");
-        // Unstored, the search terms follow the roles and the Schwerpunkte.
-        let mut expected = after.clone();
-        expected.search_terms = form::search_terms(&[], &after.roles, &after.focus);
-        assert_eq!(plain(&stored_form(dir.path()).unwrap()), plain(&expected));
-
-        let value = load(dir.path()).unwrap().unwrap();
-        let profile = matching::compile_profile(&value);
-        assert_eq!(profile.quality(), ProfileQuality::Good);
-        let summary = profile.summary();
-        assert!(summary.warnings.is_empty(), "{:?}", summary.warnings);
-        let set: Vec<CriterionKey> = summary
-            .criteria
-            .iter()
-            .filter(|c| c.set)
-            .map(|c| c.key)
-            .collect();
-        assert_eq!(
-            set,
-            [
-                CriterionKey::MinDayRate,
-                CriterionKey::Countries,
-                CriterionKey::NoAnue,
-                CriterionKey::NoPermanent,
-                CriterionKey::Availability,
-                CriterionKey::MinSalary,
-                CriterionKey::PermanentRegion,
-                CriterionKey::Workload,
-                CriterionKey::Duration,
-                CriterionKey::ExclusionWords
-            ]
-        );
-        for path in [
-            "kernkompetenzen[].kompetenz",
-            "methoden_tools[].name",
-            "sprachen[].sprache",
-        ] {
-            assert!(
-                summary.sources.iter().any(|s| s.path == path && !s.guessed),
-                "{path}: {:?}",
-                summary.sources
-            );
-        }
-        assert!(
-            !summary.competences.iter().any(|c| c == "Hamburg"),
-            "criteria values are no competences"
-        );
-    }
-
-    /// Every sample profile: the form written into an empty profile reads back the same,
-    /// and saving it unchanged into the original changes nothing the engine sees.
-    #[test]
-    fn every_sample_profile_round_trips() {
-        for name in [
-            "sample_profile.json",
-            "sample_profile_it.json",
-            "sample_profile_sap.json",
-            "sample_profile_senior.json",
-            "legacy_edge_profile.json",
-        ] {
-            let text = fixture(name);
-            let form = form_of(&text).unwrap();
-            let mut fresh = Json::object();
-            form::merge(&mut fresh, &ProfileForm::default(), &form, &[]);
-            assert_eq!(plain(&form::read(&fresh)), plain(&form), "{name}");
-
-            let mut same: Json = serde_json::from_str(&text).unwrap();
-            let original = same.clone();
-            form::merge(&mut same, &form, &form, &[]);
-            assert_eq!(same, original, "{name}: an unchanged form writes nothing");
-        }
-    }
-
-    #[test]
-    fn degrees_live_in_abschluss_and_ausbildung() {
-        let merged = |base: &str, degrees: &[&str]| -> Value {
-            let mut doc: Json = serde_json::from_str(base).unwrap();
-            let before = form::read(&doc);
-            let mut after = before.clone();
-            after.degrees = degrees.iter().map(|d| (*d).to_owned()).collect();
-            form::merge(&mut doc, &before, &after, &[]);
-            doc.to_value()
-        };
-        assert_eq!(
-            merged("{}", &["Diplom-Kauffrau"]),
-            serde_json::json!({"abschluss": "Diplom-Kauffrau"})
-        );
-        assert_eq!(
-            merged("{\"abschluss\": \"Diplom\"}", &["Diplom", "MBA"]),
-            serde_json::json!({"abschluss": "Diplom", "ausbildung": [{"abschluss": "MBA"}]})
-        );
-        let education = "{\"ausbildung\": [{\"abschluss\": \"Diplom\", \"fach\": \"BWL\"}, \
-                         {\"schule\": \"Gymnasium\"}]}";
-        assert_eq!(
-            merged(education, &["Diplom", "Promotion"]),
-            serde_json::json!({"ausbildung": [
-                {"abschluss": "Diplom", "fach": "BWL"},
-                {"schule": "Gymnasium"},
-                {"abschluss": "Promotion"}
-            ]}),
-            "a kept degree keeps its other keys"
-        );
-        assert_eq!(
-            merged(education, &[]),
-            serde_json::json!({"ausbildung": [{"schule": "Gymnasium"}]}),
-            "only degree entries go"
-        );
-    }
-
-    #[test]
-    fn clearing_a_criterion_removes_every_key_that_would_bring_it_back() {
-        let mut doc: Json = serde_json::from_str(HAND_MADE).unwrap();
-        let before = form::read(&doc);
-        let mut after = before.clone();
-        after.criteria.min_day_rate = None;
-        after.criteria.min_salary = None;
-        after.criteria.countries.clear();
-        form::merge(&mut doc, &before, &after, &[]);
-        let value = doc.to_value();
-        assert!(value["einsatzpraeferenzen"].get("tagessatz_ab").is_none());
-        assert!(value["hard_criteria"].get("min_salary").is_none());
-        assert!(value["harte_kriterien"].get("laender").is_none());
-        assert_eq!(form::read(&doc).criteria.min_day_rate, None);
-        assert_eq!(value["einsatzpraeferenzen"]["remote"], "mindestens 50 %");
-    }
-
-    #[test]
-    fn the_remote_wish_reads_old_free_text() {
-        for (text, wish) in [
-            ("voll", Some(RemoteWish::Full)),
-            ("ueberwiegend", Some(RemoteWish::Mostly)),
-            ("vor_ort", Some(RemoteWish::OnSite)),
-            ("mindestens 50 %", Some(RemoteWish::Partly)),
-            ("80 % remote", Some(RemoteWish::Mostly)),
-            ("100 % Remote", Some(RemoteWish::Full)),
-            ("0 %", Some(RemoteWish::OnSite)),
-            ("\u{dc}berwiegend remote", Some(RemoteWish::Mostly)),
-            ("hybrid", Some(RemoteWish::Partly)),
-            ("gern vor Ort", Some(RemoteWish::OnSite)),
-            ("Remote", Some(RemoteWish::Full)),
-            ("kein Remote", Some(RemoteWish::OnSite)),
-            ("no remote", Some(RemoteWish::OnSite)),
-            ("egal", None),
-        ] {
-            assert_eq!(RemoteWish::read(text), wish, "{text}");
-        }
-        // Unchanged, the old text stays; a new choice writes the word.
-        let mut doc: Json = serde_json::from_str(HAND_MADE).unwrap();
-        let before = form::read(&doc);
-        assert_eq!(before.wishes.remote, Some(RemoteWish::Partly));
-        let mut after = before.clone();
-        after.wishes.remote = Some(RemoteWish::Full);
-        form::merge(&mut doc, &before, &after, &[]);
-        assert_eq!(doc.to_value()["einsatzpraeferenzen"]["remote"], "voll");
-    }
-
-    #[test]
-    fn at_most_five_focus_competences() {
-        let dir = workspace();
-        let mut form = ProfileForm {
-            focus: (1..=6).map(|n| format!("Kompetenz {n}")).collect(),
-            ..ProfileForm::default()
-        };
-        let error = save_form(dir.path(), Some("{}"), &ProfileForm::default(), &form, &[]);
-        assert!(
-            matches!(error, Err(Error::Invalid(InvalidInput::ProfileValue { ref field, .. })) if field == "focus"),
-            "{error:?}"
-        );
-        form.focus.pop();
-        save_form(dir.path(), Some("{}"), &ProfileForm::default(), &form, &[]).unwrap();
-        assert_eq!(stored_form(dir.path()).unwrap().focus.len(), MAX_FOCUS);
-    }
-
-    #[test]
-    fn load_skips_what_is_no_profile() {
-        let dir = workspace();
-        assert_eq!(load(dir.path()).unwrap(), None);
-        store(dir.path(), "[1]");
-        assert_eq!(load(dir.path()).unwrap(), None);
-        assert_eq!(stored_form(dir.path()), None);
-        store(dir.path(), "\u{feff}{\"keywords\": [\"SAP\"]}");
-        assert_eq!(load(dir.path()).unwrap().unwrap()["keywords"][0], "SAP");
-        store(dir.path(), "{kaputt");
-        assert!(info(dir.path()).unwrap().unwrap().parse_error.is_some());
-    }
-
-    /// The form with `terms` as its keywords.
-    fn with_keywords(form: &ProfileForm, terms: &[&str]) -> ProfileForm {
-        ProfileForm {
-            keywords: terms.iter().map(|t| (*t).to_owned()).collect(),
-            ..form.clone()
-        }
-    }
-
-    fn keywords(dir: &Path) -> Vec<String> {
-        stored_form(dir).unwrap().keywords
-    }
-
-    /// DS-3: adding a missing term to the profile, and its undo, save the form as it was
-    /// shown, which can be older than the file: a term added on an older copy keeps what came
-    /// in between, and an undo takes out its own term only, never another one, and never
-    /// brings one back.
-    #[test]
-    fn ds_3_terms_added_and_undone_on_older_copies_keep_each_other() {
-        let dir = workspace();
-        store(
-            dir.path(),
-            r#"{"name": "Erika", "keywords": ["SAP", {"frei": "Objekt"}]}"#,
-        );
-        let p0 = stored_form(dir.path()).unwrap();
-        let p0_x = with_keywords(&p0, &["SAP", "IFRS"]);
-        let p0_y = with_keywords(&p0, &["SAP", "Konsolidierung"]);
-        let p0_x_y = with_keywords(&p0, &["SAP", "IFRS", "Konsolidierung"]);
-
-        // One after the other: add X, add Y, undo X, undo Y.
-        save_form(dir.path(), None, &p0, &p0_x, &[]).unwrap();
-        save_form(dir.path(), None, &p0_x, &p0_x_y, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["SAP", "IFRS", "Konsolidierung"]);
-        save_form(dir.path(), None, &p0_x, &p0, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["SAP", "Konsolidierung"], "Y stays");
-        save_form(dir.path(), None, &p0_x_y, &p0_x, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["SAP"], "X does not come back");
-
-        // The second click before the first reload: Y is added to the copy without X.
-        save_form(dir.path(), None, &p0, &p0_x, &[]).unwrap();
-        save_form(dir.path(), None, &p0, &p0_y, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["SAP", "IFRS", "Konsolidierung"]);
-        save_form(dir.path(), None, &p0_x, &p0, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["SAP", "Konsolidierung"]);
-        save_form(dir.path(), None, &p0_y, &p0, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["SAP"]);
-        // What the form cannot show stays all along.
-        let value: Value = serde_json::from_str(&stored(dir.path())).unwrap();
-        assert_eq!(
-            value["keywords"],
-            serde_json::json!(["SAP", {"frei": "Objekt"}])
-        );
-
-        // The form saved on the file as it is writes its list as it is, order and all.
-        let now = with_keywords(&p0, &["SAP", "IFRS"]);
-        save_form(dir.path(), None, &p0, &now, &[]).unwrap();
-        let turned = with_keywords(&p0, &["IFRS", "SAP"]);
-        save_form(dir.path(), None, &now, &turned, &[]).unwrap();
-        assert_eq!(keywords(dir.path()), ["IFRS", "SAP"]);
-    }
-
-    /// DS-3: a Profil save on an older copy keeps what the user did to the list, not only
-    /// what it added and removed: a term typed again in capitals (a double click on its chip
-    /// moves it to the end) and a new order stay, and the term that came in between stays
-    /// after the term it follows in the file. A term the save did not touch keeps the
-    /// spelling the file has now.
-    #[test]
-    fn ds_3_a_new_order_or_spelling_on_an_older_copy_is_kept() {
-        let dir = workspace();
-        store(
-            dir.path(),
-            r#"{"name": "Erika", "keywords": ["sap", "IFRS", "Controlling"]}"#,
-        );
-        let p0 = stored_form(dir.path()).unwrap();
-        // Meanwhile a term comes in from the reader.
-        let p1 = with_keywords(&p0, &["sap", "IFRS", "Controlling", "Konsolidierung"]);
-        save_form(dir.path(), None, &p0, &p1, &[]).unwrap();
-        // The editor still holds p0: "Controlling" moves first, "sap" becomes "SAP".
-        let edited = with_keywords(&p0, &["Controlling", "IFRS", "SAP"]);
-        save_form(dir.path(), None, &p0, &edited, &[]).unwrap();
-        assert_eq!(
-            keywords(dir.path()),
-            ["Controlling", "Konsolidierung", "IFRS", "SAP"]
-        );
-
-        // Meanwhile "IFRS" is spelled "Ifrs"; a save on the older copy that only adds a
-        // term leaves that spelling as it is.
-        let p2 = stored_form(dir.path()).unwrap();
-        let respelled = with_keywords(&p2, &["Controlling", "Konsolidierung", "Ifrs", "SAP"]);
-        save_form(dir.path(), None, &p2, &respelled, &[]).unwrap();
-        let added = with_keywords(
-            &p2,
-            &["Controlling", "Konsolidierung", "IFRS", "SAP", "Treasury"],
-        );
-        save_form(dir.path(), None, &p2, &added, &[]).unwrap();
-        assert_eq!(
-            keywords(dir.path()),
-            ["Controlling", "Konsolidierung", "Ifrs", "SAP", "Treasury"]
-        );
-    }
-
-    /// DS-3: saves close together each read what the other wrote: eight terms added at once,
+    /// DS-3: saves close together each read what the other wrote: eight tools added at once,
     /// each on the same older copy, are all in the file.
     #[test]
-    fn ds_3_saves_close_together_keep_every_term() {
+    fn ds_3_saves_close_together_keep_every_entry() {
         let dir = workspace();
-        store(dir.path(), r#"{"name": "Erika", "keywords": ["SAP"]}"#);
-        let p0 = stored_form(dir.path()).unwrap();
+        let p0 = form(&["SAP"]);
+        save_form(dir.path(), &ProfileForm::default(), &p0).unwrap();
         let terms: Vec<String> = (1..=8).map(|n| format!("Begriff {n}")).collect();
         let start = std::sync::Barrier::new(terms.len());
         std::thread::scope(|scope| {
             for term in &terms {
                 let (dir, p0, start) = (dir.path(), &p0, &start);
                 scope.spawn(move || {
-                    let after = with_keywords(p0, &["SAP", term]);
+                    let after = form(&["SAP", term]);
                     start.wait();
-                    save_form(dir, None, p0, &after, &[]).unwrap();
+                    save_form(dir, p0, &after).unwrap();
                 });
             }
         });
-        let stored = keywords(dir.path());
+        let stored = load(dir.path()).unwrap().unwrap().tools;
         for term in &terms {
             assert!(stored.contains(term), "{term} lost: {stored:?}");
         }
         assert_eq!(stored.len(), 9, "{stored:?}");
+    }
+
+    #[test]
+    fn the_fields_the_cv_filled_until_the_next_save() {
+        let dir = workspace();
+        let store = Store::open(&dir.path().join("jobs.db")).unwrap();
+        assert!(ai_filled(&store).is_empty());
+        set_ai_filled(&store, &["roles", "competences"]).unwrap();
+        assert_eq!(ai_filled(&store), ["roles", "competences"]);
+        set_ai_filled(&store, &[]).unwrap();
+        assert!(ai_filled(&store).is_empty());
     }
 }

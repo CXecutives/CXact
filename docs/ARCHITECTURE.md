@@ -49,9 +49,10 @@ A decision is written once; everything else reads it or is generated from it.
 | Screens as tables | `features/jobs/reader-sections.ts`, `features/settings/cards.ts` (the five cards), `features/first-run/steps.ts`, `features/profile/sections.ts` | their views |
 | Texts | `ui/src/lib/i18n/de.ts` | every text the UI shows |
 | Commands | `src-tauri/commands.txt` | `generate_handler!`, capabilities, `commands.ts`, the stub |
-| Profile criteria | `CRITERIA` in `core/src/profile/form.rs` | form, engine, `profile.ts` |
+| The profile's fields, the file's keys, limits, what is required | `ProfileForm`, `key`, `missing_required` in `core/src/profile/form.rs` | file, engine, search, CV import, `profile.ts` |
+| Role names (the role table) | `ROLE_GROUPS` in `core/src/matching/lexicon/wishes.rs` | engine, search, the `vocabulary` command |
 | Match bands | `HIGH_FROM`, `MID_FROM` in `core/src/model.rs` | store, prompts, `bands.ts` |
-| What a term is and the profile field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan": at most five words, lead and wish words stripped) | `core_term` in `core/src/matching/terms.rs` (its words in `lexicon/terms.rs`); which open requirements offer one: `open_term` in `core/src/pipeline/local.rs` | the terms a stored match keeps, "Häufig verlangt" (`view::asked_terms`), the reader's "+" (`params.term`, `params.field` of a reason; `addable` in `reader-sections.ts` only reads them) |
+| What a term is and the profile field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan": at most five words, lead and wish words stripped) | `core_term` in `core/src/matching/terms.rs` (its words in `lexicon/terms.rs`); which open requirements offer one: `open_term` in `core/src/pipeline/local.rs` | the terms a stored match keeps, "Häufig verlangt" (`view::asked_terms`), the reader's "+" (`params.term`, `params.field`, a language's `params.level` of a reason; `addable` in `reader-sections.ts` only reads them) |
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
@@ -66,8 +67,8 @@ mail, store, engine, view, UI:
 1. `mail/` reads the alert mails of the portals that are on (IMAP); `portal/` turns them
    into job links. Then `fetch/search.rs` searches the sources that have a search
    (`PortalAdapter::search_urls`, `Way::Search`) side by side with the deep search's terms
-   (`profile::deep_search_terms`: the Suchbegriffe, the roles and their other names, the
-   Schwerpunkte, competences, Stichworte and tools, at most 24), each term deeper
+   (`profile::deep_search_terms`: the roles and their other names, the Schwerpunkte,
+   competences and tools, at most 24), each term deeper
    (`search_page_url`) while its pages bring new jobs, a cut-short paging going on at the
    next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
    Crawl-delay the least gap); the hits are jobs without a mail (`Store::record_found`). A

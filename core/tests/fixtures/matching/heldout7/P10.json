@@ -1,261 +1,4 @@
 {
-  "name": "Jana Entwurf",
-  "email": "jana.entwurf@example.invalid",
-  "telefon": "+49 160 0000000",
-  "titel": "Interim CMO und Head of Marketing (Brand und Digital)",
-  "berufserfahrung_jahre": 17,
-  "abschluss": "Diplom-Kauffrau (FH)",
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Kauffrau (FH)",
-      "fach": "Betriebswirtschaft mit Schwerpunkt Marketing und Medienmanagement",
-      "hochschule": "Beispielhochschule",
-      "jahr": 2009
-    },
-    {
-      "abschluss": "Zertifikatsprogramm Digital Marketing Leadership",
-      "fach": "Digitale Transformation von Marketingorganisationen",
-      "jahr": 2018
-    }
-  ],
-  "stationen": [
-    {
-      "zeitraum": "2019 - heute",
-      "rolle": "Interim CMO und Interim Head of Marketing (selbstständig)",
-      "schwerpunkte": [
-        "Sechs Interim-Mandate als CMO oder Marketingleiterin bei Konsumgütermarken, Händlern und D2C-Scale-ups",
-        "Neupositionierung und Relaunch einer Lebensmittelmarke inklusive Agenturpitch, Corporate Design und Kampagnenstart",
-        "Aufbau eines Performance-Marketing- und CRM-Teams und Inhousing von SEA und Paid Social",
-        "Einführung von Salesforce Marketing Cloud und einer Customer Data Platform für ein Omnichannel-Handelsunternehmen",
-        "Steuerung von Marketingbudgets bis 25 Mio. Euro mit Marketing-Mix-Modelling und Brand Tracking"
-      ]
-    },
-    {
-      "zeitraum": "2013 - 2019",
-      "rolle": "Director Brand and Digital Marketing bei einem Konsumgüterhersteller",
-      "schwerpunkte": [
-        "Führung von 22 Mitarbeitenden in Brand Management, Digital, Content und Social Media",
-        "Markenführung für vier Marken in Deutschland, Österreich und der Schweiz",
-        "Aufbau des eigenen Onlineshops und des E-Mail-Marketings, Anbindung an Amazon und weitere Marktplätze",
-        "Steuerung von Lead-, Media- und Social-Agenturen"
-      ]
-    },
-    {
-      "zeitraum": "2009 - 2013",
-      "rolle": "Beraterin, zuletzt Unit Lead in einer Digitalagentur",
-      "schwerpunkte": [
-        "Kampagnenplanung und Mediaplanung für Handels- und FMCG-Kunden",
-        "Social-Media-Strategien, Content-Produktion und Community Management",
-        "Website-Relaunches und Suchmaschinenoptimierung"
-      ]
-    }
-  ],
-  "kernkompetenzen": [
-    {
-      "kompetenz": "Marketingleitung",
-      "jahre": 12,
-      "auch": [
-        "Head of Marketing",
-        "Leitung Marketing",
-        "Marketing Director",
-        "Marketingleiterin",
-        "CMO",
-        "Chief Marketing Officer"
-      ]
-    },
-    {
-      "kompetenz": "Markenführung",
-      "jahre": 15,
-      "auch": [
-        "Brand Management",
-        "Markenstrategie",
-        "Brand Strategy",
-        "Markenpositionierung",
-        "Rebranding",
-        "Markenrelaunch"
-      ]
-    },
-    {
-      "kompetenz": "Digital Marketing",
-      "jahre": 15,
-      "auch": [
-        "Online Marketing",
-        "Digitales Marketing",
-        "Omnichannel Marketing",
-        "Digitale Transformation im Marketing"
-      ]
-    },
-    {
-      "kompetenz": "Performance Marketing",
-      "jahre": 10,
-      "auch": [
-        "SEA",
-        "Paid Social",
-        "Programmatic Advertising",
-        "Google Ads",
-        "Meta Ads",
-        "Conversion-Optimierung"
-      ]
-    },
-    {
-      "kompetenz": "CRM und Customer Lifecycle Marketing",
-      "jahre": 8,
-      "auch": [
-        "CRM-Marketing",
-        "E-Mail-Marketing",
-        "Loyalty",
-        "Kundenbindung",
-        "Marketing Automation",
-        "Customer Journey"
-      ]
-    },
-    {
-      "kompetenz": "Content Marketing und Social Media",
-      "jahre": 12,
-      "auch": [
-        "Content Strategy",
-        "Social Media Marketing",
-        "Influencer Marketing",
-        "Community Management"
-      ]
-    },
-    {
-      "kompetenz": "Kampagnenmanagement",
-      "jahre": 16,
-      "auch": [
-        "Integrierte Kampagnen",
-        "360-Grad-Kampagnen",
-        "Campaign Management",
-        "Kampagnenplanung"
-      ]
-    },
-    {
-      "kompetenz": "Marketingbudget und Marketing-Controlling",
-      "jahre": 12,
-      "auch": [
-        "Marketing ROI",
-        "Budgetsteuerung",
-        "Marketing-Mix-Modelling",
-        "MMM",
-        "Media-Effizienz"
-      ]
-    },
-    {
-      "kompetenz": "Agenturmanagement",
-      "jahre": 13,
-      "auch": [
-        "Agentursteuerung",
-        "Agenturpitch",
-        "Mediaagentur",
-        "Lead-Agentur"
-      ]
-    },
-    {
-      "kompetenz": "E-Commerce und D2C",
-      "jahre": 8,
-      "auch": [
-        "Direct-to-Consumer",
-        "D2C",
-        "Onlineshop",
-        "Marktplätze",
-        "Amazon Marketing"
-      ]
-    },
-    {
-      "kompetenz": "Marktforschung und Consumer Insights",
-      "jahre": 10,
-      "auch": [
-        "Consumer Insights",
-        "Brand Tracking",
-        "Zielgruppenanalyse",
-        "Customer Insights"
-      ]
-    },
-    {
-      "kompetenz": "Marketing Technology",
-      "jahre": 6,
-      "auch": [
-        "MarTech",
-        "Customer Data Platform",
-        "CDP",
-        "Salesforce Marketing Cloud",
-        "Tag Management"
-      ]
-    },
-    {
-      "kompetenz": "Web-Analyse und datengetriebenes Marketing",
-      "jahre": 10,
-      "auch": [
-        "Web Analytics",
-        "Google Analytics 4",
-        "Attribution",
-        "A/B-Testing",
-        "Data-driven Marketing"
-      ]
-    },
-    {
-      "kompetenz": "Suchmaschinenoptimierung",
-      "jahre": 7,
-      "auch": [
-        "SEO",
-        "Search Engine Optimization"
-      ]
-    },
-    {
-      "kompetenz": "Produktmarketing und Markteinführung",
-      "jahre": 9,
-      "auch": [
-        "Product Marketing",
-        "Go-to-Market",
-        "Produkteinführung",
-        "Launch-Management"
-      ]
-    },
-    {
-      "kompetenz": "Unternehmenskommunikation und PR",
-      "jahre": 6,
-      "auch": [
-        "Corporate Communications",
-        "PR",
-        "Pressearbeit",
-        "Kommunikation"
-      ]
-    },
-    {
-      "kompetenz": "Neuaufstellung von Marketingorganisationen",
-      "jahre": 6,
-      "auch": [
-        "Marketing Transformation",
-        "Marketing Operating Model",
-        "Inhousing",
-        "Teamaufbau"
-      ]
-    },
-    {
-      "kompetenz": "Führung von Marketingteams",
-      "jahre": 12,
-      "auch": [
-        "Teamführung",
-        "Personalführung",
-        "disziplinarische Führung"
-      ]
-    },
-    {
-      "kompetenz": "Interim Management",
-      "jahre": 7,
-      "auch": [
-        "Interim-Mandate",
-        "Interim CMO",
-        "Interim Head of Marketing"
-      ]
-    }
-  ],
-  "schwerpunkte": [
-    "Marketingleitung",
-    "Markenführung",
-    "Digital Marketing",
-    "Performance Marketing"
-  ],
   "wunschrollen": [
     "Interim CMO",
     "Interim Head of Marketing",
@@ -264,70 +7,249 @@
     "Head of Digital Marketing",
     "VP Marketing"
   ],
+  "vertragsarten": [
+    "projekt",
+    "festanstellung",
+    "zeitarbeit"
+  ],
+  "tagessatz_wunsch": 1200,
+  "tagessatz_min": 1000,
+  "mindestgehalt": 135000,
+  "arbeitsmodell": "remote",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Hamburg",
+    "Berlin",
+    "Norddeutschland"
+  ],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Marketingleitung",
+      "jahre": 12,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Markenführung",
+      "jahre": 15,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Digital Marketing",
+      "jahre": 15,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "Performance Marketing",
+      "jahre": 10,
+      "schwerpunkt": true
+    },
+    {
+      "kompetenz": "CRM und Customer Lifecycle Marketing",
+      "jahre": 8,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Content Marketing und Social Media",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Kampagnenmanagement",
+      "jahre": 16,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Marketingbudget und Marketing-Controlling",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Agenturmanagement",
+      "jahre": 13,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "E-Commerce und D2C",
+      "jahre": 8,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Marktforschung und Consumer Insights",
+      "jahre": 10,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Marketing Technology",
+      "jahre": 6,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Web-Analyse und datengetriebenes Marketing",
+      "jahre": 10,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Suchmaschinenoptimierung",
+      "jahre": 7,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Produktmarketing und Markteinführung",
+      "jahre": 9,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Unternehmenskommunikation und PR",
+      "jahre": 6,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Neuaufstellung von Marketingorganisationen",
+      "jahre": 6,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Führung von Marketingteams",
+      "jahre": 12,
+      "schwerpunkt": false
+    },
+    {
+      "kompetenz": "Interim Management",
+      "jahre": 7,
+      "schwerpunkt": false
+    }
+  ],
   "methoden_tools": [
-    {
-      "name": "Salesforce Marketing Cloud"
-    },
-    {
-      "name": "HubSpot"
-    },
-    {
-      "name": "Google Analytics 4"
-    },
-    {
-      "name": "Google Ads"
-    },
-    {
-      "name": "Meta Business Suite"
-    },
-    {
-      "name": "LinkedIn Campaign Manager"
-    },
-    {
-      "name": "Shopify Plus"
-    },
-    {
-      "name": "Contentful"
-    },
-    {
-      "name": "Semrush"
-    },
-    {
-      "name": "Tableau"
-    },
-    {
-      "name": "Asana"
-    }
+    "Salesforce Marketing Cloud",
+    "HubSpot",
+    "Google Analytics 4",
+    "Google Ads",
+    "Meta Business Suite",
+    "LinkedIn Campaign Manager",
+    "Shopify Plus",
+    "Contentful",
+    "Semrush",
+    "Tableau",
+    "Asana",
+    "CMO",
+    "Head of Marketing",
+    "Brand",
+    "CRM",
+    "E-Commerce",
+    "D2C",
+    "FMCG",
+    "Kampagnen",
+    "Leitung Marketing",
+    "Marketing Director",
+    "Marketingleiterin",
+    "Chief Marketing Officer",
+    "Brand Management",
+    "Markenstrategie",
+    "Brand Strategy",
+    "Markenpositionierung",
+    "Rebranding",
+    "Markenrelaunch",
+    "Online Marketing",
+    "Digitales Marketing",
+    "Omnichannel Marketing",
+    "Digitale Transformation im Marketing",
+    "SEA",
+    "Paid Social",
+    "Programmatic Advertising",
+    "Meta Ads",
+    "Conversion-Optimierung",
+    "CRM-Marketing",
+    "E-Mail-Marketing",
+    "Loyalty",
+    "Kundenbindung",
+    "Marketing Automation",
+    "Customer Journey",
+    "Content Strategy",
+    "Social Media Marketing",
+    "Influencer Marketing",
+    "Community Management",
+    "Integrierte Kampagnen",
+    "360-Grad-Kampagnen",
+    "Campaign Management",
+    "Kampagnenplanung",
+    "Marketing ROI",
+    "Budgetsteuerung",
+    "Marketing-Mix-Modelling",
+    "MMM",
+    "Media-Effizienz",
+    "Agentursteuerung",
+    "Agenturpitch",
+    "Mediaagentur",
+    "Lead-Agentur",
+    "Direct-to-Consumer",
+    "Onlineshop",
+    "Marktplätze",
+    "Amazon Marketing",
+    "Consumer Insights",
+    "Brand Tracking",
+    "Zielgruppenanalyse",
+    "Customer Insights",
+    "MarTech",
+    "Customer Data Platform",
+    "CDP",
+    "Tag Management",
+    "Web Analytics",
+    "Attribution",
+    "A/B-Testing",
+    "Data-driven Marketing",
+    "SEO",
+    "Search Engine Optimization",
+    "Product Marketing",
+    "Go-to-Market",
+    "Produkteinführung",
+    "Launch-Management",
+    "Corporate Communications",
+    "PR",
+    "Pressearbeit",
+    "Kommunikation",
+    "Marketing Transformation",
+    "Marketing Operating Model",
+    "Inhousing",
+    "Teamaufbau",
+    "Teamführung",
+    "Personalführung",
+    "disziplinarische Führung",
+    "Interim-Mandate",
+    "Interim CMO",
+    "Interim Head of Marketing"
   ],
-  "zertifizierungen": [
-    {
-      "name": "Google Analytics Certification"
-    },
-    {
-      "name": "Salesforce Certified Marketing Cloud Email Specialist"
-    },
-    {
-      "name": "HubSpot Inbound Marketing Certification"
-    }
-  ],
+  "berufserfahrung_jahre": 17,
   "branchen": [
     {
-      "branche": "Konsumgüter"
+      "branche": "Konsumgüter",
+      "wunsch": true
     },
     {
-      "branche": "Lebensmittel und Getränke"
+      "branche": "Lebensmittel und Getränke",
+      "wunsch": true
     },
     {
-      "branche": "Einzelhandel"
+      "branche": "Einzelhandel",
+      "wunsch": false
     },
     {
-      "branche": "E-Commerce"
+      "branche": "E-Commerce",
+      "wunsch": true
     },
     {
-      "branche": "Kosmetik"
+      "branche": "Kosmetik",
+      "wunsch": false
     },
     {
-      "branche": "Tourismus"
+      "branche": "Tourismus",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -344,66 +266,14 @@
       "niveau": "B2"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Hat drei Markenrelaunches von der Positionierung bis zum Kampagnenstart geführt",
-    "Senkt die Kosten pro Neukunde durch Inhousing und datengetriebene Budgetsteuerung",
-    "Verbindet Markenführung und Performance Marketing in einer Organisation"
+  "abschluesse": [
+    "Diplom-Kauffrau (FH)",
+    "Zertifikatsprogramm Digital Marketing Leadership, Digitale Transformation von Marketingorganisationen"
   ],
-  "keywords": [
-    "CMO",
-    "Head of Marketing",
-    "Marketingleitung",
-    "Brand",
-    "Markenführung",
-    "Digital Marketing",
-    "Performance Marketing",
-    "CRM",
-    "E-Commerce",
-    "D2C",
-    "FMCG",
-    "Kampagnen",
-    "Agenturmanagement"
+  "zertifizierungen": [
+    "Google Analytics Certification",
+    "Salesforce Certified Marketing Cloud Email Specialist",
+    "HubSpot Inbound Marketing Certification"
   ],
-  "harte_kriterien": {
-    "min_tagessatz": 1000,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "sofort",
-    "min_jahresgehalt": 135000,
-    "festanstellung_orte": [
-      "Hamburg",
-      "Norderstedt",
-      "Pinneberg",
-      "Ahrensburg",
-      "Reinbek",
-      "Wedel",
-      "Elmshorn",
-      "Quickborn",
-      "Halstenbek",
-      "Glinde",
-      "Buxtehude",
-      "Seevetal",
-      "Buchholz in der Nordheide",
-      "Lüneburg"
-    ],
-    "festanstellung_remote_min": 40
-  },
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 1200,
-    "remote": "ueberwiegend",
-    "regionen": [
-      "Hamburg",
-      "Berlin",
-      "Norddeutschland"
-    ],
-    "branchen": [
-      "Konsumgüter",
-      "E-Commerce",
-      "Lebensmittel und Getränke"
-    ]
-  }
+  "ausschlusswoerter": []
 }

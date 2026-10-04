@@ -1,6 +1,6 @@
 # Matching
 
-How the app scores a job against the consultant profile (`ENGINE_VERSION` 18) and how it is
+How the app scores a job against the consultant profile (`ENGINE_VERSION` 19) and how it is
 measured. How each rule came about, version by version, is in the git history of this file.
 Code: `core/src/matching`. Tests in `core/tests/`: `matching_corpus.rs`, `matching_heldout.rs`,
 `matching_generalisation.rs`, `matching_criteria.rs`, `matching_profiles.rs`, `matching_wishes.rs`,
@@ -10,14 +10,14 @@ Code: `core/src/matching`. Tests in `core/tests/`: `matching_corpus.rs`, `matchi
 ## Corpus and gates
 
 `core/tests/fixtures/matching`: 58 invented ads K01-K58 in the TXT contract format and six
-invented profiles.
+invented profiles (Profil-JSON v19, migrated from the old format with engine 19).
 
 | Key | Profile | Notes |
 |---|---|---|
 | fin | `sample_profile.json` | interim finance |
-| it | `sample_profile_it.json` | SAP/IT project lead, `tagessatz_ab` fallback, later availability |
-| senior | `sample_profile_senior.json` | very senior interim finance and transformation consultant: about 30 years, Diplom-Kauffrau, 1,000 EUR/day, permanent roles from 150,000 EUR in the Munich region (or at least 60 % remote); CV-like stations and `auch` terms |
-| sap | `sample_profile_sap.json` | SAP FI/CO consultant: business bachelor, 950 EUR/day, permanent roles from 95,000 EUR, no region rule |
+| it | `sample_profile_it.json` | SAP/IT project lead, 950 EUR/day, later availability |
+| senior | `sample_profile_senior.json` | very senior interim finance and transformation consultant: about 30 years, Diplom-Kauffrau, 1,000 EUR/day, permanent roles from 150,000 EUR |
+| sap | `sample_profile_sap.json` | SAP FI/CO consultant: business bachelor, 950 EUR/day, permanent roles from 95,000 EUR |
 | wish | `sample_profile_senior_wishes.json` | senior with Schwerpunkte, target roles and wishes |
 | wishSap | `sample_profile_sap_wishes.json` | sap with Schwerpunkte, target roles and wishes |
 
@@ -29,23 +29,21 @@ is gated from that `ENGINE_VERSION` on (`since`, `profileSince`).
 Gates of `matching_corpus.rs`:
 - decided exclusions and status exactly as in `corpus.json`; expected checks raised; `mustOpen`
   items never met;
-- `GOLDEN_DIGEST` over every result (the same on Windows and macOS), and `V3_ROWS_DIGEST` over
-  the four base profiles without their Schwerpunkte, target roles and wishes: without their keys
-  these inputs change nothing;
+- `GOLDEN_DIGEST` over every result (the same on Windows and macOS);
 - the target role and the wishes never lift a job into the high band (80) while fewer than half
   of its musts are met;
 - the speed budget in release builds (median <= 0.5 ms per job, 2,000 jobs <= 3 s); no fixture
   ignored by git.
 
-Nine held-out sets (`heldout1/` to `heldout9/`): invented ads with blind labels (grade 0-3,
+Ten held-out sets (`heldout1/` to `heldout10/`): invented ads with blind labels (grade 0-3,
 excluded) written by independent agents for profiles the engine was not tuned on at the time.
 Every set was later used to find and fix systematic gaps, so they are regression corpora, not an
 unseen measurement. `matching_heldout.rs` freezes a floor per set (NDCG@10, Spearman, exclusion
 precision and recall, buried grade-3 jobs); a floor is never lowered to let a change pass.
 
-`matching_profiles.rs`: an invented clinical project manager (no domain pack, own `auch` terms)
-scores a clinical ad high and a finance ad low; packs, aliases, the keys, English aliases,
-warnings; a mandatory licence excludes, an optional one caps.
+`matching_profiles.rs`: an invented clinical project manager (no domain pack, own English terms
+among the tools) scores a clinical ad high and a finance ad low; packs, years, degrees, criteria;
+a mandatory licence excludes, an optional one caps.
 
 ### Metrics
 
@@ -70,21 +68,52 @@ recall >= 0.80, NDCG@10 >= 0.75, P@5 >= 0.80, no grade-3 job buried, high-band p
 1v3 >= 0.80, 2v3 >= 0.70 (0v1 and 1v2 are reported only: the labelers themselves disagree most
 there).
 
-## Measurements at version 18
+## Measurements at version 19
 
 `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`:
 
 | Set | NDCG@10 | P@5 | Spearman relevant | Concordance 2v3 | Concordance 1v2 | Buried | Exclusions P / R |
 |---|---|---|---|---|---|---|---|
-| heldout1 | 0.928 | 1.000 | 0.767 | 0.734 | 0.594 | 0 | 1.000 / 0.971 |
-| heldout2 | 0.852 | 0.850 | 0.665 | 0.577 | 0.714 | 1 | 1.000 / 0.845 |
-| heldout3 | 0.869 | 0.967 | 0.589 | 0.586 | 0.731 | 0 | 1.000 / 0.900 |
-| heldout4 | 0.821 | 0.843 | 0.563 | 0.472 | 0.806 | 0 | 1.000 / 0.960 |
-| heldout5 | 0.819 | 0.967 | 0.683 | 0.772 | 0.667 | 0 | 0.987 / 0.956 |
-| heldout6 | 0.902 | 0.950 | 0.805 | 0.824 | 0.814 | 0 | 1.000 / 0.983 |
-| heldout7 | 0.915 | 0.852 | 0.649 | 0.824 | 0.588 | 2 | 1.000 / 0.855 |
-| heldout8 | 0.941 | 0.943 | 0.790 | 0.829 | 0.767 | 1 | 0.987 / 0.835 |
-| heldout9 | 0.860 | 0.792 | 0.616 | 0.717 | 0.680 | 0 | 1.000 / 0.863 |
+| heldout1 | 0.923 | 1.000 | 0.776 | 0.743 | 0.621 | 0 | 1.000 / 0.971 |
+| heldout2 | 0.857 | 0.850 | 0.676 | 0.577 | 0.726 | 1 | 1.000 / 0.845 |
+| heldout3 | 0.865 | 0.967 | 0.521 | 0.483 | 0.718 | 0 | 1.000 / 0.900 |
+| heldout4 | 0.821 | 0.843 | 0.558 | 0.481 | 0.812 | 0 | 1.000 / 0.959 |
+| heldout5 | 0.797 | 0.967 | 0.713 | 0.783 | 0.703 | 0 | 0.987 / 0.955 |
+| heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.982 |
+| heldout7 | 0.915 | 0.888 | 0.668 | 0.812 | 0.593 | 2 | 1.000 / 0.848 |
+| heldout8 | 0.930 | 0.910 | 0.795 | 0.816 | 0.776 | 2 | 1.000 / 0.824 |
+| heldout9 | 0.886 | 0.854 | 0.646 | 0.720 | 0.662 | 0 | 1.000 / 0.860 |
+| heldout10 | 0.945 | 1.000 | 0.840 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
+
+Engine 19 reads Profil-JSON v19 through its typed form (`profile::ProfileForm`) and nothing else.
+Every fixture profile was migrated in one pass: contract types from the excluded ones, `titel` to
+`wunschrollen` where those were missing, Stichworte, wished industries (as starred `branchen`) and
+the `auch` terms of a competence into the new fields (the terms into `methoden_tools`), the
+Schwerpunkte as stars, the remote wish to the work mode (`ueberwiegend` to `remote`), the workload
+to full or part time, degrees with their field; titles, USPs and career stations have no field
+any more. 86 held-out pairs the labels excluded only for remote work abroad or the region of
+permanent roles (rules v19 dropped) are relabeled (`Profil v19:` in their reason); in the corpus
+the expectations of the region (senior and wish K33, K43, K45, K46, K51) are gone.
+
+Two steps, NDCG@10 and exclusion recall (engine 18 on the old profiles; engine 18 on the migrated
+ones, relabeled; engine 19):
+
+| Set | Engine 18 | Engine 18, migrated | Engine 19 |
+|---|---|---|---|
+| heldout1 | 0.928 / 0.971 | 0.923 / 0.971 | 0.923 / 0.971 |
+| heldout2 | 0.852 / 0.845 | 0.857 / 0.845 | 0.857 / 0.845 |
+| heldout3 | 0.869 / 0.900 | 0.865 / 0.900 | 0.865 / 0.900 |
+| heldout4 | 0.821 / 0.960 | 0.824 / 0.959 | 0.821 / 0.959 |
+| heldout5 | 0.819 / 0.956 | 0.795 / 0.955 | 0.797 / 0.955 |
+| heldout6 | 0.902 / 0.983 | 0.902 / 0.982 | 0.902 / 0.982 |
+| heldout7 | 0.915 / 0.855 | 0.910 / 0.848 | 0.915 / 0.848 |
+| heldout8 | 0.944 / 0.835 | 0.929 / 0.824 | 0.930 / 0.824 |
+| heldout9 | 0.860 / 0.863 | 0.877 / 0.860 | 0.886 / 0.860 |
+| heldout10 | 0.945 / 1.000 | 0.945 / 1.000 | 0.945 / 1.000 |
+
+What moved, moved with the profiles (step 1); on the same profiles engine 19 is engine 18 but for
+heldout4 (-0.003, two ties of P6) and the table of role names (heldout7, heldout9). The floors of
+`matching_heldout.rs` that moved follow the migrated profiles; set 10 has its floors since 19.
 
 Where the engine and the labels part on purpose:
 - The labels exclude by the retired target years (`zielprofil_min_jahre`); the engine scores
@@ -99,10 +128,10 @@ Against the gates of the gold set these results are reported only. Concordance 2
 0.70 on sets 2, 3 and 4: there the engine tells a profile's best jobs from the merely good ones
 least well.
 
-Corpus (`-- --ignored report --nocapture` of `matching_corpus.rs`): 336 of 348 rows in their
-band (fin, it, sap and wish 56, senior 55, wishSap 57 of 58). Off band: fin K32 46, K50 60; it
-K12 13, K39 36; sap K32 69, K39 33; senior K02 55, K17 92, K32 46; wish K02 55, K17 96; wishSap
-K32 67.
+Corpus (`-- --ignored report --nocapture` of `matching_corpus.rs`): 331 of 348 rows in their
+band, the same as engine 18 on the migrated profiles (336 on the old ones). Off band: fin K11 82,
+K29 78, K32 46, K50 60; it K12 13, K39 35; sap K39 31; senior K02 55, K17 92, K32 46; wish K17
+96, K28 79, K31 70; wishSap K31 50, K32 62, K39 37, K44 24.
 
 ## The engine
 
@@ -118,16 +147,16 @@ comes from the profile.
 | Other listings | the ad ends for the hard criteria and the seniority at the first heading of the other listings a portal shows under it (`facts::own_text`, `lexicon::OTHER_LISTINGS`: `Ähnliche Projekte (12)`, `Weitere Projekte von ...`, `Similar jobs`), a heading only with its words whole and followed by nothing, a count, a colon or a tail of `LISTING_TAILS`; the requirement parser stops there too, the stored and shown ad stays whole |
 | Items | AND at `,` `;` `und` `sowie` `&` `and` `inkl.`; OR alternatives at `oder` `bzw.` `or` ` / ` (an OR requirement is met when one branch is met); examples after `z. B.`/`e.g.` are alternatives of their head; negated items dropped; comma tails (`, gerne auch`, `, ob`) stay with their item, `in Wort und Schrift` never splits, the partners after `Zusammenarbeit mit`, `gegenüber` and `rund um` stay one item, parts joined by `und` keep the object the last one names |
 | Kinds | skill, language (CEFR level; weight 250 in `M`, a hygiene factor, full weight in the evidence `n`; an item that names a language among four or more other atoms is a skill line), degree, licence (`Zulassung als Steuerberater`), soft (weight 250, unproven = half; a sentence starting with `Sie`, `Du`, `You` that names no known skill is one soft item), frame (weight 0: rate, duration, place, `Vollzeit`, `Verlängerung`) |
-| Vocabulary | general core (languages, degrees, contract, remote and seniority words, general business pairs such as `project management` = `Projektmanagement`) plus domain packs (finance, sap, itProject, hr, procurement, data, pharma, operations, sales, legal, software, restructuring, consulting, energy) that switch on when at least `PACK_HITS` 2 tokens of the profile's competences start with a pack trigger; a pack never maps words for other profiles, only its broad companion words (`Personal`, `Lieferant`, `Kunde`, `Entwicklung`) are generic for every profile. `auch` / `aliases` terms of a competence count as that competence (the evidence path points to the alias) |
+| Vocabulary | general core (languages, degrees, contract, remote and seniority words, general business pairs such as `project management` = `Projektmanagement`) plus domain packs (finance, sap, itProject, hr, procurement, data, pharma, operations, sales, legal, software, restructuring, consulting, energy) that switch on when at least `PACK_HITS` 2 tokens of the profile's competences start with a pack trigger; a pack never maps words for other profiles, only its broad companion words (`Personal`, `Lieferant`, `Kunde`, `Entwicklung`) are generic for every profile. |
 | Ladder | umlauts folded, light stemming, concepts, compounds (light modifier or head = equal, other modifier = half, profile more specific = full; a modifier of three letters or more, a hyphen marks a compound however short; with or without the linking `s`), two thirds of a long entry = half; frame and soft words are words, not prefixes (`Verfügbarkeit` is frame, `Vergütungsmanagement` a skill); `SQL-Kenntnisse` is the skill, `ISO 9001` keeps its number, short codes (`QP`, `R`, `5S`, `CI/CD`) survive the minimum length; generic atoms (`SAP`, `Management`, `Finance`, `Einführung`, `ERP`, `Unternehmen`, `Head`, `Chief`) never alone and never reach a compound; verbal particles are no modifiers (`Einführung`, `Durchführung` are no `Führung`); a USP sentence or a long free-text entry never proves a requirement; an ad that asks for more than the profile names (`Tableau im Reporting` against `Reporting`) is half; knowledge of a product family (`SAP-Kenntnisse`) is met by an entry naming a product of it; leadership asked for alone is met half by a leading role; an industry of the profile is the setting of a requirement, never its function; leading roles are one concept (`Head of Finance`, `VP Finance`, `Kaufmännischer Leiter` = CFO) |
 | Degrees | field (same = full, neighbouring such as business and business informatics = half, other = open), level (`Master` needs master level: `Diplom (Univ.)` counts as master, `Diplom (FH)` and a bachelor are half), `vergleichbar` accepts any field; `Promotion`, `Staatsexamen`, `MSc`, `PhD` are degrees, `Master Data` is none; `Qualified Person` and `Sachkundige Person` are one licence |
 | Languages, years | a language one level below the required one is half, further below open; English language names in profiles and ads. Years against the profile's own years (`berufserfahrung_jahre`, else the most years of a competence): general experience (`10 Jahre Berufserfahrung`, plain `Erfahrung`) met at or below them, from four fifths on in part, below open, not weighed without the profile's years; years in a topic (`3 Jahre S/4HANA`) use the competence's own years where the profile names it, else the profile's; a range counts from its lower end and keeps its upper end (`max`); a part of a total (`davon mindestens drei Jahre`) is no minimum |
 | Contract type | stated (`Festanstellung`, `Jahresgehalt`, `Werkvertrag`, `Tagessatz`, `Interim`, `permanent, full-time`, a page's limited employment type `Befristet`, `Contract`, `Freiberuflich`) > hints (benefits, `Why join us`, work permit: permanent, inferred) > portal (freelance portals: interim); both stated = unclear; an agency without details = unclear with `anueRisk`; denied interim wording is no interim signal; `Vakanzüberbrückung`, `übergangsweise` and `fractional` are interim; employment pay (an hourly wage, `Stundenlohn`, `iGZ`, `equal pay`, a pay scale; never a part of another word such as `Lohnbuchhaltung`) states an employment; reason `contractType {type, inferred}` |
-| Hard criteria | read in the ad's own text only. ANÜ: decided when the contract is offered through it, not as an option (`freiberuflich oder ANÜ`), denied (also in English), a topic of the requirements (`Erfahrung mit Arbeitnehmerüberlassung`, `ANÜ-Erfahrung`), the business of the company or the field of a staffing role; the title counts like a contract sentence. Country: the country of the on-site clause decides, second sites and travel are a check, remote work for a place abroad is decided where the profile rules it out (`remote_ausserhalb_erlaubt: false`). Day rate: an amount next to a currency or rate unit or after a rate word, in every spelling (`110 EUR/h`, `€420/day - €520/day`, `EUR 1,050 to 1,180`), the upper end of a range compared, an hourly rate x 8 (`HOURS_PER_DAY`); employment pay and the pay of temporary agency work are never a day rate; not for permanent roles. Availability against the stated start |
-| Permanent roles | minimum salary: upper bound with the bonus share its sentence names, EUR per year (LinkedIn's salary chip states a permanent role and its salary; employment pay per hour x 2,080); decided only for a stated permanent role (`salary`), else a check; no salary = `salaryUnknown`; a salary in another currency is never compared (a `salary` check). Region: a place of `festanstellung_orte` in the location or a location line is inside; a stated remote share of at least `festanstellung_remote_min` percent (or fully remote) accepts any place; hybrid wording and office days are no proof; outside = `permanentRegion` (decided when stated, a check when inferred), country only or an unclear contract = `permanentRegionUnclear`. An excluded `festanstellung` excludes a stated permanent role (`permanent` as a violation, criterion `noPermanent`), an inferred one is a check |
+| Hard criteria | read in the ad's own text only. ANÜ: decided when the contract is offered through it, not as an option (`freiberuflich oder ANÜ`), denied (also in English), a topic of the requirements (`Erfahrung mit Arbeitnehmerüberlassung`, `ANÜ-Erfahrung`), the business of the company or the field of a staffing role; the title counts like a contract sentence. Country: the country of the on-site clause decides, second sites and travel are a check, remote work for a place abroad is never decided. Day rate: an amount next to a currency or rate unit or after a rate word, in every spelling (`110 EUR/h`, `€420/day - €520/day`, `EUR 1,050 to 1,180`), the upper end of a range compared, an hourly rate x 8 (`HOURS_PER_DAY`); employment pay and the pay of temporary agency work are never a day rate; not for permanent roles. Availability against the stated start |
+| Permanent roles | minimum salary: upper bound with the bonus share its sentence names, EUR per year (LinkedIn's salary chip states a permanent role and its salary; employment pay per hour x 2,080); decided only for a stated permanent role (`salary`), else a check; no salary = `salaryUnknown`; a salary in another currency is never compared (a `salary` check). Without `festanstellung` among the contract types the engine excludes a stated permanent role (`permanent` as a violation, criterion `noPermanent`), an inferred one is a check |
 | Seniority | `seniority.rs`, whatever topic the highest years name: a closed range whose upper end is at most half the profile's years, and from `JUNIOR_ROLE_YEARS` 5 on a junior title, a junior or entry level of the page (an internship, a working student) or a must that asks for first experience, is `overqualified` (met in part, never an exclusion); an assistant or associate level without years is `seniorityUnclear`; a junior role caps a profile of `SENIOR_YEARS` 10 or more at `JUNIOR_CAP` 40 |
 | Formal duties | a must degree of another field or a missing licence = `formalOpen` check with a cap of 40; decided only when worded as mandatory (`zwingend`, `unabdingbar`, `mandatory`); no degree in the profile = a check |
-| Relevance | title fit and a BM25F-like lexical score (title 3, requirement lines 2, rest 1) of the ad against the profile's query; an atom only named in free text (a USP sentence, a career station, an entry long enough to be a sentence) weighs half; languages, contract words and quantities are no part of the query |
+| Relevance | title fit and a BM25F-like lexical score (title 3, requirement lines 2, rest 1) of the ad against the profile's query; an atom only named in an entry long enough to be a sentence weighs half; languages, contract words and quantities are no part of the query |
 | Score | `M`, `K`, `P` and the shrinkage of "Formulas"; permanent roles x 0.9 (second category); caps: open formal must 40, several musts open (at least two and at least half) 40, an open must on the title's topic 60 (for a teaser an open field word of the title), no skill must met (at least two) 25, a single open skill must under a title of little fit 30, a text without requirements 60 (judged from its title, low evidence), a junior role for a senior profile 40; a scored ad keeps at least 10 |
 
 A text long enough to read but without any requirement is scored from its title alone; a short
@@ -137,35 +166,34 @@ and a marketing tail without a skill; contract words in a title (`Interim`, `Fre
 
 ### Profile keys
 
-German keys, English aliases; a missing key turns its rule off.
+Profil-JSON v19 (`core/src/profile/form.rs`, the one reader of the file): flat German keys, every
+key always written; a file with another key, a value of another type or one out of range does
+not read at all. An empty value turns its rule off.
 
-| Key | Alias | Meaning |
-|---|---|---|
-| `harte_kriterien.min_tagessatz` | `hard_criteria.min_day_rate` | minimum day rate (EUR); fallback `einsatzpraeferenzen.tagessatz_ab` |
-| `harte_kriterien.laender` | `countries` | allowed countries: ISO codes or country names (`Deutschland`, `Österreich`, `UK` = `GB`), a list or one text; one unknown entry makes it no rule (`criterionNotUnderstood`) |
-| `harte_kriterien.remote_ausserhalb_erlaubt` | `remote_outside_allowed` | remote work for a place outside the countries |
-| `harte_kriterien.ausgeschlossene_vertragsarten` | `excluded_contract_types` | `anue` (temporary agency work), `festanstellung` or `permanent` (permanent employment) |
-| `harte_kriterien.verfuegbar_ab` | `available_from` | availability (`sofort` or a date) |
-| `harte_kriterien.min_jahresgehalt` | `min_annual_salary`, `min_salary` | minimum annual salary (EUR) of permanent roles; numbers or strings (`150.000`, `150k`) |
-| `harte_kriterien.festanstellung_orte` | `permanent_locations`, `permanent_places` | places of the region for permanent roles |
-| `harte_kriterien.festanstellung_remote_min` | `permanent_remote_min` | remote share (percent) that accepts a place outside the region; without places the rule stays off (warning `regionWithoutPlaces`) |
-| `harte_kriterien.auslastung_min_tage` | `workload_min_days` | days per week (1 to 5) at least |
-| `harte_kriterien.auslastung_max_tage` | `workload_max_days` | days per week (1 to 5) at most, not below the minimum |
-| `harte_kriterien.min_laufzeit_monate` | `min_duration_months` | minimum duration in months (1 to 120) |
-| `harte_kriterien.ausschlusswoerter` | `exclusion_words` | words that exclude an ad (a list or one text) |
-| `harte_kriterien.zielprofil_min_jahre` | `target_min_years` | retired: read no more, still known, so a file that has it loads without a warning and keeps it on save |
-| `berufserfahrung_jahre` | `years_of_experience`, `total_years` | total years of experience |
-| `<list>[].auch` | `aliases` | alternative terms of a competence |
-| `schwerpunkte` | `focus_areas` | 3 to 5 core competences (strings or `{kompetenz}`), at most `FOCUS_MAX` 5 (warning `focusTrimmed`) |
-| `wunschrollen` | `target_roles` | target roles, matched against the title |
-| `einsatzpraeferenzen.tagessatz_wunsch` | `preferences.desired_day_rate` | wished day rate (EUR); never a minimum |
-| `einsatzpraeferenzen.remote` | `preferences.remote` | `voll`, `ueberwiegend`, `teilweise`, `vor_ort` or old free text (`mindestens 50 %`), read by `profile::RemoteWish::read` |
-| `einsatzpraeferenzen.regionen` | `preferences.regions` | wished regions (cities, states, regions such as `Rhein-Main`, countries) |
-| `einsatzpraeferenzen.branchen` | `preferences.industries` | wished industries |
+| Key | Meaning |
+|---|---|
+| `wunschrollen` | target roles, matched against the title |
+| `vertragsarten` | `projekt` always; without `festanstellung` a stated permanent role is excluded, without `zeitarbeit` temporary agency work |
+| `tagessatz_wunsch` | wished day rate (EUR); never a minimum |
+| `tagessatz_min` | minimum day rate (EUR) |
+| `mindestgehalt` | minimum annual salary (EUR) of permanent roles and temporary agency work; none without both |
+| `arbeitsmodell` | wish: `remote` at least fully remote, `hybrid` at least partly, `vor_ort` on site, `egal` none |
+| `laender` | allowed countries (ISO codes or names the engine knows); remote work counts everywhere |
+| `regionen` | wished regions (cities, states, regions such as `Rhein-Main`, countries) |
+| `verfuegbar_ab` | `sofort` or `TT.MM.JJJJ` |
+| `auslastung` | `vollzeit` at least four days a week, `teilzeit` at most three, `egal` none |
+| `mindestlaufzeit_monate` | 0, 3, 6 or 12 |
+| `kernkompetenzen[]` | `kompetenz`, `jahre`, `schwerpunkt` (at most 5 stars: the Schwerpunkte) |
+| `methoden_tools` | tools and methods |
+| `berufserfahrung_jahre` | total years of experience |
+| `branchen[]` | `branche`, `wunsch` (the star: a preferred industry, the industry wish) |
+| `sprachen[]` | `sprache`, `niveau` (A1 to C2, `Muttersprache`) |
+| `abschluesse` | degrees, each with its field |
+| `zertifizierungen` | certificates |
+| `ausschlusswoerter` | words that exclude an ad |
 
-A value out of range is `criterionNotUnderstood {key, value}`; every other criteria key the
-engine does not read is `ignoredKeys`. `ProfileSummary` names the criteria, `aliases`, `packs`,
-`years`, `degrees`, the wishes and the warnings.
+`ProfileSummary` names the criteria, `packs`, `years`, `degrees`, the wishes and the warnings
+(`noCompetences`, `fewCompetences`, `noCriteria`).
 
 ### Formulas
 
@@ -184,10 +212,12 @@ Integer per-mille, parameters in `params.rs`.
 - Target role: the title meets a role (topic atoms without lead words, contract words such as
   `Interim` met by the title or an interim contract, a lead role needs a lead title) =
   `ROLE_FULL` 80; a junior title or a lead role without lead title = `ROLE_HALF` 40.
+  Every name of a role group of `ROLE_GROUPS` (the one table of role names, which the search
+  and the Profil's suggestions use too) reads as that group's first name.
 - Wishes: met `+w`, clearly missed `-w`, near or unknown 0; `w` = rate 30, remote 30, region 20,
   industry 20; the sum clamped to `WISH_MAX` +-100. Day rate: met at or above the wish, near from
-  `WISH_RATE_NEAR` 95 %, else missed (only for non-permanent roles). Remote: wish levels as minimum
-  shares `voll` 100, `ueberwiegend` 60, `teilweise` 20, `vor_ort` at most `ONSITE_MAX` 60; the
+  `WISH_RATE_NEAR` 95 %, else missed (only for non-permanent roles). Work mode: as minimum
+  shares `remote` 100, `hybrid` 20, `vor_ort` at most `ONSITE_MAX` 60; the
   ad's share is an interval (page fact > stated percent or days (`2 Tage vor Ort` = 60 %) > full
   remote wording > `REMOTE_NONE` (0) > hybrid (20-60) > remote named (60-100) > on site only
   (0)); met when the interval's low end reaches the wish, missed when its high end is 0 or more

@@ -27,8 +27,8 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   LinkedIn is never searched or scraped beyond the links in the user's own alert mails.
 - Every source can be switched off (Einstellungen > Suche, Postfach). freelance.de can sign in through its
   own window (`session.rs`), so the fetch reads ads that need a sign-in.
-- Deep search: up to 24 terms from the profile (`profile::deep_search_terms`: Wunschrollen, Schwerpunkte,
-  the proposed or stored Suchbegriffe). Each term is paged while new jobs come, up to 10 pages on Hays,
+- Deep search: up to 24 terms from the profile (`profile::deep_search_terms`: Wunschrollen with the other
+  names of the engine's role table, Schwerpunkte, Kompetenzen, Tools). Each term is paged while new jobs come, up to 10 pages on Hays,
   freelancermap, Michael Page and GULP. A cut-short paging resumes at the next fetch within 7 days.
   SOLCOM, interim-x and FRATCH list all their projects; the app filters them. A title pre-score that knows
   the target roles orders what is fetched first.
@@ -40,13 +40,13 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
 
 ## Matching
 
-The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSION` 18) reads the profile
-and the ad:
+The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSION` 19) reads the profile
+(Profil-JSON v19 through its typed form, `core/src/profile/form.rs`) and the ad:
 - **Exclusions:** contract types (Zeitarbeit, Festanstellung), exclusion words, countries, the minimum day
   rate, permanent-role rules.
 - **Requirements:** must-haves and optional ones, each met, partly met or not met against the
   competences, tools, languages, degrees, certificates and years of experience.
-- **The rest:** Schwerpunkte, target roles and wishes (rate, remote share, regions, industries,
+- **The rest:** Schwerpunkte, target roles and wishes (rate, work mode, regions, preferred industries,
   availability, workload, duration).
 
 It gives a score of 0 to 100 in three bands, or an exclusion with its reason. An excluded job can be
@@ -81,8 +81,9 @@ pre-assessment to any AI chat for a deeper check.
     - Ausschlüsse: words, Zeitarbeit, Festanstellung and its rules.
   - Under some fields, "Häufig verlangt": the terms the recent jobs ask for that the profile lacks, one click
     adds them.
-  - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's
-    JSON in the work folder (`profil/`), keeping unknown keys, with one backup.
+  - Save bar with Speichern and Verwerfen; leaving with changes asks. One profile,
+    `profil/beraterprofil.json` in Profil-JSON v19 (flat German keys, `core/src/profile/form.rs`), with one
+    backup; a save applies what the user changed to what the file holds by then, in every list.
 - **Einstellungen**, on tabs like the Profil:
   - Suche: the eight search sources, each a compact row with its tile, the calls of today, open in the
     browser and a switch.
@@ -189,7 +190,7 @@ build.
 - [ ] The list's date shows when a job came into CXact (`first_seen_at`), for the row and the order "Nach
   Datum". Today it is the alert mail's date where there is one (`COALESCE(mail_date, first_seen_at)` in
   `store/jobs.rs` `page_order` and the row).
-- [ ] A leaner Profil (drafts). Candidates:
+- [ ] A leaner Profil (drafts; the backend has Profil-JSON v19 with its 19 fields since engine 19). Candidates:
   - Drop Suchbegriffe; the search derives its terms.
   - Drop the field Rolle; it repeats the profile's title, which is renamed in place.
   - Merge Stichworte into the Kompetenzen.

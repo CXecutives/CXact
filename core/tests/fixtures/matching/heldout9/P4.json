@@ -1,226 +1,221 @@
 {
-  "name": "Miriam Beispielkamp",
-  "email": "miriam.beispielkamp@example.invalid",
-  "telefon": "+49 151 0000000",
-  "titel": "Interim Programmleiterin Transformation",
-  "abschluss": "Diplom-Wirtschaftsingenieurin (Univ.)",
-  "berufserfahrung_jahre": 20,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Wirtschaftsingenieurin (Univ.)",
-      "fach": "Wirtschaftsingenieurwesen mit den Schwerpunkten Produktion und Organisation",
-      "hochschule": "Beispieluniversität",
-      "jahr": 2006
-    },
-    {
-      "abschluss": "MBA",
-      "fach": "General Management, berufsbegleitend",
-      "hochschule": "Beispiel Business School",
-      "jahr": 2013
-    }
+  "wunschrollen": [
+    "Interim Programmleiterin Transformation",
+    "Carve-out Lead",
+    "PMI Lead",
+    "Head of Transformation Office",
+    "Interim PMO Lead",
+    "Separation Manager"
   ],
-  "stationen": [
-    {
-      "zeitraum": "01/2016 bis heute",
-      "rolle": "Interim Programmleiterin und PMO-Leiterin (selbstständig)",
-      "schwerpunkte": [
-        "Leitung von vier Carve-outs mit Separation Management Office, Day-One-Readiness und Entflechtung der IT",
-        "Fünf Post-Merger-Integrationen mit Integration Management Office und Synergie-Tracking",
-        "Aufbau und Steuerung von TSA-Portfolios mit bis zu 140 Services und geordnetem Exit",
-        "Transformationsprogramme mit bis zu 40 Mio. EUR Budget und zwölf Workstreams",
-        "Vorbereitung und Moderation von Lenkungsausschüssen auf Vorstands- und Gesellschafterebene",
-        "Change Management und Kommunikation in Reorganisationen"
-      ]
-    },
-    {
-      "zeitraum": "04/2011 bis 12/2015",
-      "rolle": "Senior Managerin Transaction Services und Operations Advisory in einer Beratung",
-      "schwerpunkte": [
-        "Separation Management für Konzernabspaltungen",
-        "Integration Management Office nach Unternehmenskäufen",
-        "Synergiebewertung und Synergiecontrolling",
-        "Aufbau von Transitional Service Agreements"
-      ]
-    },
-    {
-      "zeitraum": "10/2006 bis 03/2011",
-      "rolle": "Projektmanagerin im Konzern-PMO eines Chemieunternehmens",
-      "schwerpunkte": [
-        "Multiprojektmanagement und Projektportfolio-Reporting",
-        "Konzernreorganisation und Prozessharmonisierung",
-        "Programmcontrolling und Risikomanagement"
-      ]
-    }
+  "vertragsarten": [
+    "projekt"
   ],
+  "tagessatz_wunsch": 1300,
+  "tagessatz_min": 1150,
+  "mindestgehalt": null,
+  "arbeitsmodell": "hybrid",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Rhein-Main",
+    "Rhein-Neckar",
+    "Rheinland",
+    "Ruhrgebiet"
+  ],
+  "verfuegbar_ab": "01.11.2026",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Programmmanagement",
       "jahre": 15,
-      "auch": ["Programme Management", "Programmleitung", "Program Management"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "PMO-Leitung",
       "jahre": 20,
-      "auch": ["PMO", "Project Management Office", "PMO Lead", "Transformation Office"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Transformationsmanagement",
       "jahre": 15,
-      "auch": ["Transformation", "Business Transformation", "Transformationsprogramme"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Carve-out",
       "jahre": 15,
-      "auch": ["Separation", "Carve-out-Management", "Abspaltung"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Post Merger Integration",
       "jahre": 15,
-      "auch": ["PMI", "Post-Merger-Integration", "Integration Management"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "TSA-Management",
       "jahre": 15,
-      "auch": ["TSA", "Transitional Service Agreements", "Transitional Services"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Change Management",
       "jahre": 15,
-      "auch": ["Changemanagement", "Veränderungsmanagement"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Lenkungsausschüsse",
       "jahre": 15,
-      "auch": ["Steering Committee", "Lenkungskreis", "Steuerungskreis"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Day-One-Readiness",
       "jahre": 15,
-      "auch": ["Day One", "Day 1 Readiness"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Synergiemanagement",
       "jahre": 15,
-      "auch": ["Synergy Tracking", "Synergiecontrolling"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Multiprojektmanagement",
       "jahre": 20,
-      "auch": ["Projektportfoliomanagement", "Portfoliomanagement"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Projektmanagement",
       "jahre": 20,
-      "auch": ["Project Management"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Stakeholdermanagement",
       "jahre": 20,
-      "auch": ["Stakeholder Management"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Organisationsdesign",
       "jahre": 10,
-      "auch": ["Target Operating Model", "Zielorganisation"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Prozessharmonisierung",
       "jahre": 15,
-      "auch": ["Prozessintegration", "Process Harmonization"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Programmcontrolling",
       "jahre": 20,
-      "auch": ["Programme Controlling", "Budgetsteuerung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Risikomanagement in Programmen",
       "jahre": 20,
-      "auch": ["RAID-Management", "Risk Management"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "IT-Separation",
       "jahre": 10,
-      "auch": ["IT Carve-out", "IT-Entflechtung"]
+      "schwerpunkt": false
     }
-  ],
-  "schwerpunkte": [
-    "Programmmanagement",
-    "Carve-out",
-    "Post Merger Integration",
-    "TSA-Management",
-    "PMO-Leitung"
   ],
   "methoden_tools": [
-    {
-      "name": "MS Project"
-    },
-    {
-      "name": "Jira"
-    },
-    {
-      "name": "Confluence"
-    },
-    {
-      "name": "Planview"
-    },
-    {
-      "name": "Smartsheet"
-    },
-    {
-      "name": "Power BI"
-    },
-    {
-      "name": "Excel"
-    },
-    {
-      "name": "Miro"
-    },
-    {
-      "name": "PRINCE2"
-    },
-    {
-      "name": "MSP"
-    },
-    {
-      "name": "ADKAR"
-    }
+    "MS Project",
+    "Jira",
+    "Confluence",
+    "Planview",
+    "Smartsheet",
+    "Power BI",
+    "Excel",
+    "Miro",
+    "PRINCE2",
+    "MSP",
+    "ADKAR",
+    "Separation Management Office",
+    "Integration Management Office",
+    "IMO",
+    "SMO",
+    "Clean Room",
+    "Synergien",
+    "Workstreams",
+    "Master Plan",
+    "Entflechtung",
+    "Programmreporting",
+    "Reorganisation",
+    "Operating Model",
+    "Programme Management",
+    "Programmleitung",
+    "Program Management",
+    "PMO",
+    "Project Management Office",
+    "PMO Lead",
+    "Transformation Office",
+    "Transformation",
+    "Business Transformation",
+    "Transformationsprogramme",
+    "Separation",
+    "Carve-out-Management",
+    "Abspaltung",
+    "PMI",
+    "Post-Merger-Integration",
+    "Integration Management",
+    "TSA",
+    "Transitional Service Agreements",
+    "Transitional Services",
+    "Changemanagement",
+    "Veränderungsmanagement",
+    "Steering Committee",
+    "Lenkungskreis",
+    "Steuerungskreis",
+    "Day One",
+    "Day 1 Readiness",
+    "Synergy Tracking",
+    "Synergiecontrolling",
+    "Projektportfoliomanagement",
+    "Portfoliomanagement",
+    "Project Management",
+    "Stakeholder Management",
+    "Target Operating Model",
+    "Zielorganisation",
+    "Prozessintegration",
+    "Process Harmonization",
+    "Programme Controlling",
+    "Budgetsteuerung",
+    "RAID-Management",
+    "Risk Management",
+    "IT Carve-out",
+    "IT-Entflechtung"
   ],
-  "zertifizierungen": [
-    {
-      "name": "PMP"
-    },
-    {
-      "name": "PRINCE2 Practitioner"
-    },
-    {
-      "name": "MSP Practitioner"
-    },
-    {
-      "name": "Prosci Certified Change Practitioner"
-    }
-  ],
+  "berufserfahrung_jahre": 20,
   "branchen": [
     {
-      "branche": "Chemie"
+      "branche": "Chemie",
+      "wunsch": true
     },
     {
-      "branche": "Pharma"
+      "branche": "Pharma",
+      "wunsch": true
     },
     {
-      "branche": "Konsumgüter"
+      "branche": "Konsumgüter",
+      "wunsch": false
     },
     {
-      "branche": "Automobilzulieferer"
+      "branche": "Automobilzulieferer",
+      "wunsch": false
     },
     {
-      "branche": "Industriegüter"
+      "branche": "Industriegüter",
+      "wunsch": true
     },
     {
-      "branche": "Energie"
+      "branche": "Energie",
+      "wunsch": false
     },
     {
-      "branche": "Private-Equity-Portfoliounternehmen"
+      "branche": "Private-Equity-Portfoliounternehmen",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -237,61 +232,15 @@
       "niveau": "B1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Leitete vier Carve-outs termingerecht bis Day One und bis zum Exit aller TSAs",
-    "Führte fünf Post-Merger-Integrationen mit nachverfolgten Synergien von zusammen 95 Mio. EUR",
-    "Baut Transformation Offices auf, die nach ihrem Mandat intern weiterlaufen"
+  "abschluesse": [
+    "Diplom-Wirtschaftsingenieurin (Univ.)",
+    "MBA, General Management, berufsbegleitend"
   ],
-  "keywords": [
-    "Separation Management Office",
-    "Integration Management Office",
-    "IMO",
-    "SMO",
-    "Clean Room",
-    "Synergien",
-    "Workstreams",
-    "Master Plan",
-    "Entflechtung",
-    "Programmreporting",
-    "Reorganisation",
-    "Operating Model"
+  "zertifizierungen": [
+    "PMP",
+    "PRINCE2 Practitioner",
+    "MSP Practitioner",
+    "Prosci Certified Change Practitioner"
   ],
-  "wunschrollen": [
-    "Interim Programmleiterin Transformation",
-    "Carve-out Lead",
-    "PMI Lead",
-    "Head of Transformation Office",
-    "Interim PMO Lead",
-    "Separation Manager"
-  ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 1300,
-    "remote": "teilweise",
-    "regionen": [
-      "Rhein-Main",
-      "Rhein-Neckar",
-      "Rheinland",
-      "Ruhrgebiet"
-    ],
-    "branchen": [
-      "Chemie",
-      "Pharma",
-      "Industriegüter"
-    ]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 1150,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue",
-      "festanstellung"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "01.11.2026",
-    "zielprofil_min_jahre": 10
-  }
+  "ausschlusswoerter": []
 }

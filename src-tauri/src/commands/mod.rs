@@ -49,15 +49,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         jobs::purge_jobs,
         jobs::empty_trash,
         jobs::ai_prompt,
-        profile::pick_profile,
-        profile::profile_prompt,
         profile::save_profile,
-        profile::switch_profile,
-        profile::create_profile,
-        profile::duplicate_profile,
-        profile::rename_profile,
-        profile::delete_profile,
-        profile::restore_profile,
         profile::asked_terms,
         profile::vocabulary,
         profile::set_unsaved,
@@ -84,8 +76,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
 mod texts {
     // User-facing text, German.
     pub const PICK_WORKSPACE: &str = "Arbeitsordner wählen";
-    pub const PICK_PROFILE: &str = "Profil wählen";
-    pub const PROFILE_FILTER: &str = "Profil (JSON)";
     // end of user-facing text
 }
 

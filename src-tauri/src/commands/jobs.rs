@@ -130,9 +130,9 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
 }
 
 /// The profile as the prompts use it (the sample profile in the dry run).
-fn prompt_profile(state: &AppState) -> CmdResult<serde_json::Value> {
+fn prompt_profile(state: &AppState) -> CmdResult<profile::ProfileForm> {
     let profile = if state.dry_run {
-        serde_json::from_str(dry_run::PROFILE_JSON).ok()
+        profile::parse(dry_run::PROFILE_JSON).ok()
     } else {
         profile::load(&state.workspace()?)?
     };

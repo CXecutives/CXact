@@ -38,6 +38,7 @@ use crate::matching::{
 use crate::model::{Band, band};
 use crate::pipeline::LocalMatcher;
 use crate::portal::Facts;
+use crate::profile::ProfileForm;
 use crate::store::{JobRow, Store};
 use crate::text::{one_line, truncate_chars};
 use crate::view::{DetailState, JobView, WorkMode};
@@ -48,8 +49,6 @@ pub const MAX_PROFILE_CHARS: usize = 8_000;
 pub const MAX_AD_CHARS: usize = 12_000;
 /// Longest passage of the ad the pre-assessment quotes.
 const MAX_PASSAGE_CHARS: usize = 160;
-/// Places of a permanent role the pre-assessment names before "and n more".
-const MAX_PLACES: usize = 4;
 
 /// One job of a prompt.
 #[derive(Debug, Clone, Copy)]
@@ -106,7 +105,7 @@ impl PromptSource {
 }
 
 /// The prompt for one job (the ad text at most [`MAX_AD_CHARS`]).
-pub fn ai_prompt(profile: &Value, item: PromptJob<'_>) -> String {
+pub fn ai_prompt(profile: &ProfileForm, item: PromptJob<'_>) -> String {
     let w: &dyn Wording = &de::German;
     let t = w.words();
     let consultant = Consultant::new(profile);
@@ -289,13 +288,13 @@ trait Wording: Sync {
 /// The consultant as the prompt reads the profile: its JSON and the thresholds of its hard
 /// criteria as the engine reads them.
 struct Consultant<'a> {
-    profile: &'a Value,
+    profile: &'a ProfileForm,
     /// The hard criteria as the engine reads them (thresholds).
     criteria: Vec<CriterionInfo>,
 }
 
 impl<'a> Consultant<'a> {
-    fn new(profile: &'a Value) -> Self {
+    fn new(profile: &'a ProfileForm) -> Self {
         Consultant {
             profile,
             criteria: crate::matching::profile_criteria(profile),
@@ -313,9 +312,9 @@ impl<'a> Consultant<'a> {
 
 /// The profile block: a note, the glossary of the keys it holds, the JSON without personal
 /// data.
-fn profile_block(w: &dyn Wording, profile: &Value) -> String {
+fn profile_block(w: &dyn Wording, profile: &ProfileForm) -> String {
     let t = w.words();
-    let clean = super::personal::scrub_profile(profile);
+    let clean = super::personal::scrub_profile(&crate::profile::file_value(profile));
     let mut keys = BTreeSet::new();
     collect_keys(&clean, &mut keys);
     let glossary: Vec<String> = t
@@ -360,34 +359,18 @@ fn profile_json(clean: &Value, mark: &str) -> String {
     cut(&compact, MAX_PROFILE_CHARS, mark)
 }
 
-/// The profile entry at a JSON path of the engine (`kernkompetenzen[3].kompetenz`,
-/// `kernkompetenzen[0].auch[1]`) with the years of the nearest object that states them.
-fn entry_years(profile: &Value, path: &str) -> Option<i64> {
-    let mut trail = vec![profile];
-    let mut node = profile;
-    for part in path.split('.') {
-        let (name, indices) = match part.find('[') {
-            Some(at) => (&part[..at], &part[at..]),
-            None => (part, ""),
-        };
-        if !name.is_empty() {
-            node = node.get(name)?;
-            trail.push(node);
-        }
-        for index in indices
-            .split(['[', ']'])
-            .filter(|s| !s.is_empty())
-            .map(str::parse::<usize>)
-        {
-            node = node.get(index.ok()?)?;
-            trail.push(node);
-        }
-    }
-    trail
-        .iter()
-        .rev()
-        .filter_map(|v| v.as_object())
-        .find_map(|o| o.get("jahre").or_else(|| o.get("years")).and_then(as_int))
+/// The years the profile states for the competence at a JSON path of the engine
+/// (`kernkompetenzen[3].kompetenz`); none for another entry.
+fn entry_years(profile: &ProfileForm, path: &str) -> Option<i64> {
+    let rest = path
+        .strip_prefix(crate::profile::key::COMPETENCES)?
+        .strip_prefix('[')?;
+    let index: usize = rest.split(']').next()?.parse().ok()?;
+    profile
+        .competences
+        .get(index)
+        .and_then(|c| c.years)
+        .map(i64::from)
 }
 
 // ------------------------------------------------------------------------- the ad
@@ -813,7 +796,7 @@ fn criterion_line(
 }
 
 /// A requirement reason in neutral terms, its profile entry with the years the profile states.
-fn requirement<'a>(reason: &'a Reason, profile: &Value) -> Requirement<'a> {
+fn requirement<'a>(reason: &'a Reason, profile: &ProfileForm) -> Requirement<'a> {
     let evidence = reason.evidence.as_ref().map(|e| Entry {
         text: super::personal::scrub_text(&e.profile),
         years: entry_years(profile, &e.path),
@@ -916,12 +899,6 @@ fn flag(params: &Map<String, Value>, key: &str) -> bool {
     params.get(key).and_then(Value::as_bool).unwrap_or(false)
 }
 
-/// The profile rules out fully remote work outside its countries: only a `false`
-/// `remote_ausserhalb_erlaubt` does, a missing key allows it (as the engine reads it).
-fn remote_outside_ruled_out(params: &Map<String, Value>) -> bool {
-    params.get("remoteOutsideAllowed").and_then(Value::as_bool) == Some(false)
-}
-
 /// A list param as texts (`["DE", "AT"]` or `"DE, AT"`).
 fn list_param(params: &Map<String, Value>, key: &str) -> Vec<String> {
     match params.get(key) {
@@ -954,10 +931,4 @@ fn grouped(n: i64) -> String {
         out.push(c);
     }
     if n < 0 { format!("-{out}") } else { out }
-}
-
-/// The first `MAX_PLACES` places and how many more there are.
-fn some_places(places: &[String]) -> (String, usize) {
-    let shown = places.iter().take(MAX_PLACES).cloned().collect::<Vec<_>>();
-    (shown.join(", "), places.len().saturating_sub(MAX_PLACES))
 }

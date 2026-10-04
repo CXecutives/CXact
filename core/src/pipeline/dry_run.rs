@@ -22,8 +22,8 @@ pub const PROFILE_JSON: &str = include_str!("../../tests/fixtures/matching/sampl
 pub const PROFILE_NAME: &str = "beispielprofil.json";
 
 static MATCHER: LazyLock<Arc<LocalMatcher>> = LazyLock::new(|| {
-    let value = serde_json::from_str(PROFILE_JSON).unwrap_or_default();
-    Arc::new(LocalMatcher::from_json(&value))
+    let form = crate::profile::parse(PROFILE_JSON).unwrap_or_default();
+    Arc::new(LocalMatcher::from_form(&form))
 });
 
 /// The engine with the sample profile.

@@ -73,8 +73,8 @@ impl AppState {
         }
         let matcher = match stamp.as_ref().map(|_| profile::load(&workspace)) {
             None | Some(Ok(None)) => None,
-            Some(Ok(Some(value))) => {
-                let matcher = LocalMatcher::from_json(&value);
+            Some(Ok(Some(form))) => {
+                let matcher = LocalMatcher::from_form(&form);
                 log::info!(
                     "profile compiled: {:?}, revision {}",
                     matcher.profile().quality(),

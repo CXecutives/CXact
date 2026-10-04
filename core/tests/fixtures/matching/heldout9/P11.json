@@ -1,234 +1,227 @@
 {
-  "name": "Tobias Beispielberg",
-  "email": "tobias.beispielberg@example.invalid",
-  "telefon": "+49 151 0000000",
-  "titel": "Freelance Test- und Qualitätsmanager (ISTQB Advanced)",
-  "abschluss": "Diplom-Informatiker (FH)",
-  "berufserfahrung_jahre": 19,
-  "ausbildung": [
-    {
-      "abschluss": "Diplom-Informatiker (FH)",
-      "fach": "Informatik mit den Schwerpunkten Softwaretechnik und Qualitätssicherung",
-      "hochschule": "Beispielhochschule für angewandte Wissenschaften",
-      "jahr": 2007
-    }
+  "wunschrollen": [
+    "Testmanager",
+    "QA Lead",
+    "Test Lead",
+    "Testautomatisierungsarchitekt",
+    "Release Manager"
   ],
-  "stationen": [
-    {
-      "zeitraum": "2016 - heute",
-      "rolle": "Freiberuflicher Testmanager und QA Lead",
-      "schwerpunkte": [
-        "Testmanagement in fünf SAP-S/4HANA-Einführungen und Rollouts in Handel, Pharmagroßhandel und Energieversorgung",
-        "Aufbau von Testautomatisierungs-Frameworks mit Playwright (TypeScript) und Selenium (Java), Migration gewachsener Selenium-Suiten",
-        "Einführung von Quality Gates in CI/CD-Pipelines mit GitLab CI, Jenkins und Azure DevOps",
-        "Release-Management und Testkoordination für agile Release Trains nach SAFe mit bis zu neun Teams",
-        "Planung und Steuerung von Integrations- und Abnahmetests mit Fachbereichen und Key Usern"
-      ]
-    },
-    {
-      "zeitraum": "2011 - 2016",
-      "rolle": "Testmanager und zuletzt Leiter des Test Centers eines IT-Dienstleisters für Versicherungen",
-      "schwerpunkte": [
-        "Führung von zwölf Testerinnen und Testern, Aufbau eines Testprozesses nach ISTQB",
-        "Einführung von Jira und Xray als Testmanagement-Werkzeug",
-        "Last- und Performancetests mit JMeter für Bestands- und Schadensysteme",
-        "Testdatenmanagement und Anonymisierung von Produktionsdaten"
-      ]
-    },
-    {
-      "zeitraum": "2007 - 2011",
-      "rolle": "Softwaretester und Testautomatisierer bei einem Softwarehaus für Logistiksoftware",
-      "schwerpunkte": [
-        "Automatisierte Regressionstests mit Selenium WebDriver, Java und TestNG",
-        "API-Tests für Schnittstellen zu Lagerverwaltungs- und Transportmanagementsystemen",
-        "Fehlermanagement und Testberichte für Kundenreleases"
-      ]
-    }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
   ],
+  "tagessatz_wunsch": 900,
+  "tagessatz_min": 800,
+  "mindestgehalt": null,
+  "arbeitsmodell": "vor_ort",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Baden-Württemberg",
+    "Hessen",
+    "Rheinland-Pfalz"
+  ],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 3,
   "kernkompetenzen": [
     {
       "kompetenz": "Testmanagement",
       "jahre": 14,
-      "auch": ["Test Management", "Testleitung", "Testmanager"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Testautomatisierung",
       "jahre": 17,
-      "auch": ["Test Automation", "automatisierte Tests", "Testautomatisierer"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Selenium",
       "jahre": 15,
-      "auch": ["Selenium WebDriver"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Playwright",
-      "jahre": 5
+      "jahre": 5,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Teststrategie und Testkonzept",
       "jahre": 13,
-      "auch": ["Teststrategie", "Testkonzept", "Master-Testplan", "Test Strategy"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "SAP-Testmanagement",
       "jahre": 9,
-      "auch": ["SAP Testing", "SAP-Tests", "SAP S/4HANA Test", "Integrationstests SAP"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Agiles Testen",
       "jahre": 10,
-      "auch": ["Agile Testing", "Testen in agilen Teams", "Scrum", "SAFe"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Quality Gates",
       "jahre": 8,
-      "auch": ["Qualitätsgates", "Quality Gate", "Go-live-Kriterien"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Release-Management",
       "jahre": 8,
-      "auch": ["Release Management", "Release Manager", "Release-Planung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Qualitätssicherung von Software",
       "jahre": 19,
-      "auch": ["Software Quality Assurance", "QA", "Softwarequalität", "Quality Assurance"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Abnahmetests",
       "jahre": 12,
-      "auch": ["User Acceptance Test", "UAT", "Abnahmetest"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Regressionstests",
       "jahre": 17,
-      "auch": ["Regressionstest", "Regression Testing"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Integrationstests",
       "jahre": 14,
-      "auch": ["Integration Testing", "End-to-End-Tests", "E2E-Tests"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Fehlermanagement",
       "jahre": 17,
-      "auch": ["Defect Management", "Defect-Management"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Last- und Performancetests",
       "jahre": 7,
-      "auch": ["Performancetest", "Lasttest", "Load Testing"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Continuous Integration und Continuous Delivery",
       "jahre": 9,
-      "auch": ["CI/CD", "Continuous Integration", "Build-Pipelines"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "API-Tests",
       "jahre": 10,
-      "auch": ["API Testing", "REST-Tests", "Schnittstellentests"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Testdatenmanagement",
       "jahre": 10,
-      "auch": ["Testdaten", "Test Data Management"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Führung von Testteams",
       "jahre": 10,
-      "auch": ["QA Lead", "Test Lead", "Teamleitung Test"]
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "Playwright"
-    },
-    {
-      "name": "Selenium WebDriver"
-    },
-    {
-      "name": "Cypress"
-    },
-    {
-      "name": "Tricentis Tosca"
-    },
-    {
-      "name": "SAP Solution Manager"
-    },
-    {
-      "name": "SAP Cloud ALM"
-    },
-    {
-      "name": "Jira"
-    },
-    {
-      "name": "Xray"
-    },
-    {
-      "name": "TestRail"
-    },
-    {
-      "name": "GitLab CI"
-    },
-    {
-      "name": "Jenkins"
-    },
-    {
-      "name": "Azure DevOps"
-    },
-    {
-      "name": "JMeter"
-    },
-    {
-      "name": "Postman"
-    },
-    {
-      "name": "Cucumber"
-    },
-    {
-      "name": "Java"
-    },
-    {
-      "name": "TypeScript"
-    },
-    {
-      "name": "SQL"
-    }
+    "Selenium WebDriver",
+    "Cypress",
+    "Tricentis Tosca",
+    "SAP Solution Manager",
+    "SAP Cloud ALM",
+    "Jira",
+    "Xray",
+    "TestRail",
+    "GitLab CI",
+    "Jenkins",
+    "Azure DevOps",
+    "JMeter",
+    "Postman",
+    "Cucumber",
+    "Java",
+    "TypeScript",
+    "SQL",
+    "ISTQB",
+    "SAP S/4HANA",
+    "Release Management",
+    "Agile Testing",
+    "SAFe",
+    "Test Management",
+    "Testleitung",
+    "Testmanager",
+    "Test Automation",
+    "automatisierte Tests",
+    "Testautomatisierer",
+    "Teststrategie",
+    "Testkonzept",
+    "Master-Testplan",
+    "Test Strategy",
+    "SAP Testing",
+    "SAP-Tests",
+    "SAP S/4HANA Test",
+    "Integrationstests SAP",
+    "Testen in agilen Teams",
+    "Scrum",
+    "Qualitätsgates",
+    "Quality Gate",
+    "Go-live-Kriterien",
+    "Release Manager",
+    "Release-Planung",
+    "Software Quality Assurance",
+    "QA",
+    "Softwarequalität",
+    "Quality Assurance",
+    "User Acceptance Test",
+    "UAT",
+    "Abnahmetest",
+    "Regressionstest",
+    "Regression Testing",
+    "Integration Testing",
+    "End-to-End-Tests",
+    "E2E-Tests",
+    "Defect Management",
+    "Defect-Management",
+    "Performancetest",
+    "Lasttest",
+    "Load Testing",
+    "CI/CD",
+    "Continuous Integration",
+    "Build-Pipelines",
+    "API Testing",
+    "REST-Tests",
+    "Schnittstellentests",
+    "Testdaten",
+    "Test Data Management",
+    "QA Lead",
+    "Test Lead",
+    "Teamleitung Test"
   ],
-  "zertifizierungen": [
-    {
-      "name": "ISTQB Certified Tester Advanced Level Test Manager"
-    },
-    {
-      "name": "ISTQB Certified Tester Advanced Level Test Automation Engineer"
-    },
-    {
-      "name": "ISTQB Certified Tester Foundation Level"
-    },
-    {
-      "name": "Certified SAFe Practitioner"
-    },
-    {
-      "name": "Professional Scrum Master I"
-    }
-  ],
+  "berufserfahrung_jahre": 19,
   "branchen": [
     {
-      "branche": "Handel"
+      "branche": "Handel",
+      "wunsch": true
     },
     {
-      "branche": "Pharmagroßhandel"
+      "branche": "Pharmagroßhandel",
+      "wunsch": false
     },
     {
-      "branche": "Energieversorgung"
+      "branche": "Energieversorgung",
+      "wunsch": false
     },
     {
-      "branche": "Versicherungen"
+      "branche": "Versicherungen",
+      "wunsch": true
     },
     {
-      "branche": "Logistik"
+      "branche": "Logistik",
+      "wunsch": false
+    },
+    {
+      "branche": "Pharma",
+      "wunsch": true
     }
   ],
   "sprachen": [
@@ -241,70 +234,20 @@
       "niveau": "C1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Verbindet Testmanagement in SAP-Programmen mit eigener Automatisierung in Playwright und Selenium",
-    "Hat in drei Programmen Quality Gates eingeführt, die Go-live-Entscheidungen messbar gemacht haben",
-    "Führt verteilte Testteams aus Fachbereich, Dienstleister und Offshore-Partnern"
+  "abschluesse": [
+    "Diplom-Informatiker (FH)"
   ],
-  "keywords": [
-    "Testmanagement",
-    "Testautomatisierung",
-    "Playwright",
-    "Selenium",
-    "ISTQB",
-    "SAP S/4HANA",
-    "Quality Gates",
-    "Release Management",
-    "Agile Testing",
-    "SAFe"
+  "zertifizierungen": [
+    "ISTQB Certified Tester Advanced Level Test Manager",
+    "ISTQB Certified Tester Advanced Level Test Automation Engineer",
+    "ISTQB Certified Tester Foundation Level",
+    "Certified SAFe Practitioner",
+    "Professional Scrum Master I"
   ],
-  "schwerpunkte": [
-    "Testmanagement",
-    "Testautomatisierung",
-    "SAP-Testmanagement",
-    "Quality Gates"
-  ],
-  "wunschrollen": [
-    "Testmanager",
-    "QA Lead",
-    "Test Lead",
-    "Testautomatisierungsarchitekt",
-    "Release Manager"
-  ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 900,
-    "remote": "überwiegend remote, bis zwei Tage pro Woche vor Ort",
-    "regionen": [
-      "Baden-Württemberg",
-      "Hessen",
-      "Rheinland-Pfalz"
-    ],
-    "branchen": [
-      "Handel",
-      "Pharma",
-      "Versicherungen"
-    ]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 800,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": true,
-    "verfuegbar_ab": "sofort",
-    "auslastung_min_tage": 3,
-    "auslastung_max_tage": 5,
-    "min_laufzeit_monate": 3,
-    "ausschlusswoerter": [
-      "Werkstudent",
-      "Praktikum",
-      "Hardware-in-the-Loop",
-      "Penetrationstest"
-    ]
-  }
+  "ausschlusswoerter": [
+    "Werkstudent",
+    "Praktikum",
+    "Hardware-in-the-Loop",
+    "Penetrationstest"
+  ]
 }

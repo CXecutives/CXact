@@ -3,7 +3,6 @@ import type { JobCounts } from "./JobCounts";
 import type { Mailbox } from "./Mailbox";
 import type { Platform } from "./Platform";
 import type { PortalState } from "./PortalState";
-import type { ProfileEntry } from "./ProfileEntry";
 import type { ProfileInfo } from "./ProfileInfo";
 import type { ResetSummary } from "./ResetSummary";
 import type { RunSnapshot } from "./RunSnapshot";
@@ -27,13 +26,9 @@ firstRun: boolean,
  */
 running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, 
 /**
- * The active profile.
+ * The profile.
  */
-profile: ProfileInfo | null, 
-/**
- * Every profile of the work folder, the active one marked (empty without one).
- */
-profiles: Array<ProfileEntry>, portals: Array<PortalState>, 
+profile: ProfileInfo | null, portals: Array<PortalState>, 
 /**
  * The fetch reads the alert mails (the menu beside the button).
  */

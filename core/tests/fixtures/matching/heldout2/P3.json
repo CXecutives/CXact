@@ -1,65 +1,78 @@
 {
-  "name": "Deniz Exemplar",
-  "titel": "Senior Data und BI Consultant",
-  "berufserfahrung_jahre": 11,
+  "wunschrollen": [
+    "Senior Data und BI Consultant"
+  ],
+  "vertragsarten": [
+    "projekt",
+    "festanstellung",
+    "zeitarbeit"
+  ],
+  "tagessatz_wunsch": null,
+  "tagessatz_min": null,
+  "mindestgehalt": null,
+  "arbeitsmodell": "egal",
+  "laender": [],
+  "regionen": [],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 0,
   "kernkompetenzen": [
     {
       "kompetenz": "Power BI",
-      "jahre": 7
+      "jahre": 7,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "SQL",
-      "jahre": 11
+      "jahre": 11,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Datenmodellierung",
-      "jahre": 9
+      "jahre": 9,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Data Warehouse",
-      "jahre": 9
+      "jahre": 9,
+      "schwerpunkt": false
     },
     {
-      "kompetenz": "ETL-Strecken"
+      "kompetenz": "ETL-Strecken",
+      "jahre": null,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Azure Data Factory",
-      "jahre": 4
+      "jahre": 4,
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Python",
-      "jahre": 5
+      "jahre": 5,
+      "schwerpunkt": false
     },
     {
-      "kompetenz": "Reporting und Dashboards"
+      "kompetenz": "Reporting und Dashboards",
+      "jahre": null,
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "DAX"
-    },
-    {
-      "name": "Power Query"
-    },
-    {
-      "name": "Azure Synapse Analytics"
-    },
-    {
-      "name": "Databricks"
-    },
-    {
-      "name": "SQL Server"
-    },
-    {
-      "name": "SSIS"
-    },
-    {
-      "name": "dbt"
-    },
-    {
-      "name": "Git"
-    }
+    "DAX",
+    "Power Query",
+    "Azure Synapse Analytics",
+    "Databricks",
+    "SQL Server",
+    "SSIS",
+    "dbt",
+    "Git",
+    "Azure",
+    "Business Intelligence",
+    "Data Engineering"
   ],
+  "berufserfahrung_jahre": 11,
+  "branchen": [],
   "sprachen": [
     {
       "sprache": "Deutsch",
@@ -71,15 +84,10 @@
     },
     {
       "sprache": "Englisch",
-      "niveau": "fließend"
+      "niveau": "C1"
     }
   ],
-  "keywords": [
-    "Power BI",
-    "SQL",
-    "Azure",
-    "Python",
-    "Business Intelligence",
-    "Data Engineering"
-  ]
+  "abschluesse": [],
+  "zertifizierungen": [],
+  "ausschlusswoerter": []
 }

@@ -1,224 +1,220 @@
 {
-  "name": "Jana Beispielsen",
-  "email": "jana.beispielsen@example.invalid",
-  "telefon": "+49 151 0000000",
-  "titel": "Beraterin für KI-Integration und Prozessautomatisierung im Mittelstand",
-  "abschluss": "Master of Science Wirtschaftsinformatik",
-  "berufserfahrung_jahre": 14,
-  "ausbildung": [
-    {
-      "abschluss": "Master of Science",
-      "fach": "Wirtschaftsinformatik mit Schwerpunkt Geschäftsprozessmanagement",
-      "hochschule": "Beispielhochschule für angewandte Wissenschaften",
-      "jahr": 2012
-    },
-    {
-      "abschluss": "Bachelor of Arts",
-      "fach": "Betriebswirtschaftslehre",
-      "hochschule": "Beispieluniversität",
-      "jahr": 2010
-    }
+  "wunschrollen": [
+    "KI-Beraterin",
+    "Beraterin Prozessautomatisierung",
+    "Projektleitung Copilot-Einführung",
+    "KI-Trainerin"
   ],
-  "stationen": [
-    {
-      "zeitraum": "2020 - heute",
-      "rolle": "Selbstständige Beraterin für KI und Automatisierung im Mittelstand",
-      "schwerpunkte": [
-        "Rund 40 Projekte zur KI-Integration und Prozessautomatisierung bei Unternehmen mit 20 bis 800 Mitarbeitenden",
-        "Einführung von Microsoft 365 Copilot in fünf Unternehmen mit Berechtigungskonzept, Pilotgruppe und KI-Nutzungsrichtlinie",
-        "Automatisierung von Angebots-, Rechnungs- und Personalprozessen mit n8n, Make und Power Automate",
-        "Geförderte Beratungen über BAFA und INQA-Coaching, Unterstützung bei Förderanträgen",
-        "KI-Schulungen und Prompt-Engineering-Workshops für mehr als 900 Teilnehmende"
-      ]
-    },
-    {
-      "zeitraum": "2015 - 2020",
-      "rolle": "Leiterin Prozessmanagement und Digitalisierung bei einem Großhandelsunternehmen mit 650 Mitarbeitenden",
-      "schwerpunkte": [
-        "Digitalisierung der Verwaltung mit digitaler Eingangsrechnungsverarbeitung, Dokumentenmanagement und Freigabe-Workflows",
-        "Aufbau einer Power-Platform-Umgebung und eines Citizen-Developer-Programms",
-        "Migration auf Microsoft 365, Einführung von Teams und SharePoint Online",
-        "Führung eines Teams mit sechs Prozess- und Systemverantwortlichen"
-      ]
-    },
-    {
-      "zeitraum": "2012 - 2015",
-      "rolle": "Consultant ERP und Prozesse bei einem IT-Systemhaus",
-      "schwerpunkte": [
-        "Einführung von Microsoft Dynamics NAV bei mittelständischen Kunden",
-        "Prozessaufnahme und Prozessmodellierung in BPMN",
-        "Anwenderschulungen und Key-User-Trainings"
-      ]
-    }
+  "vertragsarten": [
+    "projekt",
+    "festanstellung"
   ],
+  "tagessatz_wunsch": 1050,
+  "tagessatz_min": 900,
+  "mindestgehalt": 95000,
+  "arbeitsmodell": "remote",
+  "laender": [
+    "DE",
+    "AT",
+    "CH"
+  ],
+  "regionen": [
+    "Franken",
+    "Bayern",
+    "remote im DACH-Raum"
+  ],
+  "verfuegbar_ab": "sofort",
+  "auslastung": "egal",
+  "mindestlaufzeit_monate": 3,
   "kernkompetenzen": [
     {
       "kompetenz": "KI-Integration",
       "jahre": 6,
-      "auch": ["KI-Einführung", "AI Integration", "Generative KI", "GenAI", "Einsatz von Sprachmodellen"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Prozessautomatisierung",
       "jahre": 9,
-      "auch": ["Workflow-Automatisierung", "Process Automation", "Automatisierung von Geschäftsprozessen"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "n8n",
       "jahre": 4,
-      "auch": ["n8n-Workflows"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Make",
       "jahre": 5,
-      "auch": ["Make.com", "Integromat"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Microsoft Power Automate",
       "jahre": 7,
-      "auch": ["Power Automate", "Power Platform"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Einführung von Microsoft 365 Copilot",
       "jahre": 2,
-      "auch": ["Copilot-Rollout", "Microsoft Copilot", "M365 Copilot", "Copilot-Einführung"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Microsoft 365",
       "jahre": 10,
-      "auch": ["M365", "Office 365", "SharePoint Online", "Microsoft Teams"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Prompt Engineering",
       "jahre": 3,
-      "auch": ["Prompt-Design", "Prompting"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Digitalisierung von Verwaltungsprozessen",
       "jahre": 9,
-      "auch": ["Digitalisierung der Verwaltung", "Backoffice-Digitalisierung", "papierlose Prozesse"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Geförderte Beratung",
       "jahre": 5,
-      "auch": ["BAFA-Förderung", "INQA-Coaching", "go-digital", "Förderberatung"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Schulungen und Workshops",
       "jahre": 10,
-      "auch": ["Trainings", "KI-Schulungen", "Mitarbeiterschulungen", "Key-User-Trainings"]
+      "schwerpunkt": true
     },
     {
       "kompetenz": "Prozessanalyse und Prozessmodellierung",
       "jahre": 12,
-      "auch": ["BPMN", "Prozessmanagement", "Geschäftsprozessoptimierung", "Prozessaufnahme"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Changemanagement",
       "jahre": 8,
-      "auch": ["Change Management", "Veränderungsmanagement", "Akzeptanzmanagement"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "KI-Governance und Datenschutz",
       "jahre": 3,
-      "auch": ["EU AI Act", "DSGVO", "KI-Richtlinie", "KI-Nutzungsrichtlinie"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Projektmanagement",
       "jahre": 12,
-      "auch": ["Projektleitung", "agiles Projektmanagement"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Low-Code-Entwicklung",
       "jahre": 5,
-      "auch": ["Power Apps", "Low Code", "Citizen Development"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "API-Integration",
       "jahre": 6,
-      "auch": ["REST-API", "Schnittstellenintegration", "Webhooks"]
+      "schwerpunkt": false
     },
     {
       "kompetenz": "Dokumentenmanagement",
       "jahre": 7,
-      "auch": ["DMS", "E-Rechnung", "digitale Eingangsrechnungsverarbeitung"]
+      "schwerpunkt": false
     }
   ],
   "methoden_tools": [
-    {
-      "name": "n8n"
-    },
-    {
-      "name": "Make"
-    },
-    {
-      "name": "Microsoft Power Automate"
-    },
-    {
-      "name": "Microsoft Power Apps"
-    },
-    {
-      "name": "Microsoft 365 Copilot"
-    },
-    {
-      "name": "Microsoft Copilot Studio"
-    },
-    {
-      "name": "Azure OpenAI"
-    },
-    {
-      "name": "ChatGPT Enterprise"
-    },
-    {
-      "name": "SharePoint Online"
-    },
-    {
-      "name": "Microsoft Teams"
-    },
-    {
-      "name": "Zapier"
-    },
-    {
-      "name": "Airtable"
-    },
-    {
-      "name": "DATEV Unternehmen online"
-    },
-    {
-      "name": "Camunda Modeler"
-    }
+    "Microsoft Power Apps",
+    "Microsoft 365 Copilot",
+    "Microsoft Copilot Studio",
+    "Azure OpenAI",
+    "ChatGPT Enterprise",
+    "SharePoint Online",
+    "Microsoft Teams",
+    "Zapier",
+    "Airtable",
+    "DATEV Unternehmen online",
+    "Camunda Modeler",
+    "KI-Beratung",
+    "Power Automate",
+    "Digitalisierung",
+    "Mittelstand",
+    "BAFA",
+    "INQA",
+    "KI-Einführung",
+    "AI Integration",
+    "Generative KI",
+    "GenAI",
+    "Einsatz von Sprachmodellen",
+    "Workflow-Automatisierung",
+    "Process Automation",
+    "Automatisierung von Geschäftsprozessen",
+    "n8n-Workflows",
+    "Make.com",
+    "Integromat",
+    "Power Platform",
+    "Copilot-Rollout",
+    "Microsoft Copilot",
+    "M365 Copilot",
+    "Copilot-Einführung",
+    "M365",
+    "Office 365",
+    "Prompt-Design",
+    "Prompting",
+    "Digitalisierung der Verwaltung",
+    "Backoffice-Digitalisierung",
+    "papierlose Prozesse",
+    "BAFA-Förderung",
+    "INQA-Coaching",
+    "go-digital",
+    "Förderberatung",
+    "Trainings",
+    "KI-Schulungen",
+    "Mitarbeiterschulungen",
+    "Key-User-Trainings",
+    "BPMN",
+    "Prozessmanagement",
+    "Geschäftsprozessoptimierung",
+    "Prozessaufnahme",
+    "Change Management",
+    "Veränderungsmanagement",
+    "Akzeptanzmanagement",
+    "EU AI Act",
+    "DSGVO",
+    "KI-Richtlinie",
+    "KI-Nutzungsrichtlinie",
+    "Projektleitung",
+    "agiles Projektmanagement",
+    "Power Apps",
+    "Low Code",
+    "Citizen Development",
+    "REST-API",
+    "Schnittstellenintegration",
+    "Webhooks",
+    "DMS",
+    "E-Rechnung",
+    "digitale Eingangsrechnungsverarbeitung"
   ],
-  "zertifizierungen": [
-    {
-      "name": "Microsoft Certified: Power Platform Functional Consultant Associate"
-    },
-    {
-      "name": "Autorisierte INQA-Coachin"
-    },
-    {
-      "name": "Beim BAFA registrierte Beraterin für Unternehmensberatung"
-    },
-    {
-      "name": "Professional Scrum Master I"
-    }
-  ],
+  "berufserfahrung_jahre": 14,
   "branchen": [
     {
-      "branche": "Maschinenbau"
+      "branche": "Maschinenbau",
+      "wunsch": true
     },
     {
-      "branche": "Großhandel"
+      "branche": "Großhandel",
+      "wunsch": true
     },
     {
-      "branche": "Handwerk"
+      "branche": "Handwerk",
+      "wunsch": true
     },
     {
-      "branche": "Personaldienstleistung"
+      "branche": "Personaldienstleistung",
+      "wunsch": false
     },
     {
-      "branche": "Steuerberatung und Kanzleien"
+      "branche": "Steuerberatung und Kanzleien",
+      "wunsch": false
     },
     {
-      "branche": "Logistik"
+      "branche": "Logistik",
+      "wunsch": false
     }
   ],
   "sprachen": [
@@ -231,79 +227,21 @@
       "niveau": "C1"
     }
   ],
-  "alleinstellungsmerkmale": [
-    "Verbindet KI-Einführung, Prozessautomatisierung und Schulung aus einer Hand",
-    "Fünf Copilot-Einführungen im Mittelstand mit messbarer Zeitersparnis",
-    "Kennt die Förderprogramme für Beratung im Mittelstand aus eigener Praxis"
+  "abschluesse": [
+    "Master of Science Wirtschaftsinformatik",
+    "Master of Science, Wirtschaftsinformatik mit Schwerpunkt Geschäftsprozessmanagement",
+    "Bachelor of Arts, Betriebswirtschaftslehre"
   ],
-  "keywords": [
-    "KI-Beratung",
-    "Prozessautomatisierung",
-    "n8n",
-    "Make",
-    "Power Automate",
-    "Microsoft 365 Copilot",
-    "Prompt Engineering",
-    "Digitalisierung",
-    "Mittelstand",
-    "BAFA",
-    "INQA"
+  "zertifizierungen": [
+    "Microsoft Certified: Power Platform Functional Consultant Associate",
+    "Autorisierte INQA-Coachin",
+    "Beim BAFA registrierte Beraterin für Unternehmensberatung",
+    "Professional Scrum Master I"
   ],
-  "schwerpunkte": [
-    "KI-Integration",
-    "Prozessautomatisierung",
-    "Einführung von Microsoft 365 Copilot",
-    "Schulungen und Workshops"
-  ],
-  "wunschrollen": [
-    "KI-Beraterin",
-    "Beraterin Prozessautomatisierung",
-    "Projektleitung Copilot-Einführung",
-    "KI-Trainerin"
-  ],
-  "einsatzpraeferenzen": {
-    "tagessatz_wunsch": 1050,
-    "remote": "ueberwiegend",
-    "regionen": [
-      "Franken",
-      "Bayern",
-      "remote im DACH-Raum"
-    ],
-    "branchen": [
-      "Maschinenbau",
-      "Großhandel",
-      "Handwerk"
-    ]
-  },
-  "harte_kriterien": {
-    "min_tagessatz": 900,
-    "laender": [
-      "DE",
-      "AT",
-      "CH"
-    ],
-    "ausgeschlossene_vertragsarten": [
-      "anue"
-    ],
-    "remote_ausserhalb_erlaubt": false,
-    "verfuegbar_ab": "sofort",
-    "min_jahresgehalt": 95000,
-    "festanstellung_orte": [
-      "Nürnberg",
-      "Fürth",
-      "Erlangen",
-      "Schwabach"
-    ],
-    "festanstellung_remote_min": 80,
-    "zielprofil_min_jahre": 5,
-    "auslastung_min_tage": 2,
-    "auslastung_max_tage": 4,
-    "min_laufzeit_monate": 3,
-    "ausschlusswoerter": [
-      "Werkstudent",
-      "Praktikum",
-      "Provisionsbasis",
-      "Callcenter"
-    ]
-  }
+  "ausschlusswoerter": [
+    "Werkstudent",
+    "Praktikum",
+    "Provisionsbasis",
+    "Callcenter"
+  ]
 }
