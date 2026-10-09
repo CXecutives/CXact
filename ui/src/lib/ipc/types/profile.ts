@@ -18,7 +18,7 @@ export const MAX_YEARS = 70;
 export const MAX_ITEMS = 300;
 export const MAX_TEXT = 1000;
 
-/** The form of a new profile (`ProfileForm::default()`): every contract type allowed,
+/** The form of a new profile (`ProfileForm::default()`): projects and interim work only,
  *  Deutschland, from now on, no wish of work mode, workload or duration. */
 export const EMPTY_FORM: ProfileForm = {
   "roles": [],

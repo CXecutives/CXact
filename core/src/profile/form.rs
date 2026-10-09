@@ -862,7 +862,7 @@ pub(crate) fn typescript() -> String {
          /** The most entries of a list, and characters of an entry. */\n\
          export const MAX_ITEMS = {MAX_ITEMS};\n\
          export const MAX_TEXT = {MAX_TEXT};\n\n\
-         /** The form of a new profile (`ProfileForm::default()`): every contract type allowed,\n \
+         /** The form of a new profile (`ProfileForm::default()`): projects and interim work only,\n \
          *  Deutschland, from now on, no wish of work mode, workload or duration. */\n\
          export const EMPTY_FORM: ProfileForm = {empty};\n"
     )
