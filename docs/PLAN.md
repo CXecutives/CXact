@@ -215,8 +215,13 @@ build.
   - `PORTAL_MARK` (`lib/portals.ts`) goes for the generated `PORTAL_MONOGRAM`, the same marks.
     `PORTAL_ORDER` stays the interface's own order (user decision 2026-10-04); then the `Portal` doc
     ("the order of the interface") and the `PORTALS` row of `docs/CHANGING.md` say so.
-  - Catalog: an error text for `cv`; texts for the reason `project` and the criterion `noProject`, then
-    empty `TEXT_WITH_THE_NEW_UI` in `core/tests/matching_wishes.rs`.
+  - Catalog: the error text for `cv` comes with the merge (main's `de.ts` has it); its one conflict, the
+    pause texts, keeps the new wording. Add texts for the reason `project` and the criterion `noProject`,
+    then empty `TEXT_WITH_THE_NEW_UI` in `core/tests/matching_wishes.rs`.
+  - Conflicts of a trial merge (2026-10-10): `README.md`, `docs/{ARCHITECTURE,CHANGING,PLAN}.md`, `de.ts`
+    and the generated `ProfileForm.ts`, `ProfileInfo.ts`, `profile.ts` (take main's).
+  - `core/tests/language.rs` then fails on eight comment lines of the new interface that quote German UI
+    words (`sections.ts`, `steps.ts`, `reader-sections.ts`, `api.ts`, `first-run.spec.ts`): reword them.
   - `settingsPatch` without `fetchMail` and `fetchSearch`; the profile save without `source` and `clear`.
   - The harness stub: `project` in the form, `NewJobs.excluded`, `AskedTerm.level`, `Vocabulary.roles` and
     `languages`; no `aiFilled`, `profiles` or `understood.focus`; then the demo snapshot
