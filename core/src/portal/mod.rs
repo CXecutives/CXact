@@ -216,7 +216,7 @@ pub trait PortalAdapter: Send + Sync {
     /// Display name: the portal's web address (`linkedin.com`, `freelance.de`), as the
     /// interface names it (Excel, prompts).
     fn label(&self) -> &'static str;
-    /// The portal's two-letter mark in the interface (brand-neutral, no logo).
+    /// The portal's mark on its tile in the interface: two capitals, brand-neutral, no logo.
     fn monogram(&self) -> &'static str;
     /// The portal's name in the `Quelle:` header line of the evaluation corpus (the text
     /// files earlier versions wrote; `core/examples/common/gold.rs`), without ".de".
@@ -1163,6 +1163,12 @@ mod tests {
         let monograms: std::collections::HashSet<_> =
             Portal::ALL.iter().map(|p| p.monogram()).collect();
         assert_eq!(monograms.len(), Portal::ALL.len());
+        assert!(
+            monograms
+                .iter()
+                .all(|m| m.len() == 2 && m.chars().all(|c| c.is_ascii_uppercase())),
+            "two capitals: {monograms:?}"
+        );
         for p in Portal::ALL {
             assert_eq!(Portal::from_key(p.key()), Some(p));
             assert_eq!(p.adapter().portal(), p);

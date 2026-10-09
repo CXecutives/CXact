@@ -39,7 +39,7 @@ impl PortalAdapter for InterimX {
         "interim-x.com"
     }
     fn monogram(&self) -> &'static str {
-        "ix"
+        "IX"
     }
     fn file_tag(&self) -> &'static str {
         "interim-x"

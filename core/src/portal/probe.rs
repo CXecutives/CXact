@@ -23,7 +23,7 @@ impl PortalAdapter for Probe {
         "probe.example"
     }
     fn monogram(&self) -> &'static str {
-        "pr"
+        "PR"
     }
     fn file_tag(&self) -> &'static str {
         "Probe"

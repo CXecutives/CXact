@@ -40,7 +40,7 @@ impl PortalAdapter for Fratch {
         "fratch.io"
     }
     fn monogram(&self) -> &'static str {
-        "fr"
+        "FR"
     }
     fn file_tag(&self) -> &'static str {
         "FRATCH"

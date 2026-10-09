@@ -45,7 +45,7 @@ impl PortalAdapter for Gulp {
         "gulp.de"
     }
     fn monogram(&self) -> &'static str {
-        "gu"
+        "GU"
     }
     fn file_tag(&self) -> &'static str {
         "GULP"

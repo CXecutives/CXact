@@ -57,7 +57,7 @@ impl PortalAdapter for Hays {
         "hays.de"
     }
     fn monogram(&self) -> &'static str {
-        "Ha"
+        "HA"
     }
     fn file_tag(&self) -> &'static str {
         "Hays"

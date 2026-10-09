@@ -30,7 +30,7 @@ impl PortalAdapter for LinkedIn {
         "linkedin.com"
     }
     fn monogram(&self) -> &'static str {
-        "in"
+        "LI"
     }
     fn file_tag(&self) -> &'static str {
         "LinkedIn"

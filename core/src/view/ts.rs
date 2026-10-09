@@ -319,7 +319,7 @@ fn values() -> BTreeMap<String, String> {
         let _ = writeln!(portals, "  {}: \"{}\",", portal.key(), portal.label());
     }
     portals.push_str(
-        "};\n\n/** A portal's two-letter mark, brand-neutral (`Portal::monogram`). */\n\
+        "};\n\n/** A portal's mark on its tile, two capitals, brand-neutral (`Portal::monogram`). */\n\
          export const PORTAL_MONOGRAM: Record<Portal, string> = {\n",
     );
     for portal in Portal::ALL {

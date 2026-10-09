@@ -39,7 +39,7 @@ impl PortalAdapter for Solcom {
         "solcom.de"
     }
     fn monogram(&self) -> &'static str {
-        "so"
+        "SO"
     }
     fn file_tag(&self) -> &'static str {
         "SOLCOM"
