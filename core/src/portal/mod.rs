@@ -57,13 +57,13 @@ pub struct Contracts {
 }
 
 impl Contracts {
-    /// Every contract type (a new profile, or none).
+    /// Every contract type (no profile, or one that allows all three).
     pub const ALL: Contracts = Contracts {
         project: true,
         permanent: true,
         temporary: true,
     };
-    /// Projects and interim work alone.
+    /// Projects and interim work alone (a new profile).
     pub const PROJECTS: Contracts = Contracts {
         project: true,
         permanent: false,

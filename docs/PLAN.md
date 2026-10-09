@@ -213,6 +213,8 @@ build.
   leftovers:
   - Take main's generated `ui/src/lib/ipc/types` and drop the `Next*` types of `api.ts` (all in main now).
   - `PORTAL_MARK` (`lib/portals.ts`) goes for the generated `PORTAL_MONOGRAM`, the same marks.
+    `PORTAL_ORDER` stays the interface's own order (user decision 2026-10-04); then the `Portal` doc
+    ("the order of the interface") and the `PORTALS` row of `docs/CHANGING.md` say so.
   - Catalog: an error text for `cv`; texts for the reason `project` and the criterion `noProject`, then
     empty `TEXT_WITH_THE_NEW_UI` in `core/tests/matching_wishes.rs`.
   - `settingsPatch` without `fetchMail` and `fetchSearch`; the profile save without `source` and `clear`.
