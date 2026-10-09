@@ -628,8 +628,7 @@
 
   .band {
     color: var(--text);
-    font: var(--type-md);
-    font-weight: var(--weight-medium);
+    font: var(--type-label);
   }
 
   /* The band in exactly the colour of its ring (the decile of the score; user, 2026-09-30:
@@ -702,7 +701,8 @@
 
   .section {
     color: var(--text-heading);
-    font: var(--type-lg);
+    font: var(--type-heading);
+    letter-spacing: var(--tracking-tight);
   }
 
   /* The Jobdetails: name, verdict and value in three columns that line up row by row; the

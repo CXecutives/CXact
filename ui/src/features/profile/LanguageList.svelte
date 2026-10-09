@@ -156,10 +156,11 @@
     min-width: 0;
   }
 
-  /* name | level | remove in one grid for every row, the levels lined up. */
+  /* name | level | remove in one grid for every row, the levels lined up; where the room is
+     short the levels give way (their labels shorten), never the names. */
   .list {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content var(--control-field);
+    grid-template-columns: minmax(min-content, 1fr) minmax(0, max-content) var(--control-field);
     align-items: center;
     gap: var(--space-6) var(--space-12);
   }

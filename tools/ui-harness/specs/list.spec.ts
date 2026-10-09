@@ -128,15 +128,15 @@ test.describe('header', () => {
     for (const place of ['inbox', 'archive', 'trash'] as const) {
       await expect(page.getByTestId(`place-${place}`)).toHaveText(T.place[place]);
     }
-    // As high as a field, the 12 px labels of the one segmented look of the app (the choices
-    // of the Profil take it too), the chosen one on its white thumb; it slides to another
-    // choice.
+    // As high as a field, the medium labels of the app's text in the one segmented look of the
+    // app (the choices of the Profil take it too), the chosen one on its white thumb; it
+    // slides to another choice.
     expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(
       await tokenPx(page, '--control-field'),
     );
     await expect(page.getByTestId('place-archive')).toHaveCSS(
       'font-size',
-      `${await tokenPx(page, '--font-tab')}px`,
+      `${await tokenPx(page, '--font-md')}px`,
     );
     const under = async (place: 'inbox' | 'archive'): Promise<void> => {
       const chosen = (await page.getByTestId(`place-${place}`).boundingBox())!;
@@ -2353,15 +2353,18 @@ test.describe("the open row's bar", () => {
     expect((await resting(page)).top).toBe(slot.top);
   });
 
-  test('it steps inside the focus ring and greys with the inactive window', async ({ page }) => {
+  test('it stays on the edge under the keyboard focus and greys with the inactive window', async ({
+    page,
+  }) => {
     await open(page, WIN);
     await row(page, 'freelancermap-2801').click();
     expect((await resting(page)).left).toBe(0);
-    // The keyboard focus on the open row (Shift+Tab from the next one).
+    // The keyboard focus on the open row (Shift+Tab from the next one) draws no ring (user
+    // decision 2026-10-04), so the bar keeps its place.
     await row(page, 'linkedin-4100200301').focus();
     await page.keyboard.press('Shift+Tab');
     await expect(row(page, 'freelancermap-2801')).toBeFocused();
-    await expect.poll(async () => (await resting(page)).left).toBe(2);
+    expect((await resting(page)).left).toBe(0);
     const colour = (): Promise<string> =>
       page.getByTestId('row-bar').evaluate((bar) => getComputedStyle(bar).backgroundColor);
     await page.evaluate(() => (document.documentElement.dataset['window'] = 'inactive'));

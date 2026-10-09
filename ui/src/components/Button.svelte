@@ -3,10 +3,11 @@
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
   (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
-  - One height for every button, 26 px (design round 4, core/tests/ui_contract.rs): in rows,
-    tools, bars, dialogs and empty states alike; the app's text in medium, every glyph 15 px.
-    Only a button inside a field (`inField`) is a notch lower, a part of the field. A text
-    button carries the glyph of its meaning (lib/icons.ts).
+  - One height for every button, 28 px (design round 6, core/tests/ui_contract.rs): in rows,
+    tools, the top bar, dialogs and empty states alike; the app's text in medium (a primary's
+    in semibold), every glyph 15 px. Only a button inside a field (`inField`) is a notch
+    lower, a part of the field. A text button carries the glyph of its meaning
+    (lib/icons.ts).
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
     (the x that removes a row) goes without the tooltip (`plain`). A button with its words
@@ -212,7 +213,7 @@
     white-space: nowrap;
     --btn-pad: var(--space-10);
     --btn-gap: var(--space-6);
-    --btn-type: var(--type-button);
+    --btn-type: var(--type-label);
 
     transition:
       background-color var(--dur-base) var(--ease-standard),
@@ -333,6 +334,8 @@
     --btn-fg: var(--text-on-accent);
     --btn-fg-hover: var(--text-on-accent);
     --btn-shadow: var(--sh-primary);
+
+    font-weight: var(--weight-semibold);
   }
 
   /* The control kind (tokens.css): a muted fill and a darker edge under the pointer. */
@@ -450,7 +453,7 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* One height, one type: 26 px; inside a field a notch lower, within its frame. */
+  /* One height, one type: 28 px; inside a field a notch lower, within its frame. */
   .btn {
     --btn-height: var(--control-field);
   }

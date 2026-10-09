@@ -77,7 +77,7 @@
     top: 0;
     right: 0;
     left: 0;
-    height: var(--control-md);
+    height: var(--control-field);
     border-radius: var(--radius-md);
     background-color: var(--nav-active-bg);
     box-shadow: var(--sh-thumb);
@@ -98,11 +98,11 @@
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    height: var(--control-md);
+    height: var(--control-field);
     padding: 0 var(--space-8);
     border-radius: var(--radius-md);
     color: var(--text-muted);
-    font: var(--type-tab);
+    font: var(--type-label);
     transition:
       background-color var(--dur-base) var(--ease-standard),
       color var(--dur-base) var(--ease-standard);

@@ -363,7 +363,7 @@
     border: 0;
     background-color: transparent;
     color: var(--text);
-    font: var(--type-field);
+    font: var(--type-md);
     outline: none;
   }
 
@@ -407,7 +407,7 @@
     flex: none;
     padding-right: var(--space-8);
     color: var(--text-muted);
-    font: var(--type-field);
+    font: var(--type-md);
     pointer-events: none;
   }
 
@@ -441,7 +441,7 @@
     padding: 0 var(--space-8);
     border-radius: var(--radius-xs);
     color: var(--text);
-    font: var(--type-field);
+    font: var(--type-md);
     text-align: left;
     white-space: nowrap;
   }

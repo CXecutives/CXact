@@ -76,7 +76,7 @@
     border-radius: var(--menu-row-radius);
     background-color: transparent;
     color: var(--text);
-    font: var(--type-field);
+    font: var(--type-md);
     font-variant-numeric: var(--numeric);
     text-align: start;
     cursor: default;

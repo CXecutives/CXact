@@ -1254,9 +1254,9 @@ export const de = {
     } satisfies Record<ProfileForm['workload'], string>,
     minMonths: {
       0: ANY,
-      3: '3+',
-      6: '6+',
-      12: '12+ Monate',
+      3: '3 Monate',
+      6: '6 Monate',
+      12: '12 Monate',
     } satisfies Record<ProfileForm['minMonths'], string>,
     /** The four plain levels of a language (user 2026-10-04), stored as A2, B2, C1 and
      *  native; A1 and B1 read as Grundkenntnisse, C2 as Fließend (LanguageList). */

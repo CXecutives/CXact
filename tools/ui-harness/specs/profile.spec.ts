@@ -326,6 +326,9 @@ test('Vertragsart is a choice of several, one stays; the salary comes with Festa
   await save(page).click();
   const sent = await lastSave(page);
   expect(sent.after).toMatchObject({ permanent: false, temporary: true, minSalary: 90000 });
+  // The save's rescore says so above the groups for a moment; once it ends nothing moves
+  // under the pointer.
+  await runFinished(page);
   // Without both the salary is not kept; the last chosen type stays and says why.
   await contract(page, 'temporary').click();
   await contract(page, 'project').click();

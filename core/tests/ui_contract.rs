@@ -893,6 +893,13 @@ fn the_top_bar_measures_the_same_everywhere() {
         u64::from(jobalert_core::window::TOOLS_END),
         "--titlebar-tools-end = window::TOOLS_END"
     );
+    // Those zones count the bar's buttons at --titlebar-tool, and the bar's buttons are the
+    // one button height.
+    assert_eq!(
+        px("--titlebar-tool"),
+        px("--control-field"),
+        "--titlebar-tool = --control-field (the one button height)"
+    );
     let lights =
         config("tauri.macos.conf.json")["app"]["windows"][0]["trafficLightPosition"].clone();
     let (x, y) = (
@@ -1428,20 +1435,16 @@ fn icons_by_meaning() {
     );
 }
 
-/// Buttons have one height, 26 px (design round 4, 2026-10-04): no size to choose (a button
-/// inside a field is a notch lower, a part of it), every glyph one size, one type.
+/// Buttons have one height, 28 px (design round 6, 2026-10-10): no size to choose (a button
+/// inside a field is a notch lower, a part of it), every glyph one size, one type. Only
+/// Button.svelte sets its height: no place outside it overrides `--btn-height` (the top bar's
+/// buttons too are the one height).
 #[test]
 fn buttons_have_one_height() {
     let all = scanned(MIN_FILES);
     let button = source(&all, "components/Button.svelte");
     let mut problems = Vec::new();
-    for gone in [
-        "ButtonSize",
-        "size?:",
-        "--control-md",
-        "--control-lg",
-        "--type-md",
-    ] {
+    for gone in ["ButtonSize", "size?:", "--control-lg", "--type-md"] {
         if button.code.contains(gone) {
             problems.push(format!("Button.svelte: {gone} (buttons have one height)"));
         }
@@ -1453,7 +1456,10 @@ fn buttons_have_one_height() {
             }
         }
     }
-    fail(&problems, "buttons have one height (26 px)");
+    problems.extend(find(&all, &["--btn-height:"], |s| {
+        s.is("components/Button.svelte")
+    }));
+    fail(&problems, "buttons have one height (28 px)");
 }
 
 /// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only

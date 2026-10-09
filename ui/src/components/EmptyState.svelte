@@ -95,7 +95,8 @@
 
   .heading {
     color: var(--text-heading);
-    font: var(--type-lg);
+    font: var(--type-heading);
+    letter-spacing: var(--tracking-tight);
   }
 
   /* A centred sentence breaks into lines of a like length. */

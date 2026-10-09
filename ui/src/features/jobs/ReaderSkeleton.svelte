@@ -102,7 +102,7 @@
     display: flex;
     align-items: center;
     width: calc(var(--control-field) * 3);
-    height: var(--leading-lg);
+    height: var(--leading-heading);
   }
 
   .rows {

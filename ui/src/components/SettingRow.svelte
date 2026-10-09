@@ -130,8 +130,7 @@
 
   .label {
     color: var(--text);
-    font: var(--type-md);
-    font-weight: var(--weight-medium);
+    font: var(--type-label);
   }
 
   .label.form {

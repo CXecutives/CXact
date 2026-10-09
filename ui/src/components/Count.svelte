@@ -1,5 +1,5 @@
 <!--
-  A number in a small pill, 12/500 with tabular digits and one minimum width (4 and 12 weigh
+  A number in a small pill, 11/500 with tabular digits and one minimum width (4 and 12 weigh
   the same):
   - soft: a light warm pill (the chosen segment, the excluded divider, sub-labels such as
     "Erfüllt", the run countdown, "n neu"),

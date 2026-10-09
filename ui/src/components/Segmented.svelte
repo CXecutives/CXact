@@ -6,8 +6,10 @@
   window width. Every small single choice takes it: the places above the list (Aktuell,
   Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar ab, Auslastung and
   Mindestlaufzeit.
-  Each option is as wide as its label and count; when the track has less room than the
-  options want, the labels shorten with an ellipsis (the counts stay); nothing ever overlaps.
+  The role decides the widths: a choice (a radiogroup) gives every option the room of the
+  widest, so the thumb is one size whichever is chosen; the places (tabs) keep each option as
+  wide as its label and count. When the track has less room than the options want, the labels
+  shorten with an ellipsis (the counts stay); nothing ever overlaps.
   The chosen label is navy (ink while the window is in the back) and its count a soft warm
   pill, the others stay muted with a plain count (same box, so nothing moves); an option may
   keep one tone whatever is chosen. A count that goes (`null`: none now, 0 is not shown) keeps
@@ -15,8 +17,9 @@
   jumps. An unchosen option washes on hover and darkens while pressed. Counts roll when they
   change.
   Like native radio buttons (and native tabs, `tabs`) the group is one Tab stop and the
-  arrows, Home and End choose (lib/input/input.ts). As high as a field (26 px), so it lines up
-  with the fields and buttons of its row, with the 12 px medium text of a tab.
+  arrows, Home and End choose (lib/input/input.ts). As high as a field (28 px, the thumb 2 px
+  inside it), so it lines up with the fields and buttons of its row, in the app's text in
+  medium.
 -->
 <script lang="ts" module>
   export interface SegmentedOption<Id extends string = string> {
@@ -141,7 +144,8 @@
 </div>
 
 <style>
-  /* It may shrink inside a flex row too (its options then shorten their labels). */
+  /* It may shrink inside a flex row too (its options then shorten their labels). The tabs
+     keep the widths of their options. */
   .segmented {
     position: relative;
     display: inline-flex;
@@ -155,6 +159,15 @@
     border-radius: var(--radius-control);
     background-color: var(--surface-track);
     isolation: isolate;
+  }
+
+  /* A choice: every option as wide as the widest, the track as wide as they want (at most its
+     place's width, where they shrink alike). */
+  .segmented[role='radiogroup'] {
+    display: inline-grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    width: max-content;
   }
 
   /* The one white thumb under the chosen option, a hairline ring around it; it slides like
@@ -178,7 +191,8 @@
     transition: none;
   }
 
-  /* As wide as its content; it gives way (the label shortens) when the track is short. */
+  /* As wide as its content (or its column); it gives way (the label shortens) when the
+     track is short. */
   .option {
     position: relative;
     display: inline-flex;
@@ -187,10 +201,10 @@
     justify-content: center;
     gap: var(--space-4);
     min-width: 0;
-    padding: 0 var(--space-10);
+    padding: 0 var(--space-12);
     border-radius: var(--radius-inner);
     color: var(--text-muted);
-    font: var(--type-tab);
+    font: var(--type-label);
     white-space: nowrap;
     transition: color var(--dur-base) var(--ease-standard);
   }

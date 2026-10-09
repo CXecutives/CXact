@@ -159,7 +159,7 @@
     overflow: hidden;
     border-radius: var(--radius-xs);
     color: var(--text);
-    font: var(--type-field);
+    font: var(--type-md);
     line-height: var(--control-sm);
     text-align: left;
     text-overflow: ellipsis;

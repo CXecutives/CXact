@@ -6,7 +6,7 @@
   it: a single value (number, choice, day) at the right of its label, a list of values under
   its label at full width (and, only where docs/PLAN.md places one, an info symbol beside the
   label). Vertragsart is three checkboxes (Projekt und Interim, Festanstellung, Zeitarbeit;
-  one stays). Every control is 26 px high; a number field has its unit inside; a number is
+  one stays). Every control is 28 px high; a number field has its unit inside; a number is
   formatted when its field is left.
   A required field that is still empty shows its amber edge and halo only once Speichern or
   the setup's Weiter was pressed (`missing`, ProfileView) and loses it as it is filled; a
@@ -278,14 +278,16 @@
       hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
       {error}
     >
-      <NumberField
-        id="{id}-{c.key}"
-        money={c.unit === 'euro'}
-        unit={t.profile.unit[c.unit]}
-        bind:value={form[c.key]}
-        invalid={error !== null}
-        testid={c.testid}
-      />
+      <span class="number">
+        <NumberField
+          id="{id}-{c.key}"
+          money={c.unit === 'euro'}
+          unit={t.profile.unit[c.unit]}
+          bind:value={form[c.key]}
+          invalid={error !== null}
+          testid={c.testid}
+        />
+      </span>
     </Field>
   {:else if c.kind === 'chips'}
     {@const error = errorOf(c.key)}
@@ -389,6 +391,19 @@
 
   .fields > :global(* + *) {
     box-shadow: inset 0 var(--border-width) 0 var(--layout-row-rule);
+  }
+
+  /* A number (euros, years) is as wide as a day field, its unit inside at its right; the
+     note under it keeps its own line. */
+  .number {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .number > :global(:first-child) {
+    width: var(--number-width);
+    max-width: 100%;
   }
 
   /* A field flashes once when a link of the missing sentence led to it (a wash in the

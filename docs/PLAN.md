@@ -136,8 +136,9 @@ pre-assessment to any AI chat for a deeper check.
     of what a click does. arrow-left and arrow-right.
   - In the job: Öffnen is the open book, Alert-Mails lesen the open envelope, Trotzdem bewerten the plain
     plus.
-- **Controls:** one button height, 28 px (only a button inside a field is lower). Menus open from a chevron
-  button.
+- **Controls:** one height, 28 px, for every button, field, choice of a few, menu row and sidebar entry (only
+  a control inside a field is lower, 22 px). A choice of a few gives its options equal widths; the places keep
+  theirs. Menus open from a chevron button.
 - **Texts:** the rules in `CLAUDE.md`. The fetch's words are "Jobs suchen"; the first place is
   "Aktuell".
 - **Data:** SQLite in the OS app data folder (schema 8, no migrations). A database of schema 1 to 7 is

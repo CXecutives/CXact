@@ -1,5 +1,5 @@
 <!--
-  Label above the control (12 medium, 5 apart; design B), hint (or the error in its place)
+  Label above the control (the app's text in medium, 5 apart), hint (or the error in its place)
   and the hint's way on, which stays while an error shows: it is what helps most then. The
   way on is a navy link (it underlines on hover) whose text lines up with the edges of the
   field, and it always ends the helper line: the message beside it shrinks and wraps, so it

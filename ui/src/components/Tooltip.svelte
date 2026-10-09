@@ -90,7 +90,7 @@
     transform: translate(var(--tooltip-x), var(--tooltip-y));
   }
 
-  /* Small and quiet like a native tooltip: 12 px text, 4/8 padding, a faint light edge and a
+  /* Small and quiet like a native tooltip: 11 px text, 4/8 padding, a faint light edge and a
      light shadow. */
   .bubble {
     padding: var(--space-4) var(--space-8);

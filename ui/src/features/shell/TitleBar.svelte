@@ -187,8 +187,9 @@
     pointer-events: none;
   }
 
-  /* The buttons lie in the zones the Windows caption leaves to the page; they are the bar's
-     own size, their glyphs the content's small ones. */
+  /* The buttons lie in the zones the Windows caption leaves to the page; they are the one
+     button height (--titlebar-tool, which core's window.rs counts with), their glyphs the
+     content's small ones. */
   .tools {
     position: relative;
     display: flex;
@@ -196,10 +197,6 @@
     align-items: center;
     gap: var(--space-2);
     height: 100%;
-  }
-
-  .tools :global(.btn) {
-    --btn-height: var(--titlebar-tool);
   }
 
   .start {

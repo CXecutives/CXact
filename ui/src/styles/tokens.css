@@ -128,14 +128,9 @@
   --text: hsl(var(--p-ink));
   --text-muted: hsl(var(--p-muted-fg));
   --text-subtle: hsl(var(--p-fg-subtle));
-  /* Headings (h1, h2) in the warm dark ink (user decision A). Navy colours only the
-     13/500 sub-labels that group a reader's list (Erfüllt, Offen, the Ausgeschlossen
-     divider), the reader's "Rahmen" (500, the size of the line it labels: 12 before its
-     chips, 13 before the values of the clean line) and links. A label of a field or of a
-     column of fields is ink (--text, 13/500, as in Field): navy text alone over a form reads
-     as a link. */
   /* Headings in the brand's navy itself, not a near-black one (the page's structure reads at
-     a glance; user, 2026-10-01). */
+     a glance; user, 2026-10-01). A label of a field or a row is ink (--text): navy text
+     alone over a form reads as a link. */
   --text-heading: hsl(var(--p-navy));
   --text-label: hsl(var(--p-ink));
   --text-on-accent: hsl(var(--p-on-accent));
@@ -386,7 +381,7 @@
   --radius-lg: 10px;
   --radius-xl: 14px;
   --radius-full: 9999px;
-  /* Buttons, fields and the track of a choice (design round 4: 26 px high, 8 round). */
+  /* Buttons, fields and the track of a choice (28 px high, --control-field; 8 round). */
   --radius-control: 8px;
   /* What lies inside a control's track (the thumb of a choice): the track's radius less its
      2 px inset, so the two curves stay parallel. */
@@ -411,13 +406,12 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  /* Design round 4 (user, 2026-10-04): one step smaller than the first scale, a calm desktop
-     scale. Every button, field and choice of a few is 26 px high (--control-field); a button
-     inside a field or a link in a line is a notch lower (--control-sm); the sidebar's entries
-     28. */
+  /* Design round 6 (user, 2026-10-10): one control height for the whole app, 28 px
+     (--control-field): every button, field, choice of a few, toolbar control, menu row and
+     sidebar entry. Only a control inside a field (a link or a button in a field, a day of
+     the calendar, a suggestion row) is a notch lower (--control-sm). */
   --control-sm: 22px;
-  --control-field: 26px;
-  --control-md: 28px;
+  --control-field: 28px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
      centred in it, so their middles lie on one line across the window). */
   --control-lg: 30px;
@@ -440,10 +434,10 @@
      2026-10-01). */
   --row-place-max: 160px;
   /* The vertical padding of a row: a list row's two lines (title and company), and a row of
-     a page's section (a setting, a portal) with its 26 px control, roomy (design B). */
+     a page's section (a setting, a portal) with its control, roomy. */
   --list-row-pad: 9px;
   --row-pad: 6px;
-  /* The least height of such a row (a setting, a portal; design B). */
+  /* The least height of such a row (a setting, a portal). */
   --row-min: 44px;
   /* Mail-style rows: the title line and the company line beside the ring. */
   --row-height: calc(
@@ -474,8 +468,9 @@
   --titlebar-tools-end: 34px;
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
-  /* The bar's own buttons: 28 px (three with their gaps fill --titlebar-tools-start, which
-     core's window.rs hit-tests with), their Lucide glyphs the content's small ones. */
+  /* The bar's own buttons are the one button height (--control-field); three with their
+     gaps fill --titlebar-tools-start, which core's window.rs hit-tests with. This number is
+     what window.rs counts with (core/tests/ui_contract.rs checks it is the button height). */
   --titlebar-tool: 28px;
   /* The list column's header rows: the places and the search, as high as a field. */
   --list-toolbar: var(--control-field);
@@ -490,7 +485,7 @@
   /* The job view's column: a comfortable line for the ad's text. */
   --reader-width: 640px;
   /* The column of Profil and Einstellungen (and the setup's profile). */
-  --page-width: 600px;
+  --page-width: 720px;
   /* The column handle: the strip that catches the pointer (over the reader's padding, never
      over the list's scrollbar) and the small grip centred on the border. */
   --splitter-hit: 8px;
@@ -500,7 +495,7 @@
      text of a field, a fixed icon column, keys right and quiet. It opens this far below
      its button and keeps --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
-  --menu-row: 28px;
+  --menu-row: var(--control-field);
   /* A group's small heading (the filter menu's Sortierung, Portal, Passung). */
   --menu-heading: 24px;
   --menu-pad: var(--space-4);
@@ -519,8 +514,9 @@
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
   --form-width: 500px;
-  /* A number field beside its unit (the years) and a day field: one width. */
-  --number-width: 96px;
+  /* A number of the Profil (euros, years) with its unit inside at its right, and a day
+     field: one width. */
+  --number-width: 128px;
   /* The years of a competence (two digits and "Jahre" as the placeholder). */
   --years-width: 64px;
   /* The fields of a page (design B, the Profil): the label above its control, this far
@@ -652,7 +648,7 @@
   --float-gap: var(--space-16);
   --float-max: 560px;
   /* One step of the sliding nav pill: an item plus the 2 px gap. */
-  --nav-step: calc(var(--control-md) + var(--space-2));
+  --nav-step: calc(var(--control-field) + var(--space-2));
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
@@ -669,9 +665,9 @@
   --weight-medium: 500;
   --weight-semibold: 580;
   --numeric: tabular-nums;
-  /* Design round 4 (user, 2026-10-04): body 12.5/17, small 11.5/16, list titles 13/18, view
-     titles 17/24; design B: the labels of a page's fields 12 medium, its section headings 14
-     semibold. */
+  /* Design round 6 (user, 2026-10-10): the app's text, the labels, the fields and the
+     buttons 12.5/17 (regular or medium), small 11.5/16, list titles 13/18, headings of a
+     view's groups 15/20 semibold, view titles 17/24. */
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 10.5px;
   --leading-2xs: 14px;
@@ -681,43 +677,38 @@
   /* Small text: hints, the second line of a row, a section's line. */
   --font-sm: 11.5px;
   --leading-sm: 16px;
-  /* The label of a field (above it) and of a switch (beside it), medium. */
-  --font-label: 12px;
-  --leading-label: 16px;
-  /* The text in fields. */
-  --font-field: 12.5px;
-  --leading-field: 17px;
-  /* The text of the app. */
+  /* The text of the app: running lines, fields, labels, buttons, tabs. */
   --font-md: 12.5px;
   --leading-md: 17px;
   /* List titles on a tight line, so two lines stay one block. */
   --font-title: 13px;
   --leading-title: 18px;
-  /* The sidebar entries and the places above the list (weight 500). */
-  --font-tab: 12.5px;
-  --leading-tab: 17px;
   /* Running text (the ad, a dialog's sentence): the text's size on a roomier line. */
-  --font-body: 12.5px;
   --leading-body: 19px;
-  /* Section headings (semibold, navy). */
+  /* The digits of a large ring, the letters of a large tile (semibold). */
   --font-lg: 14px;
   --leading-lg: 20px;
+  /* The heading of a group of a view (the job view's Jobdetails, an empty state's). */
+  --font-heading: 15px;
+  --leading-heading: 20px;
   /* The title of a view, a step of the setup, the job view. */
   --font-xl: 17px;
   --leading-xl: 24px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
   --type-xs: var(--weight-regular) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --type-sm: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
-  --type-label: var(--weight-medium) var(--font-label) / var(--leading-label) var(--font-sans);
   --type-mono: var(--weight-regular) var(--font-xs) / var(--leading-sm) var(--font-mono);
-  --type-field: var(--weight-regular) var(--font-field) / var(--leading-field) var(--font-sans);
+  /* The app's text and the text in fields. */
   --type-md: var(--weight-regular) var(--font-md) / var(--leading-md) var(--font-sans);
+  /* The app's text in medium: the label of a field or a row, a button's words, a tab, a
+     sidebar entry. */
+  --type-label: var(--weight-medium) var(--font-md) / var(--leading-md) var(--font-sans);
   --type-title: var(--weight-medium) var(--font-title) / var(--leading-title) var(--font-sans);
-  --type-tab: var(--weight-medium) var(--font-tab) / var(--leading-tab) var(--font-sans);
-  --type-body: var(--weight-regular) var(--font-body) / var(--leading-body) var(--font-sans);
-  /* The words of a button: the app's text, medium. */
-  --type-button: var(--weight-medium) var(--font-md) / var(--leading-md) var(--font-sans);
+  --type-body: var(--weight-regular) var(--font-md) / var(--leading-body) var(--font-sans);
   --type-lg: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
+  /* A group's heading, in --text-heading with --tracking-tight. */
+  --type-heading: var(--weight-semibold) var(--font-heading) / var(--leading-heading)
+    var(--font-sans);
   --type-xl: var(--weight-semibold) var(--font-xl) / var(--leading-xl) var(--font-sans);
 
   --tracking-tight: -0.01em;
