@@ -208,6 +208,22 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 Asked by the user on 2026-10-02. Start with drafts for the visible points, decide them in one round, then
 build.
 
+- [ ] Wire the new interface (branch `ui-preview`). The backend has everything it calls (2026-10-10:
+  every command, event and field); type-checked against main's generated types it fails only on its own
+  leftovers:
+  - Take main's generated `ui/src/lib/ipc/types` and drop the `Next*` types of `api.ts` (all in main now).
+  - `PORTAL_MARK` (`lib/portals.ts`) goes for the generated `PORTAL_MONOGRAM`, the same marks.
+  - Catalog: an error text for `cv`; texts for the reason `project` and the criterion `noProject`, then
+    empty `TEXT_WITH_THE_NEW_UI` in `core/tests/matching_wishes.rs`.
+  - `settingsPatch` without `fetchMail` and `fetchSearch`; the profile save without `source` and `clear`.
+  - The harness stub: `project` in the form, `NewJobs.excluded`, `AskedTerm.level`, `Vocabulary.roles` and
+    `languages`; no `aiFilled`, `profiles` or `understood.focus`; then the demo snapshot
+    (`cargo test -p jobalert-core --test ui_demo_snapshot`).
+  - Optional: an asked language keeps its `level`; Rollen and Sprachen suggest `Vocabulary.roles` and
+    `languages`.
+  - Then remove, backend and UI together, what the new interface never reads: the run's `status` events,
+    `ProfileInfo.understood`, `MatchDetail.highlights` and a few count fields.
+
 - [ ] An excluded or not yet scored job shows no analysis: no verdict icons in the Jobdetails, no
   Anforderungen; only the ad and "Trotzdem bewerten" until it is scored.
 - [ ] No press shrink: pressing a button must not scale it (`Button.svelte`, `.btn:active:hover` with
