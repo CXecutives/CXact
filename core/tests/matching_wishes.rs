@@ -491,11 +491,14 @@ fn the_summary_and_the_fingerprint_follow_the_fields() {
     }
 }
 
-/// Codes whose text comes with the interface of branch `ui-preview` (its catalog has them);
-/// emptied at its merge.
-const TEXT_WITH_THE_NEW_UI: [&str; 1] = ["project"];
+/// Engine codes without a text in main's catalog (`ui/src/lib/i18n/de.ts`, the old interface,
+/// which never gets them). Their texts belong to the catalog of the new interface (branch
+/// `ui-preview`), which replaces main's `ui/` at the wiring; that catalog lacks them too
+/// (2026-10-10), so the wiring adds the reason `project` and the criterion `noProject` there
+/// and empties this list.
+const TEXT_WITH_THE_NEW_UI: [&str; 2] = ["project", "noProject"];
 
-/// Every reason and warning code of the engine has a text in the UI catalog.
+/// Every reason, warning and criterion code of the engine has a text in the UI catalog.
 #[test]
 fn every_engine_code_has_a_catalog_text() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
@@ -526,6 +529,7 @@ fn every_engine_code_has_a_catalog_text() {
     for (enum_name, table) in [
         ("ReasonCode", "const reasonCode = {"),
         ("ProfileWarningCode", "const warning = {"),
+        ("CriterionKey", "const criteria = {"),
     ] {
         let block = block(table);
         for code in variants(enum_name) {
