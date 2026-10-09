@@ -104,6 +104,8 @@ pre-assessment to any AI chat for a deeper check.
     - Können: Kompetenzen with Schwerpunkte as stars, Werkzeuge, Stichworte, Stärken.
     - Erfahrung: years, Branchen, Sprachen, Abschlüsse, Zertifikate.
     - Ausschlüsse: words, Zeitarbeit, Festanstellung and its rules.
+  - A new profile looks for projects only: Festanstellung and Zeitarbeit are off, so Mindestgehalt is hidden
+    (`ProfileForm::default`).
   - Under some fields, "Häufig verlangt": the terms the recent jobs ask for that the profile lacks, one click
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. One profile,

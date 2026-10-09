@@ -327,9 +327,11 @@ mod tests {
     use crate::matching::facts::{JobFacts, anue, segments};
     use crate::portal::Portal;
 
-    /// Salary findings of a LinkedIn ad for a profile with a minimum of 150,000 a year.
+    /// Salary findings of a LinkedIn ad for a profile open to Festanstellung with a minimum of
+    /// 150,000 a year.
     fn salary_of(text: &str) -> Vec<(ReasonCode, bool)> {
         let form = crate::profile::ProfileForm {
+            permanent: true,
             min_salary: Some(150_000),
             ..crate::profile::ProfileForm::default()
         };

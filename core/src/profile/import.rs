@@ -196,7 +196,7 @@ mod tests {
     fn the_merge_never_overwrites() {
         let now = ProfileForm {
             roles: vec!["Interim CFO".into()],
-            permanent: false,
+            permanent: true,
             day_rate_min: Some(1_000),
             years: Some(20),
             competences: (0..5)
@@ -236,10 +236,7 @@ mod tests {
         assert_eq!(treasury.name, "Treasury");
         assert!(!treasury.focus, "five stars already");
         assert_eq!(merged.languages[0].level, LanguageLevel::C1);
-        assert_eq!(
-            (merged.permanent, merged.day_rate_min),
-            (false, Some(1_000))
-        );
+        assert_eq!((merged.permanent, merged.day_rate_min), (true, Some(1_000)));
         assert_eq!(filled, ["roles", "competences", "languages"]);
     }
 
@@ -257,7 +254,10 @@ mod tests {
         assert_eq!(filled, ["roles", "tools"]);
         let stored = crate::profile::load(dir.path()).unwrap().unwrap();
         assert_eq!(stored.roles, ["Interim CFO"]);
-        assert!(stored.permanent, "the user's choices keep their defaults");
+        assert!(
+            stored.project && !stored.permanent && !stored.temporary,
+            "the user's choices keep their defaults"
+        );
         assert!(
             import(dir.path(), &answer(json!({"x": 1})))
                 .unwrap()

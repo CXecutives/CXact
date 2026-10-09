@@ -45,6 +45,7 @@ fn finance() -> Value {
         ],
         "berufserfahrung_jahre": 15,
         "laender": [],
+        "vertragsarten": ["projekt", "festanstellung", "zeitarbeit"],
         "mindestgehalt": 95000
     })
 }

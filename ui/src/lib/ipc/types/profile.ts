@@ -23,8 +23,8 @@ export const MAX_TEXT = 1000;
 export const EMPTY_FORM: ProfileForm = {
   "roles": [],
   "project": true,
-  "permanent": true,
-  "temporary": true,
+  "permanent": false,
+  "temporary": false,
   "dayRateWish": null,
   "dayRateMin": null,
   "minSalary": null,

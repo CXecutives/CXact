@@ -116,14 +116,14 @@ pub struct ProfileForm {
 }
 
 impl Default for ProfileForm {
-    /// A new profile: every contract type allowed, Deutschland, from now on, no wish of work
-    /// mode, workload or duration.
+    /// A new profile: projects and interim work only (no Festanstellung, no Zeitarbeit, so no
+    /// salary), Deutschland, from now on, no wish of work mode, workload or duration.
     fn default() -> Self {
         ProfileForm {
             roles: Vec::new(),
             project: true,
-            permanent: true,
-            temporary: true,
+            permanent: false,
+            temporary: false,
             day_rate_wish: None,
             day_rate_min: None,
             min_salary: None,
@@ -745,8 +745,8 @@ impl File {
         }
     }
 
-    /// The form of the file; a missing `vertragsarten` allows every contract type, an empty one
-    /// is refused ([`validate`]: at least one).
+    /// The form of the file; a missing `vertragsarten` allows projects only (as a new profile),
+    /// an empty one is refused ([`validate`]: at least one).
     fn form(self) -> Result<ProfileForm, InvalidInput> {
         let available = if self.verfuegbar_ab.trim() == NOW {
             ProfileAvailability::Now
@@ -998,8 +998,8 @@ mod tests {
         }
     }
 
-    /// A missing key reads as a new profile has it; a missing `vertragsarten` allows every
-    /// contract type, an empty one none and does not read; anything else that is no v19 does
+    /// A missing key reads as a new profile has it (a missing `vertragsarten` allows projects
+    /// only), an empty `vertragsarten` none and does not read; anything else that is no v19 does
     /// not read.
     #[test]
     fn what_reads_and_what_does_not() {
@@ -1010,6 +1010,10 @@ mod tests {
                 roles: vec!["Interim CFO".into()],
                 ..ProfileForm::default()
             }
+        );
+        assert!(
+            form.project && !form.permanent && !form.temporary,
+            "projects only"
         );
         for text in [
             r#"{"vertragsarten": []}"#,

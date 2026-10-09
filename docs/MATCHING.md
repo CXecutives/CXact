@@ -211,6 +211,11 @@ work both is a check; a stated permanent role or temporary agency work meets the
 fixture profile allows projects: corpus and held-out reports are unchanged, and so is the
 fingerprint of a profile that allows them (only `projects excluded` joins it).
 
+A new profile allows projects only (2026-10-10, still engine 19): `ProfileForm::default()` and a
+missing `vertragsarten` are `projekt` alone, so a new profile excludes stated permanent roles
+(`noPermanent`) and temporary agency work (`noAnue`) and has no minimum salary. Fixture profiles
+name their types and are unchanged.
+
 ## The engine
 
 Integer-only, per-mille throughout; `core/src/matching/{job,atoms,fit,facts,contract,permanent,
@@ -251,7 +256,7 @@ not read at all. An empty value turns its rule off.
 | Key | Meaning |
 |---|---|
 | `wunschrollen` | target roles, matched against the title |
-| `vertragsarten` | at least one of `projekt`, `festanstellung`, `zeitarbeit` (missing: all); without `projekt` an interim or project role is excluded, without `festanstellung` a stated permanent role, without `zeitarbeit` temporary agency work |
+| `vertragsarten` | at least one of `projekt`, `festanstellung`, `zeitarbeit` (missing: `projekt` only, as a new profile); without `projekt` an interim or project role is excluded, without `festanstellung` a stated permanent role, without `zeitarbeit` temporary agency work |
 | `tagessatz_wunsch` | wished day rate (EUR); never a minimum |
 | `tagessatz_min` | minimum day rate (EUR) |
 | `mindestgehalt` | minimum annual salary (EUR) of permanent roles and temporary agency work; none without both |
