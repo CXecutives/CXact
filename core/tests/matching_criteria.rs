@@ -256,6 +256,63 @@ fn permanent_employment_can_be_excluded() {
     assert!(!set.contains(&CriterionKey::NoAnue), "{set:?}");
 }
 
+/// A new profile looks for projects only: a profile file without `vertragsarten` reads as
+/// `ProfileForm::default()`, excludes a stated permanent role and temporary agency work, and
+/// keeps an interim role.
+#[test]
+fn a_new_profile_looks_for_projects_only() {
+    let file = json!({
+        "kernkompetenzen": [{"kompetenz": "Controlling", "jahre": 15}],
+        "laender": ["DE"],
+        "mindestgehalt": 150_000
+    });
+    let form = parse(&file.to_string()).expect("a v19 profile");
+    let new = ProfileForm::default();
+    assert_eq!(
+        (form.project, form.permanent, form.temporary),
+        (new.project, new.permanent, new.temporary)
+    );
+    assert_eq!(
+        (new.project, new.permanent, new.temporary),
+        (true, false, false)
+    );
+    let profile = compile_profile(&form);
+    let a = assess_with(&profile, "Leiter Controlling (m/w/d)", PERMANENT);
+    assert_eq!(a.verdict, Verdict::Excluded);
+    assert_eq!(
+        criterion(&a, CriterionKey::NoPermanent).status,
+        CriterionStatus::Violated
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::MinSalary).status,
+        CriterionStatus::Inactive,
+        "no salary without Festanstellung or Zeitarbeit"
+    );
+    let a = assess_with(
+        &profile,
+        "SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung",
+        "Wir suchen einen SAP FI/CO Berater für unseren Kunden.",
+    );
+    assert_eq!(a.verdict, Verdict::Excluded);
+    assert_eq!(
+        criterion(&a, CriterionKey::NoAnue).status,
+        CriterionStatus::Violated
+    );
+    let a = assess_with(&profile, "Interim Controller (m/w/d)", STATED);
+    assert_ne!(a.verdict, Verdict::Excluded);
+    let set: Vec<CriterionKey> = profile
+        .summary()
+        .criteria
+        .iter()
+        .filter(|c| c.set)
+        .map(|c| c.key)
+        .collect();
+    assert!(set.contains(&CriterionKey::NoPermanent), "{set:?}");
+    assert!(set.contains(&CriterionKey::NoAnue), "{set:?}");
+    assert!(!set.contains(&CriterionKey::NoProject), "{set:?}");
+    assert!(!set.contains(&CriterionKey::MinSalary), "{set:?}");
+}
+
 /// Projects and interim work not among the contract types: an interim role (stated, or from
 /// a source that lists projects only) is excluded with its contract type; an ad that offers a
 /// permanent role and freelance work both is a check; a stated permanent role meets the
