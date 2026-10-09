@@ -1133,9 +1133,10 @@ mod tests {
         lock(asked)
             .iter()
             .map(|url| {
-                url.path()
-                    .rsplit_once("/p/")
-                    .map_or_else(|| "p1".to_owned(), |(_, page)| format!("p{page}"))
+                url.path().rsplit_once("/p/").map_or_else(
+                    || "p1".to_owned(),
+                    |(_, page)| format!("p{}", page.trim_end_matches('/')),
+                )
             })
             .collect()
     }

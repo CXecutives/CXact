@@ -183,8 +183,10 @@ impl PortalAdapter for Hays {
 
     /// Its further pages as its own links name them (measured 2026-10-01 and 2026-10-04):
     /// page `n` in the path (below `/j/Contracting/3` for the contracting jobs,
-    /// `/j/Festanstellung/2` for the permanent ones), the term in the query. A contract type
-    /// whose pages were not seen (Arbeitnehmerüberlassung) has its first page only.
+    /// `/j/Festanstellung/2` for the permanent ones), the term in the query. The pages count
+    /// from 1 (`p/1/` is the first page, the search itself; its "next" link is `p/2/`), so page
+    /// 2 follows the first without a gap. A contract type whose pages were not seen
+    /// (Arbeitnehmerüberlassung) has its first page only.
     fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
         let term = first
             .query_pairs()
@@ -198,11 +200,8 @@ impl PortalAdapter for Hays {
             None => format!("p/{page}/"),
             Some(level) => {
                 let (code, name) = JOBLEVELS.iter().find(|(code, _)| *code == level)?;
-                match name {
-                    Some("Contracting") => format!("j/Contracting/{code}/p/{page}"),
-                    Some(name) => format!("j/{name}/{code}/p/{page}/"),
-                    None => return None,
-                }
+                let name = (*name)?;
+                format!("j/{name}/{code}/p/{page}/")
             }
         };
         let mut url = Url::parse(&format!(
@@ -382,7 +381,7 @@ mod tests {
         );
         assert_eq!(
             Hays.search_page_url(&projects, 2).unwrap().as_str(),
-            "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2?q=Interim+CFO&e=false&ij=false"
+            "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2/?q=Interim+CFO&e=false&ij=false"
         );
         let permanent = Contracts {
             project: false,
@@ -427,6 +426,35 @@ mod tests {
         ] {
             assert_eq!(Hays.contract_filter(&first, contracts), None);
         }
+    }
+
+    /// The pagination of the first page of a contracting search (2026-10-01, the links as
+    /// served): page 1 is active at `p/1/`, "next" is `p/2/`.
+    const PAGINATION: &str = r#"<div class="search__results__pagination">
+      <a href="/jobsuche/stellenangebote-jobs/j/Contracting/3/p/0/?q=SAP&e=false&ij=false" class="search__results__pagination__prev disabled"></a>
+      <a href="/jobsuche/stellenangebote-jobs/j/Contracting/3/p/1/?q=SAP&e=false&ij=false" class="search__results__pagination__page active"> 1 </a>
+      <a href="/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2/?q=SAP&e=false&ij=false" class="search__results__pagination__page "> 2 </a>
+      <a href="/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2/?q=SAP&e=false&ij=false" class="search__results__pagination__next "></a>
+    </div>"#;
+
+    /// The pages count from 1: the search is page 1, the page after it the first page's own
+    /// "next" link, so the deep search neither reads a page twice nor skips one.
+    #[test]
+    fn the_second_page_is_the_first_pages_next_link() {
+        let doc = Html::parse_fragment(PAGINATION);
+        let link = |class: &str| {
+            let css = selector(&format!("a.search__results__pagination__{class}"));
+            let href = doc.select(&css).next().and_then(|a| a.value().attr("href"));
+            let home = Url::parse("https://www.hays.de").unwrap();
+            home.join(href.unwrap()).unwrap()
+        };
+        let first = Hays.search_urls(&["SAP".to_owned()]).remove(0);
+        let projects = Hays.contract_filter(&first, Contracts::PROJECTS).unwrap();
+        assert_eq!(Hays.search_page_url(&projects, 2).unwrap(), link("next"));
+        assert_eq!(
+            Hays.search_page_url(&projects, 1).unwrap(),
+            link("page.active")
+        );
     }
 
     #[test]
