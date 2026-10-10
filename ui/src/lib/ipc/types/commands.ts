@@ -8,6 +8,7 @@ import type { JobDetail } from "./JobDetail";
 import type { JobKey } from "./JobKey";
 import type { JobPage } from "./JobPage";
 import type { JobQuery } from "./JobQuery";
+import type { MailProvider } from "./MailProvider";
 import type { Mailbox } from "./Mailbox";
 import type { MoveBack } from "./MoveBack";
 import type { OpenTarget } from "./OpenTarget";
@@ -19,6 +20,7 @@ import type { ProfileSave } from "./ProfileSave";
 import type { RunEvent } from "./RunEvent";
 import type { RunRequest } from "./RunRequest";
 import type { SettingsPatch } from "./SettingsPatch";
+import type { StoredMail } from "./StoredMail";
 import type { Vocabulary } from "./Vocabulary";
 import type { WorkspacePick } from "./WorkspacePick";
 
@@ -29,6 +31,7 @@ export type Commands = {
   cancel_run: { args: Record<string, never>; result: null };
   list_jobs: { args: { query: JobQuery }; result: JobPage };
   job_detail: { args: { key: JobKey }; result: JobDetail };
+  alert_mail: { args: { key: JobKey }; result: StoredMail };
   mark_read: { args: { key: JobKey }; result: boolean };
   move_jobs: { args: { to: Place; keys: JobKey[] }; result: JobKey[] };
   move_back: { args: { jobs: MoveBack[] }; result: JobKey[] };
@@ -47,7 +50,7 @@ export type Commands = {
   answer_close: { args: { close: boolean }; result: null };
   window_button: { args: { button: 'minimize' | 'maximize' | 'close' }; result: null };
   window_maximized: { args: Record<string, never>; result: boolean };
-  save_mailbox: { args: { user: string; password: string }; result: Mailbox };
+  save_mailbox: { args: { provider: MailProvider; user: string; password: string }; result: Mailbox };
   remove_mailbox: { args: Record<string, never>; result: boolean };
   portal_login: { args: { portal: Portal }; result: boolean };
   portal_logout: { args: { portal: Portal }; result: boolean };

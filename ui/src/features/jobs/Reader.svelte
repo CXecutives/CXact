@@ -60,7 +60,7 @@
   import { displayTitle } from '$lib/i18n/format';
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { JobDetail, OpenTarget, Reason } from '$lib/ipc/types';
+  import type { JobDetail, OpenTarget, Reason, StoredMail } from '$lib/ipc/types';
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
@@ -69,6 +69,7 @@
   import { toasts } from '$lib/state/toasts.svelte';
   import JobMeta from '$components/JobMeta.svelte';
   import AdText from './AdText.svelte';
+  import MailView from './MailView.svelte';
   import ReaderState from './ReaderState.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
@@ -194,6 +195,20 @@
     invoke('open_target', { target }).catch((error: unknown) => fail(errorText(error)));
   }
 
+  /** "Alert-Mail öffnen": the mail in Gmail, else the one CXact kept, read here. */
+  let storedMail = $state<StoredMail | null>(null);
+  async function openMail(): Promise<void> {
+    if (detail.mail.gmailUrl !== null) {
+      openTarget({ kind: 'gmail', key: job.key });
+      return;
+    }
+    try {
+      storedMail = await invoke('alert_mail', { key: job.key });
+    } catch (error) {
+      fail(errorText(error));
+    }
+  }
+
   /** A move of the head's tools. The next job's reader gives the focus back to the button
    *  that had it. */
   function act(id: MoveId): void {
@@ -290,7 +305,7 @@
   };
   const showDoes: Record<ShowId, () => void> = {
     'open-ad': () => openTarget({ kind: 'jobUrl', key: job.key }),
-    mail: () => openTarget({ kind: 'gmail', key: job.key }),
+    mail: () => void openMail(),
     prompt: () => void copyJobPrompt(job.key).then(fail),
   };
 </script>
@@ -516,6 +531,8 @@
     {/each}
   </div>
 </article>
+
+<MailView mail={storedMail} onclose={() => (storedMail = null)} />
 
 <Dialog
   bind:open={confirmPurge}

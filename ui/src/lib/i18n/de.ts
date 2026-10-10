@@ -36,6 +36,7 @@ import type {
   TermField,
   Way,
   WorkMode,
+  MailProvider,
 } from '../ipc/types';
 import type { ContractKey, CvFailure } from '../ipc/api';
 import { PORTAL_LABEL } from '../ipc/types/portals';
@@ -114,12 +115,16 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
           : 'Das gibt es nicht mehr.',
   dryRun: 'Im Probelauf geht das nicht.',
   mailMissing: 'Es ist kein Postfach verbunden.',
-  mailConnect: 'Gmail ist nicht erreichbar.',
-  mailAuth: 'Gmail lehnt Adresse oder App-Passwort ab.',
-  mailTimeout: 'Gmail antwortet nicht.',
-  mailLost: 'Die Verbindung zu Gmail ist abgebrochen.',
+  mailConnect: 'Das Postfach ist nicht erreichbar.',
+  /** GMX and WEB.DE refuse a sign-in until IMAP is allowed in their web mailer. */
+  mailAuth: (p) =>
+    p.allowImap === true
+      ? 'Anmeldung abgelehnt. Erlaube den IMAP-Abruf in deinem Postfach.'
+      : 'Das Postfach lehnt Adresse oder Passwort ab.',
+  mailTimeout: 'Das Postfach antwortet nicht.',
+  mailLost: 'Die Verbindung zum Postfach ist abgebrochen.',
   mailNotGmail: 'Das ist kein Gmail-Postfach.',
-  mailServer: 'Gmail meldet einen Fehler.',
+  mailServer: 'Das Postfach meldet einen Fehler.',
   mailCancelled: 'Abgebrochen.',
   offline: 'Keine Verbindung zum Internet.',
   secretStore: 'Der Passwortspeicher des Systems ist nicht erreichbar.',
@@ -1342,12 +1347,24 @@ export const de = {
     /** The last fetch could not reach Gmail, or Gmail refused the password. */
     unreachable: 'Gmail nicht erreichbar',
     refused: 'App-Passwort abgelehnt',
-    address: 'Gmail-Adresse',
+    /** The providers of a mailbox (design round 7), in their order. */
+    provider: {
+      gmail: 'Gmail',
+      icloud: 'iCloud',
+      gmx: 'GMX',
+      webde: 'WEB.DE',
+    } satisfies Record<MailProvider, string>,
+    providerLabel: 'Anbieter',
+    address: 'E-Mail-Adresse',
+    /** Gmail and iCloud sign in with an app password, GMX and WEB.DE with the password. */
     password: 'App-Passwort',
-    /** The info symbol beside it. */
+    plainPassword: 'Passwort',
+    /** The info symbol beside the app password. */
     passwordInfo:
-      'Ein eigenes Passwort für CXact, das Google nur mit Bestätigung in zwei Schritten erstellt.',
+      'Ein eigenes Passwort für CXact, das dein Anbieter mit Bestätigung in zwei Schritten erstellt.',
     createPassword: 'App-Passwort erstellen',
+    /** GMX and WEB.DE read alert mails only once IMAP is allowed in their web mailer. */
+    allowImap: 'IMAP-Abruf erlauben',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',
     connect: 'Verbinden',

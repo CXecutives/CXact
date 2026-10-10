@@ -500,6 +500,8 @@
   --layout-page: var(--surface);
   /* The setup's picture of the app (design round 7): the cream of the sidebar beside the white
      page, its cards as wide as this at most; the setup shows it from this window width on. */
+  /* An alert mail read in the app: its text scrolls beyond this height. */
+  --mail-view-height: 360px;
   --setup-picture: var(--bg);
   --setup-picture-card: 420px;
   /* The step beside the picture: this wide at most, centred in its column. */

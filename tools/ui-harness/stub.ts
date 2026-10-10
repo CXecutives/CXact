@@ -755,7 +755,14 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'first-run': () => {
     jobs = [];
     state.firstRun = true;
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.mailbox = {
+      user: null,
+      provider: 'gmail',
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
     state.profile = null;
     state.lastRun = null;
   },
@@ -763,7 +770,14 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'setup-profile': () => {
     jobs = [];
     state.firstRun = true;
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.mailbox = {
+      user: null,
+      provider: 'gmail',
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
     state.lastRun = null;
   },
   // The setup with a profile and a mailbox just connected (what "Verbinden" counted): it
@@ -779,7 +793,14 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'setup-cv': () => {
     jobs = [];
     state.firstRun = true;
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.mailbox = {
+      user: null,
+      provider: 'gmail',
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
     state.lastRun = null;
     state.profile = infoOf({ ...mergeCv(null), roles: [], languages: [] });
   },
@@ -794,7 +815,14 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   },
   // No mailbox: the alert mails rest, the search goes on.
   'no-mailbox': () => {
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.mailbox = {
+      user: null,
+      provider: 'gmail',
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
   },
   'no-minimum': () => {
     state.profile = { ...PROFILE, form: { ...DEMO_FORM, dayRateMin: null } };
@@ -850,6 +878,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.dryRun = true;
     state.mailbox = {
       user: 'probelauf@example.org',
+      provider: 'gmail',
       vault: VAULT,
       error: null,
       check: null,
@@ -936,6 +965,7 @@ function initial(): void {
     },
     mailbox: {
       user: 'alerts.demo@gmail.com',
+      provider: 'gmail',
       vault: VAULT,
       error: null,
       check: null,
@@ -1904,6 +1934,18 @@ const handlers: Handlers = {
     const detail = structuredClone(detailOf(j));
     return harness.editDetail === null ? detail : harness.editDetail(detail);
   },
+  // The alert mail as the app keeps it, for a mailbox without Gmail (view::alert_mail).
+  alert_mail: ({ key }) => {
+    const j = find(key);
+    if (j === undefined) throw fail('notFound', { what: 'job' });
+    if (!j.hasMail) throw fail('notFound', { what: 'mail' });
+    return {
+      subject: detailOf(j).mail?.subject ?? '',
+      sender: PORTAL_LABEL[j.portal],
+      date: j.mailDate,
+      text: `${j.title}\n${j.company ?? ''}\n${j.location ?? ''}`,
+    };
+  },
   mark_read: ({ key }) => {
     const j = find(key);
     if (j === undefined || !j.unread) return false;
@@ -2033,22 +2075,28 @@ const handlers: Handlers = {
     return null;
   },
   window_maximized: () => harness.maximized,
-  save_mailbox: async ({ user, password }) => {
+  save_mailbox: async ({ provider, user, password }) => {
     // Like the command: the shape first (before the busy check), nothing is sent while it
-    // cannot be right.
+    // cannot be right. Gmail and iCloud take an app password of 16 letters (Apple's in
+    // groups with dashes), GMX and WEB.DE any password.
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(user)) {
       throw fail('invalid', { reason: 'mailAddress' });
     }
-    if (!/^[a-z]{16}$/i.test(password.replace(/\s/g, ''))) {
+    const appPassword = provider === 'gmail' || provider === 'icloud';
+    const letters = password.replace(provider === 'icloud' ? /[\s-]/g : /\s/g, '');
+    if (appPassword ? !/^[a-z]{16}$/i.test(letters) : password === '') {
       throw fail('invalid', { reason: 'appPassword' });
     }
     if (running) throw fail('busy');
     if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
     if (harness.holdMailbox) await checking();
-    if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
+    if (letters.toLowerCase() === WRONG_PASSWORD) {
+      throw fail('mailAuth', provider === 'gmx' || provider === 'webde' ? { allowImap: true } : {});
+    }
     // A count that does not finish never throws the sign-in away: `check` is then null.
     state.mailbox = {
       user,
+      provider,
       vault: VAULT,
       error: null,
       check: MAIL_UNCOUNTED ? null : params.get('alerts') === 'none' ? NO_ALERTS : DEMO_CHECK,
@@ -2059,7 +2107,14 @@ const handlers: Handlers = {
   remove_mailbox: () => {
     if (running) throw fail('busy');
     if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.mailbox = {
+      user: null,
+      provider: state.mailbox.provider,
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
     return true;
   },
   portal_login: ({ portal: name }) => {

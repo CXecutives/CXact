@@ -1,10 +1,12 @@
 <!--
-  Connect a Gmail mailbox: address and app password, Enter saves, Esc cancels. Errors land
-  at the field they belong to (empty fields are said before anything is sent); when Gmail
-  refuses the pair, both fields are marked, the password comes into view and the one
-  sentence stands under the fields. The password never leaves this form except to
-  save_mailbox (it goes straight into the OS keychain). The app password has an info symbol
-  (what it is) and "App-Passwort erstellen" as its field's link to Google's page. The fields
+  Connect a mailbox: its provider (Gmail, iCloud, GMX, WEB.DE; design round 7), address and
+  password, Enter saves, Esc cancels. Gmail and iCloud take an app password (an info symbol
+  says what it is, "App-Passwort erstellen" opens the provider's page); GMX and WEB.DE take
+  the password, with "IMAP-Abruf erlauben" as the way to their help, and a refused sign-in
+  there says to allow it. Errors land at the field they belong to (empty fields are said
+  before anything is sent); when the provider refuses the pair, both fields are marked, the
+  password comes into view and the one sentence stands under the fields. The password never
+  leaves this form except to save_mailbox (it goes straight into the OS keychain). The fields
   stand one under the other across their box. Einstellungen shows it in a dialog and the
   setup in its group: their buttons ("Verbinden") call `save` and `cancel`. A saved mailbox
   needs no note: its state "Verbunden" (Einstellungen) or the setup's "Postfach verbunden" is
@@ -15,10 +17,12 @@
 <script lang="ts">
   import Field from '$components/Field.svelte';
   import Notice from '$components/Notice.svelte';
+  import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke, IpcError } from '$lib/ipc/api';
+  import type { MailProvider } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { onMount } from 'svelte';
 
@@ -32,6 +36,15 @@
   let { autofocus = false, busy = $bindable(false) }: Props = $props();
 
   const id = $props.id();
+  let provider = $state<MailProvider>(app.state?.mailbox.provider ?? 'gmail');
+  const PROVIDERS = $derived(
+    (Object.keys(t.settings.provider) as MailProvider[]).map((id) => ({
+      id,
+      label: t.settings.provider[id],
+    })),
+  );
+  /** Gmail and iCloud sign in with an app password, GMX and WEB.DE with the password. */
+  const appPassword = $derived(provider === 'gmail' || provider === 'icloud');
   let user = $state(app.state?.mailbox.user ?? '');
   let password = $state('');
   /** An error is said when it shows. */
@@ -70,7 +83,7 @@
     }
     busy = true;
     try {
-      await invoke('save_mailbox', { user: user.trim(), password });
+      await invoke('save_mailbox', { provider, user: user.trim(), password });
       password = '';
       await app.load();
       return true;
@@ -106,8 +119,9 @@
     }
   }
 
-  function openPage(kind: 'appPasswordPage'): void {
-    invoke('open_target', { target: { kind } }).catch(
+  /** The provider's page: its app passwords, or (GMX, WEB.DE) how to allow IMAP. */
+  function openPage(): void {
+    invoke('open_target', { target: { kind: 'passwordPage', provider } }).catch(
       (error: unknown) => (formError = () => errorText(error)),
     );
   }
@@ -115,6 +129,13 @@
 
 {#snippet body()}
   <div class="fields">
+    <Segmented
+      options={PROVIDERS}
+      value={provider}
+      label={t.settings.providerLabel}
+      testid="mailbox-provider"
+      onchange={(next) => (provider = next)}
+    />
     <Field label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
       <TextField
         id="{id}-user"
@@ -124,16 +145,16 @@
         testid="mailbox-user"
       />
     </Field>
-    <!-- Google's page of the app passwords. -->
+    <!-- The provider's page of the app passwords, or its help on allowing IMAP. -->
     <Field
-      label={t.settings.password}
+      label={appPassword ? t.settings.password : t.settings.plainPassword}
       for="{id}-password"
-      info={t.settings.passwordInfo}
+      info={appPassword ? t.settings.passwordInfo : null}
       action={{
-        label: t.settings.createPassword,
+        label: appPassword ? t.settings.createPassword : t.settings.allowImap,
         icon: 'external',
         testid: 'create-password',
-        onclick: () => openPage('appPasswordPage'),
+        onclick: openPage,
       }}
       error={passwordError?.() ?? null}
     >

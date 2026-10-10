@@ -88,3 +88,35 @@ test('CRED-2: a mistyped app password is named at once, also while a fetch runs'
   expect(await calls(page, 'save_mailbox')).toHaveLength(2);
   await page.evaluate(() => (window.__harness.holdAfter = null));
 });
+
+test('a provider of its own: GMX takes the password, its page says how to allow IMAP', async ({
+  page,
+}) => {
+  await changeMailbox(page);
+  const provider = dialog(page).getByTestId('mailbox-provider');
+  await expect(provider.getByRole('radio')).toHaveText(['Gmail', 'iCloud', 'GMX', 'WEB.DE']);
+  await expect(provider.getByRole('radio', { checked: true })).toHaveText('Gmail');
+  // Gmail: the app password with its info symbol and Google's page.
+  await expect(dialog(page)).toContainText('App-Passwort');
+  await provider.getByRole('radio', { name: 'GMX' }).click();
+  // GMX: the password, no info symbol, the way to allow IMAP.
+  await expect(dialog(page).getByTestId('create-password')).toHaveText('IMAP-Abruf erlauben');
+  await expect(dialog(page).getByTestId('info-tip')).toHaveCount(0);
+  await dialog(page).getByTestId('create-password').click();
+  expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+    target: { kind: 'passwordPage', provider: 'gmx' },
+  });
+  // A refused sign-in at GMX says to allow IMAP.
+  await page.getByTestId('mailbox-user').fill('jobs@gmx.de');
+  await page.getByTestId('mailbox-password').fill('falschfalschfals');
+  await dialog(page).getByTestId('dialog-confirm').click();
+  await expect(page.getByTestId('mailbox-error')).toContainText('IMAP-Abruf');
+  // Any password works there; the mailbox remembers its provider.
+  await page.getByTestId('mailbox-password').fill('geheim');
+  await dialog(page).getByTestId('dialog-confirm').click();
+  await expect(dialog(page)).toBeHidden();
+  expect((await calls(page, 'save_mailbox')).at(-1)?.[1]).toMatchObject({
+    provider: 'gmx',
+    user: 'jobs@gmx.de',
+  });
+});

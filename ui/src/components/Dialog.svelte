@@ -19,7 +19,8 @@
   A dialog may hold content of its own (`children`: the list of the backups, the mailbox
   form). The sentence under the heading is left out where the heading says it all. An action
   that can be stopped while it runs (the check of "Verbinden") keeps cancel and Esc live
-  (`stoppable`).
+  (`stoppable`). A dialog that only shows something (an alert mail read in the app) has one
+  button, its confirm (`single`), and Esc closes it.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -52,6 +53,8 @@
     testid?: string | null;
     /** A third action next to confirm and cancel (secondary). */
     altLabel?: string | null;
+    /** Only the confirm button: the dialog shows something, it asks nothing. */
+    single?: boolean;
     onalt?: () => void;
     onconfirm: () => void;
     oncancel?: () => void;
@@ -70,6 +73,7 @@
     error = null,
     testid = null,
     altLabel = null,
+    single = false,
     onalt,
     onconfirm,
     oncancel,
@@ -176,7 +180,7 @@
               </span>
             {/if}
           {/snippet}
-          {#if !actionFirst}{@render alt()}{@render dismiss()}{/if}
+          {#if !actionFirst && !single}{@render alt()}{@render dismiss()}{/if}
           <Button
             variant={variant === 'danger' ? 'danger' : 'primary'}
             label={confirmLabel}
@@ -185,7 +189,7 @@
             testid="dialog-confirm"
             onclick={confirm}
           />
-          {#if actionFirst}{@render alt()}{@render dismiss()}{/if}
+          {#if actionFirst && !single}{@render alt()}{@render dismiss()}{/if}
         </div>
       </div>
     </div>

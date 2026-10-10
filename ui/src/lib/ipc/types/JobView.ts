@@ -41,8 +41,8 @@ trashedAt: string | null,
  */
 overridden: boolean, 
 /**
- * Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
- * reader).
+ * Its alert mail can be opened ("Alert-Mail öffnen"): in Gmail by `JobMail.gmailUrl` in
+ * the reader, else in the app (`alert_mail`).
  */
 hasMail: boolean, 
 /**
