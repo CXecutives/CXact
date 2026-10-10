@@ -4,8 +4,8 @@
   the quiet row "Kompetenz hinzufügen". The star says what a click does (mark, or remove the Schwerpunkt).
   At most five: a sixth star is disabled and its tooltip says why, as does the star of a row
   without a competence. The x of a row needs no tooltip. Without a competence a blank field
-  stands instead (with the amber edge while it is marked as missing): what is typed
-  there becomes the first row. A value that is too large (the years) or that the backend refused
+  stands instead (coral while its cell is marked as missing, like every field in it): what
+  is typed there becomes the first row. A value that is too large (the years) or that the backend refused
   marks its row. Enter goes to the next row, adds one after the last and ends the list on an
   empty last row (rows.ts); it never saves the profile. Removing a row puts no caret anywhere
   (input.ts removeBy): after a click the focus is dropped, from the keyboard it goes to the
@@ -27,13 +27,11 @@
 
   interface Props {
     rows: Competence[];
-    /** Marked as missing: the blank field shows the amber edge. */
-    missing?: boolean;
     /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
   }
 
-  let { rows = $bindable(), missing = false, error = null }: Props = $props();
+  let { rows = $bindable(), error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   vocabulary.load();
@@ -95,7 +93,6 @@
         id="{id}-name-0"
         label={words.competence}
         placeholder={words.competencePlaceholder}
-        {missing}
         testid="competence-blank"
         oninput={(text) => void begin(text)}
       />
@@ -130,7 +127,6 @@
           id="{id}-name-{index}"
           label={words.competence}
           placeholder={rows.length === 1 ? words.competencePlaceholder : null}
-          missing={missing && index === 0 && !named}
           invalid={wrong}
           describedby={wrong ? `${id}-error` : null}
           suggestions={vocabulary.skills}

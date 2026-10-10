@@ -71,9 +71,6 @@
   /* The soft fills of a success and a warning: light tints of the rings' green and yellow. */
   --p-success-soft: 142 45% 94%;
   --p-warning-soft: 42 90% 93%;
-  /* The edge of a required field that is still empty: the rings' yellow a step deeper, so it
-     reads as an edge on white. */
-  --p-warning-edge: 40 82% 52%;
   /* Words that warn (a portal that waits for a mailbox): the rings' amber deep enough to read. */
   --p-warning-ink: 32 85% 31%;
   --p-danger-strong: 356.2 70.6% 48%;
@@ -209,9 +206,8 @@
   --meter-track: hsl(var(--p-navy-100));
   /* The pinned star and pressed ghost toggles. */
   --pressed: hsl(var(--p-navy-deep));
-  /* Focus (keyboard only), caret and text selection: navy, like the native blue of both
-     OS; coral focus was 2.9:1 on white and read as an error or a call to action. */
-  --focus: hsl(var(--p-navy));
+  /* Caret and text selection: navy, like the native blue of both OS (the edge of a field
+     in focus is --border-focus). */
   --caret: hsl(var(--p-navy));
   --selection: hsl(var(--p-navy) / 0.2);
   /* The lifetime line of a toast. */
@@ -228,13 +224,9 @@
   --warning: var(--score-ring-5);
   --warning-soft: hsl(var(--p-warning-soft));
   --warning-text: hsl(var(--p-warning-ink));
-  /* A required field that is still empty: an amber edge and a soft amber halo around it;
-     the flash that marks the field a link of the missing line led to takes the halo's
-     colour as a wash. */
-  --missing-edge: hsl(var(--p-warning-edge));
-  --missing-halo: hsl(var(--p-score-yellow) / 0.3);
-  --missing-ring: 0 0 0 var(--halo-width) var(--missing-halo);
-  --missing-flash: hsl(var(--p-score-yellow) / 0.16);
+  /* A required field that is still empty: only a coral edge, no halo (user, design round
+     6); the [data-missing] block below gives it to the fields of its cell. */
+  --missing-edge: hsl(var(--p-coral-variant));
   --danger: hsl(var(--p-danger));
   --danger-strong: hsl(var(--p-danger-strong));
   --danger-soft: hsl(var(--p-danger-soft));
@@ -350,6 +342,11 @@
   --quiet-press: var(--surface-press);
   --control-hover: var(--surface-muted);
   --control-hover-edge: var(--border-input);
+  /* The edge of a text field and a chip field at rest and under the pointer (TextField,
+     ChipInput); a wrong value draws the danger red instead, a required field that is still
+     empty the coral ([data-missing] below), and a field in focus is always --border-focus. */
+  --field-edge: var(--border-strong);
+  --field-edge-hover: var(--control-hover-edge);
   --raised-hover-edge: var(--border-navy);
   --raised-hover-shadow: var(--sh-hover);
   --raised-press: var(--surface-muted);
@@ -579,9 +576,6 @@
   --ring-md-stroke: 4.5px;
   --border-width: 1px;
   --focus-width: 2px;
-  /* The soft halo around a required field that is still empty (and the ring of the flash
-     that marks the field a link of the missing line led to). */
-  --halo-width: 3px;
   --brand-mark-xs: var(--icon-sm);
   --brand-mark-sm: 24px;
   --brand-mark: 28px;
@@ -723,9 +717,6 @@
   --dur-toast: 4000ms;
   --dur-toast-action: 10000ms;
   --dur-crossfade: 100ms;
-  /* The flash that marks the field a link of the missing line led to: in within the first
-     eighth, held, out within the last fifth (keyframes `flash`, motion.css). */
-  --dur-flash: 1100ms;
   /* At most this many list rows animate at the same time; the others are simply there. */
   --stagger-max: 10;
   --delay-tooltip: 400ms;
@@ -782,6 +773,14 @@
   --link-hover: var(--text-inverse);
   --quiet-hover: hsl(var(--p-white) / 0.1);
   --quiet-press: hsl(var(--p-white) / 0.16);
+}
+
+/* A required field that is still empty (its cell in the profile carries `data-missing`,
+   ProfileEditor): every field in it draws the coral edge at rest and under the pointer; the
+   coral stays confined to this block. Focus still turns the edge navy only. */
+[data-missing] {
+  --field-edge: var(--missing-edge);
+  --field-edge-hover: var(--missing-edge);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

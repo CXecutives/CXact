@@ -24,8 +24,9 @@
   Enter or a click takes the marked term as a chip, Esc closes the list; Enter without a
   mark and leaving the field take the typed text as always.
   As tall as a text field (28 px) with one line of chips; with `star` each chip starts with
-  its star (a preferred industry, ChipStar); with chips its input says "+ Rolle" (`more`);
-  required and empty (`missing`) it has the amber edge and halo of every field of the form.
+  its star (a preferred industry, ChipStar); with chips its input says "+ Rolle" (`more`).
+  Its edge is the text field's (`--field-edge`, coral in a required cell that is still
+  empty, red while `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
   focus; a click on it, or the focus, shows them all.
 -->
@@ -59,8 +60,6 @@
     placeholder?: string | null;
     /** The placeholder once it holds chips ("+ Rolle"). */
     more?: string | null;
-    /** Required and still empty: the amber edge and halo. */
-    missing?: boolean;
     /** id of the text input, for the label of a Field. */
     id?: string | null;
     /** Default: the message of its Field, while it shows one. */
@@ -94,7 +93,6 @@
     label = null,
     placeholder = null,
     more = null,
-    missing = false,
     id = null,
     describedby = null,
     invalid = false,
@@ -332,7 +330,6 @@
     bind:this={box}
     class="field"
     class:invalid
-    class:missing={missing && !invalid}
     class:entry
     class:filled={values.length > 0}
     role="presentation"
@@ -469,7 +466,7 @@
   .entry {
     min-height: var(--control-field);
     padding: var(--space-2);
-    border: var(--border-width) solid var(--border-strong);
+    border: var(--border-width) solid var(--field-edge);
     border-radius: var(--radius-control);
     background-color: var(--surface);
     cursor: text;
@@ -477,22 +474,17 @@
   }
 
   .entry:hover {
-    border-color: var(--control-hover-edge);
+    border-color: var(--field-edge-hover);
   }
 
+  .invalid {
+    --field-edge: var(--danger-strong);
+    --field-edge-hover: var(--danger-strong);
+  }
+
+  /* Focus last: only the navy edge, whatever the field showed (hover never takes it back). */
   .entry:focus-within {
-    border-color: var(--focus);
-  }
-
-  .invalid,
-  .invalid:hover {
-    border-color: var(--danger-strong);
-  }
-
-  .missing,
-  .missing:hover {
-    border-color: var(--missing-edge);
-    box-shadow: var(--missing-ring);
+    border-color: var(--border-focus);
   }
 
   .chip {

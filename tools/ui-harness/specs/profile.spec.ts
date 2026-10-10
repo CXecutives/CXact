@@ -13,7 +13,16 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import { chooseWay, failNext, fillRequired, reveal as show, T, tokenPx, WIN } from './helpers';
+import {
+  chooseWay,
+  failNext,
+  fillRequired,
+  reveal as show,
+  T,
+  tokenColour,
+  tokenPx,
+  WIN,
+} from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -540,10 +549,19 @@ test('nothing warns up front; Speichern saves anyway and marks what is missing',
   await expect(field(page, 'roles')).toHaveAttribute('data-missing', '');
   await expect(roles(page).locator('input')).toBeFocused();
   await expect(save(page)).toHaveCount(0);
-  // Each name leads to its field, which flashes.
+  // Only a coral edge on what is missing, no halo; the field in focus shows only the navy
+  // edge, under the pointer too.
+  const languages = page.getByTestId('language-input');
+  const navy = await tokenColour(page, '--border-focus');
+  await expect(languages).toHaveCSS('border-top-color', await tokenColour(page, '--missing-edge'));
+  await expect(languages).toHaveCSS('box-shadow', 'none');
+  await expect(roles(page)).toHaveCSS('border-top-color', navy);
+  await roles(page).hover();
+  await expect(roles(page)).toHaveCSS('border-top-color', navy);
+  // Each name leads to its field: the caret in it, nothing flashes.
   await missing(page).getByTestId('missing-languages').click();
-  await expect(page.getByTestId('language-input').locator('input')).toBeFocused();
-  await expect(field(page, 'languages')).toHaveAttribute('data-flash', '');
+  await expect(languages.locator('input')).toBeFocused();
+  await expect(languages).toHaveCSS('border-top-color', navy);
   await roles(page).locator('input').fill('Interim CFO');
   await roles(page).locator('input').press('Enter');
   await expect.poll(said).toBe(sentence([words.languages]));

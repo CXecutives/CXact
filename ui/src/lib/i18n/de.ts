@@ -1098,7 +1098,7 @@ export const de = {
     /** The required fields still empty, said once Speichern or the setup's Weiter was
      *  pressed: its words before the names (each a link to its field) and what stands before
      *  each name. */
-    missingLead: 'Es fehlt noch',
+    missingLead: 'Es fehlen noch',
     missingBefore: (index: number, total: number) =>
       index === 0 ? ' ' : index === total - 1 ? ' und ' : ', ',
     /** The floating bar while the form holds a change. */

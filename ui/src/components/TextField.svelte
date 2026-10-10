@@ -3,11 +3,13 @@
   autocorrect and autocapitalize are off. Use inside Field for label, hint and error.
   Like the native ones: the show and clear buttons are not in the Tab order and leave the
   caret in the field; a search clears on Esc, and a click on its magnifier lands in it.
-  Focus turns the edge navy (100 ms), one calm edge and no ring around it; the magnifier
-  turns navy. The clear button pops in with the first character and leaves at
-  once. A wrong value (a password Gmail refused) shows as the red edge (`invalid`) and the
-  one sentence of its Field; nothing shakes (`shake()` stays for its callers and only
-  keeps the field in view).
+  The edge is `--field-edge` (`--field-edge-hover` under the pointer): a required field that
+  is still empty takes the coral of its cell (`[data-missing]`, tokens.css). Focus turns the
+  edge navy (100 ms) whatever it was, one calm edge and no ring around it; the magnifier
+  turns navy. The clear button pops in with the first character and leaves at once. A wrong
+  value (a password Gmail refused) shows as the red edge (`invalid`) and the one sentence of
+  its Field; nothing shakes (`shake()` stays for its callers and only keeps the field in
+  view).
   With `options` (the languages of the profile) it suggests while typing, like the countries
   field: the options whose names start with the text drop down under it, the arrows move the
   one mark, Enter or a click takes the marked one, Esc closes the list; any other text stays
@@ -38,8 +40,6 @@
     placeholder?: string | null;
     id?: string | null;
     invalid?: boolean;
-    /** Required and still empty: an amber edge with a soft halo. */
-    missing?: boolean;
     disabled?: boolean;
     /** The ids of the texts that describe the field (default: the message of its Field,
      *  while it shows one). */
@@ -66,7 +66,6 @@
     placeholder = null,
     id = null,
     invalid = false,
-    missing = false,
     disabled = false,
     describedby = null,
     options = null,
@@ -186,7 +185,6 @@
   bind:this={box}
   class="field {kind}"
   class:invalid
-  class:missing={missing && !invalid}
   class:disabled
   class:trailed={trailing !== null}
   class:quiet
@@ -299,34 +297,26 @@
     align-items: center;
     width: 100%;
     height: var(--control-field);
-    border: var(--border-width) solid var(--border-strong);
+    border: var(--border-width) solid var(--field-edge);
     border-radius: var(--radius-control);
     background-color: var(--surface);
     transition: border-color var(--dur-base) var(--ease-standard);
   }
 
   .field:hover {
-    border-color: var(--control-hover-edge);
+    border-color: var(--field-edge-hover);
     transition-duration: var(--dur-hover);
-  }
-
-  .field:focus-within {
-    border-color: var(--border-focus);
-    transition-duration: var(--dur-fast);
   }
 
   /* Quiet: no edge and no fill at rest, the edge on hover, the field's look while edited. */
   .quiet {
-    border-color: transparent;
+    --field-edge: transparent;
+    --field-edge-hover: var(--border-strong);
+
     background-color: transparent;
   }
 
-  .quiet:hover {
-    border-color: var(--border-strong);
-  }
-
   .quiet:focus-within {
-    border-color: var(--border-focus);
     background-color: var(--surface);
   }
 
@@ -339,16 +329,15 @@
     color: var(--text);
   }
 
-  .invalid,
-  .invalid:hover,
-  .invalid:focus-within {
-    border-color: var(--danger-strong);
+  .invalid {
+    --field-edge: var(--danger-strong);
+    --field-edge-hover: var(--danger-strong);
   }
 
-  .missing,
-  .missing:hover {
-    border-color: var(--missing-edge);
-    box-shadow: var(--missing-ring);
+  /* Focus last: only the navy edge, whatever the field showed (hover never takes it back). */
+  .field:focus-within {
+    border-color: var(--border-focus);
+    transition-duration: var(--dur-fast);
   }
 
   .disabled {

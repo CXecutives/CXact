@@ -1688,11 +1688,12 @@ fn tooltips_only_where_something_is_missing() {
     );
 }
 
-/// Coral means act, new and where you are (tokens.css): each coral role is drawn only by the
-/// components of that role, so coral cannot creep into a heading, a link or a hover.
+/// Coral means act, new, where you are and a required field still empty (tokens.css): each
+/// coral role is drawn only by the components of that role, so coral cannot creep into a
+/// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    const ROLES: [(&str, &[&str]); 8] = [
+    const ROLES: [(&str, &[&str]); 9] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // A switch that is on, the check of a chosen row, and a chosen checkbox (the
@@ -1739,6 +1740,10 @@ fn coral_only_in_its_roles() {
                 "components/Segmented.svelte",
             ],
         ),
+        // A required field that is still empty (design round 6): its coral edge is confined to
+        // the `[data-missing]` block of tokens.css, which hands it to the fields' own edge
+        // tokens; no component draws it.
+        ("var(--missing-edge", &[]),
     ];
     let all = scanned(MIN_FILES);
     let mut problems = Vec::new();

@@ -5,8 +5,8 @@
   a C2 as Fließend, and stays until another level is chosen) and its x. "+ Sprache" opens an
   inline field under the rows: the common languages not chosen yet as quick picks
   (QuickPicks), and typing finds any other language the app knows; a new language starts at
-  Gut, the level the engine assumes. Without a language the field stands open (with the amber
-  edge while it is marked as missing). The x needs no tooltip; removing a row puts no caret
+  Gut, the level the engine assumes. Without a language the field stands open (coral while
+  its cell is marked as missing). The x needs no tooltip; removing a row puts no caret
   anywhere (input.ts removeBy). A value the backend refused is said under the rows.
 -->
 <script lang="ts">
@@ -22,13 +22,11 @@
 
   interface Props {
     rows: Language[];
-    /** Marked as missing: the open field shows the amber edge. */
-    missing?: boolean;
     /** A value the backend refused and why. */
     error?: { row: number | null; text: string } | null;
   }
 
-  let { rows = $bindable(), missing = false, error = null }: Props = $props();
+  let { rows = $bindable(), error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   const id = $props.id();
@@ -121,7 +119,6 @@
         options={OPTIONS.filter((option) => !chosen(option.id))}
         noMatch={words.languageNone}
         placeholder={words.languagePlaceholder}
-        {missing}
         testid="language-input"
         onchange={(names) => {
           const name = names[0];

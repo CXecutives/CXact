@@ -8,16 +8,18 @@
   width, a number (its unit inside) or a day is --number-width, a choice of a few as wide as
   its options. Vertragsart is three checkboxes (Projekt und Interim, Festanstellung,
   Zeitarbeit; one stays). A number is formatted when its field is left.
-  A required field that is still empty shows its amber edge and halo only once Speichern or
-  the setup's Weiter was pressed (`missing`, ProfileView) and loses it as it is filled; a
-  link of the missing sentence puts the caret into it and lets it flash (`focusField`). A
-  value that is too large, a 0 where at least 1 counts, a day that does not read and a value
-  the backend refused are said at their field, stay with their error until they change, and
-  hold the save (the field gets the caret when a save is tried). A wished rate under the
-  minimum says so quietly under it. Mindestgehalt shows only while Festanstellung or
-  Zeitarbeit is chosen. Enter in a field saves (the setup: goes on), as in every form (in the row lists it
-  goes to the next row, in a chip field it adds what was typed); an untouched new form goes
-  back to the ways in with Esc (not in the setup). The setup shows no "Häufig verlangt".
+  A required field that is still empty shows its coral edge only once Speichern or the
+  setup's Weiter was pressed (`missing`, ProfileView) and loses it as it is filled: its cell
+  carries `data-missing`, and the token block of that name colours every field in it. A
+  link of the missing sentence puts the caret into it, in the middle of the view, without a
+  flash (`focusField`). A value that is too large, a 0 where at least 1 counts, a day that
+  does not read and a value the backend refused are said at their field, stay with their
+  error until they change, and hold the save (the field gets the caret when a save is
+  tried). A wished rate under the minimum says so quietly under it. Mindestgehalt shows only
+  while Festanstellung or Zeitarbeit is chosen. Enter in a field saves (the setup: goes on),
+  as in every form (in the row lists it goes to the next row, in a chip field it adds what
+  was typed); an untouched new form goes back to the ways in with Esc (not in the setup).
+  The setup shows no "Häufig verlangt".
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -210,8 +212,8 @@
   }
 
   /** The caret into a field of the form (its marked control first), in the middle of the
-   *  view, and with `flash` it lights up once; `false` when the field is not on the page. */
-  export async function focusField(field: string, flash = false): Promise<boolean> {
+   *  view; `false` when the field is not on the page. */
+  export async function focusField(field: string): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     const target =
@@ -219,11 +221,6 @@
       scope?.querySelector<HTMLElement>('input, textarea, button:not([data-testid="info-tip"])');
     target?.focus({ preventScroll: true });
     (target ?? scope)?.scrollIntoView({ block: 'center' });
-    if (flash && scope) {
-      delete scope.dataset.flash;
-      void scope.offsetWidth;
-      scope.dataset.flash = '';
-    }
     return target !== null && target !== undefined;
   }
 
@@ -260,17 +257,14 @@
       class="cell"
       data-field={fieldOf(c)}
       data-missing={isMissing(c) ? '' : undefined}
-      onanimationend={(event) => {
-        if (event.target === event.currentTarget) delete event.currentTarget.dataset.flash;
-      }}
       transition:fade
     >
-      {@render control(c, isMissing(c))}
+      {@render control(c)}
     </div>
   {/if}
 {/snippet}
 
-{#snippet control(c: Control, open: boolean)}
+{#snippet control(c: Control)}
   {#if c.kind === 'number'}
     {@const error = errorOf(c.key)}
     <Field
@@ -300,7 +294,6 @@
         split={c.lines ? 'lines' : 'list'}
         placeholder={words[c.placeholder]}
         more={words[c.more]}
-        missing={open}
         invalid={error !== null}
         suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
         fold={c.key === 'tools'}
@@ -332,12 +325,7 @@
   {:else if c.kind === 'countries'}
     {@const error = errorOf('countries')}
     <Field label={words.countries} for="{id}-countries" info={infoOf(c)} {error}>
-      <CountriesField
-        id="{id}-countries"
-        bind:values={form.countries}
-        missing={open}
-        invalid={error !== null}
-      />
+      <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
     </Field>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
@@ -346,11 +334,7 @@
     </Field>
   {:else if c.kind === 'competences'}
     <Field label={words.competences} info={infoOf(c)}>
-      <CompetenceList
-        bind:rows={form.competences}
-        missing={open}
-        error={listError('competences')}
-      />
+      <CompetenceList bind:rows={form.competences} error={listError('competences')} />
       {#if !setup}<AskedTerms field="competence" home="competence-add" />{/if}
     </Field>
   {:else if c.kind === 'industries'}
@@ -371,7 +355,7 @@
     </Field>
   {:else if c.kind === 'languages'}
     <Field label={words.languages}>
-      <LanguageList bind:rows={form.languages} missing={open} error={listError('languages')} />
+      <LanguageList bind:rows={form.languages} error={listError('languages')} />
       {#if !setup}<AskedTerms field="language" home="language-add" />{/if}
     </Field>
   {/if}
@@ -405,25 +389,8 @@
     max-width: 100%;
   }
 
-  /* A field flashes once when a link of the missing sentence led to it (a wash in the
-     halo's amber around it). */
   .cell {
-    position: relative;
     min-width: 0;
-  }
-
-  .cell::after {
-    position: absolute;
-    inset: calc(-1 * var(--space-4)) calc(-1 * var(--space-6));
-    border-radius: var(--radius-control);
-    background-color: var(--missing-flash);
-    content: '';
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .cell:global([data-flash]::after) {
-    animation: pulse var(--dur-flash) var(--ease-out);
   }
 
   /* Tab and focus scrolling keep a field clear of the top bar's fade and of the floating

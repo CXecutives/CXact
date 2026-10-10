@@ -13,12 +13,10 @@
   interface Props {
     id: string;
     values: string[];
-    /** Marked as missing: the amber edge. */
-    missing: boolean;
     invalid: boolean;
   }
 
-  let { id, values = $bindable(), missing, invalid }: Props = $props();
+  let { id, values = $bindable(), invalid }: Props = $props();
 
   const words = $derived(t.profile.field);
 
@@ -57,7 +55,6 @@
   noMatch={words.countryNone}
   placeholder={words.countriesPlaceholder}
   more={words.countriesMore}
-  {missing}
   {invalid}
   testid="profile-countries"
 />

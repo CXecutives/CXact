@@ -227,7 +227,9 @@ one under the other, each with its label above it (`components/Field.svelte`, on
 Moving, adding or removing a field is one entry there (a new group also needs its heading in
 `profile.section`); a field that shows only with another is its `shown`, an info symbol its
 `info` (a sentence of `profile.info`). Which fields are required is core's
-(`ProfileInfo.missing`); the page only lists them in its order.
+(`ProfileInfo.missing`); the page only lists them in its order. Their coral edge is the
+`[data-missing]` block of `tokens.css` (the attribute of the field's cell), not a prop of the
+fields.
 
 While typing, the wished roles, the competence and the tools suggest the engine's skills, the
 industries its industries and the regions those of Germany, Austria and Switzerland

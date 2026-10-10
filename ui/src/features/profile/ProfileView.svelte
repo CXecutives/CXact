@@ -12,9 +12,9 @@
   rescore changed (saveEffect.ts). Leaving the view or closing the window with unsaved
   changes asks once ("Änderungen speichern?", the heading alone).
   What is missing (design round 4): nothing warns up front. Speichern saves anyway; while
-  required fields are still empty they then get the amber edge and halo, the caret goes to
-  the first one and the floating bar says "Es fehlt noch …" (the names lead to their fields)
-  until they are filled. A new or changed form asks core what it still lacks
+  required fields are still empty they then get the coral edge, the caret goes to the first
+  one and the floating bar says "Es fehlen noch …" (the names lead to their fields) until
+  they are filled. A new or changed form asks core what it still lacks
   (`profileMissing`, a moment after the last edit), the stored profile names its own
   (`missing`).
   In the setup (`setup`) the same form without the CV, the bar and "Häufig verlangt"; its
@@ -241,7 +241,7 @@
     const open = missing.length > 0;
     if (open) flagged = true;
     const done = await save();
-    if (done && open && missing.length > 0) void jump(missing[0]!, false);
+    if (done && open && missing.length > 0) void jump(missing[0]!);
   }
 
   /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
@@ -309,9 +309,9 @@
     onflag?.(markedNames.length === 0 ? null : markedNames);
   });
 
-  /** A field of the form: the caret in it (with `flash` it lights up once). */
-  export function jump(field: string, flash = true): Promise<boolean> {
-    return panel?.focusField(field, flash) ?? Promise.resolve(false);
+  /** A field of the form: the caret in it, in the middle of the view. */
+  export function jump(field: string): Promise<boolean> {
+    return panel?.focusField(field) ?? Promise.resolve(false);
   }
 
   /**
@@ -323,7 +323,7 @@
     if (busy) return false;
     if (missing.length > 0) {
       flagged = true;
-      void jump(missing[0]!, false);
+      void jump(missing[0]!);
       return false;
     }
     if (editor.dirty || editor.origin === 'new') {
@@ -333,7 +333,7 @@
     const left = FIELD_ORDER.filter((field) => (profile?.missing ?? []).includes(field));
     if (profile === null || left.length > 0) {
       flagged = true;
-      void jump(left[0] ?? FIELD_ORDER[0] ?? '', false);
+      void jump(left[0] ?? FIELD_ORDER[0] ?? '');
       return false;
     }
     return true;
