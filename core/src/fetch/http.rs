@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use super::{Cause, PageFetcher, PageOutcome};
-use crate::portal::{Hit, JobLink, Portal, Redirects};
+use crate::portal::{JobLink, Portal, Redirects, SearchPage};
 
 const TIMEOUT: Duration = Duration::from_secs(30);
 /// Bigger is no ad - then something is wrong.
@@ -148,9 +148,9 @@ impl HttpFetcher {
 }
 
 impl HttpFetcher {
-    /// A page of the source's own search: the hits its adapter reads, or what decided first
-    /// (a status, a redirect it did not follow, a check page).
-    async fn search_page(&self, portal: Portal, url: &Url) -> Result<Vec<Hit>, PageOutcome> {
+    /// A page of the source's own search: the hits and the count its adapter reads, or what
+    /// decided first (a status, a redirect it did not follow, a check page).
+    async fn search_page(&self, portal: Portal, url: &Url) -> Result<SearchPage, PageOutcome> {
         let adapter = portal.adapter();
         let target = self.target(url.clone());
         let request = match adapter.search_body(url) {
@@ -174,9 +174,11 @@ impl HttpFetcher {
         if let Some(outcome) = status_outcome(status, retry_after(&response)) {
             return Err(outcome);
         }
-        adapter
-            .search_page(&body(response).await?)
-            .map_err(PageOutcome::from)
+        let body = body(response).await?;
+        Ok(SearchPage {
+            hits: adapter.search_page(&body).map_err(PageOutcome::from)?,
+            count: adapter.search_count(&body),
+        })
     }
 
     /// The source's robots.txt beside its start page (`search`: the one of its search pages'
@@ -226,11 +228,11 @@ impl PageFetcher for HttpFetcher {
         portal: Portal,
         url: &Url,
         cancel: &CancellationToken,
-    ) -> Result<Vec<Hit>, PageOutcome> {
+    ) -> Result<SearchPage, PageOutcome> {
         tokio::select! {
             biased;
             () = cancel.cancelled() => Err(PageOutcome::Cancelled),
-            hits = self.search_page(portal, url) => hits,
+            page = self.search_page(portal, url) => page,
         }
     }
 
@@ -752,11 +754,11 @@ mod tests {
             .adapter()
             .search_urls(&["Controlling".to_owned()])[0]
             .clone();
-        let hits = f
+        let page = f
             .search(Portal::Gulp, &url, &CancellationToken::new())
             .await
             .unwrap();
-        assert_eq!(hits.len(), 1);
+        assert_eq!(page.hits.len(), 1);
         let request = &server.received_requests().await.unwrap()[0];
         assert_eq!(request.url.query(), None, "the term goes in the body");
         assert_eq!(
@@ -765,6 +767,30 @@ mod tests {
         );
         let body: serde_json::Value = serde_json::from_slice(&request.body).unwrap();
         assert_eq!(body["query"], "Controlling");
+    }
+
+    /// A search page that states how many hits the whole search finds (freelancermap) hands
+    /// that count on with its hits.
+    #[tokio::test]
+    async fn a_search_page_hands_on_its_count() {
+        let (server, mut f) = server().await;
+        Mock::given(method("GET"))
+            .and(path("/projekte"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"<script type="application/json" data-component-name="ProjectSearch">{"initialState":{"result":{"projects":[{"id":3054958,"title":"SAP FI/CO"}],"count":41}}}</script>"#,
+            ))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let url = Portal::Freelancermap
+            .adapter()
+            .search_urls(&["SAP FI/CO".to_owned()])[0]
+            .clone();
+        let page = f
+            .search(Portal::Freelancermap, &url, &CancellationToken::new())
+            .await
+            .unwrap();
+        assert_eq!((page.hits.len(), page.count), (1, Some(41)));
     }
 
     #[tokio::test]

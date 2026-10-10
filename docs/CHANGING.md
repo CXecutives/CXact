@@ -255,7 +255,9 @@ A source the app searches itself: an adapter as above with
 `way()` `Way::Search`, `search_urls(terms)` (the first page per term, or one list it filters
 by them), `search_page_url(first, n)` (its further pages as its own links count them; none
 for a source that shows every hit on one page) and `search_page(html)` (its hits, or
-`NoHits` for a check or an unknown page), `checks_robots()` `true`, and `limits()`
+`NoHits` for a check or an unknown page), `search_count(html)` where its page states how many
+hits the whole search finds and lists only those (the paging then stops at that count, or at a
+short page the count puts last), `checks_robots()` `true`, and `limits()`
 `super::search_limits()` (the deep search's pace and caps). Search pages on another host
 than the ads (Amadeus Fire) name that host's robots.txt in `search_robots_url()`. A search the source runs as a POST of its query
 (GULP) gives the JSON body in `search_body(url)`; the term rides in the address's query. First check by hand that its robots.txt allows the

@@ -70,8 +70,9 @@ mail, store, engine, view, UI:
    (`profile::deep_search_terms`: the roles with their other names and ESCO occupation names,
    the names of their field (`matching::SearchField`), competences in the profile's order and
    tools that are not too broad alone, at most 24), each term deeper
-   (`search_page_url`) while its pages bring new jobs, a cut-short paging going on at the
-   next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
+   (`search_page_url`) while its pages bring new jobs, never past its last page (one that
+   repeats the page before, the source's count reached, a short page the count puts last), a
+   cut-short paging going on at the next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
    Crawl-delay the least gap); the hits are jobs without a mail (`Store::record_found`). A
    fetch reads the mailbox (with one) and searches, in one run; the new jobs go through the
    screen (`pipeline::score::screen`) before their ads are read.

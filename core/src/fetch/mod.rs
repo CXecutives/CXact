@@ -33,7 +33,9 @@ use jiff::{SignedDuration, Timestamp};
 use tokio_util::sync::CancellationToken;
 
 use crate::model::DescStatus;
-use crate::portal::{Access, Facts, Hit, JobKey, JobLink, PORTALS, Portal, PortalAdapter, Way};
+use crate::portal::{
+    Access, Facts, JobKey, JobLink, PORTALS, Portal, PortalAdapter, SearchPage, Way,
+};
 use crate::store::{JobRow, Store};
 // A poisoned safety state is no reason to abort the run: its counters are valid, and
 // without them there would be no cap at all.
@@ -277,14 +279,14 @@ pub trait PageFetcher {
         self.robots(portal, cancel)
     }
 
-    /// One page of the source's own search, read by its adapter: the hits, or what decided
-    /// instead (a block, a throttle, a wall). The guest client only.
+    /// One page of the source's own search, read by its adapter: the hits and the count it
+    /// states, or what decided instead (a block, a throttle, a wall). The guest client only.
     fn search(
         &mut self,
         portal: Portal,
         url: &Url,
         cancel: &CancellationToken,
-    ) -> impl Future<Output = Result<Vec<Hit>, PageOutcome>> + Send {
+    ) -> impl Future<Output = Result<SearchPage, PageOutcome>> + Send {
         let _ = (portal, url, cancel);
         async { Err(PageOutcome::Suspicious(Cause::NoSearch)) }
     }
@@ -427,7 +429,7 @@ impl<S: PageFetcher + Send> PageFetcher for Fetchers<S> {
         portal: Portal,
         url: &Url,
         cancel: &CancellationToken,
-    ) -> Result<Vec<Hit>, PageOutcome> {
+    ) -> Result<SearchPage, PageOutcome> {
         match self {
             Fetchers::Guest(http) => http.search(portal, url, cancel).await,
             Fetchers::Session(session) => session.search(portal, url, cancel).await,

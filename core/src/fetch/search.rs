@@ -3,12 +3,15 @@
 //! the search terms of the active profile, deep (user, 2026-10-01: "tief und viel"): a term's
 //! further pages ([`PortalAdapter::search_page_url`](crate::portal::PortalAdapter::search_page_url))
 //! are asked for while the page before brought jobs the list did not know, up to
-//! [`MAX_PAGES`]. The source's robots.txt is read first (once a day) and a page it does not
-//! allow is never requested. Every page goes through [`admit`] like a job page: pace (never
-//! below the robots.txt's Crawl-delay), caps, pauses; a throttle or a block pauses the source
-//! as a page's would, a check or a wall stops it for the run, and a page the parser does not
-//! know stops it too and counts toward the breaker. The hits become jobs of the list
-//! ([`Store::record_found`]); their ads are read by the fetch step that follows.
+//! [`MAX_PAGES`], and never past the term's last page (`Paging`): one that shows the page
+//! before again, or, where the source states how many hits the search finds, the page that
+//! completes them or a short one the count puts last. The source's robots.txt is read first
+//! (once a day) and a page it does not allow is never requested. Every page goes through
+//! [`admit`] like a job page: pace (never below the robots.txt's Crawl-delay), caps, pauses;
+//! a throttle or a block pauses the source as a page's would, a check or a wall stops it for
+//! the run, and a page the parser does not know stops it too and counts toward the breaker.
+//! The hits become jobs of the list ([`Store::record_found`]); their ads are read by the
+//! fetch step that follows.
 //!
 //! The sources are searched side by side, each at its own pace. A term whose paging a stop or
 //! a cancel cut short goes on where it stopped at the source's next search within
@@ -22,7 +25,7 @@
 //! screen (the pre-filter of the pipeline: titles the engine excludes alone). What each term
 //! brought is kept per source ([`term_yields`]: the term learning, `fetch::terms`).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Mutex;
@@ -199,6 +202,44 @@ fn save_yield(
         &yield_key(portal),
         &serde_json::to_string(&Yield { terms: kept }).unwrap_or_default(),
     )
+}
+
+/// What a term's pages showed in this run, to tell its last page, past which a page would
+/// only repeat one or show none: the page shows the one before again (the source ignores the
+/// page asked for, or repeats its last), or, on a source that states how many hits the search
+/// finds, its pages showed them all, or the page is short and the count puts it last.
+#[derive(Debug, Default)]
+struct Paging {
+    /// The jobs of the term's pages.
+    seen: BTreeSet<JobKey>,
+    /// The jobs of the page before.
+    before: Option<BTreeSet<JobKey>>,
+    /// The most jobs one of the term's pages showed: no more than a whole page holds.
+    fullest: usize,
+}
+
+impl Paging {
+    /// Takes in page `page`'s jobs (every hit of the page, whatever its contract type) and
+    /// the count its source states; `true`: it is the term's last. A short page alone is no
+    /// end (a page may leave out some of its hits); it is where the count leaves no hit for a
+    /// page after it, even at the fullest page's size. A count below the page's own jobs
+    /// contradicts the page and is not trusted.
+    fn last(&mut self, page: u32, keys: BTreeSet<JobKey>, count: Option<usize>) -> bool {
+        let count = count.filter(|count| *count >= keys.len());
+        let repeated = !keys.is_empty() && self.before.as_ref() == Some(&keys);
+        let short = keys.len() < self.fullest;
+        self.fullest = self.fullest.max(keys.len());
+        self.seen.extend(keys.iter().cloned());
+        let shown = usize::try_from(page)
+            .unwrap_or(usize::MAX)
+            .saturating_mul(self.fullest);
+        let counted = count.is_some_and(|count| {
+            let complete = self.seen.len() >= count;
+            complete || (short && shown >= count)
+        });
+        self.before = Some(keys);
+        repeated || counted
+    }
 }
 
 /// What the searches of the sources share: the store, the rules, the run, the cancel, the
@@ -403,6 +444,7 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
         let resume_at = resume.pages.get(first.as_str()).copied();
         let mut page = 1;
         let mut url = first.clone();
+        let mut paging = Paging::default();
         loop {
             shared.done.fetch_add(1, Ordering::Relaxed);
             if !robots.allows(&robots_path(&url)) {
@@ -439,12 +481,16 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
             let now = clock();
             lock(policy).record_done(portal, now);
             counts.pages += 1;
+            let mut last = false;
             let (hits, new, reason) = match result {
-                Ok(hits) => {
+                Ok(found) => {
                     lock(policy).clear_suspicious(portal);
-                    let all = hits.len();
+                    let all = found.hits.len();
+                    let keys = found.hits.iter().map(|hit| hit.link.key.clone()).collect();
+                    last = paging.last(page, keys, found.count);
                     // A contract type the profile does not allow, as the page shows it.
-                    let mut postings: Vec<Posting> = hits
+                    let mut postings: Vec<Posting> = found
+                        .hits
                         .into_iter()
                         .filter(|hit| plan.contracts.allows(hit.contract))
                         .map(|hit| {
@@ -509,14 +555,15 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
                 break 'terms;
             }
             // Deeper while the page brought jobs the list did not know; where the last search
-            // stopped short, on from there (its first page told what is new).
+            // stopped short, on from there (its first page told what is new). Never past the
+            // term's last page.
             let next = match resume_at {
                 Some(at) if page == 1 && new == 0 && at > 2 => at,
                 Some(at) if page < at => page + 1,
                 _ if new > 0 => page + 1,
                 _ => break,
             };
-            if hits == 0 || next > MAX_PAGES {
+            if hits == 0 || last || next > MAX_PAGES {
                 break;
             }
             let Some(next_url) = adapter.search_page_url(&first, next) else {
@@ -616,7 +663,7 @@ mod tests {
 
     use super::super::policy::limits;
     use super::*;
-    use crate::portal::{Hit, HitContract, JobKey, JobLink};
+    use crate::portal::{Hit, HitContract, JobKey, JobLink, SearchPage};
 
     const HAYS: Portal = Portal::Hays;
     const FM: Portal = Portal::Freelancermap;
@@ -628,6 +675,8 @@ mod tests {
         /// The robots.txt of the search pages' other host, where the source has one.
         search_robots: Option<String>,
         answers: VecDeque<Result<Vec<Hit>, PageOutcome>>,
+        /// The count of the whole search every page states, where the source states one.
+        count: Option<usize>,
         /// The addresses asked, kept where the test can read them after the search.
         asked: std::sync::Arc<Mutex<Vec<Url>>>,
     }
@@ -641,9 +690,13 @@ mod tests {
             _portal: Portal,
             url: &Url,
             _cancel: &CancellationToken,
-        ) -> Result<Vec<Hit>, PageOutcome> {
+        ) -> Result<SearchPage, PageOutcome> {
             lock(&self.asked).push(url.clone());
-            self.answers.pop_front().unwrap_or(Ok(Vec::new()))
+            let count = self.count;
+            self.answers
+                .pop_front()
+                .unwrap_or(Ok(Vec::new()))
+                .map(|hits| SearchPage { hits, count })
         }
         async fn robots(
             &mut self,
@@ -1270,6 +1323,161 @@ mod tests {
         let policy = Mutex::new(Policy::in_memory());
         search(&mut fakes, &store, &policy, &[HAYS], &terms(&["CFO"]), &on).await;
         assert_eq!(pages_of(&asked), ["p1"]);
+    }
+
+    /// A paging cut short goes on where it stopped; a page that only repeats the one before
+    /// (the source ignores the page asked for) ends the term there instead.
+    #[tokio::test(start_paused = true)]
+    async fn a_page_that_repeats_the_one_before_ends_the_term() {
+        let store = Store::in_memory().unwrap();
+        let on = |_: Portal| true;
+        // The first search: pages 1 to 3, then a throttle at page 4.
+        let mut fakes = BTreeMap::from([(
+            HAYS,
+            Fake {
+                answers: VecDeque::from([
+                    Ok(hits(0..20)),
+                    Ok(hits(20..40)),
+                    Ok(hits(40..60)),
+                    Err(PageOutcome::Throttled {
+                        cause: Cause::Http(429),
+                        retry_after: None,
+                    }),
+                ]),
+                ..Fake::default()
+            },
+        )]);
+        let policy = Mutex::new(Policy::in_memory());
+        search(&mut fakes, &store, &policy, &[HAYS], &terms(&["CFO"]), &on).await;
+        // The next search: page 1 brings new jobs, page 2 shows them again: no page 3,
+        // although the paging cut short would go on up to page 4.
+        let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let mut fakes = BTreeMap::from([(
+            HAYS,
+            Fake {
+                answers: VecDeque::from([Ok(hits(100..120)), Ok(hits(100..120)), Ok(hits(60..80))]),
+                asked: asked.clone(),
+                ..Fake::default()
+            },
+        )]);
+        let policy = Mutex::new(Policy::in_memory());
+        let (_, found, _) =
+            search(&mut fakes, &store, &policy, &[HAYS], &terms(&["CFO"]), &on).await;
+        assert_eq!(pages_of(&asked), ["p1", "p2"]);
+        assert_eq!(found[&HAYS].new, 20);
+        // Ended, not cut short: the search after starts at page 1 and stops there.
+        let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let mut fakes = BTreeMap::from([(
+            HAYS,
+            Fake {
+                answers: VecDeque::from([Ok(hits(100..120))]),
+                asked: asked.clone(),
+                ..Fake::default()
+            },
+        )]);
+        let policy = Mutex::new(Policy::in_memory());
+        search(&mut fakes, &store, &policy, &[HAYS], &terms(&["CFO"]), &on).await;
+        assert_eq!(pages_of(&asked), ["p1"]);
+    }
+
+    fn fm_hits(ids: std::ops::Range<u32>) -> Vec<Hit> {
+        ids.map(|id| {
+            let url = FM.adapter().canonical_url(&format!("30{id:05}")).unwrap();
+            Hit {
+                link: FM.adapter().job_link(&url).unwrap(),
+                title: format!("SAP FI/CO {id}"),
+                company: String::new(),
+                location: String::new(),
+                contract: None,
+            }
+        })
+        .collect()
+    }
+
+    /// How many pages freelancermap's search asks for one term, its pages answering with
+    /// `answers` in turn (then none), each stating `count`.
+    async fn fm_search(answers: Vec<Vec<Hit>>, count: Option<usize>) -> usize {
+        let store = Store::in_memory().unwrap();
+        let policy = Mutex::new(Policy::in_memory());
+        let asked = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let mut fakes = BTreeMap::from([(
+            FM,
+            Fake {
+                answers: answers.into_iter().map(Ok).collect(),
+                count,
+                asked: asked.clone(),
+                ..Fake::default()
+            },
+        )]);
+        let on = |_: Portal| true;
+        search(
+            &mut fakes,
+            &store,
+            &policy,
+            &[FM],
+            &terms(&["SAP FI/CO"]),
+            &on,
+        )
+        .await;
+        let asked = lock(&asked);
+        // Page 1 first, then its pages as the source counts them.
+        for (n, url) in asked.iter().enumerate().skip(1) {
+            assert!(
+                url.as_str().ends_with(&format!("pagenr={}", n + 1)),
+                "{url}"
+            );
+        }
+        asked.len()
+    }
+
+    /// Where the source states how many hits the search finds (freelancermap), a term's
+    /// paging ends with the page that completes them, or at a short page the count puts last;
+    /// a count the page itself contradicts is not trusted.
+    #[tokio::test(start_paused = true)]
+    async fn the_paging_ends_at_the_sources_count_or_a_short_page() {
+        // All 15 on page 1: no page 2.
+        assert_eq!(fm_search(vec![fm_hits(0..15)], Some(15)).await, 1);
+        // 30: pages 1 and 2.
+        let pages = vec![fm_hits(0..20), fm_hits(20..30), fm_hits(30..40)];
+        assert_eq!(fm_search(pages, Some(30)).await, 2);
+        // 45, two of them left out of the pages: page 2 one short (the count leaves hits
+        // for page 3), page 3 short and last by the count (three pages of 20 hold 45).
+        let pages = vec![
+            fm_hits(0..20),
+            fm_hits(20..39),
+            fm_hits(39..43),
+            fm_hits(43..50),
+        ];
+        assert_eq!(fm_search(pages, Some(45)).await, 3);
+        // A short page the count leaves hits after: paged on until a page brings none.
+        let pages = vec![fm_hits(0..20), fm_hits(20..32), fm_hits(32..40)];
+        assert_eq!(fm_search(pages, Some(100)).await, 4);
+        // A count below the page's own hits: paged as without one.
+        let pages = vec![fm_hits(0..20), fm_hits(20..40)];
+        assert_eq!(fm_search(pages, Some(5)).await, 3);
+        // Without a count a short page is no end (a source may leave hits out of a page).
+        let pages = vec![fm_hits(0..20), fm_hits(20..32), fm_hits(32..40)];
+        assert_eq!(fm_search(pages, None).await, 4);
+    }
+
+    /// The real search page of 2026-10-01 (private, not in the repository): its count asks
+    /// for more pages; the same page again, as freelancermap answered page 2 in the live
+    /// runs, ends the term.
+    #[test]
+    #[ignore = "reads the private pages under core/tests/fixtures/private"]
+    fn the_real_search_page_repeated_ends_the_term() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/private/pages/fm-search.html");
+        let html = std::fs::read_to_string(path).unwrap();
+        let adapter = FM.adapter();
+        let keys = || -> BTreeSet<JobKey> {
+            let hits = adapter.search_page(&html).unwrap();
+            hits.into_iter().map(|hit| hit.link.key).collect()
+        };
+        let count = adapter.search_count(&html);
+        let mut paging = Paging::default();
+        assert!(!paging.last(1, keys(), count));
+        assert!(paging.last(2, keys(), count));
     }
 
     #[tokio::test(start_paused = true)]

@@ -38,7 +38,9 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   fitting job is set aside and the next of the profile's terms takes its slot; it comes back after 30 days
   or when the profile's terms change ("CXact sucht nach" lists the active terms). Each term is paged while new jobs come, up to 10 pages on Hays,
   freelancermap, Michael Page and GULP, each asked for the newest first (so a page without new jobs ends a
-  term safely). A cut-short paging resumes at the next fetch within 7 days.
+  term safely), and never past its last page: one that repeats the page before, or on freelancermap the
+  page that completes its result count or a short page the count puts last. A cut-short paging resumes at
+  the next fetch within 7 days.
   SOLCOM, interim-x and FRATCH list all their projects; the app filters them. Amadeus Fire, interim-x and
   FRATCH (one list whatever the terms) keep only the titles whose pre-score reaches `PRESCORE_FLOOR`
   (measured on the held-out sets: no high-band job below it). A title pre-score that knows the target

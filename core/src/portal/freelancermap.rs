@@ -173,11 +173,7 @@ impl PortalAdapter for Freelancermap {
     /// hit is the same job as the link of an alert mail.
     fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
         let doc = Html::parse_document(html);
-        let Some(island) = doc
-            .select(&SEARCH_ISLAND)
-            .next()
-            .and_then(|node| serde_json::from_str::<Value>(&node.text().collect::<String>()).ok())
-        else {
+        let Some(island) = search_island(&doc) else {
             if super::has_challenge(&doc, html) {
                 return Err(NoHits::Blocked(Cause::Captcha));
             }
@@ -190,11 +186,28 @@ impl PortalAdapter for Freelancermap {
             .unwrap_or_default();
         Ok(projects.iter().filter_map(search_hit).collect())
     }
+
+    /// The island's `result.count`: the projects the whole search finds (229 beside 22 on
+    /// the first page of the real page of 2026-10-01; its top projects stand apart in
+    /// `topProjects`).
+    fn search_count(&self, html: &str) -> Option<usize> {
+        search_island(&Html::parse_document(html))?
+            .pointer("/initialState/result/count")?
+            .as_u64()
+            .and_then(|count| usize::try_from(count).ok())
+    }
 }
 
 static SEARCH_ISLAND: Css = LazyLock::new(|| {
     selector(r#"script[type="application/json"][data-component-name="ProjectSearch"]"#)
 });
+
+/// The search page's data island.
+fn search_island(doc: &Html) -> Option<Value> {
+    doc.select(&SEARCH_ISLAND)
+        .next()
+        .and_then(|node| serde_json::from_str::<Value>(&node.text().collect::<String>()).ok())
+}
 
 /// A project of the search's island: its number, title, company and place.
 fn search_hit(project: &Value) -> Option<Hit> {
@@ -642,8 +655,15 @@ pub(crate) mod tests {
 
     #[test]
     fn the_search_island_gives_hits_with_their_numbers() {
-        let html = r#"<script type="application/json" data-component-name="ProjectSearch">{"initialState":{"result":{"projects":[{"id":3054958,"title":"SAP IS-U Consultant","company":"ForTech Consulting GmbH","city":"Deutschland"},{"title":"ohne Nummer"}]}}}</script>"#;
+        let html = r#"<script type="application/json" data-component-name="ProjectSearch">{"initialState":{"result":{"projects":[{"id":3054958,"title":"SAP IS-U Consultant","company":"ForTech Consulting GmbH","city":"Deutschland"},{"title":"ohne Nummer"}],"count":229}}}</script>"#;
         let hits = Freelancermap.search_page(html).unwrap();
+        // The whole search's count stands beside the page's projects.
+        assert_eq!(Freelancermap.search_count(html), Some(229));
+        assert_eq!(
+            Freelancermap.search_count(&html.replace(r#","count":229"#, "")),
+            None
+        );
+        assert_eq!(Freelancermap.search_count("<html></html>"), None);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].link.key.id, "3054958");
         assert_eq!(
@@ -669,7 +689,10 @@ pub(crate) mod tests {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/private/pages/fm-search.html");
         let html = std::fs::read_to_string(path).unwrap();
-        assert!(Freelancermap.search_page(&html).unwrap().len() >= 10);
+        let hits = Freelancermap.search_page(&html).unwrap().len();
+        assert!(hits >= 10);
+        // The count of the whole search, more than the first page shows.
+        assert!(Freelancermap.search_count(&html).unwrap() > hits);
     }
 
     #[test]

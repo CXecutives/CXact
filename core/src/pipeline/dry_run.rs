@@ -170,7 +170,7 @@ impl PageFetcher for DryRunPages {
         portal: Portal,
         _url: &url::Url,
         cancel: &CancellationToken,
-    ) -> Result<Vec<crate::portal::Hit>, PageOutcome> {
+    ) -> Result<crate::portal::SearchPage, PageOutcome> {
         if pause(Duration::from_millis(300), cancel).await.is_err() {
             return Err(PageOutcome::Cancelled);
         }
@@ -179,7 +179,7 @@ impl PageFetcher for DryRunPages {
             .flatten()
             .and_then(|url| portal.adapter().job_link(&url))
         else {
-            return Ok(Vec::new());
+            return Ok(Vec::new().into());
         };
         Ok(vec![crate::portal::Hit {
             link,
@@ -187,7 +187,8 @@ impl PageFetcher for DryRunPages {
             company: String::new(),
             location: "Hamburg".to_owned(),
             contract: None,
-        }])
+        }]
+        .into())
     }
 }
 

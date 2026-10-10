@@ -199,6 +199,20 @@ pub struct Hit {
     pub contract: Option<HitContract>,
 }
 
+/// A page of a source's own search as the fetch read it: its hits and, where the page states
+/// it, how many the whole search finds ([`PortalAdapter::search_count`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SearchPage {
+    pub hits: Vec<Hit>,
+    pub count: Option<usize>,
+}
+
+impl From<Vec<Hit>> for SearchPage {
+    fn from(hits: Vec<Hit>) -> SearchPage {
+        SearchPage { hits, count: None }
+    }
+}
+
 /// How the guest client treats redirects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Redirects {
@@ -265,7 +279,7 @@ pub trait PortalAdapter: Send + Sync {
     /// Page `page` (2, 3, ...) of the search that `first` (one of [`Self::search_urls`])
     /// starts, as the source pages its results; `None` where it shows every hit on one page
     /// (SOLCOM's list, interim-x's projects). Only requested while the pages before brought
-    /// new jobs (the deep search, `fetch::search`).
+    /// new jobs and the last one was not the term's last (the deep search, `fetch::search`).
     fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
         let _ = (first, page);
         None
@@ -295,6 +309,14 @@ pub trait PortalAdapter: Send + Sync {
     fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
         let _ = html;
         Ok(Vec::new())
+    }
+    /// How many hits the whole search finds, where its page states it (freelancermap's
+    /// `result.count`); `None` where it does not. Only for a source whose pages list that
+    /// search's hits and nothing else: a term's paging stops once its pages showed so many,
+    /// or at a short page the count puts last (`fetch::search`).
+    fn search_count(&self, html: &str) -> Option<usize> {
+        let _ = html;
+        None
     }
     /// Every request of the source goes by its robots.txt (the sources added 2026-10-01);
     /// the search goes by it on every source.
