@@ -1,16 +1,19 @@
-//! The files that go to the worker as they are: a PDF within the worker's limits, and photos
-//! of the pages, downscaled to a JPEG when they are above the AI's size per photo or larger
-//! than it takes in pixels.
+//! The files that go to the worker: a PDF within the worker's limits as it is, and photos of
+//! the pages without their metadata ([`strip`]: no GPS position, camera or time leaves the
+//! computer). A photo goes as its own file when it is within the AI's size per photo and
+//! pixels; otherwise, and when its EXIF turns it, it is re-encoded as an upright JPEG, which
+//! carries no metadata either.
 
 use std::io::Cursor;
 use std::sync::LazyLock;
 
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
+use image::metadata::Orientation;
 use image::{DynamicImage, ImageDecoder, ImageReader, Limits};
 use regex::bytes::Regex;
 
-use super::{CvError, CvFile, Format, MAX_PDF_BYTES, MAX_PDF_PAGES};
+use super::{CvError, CvFile, Format, MAX_PDF_BYTES, MAX_PDF_PAGES, strip};
 
 /// The AI takes at most 5 MB per photo in base64: 3.75 MB of bytes.
 pub(super) const MAX_PHOTO_BYTES: usize = 3_750_000;
@@ -43,27 +46,38 @@ pub(super) fn pages(bytes: &[u8]) -> usize {
     PAGE.find_iter(bytes).count()
 }
 
-pub(super) fn photo(bytes: Vec<u8>, format: Format) -> Result<CvFile, CvError> {
+pub(super) fn photo(bytes: &[u8], format: Format) -> Result<CvFile, CvError> {
     let mime = match format {
         Format::Jpeg => "image/jpeg",
         Format::Png => "image/png",
         Format::Webp => "image/webp",
         _ => return Err(CvError::Unsupported),
     };
-    let (width, height) = ImageReader::new(Cursor::new(&bytes))
-        .with_guessed_format()
-        .map_err(|_| CvError::Unreadable)?
-        .into_dimensions()
-        .map_err(|_| CvError::Unreadable)?;
-    if bytes.len() <= MAX_PHOTO_BYTES && width.max(height) <= MAX_SIDE {
+    let (longest, upright) = {
+        let mut decoder = ImageReader::new(Cursor::new(bytes))
+            .with_guessed_format()
+            .map_err(|_| CvError::Unreadable)?
+            .into_decoder()
+            .map_err(|_| CvError::Unreadable)?;
+        let (width, height) = decoder.dimensions();
+        // A broken EXIF block turns nothing: it goes with the rest of the metadata.
+        let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+        (width.max(height), orientation == Orientation::NoTransforms)
+    };
+    if bytes.len() > MAX_PHOTO_BYTES || longest > MAX_SIDE {
+        return encode(bytes, TARGET_SIDE);
+    }
+    if upright && let Some(bytes) = strip::metadata(bytes, format) {
         return Ok(CvFile { mime, bytes });
     }
-    downscale(&bytes)
+    // Turned by its EXIF, or a structure the stripper does not follow: re-encoded at its size.
+    encode(bytes, longest)
 }
 
-/// The photo as a JPEG with its longest side at most [`TARGET_SIDE`], upright as its EXIF
-/// says; [`CvError::TooLarge`] when even that is above [`MAX_PHOTO_BYTES`].
-fn downscale(bytes: &[u8]) -> Result<CvFile, CvError> {
+/// The photo as a JPEG with its longest side at most `side`, upright as its EXIF says and
+/// without any metadata; smaller once when it is above [`MAX_PHOTO_BYTES`], then
+/// [`CvError::TooLarge`].
+fn encode(bytes: &[u8], side: u32) -> Result<CvFile, CvError> {
     let mut limits = Limits::default();
     limits.max_alloc = Some(MAX_DECODE_ALLOC);
     let mut decoder = ImageReader::new(Cursor::new(bytes))
@@ -72,10 +86,10 @@ fn downscale(bytes: &[u8]) -> Result<CvFile, CvError> {
         .into_decoder()
         .map_err(|_| CvError::Unreadable)?;
     decoder.set_limits(limits).map_err(|_| CvError::TooLarge)?;
-    let orientation = decoder.orientation().map_err(|_| CvError::Unreadable)?;
+    let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
     let mut image = DynamicImage::from_decoder(decoder).map_err(|_| CvError::Unreadable)?;
     image.apply_orientation(orientation);
-    let mut side = TARGET_SIDE;
+    let mut side = side;
     for quality in [85, 70] {
         let small = if image.width().max(image.height()) > side {
             image.resize(side, side, FilterType::Triangle)

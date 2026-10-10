@@ -9,7 +9,8 @@
 //!   ([`doc`]).
 //! - RTF: a stripper that skips pictures, objects and the other destinations ([`rtf`]).
 //! - TXT, MD as they are, HTML through [`crate::text`].
-//! - PDF, JPG, PNG, WEBP: files; photos above the AI's size are downscaled ([`media`]).
+//! - PDF, JPG, PNG, WEBP: files; photos lose their metadata ([`strip`]), photos above the AI's
+//!   size or turned by their EXIF are re-encoded ([`media`]).
 //! - Everything else (.pages, .heic, unknown): [`CvError::Unsupported`].
 //!
 //! The kind comes from the content where it shows (zip, compound file, RTF, PDF, the photo
@@ -23,6 +24,7 @@ mod media;
 mod office;
 mod redact;
 mod rtf;
+mod strip;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
@@ -265,7 +267,7 @@ fn read_all(files: Vec<(String, Vec<u8>)>) -> Result<Cv, CvError> {
         let files = files
             .into_iter()
             .zip(&photos)
-            .map(|((_, bytes), format)| media::photo(bytes, *format))
+            .map(|((_, bytes), format)| media::photo(&bytes, *format))
             .collect::<Result<Vec<_>, _>>()?;
         return Ok(Cv {
             input: CvInput::Files(files),

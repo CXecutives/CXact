@@ -184,6 +184,162 @@ fn a_large_photo_is_downscaled_to_a_jpeg() {
     );
 }
 
+/// One IFD of a TIFF block (big-endian) at `start`, its values longer than four bytes after
+/// it: (tag, type, count, value).
+fn ifd(start: usize, entries: &[(u16, u16, u32, Vec<u8>)]) -> Vec<u8> {
+    let offset = |at: usize| u32::try_from(at).unwrap().to_be_bytes();
+    let mut head = u16::try_from(entries.len()).unwrap().to_be_bytes().to_vec();
+    let mut data = Vec::new();
+    let data_start = start + 2 + 12 * entries.len() + 4;
+    for (tag, kind, count, value) in entries {
+        head.extend(tag.to_be_bytes());
+        head.extend(kind.to_be_bytes());
+        head.extend(count.to_be_bytes());
+        if value.len() <= 4 {
+            let mut inline = value.clone();
+            inline.resize(4, 0);
+            head.extend(inline);
+        } else {
+            head.extend(offset(data_start + data.len()));
+            data.extend(value);
+            if data.len() % 2 == 1 {
+                data.push(0);
+            }
+        }
+    }
+    head.extend([0; 4]);
+    head.extend(data);
+    head
+}
+
+/// An EXIF block as a phone writes it: camera, time, the GPS position and, when given, an
+/// orientation.
+fn phone_exif(orientation: Option<u16>) -> Vec<u8> {
+    const ASCII: u16 = 2;
+    const SHORT: u16 = 3;
+    const LONG: u16 = 4;
+    const RATIONAL: u16 = 5;
+    let text = |s: &str| {
+        let mut bytes = s.as_bytes().to_vec();
+        bytes.push(0);
+        (u32::try_from(bytes.len()).unwrap(), bytes)
+    };
+    let degrees = |values: [u32; 3]| -> Vec<u8> {
+        values
+            .iter()
+            .flat_map(|v| [v.to_be_bytes(), 1u32.to_be_bytes()].concat())
+            .collect()
+    };
+    let (make_len, make) = text("CXactCam Phone");
+    let (time_len, time) = text("2026:10:01 12:34:56");
+    let mut first = vec![(0x010F, ASCII, make_len, make)];
+    if let Some(turn) = orientation {
+        first.push((0x0112, SHORT, 1, turn.to_be_bytes().to_vec()));
+    }
+    first.push((0x0132, ASCII, time_len, time));
+    first.push((0x8825, LONG, 1, vec![0; 4]));
+    let gps_at = 8 + ifd(8, &first).len();
+    first.last_mut().unwrap().3 = u32::try_from(gps_at).unwrap().to_be_bytes().to_vec();
+    let gps = [
+        (0x0001, ASCII, 2, b"N\0".to_vec()),
+        (0x0002, RATIONAL, 3, degrees([53, 33, 11])),
+        (0x0003, ASCII, 2, b"E\0".to_vec()),
+        (0x0004, RATIONAL, 3, degrees([9, 59, 44])),
+    ];
+    let mut exif = b"MM\0*\0\0\0\x08".to_vec();
+    exif.extend(ifd(8, &first));
+    exif.extend(ifd(gps_at, &gps));
+    exif
+}
+
+/// A JPEG photo of a page, 40 x 30, with the phone's EXIF, an XMP block with the position, a
+/// comment and a colour profile.
+fn phone_photo(orientation: Option<u16>) -> (Vec<u8>, Vec<u8>) {
+    use image::ImageEncoder;
+    let page = image::RgbImage::from_fn(40, 30, |x, y| {
+        image::Rgb([
+            u8::try_from(x * 6).unwrap(),
+            u8::try_from(y * 8).unwrap(),
+            90,
+        ])
+    });
+    let icc = b"a colour profile, kept".to_vec();
+    let mut jpeg = Vec::new();
+    let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg, 90);
+    encoder.set_exif_metadata(phone_exif(orientation)).unwrap();
+    encoder.set_icc_profile(icc.clone()).unwrap();
+    encoder.encode_image(&page).unwrap();
+    let xmp = b"http://ns.adobe.com/xap/1.0/\0<x:xmpmeta>GPSLatitude 53,33.18N</x:xmpmeta>";
+    let comment = b"CXactCam comment";
+    let mut segments = Vec::new();
+    for (marker, payload) in [(0xE1_u8, &xmp[..]), (0xFE, &comment[..])] {
+        segments.extend([0xFF, marker]);
+        segments.extend(u16::try_from(payload.len() + 2).unwrap().to_be_bytes());
+        segments.extend(payload);
+    }
+    jpeg.splice(2..2, segments);
+    (jpeg, icc)
+}
+
+fn decoder(bytes: &[u8]) -> image::codecs::jpeg::JpegDecoder<std::io::Cursor<&[u8]>> {
+    image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(bytes)).unwrap()
+}
+
+fn sent_photo(bytes: Vec<u8>) -> cv::CvFile {
+    let cv = cv::from_files(vec![("foto.jpg".into(), bytes)]).unwrap();
+    let CvInput::Files(mut files) = cv.input else {
+        panic!("text instead of the photo")
+    };
+    files.remove(0)
+}
+
+fn has(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
+}
+
+#[test]
+fn a_photo_leaves_without_its_gps_position_camera_and_time() {
+    use image::ImageDecoder;
+    let (photo, icc) = phone_photo(None);
+    assert!(decoder(&photo).exif_metadata().unwrap().is_some());
+    assert!(has(&photo, b"CXactCam") && has(&photo, b"ns.adobe.com/xap"));
+
+    let sent = sent_photo(photo.clone());
+    assert_eq!(sent.mime, "image/jpeg");
+    for gone in [
+        &b"Exif\0\0"[..],
+        b"CXactCam",
+        b"2026:10:01",
+        b"ns.adobe.com/xap",
+    ] {
+        assert!(!has(&sent.bytes, gone), "{}", String::from_utf8_lossy(gone));
+    }
+    let mut clean = decoder(&sent.bytes);
+    assert_eq!(clean.exif_metadata().unwrap(), None);
+    assert_eq!(clean.xmp_metadata().unwrap(), None);
+    assert_eq!(
+        clean.icc_profile().unwrap(),
+        Some(icc),
+        "the colour profile stays"
+    );
+    // Nothing but the metadata changed: the same pixels.
+    let pixels = |bytes: &[u8]| image::load_from_memory(bytes).unwrap().to_rgb8().into_raw();
+    assert_eq!(pixels(&sent.bytes), pixels(&photo));
+}
+
+#[test]
+fn a_photo_turned_by_its_exif_leaves_upright_without_it() {
+    use image::ImageDecoder;
+    // 6: turned 90 degrees clockwise to be read.
+    let (photo, _) = phone_photo(Some(6));
+    let sent = sent_photo(photo);
+    assert_eq!(sent.mime, "image/jpeg");
+    let mut clean = decoder(&sent.bytes);
+    assert_eq!(clean.dimensions(), (30, 40));
+    assert_eq!(clean.exif_metadata().unwrap(), None);
+    assert!(!has(&sent.bytes, b"CXactCam"));
+}
+
 #[test]
 fn other_formats_and_mixtures_are_refused() {
     assert_eq!(read(&["lebenslauf.pages"]), Err(CvError::Unsupported));
