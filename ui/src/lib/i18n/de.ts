@@ -100,7 +100,6 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   io: 'Eine Datei ließ sich nicht lesen oder schreiben.',
   corrupt: (p) =>
     p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten von CXact sind beschädigt.',
-  newerSchema: 'Die Daten stammen von einer neueren Version von CXact.',
   invalid: 'Die Eingabe passt nicht.',
   busy: (p) => busy[busyOf(p.activity)],
   // By what was looked for (`what`): a file or folder may never have been written (a new
