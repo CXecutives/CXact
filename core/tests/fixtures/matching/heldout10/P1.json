@@ -29,78 +29,63 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Leitung Kundenservice",
-      "jahre": 16,
-      "schwerpunkt": true
+      "jahre": 16
     },
     {
       "kompetenz": "Contact Center Management",
-      "jahre": 20,
-      "schwerpunkt": true
+      "jahre": 20
     },
     {
       "kompetenz": "Workforce Management",
-      "jahre": 20,
-      "schwerpunkt": true
+      "jahre": 20
     },
     {
       "kompetenz": "Dienstleistersteuerung",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Customer Experience",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Beschwerdemanagement",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Service-KPIs",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Omnichannel-Kundenservice",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Chatbots und Voicebots",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Qualitätsmanagement im Service",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Restrukturierung von Serviceorganisationen",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Changemanagement",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Wissensmanagement",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Back Office",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     }
   ],
   "methoden_tools": [

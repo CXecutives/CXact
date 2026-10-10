@@ -29,68 +29,55 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Marketingleitung",
-      "jahre": 13,
-      "schwerpunkt": true
+      "jahre": 13
     },
     {
       "kompetenz": "Performance Marketing",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Online Marketing",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "CRM-Marketing",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "Markenführung",
-      "jahre": 18,
-      "schwerpunkt": true
+      "jahre": 18
     },
     {
       "kompetenz": "Content Marketing",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Kampagnenmanagement",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Marketingbudget",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "Agentursteuerung",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Go-to-Market",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Marketing Analytics",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Teamführung",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Marketing-Transformation",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     }
   ],
   "methoden_tools": [

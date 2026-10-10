@@ -30,103 +30,83 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Logistikleitung",
-      "jahre": 16,
-      "schwerpunkt": true
+      "jahre": 16
     },
     {
       "kompetenz": "Lagerlogistik",
-      "jahre": 21,
-      "schwerpunkt": true
+      "jahre": 21
     },
     {
       "kompetenz": "Supply Chain Management",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Lagerautomatisierung",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Einführung von Lagerverwaltungssystemen",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "Distributionslogistik",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Transportmanagement",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Logistikausschreibungen",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Kontraktlogistik",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Netzwerkplanung",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Lagerplanung und Materialfluss",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Inbetriebnahme von Logistikzentren",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Lean Logistics",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Logistikcontrolling",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Bestandsmanagement",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "E-Commerce-Fulfillment",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Zoll und Außenhandel",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Führung gewerblicher Teams im Schichtbetrieb",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Arbeitssicherheit in der Logistik",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     }
   ],
   "methoden_tools": [

@@ -32,98 +32,79 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Marketingleitung",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Markenführung",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Digital Marketing",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Performance Marketing",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "CRM und Customer Lifecycle Marketing",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Content Marketing und Social Media",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Kampagnenmanagement",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Marketingbudget und Marketing-Controlling",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Agenturmanagement",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "E-Commerce und D2C",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Marktforschung und Consumer Insights",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Marketing Technology",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Web-Analyse und datengetriebenes Marketing",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Suchmaschinenoptimierung",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Produktmarketing und Markteinführung",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Unternehmenskommunikation und PR",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Neuaufstellung von Marketingorganisationen",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Führung von Marketingteams",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     }
   ],
   "methoden_tools": [

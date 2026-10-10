@@ -6,8 +6,7 @@
 //! The merge never overwrites: an entry the profile has (the same name, case aside) keeps its
 //! years, level and star; a new industry never carries the wish star. Contract types, rates,
 //! countries, work mode, availability, workload and exclusion words are the user's alone: the
-//! answer never touches them. A `schwerpunkt` an older worker still sends is read and ignored,
-//! as in a file.
+//! answer never touches them.
 
 use std::path::Path;
 
@@ -146,12 +145,12 @@ mod tests {
         }
     }
 
-    /// The answer is capped and read as the form reads a file (an old worker's `schwerpunkt`
-    /// read and ignored); anything that does not read saves nothing.
+    /// The answer is capped and read as the form reads a file; anything that does not read
+    /// saves nothing.
     #[test]
     fn the_answer_is_capped_and_read_by_the_form() {
         let competences: Vec<Value> = (0..30)
-            .map(|n| json!({"kompetenz": format!("K{n}"), "jahre": n, "schwerpunkt": true}))
+            .map(|n| json!({"kompetenz": format!("K{n}"), "jahre": n}))
             .collect();
         let tools: Vec<Value> = (0..40).map(|n| json!(format!("T{n}"))).collect();
         let cv = cv_form(&answer(json!({

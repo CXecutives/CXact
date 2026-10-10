@@ -32,108 +32,87 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Konzernsteuern",
-      "jahre": 16,
-      "schwerpunkt": true
+      "jahre": 16
     },
     {
       "kompetenz": "Tax Compliance Management System",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Interne Revision",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Internes Kontrollsystem",
-      "jahre": 13,
-      "schwerpunkt": true
+      "jahre": 13
     },
     {
       "kompetenz": "Risikomanagement",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Verrechnungspreise",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Globale Mindeststeuer (Pillar Two)",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Steuerliche Betriebsprüfung",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Umsatzsteuer und indirekte Steuern",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Steuerliche Konzernbilanzierung nach IAS 12",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Ertragsteuern und Deklaration",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Steuerliche Due Diligence und Strukturierung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Tax Technology und Transformation der Steuerfunktion",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Risikoorientierte Prüfungsplanung und Prüfungsdurchführung",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Quality Assessment der Internen Revision",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Governance, Risk und Compliance",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Fraud-Prävention und Sonderuntersuchungen",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Revision nach MaRisk",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Berichterstattung an Prüfungsausschuss und Aufsichtsrat",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Führung von Steuer- und Revisionsteams",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     }
   ],
   "methoden_tools": [

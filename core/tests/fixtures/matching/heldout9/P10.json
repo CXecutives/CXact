@@ -29,93 +29,75 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Regulierungsmanagement",
-      "jahre": 17,
-      "schwerpunkt": true
+      "jahre": 17
     },
     {
       "kompetenz": "Anreizregulierung",
-      "jahre": 17,
-      "schwerpunkt": true
+      "jahre": 17
     },
     {
       "kompetenz": "Netzentgeltkalkulation",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Kostenprüfung",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Redispatch 2.0",
-      "jahre": 5,
-      "schwerpunkt": true
+      "jahre": 5
     },
     {
       "kompetenz": "Smart-Meter-Rollout",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "Messstellenbetrieb",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Marktkommunikation",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "EEG-Abrechnung",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Energiehandelsprozesse",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Bilanzkreismanagement",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Energierecht",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Unbundling",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Programmmanagement",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 21,
-      "schwerpunkt": false
+      "jahre": 21
     },
     {
       "kompetenz": "Prozessmanagement",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Führung von Fachteams",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     }
   ],
   "methoden_tools": [

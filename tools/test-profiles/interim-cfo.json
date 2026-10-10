@@ -29,83 +29,67 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Interim Management",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Finanztransformation",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Controlling",
-      "jahre": 28,
-      "schwerpunkt": false
+      "jahre": 28
     },
     {
       "kompetenz": "Konzernrechnungslegung nach IFRS",
-      "jahre": 22,
-      "schwerpunkt": true
+      "jahre": 22
     },
     {
       "kompetenz": "Jahresabschluss nach HGB",
-      "jahre": 28,
-      "schwerpunkt": false
+      "jahre": 28
     },
     {
       "kompetenz": "Konsolidierung",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Treasury",
-      "jahre": 18,
-      "schwerpunkt": false
+      "jahre": 18
     },
     {
       "kompetenz": "Restrukturierung",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Post Merger Integration",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Unternehmensplanung",
-      "jahre": 25,
-      "schwerpunkt": false
+      "jahre": 25
     },
     {
       "kompetenz": "Budgetierung",
-      "jahre": 25,
-      "schwerpunkt": false
+      "jahre": 25
     },
     {
       "kompetenz": "Unternehmensfinanzierung",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Carve-out",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Management Reporting",
-      "jahre": 28,
-      "schwerpunkt": false
+      "jahre": 28
     },
     {
       "kompetenz": "Working Capital Management",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Financial Due Diligence",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     }
   ],
   "methoden_tools": [

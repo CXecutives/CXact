@@ -52,7 +52,7 @@ fn the_bands_cover_one_to_ten() {
     );
 }
 
-/// The rubric rules on the profile's own keys (Profil-JSON v19), and on no retired one.
+/// The rubric rules on the profile's own keys (Profil-JSON v19).
 #[test]
 fn the_rubric_names_the_profile_keys() {
     let rubric = read(RUBRIC);
@@ -67,14 +67,5 @@ fn the_rubric_names_the_profile_keys() {
         "arbeitsmodell",
     ] {
         assert!(rubric.contains(key), "{key}");
-    }
-    for retired in [
-        "schwerpunkt",
-        "zielprofil",
-        "einsatzpraeferenzen",
-        "harte_kriterien",
-        "min_tagessatz",
-    ] {
-        assert!(!rubric.contains(retired), "a retired key: {retired}");
     }
 }

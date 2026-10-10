@@ -29,98 +29,79 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Kaufmännische Leitung im Krankenhaus",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Sanierung und Restrukturierung von Kliniken",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Medizincontrolling und Erlösmanagement",
-      "jahre": 16,
-      "schwerpunkt": true
+      "jahre": 16
     },
     {
       "kompetenz": "Krankenhausmanagement",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Budget- und Entgeltverhandlungen",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Krankenhausfinanzierung",
-      "jahre": 18,
-      "schwerpunkt": false
+      "jahre": 18
     },
     {
       "kompetenz": "Krankenhausreform und Leistungsgruppenplanung",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Controlling im Gesundheitswesen",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Jahresabschluss und Wirtschaftsplanung nach KHBV",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Ambulantisierung und MVZ",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Digitalisierung im Krankenhaus",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Personalkostensteuerung und Personalbedarfsplanung",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Einkauf und Sachkostenmanagement im Krankenhaus",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Prozessmanagement im Krankenhaus",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Klinikfusionen und Verbundbildung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Gremienarbeit mit Träger und Aufsichtsrat",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Zusammenarbeit mit Betriebsrat und Mitarbeitervertretung",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Führung von Verwaltungs- und Controllingbereichen",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     }
   ],
   "methoden_tools": [

@@ -19,88 +19,71 @@
   "kernkompetenzen": [
     {
       "kompetenz": "SAP-Projektleitung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "SAP S/4HANA Migration",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Programmmanagement",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Rollout",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Go-Live und Hypercare",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Datenmigration",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Stammdatenmanagement",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Schnittstellen",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Requirements Engineering",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Testmanagement",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Stakeholder Management",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "SAP SD",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "SAP MM",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "SAP EWM",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Order-to-Cash",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Procure-to-Pay",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     }
   ],
   "methoden_tools": [

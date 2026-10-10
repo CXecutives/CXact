@@ -19,43 +19,35 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Power BI",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "SQL",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Datenmodellierung",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Data Warehouse",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "ETL-Strecken",
-      "jahre": null,
-      "schwerpunkt": false
+      "jahre": null
     },
     {
       "kompetenz": "Azure Data Factory",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Python",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Reporting und Dashboards",
-      "jahre": null,
-      "schwerpunkt": false
+      "jahre": null
     }
   ],
   "methoden_tools": [

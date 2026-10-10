@@ -32,78 +32,63 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Interim IT-Management",
-      "jahre": 11,
-      "schwerpunkt": true
+      "jahre": 11
     },
     {
       "kompetenz": "IT-Strategie",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Programmmanagement",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Cloud-Migration",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "ERP-Einführung",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "IT-Governance",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Providermanagement",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "IT-Sourcing",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "IT-Kostenmanagement",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Informationssicherheit",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "IT-Infrastruktur",
-      "jahre": 18,
-      "schwerpunkt": false
+      "jahre": 18
     },
     {
       "kompetenz": "Post Merger Integration",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Changemanagement",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Stakeholdermanagement",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Agile Transformation",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     }
   ],
   "methoden_tools": [

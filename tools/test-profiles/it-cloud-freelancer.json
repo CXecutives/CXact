@@ -24,73 +24,59 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Cloud-Architektur",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Amazon Web Services",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Microsoft Azure",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Kubernetes",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "Infrastructure as Code",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "DevOps",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "CI/CD",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Containerisierung",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Cloud-Migration",
-      "jahre": 6,
-      "schwerpunkt": true
+      "jahre": 6
     },
     {
       "kompetenz": "Site Reliability Engineering",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Linux-Administration",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Observability",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Cloud Security",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Netzwerkarchitektur",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     }
   ],
   "methoden_tools": [

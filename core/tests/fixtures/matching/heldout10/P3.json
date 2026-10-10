@@ -28,73 +28,59 @@
   "kernkompetenzen": [
     {
       "kompetenz": "IT-Service-Management",
-      "jahre": 17,
-      "schwerpunkt": true
+      "jahre": 17
     },
     {
       "kompetenz": "ITIL 4",
-      "jahre": 17,
-      "schwerpunkt": true
+      "jahre": 17
     },
     {
       "kompetenz": "Incident Management",
-      "jahre": 19,
-      "schwerpunkt": false
+      "jahre": 19
     },
     {
       "kompetenz": "Problem Management",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Change Management nach ITIL",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Service Level Management",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Service Desk Organisation",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "ServiceNow ITSM",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Service Transition",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Dienstleistersteuerung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "CMDB und Configuration Management",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Knowledge Management",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Projektleitung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "KPI-Reporting",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     }
   ],
   "methoden_tools": [

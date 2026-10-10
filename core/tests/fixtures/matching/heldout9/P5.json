@@ -28,103 +28,83 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Java",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Spring Boot",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Kotlin",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "TypeScript",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Angular",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "REST-APIs",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Microservices",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "PostgreSQL",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Hibernate",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Apache Kafka",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Testautomatisierung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Docker",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Kubernetes",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "CI/CD",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Domain Driven Design",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Java EE",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Legacy-Modernisierung",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Agile Softwareentwicklung",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Backend-Entwicklung mit Java und Kotlin",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     },
     {
       "kompetenz": "Full-Stack mit Angular",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     }
   ],
   "methoden_tools": [

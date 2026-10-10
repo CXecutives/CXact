@@ -30,93 +30,75 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Interim Management",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "Kaufmännische Leitung",
-      "jahre": 21,
-      "schwerpunkt": false
+      "jahre": 21
     },
     {
       "kompetenz": "Finanztransformation",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Konzernrechnungslegung nach IFRS",
-      "jahre": 26,
-      "schwerpunkt": true
+      "jahre": 26
     },
     {
       "kompetenz": "Jahresabschlüsse nach HGB",
-      "jahre": 30,
-      "schwerpunkt": false
+      "jahre": 30
     },
     {
       "kompetenz": "M&A-Transaktionen",
-      "jahre": 18,
-      "schwerpunkt": true
+      "jahre": 18
     },
     {
       "kompetenz": "Refinanzierung",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Zusammenarbeit mit Private-Equity-Gesellschaftern",
-      "jahre": 19,
-      "schwerpunkt": false
+      "jahre": 19
     },
     {
       "kompetenz": "Treasury",
-      "jahre": 18,
-      "schwerpunkt": false
+      "jahre": 18
     },
     {
       "kompetenz": "Controlling",
-      "jahre": 28,
-      "schwerpunkt": false
+      "jahre": 28
     },
     {
       "kompetenz": "Covenant-Management",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Restrukturierung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Post Merger Integration",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Carve-out",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Exit-Vorbereitung",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Working Capital Management",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Management Reporting",
-      "jahre": 28,
-      "schwerpunkt": false
+      "jahre": 28
     },
     {
       "kompetenz": "Führung von Finanzteams",
-      "jahre": 23,
-      "schwerpunkt": false
+      "jahre": 23
     }
   ],
   "methoden_tools": [

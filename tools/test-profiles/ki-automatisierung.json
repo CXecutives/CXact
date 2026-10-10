@@ -28,73 +28,59 @@
   "kernkompetenzen": [
     {
       "kompetenz": "KI-Strategie",
-      "jahre": 5,
-      "schwerpunkt": true
+      "jahre": 5
     },
     {
       "kompetenz": "Generative KI",
-      "jahre": 3,
-      "schwerpunkt": true
+      "jahre": 3
     },
     {
       "kompetenz": "Large Language Models",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Prozessautomatisierung",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Robotic Process Automation",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "Workflow-Automatisierung",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Machine Learning",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Prompt Engineering",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Datenanalyse",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Prozessanalyse",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Digitalisierung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Change Management",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Use-Case-Entwicklung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Projektleitung",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     }
   ],
   "methoden_tools": [

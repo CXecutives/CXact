@@ -28,63 +28,51 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Customer Experience Management",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Customer Journey Mapping",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "Voice of the Customer",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "NPS-Programme",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Service Design",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Customer Insights",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Kundenzentrierung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "CX-Messung und KPI-Systeme",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Workshop-Moderation",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Changemanagement",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Business Cases für CX-Maßnahmen",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     }
   ],
   "methoden_tools": [

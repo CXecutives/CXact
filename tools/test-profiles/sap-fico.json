@@ -27,73 +27,59 @@
   "kernkompetenzen": [
     {
       "kompetenz": "SAP FI",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "SAP CO",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "SAP S/4HANA Finance",
-      "jahre": 6,
-      "schwerpunkt": true
+      "jahre": 6
     },
     {
       "kompetenz": "Hauptbuchhaltung",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Anlagenbuchhaltung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Kreditorenbuchhaltung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Debitorenbuchhaltung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Produktkostencontrolling",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Profit-Center-Rechnung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Kostenstellenrechnung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Customizing",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Datenmigration",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Fit-Gap-Analyse",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Central Finance",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     }
   ],
   "methoden_tools": [

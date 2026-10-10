@@ -30,93 +30,75 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Projektsteuerung",
-      "jahre": 19,
-      "schwerpunkt": true
+      "jahre": 19
     },
     {
       "kompetenz": "Projektleitung Bau",
-      "jahre": 22,
-      "schwerpunkt": false
+      "jahre": 22
     },
     {
       "kompetenz": "Kostensteuerung",
-      "jahre": 19,
-      "schwerpunkt": true
+      "jahre": 19
     },
     {
       "kompetenz": "Kostenplanung nach DIN 276",
-      "jahre": 19,
-      "schwerpunkt": false
+      "jahre": 19
     },
     {
       "kompetenz": "Terminsteuerung",
-      "jahre": 19,
-      "schwerpunkt": false
+      "jahre": 19
     },
     {
       "kompetenz": "Vergabemanagement",
-      "jahre": 17,
-      "schwerpunkt": true
+      "jahre": 17
     },
     {
       "kompetenz": "Bauvertragsmanagement",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Nachtragsmanagement",
-      "jahre": 22,
-      "schwerpunkt": false
+      "jahre": 22
     },
     {
       "kompetenz": "TGA-Koordination",
-      "jahre": 11,
-      "schwerpunkt": true
+      "jahre": 11
     },
     {
       "kompetenz": "Planungsmanagement",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Rechenzentrumsbau",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "Mieterausbau",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Projektentwicklung",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Abnahmemanagement",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Bauleitung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Nachunternehmersteuerung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Projektrisikomanagement",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Führung von Projektteams",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     }
   ],
   "methoden_tools": [

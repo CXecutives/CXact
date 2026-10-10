@@ -31,88 +31,71 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Compliance-Management",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Datenschutz nach DSGVO",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Geldwäscheprävention",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Interne Ermittlungen",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Compliance-Management-Systeme nach ISO 37301",
-      "jahre": 5,
-      "schwerpunkt": true
+      "jahre": 5
     },
     {
       "kompetenz": "Syndikusrechtsanwältin",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Wirtschafts- und Vertragsrecht",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Gesellschaftsrecht",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Antikorruption",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Hinweisgebersysteme",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Governance, Risk und Compliance",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Exportkontrolle und Sanktionsrecht",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Lieferketten-Compliance",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Aufsichtsrecht und Behördenkommunikation",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Richtlinienmanagement und Schulungen",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Aufbau und Führung von Rechts- und Compliance-Abteilungen",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     }
   ],
   "methoden_tools": [

@@ -30,98 +30,79 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Embedded-C-Programmierung",
-      "jahre": 18,
-      "schwerpunkt": false
+      "jahre": 18
     },
     {
       "kompetenz": "AUTOSAR Classic",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Funktionale Sicherheit nach ISO 26262",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "Automotive SPICE",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "CAN und LIN",
-      "jahre": 18,
-      "schwerpunkt": false
+      "jahre": 18
     },
     {
       "kompetenz": "Hardware-Software-Integration",
-      "jahre": 16,
-      "schwerpunkt": true
+      "jahre": 16
     },
     {
       "kompetenz": "Requirements Engineering",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "IBM DOORS",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Polarion ALM",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Sicherheitsanalysen",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Technisches Sicherheitskonzept",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Software-Integrationstest und Verifikation",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "MISRA C",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "Fahrzeugdiagnose nach UDS",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Mikrocontroller-Plattformen",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Batteriemanagementsysteme",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Technische Teilprojektleitung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "AUTOSAR Classic und Embedded C",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     },
     {
       "kompetenz": "Requirements Engineering mit DOORS und Polarion",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     }
   ],
   "methoden_tools": [

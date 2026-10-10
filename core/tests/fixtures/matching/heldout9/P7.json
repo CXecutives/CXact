@@ -27,123 +27,99 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Windows Server",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Active Directory",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "VMware vSphere",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Citrix Virtual Apps and Desktops",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "Netzwerkarchitektur",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Cisco-Netzwerke",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Fortinet-Firewalls",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "ISO 27001",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "BSI IT-Grundschutz",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "SIEM",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Incident Response",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Systemhärtung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Backup und Disaster Recovery",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Public Key Infrastructure",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Schwachstellenmanagement",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "NIS2 und KRITIS",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Microsoft 365 und Exchange",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Projektleitung Infrastruktur",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Führung von IT-Teams",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Active Directory und Windows-Server-Infrastruktur",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     },
     {
       "kompetenz": "Virtualisierung mit VMware und Citrix",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     },
     {
       "kompetenz": "Netzwerksicherheit mit Cisco und Fortinet",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     },
     {
       "kompetenz": "ISMS nach ISO 27001 und BSI IT-Grundschutz",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     },
     {
       "kompetenz": "Incident Response und SIEM",
-      "jahre": null,
-      "schwerpunkt": true
+      "jahre": null
     }
   ],
   "methoden_tools": [

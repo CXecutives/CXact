@@ -23,33 +23,27 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Interim Management",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Controlling",
-      "jahre": 18,
-      "schwerpunkt": true
+      "jahre": 18
     },
     {
       "kompetenz": "Konzernrechnungslegung nach IFRS",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Konsolidierung",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Liquiditätsplanung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Restrukturierung",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     }
   ],
   "methoden_tools": [

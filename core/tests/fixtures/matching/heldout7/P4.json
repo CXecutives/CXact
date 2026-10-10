@@ -21,88 +21,71 @@
   "kernkompetenzen": [
     {
       "kompetenz": "GMP-Compliance",
-      "jahre": 19,
-      "schwerpunkt": false
+      "jahre": 19
     },
     {
       "kompetenz": "Qualitätssicherung",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Qualitätsmanagementsysteme",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Chargenfreigabe als Sachkundige Person",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Regulatory Affairs",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Zulassungsdossiers im CTD-Format",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Abweichungs- und CAPA-Management",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Change Control",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Audits und Inspektionen",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Validierung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Data Integrity",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Remediation",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Lieferantenqualifizierung",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Sterile Herstellung",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Qualitätsrisikomanagement",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Führung von QA- und QC-Teams",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     }
   ],
   "methoden_tools": [

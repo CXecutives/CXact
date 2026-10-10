@@ -9913,7 +9913,7 @@
   },
   "profile": {
     "fileName": "profil-interim-finance.json",
-    "bytes": 1774,
+    "bytes": 1608,
     "savedAt": "2026-09-21T07:30:00Z",
     "quality": "good",
     "understood": {
@@ -10156,7 +10156,7 @@
       "file": "sap-fico.json",
       "profile": {
         "fileName": "sap-fico.json",
-        "bytes": 3125,
+        "bytes": 2737,
         "savedAt": "2026-09-21T07:30:00Z",
         "quality": "good",
         "understood": {
@@ -10903,7 +10903,7 @@
       "file": "it-cloud-freelancer.json",
       "profile": {
         "fileName": "it-cloud-freelancer.json",
-        "bytes": 3084,
+        "bytes": 2696,
         "savedAt": "2026-09-21T07:30:00Z",
         "quality": "good",
         "understood": {
@@ -11660,7 +11660,7 @@
       "file": "ki-automatisierung.json",
       "profile": {
         "fileName": "ki-automatisierung.json",
-        "bytes": 3259,
+        "bytes": 2871,
         "savedAt": "2026-09-21T07:30:00Z",
         "quality": "good",
         "understood": {

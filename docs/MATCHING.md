@@ -292,7 +292,7 @@ not read at all. An empty value turns its rule off.
 | `verfuegbar_ab` | `sofort` or `TT.MM.JJJJ` |
 | `auslastung` | `vollzeit` at least four days a week, `teilzeit` at most three, `egal` none |
 | `mindestlaufzeit_monate` | 0, 3, 6 or 12 |
-| `kernkompetenzen[]` | `kompetenz`, `jahre`; every competence counts the same (an old file's `schwerpunkt` reads and is ignored, never written) |
+| `kernkompetenzen[]` | `kompetenz`, `jahre`; every competence counts the same |
 | `methoden_tools` | tools and methods |
 | `berufserfahrung_jahre` | total years of experience |
 | `branchen[]` | `branche`, `wunsch` (the star: a preferred industry, the industry wish) |

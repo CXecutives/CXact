@@ -33,83 +33,67 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Vertriebsleitung",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Key Account Management",
-      "jahre": 18,
-      "schwerpunkt": true
+      "jahre": 18
     },
     {
       "kompetenz": "Go-to-Market-Strategie",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "CRM-Einführung mit Salesforce",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Pricing",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Performance Marketing",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Marketingleitung",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Vertriebssteuerung",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Neukundengewinnung",
-      "jahre": 20,
-      "schwerpunkt": false
+      "jahre": 20
     },
     {
       "kompetenz": "Channel Management",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Sales Excellence",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Führung von Vertriebsteams",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Internationaler Vertrieb",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Marketing Automation",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Turnaround im Vertrieb",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Interim Management",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     }
   ],
   "methoden_tools": [

@@ -26,93 +26,75 @@
   "kernkompetenzen": [
     {
       "kompetenz": "SAP FI",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "SAP CO",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "SAP S/4HANA Finance",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "Hauptbuchhaltung (FI-GL)",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Kreditoren- und Debitorenbuchhaltung (FI-AP/AR)",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Anlagenbuchhaltung (FI-AA)",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Kostenstellenrechnung (CO-OM)",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Produktkostenrechnung (CO-PC)",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Ergebnisrechnung (CO-PA)",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Customizing",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Datenmigration",
-      "jahre": 7,
-      "schwerpunkt": true
+      "jahre": 7
     },
     {
       "kompetenz": "SAP Group Reporting",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Central Finance",
-      "jahre": 3,
-      "schwerpunkt": true
+      "jahre": 3
     },
     {
       "kompetenz": "Abschlussunterstützung in SAP",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Integration FI/CO mit MM und SD",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Testmanagement",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Rollout",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Anforderungsanalyse",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     }
   ],
   "methoden_tools": [

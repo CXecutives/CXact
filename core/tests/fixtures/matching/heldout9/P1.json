@@ -29,93 +29,75 @@
   "kernkompetenzen": [
     {
       "kompetenz": "KI-Integration",
-      "jahre": 6,
-      "schwerpunkt": true
+      "jahre": 6
     },
     {
       "kompetenz": "Prozessautomatisierung",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "n8n",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     },
     {
       "kompetenz": "Make",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Microsoft Power Automate",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Einführung von Microsoft 365 Copilot",
-      "jahre": 2,
-      "schwerpunkt": true
+      "jahre": 2
     },
     {
       "kompetenz": "Microsoft 365",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Prompt Engineering",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Digitalisierung von Verwaltungsprozessen",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "Geförderte Beratung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Schulungen und Workshops",
-      "jahre": 10,
-      "schwerpunkt": true
+      "jahre": 10
     },
     {
       "kompetenz": "Prozessanalyse und Prozessmodellierung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Changemanagement",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "KI-Governance und Datenschutz",
-      "jahre": 3,
-      "schwerpunkt": false
+      "jahre": 3
     },
     {
       "kompetenz": "Projektmanagement",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Low-Code-Entwicklung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "API-Integration",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Dokumentenmanagement",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     }
   ],
   "methoden_tools": [

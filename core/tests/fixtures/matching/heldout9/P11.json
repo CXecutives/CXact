@@ -30,98 +30,79 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Testmanagement",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Testautomatisierung",
-      "jahre": 17,
-      "schwerpunkt": true
+      "jahre": 17
     },
     {
       "kompetenz": "Selenium",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Playwright",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Teststrategie und Testkonzept",
-      "jahre": 13,
-      "schwerpunkt": false
+      "jahre": 13
     },
     {
       "kompetenz": "SAP-Testmanagement",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Agiles Testen",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Quality Gates",
-      "jahre": 8,
-      "schwerpunkt": true
+      "jahre": 8
     },
     {
       "kompetenz": "Release-Management",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Qualitätssicherung von Software",
-      "jahre": 19,
-      "schwerpunkt": false
+      "jahre": 19
     },
     {
       "kompetenz": "Abnahmetests",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Regressionstests",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Integrationstests",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Fehlermanagement",
-      "jahre": 17,
-      "schwerpunkt": false
+      "jahre": 17
     },
     {
       "kompetenz": "Last- und Performancetests",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Continuous Integration und Continuous Delivery",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     },
     {
       "kompetenz": "API-Tests",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Testdatenmanagement",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Führung von Testteams",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     }
   ],
   "methoden_tools": [

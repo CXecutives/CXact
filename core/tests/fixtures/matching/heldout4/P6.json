@@ -32,78 +32,63 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Werksleitung",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Produktionsleitung",
-      "jahre": 14,
-      "schwerpunkt": true
+      "jahre": 14
     },
     {
       "kompetenz": "Operations Management",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Lean Management",
-      "jahre": 13,
-      "schwerpunkt": true
+      "jahre": 13
     },
     {
       "kompetenz": "Six Sigma",
-      "jahre": 11,
-      "schwerpunkt": true
+      "jahre": 11
     },
     {
       "kompetenz": "Qualitätsmanagement",
-      "jahre": 12,
-      "schwerpunkt": true
+      "jahre": 12
     },
     {
       "kompetenz": "Restrukturierung",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Produktionsverlagerung",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Anlaufmanagement",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Produktionsplanung",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Kostensenkung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Instandhaltung",
-      "jahre": 8,
-      "schwerpunkt": false
+      "jahre": 8
     },
     {
       "kompetenz": "Mitarbeiterführung",
-      "jahre": 16,
-      "schwerpunkt": false
+      "jahre": 16
     },
     {
       "kompetenz": "Arbeitssicherheit",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Werksaufbau",
-      "jahre": 4,
-      "schwerpunkt": false
+      "jahre": 4
     }
   ],
   "methoden_tools": [

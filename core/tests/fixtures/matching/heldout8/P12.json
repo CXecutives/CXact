@@ -32,93 +32,75 @@
   "kernkompetenzen": [
     {
       "kompetenz": "Technische Projektleitung",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Anlagenbau",
-      "jahre": 15,
-      "schwerpunkt": true
+      "jahre": 15
     },
     {
       "kompetenz": "Produktentwicklung",
-      "jahre": 9,
-      "schwerpunkt": true
+      "jahre": 9
     },
     {
       "kompetenz": "Inbetriebnahme",
-      "jahre": 13,
-      "schwerpunkt": true
+      "jahre": 13
     },
     {
       "kompetenz": "Sondermaschinenbau",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "CE-Kennzeichnung und Maschinenrichtlinie",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Funktionale Sicherheit",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Konstruktion",
-      "jahre": 7,
-      "schwerpunkt": false
+      "jahre": 7
     },
     {
       "kompetenz": "Termin- und Kostenplanung",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Claim- und Änderungsmanagement",
-      "jahre": 10,
-      "schwerpunkt": false
+      "jahre": 10
     },
     {
       "kompetenz": "Lastenheft und Pflichtenheft",
-      "jahre": 14,
-      "schwerpunkt": false
+      "jahre": 14
     },
     {
       "kompetenz": "Schnittstellenkoordination Mechanik, Elektrik und Software",
-      "jahre": 15,
-      "schwerpunkt": false
+      "jahre": 15
     },
     {
       "kompetenz": "Lieferanten- und Unterlieferantensteuerung",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "FMEA und technisches Risikomanagement",
-      "jahre": 12,
-      "schwerpunkt": false
+      "jahre": 12
     },
     {
       "kompetenz": "Montage- und Baustellenkoordination international",
-      "jahre": 11,
-      "schwerpunkt": false
+      "jahre": 11
     },
     {
       "kompetenz": "Berechnung und Simulation",
-      "jahre": 5,
-      "schwerpunkt": false
+      "jahre": 5
     },
     {
       "kompetenz": "Prototypenbau und Erprobung",
-      "jahre": 6,
-      "schwerpunkt": false
+      "jahre": 6
     },
     {
       "kompetenz": "Technische Dokumentation",
-      "jahre": 9,
-      "schwerpunkt": false
+      "jahre": 9
     }
   ],
   "methoden_tools": [

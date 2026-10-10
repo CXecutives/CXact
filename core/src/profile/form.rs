@@ -8,7 +8,6 @@
 //! `schema.json`) - do not translate. [`key`] names the keys the engine writes into its paths.
 
 use jiff::civil::Date;
-use serde::de::IgnoredAny;
 use serde::{Deserialize, Serialize};
 
 use crate::error::InvalidInput;
@@ -625,11 +624,6 @@ struct FileCompetence {
     kompetenz: String,
     #[serde(default)]
     jahre: Option<u32>,
-    /// The star of a Schwerpunkt, retired (the owner's decision of 2026-10-10: every
-    /// competence counts the same). Old files and CV answers may still carry it: it reads,
-    /// whatever its value, and is never written.
-    #[serde(default, rename = "schwerpunkt", skip_serializing)]
-    _schwerpunkt: IgnoredAny,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -703,7 +697,6 @@ impl File {
                 .map(|c| FileCompetence {
                     kompetenz: c.name.clone(),
                     jahre: c.years,
-                    _schwerpunkt: IgnoredAny,
                 })
                 .collect(),
             methoden_tools: form.tools.clone(),
@@ -929,31 +922,6 @@ mod tests {
         let empty = write(&ProfileForm::default());
         assert_eq!(parse(&empty).unwrap(), ProfileForm::default());
         assert!(empty.contains("\"verfuegbar_ab\": \"sofort\""), "{empty}");
-    }
-
-    /// The retired star of a Schwerpunkt: a file that still carries `schwerpunkt` (any value)
-    /// reads as the same file without it, and saving writes no such key.
-    #[test]
-    fn an_old_star_reads_and_is_not_written_back() {
-        let old = parse(
-            r#"{"kernkompetenzen": [
-                {"kompetenz": "Controlling", "jahre": 15, "schwerpunkt": true},
-                {"kompetenz": "Treasury", "schwerpunkt": false},
-                {"kompetenz": "Reporting", "schwerpunkt": null}
-            ]}"#,
-        )
-        .unwrap();
-        let plain = parse(
-            r#"{"kernkompetenzen": [
-                {"kompetenz": "Controlling", "jahre": 15},
-                {"kompetenz": "Treasury"},
-                {"kompetenz": "Reporting"}
-            ]}"#,
-        )
-        .unwrap();
-        assert_eq!(old, plain);
-        let text = write(&old);
-        assert!(!text.contains("schwerpunkt"), "{text}");
     }
 
     /// The keys the engine names are keys of the file.
