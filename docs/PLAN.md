@@ -257,6 +257,10 @@ build.
   still within each source's robots.txt and stops. Show in Einstellungen > Suche what CXact searches for
   and what each query brings. Measure before and after with the user's real profile: hits per source and
   term, the share of high matches, duplicates, known jobs it missed.
+- [ ] freelancermap's further pages: in the live runs it answered page 2 (`pagenr=2` beside the query) with
+  page 1 again for 21 of 24 terms. The search stops at that repeat now, but reaches no deeper there.
+  Building the next page from the site's own paginator link (its island's `initialPagination` carries
+  every filter beside `pagenr`) needs one manual look at page 2 in a browser first.
 - [ ] Optional: a calmer "Gefunden" line in the Jobdetails; hide Jobdetails rows that only say "–".
 - [ ] The release installers (`npx tauri build`, `docs/CHANGING.md` "Release a version"); the user
   starts them.
