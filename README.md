@@ -13,9 +13,10 @@ jobs and scores each one against a consultant's profile.
 - Every new job's ad is fetched politely. Every source can be switched off, and each has its pauses and
   limits.
 - Every job is scored locally against the profile by an explainable, integer-only rule engine:
-  exclusions, must-have and optional requirements, focus areas, wishes.
+  exclusions, must-have and optional requirements, wishes.
 - Jobs live in three places like mail: Aktuell, Archiv, Papierkorb. Nothing moves or empties itself.
-- For a deeper look at one job, the app copies a prompt for any AI chat. It sends nothing to an AI itself.
+- For a deeper look at one job, the app copies a prompt for any AI chat; scoring never sends a job to an AI.
+  Only "Aus Lebenslauf ausfüllen" sends the redacted CV to the CV worker (`cv-worker/`).
 
 ## Install
 
