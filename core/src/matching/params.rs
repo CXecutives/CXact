@@ -39,6 +39,10 @@ pub(crate) const RELEVANCE_HALF: u64 = 7000;
 pub(crate) const MIN_TEXT_CHARS: usize = 100;
 /// Fewer assessable items than this is low evidence.
 pub(crate) const LOW_EVIDENCE_ITEMS: usize = 2;
+/// A text this long (characters, stripped) read with fewer than `THIN_MUSTS` weighted musts
+/// is low evidence too: its requirements were not found, the few items found say little.
+pub(crate) const THIN_TEXT_CHARS: usize = 1500;
+pub(crate) const THIN_MUSTS: usize = 3;
 /// Hours per day for hourly rates.
 pub(crate) const HOURS_PER_DAY: u64 = 8;
 /// A profile entry with this many specific atoms is free text: containing a requirement

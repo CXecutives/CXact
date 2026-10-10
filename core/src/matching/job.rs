@@ -136,6 +136,29 @@ fn closing_start(line: &str) -> bool {
     lex::CLOSING_STARTS.iter().any(|w| folded.starts_with(w))
 }
 
+/// A bare `Skills` heading over prose (`Skills:` then `Substantive experience from leading
+/// IT projects ...`): the ad's requirements; over a tag list (`SAP FI, DATEV, HGB`) it is the
+/// portal's tags.
+fn skills_over_prose(stripped: &str, after: &[&str]) -> bool {
+    let folded = fold(stripped);
+    if !lex::TAG_HEADINGS.contains(&folded.trim_end_matches(':').trim()) {
+        return false;
+    }
+    let Some(next) = after
+        .iter()
+        .map(|l| sections::clean_phrase(line_of(l).0))
+        .find(|l| !l.is_empty())
+    else {
+        return false;
+    };
+    let words = next.split_whitespace().count();
+    let commas = next.matches(',').count();
+    words >= SKILLS_PROSE_WORDS && 3 * commas < words
+}
+
+/// Words from which the line under a `Skills` heading is prose, not a tag list.
+const SKILLS_PROSE_WORDS: usize = 8;
+
 /// An item about the company or the frame, no requirement: a legal form (`Muster GmbH`), a
 /// founding year (`seit 1998`), or only places, days and contract words.
 fn noise_item(item: &str) -> bool {
@@ -186,9 +209,14 @@ fn section_phrases(text: &str) -> (Vec<Phrase<'_>>, Vec<usize>) {
     let mut current: Option<HeadingKind> = None;
     let mut phrases: Vec<Phrase<'_>> = Vec::new();
     let mut in_nice = Vec::new();
-    for line in splitlines(text) {
+    let lines = splitlines(text);
+    for (at, line) in lines.iter().enumerate() {
         let (stripped, bullet) = line_of(line);
         if stripped.is_empty() {
+            continue;
+        }
+        if !bullet && skills_over_prose(stripped, &lines[at + 1..]) {
+            current = Some(HeadingKind::Must);
             continue;
         }
         match sections::inline_heading(stripped) {
@@ -1172,6 +1200,36 @@ mod tests {
         );
         let items: Vec<&str> = doc.items.iter().map(|i| i.text.as_str()).collect();
         assert_eq!(items, ["Erste Führungserfahrung"]);
+    }
+
+    /// A bare `Skills` heading over prose opens the requirements; over a tag list it stays the
+    /// portal's tags.
+    #[test]
+    fn a_skills_heading_over_prose_lists_requirements() {
+        let texts = |text: &str| -> Vec<String> {
+            read(text, &Vocab::all())
+                .items
+                .into_iter()
+                .filter(|i| i.stage == Stage::Section)
+                .map(|i| i.text)
+                .collect()
+        };
+        assert_eq!(
+            texts(
+                "Skills:
+Substantive experience from leading IT projects at several clients
+"
+            ),
+            ["Substantive experience from leading IT projects at several clients"]
+        );
+        assert!(
+            texts(
+                "Skills
+SAP FI, DATEV, HGB, IFRS, Konzernabschluss
+"
+            )
+            .is_empty()
+        );
     }
 
     /// Application, contact and privacy lines and the sign-off close the requirements too.

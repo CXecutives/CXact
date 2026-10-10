@@ -28,7 +28,8 @@ use super::params::{
     E_FULL, E_HALF, E_NONE, FORMAL_CAP, JUNIOR_CAP, K_SHRINK, LIFT_CAP, LOW_EVIDENCE_ITEMS,
     LOW_PRIOR, LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, N_NICE, NO_ITEMS_CAP, OFF_FIELD_CAP,
     OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, ROLE_FULL, ROLE_HALF, SCORE_FLOOR,
-    SENIOR_YEARS, SEVERAL_OPEN_CAP, TITLE_OPEN_CAP, W_MUST, W_SOFT, W_TERM, WISH_MAX,
+    SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, TITLE_OPEN_CAP, W_MUST, W_SOFT,
+    W_TERM, WISH_MAX,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
@@ -385,13 +386,23 @@ pub(crate) fn musts_met(items: &[Scored]) -> (usize, usize) {
 }
 
 /// How much the text allowed to assess: a teaser, low (vocabulary terms, no weighted
-/// must, fewer than two weighted items) or full.
-fn evidence_level(kind: TextKind, items: &[Scored], must_weight: u64) -> EvidenceLevel {
+/// must, fewer than two weighted items, a long text read thin) or full.
+fn evidence_level(
+    kind: TextKind,
+    items: &[Scored],
+    must_weight: u64,
+    text_chars: usize,
+) -> EvidenceLevel {
     let hard_items = items.iter().filter(|s| s.weight > 0).count();
     let vocabulary = items.iter().any(|s| s.item.stage == Stage::Vocabulary);
+    let weighted_musts = items
+        .iter()
+        .filter(|s| s.item.kind == ReqKind::Must && matches!(s.weight, W_MUST | W_TERM))
+        .count();
+    let thin = text_chars >= THIN_TEXT_CHARS && weighted_musts < THIN_MUSTS;
     if kind == TextKind::Teaser {
         EvidenceLevel::Teaser
-    } else if vocabulary || must_weight == 0 || hard_items < LOW_EVIDENCE_ITEMS {
+    } else if vocabulary || must_weight == 0 || hard_items < LOW_EVIDENCE_ITEMS || thin {
         EvidenceLevel::Low
     } else {
         EvidenceLevel::Full
@@ -585,7 +596,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let requirement_lines = doc.requirement_lines;
     let items = scored(profile, doc.items);
     let (fit_score, must_weight, nice_count) = fit_score(&items);
-    let evidence = evidence_level(job.kind, &items, must_weight);
+    let evidence = evidence_level(job.kind, &items, must_weight, char_len(strip(text)));
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
     // A text without any requirement (long enough to read, or a short teaser) is judged
@@ -691,6 +702,18 @@ mod tests {
             params: json!({}),
             spans: Vec::new(),
         }]
+    }
+
+    /// A long text read with fewer than three weighted musts is low evidence; a short one
+    /// with two is not.
+    #[test]
+    fn a_long_text_read_thin_is_low_evidence() {
+        let two = [must(E_FULL), must(E_FULL)];
+        let level = |items: &[Scored], chars| evidence_level(TextKind::Full, items, W_MUST, chars);
+        assert_eq!(level(&two, 1200), EvidenceLevel::Full);
+        assert_eq!(level(&two, THIN_TEXT_CHARS), EvidenceLevel::Low);
+        let three = [must(E_FULL), must(E_FULL), must(E_NONE)];
+        assert_eq!(level(&three, 4000), EvidenceLevel::Full);
     }
 
     /// Musts of languages alone weigh a quarter beside the nice-to-haves; a skill must
