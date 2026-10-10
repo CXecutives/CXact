@@ -554,7 +554,10 @@ fn joined(phrase: &str, seps: &[Range<usize>]) -> Vec<Range<usize>> {
                 .split_whitespace()
                 .next()
                 .is_some_and(|w| w.chars().next().is_some_and(char::is_lowercase));
-        if inside || tail || listing || genitive || ellipsis || dangling {
+        // `Erfahrung in der Erstellung und Anwendung von Personas`: two activities share the
+        // object the second one names.
+        let activities = activity_pair(&before_words, after);
+        if inside || tail || listing || genitive || ellipsis || dangling || activities {
             continue;
         }
         kept.push(sep.clone());
@@ -628,6 +631,33 @@ fn shared_objects(
                 .find_map(|(r, _)| object(r))
         })
         .collect()
+}
+
+/// Is `after` a second activity with an object (`Anwendung von Personas`) after a part that
+/// ends in a bare activity (`Kenntnisse in der Erstellung`)? Both nouns of an activity
+/// (`-ung`, `-ion`, `Aufbau`, `Analyse`).
+fn activity_pair(before: &[&str], after: &str) -> bool {
+    let activity = |w: &str| {
+        let folded = fold(w);
+        w.chars().next().is_some_and(char::is_uppercase)
+            && (folded.ends_with("ung")
+                || folded.ends_with("ion")
+                || lex::ACTIVITY_NOUNS.contains(&folded.as_str()))
+    };
+    let Some((last, rest)) = before.split_last() else {
+        return false;
+    };
+    let bare = activity(last)
+        && rest.iter().rev().take(3).any(|w| {
+            let w = w.to_lowercase();
+            lex::ACTIVITY_PREPOSITIONS.contains(&w.as_str()) || w == "mit"
+        });
+    let words: Vec<&str> = after
+        .split_whitespace()
+        .skip_while(|w| lex::ARTICLES.contains(&w.to_lowercase().as_str()))
+        .collect();
+    bare && words.first().is_some_and(|w| activity(w))
+        && words[1..].iter().any(|w| lex::OBJECT_OPENERS.contains(w))
 }
 
 /// A declined German adjective written in lower case (`klassischen`, `organisatorische`,
@@ -1537,8 +1567,9 @@ SAP FI, DATEV, HGB, IFRS, Konzernabschluss
         assert_eq!(texts("Excel und Power BI"), ["Excel", "Power BI"]);
     }
 
-    /// A declined adjective that ends a part shares the noun of the next one, and a head
-    /// after `und -` the word before it: one requirement each.
+    /// A declined adjective that ends a part shares the noun of the next one, a head after
+    /// `und -` the word before it, two activities the object of the second: one requirement
+    /// each.
     #[test]
     fn shared_nouns_and_heads_keep_one_item() {
         let texts =
@@ -1548,12 +1579,21 @@ SAP FI, DATEV, HGB, IFRS, Konzernabschluss
             "Sehr gute organisatorische und kommunikative Fähigkeiten",
             "Durchführung qualitativer und quantitativer Nutzerforschung",
             "Methodenkompetenz in Projektplanung und -controlling",
+            "Kenntnisse in der Erstellung und Anwendung von Personas",
+            "Sicherer Umgang mit der Analyse und Interpretation von Kundendaten",
         ] {
             assert_eq!(texts(one), [one], "{one}");
         }
         assert_eq!(
             texts("Erfahrung im Controlling und Reporting"),
             ["Erfahrung im Controlling", "Reporting"]
+        );
+        assert_eq!(
+            texts("Erfahrung im Controlling und Konzernrechnungslegung nach IFRS"),
+            [
+                "Erfahrung im Controlling",
+                "Konzernrechnungslegung nach IFRS"
+            ]
         );
     }
 

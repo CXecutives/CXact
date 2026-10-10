@@ -2437,6 +2437,10 @@ pub(crate) const ONSITE_WORDS: &[&str] = &[
 /// the object the last one names.
 pub(crate) const ACTIVITY_PREPOSITIONS: &[&str] = &["im", "in", "beim", "bei", "zur", "zum", "am"];
 pub(crate) const OBJECT_OPENERS: &[&str] = &["von", "of"];
+/// Activities without an ending of their own (`Aufbau`, `Analyse`), folded.
+pub(crate) const ACTIVITY_NOUNS: &[&str] = &["analyse", "aufbau", "ausbau", "betrieb"];
+/// German articles before a noun.
+pub(crate) const ARTICLES: &[&str] = &["der", "die", "das", "des", "dem", "den"];
 /// Words that make a country mention travel (a check, never decided).
 pub(crate) const TRAVEL_WORDS: &[&str] = &["reise", "reisen", "travel", "workshops an"];
 /// Words for "fully remote".
