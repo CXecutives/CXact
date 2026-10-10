@@ -76,22 +76,62 @@ recall >= 0.80, NDCG@10 >= 0.75, P@5 >= 0.80, no grade-3 job buried, high-band p
 1v3 >= 0.80, 2v3 >= 0.70 (0v1 and 1v2 are reported only: the labelers themselves disagree most
 there).
 
-## Measurements at version 20
+## Measurements at version 21
 
 `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`:
 
 | Set | NDCG@10 | P@5 | Spearman relevant | Concordance 2v3 | Concordance 1v2 | Buried | Exclusions P / R | R kept |
 |---|---|---|---|---|---|---|---|---|
 | heldout1 | 0.923 | 1.000 | 0.782 | 0.755 | 0.621 | 0 | 1.000 / 0.971 | 1.000 |
-| heldout2 | 0.892 | 0.875 | 0.717 | 0.663 | 0.774 | 0 | 1.000 / 0.845 | 1.000 |
-| heldout3 | 0.911 | 0.933 | 0.595 | 0.595 | 0.667 | 0 | 1.000 / 0.900 | 1.000 |
-| heldout4 | 0.830 | 0.843 | 0.564 | 0.481 | 0.833 | 0 | 1.000 / 0.959 | 0.988 |
-| heldout5 | 0.802 | 0.967 | 0.717 | 0.826 | 0.693 | 0 | 0.987 / 0.955 | 1.000 |
-| heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.988 | 1.000 |
-| heldout7 | 0.917 | 0.910 | 0.673 | 0.824 | 0.583 | 2 | 1.000 / 0.867 | 0.998 |
-| heldout8 | 0.952 | 0.957 | 0.815 | 0.855 | 0.776 | 0 | 1.000 / 0.873 | 0.984 |
-| heldout9 | 0.890 | 0.854 | 0.652 | 0.755 | 0.676 | 0 | 1.000 / 0.860 | 1.000 |
-| heldout10 | 0.942 | 1.000 | 0.836 | 0.734 | 0.812 | 0 | 1.000 / 1.000 | 1.000 |
+| heldout2 | 0.896 | 0.875 | 0.719 | 0.683 | 0.774 | 0 | 1.000 / 0.847 | 1.000 |
+| heldout3 | 0.911 | 0.933 | 0.595 | 0.595 | 0.660 | 0 | 1.000 / 0.900 | 1.000 |
+| heldout4 | 0.839 | 0.843 | 0.569 | 0.472 | 0.833 | 0 | 1.000 / 0.970 | 1.000 |
+| heldout5 | 0.802 | 0.967 | 0.720 | 0.804 | 0.745 | 0 | 0.987 / 0.955 | 1.000 |
+| heldout6 | 0.902 | 0.950 | 0.791 | 0.797 | 0.843 | 0 | 1.000 / 0.988 | 1.000 |
+| heldout7 | 0.916 | 0.888 | 0.669 | 0.824 | 0.583 | 2 | 1.000 / 0.870 | 1.000 |
+| heldout8 | 0.952 | 0.957 | 0.823 | 0.868 | 0.776 | 0 | 1.000 / 0.876 | 0.987 |
+| heldout9 | 0.880 | 0.833 | 0.678 | 0.770 | 0.711 | 0 | 1.000 / 0.860 | 1.000 |
+| heldout10 | 0.941 | 1.000 | 0.822 | 0.717 | 0.788 | 0 | 1.000 / 1.000 | 1.000 |
+
+Engine 21 is tuned on real ads: 154 jobs of one live run, graded blind against the owner's
+profile with the rubric of the AI prompt (private, `core/tests/fixtures/private/calibration`;
+5 of grade 3, 23 of 2, 66 of 1, 60 of 0), and every change was kept only where it helped there
+without a held-out floor falling. Engine 20 and engine 21 on those jobs:
+
+| Measure | Engine 20 | Engine 21 |
+|---|---|---|
+| Spearman, list order and grade | 0.272 | 0.403 |
+| NDCG@10 / NDCG@20 | 0.302 / 0.355 | 0.442 / 0.477 |
+| Places of the grade-3 jobs in the list | 62, 64, 70, 116, 122 | 9, 32, 57, 85, 112 |
+| Mean score of grade 3 / 2 / 1 / 0 | 31 / 39 / 38 / 29 | 40 / 42 / 38 / 28 |
+| Grade 1 in the high band, grade 0 in the middle | 1, 20 | 0, 15 |
+
+The changes, each measured alone (Spearman unless named): the industries are experience, no
+wish (the owner's decision; held-out set 9 NDCG@10 0.890 to 0.869, set 10 Spearman 0.705 to
+0.697, their floors follow); application, contact and sign-off lines close the requirements
+(0.272 to 0.277); hyphen ellipses written out, a declined adjective or a `-head` keeps its part,
+more soft words, whom a soft skill addresses is no skill (0.277 to 0.298, NDCG@20 0.355 to
+0.381); a broad field of customer service and customer experience meets its narrower work in
+half, English process words are their German concepts, an AI tool is half of AI,
+Programmmanagement half of Projektmanagement (0.298 to 0.340); a target role's contract word
+costs nothing for a contract type the profile allows (0.340 to 0.344); a common word of a name
+is no part of a profile entry (0.344 to 0.349); a long text read thin is low evidence and a
+bare `Skills` heading over prose opens the requirements (NDCG@10 0.324 to 0.442); Swiss
+regions, delivery countries and on-site days beside `Remote` (0.347 to 0.393); two activities
+that share an object stay one requirement (0.393 to 0.403). Without an effect on the graded
+jobs but with one on the held-out exclusions: a monthly salary decides when fourteen of them
+stay below the minimum (sets 7 and 8, M14 and Q14 back to excluded in the labels) and a
+mandatory certificate the profile does not hold excludes as the rubric says (set 4, and X02 of
+set 2 relabeled for P3). The list row quotes a met language last. Tried and left out: an
+activity word (`Steuerung`, `Analyse`, `Kommunikation`) met only in half through a profile
+compound (NDCG@10 0.324 to 0.302), an industry compound that never meets its head (NDCG@20
+0.428 to 0.414), contract and pay words as frame (`Vertragsform`, `Gehaltswunsch`; no graded
+job moved, set 9 NDCG@10 0.880 to 0.877), examples after `such as` across the line (set 8 to
+its floor), and leading projects as project management (set 6 NDCG@10 0.902 to 0.892: it lifts
+project roles of every field). The bands stay at 80 and 40: no threshold separates the grades
+clearly (the best Youden index for grade 2 or 3 is 0.19, at 50), and no real job reaches 80
+any more. The corpus keeps 331 of 348 rows in their band; the two wish profiles move by two
+points without their industry wish, wish K42 85 to 89 by the contract word of its role.
 
 Engine 20 has no Schwerpunkte (the owner's decision of 2026-10-10): every competence counts the
 same, without a weight by its years. Gone are the double weight of a requirement met in full

@@ -91,8 +91,14 @@ use facts::{Availability, HardCriteria};
 /// least four days, part time at most three) and the starred industries; remote work abroad
 /// and the region of permanent roles are no rules any more. 20: no Schwerpunkte (owner decision
 /// 2026-10-10): every competence counts the same, no requirement double and no relevance for
-/// a demanded one. 21: the industries of the profile are experience, no wish (owner decision
-/// 2026-10-10).
+/// a demanded one. 21: tuned on real ads graded blind: the industries of the profile are
+/// experience, no wish (owner decision 2026-10-10); application, contact and sign-off lines
+/// close the requirements; hyphen ellipses, shared adjectives and shared objects keep one
+/// requirement; more soft words; a broad field meets its narrower work in half; English process
+/// words, AI tools; a role's contract word costs nothing for an allowed contract type; a common
+/// word of a name is no part of an entry; a long text read thin is low evidence; Swiss regions
+/// and delivery countries; a monthly salary far below the minimum and a missing mandatory
+/// certificate decide.
 pub const ENGINE_VERSION: u32 = 21;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
