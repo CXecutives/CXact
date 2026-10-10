@@ -76,6 +76,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("zero-based budgeting", "zero-based-budgeting"),
         ("zero based budgeting", "zero-based-budgeting"),
     ],
+    half: &[],
 };
 
 #[cfg(test)]

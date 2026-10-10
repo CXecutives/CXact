@@ -387,6 +387,12 @@ pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
     ("implementation", "einfuhrung"),
     ("implementierung", "einfuhrung"),
     ("migration", "migration"),
+    ("process optimization", "prozessoptimierung"),
+    ("process optimisation", "prozessoptimierung"),
+    ("process improvement", "prozessoptimierung"),
+    ("process automation", "prozessautomatisierung"),
+    ("automation", "automatisierung"),
+    ("quality management", "qualitatsmanagement"),
     ("german", "deutsch"),
     ("english", "englisch"),
     ("french", "franzosisch"),
@@ -398,7 +404,14 @@ pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
 pub(crate) const EQUIVALENT_HEADS: &[(&str, &str)] = &[
     ("projektleitung", "projektmanagement"),
     ("programmleitung", "programmmanagement"),
+    ("programmmanagement", "projektmanagement"),
 ];
+/// A concept of a profile entry and the concepts of an ad it meets in half, for every
+/// profile (the packs add their own, `Domain::half`): an AI tool used is half of AI asked for.
+pub(crate) const CORE_HALF: &[(&str, &[&str])] =
+    &[("chatgpt", AI), ("claude", AI), ("copilot", AI)];
+/// What an ad asks for as artificial intelligence.
+const AI: &[&str] = &["generative-ki", "ki", "llm"];
 /// Gender endings of a word (after folding).
 pub(crate) const GENDER_FORMS: &[&str] = &[
     ":innen", "*innen", "_innen", ":in", "*in", "_in", "/in", "(in)",

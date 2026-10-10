@@ -141,4 +141,5 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("shared service centre", "shared-service-cent"),
         ("shared service center", "shared-service-cent"),
     ],
+    half: &[],
 };

@@ -43,6 +43,9 @@ pub(crate) struct Domain {
     pub generic: &'static [&'static str],
     /// Phrase -> concept.
     pub concepts: &'static [(&'static str, &'static str)],
+    /// A concept of a profile entry and the concepts of an ad it meets in half: the narrower
+    /// work of a broader field (`kundenservice` meets `reklamationsmanagement`).
+    pub half: &'static [(&'static str, &'static [&'static str])],
 }
 
 /// All packs, in a fixed order.

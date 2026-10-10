@@ -112,6 +112,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("jira service desk", "jira-service-management"),
         ("remedy", "bmc-remedy"),
     ],
+    half: &[],
 };
 
 #[cfg(test)]

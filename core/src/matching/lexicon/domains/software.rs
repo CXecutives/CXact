@@ -151,6 +151,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("rest apis", "rest-api"),
         ("restful", "rest-api"),
     ],
+    half: &[],
 };
 
 #[cfg(test)]

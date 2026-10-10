@@ -22,4 +22,5 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("co-pc", "produktkostenrechnung"),
         ("co-pa", "ergebnisrechnung"),
     ],
+    half: &[],
 };

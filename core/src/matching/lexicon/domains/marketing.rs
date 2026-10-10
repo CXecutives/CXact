@@ -141,6 +141,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("adobe marketo", "marketo"),
         ("marketo engage", "marketo"),
     ],
+    half: &[],
 };
 
 #[cfg(test)]

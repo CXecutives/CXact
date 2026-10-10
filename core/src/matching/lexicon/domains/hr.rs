@@ -226,6 +226,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("personalinformationssystem", "hris"),
         ("success factors", "successfactors"),
     ],
+    half: &[],
 };
 
 #[cfg(test)]

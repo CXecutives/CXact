@@ -188,6 +188,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("ehs", "arbeitssicherheit"),
         ("arbeitsschutz", "arbeitssicherheit"),
     ],
+    half: &[],
 };
 
 #[cfg(test)]

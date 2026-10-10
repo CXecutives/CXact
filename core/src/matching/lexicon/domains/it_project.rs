@@ -40,4 +40,5 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("go live", "go-live"),
         ("produktivsetzung", "go-live"),
     ],
+    half: &[],
 };

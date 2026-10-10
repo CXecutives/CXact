@@ -738,8 +738,32 @@ pub(crate) fn fit(job: &str, profile: &str) -> Fit {
             }
         }
     }
+    // The narrower work of a broader field the profile names (`Beschwerdemanagement` for
+    // `Customer Service Management`), an AI tool for AI: half.
+    if HALF.get(job).is_some_and(|broader| {
+        broader
+            .iter()
+            .any(|b| matches!(fit_direct(b, profile), Fit::Equal | Fit::Specific))
+    }) {
+        return Fit::General;
+    }
     Fit::None
 }
+
+/// The concepts of an ad and the profile concepts that meet them in half
+/// (`lexicon::engine::CORE_HALF`, `Domain::half`), stemmed.
+static HALF: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
+    let mut half: HashMap<String, Vec<String>> = HashMap::new();
+    for (profile, jobs) in lex::CORE_HALF
+        .iter()
+        .chain(DOMAINS.iter().flat_map(|d| d.half.iter()))
+    {
+        for job in *jobs {
+            half.entry(stem(job)).or_default().push(stem(profile));
+        }
+    }
+    half
+});
 
 /// The same compound with and without the linking `s` (`Werksleiter`, `Werkleiter`): one
 /// atom is the other with an `s` after a modifier of four letters or more and before a head
@@ -844,6 +868,19 @@ mod tests {
 
     fn all(text: &str) -> Vec<String> {
         atoms(text, &Vocab::all())
+    }
+
+    /// English process words are their German concepts; an AI tool meets AI in half; a
+    /// programme is half a project.
+    #[test]
+    fn process_words_ai_tools_and_programmes() {
+        assert_eq!(all("Process Optimization"), all("Prozessoptimierung"));
+        assert_eq!(all("process improvement"), all("Prozessoptimierung"));
+        assert_eq!(all("Automation"), all("Automatisierung"));
+        assert_eq!(all("Quality Management"), all("Qualitätsmanagement"));
+        assert_eq!(fit("ki", "chatgpt"), Fit::General);
+        assert_eq!(fit("chatgpt", "ki"), Fit::None);
+        assert_eq!(fit("programmmanagement", "projektmanagement"), Fit::General);
     }
 
     /// A German hyphen ellipsis reads as the words it stands for; one whose head is unknown
