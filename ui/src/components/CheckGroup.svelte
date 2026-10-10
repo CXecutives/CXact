@@ -1,6 +1,7 @@
 <!--
   A choice of several as checkboxes in a row, each with its label (Vertragsart; user decision
-  2026-10-04): the chosen box coral with a white check, the others an empty box. The last
+  2026-10-04): the chosen box coral with a white check, the others an empty box. Under the
+  pointer a box darkens one step and pressed one more, like a switch (Toggle). The last
   chosen option stays (a click does nothing, its tooltip says why: `keepOne`). Each option is
   a checkbox and its own Tab stop; Space and Enter flip it like any button.
 -->
@@ -79,7 +80,7 @@
     justify-content: center;
     width: var(--icon-sm);
     height: var(--icon-sm);
-    border: var(--border-width) solid var(--border-input);
+    border: var(--border-width) solid var(--border-strong);
     border-radius: var(--radius-xs);
     background-color: var(--surface);
     color: var(--text-inverse);
@@ -89,11 +90,28 @@
   }
 
   .option:hover .box {
-    border-color: var(--border-strong);
+    border-color: var(--control-hover-edge);
+    transition-duration: var(--dur-hover);
   }
 
   .option[data-chosen] .box {
     border-color: var(--toggle-on);
     background-color: var(--toggle-on);
+  }
+
+  .option[data-chosen]:hover .box {
+    border-color: var(--toggle-on-hover);
+    background-color: var(--toggle-on-hover);
+  }
+
+  /* Pressed: one more step than on hover, 60 ms, like a switch. */
+  :global(:where(:root:not([data-aux-press]))) .option:active:hover .box {
+    border-color: var(--toggle-off-press);
+    transition-duration: var(--dur-instant);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .option[data-chosen]:active:hover .box {
+    border-color: var(--toggle-on-press);
+    background-color: var(--toggle-on-press);
   }
 </style>

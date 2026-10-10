@@ -4,19 +4,19 @@
   (ProfileActions). A CV dropped on the page (Tauri's drag and drop, never a path) is
   evaluated the same way, with a dashed edge while it is over the page; it fills the profile
   at once.
-  The column: what went wrong with the CV or the last save, the rescore a save started, and
-  the four groups (ProfileEditor). While the form holds a change a dark bar floats at
-  the foot (SaveBar): "Ungespeicherte Änderungen", Verwerfen and Speichern (the view's one
-  primary). Without a profile the two ways in (ProfileStart); a file that no longer reads says
-  so in the same place, with its folder at hand. A save is answered by a toast with what its
-  rescore changed (saveEffect.ts). Leaving the view or closing the window with unsaved
-  changes asks once ("Änderungen speichern?", the heading alone).
+  The column: what went wrong with the CV or the last save, and the four groups
+  (ProfileEditor). While the form holds a change a dark bar floats at the foot (SaveBar):
+  "Ungespeicherte Änderungen", Verwerfen and Speichern (the view's one primary). Without a
+  profile the two ways in (ProfileStart); a file that no longer reads says so in the same
+  place, with its folder at hand. A save is answered by a toast with what its rescore changed
+  (saveEffect.ts), nothing else moves on the page. Leaving the view or closing the window
+  with unsaved changes asks once ("Änderungen speichern?", the heading alone).
   What is missing (design round 4): nothing warns up front. Speichern saves anyway; while
   required fields are still empty they then get the coral edge, the caret goes to the first
   one and the floating bar says "Es fehlen noch …" (the names lead to their fields) until
-  they are filled. A new or changed form asks core what it still lacks
-  (`profileMissing`, a moment after the last edit), the stored profile names its own
-  (`missing`).
+  they are filled; the save's toast then stays away, the bar is the answer. A new or
+  changed form asks core what it still lacks (`profileMissing`, a moment after the last
+  edit), the stored profile names its own (`missing`).
   In the setup (`setup`) the same form without the CV, the bar and "Häufig verlangt"; its
   "Weiter" (`next`) marks what is missing the same way and goes on once nothing is (`onflag`).
 -->
@@ -30,7 +30,6 @@
   import Notice from '$components/Notice.svelte';
   import Page from '$components/Page.svelte';
   import PageHeader from '$components/PageHeader.svelte';
-  import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke, onCloseRequested, onFileDrag, type FileDrag } from '$lib/ipc/api';
@@ -39,7 +38,6 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { editor, sameForm } from '$lib/state/profile.svelte';
-  import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
@@ -61,7 +59,6 @@
 
   const profile = $derived(app.state?.profile ?? null);
   const stored = $derived(profile?.form ?? null);
-  const rescoring = $derived((run.active && run.kind === 'rescore') || (profile?.pending ?? 0) > 0);
 
   let busy = $state(false);
   /** A failure is said when it shows. */
@@ -208,9 +205,10 @@
       const form = info.form ?? app.state?.profile?.form;
       if (form) editor.edit(form);
       else editor.close();
-      // The setup's next step is its answer there.
-      if (!setup) void effect.said().then((text) => toasts.show(text, 'success'));
-      else effect.stop();
+      // The setup's next step is its answer there, the missing line where it stands.
+      if (!setup && !(flagged && missing.length > 0)) {
+        void effect.said().then((text) => toasts.show(text, 'success'));
+      } else effect.stop();
       return true;
     } catch (error) {
       effect.stop();
@@ -357,11 +355,6 @@
     />
   {/if}
   {#if note}<Notice tone="danger" variant="inline" text={note()} testid="profile-note" />{/if}
-  {#if rescoring && !setup}
-    <p class="quiet" data-testid="profile-rescoring">
-      <Spinner size="sm" label={null} />{t.profile.rescoring(profile?.pending ?? 0)}
-    </p>
-  {/if}
 {/snippet}
 
 {#if app.state === null}
@@ -456,13 +449,5 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-  }
-
-  .quiet {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 </style>

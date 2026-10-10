@@ -209,8 +209,8 @@ const ANY = 'Egal';
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
 const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
 const SHORT_TEXT = 'Die Anzeige ist sehr kurz.';
-const WORKLOAD = 'Die Auslastung passt nicht zum Profil.';
-const DURATION = 'Die Laufzeit liegt unter dem Minimum im Profil.';
+const WORKLOAD = 'Die Auslastung passt nicht zu deinem Profil.';
+const DURATION = 'Die Laufzeit liegt unter deiner Mindestlaufzeit.';
 
 /** Years of experience, a range with both ends: "3 bis 5 Jahre", "10 Jahre". */
 const yearsWords = (min: number, max: number | null): string =>
@@ -283,11 +283,11 @@ function workloadCheck(p: Params): string {
   const max = numberOr(p.maxDays);
   const min = numberOr(p.minDays);
   if (max !== null && from !== null && from > max * 20) {
-    return `Die Anzeige nennt ${ad}, das Profil sieht höchstens ${weekDays(max, false)} vor.`;
+    return `Die Anzeige nennt ${ad}, du suchst höchstens ${weekDays(max, false)}.`;
   }
   return min === null
     ? WORKLOAD
-    : `Die Anzeige nennt ${ad}, das Profil sucht mindestens ${weekDays(min, false)}.`;
+    : `Die Anzeige nennt ${ad}, du suchst mindestens ${weekDays(min, false)}.`;
 }
 
 /** Contract type of an ad (`contractType` params `type`, `inferred`). */
@@ -437,7 +437,7 @@ const reasonCode = {
       return `Das Gehalt ist in ${str(p.currency)} angegeben.`;
     }
     if (typeof p.salary !== 'number' || p.min === undefined) {
-      return 'Das Gehalt liegt unter deinem Minimum.';
+      return 'Das Gehalt liegt unter deinem Mindestgehalt.';
     }
     const amount =
       typeof p.from === 'number' && p.from < p.salary
@@ -519,7 +519,7 @@ const criteria = {
   minDayRate: {
     label: 'Tagessatz',
     short: 'Tagessatz zu niedrig',
-    exclusion: 'Der Tagessatz liegt unter deinem Minimum.',
+    exclusion: 'Der Tagessatz liegt unter deinem Mindesttagessatz.',
   },
   countries: {
     label: 'Einsatzländer',
@@ -544,7 +544,7 @@ const criteria = {
   minSalary: {
     label: 'Jahresgehalt',
     short: 'Gehalt zu niedrig',
-    exclusion: 'Das Gehalt liegt unter deinem Minimum.',
+    exclusion: 'Das Gehalt liegt unter deinem Mindestgehalt.',
   },
   permanentRegion: {
     label: 'Orte',
@@ -1078,7 +1078,7 @@ export const de = {
     wayCvText: 'Eine KI füllt das Profil aus.',
     byHandText: 'Du trägst alles selbst ein.',
     /** Why "Aus Lebenslauf ausfüllen" waits while the form holds changes. */
-    saveFirst: 'Erst speichern oder verwerfen.',
+    saveFirst: 'Speichere oder verwirf erst deine Änderungen.',
     /** The toast once the CV filled the profile (saved at once). */
     filled: 'Profil ausgefüllt. Bitte prüfen.',
     /** Why the CV filled nothing, one sentence each; the way on is a button beside it. */
@@ -1120,7 +1120,6 @@ export const de = {
       ].filter((part) => part !== null);
       return parts.length === 0 ? 'Profil gespeichert' : `Profil gespeichert, ${parts.join(', ')}`;
     },
-    rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
     warning,
     save: 'Speichern',
     discard: 'Verwerfen',
@@ -1144,7 +1143,7 @@ export const de = {
       rolesMore: '+ Rolle',
       /** The contract types, a choice of several; one at least stays. */
       contracts: 'Vertragsart',
-      keepOneContract: 'Mindestens eine Vertragsart',
+      keepOneContract: 'Mindestens eine Vertragsart bleibt gewählt.',
       /** The day rate's two fields. */
       dayRateWish: 'Wunschtagessatz',
       dayRateMin: 'Mindesttagessatz',
@@ -1161,8 +1160,8 @@ export const de = {
       regionsMore: '+ Region',
       available: 'Verfügbar',
       date: 'Datum',
-      datePlaceholder: '01.11.2026',
-      dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
+      datePlaceholder: 'TT.MM.JJJJ',
+      dateInvalid: 'Gib das Datum als TT.MM.JJJJ ein.',
       /** A day in the right format that the calendar does not have (31.02.2026). */
       dateImpossible: 'Diesen Tag gibt es nicht.',
       workload: 'Auslastung',
@@ -1210,7 +1209,7 @@ export const de = {
       exclusionWordsPlaceholder: 'z. B. Werkstudent',
       exclusionWordsMore: '+ Wort',
       /** Quiet hint where two values contradict each other. */
-      belowMinRate: 'Der Wunsch liegt unter dem Minimum.',
+      belowMinRate: 'Der Wunschtagessatz liegt unter dem Mindesttagessatz.',
       /** A euro amount with cents: the app counts whole euros. */
       rounded: 'Auf ganze Euro abgerundet.',
       /** Another number with a decimal part: the app counts whole ones. */
@@ -1224,10 +1223,10 @@ export const de = {
     /** The info symbols beside a label, one sentence each (only these places, docs/PLAN.md). */
     info: {
       contracts: 'Was du nicht wählst, wird ausgeschlossen.',
-      dayRate: 'Unter dem Minimum wird ein Job ausgeschlossen.',
-      countries: 'Andere Länder werden ausgeschlossen. Remote gilt überall.',
-      competences: 'Bis zu fünf Schwerpunkte. Sie zählen doppelt.',
-      exclusionWords: 'Jobs, die so heißen, werden ausgeschlossen.',
+      dayRate: 'Jobs darunter werden ausgeschlossen.',
+      countries: 'Jobs in anderen Ländern werden ausgeschlossen, außer voll remote.',
+      competences: 'Bis zu fünf Schwerpunkte mit Stern zählen doppelt.',
+      exclusionWords: 'Nennt eine Anzeige eines dieser Wörter, wird der Job ausgeschlossen.',
     },
     /** The unit right of a number field. */
     unit: {

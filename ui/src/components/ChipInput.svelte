@@ -545,7 +545,7 @@
 
   /* Next to chips the input keeps room for its "+ Rolle". */
   .filled .input {
-    min-width: var(--space-64);
+    min-width: var(--chip-entry-min);
   }
 
   .input::placeholder {

@@ -84,7 +84,7 @@ pre-assessment to any AI chat for a deeper check.
   - No title (the sidebar names the place); "Aus Lebenslauf ausfüllen" ends the first group's heading
     line. Once Speichern was pressed, the required fields still empty get a coral edge (focus stays
     navy) and the save bar names them ("Es fehlen noch …", core's `ProfileInfo.missing`), each a link
-    that puts the caret into its field.
+    that puts the caret into its field; no save toast beside it.
   - Four groups on one page (`sections.ts`; "Luftige Gruppen", design round 6), each field with its label
     above it:
     - Wunschjob: Wunschrollen, Vertragsart (check boxes, one stays), Wunschtagessatz, Mindesttagessatz,

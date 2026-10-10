@@ -568,10 +568,13 @@ test('nothing warns up front; Speichern saves anyway and marks what is missing',
   await expect(field(page, 'roles')).not.toHaveAttribute('data-missing', '');
   await page.getByTestId('language-pick-Deutsch').click();
   await expect(missing(page)).toHaveCount(0);
+  // The missing line was the answer of the first save: no toast beside it.
+  await expect(savedToast(page)).toHaveCount(0);
   await save(page).click();
   await lastSave(page);
   await expect.poll(() => page.evaluate(() => window.__harness.form()?.languages.length)).toBe(1);
   await expect(missing(page)).toHaveCount(0);
+  await expect(savedToast(page)).toBeVisible();
 });
 // ------------------------------------------------------------------ the CV
 
