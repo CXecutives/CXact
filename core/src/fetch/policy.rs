@@ -418,12 +418,18 @@ impl Policy {
     pub fn pace_wait(&self, portal: Portal, now: Timestamp) -> Option<Duration> {
         let last = self.last_access(portal)?;
         let range = limits(portal).pace_ms;
-        // A Crawl-delay of the source's robots.txt is the least gap.
+        // A Crawl-delay of the source's robots.txt is the least gap - the larger one of its own
+        // and of the host its search pages lie on: every request of the source keeps both.
         let delay = self
             .portals
             .get(&portal)
-            .and_then(|state| state.robots.as_ref())
-            .and_then(|robots| robots.crawl_delay)
+            .and_then(|state| {
+                [state.robots.as_ref(), state.search_robots.as_ref()]
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|robots| robots.crawl_delay)
+                    .max()
+            })
             .map_or(0, |seconds| seconds.saturating_mul(1000));
         let pace = SignedDuration::from_millis(
             i64::try_from(fastrand::u64(range).max(delay)).unwrap_or(i64::MAX),
@@ -779,6 +785,32 @@ mod tests {
             p.state(Portal::Freelancermap).pause_code(),
             PauseReason::Blocked
         );
+    }
+
+    /// The Crawl-delay of the robots.txt of the host a source's search pages lie on counts like
+    /// that of its own (Amadeus Fire's search pages lie on another host than its ads): the gap
+    /// is the larger of the two.
+    #[test]
+    fn the_crawl_delay_of_the_search_host_counts_too() {
+        let af = Portal::AmadeusFire;
+        let delay = |seconds: u64| Robots::parse(&format!("User-agent: *\nCrawl-delay: {seconds}"));
+        let wait = |own: Option<u64>, search: Option<u64>| {
+            let mut p = Policy::in_memory();
+            p.record_access(af, at(0));
+            if let Some(seconds) = own {
+                p.set_robots(af, delay(seconds), at(0));
+            }
+            if let Some(seconds) = search {
+                p.set_search_robots(af, delay(seconds), at(0));
+            }
+            p.pace_wait(af, at(0)).unwrap()
+        };
+        // No delay: the portal's own pace.
+        assert!(wait(None, None) <= Duration::from_millis(*limits(af).pace_ms.end()));
+        assert_eq!(wait(None, Some(30)), Duration::from_secs(30));
+        assert_eq!(wait(Some(10), Some(30)), Duration::from_secs(30));
+        assert_eq!(wait(Some(40), Some(30)), Duration::from_secs(40));
+        assert_eq!(wait(Some(40), None), Duration::from_secs(40));
     }
 
     #[test]
