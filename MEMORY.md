@@ -26,14 +26,17 @@ and current: replace what changes, drop what no longer holds.
 - Run the harness with no dev server beside it. Two at once once failed with `ERR_NO_BUFFER_SPACE`.
 - Reports are a few lines. Say plainly when an earlier answer was wrong.
 
-## State (2026-10-03)
+## State (2026-10-11)
 
-- `main` is green on CI (Windows and macOS, both harness engines). The portable build of 2026-10-02 is
-  `target/portable/CXact.exe`.
-- Schema 8 (Block 0): the first start of a newer build resets the user's real data of schema 7 (jobs,
-  backups, sessions, the Gmail entry; profiles set aside as `profil.alt`). Tell the user before a build.
-- The search already pages deeply (`docs/PLAN.md` "Sources", deep search). On 2026-10-02 the user was told by mistake that only the first page is read. Correct that when the search
-  comes up.
+- Design round 6 and the backend for the new UI are finished on two branches, not merged and not pushed:
+  - `main` holds the backend. Its gates are green.
+  - `ui-preview` (worktree `.claude/worktrees/ui-preview`) holds the new UI. It already uses main's generated
+    types, and its full harness passes in Chromium and WebKit.
+- The next step is the user's changes or the wiring: merge, then the checklist in `docs/PLAN.md` "Next", then build.
+- Schema 8 (Block 0): the first start of a newer build resets the user's real data of schema 7. That covers jobs,
+  backups, sessions and the Gmail entry; profiles are set aside as `profil.alt`. Tell the user before a build.
+- The search already pages deeply (`docs/PLAN.md` "Sources", deep search). On 2026-10-02 the user was told by
+  mistake that only the first page is read. Correct that when the search comes up.
 
 ## Environment
 
