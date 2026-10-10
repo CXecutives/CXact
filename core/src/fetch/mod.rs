@@ -269,16 +269,6 @@ pub trait PageFetcher {
         false
     }
 
-    /// The robots.txt of the host of the source's search pages where that is another host
-    /// (`PortalAdapter::search_robots_url`); its own by default.
-    fn search_robots(
-        &mut self,
-        portal: Portal,
-        cancel: &CancellationToken,
-    ) -> impl Future<Output = Result<Option<String>, PageOutcome>> + Send {
-        self.robots(portal, cancel)
-    }
-
     /// One page of the source's own search, read by its adapter: the hits and the count it
     /// states, or what decided instead (a block, a throttle, a wall). The guest client only.
     fn search(
@@ -291,34 +281,50 @@ pub trait PageFetcher {
         async { Err(PageOutcome::Suspicious(Cause::NoSearch)) }
     }
 
-    /// The source's robots.txt (`None`: it has none, everything is allowed).
+    /// One request of a robots.txt at `url`: its text, or where it moved. The fetcher follows
+    /// no redirect itself: every hop is a request of its own through `admit` ([`robots_of`]).
     fn robots(
         &mut self,
-        portal: Portal,
+        url: &Url,
         cancel: &CancellationToken,
-    ) -> impl Future<Output = Result<Option<String>, PageOutcome>> + Send {
-        let _ = (portal, cancel);
-        async { Ok(None) }
+    ) -> impl Future<Output = Result<RobotsAnswer, PageOutcome>> + Send {
+        let _ = (url, cancel);
+        async { Ok(RobotsAnswer::Text(None)) }
     }
 }
 
+/// What one robots.txt request answered.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RobotsAnswer {
+    /// The file (`None`: there is none, or it is "unavailable" - a 4xx - and everything is
+    /// allowed).
+    Text(Option<String>),
+    /// It moved there (a redirect).
+    Moved(Url),
+}
+
+/// So many redirects a robots.txt is followed through (RFC 9309 2.3.1.2: at least five);
+/// one that moves more often counts as unreadable.
+pub const ROBOTS_REDIRECTS: usize = 5;
+
 /// What kept the robots.txt of a source from being read.
 pub(crate) enum Blocker {
-    /// The source may not be asked now (pause, cap).
+    /// The source may not be asked now (pause, cap), or its robots.txt could not be read
+    /// (moved too often, an odd answer): no page of it in this run ([`StopReason::Refused`]).
     Stop(StopReason),
     /// The request ended otherwise; the outcome decides like a page's.
     Page(Box<PageOutcome>),
 }
 
-/// The rules of `portal`'s robots.txt: the copy of the last day, else read now through
-/// `admit`, a request like any other.
+/// The rules of `portal`'s robots.txt: the copy of the last day, else read now, each request
+/// through `admit` like any other.
 pub(crate) async fn robots_of<F: PageFetcher>(
     fetcher: &mut F,
     policy: &Mutex<Policy>,
     portal: Portal,
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
-    on_wait: impl FnOnce(Timestamp),
+    on_wait: impl Fn(Timestamp),
 ) -> crate::Result<Result<Robots, Blocker>> {
     robots_at(fetcher, policy, (portal, false), cancel, clock, on_wait).await
 }
@@ -331,7 +337,7 @@ pub(crate) async fn search_robots_of<F: PageFetcher>(
     portal: Portal,
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
-    on_wait: impl FnOnce(Timestamp),
+    on_wait: impl Fn(Timestamp),
 ) -> crate::Result<Result<Robots, Blocker>> {
     let other_host = portal.adapter().search_robots_url().is_some();
     robots_at(
@@ -345,14 +351,20 @@ pub(crate) async fn search_robots_of<F: PageFetcher>(
     .await
 }
 
-/// The robots.txt of the source's own host, or (`search`) of its search pages' other host.
+/// The robots.txt of the source's own host, or (`search`) of its search pages' other host,
+/// read as RFC 9309 says: through up to [`ROBOTS_REDIRECTS`] redirects (each hop a request
+/// through `admit`, the rules kept for the first address), the first part of a large file
+/// (`http::ROBOTS_MAX_BODY`), a 4xx as "unavailable" (everything allowed) - each kept for the
+/// day. An unreachable one (no answer, a throttle, a block) decides like a page; one that
+/// cannot be read otherwise (moved too often, an odd answer) allows no page of the source in
+/// this run, and nothing is kept.
 async fn robots_at<F: PageFetcher>(
     fetcher: &mut F,
     policy: &Mutex<Policy>,
     (portal, search): (Portal, bool),
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
-    on_wait: impl FnOnce(Timestamp),
+    on_wait: impl Fn(Timestamp),
 ) -> crate::Result<Result<Robots, Blocker>> {
     let known = if search {
         lock(policy).search_robots(portal, clock())
@@ -362,32 +374,66 @@ async fn robots_at<F: PageFetcher>(
     if let Some(robots) = known {
         return Ok(Ok(robots));
     }
-    match admit(policy, portal, cancel, clock, on_wait).await? {
-        Admission::Stop(reason) => Ok(Err(Blocker::Stop(reason))),
-        Admission::Cancelled => Ok(Err(Blocker::Page(Box::new(PageOutcome::Cancelled)))),
-        Admission::Go => {
-            let read = if search {
-                fetcher.search_robots(portal, cancel).await
-            } else {
-                fetcher.robots(portal, cancel).await
-            };
-            let mut policy = lock(policy);
-            policy.record_done(portal, clock());
-            let result = match read {
-                Ok(text) => {
-                    let robots = text.as_deref().map(Robots::parse).unwrap_or_default();
-                    if search {
-                        policy.set_search_robots(portal, robots.clone(), clock());
-                    } else {
-                        policy.set_robots(portal, robots.clone(), clock());
-                    }
-                    Ok(robots)
-                }
-                Err(outcome) => Err(Blocker::Page(Box::new(outcome))),
-            };
-            policy.save()?;
-            Ok(result)
+    let Some(mut url) = robots_url(portal, search) else {
+        log::error!("{}: no robots.txt address", portal.key());
+        return Ok(Err(Blocker::Stop(StopReason::Refused)));
+    };
+    for _ in 0..=ROBOTS_REDIRECTS {
+        match admit(policy, portal, cancel, clock, &on_wait).await? {
+            Admission::Stop(reason) => return Ok(Err(Blocker::Stop(reason))),
+            Admission::Cancelled => {
+                return Ok(Err(Blocker::Page(Box::new(PageOutcome::Cancelled))));
+            }
+            Admission::Go => {}
         }
+        let read = fetcher.robots(&url, cancel).await;
+        let mut state = lock(policy);
+        state.record_done(portal, clock());
+        let result = match read {
+            Ok(RobotsAnswer::Text(text)) => {
+                let robots = text.as_deref().map(Robots::parse).unwrap_or_default();
+                if search {
+                    state.set_search_robots(portal, robots.clone(), clock());
+                } else {
+                    state.set_robots(portal, robots.clone(), clock());
+                }
+                Some(Ok(robots))
+            }
+            Ok(RobotsAnswer::Moved(to)) => {
+                url = to;
+                None
+            }
+            Err(PageOutcome::Suspicious(cause)) => {
+                log::warn!(
+                    "{}: robots.txt unreadable ({cause}), no page of it in this run",
+                    portal.key()
+                );
+                Some(Err(Blocker::Stop(StopReason::Refused)))
+            }
+            Err(outcome) => Some(Err(Blocker::Page(Box::new(outcome)))),
+        };
+        state.save()?;
+        if let Some(result) = result {
+            return Ok(result);
+        }
+    }
+    log::warn!(
+        "{}: robots.txt moved more than {ROBOTS_REDIRECTS} times, no page of it in this run",
+        portal.key()
+    );
+    Ok(Err(Blocker::Stop(StopReason::Refused)))
+}
+
+/// Where `portal`'s robots.txt lies: beside its start page, or (`search`) on its search
+/// pages' other host.
+fn robots_url(portal: Portal, search: bool) -> Option<Url> {
+    let adapter = portal.adapter();
+    match adapter.search_robots_url().filter(|_| search) {
+        Some(url) => Url::parse(url).ok(),
+        None => Url::parse(adapter.home_url())
+            .ok()?
+            .join("/robots.txt")
+            .ok(),
     }
 }
 
@@ -438,23 +484,12 @@ impl<S: PageFetcher + Send> PageFetcher for Fetchers<S> {
 
     async fn robots(
         &mut self,
-        portal: Portal,
+        url: &Url,
         cancel: &CancellationToken,
-    ) -> Result<Option<String>, PageOutcome> {
+    ) -> Result<RobotsAnswer, PageOutcome> {
         match self {
-            Fetchers::Guest(http) => http.robots(portal, cancel).await,
-            Fetchers::Session(session) => session.robots(portal, cancel).await,
-        }
-    }
-
-    async fn search_robots(
-        &mut self,
-        portal: Portal,
-        cancel: &CancellationToken,
-    ) -> Result<Option<String>, PageOutcome> {
-        match self {
-            Fetchers::Guest(http) => http.search_robots(portal, cancel).await,
-            Fetchers::Session(session) => session.search_robots(portal, cancel).await,
+            Fetchers::Guest(http) => http.robots(url, cancel).await,
+            Fetchers::Session(session) => session.robots(url, cancel).await,
         }
     }
 }
@@ -554,7 +589,9 @@ pub enum StopReason {
     Challenged,
     /// Network trouble (second failure after a retry).
     Network { cause: Cause },
-    /// The search found no page its robots.txt allows (every page refused, none asked).
+    /// The source's robots.txt allows no page now: the search found none it allows (every
+    /// page refused, none asked), or it could not be read (moved too often, an odd answer)
+    /// and no page of the source is asked in this run.
     Refused,
     /// The same 4xx status on [`REJECTED_STREAK`] job pages in a row: the portal turns the
     /// pages away (an anti-bot answer), not each job its own - it rests until the next run.
@@ -616,7 +653,7 @@ impl StopReason {
             StopReason::Network { cause } => {
                 format!("{key}: network trouble ({cause}), {skipped} left")
             }
-            StopReason::Refused => format!("{key}: robots.txt allowed no search page"),
+            StopReason::Refused => format!("{key}: robots.txt allows no page, {skipped} left"),
             StopReason::Rejected { cause } => format!(
                 "{key}: {cause} on {REJECTED_STREAK} pages in a row, {skipped} left until the \
                  next run"

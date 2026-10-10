@@ -18,12 +18,15 @@ use reqwest::{Client, Response, StatusCode, redirect};
 use tokio_util::sync::CancellationToken;
 use url::Url;
 
-use super::{Cause, PageFetcher, PageOutcome};
+use super::{Cause, PageFetcher, PageOutcome, RobotsAnswer};
 use crate::portal::{JobLink, Portal, Redirects, SearchPage};
 
 const TIMEOUT: Duration = Duration::from_secs(30);
 /// Bigger is no ad - then something is wrong.
 const MAX_BODY: usize = 5 * 1024 * 1024;
+/// So much of a robots.txt is read and parsed (RFC 9309 2.5: at least the first 500 KiB);
+/// the rest of a larger one is left unread.
+pub(crate) const ROBOTS_MAX_BODY: usize = 512 * 1024;
 
 pub struct HttpFetcher {
     /// Judges every redirect itself.
@@ -181,34 +184,35 @@ impl HttpFetcher {
         })
     }
 
-    /// The source's robots.txt beside its start page (`search`: the one of its search pages'
-    /// host where that is another); `None` where it has none.
-    async fn robots_text(
-        &self,
-        portal: Portal,
-        search: bool,
-    ) -> Result<Option<String>, PageOutcome> {
-        let adapter = portal.adapter();
-        let unknown = |_| PageOutcome::Suspicious(Cause::PageNotRecognised);
-        let url = match adapter.search_robots_url().filter(|_| search) {
-            Some(url) => Url::parse(url).map_err(unknown)?,
-            None => Url::parse(adapter.home_url())
-                .map_err(unknown)?
-                .join("/robots.txt")
-                .map_err(unknown)?,
-        };
+    /// One request of a robots.txt: its text (of a large one the first [`ROBOTS_MAX_BODY`]),
+    /// none for a 4xx, or where it moved - not followed here, every hop goes through `admit`.
+    async fn robots_text(&self, url: &Url) -> Result<RobotsAnswer, PageOutcome> {
         let response = self
-            .follow
-            .get(self.target(url))
+            .direct
+            .get(self.target(url.clone()))
             .send()
             .await
             .map_err(|e| net_error(&e))?;
-        match status_outcome(response.status(), retry_after(&response)) {
-            None => Ok(Some(body(response).await?)),
+        let status = response.status();
+        if status.is_redirection() {
+            return moved_to(url, &response)
+                .map(RobotsAnswer::Moved)
+                .ok_or(PageOutcome::Suspicious(Cause::RedirectNotFollowed));
+        }
+        // RFC 9309 2.3.1.1: any 2xx is the file.
+        let decided = if status.is_success() {
+            None
+        } else {
+            status_outcome(status, retry_after(&response))
+        };
+        match decided {
+            None => Ok(RobotsAnswer::Text(Some(robots_body(response).await?))),
             // RFC 9309 2.3.1.3: a robots.txt that is "unavailable" (4xx) allows everything,
             // like none at all - kept for the day like a read one. A sign-in wall (401), a
             // ban (403) and a throttle (429) are no such answer: they stop the source.
-            Some(PageOutcome::Gone | PageOutcome::Suspicious(Cause::Http(400..=499))) => Ok(None),
+            Some(PageOutcome::Gone | PageOutcome::Suspicious(Cause::Http(400..=499))) => {
+                Ok(RobotsAnswer::Text(None))
+            }
             Some(outcome) => Err(outcome),
         }
     }
@@ -238,25 +242,13 @@ impl PageFetcher for HttpFetcher {
 
     async fn robots(
         &mut self,
-        portal: Portal,
+        url: &Url,
         cancel: &CancellationToken,
-    ) -> Result<Option<String>, PageOutcome> {
+    ) -> Result<RobotsAnswer, PageOutcome> {
         tokio::select! {
             biased;
             () = cancel.cancelled() => Err(PageOutcome::Cancelled),
-            text = self.robots_text(portal, false) => text,
-        }
-    }
-
-    async fn search_robots(
-        &mut self,
-        portal: Portal,
-        cancel: &CancellationToken,
-    ) -> Result<Option<String>, PageOutcome> {
-        tokio::select! {
-            biased;
-            () = cancel.cancelled() => Err(PageOutcome::Cancelled),
-            text = self.robots_text(portal, true) => text,
+            answer = self.robots_text(url) => answer,
         }
     }
 }
@@ -303,6 +295,14 @@ fn location_path(response: &Response) -> String {
         .unwrap_or_default()
 }
 
+/// Where a redirect leads, resolved against the address asked for (in tests not the test
+/// server's); `None` without a target or for a scheme that is no web address.
+fn moved_to(asked: &Url, response: &Response) -> Option<Url> {
+    let target = response.headers().get(LOCATION)?.to_str().ok()?;
+    let next = asked.join(target).ok()?;
+    matches!(next.scheme(), "http" | "https").then_some(next)
+}
+
 fn net_error(error: &reqwest::Error) -> PageOutcome {
     PageOutcome::NetError {
         timeout: error.is_timeout(),
@@ -316,15 +316,40 @@ fn net_error(error: &reqwest::Error) -> PageOutcome {
     }
 }
 
-async fn body(mut response: Response) -> Result<String, PageOutcome> {
+/// A page's body; beyond [`MAX_BODY`] it is no ad.
+async fn body(response: Response) -> Result<String, PageOutcome> {
+    match read_body(response, MAX_BODY).await? {
+        (_, true) => Err(PageOutcome::Suspicious(Cause::PageTooLarge)),
+        (bytes, false) => Ok(String::from_utf8_lossy(&bytes).into_owned()),
+    }
+}
+
+/// A robots.txt's body: of a larger one the first [`ROBOTS_MAX_BODY`] up to its last whole
+/// line (a rule cut in two could allow more than it says).
+async fn robots_body(response: Response) -> Result<String, PageOutcome> {
+    let (mut bytes, cut) = read_body(response, ROBOTS_MAX_BODY).await?;
+    if cut {
+        let whole = bytes
+            .iter()
+            .rposition(|&b| b == b'\n')
+            .map_or(0, |at| at + 1);
+        bytes.truncate(whole);
+    }
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// The first `limit` bytes of a body, and whether more followed (left unread).
+async fn read_body(mut response: Response, limit: usize) -> Result<(Vec<u8>, bool), PageOutcome> {
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|e| net_error(&e))? {
-        if bytes.len() + chunk.len() > MAX_BODY {
-            return Err(PageOutcome::Suspicious(Cause::PageTooLarge));
+        let room = limit - bytes.len();
+        if chunk.len() > room {
+            bytes.extend_from_slice(&chunk[..room]);
+            return Ok((bytes, true));
         }
         bytes.extend_from_slice(&chunk);
     }
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
+    Ok((bytes, false))
 }
 
 #[cfg(test)]

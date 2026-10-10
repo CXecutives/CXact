@@ -1895,6 +1895,204 @@ async fn a_robots_txt_that_answers_4xx_allows_and_is_kept() {
     }
 }
 
+/// A clock that moves on ten seconds whenever it is read: the requests of a test against a
+/// local server keep the pace without waiting for it.
+fn ticking() -> impl Fn() -> Timestamp {
+    let ticks = std::sync::atomic::AtomicI64::new(0);
+    move || {
+        let tick = ticks.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        base() + SignedDuration::from_secs(10 * tick)
+    }
+}
+
+/// A local server for the guest client: every address goes to it, by its path.
+async fn robots_server() -> (wiremock::MockServer, HttpFetcher) {
+    crate::install_crypto();
+    let server = wiremock::MockServer::start().await;
+    let fetcher =
+        HttpFetcher::with_base("Mozilla/5.0 Test", server.uri().parse().unwrap()).unwrap();
+    (server, fetcher)
+}
+
+/// The paths the local server was asked for, in order.
+async fn asked_paths(server: &wiremock::MockServer) -> Vec<String> {
+    let requests = server.received_requests().await.unwrap();
+    requests.iter().map(|r| r.url.path().to_owned()).collect()
+}
+
+/// A robots.txt that moved is followed (RFC 9309 2.3.1.2), to another host too, through up to
+/// five redirects - each hop a request through `admit` - and its rules are kept for the source
+/// for the day. One that moves more often allows no page in this run, and nothing is kept.
+#[tokio::test]
+async fn a_robots_txt_that_moved_is_followed_through_admit() {
+    use wiremock::matchers::path;
+    use wiremock::{Mock, ResponseTemplate};
+    let (server, mut fetcher) = robots_server().await;
+    let hays = Portal::Hays;
+    let cancel = CancellationToken::new();
+    let moved = |to: &str| ResponseTemplate::new(301).insert_header("location", to);
+    let rules = ResponseTemplate::new(200).set_body_string("User-agent: *\nDisallow: /jobsuche/");
+    // To another host, once.
+    Mock::given(path("/robots.txt"))
+        .respond_with(moved("https://cdn.hays.example/files/robots.txt"))
+        .mount(&server)
+        .await;
+    Mock::given(path("/files/robots.txt"))
+        .respond_with(rules.clone())
+        .mount(&server)
+        .await;
+    let policy = Mutex::new(Policy::in_memory());
+    let c = ticking();
+    let read = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+        .await
+        .unwrap();
+    assert!(read.is_ok_and(|robots| !robots.allows("/jobsuche/x")));
+    assert!(lock(&policy).robots(hays, c()).is_some());
+    assert_eq!(lock(&policy).state(hays).accesses.len(), 2);
+    assert_eq!(
+        asked_paths(&server).await,
+        ["/robots.txt", "/files/robots.txt"]
+    );
+    // Five redirects are followed, a sixth is not.
+    for redirects in [5, 6] {
+        server.reset().await;
+        for hop in 0..redirects {
+            let from = if hop == 0 {
+                "/robots.txt".to_owned()
+            } else {
+                format!("/r{hop}")
+            };
+            Mock::given(path(from))
+                .respond_with(moved(&format!("/r{}", hop + 1)))
+                .mount(&server)
+                .await;
+        }
+        Mock::given(path(format!("/r{redirects}")))
+            .respond_with(rules.clone())
+            .mount(&server)
+            .await;
+        let policy = Mutex::new(Policy::in_memory());
+        let read = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+            .await
+            .unwrap();
+        match redirects {
+            5 => assert!(read.is_ok_and(|robots| !robots.allows("/jobsuche/x"))),
+            _ => assert!(matches!(read, Err(Blocker::Stop(StopReason::Refused)))),
+        }
+        assert_eq!(
+            lock(&policy).robots(hays, c()).is_some(),
+            redirects == 5,
+            "{redirects}"
+        );
+        assert_eq!(asked_paths(&server).await.len(), 6, "{redirects}");
+        assert_eq!(lock(&policy).state(hays).accesses.len(), 6, "{redirects}");
+    }
+}
+
+/// A robots.txt larger than any page is read in its first part (RFC 9309 2.5: at least
+/// 500 KiB) up to its last whole line, parsed and kept for the day - not refused as too large.
+#[tokio::test]
+async fn a_large_robots_txt_is_read_in_its_first_part() {
+    use wiremock::matchers::path;
+    use wiremock::{Mock, ResponseTemplate};
+    let (server, mut fetcher) = robots_server().await;
+    let head = "User-agent: *\nDisallow: /private/\n";
+    // The read part ends inside this line, after "Allow: /private/": parsed, the piece would
+    // allow every private page.
+    let (cut_line, rest) = ("Allow: /private/", "only-this-page\n");
+    // A comment line of `len` bytes with its line break.
+    let comment = |len: usize| ["#", &"x".repeat(len - 2), "\n"].concat();
+    let mut text = head.to_owned();
+    let pad = http::ROBOTS_MAX_BODY - head.len() - cut_line.len();
+    for _ in 0..pad / 80 {
+        text.push_str(&comment(80));
+    }
+    match pad % 80 {
+        0 => {}
+        1 => text.push('\n'),
+        more => text.push_str(&comment(more)),
+    }
+    text.push_str(cut_line);
+    text.push_str(rest);
+    // Far beyond the size of any page.
+    while text.len() <= 6 * 1024 * 1024 {
+        text.push_str(&comment(1024));
+    }
+    text.push_str("Disallow: /late/\n");
+    Mock::given(path("/robots.txt"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(text))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let hays = Portal::Hays;
+    let policy = Mutex::new(Policy::in_memory());
+    let c = ticking();
+    let read = robots_of(
+        &mut fetcher,
+        &policy,
+        hays,
+        &CancellationToken::new(),
+        &c,
+        |_| {},
+    )
+    .await
+    .unwrap();
+    let Ok(robots) = read else {
+        panic!("the large robots.txt was not read");
+    };
+    assert!(!robots.allows("/private/x"));
+    assert!(!robots.allows("/private/only-this-page"));
+    assert!(robots.allows("/late/x"), "beyond the part read");
+    assert_eq!(lock(&policy).robots(hays, c()), Some(robots));
+}
+
+/// A robots.txt that cannot be read (here: it moves to itself) costs no job an attempt and
+/// counts nothing toward the breaker: the source asks no page in this run and its jobs wait.
+#[tokio::test]
+async fn an_unreadable_robots_txt_costs_no_job() {
+    use wiremock::matchers::path;
+    use wiremock::{Mock, ResponseTemplate};
+    let (server, _) = robots_server().await;
+    Mock::given(path("/robots.txt"))
+        .respond_with(ResponseTemplate::new(301).insert_header("location", "/robots.txt"))
+        .mount(&server)
+        .await;
+    let hays = Portal::Hays;
+    let store = store_with(&[(hays, 891_480, 1)]);
+    let job = key(hays, 891_480);
+    let before = store.job(&job).unwrap().unwrap();
+    let policy = Mutex::new(Policy::in_memory());
+    let mut summary = FetchSummary::default();
+    let (prescore, on) = (|_: &str, _: &str| 0, |_: Portal| true);
+    let base_url: Url = server.uri().parse().unwrap();
+    let completed = fetch_all(
+        |_| HttpFetcher::with_base("Mozilla/5.0 Test", base_url.clone()).map_err(|e| e.to_string()),
+        &store,
+        &policy,
+        (Selection::Queue(&[hays]), &prescore, &on),
+        &CancellationToken::new(),
+        ticking(),
+        &mut summary,
+        |_| {},
+    )
+    .await
+    .unwrap();
+    assert!(completed);
+    let counts = &summary.per_portal[&hays];
+    assert_eq!(counts.stop, Some(StopReason::Refused));
+    assert_eq!((counts.failed, counts.skipped), (0, 1));
+    let after = store.job(&job).unwrap().unwrap();
+    assert_eq!(
+        (after.desc_status, after.desc_attempts),
+        (before.desc_status, before.desc_attempts)
+    );
+    assert_eq!(lock(&policy).state(hays).suspicious_streak, 0);
+    assert!(lock(&policy).robots(hays, base()).is_none());
+    let asked = asked_paths(&server).await;
+    assert_eq!(asked.len(), 1 + ROBOTS_REDIRECTS);
+    assert!(asked.iter().all(|p| p == "/robots.txt"), "{asked:?}");
+}
+
 /// The app's fetch path hands on the robots.txt of the search pages' host: Amadeus Fire's
 /// search goes by its directory host's rules, not by those beside its ads, and only those are
 /// kept as its search rules.
@@ -1907,17 +2105,16 @@ async fn the_fetch_path_reads_the_search_hosts_robots() {
         }
         async fn robots(
             &mut self,
-            _: Portal,
+            url: &Url,
             _: &CancellationToken,
-        ) -> Result<Option<String>, PageOutcome> {
-            Ok(Some("User-agent: *\nDisallow: /wp-admin/".into()))
-        }
-        async fn search_robots(
-            &mut self,
-            _: Portal,
-            _: &CancellationToken,
-        ) -> Result<Option<String>, PageOutcome> {
-            Ok(Some("User-agent: *\nDisallow: /".into()))
+        ) -> Result<RobotsAnswer, PageOutcome> {
+            Ok(RobotsAnswer::Text(Some(
+                match url.as_str() {
+                    "https://daten.amadeus-fire.de/robots.txt" => "User-agent: *\nDisallow: /",
+                    _ => "User-agent: *\nDisallow: /wp-admin/",
+                }
+                .into(),
+            )))
         }
     }
     let af = Portal::AmadeusFire;

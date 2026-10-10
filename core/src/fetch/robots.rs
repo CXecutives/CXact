@@ -6,6 +6,12 @@
 //! An empty `Disallow` allows everything; a source without a robots.txt allows everything.
 //! A `Crawl-delay` of the group is the least gap between two requests to the source (at most
 //! [`MAX_CRAWL_DELAY`] seconds are believed).
+//!
+//! The file is read as RFC 9309 says ([`robots_of`](super::robots_of)), each request through
+//! `admit`, and kept for a day: through up to five redirects, to another host too; of a large
+//! file the first 512 KiB; a 4xx means there is none. One that cannot be reached (no answer, a
+//! throttle, a block) stops the source like a page would; one that cannot be read otherwise
+//! (moved more often, an odd answer) allows no page of the source in that run.
 
 use serde::{Deserialize, Serialize};
 

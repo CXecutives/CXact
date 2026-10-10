@@ -661,6 +661,7 @@ mod tests {
     use std::collections::VecDeque;
     use std::time::Duration;
 
+    use super::super::RobotsAnswer;
     use super::super::policy::limits;
     use super::*;
     use crate::portal::{Hit, HitContract, JobKey, JobLink, SearchPage};
@@ -700,17 +701,17 @@ mod tests {
         }
         async fn robots(
             &mut self,
-            _portal: Portal,
+            url: &Url,
             _cancel: &CancellationToken,
-        ) -> Result<Option<String>, PageOutcome> {
-            Ok(self.robots.clone())
-        }
-        async fn search_robots(
-            &mut self,
-            _portal: Portal,
-            _cancel: &CancellationToken,
-        ) -> Result<Option<String>, PageOutcome> {
-            Ok(self.search_robots.clone())
+        ) -> Result<RobotsAnswer, PageOutcome> {
+            let search_host = crate::portal::PORTALS
+                .iter()
+                .any(|adapter| adapter.search_robots_url() == Some(url.as_str()));
+            Ok(RobotsAnswer::Text(if search_host {
+                self.search_robots.clone()
+            } else {
+                self.robots.clone()
+            }))
         }
     }
 

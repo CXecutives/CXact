@@ -59,7 +59,9 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   `core/examples/live_search.rs` runs a real search with fetch and scores and compares two term lists.
 - The pace, within the scraping rules of `CLAUDE.md` (`admit`, `fetch/policy.rs`): search sources run at
   2.5 to 5 s, capped at 300 an hour and 1,500 a day each, never below robots.txt's Crawl-delay. A
-  robots.txt that answers another 4xx than 401, 403 or 429 counts as none (RFC 9309). A 401 is a login
+  robots.txt that answers another 4xx than 401, 403 or 429 counts as none (RFC 9309); one that moved is
+  followed through up to five redirects (each through `admit`), of a large one the first 512 KiB count,
+  and one that cannot be read otherwise lets the source ask no page in that run. A 401 is a login
   wall; the same 4xx on three ad pages in a row stops a source for the run, only the first ad charged.
 - Rejected for good: jobs.ch, karriere.at, eFinancialCareers and StepStone (their terms forbid automated
   access); Robert Half and Etengo (almost no interim or project roles); web search APIs; the Bundesagentur.
