@@ -125,8 +125,8 @@ pre-assessment to any AI chat for a deeper check.
     asks first).
 - **Setup** (`features/first-run`, until it was finished once, `onboarded`): a mode of the shell of its
   own, without the sidebar and the top bar's buttons, every switch of the view refused. Every step in
-  the Profil page's frame, flush left, the two stages "Profil" and "Postfach" as two thin bars on top
-  (a skipped Postfach is never done), the foot right under the content (Zurück at the left, the
+  the Profil page's frame, flush left, no step indicator (each heading says where the user is; user
+  2026-10-10), the foot right under the content (Zurück at the left, the
   buttons at the right). Its steps from a table: Willkommen with the two ways as tiles (the CV's says
   "Wird von einer KI ausgewertet."), Upload (drop zone; a failed evaluation comes back here with its
   reason above it, "Selbst ausfüllen" where no new try can work), Auswertung (a spinner and

@@ -12,8 +12,6 @@ import { T, WIN, MAC } from './helpers';
 
 const heading = (page: Page) => page.getByTestId('first-heading');
 const next = (page: Page) => page.getByTestId('first-next');
-const stage = (page: Page, index: number) =>
-  page.getByTestId('first-steps').locator('li').nth(index);
 
 /** The step the setup shows. */
 async function expectStep(page: Page, words: string): Promise<void> {
@@ -45,35 +43,30 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
     ]) {
       await expect(page.getByTestId(gone)).toHaveCount(0);
     }
-    // One colour, no seam: the bar is the cream page's.
+    // One colour, no seam: the bar is the page's.
     await expect(page.getByTestId('title-bar')).not.toHaveClass(/docked/);
     await expect(page.getByTestId('title-bar')).toHaveClass(/page/);
-    // Willkommen has the step indicator too, and no foot: a tile goes on.
-    await expect(stage(page, 0)).toHaveAttribute('aria-current', 'step');
+    // Willkommen has no foot: a tile goes on.
     await expect(page.getByTestId('first-bar')).toHaveCount(0);
   }
 });
 
-test('the step indicator: two bars with their names, flush left above the heading', async ({
+test('no step indicator: the heading opens the column, flush left, on every step', async ({
   page,
 }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  const steps = page.getByTestId('first-steps');
-  await expect(steps.locator('li')).toHaveText([...T.firstRun.stages]);
-  await expect(stage(page, 0)).toHaveAttribute('data-state', 'current');
-  await expect(stage(page, 1)).toHaveAttribute('data-state', 'later');
-  // No digits, no ticks.
-  await expect(steps.locator('svg')).toHaveCount(0);
-  await expect(steps).not.toContainText(/\d/);
-  // Two equal columns, the first on the heading's left edge.
-  const [first, second, title] = await Promise.all([
-    stage(page, 0).boundingBox(),
-    stage(page, 1).boundingBox(),
-    heading(page).boundingBox(),
-  ]);
-  expect(Math.abs(first!.width - second!.width)).toBeLessThanOrEqual(1);
-  expect(Math.abs(first!.x - title!.x)).toBeLessThanOrEqual(1);
-  expect(first!.y + first!.height).toBeLessThan(title!.y);
+  for (const query of ['scenario=first-run', 'scenario=setup-profile', 'scenario=setup-mailbox']) {
+    await open(page, `${WIN}&${query}`);
+    await expect(page.getByTestId('first-steps')).toHaveCount(0);
+    await expect(page.getByRole('list', { name: 'Einrichtung' })).toHaveCount(0);
+    const [title, column] = await Promise.all([
+      heading(page).boundingBox(),
+      page.getByTestId('first-step').boundingBox(),
+    ]);
+    expect(Math.abs(title!.x - column!.x)).toBeLessThanOrEqual(1);
+    // Nothing above it but the step's own top padding.
+    expect(title!.y - column!.y).toBeGreaterThanOrEqual(0);
+    expect(title!.y - column!.y).toBeLessThanOrEqual(16);
+  }
 });
 
 test('every switch of the view is refused while it stands; Zurück and the mouse go back', async ({
@@ -87,9 +80,6 @@ test('every switch of the view is refused while it stands; Zurück and the mouse
   await page.getByTestId('way-self').click();
   await expectStep(page, T.firstRun.self);
   await expect(heading(page)).toBeFocused();
-  await expect(page.getByTestId('first-steps').locator('[aria-current="step"]')).toHaveText(
-    T.firstRun.stages[0]!,
-  );
   // The mouse's back button is Zurück; Willkommen has none.
   await mouseBack(page);
   await expectStep(page, T.firstRun.welcome);
@@ -253,8 +243,6 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(page.getByTestId('first-step')).toContainText(
     T.firstRun.alertsText(['linkedin', 'freelance']),
   );
-  await expect(stage(page, 0)).toHaveAttribute('data-state', 'done');
-  await expect(stage(page, 1)).toHaveAttribute('aria-current', 'step');
   // The form in one group, Google's page as the password field's link.
   await expect(page.getByTestId('mailbox-form').getByTestId('create-password')).toHaveText(
     T.settings.createPassword,
@@ -268,10 +256,8 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(ends.nth(1)).toHaveText(T.settings.connect);
   await expect(ends.nth(1)).toHaveClass(/primary/);
   await page.getByTestId('first-skip').click();
-  // Fertig without a mailbox: only the profile was set up, the Postfach is not done.
+  // Fertig without a mailbox: it says only the profile was set up.
   await expectStep(page, T.firstRun.profileDone);
-  await expect(stage(page, 0)).toHaveAttribute('data-state', 'done');
-  await expect(stage(page, 1)).toHaveAttribute('data-state', 'later');
   await expect(page.getByTestId('first-back')).toHaveCount(0);
   expect(await calls(page, 'finish_onboarding')).toHaveLength(1);
   await expect(next(page)).toHaveText(T.firstRun.toJobs);
@@ -304,7 +290,6 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(next(page)).toHaveClass(/primary/);
   await next(page).click();
   await expectStep(page, T.firstRun.done);
-  await expect(page.getByTestId('first-steps').locator('[data-state="done"]')).toHaveCount(2);
 });
 
 test('the smallest window keeps every step usable', async ({ page }) => {

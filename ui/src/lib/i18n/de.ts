@@ -1391,9 +1391,6 @@ export const de = {
     welcomeText:
       'CXact sucht Projekt- und Interim-Jobs für dich und bewertet jeden nach deinem Profil.',
     next: 'Weiter',
-    /** The step indicator at the top: its name and its two stages. */
-    stepsLabel: 'Einrichtung',
-    stages: ['Profil', 'Postfach'] as string[],
     upload: 'Lebenslauf hochladen',
     reading: 'Lebenslauf wird ausgewertet',
     /** The whole profile: filled by the AI to check, or empty to fill in. */

@@ -3,8 +3,8 @@
   Zurück and Vor in the top bar, no job view button; every switch of the view is refused
   while it stands). One step at a time from the table of steps.ts, every step in the frame of
   the Profil page (Page: the pages' column on the white, the view scrolls under the top bar's
-  fade, nothing centred): at the column's top the step indicator ("Profil", "Postfach", two
-  thin bars), under it the step's heading flush left (it takes the focus on every step, so a
+  fade, nothing centred): at the column's top the step's heading flush left (no step
+  indicator: every heading says where the user is, user 2026-10-10) (it takes the focus on every step, so a
   screen reader starts there), at most one sentence, its body (the snippet of its id; a form
   in one white group, tiles and the drop zone as white boxes with an edge on the page) and its foot right
   under it: Zurück at the left, the step's buttons at the right, the one primary last. Enter
@@ -31,7 +31,6 @@
   import Notice from '$components/Notice.svelte';
   import Page from '$components/Page.svelte';
   import Spinner from '$components/Spinner.svelte';
-  import Steps from '$components/Steps.svelte';
   import { liftToasts } from '$lib/actions/liftToasts';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
@@ -45,7 +44,7 @@
   import NewProfileWays from '../shared/NewProfileWays.svelte';
   import PortalRow from '../shared/PortalRow.svelte';
   import { onboarding } from './onboarding.svelte';
-  import { stageState, stepOf, type StepId } from './steps';
+  import { stepOf, type StepId } from './steps';
   import Upload from './Upload.svelte';
 
   const step = $derived(onboarding.step);
@@ -53,9 +52,6 @@
   const walk = $derived(onboarding.walk);
   const back = $derived(spec.back(walk));
   const nextWords = $derived(spec.next?.(t, walk) ?? null);
-  const stages = $derived(
-    t.firstRun.stages.map((name, stage) => ({ name, state: stageState(spec, stage, walk) })),
-  );
   /** The long steps of the whole profile: their foot stays at the window's bottom. */
   const long = $derived(step === 'review' || step === 'self');
   /** Why the CV filled nothing, said above the drop zone (also before a try while the tries
@@ -212,7 +208,6 @@
 {/snippet}
 
 <Page testid="first-run" bind:element={page}>
-  <Steps steps={stages} label={t.firstRun.stepsLabel} testid="first-steps" />
   {#key step}
     <section
       class="step"

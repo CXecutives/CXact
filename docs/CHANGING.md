@@ -93,8 +93,8 @@ Commit them together with tokens.css.
   failure of the CV's evaluation is its sentence in `profile.cvError`; whether a new try can
   work after it is `FINAL` in `ui/src/features/shared/fromCv.svelte.ts` (Profil and the setup).
 - The setup's frame: every step stands in the Profil page's column (`components/Page.svelte`),
-  flush left, a form in one `Group`. The stepper on top is `components/Steps.svelte` (its two
-  names `firstRun.stages`, a step's `stage` in `steps.ts`); the foot (Zurück at the left, the
+  flush left, a form in one `Group`, no step indicator (every heading says where the user is);
+  the foot (Zurück at the left, the
   step's buttons at the right, sticky only on the long profile steps, where it lifts the
   toasts) is the `footer` of `FirstRunView.svelte`.
 
