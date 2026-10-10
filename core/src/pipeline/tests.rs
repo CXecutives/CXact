@@ -1555,17 +1555,27 @@ fn the_screen_drops_only_decided_exclusions() {
     assert!(queued(&store).contains(&"1001".to_owned()));
 }
 
-/// The term learning is bookkeeping: its state unreadable, the search asks the profile's first
-/// terms, and a run of the terms not kept is logged - the run completes and the jobs from the
-/// mail are read all the same.
+/// The search's bookkeeping is no reason to fail the run: the term learning's state
+/// unreadable, the search asks the profile's first terms, and a run of the terms not kept is
+/// logged; where a source's paging stopped and what each term brought, unreadable or not
+/// kept, are logged too - the run completes and the jobs from the mail are read all the same.
 #[tokio::test(start_paused = true)]
-async fn a_term_bookkeeping_error_does_not_fail_the_run() {
+async fn a_search_bookkeeping_error_does_not_fail_the_run() {
     let broken = [
         // The learned state does not read (a value of the wrong type): neither choosing the
         // terms nor keeping their run works.
         "INSERT INTO kv (key, value) VALUES ('search_terms_learned', X'00');",
         // Only keeping the run fails.
         "CREATE TRIGGER no_terms BEFORE INSERT ON kv WHEN NEW.key = 'search_terms_learned'
+         BEGIN SELECT RAISE(ABORT, 'Test'); END;",
+        // Where the paging stopped last time does not read.
+        "INSERT INTO kv (key, value) VALUES ('search_resume:hays', X'00');",
+        // Where it stopped now is not kept.
+        "CREATE TRIGGER no_resume BEFORE INSERT ON kv WHEN NEW.key = 'search_resume:hays'
+         BEGIN SELECT RAISE(ABORT, 'Test'); END;",
+        // What each term brought does not read, then is not kept.
+        "INSERT INTO kv (key, value) VALUES ('search_yield:hays', X'00');",
+        "CREATE TRIGGER no_yield BEFORE INSERT ON kv WHEN NEW.key = 'search_yield:hays'
          BEGIN SELECT RAISE(ABORT, 'Test'); END;",
     ];
     for sql in broken {

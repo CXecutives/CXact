@@ -15,7 +15,9 @@
 //!
 //! The sources are searched side by side, each at its own pace. A term whose paging a stop or
 //! a cancel cut short goes on where it stopped at the source's next search within
-//! [`RESUME_FRESH`] (its first page is always asked again: new jobs stand there).
+//! [`RESUME_FRESH`] (its first page is always asked again: new jobs stand there). Where the
+//! paging stopped and what each term brought are bookkeeping: unreadable or not kept, they are
+//! logged and the search and the run go on.
 //!
 //! A source filters by contract type only ([`PortalAdapter::contract_filter`]); its robots.txt
 //! refusing the filtered page, the term is asked without the filter. A source whose robots.txt
@@ -421,7 +423,16 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
         }
     };
     let adapter = portal.adapter();
-    let resume = load_resume(store, portal, clock())?;
+    // Where the paging stopped last time is bookkeeping: unreadable, every term starts at its
+    // first page.
+    let resume = load_resume(store, portal, clock()).unwrap_or_else(|e| {
+        log::warn!(
+            "{}: search paging: where it stopped did not read ({:?}), from the first pages",
+            portal.key(),
+            e.kind()
+        );
+        Resume::default()
+    });
     // The terms whose paging this search cuts short, and where it goes on.
     let mut left: BTreeMap<String, u32> = BTreeMap::new();
     // What each term brought.
@@ -578,8 +589,23 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     shared
         .done
         .fetch_add(first_pages.count(), Ordering::Relaxed);
-    save_resume(store, portal, left, clock())?;
-    save_yield(store, portal, plan.terms, yields)?;
+    // Bookkeeping too: not kept, the next search starts its terms at their first pages and the
+    // term learning misses this search - never a reason to fail the run and leave the jobs
+    // already found unread.
+    if let Err(e) = save_resume(store, portal, left, clock()) {
+        log::warn!(
+            "{}: search paging: where it stopped was not kept ({:?})",
+            portal.key(),
+            e.kind()
+        );
+    }
+    if let Err(e) = save_yield(store, portal, plan.terms, yields) {
+        log::warn!(
+            "{}: search terms: what they brought was not kept ({:?})",
+            portal.key(),
+            e.kind()
+        );
+    }
     // Every page refused and none asked: no "ok" with no jobs.
     if counts.pages == 0 && counts.refused > 0 && counts.stop.is_none() {
         stopped(&mut counts, portal, Some(StopReason::Refused), &send);
