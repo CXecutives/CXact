@@ -493,7 +493,7 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await expect(status).toHaveText(/^Pausiert bis /);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
-  await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand die App keine Jobs.');
+  await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
   await expect(mails).toHaveClass(/warning/);
   await mails.getByRole('button', { name: T.reader.mail }).click();
   expect(await lastOpened(page)).toEqual({

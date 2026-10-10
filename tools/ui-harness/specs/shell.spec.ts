@@ -1116,26 +1116,17 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   );
 });
 
-test('the closing note names what the window waits for', async ({ page }) => {
+test('the closing note is one sentence, whatever the window waits for', async ({ page }) => {
   await open(page, WIN);
   await page.evaluate(() => {
     window.__harness.appRun('rescore');
     window.__harness.fire('closing', { activity: 'rescore' });
   });
-  await expect(page.getByTestId('closing')).toHaveText(
-    'Das Bewerten wird beendet, dann schließt die App.',
-  );
-  await open(page, WIN);
-  await page.evaluate(() => window.__harness.fire('closing', { activity: 'session' }));
-  await expect(page.getByTestId('closing')).toHaveText(
-    'Die Anmeldung wird beendet, dann schließt die App.',
-  );
-  // An older backend sends nothing: the fetch, as before.
+  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing);
+  // An older backend sends nothing: the same sentence.
   await open(page, WIN);
   await page.evaluate(() => window.__harness.fire('closing', null));
-  await expect(page.getByTestId('closing')).toHaveText(
-    'Die Suche wird beendet, dann schließt die App.',
-  );
+  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing);
 });
 
 /** The user closes the window (X, Alt+F4, Cmd+Q/W), as main.rs sees it. */
@@ -1183,7 +1174,7 @@ test('closing during a fetch asks first: Weitersuchen keeps both, Schließen sto
   await requestClose(page);
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing('fetch'));
+  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing);
   await expect.poll(() => windowClosed(page)).toBe(true);
   expect(await closeAnswers(page)).toEqual([{ close: false }, { close: true }]);
   expect(await calls(page, 'close_window')).toHaveLength(0);
@@ -1210,7 +1201,7 @@ test('the close question never traps the window and goes when the fetch ends', a
   await requestClose(page);
   await expect(dialog).toBeVisible();
   await requestClose(page);
-  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing('fetch'));
+  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing);
   await expect.poll(() => windowClosed(page)).toBe(true);
 });
 

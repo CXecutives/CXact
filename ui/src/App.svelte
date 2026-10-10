@@ -55,9 +55,9 @@
   void app.load().then((state) => run.attach(state?.running ?? null));
 
   const firstRun = $derived(shell.firstRun);
-  /** Closing while the app is busy: what the window waits for (null: not closing). */
-  let closing = $state<{ activity: string | null } | null>(null);
-  $effect(() => onClosing((activity) => (closing = { activity })));
+  /** Closing while the app is busy: the window waits until it has stopped. */
+  let closing = $state(false);
+  $effect(() => onClosing(() => (closing = true)));
   // The mouse's back button goes back like Zurück in the top bar (in the setup its Zurück).
   $effect(() => onBack(() => (shell.firstRun ? onboarding.back() : history.back())));
 
@@ -190,7 +190,7 @@
     {#if closing}
       <div class="closing" data-testid="closing" role="status" transition:fade>
         <p class="closing-note">
-          <Spinner size="sm" label={null} />{t.shell.closing(closing.activity)}
+          <Spinner size="sm" label={null} />{t.shell.closing}
         </p>
       </div>
     {/if}

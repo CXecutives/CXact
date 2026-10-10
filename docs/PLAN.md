@@ -189,6 +189,7 @@ Inside the window both OS show the same app. They differ by OS convention, decid
 ## Glossary (UI)
 
 One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust texts (`rust_texts.rs`):
+- CXact (the app names itself, never "die App")
 - Job, Jobansicht, Seitenleiste
 - Aktuell (the place of the active jobs, `inbox` in code), Neu (unread)
 - Archiv, Zurückholen (out of the Archiv)
@@ -198,18 +199,19 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Jobs suchen, Suche (never Abruf)
 - bewerten, neu bewerten
 - Ausgeschlossen, Trotzdem bewerten
-- Anforderungen, Pflicht, optional
+- Anforderungen, optional
 - Erfüllt, Teilweise erfüllt, Nicht erfüllt
 - Jobdetails, Gefunden
 - Anzeige (öffnen), Prompt kopieren
 - Postfach, Alert-Mail, Alert anlegen
-- Profil, Wunschjob, Einsatz, Qualifikation, Ausschlüsse
+- Profil and its groups Wunschjob, Einsatz, Qualifikation, Ausschlüsse
 - Kompetenz, Schwerpunkt, Tools und Methoden
-- Wunschrolle, Suchbegriffe
-- Tagessatz, Wunschtagessatz, Mindesttagessatz, Gehalt
+- Wunschrolle
+- Tagessatz, Stundensatz, Gehalt (in the job); Wunschtagessatz, Mindesttagessatz, Mindestgehalt (in the
+  profile)
 - Festanstellung, Zeitarbeit
 - Vertragsart, Arbeitsmodell, Remote-Anteil
-- Auslastung, Laufzeit, Einsatzländer
+- Auslastung, Laufzeit, Mindestlaufzeit, Länder, Regionen
 - Einstellungen, Daten, Profil-Ordner
 - Aufrufe, Anmelden, Abmelden
 - Probelauf

@@ -1112,9 +1112,12 @@ fn the_catalog_keeps_the_glossary() {
             ("Ergebnisordner", "Profil-Ordner"),
             ("Arbeitsordner", "Profil-Ordner"),
             ("Dearchivieren", "Zurückholen"),
+            // The app names itself (design round 6).
+            ("die App", "CXact"),
+            ("Die App", "CXact"),
             ("Eingang", "Aktuell"),
             ("Farben", "Design"),
-            ("Wartung", "App"),
+            ("Wartung", "Daten"),
             ("Favorit", "nothing (favourites are gone)"),
             ("Übersicht", "nothing (the overview is gone)"),
         ] {

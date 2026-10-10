@@ -6,17 +6,19 @@
 // "X: Y", no exclamation marks, no text twice. A sentence speaks to the user as "du", and an
 // instruction in a sentence is a du imperative ("Verbinde erst ein Postfach."); a button
 // stays an infinitive ("Postfach verbinden"). A control a sentence names stands in quotes
-// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
-// (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
-// erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs suchen (the button: the mails, then the
-// portals' search; what it does is the Suche), Anzeige laden, Profil-Ordner, Ausgeschlossen, Trotzdem
-// bewerten, Neu, Aktuell (the place of the active jobs, user 2026-10-01), Archiv (Zurückholen:
-// back from there), Papierkorb, Löschen (into the
-// Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
-// data: its backups, its log, the reset), Aufrufe (what a portal allows a day).
-// "Bedingungen" only names the profile's section. A profile field has one name: the label of
-// its form field (without the unit) in errors, warnings and the profile (`profileField` reads
-// it from `profile.field`, so a new label is one edit).
+// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): CXact (the app names
+// itself, never "die App"), Job, Portal, Übereinstimmung (Hohe, Mittlere, Geringe),
+// Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar), Profil with
+// its groups Wunschjob, Einsatz, Qualifikation and Ausschlüsse, Postfach, Alert-Mail, Jobs
+// suchen (the button: the mails, then the portals' search; what it does is the Suche),
+// Anzeige laden, Profil-Ordner, Ausgeschlossen, Trotzdem bewerten, Neu, Aktuell (the place of
+// the active jobs, user 2026-10-01), Archiv (Zurückholen: back from there), Papierkorb,
+// Löschen (into the Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the
+// group of the app's data: the Profil-Ordner and the reset), Aufrufe (what a portal allows a
+// day). A profile field has one name: the label of its form field (without the unit) in
+// errors, reasons and the profile (Länder, Tools und Methoden, Wunschtagessatz,
+// Mindesttagessatz, Mindestgehalt; `profileField` reads it from `profile.field`, so a new
+// label is one edit).
 //
 // Every code of the generated types has exactly one text here: the tables are typed as
 // `Record<Code, ...>`, so a new code without a text is a type error.
@@ -59,8 +61,8 @@ const portalOf = (value: unknown): string =>
 const INTERNAL = 'Ein interner Fehler ist aufgetreten.';
 
 /** What holds the app (the backend's `activity`: a run by its kind, a sign-in, a file
- *  command, the mailbox check of Verbinden), for the busy error and the closing note.
- *  Reading the whole mailbox is a fetch, and so is what the backend does not name. */
+ *  command, the mailbox check of Verbinden), for the busy error. Reading the whole mailbox
+ *  is a fetch, and so is what the backend does not name. */
 type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files' | 'mailbox';
 const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbox'];
 const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
@@ -70,17 +72,8 @@ const busy: Record<Busy, string> = {
   details: 'Gerade werden schon Anzeigen geladen.',
   rescore: 'Die Jobs werden gerade neu bewertet.',
   session: 'Gerade läuft eine Anmeldung.',
-  files: 'Die App schreibt gerade ihre Dateien.',
+  files: 'CXact schreibt gerade seine Dateien.',
   mailbox: 'Gerade wird das Postfach geprüft.',
-};
-
-const closing: Record<Busy, string> = {
-  fetch: 'Die Suche wird beendet, dann schließt die App.',
-  details: 'Das Laden der Anzeigen wird beendet, dann schließt die App.',
-  rescore: 'Das Bewerten wird beendet, dann schließt die App.',
-  session: 'Die Anmeldung wird beendet, dann schließt die App.',
-  files: 'Die App schreibt ihre Dateien fertig, dann schließt sie.',
-  mailbox: 'Die Prüfung des Postfachs wird beendet, dann schließt die App.',
 };
 
 const errors: Record<ErrorKind | 'unknown', Text> = {
@@ -88,8 +81,8 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   fileLocked: 'Eine Datei ist gerade in einem anderen Programm geöffnet.',
   io: 'Eine Datei ließ sich nicht lesen oder schreiben.',
   corrupt: (p) =>
-    p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten der App sind beschädigt.',
-  newerSchema: 'Die Daten stammen von einer neueren Version der App.',
+    p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten von CXact sind beschädigt.',
+  newerSchema: 'Die Daten stammen von einer neueren Version von CXact.',
   invalid: 'Die Eingabe passt nicht.',
   busy: (p) => busy[busyOf(p.activity)],
   // By what was looked for (`what`): a file or folder may never have been written (a new
@@ -176,10 +169,10 @@ const pause: Record<NextPauseReason, string> = {
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
 const OPEN_MAIL = 'Alert-Mail öffnen';
 
-/** Alert mails in which the app found no jobs (a portal's row in the settings says it, next
+/** Alert mails in which CXact found no jobs (a portal's row in the settings says it, next
  *  to the button that opens the mail to look). */
 const emptyMails = (mails: number): string =>
-  `${mails === 1 ? 'In einer Alert-Mail' : `In ${n(mails)} Alert-Mails`} fand die App keine Jobs.`;
+  `${mails === 1 ? 'In einer Alert-Mail' : `In ${n(mails)} Alert-Mails`} fand CXact keine Jobs.`;
 
 /** A profile file the app cannot read (the list and the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
@@ -620,7 +613,7 @@ const warning = {
   noCriteria: 'Das Profil setzt keine Bedingungen.',
   availabilityNotUnderstood: '„Verfügbar“ ist nicht lesbar.',
   // Keys of a criteria section the engine does not read (a typo, an unknown rule).
-  ignoredKeys: (p) => `Die App liest ${joined(rawKeys(p.keys))} in den Bedingungen nicht.`,
+  ignoredKeys: (p) => `CXact liest ${joined(rawKeys(p.keys))} in den Bedingungen nicht.`,
   criterionNotUnderstood: (p) => `„${keyLabel(str(p.key))}“ ist nicht lesbar.`,
   regionWithoutPlaces: 'Der Mindest-Remote-Anteil wirkt nur zusammen mit Orten.',
   focusTrimmed: (p) => `Nur die ersten ${n(num(p.max))} Schwerpunkte zählen.`,
@@ -1429,9 +1422,9 @@ export const de = {
     setUpAlert: 'Alert anlegen',
     /** The row of the profile's folder (its path under it), and what a change did. */
     folder: 'Profil-Ordner',
-    folderMoved: 'Das Profil liegt im neuen Ordner.',
-    folderFiles: 'Der neue Ordner ist gewählt.',
-    folderOwnProfile: 'CXact nutzt das Profil aus diesem Ordner.',
+    folderMoved: 'Profil kopiert',
+    folderFiles: 'Ordner geändert',
+    folderOwnProfile: 'Profil aus dem neuen Ordner übernommen',
     /** The database's copies (the failed start offers them). */
     backupHeading: 'Sicherung wiederherstellen',
     backupAction: 'Wiederherstellen',
@@ -1444,7 +1437,7 @@ export const de = {
     backupText: 'Der jetzige Stand wird vorher gesichert.',
     backupRestored: 'Sicherung wiederhergestellt',
     /** Its undo brought the state before it back. */
-    backupUndone: 'Der vorherige Stand ist zurück.',
+    backupUndone: 'Rückgängig gemacht',
     /** The row of the reset in Daten: its label, its one sentence, its button (also the
      *  dialog's) and its dialog. */
     reset: 'Alles zurücksetzen',
@@ -1486,9 +1479,9 @@ export const de = {
   },
 
   shell: {
-    loadFailed: 'Die App konnte ihre Daten nicht laden.',
+    loadFailed: 'CXact konnte seine Daten nicht laden.',
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
-    closing: (activity: string | null) => closing[busyOf(activity)],
+    closing: 'CXact schließt, sobald alles beendet ist.',
     /** Closing the window while a fetch runs asks first: close anyway, or keep searching. */
     closeHeading: 'Suche abbrechen und schließen?',
     closeAction: 'Schließen',
@@ -1522,7 +1515,7 @@ export const de = {
   toast: {
     rescored: 'Jobs neu bewertet',
     /** The job as a prompt for any AI chat (no brand named). */
-    prompt: 'Prompt kopiert. Füg ihn in einen KI-Chat ein.',
+    prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Zurückgeholt',
