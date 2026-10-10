@@ -35,8 +35,9 @@ use sha2::Digest as _;
 /// function words and generic activity words of the gap finder (K12 of five profiles); a
 /// title that meets a target role or names a Schwerpunkt is not off the field (wish K55).
 /// Version 20: no Schwerpunkte (the owner's decision of 2026-10-10). Version 21: the
-/// industries are experience, no wish (the owner's decision of 2026-10-10).
-const GOLDEN_DIGEST: &str = "a402001906be49e9";
+/// industries are experience, no wish (the owner's decision of 2026-10-10); a target role's
+/// contract word costs nothing where the profile allows the ad's contract type (wish K42).
+const GOLDEN_DIGEST: &str = "523d5f6a23de37b6";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")

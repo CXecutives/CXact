@@ -6,8 +6,10 @@
 //! `Leiter Finanzen` = `Head of Finance`). A role is its topic atoms plus a lead flag
 //! (`Head`, `Leiter`, `Leitung`, `Director`, ...) and contract words (`Interim`):
 //! - full: every topic atom is in the title (equal), a lead role meets a lead title, the
-//!   contract words are in the title or the contract is interim, and the title is no
-//!   junior title;
+//!   contract words are in the title, the contract is interim or a contract type the
+//!   profile allows (21: `Interim Head of Customer Service` fits a permanent `Leiter
+//!   Kundenservice` in full when Festanstellung is allowed, its factor is cost enough), and
+//!   the title is no junior title;
 //! - half: every topic atom is in the title, but one of the other conditions fails or an
 //!   atom only fits as a narrower or wider compound;
 //! - none otherwise, and always when a role of generic words only (`Head of Finance`)
@@ -177,8 +179,10 @@ pub(crate) struct RoleFit {
     pub full: bool,
 }
 
-/// How one role fits a title: `None`, `Some(false)` half, `Some(true)` full.
-fn role_fit(role: &Role, title: &Parts, junior: bool, interim: bool) -> Option<bool> {
+/// How one role fits a title: `None`, `Some(false)` half, `Some(true)` full; `contract_ok`:
+/// the ad's contract needs no contract word of the role (interim, or a type the profile
+/// allows).
+fn role_fit(role: &Role, title: &Parts, junior: bool, contract_ok: bool) -> Option<bool> {
     let mut full = true;
     for atom in &role.topic {
         let best = title
@@ -196,7 +200,7 @@ fn role_fit(role: &Role, title: &Parts, junior: bool, interim: bool) -> Option<b
     if role
         .contract
         .iter()
-        .any(|c| !interim && !title.contract.contains(c))
+        .any(|c| !contract_ok && !title.contract.contains(c))
     {
         full = false;
     }
@@ -227,23 +231,25 @@ pub(crate) fn topics(roles: &[Role]) -> Vec<String> {
     out
 }
 
-/// The best target role for a job title (full before half, profile order on a tie).
+/// The best target role for a job title (full before half, profile order on a tie);
+/// `allowed`: the profile allows the ad's contract type.
 pub(crate) fn best(
     roles: &[Role],
     title: &str,
     vocab: &Vocab,
     contract: ContractKind,
+    allowed: bool,
 ) -> Option<RoleFit> {
     if roles.is_empty() {
         return None;
     }
     let parts = parts(title, vocab);
     let junior = junior_title(title);
-    let interim = contract == ContractKind::Interim;
+    let contract_ok = contract == ContractKind::Interim || allowed;
     let fits: Vec<(usize, bool)> = roles
         .iter()
         .enumerate()
-        .filter_map(|(i, role)| role_fit(role, &parts, junior, interim).map(|full| (i, full)))
+        .filter_map(|(i, role)| role_fit(role, &parts, junior, contract_ok).map(|full| (i, full)))
         .collect();
     let best = fits
         .iter()
@@ -277,7 +283,7 @@ mod tests {
         let vocab = Vocab::all();
         let read = read(&form(roles), &vocab);
         assert_eq!(read.len(), roles.len());
-        best(&read, title, &vocab, contract).map(|f| (read[f.role].text.clone(), f.full))
+        best(&read, title, &vocab, contract, false).map(|f| (read[f.role].text.clone(), f.full))
     }
 
     #[test]
@@ -296,8 +302,25 @@ mod tests {
         );
         // A freelance portal's CFO project is interim without the word.
         assert!(full("CFO (m/w/d)", Interim).is_some());
-        // A permanent CFO is half of an interim CFO.
+        // A permanent CFO is half of an interim CFO, full where the profile allows
+        // Festanstellung.
         assert!(half("Chief Financial Officer (m/w/d)", Permanent).is_some());
+        let vocab = Vocab::all();
+        let read = read(&form(&roles), &vocab);
+        let allowed = best(
+            &read,
+            "Chief Financial Officer (m/w/d)",
+            &vocab,
+            Permanent,
+            true,
+        );
+        assert_eq!(
+            allowed,
+            Some(RoleFit {
+                role: 0,
+                full: true
+            })
+        );
         assert_eq!(
             full("Head of Finance (m/w/d)", Permanent).unwrap().0,
             "Head of Finance"

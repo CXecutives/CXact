@@ -333,7 +333,14 @@ fn preferences(
     ad: &wishes::Ad<'_>,
     title: &str,
 ) -> (Option<(RoleFit, i64, String)>, Vec<WishResult>) {
-    let role = roles::best(&profile.roles, title, ad.vocab, ad.contract).map(|fit| {
+    let criteria = &profile.criteria;
+    let allowed = match ad.contract {
+        ContractKind::Interim => !criteria.project_excluded,
+        ContractKind::Permanent => !criteria.permanent_excluded,
+        ContractKind::Anue => !criteria.anue_excluded,
+        ContractKind::Unclear => false,
+    };
+    let role = roles::best(&profile.roles, title, ad.vocab, ad.contract, allowed).map(|fit| {
         let points = if fit.full { ROLE_FULL } else { ROLE_HALF };
         (fit, points, title.to_owned())
     });
