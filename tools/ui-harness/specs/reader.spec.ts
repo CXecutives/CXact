@@ -1339,9 +1339,12 @@ test.describe('around the reader', () => {
   test('one column: the header stays on top while the list scrolls', async ({ page }) => {
     await page.setViewportSize({ width: 780, height: 560 });
     await open(page, WIN);
-    await page
-      .getByTestId('list-scroll')
-      .evaluate((node) => node.parentElement?.scrollTo({ top: 400 }));
+    // The list scrolls under the header (the column itself does not scroll).
+    const scrolled = await page.getByTestId('list-scroll').evaluate((node) => {
+      node.scrollTo({ top: 400 });
+      return node.scrollTop;
+    });
+    expect(scrolled).toBeGreaterThan(0);
     await expect(page.getByTestId('search')).toBeInViewport();
     await expect(page.getByTestId('fetch')).toBeInViewport();
     const search = await page.getByTestId('search').boundingBox();
