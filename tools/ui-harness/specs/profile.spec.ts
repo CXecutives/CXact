@@ -627,6 +627,8 @@ test('a CV dropped anywhere on the profile page fills it like the button', async
 });
 
 test('a CV that fills nothing says why in one sentence, with its way on', async ({ page }) => {
+  // Ten starts of the app: WebKit needs close to the default 30 s.
+  test.setTimeout(60_000);
   // "Datei auswählen" where a new try can work.
   const cases: [string, keyof typeof T.profile.cvError, boolean][] = [
     ['limit', 'limit', false],
