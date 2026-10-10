@@ -278,7 +278,7 @@ files, no web search, no guessing about the company.
 - 3 = apply immediately: the role is squarely in the profile's field and level, and its core
   requirements are covered by the profile.
 - 2 = look closer: a plausible fit worth reading in full; some requirements are open or unclear.
-- 1 = in the field but rather not: same domain, but focus, level or setting fit poorly.
+- 1 = in the field but rather not: same domain, but specialty, level or setting fit poorly.
 - 0 = off-field: another profession or domain.
 
 Give the grade for the fit of the content, also when the ad is excluded (below).

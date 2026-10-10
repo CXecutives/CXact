@@ -31,8 +31,8 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
 - Deep search: up to 24 terms from the profile's core alone (`profile::deep_search_terms`: Wunschrollen
   with the other names of the engine's role table, the role's own field kept (`Project Manager Customer
   Service`, never a bare `Project Manager`), and their ESCO occupation's German and English name;
-  Schwerpunkte; the names job boards give the field the roles and Schwerpunkte lie in (the domain pack's
-  `search`: `Kundenservice`, `Contact Center`, `Call Center`); Kompetenzen, those of that field first; Tools.
+  the names job boards give the field the roles lie in (the domain pack's `search`: `Kundenservice`,
+  `Contact Center`, `Call Center`); Kompetenzen in the profile's order, those of that field first; Tools.
   A competence or tool the engine finds too broad to search alone, such as Projektmanagement,
   Automatisierung or SAP, stays out). Term learning (`fetch::terms`): a term whose last 3 runs brought no
   fitting job is set aside and the next of the profile's terms takes its slot; it comes back after 30 days
@@ -70,9 +70,10 @@ The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSIO
 - **Exclusions:** contract types (Zeitarbeit, Festanstellung), exclusion words, countries, the minimum day
   rate, permanent-role rules.
 - **Requirements:** must-haves and optional ones, each met, partly met or not met against the
-  competences, tools, languages, degrees, certificates and years of experience.
-- **The rest:** Schwerpunkte, target roles and wishes (rate, work mode, regions, preferred industries,
-  availability, workload, duration).
+  competences, tools, languages, degrees, certificates and years of experience. Every competence counts
+  the same: no Schwerpunkte (the owner's decision of 2026-10-10, engine 20).
+- **The rest:** target roles and wishes (rate, work mode, regions, preferred industries, availability,
+  workload, duration).
 - **Words:** its own (a core and domain packs, German and English) and ESCO under them, the EU
   classification of occupations, skills and knowledge.
 
@@ -103,7 +104,7 @@ pre-assessment to any AI chat for a deeper check.
     Datei hochladen, Prompt kopieren (the prompt has any AI hand back the profile as a file).
   - Name and Rolle under the title. The tabs:
     - Wünsche in groups with headings: Rollen und Suche, Tagessatz, Ort, Zeit, Branchen.
-    - Können: Kompetenzen with Schwerpunkte as stars, Werkzeuge, Stichworte, Stärken.
+    - Können: Kompetenzen (no stars, every one counts the same), Werkzeuge, Stichworte, Stärken.
     - Erfahrung: years, Branchen, Sprachen, Abschlüsse, Zertifikate.
     - Ausschlüsse: words, Zeitarbeit, Festanstellung and its rules.
   - A new profile looks for projects only: Festanstellung and Zeitarbeit are off, so Mindestgehalt is hidden
@@ -196,7 +197,7 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Anzeige (öffnen), Prompt kopieren
 - Postfach, Alert-Mail, Alert anlegen
 - Profil, Wünsche, Können, Erfahrung, Ausschlüsse
-- Kompetenz, Schwerpunkt, Werkzeuge und Methoden
+- Kompetenz, Werkzeuge und Methoden
 - Wunschrolle, Suchbegriffe
 - Tagessatz, Mindesttagessatz, Gehalt
 - Festanstellung, Zeitarbeit
@@ -245,7 +246,7 @@ build.
   - Drop Suchbegriffe; the search derives its terms.
   - Drop the field Rolle; it repeats the profile's title, which is renamed in place.
   - Merge Stichworte into the Kompetenzen.
-  - One Branchen field with stars for the wished ones, like the Schwerpunkte.
+  - One Branchen field with stars for the wished ones.
   - Perhaps Können as the first tab, the one block the profile needs.
 - [ ] The search as one pipeline with the scoring: the queries from the whole profile, expanded through the
   engine's own lexicon (synonyms, role phrases, German and English), and the sources' own filters from the

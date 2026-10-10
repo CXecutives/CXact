@@ -69,8 +69,8 @@ pub enum Error {
 pub enum InvalidInput {
     #[error("no portal is enabled")]
     NoPortal,
-    /// The search has nothing to search for: no profile, or one without roles, focus or
-    /// search terms.
+    /// The search has nothing to search for: no profile, or one whose roles, competences and
+    /// tools give no search term.
     #[error("nothing to search for")]
     NoSearchTerms,
     #[error("the profile is not UTF-8 text")]
