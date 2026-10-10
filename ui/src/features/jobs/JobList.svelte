@@ -6,9 +6,11 @@
   the rows on screen glide to their new place (150 ms); rows off screen and new rows are
   simply there. A search and live updates never move anything. A row the user moves out
   (archive, delete, restore) folds its height away. An unopened job carries the coral dot
-  until it is opened. At the end of every place the excluded jobs, their titles muted and the
-  red ban in the ring's place, in one section "Ausgeschlossen (n)" that is folded by default (the choice is
-  kept; it opens when its job is opened from elsewhere). A page that fails to load while
+  until it is opened. After the scored jobs of every place the ones without a score yet in a
+  section "Noch nicht bewertet (n)", open by default, and at the end the excluded jobs, their
+  titles muted and the red ban in the ring's place, in one section "Ausgeschlossen (n)" that
+  is folded by default (design round 7; each choice is kept; a section opens when its job is
+  opened from elsewhere). A page that fails to load while
   scrolling says so at the end of the list, with a retry. A search looks in the list's place;
   under its hits a button names each other place with hits like its tab ("Archiv 2", counted
   with the same filter) and goes there with the search. A click opens a job, a double click opens
@@ -43,7 +45,7 @@
   import { rowCollapse, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { NO_FILTER } from '$lib/state/filter';
-  import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
+  import { isExcluded, isUnscored, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
@@ -69,8 +71,10 @@
   const searching = $derived(jobs.search.trim() !== '');
   /** The words of the search, marked in the rows' titles (at most 8, like the backend). */
   const searchWords = $derived(searching ? jobs.search.trim().split(/\s+/).slice(0, 8) : []);
-  /** The rows as far as the window reaches: the active ones, then the excluded ones. */
-  const active = $derived(shown.filter((job) => !isExcluded(job)));
+  /** The rows as far as the window reaches: the scored ones, the ones without a score yet,
+   *  then the excluded ones. */
+  const active = $derived(shown.filter((job) => !isExcluded(job) && !isUnscored(job)));
+  const unscored = $derived(shown.filter(isUnscored));
   const excluded = $derived(shown.filter(isExcluded));
   // How many excluded jobs the list holds: the counts of each place know it (with the search
   // and the filter, like the list).
@@ -82,24 +86,35 @@
         : jobs.counts.excludedTrash,
   );
 
-  /** The excluded section is open (folded by default; the choice is kept like the order). */
+  /** A section is open (kept like the order): the excluded one folded by default, the one
+   *  without a score yet open. */
   const EXCLUDED_KEY = 'jobs-excluded-open';
-  function keptOpen(): boolean {
+  const UNSCORED_KEY = 'jobs-unscored-open';
+  function keptOpen(key: string, open: boolean): boolean {
     try {
-      return localStorage.getItem(EXCLUDED_KEY) === '1';
+      const kept = localStorage.getItem(key);
+      return kept === null ? open : kept === '1';
     } catch {
-      return false;
+      return open;
     }
   }
-  let excludedOpen = $state(keptOpen());
-  function toggleExcluded(): void {
-    excludedOpen = !excludedOpen;
+  function keep(key: string, open: boolean): void {
     try {
-      localStorage.setItem(EXCLUDED_KEY, excludedOpen ? '1' : '0');
+      localStorage.setItem(key, open ? '1' : '0');
     } catch {
       // Without a store the choice lasts for this session only.
       return;
     }
+  }
+  let excludedOpen = $state(keptOpen(EXCLUDED_KEY, false));
+  let unscoredOpen = $state(keptOpen(UNSCORED_KEY, true));
+  function toggleExcluded(): void {
+    excludedOpen = !excludedOpen;
+    keep(EXCLUDED_KEY, excludedOpen);
+  }
+  function toggleUnscored(): void {
+    unscoredOpen = !unscoredOpen;
+    keep(UNSCORED_KEY, unscoredOpen);
   }
   /** The folded section ends the list: every other row is loaded (the backend lists the
    *  excluded jobs last), so no more pages are fetched until it opens. */
@@ -157,6 +172,9 @@
   const markedExcluded = $derived(
     openKey !== null && excluded.some((job) => keyOf(job.key) === openKey),
   );
+  const markedUnscored = $derived(
+    openKey !== null && unscored.some((job) => keyOf(job.key) === openKey),
+  );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
   // is folded away: its section opens (for now; the kept choice stays). A job is settled
@@ -166,8 +184,10 @@
   $effect(() => {
     const key = openKey;
     const out = markedExcluded;
+    const waiting = markedUnscored;
     untrack(() => {
       if (key !== lastMarked && out && !excludedOpen) excludedOpen = true;
+      if (key !== lastMarked && waiting && !unscoredOpen) unscoredOpen = true;
       if (key === null || listed.has(key)) lastMarked = key;
     });
   });
@@ -537,6 +557,20 @@
         <div class="rows" data-testid="job-rows">
           {@render group(active)}
         </div>
+        {#if unscored.length > 0}
+          <ListDivider
+            label={t.list.unscored}
+            count={unscored.length}
+            open={unscoredOpen}
+            ontoggle={toggleUnscored}
+            testid="unscored-divider"
+          />
+          {#if unscoredOpen}
+            <div class="rows" data-testid="unscored-rows" transition:unfold>
+              {@render group(unscored)}
+            </div>
+          {/if}
+        {/if}
         {#if excluded.length > 0}
           <ListDivider
             label={t.list.excluded}

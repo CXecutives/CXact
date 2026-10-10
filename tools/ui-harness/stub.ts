@@ -1213,22 +1213,20 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   const days = new Map(base.map((j) => [j, localDay(j.firstSeenAt)]));
   const date = (j: JobView): string =>
     query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (days.get(j) ?? '');
-  // store::page_order: the excluded last; by match every job whose ring shows no number
-  // first (not scored yet and not scorable together, on top of the list, so every page is
-  // complete); a closed ad after the open ones; then the best score, the ones without a
-  // number and the excluded ones by date.
+  // store::page_order (design round 7): the scored jobs, then the ones whose ring shows no
+  // number (not scored yet and not scorable together), then the excluded ones, each its own
+  // section of the list; within one a closed ad after the open ones; then the best score
+  // (by match), else by date.
   const scoreOf = (j: JobView): number | null =>
     j.match?.status === 'scored' ? j.match.score : null;
+  const section = (j: JobView): number =>
+    j.match?.status === 'excluded' ? 2 : scoreOf(j) === null ? 1 : 0;
   const page = base
     .filter((j) => inQuery(j, query))
     .sort((a, b) => {
-      const ex = Number(a.match?.status === 'excluded') - Number(b.match?.status === 'excluded');
-      if (ex !== 0) return ex;
+      const bySection = section(a) - section(b);
+      if (bySection !== 0) return bySection;
       const byMatch = query.sort === 'match';
-      if (byMatch) {
-        const pending = Number(scoreOf(a) !== null) - Number(scoreOf(b) !== null);
-        if (pending !== 0) return pending;
-      }
       const closed = Number(a.closed) - Number(b.closed);
       if (closed !== 0) return closed;
       if (byMatch) {

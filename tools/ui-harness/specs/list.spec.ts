@@ -1042,20 +1042,25 @@ test.describe('filter', () => {
 /* ========================================================================= list */
 
 test.describe('one list', () => {
-  test('the inbox is one list by match, the unscored first: no sections, the dot on the unopened', async ({
+  test('the inbox: the scored jobs, then the ones without a score in their open section, the dot on the unopened', async ({
     page,
   }) => {
     await open(page, WIN);
     const { active: all, jobs } = await stubList(page);
     await expect.poll(() => listed(page)).toEqual(all);
-    // By match every job whose ring shows no number stands on top, in one place (each page is
-    // then complete): the ones not scored yet and the unscorable ones together.
+    // Every job whose ring shows no number stands after the scored ones, in its own section
+    // "Noch nicht bewertet", open (design round 7): not scored yet and unscorable together.
     const unscored = jobs
       .filter((job) => job.match?.status !== 'scored' && !excluded(job))
       .map(keyOf);
     expect(jobs.some((job) => job.match === null)).toBe(true);
     expect(jobs.some((job) => job.match?.status === 'unscorable')).toBe(true);
-    expect(all.slice(0, unscored.length).sort()).toEqual([...unscored].sort());
+    expect(all.slice(-unscored.length).sort()).toEqual([...unscored].sort());
+    const divider = page.getByTestId('unscored-divider');
+    await expect(divider).toContainText(T.list.unscored);
+    await expect(
+      page.getByTestId('unscored-rows').locator('[data-testid^="job-row-"]'),
+    ).toHaveCount(unscored.length);
     for (const id of [
       'facet',
       'caught-up',
@@ -1225,7 +1230,6 @@ test.describe('one list', () => {
     await openJob(page, 'freelancermap-2803');
     await chooseSort(page, 'newest');
     const newest = await inbox(page, { sort: 'newest' });
-    expect(newest).not.toEqual(await inbox(page));
     await expect.poll(() => listed(page)).toEqual(newest);
     await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
     await expect(row(page, 'freelancermap-2803')).toBeInViewport();

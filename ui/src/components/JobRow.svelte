@@ -12,10 +12,8 @@
      there), never its application deadline (user decision 2026-09-27: the reader's
      Jobdetails name it). An ad that no longer takes applications says "Beendet" there, its
      title muted (the order by match puts it after the open ones).
-  2. a building and the company, a map pin and the place (without the work mode a portal
-     appends to it, lib/place.ts), and when the ad states it the day rate or the salary in
-     the reader's money form, without a glyph (its currency says it: "1.250 €/Tag", "95.000
-     €/Jahr"); the company and the place are cut at the line's end, the pay never.
+  2. the job at a glance (JobMeta): the company, the place and the pay the ad states; the
+     company and the place are cut at the line's end, the pay never.
   No portal, no facts, no badges: the reader has them. Under the pointer (and while the
   row's menu is open) the row's tools, the moves of its place (actions.ts rowTools:
   Archivieren and Löschen, Zurückholen and Löschen, Wiederherstellen and Endgültig
@@ -41,21 +39,6 @@
 
   import { t } from '$lib/i18n/t';
   import type { JobView } from '$lib/ipc/types';
-
-  /** The pay the ad states, in the reader's money form ("1.250 €/Tag", "95.000 €/Jahr"):
-   *  employment (a permanent job, temporary agency work) its salary, any other job its day
-   *  or hour rate; null when the ad names none. */
-  function payOf(job: JobView): string | null {
-    const facts = job.match?.facts ?? null;
-    if (facts === null) return null;
-    if (facts.contract === 'permanent' || facts.contract === 'anue') {
-      return facts.salary === undefined
-        ? null
-        : t.facts.pay(facts.salary, 'year', null, facts.salaryLowerBound === true);
-    }
-    if (facts.rate === null) return null;
-    return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', facts.currency);
-  }
 
   /** A character as the search compares it: lower case, without its accents. */
   const fold = (char: string): string =>
@@ -115,11 +98,10 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { displayTitle, formatStamp } from '$lib/i18n/format';
   import { dotOut, fade } from '$lib/motion/transitions';
-  import { placeOf } from '$lib/place';
   import { clock } from '$lib/state/clock.svelte';
   import { isNew } from '$lib/state/filter';
   import Button from './Button.svelte';
-  import Icon from './Icon.svelte';
+  import JobMeta from './JobMeta.svelte';
   import ListRow from './ListRow.svelte';
   import ScoreRing, { ringState } from './ScoreRing.svelte';
 
@@ -171,8 +153,6 @@
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   /** The title with the words of the search marked. */
   const titleParts = $derived(markedParts(heading, marks));
-  const place = $derived(placeOf(job.location));
-  const pay = $derived(payOf(job));
   /** The end of the title line: "Beendet" for an ad that takes no applications, else when
    *  the job came in. */
   const stamp = $derived(job.closed ? t.job.closed : formatStamp(when, current));
@@ -244,16 +224,7 @@
       >
       <span class="date" data-testid="row-date"><span class="stamp">{stamp}</span></span>
     </span>
-    <span class="meta">
-      {#if job.company}<span class="part company" data-testid="row-company"
-          ><Icon name="company" size="sm" /><span class="text">{job.company}</span></span
-        >{/if}
-      {#if place}<span class="part place" data-testid="row-place"
-          ><Icon name="place" size="sm" /><span class="text">{place}</span></span
-        >{/if}
-      {#if pay}<span class="part pay" data-testid="row-pay"><span class="text">{pay}</span></span
-        >{/if}
-    </span>
+    <JobMeta {job} prefix="row" />
   </ListRow>
   {#if fresh}<span class="dot" role="img" aria-label={t.job.unread} out:dotOut></span>{/if}
   {#if tooled && tools}
@@ -367,41 +338,6 @@
     transition-duration: var(--dur-hover);
   }
 
-  /* Company, place and pay: one line, each with its icon; where it is short the company gives
-     way (an ellipsis), the place stays whole up to --row-place-max, the pay always. */
-  .meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-10);
-    min-width: 0;
-    height: var(--leading-sm);
-    overflow: hidden;
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  .part {
-    display: inline-flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: var(--space-4);
-    min-width: 0;
-  }
-
-  .part.place {
-    flex: none;
-    max-width: var(--row-place-max);
-  }
-
-  /* The pay is short and never cut. */
-  .part.pay {
-    flex: none;
-  }
-
-  .part :global(.icon) {
-    color: var(--text-subtle);
-  }
-
   /* The row keeps its wash while the pointer is on a tool (a sibling of the row's button);
      a pressed row keeps its own look. */
   .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)) {
@@ -437,12 +373,5 @@
      stays its own). */
   .tool :global(.btn.ghost:not(.deletes)) {
     --btn-bg-hover: var(--quiet-press);
-  }
-
-  .text {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 </style>

@@ -39,8 +39,11 @@ export const PORTALS: readonly Portal[] = PORTAL_ORDER;
 
 export const list = (page: Page): Locator => page.getByTestId('job-list');
 /** The rows of the list outside the excluded fold. */
+/** The rows outside the excluded fold: the scored ones, then the ones without a score yet. */
 export const rows = (page: Page): Locator =>
-  page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
+  page.locator(
+    '[data-testid="job-rows"] [data-testid^="job-row-"], [data-testid="unscored-rows"] [data-testid^="job-row-"]',
+  );
 export const excludedRows = (page: Page): Locator =>
   page.getByTestId('excluded-rows').locator('[data-testid^="job-row-"]');
 /** A row by its key, `portal-id`. */

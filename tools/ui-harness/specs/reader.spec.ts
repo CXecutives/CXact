@@ -146,12 +146,14 @@ async function slowDetails(page: Page, ms: number): Promise<void> {
 }
 
 test.describe('the head and the match', () => {
-  test('the title, then the ring with its band, then the buttons; the rest in Jobdetails', async ({
+  test('the title and its line, then the ring with its band, then the buttons; the rest in Jobdetails', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
-    // No line of company, place, portal or day under the title: the Jobdetails have them.
-    for (const id of ['reader-where', 'reader-company', 'reader-place', 'reader-source']) {
+    // Under the title the job at a glance, like its row (design round 7): company, place, pay.
+    await expect(stage(page).getByTestId('reader-company')).toHaveText('Hanseatic Holding GmbH');
+    await expect(stage(page).getByTestId('reader-place')).toHaveText('Hamburg');
+    for (const id of ['reader-where', 'reader-source']) {
       await expect(stage(page).getByTestId(id)).toHaveCount(0);
     }
     const top = async (id: string): Promise<number> =>
@@ -169,6 +171,8 @@ test.describe('the head and the match', () => {
     // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text).not.toContain('·');
+    // No info symbol beside the band (user, 2026-10-10): the band says it.
+    await expect(stage(page).getByTestId('band-info')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-compact')).toHaveCount(0);
     await expect(stage(page).getByTestId('place-line')).toHaveCount(0);
     // The ring beside its band, and no count line.
@@ -210,28 +214,24 @@ test.describe('the head and the match', () => {
     expect(new Set(seen)).toEqual(new Set([BEST]));
   });
 
-  test('a job without a score: the empty ring with a dash; its ad still to come, no buttons', async ({
+  test('a job without a score: no ring, its state box with its own button, no other buttons', async ({
     page,
   }) => {
-    // An ad still to come: the ring's dash, one sentence, no buttons at all.
+    // An ad still to come: no ring, the box with "Anzeige laden", no buttons that show it.
     await openAt(page, 'linkedin-4100200302');
-    let ring = stage(page).getByTestId('reader-ring');
-    await expect(ring).toHaveText('–');
-    await expect(ring).toHaveAttribute('aria-label', T.score.none);
-    const band = stage(page).getByTestId('band');
-    await expect(band).toHaveText(T.reader.unscored);
-    await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
+    await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
+    await expect(stage(page).getByTestId('band')).toHaveCount(0);
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.adNote.missing);
+    await expect(stage(page).getByTestId('load-ad')).toBeVisible();
     await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
     await expect(stage(page).getByTestId('band-info')).toHaveCount(0);
-    // One too short to score: the same ring, "Nicht bewertet", its buttons.
+    // One too short to score: no ring, the short note as its box, the buttons of its text.
     await openJob(page, 'freelancermap-2806');
-    ring = stage(page).getByTestId('reader-ring');
-    await expect(ring).toHaveText('–');
-    await expect(band).toHaveText(T.score.none);
-    await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
+    await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
+    await expect(stage(page).getByTestId('short-note')).toHaveText(T.reader.short);
     await expect(stage(page).getByTestId('open-ad')).toBeVisible();
-    // The short text says so once, where the text is.
-    await expect(stage(page).getByTestId('short-note')).toHaveText('Die Anzeige ist sehr kurz.');
+    await expect(stage(page).getByTestId('reader-prompt')).toHaveCount(0);
   });
   test('the ring only shows: no popover of what moved the score (user 2026-10-01)', async ({
     page,
@@ -299,7 +299,7 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('reader-mail')).toHaveText('Alert-Mail öffnen');
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
-    expect(T.actions.prompt).toBe('Prompt kopieren');
+    expect(T.actions.prompt).toBe('Prompt für KI-Bewertung');
     // One variant and one height for all three, each with the glyph of its meaning.
     const looks = await buttons.evaluateAll((all) =>
       all.map((button) => `${button.className.includes('secondary')} ${button.clientHeight}`),
@@ -555,7 +555,7 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // The ban and the word in the red of a danger, on a neutral box (no red fill).
+    // The ban and the word in the red of a danger, on the neutral box of every state.
     await expect(box.getByTestId('reader-ban')).toHaveCSS(
       'color',
       await tokenColour(page, '--ban'),
@@ -564,18 +564,14 @@ test.describe('an excluded job', () => {
       'color',
       await tokenColour(page, '--ban'),
     );
-    await expect(box).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    // Trotzdem bewerten (with its plus): its real match and a toast that takes it back. The
-    // row under the box has the ad and the prompt; the head has the moves of its place.
+    await expect(box).toHaveCSS('background-color', await tokenColour(page, '--surface-muted'));
+    // Trotzdem bewerten (with its plus): its real match and a toast that takes it back. No
+    // other button while it is excluded (user, 2026-10-10); the head has the moves of its
+    // place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
     await expect(include.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
-    expect(
-      await stage(page)
-        .getByTestId('reader-actions')
-        .locator('.btn')
-        .evaluateAll((all) => all.map((button) => button.getAttribute('data-testid'))),
-    ).toEqual(['open-ad', 'reader-prompt']);
+    await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();
@@ -944,7 +940,8 @@ test.describe('Jobdetails', () => {
 
   test('a job the engine could not score shows no verdicts', async ({ page }) => {
     await openAt(page, 'freelancermap-2806');
-    await expect(stage(page).getByTestId('band')).toHaveText(T.score.none);
+    await expect(stage(page).getByTestId('short-note')).toHaveText(T.reader.short);
+    await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     await expect(why(page)).toHaveCount(0);
   });
@@ -1173,9 +1170,10 @@ test.describe('the ad', () => {
     await openAt(page, 'freelance-900411');
     const note = stage(page).getByTestId('detail-note');
     await expect(note).toHaveText(T.reader.adNote.teaser);
-    // Like every info notice: its sign navy, its words ink.
+    // Like every info notice: its sign navy, its words ink, in the box under the head.
+    const box = stage(page).getByTestId('reader-state');
     await expect(note).toHaveCSS('color', await tokenColour(page, '--text'));
-    await expect(note.locator('svg')).toHaveCSS('color', await tokenColour(page, '--info'));
+    await expect(box.locator('svg').first()).toHaveCSS('color', await tokenColour(page, '--info'));
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
@@ -1206,17 +1204,18 @@ test.describe('the ad', () => {
     await expect(note).toHaveText(T.reader.adNote.missing);
     const load = stage(page).getByTestId('load-ad');
     await expect(load).toHaveText('Anzeige laden');
-    const height = (await note.locator('..').boundingBox())!.height;
+    const box = stage(page).getByTestId('reader-state');
+    const height = (await box.boundingBox())!.height;
     await load.click();
     expect(((await calls(page, 'start_run'))[0]?.[1] as { request: unknown }).request).toEqual({
       kind: 'details',
       keys: [{ portal: 'linkedin', id: '4100200302' }],
     });
-    // A spinner where the note's icon stood, the line as high as before.
+    // A spinner where the box's sign stood, the box as high as before.
     await expect(note).toHaveText(T.reader.adNote.loading);
-    await expect(note.locator('.spinner')).toHaveCount(1);
+    await expect(box.locator('.spinner')).toHaveCount(1);
     await expect(load).toHaveCount(0);
-    expect((await note.locator('..').boundingBox())!.height).toBe(height);
+    expect((await box.boundingBox())!.height).toBe(height);
     // Once the ad is there, its note goes.
     await runFinished(page);
     await expect(stage(page).getByTestId('ad-text')).toBeVisible();
@@ -1250,17 +1249,17 @@ test.describe('the ad', () => {
     expect(seen.least).toBeLessThan(1);
   });
 
-  test('a closed ad says so in the ad section as a warning, nothing in the head', async ({
+  test('a closed ad says so in the state box as a warning, nothing in the title', async ({
     page,
   }) => {
     await openAt(page, 'linkedin-4100200304');
     const note = stage(page).getByTestId('detail-note');
     await expect(note).toHaveText(T.reader.adNote.closed);
-    await expect(note).toHaveClass(/warning/);
+    await expect(stage(page).getByTestId('reader-state')).toHaveClass(/warning/);
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
   });
 
-  test('an ad no longer online: one "Anzeige öffnen" still opens it, only the ad note says it', async ({
+  test('an ad no longer online: its text keeps "Anzeige öffnen", the state box says it', async ({
     page,
   }) => {
     await openAt(page, 'linkedin-4100200304');
@@ -1272,10 +1271,10 @@ test.describe('the ad', () => {
     });
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.closed);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
-    // Gone: the same.
+    // Gone before its text came: only the sentence, no button (nothing of it to show).
     await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
     await openJob(page, 'linkedin-4100200302');
-    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.actions.openAd);
+    await expect(stage(page).getByTestId('open-ad')).toHaveCount(0);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
   });

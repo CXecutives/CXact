@@ -28,8 +28,8 @@ export const SHOWS: readonly ShowId[] = ['open-ad', 'mail', 'prompt'];
  * Alert-Mail öffnen, only for a job an alert mail brought (user, 2026-10-01: a job of the
  * search has none, the button is not there); Anzeige öffnen, the same words for an ad that
  * is gone or takes no applications (the portal's page still opens; the ad's note says it);
- * Prompt kopieren, only for a job with a score (scored or excluded; none without a profile)
- * and off without the ad's text (a preview is one).
+ * Prompt für KI-Bewertung, only for a job with a score and the ad's text (a preview is one;
+ * design round 7: a button is there only where it makes sense).
  */
 export function showActions(job: JobView): Record<ShowId, ShowAction> {
   const text = job.detail.kind === 'ok' || job.detail.kind === 'teaser';
@@ -52,8 +52,8 @@ export function showActions(job: JobView): Record<ShowId, ShowAction> {
       id: 'prompt',
       label: t.actions.prompt,
       icon: 'copy',
-      reason: text ? null : t.reader.promptNoText,
-      hidden: job.match === null || job.match.status === 'unscorable',
+      reason: null,
+      hidden: !text || job.match === null || job.match.status === 'unscorable',
     },
   };
 }

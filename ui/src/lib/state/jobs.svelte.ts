@@ -90,6 +90,11 @@ export function sameKey(a: JobKey | null, b: JobKey | null): boolean {
 
 export const isExcluded = (job: JobView): boolean => job.match?.status === 'excluded';
 
+/** A job without a score yet (its ad not loaded or too short to score), not excluded: its
+ *  own section after the scored jobs (design round 7). */
+export const isUnscored = (job: JobView): boolean =>
+  job.match === null || job.match.status === 'unscorable';
+
 /** Every job passes (the counts over every job). */
 const everyJob = (): boolean => true;
 
@@ -367,15 +372,16 @@ class JobsStore {
   }
 
   /**
-   * Rows of the list in the order it draws them: the excluded ones last (behind their fold),
-   * also a row whose exclusion changed in place (an override, a run scoring a new job). The
-   * keys, the selection and the next job after a move all count in this order.
+   * Rows of the list in the order it draws them: the scored ones, then the ones without a
+   * score yet, then the excluded ones (each section behind its fold), also a row whose state
+   * changed in place (an override, a run scoring a new job). The keys, the selection and the
+   * next job after a move all count in this order.
    */
   readonly visible = $derived.by((): JobView[] => {
     const rows = this.rows;
-    const first = rows.findIndex(isExcluded);
-    if (first < 0 || rows.slice(first).every(isExcluded)) return rows;
-    return [...rows.filter((job) => !isExcluded(job)), ...rows.filter(isExcluded)];
+    const scored = rows.filter((job) => !isExcluded(job) && !isUnscored(job));
+    if (scored.length === rows.length) return rows;
+    return [...scored, ...rows.filter(isUnscored), ...rows.filter(isExcluded)];
   });
 
   readonly shown = $derived(this.visible.slice(0, this.rendered));

@@ -102,7 +102,7 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
   expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
 });
 
-test('a failed save from the leave dialog leaves the caret in the refused field', async ({
+test('a failed save from the leave dialog shows the refused field, without the caret', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -112,7 +112,10 @@ test('a failed save from the leave dialog leaves the caret in the refused field'
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('dialog-leave-profile').getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
-  await expect(rate).toBeFocused();
+  // Marked and in view; the user clicks where they want to type (design round 7).
+  await expect(rate).toHaveAttribute('aria-invalid', 'true');
+  await expect(rate).toBeInViewport();
+  await expect(rate).not.toBeFocused();
 });
 
 test('a row whose exclusion changes in place stands with the scored rows', async ({ page }) => {

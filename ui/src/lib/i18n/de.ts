@@ -666,7 +666,7 @@ export const de = {
     /** What shows the job. */
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
-    prompt: 'Prompt kopieren',
+    prompt: 'Prompt für KI-Bewertung',
     /** An excluded job counts with its real match anyway, or is excluded again. */
     include: 'Trotzdem bewerten',
     archive: 'Archivieren',
@@ -717,9 +717,8 @@ export const de = {
     none: 'Nicht bewertet',
     /** A ring without a usable profile. */
     off: NO_PROFILE,
-    /** The info symbol beside the band words of the job view. */
+    /** The tooltip of a scored ring: what the match is. */
     info: 'Wie gut die Anforderungen der Anzeige zu deinem Profil passen.',
-    infoLabel: 'Mehr zur Übereinstimmung',
     band: {
       high: 'Hohe Übereinstimmung',
       mid: 'Mittlere Übereinstimmung',
@@ -809,7 +808,9 @@ export const de = {
   },
   list: {
     label: 'Jobs',
-    /** The folding section at the end of every place (its count after it where known). */
+    /** The two folding sections at the end of every place, after the scored jobs (their
+     *  counts after them): the jobs without a score yet, then the excluded ones. */
+    unscored: 'Noch nicht bewertet',
     excluded: 'Ausgeschlossen',
     /** While the first search runs, the empty list only says what comes (the rows arrive
      *  during the search, each once its details are in). */
@@ -945,9 +946,6 @@ export const de = {
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
-    promptNoText: 'Der Text der Anzeige fehlt noch.',
-    /** Beside the ring of a job not scored yet (it shows no buttons then). */
-    unscored: 'Wird bewertet, sobald die Anzeige geladen ist.',
     /** Loads the whole ad (a preview, a missing one). */
     fetchDetails: 'Anzeige laden',
     why: 'Anforderungen',

@@ -383,12 +383,12 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     return { menu, reader };
   };
   // A job without an alert mail offers none (user, 2026-10-01: no button at all), and one
-  // without a score no prompt; the reader of a job not scored yet shows no buttons at all
-  // (design round 3), its menu still opens the ad.
+  // without a score no prompt; the reader of a job not scored yet shows only its state box
+  // (design round 7), its menu still opens the ad.
   const failed = await offered('freelancermap-2805');
   expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, 'none']);
   expect(failed.reader).toEqual(['none', 'none', 'none']);
-  await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
+  await expect(stage(page).getByTestId('detail-note')).toBeVisible();
   const closed = await offered('linkedin-4100200304');
   expect(closed.menu).toEqual([
     `${T.actions.mail} on`,

@@ -3,23 +3,21 @@
   bar's fade, in the job view's column (640 px). Its sections and
   their order are data (reader-sections.ts); each is rendered below by its key, and nothing
   stands in two of them:
-  - head: the title (without gender tags), then the moves of the place as quiet icons like
-    the row's tools (Aktuell Archivieren, Löschen; Archiv Zurückholen, Löschen; Papierkorb
+  - head: the title (without gender tags) and under it the job at a glance (JobMeta: the
+    company, the place, the pay), then the moves of the place as quiet icons like the row's
+    tools (Aktuell Archivieren, Löschen; Archiv Zurückholen, Löschen; Papierkorb
     Wiederherstellen, Endgültig löschen in red; actions.ts rowTools) and the close "×" (the
     same at every width; user 2026-10-01: no menu, no outline). A job that just moved away
-    offers none while the next one loads. The ring sits right under the title.
-  - match: the ring (44, hollow; opening a job fills its arc once, the number stands at once)
-    beside its band and, for a scored job, an info symbol that says what the match is (the
-    ring's own tooltip names it; the symbol reaches it from the keyboard). A job not scored yet shows the ring's
-    dash and "Wird bewertet, sobald die Anzeige geladen ist." and no buttons. No popover of
-    what moved the score (user, 2026-10-01). An excluded job shows one neutral bordered box
-    instead: the red ban, "Ausgeschlossen" in red, one sentence why from the profile's side
-    (its first violation; the row it violates says what the ad states) and "Trotzdem
-    bewerten" at its end (design round 3).
-  - actions: the text buttons with their glyphs, Anzeige öffnen (also for an ad that is gone
-    or closed: the portal's page still opens, the ad's note says it), Alert-Mail öffnen (only
-    for a job a mail brought), Prompt kopieren (not for a job without a score); an excluded job
-    keeps Anzeige öffnen and Prompt kopieren; the row wraps.
+    offers none while the next one loads.
+  - match: first the state (ReaderState, design round 7), the one box of a job that has one,
+    with its own button: excluded (why, "Trotzdem bewerten"), an ad still to come ("Anzeige
+    laden"), a preview without a sign-in ("Anmelden"), an ad gone, closed or out of reach, a
+    text too short to score; no info symbol beside it. Then, for a scored job only, the ring
+    (44, hollow; opening a job fills its arc once) beside its band, nothing else.
+  - actions (a job neither excluded nor without its text): the text buttons with their
+    glyphs, Anzeige öffnen, Alert-Mail öffnen (only for a job a mail brought), Prompt für
+    KI-Bewertung (only with a score and the ad's text); the row wraps. An excluded job and one
+    whose ad is still to come show only the button of their state (user, 2026-10-10).
     Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and
     every failure is a toast.
@@ -35,10 +33,8 @@
     each title, a quiet "optional" after one that is only nice to have and not met; a missing
     must that is a term has a small "+" into its field of the profile
     (addToProfile.ts); once it is there, a quiet check stands in place of its cross.
-  - ad: the note on a text that is not all there (a preview, an ad still to come or being
-    loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
-    einrichten" where they help, and the ad's text in its structure: its headings, its lists,
-    its paragraphs, the words of the list's search marked (ReaderAd.svelte, AdText.svelte).
+  - ad: the ad's text in its structure: its headings, its lists, its paragraphs, the words of
+    the list's search marked (AdText.svelte).
   Hovering or clicking a row or a requirement marks nothing in the ad (user decision
   2026-09-27). Rows, requirements and the ad text that arrive later (the ad loaded, a new
   score) fade in; requirements glide in their group.
@@ -57,7 +53,6 @@
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Icon from '$components/Icon.svelte';
-  import InfoTip from '$components/InfoTip.svelte';
   import PageHeader from '$components/PageHeader.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
@@ -72,7 +67,9 @@
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
-  import ReaderAd from './ReaderAd.svelte';
+  import JobMeta from '$components/JobMeta.svelte';
+  import AdText from './AdText.svelte';
+  import ReaderState from './ReaderState.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import {
@@ -134,15 +131,9 @@
     return noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.note.hardCriterion;
   });
   const band = $derived(ring.status === 'scored' ? ring.band : null);
-  /** Not scored yet because its ad is still to come (to load, or on request): the ring's
-   *  dash and the sentence, no buttons. An ad that is gone or cannot be read says "Nicht
-   *  bewertet" and keeps its buttons. */
-  const unscored = $derived(
-    withRing &&
-      (ring.status === 'none' || ring.status === 'pending') &&
-      (job.detail.kind === 'pending' ||
-        job.detail.kind === 'failed' ||
-        job.detail.kind === 'onRequest'),
+  /** The ad's text is there (a preview counts): the buttons that show the job make sense. */
+  const hasText = $derived(
+    detail.text !== null || job.detail.kind === 'ok' || job.detail.kind === 'teaser',
   );
   /** The ring's colour step (ScoreRing's decile), which the band's words take too. */
   const step = $derived(
@@ -306,6 +297,7 @@
 
 {#snippet head()}
   <PageHeader {heading} copy headingTestid="reader-title" column="reader" testid="reader-head">
+    <JobMeta {job} prefix="reader" wrap />
     {#snippet actions()}
       {#each tools as tool (tool.id)}
         <Button
@@ -335,37 +327,16 @@
 {/snippet}
 
 {#snippet score()}
-  {#if withRing}
+  <ReaderState
+    {detail}
+    exclusion={excluded ? exclusion : null}
+    {includable}
+    oninclude={(event) => void include(event)}
+  />
+  {#if withRing && !excluded && band !== null}
     <div class="match" data-testid="reader-match">
-      {#if excluded}
-        <div class="excluded" data-testid="exclusion-box">
-          <span class="ban" data-testid="reader-ban"><Icon name="excluded" size="md" /></span>
-          <div class="lines">
-            <p class="band banned" data-testid="band">{t.score.excluded}</p>
-            <p class="why-line" data-testid="exclusion">{exclusion}</p>
-          </div>
-          {#if includable}
-            <Button
-              variant="secondary"
-              icon="add"
-              label={t.actions.include}
-              testid="reader-include"
-              onclick={(event) => void include(event)}
-            />
-          {/if}
-        </div>
-      {:else if unscored}
-        <ScoreRing {ring} size="md" testid="reader-ring" />
-        <p class="why-line" data-testid="band">{t.reader.unscored}</p>
-      {:else}
-        <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
-        <p class="band {band ?? 'none'} {step}" data-testid="band">
-          {band ? t.score.band[band] : t.score.none}
-        </p>
-        {#if band !== null}
-          <InfoTip text={t.score.info} label={t.score.infoLabel} testid="band-info" />
-        {/if}
-      {/if}
+      <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
+      <p class="band {band} {step}" data-testid="band">{t.score.band[band]}</p>
     </div>
   {/if}
 {/snippet}
@@ -374,7 +345,7 @@
   <!-- Words, glyphs, what is off and what is not there come from the one table the row's
        menu reads too. -->
   {@const shows = showActions(job)}
-  {@const shown = SHOWS.filter((id) => !shows[id].hidden && !(excluded && id === 'mail'))}
+  {@const shown = SHOWS.filter((id) => !shows[id].hidden)}
   {#each shown as id (id)}
     <Button
       variant="secondary"
@@ -389,7 +360,7 @@
 {/snippet}
 
 {#snippet actionRow()}
-  {#if !unscored}
+  {#if !excluded && hasText}
     <div class="actions" bind:this={actions} data-testid="reader-actions">
       {@render showButtons()}
     </div>
@@ -511,7 +482,11 @@
 {#snippet ad()}
   <section class="block ad" data-testid="ad">
     <h2 class="section">{t.reader.ad}</h2>
-    <ReaderAd {detail} />
+    {#if detail.text}
+      <div in:fade>
+        <AdText text={detail.text} layout={detail.layout} search={jobs.search} />
+      </div>
+    {/if}
   </section>
 {/snippet}
 
@@ -580,39 +555,6 @@
     gap: var(--space-12);
   }
 
-  .lines {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-
-  /* An excluded job: one bordered box with the ban, why, and "Trotzdem bewerten" at its end. */
-  .excluded {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    gap: var(--space-10);
-    min-width: 0;
-    padding: var(--space-10) var(--card-padding);
-    border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-card);
-  }
-
-  .excluded .lines {
-    flex: 1;
-  }
-
-  .ban {
-    display: inline-flex;
-    flex: none;
-    color: var(--ban);
-  }
-
-  .band.banned {
-    color: var(--ban);
-  }
-
   .band {
     color: var(--text);
     font: var(--type-label);
@@ -658,16 +600,6 @@
 
   .band.d9 {
     color: var(--score-text-9);
-  }
-
-  /* Not scored (yet, or at all): muted, not the colour of a low score. */
-  .band.none {
-    color: var(--text-muted);
-  }
-
-  .why-line {
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   .actions {
