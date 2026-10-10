@@ -65,6 +65,23 @@ import {
   WIN,
 } from './helpers';
 
+/** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile.
+ *  Tokens are read once, so it is set before the page starts. */
+async function slowSearch(page: Page, ms: number): Promise<void> {
+  await page.addInitScript((value) => {
+    const set = (): boolean => {
+      const root = document.documentElement as HTMLElement | null;
+      root?.style.setProperty('--dur-base', value);
+      return root !== null;
+    };
+    if (set()) return;
+    const watch = new MutationObserver(() => {
+      if (set()) watch.disconnect();
+    });
+    watch.observe(document, { childList: true });
+  }, `${ms}ms`);
+}
+
 /** The rows outside the fold as the stub lists them: the inbox by match unless said. */
 async function inbox(page: Page, query: Partial<JobQuery> = {}): Promise<string[]> {
   return (await stubList(page, query)).active;
@@ -1729,6 +1746,19 @@ test.describe('search', () => {
     await row(page, 'freelancermap-2801').click();
     await expect(row(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
     await page.getByTestId('search').fill('Kernfusion');
+    await expect(page.getByTestId('reader-title')).toHaveCount(0);
+  });
+
+  test("the search's own answer judges the open job, not a change of the list while it waits", async ({
+    page,
+  }) => {
+    await slowSearch(page, 4000);
+    await open(page, WIN);
+    await openJob(page, 'freelancermap-2801');
+    await page.getByTestId('search').fill('Kernfusion');
+    // While the search waits another job leaves the list (its row is still there).
+    await viaMenu(page, 'archive', 'freelancermap-2805');
+    await expect(page.getByTestId('empty-search')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
   });
 });

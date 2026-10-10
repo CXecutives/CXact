@@ -17,7 +17,7 @@ import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
   failNext,
-  lastQuery,
+  listed,
   openJob,
   openPlace,
   row,
@@ -1362,8 +1362,11 @@ test.describe('around the reader', () => {
     // Its title without the number: every fourth job of the scenario is a hit.
     const search = title.replace(/ \d+$/, '');
     await page.getByTestId('search').fill(search);
-    await expect.poll(async () => (await lastQuery(page))?.search).toBe(search);
-    await page.waitForTimeout(400);
+    // The list shows the search's answer, the open job's row among its first hits: the
+    // search has judged the open job by then.
+    const hits = (await stubList(page, { search })).active.slice(0, 2);
+    await expect.poll(async () => (await listed(page)).slice(0, 2)).toEqual(hits);
+    await expect(row(page, 'linkedin-100006')).toHaveAttribute('aria-current', 'true');
     await expect(page.getByTestId('reader-title')).toHaveText(title);
   });
 

@@ -246,6 +246,9 @@ class JobsStore {
   #served = $state(0);
   /** Keys of the rows the page put in itself (see #served). */
   #own = new Set<string>();
+  /** The query of the list the page holds: its next pages continue it, also while a typed
+   *  search still waits (they never mix another query's rows into it). */
+  #listed: JobQuery | null = null;
   status = $state<Status>('idle');
   /** The list has taken --delay-placeholder to load: its placeholder rows show (at once). */
   slow = $state(false);
@@ -294,6 +297,12 @@ class JobsStore {
   #searchTimer: ReturnType<typeof setTimeout> | null = null;
   #countsTimer: ReturnType<typeof setTimeout> | null = null;
   #installed = false;
+
+  /** The search whose answer the list holds ('' for none): a typed one comes --dur-base
+   *  later, until then the list is another search's. */
+  get listedSearch(): string {
+    return this.#listed?.search ?? '';
+  }
 
   /** The sort actually used: without a profile there is no match to sort by. */
   get sort(): JobSort {
@@ -515,6 +524,7 @@ class JobsStore {
       const page = await invoke('list_jobs', { query });
       if (request !== this.#request) return;
       const mounted = keep ? new Set(this.shown.map((job) => keyOf(job.key))) : null;
+      this.#listed = query;
       this.#own.clear();
       this.#served = page.jobs.length;
       this.rows = keep ? reused(this.rows, page.jobs) : page.jobs;
@@ -572,8 +582,9 @@ class JobsStore {
 
   /** The next page of the backend's list (see #served): its rows the list does not hold yet. */
   private async page(request: number): Promise<boolean> {
-    if (this.#served >= this.total) return false;
-    const query = this.query(this.#served);
+    const listed = this.#listed;
+    if (listed === null || this.#served >= this.total) return false;
+    const query: JobQuery = { ...listed, limit: PAGE, offset: this.#served };
     const page = await invoke('list_jobs', { query });
     if (request !== this.#request) return false;
     this.#served += page.jobs.length;

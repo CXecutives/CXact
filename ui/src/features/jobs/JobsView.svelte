@@ -155,7 +155,8 @@
 
   // A search that no longer finds the open job closes it (the list shows what it found);
   // only a change of the search does, never a job opened from elsewhere (an undo).
-  // Only a list that holds every hit can tell: a hit beyond the loaded rows stays open.
+  // Only a list that holds every hit can tell: a hit beyond the loaded rows stays open. It is
+  // the search's own answer that tells, not a change of the list while the search waits.
   let searched = untrack(() => jobs.search.trim());
   let searchChanged = false;
   $effect(() => {
@@ -170,7 +171,7 @@
     const ready = jobs.status === 'ready';
     const listed = jobs.visible;
     untrack(() => {
-      if (!searchChanged || !ready) return;
+      if (!searchChanged || !ready || jobs.listedSearch !== searched) return;
       searchChanged = false;
       if (selected === null || searched === '') return;
       const complete = jobs.rows.length >= jobs.total;
