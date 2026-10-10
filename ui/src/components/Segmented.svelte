@@ -15,7 +15,7 @@
   The chosen label is navy (ink while the window is in the back), the others stay muted. An
   unchosen option washes on hover and darkens while pressed.
   Like native radio buttons (and native tabs, `tabs`) the group is one Tab stop and the
-  arrows, Home and End choose (lib/input/input.ts). As high as a field (30 px, the thumb 2 px
+  arrows, Home and End choose (lib/input/input.ts). As high as a field (28 px, the thumb 2 px
   inside it), so it lines up with the fields and buttons of its row, in the app's text in
   medium.
 -->

@@ -49,9 +49,10 @@ async function firstFrame(page: Page, text: string): Promise<Frame> {
   );
 }
 
-/** Where a fresh hover places the tooltip (the pointer away long enough to cool down). */
+/** Where a fresh hover places the tooltip (the pointer away on the empty top bar long enough
+ *  to cool down). */
 async function fresh(page: Page, trigger: Locator): Promise<{ x: number; y: number }> {
-  await page.mouse.move(600, 500);
+  await page.mouse.move(700, 12);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await page.waitForTimeout(500);
   await trigger.hover();
@@ -86,7 +87,7 @@ test('moving from one tooltip to the next shows it at its own anchor at once', a
   if (truncated !== null) triggers.push(truncated);
 
   // The handover: straight from one trigger to the next, the first frame of each recorded.
-  await page.mouse.move(600, 500);
+  await page.mouse.move(700, 12);
   await page.waitForTimeout(500);
   await watch(page);
   await triggers[0]!.hover();

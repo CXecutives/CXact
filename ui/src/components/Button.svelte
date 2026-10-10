@@ -3,7 +3,7 @@
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
   (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
-  - One height for every button, 30 px (design round 7, core/tests/ui_contract.rs): in rows,
+  - One height for every button, 28 px (design round 7, core/tests/ui_contract.rs): in rows,
     tools, the top bar, dialogs and empty states alike; the app's text in medium (a primary
     stands out by its colour only), every glyph 16 px. Only a button in a field (`inField`) and a suggestion are
     a notch lower. A text button carries the glyph of its meaning (lib/icons.ts).

@@ -366,17 +366,17 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  /* Design round 7 (user, 2026-10-10): one control height for the whole app, 30 px
+  /* Design round 7 (user, 2026-10-10): one control height for the whole app, 28 px
      (--control-field): every button, field, choice of a few, toolbar control and menu row;
      the sidebar's entries one step taller (--nav-row). Only a control inside a field (a
      chip, a link or a button in a field, a day of the calendar, a suggestion row) and a
      suggestion chip under a field (Button `suggest`) are a notch lower (--control-sm). */
-  --control-sm: 24px;
-  --control-field: 30px;
+  --control-sm: 22px;
+  --control-field: 28px;
   --nav-row: 32px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
      centred in it, so their middles lie on one line across the window). */
-  --control-lg: 32px;
+  --control-lg: 30px;
   /* The glyphs in a list row's second line. */
   --icon-xs: 14px;
   /* The round hit area of an info symbol beside a label: a little more than its glyph. */
@@ -389,9 +389,9 @@
   --icon-lg: 20px;
   /* The glyph of a drop zone. */
   --icon-xl: 24px;
-  /* Every line icon in one line, 1.75 of Lucide's 24 units, so the line grows with the icon:
-     a large one as strong as a small one for its size (design round 7). */
-  --icon-stroke: 1.75;
+  /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
+     large one as strong as a small one for its size (user, 2026-10-01 and 2026-10-10). */
+  --icon-stroke: 2;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
   --row-place-max: 160px;
@@ -425,16 +425,16 @@
      buttons (the line in the glyph's own units: one CSS pixel). */
   --titlebar-glyph: 10px;
   --titlebar-glyph-stroke: 1;
-  /* The page's own buttons at the left of the bar: 6 px in, three 30 px buttons 2 px apart. */
-  --titlebar-tools-start: 100px;
-  /* The page's own button left of the caption buttons: 30 px and 6 px before them. */
-  --titlebar-tools-end: 36px;
+  /* The page's own buttons at the left of the bar: 6 px in, three 28 px buttons 2 px apart. */
+  --titlebar-tools-start: 94px;
+  /* The page's own button left of the caption buttons: 28 px and 6 px before them. */
+  --titlebar-tools-end: 34px;
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
   /* The bar's own buttons are the one button height (--control-field); three with their
      gaps fill --titlebar-tools-start, which core's window.rs hit-tests with. This number is
      what window.rs counts with (core/tests/ui_contract.rs checks it is the button height). */
-  --titlebar-tool: 30px;
+  --titlebar-tool: 28px;
   /* The list column's header rows: the places and the search, as high as a field. */
   --list-toolbar: var(--control-field);
   /* The one action at the end of the tabs' row (Jobs suchen, Abbrechen, Papierkorb leeren) is
@@ -597,41 +597,43 @@
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --weight-regular: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
+  /* Geist draws lighter than Inter: one step heavier everywhere (user, 2026-10-10). */
+  --weight-regular: 450;
+  --weight-medium: 560;
+  --weight-semibold: 650;
   --numeric: tabular-nums;
-  /* Design round 7 (user, 2026-10-10), Geist on one ladder 12 / 13 / 15 / 18 / 24: small
-     text 12/16, the app's text, labels, fields and buttons 13/18 (regular or medium), list
-     titles 13.5/19, headings of a view's groups 15/20 semibold, view titles 18/24, the
+  /* Design round 7 (user, 2026-10-10), Geist on one ladder 12.5 / 14 / 16 / 19 / 24 (Geist
+     is smaller on its line than Inter, so each step is half a size up): small text
+     12.5/17, the app's text, labels, fields and buttons 14/20 (regular or medium), list
+     titles 14.5/20, headings of a view's groups 16/22 semibold, view titles 19/26, the
      setup's titles and an empty state's 24/30. */
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 12px;
   --leading-2xs: 16px;
   /* Dates and stamps. */
-  --font-xs: 12px;
-  --leading-xs: 16px;
+  --font-xs: 12.5px;
+  --leading-xs: 17px;
   /* Small text: hints, the second line of a row, a section's line. */
-  --font-sm: 12px;
-  --leading-sm: 16px;
+  --font-sm: 12.5px;
+  --leading-sm: 17px;
   /* The text of the app: running lines, fields, labels, buttons, tabs. */
-  --font-md: 13px;
-  --leading-md: 18px;
+  --font-md: 14px;
+  --leading-md: 20px;
   /* List titles on a tight line, so two lines stay one block. */
-  --font-title: 13.5px;
-  --leading-title: 19px;
+  --font-title: 14.5px;
+  --leading-title: 20px;
   /* Running text (the ad, a dialog's sentence): the text's size on a roomier line. */
-  --leading-body: 20px;
+  --leading-body: 22px;
   /* The digits of a large ring, the letters of a large tile (semibold). */
-  --font-lg: 15px;
-  --leading-lg: 20px;
+  --font-lg: 16px;
+  --leading-lg: 22px;
   /* The heading of a group of a view (the groups of Profil and Einstellungen, the job view's
      Jobdetails, an empty state's). */
-  --font-heading: 15px;
-  --leading-heading: 20px;
+  --font-heading: 16px;
+  --leading-heading: 22px;
   /* The title of a view, a step of the setup, the job view. */
-  --font-xl: 18px;
-  --leading-xl: 24px;
+  --font-xl: 19px;
+  --leading-xl: 26px;
   /* The title of a setup step and of an empty state. */
   --font-display: 24px;
   --leading-display: 30px;
