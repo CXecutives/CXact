@@ -251,10 +251,17 @@ for (const os of ['windows', 'macos'] as const) {
         getComputedStyle(node).borderTopWidth,
       ]);
     expect(sheet).toEqual([contentTop(os), '0px']);
-    // No icon and no name; the buttons start after the lights on macOS.
+    // No icon and no name; the buttons start after the lights on macOS: Zurück, Vor, then the
+    // sidebar's button.
     await expect(page.getByTestId('title-bar-app')).toHaveCount(0);
-    const first = (await page.getByTestId('toggle-sidebar').boundingBox())!;
-    expect(first.x).toBeGreaterThanOrEqual(os === 'macos' ? 80 : 6);
+    const [first, second, third] = await Promise.all(
+      ['history-back', 'history-forward', 'toggle-sidebar'].map(
+        async (id) => (await page.getByTestId(id).boundingBox())!,
+      ),
+    );
+    expect(first!.x).toBeGreaterThanOrEqual(os === 'macos' ? 80 : 6);
+    expect(second!.x).toBeGreaterThan(first!.x);
+    expect(third!.x).toBeGreaterThan(second!.x);
     // Nothing but the bar moves the window.
     const drags = page.locator('[data-tauri-drag-region]');
     for (const node of await drags.all()) {

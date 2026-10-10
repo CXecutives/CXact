@@ -2,8 +2,8 @@
   The window's top bar like the Claude app's (user, 2026-09-27): one row of --titlebar-height
   across the window, no line under it, no icon, no name. Its left part wears the sidebar's
   colour as far as the docked sidebar reaches, with a fine seam at its edge; the rest wears
-  the view's. With the sidebar folded the bar is one colour. At the left the sidebar's button,
-  Zurück and Vor (macOS: right of the traffic lights); at the right the job view's button,
+  the view's. With the sidebar folded the bar is one colour. At the left Zurück, Vor and the
+  sidebar's button (macOS: right of the traffic lights; the arrows first, user 2026-10-10); at the right the job view's button,
   always there, dimmed where there is nothing to show or hide (hiding the job view closes its
   job; in one column it closes the job that stands in place of the list), before the caption
   buttons
@@ -115,15 +115,6 @@
   <Button
     variant="ghost"
     iconOnly
-    icon="sidebar"
-    hoverIcon={sidebarOut ? 'sidebarHide' : 'sidebarShow'}
-    label={sidebarOut ? t.nav.sidebarHide : t.nav.sidebarShow}
-    testid="toggle-sidebar"
-    onclick={() => shell.toggleSidebar()}
-  />
-  <Button
-    variant="ghost"
-    iconOnly
     icon="historyBack"
     label={t.nav.back}
     disabled={!history.canBack}
@@ -138,6 +129,15 @@
     disabled={!history.canForward}
     testid="history-forward"
     onclick={() => history.forward()}
+  />
+  <Button
+    variant="ghost"
+    iconOnly
+    icon="sidebar"
+    hoverIcon={sidebarOut ? 'sidebarHide' : 'sidebarShow'}
+    label={sidebarOut ? t.nav.sidebarHide : t.nav.sidebarShow}
+    testid="toggle-sidebar"
+    onclick={() => shell.toggleSidebar()}
   />
 {/snippet}
 

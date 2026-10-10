@@ -19,7 +19,7 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   navy), defined only in `ui/src/styles/tokens.css`. It must feel like a native app with one top bar
   like the Claude app's: the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
   Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
-  the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the
+  the sidebar's edge, the rest in the view's; at the left Zurück, Vor and the sidebar's button (macOS right of the
   traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
   click maximizes; during the setup, a mode of the shell of its own without the sidebar, the bar is one colour
   without a seam and holds none of these buttons). The sidebar docks or folds away like Claude's (its button a plain switch, nothing on hover;
