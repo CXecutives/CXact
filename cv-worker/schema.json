@@ -12,49 +12,83 @@
     "zertifizierungen"
   ],
   "properties": {
-    "wunschrollen": { "type": "array", "items": { "type": "string" } },
-    "berufserfahrung_jahre": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+    "wunschrollen": {
+      "type": "array",
+      "description": "Zwei bis vier Jobtitel für Projekte oder Interim-Mandate, aus den Stationen der letzten Jahre abgeleitet, der wahrscheinlichste zuerst. Je Funktion ein Titel, ohne Branche, Firma oder (m/w/d).",
+      "items": { "type": "string" }
+    },
+    "berufserfahrung_jahre": {
+      "description": "Ganze Jahre Berufstätigkeit nach Schule, Ausbildung und Studium bis zum heutigen Datum, Überschneidungen einmal gezählt, 0 bis 70. null ohne Datumsangaben.",
+      "anyOf": [{ "type": "integer" }, { "type": "null" }]
+    },
     "kernkompetenzen": {
       "type": "array",
+      "description": "Bis zu 25 fachliche Kompetenzen: Fachgebiete und Tätigkeiten, keine Soft Skills, keine Branchen, ein Produkt nur als Hauptfachgebiet. Die wichtigste für die heutige Arbeit zuerst.",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["kompetenz", "jahre"],
         "properties": {
-          "kompetenz": { "type": "string" },
-          "jahre": { "anyOf": [{ "type": "integer" }, { "type": "null" }] }
+          "kompetenz": {
+            "type": "string",
+            "description": "Ein Fachbegriff, wie er in Stellenanzeigen steht, ein bis drei Wörter."
+          },
+          "jahre": {
+            "description": "Ganze Jahre, in denen die Kompetenz ausgeübt wurde, Überschneidungen einmal gezählt, mindestens 1 und höchstens berufserfahrung_jahre. null, wenn keine Station sie zeigt.",
+            "anyOf": [{ "type": "integer" }, { "type": "null" }]
+          }
         }
       }
     },
-    "methoden_tools": { "type": "array", "items": { "type": "string" } },
+    "methoden_tools": {
+      "type": "array",
+      "description": "Bis zu 30 benannte Werkzeuge und Regelwerke: Software, Plattformen, Programmiersprachen, Methoden mit eigenem Namen, Standards, Normen und Gesetze. Die wichtigsten zuerst, Büro-Software zuletzt, nichts, was unter kernkompetenzen steht.",
+      "items": { "type": "string" }
+    },
     "branchen": {
       "type": "array",
+      "description": "Branchen der Arbeitgeber, bei Beratern, Freelancern und Interim Managern der Kunden; die meisten Jahre zuerst, höchstens zehn.",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["branche", "wunsch"],
+        "required": ["branche"],
         "properties": {
-          "branche": { "type": "string" },
-          "wunsch": { "type": "boolean" }
+          "branche": {
+            "type": "string",
+            "description": "Die Branche, wie Jobbörsen sie nennen, etwa Maschinenbau, Automotive oder Pharma."
+          }
         }
       }
     },
     "sprachen": {
       "type": "array",
+      "description": "Jede Sprache, die der Lebenslauf nennt, und nur diese.",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["sprache", "niveau"],
         "properties": {
-          "sprache": { "type": "string" },
+          "sprache": {
+            "type": "string",
+            "description": "Deutscher Name der Sprache, etwa Englisch."
+          },
           "niveau": {
             "type": "string",
+            "description": "GER-Stufe oder Muttersprache nach der Tabelle im Prompt; ohne jede Angabe zur Stufe B2.",
             "enum": ["A1", "A2", "B1", "B2", "C1", "C2", "Muttersprache"]
           }
         }
       }
     },
-    "abschluesse": { "type": "array", "items": { "type": "string" } },
-    "zertifizierungen": { "type": "array", "items": { "type": "string" } }
+    "abschluesse": {
+      "type": "array",
+      "description": "Abgeschlossene Studien-, Berufs- und Fortbildungsabschlüsse, je ein Eintrag aus Abschluss und Fach, ohne Hochschule und Jahr; (FH) oder (BA) und Promotion bleiben erkennbar.",
+      "items": { "type": "string" }
+    },
+    "zertifizierungen": {
+      "type": "array",
+      "description": "Zertifikate mit Prüfung und Berufszulassungen in der üblichen Kurzform mit Stufe; keine Kurse ohne Prüfung.",
+      "items": { "type": "string" }
+    }
   }
 }

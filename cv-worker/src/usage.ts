@@ -2,10 +2,11 @@
 // what, when a full counter frees again, and whether a failed AI call gives its tries back.
 // index.ts runs them against D1 and OpenRouter.
 
-/** Tries per install a day and a month, and per address a day. */
+/** Tries per install a day and a month. */
 export const LIMIT_ID_DAY = 2;
 export const LIMIT_ID_MONTH = 5;
-export const LIMIT_IP_DAY = 10;
+/** Tries per address a day, unless the variable LIMIT_IP_DAY names another. */
+export const DEFAULT_LIMIT_IP_DAY = 10;
 /** Tries of all installs together a day, unless the variable LIMIT_ALL_DAY names another. */
 export const DEFAULT_LIMIT_ALL_DAY = 200;
 
@@ -51,25 +52,31 @@ export function calendar(now: Date): Days {
   };
 }
 
-/** The variable LIMIT_ALL_DAY as the cap of all installs a day: a whole number of at least 1,
- * else the default (a missing, empty or mistyped value never lifts the cap). PAUSED, not 0,
+/** A daily cap from its variable (LIMIT_IP_DAY, LIMIT_ALL_DAY): a whole number of at least 1,
+ * else `fallback` (a missing, empty or mistyped value never lifts the cap). PAUSED, not 0,
  * stops every try. */
-export function dailyCap(raw: unknown): number {
+export function dailyCap(raw: unknown, fallback: number): number {
   const text = typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw.trim() : '';
   const cap = /^[1-9]\d*$/.test(text) ? Number(text) : NaN;
-  return Number.isSafeInteger(cap) ? cap : DEFAULT_LIMIT_ALL_DAY;
+  return Number.isSafeInteger(cap) ? cap : fallback;
+}
+
+/** The caps of an address and of all installs a day. */
+export interface Caps {
+  ip: number;
+  all: number;
 }
 
 /** The counters a request reserves, in this order: the install's month first (when it is
  * full, the next day would not help), its day, the address's day, and all installs' day last,
  * so a request over its own limits never takes a place of the shared cap. */
-export function slots(installId: string, ipKey: string, days: Days, capAll: number): Slot[] {
+export function slots(installId: string, ipKey: string, days: Days, caps: Caps): Slot[] {
   const id = `id:${installId}`;
   return [
     { name: 'month', key: id, day: days.month, limit: LIMIT_ID_MONTH, until: days.nextMonth },
     { name: 'day', key: id, day: days.today, limit: LIMIT_ID_DAY, until: days.tomorrow },
-    { name: 'ip', key: ipKey, day: days.today, limit: LIMIT_IP_DAY, until: days.tomorrow },
-    { name: 'all', key: 'all', day: days.today, limit: capAll, until: days.tomorrow },
+    { name: 'ip', key: ipKey, day: days.today, limit: caps.ip, until: days.tomorrow },
+    { name: 'all', key: 'all', day: days.today, limit: caps.all, until: days.tomorrow },
   ];
 }
 

@@ -7,7 +7,17 @@
 
 import PROMPT_FILE from './prompt.de.md';
 import SCHEMA from '../schema.json';
-import { calendar, dailyCap, isFree, remaining, slots, type Call, type Slot } from './usage';
+import {
+  DEFAULT_LIMIT_ALL_DAY,
+  DEFAULT_LIMIT_IP_DAY,
+  calendar,
+  dailyCap,
+  isFree,
+  remaining,
+  slots,
+  type Call,
+  type Slot,
+} from './usage';
 
 interface Env {
   DB: D1Database;
@@ -18,6 +28,8 @@ interface Env {
   MODEL?: string;
   /** The reasoning effort, low, medium or high; anything else means DEFAULT_EFFORT. */
   EFFORT?: string;
+  /** The tries of one address a day (`dailyCap`); unset, the default. */
+  LIMIT_IP_DAY?: string;
   /** The tries of all installs together a day (`dailyCap`); unset, the default. */
   LIMIT_ALL_DAY?: string;
 }
@@ -103,7 +115,10 @@ export default {
     let plan: Slot[];
     try {
       const ip = await ipKey(env, request.headers.get('CF-Connecting-IP') ?? '');
-      plan = slots(cv.installId, ip, days, dailyCap(env.LIMIT_ALL_DAY));
+      plan = slots(cv.installId, ip, days, {
+        ip: dailyCap(env.LIMIT_IP_DAY, DEFAULT_LIMIT_IP_DAY),
+        all: dailyCap(env.LIMIT_ALL_DAY, DEFAULT_LIMIT_ALL_DAY),
+      });
     } catch {
       return failure({ code: 'unavailable', detail: 'config' }, started, cv.kind, size);
     }
@@ -349,7 +364,9 @@ interface Completion {
 type AiFailure = Failure & { call: Call };
 
 async function askAi(env: Env, cv: CvRequest): Promise<Answer | AiFailure> {
-  const content =
+  // The date first, so that "seit 2019" and "bis heute" count up to today.
+  const dated = { type: 'text', text: `Heutiges Datum: ${germanDate(new Date())}` };
+  const cvParts =
     cv.kind === 'text'
       ? [{ type: 'text', text: `<cv>\n${cv.text.replaceAll('</cv>', '</ cv>')}\n</cv>` }]
       : cv.files.map((file) =>
@@ -361,6 +378,7 @@ async function askAi(env: Env, cv: CvRequest): Promise<Answer | AiFailure> {
               }
             : { type: 'image_url', image_url: { url: `data:${file.mime};base64,${file.data}` } },
         );
+  const content = [dated, ...cvParts];
   const hasPdf = cv.kind === 'files' && cv.files.some((f) => f.mime === PDF);
   const request: Record<string, unknown> = {
     model: env.MODEL?.trim() || DEFAULT_MODEL,
@@ -368,7 +386,7 @@ async function askAi(env: Env, cv: CvRequest): Promise<Answer | AiFailure> {
       { role: 'system', content: PROMPT },
       { role: 'user', content },
     ],
-    max_tokens: 8000,
+    max_tokens: 16000,
     reasoning: { effort: EFFORTS.has(env.EFFORT ?? '') ? env.EFFORT : DEFAULT_EFFORT },
     response_format: {
       type: 'json_schema',
@@ -442,8 +460,13 @@ function cost(completion: Completion | null): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? Math.round(value * 1e6) / 1e6 : null;
 }
 
-/** The answer as a profile of the schema's shape, or `null` (never half a profile). The
- * industries never carry the star: that is the user's wish, not the CV's. */
+/** Today in UTC as a CV writes dates, `dd.mm.yyyy`. */
+function germanDate(now: Date): string {
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${two(now.getUTCDate())}.${two(now.getUTCMonth() + 1)}.${String(now.getUTCFullYear())}`;
+}
+
+/** The answer as a profile of the schema's shape, or `null` (never half a profile). */
 function parseProfile(content: string | null | undefined): Record<string, unknown> | null {
   if (typeof content !== 'string') {
     return null;
@@ -473,9 +496,6 @@ function parseProfile(content: string | null | undefined): Record<string, unknow
   if (years !== null && typeof years !== 'number') {
     return null;
   }
-  value.branchen = (value.branchen as unknown[]).map((entry) =>
-    isObject(entry) ? { ...entry, wunsch: false } : entry,
-  );
   return value;
 }
 
