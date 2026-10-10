@@ -57,7 +57,7 @@ export const STEPS: readonly StepSpec[] = [
     // After the CV: the whole profile as the AI filled it, to check.
     id: 'review',
     heading: (t) => t.firstRun.review,
-    text: (t) => t.firstRun.later,
+    text: (t) => t.firstRun.reviewText,
     back: () => 'upload',
     next: (t) => t.firstRun.next,
   },
@@ -80,7 +80,7 @@ export const STEPS: readonly StepSpec[] = [
   {
     // Says what was set up: everything with a mailbox, else the profile.
     id: 'done',
-    heading: (t, walk) => (walk.mailbox ? t.firstRun.done : t.firstRun.profileDone),
+    heading: (t) => t.firstRun.done,
     back: () => null,
     next: (t) => t.firstRun.toJobs,
   },

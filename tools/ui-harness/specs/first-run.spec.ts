@@ -97,6 +97,8 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   // Two tiles side by side; the CV's says the AI; a click goes on.
   const way = page.getByTestId('first-way');
   await expect(page.getByTestId('first-step')).toContainText(T.firstRun.welcomeText);
+  // What the setup holds, under the two ways, instead of a step indicator.
+  await expect(page.getByTestId('first-overview')).toHaveText(T.firstRun.overview);
   await expect(way.getByTestId('way-cv')).toContainText(T.profile.fromCv);
   await expect(way.getByTestId('way-cv')).toContainText(T.profile.fromCvHint);
   await expect(way.getByTestId('way-self')).toHaveText(T.profile.byHand);
@@ -117,7 +119,8 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   await expect(page.getByTestId('first-back')).toHaveCount(0);
   await expect(page.getByTestId('cv-cancel')).toBeVisible();
   await expectStep(page, T.firstRun.review);
-  await expect(page.getByTestId('first-step')).toContainText(T.firstRun.later);
+  // After the CV it says what only the user knows.
+  await expect(page.getByTestId('first-step')).toContainText(T.firstRun.reviewText);
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
   // The whole Profil page: its four groups, without its head, the CV button and the bar.
   await expect(page.getByTestId('profile-form')).toBeVisible();
@@ -256,8 +259,12 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(ends.nth(1)).toHaveText(T.settings.connect);
   await expect(ends.nth(1)).toHaveClass(/primary/);
   await page.getByTestId('first-skip').click();
-  // Fertig without a mailbox: it says only the profile was set up.
-  await expectStep(page, T.firstRun.profileDone);
+  // Fertig without a mailbox: the summary says the Postfach is left for later.
+  await expectStep(page, T.firstRun.done);
+  await expect(page.getByTestId('first-summary').locator('li')).toHaveText([
+    T.firstRun.summaryProfile,
+    T.firstRun.summaryMailboxLater,
+  ]);
   await expect(page.getByTestId('first-back')).toHaveCount(0);
   expect(await calls(page, 'finish_onboarding')).toHaveLength(1);
   await expect(next(page)).toHaveText(T.firstRun.toJobs);
@@ -290,6 +297,10 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(next(page)).toHaveClass(/primary/);
   await next(page).click();
   await expectStep(page, T.firstRun.done);
+  await expect(page.getByTestId('first-summary').locator('li')).toHaveText([
+    T.firstRun.summaryProfile,
+    T.firstRun.summaryMailbox,
+  ]);
 });
 
 test('the smallest window keeps every step usable', async ({ page }) => {

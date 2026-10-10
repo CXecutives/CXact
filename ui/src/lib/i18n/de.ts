@@ -1397,6 +1397,11 @@ export const de = {
     review: 'Profil prüfen',
     self: 'Profil ausfüllen',
     later: 'Du kannst alles später im Profil ändern.',
+    /** Under "Profil prüfen" after the CV: what only the user knows. */
+    reviewText:
+      'Prüfe die Angaben aus deinem Lebenslauf und ergänze Vertragsart, Tagessatz und Länder.',
+    /** Under the two ways: what the setup holds, instead of a step indicator. */
+    overview: 'Du richtest erst dein Profil ein, dann auf Wunsch dein Postfach.',
     /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
     alertsText: (portals: readonly Portal[]) =>
       `CXact liest die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} aus deinem Gmail.`,
@@ -1406,7 +1411,10 @@ export const de = {
     skip: 'Überspringen',
     /** Fertig: everything with a mailbox, else the profile. */
     done: 'Alles eingerichtet',
-    profileDone: 'Profil eingerichtet',
+    /** The summary of Fertig: what is set up, honestly. */
+    summaryProfile: 'Profil eingerichtet',
+    summaryMailbox: 'Postfach verbunden',
+    summaryMailboxLater: 'Postfach später in den Einstellungen verbinden',
     toJobs: 'Zu den Jobs',
   },
 

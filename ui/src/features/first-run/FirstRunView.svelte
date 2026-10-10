@@ -28,6 +28,7 @@
   import { onMount, tick } from 'svelte';
   import Button from '$components/Button.svelte';
   import Group from '$components/Group.svelte';
+  import Icon from '$components/Icon.svelte';
   import Notice from '$components/Notice.svelte';
   import Page from '$components/Page.svelte';
   import Spinner from '$components/Spinner.svelte';
@@ -169,6 +170,7 @@
       onself={() => onboarding.byHand()}
       testid="first-way"
     />
+    <p class="text" data-testid="first-overview">{t.firstRun.overview}</p>
   {:else if id === 'upload'}
     {#if problem !== null}
       <Notice tone="danger" variant="inline" text={problem} testid="cv-error" />
@@ -180,6 +182,14 @@
     <ProfileView bind:this={profileView} setup onflag={(fields) => (flagged = fields)} />
   {:else if id === 'alerts'}
     {@render alerts()}
+  {:else if id === 'done'}
+    <ul class="summary" data-testid="first-summary">
+      <li><Icon name="success" /><span>{t.firstRun.summaryProfile}</span></li>
+      <li class:later={!walk.mailbox}>
+        <Icon name={walk.mailbox ? 'success' : 'unstated'} />
+        <span>{walk.mailbox ? t.firstRun.summaryMailbox : t.firstRun.summaryMailboxLater}</span>
+      </li>
+    </ul>
   {/if}
 {/snippet}
 
@@ -306,6 +316,35 @@
   .address {
     color: var(--text);
     font: var(--type-label);
+  }
+
+  /* Fertig: what is set up, one line each, a skipped Postfach said as what is left. */
+  .summary {
+    display: grid;
+    gap: var(--space-8);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .summary li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    color: var(--text);
+    font: var(--type-md);
+  }
+
+  .summary li > :global(.icon) {
+    color: var(--success);
+  }
+
+  .summary li.later {
+    color: var(--text-muted);
+  }
+
+  .summary li.later > :global(.icon) {
+    color: var(--text-subtle);
   }
 
   /* The foot on the page right under the step: Zurück's words on the column's edge, the
