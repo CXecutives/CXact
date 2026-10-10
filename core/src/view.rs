@@ -1572,10 +1572,11 @@ pub enum OpenTarget {
     PortalSetup {
         portal: Portal,
     },
-    /// Google page to create an app password.
-    AppPasswordPage,
-    /// Google page to turn on 2-step verification (an app password needs it).
-    TwoStepPage,
+    /// The provider's page for the password CXact signs in with
+    /// ([`MailProvider::password_page`]).
+    PasswordPage {
+        provider: MailProvider,
+    },
     /// The app's data folder (database, settings, sessions).
     DataDir,
     Workspace,
@@ -1992,9 +1993,9 @@ mod tests {
             job_page(&store, &q).unwrap()
         };
         let all = page(None, None);
-        assert_eq!(titles(&all), ["D", "B", "A", "E", "C"]);
+        assert_eq!(titles(&all), ["B", "A", "E", "D", "C"]);
         let linkedin = page(Some(Portal::LinkedIn), None);
-        assert_eq!(titles(&linkedin), ["D", "B", "A", "C"]);
+        assert_eq!(titles(&linkedin), ["B", "A", "D", "C"]);
         assert_eq!(linkedin.counts.inbox, 4, "the counts follow");
         let map = page(Some(Portal::Freelancermap), None);
         assert_eq!(titles(&map), ["E"]);
@@ -2021,7 +2022,7 @@ mod tests {
         q.portals = vec![Portal::LinkedIn, Portal::Freelancermap];
         assert_eq!(
             titles(&job_page(&store, &q).unwrap()),
-            ["D", "B", "A", "E", "C"]
+            ["B", "A", "E", "D", "C"]
         );
         q.bands = vec![Band::High, Band::Low];
         let both = job_page(&store, &q).unwrap();
@@ -2033,7 +2034,7 @@ mod tests {
         q.received_since = Some(crate::time::to_db(
             Timestamp::now() + jiff::SignedDuration::from_secs(90),
         ));
-        assert_eq!(titles(&job_page(&store, &q).unwrap()), ["D", "B", "C"]);
+        assert_eq!(titles(&job_page(&store, &q).unwrap()), ["B", "D", "C"]);
         q.received_since = Some(0);
         assert_eq!(job_page(&store, &q).unwrap().jobs.len(), 5);
         let json = r#"{"place":"inbox","sort":"match","search":null,
@@ -2094,7 +2095,7 @@ mod tests {
         let all = page(None);
         assert_eq!(
             titles(&all),
-            ["G", "E"],
+            ["E", "G"],
             "no job of an earlier run, none excluded"
         );
         assert_eq!((all.counts.inbox, all.counts.excluded), (2, 0));
@@ -2252,9 +2253,9 @@ mod tests {
         }
         store.save_matches(&matches, "r", Timestamp::now()).unwrap();
         // By rate: the equal rates of A and B by date (B is newer), then C, then the rest by
-        // date, the newest first.
+        // date, the newest first; a job without a score after the scored ones (its section).
         let by_rate = job_page(&store, &query(Place::Inbox, JobSort::Rate, 50, 0)).unwrap();
-        assert_eq!(titles(&by_rate), ["B", "A", "C", "H", "G", "F", "E", "D"]);
+        assert_eq!(titles(&by_rate), ["B", "A", "C", "G", "F", "E", "D", "H"]);
     }
 
     /// A page with every filter on takes moments at 2,000 jobs, not seconds.
@@ -2309,13 +2310,14 @@ mod tests {
         let page = |sort, limit, offset| {
             job_page(&store, &query(Place::Inbox, sort, limit, offset)).unwrap()
         };
-        // The unscored one first; the read job A and the unread but excluded C stand too.
+        // The scored ones, then the unscored one; the read job A and the unread but excluded
+        // C stand too.
         let all = page(JobSort::Match, 50, 0);
-        assert_eq!(titles(&all), ["D", "B", "A", "C"]);
-        assert!(all.jobs[0].unread && all.jobs[0].match_.is_none());
+        assert_eq!(titles(&all), ["B", "A", "D", "C"]);
+        assert!(all.jobs[2].unread && all.jobs[2].match_.is_none());
         let newest = page(JobSort::Newest, 50, 0);
-        assert_eq!(titles(&newest), ["D", "B", "A", "C"]);
-        assert!(!newest.jobs[2].unread);
+        assert_eq!(titles(&newest), ["B", "A", "D", "C"]);
+        assert!(!newest.jobs[1].unread);
         // Past the end or counts only: no rows, the same counts.
         let past = page(JobSort::Match, 50, 10);
         assert!(past.jobs.is_empty());

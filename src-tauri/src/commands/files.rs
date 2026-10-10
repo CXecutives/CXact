@@ -10,11 +10,6 @@ use tauri::State;
 use super::app::existing;
 use super::{AppState, CmdResult, not_found};
 
-/// Google page to create an app password.
-const APP_PASSWORD_URL: &str = "https://myaccount.google.com/apppasswords";
-/// Google page to turn on 2-step verification, which an app password requires.
-const TWO_STEP_URL: &str = "https://myaccount.google.com/signinoptions/twosv";
-
 /// The work folder to open: a fresh install may have none yet, so it is made now and then
 /// opened. The dry run writes nothing outside its
 /// database: there a missing folder stays not found.
@@ -65,8 +60,7 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
         OpenTarget::AlertMail { gmail_id } => mail(u64::from_str_radix(&gmail_id, 16).ok())?,
         OpenTarget::PortalHome { portal } => portal.home_url().into(),
         OpenTarget::PortalSetup { portal } => portal.setup_url().into(),
-        OpenTarget::AppPasswordPage => APP_PASSWORD_URL.into(),
-        OpenTarget::TwoStepPage => TWO_STEP_URL.into(),
+        OpenTarget::PasswordPage { provider } => provider.password_page().into(),
         OpenTarget::Workspace => workspace_folder(&state)?,
         OpenTarget::ProfileDir => existing(
             state.workspace()?.join(jobalert_core::profile::PROFILE_DIR),

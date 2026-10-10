@@ -177,27 +177,24 @@ fn page_order(query: &PageQuery, p: &str) -> String {
              {p}portal, {p}first_seen_at DESC"
         )
     };
-    let (pending, by_match) = if query.by_match {
-        // Only a scored job's ring shows its number: the ones without (not scored yet, not
-        // scorable) stand together on top, the excluded ones (their ring shows the ban) by
-        // date like those. Equal scores follow the score before the caps (`rank` in the note).
-        let scored = format!("{p}match_status IS 'scored'");
-        (
-            format!("({scored}), "),
-            format!(
-                "(CASE WHEN {scored} THEN {p}match_score END) DESC, \
-                 (CASE WHEN {scored} THEN json_extract({p}match_note, '$.rank') END) DESC, "
-            ),
+    let scored = format!("{p}match_status IS 'scored'");
+    let by_match = if query.by_match {
+        // Equal scores follow the score before the caps (`rank` in the note).
+        format!(
+            "(CASE WHEN {scored} THEN {p}match_score END) DESC, \
+             (CASE WHEN {scored} THEN json_extract({p}match_note, '$.rank') END) DESC, "
         )
     } else if query.by_rate {
         let rate = day_rate(p);
-        (String::new(), format!("({rate} IS NULL), {rate} DESC, "))
+        format!("({rate} IS NULL), {rate} DESC, ")
     } else {
-        (String::new(), String::new())
+        String::new()
     };
-    // A closed ad (no applications any more) follows the open ones.
+    // Three sections in every order (design round 7): the scored jobs, then the ones whose
+    // ring shows no number (not scored yet, not scorable), then the excluded ones; in each a
+    // closed ad (no applications any more) follows the open ones.
     format!(
-        "({p}match_status IS 'excluded'), {pending}\
+        "({p}match_status IS 'excluded'), (NOT ({scored})), \
          ({p}desc_status = 'ok' AND {p}desc_closed = 1), {by_match}{date}, \
          {p}portal, {p}job_id"
     )
@@ -1876,12 +1873,12 @@ mod tests {
         );
     }
 
-    /// The jobs of a page with their order: by match first the jobs still without a score
-    /// (the list's "Noch ohne Passung" on top, so every page it loads is complete), then the
-    /// best score; a closed ad after the open ones of its group; the excluded ones last. By
-    /// date only the closed and the excluded ones step back.
+    /// The jobs of a page with their order, in three sections in every order (design round
+    /// 7): the scored ones (by match the best score first), then the ones still without a
+    /// score (the list's "Noch nicht bewertet"), then the excluded ones; a closed ad after the
+    /// open ones of its section.
     #[test]
-    fn by_match_the_jobs_without_a_score_come_first() {
+    fn the_scored_jobs_come_first_then_the_ones_without_a_score() {
         use crate::model::MatchStatus::{Excluded, Scored};
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
@@ -1944,15 +1941,15 @@ mod tests {
                 .map(|job| job.title)
                 .collect::<Vec<_>>()
         };
-        assert_eq!(titles(true), ["P", "Q", "H", "L", "C", "X"]);
-        assert_eq!(titles(false), ["P", "H", "L", "Q", "C", "X"]);
-        // A page of two by match holds the two without a score, whole.
-        assert!(page(true, 2).iter().all(|job| job.match_.is_none()));
+        assert_eq!(titles(true), ["H", "L", "C", "P", "Q", "X"]);
+        assert_eq!(titles(false), ["H", "L", "C", "P", "Q", "X"]);
+        // A page of two by match holds two scored jobs.
+        assert!(page(true, 2).iter().all(|job| job.match_.is_some()));
     }
 
-    /// By match every job whose ring shows no number stands in one place, on top: the ones
-    /// not scored yet and the unscorable ones together, newest first, whatever score an
-    /// unscorable one keeps; the excluded ones at the end, newest first too (their ring shows
+    /// By match every job whose ring shows no number stands in one place, after the scored
+    /// ones: the ones not scored yet and the unscorable ones together, newest first, whatever
+    /// score an unscorable one keeps; the excluded ones at the end, newest first too (their ring shows
     /// the ban, not the fit they keep).
     #[test]
     fn by_match_the_jobs_without_a_number_stand_together_and_the_excluded_by_date() {
@@ -2016,8 +2013,8 @@ mod tests {
                 .map(|job| job.title)
                 .collect::<Vec<_>>()
         };
-        assert_eq!(page(50), ["U", "N", "V", "B", "S", "A", "E"]);
-        // A page of three holds the three without a number, whole.
-        assert_eq!(page(3), ["U", "N", "V"]);
+        assert_eq!(page(50), ["B", "S", "U", "N", "V", "A", "E"]);
+        // A page of three holds the two scored ones and the newest without a number.
+        assert_eq!(page(3), ["B", "S", "U"]);
     }
 }

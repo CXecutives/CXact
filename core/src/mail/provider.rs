@@ -27,6 +27,18 @@ const APP_PASSWORD_LETTERS: usize = 16;
 const APPLE_DOMAINS: [&str; 3] = ["icloud.com", "me.com", "mac.com"];
 
 impl MailProvider {
+    /// The provider's page for the password CXact signs in with: Google's and Apple's app
+    /// passwords; at GMX and WEB.DE, whose own password works, the help on allowing IMAP,
+    /// which they refuse until it is switched on.
+    pub fn password_page(self) -> &'static str {
+        match self {
+            MailProvider::Gmail => "https://myaccount.google.com/apppasswords",
+            MailProvider::Icloud => "https://account.apple.com/account/manage/section/security",
+            MailProvider::Gmx => "https://hilfe.gmx.net/pop-imap/einschalten.html",
+            MailProvider::Webde => "https://hilfe.web.de/pop-imap/einschalten.html",
+        }
+    }
+
     pub const ALL: [MailProvider; 4] = [
         MailProvider::Gmail,
         MailProvider::Icloud,
