@@ -101,6 +101,16 @@ fn item<'a>(
     }
 }
 
+/// The day of every prompt of these tests.
+fn today() -> Date {
+    Date::new(2026, 10, 10).unwrap()
+}
+
+/// The prompt of `item` on [`today`].
+fn prompt_of(profile: &ProfileForm, item: PromptJob<'_>) -> String {
+    ai_prompt(profile, item, today())
+}
+
 /// UTF-16 offsets of `needle` in `text`.
 fn span(text: &str, needle: &str) -> (u32, u32) {
     let at = text
@@ -413,47 +423,177 @@ fn in_order(prompt: &str, headings: &[&str]) {
 fn every_section_of_one_job_in_order() {
     let view = view();
     let a = assessment();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     in_order(
         &de,
         &[
             "# Auftrag\n",
+            "Heute ist der 10.10.2026.\n",
             "# Mein Profil\n",
             "```json\n",
             "# Die Anzeige\n",
             "## Jobdetails\n",
             "## Anzeigentext\n",
             "```text\n",
-            "# Vorbewertung der App\n",
+            "# Vorbewertung von CXact\n",
             "**Harte Kriterien**",
             "**Erfüllt**",
             "**Offen**",
             "**Wunschrolle und Wünsche**",
             "# Arbeitsweise\n",
             "# Bewertungsregel\n",
+            "## Punkte von 0 bis 100\n",
             "## Obergrenzen",
             "# Antwortformat\n",
             "## Ergebnis\n",
-            "## Begründung\n",
             "## Anforderungen\n",
             "| Anforderung | Gewicht | Stand | Anzeige | Profil |",
-            "## Harte Kriterien\n",
-            "## Risiken und Warnsignale\n",
-            "## Offene Fragen\n",
-            "## Vergütung und Konditionen\n",
+            "## Konditionen\n",
+            "| Kriterium | Profil | Anzeige | Ergebnis |",
+            "## Risiken und offene Fragen\n",
             "## Für die Bewerbung\n",
             "## Nachricht\n",
         ],
     );
 }
 
+/// The task ends with the day the caller names, in the prompt's date format.
+#[test]
+fn the_task_ends_with_todays_date() {
+    let view = view();
+    let a = assessment();
+    let task = |day: Date| {
+        let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), day);
+        de.split("\n# Mein Profil")
+            .next()
+            .unwrap_or_default()
+            .trim_end()
+            .to_owned()
+    };
+    assert!(task(today()).ends_with("\n\nHeute ist der 10.10.2026."));
+    assert!(task(Date::new(2027, 1, 3).unwrap()).ends_with("\n\nHeute ist der 03.01.2027."));
+    assert_eq!(
+        prompt_of(&profile(), item(&view, Some(AD), Some(&a)))
+            .matches("Heute ist der")
+            .count(),
+        1
+    );
+}
+
+/// The answer has six blocks, on the scale of 0 to 100 like the app's (the old nine blocks
+/// and the scale of 1 to 10 are gone).
+#[test]
+fn the_answer_has_six_blocks_on_the_scale_of_the_app() {
+    let view = view();
+    let de = prompt_of(&profile(), item(&view, Some(AD), None));
+    let answer = de.split("\n# Antwortformat\n").nth(1).unwrap();
+    let headings: Vec<&str> = answer.lines().filter(|l| l.starts_with("## ")).collect();
+    assert_eq!(
+        headings,
+        [
+            "## Ergebnis",
+            "## Anforderungen",
+            "## Konditionen",
+            "## Risiken und offene Fragen",
+            "## Für die Bewerbung",
+            "## Nachricht",
+        ]
+    );
+    assert!(
+        answer.contains("Erste Zeile **X von 100**, die Übereinstimmung in den Worten von CXact")
+    );
+    assert!(!de.contains("von 10**"), "no scale of 1 to 10");
+    assert!(!de.contains("Punkte von 1 bis 10"));
+    for gone in [
+        "## Begründung",
+        "## Harte Kriterien",
+        "## Offene Fragen",
+        "## Vergütung und Konditionen",
+    ] {
+        assert!(!de.contains(gone), "{gone}");
+    }
+}
+
+/// The prompt calls the app CXact, never "die App" (the assistant has not heard of an app).
+#[test]
+fn the_prompt_names_cxact() {
+    let view = view();
+    let a = assessment();
+    let with = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
+    let without = prompt_of(&profile(), item(&view, None, None));
+    let generic =
+        regex::Regex::new(r"(?i)\b(?:die|der|den|dem|eine|einer|meiner|dieser) App\b").unwrap();
+    for de in [&with, &without] {
+        let prose = outside_fences(de);
+        let said: Vec<&str> = generic.find_iter(&prose).map(|m| m.as_str()).collect();
+        assert!(said.is_empty(), "{said:?} in:\n{prose}");
+    }
+    // The rubric breaks its lines inside a sentence.
+    let flat = with.split_whitespace().collect::<Vec<_>>().join(" ");
+    for part in [
+        "Meine App CXact hat die Anzeige schon maschinell vorbewertet",
+        "die Anzeige und die Vorbewertung von CXact, danach",
+        "Die Schlüssel gehören zum Profilformat von CXact:",
+        "Die Jobdetails hat CXact aus Portalseite und Text gelesen.",
+        "# Vorbewertung von CXact ",
+        "Die Vorbewertung von CXact ist ein Wortabgleich.",
+        "Diese Regel gilt für die Prüfung in einem KI-Chat aus CXact.",
+        "CXact rechnet sie mit 90 %",
+    ] {
+        assert!(flat.contains(part), "{part}");
+    }
+    assert!(without.contains("Den Text der Anzeige hat CXact nicht."));
+    assert!(
+        without
+            .contains("CXact hat die Anzeige nicht bewertet, weil ihr ein nutzbares Profil fehlt.")
+    );
+}
+
+/// The rubric holds the scale of 0 to 100 and only the app's band limits as placeholders,
+/// which the prompt fills in from the one source, [`crate::model`].
+#[test]
+fn the_rubric_is_filled_with_the_limits_of_the_app() {
+    let view = view();
+    let de = prompt_of(&profile(), item(&view, Some(AD), None));
+    let raw = de_words().rubric;
+    assert!(raw.contains("{HIGH_FROM}") && raw.contains("{MID_FROM}"));
+    let filled = rubric(&de::German);
+    assert!(de.contains(&filled), "the rubric whole");
+    assert!(
+        !filled.contains('{') && !filled.contains('}'),
+        "a placeholder is left:\n{filled}"
+    );
+    let flat = filled.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(flat.contains(&format!(
+        "Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, darunter gering."
+    )));
+    assert!(flat.contains(&format!("heben keinen Job auf {HIGH_FROM} oder mehr")));
+    for part in [
+        "- 90 bis 100 Kernfeld, alle Muss-Punkte erfüllt",
+        "- 0 bis 29 außerhalb des Fachgebiets",
+        "Ein fehlender Kann-Punkt kostet höchstens 5 Punkte.",
+        "(CXact rechnet sie mit 90 %)",
+        "kostet eine andere Art etwa 10 Punkte",
+        "ein Plus von höchstens 10 Punkten",
+        "(tagessatz_wunsch, arbeitsmodell und regionen)",
+        "höchstens 10 Punkte nach oben oder unten",
+        "Kein fachlicher Muss-Punkt erfüllt höchstens 30",
+        "Nichts offen mindestens 40",
+    ] {
+        assert!(flat.contains(part), "{part}");
+    }
+    // Industries carry no wish, and nothing is left of the scale of 1 to 10.
+    assert!(!flat.contains("branchen"), "no industry wish");
+    assert!(!flat.contains("einen Punkt"), "no point on the old scale");
+}
+
 #[test]
 fn the_pre_assessment_says_what_the_app_found() {
     let view = view();
     let a = assessment();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     for part in [
-        "- Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)",
+        "- Ergebnis: 68 von 100 Punkten von CXact, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)",
         "- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen",
         "- Kann-Anforderungen: 0 von 1 erfüllt",
         // What moved the score, as the reader's "why this number" shows it.
@@ -504,7 +644,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         factor(FactorCode::Permanent, json!({ "percent": 90 })),
         factor(FactorCode::Cap, json!({ "cap": "titleOpen", "max": 60 })),
     ];
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let result = de.split("**Harte Kriterien**").next().unwrap();
     for part in [
         "- Wunschrolle: keine im Titel",
@@ -525,7 +665,7 @@ fn no_contact_data_reaches_a_prompt() {
     let mut a = assessment();
     // A profile entry behind a reason is filtered too.
     a.reasons[0].evidence.as_mut().unwrap().profile = "Controlling, siehe max@example.org".into();
-    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let prompt = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     for private in PRIVATE {
         assert!(!prompt.contains(private), "{private} leaked:\n{prompt}");
     }
@@ -546,7 +686,7 @@ fn no_contact_data_reaches_a_prompt() {
 #[test]
 fn the_glossary_names_the_keys_of_the_profile() {
     let view = view();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), None));
+    let de = prompt_of(&profile(), item(&view, Some(AD), None));
     assert!(de.contains(de_words().glossary_intro));
     for key in [
         "wunschrollen",
@@ -570,7 +710,7 @@ fn the_glossary_names_the_keys_of_the_profile() {
 fn limits_are_checks_and_remote_work_fits_anywhere() {
     let view = view();
     let a = assessment();
-    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     for part in [
         "`mindestlaufzeit_monate` sind teilweise, nie ein Ausschluss",
         "ein Land außerhalb von `laender` schließt aus, eine voll remote Stelle nie",
@@ -605,7 +745,7 @@ fn missing_facts_are_said() {
     bare.company.clear();
     bare.location.clear();
     bare.mail_date = None;
-    let de = ai_prompt(&profile(), item(&bare, Some("Kurzer Text."), None));
+    let de = prompt_of(&profile(), item(&bare, Some("Kurzer Text."), None));
     for label in [
         "Unternehmen",
         "Ort",
@@ -635,7 +775,7 @@ fn missing_facts_are_said() {
         page: Some(&page),
         ..item(&bare, Some("Kurzer Text."), None)
     };
-    let de = ai_prompt(&profile(), with_page);
+    let de = prompt_of(&profile(), with_page);
     for part in [
         "- Vertragsart: nicht erkannt",
         "- Beschäftigungsart: „Freiberuflich“ (laut Portalseite)",
@@ -661,7 +801,7 @@ fn the_text_status_is_said() {
     closed.closed = true;
     let mut gone = view();
     gone.detail = DetailState::Gone;
-    let de = |job: &JobView, text: Option<&str>| ai_prompt(&profile(), item(job, text, None));
+    let de = |job: &JobView, text: Option<&str>| prompt_of(&profile(), item(job, text, None));
     assert!(de(&full, Some(AD)).contains(de_words().text_full));
     let marked = de(
         &teaser,
@@ -671,7 +811,7 @@ fn the_text_status_is_said() {
     assert!(!marked.contains(de_words().text_full));
     assert!(de(&short, Some("Interim-Mandat, Details im Gespräch.")).contains("sehr kurzen Text"));
     let none = de(&full, None);
-    assert!(none.contains("Den Text der Anzeige hat die App nicht."));
+    assert!(none.contains("Den Text der Anzeige hat CXact nicht."));
     assert!(!none.contains("```text"), "no empty text block");
     assert!(
         de(&closed, Some(AD))
@@ -686,7 +826,7 @@ fn the_text_status_is_said() {
 fn an_english_ad_stays_as_it_is() {
     let view = view();
     let ad = "We are looking for an Interim CFO (m/f/d).\n\nRequirements\n- 10+ years in controlling\n- Fluent German and English";
-    let de = ai_prompt(&profile(), item(&view, Some(ad), None));
+    let de = prompt_of(&profile(), item(&view, Some(ad), None));
     assert!(de.contains(ad), "the ad verbatim");
     assert!(de.contains("Antworte auf Deutsch"));
     assert!(de.contains("Zitate bleiben in der Sprache der Anzeige."));
@@ -696,7 +836,7 @@ fn an_english_ad_stays_as_it_is() {
 fn a_fence_is_longer_than_any_backticks_in_the_ad() {
     let view = view();
     let ad = "Kenntnisse in ```SQL``` und `Python`";
-    let prompt = ai_prompt(&profile(), item(&view, Some(ad), None));
+    let prompt = prompt_of(&profile(), item(&view, Some(ad), None));
     assert!(
         prompt.contains(&format!("````text\n{ad}\n````")),
         "{prompt}"
@@ -715,7 +855,7 @@ fn long_texts_are_cut() {
         .collect();
     let text = "Anforderung ".repeat(5_000);
     let view = view();
-    let prompt = ai_prompt(&big, item(&view, Some(&text), None));
+    let prompt = prompt_of(&big, item(&view, Some(&text), None));
     assert!(
         prompt.chars().count() < MAX_PROFILE_CHARS + MAX_AD_CHARS + 20_000,
         "{}",
@@ -727,7 +867,7 @@ fn long_texts_are_cut() {
         "profile and ad marked as cut, and the note says so"
     );
     assert!(prompt.contains("Der Text ist nach 12.000 Zeichen gekürzt"));
-    let short = ai_prompt(&profile(), item(&view, Some(AD), None));
+    let short = prompt_of(&profile(), item(&view, Some(AD), None));
     assert!(!short.contains("[gekürzt]"));
 }
 
@@ -781,9 +921,9 @@ fn an_excluded_job_says_why() {
         factors: Vec::new(),
     };
     let mut job = view();
-    let de = ai_prompt(&profile(), item(&job, Some(ad), Some(&excluded)));
+    let de = prompt_of(&profile(), item(&job, Some(ad), Some(&excluded)));
     for part in [
-        "- Ergebnis: ausgeschlossen durch ein hartes Kriterium, ohne den Ausschluss 90 von 100 Punkten der App",
+        "- Ergebnis: ausgeschlossen durch ein hartes Kriterium, ohne den Ausschluss 90 von 100 Punkten von CXact",
         "- Ausschlussgrund: Der Stundensatz ergibt mal 8 etwa 760 € pro Tag, unter dem Minimum von 1.100 €. „Honorar: 95,- € pro Stunde“",
         "- Tagessatz mindestens 1.100 €: verletzt, 95 € pro Stunde, etwa 760 € pro Tag („Honorar: 95,- € pro Stunde“)",
         "- Vergütung: 95 € pro Stunde, etwa 760 € pro Tag",
@@ -793,7 +933,7 @@ fn an_excluded_job_says_why() {
     }
     assert!(!de.contains(de_words().overridden));
     job.overridden = true;
-    let de = ai_prompt(&profile(), item(&job, Some(ad), Some(&excluded)));
+    let de = prompt_of(&profile(), item(&job, Some(ad), Some(&excluded)));
     assert!(de.contains(&format!("- {}", de_words().overridden)));
 }
 
@@ -1001,7 +1141,7 @@ fn no_engine_code_reaches_a_prompt() {
     let path = regex::Regex::new(r"[a-z_]+\[\d+\]").unwrap();
     let raw_words = regex::Regex::new(r"\b(exact|stem|vocabulary)\b").unwrap();
     let view = view();
-    let prompt = ai_prompt(&rich, item(&view, Some(AD), Some(&every)));
+    let prompt = prompt_of(&rich, item(&view, Some(AD), Some(&every)));
     let prose = outside_fences(&prompt);
     let codes: Vec<&str> = camel.find_iter(&prose).map(|m| m.as_str()).collect();
     assert!(codes.is_empty(), "engine codes {codes:?} in:\n{prose}");
@@ -1016,7 +1156,7 @@ fn no_engine_code_reaches_a_prompt() {
 fn the_prompts_name_no_product_and_carry_the_rubric() {
     let view = view();
     let a = assessment();
-    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let prompt = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     for product in [
         "Claude",
         "ChatGPT",
@@ -1027,9 +1167,9 @@ fn the_prompts_name_no_product_and_carry_the_rubric() {
     ] {
         assert!(!prompt.contains(product), "{product}");
     }
-    let rubric = de_words().rubric;
-    assert!(prompt.contains(rubric.trim_end()), "the rubric whole");
-    assert!(prompt.find("# Arbeitsweise") < prompt.find(rubric.trim_end()));
+    let rubric = rubric(&de::German);
+    assert!(prompt.contains(&rubric), "the rubric whole");
+    assert!(prompt.find("# Arbeitsweise") < prompt.find(&rubric));
     assert!(rubric.starts_with("# Bewertungsregel"));
 }
 
@@ -1075,10 +1215,10 @@ fn the_real_engine_behind_a_stored_job() {
         "Wir suchen ab sofort einen Interim CFO (m/w/d).\n\nAnforderungen:\n- Erfahrung im Controlling\n- Konzernrechnungslegung nach IFRS\n- Erfahrung mit SAP S/4HANA\n\nRahmenbedingungen:\n- Tagessatz 1.200 €\n- Einsatzort Hamburg",
         &profile,
     );
-    let prompt = ai_prompt(&profile, fits.job());
+    let prompt = prompt_of(&profile, fits.job());
     for part in [
         "- Ergebnis: ",
-        " von 100 Punkten der App, hohe Übereinstimmung",
+        " von 100 Punkten von CXact, hohe Übereinstimmung",
         "- Tagessatz mindestens 1.000 €: erfüllt, 1.200 € pro Tag („Tagessatz 1.200 €“)",
         "- Vergütung: 1.200 € pro Tag",
         "- Start: ab sofort",
@@ -1093,7 +1233,7 @@ fn the_real_engine_behind_a_stored_job() {
         "Für die Einführung von SAP S/4HANA suchen wir eine Projektleitung (m/w/d).\n\nAnforderungen:\n- Projektmanagement in SAP-Einführungen\n- Erfahrung mit SAP S/4HANA\n\nRahmenbedingungen:\n- Tagessatz bis 800 €\n- 100 % remote",
         &profile,
     );
-    let prompt = ai_prompt(&profile, excluded.job());
+    let prompt = prompt_of(&profile, excluded.job());
     for part in [
         "- Ergebnis: ausgeschlossen durch ein hartes Kriterium",
         "- Ausschlussgrund: Der Tagessatz von 800 € liegt unter dem Minimum von 1.000 €. „Tagessatz bis 800 €“",
@@ -1135,7 +1275,7 @@ fn passages_follow_utf16_offsets() {
 fn golden_prompt() {
     let view = view();
     let a = assessment();
-    let prompt = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)));
+    let prompt = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let path =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/prompts/job.de.md");
     let stored = std::fs::read_to_string(&path)

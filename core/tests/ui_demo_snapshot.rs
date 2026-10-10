@@ -289,7 +289,8 @@ fn job_prompts(
         .map(|key| {
             let row = store.job(key).unwrap().unwrap();
             let source = PromptSource::load(store, Some(matcher), &row).unwrap();
-            (key.to_string(), ai_prompt(profile, source.job()))
+            let today = jobalert_core::time::local_date(now());
+            (key.to_string(), ai_prompt(profile, source.job(), today))
         })
         .collect()
 }

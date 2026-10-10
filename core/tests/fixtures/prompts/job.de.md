@@ -1,12 +1,14 @@
 # Auftrag
 
-Du bist ein erfahrener Recruiter und Karriereberater für Festanstellungen, Projekte und Interim-Mandate in jedem Fachgebiet. Prüfe für mich, ob sich eine Bewerbung auf die Anzeige unten lohnt. Miss sie streng an meinem Profil, belege jede Aussage und benenne klar, was fehlt oder unklar ist. Eine App hat die Anzeige schon maschinell vorbewertet; prüfe dieses Ergebnis, statt es zu übernehmen.
+Du bist ein erfahrener Recruiter und Karriereberater für Festanstellungen, Projekte und Interim-Mandate in jedem Fachgebiet. Prüfe für mich, ob sich eine Bewerbung auf die Anzeige unten lohnt. Miss sie streng an meinem Profil, belege jede Aussage und benenne klar, was fehlt oder unklar ist. Meine App CXact hat die Anzeige schon maschinell vorbewertet; prüfe dieses Ergebnis, statt es zu übernehmen.
 
-Unten stehen mein Profil, die Anzeige und die Vorbewertung der App, danach die Arbeitsweise, die Bewertungsregel und das Antwortformat.
+Unten stehen mein Profil, die Anzeige und die Vorbewertung von CXact, danach die Arbeitsweise, die Bewertungsregel und das Antwortformat.
+
+Heute ist der 10.10.2026.
 
 # Mein Profil
 
-Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat meiner App:
+Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat von CXact:
 
 - `wunschrollen`: Rollen, die ich suche
 - `vertragsarten`: erlaubte Vertragsarten: `projekt` (Projekt und Interim), `festanstellung`, `zeitarbeit` (Arbeitnehmerüberlassung); was fehlt, schließt eine Stelle aus
@@ -76,7 +78,7 @@ Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat m
 
 ## Jobdetails
 
-Die Jobdetails hat die App aus Portalseite und Text gelesen. Was sie nicht erkannt hat, kann trotzdem im Text stehen; im Zweifel gilt der Anzeigentext.
+Die Jobdetails hat CXact aus Portalseite und Text gelesen. Was sie nicht erkannt hat, kann trotzdem im Text stehen; im Zweifel gilt der Anzeigentext.
 
 - Titel: Interim CFO (m/w/d)
 - Unternehmen: Hanseatic Holding GmbH
@@ -114,11 +116,11 @@ Rahmen
 - Remote-Anteil 60 %, sonst vor Ort in Hamburg
 ```
 
-# Vorbewertung der App
+# Vorbewertung von CXact
 
 Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter dem Ergebnis steht, was die Punktzahl bewegt. Prüfe jeden Punkt, statt ihn zu übernehmen.
 
-- Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)
+- Ergebnis: 68 von 100 Punkten von CXact, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)
 - Muss-Anforderungen: 3 von 4 erfüllt, 1 offen
 - Kann-Anforderungen: 0 von 1 erfüllt
 - Wünsche: heben die Punktzahl um 3 von 100 Punkten
@@ -158,45 +160,47 @@ Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter de
    - Verfügbarkeit: ein Start vor `verfuegbar_ab` ist teilweise, nie ein Ausschluss.
    - Auslastung und Laufzeit: eine Auslastung, die nicht zu `auslastung` passt, oder eine Laufzeit unter `mindestlaufzeit_monate` sind teilweise, nie ein Ausschluss.
    - Einsatzort: ein Land außerhalb von `laender` schließt aus, eine voll remote Stelle nie. Hybrid, flexibel oder einzelne mobile Tage machen eine Stelle nicht voll remote.
-7. Die Vorbewertung der App ist ein Wortabgleich. Sie übersieht Synonyme und Oder-Zweige und hält manchmal Floskeln für Anforderungen. Bestätige, korrigiere oder ergänze jeden ihrer Punkte und sag, wo du abweichst und warum. Was sie zum Prüfen offenlässt, entscheidest du mit einem Zitat oder lässt es unklar.
+7. Die Vorbewertung von CXact ist ein Wortabgleich. Sie übersieht Synonyme und Oder-Zweige und hält manchmal Floskeln für Anforderungen. Bestätige, korrigiere oder ergänze jeden ihrer Punkte und sag, wo du abweichst und warum. Was sie zum Prüfen offenlässt, entscheidest du mit einem Zitat oder lässt es unklar.
 8. Die Punktzahl folgt der Bewertungsregel unten, mit ihren Obergrenzen.
 
 # Bewertungsregel
 
-Diese Regel gilt für die Prüfung in einem KI-Chat aus der App. Das Profil gewinnt: Jede Schwelle
+Diese Regel gilt für die Prüfung in einem KI-Chat aus CXact. Das Profil gewinnt: Jede Schwelle
 kommt aus dem Profil, ein Schlüssel, den das Profil nicht setzt, schaltet seine Regel ab.
 
 Die weiteren Anzeigen, die ein Portal unter einer Anzeige zeigt (etwa „Ähnliche Projekte“ oder
 „Similar jobs“), gehören nicht zu ihr. Keine Regel liest sie, und sie schließen nichts aus.
 
-## Punkte von 1 bis 10
+## Punkte von 0 bis 100
 
-- 9 bis 10 Kernfeld, alle Muss-Punkte erfüllt
-- 7 bis 8 Kernfeld, kleine Lücken oder überqualifiziert
-- 5 bis 6 ein Muss-Punkt zum Kern der Rolle offen
-- 3 bis 4 mehrere Muss-Punkte oder eine formale Pflicht offen
-- 1 bis 2 außerhalb des Fachgebiets
+Die Skala ist dieselbe wie in CXact.
 
-Die Punktzahl mal 10 entspricht den Punkten der App von 0 bis 100: ab 8 hohe, ab 4 mittlere,
-darunter geringe Übereinstimmung. Jede Kompetenz zählt gleich. Ein fehlender Kann-Punkt kostet
-höchstens einen halben Punkt. Die Entfernung kostet bei Interim und Projekten nichts.
+- 90 bis 100 Kernfeld, alle Muss-Punkte erfüllt
+- 70 bis 89 Kernfeld, kleine Lücken oder überqualifiziert
+- 50 bis 69 ein Muss-Punkt zum Kern der Rolle offen
+- 30 bis 49 mehrere Muss-Punkte oder eine formale Pflicht offen
+- 0 bis 29 außerhalb des Fachgebiets
+
+Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering. Jede Kompetenz
+zählt gleich. Ein fehlender Kann-Punkt kostet höchstens 5 Punkte. Die Entfernung kostet bei Interim und
+Projekten nichts.
 
 ## Obergrenzen
 
-- Eine formale Pflicht offen (Abschluss, Zulassung, Zertifikat) höchstens 4
-- Mindestens zwei und mindestens die Hälfte der Muss-Punkte offen höchstens 4
-- Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung höchstens 4
-- Ein Muss-Punkt zum Kern der Rolle, also zum Thema des Titels, offen höchstens 6
-- Eine Anzeige ohne erkennbare Anforderungen höchstens 6
-- Kein fachlicher Muss-Punkt erfüllt höchstens 3
-- Nichts offen mindestens 4
+- Eine formale Pflicht offen (Abschluss, Zulassung, Zertifikat) höchstens 40
+- Mindestens zwei und mindestens die Hälfte der Muss-Punkte offen höchstens 40
+- Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung höchstens 40
+- Ein Muss-Punkt zum Kern der Rolle, also zum Thema des Titels, offen höchstens 60
+- Eine Anzeige ohne erkennbare Anforderungen höchstens 60
+- Kein fachlicher Muss-Punkt erfüllt höchstens 30
+- Nichts offen mindestens 40
 
 ## Vertragsart und ANÜ
 
 - Die Vertragsart zählt so, wie das Profil sucht: Interim und Projekte (Tagessatz, freiberuflich,
-  Werkvertrag, Contract) zählen voll, eine Festanstellung etwa ein Zehntel weniger (die App rechnet
+  Werkvertrag, Contract) zählen voll, eine Festanstellung etwa ein Zehntel weniger (CXact rechnet
   sie mit 90 %), solange das Profil keine ausschließt.
-- Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa einen Punkt.
+- Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa 10 Punkte.
 - Eine unklare Vertragsart ist ein Punkt zum Prüfen, nie ein Ausschluss, auch wenn das Profil
   Festanstellungen ausschließt.
 - Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Das Gehalt wird wie bei einer
@@ -220,12 +224,12 @@ höchstens einen halben Punkt. Die Entfernung kostet bei Interim und Projekten n
 
 ## Wunschrollen und Wünsche
 
-- Eine passende Wunschrolle (wunschrollen) ist ein Plus von höchstens einem Punkt. Sie hebt keine
+- Eine passende Wunschrolle (wunschrollen) ist ein Plus von höchstens 10 Punkten. Sie hebt keine
   Obergrenze auf.
-- Wünsche (tagessatz_wunsch, arbeitsmodell, regionen und branchen mit wunsch) schließen nie
-  aus und bewegen die Bewertung zusammen höchstens einen Punkt nach oben oder unten. Nennt die
-  Anzeige einen Wert nicht, zählt der Wunsch nicht.
-- Wunschrolle und Wünsche heben keinen Job auf 8 oder mehr, wenn weniger als die Hälfte der
+- Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus und bewegen die
+  Bewertung zusammen höchstens 10 Punkte nach oben oder unten. Nennt die Anzeige einen Wert nicht,
+  zählt der Wunsch nicht.
+- Wunschrolle und Wünsche heben keinen Job auf 80 oder mehr, wenn weniger als die Hälfte der
   Muss-Punkte erfüllt ist.
 
 # Antwortformat
@@ -233,10 +237,7 @@ höchstens einen halben Punkt. Die Entfernung kostet bei Interim und Projekten n
 Antworte auf Deutsch, schlicht, konkret und kurz: keine Floskeln, keine Wiederholung der Anzeige, keine Gedankenstriche als Trenner, keine Ausrufezeichen, kein Emoji. Zitate bleiben in der Sprache der Anzeige. Halte genau diesen Aufbau ein.
 
 ## Ergebnis
-Erste Zeile **X von 10** und eine Empfehlung, Bewerben, Erst klären oder Nicht bewerben. Darunter ein Satz: was trägt, was fehlt, was als Nächstes zu tun ist. Schließt ein hartes Kriterium den Job aus, steht statt der Punktzahl **Ausgeschlossen** mit dem Kriterium und dem Zitat, dahinter die fachliche Punktzahl ohne den Ausschluss.
-
-## Begründung
-Drei bis fünf Punkte: welche Stufe der Bewertungsregel gilt und welche Obergrenze greift, welche Wunschrolle und Wünsche zählen, und wo du von der Vorbewertung der App abweichst.
+Erste Zeile **X von 100**, die Übereinstimmung in den Worten von CXact (hohe, mittlere oder geringe Übereinstimmung) und eine Empfehlung, Bewerben, Erst klären oder Nicht bewerben. Darunter ein Satz: was trägt, was fehlt, was als Nächstes zu tun ist. Dann zwei bis drei Punkte: welche Stufe der Bewertungsregel gilt und welche Obergrenze greift, was Wunschrolle und Wünsche ausmachen, und wo du von der Vorbewertung von CXact abweichst und warum. Schließt ein hartes Kriterium den Job aus, steht statt der Punktzahl **Ausgeschlossen** mit dem Kriterium und dem Zitat, dahinter die fachliche Punktzahl ohne den Ausschluss.
 
 ## Anforderungen
 | Anforderung | Gewicht | Stand | Anzeige | Profil |
@@ -244,20 +245,14 @@ Drei bis fünf Punkte: welche Stufe der Bewertungsregel gilt und welche Obergren
 
 Eine Zeile je Anforderung, Muss vor Kann. Anforderung in drei bis acht Wörtern; Gewicht Muss, Kann oder Formal; Stand erfüllt, teilweise, fehlt oder unklar; Anzeige ein wörtliches Zitat; Profil der Eintrag mit Jahren oder die konkrete Lücke, nie nur „passt“.
 
-## Harte Kriterien
+## Konditionen
 | Kriterium | Profil | Anzeige | Ergebnis |
 |---|---|---|---|
 
-Vertragsart, Vergütung, Seniorität, Verfügbarkeit und Einsatzort, dazu jedes weitere Kriterium, das das Profil setzt, etwa Auslastung, Laufzeit oder Ausschlusswörter. Ergebnis erfüllt, teilweise, verletzt oder nicht angegeben; verletzt ist nur, was nach der Bewertungsregel ausschließt.
+Vertragsart, Vergütung, Seniorität, Einsatzort, Start, Dauer und Auslastung, dazu jedes weitere Kriterium, das das Profil setzt, etwa Laufzeit oder Ausschlusswörter. Ergebnis erfüllt, teilweise, verletzt oder nicht angegeben; verletzt ist nur, was nach der Bewertungsregel ausschließt. Die Vergütung steht gegen `tagessatz_min` und `tagessatz_wunsch`, bei einer Festanstellung das Gehalt gegen `mindestgehalt`. Nennt die Anzeige keine Vergütung, steht dort eine realistische Spanne für diese Rolle, als Schätzung markiert.
 
-## Risiken und Warnsignale
-Nur was Anzeige oder Profil hergeben, etwa ein Risiko der Arbeitnehmerüberlassung, eine unklare Vertragsart, eine fehlende Vergütung, ein dünner Text, Überqualifikation oder ein Widerspruch in der Anzeige. Gibt es keine, schreib „keine erkennbar“.
-
-## Offene Fragen
-Zwei bis fünf Fragen an Kunde oder Agentur, die über die Bewerbung entscheiden.
-
-## Vergütung und Konditionen
-Tagessatz gegen `tagessatz_min` und `tagessatz_wunsch` (bei einer Festanstellung das Gehalt gegen `mindestgehalt`), dazu Dauer, Auslastung, Remote-Anteil und Start. Nennt die Anzeige keine Vergütung, eine realistische Spanne für diese Rolle, als Schätzung markiert.
+## Risiken und offene Fragen
+Erst die Risiken, nur was Anzeige oder Profil hergeben, etwa ein Risiko der Arbeitnehmerüberlassung, eine unklare Vertragsart, ein dünner Text, Überqualifikation oder ein Widerspruch in der Anzeige; gibt es keine, schreib „keine erkennbar“. Dann zwei bis fünf Fragen an Kunde oder Agentur, die über die Bewerbung entscheiden.
 
 ## Für die Bewerbung
 Zwei bis vier Punkte: die stärksten Belege aus dem Profil für die Kernanforderungen, mit Jahren oder Branchen, und höchstens ein Punkt, den ich offen ansprechen sollte.

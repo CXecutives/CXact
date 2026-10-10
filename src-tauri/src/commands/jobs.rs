@@ -148,5 +148,6 @@ pub async fn ai_prompt(state: State<'_, AppState>, key: JobKey) -> CmdResult<Str
     let row = state.store.job(&key)?.ok_or_else(|| not_found("job"))?;
     let matcher = state.matcher();
     let source = export::PromptSource::load(&state.store, matcher.as_deref(), &row)?;
-    Ok(export::ai_prompt(&profile, source.job()))
+    let today = jobalert_core::time::local_date(Timestamp::now());
+    Ok(export::ai_prompt(&profile, source.job(), today))
 }

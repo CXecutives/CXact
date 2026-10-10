@@ -498,17 +498,19 @@ Management`.
 
 ### Rubric of the AI prompts
 
-`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts: bands 1 to
-10 (every competence counts the same), the caps, contract and ANÜ rules, wishes never exclude and
-move at most one point. `core/tests/rubric.rs` checks its bands and that the
-English rubric says the same.
+`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts, on the
+app's own scale of 0 to 100 (every competence counts the same): the bands, the caps, contract
+and ANÜ rules, wishes never exclude and move at most 10 points. The high and mid limits are the
+placeholders `{HIGH_FROM}` and `{MID_FROM}`, which the prompt fills in from `model`.
+`core/tests/rubric.rs` checks that the bands leave no gap and that no other placeholder is there.
 
-The copied prompts (`core/src/export/ai_prompt.rs`) carry the rubric whole (German, or
-`ai_rubric.en.md` in English), the skill's method and the engine's assessment of the job in
-words: the result or the exclusion, every hard criterion with the profile's threshold and the
-ad's own words (the highlight ranges), the requirements with their profile entry and its years,
-the checks, target role and wishes. No reason code reaches the text; a test builds every code
-and looks for none.
+The copied prompts (`core/src/export/ai_prompt.rs`, German) carry the rubric whole, the method
+and the engine's assessment of the job in words: the result or the exclusion, every hard
+criterion with the profile's threshold and the ad's own words (the highlight ranges), the
+requirements with their profile entry and its years, the checks, target role and wishes. The
+task ends with today's date, which the caller hands in. The answer has six blocks (result,
+requirements, conditions, risks and open questions, application, message). No reason code
+reaches the text; a test builds every code and looks for none.
 
 ## In the app
 

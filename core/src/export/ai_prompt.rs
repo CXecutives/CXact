@@ -1,9 +1,9 @@
 //! The prompt for any AI chat the user likes: a deep analysis of one job. The app sends
 //! nothing itself and needs no API key; it gives the assistant everything a careful check
-//! needs. It addresses the assistant as "du" without naming a product and carries, in this
-//! order:
+//! needs. It addresses the assistant as "du" without naming an AI product (the app itself
+//! is named CXact) and carries, in this order:
 //!
-//! 1. the task (role and goal),
+//! 1. the task (role and goal) and today's date,
 //! 2. the profile without the consultant's name and contact data (the one filter,
 //!    [`super::personal`]) and a glossary of the profile keys it holds,
 //! 3. the ad: its key facts (each one the app did not find is said to be missing), its text
@@ -14,8 +14,9 @@
 //!    and the ad's own words, the requirements met, partly met and open with the profile
 //!    entry behind them, the points to check, target role and wishes,
 //! 5. the method (the rules for requirements and for the hard criteria),
-//! 6. the one scoring rubric of the app (`ai_rubric.de.md`),
-//! 7. a fixed answer format for a consultant who decides whether to apply.
+//! 6. the one scoring rubric of the app (`ai_rubric.de.md`, on the app's scale of 0 to 100,
+//!    its band limits filled in from [`crate::model`]),
+//! 7. a fixed answer format of six blocks for a consultant who decides whether to apply.
 //!
 //! Its text is content for the assistant, not interface prose: the German words ([`de`]) are
 //! an external contract - do not translate. The profile keys are the profile's own. No engine
@@ -35,7 +36,7 @@ use crate::matching::{
     Assessment, CriterionInfo, CriterionKey, CriterionState, CriterionStatus, FactorCode, Reason,
     ReasonCode, ReasonKind, Verdict, Via, Weight,
 };
-use crate::model::{Band, band};
+use crate::model::{Band, HIGH_FROM, MID_FROM, band};
 use crate::pipeline::LocalMatcher;
 use crate::portal::Facts;
 use crate::profile::ProfileForm;
@@ -104,14 +105,19 @@ impl PromptSource {
     }
 }
 
-/// The prompt for one job (the ad text at most [`MAX_AD_CHARS`]).
-pub fn ai_prompt(profile: &ProfileForm, item: PromptJob<'_>) -> String {
+/// The prompt for one job (the ad text at most [`MAX_AD_CHARS`]); `today` is the day the
+/// assistant is told, from the caller's clock (so the prompt stays a pure function).
+pub fn ai_prompt(profile: &ProfileForm, item: PromptJob<'_>, today: Date) -> String {
     let w: &dyn Wording = &de::German;
     let t = w.words();
     let consultant = Consultant::new(profile);
     let ad = ad_parts(w, item, MAX_AD_CHARS);
     let blocks = [
-        section(1, t.task_heading, t.intro),
+        section(
+            1,
+            t.task_heading,
+            &format!("{}\n\n{}", t.intro, w.today(today)),
+        ),
         profile_block(w, profile),
         section(1, t.ad_heading, ""),
         section(2, t.facts_heading, &ad.facts),
@@ -122,10 +128,21 @@ pub fn ai_prompt(profile: &ProfileForm, item: PromptJob<'_>) -> String {
             &format!("{}\n\n{}", t.pre_note, pre_assessment(w, item, &consultant)),
         ),
         section(1, t.method_heading, t.method),
-        t.rubric.trim_end().to_owned(),
+        rubric(w),
         section(1, t.answer_heading, t.answer),
     ];
     finish(&blocks)
+}
+
+/// The rubric with the app's band limits filled in: the one source of both is
+/// [`crate::model`], the text only holds the placeholders `{HIGH_FROM}` and `{MID_FROM}`.
+fn rubric(w: &dyn Wording) -> String {
+    w.words()
+        .rubric
+        .replace("{HIGH_FROM}", &HIGH_FROM.to_string())
+        .replace("{MID_FROM}", &MID_FROM.to_string())
+        .trim_end()
+        .to_owned()
 }
 
 /// The prompt's blocks, one blank line apart, with a final line break.
@@ -154,6 +171,8 @@ fn section(level: usize, heading: &str, body: &str) -> String {
 
 /// The fixed texts of the prompts.
 struct Words {
+    /// The scoring rubric with the placeholders `{HIGH_FROM}` and `{MID_FROM}` ([`rubric`]
+    /// fills them in).
     rubric: &'static str,
     task_heading: &'static str,
     intro: &'static str,
@@ -251,6 +270,8 @@ trait Wording: Sync {
     fn words(&self) -> &'static Words;
     fn quote(&self, text: &str) -> String;
     fn date(&self, day: Date) -> String;
+    /// The line that tells the assistant today's date.
+    fn today(&self, day: Date) -> String;
     fn rate(&self, rate: i64, hourly: bool, currency: Option<&str>) -> String;
     fn rate_open(&self) -> &'static str;
     fn salary(&self, amount: i64, currency: Option<&str>, lower_bound: bool) -> String;
