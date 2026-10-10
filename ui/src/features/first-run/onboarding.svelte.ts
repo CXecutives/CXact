@@ -1,21 +1,25 @@
 // The walk through the setup (steps.ts): the step shown, the way to the profile, the CV's
 // evaluation and its failure. The first step follows from what is stored: no usable profile
-// leads to Willkommen, a usable one to Alert-Mails, a connected mailbox to Fertig (the preview
-// and the harness may name a step in the address, `?step=upload`). Once a profile exists the
-// steps edit exactly that one (the backend merges a second CV into it). Zurück never lands on
-// the evaluation and keeps what was typed; reaching Fertig saves that the setup is done
+// leads to Willkommen with the two ways, a usable one to the Postfach, a connected mailbox to
+// Fertig (the preview and the harness may name a step in the address, `?step=upload`). Once a
+// profile exists the steps edit exactly that one (the backend merges a second CV into it).
+// Zurück never lands on the evaluation and keeps what was typed; a failed evaluation goes back
+// to the upload, which says why. Reaching Fertig saves that the setup is done
 // (`finish_onboarding`), so the next start opens the Jobs view.
 
 import { errorText } from '$lib/i18n/texts';
 import { CvError, fillFromCv, invoke, reportUiError, type CvFailure } from '$lib/ipc/api';
+import { inPortalOrder } from '$lib/portals';
 import { app } from '$lib/state/app.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
+import { editor } from '$lib/state/profile.svelte';
+import { fromCv, retryable } from '../shared/fromCv.svelte';
 import { isStep, stepOf, type StepId, type Walk, type Way } from './steps';
 
 class Onboarding {
-  step = $state<StepId>('welcome');
+  step = $state<StepId>('way');
   way = $state<Way>('cv');
-  /** Why the last evaluation failed (the step Auswertung says it with its ways on). */
+  /** Why the last evaluation failed (the upload says it above the drop zone). */
   failure = $state<CvFailure | null>(null);
   /** A failure that is no CV code, in words. */
   error = $state<string | null>(null);
@@ -25,7 +29,19 @@ class Onboarding {
   #finished = false;
 
   get walk(): Walk {
-    return { way: this.way, mailbox: app.hasMailbox };
+    return {
+      way: this.way,
+      mailbox: app.hasMailbox,
+      alerts: inPortalOrder(app.state?.portals ?? [])
+        .filter((p) => p.way === 'alert')
+        .map((p) => p.portal),
+    };
+  }
+
+  /** No evaluation can run now (the tries used up, paused, an app too old): the upload
+   *  offers "Selbst ausfüllen" instead of its drop zone. */
+  get blocked(): boolean {
+    return fromCv.limited || (this.failure !== null && !retryable(this.failure));
   }
 
   /** The first step, once per setup: from what is stored, or the one the address names. */
@@ -39,7 +55,7 @@ class Onboarding {
       else this.go(asked);
       return;
     }
-    this.go(!app.hasProfile ? 'welcome' : !app.hasMailbox ? 'alerts' : 'done');
+    this.go(!app.hasProfile ? 'way' : !app.hasMailbox ? 'alerts' : 'done');
   }
 
   go(step: StepId): void {
@@ -61,7 +77,8 @@ class Onboarding {
   }
 
   /** The CV (the files dropped on the window, else the file dialog) evaluated: the profile
-   *  it filled is stored and reviewed next; a closed dialog goes back to the upload. */
+   *  it filled is stored and reviewed next; a closed dialog or a failure goes back to the
+   *  upload. */
   async read(dropped: boolean): Promise<void> {
     const mine = ++this.#attempt;
     this.failure = null;
@@ -76,7 +93,11 @@ class Onboarding {
         return;
       }
       if ((await app.load()) === null && app.state) app.state.profile = info;
-      if (mine === this.#attempt) this.step = 'review';
+      if (mine !== this.#attempt) return;
+      // The form shows the CV's profile, never a draft typed before on "Selbst ausfüllen".
+      editor.typed.clear();
+      if (info.form) editor.edit(info.form);
+      this.step = 'review';
     } catch (failure) {
       if (mine !== this.#attempt) return;
       if (failure instanceof CvError) {
@@ -84,6 +105,7 @@ class Onboarding {
         // The state names the day it works again.
         if (failure.reason === 'limit') void app.load();
       } else this.error = errorText(failure);
+      this.step = 'upload';
     }
   }
 
@@ -95,12 +117,8 @@ class Onboarding {
     this.step = 'upload';
   }
 
-  /** "Erneut versuchen": the backend took the dropped files, so the file dialog asks again. */
-  retry(): void {
-    void this.read(false);
-  }
-
-  /** "Selbst ausfüllen" (its tile, or after a failure): the short form, empty or as stored. */
+  /** "Selbst ausfüllen" (its tile, or when no evaluation can run): the form, empty or as
+   *  stored. */
   byHand(): void {
     this.#attempt += 1;
     this.way = 'self';
@@ -109,7 +127,7 @@ class Onboarding {
     this.go('self');
   }
 
-  /** "Aus Lebenslauf": the upload. */
+  /** "Aus Lebenslauf ausfüllen": the upload. */
   byCv(): void {
     this.way = 'cv';
     this.go('upload');

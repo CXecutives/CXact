@@ -1,5 +1,6 @@
 <!--
-  The white box of a page's group (Section; Profil, Einstellungen): white with a 1 px edge,
+  The white box of a page's group (Section; Profil, Einstellungen, the setup's mailbox form
+  and its portals' rows): white with a 1 px edge,
   12 round, 16 inside all round, like the settings of macOS and Windows on the cream page.
   Fields stand 16 apart in it without a line between them (ProfileEditor). A list of rows
   (SettingRow, PortalRow) brings its own padding: the rows run edge to edge (they bleed out
@@ -16,19 +17,21 @@
     caption?: string | null;
     /** The caption's test id. */
     captionTestid?: string | null;
+    /** The box's test id. */
+    testid?: string | null;
     children: Snippet;
   }
 
-  let { caption = null, captionTestid = null, children }: Props = $props();
+  let { caption = null, captionTestid = null, testid = null, children }: Props = $props();
 </script>
 
 {#if caption !== null}
   <div class="captioned">
     <h3 class="caption" data-testid={captionTestid ?? undefined}>{caption}</h3>
-    <div class="box">{@render children()}</div>
+    <div class="box" data-testid={testid ?? undefined}>{@render children()}</div>
   </div>
 {:else}
-  <div class="box">{@render children()}</div>
+  <div class="box" data-testid={testid ?? undefined}>{@render children()}</div>
 {/if}
 
 <style>

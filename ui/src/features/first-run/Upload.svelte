@@ -3,9 +3,9 @@
   (Tile `drop`): a click (or Enter and Space) opens the backend's file dialog with the CV
   formats, and a CV dropped on the window (Tauri's drag and drop, `onFileDrag`; the window
   keeps the file, the page never sends a path) is taken at once. The formats it reads stand
-  in one quiet line under its words; the sentence about the AI stands in the card's foot
-  (FirstRunView). While a file is dragged over the window the zone looks as under the
-  pointer.
+  in one quiet line under its words (the dialog takes every format); the sentence about the
+  AI stood on the tile one step before. While a file is dragged over the window the zone
+  looks as under the pointer.
 -->
 <script lang="ts">
   import Tile from '$components/Tile.svelte';

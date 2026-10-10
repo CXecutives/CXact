@@ -348,8 +348,8 @@
       tone="danger"
       variant="inline"
       text={problem.text()}
-      action={problem.again
-        ? { label: problem.again(), testid: 'cv-again', onclick: () => void fillFromCv() }
+      action={problem.pick
+        ? { label: t.profile.pickFile, testid: 'cv-pick', onclick: () => void fillFromCv() }
         : null}
       testid="cv-error"
     />

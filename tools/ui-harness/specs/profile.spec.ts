@@ -666,24 +666,25 @@ test('a CV dropped anywhere on the profile page fills it like the button', async
 });
 
 test('a CV that fills nothing says why in one sentence, with its way on', async ({ page }) => {
-  const cases: [string, keyof typeof T.profile.cvError, string | null][] = [
-    ['limit', 'limit', null],
-    ['offline', 'offline', T.common.retry],
-    ['timeout', 'timeout', T.common.retry],
-    ['unreadable', 'unreadable', T.profile.otherFile],
-    ['tooBig', 'tooLarge', T.profile.otherFile],
-    ['unsupported', 'unsupported', T.profile.otherFile],
-    ['unavailable', 'unavailable', T.common.retry],
-    ['paused', 'paused', null],
-    ['outdated', 'outdated', null],
+  // "Datei auswählen" where a new try can work.
+  const cases: [string, keyof typeof T.profile.cvError, boolean][] = [
+    ['limit', 'limit', false],
+    ['offline', 'offline', true],
+    ['timeout', 'timeout', true],
+    ['unreadable', 'unreadable', true],
+    ['tooBig', 'tooLarge', true],
+    ['unsupported', 'unsupported', true],
+    ['unavailable', 'unavailable', true],
+    ['paused', 'paused', false],
+    ['outdated', 'outdated', false],
   ];
-  for (const [cv, reason, again] of cases) {
+  for (const [cv, reason, pick] of cases) {
     await profile(page, `&scenario=no-profile&cv=${cv}`);
     await chooseWay(page, 'cv');
     const error = page.getByTestId('cv-error');
     await expect(error, cv).toContainText(T.profile.cvError[reason]);
-    await expect(error.getByTestId('cv-again')).toHaveCount(again === null ? 0 : 1);
-    if (again !== null) await expect(error.getByTestId('cv-again')).toHaveText(again);
+    await expect(error.getByTestId('cv-pick')).toHaveCount(pick ? 1 : 0);
+    if (pick) await expect(error.getByTestId('cv-pick')).toHaveText(T.profile.pickFile);
     // Nothing stored; "Selbst ausfüllen" stays the way.
     expect(await saves(page)).toBe(0);
     await expect(page.getByTestId('way-self')).toBeVisible();
@@ -692,7 +693,7 @@ test('a CV that fills nothing says why in one sentence, with its way on', async 
   await page.getByTestId('nav-jobs').click();
   await profile(page, '&scenario=no-profile&cv=offline');
   await chooseWay(page, 'cv');
-  await page.getByTestId('cv-again').click();
+  await page.getByTestId('cv-pick').click();
   await expect.poll(async () => (await calls(page, 'profile_from_cv')).length).toBe(2);
   // A closed dialog says nothing.
   await profile(page, '&scenario=no-profile&cv=none');
@@ -710,10 +711,9 @@ test('no profile: one sentence and the two ways as tiles, a click goes its way',
   await expect(page.getByTestId('profile-heading')).toHaveCount(0);
   await expect(page.getByTestId('profile-empty')).toContainText(T.profile.noneText);
   const ways = page.getByTestId('new-profile-ways');
-  await expect(ways.getByTestId('way-cv')).toContainText(T.profile.wayCv);
-  await expect(ways.getByTestId('way-cv')).toContainText(T.profile.wayCvText);
-  await expect(ways.getByTestId('way-self')).toContainText(T.profile.byHand);
-  await expect(ways.getByTestId('way-self')).toContainText(T.profile.byHandText);
+  await expect(ways.getByTestId('way-cv')).toContainText(T.profile.fromCv);
+  await expect(ways.getByTestId('way-cv')).toContainText(T.profile.fromCvHint);
+  await expect(ways.getByTestId('way-self')).toHaveText(T.profile.byHand);
   // Side by side.
   const [cv, self] = [
     await ways.getByTestId('way-cv').boundingBox(),

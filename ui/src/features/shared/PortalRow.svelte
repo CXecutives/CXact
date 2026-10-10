@@ -1,6 +1,7 @@
 <!--
-  One portal in the list of Einstellungen > Jobportale (and the setup's Alert-Mails), a
-  SettingRow like every row: its tile (the navy tint, its two capitals), its name, under it
+  One portal in the list of Einstellungen > Jobportale (and the setup's Postfach once it is
+  connected, `setup`: only its tile, name, state and "Alert anlegen"), a SettingRow like
+  every row: its tile (the navy tint, its two capitals), its name, under it
   one quiet line of its state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen", or "Braucht ein Postfach" in the warning's ink without one, its switch dimmed;
   "Pausiert bis …" while it rests), then its calls where they apply, outlined like every text
@@ -38,8 +39,10 @@
 
   interface Props {
     portal: PortalState;
+    /** The setup's row: no sign-in, no link to the portal, no switch. */
+    setup?: boolean;
   }
-  let { portal }: Props = $props();
+  let { portal, setup = false }: Props = $props();
 
   type Switches = Partial<Pick<PortalState, 'enabled' | 'loginEnabled'>>;
 
@@ -89,8 +92,12 @@
     if (now.kind === 'quotaReached') return t.settings.pausedUntil(now.until);
     if (portal.way === 'alert') {
       if (!app.hasMailbox) return t.settings.needsMailbox;
-      const mails = (portal as NextPortalState).alertMails;
-      return mails === undefined || mails === null ? null : t.settings.alertMails(mails);
+      // Before the first fetch: what "Verbinden" counted in the mailbox.
+      const mails =
+        (portal as NextPortalState).alertMails ??
+        app.state?.mailbox.check?.perPortal.find((c) => c.portal === portal.portal)?.count ??
+        null;
+      return mails === null ? null : t.settings.alertMails(mails);
     }
     const last = app.state?.lastRun ?? null;
     if (last === null) return t.settings.noSearchYet;
@@ -251,13 +258,13 @@
   label={t.portal[portal.portal]}
   hint={standing}
   waits={waiting}
-  for={id}
+  for={setup ? null : id}
   lead={tile}
   {notes}
-  {end}
+  end={setup ? null : end}
   testid="portal-{portal.portal}"
 >
-  {#if loginShown}
+  {#if loginShown && !setup}
     <span class="sign" transition:fade>
       {#if signedIn}
         <Button

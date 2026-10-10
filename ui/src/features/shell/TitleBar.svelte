@@ -70,8 +70,7 @@
   class="bar"
   class:drawn
   class:docked={shell.docked}
-  class:setup={shell.firstRun}
-  class:page={!shell.firstRun && navigation.current !== 'jobs'}
+  class:page={shell.firstRun || navigation.current !== 'jobs'}
   data-testid="title-bar"
   data-tauri-drag-region
   data-press-only
@@ -150,12 +149,7 @@
     background-color: var(--surface);
   }
 
-  /* The setup's page is the cream one: the bar wears it too. */
-  .bar.setup {
-    background-color: var(--bg);
-  }
-
-  /* Profil and Einstellungen: the cream ground of their groups. */
+  /* Profil, Einstellungen and the setup: the cream ground of their groups. */
   .bar.page {
     background-color: var(--layout-page);
   }

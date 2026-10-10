@@ -4,15 +4,14 @@
   refuses the pair, both fields are marked, the password shakes once and the one sentence
   stands above the button. The password never leaves this form except to save_mailbox (it
   goes straight into the OS keychain). The app password has an info symbol (what it is), and
-  under the fields "App-Passwort erstellen" opens Google's page. Einstellungen shows it in a
-  dialog and the setup in its card: their buttons ("Verbinden") call `save` and `cancel`. A
-  saved mailbox needs no note: its badge "Verbunden" (Einstellungen) or its ticked step (first
-  run) is the answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
+  under its field "App-Passwort erstellen" opens Google's page. The fields stand one under
+  the other across their box. Einstellungen shows it in a dialog and the setup in its group:
+  their buttons ("Verbinden") call `save` and `cancel`. A saved mailbox needs no note: its
+  state "Verbunden" (Einstellungen) or the setup's "Postfach verbunden" is the answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
   live: they stop the check (`cancel_run`, the backend holds the app for it); the stop itself
   says nothing.
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
   import Field from '$components/Field.svelte';
   import Notice from '$components/Notice.svelte';
   import TextField from '$components/TextField.svelte';
@@ -124,10 +123,17 @@
         testid="mailbox-user"
       />
     </Field>
+    <!-- Google's page of the app passwords. -->
     <Field
       label={t.settings.password}
       for="{id}-password"
       info={t.settings.passwordInfo}
+      action={{
+        label: t.settings.createPassword,
+        icon: 'external',
+        testid: 'create-password',
+        onclick: () => openPage('appPasswordPage'),
+      }}
       error={passwordError?.() ?? null}
     >
       <TextField
@@ -141,16 +147,6 @@
       />
     </Field>
   </div>
-  <!-- Google's page of the app passwords. -->
-  <div class="links">
-    <Button
-      variant="link"
-      icon="external"
-      label={t.settings.createPassword}
-      testid="create-password"
-      onclick={() => openPage('appPasswordPage')}
-    />
-  </div>
   {#if formError}
     <Notice tone="danger" variant="inline" text={formError()} testid="mailbox-error" />
   {/if}
@@ -160,37 +156,10 @@
 <div class="form" data-testid="mailbox-form">{@render body()}</div>
 
 <style>
-  .form {
+  .form,
+  .fields {
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
-    container-type: inline-size;
-  }
-
-  /* A form's measure for the fields and their pages. */
-  .fields,
-  .links {
-    max-width: var(--form-width);
-  }
-
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: var(--space-16);
-    margin-top: calc(-1 * var(--space-8));
-  }
-
-  /* Address and password side by side where there is room (the first run stays short). */
-  .fields {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: var(--space-16);
-  }
-
-  @container (width >= 520px) {
-    .fields {
-      grid-template-columns: 1fr 1fr;
-    }
   }
 </style>

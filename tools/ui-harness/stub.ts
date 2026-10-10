@@ -30,7 +30,8 @@
 // scripted fetch brings the jobs of the way it takes (the search freelancermap's).
 //
 // Scenarios (`?scenario=`): default · first-run · setup-cv (the setup after the CV: no
-// wished role, country or language) · mailbox-only · no-profile · empty ·
+// wished role, country or language) · setup-profile (a profile, no mailbox) · setup-mailbox
+// (a profile and a mailbox just connected) · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
 // concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
 // profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
@@ -786,11 +787,19 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.profile = null;
     state.lastRun = null;
   },
-  // The setup with a usable profile and no mailbox: it begins at Alert-Mails.
+  // The setup with a usable profile and no mailbox: it begins at the Postfach.
   'setup-profile': () => {
     jobs = [];
     state.firstRun = true;
     state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.lastRun = null;
+  },
+  // The setup with a profile and a mailbox just connected (what "Verbinden" counted): it
+  // begins at Fertig.
+  'setup-mailbox': () => {
+    jobs = [];
+    state.firstRun = true;
+    state.mailbox = { ...state.mailbox, check: DEMO_CHECK, checkedAt: at(0) };
     state.lastRun = null;
   },
   // The setup right after the CV: the profile it filled (no wished role, no country, no
@@ -979,6 +988,10 @@ function initial(): void {
     cvUntil: params.get('cv') === 'used' ? CV_UNTIL : null,
   };
   SCENARIOS[scenario]?.();
+  // Before the first fetch the store counted no alert mail (the setup shows what "Verbinden"
+  // found in the mailbox instead).
+  if (state.lastRun === null)
+    for (const p of state.portals) (p as NextPortalState).alertMails = null;
   // `?open=portal:id`: that job is open when the page comes (the store the app keeps it in).
   const [openPortal, openId] = (params.get('open') ?? '').split(':');
   if (openPortal && openId) {
@@ -1843,6 +1856,7 @@ function apply(event: RunEvent): void {
     if (isFetch(event.summary.kind)) {
       state.lastRun = event.summary;
       for (const p of state.portals) {
+        (p as NextPortalState).alertMails = ALERT_MAILS[p.portal] ?? null;
         const newest = lastAlertOf(p.portal);
         const newer =
           newest !== null && (p.lastAlert === null || Date.parse(newest) > Date.parse(p.lastAlert));

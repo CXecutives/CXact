@@ -1,33 +1,35 @@
 <!--
   The setup, a mode of the shell of its own (App.svelte: no sidebar, no sidebar button, no
-  Zurück and Vor in the top bar, no job view button, the cream page; every switch of the view
-  is refused while it stands). One step at a time from the table of steps.ts: near the top of
-  the window, centred, the step indicator ("1 Profil", "2 Alert-Mails"; not on Willkommen) and
-  under it one white card (440 px) with the step's heading
-  (it takes the focus on every step, so a screen reader starts there), its one sentence, its
-  body (the snippet of its id) and at its foot Zurück at the left and the step's one primary
-  at the right. Enter is the primary while the step can go on; the mouse's back button is
-  Zurück (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360: the card
-  narrows, the page scrolls and the foot of a long card stays at the window's bottom.
+  Zurück and Vor in the top bar, no job view button; every switch of the view is refused
+  while it stands). One step at a time from the table of steps.ts, every step in the frame of
+  the Profil page (Page: the pages' column on the cream, the view scrolls under the top bar's
+  fade, nothing centred): at the column's top the step indicator ("Profil", "Postfach", two
+  thin bars), under it the step's heading flush left (it takes the focus on every step, so a
+  screen reader starts there), at most one sentence, its body (the snippet of its id; a form
+  in one white group, tiles and the drop zone as white boxes on the cream) and its foot right
+  under it: Zurück at the left, the step's buttons at the right, the one primary last. Enter
+  is the primary while the step can go on; the mouse's back button is Zurück
+  (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360.
 
-  The steps (docs/PLAN.md, Block 4; design round 3): Willkommen; Wie legst du dein Profil an?
-  (two tiles side by side, "Aus Lebenslauf" and "Selbst ausfüllen": a click goes on);
+  The steps (docs/PLAN.md, Setup): Willkommen bei CXact with the two ways as tiles ("Aus
+  Lebenslauf ausfüllen" with the sentence about the AI, "Selbst ausfüllen": a click goes on);
   Lebenslauf hochladen (the whole drop zone is one button and takes a dropped file,
-  Upload.svelte, and the sentence about the AI in the foot); Auswertung (a spinner and
-  "Abbrechen", or what went wrong as the heading with a warning sign and its ways on at the
-  right, the primary last, CV_PROBLEMS); Profil prüfen after the CV and Profil ausfüllen by
-  hand (the whole Profil page in its groups on the cream, in the pages' column instead of the
-  card, the foot at the window's bottom; "Weiter" is always on, marks what is missing and says
-  it beside itself, and goes on once nothing is); Alert-Mails, optional ("Überspringen" at the
-  left, "Verbinden" the primary; once connected the portals' rows with "Alert anlegen", the
-  same rows as in Einstellungen; Zurück and Überspringen stop a "Verbinden" that goes);
-  Fertig ("Alles eingerichtet" under a green tick, "Zu den Jobs", no search).
+  Upload.svelte; a failed evaluation comes back here and says why above it, and where no new
+  try can work "Selbst ausfüllen" takes its place); Lebenslauf wird ausgewertet (a spinner
+  before the heading and "Abbrechen"); Profil prüfen after the CV and Profil ausfüllen by hand
+  (the whole Profil form; the foot stays at the window's bottom; "Weiter" is always on, marks
+  what is missing and says it beside itself, and goes on once nothing is); Postfach verbinden
+  (the mailbox form, "Überspringen" and "Verbinden"; Zurück and Überspringen stop a "Verbinden"
+  that goes), once connected Postfach verbunden (the address and the alert portals' rows with
+  "Alert anlegen"); Fertig ("Alles eingerichtet", or "Profil eingerichtet" without a mailbox,
+  and "Zu den Jobs", no search).
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import Button from '$components/Button.svelte';
-  import Card from '$components/Card.svelte';
-  import Icon from '$components/Icon.svelte';
+  import Group from '$components/Group.svelte';
+  import Notice from '$components/Notice.svelte';
+  import Page from '$components/Page.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Steps from '$components/Steps.svelte';
   import { t } from '$lib/i18n/t';
@@ -35,13 +37,14 @@
   import { fade } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
+  import { fromCv } from '../shared/fromCv.svelte';
   import MissingLine from '../shared/MissingLine.svelte';
   import ProfileView, { type MissingField } from '../profile/ProfileView.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
   import NewProfileWays from '../shared/NewProfileWays.svelte';
   import PortalRow from '../shared/PortalRow.svelte';
   import { onboarding } from './onboarding.svelte';
-  import { CV_PROBLEMS, stepOf, type CvWay, type StepId } from './steps';
+  import { stageState, stepOf, type StepId } from './steps';
   import Upload from './Upload.svelte';
 
   const step = $derived(onboarding.step);
@@ -49,17 +52,28 @@
   const walk = $derived(onboarding.walk);
   const back = $derived(spec.back(walk));
   const nextWords = $derived(spec.next?.(t, walk) ?? null);
-  const skip = $derived(spec.skip?.(walk) ?? false);
-  /** The evaluation failed: its sentence is the heading, its ways stand in the foot. */
-  const failed = $derived(
-    step === 'reading' && (onboarding.failure !== null || onboarding.error !== null),
+  const stages = $derived(
+    t.firstRun.stages.map((name, stage) => ({ name, state: stageState(spec, stage, walk) })),
   );
-  /** The ways on after a failure, the primary last (at the card's right edge). */
-  const problemWays = $derived<readonly CvWay[]>(
-    [
-      ...(onboarding.failure === null ? (['self'] as const) : CV_PROBLEMS[onboarding.failure]),
-    ].reverse(),
+  /** The long steps of the whole profile: their foot stays at the window's bottom. */
+  const long = $derived(step === 'review' || step === 'self');
+  /** Why the CV filled nothing, said above the drop zone (also before a try while the tries
+   *  are used up). */
+  const problem = $derived(
+    onboarding.failure !== null
+      ? t.profile.cvError[onboarding.failure]
+      : (onboarding.error ?? (fromCv.limited ? t.profile.cvError.limit : null)),
   );
+  /** The step's one primary: its way on, or "Selbst ausfüllen" where no evaluation can run. */
+  const primary = $derived(
+    step === 'upload' && onboarding.blocked
+      ? { label: t.profile.byHand, testid: 'cv-self', onclick: () => onboarding.byHand() }
+      : nextWords !== null
+        ? { label: nextWords, testid: 'first-next', onclick: () => void next() }
+        : null,
+  );
+  /** The foot holds something: Zurück, or a button of the step. */
+  const footed = $derived(back !== null || primary !== null || step === 'reading');
 
   let busy = $state(false);
   /** The mailbox form signs in and counts (Zurück and Überspringen stop it first). */
@@ -69,33 +83,23 @@
   let flagged = $state<readonly MissingField[] | null>(null);
   let mailboxForm = $state<MailboxForm | null>(null);
   let heading = $state<HTMLElement | null>(null);
-  let root = $state<HTMLElement | null>(null);
+  let page = $state<HTMLElement | null>(null);
 
   /** The portals of alert mails, in the app's order. */
   const alertPortals = $derived(
     inPortalOrder(app.state?.portals ?? []).filter((p) => p.way === 'alert'),
   );
-  const cvWords: Record<CvWay, () => string> = {
-    retry: () => t.common.retry,
-    otherFile: () => t.profile.otherFile,
-    self: () => t.profile.byHand,
-  };
-  const cvDoes: Record<CvWay, () => void> = {
-    retry: () => onboarding.retry(),
-    otherFile: () => void onboarding.read(false),
-    self: () => onboarding.byHand(),
-  };
 
   onMount(() => onboarding.begin());
 
-  // Every step starts at its top with the focus on its heading.
+  // Every step starts at its top (the view scrolls, App.svelte) with the focus on its heading.
   let shown: StepId | null = null;
   $effect(() => {
     const now = step;
     if (now === shown) return;
     shown = now;
     void tick().then(() => {
-      root?.scrollTo({ top: 0 });
+      page?.parentElement?.scrollTo({ top: 0 });
       heading?.focus({ preventScroll: true });
     });
   });
@@ -104,9 +108,6 @@
   async function next(): Promise<void> {
     if (busy || nextWords === null) return;
     switch (step) {
-      case 'welcome':
-        onboarding.go('way');
-        return;
       case 'review':
       case 'self':
         busy = true;
@@ -134,7 +135,15 @@
     onboarding.back();
   }
 
-  /** The foot sticks at the window's bottom over a card that scrolls under it. */
+  /** "Überspringen": a "Verbinden" that goes stops first. */
+  function skip(): void {
+    mailboxForm?.cancel();
+    onboarding.go('done');
+  }
+
+  /** The foot of a long step sticks at the window's bottom over the form that scrolls under
+   *  it, set apart by a hairline only then (it sticks one hairline below the window's edge,
+   *  so the observer sees it cut). */
   let stuck = $state(false);
   function watchStuck(foot: HTMLElement): { destroy: () => void } {
     const observer = new IntersectionObserver(
@@ -144,23 +153,15 @@
     observer.observe(foot);
     return { destroy: () => observer.disconnect() };
   }
-
-  /** "Überspringen": a "Verbinden" that goes stops first. */
-  function skipStep(): void {
-    mailboxForm?.cancel();
-    onboarding.go('done');
-  }
 </script>
 
 {#snippet alerts()}
   {#if app.hasMailbox}
-    <p class="address" data-copy data-testid="first-address">{app.state?.mailbox.user}</p>
-    <p class="text">{t.firstRun.alertsDone}</p>
-    <Card padding="rows" testid="first-alerts">
-      {#each alertPortals as portal (portal.portal)}<PortalRow {portal} />{/each}
-    </Card>
+    <Group testid="first-alerts">
+      {#each alertPortals as portal (portal.portal)}<PortalRow {portal} setup />{/each}
+    </Group>
   {:else}
-    <MailboxForm bind:this={mailboxForm} bind:busy={checking} />
+    <Group><MailboxForm bind:this={mailboxForm} bind:busy={checking} /></Group>
   {/if}
 {/snippet}
 
@@ -172,7 +173,12 @@
       testid="first-way"
     />
   {:else if id === 'upload'}
-    <Upload onfile={(dropped) => void onboarding.read(dropped)} />
+    {#if problem !== null}
+      <Notice tone="danger" variant="inline" text={problem} testid="cv-error" />
+    {/if}
+    {#if !onboarding.blocked}
+      <Upload onfile={(dropped) => void onboarding.read(dropped)} />
+    {/if}
   {:else if id === 'review' || id === 'self'}
     <ProfileView bind:this={profileView} setup onflag={(fields) => (flagged = fields)} />
   {:else if id === 'alerts'}
@@ -180,177 +186,159 @@
   {/if}
 {/snippet}
 
-<!-- The heading: a state's mark above it (the spinner, the tick), a failure's sign before it. -->
-{#snippet head()}
-  {#if step === 'reading' && !failed}
-    <span class="mark" data-testid="cv-reading"><Spinner size="lg" label={null} /></span>
-  {:else if step === 'done'}
-    <span class="mark done"><Icon name="success" size="mark" /></span>
+<!-- The step's buttons at the right, the primary last. -->
+{#snippet ends()}
+  {#if step === 'reading'}
+    <Button
+      variant="secondary"
+      label={t.common.cancel}
+      testid="cv-cancel"
+      onclick={() => onboarding.cancelReading()}
+    />
   {/if}
-  <div class="heading">
-    {#if failed}<span class="sign"><Icon name="warning" size="md" /></span>{/if}
-    <h1
-      class="title"
-      id="first-step-heading"
-      tabindex="-1"
-      bind:this={heading}
-      data-testid={failed ? 'cv-error' : 'first-heading'}
+  {#if step === 'alerts' && !walk.mailbox}
+    <Button variant="secondary" label={t.firstRun.skip} testid="first-skip" onclick={skip} />
+  {/if}
+  {#if primary !== null}
+    <Button
+      variant="primary"
+      label={primary.label}
+      loading={(busy && long) || (checking && step === 'alerts')}
+      testid={primary.testid}
+      onclick={primary.onclick}
+    />
+  {/if}
+{/snippet}
+
+<Page testid="first-run" bind:element={page}>
+  <Steps steps={stages} label={t.firstRun.stepsLabel} testid="first-steps" />
+  {#key step}
+    <section
+      class="step"
+      aria-labelledby="first-step-heading"
+      data-testid="first-step"
+      data-step={step}
+      use:formKeys={{ save: () => void next() }}
+      in:fade
     >
-      {#if failed}
-        {onboarding.failure === null ? onboarding.error : t.profile.cvError[onboarding.failure]}
-      {:else}
-        {spec.heading(t)}
-      {/if}
-    </h1>
-    {#if step === 'alerts'}<span class="optional">{t.firstRun.optional}</span>{/if}
-  </div>
-  {#if step === 'alerts' && !app.hasMailbox}
-    <p class="text">{t.firstRun.alertsText(alertPortals.map((p) => p.portal))}</p>
-  {:else if spec.text && !failed}
-    <p class="text">{spec.text(t)}</p>
-  {/if}
-{/snippet}
-
-<!-- The foot: Zurück (or Überspringen) at the left, the step's way on at the right. -->
-{#snippet foot()}
-  <span class="side">
-    {#if skip}
-      <Button variant="ghost" label={t.firstRun.skip} testid="first-skip" onclick={skipStep} />
-    {:else if back !== null || failed}
-      <Button variant="ghost" label={t.common.back} testid="first-back" onclick={goBack} />
-    {/if}
-  </span>
-  {#if spec.page && flagged !== null}
-    <span class="flag">
-      <MissingLine fields={flagged} onjump={(field) => void profileView?.jump(field)} />
-    </span>
-  {/if}
-  <span class="side end">
-    {#if step === 'upload'}
-      <span class="quiet" data-testid="upload-ai">{t.profile.fromCvHint}</span>
-    {:else if failed}
-      {#each problemWays as id, index (id)}
-        <Button
-          variant={index === problemWays.length - 1 ? 'primary' : 'secondary'}
-          label={cvWords[id]()}
-          testid="cv-{id}"
-          onclick={cvDoes[id]}
-        />
-      {/each}
-    {:else if step === 'reading'}
-      <Button
-        variant="secondary"
-        label={t.common.cancel}
-        testid="cv-cancel"
-        onclick={() => onboarding.cancelReading()}
-      />
-    {:else if nextWords !== null}
-      <Button
-        variant="primary"
-        label={nextWords}
-        loading={(busy && (step === 'review' || step === 'self')) ||
-          (checking && step === 'alerts')}
-        testid="first-next"
-        onclick={() => void next()}
-      />
-    {/if}
-  </span>
-{/snippet}
-
-<div
-  class="setup"
-  class:white={spec.page}
-  bind:this={root}
-  data-testid="first-run"
-  data-step={step}
-  use:formKeys={{ save: () => void next() }}
->
-  <div class="column" class:page={spec.page}>
-    {#if spec.stage !== null}
-      <Steps
-        steps={t.firstRun.stages}
-        current={spec.stage}
-        label={t.firstRun.stepsLabel}
-        testid="first-steps"
-      />
-    {/if}
-    {#key step}
-      <section
-        class="card"
-        class:page={spec.page}
-        class:centred={spec.centred && !failed}
-        aria-labelledby="first-step-heading"
-        data-testid={failed ? 'cv-problem' : 'first-card'}
-        in:fade
-      >
-        <div class="top">{@render head()}</div>
-        {#if step !== 'reading' && step !== 'done' && step !== 'welcome'}{@render body(step)}{/if}
+      <div class="top">
+        <div class="heading">
+          {#if step === 'reading'}
+            <span class="spinner" data-testid="cv-reading"><Spinner label={null} /></span>
+          {/if}
+          <h1
+            class="title"
+            id="first-step-heading"
+            tabindex="-1"
+            bind:this={heading}
+            data-testid="first-heading"
+          >
+            {spec.heading(t, walk)}
+          </h1>
+        </div>
+        {#if step === 'alerts' && walk.mailbox}
+          <p class="address" data-copy data-testid="first-address">{app.state?.mailbox.user}</p>
+        {/if}
+        {#if spec.text}<p class="text">{spec.text(t, walk)}</p>{/if}
+      </div>
+      {@render body(step)}
+      {#if footed}
         <footer
           class="foot"
-          class:alone={step === 'done'}
-          class:stuck
+          class:sticky={long}
+          class:stuck={long && stuck}
           data-testid="first-bar"
           use:watchStuck
         >
-          {@render foot()}
+          {#if back !== null}
+            <span class="back">
+              <Button variant="ghost" label={t.common.back} testid="first-back" onclick={goBack} />
+            </span>
+          {/if}
+          {#if long && flagged !== null}
+            <span class="flag">
+              <MissingLine fields={flagged} onjump={(field) => void profileView?.jump(field)} />
+            </span>
+          {/if}
+          <span class="ends">{@render ends()}</span>
         </footer>
-      </section>
-    {/key}
-  </div>
-</div>
+      {/if}
+    </section>
+  {/key}
+</Page>
 
 <style>
-  /* The cream page scrolls; the column sits near the top, centred. */
-  .setup {
-    height: 100%;
-    overflow-y: auto;
-    background-color: var(--bg);
-  }
-
-  .column {
+  /* The step under the indicator, a little further from it than the column's gap. */
+  .step {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
-    width: 100%;
-    max-width: calc(var(--setup-card) + 2 * var(--space-16));
-    margin: 0 auto;
-    padding: var(--setup-top) var(--space-16) var(--space-32);
-  }
-
-  /* The whole profile: its groups on the cream page in the pages' column, no card. */
-  .setup.white {
-    background-color: var(--layout-page);
-  }
-
-  .column.page {
-    max-width: calc(var(--page-width) + 2 * var(--pane-padding));
-    padding-inline: var(--pane-padding);
-    padding-bottom: 0;
-  }
-
-  .card.page {
     gap: var(--space-20);
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background-color: transparent;
+    padding-top: var(--space-8);
   }
 
-  .card.page .foot {
+  .top {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+
+  .spinner {
+    display: inline-flex;
+    flex: none;
+    color: var(--icon-accent);
+  }
+
+  .title {
+    color: var(--text-heading);
+    font: var(--type-xl);
+    letter-spacing: var(--tracking-tight);
+    outline: none;
+  }
+
+  .text {
+    color: var(--text-muted);
+    font: var(--type-md);
+  }
+
+  .address {
+    color: var(--text);
+    font: var(--type-label);
+  }
+
+  /* The foot on the cream right under the step: Zurück's words on the column's edge, the
+     buttons at the right; what is missing beside Weiter, in a narrow column on a line of its
+     own above Zurück and Weiter. */
+  .foot {
+    display: flex;
     flex-wrap: wrap;
-    background-color: var(--layout-page);
-    margin: 0 calc(-1 * var(--pane-padding));
-    padding: var(--space-12) var(--pane-padding) var(--space-16);
-    border-radius: 0;
+    align-items: center;
+    gap: var(--space-12);
   }
 
-  /* What is still missing, beside Weiter; in a narrow window on a line of its own above
-     Zurück and Weiter. */
+  .back {
+    display: flex;
+    margin-inline-start: calc(-1 * var(--ghost-inset));
+  }
+
   .flag {
     display: flex;
     flex: 1;
     justify-content: flex-end;
     min-width: 0;
+  }
+
+  .ends {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-8);
+    margin-inline-start: auto;
   }
 
   @container (width < 560px) {
@@ -361,123 +349,18 @@
     }
   }
 
-  /* The container its rows ask for their width (the Alert-Mails' portals put their calls on a
-     line of their own in the narrow card, as at the smallest window). */
-  .card {
-    container-type: inline-size;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-    padding: var(--space-20) var(--space-20) 0;
-    border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-card);
-    background-color: var(--surface);
-  }
-
-  .top {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .centred .top {
-    align-items: center;
-    padding-top: var(--space-8);
-    text-align: center;
-  }
-
-  .mark {
-    display: inline-flex;
-    margin-bottom: var(--space-12);
-    color: var(--icon-accent);
-  }
-
-  .mark.done {
-    color: var(--success);
-  }
-
-  .heading {
-    display: flex;
-    align-items: center;
-    gap: var(--space-8);
-  }
-
-  .sign {
-    display: inline-flex;
-    flex: none;
-    color: var(--warning);
-  }
-
-  .title {
-    color: var(--text-heading);
-    font: var(--type-xl);
-    letter-spacing: var(--tracking-tight);
-    outline: none;
-  }
-
-  .optional {
-    color: var(--text-subtle);
-    font: var(--type-sm);
-  }
-
-  .text {
-    color: var(--text-muted);
-    font: var(--type-md);
-  }
-
-  .address {
-    color: var(--text);
-    font: var(--type-body);
-    font-weight: var(--weight-medium);
-  }
-
-  .quiet {
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  /* The foot of the card: 16 above (the card's gap less its own top), the card's 20 below;
-     Zurück's words start on the card's edge. In a low window it stays at the bottom while the
-     card scrolls under it, set apart by a hairline only then (`stuck`: it sticks one hairline
-     below the window's edge, so the observer sees it cut). */
-  .foot {
+  /* A long step's foot stays at the window's bottom, on the cream over the form. */
+  .sticky {
     position: sticky;
     z-index: var(--z-sticky);
     bottom: calc(-1 * var(--border-width));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-12);
-    margin: calc(-1 * var(--space-12)) calc(-1 * var(--space-20)) 0;
-    padding: var(--space-12) var(--space-20) var(--space-20);
+    padding: var(--space-12) 0 var(--space-16);
     border-top: var(--border-width) solid transparent;
-    border-radius: 0 0 var(--radius-card) var(--radius-card);
-    background-color: var(--surface);
+    background-color: var(--layout-page);
     transition: border-color var(--dur-base) var(--ease-out);
   }
 
-  .foot.stuck {
+  .sticky.stuck {
     border-top-color: var(--border);
-  }
-
-  .foot.alone {
-    justify-content: center;
-  }
-
-  .side {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8);
-    margin-inline-start: calc(-1 * var(--ghost-inset));
-  }
-
-  .side.end {
-    justify-content: flex-end;
-    margin-inline-start: 0;
-  }
-
-  .alone .side:not(.end) {
-    display: none;
   }
 </style>

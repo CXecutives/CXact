@@ -200,8 +200,7 @@ const emptyMails = (mails: number): string =>
 
 /** A profile file the app cannot read (the list and the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
-/** The CV could not be evaluated: no connection, or a file that does not read. */
-const NO_CONNECTION = 'Keine Verbindung.';
+/** The CV could not be evaluated: a file that does not read. */
 const CV_UNREADABLE = 'Die Datei lässt sich nicht lesen.';
 /** The choice of the profile that wishes nothing. */
 const ANY = 'Egal';
@@ -1063,38 +1062,35 @@ export const de = {
     noneText: 'Mit einem Profil zeigt jeder Job seine Übereinstimmung.',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
-    /** The two ways to the profile, one wording everywhere (the start page, the head of the
-     *  Profil), each with one sentence what it does. */
+    /** The two ways to the profile, one wording everywhere (the tiles of the setup and of
+     *  the Profil without a profile, the head of the Profil); the CV's tile says the AI. */
     fromCv: 'Aus Lebenslauf ausfüllen',
     fromCvHint: 'Wird von einer KI ausgewertet.',
     /** The drop zone of the CV (the setup's upload, the Profil's popover): what it takes and
      *  the formats it reads; under the Profil's what the import does. */
-    cvDrop: 'Datei hierher ziehen oder klicken',
-    cvFormats: 'PDF, Word, OpenDocument, RTF, Text oder Foto',
+    cvDrop: 'Datei hierher ziehen oder auswählen',
+    cvFormats: 'PDF, Word oder Foto',
     cvNote: 'Ergänzt dein Profil, überschreibt nichts. Wird von einer KI ausgewertet.',
     byHand: 'Selbst ausfüllen',
-    /** The two ways as tiles (the setup, the Profil without a profile), each with its line. */
-    wayCv: 'Aus Lebenslauf',
-    wayCvText: 'Eine KI füllt das Profil aus.',
-    byHandText: 'Du trägst alles selbst ein.',
     /** Why "Aus Lebenslauf ausfüllen" waits while the form holds changes. */
     saveFirst: 'Speichere oder verwirf erst deine Änderungen.',
     /** The toast once the CV filled the profile (saved at once). */
     filled: 'Profil ausgefüllt. Bitte prüfen.',
-    /** Why the CV filled nothing, one sentence each; the way on is a button beside it. */
+    /** Why the CV filled nothing, one sentence each (the Profil, the setup's upload); where
+     *  a new try can work "Datei auswählen" stands beside it. */
     cvError: {
       limit: 'Heute ist keine Auswertung mehr möglich.',
-      paused: 'Die Auswertung ist gerade nicht verfügbar.',
-      timeout: NO_CONNECTION,
-      offline: NO_CONNECTION,
-      outdated: 'Diese Version ist zu alt für die Auswertung.',
+      paused: 'Die Auswertung ist pausiert.',
+      timeout: 'Die Auswertung hat zu lange gedauert.',
+      offline: 'Keine Verbindung zum Internet.',
+      outdated: 'Die Auswertung braucht eine neuere Version von CXact.',
       unreadable: CV_UNREADABLE,
-      tooLarge: CV_UNREADABLE,
+      tooLarge: 'Die Datei ist zu groß.',
       unsupported: 'Dieses Format wird nicht unterstützt.',
       refused: CV_UNREADABLE,
-      unavailable: 'Die Auswertung ist gerade nicht verfügbar.',
+      unavailable: 'Die Auswertung antwortet gerade nicht.',
     } satisfies Record<CvFailure, string>,
-    otherFile: 'Andere Datei wählen',
+    pickFile: 'Datei auswählen',
     /** The required fields still empty, said once Speichern or the setup's Weiter was
      *  pressed: its words before the names (each a link to its field) and what stands before
      *  each name. */
@@ -1442,7 +1438,8 @@ export const de = {
     address: 'Gmail-Adresse',
     password: 'App-Passwort',
     /** The info symbol beside it. */
-    passwordInfo: 'Ein eigenes Passwort nur für CXact, von Google.',
+    passwordInfo:
+      'Ein eigenes Passwort für CXact, das Google nur mit Bestätigung in zwei Schritten erstellt.',
     createPassword: 'App-Passwort erstellen',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',
@@ -1492,33 +1489,32 @@ export const de = {
   },
 
   /** The setup (features/first-run/steps.ts): each step's heading, its one sentence where it
-   *  has one, and its buttons. */
+   *  has one, and its buttons. The Postfach's heading is the dialog's (settings.connectHeading). */
   firstRun: {
+    /** The first step, Willkommen with the two ways to the profile. */
     welcome: 'Willkommen bei CXact',
     welcomeText:
       'CXact sucht Projekt- und Interim-Jobs für dich und bewertet jeden nach deinem Profil.',
-    begin: 'Los geht’s',
     next: 'Weiter',
-    /** The step indicator above the card: its name and its two stages. */
+    /** The step indicator at the top: its name and its two stages. */
     stepsLabel: 'Einrichtung',
-    stages: ['Profil', 'Alert-Mails'] as string[],
-    way: 'Wie legst du dein Profil an?',
+    stages: ['Profil', 'Postfach'] as string[],
     upload: 'Lebenslauf hochladen',
     reading: 'Lebenslauf wird ausgewertet',
-    readingText: 'Etwa eine halbe Minute.',
     /** The whole profile: filled by the AI to check, or empty to fill in. */
     review: 'Profil prüfen',
     self: 'Profil ausfüllen',
-    alerts: 'Alert-Mails',
-    optional: 'optional',
+    later: 'Du kannst alles später im Profil ändern.',
     /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
     alertsText: (portals: readonly Portal[]) =>
-      `${joined(portals.map((p) => portalName[p]))} schicken Jobs per Mail. CXact liest sie aus deinem Gmail mit.`,
+      `CXact liest die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} aus deinem Gmail.`,
     /** Connected: the address the portals' alerts must go to, and their rows. */
-    alertsDone: 'Leg bei den Portalen Alerts an diese Adresse an.',
+    connected: 'Postfach verbunden',
+    alertsDone: 'Leg bei jedem Portal einen Alert für diese Adresse an.',
     skip: 'Überspringen',
+    /** Fertig: everything with a mailbox, else the profile. */
     done: 'Alles eingerichtet',
-    doneText: 'Dein Profil steht. In der Jobliste startest du die erste Suche.',
+    profileDone: 'Profil eingerichtet',
     toJobs: 'Zu den Jobs',
   },
 

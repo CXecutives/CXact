@@ -171,7 +171,7 @@
              the new one fades in (local transitions), while the first view after loading is
              simply there. -->
         {#if firstRun}
-          <section class="view fixed" data-testid="view-first-run" in:viewIn out:viewOut>
+          <section class="view" data-testid="view-first-run" in:viewIn out:viewOut>
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}

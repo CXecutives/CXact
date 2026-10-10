@@ -1,10 +1,10 @@
 // "Aus Lebenslauf ausfüllen", the same wherever it is offered (the start page of the profile,
 // the head of the Profil): the backend asks for the CV, has it evaluated and saves the one
 // profile at once (`fillFromCv`). While it runs the button turns; what went wrong is said in
-// one sentence with its way on (another try, another file), and the toast says when the
-// profile was filled. While the tries are used up (`AppState.cvUntil`) it is not offered: its
-// button says why ahead of the click (`limited`), a tile says it on the click, and a dropped
-// CV is not taken.
+// one sentence, with "Datei auswählen" beside it where a new try can work, and the toast says
+// when the profile was filled. While the tries are used up (`AppState.cvUntil`) it is not
+// offered: its button says why ahead of the click (`limited`), a tile says it on the click,
+// and a dropped CV is not taken. The setup's upload says the same sentences (onboarding).
 
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
@@ -13,14 +13,17 @@ import type { ProfileInfo } from '$lib/ipc/types';
 import { app } from '$lib/state/app.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 
-/** The failures whose way on is another try, and those whose way is another file. */
-const AGAIN: readonly CvFailure[] = ['offline', 'timeout', 'unavailable'];
-const OTHER_FILE: readonly CvFailure[] = ['unreadable', 'tooLarge', 'unsupported', 'refused'];
+/** The failures no new try mends: the evaluation waits (the tries used up, paused) or needs
+ *  a newer app. */
+const FINAL: readonly CvFailure[] = ['limit', 'paused', 'outdated'];
+
+/** Whether a new try (the file dialog again, or another file) can work after this failure. */
+export const retryable = (reason: CvFailure): boolean => !FINAL.includes(reason);
 
 export interface CvProblem {
   text: () => string;
-  /** The way on beside it ("Erneut versuchen", "Andere Datei wählen"), or none. */
-  again: (() => string) | null;
+  /** "Datei auswählen" stands beside it. */
+  pick: boolean;
 }
 
 class FromCv {
@@ -66,16 +69,9 @@ class FromCv {
 }
 
 function problemOf(error: unknown): CvProblem {
-  if (!(error instanceof CvError)) return { text: () => errorText(error), again: null };
+  if (!(error instanceof CvError)) return { text: () => errorText(error), pick: false };
   const reason = error.reason;
-  return {
-    text: () => t.profile.cvError[reason],
-    again: AGAIN.includes(reason)
-      ? () => t.common.retry
-      : OTHER_FILE.includes(reason)
-        ? () => t.profile.otherFile
-        : null,
-  };
+  return { text: () => t.profile.cvError[reason], pick: retryable(reason) };
 }
 
 export const fromCv = new FromCv();

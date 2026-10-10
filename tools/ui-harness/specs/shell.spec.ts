@@ -1696,7 +1696,7 @@ for (const [width, height] of [
   [480, 360],
   [780, 560],
 ] as const) {
-  for (const step of ['welcome', 'way', 'upload', 'reading', 'review', 'alerts', 'done']) {
+  for (const step of ['way', 'upload', 'reading', 'review', 'alerts', 'done']) {
     test(`nothing clipped or scrolling sideways at ${width}x${height}: setup ${step}`, async ({
       page,
     }) => {
@@ -1716,9 +1716,12 @@ for (const [width, height] of [
           .map((node) => `${node.tagName}.${node.className}`),
       );
       expect(wide).toEqual([]);
-      // Its primary or Zurück stays in reach at the bottom of the window.
+      // Its primary and Zurück: at the window's bottom on the long profile step, else right
+      // under the content, reached by scrolling.
       const bar = page.getByTestId('first-bar');
-      if ((await bar.count()) > 0) await expect(bar).toBeInViewport();
+      if ((await bar.count()) === 0) return;
+      if (step !== 'review') await bar.scrollIntoViewIfNeeded();
+      await expect(bar).toBeInViewport();
     });
   }
   for (const scenario of ['default', 'running', 'no-profile']) {

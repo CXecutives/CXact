@@ -1,9 +1,9 @@
 <!--
   The Profil without a profile: under the view's head one sentence what the profile is for
   (or what is wrong with a stored file that no longer reads, with its folder at hand) and the
-  two ways in as tiles (shared/NewProfileWays): "Aus Lebenslauf" asks for the CV at once
-  (fromCv.svelte.ts), "Selbst ausfüllen" opens the empty form. What went wrong with the CV is
-  said under the tiles with its way on.
+  two ways in as tiles (shared/NewProfileWays): "Aus Lebenslauf ausfüllen" asks for the CV at
+  once (fromCv.svelte.ts), "Selbst ausfüllen" opens the empty form. What went wrong with the
+  CV is said under the tiles, with "Datei auswählen" where a new try can work.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -40,8 +40,8 @@
       tone="danger"
       variant="inline"
       text={problem.text()}
-      action={problem.again
-        ? { label: problem.again(), testid: 'cv-again', onclick: () => void cv() }
+      action={problem.pick
+        ? { label: t.profile.pickFile, testid: 'cv-pick', onclick: () => void cv() }
         : null}
       testid="cv-error"
     />

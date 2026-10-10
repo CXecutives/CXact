@@ -109,11 +109,16 @@ pre-assessment to any AI chat for a deeper check.
   - Postfach: the mailbox with Ändern and Entfernen, or "Kein Postfach" with Verbinden.
   - Daten: Profil-Ordner (Ändern, Öffnen) and "Alles zurücksetzen" (Zurücksetzen, asks first).
 - **Setup** (`features/first-run`, until it was finished once, `onboarded`): a mode of the shell of its
-  own, without the sidebar and the top bar's buttons, every switch of the view refused. Its steps from a
-  table: Willkommen, Weg wählen (the CV or by hand), Upload (drop zone, "Wird von einer KI
-  ausgewertet."), Auswertung (its failures in one sentence with their ways on), Prüfen und ergänzen (the
-  Profil's form, "Weiter" saves), Alert-Mails (optional), Fertig ("Alles eingerichtet", "Zu den
-  Jobs"). It resumes from what is stored; Enter is "Weiter"; usable at 480 x 360.
+  own, without the sidebar and the top bar's buttons, every switch of the view refused. Every step in
+  the Profil page's frame, flush left, the two stages "Profil" and "Postfach" as two thin bars on top
+  (a skipped Postfach is never done), the foot right under the content (Zurück at the left, the
+  buttons at the right). Its steps from a table: Willkommen with the two ways as tiles (the CV's says
+  "Wird von einer KI ausgewertet."), Upload (drop zone; a failed evaluation comes back here with its
+  reason above it, "Selbst ausfüllen" where no new try can work), Auswertung (a spinner and
+  "Abbrechen"), Prüfen or Ausfüllen (the Profil's form, "Weiter" saves), Postfach verbinden
+  ("Überspringen", "Verbinden"; once connected the alert portals' rows with "Alert anlegen"),
+  Fertig ("Alles eingerichtet", or "Profil eingerichtet" without a mailbox, "Zu den Jobs"). It
+  resumes from what is stored; Enter is "Weiter"; usable at 480 x 360.
 - **Shell:**
   - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
     Einstellungen. Zurück and Vor also walk the tabs of Einstellungen.

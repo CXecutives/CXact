@@ -1,62 +1,50 @@
 // The setup as data: its steps in their order, each with its heading, its one sentence, its
-// place in the step indicator, where Zurück leads and the words of its one primary button; and the failures of the CV with their
-// sentence and their ways on. FirstRunView.svelte renders this table (each step's body is its
-// snippet of the same id), onboarding.svelte.ts walks it. Adding, moving or removing a step
-// is one entry here and its snippet; a new failure is one row of CV_PROBLEMS.
+// place in the step indicator, where Zurück leads and the words of its one primary button.
+// FirstRunView.svelte renders this table (each step's body is its snippet of the same id),
+// onboarding.svelte.ts walks it. Adding, moving or removing a step is one entry here and its
+// snippet.
 
+import type { StepState } from '$components/Steps.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { CvFailure } from '$lib/ipc/api';
+import type { Portal } from '$lib/ipc/types';
 
-export type StepId =
-  'welcome' | 'way' | 'upload' | 'reading' | 'review' | 'self' | 'alerts' | 'done';
+export type StepId = 'way' | 'upload' | 'reading' | 'review' | 'self' | 'alerts' | 'done';
 /** How the profile comes: from the CV (the recommended way) or typed in. */
 export type Way = 'cv' | 'self';
 
-/** What a step asks of the walk: the way chosen, and whether a mailbox is connected. */
+/** What a step asks of the walk: the way chosen, whether a mailbox is connected and the
+ *  portals of alert mails (in the app's order). */
 export interface Walk {
   way: Way;
   mailbox: boolean;
+  alerts: readonly Portal[];
 }
 
 export interface StepSpec {
   id: StepId;
-  heading: (t: Catalog) => string;
+  heading: (t: Catalog, walk: Walk) => string;
   /** One sentence under the heading, or none. */
-  text?: (t: Catalog) => string;
-  /** Where the step stands in the indicator above the card (0 Profil, 1 Alert-Mails, 2 both
-   *  done); null hides it (Willkommen). */
-  stage: number | null;
+  text?: (t: Catalog, walk: Walk) => string;
+  /** Where the step stands in the indicator: 0 Profil, 1 Postfach, 2 both behind (Fertig). */
+  stage: 0 | 1 | 2;
   /** Where Zurück leads (null: no Zurück; the evaluation is never a step to go back to). */
   back: (walk: Walk) => StepId | null;
-  /** The left button is "Überspringen" (to Fertig) instead of Zurück. */
-  skip?: (walk: Walk) => boolean;
   /** The words of its primary button (null: the step's own control goes on). */
   next: ((t: Catalog, walk: Walk) => string) | null;
-  /** The whole profile (design round 4): the white page in the pages' column instead of the
-   *  card (440). */
-  page?: true;
-  /** A state rather than a form: its mark, heading and words centred in the card. */
-  centred?: true;
 }
 
 export const STEPS: readonly StepSpec[] = [
   {
-    id: 'welcome',
+    // Willkommen and the two ways in one: a click on a tile goes on.
+    id: 'way',
     heading: (t) => t.firstRun.welcome,
     text: (t) => t.firstRun.welcomeText,
-    stage: null,
-    back: () => null,
-    next: (t) => t.firstRun.begin,
-  },
-  {
-    // A click on a tile goes on.
-    id: 'way',
-    heading: (t) => t.firstRun.way,
     stage: 0,
-    back: () => 'welcome',
+    back: () => null,
     next: null,
   },
   {
+    // The drop zone goes on; a failed evaluation comes back here and says why.
     id: 'upload',
     heading: (t) => t.firstRun.upload,
     stage: 0,
@@ -64,51 +52,47 @@ export const STEPS: readonly StepSpec[] = [
     next: null,
   },
   {
+    // "Abbrechen" (and the mouse's back button) go back to the upload.
     id: 'reading',
     heading: (t) => t.firstRun.reading,
-    text: (t) => t.firstRun.readingText,
     stage: 0,
-    // "Abbrechen" (and the mouse's back button) go back to the upload; after a failure
-    // Zurück does (onboarding.back).
     back: () => null,
     next: null,
-    centred: true,
   },
   {
     // After the CV: the whole profile as the AI filled it, to check.
     id: 'review',
     heading: (t) => t.firstRun.review,
+    text: (t) => t.firstRun.later,
     stage: 0,
     back: () => 'upload',
     next: (t) => t.firstRun.next,
-    page: true,
   },
   {
     // By hand: the whole profile, empty.
     id: 'self',
     heading: (t) => t.firstRun.self,
+    text: (t) => t.firstRun.later,
     stage: 0,
     back: () => 'way',
     next: (t) => t.firstRun.next,
-    page: true,
   },
   {
+    // Without a mailbox "Überspringen" and "Verbinden"; once connected the portals' rows.
     id: 'alerts',
-    heading: (t) => t.firstRun.alerts,
+    heading: (t, walk) => (walk.mailbox ? t.firstRun.connected : t.settings.connectHeading),
+    text: (t, walk) => (walk.mailbox ? t.firstRun.alertsDone : t.firstRun.alertsText(walk.alerts)),
     stage: 1,
     back: (walk) => (walk.way === 'cv' ? 'review' : 'self'),
-    // Without a mailbox: "Überspringen" at the left, "Verbinden" the primary.
-    skip: (walk) => !walk.mailbox,
     next: (t, walk) => (walk.mailbox ? t.firstRun.next : t.settings.connect),
   },
   {
+    // Says what was set up: everything with a mailbox, else the profile.
     id: 'done',
-    heading: (t) => t.firstRun.done,
-    text: (t) => t.firstRun.doneText,
+    heading: (t, walk) => (walk.mailbox ? t.firstRun.done : t.firstRun.profileDone),
     stage: 2,
     back: () => null,
     next: (t) => t.firstRun.toJobs,
-    centred: true,
   },
 ];
 
@@ -116,20 +100,12 @@ export const stepOf = (id: StepId): StepSpec => STEPS.find((step) => step.id ===
 export const isStep = (value: string | null): value is StepId =>
   STEPS.some((step) => step.id === value);
 
-/** A way on after a failed evaluation: try again, another file, or fill it in by hand. */
-export type CvWay = 'retry' | 'otherFile' | 'self';
+/** The stage of the mailbox: skipped, it is never shown as done. */
+const MAILBOX_STAGE = 1;
 
-/** The failures of the evaluation, one sentence each (the catalog's) and the ways on, the
- *  first one the primary (docs/PLAN.md, Block 4; it stands last, at the card's right edge). */
-export const CV_PROBLEMS: Readonly<Record<CvFailure, readonly CvWay[]>> = {
-  limit: ['self'],
-  offline: ['retry', 'self'],
-  timeout: ['retry', 'self'],
-  unreadable: ['otherFile', 'self'],
-  tooLarge: ['otherFile', 'self'],
-  unsupported: ['otherFile', 'self'],
-  refused: ['otherFile', 'self'],
-  unavailable: ['retry', 'self'],
-  paused: ['self'],
-  outdated: ['self'],
-};
+/** How a stage of the indicator stands on a step: behind it done, except a skipped mailbox. */
+export function stageState(spec: StepSpec, stage: number, walk: Walk): StepState {
+  if (stage === spec.stage) return 'current';
+  if (stage > spec.stage || (stage === MAILBOX_STAGE && !walk.mailbox)) return 'later';
+  return 'done';
+}
