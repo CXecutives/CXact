@@ -12,9 +12,10 @@ A desktop app for Windows and macOS (Tauri 2, a Rust core, a Svelte 5 UI) for an
 freelance consultant. It finds jobs and scores each one against the consultant's profile.
 
 The fetch runs only when the user presses "Jobs suchen" (one run, `RunKind::Fetch`):
-- With a connected mailbox it first reads the job alert mails of LinkedIn and freelance.de from Gmail
-  (IMAP, an app password in the OS keychain), since the last fetch, the first one 30 days back. A mailbox
-  that fails (Gmail, the keychain) only skips this part; the run says so (`RunSummary::mail`).
+- With a connected mailbox (Gmail, iCloud, GMX or WEB.DE) it first reads the job alert mails of LinkedIn
+  and freelance.de (read-only IMAP, the password in the OS keychain), since the last fetch, the first one
+  30 days back. A mailbox that fails (the server, the keychain) only skips this part; the run says so
+  (`RunSummary::mail`).
 - Then it searches the sources that allow it itself, with terms derived from the profile.
 - It is refused without a usable profile (`profile::missing_required`), then with nothing to read.
 
@@ -158,6 +159,13 @@ pre-assessment to any AI chat for a deeper check.
 - **Data:** SQLite in the OS app data folder, one schema. A database of any other schema is refused
   before anything is written: the start shows the load error (rename the file, the app makes a new
   one). The app writes no files of jobs; its work folder holds the profile.
+- **Mailbox:** Gmail, iCloud, GMX and WEB.DE; no Outlook. The provider is chosen with the mailbox and
+  kept in the settings (`Settings::mail_provider`), address and password in the OS keychain. Gmail and
+  iCloud take an app password, GMX and WEB.DE the account password, once IMAP is allowed in their web
+  mailer (a refused sign-in there says `allowImap`). Gmail is searched in All Mail with its own search;
+  the others with standard IMAP in the inbox and the folders marked as archive or all mail, from the
+  portals' senders, a copy counted once by its Message-ID (`core/src/mail/imap.rs`). "Alert-Mail öffnen"
+  opens Gmail's link; a mail of the others opens in the app as the store keeps it (`alert_mail`).
 - No backward compatibility until the owner declares the project finished (2026-10-10).
 - **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`
   (`docs/CHANGING.md`).
@@ -233,6 +241,15 @@ build.
   - Then the full gates and harness, version 4.0.0, `tools/portable.cmd` and the installer (the user starts
     them).
 
+- [x] Mailboxes beyond Gmail, the backend: `MailProvider` (gmail, icloud, gmx, webde), `save_mailbox`
+  with `provider`, `Mailbox.provider`, `allowImap` on `mailAuth`, the standard IMAP search, the kept text
+  of an alert mail and `alert_mail` (schema 10).
+- [ ] Mailboxes beyond Gmail, the interface: the provider in the Postfach form (and the first run) and on
+  the account card; "IMAP-Abruf erlauben" on `allowImap`; the password field's words per provider (Gmail
+  and iCloud an app password, GMX and WEB.DE the password); "Alert-Mail öffnen" calls `alert_mail` when
+  `JobMail.gmailUrl` is null and shows the mail in the app. Open: the provider pages of
+  `OpenTarget::AppPasswordPage` (Google's only), and the grey rows of empty alert mails (`EmptyAlert`)
+  open only in Gmail.
 - [ ] An excluded or not yet scored job shows no analysis: no verdict icons in the Jobdetails, no
   Anforderungen; only the ad and "Trotzdem bewerten" until it is scored.
 - [ ] No press shrink: pressing a button must not scale it (`Button.svelte`, `.btn:active:hover` with

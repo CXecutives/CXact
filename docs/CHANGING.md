@@ -249,6 +249,16 @@ mails need no code of their own: the mail reader takes any layout by the job lin
 address). Links without a number take a hash key (`hashed_ids()`); a page drawn in the
 browser is read from the data it loads (`fetch_url()`, GULP).
 
+## Add a mailbox provider
+
+One variant of `MailProvider` in `core/src/mail/provider.rs`, in `MailProvider::ALL`: its IMAP
+server (`host`, TLS on 993), the password as its server takes it and the shape it must have
+(`password`, `password_fits`), the names it signs in with (`login_names`) and whether IMAP must
+be allowed in its web mailer first (`imap_must_be_allowed`, the `allowImap` of `mailAuth`). Gmail
+alone has its own search (`is_gmail`); every other provider is read with standard IMAP
+(`mail/imap.rs`). `cargo test -p jobalert-core ipc_types` rewrites `MailProvider.ts`; the UI
+gives it a name and the words of its password field.
+
 ## Add a search source
 
 A source the app searches itself: an adapter as above with

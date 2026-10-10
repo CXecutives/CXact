@@ -54,6 +54,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Match bands | `HIGH_FROM`, `MID_FROM` in `core/src/model.rs` | store, prompts, `bands.ts` |
 | What a term is and the profile field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan": at most five words, lead and wish words stripped) | `core_term` in `core/src/matching/terms.rs` (its words in `lexicon/terms.rs`); which open requirements offer one: `open_term` in `core/src/pipeline/local.rs` | the terms a stored match keeps, "Häufig verlangt" (`view::asked_terms`), the reader's "+" (`params.term`, `params.field`, a language's `params.level` of a reason; `addable` in `reader-sections.ts` only reads them) |
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
+| Mailbox providers (IMAP server, the password's shape, the sign-in names, the search way, IMAP to be allowed first) | `MailProvider` in `core/src/mail/provider.rs` | `mail/imap.rs`, `mail/check.rs`, the vault, the settings, `MailProvider.ts` |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
 | Defaults of the settings (the portal switches) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
@@ -64,8 +65,10 @@ A decision is written once; everything else reads it or is generated from it.
 
 mail, store, engine, view, UI:
 
-1. `mail/` reads the alert mails of the portals that are on (IMAP); `portal/` turns them
-   into job links. Then `fetch/search.rs` searches the sources that have a search
+1. `mail/` reads the alert mails of the portals that are on (read-only IMAP at the mailbox's
+   provider: Gmail's own search in All Mail, else standard IMAP in the inbox and the archive or
+   all-mail folders, a copy once by its Message-ID); `portal/` turns them into job links. A
+   mail without a Gmail link keeps its text in the store (`alert_mail`). Then `fetch/search.rs` searches the sources that have a search
    (`PortalAdapter::search_urls`, `Way::Search`) side by side with the deep search's terms
    (`profile::deep_search_terms`: the roles with their other names and ESCO occupation names,
    the names of their field (`matching::SearchField`), competences in the profile's order and
