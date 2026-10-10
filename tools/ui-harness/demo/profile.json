@@ -14,7 +14,7 @@
   ],
   "alleinstellungsmerkmale": ["Aufbau von Konzernreportings in weniger als 100 Tagen"],
   "keywords": ["IFRS", "HGB", "Konzernabschluss"],
-  "branchen": [{ "branche": "Maschinenbau" }, { "branche": "Automotive" }, { "branche": "Chemie" }],
+  "branchen": ["Maschinenbau", "Automotive", "Chemie"],
   "methoden_tools": [{ "name": "SAP S/4HANA" }, { "name": "LucaNet" }, { "name": "Power BI" }],
   "zertifizierungen": [{ "name": "Certified Interim Manager (DDIM)" }],
   "sprachen": [

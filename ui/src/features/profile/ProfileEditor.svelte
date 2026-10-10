@@ -169,17 +169,6 @@
     else form.workMode = value as ProfileForm['workMode'];
   }
 
-  // ------------------------------------------------------------ names as chips
-
-  const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
-  const industryNames = (): string[] => form.industries.map((row) => row.name);
-  /** The names as the chip field leaves them. */
-  function setIndustries(names: string[]): void {
-    form.industries = names.map(
-      (name) => form.industries.find((row) => same(row.name, name)) ?? { name, preferred: false },
-    );
-  }
-
   // ------------------------------------------------------------ saving
 
   let root = $state<HTMLElement | null>(null);
@@ -336,7 +325,7 @@
     <Field label={words.industries} for="{id}-industries" info={infoOf(c)} {error}>
       <ChipInput
         id="{id}-industries"
-        bind:values={industryNames, setIndustries}
+        bind:values={form.industries}
         placeholder={words.industriesPlaceholder}
         more={words.industriesMore}
         invalid={error !== null}

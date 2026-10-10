@@ -71,9 +71,9 @@ tools: Array<string>,
  */
 years: number | null, 
 /**
- * `branchen`, the starred ones preferred.
+ * `branchen`, the industries of the experience.
  */
-industries: Array<{ name: string, preferred: boolean, }>, 
+industries: Array<string>, 
 /**
  * `sprachen`.
  */

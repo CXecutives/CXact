@@ -9,7 +9,7 @@ const REQUIREMENTS: readonly string[] = ['requirement', 'term'];
 export const isRequirement = (reason: Reason): boolean => REQUIREMENTS.includes(reason.code);
 
 /** Wishes of the profile (`params.state` met, near, missed or unknown). */
-const WISHES: readonly string[] = ['dayRateWish', 'remoteWish', 'regionWish', 'industryWish'];
+const WISHES: readonly string[] = ['dayRateWish', 'remoteWish', 'regionWish'];
 /** Checks that compare a stated value with a limit of the profile: the value is known and
  *  misses the limit (it is met in part), unlike a check of what the ad leaves unclear. */
 const LIMITS: readonly string[] = ['workload', 'duration', 'availabilityGap'];

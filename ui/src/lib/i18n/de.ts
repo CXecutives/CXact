@@ -377,17 +377,6 @@ function regionWish(p: Params): string {
   }
 }
 
-function industryWish(p: Params): string {
-  switch (p.state) {
-    case 'met':
-      return `Die Branche ${str(p.wish)} ist gewünscht.`;
-    case 'missed':
-      return `${str(p.industry)} gehört nicht zu den Wunschbranchen.`;
-    default:
-      return 'Die Anzeige nennt keine Branche.';
-  }
-}
-
 /**
  * Reason codes of the matching engine (`Reason.code`, core/src/matching/types.rs). One entry
  * per code: a new engine code needs exactly one line here. `requirement` and `term` show the
@@ -488,7 +477,6 @@ const reasonCode = {
   dayRateWish,
   remoteWish,
   regionWish,
-  industryWish,
   workload: workloadCheck,
   duration: (p) => {
     const length =
@@ -912,7 +900,6 @@ export const de = {
       experience: 'Erfahrung',
       deadline: 'Bewerbungsfrist',
       contact: 'Kontakt',
-      industry: 'Branche',
       portal: 'Gefunden',
     },
     /** The pay row of a permanent job or temporary agency work (an annual salary). */

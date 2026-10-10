@@ -271,13 +271,6 @@ const TERMS: Record<TermKey, Term> = {
         : { value: parts.join(', '), parts, mail: text(facts?.contactEmail) };
     },
   },
-  industry: {
-    codes: ['industryWish'],
-    criteria: [],
-    // Only where the profile wishes industries (the engine then names the ad's).
-    shows: ({ code }) => code('industryWish') !== undefined,
-    read: ({ code }) => ({ value: text(code('industryWish')?.params.industry) }),
-  },
   // How and when the job came (user decision 2026-10-01: "Gefunden"): the search of its
   // portal, its alert mail, or both in one phrase that names the portal once, then the
   // portals it is also on and the moment it came into CXact. An ad that is no longer online

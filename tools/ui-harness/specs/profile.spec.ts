@@ -439,11 +439,7 @@ test('Branchen: plain names, no star', async ({ page }) => {
   await industries.locator('input').press('Enter');
   await industries.getByRole('button', { name: 'Automotive entfernen' }).click();
   await save(page).click();
-  expect((await lastSave(page)).after.industries.map((row) => row.name)).toEqual([
-    'Maschinenbau',
-    'Chemie',
-    'Energie',
-  ]);
+  expect((await lastSave(page)).after.industries).toEqual(['Maschinenbau', 'Chemie', 'Energie']);
 });
 
 test('Sprachen: no dropdowns, the levels A1 to C2, + Sprache with quick picks and typing', async ({
@@ -1042,7 +1038,7 @@ test('"Häufig verlangt" under its field: the terms the jobs ask for, each where
   const names = [
     ...stored.competences.map((c) => c.name),
     ...stored.tools,
-    ...stored.industries.map((i) => i.name),
+    ...stored.industries,
   ].map((name) => name.toLowerCase());
   for (const term of words) expect(names).not.toContain(term.toLowerCase());
 });
@@ -1066,7 +1062,7 @@ test('"Hinzufügen" puts the term into its field, an unsaved change like any oth
   await expect(savedToast(page)).toBeVisible();
   const sent = await lastSave(page);
   expect(sent.after.tools).toContain('Anaplan');
-  expect(sent.after.industries).toContainEqual({ name: 'Energie', preferred: false });
+  expect(sent.after.industries).toContain('Energie');
   expect(sent.before.tools).not.toContain('Anaplan');
 });
 

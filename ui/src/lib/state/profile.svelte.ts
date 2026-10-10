@@ -72,10 +72,7 @@ export function normalized(form: ProfileForm): ProfileForm {
       name: row.name.trim(),
     })),
     tools: cleanList(form.tools),
-    industries: cleanRows(form.industries, (row) => row.name).map((row) => ({
-      ...row,
-      name: row.name.trim(),
-    })),
+    industries: cleanList(form.industries),
     languages: cleanRows(form.languages, (row) => row.language).map((row) => ({
       ...row,
       language: row.language.trim(),

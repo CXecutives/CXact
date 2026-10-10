@@ -430,11 +430,7 @@ const DEMO_FORM: ProfileForm = {
   ],
   tools: ['SAP S/4HANA', 'LucaNet', 'Power BI', 'IFRS', 'HGB', 'Konzernabschluss'],
   years: 20,
-  industries: [
-    { name: 'Maschinenbau', preferred: false },
-    { name: 'Automotive', preferred: false },
-    { name: 'Chemie', preferred: false },
-  ],
+  industries: ['Maschinenbau', 'Automotive', 'Chemie'],
   languages: [
     { language: 'Deutsch', level: 'native' },
     { language: 'Englisch', level: 'B2' },
@@ -520,13 +516,7 @@ function mergeCv(stored: ProfileForm | null): ProfileForm {
     years: base.years ?? cv.years,
     industries: [
       ...base.industries,
-      ...cv.industries.filter(
-        (row) =>
-          !has(
-            base.industries.map((i) => i.name),
-            row.name,
-          ),
-      ),
+      ...cv.industries.filter((name) => !has(base.industries, name)),
     ],
     languages: [
       ...base.languages,
@@ -589,7 +579,7 @@ function rebased(stored: ProfileForm, before: ProfileForm, after: ProfileForm): 
     ...after,
     competences: rebase(stored.competences, before.competences, after.competences, (r) => r.name),
     tools: rebase(stored.tools, before.tools, after.tools, text),
-    industries: rebase(stored.industries, before.industries, after.industries, (r) => r.name),
+    industries: rebase(stored.industries, before.industries, after.industries, text),
     languages: rebase(stored.languages, before.languages, after.languages, (r) => r.language),
     degrees: rebase(stored.degrees, before.degrees, after.degrees, text),
     certificates: rebase(stored.certificates, before.certificates, after.certificates, text),
@@ -1312,7 +1302,7 @@ function askedTerms(): AskedTerm[] {
       ...form.tools,
       ...form.certificates,
       ...form.degrees,
-      ...form.industries.map((i) => i.name),
+      ...form.industries,
       ...form.languages.map((l) => l.language),
     ].map(key),
   );

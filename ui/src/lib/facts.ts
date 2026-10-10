@@ -29,7 +29,6 @@ export const TERM_ROWS = [
   { key: 'experience', icon: 'experience' },
   { key: 'deadline', icon: 'deadline' },
   { key: 'contact', icon: 'contact' },
-  { key: 'industry', icon: 'industry' },
   { key: 'portal', icon: 'portal' },
 ] as const satisfies readonly { key: TermKey; icon: IconMeaning }[];
 
