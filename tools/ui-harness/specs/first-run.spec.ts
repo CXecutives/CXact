@@ -213,15 +213,16 @@ test('by hand: Weiter marks what is missing and says it beside itself; Esc does 
   const missing = page.getByTestId('first-bar').getByTestId('profile-missing');
   await expect(page.getByTestId('profile-missing')).toHaveCount(0);
   await expect(next(page)).not.toHaveAttribute('aria-disabled', 'true');
-  // Weiter: Wunschrollen, Kompetenzen and Sprachen marked and said beside it, the caret in the
-  // first; the step stays.
+  // Weiter: Wunschrollen, Kompetenzen and Sprachen marked and said beside it, the first in view
+  // but no caret in it (the user clicks where they want to type); the step stays.
   const words = T.profile.field;
   await next(page).click();
   await expectStep(page, T.firstRun.self);
   for (const name of [words.roles, words.competences, words.languages]) {
     await expect(missing).toContainText(name);
   }
-  await expect(roles).toBeFocused();
+  await expect(roles).not.toBeFocused();
+  await expect(roles).toBeInViewport();
   await expect(page.locator('[data-field~="roles"]')).toHaveAttribute('data-missing', '');
   await roles.fill('Interim CFO');
   await roles.press('Enter');

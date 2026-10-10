@@ -239,7 +239,7 @@
     const open = missing.length > 0;
     if (open) flagged = true;
     const done = await save();
-    if (done && open && missing.length > 0) void jump(missing[0]!);
+    if (done && open && missing.length > 0) void reveal(missing[0]!);
   }
 
   /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
@@ -307,13 +307,19 @@
     onflag?.(markedNames.length === 0 ? null : markedNames);
   });
 
-  /** A field of the form: the caret in it, in the middle of the view. */
+  /** A field of the form: the caret in it, in the middle of the view (a name of the missing
+   *  line was clicked). */
   export function jump(field: string): Promise<boolean> {
     return panel?.focusField(field) ?? Promise.resolve(false);
   }
 
+  /** A field of the form in the middle of the view, no caret (Weiter, Speichern). */
+  function reveal(field: string): Promise<boolean> {
+    return panel?.revealField(field) ?? Promise.resolve(false);
+  }
+
   /**
-   * The setup's "Weiter": what is missing is marked and the caret goes to the first one;
+   * The setup's "Weiter": what is missing is marked and the first one scrolls into view;
    * else it saves what changed (a new form always) and is `true` once nothing required is
    * open in the stored profile.
    */
@@ -321,7 +327,7 @@
     if (busy) return false;
     if (missing.length > 0) {
       flagged = true;
-      void jump(missing[0]!);
+      void reveal(missing[0]!);
       return false;
     }
     if (editor.dirty || editor.origin === 'new') {
@@ -331,7 +337,7 @@
     const left = FIELD_ORDER.filter((field) => (profile?.missing ?? []).includes(field));
     if (profile === null || left.length > 0) {
       flagged = true;
-      void jump(left[0] ?? FIELD_ORDER[0] ?? '');
+      void reveal(left[0] ?? FIELD_ORDER[0] ?? '');
       return false;
     }
     return true;

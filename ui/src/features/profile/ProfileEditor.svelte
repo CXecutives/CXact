@@ -203,7 +203,7 @@
       return false;
     }
     const wrong = invalid[0] ?? null;
-    if (wrong !== null) void focusField(wrong.field);
+    if (wrong !== null) void revealField(wrong.field);
     return wrong === null && fieldError === null;
   }
 
@@ -218,6 +218,15 @@
     target?.focus({ preventScroll: true });
     (target ?? scope)?.scrollIntoView({ block: 'center' });
     return target !== null && target !== undefined;
+  }
+
+  /** A field of the form in the middle of the view, without the caret (Weiter and Speichern
+   *  only show what is missing or wrong; the user clicks where they want to type). */
+  export async function revealField(field: string): Promise<boolean> {
+    await tick();
+    const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
+    scope?.scrollIntoView({ block: 'center' });
+    return scope !== null && scope !== undefined;
   }
 
   /** A new form nothing was typed into: Esc goes back to the ways in. */

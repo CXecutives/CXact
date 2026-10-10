@@ -502,20 +502,26 @@ test('nothing warns up front; Speichern saves anyway and marks what is missing',
   await expect(missing(page)).toHaveCount(0);
   await expect(field(page, 'roles')).not.toHaveAttribute('data-missing', '');
   await expect(roles(page).locator('input')).toHaveAttribute('placeholder', words.rolesPlaceholder);
-  // A change, then Speichern: saved, the empty required fields marked, the caret in the first.
+  // A change, then Speichern: saved, the empty required fields marked, the first in view, no
+  // caret in it.
   await contract(page, 'temporary').click();
   await save(page).click();
   await lastSave(page);
   await expect.poll(said).toBe(sentence([words.roles, words.languages]));
   await expect(field(page, 'roles')).toHaveAttribute('data-missing', '');
-  await expect(roles(page).locator('input')).toBeFocused();
+  await expect(roles(page).locator('input')).not.toBeFocused();
+  await expect(roles(page).locator('input')).toBeInViewport();
   await expect(save(page)).toHaveCount(0);
   // Only a coral edge on what is missing, no halo; the field in focus shows only the navy
   // edge, under the pointer too.
   const languages = page.getByTestId('language-input');
   const navy = await tokenColour(page, '--border-focus');
-  await expect(languages).toHaveCSS('border-top-color', await tokenColour(page, '--missing-edge'));
+  const coral = await tokenColour(page, '--missing-edge');
+  await expect(languages).toHaveCSS('border-top-color', coral);
   await expect(languages).toHaveCSS('box-shadow', 'none');
+  await expect(roles(page)).toHaveCSS('border-top-color', coral);
+  // Clicked into, the missing field shows only the navy edge, under the pointer too.
+  await roles(page).locator('input').click();
   await expect(roles(page)).toHaveCSS('border-top-color', navy);
   await roles(page).hover();
   await expect(roles(page)).toHaveCSS('border-top-color', navy);
