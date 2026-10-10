@@ -410,9 +410,15 @@ fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
             (E_FULL, Via::Exact)
         };
     }
-    // The item lies inside the entry: the profile is more specific.
+    // The item lies inside the entry: the profile is more specific. A common word of a name
+    // of several words is no part of it (`Services` of `Amazon Web Services`).
     let content: Vec<&String> = job.iter().filter(|j| !atoms::is_generic(j)).collect();
+    let name_words_only = entry.len() >= 2
+        && content
+            .iter()
+            .all(|j| lex::NAME_WORDS.contains(&j.as_str()));
     if !content.is_empty()
+        && !name_words_only
         && content.iter().all(|j| {
             entry
                 .iter()
@@ -861,6 +867,20 @@ mod tests {
         assert_eq!(licence_fit(&skills, "qualified person").value, E_FULL);
         assert_eq!(licence_fit(&skills, "sachkundige person").value, E_FULL);
         assert_eq!(licence_fit(&skills, "steuerberater").value, E_NONE);
+    }
+
+    /// A common word of a name of several words is no part of it; the name's own word is.
+    #[test]
+    fn a_common_word_is_no_part_of_a_name() {
+        let data = of_json(&json!({
+            "kernkompetenzen": [{"kompetenz": "Controlling"}],
+            "methoden_tools": ["Amazon Web Services", "SAP Analytics Cloud", "IBM Cognos"]
+        }));
+        let skills = Skills::new(&core_texts(&data), &data);
+        let fit = |text: &str| skill_fit_in(&skills, text, true).value;
+        assert_eq!(fit("Erfahrung im Service Management"), E_NONE);
+        assert_eq!(fit("Sicherer Umgang mit Cloud"), E_NONE);
+        assert_eq!(fit("Kenntnisse in Cognos"), E_FULL);
     }
 
     /// An industry of the profile is the setting of a requirement, never its function:

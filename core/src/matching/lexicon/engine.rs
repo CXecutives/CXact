@@ -351,6 +351,22 @@ pub(crate) const ELLIPSIS_HEADS: &[&str] = &[
     "vorhaben",
     "wirtschaft",
 ];
+/// Common words of a product or field name (`Amazon Web Services`, `SAP Analytics Cloud`,
+/// `Prompt Engineering`): asked for alone they are no part of a profile entry of several
+/// words (stems, sorted).
+pub(crate) const NAME_WORDS: &[&str] = &[
+    "analytic",
+    "business",
+    "central",
+    "cloud",
+    "engine",
+    "financial",
+    "platform",
+    "sens",
+    "servic",
+    "solution",
+    "web",
+];
 /// Compound heads that do not change a skill (`Carve-out-Projekten`,
 /// `Restrukturierungsumfeld`) (sorted).
 pub(crate) const LIGHT_HEADS: &[&str] = &[
