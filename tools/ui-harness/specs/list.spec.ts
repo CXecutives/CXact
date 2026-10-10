@@ -1567,6 +1567,15 @@ test.describe('rows', () => {
     await expect(menuItem(page, 'restore')).not.toHaveClass(/danger/);
   });
 
+  test('an excluded job kept open from the last start opens its folded section', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&open=freelance:900412`);
+    await expect(stage(page).getByTestId('exclusion')).toBeVisible();
+    await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
+    await expect(excludedRows(page).and(row(page, 'freelance-900412'))).toBeVisible();
+  });
+
   test('an excluded job counts anyway from its menu, with an undo; no way to exclude it again', async ({
     page,
   }) => {

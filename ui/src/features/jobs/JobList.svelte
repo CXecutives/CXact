@@ -159,14 +159,16 @@
   );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
-  // is folded away: its section opens (for now; the kept choice stays).
+  // is folded away: its section opens (for now; the kept choice stays). A job is settled
+  // once its row is mounted: one opened before its row came (the kept job, beyond the first
+  // rows) opens its section when the row comes.
   let lastMarked: string | null = null;
   $effect(() => {
     const key = openKey;
     const out = markedExcluded;
     untrack(() => {
       if (key !== lastMarked && out && !excludedOpen) excludedOpen = true;
-      lastMarked = key;
+      if (key === null || listed.has(key)) lastMarked = key;
     });
   });
 
