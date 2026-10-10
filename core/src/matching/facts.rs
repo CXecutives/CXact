@@ -681,9 +681,14 @@ fn country(
         .and_then(Value::as_str)
         .unwrap_or(job.location);
     let location_folded = fold(location);
-    // LinkedIn's workplace type in the location (`Wien, Österreich (Remote)`) is remote work.
-    let remote_full =
-        facts_remote || states_full_remote(folded) || contains_word(&location_folded, "remote");
+    // LinkedIn's workplace type in the location (`Wien, Österreich (Remote)`) is remote work,
+    // unless the location names days on site too (`2 Tage vor Ort in Bern & Remote`).
+    let onsite_location = lex::LOCATION_ONSITE
+        .iter()
+        .any(|w| contains_word(&location_folded, w));
+    let remote_full = facts_remote
+        || states_full_remote(folded)
+        || (contains_word(&location_folded, "remote") && !onsite_location);
     let located = outside(&location_countries(location));
     // The job's own place counts as home only where it is not outside the countries.
     let home = if located.is_empty() {
@@ -1739,6 +1744,35 @@ mod tests {
         };
         let found = country(&allowed, &job, &segments(text), &fold(text));
         assert!(found.is_empty(), "{found:?}");
+    }
+
+    /// A location that names days on site beside `Remote` is no remote work; a stated work
+    /// delivery country decides like a location; Swiss regions are places abroad.
+    #[test]
+    fn days_on_site_delivery_countries_and_regions_abroad() {
+        let allowed = vec!["DE".to_owned()];
+        let decided = |location: &str, text: &str| {
+            let job = JobFacts {
+                title: "Application Service Manager",
+                text,
+                location,
+                portal: Portal::Freelancermap,
+                facts: None,
+                posted: None,
+            };
+            country(&allowed, &job, &segments(text), &fold(text))
+                .iter()
+                .any(|f| f.decided)
+        };
+        assert!(decided("2 Tage vor Ort in Bern & Remote", "Ein Projekt."));
+        assert!(decided(
+            "Berlin",
+            "Work delivery city: Zürich.
+Work delivery country: Switzerland."
+        ));
+        assert!(decided("Aargau", "Ein Projekt."));
+        assert!(decided("Région de Sion", "Un projet."));
+        assert!(!decided("Bern (Remote)", "Ein Projekt."));
     }
 
     /// Full remote work denied in its clause is no remote work: the place abroad decides.

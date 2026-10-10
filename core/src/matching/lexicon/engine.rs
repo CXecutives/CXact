@@ -1575,7 +1575,13 @@ pub(crate) const PLACE_LABELS: &[&str] = &[
     "work location:",
     "job location:",
     "office location:",
+    "work delivery city:",
+    "work delivery country:",
+    "einsatzland:",
 ];
+/// Words of a job location that name work on site beside `Remote`: no full remote work.
+/// (`2 Tage vor Ort in Bern & Remote`)
+pub(crate) const LOCATION_ONSITE: &[&str] = &["vor ort", "hybrid", "onsite", "on-site", "tage"];
 /// A sentence that denies a contract form gives no contract signal
 /// (`Interim Management oder Arbeitnehmerüberlassung ist nicht vorgesehen`).
 pub(crate) const CONTRACT_DENIED: &[&str] = &[
@@ -2217,6 +2223,7 @@ pub(crate) const COUNTRIES: &[(&str, &str)] = &[
 pub(crate) const CITIES: &[(&str, &str)] = &[
     ("aalborg", "DK"),
     ("aarau", "CH"),
+    ("aargau", "CH"),
     ("aarhus", "DK"),
     ("amersfoort", "NL"),
     ("amsterdam", "NL"),
@@ -2369,6 +2376,7 @@ pub(crate) const CITIES: &[(&str, &str)] = &[
     ("schaffhausen", "CH"),
     ("seattle", "US"),
     ("sevilla", "ES"),
+    ("sion", "CH"),
     ("st. gallen", "CH"),
     ("st. polten", "AT"),
     ("stettin", "PL"),
@@ -2386,12 +2394,14 @@ pub(crate) const CITIES: &[(&str, &str)] = &[
     ("trient", "IT"),
     ("turin", "IT"),
     ("utrecht", "NL"),
+    ("valais", "CH"),
     ("valencia", "ES"),
     ("venedig", "IT"),
     ("venice", "IT"),
     ("venlo", "NL"),
     ("verona", "IT"),
     ("villach", "AT"),
+    ("wallis", "CH"),
     ("warsaw", "PL"),
     ("warschau", "PL"),
     ("wels", "AT"),
