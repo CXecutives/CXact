@@ -1001,8 +1001,18 @@ async fn search_step<B: Backends>(
     // Screened as of the search's start.
     let now = clock();
     let screen = |keys: &[JobKey]| matcher.map_or(0, |m| score::screen(store, m, keys, now));
-    // The profile's terms without those set aside (term learning, `fetch::terms`).
-    let terms = crate::fetch::terms::active_terms(store, &ctx.search_terms, now)?;
+    // The profile's terms without those set aside (term learning, `fetch::terms`). Its state
+    // unreadable, the search asks the profile's first terms, like for a new profile: the
+    // learning is no reason to fail the run and leave the jobs from the mail unread.
+    let terms =
+        crate::fetch::terms::active_terms(store, &ctx.search_terms, now).unwrap_or_else(|e| {
+            log::warn!(
+                "run {run}: search terms: the learned state did not read ({:?}), the first terms",
+                e.kind()
+            );
+            let first = ctx.search_terms.iter().take(crate::profile::MAX_DEEP_TERMS);
+            first.cloned().collect()
+        });
     let plan = SearchPlan {
         portals: &ctx.search_portals,
         terms: &terms,
@@ -1043,15 +1053,21 @@ async fn search_step<B: Backends>(
         },
     )
     .await;
-    // A search that ran to its end is a run of its terms.
-    if matches!(result, Ok(true)) {
-        crate::fetch::terms::record_run(
+    // A search that ran to its end is a run of its terms; a run not kept only costs the
+    // learning this run.
+    if matches!(result, Ok(true))
+        && let Err(e) = crate::fetch::terms::record_run(
             store,
             &ctx.search_terms,
             &terms,
             &ctx.search_portals,
             now,
-        )?;
+        )
+    {
+        log::warn!(
+            "run {run}: search terms: the run was not kept ({:?})",
+            e.kind()
+        );
     }
     for (portal, counts) in found.iter() {
         log::info!(

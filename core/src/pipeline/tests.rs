@@ -1580,3 +1580,51 @@ fn the_screen_drops_only_decided_exclusions() {
     store.set_override(&werkstudent, true).unwrap();
     assert!(queued(&store).contains(&"1001".to_owned()));
 }
+
+/// The term learning is bookkeeping: its state unreadable, the search asks the profile's first
+/// terms, and a run of the terms not kept is logged - the run completes and the jobs from the
+/// mail are read all the same.
+#[tokio::test(start_paused = true)]
+async fn a_term_bookkeeping_error_does_not_fail_the_run() {
+    let broken = [
+        // The learned state does not read (a value of the wrong type): neither choosing the
+        // terms nor keeping their run works.
+        "INSERT INTO kv (key, value) VALUES ('search_terms_learned', X'00');",
+        // Only keeping the run fails.
+        "CREATE TRIGGER no_terms BEFORE INSERT ON kv WHEN NEW.key = 'search_terms_learned'
+         BEGIN SELECT RAISE(ABORT, 'Test'); END;",
+    ];
+    for sql in broken {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::in_memory().unwrap();
+        store.execute_for_test(sql);
+        let ctx = RunContext {
+            search_portals: vec![Portal::Hays],
+            search_terms: vec!["Interim CFO".to_owned()],
+            ..ctx(dir.path(), true)
+        };
+        let c = clock();
+        let (summary, events) = go(
+            &mut DryRunBackends,
+            &store,
+            &request(),
+            &ctx,
+            &CancellationToken::new(),
+            &c,
+        )
+        .await;
+        assert_eq!(summary.outcome, Outcome::Completed, "{sql}");
+        let found = &summary.search.as_ref().unwrap()[&Portal::Hays];
+        assert!(found.pages > 0, "{sql}");
+        let from_mail = JobKey {
+            portal: Portal::LinkedIn,
+            id: "4999000001".into(),
+        };
+        assert_eq!(
+            store.job(&from_mail).unwrap().unwrap().desc_status,
+            DescStatus::Ok,
+            "{sql}"
+        );
+        assert_eq!(finished(&events), 1);
+    }
+}
