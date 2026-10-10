@@ -33,24 +33,6 @@ pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts,
 pub use matches::Judgement;
 pub use overview::{BandCounts, PortalAlerts};
 
-/// A database an earlier version wrote (schema 1 to 7): what the reset that replaces it
-/// reads first.
-pub struct Outdated {
-    pub schema: i64,
-    /// Its settings as stored (JSON), if readable.
-    pub settings: Option<String>,
-}
-
-/// The database at `path` when an earlier version wrote it, read without changing it;
-/// `None` for a missing, current or newer one.
-pub fn outdated(path: &Path) -> Option<Outdated> {
-    let (schema, conn) = schema::outdated(path)?;
-    Some(Outdated {
-        schema,
-        settings: kv_get(&conn, crate::settings::KEY).ok().flatten(),
-    })
-}
-
 /// Key of the Gmail address earlier versions stored with the last mailbox scan (the Excel
 /// file's links went into that account); no longer written, and cleared with the scan state
 /// so an old value goes too. Never a password.
@@ -63,8 +45,8 @@ pub struct Store {
 }
 
 impl Store {
-    /// Opens (or creates) the database. One of a newer or an earlier version is refused
-    /// before anything is written (the start resets an earlier one first, [`outdated`]).
+    /// Opens (or creates) the database. One of another schema is refused before anything is
+    /// written.
     pub fn open(path: &Path) -> Result<Store> {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| Error::io(dir, e))?;

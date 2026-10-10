@@ -1,8 +1,6 @@
-//! Table layout. An empty database gets the tables of [`SCHEMA_VERSION`]; a database from a
-//! newer version is refused and left untouched. A database of an earlier version (schema 1
-//! to 7) is never migrated: the start resets everything before it opens one
-//! (`reset::reset_outdated`), so here it is refused (`OldSchema`). Both are refused on a
-//! connection that only reads, before anything is written.
+//! Table layout: one schema, no migration. An empty database gets the tables of
+//! [`SCHEMA_VERSION`]; a database of any other schema is refused as one that does not read
+//! (`Corrupt`), on a connection that only reads, before anything is written.
 
 use std::path::Path;
 
@@ -109,44 +107,34 @@ pub(super) fn create(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Accepts an empty (0) or current schema and refuses a newer one (`NewerSchema`) and one of
-/// an earlier version (`OldSchema`).
+/// Accepts an empty (0) or the current schema and refuses any other.
 fn check(version: i64) -> Result<()> {
     match version {
         0 | SCHEMA_VERSION => Ok(()),
-        newer if newer > SCHEMA_VERSION => Err(Error::NewerSchema(newer)),
-        older => Err(Error::OldSchema(older)),
+        other => Err(Error::Corrupt(format!(
+            "database schema {other}, this build reads {SCHEMA_VERSION}"
+        ))),
     }
 }
 
-/// The schema of the database file at `path` with the connection that read it, which only
-/// reads (`None`: no file).
-fn probe(path: &Path) -> Result<Option<(i64, Connection)>> {
+/// The schema of the database file at `path`, read on a connection that only reads (`None`:
+/// no file).
+fn probe(path: &Path) -> Result<Option<i64>> {
     if !path.is_file() {
         return Ok(None);
     }
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    Ok(Some((version, conn)))
+    Ok(Some(version))
 }
 
 /// Refuses the database file at `path` before a connection that writes opens it (one that
-/// switches to WAL writes at once): a newer or an earlier schema ([`check`]) stays untouched.
+/// switches to WAL writes at once): one of another schema ([`check`]) stays untouched.
 pub(super) fn refuse_foreign(path: &Path) -> Result<()> {
     match probe(path)? {
-        Some((version, _)) => check(version),
+        Some(version) => check(version),
         None => Ok(()),
     }
-}
-
-/// The schema of the database at `path` when an earlier version wrote it (1 to 7), with a
-/// connection that only reads it: `None` for a missing, empty, current or newer one, and for
-/// a file that is no readable database (opening it says so).
-pub(super) fn outdated(path: &Path) -> Option<(i64, Connection)> {
-    probe(path)
-        .ok()
-        .flatten()
-        .filter(|(version, _)| (1..SCHEMA_VERSION).contains(version))
 }
 
 #[cfg(test)]
@@ -188,47 +176,26 @@ mod tests {
         assert_eq!(again.begin_run().unwrap(), 2);
     }
 
+    /// A database of any other schema does not read and is never written; the load error
+    /// says so.
     #[test]
-    fn newer_schema_is_refused() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        Connection::open(&path)
-            .unwrap()
-            .pragma_update(None, "user_version", 99)
-            .unwrap();
-        let before = std::fs::read(&path).unwrap();
-        // Not "corrupt" - otherwise someone would set a healthy database aside.
-        assert!(matches!(Store::open(&path), Err(Error::NewerSchema(99))));
-        assert_eq!(std::fs::read(&path).unwrap(), before, "never written");
-        assert!(
-            !dir.path().join("jobs.db-wal").exists(),
-            "never switched to WAL"
-        );
-        assert_eq!(outdated(&path).map(|(v, _)| v), None);
-    }
-
-    /// A database of an earlier version is named by [`outdated`] (the start resets it) and
-    /// never opened as it is.
-    #[test]
-    fn an_earlier_schema_is_named_and_refused() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        assert_eq!(outdated(&path).map(|(v, _)| v), None, "no database");
-        Connection::open(&path)
-            .unwrap()
-            .pragma_update(None, "user_version", 7)
-            .unwrap();
-        assert_eq!(outdated(&path).map(|(v, _)| v), Some(7));
-        let before = std::fs::read(&path).unwrap();
-        assert!(matches!(Store::open(&path), Err(Error::OldSchema(7))));
-        assert_eq!(std::fs::read(&path).unwrap(), before, "never written");
-        assert!(
-            !dir.path().join("jobs.db-wal").exists(),
-            "never switched to WAL"
-        );
-        std::fs::remove_file(&path).unwrap();
-        drop(Store::open(&path).unwrap());
-        assert_eq!(outdated(&path).map(|(v, _)| v), None, "a current one");
+    fn another_schema_is_refused_and_never_written() {
+        for other in [SCHEMA_VERSION - 1, SCHEMA_VERSION + 1] {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("jobs.db");
+            Connection::open(&path)
+                .unwrap()
+                .pragma_update(None, "user_version", other)
+                .unwrap();
+            let before = std::fs::read(&path).unwrap();
+            let error = Store::open(&path).err().expect("refused");
+            assert!(matches!(error, Error::Corrupt(_)), "{other}: {error}");
+            assert_eq!(std::fs::read(&path).unwrap(), before, "never written");
+            assert!(
+                !dir.path().join("jobs.db-wal").exists(),
+                "never switched to WAL"
+            );
+        }
     }
 
     /// A file database runs in WAL mode.

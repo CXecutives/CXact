@@ -57,7 +57,7 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 ## Architecture
 - `docs/ARCHITECTURE.md`: layers, one source per decision, data flow, errors, state, generated files and the guardrails.
 - `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
-  `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` the one profile (Profil-JSON v19, its typed form), one backup, CV reading and import, the search terms, country codes · `ai.rs` the CV worker's client · `store/` SQLite (one schema; an older database is reset at the start) · `pipeline/` runs
+  `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` the one profile (Profil-JSON v19, its typed form), one backup, CV reading and import, the search terms, country codes · `ai.rs` the CV worker's client · `store/` SQLite (one schema, no migration or reset of older data before the first release) · `pipeline/` runs
   (mail and search → screen → fetch → score) · `export/` AI prompts, the generated colours of the window and the icon,
   atomic writes · `reset.rs` "reset everything" · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
 - `src-tauri/`: `main.rs` start (the window keeps dropped files for the CV import), `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),

@@ -10,7 +10,7 @@ use std::path::Path;
 
 /// The files with German text blocks, and how many strings each has at least.
 const FILES: [(&str, usize); 5] = [
-    ("src-tauri/src/main.rs", 12),
+    ("src-tauri/src/main.rs", 10),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/platform.rs", 15),
     ("src-tauri/src/commands/cv.rs", 1),

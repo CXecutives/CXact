@@ -33,8 +33,6 @@ and current: replace what changes, drop what no longer holds.
   - `ui-preview` (worktree `.claude/worktrees/ui-preview`) holds the new UI. It already uses main's generated
     types, and its full harness passes in Chromium and WebKit.
 - The next step is the user's changes or the wiring: merge, then the checklist in `docs/PLAN.md` "Next", then build.
-- Schema 8 (Block 0): the first start of a newer build resets the user's real data of schema 7. That covers jobs,
-  backups, sessions and the Gmail entry; profiles are set aside as `profil.alt`. Tell the user before a build.
 - The search already pages deeply (`docs/PLAN.md` "Sources", deep search). On 2026-10-02 the user was told by
   mistake that only the first page is read. Correct that when the search comes up.
 
@@ -43,8 +41,7 @@ and current: replace what changes, drop what no longer holds.
 - Windows dev PC: Git Bash, PowerShell 5.1, Python as `py -3.14`. macOS is checked only through the
   `macos-latest` CI runner.
 - The clone lives in `Documents\CXact`, the app's default work folder (`settings::default_workspace`).
-  The user's installed 3.x app has its Arbeitsordner set elsewhere; from 4.0 the work folder cannot be
-  changed. `profil/` and `auswertung/` are ignored by git either way.
+  `profil/` and `auswertung/` are ignored by git.
 - After a fresh clone (`CLAUDE.md` "Commands"), `core/tests/fixtures/private/` comes from the old folder if
   needed. The tests that need it skip without it.
 - `.claude/launch.json` holds the two preview servers:

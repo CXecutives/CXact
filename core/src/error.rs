@@ -32,15 +32,6 @@ pub enum Error {
     #[error("stored data is corrupt: {0}")]
     Corrupt(String),
 
-    /// The database comes from a newer version - not corrupt, just not readable.
-    #[error("the database comes from a newer version of this app (schema {0})")]
-    NewerSchema(i64),
-
-    /// The database comes from an earlier version (schema 1 to 7) and is still there: the
-    /// start could not set it aside (`reset::reset_outdated`). Never opened as it is.
-    #[error("the database comes from an earlier version of this app (schema {0})")]
-    OldSchema(i64),
-
     /// A copy of the database to restore that is not there (any more), by its name.
     #[error("backup {0} not found")]
     BackupMissing(String),
@@ -109,7 +100,6 @@ pub enum ErrorKind {
     FileLocked,
     Io,
     Corrupt,
-    NewerSchema,
     Invalid,
     /// A run or a sign-in window is active.
     Busy,
@@ -221,10 +211,7 @@ impl Error {
             Error::Db(_) => ErrorKind::Db,
             Error::FileLocked(_) => ErrorKind::FileLocked,
             Error::Io { .. } => ErrorKind::Io,
-            Error::Corrupt(_) | Error::BackupCorrupt { .. } | Error::OldSchema(_) => {
-                ErrorKind::Corrupt
-            }
-            Error::NewerSchema(_) => ErrorKind::NewerSchema,
+            Error::Corrupt(_) | Error::BackupCorrupt { .. } => ErrorKind::Corrupt,
             Error::BackupMissing(_) => ErrorKind::NotFound,
             Error::Invalid(_) => ErrorKind::Invalid,
             Error::FetchUnavailable { .. } => ErrorKind::PortalUnavailable,
@@ -267,9 +254,6 @@ impl From<&Error> for ErrorInfo {
             Error::FileLocked(path) | Error::Io { path, .. } => info
                 .with("path", path.display().to_string())
                 .with_name_of(path),
-            Error::NewerSchema(version) | Error::OldSchema(version) => {
-                info.with("schema", *version)
-            }
             // `what` names a backup, so the page says "the backup" and not "the app's data".
             Error::BackupMissing(name) | Error::BackupCorrupt { name, .. } => {
                 info.with("what", "backup").with("name", name.as_str())

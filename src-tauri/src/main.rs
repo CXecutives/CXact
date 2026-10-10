@@ -29,12 +29,9 @@ struct Texts {
     window_failed: &'static str,
     database_failed: &'static str,
     database_locked: &'static str,
-    newer_schema: &'static str,
-    old_schema: &'static str,
     /// Followed by the path of the database and a period.
     database_at: &'static str,
     close_other: &'static str,
-    use_newer: &'static str,
     database_in_use: &'static str,
     database_damaged: &'static str,
 }
@@ -47,11 +44,8 @@ const TEXTS: Texts = Texts {
     window_failed: "Das Fenster ließ sich nicht öffnen.",
     database_failed: "Die Datenbank ließ sich nicht öffnen.",
     database_locked: "Die Datenbank ist in einem anderen Programm geöffnet.",
-    newer_schema: "Die Daten stammen von einer neueren Version der App.",
-    old_schema: "Die Daten stammen von einer älteren Version der App und ließen sich nicht zur         Seite legen.",
     database_at: "Die Datei liegt unter",
     close_other: "Schließ dieses Programm und starte die App neu.",
-    use_newer: "Nimm die neuere Version, die Daten bleiben unverändert.",
     database_in_use: "Ist sie in einem anderen Programm geöffnet, schließ es und starte die App neu.",
     database_damaged: "Ist sie beschädigt, benenne die Datei um. Die App legt dann eine neue an, \
         ohne die bisherigen Jobs und Einstellungen.",
@@ -127,26 +121,12 @@ impl Failure {
         }
     }
 
-    /// The database could not be opened: what happened, where the file is and what to do.
-    /// A database of a newer version is not damaged - it must not be put aside. One of an
-    /// earlier version is still there when the start could not set it aside (another program
-    /// holds it); the next start tries again.
+    /// The database could not be opened: what happened, where the file is and what to do. One
+    /// of another schema reads as one that does not open (`store::schema`).
     fn database(path: &Path, error: &jobalert_core::Error) -> Failure {
         let text = &TEXTS;
         let at = format!("{} {}.", text.database_at, path.display());
-        if let jobalert_core::Error::OldSchema(_) = error {
-            return Failure {
-                message: format!(
-                    "{} {at}
-
-{}",
-                    text.old_schema, text.database_in_use
-                ),
-                cause: format!("database: {error}"),
-            };
-        }
         let message = match error.kind() {
-            ErrorKind::NewerSchema => format!("{} {at}\n\n{}", text.newer_schema, text.use_newer),
             ErrorKind::FileLocked => {
                 format!("{} {at}\n\n{}", text.database_locked, text.close_other)
             }
@@ -243,16 +223,10 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
             .document_dir()
             .map_err(|e| Failure::other(format!("documents folder: {e}")))?,
     );
-    // A requested reset runs before anything else - nothing holds a file open yet - and so
-    // does the reset of a database an earlier version wrote. The dry run never deletes
-    // anything.
+    // A requested reset runs before anything else - nothing holds a file open yet. The dry
+    // run never deletes anything.
     let reset = (mode == StartMode::Normal)
-        .then(|| {
-            let vault = Vault::app();
-            jobalert_core::reset::perform_pending(&data_dir, &vault).or_else(|| {
-                jobalert_core::reset::reset_outdated(&data_dir, &default_workspace, &vault)
-            })
-        })
+        .then(|| jobalert_core::reset::perform_pending(&data_dir, &Vault::app()))
         .flatten();
     let store = open_store(mode, &data_dir)?;
     let store = Arc::new(store);

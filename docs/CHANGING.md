@@ -366,12 +366,11 @@ a word that occurs nowhere stays out.
 1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer, the macOS About
    window and the log read it) and in `package.json`; the lock files follow (`cargo check`,
    `npm install --package-lock-only`). The harness stub keeps its own demo version.
-2. **Data of the old version**: there are no migrations (`docs/PLAN.md` "Data"). A new
-   database layout raises `SCHEMA_VERSION` (`core/src/store/schema.rs`, the one `SCHEMA`), and
-   `reset::reset_outdated` resets `1..SCHEMA_VERSION` at the start; the test with the frozen
-   layout of the last version (`core/tests/fixtures/schema_v7.sql`) gets a fixture of the old
-   layout when it changes.
-   A new field of `Settings` loads with its default from an older file (`#[serde(default)]`).
+2. **Data**: no backward compatibility (`docs/PLAN.md` "Decisions that hold"). A new database
+   layout changes the one `SCHEMA` and raises `SCHEMA_VERSION` (`core/src/store/schema.rs`); the
+   start refuses a database of another schema, so "Alle Daten zurücksetzen" comes before the
+   new build. A changed key of the profile, the settings or a stored value gets no reader for
+   its old form: the fixtures move with it.
 3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
    and the full harness in both engines once.
 4. **Build**: `npx tauri build` writes
@@ -381,12 +380,11 @@ a word that occurs nowhere stays out.
    sandbox redirects AppData, so its install is not the real one). The setup replaces the
    program only: the data folder (`%LOCALAPPDATA%\de.cxecutives.job-alert-monitor\`, on macOS
    `~/Library/Application Support/de.cxecutives.job-alert-monitor/`: the database with the
-   settings, `backups/`, the log), the work folder and the keychain entry stay (unless the
-   schema changed, step 2). The identifier `de.cxecutives.job-alert-monitor` never
+   settings, `backups/`, the log), the work folder and the keychain entry stay (a database of
+   another schema is refused, step 2). The identifier `de.cxecutives.job-alert-monitor` never
    changes: it names the data folder and the keychain entry.
 6. **Check**: the new version in the installed apps of Windows (on macOS in the About
-   window), the jobs and the profile still there (after a schema change: the reset notice,
-   `profil.alt` and `alt-schema-<n>-<time>/` in the data folder), a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+   window), the jobs and the profile still there, a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
 
 ## Where a new rule goes
 

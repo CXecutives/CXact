@@ -10,7 +10,7 @@ Each layer uses only the ones below it.
 - **`core/`** (`jobalert-core`): everything the app knows and does, without UI and without
   prose. `mail/` reads the alert mails, `portal/` knows the portals (one registry), `fetch/`
   fetches pages through the policy, `matching/` is the pure integer engine, `store/` the
-  SQLite database (one schema; an older one is reset at the start, `reset.rs`), `pipeline/` runs scan or search, fetch and score,
+  SQLite database (one schema, no migration or reset of older data), `pipeline/` runs scan or search, fetch and score,
   `export/` writes the AI prompts, `view.rs` shapes what the UI sees.
 - **`src-tauri/`**: the shell. Thin commands in `src/commands/`, each one line in
   `commands.txt`; they call core and return its view types. Per-OS code only in
@@ -136,7 +136,7 @@ the rule and the fix.
 | Per-OS code only in `lib/platform.ts` and `src-tauri/src/platform.rs` | `ui_contract.rs`, `core/tests/architecture.rs` |
 | Commands declared once | `core/tests/contract.rs` |
 | Generated files current | see above |
-| A database of an earlier schema is reset at the start, never migrated or opened as it is | `core/src/store/schema.rs` and `core/src/reset.rs` tests |
+| One schema: a database of any other schema is refused before anything is written, never migrated | `core/src/store/schema.rs` tests |
 | Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip, only where something is missing (never the words that stand there); no "·" as a separator; two button heights; one answer per surface kind | `ui_contract.rs` |
 | One word per thing (the glossary of the catalogs) | `ui_contract.rs` (`the_catalog_keeps_the_glossary`) |
 | At most one primary button per view | `ui_contract.rs` |

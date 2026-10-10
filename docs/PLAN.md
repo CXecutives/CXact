@@ -153,13 +153,10 @@ pre-assessment to any AI chat for a deeper check.
   button.
 - **Texts:** the rules in `CLAUDE.md`. The fetch's words are "Jobs suchen" and "Alert-Mails lesen"; the
   first place is "Aktuell".
-- **Data:** SQLite in the OS app data folder (schema 8, no migrations). A database of schema 1 to 7 is
-  reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the database with its
-  sidecars and `backups/` moves to `alt-schema-<n>-<time>/` in the data folder, the old profiles to
-  `profil.alt`, the sessions and the Gmail entry go, `policy.json` stays, and the reset notice shows.
-  "Alle Daten zurücksetzen" deletes these folders too. A newer or older database is refused before
-  anything is written. The app writes no files of jobs;
-  its work folder holds the profiles.
+- **Data:** SQLite in the OS app data folder, one schema. A database of any other schema is refused
+  before anything is written: the start shows the load error (rename the file, the app makes a new
+  one). The app writes no files of jobs; its work folder holds the profile.
+- No backward compatibility until the owner declares the project finished (2026-10-10).
 - **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`
   (`docs/CHANGING.md`).
 
@@ -232,7 +229,7 @@ build.
     `status` events, `ProfileInfo.understood`, `MatchDetail.highlights` and a few count fields; the
     "Arbeitsordner" comments in `core/src/settings.rs`.
   - Then the full gates and harness, version 4.0.0, `tools/portable.cmd` and the installer (the user starts
-    them; tell them about the schema 8 reset first).
+    them).
 
 - [ ] An excluded or not yet scored job shows no analysis: no verdict icons in the Jobdetails, no
   Anforderungen; only the ad and "Trotzdem bewerten" until it is scored.

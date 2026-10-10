@@ -8,7 +8,7 @@
 //! of everything deletes the folder (`reset.rs`).
 //!
 //! A restore ("Sicherung wiederherstellen") reads the chosen copy into memory, checks it
-//! there (a copy of an earlier schema is refused), copies the database as it is now into the
+//! there (a copy of another schema is refused), copies the database as it is now into the
 //! folder (its undo), then replaces the database's content with `SQLite`'s backup API in one
 //! transaction on the app's own connection: it is the old database or the restored one,
 //! never a mix, and any failure before the end leaves the current one as it was. What
@@ -134,8 +134,7 @@ fn kind_of(name: &str) -> Option<BackupKind> {
 /// Replaces the content of the database at `db` (the app's connection `conn`) with its copy
 /// `id`; returns the copy of the state it replaced, written first. The chosen copy is checked
 /// in memory before anything changes: one that is gone is `BackupMissing`, one that is no
-/// readable database of this app (or of an earlier schema) `BackupCorrupt`, one of a newer
-/// app `NewerSchema`, and the database stays as it was.
+/// readable database of this schema `BackupCorrupt`, and the database stays as it was.
 pub(super) fn restore(
     conn: &mut Connection,
     db: &Path,
@@ -178,19 +177,12 @@ fn stage(db: &Path, id: &str) -> Result<Connection> {
     let version: i64 = source
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .map_err(|e| corrupt(e.to_string()))?;
-    if version > schema::SCHEMA_VERSION {
-        return Err(Error::NewerSchema(version));
-    }
-    if version < 1 {
-        return Err(corrupt("no database of this app".to_owned()));
+    if version != schema::SCHEMA_VERSION {
+        return Err(corrupt(format!("schema {version}")));
     }
     let mut staged = Connection::open_in_memory()?;
     replace(&source, &mut staged).map_err(|e| corrupt(e.to_string()))?;
     drop(source);
-    schema::create(&staged).map_err(|e| match e {
-        Error::NewerSchema(_) => e,
-        other => corrupt(other.to_string()),
-    })?;
     jobs::refresh_all_searches(&staged).map_err(|e| corrupt(e.to_string()))?;
     Ok(staged)
 }
@@ -583,7 +575,7 @@ mod tests {
 
     /// A copy that is no readable database of this app is refused with a code, before
     /// anything is written: a file of garbage, a cut-off copy, a database of another program,
-    /// a copy of a newer app; a name that is no copy is not found.
+    /// a copy of another schema; a name that is no copy is not found.
     #[test]
     fn a_broken_backup_is_refused_with_a_code() {
         let f = folder();
@@ -605,6 +597,7 @@ mod tests {
             "jobs-2026-09-21.db",
             "jobs-2026-09-22.db",
             "jobs-2026-09-23.db",
+            "jobs-2026-09-24.db",
         ] {
             let error = f.store.restore_backup(id, now()).unwrap_err();
             assert!(
@@ -616,11 +609,6 @@ mod tests {
             assert_eq!(info.params["what"], "backup");
             assert_eq!(info.params["name"], id);
         }
-        let newer = f
-            .store
-            .restore_backup("jobs-2026-09-24.db", now())
-            .unwrap_err();
-        assert!(matches!(newer, Error::NewerSchema(99)), "{newer}");
         for id in ["jobs-2026-09-19.db", "../jobs.db", "jobs.db", ""] {
             let error = f.store.restore_backup(id, now()).unwrap_err();
             assert_eq!(ErrorInfo::from(&error).kind, ErrorKind::NotFound, "{id}");
