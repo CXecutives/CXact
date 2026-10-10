@@ -8,9 +8,9 @@ use rusqlite::{Connection, OpenFlags};
 
 use crate::error::{Error, Result};
 
-pub(super) const SCHEMA_VERSION: i64 = 8;
+pub(super) const SCHEMA_VERSION: i64 = 9;
 
-/// The tables of schema 8. Timestamps are Unix seconds. The columns of `job` beyond the
+/// The tables of schema 9. Timestamps are Unix seconds. The columns of `job` beyond the
 /// mail's and the page's:
 ///
 /// - `match_score` (0-100), `match_status` (`scored`, `excluded`, `unscorable`),
@@ -18,8 +18,7 @@ pub(super) const SCHEMA_VERSION: i64 = 8;
 ///   facts, rank}`, at most 1024 bytes), `match_at`, `match_rev` (engine, profile and model
 ///   that scored it; `NULL` after a change of title or text: scored again);
 /// - `read_at` (`NULL` = unread), `desc_facts` (the facts of the job page), `dup_of`
-///   (`portal:id` of the job this one duplicates), `parser_version` (the page parser of the
-///   full text), `mail_version` (the mail parser of title, company and location);
+///   (`portal:id` of the job this one duplicates);
 /// - the user's marks: `archived_at`, `trashed_at` (it wins over the archive), `inbox_at`
 ///   (when the user last moved it into the inbox), `override_include` (`1` = fits anyway);
 /// - how it came: `mailed_at` (an alert mail last named it), `searched_at` (the search last
@@ -58,10 +57,8 @@ CREATE TABLE job (
     read_at           INTEGER,
     desc_facts        TEXT,
     dup_of            TEXT,
-    parser_version    INTEGER,
     archived_at       INTEGER,
     override_include  INTEGER,
-    mail_version      INTEGER,
     trashed_at        INTEGER,
     inbox_at          INTEGER,
     mailed_at         INTEGER,

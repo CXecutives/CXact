@@ -365,10 +365,6 @@ async fn matrix_text_short_closed_gone_suspicious() {
             .as_deref(),
         Some("Vollzeit")
     );
-    assert_eq!(
-        store.parser_version(&closed).unwrap(),
-        Some(FM.adapter().parser_version())
-    );
 }
 
 #[tokio::test(start_paused = true)]
@@ -1486,82 +1482,6 @@ async fn retry_after_is_honoured_as_the_shortest_pause() {
         Some(Duration::from_secs(60)),
     );
     assert_eq!(until, base() + SignedDuration::from_hours(1));
-}
-
-/// After a parser update the failed and given-up jobs of that portal are fetched again -
-/// the others, and jobs the current parser judged, stay as they are.
-#[tokio::test(start_paused = true)]
-async fn a_parser_update_requeues_the_failed_jobs_of_its_portal() {
-    let c = clock();
-    let store = store_with(&[(FM, 10_001, 1), (FM, 10_002, 1), (FM, 10_003, 1)]);
-    let (old, current, gone) = (key(FM, 10_001), key(FM, 10_002), key(FM, 10_003));
-    for _ in 0..3 {
-        store.record_failed(&old, "noDescription", base()).unwrap();
-    }
-    store.record_parse(&old, 0, None).unwrap();
-    store
-        .record_failed(&current, "noDescription", base())
-        .unwrap();
-    store
-        .record_parse(&current, FM.adapter().parser_version(), None)
-        .unwrap();
-    store.record_gone(&gone, base()).unwrap();
-    assert_eq!(
-        store.job(&old).unwrap().unwrap().desc_status,
-        DescStatus::Unfetchable
-    );
-    let fake = Fake::default();
-    let r = run(
-        &fake,
-        &store,
-        &mut Policy::in_memory(),
-        Selection::Queue(&[FM]),
-        &c,
-    )
-    .await;
-    assert_eq!(fake.ids(), ["10001"], "only the job of the older parser");
-    assert_eq!(r.summary.per_portal[&FM].ok, 1);
-    let job = store.job(&old).unwrap().unwrap();
-    assert_eq!((job.desc_status, job.desc_attempts), (DescStatus::Ok, 0));
-    assert_eq!(
-        store.parser_version(&old).unwrap(),
-        Some(FM.adapter().parser_version())
-    );
-    assert_eq!(
-        store.job(&current).unwrap().unwrap().desc_status,
-        DescStatus::Failed
-    );
-    assert_eq!(
-        store.job(&gone).unwrap().unwrap().desc_status,
-        DescStatus::Gone
-    );
-}
-
-/// A parser update reopens only the jobs the automatic queue fetches: an old given-up job
-/// keeps its honest "not fetchable" instead of a promise that never comes.
-#[tokio::test(start_paused = true)]
-async fn a_parser_update_requeues_only_what_the_queue_fetches() {
-    let c = clock();
-    let store = store_with(&[(FM, 10_001, 40)]);
-    let old = key(FM, 10_001);
-    for _ in 0..3 {
-        store.record_failed(&old, "noDescription", base()).unwrap();
-    }
-    store.record_parse(&old, 0, None).unwrap();
-    let fake = Fake::default();
-    run(
-        &fake,
-        &store,
-        &mut Policy::in_memory(),
-        Selection::Queue(&[FM]),
-        &c,
-    )
-    .await;
-    assert!(fake.calls().is_empty());
-    assert_eq!(
-        store.job(&old).unwrap().unwrap().desc_status,
-        DescStatus::Unfetchable
-    );
 }
 
 /// A series of suspicious pages (layout changed?) costs ONE attempt - the portal's fault

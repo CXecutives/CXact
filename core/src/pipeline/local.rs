@@ -623,7 +623,7 @@ Wünschenswert:
             employment_type: Some("Freiberuflich".into()),
             ..Facts::default()
         };
-        store.record_parse(&key, 1, Some(&facts)).unwrap();
+        store.record_parse(&key, Some(&facts)).unwrap();
         let row = store.job(&key).unwrap().unwrap();
         assert_eq!(row.facts.as_ref(), Some(&facts));
         let record = matcher.assess(&row, Some(FIT)).unwrap();
@@ -653,7 +653,7 @@ Wünschenswert:
             start: Some("ab sofort".into()),
             ..Facts::default()
         };
-        store.record_parse(&key, 1, Some(&facts)).unwrap();
+        store.record_parse(&key, Some(&facts)).unwrap();
         assert_eq!(store.match_rev(&key).unwrap(), None, "facts changed");
         store
             .save_matches(
@@ -662,7 +662,7 @@ Wünschenswert:
                 now,
             )
             .unwrap();
-        store.record_parse(&key, 1, Some(&facts)).unwrap();
+        store.record_parse(&key, Some(&facts)).unwrap();
         assert_eq!(
             store.match_rev(&key).unwrap().as_deref(),
             Some(matcher.rev()),

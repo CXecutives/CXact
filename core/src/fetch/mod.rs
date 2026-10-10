@@ -638,11 +638,6 @@ pub struct FetchSummary {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FetchEvent {
-    /// After a parser update: so many failed jobs of the portal are open again.
-    Requeued {
-        portal: Portal,
-        count: usize,
-    },
     Queued {
         total: usize,
     },
@@ -882,18 +877,6 @@ pub async fn fetch_all<F: PageFetcher>(
     summary: &mut FetchSummary,
     mut on_event: impl FnMut(FetchEvent),
 ) -> crate::Result<bool> {
-    // After a parser update the portal's failed jobs get a fresh chance - those the queue
-    // below fetches (the mails of the last 30 days).
-    if let Selection::Queue(portals) = selection {
-        let since = clock().saturating_sub(MAX_AGE).unwrap_or(Timestamp::MIN);
-        for adapter in PORTALS.iter().filter(|a| portals.contains(&a.portal())) {
-            let portal = adapter.portal();
-            let count = store.requeue_older_parses(portal, adapter.parser_version(), since)?;
-            if count > 0 {
-                on_event(FetchEvent::Requeued { portal, count });
-            }
-        }
-    }
     let queue = queue(store, selection, clock())?;
     let mut by_portal: BTreeMap<Portal, Vec<JobRow>> = BTreeMap::new();
     for job in queue {
@@ -1084,7 +1067,6 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
     let on = shared.on;
     let mut counts = PortalCounts::default();
     let session = fetcher.session();
-    let parser_version = portal.adapter().parser_version();
     // One sign-in per portal and run; afterwards the same job is tried again.
     let mut login_tried = false;
     // Job whose page was already retried once (at most one retry).
@@ -1183,7 +1165,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 facts,
             } => {
                 store.record_text(&job.key, &text, short, closed, now)?;
-                store.record_parse(&job.key, parser_version, Some(&facts))?;
+                store.record_parse(&job.key, Some(&facts))?;
                 // Only non-empty fields overwrite the mail heuristics: what the page hides
                 // ("visible for EXPERT members") arrives empty.
                 if let Some(f) = fields {
@@ -1221,7 +1203,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 facts,
             } => {
                 store.record_teaser(&job.key, &text, now)?;
-                store.record_parse(&job.key, parser_version, Some(&facts))?;
+                store.record_parse(&job.key, Some(&facts))?;
                 if let Some(f) = fields {
                     store.record_page_fields(&job.key, &f.title, &f.company, &f.location)?;
                 }
@@ -1270,7 +1252,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
             // 4xx): the job's attempt, nothing about the portal's layout.
             PageOutcome::Suspicious(cause) if !cause.is_layout_signal() => {
                 let status = store.record_failure(&job.key, &cause.to_string(), now, true)?;
-                store.record_parse(&job.key, parser_version, None)?;
+                store.record_parse(&job.key, None)?;
                 counts.failed += 1;
                 note(
                     notes,
@@ -1290,7 +1272,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 let charge = streak <= 1 || !charged;
                 charged = true;
                 let status = store.record_failure(&job.key, &cause.to_string(), now, charge)?;
-                store.record_parse(&job.key, parser_version, None)?;
+                store.record_parse(&job.key, None)?;
                 counts.failed += 1;
                 note(
                     notes,

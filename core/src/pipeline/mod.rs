@@ -908,10 +908,6 @@ async fn fetch_step<B: Backends>(
         clock,
         fetched,
         |event| match event {
-            FetchEvent::Requeued { portal, count } => log::info!(
-                "run {run}: {}: {count} failed jobs open again after a parser update",
-                portal.key()
-            ),
             FetchEvent::Queued { total } => log::info!("run {run}: job details: {total} open"),
             FetchEvent::Fetching { portal } => {
                 announce(&mut activity, StatusCode::FetchingDetails, portal, emit);
