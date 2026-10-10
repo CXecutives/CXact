@@ -32,8 +32,6 @@ const ORIGIN: &str = "https://www.amadeus-fire.de/";
 /// The job directory its data host's robots.txt allows (its `Sitemap:` line names it).
 const DIRECTORY: &str =
     "https://daten.amadeus-fire.de/packages/jobtoolControlling/jobtool2xml.php?jobsite=19";
-/// 2: a job whose title names no interim or project role is a permanent post.
-const PARSER_VERSION: u32 = 2;
 /// Words of an address (or a title) that make the job an interim or project role.
 const ROLE_WORDS: [&str; 5] = [
     "interim",
@@ -174,10 +172,6 @@ impl PortalAdapter for AmadeusFire {
             return PageOutcome::Blocked(Cause::Captcha);
         }
         judge(parsed)
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, html: &str) -> Facts {

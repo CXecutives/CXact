@@ -26,7 +26,6 @@ pub(super) struct InterimX;
 
 const DOMAIN: &str = "interim-x.com";
 const ORIGIN: &str = "https://www.interim-x.com/";
-const PARSER_VERSION: u32 = 1;
 
 impl PortalAdapter for InterimX {
     fn portal(&self) -> Portal {
@@ -135,10 +134,6 @@ impl PortalAdapter for InterimX {
             return PageOutcome::Blocked(Cause::Captcha);
         }
         judge(parsed)
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, html: &str) -> Facts {

@@ -27,7 +27,6 @@ pub(super) struct Hays;
 
 const DOMAIN: &str = "hays.de";
 const DETAIL_PREFIX: &str = "stellenangebote-jobs-detail-";
-const PARSER_VERSION: u32 = 1;
 /// The search's contract types (`joblevel`) with the name its further pages carry in their
 /// path (`None`: its pages were not seen, the first is the only one asked).
 const JOBLEVELS: [(&str, Option<&str>); 3] = [
@@ -137,10 +136,6 @@ impl PortalAdapter for Hays {
             return PageOutcome::Blocked(Cause::Captcha);
         }
         judge(parsed)
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, html: &str) -> Facts {

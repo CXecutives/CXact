@@ -127,10 +127,6 @@ impl PortalAdapter for Freelancermap {
         }
     }
 
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
-    }
-
     fn parse_facts(&self, html: &str) -> Facts {
         parse(html, None).map(|p| p.facts).unwrap_or_default()
     }
@@ -227,11 +223,6 @@ fn search_hit(project: &Value) -> Option<Hit> {
         contract: None,
     })
 }
-
-/// Bump whenever the parser reads pages differently (requeues failed jobs).
-/// 2: start, duration, skills, contract type and country as the real island states them;
-/// a check page served with 200.
-const PARSER_VERSION: u32 = 2;
 
 /// `/nproj/<ID>[.html]` or `/projektboerse/projekte/<category>.../<ID>[-slug][.html]`
 /// (also `<slug>-<ID>`) - the forms of the old app (projektscraper's `alerts.py`).

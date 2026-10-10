@@ -132,18 +132,10 @@ impl PortalAdapter for LinkedIn {
         judge(parsed)
     }
 
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
-    }
-
     fn parse_facts(&self, html: &str) -> Facts {
         facts(&Html::parse_document(html))
     }
 }
-
-/// Bump whenever the parser reads pages differently (requeues failed jobs).
-/// 2: all four criteria, `<br><br>` paragraphs, walls and checks served with 200.
-const PARSER_VERSION: u32 = 2;
 
 static CRITERIA: Css = LazyLock::new(|| selector("li.description__job-criteria-item"));
 static CRITERION: Css = LazyLock::new(|| selector("h3"));

@@ -354,7 +354,7 @@ async fn matrix_text_short_closed_gone_suspicious() {
     )
     .await;
     assert_eq!(fake.calls().len(), calls);
-    // The facts of the page and the parser version are kept with the text.
+    // The facts of the page are kept with the text.
     let closed = key(FM, 10_003);
     assert_eq!(
         store

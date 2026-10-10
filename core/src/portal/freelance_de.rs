@@ -173,20 +173,10 @@ impl PortalAdapter for FreelanceDe {
         Some(&SITE)
     }
 
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
-    }
-
     fn parse_facts(&self, html: &str) -> Facts {
         facts_of(&guest_findings(html))
     }
 }
-
-/// Bump whenever the guest page or the probe is read differently (requeues failed jobs).
-/// 2: end markers only as headings, the description heading exactly, the EXPERT notice only
-/// in place of the description, a guest's register call is a teaser at any length, the
-/// rate and more head labels, the status hint when the status is unknown.
-const PARSER_VERSION: u32 = 2;
 
 /// The facts of the project head (as the page words them).
 fn facts_of(page: &SessionPage) -> Facts {

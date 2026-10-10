@@ -266,10 +266,6 @@ pub trait PortalAdapter: Send + Sync {
     fn session(&self) -> Option<&'static PortalSite> {
         None
     }
-    /// Version of the page parsers (guest page and session window). Bumped whenever they
-    /// read pages differently; stored with every judged page (`parser_version`) - after a
-    /// bump the portal's failed jobs are fetched again.
-    fn parser_version(&self) -> u32;
     /// The facts a guest page states in structured form (also part of `guest_page`).
     fn parse_facts(&self, html: &str) -> Facts;
     /// How the app gets the source's jobs.

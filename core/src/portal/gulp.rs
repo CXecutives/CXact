@@ -26,7 +26,6 @@ pub(super) struct Gulp;
 
 const DOMAIN: &str = "gulp.de";
 const ORIGIN: &str = "https://www.gulp.de/";
-const PARSER_VERSION: u32 = 1;
 /// The id of another agency's project (a database id).
 const FOREIGN_ID_LEN: usize = 24;
 /// The project exchange's search (a POST of the term, as its page sends it).
@@ -212,10 +211,6 @@ impl PortalAdapter for Gulp {
             return PageOutcome::Suspicious(Cause::PageNotRecognised);
         };
         judge(parse(&data))
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, body: &str) -> Facts {

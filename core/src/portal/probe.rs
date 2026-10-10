@@ -66,9 +66,6 @@ impl PortalAdapter for Probe {
     fn redirect_outcome(&self, _path: &str) -> PageOutcome {
         PageOutcome::Suspicious(Cause::RedirectNotFollowed)
     }
-    fn parser_version(&self) -> u32 {
-        1
-    }
     fn parse_facts(&self, _html: &str) -> Facts {
         Facts::default()
     }

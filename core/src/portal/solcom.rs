@@ -26,7 +26,6 @@ pub(super) struct Solcom;
 
 const DOMAIN: &str = "solcom.de";
 const ORIGIN: &str = "https://www.solcom.de/";
-const PARSER_VERSION: u32 = 1;
 
 impl PortalAdapter for Solcom {
     fn portal(&self) -> Portal {
@@ -113,10 +112,6 @@ impl PortalAdapter for Solcom {
             return PageOutcome::Blocked(Cause::Captcha);
         }
         judge(parsed)
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, html: &str) -> Facts {

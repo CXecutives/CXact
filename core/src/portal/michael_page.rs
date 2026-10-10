@@ -28,7 +28,6 @@ pub(super) struct MichaelPage;
 
 const DOMAIN: &str = "michaelpage.de";
 const ORIGIN: &str = "https://www.michaelpage.de/";
-const PARSER_VERSION: u32 = 1;
 /// A hit whose number is this many months older than the newest of its page is an ad the
 /// search still lists although it has gone.
 const STALE_MONTHS: u32 = 6;
@@ -118,10 +117,6 @@ impl PortalAdapter for MichaelPage {
             return PageOutcome::Blocked(Cause::Captcha);
         }
         judge(parsed)
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, html: &str) -> Facts {

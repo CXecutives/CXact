@@ -27,7 +27,6 @@ pub(super) struct Fratch;
 
 const DOMAIN: &str = "fratch.io";
 const ORIGIN: &str = "https://fratch.io/";
-const PARSER_VERSION: u32 = 1;
 
 impl PortalAdapter for Fratch {
     fn portal(&self) -> Portal {
@@ -156,10 +155,6 @@ impl PortalAdapter for Fratch {
             return PageOutcome::Blocked(Cause::Captcha);
         }
         judge(parsed)
-    }
-
-    fn parser_version(&self) -> u32 {
-        PARSER_VERSION
     }
 
     fn parse_facts(&self, html: &str) -> Facts {
