@@ -377,9 +377,87 @@ thread_local! {
 /// So many texts [`atoms`] keeps per thread before it starts anew.
 const ATOMS_KEPT: usize = 4096;
 
+/// A German hyphen ellipsis: modifiers that share the head of the word after them
+/// (`projekt- und programmmanagement`, `risiko-, issue- und eskalationsmanagement`,
+/// `utilities-/energieumfeld`).
+static LEADING_ELLIPSIS: LazyLock<regex::Regex> = LazyLock::new(|| {
+    let sep =
+        r"(?:,\s*(?:(?:und|oder|sowie|bzw\.?|&)\s+)?|\s*/\s*|\s+(?:und|oder|sowie|bzw\.?|&)\s+)";
+    regex::Regex::new(&format!(
+        r"((?:[\p{{L}}\d]+(?:-[\p{{L}}\d]+)*-{sep})+)([\p{{L}}\d]+(?:-[\p{{L}}\d]+)*)"
+    ))
+    .expect("leading ellipsis")
+});
+/// One modifier of a leading ellipsis with its separator.
+static ELLIPSIS_PART: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"([\p{L}\d]+(?:-[\p{L}\d]+)*)-([^\p{L}\d]+)").expect("ellipsis part")
+});
+/// A trailing ellipsis: a head that shares the modifier of the word before it
+/// (`projektplanung und -controlling`).
+static TRAILING_ELLIPSIS: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"([\p{L}\d]+)(\s+(?:und|oder|sowie|bzw\.?|&)\s+|,\s*)-([\p{L}\d]+)")
+        .expect("trailing ellipsis")
+});
+
+/// The head of a closed compound (`management` of `programmmanagement`), the longest of
+/// `ELLIPSIS_HEADS` with a modifier of three letters or more before it.
+fn compound_head(word: &str) -> Option<&str> {
+    lex::ELLIPSIS_HEADS
+        .iter()
+        .filter(|h| word.len() >= h.len() + 3 && word.ends_with(**h))
+        .max_by_key(|h| h.len())
+        .map(|h| &word[word.len() - h.len()..])
+}
+
+/// The folded text with its hyphen ellipses written out (`projekt- und programmmanagement`
+/// reads as `projektmanagement und programmmanagement`, `projektplanung und -controlling`
+/// as `projektplanung und projektcontrolling`); an ellipsis whose head is unknown stays.
+fn expand_ellipses(folded: &str) -> std::borrow::Cow<'_, str> {
+    if !folded.contains('-') {
+        return std::borrow::Cow::Borrowed(folded);
+    }
+    let leading = LEADING_ELLIPSIS.replace_all(folded, |caps: &regex::Captures<'_>| {
+        let word = &caps[2];
+        // A hyphenated word shares its last part (`HW- und SW-Entwicklungsteams`).
+        let (head, joiner) = match word.rsplit_once('-') {
+            Some((_, last)) => (Some(last), "-"),
+            None => (compound_head(word), ""),
+        };
+        let Some(head) = head else {
+            return caps[0].to_owned();
+        };
+        let mods = ELLIPSIS_PART.replace_all(&caps[1], |part: &regex::Captures<'_>| {
+            let sep = if part[2].contains('/') {
+                " / "
+            } else {
+                &part[2]
+            };
+            // A hyphenated modifier keeps its hyphen (`Carve-out-, Post-Merger- oder
+            // Transformationsprojekte`).
+            let joiner = if part[1].contains('-') { "-" } else { joiner };
+            format!("{}{joiner}{head}{sep}", &part[1])
+        });
+        format!("{mods}{word}")
+    });
+    let trailing = TRAILING_ELLIPSIS.replace_all(&leading, |caps: &regex::Captures<'_>| {
+        let word = &caps[1];
+        match compound_head(word) {
+            Some(head) => format!(
+                "{word}{}{}{}",
+                &caps[2],
+                &word[..word.len() - head.len()],
+                &caps[3]
+            ),
+            None => caps[0].to_owned(),
+        }
+    });
+    std::borrow::Cow::Owned(trailing.into_owned())
+}
+
 /// [`atoms`], read.
 fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
     let folded = fold(text);
+    let folded = expand_ellipses(&folded).into_owned();
     // Every gender form starts with one of these.
     let folded = if folded.contains([':', '*', '_', '/', '(']) {
         strip_gender(&folded)
@@ -766,6 +844,36 @@ mod tests {
 
     fn all(text: &str) -> Vec<String> {
         atoms(text, &Vocab::all())
+    }
+
+    /// A German hyphen ellipsis reads as the words it stands for; one whose head is unknown
+    /// stays as written.
+    #[test]
+    fn hyphen_ellipses_are_written_out() {
+        assert_eq!(
+            all("Projekt- und Programmmanagement"),
+            all("Projektmanagement und Programmmanagement")
+        );
+        assert_eq!(
+            all("Risiko-, Issue- und Eskalationsmanagement"),
+            all("Risikomanagement, Issuemanagement und Eskalationsmanagement")
+        );
+        assert_eq!(
+            all("Projektplanung und -controlling"),
+            all("Projektplanung und Projektcontrolling")
+        );
+        assert_eq!(
+            all("HW- und SW-Entwicklungsteams"),
+            all("HW-Entwicklungsteams und SW-Entwicklungsteams")
+        );
+        assert_eq!(
+            all("Erfahrung im Utilities-/Energieumfeld"),
+            all("Erfahrung im Utilitiesumfeld / Energieumfeld")
+        );
+        assert_eq!(
+            all("E-Mail- und Telefonsupport"),
+            ["e-mail", "telefonsupport"]
+        );
     }
 
     #[test]

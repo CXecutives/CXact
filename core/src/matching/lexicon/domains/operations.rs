@@ -135,7 +135,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         // Production planning.
         ("production planning", "produktionsplanung"),
         ("fertigungsplanung", "produktionsplanung"),
-        ("produktionsplanung steuerung", "pps"),
+        ("produktionsplanung produktionssteuerung", "pps"),
         ("production planning control", "pps"),
         ("fertigungssteuerung", "produktionssteuerung"),
         ("production control", "produktionssteuerung"),

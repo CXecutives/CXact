@@ -517,7 +517,16 @@ fn joined(phrase: &str, seps: &[Range<usize>]) -> Vec<Range<usize>> {
             .split_whitespace()
             .collect();
         let genitive = coordinated_object(&before_words, after);
-        if inside || tail || listing || genitive {
+        // `Projektplanung und -controlling`: the head shares the word before it.
+        let ellipsis = after.starts_with('-');
+        // `Kenntnisse in klassischen und agilen Methoden`: the declined adjective shares the
+        // noun of the next part.
+        let dangling = before_words.last().is_some_and(|w| declined_adjective(w))
+            && after
+                .split_whitespace()
+                .next()
+                .is_some_and(|w| w.chars().next().is_some_and(char::is_lowercase));
+        if inside || tail || listing || genitive || ellipsis || dangling {
             continue;
         }
         kept.push(sep.clone());
@@ -591,6 +600,18 @@ fn shared_objects(
                 .find_map(|(r, _)| object(r))
         })
         .collect()
+}
+
+/// A declined German adjective written in lower case (`klassischen`, `organisatorische`,
+/// `qualitativer`): an adjective stem with a declension ending.
+fn declined_adjective(word: &str) -> bool {
+    word.chars().next().is_some_and(char::is_lowercase)
+        && word.chars().all(char::is_alphabetic)
+        && word.chars().count() >= 5
+        && ["e", "en", "er", "es", "em"].iter().any(|ending| {
+            word.strip_suffix(ending)
+                .is_some_and(|stem| lex::ADJECTIVE_STEMS.iter().any(|s| stem.ends_with(s)))
+        })
 }
 
 /// Is `after` a second object of the head noun that starts `before` (`Steuerung großer
@@ -942,7 +963,15 @@ fn classify(text: &str, phrase_level: Option<u8>, vocab: &Vocab) -> Class {
             .iter()
             .filter(|p| folded.contains(*p))
             .count();
-    if soft > 0 && 2 * soft >= content.len() {
+    // Whom the soft skill addresses is no skill of its own.
+    let audience = content
+        .iter()
+        .filter(|a| {
+            lex::AUDIENCE_ATOMS.contains(&a.as_str())
+                || (a.ends_with("eb") && !a.ends_with("trieb"))
+        })
+        .count();
+    if soft > 0 && 2 * soft >= content.len() - if soft > 0 { audience } else { 0 } {
         return Class::Soft;
     }
     // `Arbeitsweise`, `working style`, `Soft Skills` alone.
@@ -1126,6 +1155,7 @@ mod tests {
             "Kommunikationsstrategie",
             "Analytische Methodenvalidierung",
             "Communication strategy",
+            "unternehmerische Verantwortung",
         ] {
             assert_eq!(class(skill), Class::Skill, "{skill}");
         }
@@ -1186,6 +1216,12 @@ mod tests {
             "Gestaltungswillen",
             "Umsetzungsstärke",
             "hohes Maß an Eigeninitiative",
+            "kommunikative Fähigkeiten",
+            "Unternehmerisches Denken",
+            "Zahlenverständnis",
+            "Hohe Kunden- und Vertriebsorientierung",
+            "Sehr gute Kommunikationsfähigkeiten auf Fach-, IT- und Managementebene",
+            "Sicheres Auftreten auf unterschiedlichen Hierarchieebenen",
         ] {
             assert_eq!(class(soft), Class::Soft, "{soft}");
         }
@@ -1441,6 +1477,26 @@ mod tests {
             ["Controlling", "Reporting"]
         );
         assert_eq!(texts("Excel und Power BI"), ["Excel", "Power BI"]);
+    }
+
+    /// A declined adjective that ends a part shares the noun of the next one, and a head
+    /// after `und -` the word before it: one requirement each.
+    #[test]
+    fn shared_nouns_and_heads_keep_one_item() {
+        let texts =
+            |phrase: &str| -> Vec<String> { items(phrase).into_iter().map(|(t, _)| t).collect() };
+        for one in [
+            "Kenntnisse in klassischen und agilen Projektmanagement-Methoden",
+            "Sehr gute organisatorische und kommunikative Fähigkeiten",
+            "Durchführung qualitativer und quantitativer Nutzerforschung",
+            "Methodenkompetenz in Projektplanung und -controlling",
+        ] {
+            assert_eq!(texts(one), [one], "{one}");
+        }
+        assert_eq!(
+            texts("Erfahrung im Controlling und Reporting"),
+            ["Erfahrung im Controlling", "Reporting"]
+        );
     }
 
     #[test]

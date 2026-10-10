@@ -165,7 +165,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("lieferkette", "supply-chain"),
         ("lieferkettenmanagement", "supply-chain"),
         ("sales operations planning", "s&op"),
-        ("absatz produktionsplanung", "s&op"),
+        ("absatzplanung produktionsplanung", "s&op"),
         ("integrated business planning", "s&op"),
         ("demand planning", "bedarfsplanung"),
         ("demand forecasting", "bedarfsplanung"),

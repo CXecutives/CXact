@@ -104,7 +104,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         // Deviations, CAPA and change control.
         ("capa management", "capa"),
         ("corrective preventive action", "capa"),
-        ("korrektur vorbeugemassnahmen", "capa"),
+        ("korrekturmassnahmen vorbeugemassnahmen", "capa"),
         ("deviation", "abweichungsmanagement"),
         ("deviation management", "abweichungsmanagement"),
         ("deviation handling", "abweichungsmanagement"),

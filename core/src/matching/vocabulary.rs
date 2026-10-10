@@ -53,8 +53,9 @@ const HIDDEN: &[&str] = &[
     "interim manag",
     "change managment",
     "projekt management",
-    // Phrases that lost their small words (`of`, `&`, `to`) to the folding.
-    "absatz produktionsplanung",
+    // Phrases that lost their small words (`of`, `&`, `to`) to the folding, and written-out
+    // hyphen ellipses (`Absatz- und Produktionsplanung`).
+    "absatzplanung produktionsplanung",
     "chemistry manufacturing controls",
     "compensation benefits",
     "corrective preventive action",
@@ -67,7 +68,7 @@ const HIDDEN: &[&str] = &[
     "health safety environment",
     "infrastructure code",
     "know customer",
-    "korrektur vorbeugemassnahmen",
+    "korrekturmassnahmen vorbeugemassnahmen",
     "learning development",
     "lohn gehaltsabrechnung",
     "manufacturing practice",
@@ -78,7 +79,7 @@ const HIDDEN: &[&str] = &[
     "people culture",
     "procure pay",
     "production planning control",
-    "produktionsplanung steuerung",
+    "produktionsplanung produktionssteuerung",
     "purchase pay",
     "reconciliation interests",
     "request proposal",
