@@ -8,7 +8,7 @@
 
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
-import { CvError, fillFromCv, type CvFailure, type NextAppState } from '$lib/ipc/api';
+import { CvError, fillFromCv, type CvFailure } from '$lib/ipc/api';
 import type { ProfileInfo } from '$lib/ipc/types';
 import { app } from '$lib/state/app.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
@@ -32,7 +32,7 @@ class FromCv {
 
   /** The tries are used up for today: the import waits for `cvUntil`. */
   get limited(): boolean {
-    return Boolean((app.state as NextAppState | null)?.cvUntil);
+    return Boolean(app.state?.cvUntil);
   }
 
   /** The profile filled from a CV (the files dropped on the window, else the file dialog)

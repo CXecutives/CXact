@@ -72,6 +72,7 @@
 // come in the order of the backend (`Portal::ALL`).
 
 import type {
+  AppState,
   AskedTerm,
   Backup,
   Commands,
@@ -90,6 +91,7 @@ import type {
   ProfileInfo,
   ProfileUnderstanding,
   Reason,
+  RunEvent,
   RunRequest,
   RunSummary,
   ScoreDelta,
@@ -103,14 +105,7 @@ import {
   MAX_YEARS,
   NUMBER_LIMITS,
 } from '../../ui/src/lib/ipc/types/profile';
-import type {
-  CvFailure,
-  NextAppState,
-  NextCommands,
-  NextRunEvent as RunEvent,
-  NextPortalState,
-  NextRunSummary,
-} from '../../ui/src/lib/ipc/api';
+import type { CvFailure } from '../../ui/src/lib/ipc/api';
 import snapshot from './demo/snapshot.json';
 // The engine's words of the suggestions (written by core's matching::vocabulary test).
 import VOCABULARY from './demo/vocabulary.json';
@@ -336,9 +331,6 @@ const NO_ALERTS: MailboxCheck = {
 /** The folders as the OS writes them (Windows with backslashes). */
 const SEP = MAC ? '/' : '\\';
 const HOME = MAC ? '/Users/demo' : 'C:\\Users\\demo';
-const DATA_DIR = MAC
-  ? `${HOME}/Library/Application Support/job-alert-monitor`
-  : `${HOME}\\AppData\\Roaming\\job-alert-monitor`;
 const TICK = Number(params.get('tick') ?? (DEMO_MODE ? 150 : PREVIEW ? 300 : 40));
 const DELAY = scenario === 'slow' ? 900 : 0;
 /** How long the CV evaluation takes: in the specs short, in the preview about as long as a
@@ -421,6 +413,7 @@ function manyJobs(count: number): JobView[] {
  *  what the engine understood of it; its form follows once core writes v19 forms. */
 const DEMO_FORM: ProfileForm = {
   roles: ['Interim CFO'],
+  project: true,
   permanent: true,
   temporary: false,
   dayRateWish: 1200,
@@ -479,13 +472,11 @@ function understoodOf(form: ProfileForm): ProfileUnderstanding {
     packs: packsOf(form),
     years: form.years,
     degrees: form.degrees,
-    focus: form.competences.filter((row) => row.focus).map((row) => row.name),
-    roles: form.roles,
   };
 }
 
 /** The stored profile of a form, as core answers a save. */
-function infoOf(form: ProfileForm, aiFilled: string[] = []): ProfileInfo {
+function infoOf(form: ProfileForm): ProfileInfo {
   const count = form.competences.length + form.tools.length;
   return {
     ...DEMO.profile,
@@ -498,25 +489,11 @@ function infoOf(form: ProfileForm, aiFilled: string[] = []): ProfileInfo {
     parseError: null,
     form,
     missing: missingOf(form),
-    aiFilled,
   };
 }
 
 /** The demo profile with what the engine understood of it. */
-const PROFILE: ProfileInfo = { ...DEMO.profile, form: DEMO_FORM, missing: [], aiFilled: [] };
-
-/** The fields a CV fills (core's AI schema): never the contract types, rates, countries, the
- *  work mode, the day, the workload or the exclusion words. */
-const CV_FIELDS = [
-  'roles',
-  'competences',
-  'tools',
-  'years',
-  'industries',
-  'languages',
-  'degrees',
-  'certificates',
-] as const satisfies readonly (keyof ProfileForm)[];
+const PROFILE: ProfileInfo = { ...DEMO.profile, form: DEMO_FORM, missing: [] };
 
 /** A CV merged into a stored profile like core: by normalized names, nothing overwritten
  *  (stars, levels and years stay), new stars only up to five. */
@@ -640,10 +617,7 @@ const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
 /** How many alert mails of a portal of alert mails came in the last 30 days (the demo's). */
 const ALERT_MAILS: Partial<Record<PortalState['portal'], number>> = { linkedin: 24, freelance: 11 };
 
-const portal = (
-  name: PortalState['portal'],
-  extra: Partial<NextPortalState> = {},
-): NextPortalState => ({
+const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
   portal: name,
   way: SEARCHED.has(name) ? 'search' : 'alert',
   enabled: true,
@@ -691,6 +665,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
     dryRun: false,
     startedAt: at(1.2),
     finishedAt: at(1),
+    mail: null,
     scan: {
       mailsFound: 9,
       mailsChecked: 9,
@@ -738,7 +713,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
       },
     ],
     // Seven new, one of them excluded; two of the others fit well.
-    newJobs: { count: 6, high: 2 },
+    newJobs: { count: 6, high: 2, excluded: 1 },
     score: demoScoring(),
     emptyAlerts: [
       {
@@ -754,7 +729,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 /* -------------------------------------------------------------------- store */
 
 let jobs: JobView[] = [];
-let state: NextAppState;
+let state: AppState;
 /** `searching`: a search starts once the page asked for the state. */
 let autorun = false;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
@@ -850,7 +825,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.lastRun = {
       ...lastRun(),
       perPortal: lastRun().perPortal.map((p) => ({ ...p, new: 0 })),
-      newJobs: { count: 0, high: 0 },
+      newJobs: { count: 0, high: 0, excluded: 0 },
       emptyAlerts: [],
     };
   },
@@ -859,7 +834,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   },
   // Gmail refused the app password in the last search, whose search part went on.
   'mailbox-refused': () => {
-    state.lastRun = { ...lastRun(), mail: { kind: 'mailAuth', params: {} } } as NextRunSummary;
+    state.lastRun = { ...lastRun(), mail: { kind: 'mailAuth', params: {} } };
   },
   // Every job went to the Archiv after the last search: Aktuell is empty.
   archived: () => {
@@ -973,7 +948,6 @@ function initial(): void {
       checkedAt: null,
     },
     profile: PROFILE,
-    profiles: [],
     // Every portal counts its calls (the backend sends the numbers of each): the alert
     // sources 100 a day, the sources the app searches 1,500 (the deep search).
     portals: [
@@ -988,21 +962,15 @@ function initial(): void {
       portal('interimx', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
       portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
-    fetchMail: true,
-    fetchSearch: true,
     lastRun: lastRun(),
     counts: countsOf([]),
     matchPending: 0,
-    dataDir: DATA_DIR,
-    logDir: `${DATA_DIR}${SEP}logs`,
-    resetReport: null,
     cvUntil: params.get('cv') === 'used' ? CV_UNTIL : null,
   };
   SCENARIOS[scenario]?.();
   // Before the first fetch the store counted no alert mail (the setup shows what "Verbinden"
   // found in the mailbox instead).
-  if (state.lastRun === null)
-    for (const p of state.portals) (p as NextPortalState).alertMails = null;
+  if (state.lastRun === null) for (const p of state.portals) p.alertMails = null;
   // `?open=portal:id`: that job is open when the page comes (the store the app keeps it in).
   const [openPortal, openId] = (params.get('open') ?? '').split(':');
   if (openPortal && openId) {
@@ -1026,7 +994,7 @@ function initial(): void {
 const SESSION = 'cxact-preview-demo';
 
 interface Session {
-  state: NextAppState;
+  state: AppState;
   jobs: JobView[];
   backups: Backup[];
   tombstones: string[];
@@ -1361,7 +1329,9 @@ function askedTerms(): AskedTerm[] {
       if (seen.has(k) || known.has(k)) continue;
       seen.add(k);
       const entry = counted.get(k);
-      if (entry === undefined) counted.set(k, { term, field, count: 1 });
+      // A language goes in at B2 (core: the level the ad names, else B2; `term_level`).
+      const level = field === 'language' ? 'B2' : null;
+      if (entry === undefined) counted.set(k, { term, field, count: 1, level });
       else entry.count += 1;
     }
   }
@@ -1669,7 +1639,7 @@ function script(kind: RunSummary['kind'], mailFailure: ErrorInfo | null = null):
     ...(mail ? (['linkedin', 'freelance'] as const) : []),
     ...searched.map((p) => p.portal),
   ];
-  const summary: NextRunSummary = {
+  const summary: RunSummary = {
     ...lastRun(),
     run: number,
     kind,
@@ -1846,7 +1816,7 @@ function offlineScript(kind: 'mailConnect' | 'offline'): RunEvent[] {
       summary: {
         ...lastRun({ kind: 'failed', error: fail(kind) }),
         perPortal: [],
-        newJobs: { count: 0, high: 0 },
+        newJobs: { count: 0, high: 0, excluded: 0 },
         emptyAlerts: [],
       },
     },
@@ -1867,7 +1837,7 @@ function apply(event: RunEvent): void {
     if (isFetch(event.summary.kind)) {
       state.lastRun = event.summary;
       for (const p of state.portals) {
-        (p as NextPortalState).alertMails = ALERT_MAILS[p.portal] ?? null;
+        p.alertMails = ALERT_MAILS[p.portal] ?? null;
         const newest = lastAlertOf(p.portal);
         const newer =
           newest !== null && (p.lastAlert === null || Date.parse(newest) > Date.parse(p.lastAlert));
@@ -1898,21 +1868,9 @@ function cancelRun(): void {
 
 /* ----------------------------------------------------------------- handlers */
 
-/** Commands of the table the interface no longer calls (the backend drops them). */
-type Retired =
-  | 'pick_profile'
-  | 'profile_prompt'
-  | 'switch_profile'
-  | 'create_profile'
-  | 'duplicate_profile'
-  | 'rename_profile'
-  | 'delete_profile'
-  | 'restore_profile';
-
-type Answered = Omit<Commands, Retired> & NextCommands;
-type Args<K extends keyof Answered> = Omit<Answered[K]['args'], 'channel'>;
+type Args<K extends keyof Commands> = Omit<Commands[K]['args'], 'channel'>;
 type Handlers = {
-  [K in keyof Answered]: (args: Args<K>) => Answered[K]['result'] | Promise<Answered[K]['result']>;
+  [K in keyof Commands]: (args: Args<K>) => Commands[K]['result'] | Promise<Commands[K]['result']>;
 };
 
 const find = (key: { portal: string; id: string }): JobView | undefined =>
@@ -2039,14 +1997,12 @@ const handlers: Handlers = {
     const failure = cv === null || cv === 'slow' ? null : (CV_FAILURE[cv] ?? null);
     if (failure === 'offline') throw fail('offline');
     if (failure === 'limit') state.cvUntil = CV_UNTIL;
-    if (failure !== null) throw fail('cv' as ErrorInfo['kind'], { reason: failure });
+    if (failure !== null) throw fail('cv', { reason: failure });
     const stored = state.profile?.form ?? null;
     // The demo's CV names no wished role and no language: two fields stay open to fill in.
     const demoCv = DEMO_MODE && stored === null;
     const merged = mergeCv(stored);
-    const form = demoCv ? { ...merged, roles: [], languages: [] } : merged;
-    const filled = CV_FIELDS.filter((f) => !demoCv || (f !== 'roles' && f !== 'languages'));
-    state.profile = infoOf(form, [...filled]);
+    state.profile = infoOf(demoCv ? { ...merged, roles: [], languages: [] } : merged);
     if (jobs.every((j) => j.match === null)) {
       for (const j of jobs) j.match = demoMatch(j);
     }
@@ -2383,7 +2339,7 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
   harness.calls.push([command, args]);
   if (TAURI !== null && WINDOW_COMMANDS.has(command))
     return (await TAURI.invoke(command, args)) as T;
-  const handler = handlers[command as keyof Answered] as ((a: unknown) => unknown) | undefined;
+  const handler = handlers[command as keyof Commands] as ((a: unknown) => unknown) | undefined;
   if (handler === undefined) throw fail('internal', { command });
   if (state.dryRun && DRY_RUN_REFUSED.has(command)) throw fail('dryRun');
   const delay = command === 'job_detail' ? DELAY + harness.detailDelay : DELAY;

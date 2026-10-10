@@ -4,16 +4,8 @@
 // than --dur-fast, so a quick start never flashes placeholders.
 
 import { invoke } from '../ipc/api';
-import type { AppState, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
+import type { AppState, Portal, PortalHealth } from '../ipc/types';
 import { tokenMs } from '../tokens';
-
-/** A whole patch of the settings from what changes (everything else `null`: unchanged). */
-export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
-  portals: [],
-  fetchMail: null,
-  fetchSearch: null,
-  ...change,
-});
 
 class AppStore {
   state = $state<AppState | null>(null);

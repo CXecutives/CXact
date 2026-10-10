@@ -18,17 +18,20 @@ export const MAX_YEARS = 70;
 export const MAX_ITEMS = 300;
 export const MAX_TEXT = 1000;
 
-/** The form of a new profile (`ProfileForm::default()`): Festanstellung and Zeitarbeit
- *  allowed, Deutschland, from now on, no wish of work mode, workload or duration. */
+/** The form of a new profile (`ProfileForm::default()`): projects and interim work only,
+ *  Deutschland, from now on, no wish of work mode, workload or duration. */
 export const EMPTY_FORM: ProfileForm = {
   "roles": [],
-  "permanent": true,
-  "temporary": true,
+  "project": true,
+  "permanent": false,
+  "temporary": false,
   "dayRateWish": null,
   "dayRateMin": null,
   "minSalary": null,
   "workMode": "any",
-  "countries": ["DE"],
+  "countries": [
+    "DE"
+  ],
   "regions": [],
   "available": {
     "kind": "now"

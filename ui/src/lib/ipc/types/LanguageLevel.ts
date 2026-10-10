@@ -3,4 +3,4 @@
 /**
  * CEFR level or native.
  */
-export type LanguageLevel = "a1" | "a2" | "b1" | "b2" | "c1" | "c2" | "native";
+export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native";

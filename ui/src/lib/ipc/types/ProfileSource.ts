@@ -5,7 +5,7 @@
  */
 export type ProfileSource = { 
 /**
- * JSON path pattern (`kernkompetenzen[].kompetenz`, `stationen[].rolle`).
+ * JSON path pattern (`kernkompetenzen[].kompetenz`, `methoden_tools[]`).
  */
 path: string, 
 /**

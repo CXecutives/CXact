@@ -42,14 +42,6 @@ async function saved(page: Page): Promise<SettingsPatch[]> {
   );
 }
 
-/** A whole patch from what changes (the rest unchanged, as the page sends it). */
-const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
-  portals: [],
-  fetchMail: null,
-  fetchSearch: null,
-  ...change,
-});
-
 /** A colour token as the page computes it (rgb()). */
 async function colour(page: Page, token: string): Promise<string> {
   return page.evaluate((name) => {
@@ -426,7 +418,7 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
   await expect(page.getByTestId('portal-linkedin-hint')).toBeVisible();
   await expect(page.getByTestId('toast')).toHaveCount(0);
   expect(await saved(page)).toEqual([
-    patch({ portals: [{ portal: 'linkedin', enabled: false, loginEnabled: null }] }),
+    { portals: [{ portal: 'linkedin', enabled: false, loginEnabled: null }] },
   ]);
   // No label element anywhere on the page: no text is a click target of a switch.
   await expect(page.getByTestId('settings').locator('label')).toHaveCount(0);

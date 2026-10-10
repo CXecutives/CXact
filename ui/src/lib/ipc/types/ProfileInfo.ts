@@ -17,18 +17,14 @@ fileName: string, bytes: number, savedAt: string | null, quality: ProfileQuality
  */
 pending: number, 
 /**
- * The file is no valid JSON object any more (edited by hand).
+ * The file does not read as a profile (edited by hand, or of another version).
  */
 parseError: ErrorInfo | null, 
 /**
  * The profile as the editor shows it (`null` while the file does not read).
  */
-form: ProfileForm | null,
+form: ProfileForm | null, 
 /**
- * The ProfileForm fields a usable profile still needs (core `missing_required`).
+ * The `ProfileForm` fields a usable profile still needs (core `missing_required`).
  */
-missing: Array<string>,
-/**
- * The ProfileForm fields the CV import filled, until the next save.
- */
-aiFilled: Array<string>, };
+missing: Array<string>, };

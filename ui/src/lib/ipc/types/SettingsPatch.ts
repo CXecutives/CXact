@@ -2,15 +2,7 @@
 import type { PortalPatch } from "./PortalPatch";
 
 /**
- * Changes of the settings. `null` = unchanged; the workspace only changes through the
- * folder dialog (`pick_workspace`).
+ * Changes of the settings: the portal switches (`null` = unchanged); the work folder only
+ * changes through the folder dialog (`pick_workspace`).
  */
-export type SettingsPatch = { portals: Array<PortalPatch>, 
-/**
- * The fetch reads the alert mails.
- */
-fetchMail: boolean | null, 
-/**
- * The fetch searches the sources.
- */
-fetchSearch: boolean | null, };
+export type SettingsPatch = { portals: Array<PortalPatch>, };

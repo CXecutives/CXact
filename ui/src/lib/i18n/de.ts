@@ -29,6 +29,7 @@ import type {
   ErrorKind,
   InvalidInput,
   JobSort,
+  PauseReason,
   Place,
   Portal,
   ProfileForm,
@@ -36,7 +37,7 @@ import type {
   Way,
   WorkMode,
 } from '../ipc/types';
-import type { ContractKey, CvFailure, NextPauseReason } from '../ipc/api';
+import type { ContractKey, CvFailure } from '../ipc/api';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import { formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
@@ -75,6 +76,24 @@ const busy: Record<Busy, string> = {
   mailbox: 'Gerade wird das Postfach geprüft.',
 };
 
+/** The CV could not be evaluated: a file that does not read. */
+const CV_UNREADABLE = 'Die Datei lässt sich nicht lesen.';
+
+/** Why "Aus Lebenslauf ausfüllen" filled nothing, one sentence each (the Profil, the setup's
+ *  upload; the error `cv` by its `reason`). */
+const cvError: Record<CvFailure, string> = {
+  limit: 'Heute ist keine Auswertung mehr möglich.',
+  paused: 'Die Auswertung ist pausiert.',
+  timeout: 'Die Auswertung hat zu lange gedauert.',
+  offline: 'Keine Verbindung zum Internet.',
+  outdated: 'Die Auswertung braucht eine neuere Version von CXact.',
+  unreadable: CV_UNREADABLE,
+  tooLarge: 'Die Datei ist zu groß.',
+  unsupported: 'Dieses Format wird nicht unterstützt.',
+  refused: CV_UNREADABLE,
+  unavailable: 'Die Auswertung antwortet gerade nicht.',
+};
+
 const errors: Record<ErrorKind | 'unknown', Text> = {
   db: 'Die Datenbank meldet einen Fehler.',
   fileLocked: 'Eine Datei ist gerade in einem anderen Programm geöffnet.',
@@ -109,6 +128,8 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   portalUnavailable: (p) => `Keine Verbindung zu ${portalOf(p.portal)}.`,
   portalPaused: (p) => `${portalOf(p.portal)} pausiert gerade.`,
   portalQuota: (p) => `Das Limit für ${portalOf(p.portal)} ist erreicht.`,
+  cv: (p) =>
+    typeof p.reason === 'string' && p.reason in cvError ? cvError[p.reason as CvFailure] : INTERNAL,
   internal: INTERNAL,
   unknown: INTERNAL,
 };
@@ -119,6 +140,7 @@ const profileField = (): Record<string, string> => {
   const { field } = de.profile;
   return {
     roles: field.roles,
+    project: field.contracts,
     permanent: field.contracts,
     temporary: field.contracts,
     dayRateWish: field.dayRateWish,
@@ -155,7 +177,7 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 };
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
-const pause: Record<NextPauseReason, string> = {
+const pause: Record<PauseReason, string> = {
   throttled: 'das Portal bremst die Aufrufe',
   blocked: 'das Portal blockiert die Aufrufe',
   layoutChanged: 'die Seiten sehen anders aus als erwartet',
@@ -177,8 +199,6 @@ const emptyMails = (mails: number): string =>
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
 /** No usable profile, no match: one wording for the ring, the filter and the list. */
 const NO_PROFILE = 'Ohne Profil keine Übereinstimmung.';
-/** The CV could not be evaluated: a file that does not read. */
-const CV_UNREADABLE = 'Die Datei lässt sich nicht lesen.';
 /** The choice of the profile that wishes nothing. */
 const ANY = 'Egal';
 
@@ -393,6 +413,10 @@ const reasonCode = {
       ? 'Der Job ist eine Festanstellung, die in deinem Profil nicht gewählt ist.'
       : 'Das klingt nach einer Festanstellung, die in deinem Profil nicht gewählt ist.';
   },
+  project: (p) =>
+    p.stated === true
+      ? 'Der Job ist ein Projekt, das in deinem Profil nicht gewählt ist.'
+      : 'Das klingt nach einem Projekt, das in deinem Profil nicht gewählt ist.',
   permanentRegion: (p) => {
     const place = p.location
       ? `${str(p.location)} liegt außerhalb deiner Orte für Festanstellung`
@@ -488,6 +512,7 @@ const criteria = {
   countries: 'Der Einsatzort liegt nicht in deinen Ländern.',
   noAnue: 'Zeitarbeit ist in deinem Profil nicht gewählt.',
   noPermanent: 'Festanstellung ist in deinem Profil nicht gewählt.',
+  noProject: 'Projekt und Interim ist in deinem Profil nicht gewählt.',
   availability: 'Der Start liegt vor deiner Verfügbarkeit.',
   minSalary: 'Das Gehalt liegt unter deinem Mindestgehalt.',
   permanentRegion: 'Der Ort liegt nicht in deinen Orten für Festanstellung.',
@@ -946,7 +971,7 @@ export const de = {
   health: {
     /** A portal problem in one sentence that says whether to act (its row in the settings). */
     advice: {
-      paused: (reason: NextPauseReason, iso: string | null) => {
+      paused: (reason: PauseReason, iso: string | null) => {
         const why = pause[reason].charAt(0).toUpperCase() + pause[reason].slice(1);
         return iso
           ? `${why}, die Suche macht ab ${formatMoment(iso)} von selbst weiter.`
@@ -980,20 +1005,9 @@ export const de = {
     saveFirst: 'Speichere oder verwirf erst deine Änderungen.',
     /** The toast once the CV filled the profile (saved at once). */
     filled: 'Profil ausgefüllt. Bitte prüfen.',
-    /** Why the CV filled nothing, one sentence each (the Profil, the setup's upload); where
-     *  a new try can work "Datei auswählen" stands beside it. */
-    cvError: {
-      limit: 'Heute ist keine Auswertung mehr möglich.',
-      paused: 'Die Auswertung ist pausiert.',
-      timeout: 'Die Auswertung hat zu lange gedauert.',
-      offline: 'Keine Verbindung zum Internet.',
-      outdated: 'Die Auswertung braucht eine neuere Version von CXact.',
-      unreadable: CV_UNREADABLE,
-      tooLarge: 'Die Datei ist zu groß.',
-      unsupported: 'Dieses Format wird nicht unterstützt.',
-      refused: CV_UNREADABLE,
-      unavailable: 'Die Auswertung antwortet gerade nicht.',
-    } satisfies Record<CvFailure, string>,
+    /** Why the CV filled nothing; where a new try can work "Datei auswählen" stands beside
+     *  it. */
+    cvError,
     pickFile: 'Datei auswählen',
     /** The required fields still empty, said once Speichern or the setup's Weiter was
      *  pressed: its words before the names (each a link to its field) and what stands before

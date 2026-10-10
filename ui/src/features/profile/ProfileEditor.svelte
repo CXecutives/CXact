@@ -39,7 +39,7 @@
   import Segmented from '$components/Segmented.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import type { ContractKey, NextProfileForm } from '$lib/ipc/api';
+  import type { ContractKey } from '$lib/ipc/api';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
   import { fade } from '$lib/motion/transitions';
@@ -149,7 +149,7 @@
       label,
     })),
   });
-  /** Vertragsart: the contract types chosen (project and interim until the backend has it). */
+  /** Vertragsart: the contract types chosen. */
   const CONTRACT_KEYS: readonly ContractKey[] = ['project', 'permanent', 'temporary'];
   const CONTRACTS = $derived(
     CONTRACT_KEYS.map((key) => ({
@@ -158,13 +158,9 @@
       testid: `contract-${key}`,
     })),
   );
-  const contractOn = (key: ContractKey): boolean =>
-    key === 'project' ? ((form as NextProfileForm).project ?? true) : form[key];
-  const contracts = $derived(CONTRACT_KEYS.filter(contractOn));
+  const contracts = $derived(CONTRACT_KEYS.filter((key) => form[key]));
   function toggleContract(key: ContractKey): void {
-    const on = !contractOn(key);
-    if (key === 'project') (form as NextProfileForm).project = on;
-    else form[key] = on;
+    form[key] = !form[key];
   }
 
   /** A choice's value as the segmented control holds it, and back. */

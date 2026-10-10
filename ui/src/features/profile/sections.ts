@@ -160,7 +160,7 @@ export function fieldOf(control: Control): keyof ProfileForm {
     case 'choice':
       return control.key;
     case 'contracts':
-      return 'permanent';
+      return 'project';
     default:
       return control.kind;
   }

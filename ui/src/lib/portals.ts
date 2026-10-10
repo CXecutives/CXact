@@ -19,20 +19,6 @@ export const PORTAL_ORDER: readonly Portal[] = [
   'freelance',
 ];
 
-/** A portal's mark on its tile: always two capitals, brand-neutral (design round 4). */
-export const PORTAL_MARK: Readonly<Record<Portal, string>> = {
-  hays: 'HA',
-  freelancermap: 'FM',
-  michaelpage: 'MP',
-  solcom: 'SO',
-  gulp: 'GU',
-  amadeusfire: 'AF',
-  interimx: 'IX',
-  fratch: 'FR',
-  linkedin: 'LI',
-  freelance: 'FD',
-};
-
 /** Items of the portals (their states, their counts) in the UI's order. */
 export function inPortalOrder<Item extends { portal: Portal }>(items: readonly Item[]): Item[] {
   return [...items].sort((a, b) => PORTAL_ORDER.indexOf(a.portal) - PORTAL_ORDER.indexOf(b.portal));

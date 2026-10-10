@@ -26,6 +26,7 @@ const ALIASES: Record<string, CriterionKey> = {
   country: 'countries',
   anue: 'noAnue',
   permanent: 'noPermanent',
+  project: 'noProject',
   salary: 'minSalary',
   exclusionWord: 'exclusionWords',
 };

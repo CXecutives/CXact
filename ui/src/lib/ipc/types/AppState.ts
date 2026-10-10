@@ -3,9 +3,7 @@ import type { JobCounts } from "./JobCounts";
 import type { Mailbox } from "./Mailbox";
 import type { Platform } from "./Platform";
 import type { PortalState } from "./PortalState";
-import type { ProfileEntry } from "./ProfileEntry";
 import type { ProfileInfo } from "./ProfileInfo";
-import type { ResetSummary } from "./ResetSummary";
 import type { RunSnapshot } from "./RunSnapshot";
 import type { RunSummary } from "./RunSummary";
 import type { SettingsView } from "./SettingsView";
@@ -19,7 +17,8 @@ export type AppState = { platform: Platform,
  */
 version: string, dryRun: boolean, 
 /**
- * No run has finished yet and no job is known.
+ * The setup is not finished yet (`Settings::onboarded`; never in the dry run): the app
+ * shows the setup alone.
  */
 firstRun: boolean, 
 /**
@@ -27,22 +26,15 @@ firstRun: boolean,
  */
 running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, 
 /**
- * The active profile.
+ * The profile.
  */
-profile: ProfileInfo | null, 
-/**
- * Every profile of the work folder, the active one marked (empty without one).
- */
-profiles: Array<ProfileEntry>, portals: Array<PortalState>, 
-/**
- * The fetch reads the alert mails (the menu beside the button).
- */
-fetchMail: boolean, 
-/**
- * The fetch searches the sources (the menu beside the button).
- */
-fetchSearch: boolean, 
+profile: ProfileInfo | null, portals: Array<PortalState>, 
 /**
  * The last fetch - a rescore or a details run is none.
  */
-lastRun: RunSummary | null, counts: JobCounts, matchPending: number, dataDir: string, logDir: string, resetReport: ResetSummary | null, };
+lastRun: RunSummary | null, 
+/**
+ * The day (`YYYY-MM-DD`, UTC) "Aus Lebenslauf ausfüllen" works again while its tries
+ * are used up (`ai::tries_until`); `null` while it works.
+ */
+cvUntil: string | null, counts: JobCounts, matchPending: number, };

@@ -20,10 +20,11 @@
 import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
 import { errorText } from '../i18n/texts';
-import { invoke, IpcError, onRun, type NextRunEvent, type NextRunSummary } from '../ipc/api';
+import { invoke, IpcError, onRun } from '../ipc/api';
 import type {
   ErrorInfo,
   Portal,
+  RunEvent,
   RunKindName,
   RunRequest,
   RunSnapshot,
@@ -69,7 +70,7 @@ class RunStore {
   /** How far the run is, 0 to 1 (null: indeterminate); it never moves back. */
   fraction = $state<number | null>(null);
 
-  #listeners = new Set<(event: NextRunEvent) => void>();
+  #listeners = new Set<(event: RunEvent) => void>();
   #installed = false;
   /** The last run the page started (a retry starts it again). */
   #request: RunRequest | null = null;
@@ -86,7 +87,7 @@ class RunStore {
   }
 
   /** Other stores that react to run events (the job list). */
-  listen(listener: (event: NextRunEvent) => void): () => void {
+  listen(listener: (event: RunEvent) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   }
@@ -228,7 +229,7 @@ class RunStore {
     }
   }
 
-  handle(event: NextRunEvent, live = true): void {
+  handle(event: RunEvent, live = true): void {
     switch (event.type) {
       case 'started':
         if (!live) break;
@@ -283,7 +284,7 @@ class RunStore {
    *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again); a mail
    *  part that failed while the search ran says why with "Postfach prüfen". */
   private tellTrouble(summary: RunSummary): void {
-    const mail = (summary as NextRunSummary).mail ?? null;
+    const mail = summary.mail;
     if (summary.outcome.kind === 'completed' && mail !== null) {
       toasts.show(t.error.text(mail.kind, mail.params), 'warning', {
         label: t.run.checkMailbox,
@@ -318,7 +319,7 @@ class RunStore {
     if (summary.outcome.kind === 'completed') {
       if (isFetch(kind)) {
         const inList = navigation.current === 'jobs' && !shell.listHidden;
-        const brought = (summary as NextRunSummary).newJobs ?? { count: 0, high: 0 };
+        const brought = summary.newJobs ?? { count: 0, high: 0, excluded: 0 };
         const show =
           brought.count > 0
             ? { label: t.toast.show, onclick: () => this.showNew(summary), undo: false }
@@ -326,7 +327,7 @@ class RunStore {
               ? null
               : { label: t.toast.show, onclick: () => this.show(), undo: false };
         toasts.show(
-          t.toast.runDone(brought.count, brought.high, brought.excluded ?? 0),
+          t.toast.runDone(brought.count, brought.high, brought.excluded),
           'success',
           show,
         );

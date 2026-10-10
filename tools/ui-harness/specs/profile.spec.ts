@@ -176,7 +176,7 @@ test('each field in its group, its label above it; a list fills the box, a numbe
   const layout: Record<string, [string, string][]> = {
     job: [
       ['roles', words.roles],
-      ['permanent', words.contracts],
+      ['project', words.contracts],
       ['dayRateWish', words.dayRateWish],
       ['dayRateMin', words.dayRateMin],
       ['minSalary', words.minSalary],
@@ -287,7 +287,7 @@ test('info symbols only at their places, their sentence on hover, keyboard focus
 }) => {
   await profile(page);
   const places: [string, keyof typeof T.profile.info, string][] = [
-    ['permanent', 'contracts', T.profile.field.contracts],
+    ['project', 'contracts', T.profile.field.contracts],
     ['dayRateMin', 'dayRate', T.profile.field.dayRateMin],
     ['countries', 'countries', T.profile.field.countries],
     ['competences', 'competences', T.profile.field.competences],
@@ -350,7 +350,11 @@ test('Vertragsart is a choice of several, one stays; the salary comes with Festa
   await expect(contract(page, 'project')).toHaveAttribute('aria-checked', 'true');
   expect(await tooltipOf(page, contract(page, 'project'))).toBe(T.profile.field.keepOneContract);
   await save(page).click();
-  expect((await lastSave(page)).after).toMatchObject({ temporary: false, minSalary: null });
+  expect((await lastSave(page)).after).toMatchObject({
+    project: true,
+    temporary: false,
+    minSalary: null,
+  });
 });
 test('the rates; a wish under the minimum says so quietly under the wish', async ({ page }) => {
   await profile(page);
@@ -749,8 +753,9 @@ test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once co
   const sent = await lastSave(page);
   expect(sent.after).toMatchObject({
     roles: ['Interim CFO'],
-    permanent: true,
-    temporary: true,
+    project: true,
+    permanent: false,
+    temporary: false,
     countries: ['DE'],
     competences: [{ name: 'Controlling', years: null, focus: false }],
     languages: [{ language: 'Deutsch', level: 'B2' }],

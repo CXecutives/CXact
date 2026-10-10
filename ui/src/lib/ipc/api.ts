@@ -11,95 +11,19 @@
 // the second run (the run finished in the backend, the UI never heard of it).
 //
 // Types: `Commands` is generated from the command table src-tauri/commands.txt
-// (types/commands.ts); `NextCommands` holds what the interface needs before the backend has
-// it (the stub answers both).
+// (types/commands.ts), every other type by core (types/, ts-rs): the one contract.
 
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type {
-  AppState,
-  Commands,
-  ErrorInfo,
-  ErrorKind,
-  NewJobs,
-  PauseReason,
-  Portal,
-  PortalState,
-  ProfileForm,
-  ProfileInfo,
-  RunEvent,
-  RunSummary,
-} from './types';
+import type { Commands, ErrorInfo, ErrorKind, ProfileForm, ProfileInfo, RunEvent } from './types';
 
-/**
- * Commands the interface needs that the backend adds next, in the shape of `Commands`; each
- * moves into src-tauri/commands.txt (and out of here) once the backend has it.
- * - `profile_from_cv`: "Aus Lebenslauf ausfüllen". `dropped`: take the files last dropped on
- *   the window (the window keeps them, the page never sends a path; onFileDrag), else the
- *   backend asks for the CV with its own file dialog (the CV formats). It reads the file, has
- *   it evaluated and merges the answer into the one profile (or makes it), saved at once. The
- *   stored profile, or null when the dialog was closed. Fails with
- *   `{kind: 'cv', params: {reason}}` (`CvFailure`).
- * - `profile_missing`: the required fields a form still lacks, by the rule of the stored
- *   profile's `missing` (core::profile::missing_required: roles, countries, competences,
- *   languages), for a form not saved yet (the missing line of a new profile).
- * - `finish_onboarding`: the setup reached "Alles eingerichtet": saves `onboarded`, so the
- *   next start opens the Jobs view (`AppState.firstRun` = not onboarded, outside the dry run).
- */
-export type NextCommands = {
-  profile_from_cv: { args: { dropped: boolean }; result: ProfileInfo | null };
-  profile_missing: { args: { form: ProfileForm }; result: string[] };
-  finish_onboarding: { args: Record<string, never>; result: null };
-};
+/** The three contract types of Vertragsart, each a value of the form (at least one on). */
+export type ContractKey = keyof Pick<ProfileForm, 'project' | 'permanent' | 'temporary'>;
 
-/**
- * Run events the interface needs that the backend adds next (they join `RunEvent`):
- * - `sourceDone`: a portal's search finished (the portals run side by side) with so many new
- *   jobs that are not excluded; the run snapshot replays them.
- */
-export type SourceDone = { type: 'sourceDone'; portal: Portal; new: number };
-export type NextRunEvent = RunEvent | SourceDone;
-
-/**
- * Fields of the run summary the backend adds next: `mail`, why the mail part of a search was
- * skipped (Gmail or the keychain failed; the search still ran), and `newJobs.excluded`, how
- * many new jobs it excluded.
- */
-export type NextRunSummary = Omit<RunSummary, 'newJobs'> & {
-  mail?: ErrorInfo | null;
-  newJobs: (NewJobs & { excluded?: number }) | null;
-};
-
-/**
- * Fields of the app state the backend adds next: `cvUntil`, the day (`YYYY-MM-DD`, UTC) the
- * CV import works again while its tries are used up; null while it works.
- */
-export type NextAppState = AppState & { cvUntil?: string | null };
-
-/** Fields of a portal's state the backend adds next: `alertMails`, how many alert mails of
- *  the portal the app read in the last 30 days (its row in Einstellungen; null: unknown). */
-export type NextPortalState = PortalState & { alertMails?: number | null };
-
-/** Fields of the profile's form the backend adds next: `project`, whether project and interim
- *  jobs are wanted (Vertragsart, beside `permanent` and `temporary`; missing: wanted). At
- *  least one of the three stays on. */
-export type NextProfileForm = ProfileForm & { project?: boolean };
-/** The three contract types of Vertragsart, each a value of the form. */
-export type ContractKey = 'project' | 'permanent' | 'temporary';
-
-/** Why a portal pauses, with what the backend adds next: `robots`, its robots.txt forbids
- *  the next page. */
-export type NextPauseReason = PauseReason | 'robots';
-
-/** The error kinds with what the backend adds next: `cv`, a failed CV evaluation. */
-export type NextErrorKind = ErrorKind | 'cv';
-
-type AllCommands = Commands & NextCommands;
-
-export type CommandName = keyof AllCommands;
+export type CommandName = keyof Commands;
 /** Arguments as the UI passes them: everything but the run channel. */
-export type CommandArgs<K extends CommandName> = Omit<AllCommands[K]['args'], 'channel'>;
-export type CommandResult<K extends CommandName> = AllCommands[K]['result'];
+export type CommandArgs<K extends CommandName> = Omit<Commands[K]['args'], 'channel'>;
+export type CommandResult<K extends CommandName> = Commands[K]['result'];
 type Params = ErrorInfo['params'];
 
 /** Commands that receive the run channel as `channel` argument. */
@@ -176,7 +100,7 @@ export async function fillFromCv(dropped = false): Promise<ProfileInfo | null> {
   } catch (error) {
     if (!(error instanceof IpcError)) throw error;
     if (error.kind === 'offline') throw new CvError('offline');
-    if ((error.kind as NextErrorKind) === 'cv' && isCvFailure(error.params.reason)) {
+    if (error.kind === 'cv' && isCvFailure(error.params.reason)) {
       throw new CvError(error.params.reason);
     }
     throw error;
@@ -188,12 +112,12 @@ export function profileMissing(form: ProfileForm): Promise<string[]> {
   return invoke('profile_missing', { form });
 }
 
-type RunHandler = (event: NextRunEvent) => void;
+type RunHandler = (event: RunEvent) => void;
 const runHandlers = new Set<RunHandler>();
 
 /** A fresh channel for one command call; its events go to every run handler. */
-function channel(): Channel<NextRunEvent> {
-  const next = new Channel<NextRunEvent>();
+function channel(): Channel<RunEvent> {
+  const next = new Channel<RunEvent>();
   next.onmessage = (event) => {
     for (const handler of runHandlers) handler(event);
   };

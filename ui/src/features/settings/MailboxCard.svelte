@@ -21,7 +21,7 @@
   import SettingRow from '$components/SettingRow.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
-  import { invoke, type NextRunSummary } from '$lib/ipc/api';
+  import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
   import { unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
@@ -63,8 +63,7 @@
   const mailFailure = $derived.by(() => {
     const last = cfg.lastRun;
     if (last === null) return null;
-    const error =
-      last.outcome.kind === 'failed' ? last.outcome.error : ((last as NextRunSummary).mail ?? null);
+    const error = last.outcome.kind === 'failed' ? last.outcome.error : last.mail;
     if (error === null || !MAIL_FAILURES.includes(error.kind)) return null;
     const checked = cfg.mailbox.checkedAt;
     if (checked !== null && Date.parse(last.finishedAt) <= Date.parse(checked)) return null;

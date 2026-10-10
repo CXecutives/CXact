@@ -4,11 +4,13 @@
 // Profil's "Häufig verlangt" puts one into the form as an unsaved change, the reader's "+"
 // into the stored profile (`addToProfile` in profile.svelte.ts).
 
-import type { ProfileForm, TermField } from '../ipc/types';
+import type { LanguageLevel, ProfileForm, TermField } from '../ipc/types';
 
 export interface ProfileTerm {
   term: string;
   field: TermField;
+  /** The level a language goes in with (`AskedTerm.level`); none: the assumed one. */
+  level?: LanguageLevel | null;
 }
 
 /** The fields that are lists of words, by the key of their list in the form. */
@@ -45,13 +47,13 @@ export function termsOf(form: ProfileForm): string[] {
   return fields.flatMap((field) => namesIn(form, field));
 }
 
-/** The level a language the ads ask for goes in with (core matching's assumed level). */
+/** The level of a language without one of its own (core matching's assumed level). */
 const ASSUMED_LEVEL = 'B2';
 
 /** Puts the term at the end of its field of `form` (a competence row, an industry without a
- *  star, a language at the assumed level, an entry of a list); `false` when the field names it
+ *  star, a language at its level, an entry of a list); `false` when the field names it
  *  already. */
-export function putTerm(form: ProfileForm, { term, field }: ProfileTerm): boolean {
+export function putTerm(form: ProfileForm, { term, field, level }: ProfileTerm): boolean {
   const text = term.trim();
   if (text === '' || namesIn(form, field).some((name) => same(name, text))) return false;
   if (field === 'competence') {
@@ -59,7 +61,7 @@ export function putTerm(form: ProfileForm, { term, field }: ProfileTerm): boolea
   } else if (field === 'industry') {
     form.industries = [...form.industries, { name: text, preferred: false }];
   } else if (field === 'language') {
-    form.languages = [...form.languages, { language: text, level: ASSUMED_LEVEL }];
+    form.languages = [...form.languages, { language: text, level: level ?? ASSUMED_LEVEL }];
   } else {
     form[LISTS[field]] = [...form[LISTS[field]], text];
   }

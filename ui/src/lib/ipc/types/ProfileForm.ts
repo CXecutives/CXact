@@ -2,7 +2,91 @@
 
 /**
  * The editable profile (Profil-JSON v19): what the consultant looks for, what she brings,
- * what does not fit. `date` is `dd.mm.yyyy`; `permanent` and `temporary` allow permanent and
- * temporary-agency roles (projects and interim roles are always allowed).
+ * what does not fit. `date` is `dd.mm.yyyy`; `project`, `permanent` and `temporary` allow
+ * projects and interim work, Festanstellung and Zeitarbeit (at least one of them).
  */
-export type ProfileForm = { roles: string[]; permanent: boolean; temporary: boolean; dayRateWish: number | null; dayRateMin: number | null; minSalary: number | null; workMode: 'any' | 'remote' | 'hybrid' | 'onsite'; countries: string[]; regions: string[]; available: { kind: 'now' } | { kind: 'from'; date: string }; workload: 'any' | 'fulltime' | 'parttime'; minMonths: 0 | 3 | 6 | 12; competences: { name: string; years: number | null; focus: boolean }[]; tools: string[]; years: number | null; industries: { name: string; preferred: boolean }[]; languages: { language: string; level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2' | 'native' }[]; degrees: string[]; certificates: string[]; exclusionWords: string[] };
+export type ProfileForm = { 
+/**
+ * `wunschrollen`.
+ */
+roles: Array<string>, 
+/**
+ * `vertragsarten` names `projekt` (projects and interim work).
+ */
+project: boolean, 
+/**
+ * `vertragsarten` names `festanstellung`.
+ */
+permanent: boolean, 
+/**
+ * `vertragsarten` names `zeitarbeit`.
+ */
+temporary: boolean, 
+/**
+ * `tagessatz_wunsch`: nudges the score.
+ */
+dayRateWish: number | null, 
+/**
+ * `tagessatz_min`: below it a job is excluded.
+ */
+dayRateMin: number | null, 
+/**
+ * `mindestgehalt` (Festanstellung and Zeitarbeit; none without both).
+ */
+minSalary: number | null, 
+/**
+ * `arbeitsmodell`: a wish, never an exclusion.
+ */
+workMode: "any" | "remote" | "hybrid" | "onsite", 
+/**
+ * `laender`, ISO codes.
+ */
+countries: Array<string>, 
+/**
+ * `regionen`: a wish.
+ */
+regions: Array<string>, 
+/**
+ * `verfuegbar_ab`.
+ */
+available: { "kind": "now" } | { "kind": "from", date: string, }, 
+/**
+ * `auslastung`.
+ */
+workload: "any" | "fulltime" | "parttime", 
+/**
+ * `mindestlaufzeit_monate`, one of [`MIN_MONTHS`].
+ */
+minMonths: 0 | 3 | 6 | 12, 
+/**
+ * `kernkompetenzen`, the starred ones the Schwerpunkte.
+ */
+competences: Array<{ name: string, years: number | null, focus: boolean, }>, 
+/**
+ * `methoden_tools`.
+ */
+tools: Array<string>, 
+/**
+ * `berufserfahrung_jahre`.
+ */
+years: number | null, 
+/**
+ * `branchen`, the starred ones preferred.
+ */
+industries: Array<{ name: string, preferred: boolean, }>, 
+/**
+ * `sprachen`.
+ */
+languages: Array<{ language: string, level: "A1" | "A2" | "B1" | "B2" | "C1" | "C2" | "native", }>, 
+/**
+ * `abschluesse`, a degree with its field in one entry.
+ */
+degrees: Array<string>, 
+/**
+ * `zertifizierungen`.
+ */
+certificates: Array<string>, 
+/**
+ * `ausschlusswoerter`: a job naming one is excluded.
+ */
+exclusionWords: Array<string>, };

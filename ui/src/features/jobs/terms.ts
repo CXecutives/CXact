@@ -137,8 +137,16 @@ const TERMS: Record<TermKey, Term> = {
     read: ({ job }) => ({ value: modeWords(job) }),
   },
   contract: {
-    codes: ['contractType', 'anue', 'anueRisk', 'anueOptional', 'anueHidden', 'permanent'],
-    criteria: ['noAnue', 'noPermanent'],
+    codes: [
+      'contractType',
+      'anue',
+      'anueRisk',
+      'anueOptional',
+      'anueHidden',
+      'permanent',
+      'project',
+    ],
+    criteria: ['noAnue', 'noPermanent', 'noProject'],
     // The type itself, and that the job sounds permanent while the profile does not exclude
     // it, only tell (a guessed type says so in its quiet note).
     quiet: (reason) =>

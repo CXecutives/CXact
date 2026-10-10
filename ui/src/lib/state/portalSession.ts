@@ -8,7 +8,7 @@
 import { t } from '../i18n/t';
 import { invoke } from '../ipc/api';
 import type { Portal, PortalState } from '../ipc/types';
-import { app, settingsPatch } from './app.svelte';
+import { app } from './app.svelte';
 import { run } from './run.svelte';
 
 export type PortalSwitches = Partial<Pick<PortalState, 'enabled' | 'loginEnabled'>>;
@@ -24,11 +24,11 @@ export async function savePortal(portal: Portal, patch: PortalSwitches): Promise
   if (item) Object.assign(item, patch);
   try {
     const next = await invoke('save_settings', {
-      patch: settingsPatch({
+      patch: {
         portals: [
           { portal, enabled: patch.enabled ?? null, loginEnabled: patch.loginEnabled ?? null },
         ],
-      }),
+      },
     });
     if (save === saves) app.set(next);
   } catch (failure) {

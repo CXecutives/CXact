@@ -248,8 +248,8 @@ Moving, adding or removing a field is one entry there (a new group also needs it
 `[data-missing]` block of `tokens.css` (the attribute of the field's cell), not a prop of the
 fields.
 
-While typing, the wished roles, the competence and the tools suggest the engine's skills, the
-industries its industries and the regions those of Germany, Austria and Switzerland
+While typing, the competence and the tools suggest the engine's skills, the wished roles its role
+names, the industries its industries and the regions those of Germany, Austria and Switzerland
 (`profile.regionNames`; `suggest` of a chips entry in `sections.ts`,
 `ui/src/features/profile/vocabulary.svelte.ts`, `components/Suggestions.svelte`). The words are the lexicon's keys as a person
 writes them (`core/src/matching/vocabulary.rs`: `UMLAUTS`, `SPELLED`, `ACRONYMS`, and

@@ -42,8 +42,8 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
 
 The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSION` 18) reads the profile
 and the ad:
-- **Exclusions:** contract types (Zeitarbeit, Festanstellung), exclusion words, countries, the minimum day
-  rate, permanent-role rules.
+- **Exclusions:** contract types (Projekt und Interim, Festanstellung, Zeitarbeit), exclusion words,
+  countries, the minimum day rate, permanent-role rules.
 - **Requirements:** must-haves and optional ones, each met, partly met or not met against the
   competences, tools, languages, degrees, certificates and years of experience.
 - **The rest:** Schwerpunkte, target roles and wishes (rate, remote share, regions, industries,
@@ -103,6 +103,8 @@ pre-assessment to any AI chat for a deeper check.
     - Qualifikation: Kompetenzen with years and up to five stars, Tools und Methoden, Berufserfahrung,
       Branchen with a star for the preferred ones, Sprachen with their level, Abschlüsse and Zertifikate.
     - Ausschlüsse: Ausschlusswörter.
+  - A new profile looks for projects only: Festanstellung and Zeitarbeit are off, so Mindestgehalt is hidden
+    (`EMPTY_FORM`, core's `ProfileForm::default`).
   - Info symbols (one sentence each) only at Vertragsart, Mindesttagessatz, Länder, the stars of
     Kompetenzen, Ausschlusswörter, the app password and the match in the job view; a field has a hint or
     an info symbol, never both.

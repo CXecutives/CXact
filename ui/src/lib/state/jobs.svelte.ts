@@ -33,7 +33,7 @@
 
 import { SvelteSet } from 'svelte/reactivity';
 import { errorText } from '../i18n/texts';
-import { invoke, type NextRunEvent } from '../ipc/api';
+import { invoke } from '../ipc/api';
 import type {
   Deleted,
   JobCounts,
@@ -43,6 +43,7 @@ import type {
   JobSort,
   JobView,
   Place,
+  RunEvent,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
 import { app } from './app.svelte';
@@ -970,7 +971,7 @@ class JobsStore {
     }
   }
 
-  private onRun(event: NextRunEvent): void {
+  private onRun(event: RunEvent): void {
     // Another fetch: "Aus dem letzten Abruf" would speak of the one before.
     if (event.type === 'started' && event.kind === 'fetch' && this.filterChoice.run !== null) {
       this.setFilter({ run: null }, false);

@@ -32,10 +32,10 @@
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
-  import { invoke, type NextPortalState } from '$lib/ipc/api';
+  import { invoke } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
+  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
-  import { PORTAL_MARK } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import {
     portalSession,
@@ -98,7 +98,7 @@
       if (!app.hasMailbox) return t.settings.needsMailbox;
       // Before the first fetch: what "Verbinden" counted in the mailbox.
       const mails =
-        (portal as NextPortalState).alertMails ??
+        portal.alertMails ??
         app.state?.mailbox.check?.perPortal.find((c) => c.portal === portal.portal)?.count ??
         null;
       return mails === null ? null : t.settings.alertMails(mails);
@@ -161,7 +161,9 @@
   }
 </script>
 
-{#snippet tile()}<IconTile tone="navy" monogram={PORTAL_MARK[portal.portal]} size="sm" />{/snippet}
+{#snippet tile()}
+  <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
+{/snippet}
 
 {#snippet notes()}
   {#if problem}

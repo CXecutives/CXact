@@ -8,7 +8,7 @@
 // `core/src/profile/form.rs`); which fields a usable profile still needs too
 // (`ProfileInfo.missing`, core `missing_required`).
 
-import { invoke, type NextProfileForm } from '../ipc/api';
+import { invoke } from '../ipc/api';
 import { app } from './app.svelte';
 import type { ProfileForm, ProfileInfo } from '../ipc/types';
 import { EMPTY_FORM, MAX_FOCUS } from '../ipc/types/profile';
@@ -55,12 +55,10 @@ function cleanRows<Row>(rows: readonly Row[], name: (row: Row) => string): Row[]
 }
 
 /** The form the way the backend compares it: trimmed, empty rows and entries gone, numbers
- *  of zero as none, the minimum salary only with Festanstellung or Zeitarbeit, project and
- *  interim wanted unless switched off. */
-export function normalized(form: ProfileForm): NextProfileForm {
+ *  of zero as none, the minimum salary only with Festanstellung or Zeitarbeit. */
+export function normalized(form: ProfileForm): ProfileForm {
   return {
     ...form,
-    project: (form as NextProfileForm).project ?? true,
     roles: cleanList(form.roles),
     dayRateWish: positive(form.dayRateWish),
     dayRateMin: positive(form.dayRateMin),
@@ -99,7 +97,7 @@ const copy = (form: ProfileForm): ProfileForm => structuredClone($state.snapshot
 /** A save of the form: what was handed out and what the user made of it (core rebases the
  *  lists on what is stored meanwhile). Without a stored profile it is the first one. */
 function send(before: ProfileForm, after: ProfileForm): Promise<ProfileInfo> {
-  return invoke('save_profile', { save: { before, after, source: null, clear: [] } });
+  return invoke('save_profile', { save: { before, after } });
 }
 
 // ------------------------------------------------------------------ dates

@@ -18,16 +18,16 @@ export const PORTAL_LABEL: Record<Portal, string> = {
   fratch: "fratch.io",
 };
 
-/** A portal's two-letter mark, brand-neutral (`Portal::monogram`). */
+/** A portal's mark on its tile, two capitals, brand-neutral (`Portal::monogram`). */
 export const PORTAL_MONOGRAM: Record<Portal, string> = {
-  linkedin: "in",
-  freelance: "fd",
-  freelancermap: "fm",
-  hays: "Ha",
+  linkedin: "LI",
+  freelance: "FD",
+  freelancermap: "FM",
+  hays: "HA",
   michaelpage: "MP",
-  solcom: "so",
-  gulp: "gu",
+  solcom: "SO",
+  gulp: "GU",
   amadeusfire: "AF",
-  interimx: "ix",
-  fratch: "fr",
+  interimx: "IX",
+  fratch: "FR",
 };
