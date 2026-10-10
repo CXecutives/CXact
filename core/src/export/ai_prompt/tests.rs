@@ -428,7 +428,7 @@ fn every_section_of_one_job_in_order() {
             "**Harte Kriterien**",
             "**Erfüllt**",
             "**Offen**",
-            "**Schwerpunkte, Wunschrolle und Wünsche**",
+            "**Wunschrolle und Wünsche**",
             "# Arbeitsweise\n",
             "# Bewertungsregel\n",
             "## Obergrenzen",

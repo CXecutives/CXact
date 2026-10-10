@@ -96,7 +96,7 @@ const ANSWER: &str = "Antworte auf Deutsch, schlicht, konkret und kurz: keine Fl
 Erste Zeile **X von 10** und eine Empfehlung, Bewerben, Erst klären oder Nicht bewerben. Darunter ein Satz: was trägt, was fehlt, was als Nächstes zu tun ist. Schließt ein hartes Kriterium den Job aus, steht statt der Punktzahl **Ausgeschlossen** mit dem Kriterium und dem Zitat, dahinter die fachliche Punktzahl ohne den Ausschluss.
 
 ## Begründung
-Drei bis fünf Punkte: welche Stufe der Bewertungsregel gilt und welche Obergrenze greift, welche Schwerpunkte, Wunschrolle und Wünsche zählen, und wo du von der Vorbewertung der App abweichst.
+Drei bis fünf Punkte: welche Stufe der Bewertungsregel gilt und welche Obergrenze greift, welche Wunschrolle und Wünsche zählen, und wo du von der Vorbewertung der App abweichst.
 
 ## Anforderungen
 | Anforderung | Gewicht | Stand | Anzeige | Profil |
@@ -180,7 +180,7 @@ static WORDS: Words = Words {
         partial: "Teilweise erfüllt",
         open: "Offen",
         checks: "Zu prüfen",
-        preferences: "Schwerpunkte, Wunschrolle und Wünsche",
+        preferences: "Wunschrolle und Wünsche",
     },
 };
 

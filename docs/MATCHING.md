@@ -498,17 +498,17 @@ Management`.
 
 ### Rubric of the AI prompts
 
-`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts: bands 1 to 10 (9 to 10 only with
-a met Schwerpunkt when the profile names some), the caps, contract and ANÜ rules, wishes never
-exclude and move at most one point. `core/tests/rubric.rs` checks its bands and that the
+`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts: bands 1 to
+10 (every competence counts the same), the caps, contract and ANÜ rules, wishes never exclude and
+move at most one point. `core/tests/rubric.rs` checks its bands and that the
 English rubric says the same.
 
 The copied prompts (`core/src/export/ai_prompt.rs`) carry the rubric whole (German, or
 `ai_rubric.en.md` in English), the skill's method and the engine's assessment of the job in
 words: the result or the exclusion, every hard criterion with the profile's threshold and the
 ad's own words (the highlight ranges), the requirements with their profile entry and its years,
-the checks, Schwerpunkte, target role and wishes. No reason code reaches the text; a test builds
-every code and looks for none.
+the checks, target role and wishes. No reason code reaches the text; a test builds every code
+and looks for none.
 
 ## In the app
 

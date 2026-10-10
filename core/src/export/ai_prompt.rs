@@ -12,7 +12,7 @@
 //!    score and band or the exclusion with what moved the score (the reader's "why this
 //!    number", the cap with its maximum), every hard criterion with the profile's threshold
 //!    and the ad's own words, the requirements met, partly met and open with the profile
-//!    entry behind them, the points to check, Schwerpunkte, target role and wishes,
+//!    entry behind them, the points to check, target role and wishes,
 //! 5. the method (the rules for requirements and for the hard criteria),
 //! 6. the one scoring rubric of the app (`ai_rubric.de.md`),
 //! 7. a fixed answer format for a consultant who decides whether to apply.
@@ -589,7 +589,7 @@ fn salary_of(a: &Assessment) -> Option<(i64, Option<String>, bool)> {
 // ------------------------------------------------------------------------- pre-assessment
 
 /// The app's pre-assessment of one job: the result, the counts, the hard criteria, the
-/// requirements by status, the points to check and the Schwerpunkte, target role and wishes.
+/// requirements by status, the points to check and the target role and wishes.
 fn pre_assessment(w: &dyn Wording, item: PromptJob<'_>, consultant: &Consultant<'_>) -> String {
     let t = w.words();
     let l = &t.labels;

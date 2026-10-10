@@ -8,16 +8,15 @@ Die weiteren Anzeigen, die ein Portal unter einer Anzeige zeigt (etwa „Ähnlic
 
 ## Punkte von 1 bis 10
 
-- 9 bis 10 Kernfeld, alle Muss-Punkte erfüllt, mindestens ein Schwerpunkt erfüllt
+- 9 bis 10 Kernfeld, alle Muss-Punkte erfüllt
 - 7 bis 8 Kernfeld, kleine Lücken oder überqualifiziert
 - 5 bis 6 ein Muss-Punkt zum Kern der Rolle offen
 - 3 bis 4 mehrere Muss-Punkte oder eine formale Pflicht offen
 - 1 bis 2 außerhalb des Fachgebiets
 
 Die Punktzahl mal 10 entspricht den Punkten der App von 0 bis 100: ab 8 hohe, ab 4 mittlere,
-darunter geringe Übereinstimmung. Nennt das Profil keine Schwerpunkte, entfällt die Bedingung mit
-dem Schwerpunkt. Ein fehlender Kann-Punkt kostet höchstens einen halben Punkt. Die Entfernung
-kostet bei Interim und Projekten nichts.
+darunter geringe Übereinstimmung. Jede Kompetenz zählt gleich. Ein fehlender Kann-Punkt kostet
+höchstens einen halben Punkt. Die Entfernung kostet bei Interim und Projekten nichts.
 
 ## Obergrenzen
 
@@ -56,10 +55,8 @@ kostet bei Interim und Projekten nichts.
   Erwähnt die Anzeige es nur, etwa beim Team, bei Menschen, die die Rolle betreut, in einer
   Verneinung oder einer Anforderung, schließt es nicht aus, im Zweifel auch nicht.
 
-## Schwerpunkte, Wunschrollen und Wünsche
+## Wunschrollen und Wünsche
 
-- Schwerpunkte (schwerpunkt in kernkompetenzen) sind die bis zu fünf wichtigsten Kompetenzen. Ein Muss-Punkt, den ein
-  Schwerpunkt erfüllt, zählt doppelt.
 - Eine passende Wunschrolle (wunschrollen) ist ein Plus von höchstens einem Punkt. Sie hebt keine
   Obergrenze auf.
 - Wünsche (tagessatz_wunsch, arbeitsmodell, regionen und branchen mit wunsch) schließen nie

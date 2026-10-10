@@ -62,7 +62,6 @@ fn the_rubric_names_the_profile_keys() {
         "laender",
         "mindestgehalt",
         "ausschlusswoerter",
-        "schwerpunkt",
         "wunschrollen",
         "tagessatz_wunsch",
         "arbeitsmodell",
@@ -70,6 +69,7 @@ fn the_rubric_names_the_profile_keys() {
         assert!(rubric.contains(key), "{key}");
     }
     for retired in [
+        "schwerpunkt",
         "zielprofil",
         "einsatzpraeferenzen",
         "harte_kriterien",
