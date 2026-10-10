@@ -1,16 +1,18 @@
 //! "Verbinden": the mailbox the user typed in, checked and stored.
 //!
-//! 1. The shape of address and app password is checked without the network: an input that
-//!    Gmail can never accept (an account password typed by mistake) is never sent anywhere.
-//! 2. A real sign-in to Gmail (IMAP `LOGIN` and the `X-GM-EXT-1` check of
-//!    [`Gmail::connect`]). Only this step decides: a wrong app password, no Gmail, no
+//! 1. The shape of address and password is checked without the network: an input the
+//!    provider can never accept (an account password typed by mistake where Gmail or iCloud
+//!    want an app password) is never sent anywhere.
+//! 2. A real sign-in to the provider's server (IMAP `LOGIN`, for Gmail also the `X-GM-EXT-1`
+//!    check of [`Imap::connect`]). Only this step decides: a wrong password, no Gmail, no
 //!    connection or no answer in time say so, and nothing is stored.
 //! 3. Best effort, a count of the alert mails of the last 30 days per portal, with the scan's
 //!    own rules (the head decides what is loaded, [`classify_mail`] what is an alert). A count
 //!    that is slow or fails never throws the sign-in away: the check then says it did not
 //!    count, and the next fetch reads the mails anyway.
 //! 4. The account is stored ([`store_account`]); another account starts with its own scan
-//!    state, cleared before the vault holds the new account.
+//!    state, cleared before the vault holds the new account, and the settings keep its
+//!    provider.
 //!
 //! Read-only like the scan. An error is a code only and never carries the password.
 
@@ -21,11 +23,12 @@ use std::time::Duration;
 use jiff::{SignedDuration, Timestamp};
 use tokio_util::sync::CancellationToken;
 
-use super::imap::{BATCH, Credentials, Gmail, MailError, MailSource};
+use super::imap::{BATCH, Credentials, Imap, MailError, MailSource};
 use super::{MailKind, classify_mail, is_candidate};
 use crate::error::{ErrorInfo, ErrorKind, InvalidInput};
 use crate::portal::Portal;
 use crate::secrets::SecretError;
+use crate::settings::Settings;
 use crate::store::Store;
 use crate::view::{MailboxCheck, PortalCount};
 
@@ -35,13 +38,11 @@ pub const CHECK_DAYS: u32 = 30;
 const LOGIN_LIMIT: Duration = Duration::from_secs(30);
 /// Longest the count may take after the sign-in; then the check stops counting.
 const COUNT_LIMIT: Duration = Duration::from_secs(90);
-/// Letters of a Google app password (Google shows them in groups of four).
-const APP_PASSWORD_LETTERS: usize = 16;
 
 /// Why "Verbinden" failed. Only the input's shape and the sign-in fail it, never the count.
 #[derive(Debug, thiserror::Error)]
 pub enum CheckError {
-    /// Address or app password cannot be right: nothing was sent to Gmail.
+    /// Address or password cannot be right: nothing was sent to the server.
     #[error("invalid credentials: {0}")]
     Invalid(InvalidInput),
     #[error(transparent)]
@@ -59,9 +60,11 @@ impl From<CheckError> for ErrorInfo {
 }
 
 impl Credentials {
-    /// Address and app password in a shape Gmail can accept, decided without the network:
-    /// an address with a name and a domain with a dot, an app password of exactly 16
-    /// letters. An account password entered by mistake is caught here, before any sign-in
+    /// Address and password in a shape the provider can accept, decided without the network:
+    /// an address with a name and a domain with a dot, and the provider's password
+    /// ([`MailProvider::password_fits`](super::MailProvider::password_fits): an app password
+    /// of 16 letters for Gmail and iCloud, any password for GMX and WEB.DE). An account
+    /// password entered by mistake for Gmail or iCloud is caught here, before any sign-in
     /// (`save_mailbox`) and again before the vault stores it ([`crate::secrets::Vault`]).
     pub fn validate(&self) -> Result<(), InvalidInput> {
         let valid_user = self
@@ -71,20 +74,18 @@ impl Credentials {
         if !valid_user {
             return Err(InvalidInput::MailAddress);
         }
-        let password = self.password();
-        if password.chars().count() != APP_PASSWORD_LETTERS
-            || !password.chars().all(|c| c.is_ascii_alphabetic())
-        {
+        if !self.provider.password_fits(self.password()) {
             return Err(InvalidInput::AppPassword);
         }
         Ok(())
     }
 }
 
-/// Checks `credentials` and signs in to Gmail with them, then counts the alert mails of
-/// `portals` of the last [`CHECK_DAYS`] days. `Ok(None)`: the sign-in worked, the count did
-/// not finish in time or failed (logged by its code). Errors: `Invalid` (the shape, nothing
-/// sent), `MailAuth` (the app password was refused), `MailNotGmail`, `Offline` (no network),
+/// Checks `credentials` and signs in to their provider's server with them, then counts the
+/// alert mails of `portals` of the last [`CHECK_DAYS`] days. `Ok(None)`: the sign-in worked,
+/// the count did not finish in time or failed (logged by its code). Errors: `Invalid` (the
+/// shape, nothing sent), `MailAuth` (the password was refused; `allowImap` where the provider
+/// reads IMAP only once allowed), `MailNotGmail`, `Offline` (no network),
 /// `MailConnect` (no server), `MailTimeout` (no answer to the sign-in in time), `MailLost`,
 /// `MailServer`, `MailCancelled` (also while counting: the user stopped "Verbinden").
 pub async fn check_mailbox(
@@ -95,7 +96,7 @@ pub async fn check_mailbox(
 ) -> Result<Option<MailboxCheck>, CheckError> {
     sign_in_and_count(
         credentials,
-        |credentials| Gmail::connect(credentials, cancel),
+        |credentials| Imap::connect(credentials, cancel),
         portals,
         now,
     )
@@ -182,22 +183,32 @@ pub async fn count_alerts<S: MailSource>(
     })
 }
 
-/// Stores the account that just signed in (`save`: into the vault). Another account than
-/// `previous` starts with its own scan state, and that state is cleared **before** the vault
-/// holds the new account: a failed clear leaves the old account in the vault with the scan
-/// state that belongs to it, and a failed vault write only makes the old account read its
-/// days again (the mails it knows are recognised). The other order could leave the new
-/// account with the old one's watermarks for good, and its older alert mails unread.
+/// Stores the account that just signed in (`save`: into the vault), then its provider in
+/// the settings. Another account than `previous` (another address, or the same address at
+/// another provider) starts with its own scan state, and that state is cleared **before** the
+/// vault holds the new account: a failed clear leaves the old account in the vault with the
+/// scan state that belongs to it, and a failed vault write only makes the old account read
+/// its days again (the mails it knows are recognised). The other order could leave the new
+/// account with the old one's watermarks for good, and its older alert mails unread. The
+/// provider follows the vault: a vault write that fails leaves the old account with its own
+/// provider.
 pub fn store_account(
     store: &Store,
     previous: Option<&str>,
     credentials: &Credentials,
     save: impl FnOnce(&Credentials) -> Result<(), SecretError>,
 ) -> Result<(), ErrorInfo> {
-    if previous != Some(credentials.user.as_str()) {
+    let mut settings = Settings::load(store).map_err(ErrorInfo::from)?;
+    let same_provider = settings.mail_provider == credentials.provider;
+    if !same_provider || previous != Some(credentials.user.as_str()) {
         store.clear_scan_state().map_err(ErrorInfo::from)?;
     }
-    save(credentials).map_err(ErrorInfo::from)
+    save(credentials).map_err(ErrorInfo::from)?;
+    if !same_provider {
+        settings.mail_provider = credentials.provider;
+        settings.save(store).map_err(ErrorInfo::from)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -205,7 +216,7 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
 
     use super::*;
-    use crate::mail::{RawHead, RawMail};
+    use crate::mail::{MailProvider, RawHead, RawMail};
     use crate::pipeline::Backends;
     use crate::pipeline::dry_run::{DryRunBackends, DryRunMail};
 
@@ -251,8 +262,11 @@ mod tests {
     /// An error of the mailbox is a code only: the password never reaches it or the log line.
     #[test]
     fn an_error_carries_no_password() {
-        let credentials = Credentials::new("erika@gmail.com", "abcd efgh ijkl mnop");
-        let error = MailError::Auth("[AUTHENTICATIONFAILED] Invalid credentials".into());
+        let credentials = Credentials::new(GMAIL, "erika@gmail.com", "abcd efgh ijkl mnop");
+        let error = MailError::Auth {
+            text: "[AUTHENTICATIONFAILED] Invalid credentials".into(),
+            allow_imap: false,
+        };
         let info = crate::error::ErrorInfo::from(&error);
         assert_eq!(info.kind, crate::error::ErrorKind::MailAuth);
         assert!(info.params.is_empty());
@@ -299,22 +313,64 @@ mod tests {
         }
     }
 
+    const GMAIL: MailProvider = MailProvider::Gmail;
     const GOOD_USER: &str = "erika@gmail.com";
     const GOOD_PASSWORD: &str = "abcd efgh ijkl mnop";
 
-    /// CRED-2: an address or a password in a shape Gmail never accepts is refused before
-    /// any sign-in, with the field it belongs to; the account password typed by mistake
-    /// never leaves the app.
+    /// CRED-2: an address or a password in a shape the provider never accepts is refused
+    /// before any sign-in, with the field it belongs to; the account password typed by
+    /// mistake where Gmail or iCloud want an app password never leaves the app.
     #[tokio::test(start_paused = true)]
     async fn cred_2_a_wrong_shape_is_refused_before_any_sign_in() {
-        for (user, password, reason) in [
-            ("alerts.demo", GOOD_PASSWORD, InvalidInput::MailAddress),
-            ("@gmail.com", GOOD_PASSWORD, InvalidInput::MailAddress),
-            (GOOD_USER, "MyAccountPassword1!", InvalidInput::AppPassword),
-            (GOOD_USER, "kurz", InvalidInput::AppPassword),
-            (GOOD_USER, "abcd efgh ijkl", InvalidInput::AppPassword),
+        let icloud = MailProvider::Icloud;
+        let gmx = MailProvider::Gmx;
+        for (provider, user, password, reason) in [
+            (
+                GMAIL,
+                "alerts.demo",
+                GOOD_PASSWORD,
+                InvalidInput::MailAddress,
+            ),
+            (
+                GMAIL,
+                "@gmail.com",
+                GOOD_PASSWORD,
+                InvalidInput::MailAddress,
+            ),
+            (
+                GMAIL,
+                GOOD_USER,
+                "MyAccountPassword1!",
+                InvalidInput::AppPassword,
+            ),
+            (GMAIL, GOOD_USER, "kurz", InvalidInput::AppPassword),
+            (
+                GMAIL,
+                GOOD_USER,
+                "abcd efgh ijkl",
+                InvalidInput::AppPassword,
+            ),
+            (
+                icloud,
+                "erika@icloud.com",
+                "MyAccountPassword1!",
+                InvalidInput::AppPassword,
+            ),
+            (
+                icloud,
+                "erika@icloud.com",
+                "abcd-efgh-ijkl",
+                InvalidInput::AppPassword,
+            ),
+            (
+                gmx,
+                "erika@gmx",
+                "MyAccountPassword1!",
+                InvalidInput::MailAddress,
+            ),
+            (gmx, "erika@gmx.de", "", InvalidInput::AppPassword),
         ] {
-            let credentials = Credentials::new(user, password);
+            let credentials = Credentials::new(provider, user, password);
             let signed_in = AtomicBool::new(false);
             let result = sign_in_and_count(
                 &credentials,
@@ -328,7 +384,7 @@ mod tests {
             .await;
             assert!(
                 !signed_in.load(Ordering::SeqCst),
-                "{user} / {password}: sent to Gmail"
+                "{user} / {password}: sent to the server"
             );
             match result {
                 Err(CheckError::Invalid(found)) => assert_eq!(found, reason, "{user}"),
@@ -340,17 +396,26 @@ mod tests {
         assert_eq!(info.kind, ErrorKind::Invalid);
         assert_eq!(info.params.get("reason"), Some(&"appPassword".into()));
         // A good shape passes: blanks and case are normalised first.
-        assert_eq!(
-            Credentials::new(" Test@Example.org ", GOOD_PASSWORD).validate(),
-            Ok(())
-        );
+        for (provider, password) in [
+            (GMAIL, GOOD_PASSWORD),
+            (icloud, "abcd-efgh-ijkl-mnop"),
+            (icloud, GOOD_PASSWORD),
+            (gmx, "MyAccountPassword1!"),
+            (MailProvider::Webde, "kurz"),
+        ] {
+            assert_eq!(
+                Credentials::new(provider, " Test@Example.org ", password).validate(),
+                Ok(()),
+                "{provider:?}"
+            );
+        }
     }
 
     /// CRED-3: a count slower than its limit keeps the sign-in: the check says it did not
     /// count instead of "Gmail antwortet nicht".
     #[tokio::test(start_paused = true)]
     async fn cred_3_a_slow_count_keeps_the_sign_in() {
-        let credentials = Credentials::new(GOOD_USER, GOOD_PASSWORD);
+        let credentials = Credentials::new(GMAIL, GOOD_USER, GOOD_PASSWORD);
         let started = tokio::time::Instant::now();
         let result = sign_in_and_count(
             &credentials,
@@ -366,7 +431,7 @@ mod tests {
     /// CRED-3: a count that fails keeps the sign-in too; only a stop by the user does not.
     #[tokio::test(start_paused = true)]
     async fn cred_3_a_failed_count_keeps_the_sign_in() {
-        let credentials = Credentials::new(GOOD_USER, GOOD_PASSWORD);
+        let credentials = Credentials::new(GMAIL, GOOD_USER, GOOD_PASSWORD);
         let failed = sign_in_and_count(
             &credentials,
             |_| async { Ok::<_, MailError>(Counting(Count::Fails)) },
@@ -392,16 +457,21 @@ mod tests {
     /// mailbox that counts in time comes back with its count.
     #[tokio::test(start_paused = true)]
     async fn only_the_sign_in_fails_the_check() {
-        let credentials = Credentials::new(GOOD_USER, GOOD_PASSWORD);
+        let credentials = Credentials::new(GMAIL, GOOD_USER, GOOD_PASSWORD);
         let refused = sign_in_and_count(
             &credentials,
-            |_| async { Err::<DryRunMail, _>(MailError::Auth("[AUTHENTICATIONFAILED]".into())) },
+            |_| async {
+                Err::<DryRunMail, _>(MailError::Auth {
+                    text: "[AUTHENTICATIONFAILED]".into(),
+                    allow_imap: false,
+                })
+            },
             &Portal::ALL,
             Timestamp::now(),
         )
         .await;
         assert!(
-            matches!(refused, Err(CheckError::Mail(MailError::Auth(_)))),
+            matches!(refused, Err(CheckError::Mail(MailError::Auth { .. }))),
             "{refused:?}"
         );
         let silent = sign_in_and_count(
@@ -461,7 +531,7 @@ mod tests {
     #[test]
     fn cred_4_the_old_scan_state_goes_before_the_new_account_is_stored() {
         let store = scanned_by_a();
-        let b = Credentials::new("b@example.org", GOOD_PASSWORD);
+        let b = Credentials::new(GMAIL, "b@example.org", GOOD_PASSWORD);
         let mut seen = None;
         let result = store_account(&store, Some("a@example.org"), &b, |stored| {
             assert_eq!(stored.user, "b@example.org");
@@ -479,12 +549,39 @@ mod tests {
         // The same account again keeps its scan state; so does the first save after a start
         // whose vault held it.
         let store = scanned_by_a();
-        let a = Credentials::new("a@example.org", GOOD_PASSWORD);
+        let a = Credentials::new(GMAIL, "a@example.org", GOOD_PASSWORD);
         store_account(&store, Some("a@example.org"), &a, |_| Ok(())).unwrap();
         assert!(scan_state(&store));
         // No account before: nothing of another account may stay.
         let store = scanned_by_a();
         store_account(&store, None, &a, |_| Ok(())).unwrap();
         assert!(!scan_state(&store));
+    }
+
+    /// The settings keep the provider of the account the vault holds: the same address at
+    /// another provider is another mailbox (its own scan state), and a vault write that fails
+    /// leaves the old account with its provider.
+    #[test]
+    fn the_provider_follows_the_stored_account() {
+        let provider = |store: &Store| Settings::load(store).unwrap().mail_provider;
+        let store = scanned_by_a();
+        assert_eq!(provider(&store), GMAIL, "Gmail until one is chosen");
+        let a_at_gmx = Credentials::new(MailProvider::Gmx, "a@example.org", "Geheim");
+        let failed = store_account(&store, Some("a@example.org"), &a_at_gmx, |_| {
+            Err(SecretError::Store("the keychain is locked".into()))
+        });
+        assert!(failed.is_err());
+        assert_eq!(provider(&store), GMAIL);
+        assert!(!scan_state(&store), "another mailbox, its own scan state");
+
+        let store = scanned_by_a();
+        store_account(&store, Some("a@example.org"), &a_at_gmx, |_| Ok(())).unwrap();
+        assert_eq!(provider(&store), MailProvider::Gmx);
+        assert!(!scan_state(&store));
+        store
+            .set_last_scan(Portal::LinkedIn, Timestamp::now())
+            .unwrap();
+        store_account(&store, Some("a@example.org"), &a_at_gmx, |_| Ok(())).unwrap();
+        assert!(scan_state(&store), "the same mailbox again");
     }
 }

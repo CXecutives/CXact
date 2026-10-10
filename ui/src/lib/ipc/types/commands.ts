@@ -8,6 +8,7 @@ import type { JobDetail } from "./JobDetail";
 import type { JobKey } from "./JobKey";
 import type { JobPage } from "./JobPage";
 import type { JobQuery } from "./JobQuery";
+import type { MailProvider } from "./MailProvider";
 import type { Mailbox } from "./Mailbox";
 import type { MoveBack } from "./MoveBack";
 import type { OpenTarget } from "./OpenTarget";
@@ -47,7 +48,7 @@ export type Commands = {
   answer_close: { args: { close: boolean }; result: null };
   window_button: { args: { button: 'minimize' | 'maximize' | 'close' }; result: null };
   window_maximized: { args: Record<string, never>; result: boolean };
-  save_mailbox: { args: { user: string; password: string }; result: Mailbox };
+  save_mailbox: { args: { provider: MailProvider; user: string; password: string }; result: Mailbox };
   remove_mailbox: { args: Record<string, never>; result: boolean };
   portal_login: { args: { portal: Portal }; result: boolean };
   portal_logout: { args: { portal: Portal }; result: boolean };

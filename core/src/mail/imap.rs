@@ -1,12 +1,20 @@
-//! Gmail over IMAP, read-only (`EXAMINE`, `BODY.PEEK`), so Gmail marks nothing as read.
+//! The mailbox over IMAP, read-only (`EXAMINE`, `BODY.PEEK`), so the server marks nothing as
+//! read. Two ways to search, by the provider ([`MailProvider`]):
 //!
-//! The scan reads "All Mail" (the special-use `\All` mailbox, found by its attribute
-//! because its name is localized: "[Gmail]/Alle Nachrichten"): archiving a read alert and
-//! a filter that skips the inbox for the portals' alerts are common, and the inbox alone
-//! would never find those alerts. Trash and spam are not in All Mail; drafts and the
-//! user's own sent mails are left out by the search (`-in:drafts (in:inbox OR -in:sent)`),
-//! so an alert the user forwarded to someone else never counts. Without an `\All` mailbox
-//! the inbox is read.
+//! - **Gmail** reads "All Mail" (the special-use `\All` mailbox, found by its attribute
+//!   because its name is localized: "[Gmail]/Alle Nachrichten"): archiving a read alert and a
+//!   filter that skips the inbox for the portals' alerts are common, and the inbox alone would
+//!   never find those alerts. Trash and spam are not in All Mail; drafts and the user's own
+//!   sent mails are left out by the search (`-in:drafts (in:inbox OR -in:sent)`), so an alert
+//!   the user forwarded to someone else never counts. Without an `\All` mailbox the inbox is
+//!   read. The search is Gmail's own (`X-GM-RAW`).
+//! - **iCloud, GMX and WEB.DE** are read with standard IMAP: `UID SEARCH SINCE <day>` with
+//!   `FROM` over the portals' sender domains (`OR`-chained), in the inbox and in every folder
+//!   the server marks as the archive or all mail (special-use `\Archive`, `\All` in its `LIST`).
+//!   A mail found in two of them counts once (by its Message-ID).
+//!
+//! The ids a search hands out are positions in its result (`(folder, UID)` behind them), so
+//! the scan never needs to know the folders.
 
 use std::collections::{BTreeMap, HashSet};
 use std::fmt;
@@ -24,13 +32,12 @@ use tokio_io_timeout::TimeoutStream;
 use tokio_rustls::client::TlsStream;
 use tokio_util::sync::CancellationToken;
 
+use super::provider::{IMAP_PORT, MailProvider};
 use super::{RawHead, RawMail};
 use crate::error::ErrorKind;
 use crate::portal::Portal;
 use crate::text::{one_line, truncate_chars};
 
-const HOST: &str = "imap.gmail.com";
-const PORT: u16 = 993;
 /// If nothing at all arrives from the server for this long, the connection counts as hung.
 const IDLE: Duration = Duration::from_secs(30);
 /// Upper bound for a single step, even while data only trickles in.
@@ -39,13 +46,17 @@ const STEP_LIMIT: Duration = Duration::from_secs(10 * 60);
 const MAX_MAIL_BYTES: u32 = 4 * 1024 * 1024;
 /// Mails per fetch.
 pub const BATCH: usize = 25;
+/// Message-IDs per fetch when copies are sorted out (a few dozen bytes each).
+const ID_BATCH: usize = 200;
+/// The inbox: every IMAP server has it under this name.
+const INBOX: &str = "INBOX";
 
 #[derive(Debug, thiserror::Error)]
 pub enum MailError {
-    #[error("no Gmail credentials stored")]
+    #[error("no mailbox credentials stored")]
     NoCredentials,
 
-    #[error("cannot connect to imap.gmail.com: {0}")]
+    #[error("cannot connect to the mail server: {0}")]
     Connect(String),
 
     /// The computer has no connection to the internet: the name of the server did not
@@ -53,19 +64,22 @@ pub enum MailError {
     #[error("no connection to the internet: {0}")]
     Offline(String),
 
-    #[error("Gmail rejected the login: {0}")]
-    Auth(String),
+    /// The server refused the address or the password. `allow_imap`: the provider reads
+    /// IMAP only once the user allowed it in the web mailer
+    /// ([`MailProvider::imap_must_be_allowed`]), which a refusal may mean as well.
+    #[error("the mail server rejected the login: {text}")]
+    Auth { text: String, allow_imap: bool },
 
-    #[error("Gmail did not answer within 30 seconds")]
+    #[error("the mail server did not answer within 30 seconds")]
     Timeout,
 
-    #[error("connection to Gmail lost: {0}")]
+    #[error("connection to the mail server lost: {0}")]
     Lost(String),
 
     #[error("server is not Gmail (no X-GM-EXT-1 capability)")]
     NotGmail,
 
-    #[error("Gmail reported an error: {0}")]
+    #[error("the mail server reported an error: {0}")]
     Server(String),
 
     #[error("cancelled")]
@@ -79,7 +93,7 @@ impl MailError {
             MailError::NoCredentials => ErrorKind::MailMissing,
             MailError::Connect(_) => ErrorKind::MailConnect,
             MailError::Offline(_) => ErrorKind::Offline,
-            MailError::Auth(_) => ErrorKind::MailAuth,
+            MailError::Auth { .. } => ErrorKind::MailAuth,
             MailError::Timeout => ErrorKind::MailTimeout,
             MailError::Lost(_) => ErrorKind::MailLost,
             MailError::NotGmail => ErrorKind::MailNotGmail,
@@ -102,7 +116,7 @@ fn protocol(error: async_imap::error::Error) -> MailError {
     }
 }
 
-const UNREADABLE: &str = "unreadable reply from Gmail";
+const UNREADABLE: &str = "unreadable reply from the mail server";
 
 /// The start of std's text for a name that did not resolve on Unix (`getaddrinfo` failed:
 /// "failed to lookup address information: nodename nor servname provided, or not known").
@@ -114,10 +128,10 @@ const LOOKUP_FAILED: &str = "failed to lookup address information";
 /// other systems.
 const WINDOWS_LOOKUP_FAILED: [i32; 3] = [11001, 11002, 11004];
 
-/// The TCP connection to Gmail failed: without a network (the name of the server did not
-/// resolve, the network is down or unreachable) it is `Offline`, the page then says "Keine
-/// Verbindung zum Internet"; any other failure (refused, reset, a firewall) is `Connect`,
-/// "Gmail ist nicht erreichbar".
+/// The TCP connection to the mail server failed: without a network (the name of the server
+/// did not resolve, the network is down or unreachable) it is `Offline`, the page then says
+/// "Keine Verbindung zum Internet"; any other failure (refused, reset, a firewall) is
+/// `Connect`, the server is not reachable.
 fn connect_error(error: &std::io::Error) -> MailError {
     use std::io::ErrorKind as Kind;
     let lookup_failed = error.to_string().starts_with(LOOKUP_FAILED)
@@ -153,9 +167,9 @@ fn clean(text: &str) -> String {
 }
 
 /// Errors at login: only a rejection of the credentials is a credentials problem.
-/// Transient rejections (Gmail overloaded, too many connections, bandwidth limit)
+/// Transient rejections (the server overloaded, too many connections, bandwidth limit)
 /// are not - otherwise the user would change a correct password.
-fn login_error(error: async_imap::error::Error) -> MailError {
+fn login_error(error: async_imap::error::Error, provider: MailProvider) -> MailError {
     match error {
         async_imap::error::Error::No(text) | async_imap::error::Error::Bad(text) => {
             let upper = text.to_ascii_uppercase();
@@ -173,27 +187,32 @@ fn login_error(error: async_imap::error::Error) -> MailError {
             if transient {
                 MailError::Server(format!("{} (temporary, try again later)", clean(&text)))
             } else {
-                MailError::Auth(clean(&text))
+                MailError::Auth {
+                    text: clean(&text),
+                    allow_imap: provider.imap_must_be_allowed(),
+                }
             }
         }
         other => protocol(other),
     }
 }
 
-/// Gmail credentials. Address and app password are normalised in **one** place: the
-/// address trimmed and lowercased, the password without whitespace (Google shows it in
-/// groups of four).
+/// The mailbox's credentials: its provider, the address and the password. Address and
+/// password are normalised in **one** place: the address trimmed and lowercased, the password
+/// in the shape the provider's server takes ([`MailProvider::password`]).
 #[derive(Clone)]
 pub struct Credentials {
+    pub provider: MailProvider,
     pub user: String,
     password: String,
 }
 
 impl Credentials {
-    pub fn new(user: &str, password: &str) -> Credentials {
+    pub fn new(provider: MailProvider, user: &str, password: &str) -> Credentials {
         Credentials {
+            provider,
             user: user.trim().to_lowercase(),
-            password: password.chars().filter(|c| !c.is_whitespace()).collect(),
+            password: provider.password(password),
         }
     }
 
@@ -206,33 +225,35 @@ impl Credentials {
 impl fmt::Debug for Credentials {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Credentials")
+            .field("provider", &self.provider)
             .field("user", &self.user)
             .finish_non_exhaustive()
     }
 }
 
-/// Where the mails come from - Gmail, or a fake in tests.
+/// Where the mails come from - the IMAP server, or a fake in tests.
 pub trait MailSource {
-    /// UIDs of the matches since `since` (`None` = all), ascending.
+    /// Ids of the matches since `since` (`None` = all), ascending: the source's own handles
+    /// for the mails it found, valid until its next search.
     fn search(
         &mut self,
         since: Option<Date>,
         portals: &[Portal],
     ) -> impl Future<Output = Result<Vec<u32>, MailError>> + Send;
 
-    /// The heads of the mails for `uids` (sender, subject, date, message id) - a few hundred
+    /// The heads of the mails for `ids` (sender, subject, date, message id) - a few hundred
     /// bytes each; the bodies stay on the server. Mails deleted in the meantime are missing.
     fn heads(
         &mut self,
-        uids: &[u32],
+        ids: &[u32],
     ) -> impl Future<Output = Result<Vec<RawHead>, MailError>> + Send;
 
-    /// The whole mails for `uids` - only for mails whose head made them a candidate. Mails
+    /// The whole mails for `ids` - only for mails whose head made them a candidate. Mails
     /// deleted in the meantime are simply missing; a mail without content comes back with
     /// empty bytes (counted as defective, never silently dropped).
     fn fetch(
         &mut self,
-        uids: &[u32],
+        ids: &[u32],
     ) -> impl Future<Output = Result<Vec<RawMail>, MailError>> + Send;
 
     /// Ends the session after the scan (IMAP `LOGOUT`); errors do not matter. Sources
@@ -248,16 +269,32 @@ pub trait MailSource {
 /// The head fields a scan needs to decide whether a mail may be an alert.
 const HEAD_FIELDS: &str = "FROM SUBJECT DATE MESSAGE-ID";
 
-/// Search expression: the portals' sender domains **or** their keywords (forwarded
-/// alerts come from the user themselves). `X-GM-RAW` is Gmail's own search - server-side,
-/// fast and without downloading the mailbox. In All Mail (`all_mail`) drafts and the
-/// user's own sent mails stay out - a mail the user sent to themselves is in the inbox
-/// and counts.
-fn search_query(since: Option<Date>, portals: &[Portal], all_mail: bool) -> String {
-    let domains: Vec<&str> = portals
+/// The sender domains of `portals`, each once.
+fn sender_domains(portals: &[Portal]) -> Vec<&'static str> {
+    let mut domains: Vec<&'static str> = Vec::new();
+    for domain in portals
         .iter()
         .flat_map(|p| p.sender_domains().iter().copied())
-        .collect();
+    {
+        if !domains.contains(&domain) {
+            domains.push(domain);
+        }
+    }
+    domains
+}
+
+/// IMAP's day for `SINCE` (month names are English; jiff writes them whatever the system
+/// language).
+fn imap_day(date: Date) -> String {
+    date.strftime("%d-%b-%Y").to_string()
+}
+
+/// Gmail's search: the portals' sender domains **or** their keywords (forwarded alerts come
+/// from the user themselves). `X-GM-RAW` is Gmail's own search - server-side, fast and
+/// without downloading the mailbox. In All Mail (`all_mail`) drafts and the user's own sent
+/// mails stay out - a mail the user sent to themselves is in the inbox and counts.
+fn gmail_query(since: Option<Date>, portals: &[Portal], all_mail: bool) -> String {
+    let domains = sender_domains(portals);
     let terms: Vec<&str> = portals
         .iter()
         .flat_map(|p| p.search_terms().iter().copied())
@@ -276,37 +313,100 @@ fn search_query(since: Option<Date>, portals: &[Portal], all_mail: bool) -> Stri
         )
     };
     match since {
-        // IMAP month names are English; jiff formats them regardless of the system language.
-        Some(date) => format!("SINCE {} {raw}", date.strftime("%d-%b-%Y")),
+        Some(date) => format!("SINCE {} {raw}", imap_day(date)),
         None => raw,
     }
 }
 
-/// Connection to Gmail: TCP with an idle limit, TLS on top.
+/// The standard search: from one of the portals' sender domains (IMAP's `FROM` matches a part
+/// of the sender, so `linkedin.com` also finds `e.linkedin.com`), since `since`. IMAP's `OR`
+/// takes two keys, so more domains nest: `OR FROM "a" OR FROM "b" FROM "c"`.
+fn standard_query(since: Option<Date>, portals: &[Portal]) -> String {
+    let senders = sender_domains(portals)
+        .into_iter()
+        .map(|domain| format!("FROM \"{domain}\""))
+        .rev()
+        .reduce(|later, key| format!("OR {key} {later}"))
+        .unwrap_or_default();
+    match since {
+        Some(date) => format!("SINCE {} {senders}", imap_day(date)),
+        None => senders,
+    }
+}
+
+/// The folders to read, from the server's `LIST` (name and attributes, in its order). Gmail:
+/// All Mail (`\All`), else the inbox. The others: the inbox, then every selectable folder
+/// marked as the archive or all mail.
+fn folders(
+    provider: MailProvider,
+    listed: &[(String, Vec<NameAttribute<'static>>)],
+) -> Vec<String> {
+    let marked = |attributes: &[NameAttribute<'static>], wanted: &[NameAttribute<'static>]| {
+        !attributes.contains(&NameAttribute::NoSelect)
+            && attributes.iter().any(|a| wanted.contains(a))
+    };
+    if provider.is_gmail() {
+        let all = listed
+            .iter()
+            .find(|(_, attributes)| marked(attributes, &[NameAttribute::All]))
+            .map(|(name, _)| name.clone());
+        return vec![all.unwrap_or_else(|| INBOX.to_owned())];
+    }
+    let mut folders = vec![INBOX.to_owned()];
+    for (name, attributes) in listed {
+        if marked(attributes, &[NameAttribute::Archive, NameAttribute::All])
+            && !name.eq_ignore_ascii_case(INBOX)
+            && !folders.contains(name)
+        {
+            folders.push(name.clone());
+        }
+    }
+    folders
+}
+
+/// The Message-ID in a mail's head, if it has one.
+fn message_id(head: &[u8]) -> Option<String> {
+    super::parse_mail(head)?
+        .message_id
+        .map(|id| id.trim().to_owned())
+        .filter(|id| !id.is_empty())
+}
+
+/// Connection to the mail server: TCP with an idle limit, TLS on top.
 pub(crate) type Stream = TlsStream<Pin<Box<TimeoutStream<TcpStream>>>>;
 
-pub struct Gmail<T = Stream>
+/// A signed-in IMAP session, read-only.
+pub struct Imap<T = Stream>
 where
     T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + fmt::Debug + Send,
 {
     session: async_imap::Session<T>,
     cancel: CancellationToken,
-    /// All Mail is open (else the inbox).
+    provider: MailProvider,
+    /// The folders searched, in order ([`folders`]).
+    folders: Vec<String>,
+    /// Gmail: All Mail is the folder (else the inbox).
     all_mail: bool,
+    /// The folder open now (`EXAMINE`), by its place in `folders`.
+    open: Option<usize>,
+    /// The matches of the last search: id `n` is `found[n - 1]`, (folder, UID).
+    found: Vec<(usize, u32)>,
 }
 
-impl Gmail {
-    /// Connect, log in, open All Mail (else the inbox) read-only.
+impl Imap {
+    /// Connect to the provider's server, log in, find the folders and open the first one
+    /// read-only.
     pub async fn connect(
         credentials: &Credentials,
         cancel: CancellationToken,
-    ) -> Result<Gmail, MailError> {
+    ) -> Result<Imap, MailError> {
+        let host = credentials.provider.host();
         let config = rustls::ClientConfig::with_platform_verifier()
             .map_err(|e| MailError::Connect(e.to_string()))?;
         let tls = tokio_rustls::TlsConnector::from(Arc::new(config));
-        let server = rustls::pki_types::ServerName::try_from(HOST)
+        let server = rustls::pki_types::ServerName::try_from(host)
             .map_err(|e| MailError::Connect(e.to_string()))?;
-        let tcp = guarded(&cancel, TcpStream::connect((HOST, PORT)), |e| {
+        let tcp = guarded(&cancel, TcpStream::connect((host, IMAP_PORT)), |e| {
             connect_error(&e)
         })
         .await?;
@@ -325,50 +425,119 @@ impl Gmail {
         })
         .await?
         .ok_or_else(|| MailError::Connect("no greeting from the server".into()))?;
-        let login = client.login(&credentials.user, credentials.password());
-        let mut session = guarded(&cancel, login, |(error, _)| login_error(error)).await?;
-        let capabilities = guarded(&cancel, session.capabilities(), protocol).await?;
-        if !capabilities.has_str("X-GM-EXT-1") {
-            return Err(MailError::NotGmail);
+        // Boxed: the client and its buffers move into the sign-in.
+        let mut session = Box::pin(login(client, credentials, &cancel)).await?;
+        if credentials.provider.is_gmail() {
+            let capabilities = guarded(&cancel, session.capabilities(), protocol).await?;
+            if !capabilities.has_str("X-GM-EXT-1") {
+                return Err(MailError::NotGmail);
+            }
         }
-        let mut gmail = Gmail {
-            session,
-            cancel,
-            all_mail: false,
-        };
-        gmail.open_mailbox().await?;
-        Ok(gmail)
+        let mut imap = Imap::new(session, cancel, credentials.provider);
+        imap.open_folders().await?;
+        Ok(imap)
     }
 }
 
-impl<T> Gmail<T>
+/// Signs in with each of the provider's names for the address in turn
+/// ([`MailProvider::login_names`]); only a refusal of the credentials tries the next one, on
+/// the same connection.
+async fn login<T>(
+    mut client: async_imap::Client<T>,
+    credentials: &Credentials,
+    cancel: &CancellationToken,
+) -> Result<async_imap::Session<T>, MailError>
 where
     T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + fmt::Debug + Send,
 {
-    /// Opens All Mail read-only - the mailbox with the special-use attribute `\All`, whose
-    /// name Gmail localizes - or the inbox when there is none.
-    async fn open_mailbox(&mut self) -> Result<(), MailError> {
-        let mut all = None;
+    let names = credentials.provider.login_names(&credentials.user);
+    let mut names = names.iter().peekable();
+    while let Some(name) = names.next() {
+        let attempt = client.login(name, credentials.password());
+        let attempt = guarded(
+            cancel,
+            async { Ok(attempt.await) },
+            |never: std::convert::Infallible| match never {},
+        )
+        .await?;
+        match attempt {
+            Ok(session) => return Ok(session),
+            Err((error, back)) => {
+                let error = login_error(error, credentials.provider);
+                if !matches!(error, MailError::Auth { .. }) || names.peek().is_none() {
+                    return Err(error);
+                }
+                client = back;
+            }
+        }
+    }
+    Err(MailError::NoCredentials)
+}
+
+impl<T> Imap<T>
+where
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + fmt::Debug + Send,
+{
+    /// A session signed in, with the inbox as its folder until [`Imap::open_folders`].
+    fn new(
+        session: async_imap::Session<T>,
+        cancel: CancellationToken,
+        provider: MailProvider,
+    ) -> Self {
+        Imap {
+            session,
+            cancel,
+            provider,
+            folders: vec![INBOX.to_owned()],
+            all_mail: false,
+            open: None,
+            found: Vec::new(),
+        }
+    }
+
+    /// Finds the folders to read in the server's `LIST` ([`folders`]: by their special-use
+    /// attribute, whatever their localized name) and opens the first one read-only.
+    async fn open_folders(&mut self) -> Result<(), MailError> {
+        let mut listed = Vec::new();
         self.command(r#"LIST "" "*""#, |response| {
             if let Response::MailboxData(MailboxDatum::List {
                 name_attributes,
                 name,
                 ..
             }) = response
-                && all.is_none()
-                && name_attributes.contains(&NameAttribute::All)
             {
-                all = Some(name.to_string());
+                // Only the attributes [`folders`] reads (the others may borrow the reply).
+                let kept: Vec<NameAttribute<'static>> = name_attributes
+                    .iter()
+                    .filter_map(|attribute| match attribute {
+                        NameAttribute::NoSelect => Some(NameAttribute::NoSelect),
+                        NameAttribute::All => Some(NameAttribute::All),
+                        NameAttribute::Archive => Some(NameAttribute::Archive),
+                        _ => None,
+                    })
+                    .collect();
+                listed.push((name.to_string(), kept));
             }
         })
         .await?;
-        let cancel = self.cancel.clone();
-        self.all_mail = all.is_some();
-        if let Some(name) = all {
-            guarded(&cancel, self.session.examine(&name), protocol).await?;
-        } else {
-            guarded(&cancel, self.session.examine("INBOX"), protocol).await?;
+        self.folders = folders(self.provider, &listed);
+        self.all_mail = self.provider.is_gmail() && self.folders[0] != INBOX;
+        self.open = None;
+        self.found.clear();
+        self.examine(0).await
+    }
+
+    /// Opens the folder `index` read-only, unless it is open already.
+    async fn examine(&mut self, index: usize) -> Result<(), MailError> {
+        if self.open == Some(index) {
+            return Ok(());
         }
+        let name = self.folders[index].clone();
+        let cancel = self.cancel.clone();
+        // A failure leaves no folder open: the next step opens it again.
+        self.open = None;
+        guarded(&cancel, self.session.examine(&name), protocol).await?;
+        self.open = Some(index);
         Ok(())
     }
 
@@ -408,27 +577,11 @@ where
             }
         }
     }
-}
 
-impl<T> MailSource for Gmail<T>
-where
-    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + fmt::Debug + Send,
-{
-    async fn logout(self) {
-        self.close().await;
-    }
-
-    async fn search(
-        &mut self,
-        since: Option<Date>,
-        portals: &[Portal],
-    ) -> Result<Vec<u32>, MailError> {
-        if portals.is_empty() {
-            return Ok(Vec::new());
-        }
+    /// The UIDs `query` finds in the open folder, ascending and each once.
+    async fn search_open(&mut self, query: &str) -> Result<Vec<u32>, MailError> {
         let mut uids = Vec::new();
-        let command = format!("UID SEARCH {}", search_query(since, portals, self.all_mail));
-        self.command(&command, |response| {
+        self.command(&format!("UID SEARCH {query}"), |response| {
             if let Response::MailboxData(MailboxDatum::Search(ids)) = response {
                 uids.extend(ids.iter().copied());
             }
@@ -439,14 +592,47 @@ where
         Ok(uids)
     }
 
-    async fn heads(&mut self, uids: &[u32]) -> Result<Vec<RawHead>, MailError> {
-        if uids.is_empty() {
-            return Ok(Vec::new());
+    /// The standard search in every folder; with more than one folder a mail whose
+    /// Message-ID came up before (a copy in the archive or in all mail) is left out.
+    async fn search_folders(&mut self, query: &str) -> Result<Vec<(usize, u32)>, MailError> {
+        let several = self.folders.len() > 1;
+        let mut seen = HashSet::new();
+        let mut found = Vec::new();
+        for folder in 0..self.folders.len() {
+            self.examine(folder).await?;
+            let uids = self.search_open(query).await?;
+            if !several {
+                found.extend(uids.into_iter().map(|uid| (folder, uid)));
+                continue;
+            }
+            let mut ids = BTreeMap::new();
+            for chunk in uids.chunks(ID_BATCH) {
+                ids.extend(self.head_fields(chunk, "MESSAGE-ID").await?);
+            }
+            for uid in uids {
+                let copy = ids
+                    .get(&uid)
+                    .and_then(|head| message_id(head))
+                    .is_some_and(|id| !seen.insert(id));
+                if !copy {
+                    found.push((folder, uid));
+                }
+            }
         }
+        Ok(found)
+    }
+
+    /// The asked head fields of the mails `uids` in the open folder, by UID; mails the
+    /// server does not return (deleted meanwhile) are missing.
+    async fn head_fields(
+        &mut self,
+        uids: &[u32],
+        fields: &str,
+    ) -> Result<BTreeMap<u32, Vec<u8>>, MailError> {
         let wanted: HashSet<u32> = uids.iter().copied().collect();
         let mut heads = BTreeMap::new();
         let command = format!(
-            "UID FETCH {} (UID BODY.PEEK[HEADER.FIELDS ({HEAD_FIELDS})])",
+            "UID FETCH {} (UID BODY.PEEK[HEADER.FIELDS ({fields})])",
             uid_set(uids)
         );
         self.command(&command, |response| {
@@ -466,47 +652,120 @@ where
             if let (Some(uid), Some(bytes)) = (uid, bytes)
                 && wanted.contains(&uid)
             {
-                heads.insert(uid, RawHead { uid, bytes });
+                heads.insert(uid, bytes);
             }
         })
         .await?;
+        Ok(heads)
+    }
+
+    /// The ids of the last search grouped by folder, each with its UID: `(folder, [(UID,
+    /// id)])` in the folders' order. Ids the search did not hand out are left out.
+    fn by_folder(&self, ids: &[u32]) -> Vec<(usize, Vec<(u32, u32)>)> {
+        let mut groups: BTreeMap<usize, Vec<(u32, u32)>> = BTreeMap::new();
+        for &id in ids {
+            let found = usize::try_from(id)
+                .ok()
+                .and_then(|n| n.checked_sub(1))
+                .and_then(|n| self.found.get(n));
+            if let Some(&(folder, uid)) = found {
+                groups.entry(folder).or_default().push((uid, id));
+            }
+        }
+        groups.into_iter().collect()
+    }
+}
+
+impl<T> MailSource for Imap<T>
+where
+    T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + fmt::Debug + Send,
+{
+    async fn logout(self) {
+        self.close().await;
+    }
+
+    async fn search(
+        &mut self,
+        since: Option<Date>,
+        portals: &[Portal],
+    ) -> Result<Vec<u32>, MailError> {
+        self.found.clear();
+        if portals.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.found = if self.provider.is_gmail() {
+            self.examine(0).await?;
+            let query = gmail_query(since, portals, self.all_mail);
+            let uids = self.search_open(&query).await?;
+            uids.into_iter().map(|uid| (0, uid)).collect()
+        } else {
+            let query = standard_query(since, portals);
+            self.search_folders(&query).await?
+        };
+        Ok((1..=self.found.len())
+            .filter_map(|n| u32::try_from(n).ok())
+            .collect())
+    }
+
+    async fn heads(&mut self, ids: &[u32]) -> Result<Vec<RawHead>, MailError> {
+        let mut heads = BTreeMap::new();
+        for (folder, pairs) in self.by_folder(ids) {
+            self.examine(folder).await?;
+            let uids: Vec<u32> = pairs.iter().map(|&(uid, _)| uid).collect();
+            let mut got = self.head_fields(&uids, HEAD_FIELDS).await?;
+            for (uid, id) in pairs {
+                if let Some(bytes) = got.remove(&uid) {
+                    heads.insert(id, RawHead { uid: id, bytes });
+                }
+            }
+        }
         Ok(heads.into_values().collect())
     }
 
-    async fn fetch(&mut self, uids: &[u32]) -> Result<Vec<RawMail>, MailError> {
-        if uids.is_empty() {
-            return Ok(Vec::new());
-        }
-        let wanted: HashSet<u32> = uids.iter().copied().collect();
-        let set = uid_set(uids);
+    async fn fetch(&mut self, ids: &[u32]) -> Result<Vec<RawMail>, MailError> {
         let mut mails = BTreeMap::new();
-        let command = format!("UID FETCH {set} (UID X-GM-MSGID BODY.PEEK[]<0.{MAX_MAIL_BYTES}>)");
-        self.command(&command, |response| {
-            let Response::Fetch(_, attributes) = response else {
-                return;
-            };
-            let (mut uid, mut gmail_id, mut body) = (None, None, None);
-            for attribute in attributes {
-                match attribute {
-                    AttributeValue::Uid(u) => uid = Some(*u),
-                    AttributeValue::GmailMsgId(id) => gmail_id = Some(*id),
-                    AttributeValue::BodySection {
-                        section: None,
-                        data,
-                        ..
-                    } => body = Some(data.as_deref().unwrap_or_default().to_vec()),
-                    _ => {}
+        // Gmail adds its message id for the link to the mail in Gmail; other servers know no
+        // such item and would refuse the whole command.
+        let items = if self.provider.is_gmail() {
+            "UID X-GM-MSGID"
+        } else {
+            "UID"
+        };
+        for (folder, pairs) in self.by_folder(ids) {
+            self.examine(folder).await?;
+            let by_uid: BTreeMap<u32, u32> = pairs.iter().copied().collect();
+            let uids: Vec<u32> = by_uid.keys().copied().collect();
+            let command = format!(
+                "UID FETCH {} ({items} BODY.PEEK[]<0.{MAX_MAIL_BYTES}>)",
+                uid_set(&uids)
+            );
+            self.command(&command, |response| {
+                let Response::Fetch(_, attributes) = response else {
+                    return;
+                };
+                let (mut uid, mut gmail_id, mut body) = (None, None, None);
+                for attribute in attributes {
+                    match attribute {
+                        AttributeValue::Uid(u) => uid = Some(*u),
+                        AttributeValue::GmailMsgId(id) => gmail_id = Some(*id),
+                        AttributeValue::BodySection {
+                            section: None,
+                            data,
+                            ..
+                        } => body = Some(data.as_deref().unwrap_or_default().to_vec()),
+                        _ => {}
+                    }
                 }
-            }
-            // Only requested mails with content, each once - pure status updates
-            // (e.g. "read in the meantime") are not a mail.
-            if let (Some(uid), Some(bytes)) = (uid, body)
-                && wanted.contains(&uid)
-            {
-                mails.insert(uid, RawMail { gmail_id, bytes });
-            }
-        })
-        .await?;
+                // Only requested mails with content, each once - pure status updates
+                // (e.g. "read in the meantime") are not a mail.
+                if let (Some(uid), Some(bytes)) = (uid, body)
+                    && let Some(&id) = by_uid.get(&uid)
+                {
+                    mails.insert(id, RawMail { gmail_id, bytes });
+                }
+            })
+            .await?;
+        }
         Ok(mails.into_values().collect())
     }
 }
@@ -537,375 +796,4 @@ async fn guarded<T, E>(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn query_for_selected_portals() {
-        let since = Date::new(2026, 3, 5).unwrap();
-        assert_eq!(
-            search_query(
-                Some(since),
-                &[Portal::LinkedIn, Portal::Freelancermap],
-                false
-            ),
-            r#"SINCE 05-Mar-2026 X-GM-RAW "from:(linkedin.com OR freelancermap.de OR freelancermap.com) OR linkedin OR freelancermap""#
-        );
-        assert_eq!(
-            search_query(None, &[Portal::FreelanceDe], false),
-            r#"X-GM-RAW "from:(freelance.de) OR freelance.de""#
-        );
-        // All Mail: without drafts and the user's own sent mails.
-        assert_eq!(
-            search_query(None, &[Portal::FreelanceDe], true),
-            r#"X-GM-RAW "(from:(freelance.de) OR freelance.de) -in:drafts (in:inbox OR -in:sent)""#
-        );
-    }
-
-    /// All Mail is found by its special-use attribute, whatever its localized name; the
-    /// search then leaves drafts and sent mails out. Without it the inbox is read.
-    #[tokio::test]
-    async fn all_mail_by_its_attribute_else_the_inbox() {
-        let list = "* LIST (\\HasNoChildren) \"/\" \"INBOX\"\r\n\
-                    * LIST (\\HasChildren \\Noselect) \"/\" \"[Gmail]\"\r\n\
-                    * LIST (\\All \\HasNoChildren) \"/\" \"[Gmail]/Alle Nachrichten\"\r\n\
-                    * LIST (\\HasNoChildren \\Sent) \"/\" \"[Gmail]/Gesendet\"\r\n\
-                    {tag} OK Success\r\n";
-        let examine =
-            "* FLAGS (\\Seen)\r\n* 3 EXISTS\r\n{tag} OK [READ-ONLY] EXAMINE completed\r\n";
-        let (mut gmail, sent) = scripted_logging(vec![
-            list.into(),
-            examine.into(),
-            "* SEARCH 7\r\n{tag} OK SEARCH completed\r\n".into(),
-        ])
-        .await;
-        gmail.open_mailbox().await.unwrap();
-        assert!(gmail.all_mail);
-        gmail.search(None, &[Portal::LinkedIn]).await.unwrap();
-        let commands = sent.lock().unwrap().join("\n");
-        assert!(
-            commands.contains(r#"EXAMINE "[Gmail]/Alle Nachrichten""#),
-            "{commands}"
-        );
-        assert!(commands.contains("(in:inbox OR -in:sent)"), "{commands}");
-
-        let list = "* LIST (\\HasNoChildren) \"/\" \"INBOX\"\r\n{tag} OK Success\r\n";
-        let (mut gmail, sent) = scripted_logging(vec![list.into(), examine.into()]).await;
-        gmail.open_mailbox().await.unwrap();
-        assert!(!gmail.all_mail);
-        let commands = sent.lock().unwrap().join("\n");
-        assert!(commands.contains(r#"EXAMINE "INBOX""#), "{commands}");
-    }
-
-    /// Formerly: whitespace in the app password was only removed when saving, and the
-    /// address was case-sensitive.
-    #[test]
-    fn credentials_are_normalised_and_never_printed() {
-        let c = Credentials::new("  Erika.Mueller@Example.com ", "abcd efgh\tijkl mnop");
-        assert_eq!(c.user, "erika.mueller@example.com");
-        assert_eq!(c.password(), "abcdefghijklmnop");
-        assert!(!format!("{c:?}").contains("abcd"));
-    }
-
-    /// No network is `Offline` ("Keine Verbindung zum Internet"): a name that does not
-    /// resolve (std's text on Unix, Windows' codes) or a network that is down or unreachable.
-    /// Everything else stays `Connect` ("Gmail ist nicht erreichbar").
-    #[test]
-    fn no_network_is_offline_anything_else_a_connect_error() {
-        use std::io::{Error, ErrorKind as Kind};
-        let offline = [
-            Error::other(
-                "failed to lookup address information: nodename nor servname provided, or not known",
-            ),
-            Error::other(
-                "failed to lookup address information: Temporary failure in name resolution",
-            ),
-            Error::new(Kind::NetworkUnreachable, "network is unreachable"),
-            Error::new(Kind::NetworkDown, "network is down"),
-            Error::new(Kind::HostUnreachable, "no route to host"),
-        ];
-        for error in &offline {
-            let mail = connect_error(error);
-            assert!(matches!(mail, MailError::Offline(_)), "{error}: {mail}");
-            assert_eq!(mail.kind(), ErrorKind::Offline);
-        }
-        for error in [
-            Error::new(Kind::ConnectionRefused, "connection refused"),
-            Error::new(Kind::ConnectionReset, "connection reset"),
-            Error::new(Kind::TimedOut, "timed out"),
-            Error::new(Kind::PermissionDenied, "blocked by a firewall"),
-            Error::other("the lookup of the address failed"),
-        ] {
-            let mail = connect_error(&error);
-            assert!(matches!(mail, MailError::Connect(_)), "{error}: {mail}");
-            assert_eq!(mail.kind(), ErrorKind::MailConnect);
-        }
-        // Windows says it by a code: no host of that name, try again, no data.
-        #[cfg(windows)]
-        for code in [11001, 11002, 11004] {
-            let mail = connect_error(&Error::from_raw_os_error(code));
-            assert!(matches!(mail, MailError::Offline(_)), "{code}: {mail}");
-        }
-        #[cfg(windows)]
-        assert!(matches!(
-            connect_error(&Error::from_raw_os_error(10061)),
-            MailError::Connect(_)
-        ));
-        // The page reads the code, never a text.
-        assert_eq!(
-            serde_json::to_value(crate::error::ErrorInfo::from(&connect_error(&offline[0])))
-                .unwrap(),
-            serde_json::json!({"kind": "offline", "params": {}})
-        );
-    }
-
-    /// A dropped connection at login is not a wrong password.
-    #[test]
-    fn only_a_rejection_is_an_auth_error() {
-        use async_imap::error::Error as E;
-        assert!(matches!(
-            login_error(E::No("[AUTHENTICATIONFAILED] Invalid credentials".into())),
-            MailError::Auth(_)
-        ));
-        let eof = std::io::Error::from(std::io::ErrorKind::UnexpectedEof);
-        assert!(matches!(login_error(E::Io(eof)), MailError::Lost(_)));
-        assert!(matches!(login_error(E::ConnectionLost), MailError::Lost(_)));
-    }
-
-    #[tokio::test]
-    async fn cancel_and_timeout_are_errors() {
-        let cancel = CancellationToken::new();
-        cancel.cancel();
-        let never = std::future::pending::<Result<(), ()>>();
-        let result = guarded(&cancel, never, |()| MailError::Lost(String::new())).await;
-        assert!(matches!(result, Err(MailError::Cancelled)));
-    }
-
-    /// Mailbox fake at protocol level: answers every command with the next prepared
-    /// reply (`{tag}` is replaced).
-    async fn scripted(replies: Vec<String>) -> Gmail<tokio::io::DuplexStream> {
-        scripted_logging(replies).await.0
-    }
-
-    /// Like [`scripted`], but also returns every command the client sent.
-    async fn scripted_logging(
-        replies: Vec<String>,
-    ) -> (
-        Gmail<tokio::io::DuplexStream>,
-        Arc<std::sync::Mutex<Vec<String>>>,
-    ) {
-        use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
-        let (client_side, server_side) = tokio::io::duplex(1 << 20);
-        let sent: Arc<std::sync::Mutex<Vec<String>>> = Arc::default();
-        let log = sent.clone();
-        tokio::spawn(async move {
-            let (read, mut write) = tokio::io::split(server_side);
-            let mut read = BufReader::new(read);
-            write.write_all(b"* OK Gimap ready\r\n").await.unwrap();
-            let replies = std::iter::once("{tag} OK LOGIN done\r\n".to_string()).chain(replies);
-            for reply in replies {
-                let mut line = String::new();
-                if read.read_line(&mut line).await.unwrap_or(0) == 0 {
-                    return;
-                }
-                let tag = line.split(' ').next().unwrap_or_default().to_string();
-                if let Ok(mut log) = log.lock() {
-                    log.push(line.trim_end().to_string());
-                }
-                write
-                    .write_all(reply.replace("{tag}", &tag).as_bytes())
-                    .await
-                    .unwrap();
-            }
-        });
-        let mut client = async_imap::Client::new(client_side);
-        client.read_response().await.unwrap().unwrap();
-        let session = client
-            .login("ich@gmail.com", "pw")
-            .await
-            .map_err(|(e, _)| e)
-            .unwrap();
-        (
-            Gmail {
-                session,
-                cancel: CancellationToken::new(),
-                all_mail: false,
-            },
-            sent,
-        )
-    }
-
-    /// Safety invariant: Gmail is only ever read. The mailbox is opened with `EXAMINE`
-    /// (never `SELECT`), mails are fetched with `BODY.PEEK` - so Gmail marks nothing as
-    /// read, and no command ever changes anything.
-    #[tokio::test]
-    async fn the_mailbox_is_only_ever_read() {
-        let body = "Subject: Neue Jobs\r\n\r\nText";
-        let reply = format!(
-            "* 1 FETCH (UID 7 X-GM-MSGID 1234 BODY[]<0> {{{len}}}\r\n{body})\r\n{{tag}} OK Success\r\n",
-            len = body.len()
-        );
-        let (mut gmail, sent) = scripted_logging(vec![
-            "* SEARCH 7\r\n{tag} OK SEARCH completed\r\n".into(),
-            reply,
-        ])
-        .await;
-        gmail.search(None, &[Portal::LinkedIn]).await.unwrap();
-        gmail.fetch(&[7]).await.unwrap();
-        let commands = sent.lock().unwrap().join("\n").to_uppercase();
-        assert!(commands.contains("BODY.PEEK["), "{commands}");
-        for forbidden in [
-            "SELECT", "STORE", "EXPUNGE", "DELETE", "APPEND", "COPY", "MOVE", "\\SEEN",
-        ] {
-            assert!(!commands.contains(forbidden), "{forbidden}: {commands}");
-        }
-        // The mailbox itself is opened on connect - that code says `examine`, never `select`.
-        // The search text is assembled here, otherwise the test would find itself.
-        let source = include_str!("imap.rs");
-        assert!(source.contains(&format!("session{}", r#".examine("INBOX")"#)));
-        assert!(source.contains(&format!("session{}", ".examine(&name)")));
-        assert!(!source.contains(&format!("session{}", ".select(")));
-    }
-
-    /// Two phases over IMAP: the heads of all matches, then the whole mail only for the
-    /// candidates - a newsletter the keyword search found is never loaded whole.
-    #[tokio::test]
-    async fn only_candidate_bodies_are_fetched() {
-        use crate::mail::scan::{ScanSummary, Scope, scan};
-        let alert = "From: LinkedIn <jobalerts-noreply@linkedin.com>\r\nSubject: Neue Jobs\r\n\r\n";
-        let news = "From: News <news@example.org>\r\nSubject: Unlocked: your notetaker\r\n\r\n";
-        let field = format!("BODY[HEADER.FIELDS ({HEAD_FIELDS})]");
-        let heads = format!(
-            "* 1 FETCH (UID 7 {field} {{{}}}\r\n{alert})\r\n\
-             * 2 FETCH (UID 8 {field} {{{}}}\r\n{news})\r\n{{tag}} OK Success\r\n",
-            alert.len(),
-            news.len()
-        );
-        let body =
-            format!("{alert}<a href=\"https://www.linkedin.com/jobs/view/4123456789/\">Rolle</a>");
-        let bodies = format!(
-            "* 1 FETCH (UID 7 X-GM-MSGID 1234 BODY[]<0> {{{}}}\r\n{body})\r\n{{tag}} OK Success\r\n",
-            body.len()
-        );
-        let (mut gmail, sent) = scripted_logging(vec![
-            "* SEARCH 7 8\r\n{tag} OK SEARCH completed\r\n".into(),
-            heads,
-            bodies,
-        ])
-        .await;
-        let store = crate::store::Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        let mut summary = ScanSummary::default();
-        scan(
-            &mut gmail,
-            &store,
-            run,
-            Scope::All,
-            &[Portal::LinkedIn],
-            "2026-09-19T08:00:00Z".parse().unwrap(),
-            &CancellationToken::new(),
-            &mut summary,
-            |_| {},
-        )
-        .await
-        .unwrap();
-        assert_eq!(
-            (summary.mails_checked, summary.alert_mails, summary.new),
-            (2, 1, 1)
-        );
-        let commands = sent.lock().unwrap().clone();
-        let fetches: Vec<&String> = commands
-            .iter()
-            .filter(|c| c.contains("UID FETCH"))
-            .collect();
-        assert_eq!(fetches.len(), 2, "{commands:?}");
-        assert!(fetches[0].contains("UID FETCH 7,8 (UID BODY.PEEK[HEADER.FIELDS"));
-        assert!(fetches[1].contains("UID FETCH 7 ("), "only the candidate");
-        assert!(fetches[1].contains("BODY.PEEK[]"));
-    }
-
-    /// A failed search is an error, not "0 mails" - otherwise the scan state would
-    /// advance and the mails would be missing forever.
-    #[tokio::test]
-    async fn failed_search_is_an_error() {
-        let mut gmail = scripted(vec![
-            "{tag} NO [UNAVAILABLE] Temporary System Problem (Failure)\r\n".into(),
-        ])
-        .await;
-        let result = gmail.search(None, &[Portal::LinkedIn]).await;
-        assert!(matches!(result, Err(MailError::Server(_))), "{result:?}");
-
-        let mut gmail = scripted(vec![
-            "* SEARCH 9 3 5 3\r\n{tag} OK SEARCH completed\r\n".into(),
-        ])
-        .await;
-        assert_eq!(
-            gmail.search(None, &[Portal::LinkedIn]).await.unwrap(),
-            [3, 5, 9]
-        );
-    }
-
-    /// Status updates without content are not a mail; a rejected fetch is an error.
-    #[tokio::test]
-    async fn fetch_takes_only_requested_mails_with_content() {
-        let body = "Subject: Neue Jobs\r\n\r\nText";
-        let reply = format!(
-            "* 1 FETCH (UID 7 FLAGS (\\Seen))\r\n\
-             * 2 FETCH (UID 99 X-GM-MSGID 5 BODY[]<0> {{{len}}}\r\n{body})\r\n\
-             * 1 FETCH (UID 7 X-GM-MSGID 1234 BODY[]<0> {{{len}}}\r\n{body})\r\n\
-             {{tag}} OK Success\r\n",
-            len = body.len()
-        );
-        let mut gmail = scripted(vec![reply]).await;
-        let mails = gmail.fetch(&[7]).await.unwrap();
-        assert_eq!(mails.len(), 1);
-        assert_eq!(mails[0].gmail_id, Some(1234));
-        assert_eq!(mails[0].bytes, body.as_bytes());
-
-        let mut gmail = scripted(vec![
-            "{tag} NO Some messages could not be FETCHed (Failure)\r\n".into(),
-        ])
-        .await;
-        assert!(matches!(gmail.fetch(&[7]).await, Err(MailError::Server(_))));
-    }
-
-    /// An unreadable reply brings no mail content into the message.
-    #[tokio::test]
-    async fn unreadable_answer_leaks_no_content() {
-        let mut gmail = scripted(vec![
-            "* 1 FETCH (UID 1 BODY[] {33}\r\nSubject: Gehalt\r\n\r\nVERTRAULICH X-UNBEKANNT 5)\r\n"
-                .into(),
-        ])
-        .await;
-        let error = gmail.fetch(&[1]).await.unwrap_err();
-        let text = error.to_string();
-        assert!(
-            !text.contains("VERTRAULICH") && text.chars().count() < 300,
-            "{text}"
-        );
-    }
-
-    /// A temporary rejection is not a wrong password.
-    #[test]
-    fn temporary_login_rejection_is_no_auth_error() {
-        use async_imap::error::Error as E;
-        for text in [
-            "[UNAVAILABLE] Temporary System Problem (Failure)",
-            "[ALERT] Too many simultaneous connections. (Failure)",
-            "[OVERQUOTA] Account exceeded command or bandwidth limits.",
-        ] {
-            assert!(
-                matches!(login_error(E::No(text.into())), MailError::Server(_)),
-                "{text}"
-            );
-        }
-        assert!(matches!(
-            login_error(E::No(
-                "[ALERT] Application-specific password required".into()
-            )),
-            MailError::Auth(_)
-        ));
-        let stalled = std::io::Error::from(std::io::ErrorKind::TimedOut);
-        assert!(matches!(io_error(&stalled), MailError::Timeout));
-    }
-}
+mod tests;

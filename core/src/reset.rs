@@ -5,7 +5,7 @@
 //! Only things of the app are deleted: the database (jobs, settings, scan state) with its
 //! journal, WAL and shared-memory files and its copies (`backups/`), the profiles of the
 //! session windows (freelance.de sign-in; on macOS the app removes their `WKWebView` data
-//! stores right after the start, which needs the running app), the Gmail access in the
+//! stores right after the start, which needs the running app), the mailbox access in the
 //! keychain and, in the workspace, the profile, its backup and the unreadable profile a save
 //! replaced in `profil/`. `policy.json` stays - a block pause must not be clickable away.
 //! Foreign files stay untouched. The database goes last: while it is there, a later attempt
@@ -60,7 +60,7 @@ pub fn request(data_dir: &Path, plan: &ResetPlan) -> crate::Result<()> {
 ///
 /// The order is used up first and so runs exactly once: what could not be deleted is in the
 /// report - a second pass at a later start would delete things created in the meantime
-/// (database, sign-in, profile, Gmail access) without asking.
+/// (database, sign-in, profile, mailbox access) without asking.
 pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
     let marker = data_dir.join(MARKER);
     let bytes = match std::fs::read(&marker) {
@@ -115,11 +115,11 @@ fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault) -> ResetReport {
     }
     // The profiles' folder goes if that made it empty (never with content).
     let _ = std::fs::remove_dir(&profile_dir);
-    if let Err(e) = vault.delete_gmail() {
-        log::warn!("reset: Gmail access in the keychain not deleted: {e}");
+    if let Err(e) = vault.delete() {
+        log::warn!("reset: mailbox access in the keychain not deleted: {e}");
         report
             .failed
-            .push(format!("Gmail access in the keychain ({e})"));
+            .push(format!("mailbox access in the keychain ({e})"));
     }
     // Every portal sign-in is gone with its profile - pauses and counters stay.
     let mut policy = Policy::load(&data_dir.join(POLICY_FILE), jiff::Timestamp::now());

@@ -83,7 +83,7 @@ pub struct AppState {
     pub default_workspace: PathBuf,
     pub dry_run: bool,
     pub user_agent: String,
-    /// Gmail address from the vault. The vault (with the password) is thus read only once per
+    /// The mailbox address from the vault. The vault (with the password) is thus read only once per
     /// start for the display - otherwise only for the mailbox scan.
     pub gmail_user: Mutex<GmailUser>,
     /// What the app is doing right now. Checked and claimed under the same lock - a run and a
@@ -152,7 +152,7 @@ impl CloseGuard {
     }
 }
 
-/// Stored Gmail address in the cache.
+/// Stored mailbox address in the cache.
 pub enum GmailUser {
     /// Not read from the vault yet.
     Unread,
@@ -248,14 +248,18 @@ impl AppState {
         self.data_dir.join(jobalert_core::POLICY_FILE)
     }
 
-    /// Stored Gmail address and, if so, why the vault is unreadable. A read error is not
+    /// Stored mailbox address and, if so, why the vault is unreadable. A read error is not
     /// remembered - the next call tries again.
     fn gmail_user(&self) -> (Option<String>, Option<ErrorInfo>) {
         let mut cached = lock(&self.gmail_user);
         if let GmailUser::Known(user) = &*cached {
             return (user.clone(), None);
         }
-        match Vault::app().load_gmail() {
+        let provider = self
+            .settings()
+            .map(|settings| settings.mail_provider)
+            .unwrap_or_default();
+        match Vault::app().load(provider) {
             Ok(credentials) => {
                 let user = credentials.map(|c| c.user);
                 *cached = GmailUser::Known(user.clone());

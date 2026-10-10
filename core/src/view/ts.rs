@@ -18,6 +18,7 @@ use ts_rs::{Config, TS, TypeVisitor};
 use crate::error::{ErrorInfo, ErrorKind, InvalidInput};
 use crate::fetch::PortalHealth;
 use crate::fetch::policy::PauseReason;
+use crate::mail::MailProvider;
 use crate::model::{Band, KeyFacts, MatchStatus, Notice, Place};
 use crate::pipeline::{
     NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest, RunSnapshot,
@@ -187,6 +188,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<EmptyAlert>();
     f.add::<Platform>();
     f.add::<VaultKind>();
+    f.add::<MailProvider>();
     f.add::<Mailbox>();
     f.add::<PortalCount>();
     f.add::<MailboxCheck>();

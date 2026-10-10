@@ -14,8 +14,8 @@ use std::io::Write as _;
 use std::path::Path;
 
 use jiff::ToSpan as _;
-use jobalert_core::mail::imap::{Credentials, Gmail, MailSource as _};
-use jobalert_core::mail::{MailKind, classify_mail};
+use jobalert_core::mail::imap::{Credentials, Imap, MailSource as _};
+use jobalert_core::mail::{MailKind, MailProvider, classify_mail};
 use jobalert_core::portal::Portal;
 use tokio_util::sync::CancellationToken;
 
@@ -27,10 +27,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut user = String::new();
     std::io::stdin().read_line(&mut user)?;
     let credentials = Credentials::new(
+        MailProvider::Gmail,
         &user,
         &rpassword::prompt_password("App password (input hidden): ")?,
     );
-    let mut gmail = Gmail::connect(&credentials, CancellationToken::new()).await?;
+    let mut gmail = Imap::connect(&credentials, CancellationToken::new()).await?;
     drop(credentials);
 
     let since = jiff::Zoned::now().date().checked_sub(30.days())?;

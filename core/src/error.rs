@@ -84,8 +84,10 @@ pub enum InvalidInput {
     /// Not a complete e-mail address.
     #[error("not a complete mail address")]
     MailAddress,
-    /// An app password is exactly 16 letters (not the normal account password).
-    #[error("not an app password")]
+    /// The password does not fit the provider: Gmail's and iCloud's app passwords are
+    /// exactly 16 letters (not the normal account password), GMX and WEB.DE take any
+    /// password but an empty one.
+    #[error("not a password of the provider's shape")]
     AppPassword,
     #[error("{portal} has no sign-in")]
     NoSignIn { portal: Portal },
@@ -108,6 +110,8 @@ pub enum ErrorKind {
     DryRun,
     MailMissing,
     MailConnect,
+    /// The mail server refused the address or the password; `params.allowImap` (`true`) where
+    /// the provider reads IMAP only once the user allowed it in its web mailer (GMX, WEB.DE).
     MailAuth,
     MailTimeout,
     MailLost,
@@ -296,7 +300,12 @@ impl From<&crate::profile::cv::CvError> for ErrorInfo {
 
 impl From<&MailError> for ErrorInfo {
     fn from(error: &MailError) -> ErrorInfo {
-        ErrorInfo::new(error.kind())
+        match error {
+            MailError::Auth {
+                allow_imap: true, ..
+            } => ErrorInfo::new(error.kind()).with("allowImap", true),
+            _ => ErrorInfo::new(error.kind()),
+        }
     }
 }
 

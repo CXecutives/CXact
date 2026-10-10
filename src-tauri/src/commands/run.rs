@@ -15,7 +15,7 @@ use jobalert_core::error::{ErrorInfo, ErrorKind, InvalidInput};
 use jobalert_core::fetch::Fetchers;
 use jobalert_core::fetch::http::HttpFetcher;
 use jobalert_core::fetch::policy::Policy;
-use jobalert_core::mail::imap::{Credentials, Gmail, MailError};
+use jobalert_core::mail::imap::{Credentials, Imap, MailError};
 use jobalert_core::pipeline::dry_run::{self, DryRunBackends};
 use jobalert_core::pipeline::{
     self, Backends, Matcher, Outcome, RunContext, RunEvent, RunKindName, RunRequest, RunSnapshot,
@@ -123,7 +123,7 @@ impl Snapshot {
     }
 }
 
-/// Real fetch paths: Gmail, and per portal either HTTP as a guest or a session window.
+/// Real fetch paths: the mailbox, and per portal either HTTP as a guest or a session window.
 struct AppBackends {
     credentials: Option<Credentials>,
     user_agent: String,
@@ -139,12 +139,12 @@ struct AppBackends {
 }
 
 impl Backends for AppBackends {
-    type Mail = Gmail;
+    type Mail = Imap;
     type Pages = Fetchers<Sessions>;
 
-    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<Gmail, MailError> {
+    async fn connect_mail(&mut self, cancel: &CancellationToken) -> Result<Imap, MailError> {
         let credentials = self.credentials.as_ref().ok_or(MailError::NoCredentials)?;
-        Gmail::connect(credentials, cancel.clone()).await
+        Imap::connect(credentials, cancel.clone()).await
     }
 
     /// One fetch path per portal, and only the one it needs - own HTTP session or own
@@ -184,12 +184,12 @@ impl Backends for AppBackends {
     }
 }
 
-/// Settings, profile and Gmail access of a run. A fetch ("Jobs suchen") reads the alert mails
+/// Settings, profile and mailbox access of a run. A fetch ("Jobs suchen") reads the alert mails
 /// with a mailbox and searches the sources with the profile's terms; it is refused here, in
 /// the order the page shows it (`run.fetchBlocked`): without a usable profile
 /// (`profile::missing_required`), then with nothing to read (no source to search, no
 /// mailbox). A keychain that cannot be read only skips the mail part (`RunSummary::mail`).
-/// Only the mailbox step needs Gmail: fetching job details also works when the vault entry is
+/// Only the mailbox step needs the vault: fetching job details also works when the vault entry is
 /// unreadable right now. The dry run never reads the vault: its mailbox is made up, and its
 /// search is made up too ([`dry_run::search_plan`]).
 fn run_context(
@@ -231,7 +231,7 @@ fn run_context(
         (search_portals, search_terms) = dry_run::search_plan(&search_portals, &search_terms);
     }
     let (credentials, mail_error) = if fetch && !state.dry_run {
-        match Vault::app().load_gmail() {
+        match Vault::app().load(settings.mail_provider) {
             Ok(credentials) => (credentials, None),
             Err(e) => (None, Some(ErrorInfo::from(e))),
         }
@@ -290,7 +290,7 @@ pub(super) fn launch(
     if state.busy() {
         return Err(state.busy_error());
     }
-    // Settings and Gmail access outside the lock: reading the keychain can wait for a prompt
+    // Settings and mailbox access outside the lock: reading the keychain can wait for a prompt
     // (macOS), and the reader, the close button and every busy check wait for this lock.
     // Check and claim under one lock (no `await` in between); a run or sign-in that began
     // meanwhile keeps the slot, and the credentials read for nothing are dropped. A mailbox

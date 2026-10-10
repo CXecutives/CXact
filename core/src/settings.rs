@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
+use crate::mail::MailProvider;
 use crate::portal::{FetchPath, Portal};
 use crate::store::Store;
 
@@ -26,6 +27,9 @@ pub struct Settings {
     /// The setup reached "Alles eingerichtet" (`finish_onboarding`): the app starts in the
     /// Jobs view from then on. A reset deletes it with the database.
     pub onboarded: bool,
+    /// The provider of the mailbox whose address and password the vault holds, set when the
+    /// mailbox is saved (`mail::check::store_account`); Gmail until one is chosen.
+    pub mail_provider: MailProvider,
 }
 
 /// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
@@ -57,6 +61,7 @@ impl Default for Settings {
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
             onboarded: false,
+            mail_provider: MailProvider::Gmail,
         }
     }
 }

@@ -5,6 +5,7 @@ mod classify;
 pub(crate) mod extract;
 pub mod imap;
 mod parse;
+mod provider;
 pub mod scan;
 
 use sha2::{Digest, Sha256};
@@ -16,6 +17,7 @@ use crate::text::truncate_chars;
 pub(crate) use extract::Found;
 
 pub(crate) use parse::{ParsedMail, parse_mail};
+pub use provider::MailProvider;
 
 /// A mail as it comes from the mailbox.
 #[derive(Debug, Clone, Default)]

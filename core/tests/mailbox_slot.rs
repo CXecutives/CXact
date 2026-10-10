@@ -59,7 +59,11 @@ fn cred_1_saving_the_mailbox_holds_the_app_and_can_be_stopped() {
     );
     let remove = body(&mailbox, "remove_mailbox");
     assert!(
-        before(remove, "state.claim_mailbox(&app)?", "delete_gmail()"),
+        before(
+            remove,
+            "state.claim_mailbox(&app)?",
+            "Vault::app().delete()"
+        ),
         "removing the mailbox holds the app too"
     );
     for (name, text) in [("save_mailbox", save), ("remove_mailbox", remove)] {

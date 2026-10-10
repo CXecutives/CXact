@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::ErrorInfo;
 use crate::fetch::policy::{Policy, limits};
 use crate::fetch::{MAX_AGE, PortalHealth, RETRY_AFTER};
+pub use crate::mail::MailProvider;
 pub use crate::matching::TermField;
 use crate::matching::{self, Assessment, CoreTerm, ProfileSummary};
 use crate::model::{
@@ -964,7 +965,7 @@ pub enum Platform {
     Macos,
 }
 
-/// Where the Gmail app password is kept.
+/// Where the mailbox's password is kept.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -977,18 +978,21 @@ pub enum VaultKind {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Mailbox {
-    /// The stored Gmail address; `null` = no mailbox connected.
+    /// The stored address; `null` = no mailbox connected.
     pub user: Option<String>,
+    /// The provider of the stored mailbox (`Settings::mail_provider`); without one the one
+    /// last chosen, Gmail before any.
+    pub provider: MailProvider,
     pub vault: VaultKind,
     /// The vault could not be read.
     pub error: Option<ErrorInfo>,
     /// What "Verbinden" found in the mailbox in this session (the sign-in worked). `null`
-    /// before a "Verbinden", and when it signed in but could not count (too slow, or Gmail
-    /// failed on a mail): the answer to `save_mailbox` is then signed in and not counted,
-    /// and the next fetch reads the alert mails anyway.
+    /// before a "Verbinden", and when it signed in but could not count (too slow, or the
+    /// server failed on a mail): the answer to `save_mailbox` is then signed in and not
+    /// counted, and the next fetch reads the alert mails anyway.
     pub check: Option<MailboxCheck>,
-    /// When Gmail last accepted this mailbox ("Verbinden", "Speichern"): a mail error of a
-    /// fetch that finished before it is past.
+    /// When the server last accepted this mailbox ("Verbinden", "Speichern"): a mail error of
+    /// a fetch that finished before it is past.
     pub checked_at: Option<Timestamp>,
 }
 

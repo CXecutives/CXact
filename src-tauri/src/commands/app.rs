@@ -52,6 +52,10 @@ pub(super) fn mailbox(state: &AppState) -> Mailbox {
     } else {
         state.gmail_user()
     };
+    let provider = state
+        .settings()
+        .map(|settings| settings.mail_provider)
+        .unwrap_or_default();
     let checked_at = if state.dry_run {
         None
     } else {
@@ -64,6 +68,7 @@ pub(super) fn mailbox(state: &AppState) -> Mailbox {
     };
     Mailbox {
         user,
+        provider,
         vault: crate::platform::vault_kind(),
         error,
         check: lock(&state.mailbox_check).clone(),

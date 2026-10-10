@@ -44,7 +44,8 @@
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
 // before the last fetch).
-// `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
+// `save_mailbox` refuses the password `falschfalschfals` with `mailAuth` (the server said no;
+// at GMX and WEB.DE with `allowImap`);
 // with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // Several profiles, one active (core's profile::set): with a profile the work folder holds
@@ -789,6 +790,7 @@ function initial(): void {
     },
     mailbox: {
       user: 'alerts.demo@gmail.com',
+      provider: 'gmail',
       vault: VAULT,
       error: null,
       check: null,
@@ -823,7 +825,14 @@ function initial(): void {
     case 'first-run':
       jobs = [];
       state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+      state.mailbox = {
+        user: null,
+        provider: 'gmail',
+        vault: VAULT,
+        error: null,
+        check: null,
+        checkedAt: null,
+      };
       state.profile = null;
       state.lastRun = null;
       break;
@@ -892,7 +901,14 @@ function initial(): void {
       // After "reset everything" the app starts empty: the first-run page, with the report.
       jobs = [];
       state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+      state.mailbox = {
+        user: null,
+        provider: 'gmail',
+        vault: VAULT,
+        error: null,
+        check: null,
+        checkedAt: null,
+      };
       state.profile = null;
       state.lastRun = null;
       state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
@@ -905,6 +921,7 @@ function initial(): void {
       state.dryRun = true;
       state.mailbox = {
         user: 'probelauf@example.org',
+        provider: 'gmail',
         vault: VAULT,
         error: null,
         check: null,
@@ -2109,22 +2126,28 @@ const handlers: Handlers = {
     return null;
   },
   window_maximized: () => harness.maximized,
-  save_mailbox: async ({ user, password }) => {
+  save_mailbox: async ({ provider, user, password }) => {
     // Like the command: the shape first (before the busy check), nothing is sent while it
-    // cannot be right.
+    // cannot be right. Gmail and iCloud take an app password of 16 letters (Apple's in
+    // groups with dashes), GMX and WEB.DE any password.
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(user)) {
       throw fail('invalid', { reason: 'mailAddress' });
     }
-    if (!/^[a-z]{16}$/i.test(password.replace(/\s/g, ''))) {
+    const appPassword = provider === 'gmail' || provider === 'icloud';
+    const letters = password.replace(provider === 'icloud' ? /[\s-]/g : /\s/g, '');
+    if (appPassword ? !/^[a-z]{16}$/i.test(letters) : password === '') {
       throw fail('invalid', { reason: 'appPassword' });
     }
     if (running) throw fail('busy');
     if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
     if (harness.holdMailbox) await checking();
-    if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
+    if (letters.toLowerCase() === WRONG_PASSWORD) {
+      throw fail('mailAuth', provider === 'gmx' || provider === 'webde' ? { allowImap: true } : {});
+    }
     // A count that does not finish never throws the sign-in away: `check` is then null.
     state.mailbox = {
       user,
+      provider,
       vault: VAULT,
       error: null,
       check: MAIL_UNCOUNTED ? null : params.get('alerts') === 'none' ? NO_ALERTS : DEMO_CHECK,
@@ -2135,7 +2158,14 @@ const handlers: Handlers = {
   remove_mailbox: () => {
     if (running) throw fail('busy');
     if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
+    state.mailbox = {
+      user: null,
+      provider: state.mailbox.provider,
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    };
     return true;
   },
   portal_login: ({ portal: name }) => {

@@ -380,9 +380,10 @@ async fn mail_failure_skips_only_the_mail_part() {
         type Mail = DryRunMail;
         type Pages = DryRunPages;
         async fn connect_mail(&mut self, _: &CancellationToken) -> Result<DryRunMail, MailError> {
-            Err(MailError::Auth(
-                "[AUTHENTICATIONFAILED] Invalid credentials".into(),
-            ))
+            Err(MailError::Auth {
+                text: "[AUTHENTICATIONFAILED] Invalid credentials".into(),
+                allow_imap: false,
+            })
         }
         fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<DryRunPages, String> {
             Ok(DryRunPages)
