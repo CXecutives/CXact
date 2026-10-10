@@ -26,9 +26,8 @@ export const ICONS = {
   star: 'star',
 
   // A job and its ad.
-  /** The ad of a job, to read it in the browser (Anzeige öffnen; design round 3). */
-  ad: 'book-open',
-  /** Opens a page in the browser: a portal, Google's app passwords. */
+  /** Opens a page in the browser: the ad of a job (Anzeige öffnen), a portal, Google's app
+   *  passwords. */
   external: 'external-link',
   /** Mail: an alert mail (open it, read the older ones) and the mailbox they come to. */
   alertMail: 'mail',
@@ -40,8 +39,8 @@ export const ICONS = {
   // Runs.
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',
-  /** Stop a run. */
-  cancel: 'circle-stop',
+  /** Stop a run (Abbrechen): the hollow square (design round 6). */
+  cancel: 'square',
 
   // Files and folders.
   /** A document the app reads: the profile file. */
@@ -83,8 +82,7 @@ export const ICONS = {
   sidebar: 'panel-left',
   sidebarHide: 'panel-left-close',
   sidebarShow: 'panel-left-open',
-  /** The top bar's job view button, the same way; its "show" also opens a job in the job
-   *  view (the job's menu's first entry). */
+  /** The top bar's job view button, the same way. */
   readerPane: 'panel-right',
   readerHide: 'panel-right-close',
   readerShow: 'panel-right-open',

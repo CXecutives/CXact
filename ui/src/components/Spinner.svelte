@@ -1,5 +1,4 @@
-<!-- Indeterminate activity. Colour follows the text, or the navy of progress (`progress`:
-     the run card, the sidebar status); stops under reduced motion. -->
+<!-- Indeterminate activity. Colour follows the text; stops under reduced motion. -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
 
@@ -7,18 +6,15 @@
     size?: 'sm' | 'md' | 'lg';
     /** Announced to screen readers; omit when the surrounding control says it already. */
     label?: string | null;
-    /** In the navy of progress instead of the text colour. */
-    progress?: boolean;
   }
 
-  let { size = 'md', label, progress = false }: Props = $props();
+  let { size = 'md', label }: Props = $props();
   // Without a label the spinner says "loading" (null says nothing).
   const spoken = $derived(label === undefined ? t.common.loading : label);
 </script>
 
 <span
   class="spinner {size}"
-  class:progress
   role={spoken ? 'status' : undefined}
   aria-label={spoken ?? undefined}
   aria-hidden={spoken ? undefined : 'true'}
@@ -37,10 +33,6 @@
     /* Half a loop per turn: a full --dur-loop turn reads as stalled. */
     animation: spin calc(var(--dur-loop) / 2) linear infinite;
     animation-play-state: var(--loop-state);
-  }
-
-  .progress {
-    color: var(--meter-fill);
   }
 
   .sm {

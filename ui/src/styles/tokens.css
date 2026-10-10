@@ -471,6 +471,9 @@
   --titlebar-tool: 28px;
   /* The list column's header rows: the places and the search, as high as a field. */
   --list-toolbar: var(--control-field);
+  /* The one action at the end of the tabs' row (Jobs suchen, Abbrechen, Papierkorb leeren) is
+     at least this wide, so a swap between them moves nothing. */
+  --place-action: 136px;
   /* The list column beside the reader: the handle keeps it at least this wide, and the
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps

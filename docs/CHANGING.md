@@ -118,8 +118,8 @@ menu names a key.
   `lib/state/menu.svelte.ts`, which shows the entries anew after each choice). The order is no
   part of the filter: it sets no dot and no chip, and "Filter zurücksetzen" keeps it.
 - **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
-  on a row shows both groups (what shows the job: Öffnen, Alert-Mail öffnen, Anzeige öffnen,
-  Prompt kopieren; what changes it: Trotzdem bewerten, then the moves of its place); the
+  on a row shows both groups (what shows the job: Anzeige öffnen, Alert-Mail öffnen, Prompt
+  kopieren; a click on the row opens the job; what changes it: Trotzdem bewerten, then the moves of its place); the
   reader shows its buttons (its archive and delete beside the close button), and
   the row's tools under the pointer are the moves of its place (`rowTools`, icons with their
   label as tooltip; the ones that delete turn red). The moves per place are `OF_PLACE`, their

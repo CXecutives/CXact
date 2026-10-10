@@ -309,7 +309,7 @@ test.describe('the actions', () => {
       await buttons.evaluateAll((all) =>
         all.map((button) => button.querySelector('[data-icon]')?.getAttribute('data-icon')),
       ),
-    ).toEqual(['ad', 'alertMail', 'copy']);
+    ).toEqual(['external', 'alertMail', 'copy']);
     // The moves of Aktuell beside the x, quiet like it (no frame, user 2026-10-01), in
     // one row and one size with it; no "…" menu.
     const tools = await headTools(page);

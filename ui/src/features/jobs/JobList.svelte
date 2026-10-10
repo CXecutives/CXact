@@ -360,10 +360,9 @@
   }
 
   /** What the row's menu and its tools do: a move goes at once, deleting for good asks
-   *  first, a failure says so in the list header. The open job's menu has no "Öffnen". */
+   *  first, a failure says so in the list header. */
   function contextOf(job: JobView): JobMenuContext {
     return {
-      open: sameKey(jobs.selected, job.key) ? null : () => select(job),
       purge: () => {
         purgeError = null;
         purging = job;

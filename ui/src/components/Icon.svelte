@@ -20,7 +20,6 @@
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
   import BellPlus from '@lucide/svelte/icons/bell-plus';
-  import BookOpen from '@lucide/svelte/icons/book-open';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
@@ -34,7 +33,6 @@
   import CircleDashed from '@lucide/svelte/icons/circle-dashed';
   import CircleMinus from '@lucide/svelte/icons/circle-minus';
   import CircleQuestionMark from '@lucide/svelte/icons/circle-question-mark';
-  import CircleStop from '@lucide/svelte/icons/circle-stop';
   import CircleX from '@lucide/svelte/icons/circle-x';
   import ClipboardPaste from '@lucide/svelte/icons/clipboard-paste';
   import Clock from '@lucide/svelte/icons/clock';
@@ -74,6 +72,7 @@
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
+  import Square from '@lucide/svelte/icons/square';
   import Star from '@lucide/svelte/icons/star';
   import TextSelect from '@lucide/svelte/icons/text-select';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -92,7 +91,6 @@
     ban: Ban,
     banknote: Banknote,
     'bell-plus': BellPlus,
-    'book-open': BookOpen,
     briefcase: Briefcase,
     'building-2': Building2,
     calendar: Calendar,
@@ -106,7 +104,6 @@
     'circle-dashed': CircleDashed,
     'circle-minus': CircleMinus,
     'circle-question-mark': CircleQuestionMark,
-    'circle-stop': CircleStop,
     'circle-x': CircleX,
     'clipboard-paste': ClipboardPaste,
     clock: Clock,
@@ -146,6 +143,7 @@
     scissors: Scissors,
     search: Search,
     settings: Settings,
+    square: Square,
     star: Star,
     'text-select': TextSelect,
     'trash-2': Trash2,

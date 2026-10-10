@@ -57,10 +57,11 @@ pre-assessment to any AI chat for a deeper check.
 ## Screens
 
 - **Jobs:**
-  - The places Aktuell, Archiv, Papierkorb as tabs. "Jobs suchen" at the right, the view's one primary,
-    with or without a mailbox; "Papierkorb leeren" in the Papierkorb. While it runs one line under the
-    header ("Portale werden durchsucht, 3 von 8 fertig", under it "Bisher 12 neue Jobs") with a thin bar
-    that never moves back, and a small spinner at Jobs in the sidebar. An empty Aktuell says "Noch keine
+  - The places Aktuell, Archiv, Papierkorb as tabs, at their right one action in one slot
+    (`--place-action`): "Jobs suchen", the view's one primary, with or without a mailbox; "Abbrechen"
+    with the hollow square while a search goes, in every place; "Papierkorb leeren" in the Papierkorb.
+    While it runs one line under the header ("Portale werden durchsucht, 3 von 8 fertig", under it
+    "Bisher 12 neue Jobs") with a thin bar that never moves back; no spinner in the sidebar. An empty Aktuell says "Noch keine
     Jobs"; after a search without a fitting job "Noch keine passenden Jobs gefunden" with "Profil
     öffnen"; the end toast says "Keine neuen passenden Jobs, n ausgeschlossen".
   - The search over every word, and the funnel: the order Übereinstimmung, Datum or Tagessatz; the filters

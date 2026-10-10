@@ -1,5 +1,5 @@
 // What a job can do where it is, with one name, icon and order wherever it shows (the menu of
-// a right click on its row, the reader's "…", the row's tools under the pointer), from the
+// a right click on its row, the reader's head, the row's tools under the pointer), from the
 // tables below (ACTIONS, OF_PLACE, placeMoves, jobMenu, rowTools):
 //   inbox: archive, delete; archive: unarchive, delete; trash: restore, delete for good (asks
 //   first; the caller shows the dialog).
@@ -46,7 +46,7 @@ const TARGET: Record<MoveId, Place> = {
 /** One icon per meaning: archiving looks like the archive, Zurückholen like taking out of
  *  it, Wiederherstellen from the Papierkorb like taking back. Deleting is one look
  *  everywhere: Löschen and Endgültig löschen take the trash, in red (`deletes`: the row's
- *  tool, the entry of the menu and of the reader's "…"). */
+ *  tool, the reader's, the entry of the menu). */
 const ACTIONS: Record<ActionId, { icon: IconName; deletes: boolean }> = {
   archive: { icon: 'archive', deletes: false },
   unarchive: { icon: 'unarchive', deletes: false },
@@ -77,13 +77,9 @@ export function openAd(job: JobView): Promise<string | null> {
   return openTarget({ kind: 'jobUrl', key: job.key });
 }
 
-/** What the job's menu needs from where it opens (the list's row, the reader's "…"; the
- *  row's tools take the moves of the same context). */
+/** What the job's menu needs from where it opens (the list's row; the row's tools and the
+ *  reader's take the moves of the same context). */
 export interface JobMenuContext {
-  /** "Öffnen": the job opens (none where it is open already, the reader). */
-  open?: (() => void) | null;
-  /** Only what changes the job: the reader has its own buttons for what shows it. */
-  changesOnly?: boolean;
   /** A move of the place, where the caller hands the focus on (the reader); by default the
    *  job simply moves. */
   move?: ((id: MoveId) => void) | null;
@@ -94,20 +90,15 @@ export interface JobMenuContext {
 }
 
 /**
- * The job's menu, one table for the row's right click and the reader's "…", in two groups
- * with a line between them: what shows the job (Öffnen, then `showActions`: the reader shows
- * them as its buttons), then what changes it (an excluded job's "Trotzdem bewerten", or
- * "Wieder ausschließen" once it counts, then the moves of its place). No entry names a key.
- * The test id of an entry is `menu-item-<id>`.
+ * The menu of a right click on the job's row, in two groups with a line between them: what
+ * shows the job (`showActions`: the reader shows them as its buttons), then what changes it
+ * (an excluded job's "Trotzdem bewerten", then the moves of its place). A click on the row
+ * opens the job, so the menu has no entry for it. No entry names a key. The test id of an
+ * entry is `menu-item-<id>`.
  */
 export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
-  const change = changesOf(job, context);
-  if (context.changesOnly === true) return change;
   const show: MenuEntry[] = [];
-  if (context.open) {
-    show.push({ id: 'open', label: t.actions.open, icon: 'readerShow', run: context.open });
-  }
   const does: Record<ShowId, () => Promise<string | null>> = {
     mail: () => openTarget({ kind: 'gmail', key: job.key }),
     'open-ad': () => openAd(job),
@@ -126,7 +117,7 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
       run: () => void does[id]().then(report),
     });
   }
-  return [...show, { kind: 'separator' }, ...change];
+  return [...show, { kind: 'separator' }, ...changesOf(job, context)];
 }
 
 /** The second group of the job's menu: what changes the job where it is. */

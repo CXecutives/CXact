@@ -717,11 +717,10 @@ export const de = {
       trash: 'Der Papierkorb ist leer.',
     } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
-  /** What a job can do where it is: one name and icon in its menu (a right click on its row,
-   *  the reader's "…") and in the reader. */
+  /** What a job can do where it is: one name and icon in its menu (a right click on its row)
+   *  and in the reader. */
   actions: {
     /** What shows the job. */
-    open: 'Öffnen',
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
     prompt: 'Prompt kopieren',
@@ -1009,8 +1008,6 @@ export const de = {
     foundSearch: (portal: string) => `Suche bei ${portal}`,
     foundMail: (portal: string) => `Alert-Mail von ${portal}`,
     close: 'Schließen',
-    /** The "…" button (its menu is the second group of the job's menu, `actions`). */
-    more: 'Weitere Aktionen',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,

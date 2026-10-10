@@ -5,7 +5,7 @@
   bar's fade), or with nothing selected its empty state. No cards, no shadows. The handle
   between the columns resizes the list (kept) within limits that follow the window and the
   sidebar and never shrink while the window grows. Below 900 px one column: the list under
-  its pinned header, or the reader with its "×" (the mouse's back button too).
+  its header, as at every width, or the reader with its "×" (the mouse's back button too).
   The run's line is part of the header. Closing a job from the reader focuses its row.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
@@ -74,7 +74,7 @@
   });
   // One column shows the list or the reader.
   const reading = $derived(stage.what !== NO_JOB);
-  // One column: a job in place of the list hides the run card too (the sidebar says the run).
+  // One column: a job in place of the list hides the list and its run line.
   $effect(() => {
     shell.listHidden = reading && viewport.narrow;
     return () => {
@@ -89,8 +89,6 @@
   );
   /** The list is scrolled away from its top (the header shows its hairline). */
   let scrolled = $state(false);
-  /** The same for the whole column, which scrolls in the one-column layout. */
-  let columnScrolled = $state(false);
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
@@ -211,10 +209,8 @@
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      <!-- One column scrolls the whole column under its pinned header: watched from its top. -->
-      <span class="top" use:inView={(place) => (columnScrolled = place === 'above')}></span>
       <div class="head">
-        <ListHeader bind:this={header} scrolled={scrolled || columnScrolled} />
+        <ListHeader bind:this={header} {scrolled} />
       </div>
       <div class="scroll" data-testid="list-scroll">
         <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>
@@ -448,32 +444,9 @@
   }
 
   @media (width < 900px) {
-    /* One column scrolls as a whole, so the run card never squeezes the list; the header
-       (the tabs, the search and the tools) stays on top, and a row brought into view stops below it
-       (the header at its tallest, two lines). */
     .left {
       width: 100%;
-      overflow-x: auto;
-      overflow-y: scroll;
       border-right: 0;
-      scroll-padding-top: calc(
-        2 * var(--head-pad) + var(--first-row) + var(--space-10) + var(--list-toolbar) +
-          var(--space-8) + var(--control-field) + var(--pane-padding)
-      );
-    }
-
-    /* Inside the column's scroller: the scrollbar runs beside it already. */
-    .head {
-      position: sticky;
-      top: 0;
-      z-index: var(--z-sticky);
-      overflow: visible;
-      background-color: var(--surface);
-    }
-
-    .scroll {
-      flex: none;
-      overflow: visible;
     }
 
     .right,

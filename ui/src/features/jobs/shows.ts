@@ -45,7 +45,7 @@ export function showActions(job: JobView): Record<ShowId, ShowAction> {
     'open-ad': {
       id: 'open-ad',
       label: offline ? t.reader.openOffline : t.actions.openAd,
-      icon: 'ad',
+      icon: 'external',
       reason: null,
       hidden: false,
     },

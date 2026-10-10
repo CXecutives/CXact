@@ -1,8 +1,7 @@
 <!--
   The calm sidebar on the window's colour below the top bar: no surface of its own, the
   view's sheet is the divider. It starts with the views: Jobs, Profil, Einstellungen, each
-  with its icon and no count, the first on the first line of every view; while a search goes
-  Jobs shows a small spinner. The places of the
+  with its icon and no count, the first on the first line of every view. The places of the
   jobs (Aktuell, Archiv, Papierkorb) are tabs above the list. The setup shows no sidebar. A
   press here never takes the focus (the list keeps its keys).
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the
@@ -15,7 +14,6 @@
   import { t } from '$lib/i18n/t';
   import { app } from '$lib/state/app.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
-  import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { VIEWS } from '$lib/views';
 
@@ -35,7 +33,6 @@
       label: t.nav[view.label],
       icon: view.icon,
       testid: `nav-${view.id}`,
-      busy: view.id === 'jobs' && run.fetching ? t.toolbar.progress : null,
     })),
   );
 

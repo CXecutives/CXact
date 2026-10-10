@@ -1515,8 +1515,9 @@ test.describe('rows', () => {
     page,
   }) => {
     await open(page, WIN);
-    const shows = [T.actions.open, T.actions.openAd, T.actions.mail, T.actions.prompt];
-    const showIcons = ['readerShow', 'ad', 'alertMail', 'copy'] as const;
+    // A click opens the job: the menu has no "Öffnen".
+    const shows = [T.actions.openAd, T.actions.mail, T.actions.prompt];
+    const showIcons = ['external', 'alertMail', 'copy'] as const;
     // Aktuell.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
@@ -1532,14 +1533,7 @@ test.describe('rows', () => {
     await expect(menu.getByRole('separator')).toHaveCount(1);
     await expect(menu.locator('.keys')).toHaveCount(0);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
-    // "Öffnen" opens the job; the open job's own menu has none.
-    await menuItem(page, 'open').click();
-    await expect(page.getByTestId('reader-title')).toHaveText(
-      await row(page, 'freelancermap-2802').locator('.title').innerText(),
-    );
-    await rowMenu(page, 'freelancermap-2802');
     await expect(menuItem(page, 'open')).toHaveCount(0);
-    await expect(menuItem(page, 'mail')).toBeVisible();
     await page.keyboard.press('Escape');
     // The archive: unarchive, delete.
     await viaMenu(page, 'archive', 'freelancermap-2802');
@@ -1576,7 +1570,6 @@ test.describe('rows', () => {
     await expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible();
     const menu = await rowMenu(page, key);
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
-      T.actions.open,
       T.actions.openAd,
       T.actions.mail,
       T.actions.prompt,

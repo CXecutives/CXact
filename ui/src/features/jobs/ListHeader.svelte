@@ -3,16 +3,13 @@
   above the list, with a hairline under it once the list scrolled beneath it. First row: the places as
   tabs (Aktuell, Archiv, Papierkorb, their names only, the one segmented look of the app;
   another place starts without the search, like a folder of a mail app) and at its right end
-  the place's one action: in the
-  Aktuell "Jobs suchen" with the magnifier (the alert mails, then the portals), the one
-  primary of the Jobs view, with or without a mailbox; "Abbrechen" stands in its place while
-  a fetch goes (the wider of them sets the slot); in the other places "Abbrechen" stands where
-  it stands in Aktuell, so
-  it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
-  while the app scores the jobs anew, and while its way cannot run, saying why. In the
-  Papierkorb "Papierkorb leeren" (outlined with the red of every button that deletes, as
-  large as the fetch; asks first; "Abbrechen" over it while a
-  fetch goes), in the Archiv none. A narrow column puts the action under the tabs.
+  the place's one action in one slot (at least --place-action wide, its right edge fixed, so
+  a swap moves nothing): while a search goes "Abbrechen" with the hollow square, in every
+  place; else in Aktuell "Jobs suchen" with the magnifier (the alert mails, then the
+  portals), the one primary of the Jobs view, with or without a mailbox, locked while the app
+  scores the jobs anew and while its way cannot run, saying why; in the Papierkorb "Papierkorb
+  leeren" (outlined with the red of every button that deletes; asks first); in the Archiv
+  none. A narrow column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
@@ -53,7 +50,6 @@
   import { trashEmptied } from './actions';
   import { funnelEntries } from './headerMenus';
   import RunLine from './RunLine.svelte';
-  import TrashAction from './TrashAction.svelte';
 
   interface Props {
     /** The list is scrolled away from its top: the header shows its hairline. */
@@ -151,15 +147,6 @@
     });
   }
 
-  /* ----------------------------------------------------------------------- fetch */
-
-  /** "Jobs suchen" shows: in Aktuell while no fetch goes (elsewhere it only holds the cell's
-   *  width, so "Abbrechen" stands where it stands in Aktuell). */
-  const fetchShown = $derived(place === 'inbox' && !run.fetching);
-  /** The fetch's buttons show: in Aktuell, and "Abbrechen" in every place while a fetch
-   *  goes. */
-  const fetchGroup = $derived(place === 'inbox' || run.fetching);
-
   /* ----------------------------------------------------------------------- trash */
 
   let confirmEmpty = $state(false);
@@ -199,38 +186,6 @@
   }
 </script>
 
-{#snippet fetchButtons()}
-  <!-- The fetch and "Abbrechen" share one slot, as wide as the wider of them: nothing
-       moves. -->
-  <span class="fetch">
-    <span class="run">
-      <span class="swap" class:shown={fetchShown} inert={!fetchShown}>
-        <Button
-          variant="primary"
-          icon="search"
-          label={t.toolbar.searchNow}
-          disabled={run.fetchBlocked !== null}
-          disabledReason={run.fetchBlocked}
-          wide
-          testid={fetchShown ? 'fetch' : null}
-          onclick={() => void run.start({ kind: 'fetch' })}
-        />
-      </span>
-      <span class="swap" class:shown={run.fetching} inert={!run.fetching}>
-        <Button
-          variant="secondary"
-          icon="cancel"
-          label={t.toolbar.cancel}
-          loading={run.fetching && run.cancelling}
-          wide
-          testid={run.fetching ? 'cancel-run' : null}
-          onclick={() => void run.cancel()}
-        />
-      </span>
-    </span>
-  </span>
-{/snippet}
-
 <div class="header" data-testid="list-header" data-press-only>
   <PageHeader line={scrolled}>
     {#snippet lead()}
@@ -246,24 +201,41 @@
       </span>
     {/snippet}
     {#snippet actions()}
-      {#if place === 'inbox' || run.fetching || emptiable}
-        <!-- One cell in every place, as wide as the widest of what it holds (the fetch's
-           buttons hold its width where they do not show); only the one that fits the place
-           and the run shows and takes clicks: "Abbrechen" while a fetch goes, wherever the
-           list is (a fetch that ends at once simply shows "Jobs suchen" again). -->
+      {#if run.fetching || place === 'inbox' || emptiable}
         <span class="action" data-testid="place-action">
-          <span class="slot" class:shown={fetchGroup} inert={!fetchGroup}>
-            {@render fetchButtons()}
-          </span>
-          {#if emptiable}
-            <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
-              <TrashAction
-                disabled={run.active}
-                disabledReason={run.busyText}
-                testid={run.fetching ? null : 'empty-trash'}
-                onclick={askEmpty}
-              />
-            </span>
+          {#if run.fetching}
+            <Button
+              variant="secondary"
+              icon="cancel"
+              label={t.toolbar.cancel}
+              loading={run.cancelling}
+              wide
+              testid="cancel-run"
+              onclick={() => void run.cancel()}
+            />
+          {:else if place === 'inbox'}
+            <Button
+              variant="primary"
+              icon="search"
+              label={t.toolbar.searchNow}
+              disabled={run.fetchBlocked !== null}
+              disabledReason={run.fetchBlocked}
+              wide
+              testid="fetch"
+              onclick={() => void run.start({ kind: 'fetch' })}
+            />
+          {:else}
+            <Button
+              variant="secondary"
+              icon="trash"
+              label={t.actions.emptyTrash}
+              disabled={run.active}
+              disabledReason={run.busyText}
+              warns
+              wide
+              testid="empty-trash"
+              onclick={askEmpty}
+            />
           {/if}
         </span>
       {/if}
@@ -371,49 +343,12 @@
     flex: none;
   }
 
-  /* The fetch's buttons and "Papierkorb leeren" in one cell: as wide as the wider. */
+  /* The place's one action: at least --place-action wide, its button filling it. */
   .action {
-    display: grid;
+    display: flex;
     flex: none;
+    min-width: var(--place-action);
     margin-left: auto;
-  }
-
-  /* The one out of turn fades away under the other (out of reach at once: inert); each ends
-     at the cell's right edge. */
-  .slot {
-    display: flex;
-    grid-area: 1 / 1;
-    justify-content: flex-end;
-    opacity: 0;
-    transition: opacity var(--dur-fast) var(--ease-standard);
-  }
-
-  .slot.shown {
-    opacity: 1;
-  }
-
-  .fetch {
-    display: flex;
-  }
-
-  /* "Jobs suchen" and "Abbrechen" in one cell, both as wide as the wider. */
-  .run {
-    display: grid;
-  }
-
-  .run > .swap {
-    grid-area: 1 / 1;
-  }
-
-  /* The one out of turn fades away under the other (out of reach at once: inert). */
-  .swap {
-    display: flex;
-    opacity: 0;
-    transition: opacity var(--dur-fast) var(--ease-standard);
-  }
-
-  .swap.shown {
-    opacity: 1;
   }
 
   .unfold {
