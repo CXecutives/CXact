@@ -1895,6 +1895,46 @@ async fn a_robots_txt_that_answers_4xx_allows_and_is_kept() {
     }
 }
 
+/// The app's fetch path hands on the robots.txt of the search pages' host: Amadeus Fire's
+/// search goes by its directory host's rules, not by those beside its ads, and only those are
+/// kept as its search rules.
+#[tokio::test]
+async fn the_fetch_path_reads_the_search_hosts_robots() {
+    struct TwoHosts;
+    impl PageFetcher for TwoHosts {
+        async fn fetch(&mut self, _: &JobLink, _: &CancellationToken) -> PageOutcome {
+            PageOutcome::Gone
+        }
+        async fn robots(
+            &mut self,
+            _: Portal,
+            _: &CancellationToken,
+        ) -> Result<Option<String>, PageOutcome> {
+            Ok(Some("User-agent: *\nDisallow: /wp-admin/".into()))
+        }
+        async fn search_robots(
+            &mut self,
+            _: Portal,
+            _: &CancellationToken,
+        ) -> Result<Option<String>, PageOutcome> {
+            Ok(Some("User-agent: *\nDisallow: /".into()))
+        }
+    }
+    let af = Portal::AmadeusFire;
+    let policy = Mutex::new(Policy::in_memory());
+    let mut fetcher: Fetchers<TwoHosts> = Fetchers::Session(TwoHosts);
+    let cancel = CancellationToken::new();
+    let read = search_robots_of(&mut fetcher, &policy, af, &cancel, &base, |_| {})
+        .await
+        .unwrap();
+    let Ok(robots) = read else {
+        panic!("the search robots.txt was not read");
+    };
+    assert!(!robots.allows("/packages/jobtoolControlling/"));
+    assert_eq!(lock(&policy).search_robots(af, base()), Some(robots));
+    assert!(lock(&policy).robots(af, base()).is_none());
+}
+
 /// The same 4xx on page after page is the portal turning pages away (a sign-in wall, an
 /// anti-bot answer), not every job its own: the first job of the series is charged, the next
 /// ones stay queued untouched, and the third in a row stops the portal for the run - without a

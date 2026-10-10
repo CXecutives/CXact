@@ -446,6 +446,17 @@ impl<S: PageFetcher + Send> PageFetcher for Fetchers<S> {
             Fetchers::Session(session) => session.robots(portal, cancel).await,
         }
     }
+
+    async fn search_robots(
+        &mut self,
+        portal: Portal,
+        cancel: &CancellationToken,
+    ) -> Result<Option<String>, PageOutcome> {
+        match self {
+            Fetchers::Guest(http) => http.search_robots(portal, cancel).await,
+            Fetchers::Session(session) => session.search_robots(portal, cancel).await,
+        }
+    }
 }
 
 /// Health of a portal for the interface: why it rests or what looks wrong.
