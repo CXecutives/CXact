@@ -187,7 +187,7 @@ test('button styles: every text button of a row is outlined; red deletes', async
   expect(heights.length).toBeGreaterThan(0);
   expect(heights.filter((each) => each > height)).toEqual([]);
 });
-test('narrow, a row puts its control under the label only where the two do not fit', async ({
+test('narrow, a row keeps its buttons beside its label while the box has room, never over it', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 560, height: 800 });
@@ -216,8 +216,13 @@ test('narrow, a row puts its control under the label only where the two do not f
 });
 
 test('narrow, the calls go to a line of their own under the portal', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 800 });
   await settings(page);
+  // A portal without calls keeps its height: no empty line for calls it does not have.
+  const plain = page.getByTestId('portal-gulp');
+  const height = async (): Promise<number> => Math.round((await plain.boundingBox())!.height);
+  const wide = await height();
+  await page.setViewportSize({ width: 480, height: 800 });
+  await expect.poll(height).toBe(wide);
   await reveal(page, page.getByTestId('sign-in-freelance'));
   const [signIn, status] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),

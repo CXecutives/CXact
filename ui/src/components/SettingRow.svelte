@@ -193,6 +193,12 @@
     height: var(--row-line);
   }
 
+  /* A row whose buttons are all away (a portal without calls) keeps no room for them: no gap
+     beside the text, and no empty line under it in a narrow box. */
+  .actions:not(:has(*)) {
+    display: none;
+  }
+
   /* In a narrow box the buttons take a line of their own at the row's end (they wrap within
      its width rather than run past its edge); the text keeps its room, `end` its place. */
   @container (width < 520px) {

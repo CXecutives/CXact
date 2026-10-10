@@ -229,6 +229,12 @@ test('Alert-Mails: skipped, or connected with the portals rows; Fertig opens the
   await next(page).click();
   await expect(page.getByTestId('first-address')).toHaveText('alerts.demo@gmail.com');
   await expect(page.getByTestId('first-alerts')).toContainText(T.settings.setUpAlert);
+  // The card is narrow: a portal's calls take a line of their own under its name and state.
+  const [signIn, state] = await Promise.all([
+    page.getByTestId('sign-in-freelance').boundingBox(),
+    page.getByTestId('portal-freelance-hint').boundingBox(),
+  ]);
+  expect(signIn!.y).toBeGreaterThanOrEqual(state!.y + state!.height);
   await expect(next(page)).toHaveText(T.firstRun.next);
   await expect(next(page)).toHaveClass(/primary/);
   await next(page).click();

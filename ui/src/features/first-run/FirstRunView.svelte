@@ -336,10 +336,6 @@
     background-color: transparent;
   }
 
-  .card.page {
-    container-type: inline-size;
-  }
-
   .card.page .foot {
     flex-wrap: wrap;
     background-color: var(--layout-page);
@@ -365,7 +361,10 @@
     }
   }
 
+  /* The container its rows ask for their width (the Alert-Mails' portals put their calls on a
+     line of their own in the narrow card, as at the smallest window). */
   .card {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-16);
