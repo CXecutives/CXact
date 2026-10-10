@@ -421,12 +421,12 @@ const DEMO_FORM: ProfileForm = {
   workload: 'any',
   minMonths: 6,
   competences: [
-    { name: 'Interim Management', years: 12, focus: false },
-    { name: 'Controlling', years: 18, focus: false },
-    { name: 'Konzernrechnungslegung nach IFRS', years: 14, focus: false },
-    { name: 'Konsolidierung', years: 11, focus: false },
-    { name: 'Liquiditätsplanung', years: 10, focus: false },
-    { name: 'Restrukturierung', years: 8, focus: false },
+    { name: 'Interim Management', years: 12 },
+    { name: 'Controlling', years: 18 },
+    { name: 'Konzernrechnungslegung nach IFRS', years: 14 },
+    { name: 'Konsolidierung', years: 11 },
+    { name: 'Liquiditätsplanung', years: 10 },
+    { name: 'Restrukturierung', years: 8 },
   ],
   tools: ['SAP S/4HANA', 'LucaNet', 'Power BI', 'IFRS', 'HGB', 'Konzernabschluss'],
   years: 20,
@@ -510,7 +510,7 @@ function mergeCv(stored: ProfileForm | null): ProfileForm {
       )
     )
       continue;
-    competences.push({ ...row, focus: false });
+    competences.push({ ...row });
   }
   return {
     ...base,
@@ -872,8 +872,8 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.profile = infoOf({
       ...structuredClone(DEMO_FORM),
       competences: [
-        { name: 'Controlling', years: 18, focus: false },
-        { name: 'Treasury', years: null, focus: false },
+        { name: 'Controlling', years: 18 },
+        { name: 'Treasury', years: null },
       ],
       tools: ['IFRS'],
       industries: [],
@@ -887,8 +887,8 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
       ...structuredClone(DEMO_FORM),
       roles: [],
       competences: [
-        { name: 'Controlling', years: 18, focus: false },
-        { name: 'Treasury', years: null, focus: false },
+        { name: 'Controlling', years: 18 },
+        { name: 'Treasury', years: null },
       ],
       languages: [],
     });

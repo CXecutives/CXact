@@ -56,7 +56,7 @@
 
   const append = (): void => {
     unfolded = true;
-    rows = [...rows, { name: '', years: null, focus: false }];
+    rows = [...rows, { name: '', years: null }];
   };
 
   async function add(): Promise<void> {
@@ -69,7 +69,7 @@
    *  the caret. */
   async function begin(text: string): Promise<void> {
     if (text === '') return;
-    rows = [{ name: text, years: null, focus: false }];
+    rows = [{ name: text, years: null }];
     await tick();
     const input = list?.querySelector<HTMLInputElement>('[data-row] input');
     input?.focus();

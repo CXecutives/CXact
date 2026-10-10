@@ -10,8 +10,6 @@ export const NUMBER_LIMITS = {
 } as const satisfies Partial<Record<keyof ProfileForm, number>>;
 export type NumberField = keyof typeof NUMBER_LIMITS;
 
-/** At most this many competences are Schwerpunkte. */
-export const MAX_FOCUS = 5;
 /** The most years of experience, in total and per competence. */
 export const MAX_YEARS = 70;
 /** The most entries of a list, and characters of an entry. */

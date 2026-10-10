@@ -716,7 +716,7 @@ test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once co
     permanent: false,
     temporary: false,
     countries: ['DE'],
-    competences: [{ name: 'Controlling', years: null, focus: false }],
+    competences: [{ name: 'Controlling', years: null }],
     languages: [{ language: 'Deutsch', level: 'B2' }],
   });
   await expect(missing(page)).toHaveCount(0);

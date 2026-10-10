@@ -57,7 +57,7 @@ export function putTerm(form: ProfileForm, { term, field, level }: ProfileTerm):
   const text = term.trim();
   if (text === '' || namesIn(form, field).some((name) => same(name, text))) return false;
   if (field === 'competence') {
-    form.competences = [...form.competences, { name: text, years: null, focus: false }];
+    form.competences = [...form.competences, { name: text, years: null }];
   } else if (field === 'industry') {
     form.industries = [...form.industries, { name: text, preferred: false }];
   } else if (field === 'language') {

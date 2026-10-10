@@ -209,7 +209,7 @@ class ProfileEditor {
   create(): void {
     this.#start('new', emptyForm(), {
       ...emptyForm(),
-      competences: [{ name: '', years: null, focus: false }],
+      competences: [{ name: '', years: null }],
     });
   }
 
