@@ -25,9 +25,9 @@ pub const MAX_TERMS: usize = 8;
 /// keeps of the assessment (2: page facts and the teaser flag; 3: the company, for the
 /// industry wish; 4: career level, industries and a remote field in words; 5: the workload
 /// in the stored facts; 6: the open terms for "Häufig verlangt"; 7: an open term is a
-/// requirement whose words hold a term, [`open_term`]). Part of the revision: a change scores
-/// every stored job again.
-const INPUTS: u32 = 7;
+/// requirement whose words hold a term, [`open_term`]; 8: the quoted requirements put a
+/// language last). Part of the revision: a change scores every stored job again.
+const INPUTS: u32 = 8;
 
 /// The local engine with one profile.
 pub struct LocalMatcher {
@@ -299,17 +299,22 @@ pub fn open(assessment: &Assessment) -> Vec<String> {
         .collect()
 }
 
-/// Up to two met requirements quoted from the ad, musts first.
+/// The met requirements quoted in the list row: musts before optional ones, a language
+/// last (met, it says little about the field).
 fn top(assessment: &Assessment) -> Vec<String> {
-    let met = |weight: Weight| {
-        assessment.reasons.iter().filter(move |r| {
+    let mut met: Vec<&matching::Reason> = assessment
+        .reasons
+        .iter()
+        .filter(|r| {
             r.kind == ReasonKind::Met
-                && r.weight == weight
+                && matches!(r.weight, Weight::Must | Weight::Nice)
                 && matches!(r.code, ReasonCode::Requirement | ReasonCode::Term)
         })
-    };
-    met(Weight::Must)
-        .chain(met(Weight::Nice))
+        .collect();
+    let language =
+        |r: &matching::Reason| r.params.get("class").and_then(Value::as_str) == Some("language");
+    met.sort_by_key(|r| (language(r), r.weight != Weight::Must));
+    met.into_iter()
         .filter_map(|r| r.label.clone())
         .take(TOP)
         .collect()
@@ -449,6 +454,28 @@ Rahmenbedingungen:
         assert_eq!(judged.record, record);
         assert_eq!(judged.open, ["Kenntnisse in Zollabwicklung"]);
         assert_eq!(judged.terms, ["Kenntnisse in Zollabwicklung"], "a term too");
+    }
+
+    /// A met language is quoted after every other met requirement, a nice one included.
+    #[test]
+    fn a_met_language_is_quoted_last() {
+        let matcher = LocalMatcher::from_form(&profile());
+        let text = "Wir suchen einen Interim CFO (m/w/d).
+
+Anforderungen:
+- Verhandlungssichere Deutschkenntnisse
+- Kenntnisse in Zollabwicklung
+
+Wünschenswert:
+- Erfahrung im Controlling";
+        let record = assess(&matcher, "Interim CFO (m/w/d)", "Hamburg", text);
+        assert_eq!(
+            record.top,
+            [
+                "Erfahrung im Controlling",
+                "Verhandlungssichere Deutschkenntnisse"
+            ]
+        );
     }
 
     /// The open terms: musts first, then nice ones, each once; a sentence, a language, a met
