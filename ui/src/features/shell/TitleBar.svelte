@@ -12,8 +12,9 @@
   buttons' zones, --titlebar-tools-start and --titlebar-tools-end, to the page;
   src-tauri/src/platform.rs. macOS and the gaps between the buttons: Tauri's drag script). A
   press on a button here never takes the focus, like on a native title bar. Both side buttons
-  are plain switches. In the setup the bar is one colour without a seam and holds none of its
-  buttons (only the caption buttons on Windows); all of it moves the window.
+  are plain switches. In the setup the bar holds none of its buttons (only the caption
+  buttons on Windows), has no seam and follows the setup's columns (white over the step, the
+  picture's cream over the picture); all of it moves the window.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -73,6 +74,7 @@
   class:drawn
   class:docked={shell.docked}
   class:page={shell.firstRun || navigation.current !== 'jobs'}
+  class:pictured={shell.firstRun && shell.setupPicture}
   data-testid="title-bar"
   data-tauri-drag-region
   data-press-only
@@ -154,6 +156,12 @@
   /* Profil, Einstellungen and the setup: the ground of their page (--layout-page). */
   .bar.page {
     background-color: var(--layout-page);
+  }
+
+  /* The setup with its picture: the page's white over the step, the picture's cream over the
+     picture, split in the middle like the two columns below (no seam). */
+  .bar.pictured {
+    background: linear-gradient(to right, var(--layout-page) 50%, var(--setup-picture) 50%);
   }
 
   /* The sidebar's colour as far as the docked sidebar reaches, its seam at the edge. */

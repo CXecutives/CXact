@@ -1,11 +1,14 @@
 // The setup as data: its steps in their order, each with its heading, its one sentence, where
-// Zurück leads and the words of its one primary button.
+// Zurück leads, the words of its one primary button, its dot in the foot (Start, Profil,
+// Postfach, Fertig) and the picture of the app beside it (pictures.ts; none beside the long
+// steps of the whole profile).
 // FirstRunView.svelte renders this table (each step's body is its snippet of the same id),
 // onboarding.svelte.ts walks it. Adding, moving or removing a step is one entry here and its
 // snippet.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { Portal } from '$lib/ipc/types';
+import type { PictureId } from './pictures';
 
 export type StepId = 'way' | 'upload' | 'reading' | 'review' | 'self' | 'alerts' | 'done';
 /** How the profile comes: from the CV (the recommended way) or typed in. */
@@ -28,7 +31,14 @@ export interface StepSpec {
   back: (walk: Walk) => StepId | null;
   /** The words of its primary button (null: the step's own control goes on). */
   next: ((t: Catalog, walk: Walk) => string) | null;
+  /** Its dot in the foot, from 0 (DOTS of them). */
+  dot: number;
+  /** The picture of the app beside it (none: the step takes the whole width). */
+  picture?: PictureId;
 }
+
+/** The dots of the foot: Start, Profil, Postfach, Fertig. */
+export const DOTS = 4;
 
 export const STEPS: readonly StepSpec[] = [
   {
@@ -38,6 +48,8 @@ export const STEPS: readonly StepSpec[] = [
     text: (t) => t.firstRun.welcomeText,
     back: () => null,
     next: null,
+    dot: 0,
+    picture: 'jobs',
   },
   {
     // The drop zone goes on; a failed evaluation comes back here and says why.
@@ -45,6 +57,8 @@ export const STEPS: readonly StepSpec[] = [
     heading: (t) => t.firstRun.upload,
     back: () => 'way',
     next: null,
+    dot: 1,
+    picture: 'profile',
   },
   {
     // "Abbrechen" (and the mouse's back button) go back to the upload.
@@ -52,6 +66,8 @@ export const STEPS: readonly StepSpec[] = [
     heading: (t) => t.firstRun.reading,
     back: () => null,
     next: null,
+    dot: 1,
+    picture: 'profile',
   },
   {
     // After the CV: the whole profile as the AI filled it, to check.
@@ -60,6 +76,7 @@ export const STEPS: readonly StepSpec[] = [
     text: (t) => t.firstRun.reviewText,
     back: () => 'upload',
     next: (t) => t.firstRun.next,
+    dot: 1,
   },
   {
     // By hand: the whole profile, empty.
@@ -68,6 +85,7 @@ export const STEPS: readonly StepSpec[] = [
     text: (t) => t.firstRun.later,
     back: () => 'way',
     next: (t) => t.firstRun.next,
+    dot: 1,
   },
   {
     // Without a mailbox "Überspringen" and "Verbinden"; once connected the portals' rows.
@@ -76,6 +94,8 @@ export const STEPS: readonly StepSpec[] = [
     text: (t, walk) => (walk.mailbox ? t.firstRun.alertsDone : t.firstRun.alertsText(walk.alerts)),
     back: (walk) => (walk.way === 'cv' ? 'review' : 'self'),
     next: (t, walk) => (walk.mailbox ? t.firstRun.next : t.settings.connect),
+    dot: 2,
+    picture: 'mail',
   },
   {
     // Says what was set up: everything with a mailbox, else the profile.
@@ -83,6 +103,8 @@ export const STEPS: readonly StepSpec[] = [
     heading: (t) => t.firstRun.done,
     back: () => null,
     next: (t) => t.firstRun.toJobs,
+    dot: 3,
+    picture: 'jobs',
   },
 ];
 

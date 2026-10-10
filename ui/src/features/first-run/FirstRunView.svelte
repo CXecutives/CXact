@@ -1,13 +1,15 @@
 <!--
   The setup, a mode of the shell of its own (App.svelte: no sidebar, no sidebar button, no
   Zurück and Vor in the top bar, no job view button; every switch of the view is refused
-  while it stands). One step at a time from the table of steps.ts, every step in the frame of
-  the Profil page (Page: the pages' column on the white, the view scrolls under the top bar's
-  fade, nothing centred): at the column's top the step's heading flush left (no step
-  indicator: every heading says where the user is, user 2026-10-10) (it takes the focus on every step, so a
-  screen reader starts there), at most one sentence, its body (the snippet of its id; a form
-  in one white group, tiles and the drop zone as white boxes with an edge on the page) and its foot right
-  under it: Zurück at the left, the step's buttons at the right, the one primary last. Enter
+  while it stands). One step at a time from the table of steps.ts (design round 7): the step
+  in the frame of the Profil page (Page) at the left, the picture of the app at the right
+  (StepPicture, on the cream of the sidebar; the top bar follows the two colours) from 900 px
+  on, except beside the long steps of the whole profile, which take the whole width. At the
+  column's top the step's heading (24, it takes the focus on every step, so a screen reader
+  starts there), at most one sentence, its body (the snippet of its id) and its foot right
+  under it: Zurück as an arrow at the left, the dots of where the user is in the middle
+  (Start, Profil, Postfach, Fertig; only the position), the step's buttons at the right, the
+  one primary last. A step comes in sliding 12 px in the direction it was reached from. Enter
   is the primary while the step can go on; the mouse's back button is Zurück
   (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360.
 
@@ -32,12 +34,15 @@
   import Notice from '$components/Notice.svelte';
   import Page from '$components/Page.svelte';
   import Spinner from '$components/Spinner.svelte';
+  import StepDots from '$components/StepDots.svelte';
   import { liftToasts } from '$lib/actions/liftToasts';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import { fade } from '$lib/motion/transitions';
+  import { stepIn } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
+  import { shell } from '$lib/state/shell.svelte';
+  import { viewport } from '$lib/state/viewport.svelte';
   import { fromCv } from '../shared/fromCv.svelte';
   import MissingLine from '../shared/MissingLine.svelte';
   import ProfileView, { type MissingField } from '../profile/ProfileView.svelte';
@@ -45,7 +50,8 @@
   import NewProfileWays from '../shared/NewProfileWays.svelte';
   import PortalRow from '../shared/PortalRow.svelte';
   import { onboarding } from './onboarding.svelte';
-  import { stepOf, type StepId } from './steps';
+  import StepPicture from './StepPicture.svelte';
+  import { DOTS, STEPS, stepOf, type StepId } from './steps';
   import Upload from './Upload.svelte';
 
   const step = $derived(onboarding.step);
@@ -55,6 +61,20 @@
   const nextWords = $derived(spec.next?.(t, walk) ?? null);
   /** The long steps of the whole profile: their foot stays at the window's bottom. */
   const long = $derived(step === 'review' || step === 'self');
+  /** The picture of the app beside the step (a wide window, a step that has one). */
+  const picture = $derived(viewport.narrow ? null : (spec.picture ?? null));
+  $effect(() => {
+    shell.setupPicture = picture !== null;
+    return () => (shell.setupPicture = false);
+  });
+  /** The direction the step was reached from: forward slides in from the right. */
+  let forward = $state(true);
+  let lastIndex = 0;
+  $effect(() => {
+    const index = STEPS.findIndex((each) => each.id === step);
+    forward = index >= lastIndex;
+    lastIndex = index;
+  });
   /** Why the CV filled nothing, said above the drop zone (also before a try while the tries
    *  are used up). */
   const problem = $derived(
@@ -70,8 +90,6 @@
         ? { label: nextWords, testid: 'first-next', onclick: () => void next() }
         : null,
   );
-  /** The foot holds something: Zurück, or a button of the step. */
-  const footed = $derived(back !== null || primary !== null || step === 'reading');
 
   let busy = $state(false);
   /** The mailbox form signs in and counts (Zurück and Überspringen stop it first). */
@@ -170,7 +188,6 @@
       onself={() => onboarding.byHand()}
       testid="first-way"
     />
-    <p class="text" data-testid="first-overview">{t.firstRun.overview}</p>
   {:else if id === 'upload'}
     {#if problem !== null}
       <Notice tone="danger" variant="inline" text={problem} testid="cv-error" />
@@ -217,7 +234,7 @@
   {/if}
 {/snippet}
 
-<Page testid="first-run" bind:element={page}>
+{#snippet stepView()}
   {#key step}
     <section
       class="step"
@@ -225,7 +242,7 @@
       data-testid="first-step"
       data-step={step}
       use:formKeys={{ save: () => void next() }}
-      in:fade
+      in:stepIn={{ forward }}
     >
       <div class="top">
         <div class="heading">
@@ -248,31 +265,58 @@
         {#if spec.text}<p class="text">{spec.text(t, walk)}</p>{/if}
       </div>
       {@render body(step)}
-      {#if footed}
-        <footer
-          class="foot"
-          class:sticky={long}
-          class:stuck={long && stuck}
-          data-testid="first-bar"
-          use:watchStuck
-          use:liftToasts={long}
-        >
+      <footer
+        class="foot"
+        class:sticky={long}
+        class:stuck={long && stuck}
+        data-testid="first-bar"
+        use:watchStuck
+        use:liftToasts={long}
+      >
+        <span class="back">
           {#if back !== null}
-            <span class="back">
-              <Button variant="ghost" label={t.common.back} testid="first-back" onclick={goBack} />
-            </span>
+            <Button
+              variant="secondary"
+              iconOnly
+              icon="historyBack"
+              label={t.common.back}
+              testid="first-back"
+              onclick={goBack}
+            />
           {/if}
+        </span>
+        <StepDots
+          count={DOTS}
+          at={spec.dot}
+          label={t.firstRun.position(spec.dot + 1, DOTS)}
+          testid="first-dots"
+        />
+        <span class="ends">
           {#if long && flagged !== null}
             <span class="flag">
               <MissingLine fields={flagged} onjump={(field) => void profileView?.jump(field)} />
             </span>
           {/if}
-          <span class="ends">{@render ends()}</span>
-        </footer>
-      {/if}
+          {@render ends()}
+        </span>
+      </footer>
     </section>
   {/key}
-</Page>
+{/snippet}
+
+<div class="setup" class:pictured={picture !== null}>
+  {#if picture !== null}
+    <!-- Beside the picture: the step in a narrower block, centred in its column. -->
+    <div class="aside-step" data-testid="first-run" bind:this={page}>{@render stepView()}</div>
+  {:else}
+    <Page testid="first-run" bind:element={page}>{@render stepView()}</Page>
+  {/if}
+  {#if picture !== null}
+    <aside class="picture" data-testid="setup-side">
+      {#key picture}<StepPicture id={picture} />{/key}
+    </aside>
+  {/if}
+</div>
 
 <style>
   /* The step under the indicator, a little further from it than the column's gap. */
@@ -303,9 +347,46 @@
 
   .title {
     color: var(--text-heading);
-    font: var(--type-xl);
-    letter-spacing: var(--tracking-tight);
+    font: var(--type-display);
+    letter-spacing: var(--tracking-display);
     outline: none;
+  }
+
+  /* The step and, from 900 px on, the picture of the app beside it: two equal columns, so
+     the top bar's two colours meet where they do (TitleBar). */
+  .setup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100%;
+  }
+
+  .setup.pictured {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  /* The step beside the picture: a block of --setup-step-width, centred in its column and
+     in the window's height (its foot right under it). */
+  .aside-step {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding: var(--space-48) var(--space-48);
+    background-color: var(--layout-page);
+  }
+
+  .aside-step > :global(.step) {
+    width: 100%;
+    max-width: var(--setup-step-width);
+    margin-inline: auto;
+  }
+
+  .picture {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-48) var(--space-32);
+    background-color: var(--setup-picture);
   }
 
   .text {
@@ -347,56 +428,56 @@
     color: var(--text-subtle);
   }
 
-  /* The foot on the page right under the step: Zurück's words on the column's edge, the
-     buttons at the right; what is missing beside Weiter, in a narrow column on a line of its
-     own above Zurück and Weiter. */
+  /* The foot right under the step: Zurück at the left, the dots in the middle, the step's
+     buttons at the right (what is missing beside Weiter, in a narrow column on a line of its
+     own above them). */
   .foot {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(var(--control-field), 1fr) auto minmax(max-content, 1fr);
     align-items: center;
     gap: var(--space-12);
+    min-height: var(--control-field);
   }
 
   .back {
     display: flex;
-    margin-inline-start: calc(-1 * var(--ghost-inset));
-  }
-
-  .flag {
-    display: flex;
-    flex: 1;
-    justify-content: flex-end;
-    min-width: 0;
   }
 
   .ends {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
     gap: var(--space-8);
-    margin-inline-start: auto;
+  }
+
+  .flag {
+    display: flex;
+    justify-content: flex-end;
+    min-width: 0;
   }
 
   @container (width < 560px) {
+    .foot {
+      grid-template-columns: auto auto minmax(0, 1fr);
+    }
+
     .flag {
-      order: -1;
       flex-basis: 100%;
       justify-content: flex-start;
     }
   }
 
-  /* A long step's foot stays at the window's bottom, on the page's ground over the form. */
+  /* A long step's foot stays at the window's bottom as the light bar of the Profil (FloatBar's
+     look: white, hairline, the toasts' shadow). */
   .sticky {
     position: sticky;
     z-index: var(--z-sticky);
-    bottom: calc(-1 * var(--border-width));
-    padding: var(--space-12) 0 var(--space-16);
-    border-top: var(--border-width) solid transparent;
-    background-color: var(--layout-page);
-    transition: border-color var(--dur-base) var(--ease-out);
-  }
-
-  .sticky.stuck {
-    border-top-color: var(--border);
+    bottom: var(--float-gap);
+    padding: var(--space-8) var(--space-8) var(--space-8) var(--space-8);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--surface-raised);
+    box-shadow: var(--sh-pop);
   }
 </style>

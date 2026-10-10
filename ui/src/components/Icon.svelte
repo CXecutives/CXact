@@ -14,6 +14,7 @@
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
+  import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
@@ -85,6 +86,7 @@
   const GLYPHS: Record<Glyph, Component<Record<string, unknown>>> = {
     archive: Archive,
     'archive-restore': ArchiveRestore,
+    'arrow-down': ArrowDown,
     'arrow-left': ArrowLeft,
     'arrow-right': ArrowRight,
     award: Award,

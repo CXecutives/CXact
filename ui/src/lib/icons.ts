@@ -77,6 +77,8 @@ export const ICONS = {
   pickDay: 'calendar-days',
   /** Zurück and Vor in the top bar: through the views, places and jobs seen. */
   historyForward: 'arrow-right',
+  /** What comes of something (the setup's picture: an alert mail, then its jobs). */
+  arrowDown: 'arrow-down',
   historyBack: 'arrow-left',
   /** The top bar's sidebar button at rest; under the pointer it says what a click does. */
   sidebar: 'panel-left',

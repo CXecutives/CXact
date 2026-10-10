@@ -94,6 +94,21 @@ export function slideIn(node: Element, params: RiseParams = {}): TransitionConfi
   };
 }
 
+/** A step of the setup comes in: it fades in while sliding by --move-lg from the side it was
+ *  reached from (Weiter: from the right; Zurück: from the left), 150 ms, ease-out. */
+export function stepIn(
+  node: Element,
+  { forward = true }: { forward?: boolean } = {},
+): TransitionConfig {
+  if (isReducedMotion()) return crossfade(node);
+  const x = move('lg') * (forward ? 1 : -1);
+  return {
+    duration: duration('base'),
+    easing: easing('out'),
+    css: (t, u) => `transform: translateX(${u * x}px); opacity: ${t}`,
+  };
+}
+
 /** Fade in from --scale-enter (popovers, dialogs, tooltips). */
 export function pop(node: Element, params: MotionParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);

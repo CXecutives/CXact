@@ -1398,11 +1398,11 @@ export const de = {
     /** Under "Profil prüfen" after the CV: what only the user knows. */
     reviewText:
       'Prüfe die Angaben aus deinem Lebenslauf und ergänze Vertragsart, Tagessatz und Länder.',
-    /** Under the two ways: what the setup holds, instead of a step indicator. */
-    overview: 'Du richtest erst dein Profil ein, dann auf Wunsch dein Postfach.',
+    /** The dots of the foot, in words. */
+    position: (at: number, of: number) => `Schritt ${at} von ${of}`,
     /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
     alertsText: (portals: readonly Portal[]) =>
-      `CXact liest die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} aus deinem Gmail.`,
+      `CXact liest die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} aus deinem Postfach.`,
     /** Connected: the address the portals' alerts must go to, and their rows. */
     connected: 'Postfach verbunden',
     alertsDone: 'Leg bei jedem Portal einen Alert für diese Adresse an.',
@@ -1414,6 +1414,45 @@ export const de = {
     summaryMailbox: 'Postfach verbunden',
     summaryMailboxLater: 'Postfach später in den Einstellungen verbinden',
     toJobs: 'Zu den Jobs',
+    /** The picture of the app beside the steps (StepPicture): example jobs, a profile as the
+     *  CV fills it, an alert mail and what it brings. Shown, never read (aria-hidden). */
+    picture: {
+      jobs: [
+        {
+          title: 'Interim CFO',
+          company: 'Hanseatic Holding GmbH',
+          place: 'Hamburg',
+          pay: '1.300 €/Tag',
+        },
+        {
+          title: 'Head of Controlling',
+          company: 'Nordlicht Energie AG',
+          place: 'Bremen',
+          pay: '1.150 €/Tag',
+        },
+        {
+          title: 'Projektleitung Konsolidierung',
+          company: 'Datenwerk Süd GmbH',
+          place: 'München',
+          pay: '',
+        },
+        { title: 'Kaufmännische Leitung', company: 'Werft 7 GmbH', place: 'Kiel', pay: '' },
+      ],
+      roles: ['Interim CFO', 'Head of Finance'],
+      competences: ['Controlling', 'IFRS', 'Konsolidierung', 'Restrukturierung', 'SAP S/4HANA'],
+      languages: ['Deutsch Muttersprache', 'Englisch C1'],
+      mailSubject: '3 neue Projekte für dich',
+      mailFrom: 'freelancermap',
+      mailJobs: [
+        {
+          title: 'Interim Finance Director',
+          company: 'Pharmawerk AG',
+          place: 'Frankfurt',
+          pay: '',
+        },
+        { title: 'Controller IFRS', company: 'Nordbank AG', place: 'Hamburg', pay: '1.000 €/Tag' },
+      ],
+    },
   },
 
   shell: {
@@ -1506,11 +1545,13 @@ export function textOf(text: Text, params: Params = {}): string {
 /** The shape of this catalog with any words: the type of `t`. */
 export type Catalog = Widen<typeof de>;
 
-/** Words become `string`; keys, nesting and function signatures stay. */
+/** Words become `string`; keys, nesting, lists and function signatures stay. */
 type Widen<T> = T extends string
   ? string
   : T extends (...args: infer A) => infer R
     ? (...args: A) => Widen<R>
-    : T extends object
-      ? { -readonly [K in keyof T]: Widen<T[K]> }
-      : T;
+    : T extends readonly (infer U)[]
+      ? readonly Widen<U>[]
+      : T extends object
+        ? { -readonly [K in keyof T]: Widen<T[K]> }
+        : T;

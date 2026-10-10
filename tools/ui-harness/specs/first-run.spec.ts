@@ -43,11 +43,14 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
     ]) {
       await expect(page.getByTestId(gone)).toHaveCount(0);
     }
-    // One colour, no seam: the bar is the page's.
+    // No seam; the bar follows the step's white and the picture's cream (design round 7).
     await expect(page.getByTestId('title-bar')).not.toHaveClass(/docked/);
     await expect(page.getByTestId('title-bar')).toHaveClass(/page/);
-    // Willkommen has no foot: a tile goes on.
-    await expect(page.getByTestId('first-bar')).toHaveCount(0);
+    await expect(page.getByTestId('title-bar')).toHaveClass(/pictured/);
+    // Willkommen's foot holds only the dots: a tile goes on, there is nothing to go back to.
+    await expect(page.getByTestId('first-dots')).toBeVisible();
+    await expect(page.getByTestId('first-back')).toHaveCount(0);
+    await expect(page.getByTestId('first-next')).toHaveCount(0);
   }
 });
 
@@ -97,8 +100,12 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   // Two tiles side by side; the CV's says the AI; a click goes on.
   const way = page.getByTestId('first-way');
   await expect(page.getByTestId('first-step')).toContainText(T.firstRun.welcomeText);
-  // What the setup holds, under the two ways, instead of a step indicator.
-  await expect(page.getByTestId('first-overview')).toHaveText(T.firstRun.overview);
+  // Where the user is: four dots, the first one on (design round 7); beside it the picture.
+  const dots = page.getByTestId('first-dots');
+  await expect(dots).toHaveAttribute('aria-label', T.firstRun.position(1, 4));
+  await expect(dots.locator('[data-on]')).toHaveCount(1);
+  await expect(page.getByTestId('setup-picture')).toHaveAttribute('data-picture', 'jobs');
+  await expect(page.getByTestId('first-overview')).toHaveCount(0);
   await expect(way.getByTestId('way-cv')).toContainText(T.profile.fromCv);
   await expect(way.getByTestId('way-cv')).toContainText(T.profile.fromCvHint);
   await expect(way.getByTestId('way-self')).toHaveText(T.profile.byHand);

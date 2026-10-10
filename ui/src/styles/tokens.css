@@ -496,6 +496,16 @@
      this far above it, the groups this far apart; in a box 16 all round and the fields 16
      apart, no hairlines between fields (only between the rows of a list). */
   --layout-page: var(--surface);
+  /* The setup's picture of the app (design round 7): the cream of the sidebar beside the white
+     page, its cards as wide as this at most; the setup shows it from this window width on. */
+  --setup-picture: var(--bg);
+  --setup-picture-card: 420px;
+  /* The step beside the picture: this wide at most, centred in its column. */
+  --setup-step-width: 460px;
+  /* The dots of the setup's foot: a dot, the current one a short bar. */
+  --step-dot: 6px;
+  --step-dot-on: 18px;
+  --step-current: hsl(var(--p-coral));
   --layout-group: var(--surface);
   --layout-group-edge: var(--border);
   --layout-group-radius: 12px;
