@@ -1,10 +1,13 @@
 // The CV worker of CXact: one route, POST /v1/cv. It checks the request, reserves a try in the
-// usage counters (D1), sends the CV to OpenRouter with a strict JSON schema and answers with
-// the AI part of the profile. Every error is {code, params}, never prose; the app words it.
-// The install id and the address never go upstream; the log holds codes, sizes and cost only.
+// usage counters (D1: the install's and the address's, usage.ts),
+// sends the CV to OpenRouter with a strict JSON schema and answers with the AI part of the
+// profile. A try counts once OpenRouter charged for it, also when the answer is no profile.
+// Every error is {code, params}, never prose; the app words it. The install id and the address
+// never go upstream; the log holds codes, sizes and cost only.
 
 import PROMPT_FILE from './prompt.de.md';
 import SCHEMA from '../schema.json';
+import { calendar, isFree, remaining, slots, type Call, type Slot } from './usage';
 
 interface Env {
   DB: D1Database;
@@ -19,9 +22,6 @@ interface Env {
 
 /** Version of the request; older builds get `outdated`. */
 const REQUEST_SCHEMA = 1;
-const LIMIT_ID_DAY = 2;
-const LIMIT_ID_MONTH = 5;
-const LIMIT_IP_DAY = 10;
 const MAX_TEXT = 100_000;
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_PDF_PAGES = 15;
@@ -59,8 +59,12 @@ type Params = Record<string, string>;
 interface Failure {
   code: Code;
   params?: Params;
-  /** For the log only: why upstream failed (status or cause). */
+  /** For the log only: why upstream failed (status or cause), or which counter is full. */
   detail?: string;
+  /** For the log only: the call to OpenRouter, when one was made. */
+  call?: Call;
+  /** For the log only: whether the tries went back or count. */
+  tries?: 'returned' | 'counted';
 }
 
 interface CvFile {
@@ -72,11 +76,6 @@ interface CvFile {
 type CvRequest = { installId: string } & (
   { kind: 'text'; text: string } | { kind: 'files'; files: CvFile[] }
 );
-
-interface Slot {
-  key: string;
-  day: string;
-}
 
 interface Answer {
   profile: Record<string, unknown>;
@@ -99,52 +98,49 @@ export default {
     }
     const size = cv.kind === 'text' ? cv.text.length : cv.files.reduce((n, f) => n + f.bytes, 0);
     const days = calendar(new Date());
-    let slots: Slot[];
+    let plan: Slot[];
     try {
       const ip = await ipKey(env, request.headers.get('CF-Connecting-IP') ?? '');
-      const id = `id:${cv.installId}`;
-      // The month first: when it is full, the next day would not help.
-      slots = [
-        { key: id, day: days.month },
-        { key: id, day: days.today },
-        { key: ip, day: days.today },
-      ];
+      plan = slots(cv.installId, ip, days);
     } catch {
       return failure({ code: 'unavailable', detail: 'config' }, started, cv.kind, size);
     }
-    const limits = [LIMIT_ID_MONTH, LIMIT_ID_DAY, LIMIT_IP_DAY];
     const taken: Slot[] = [];
-    const counts: number[] = [];
-    for (const [i, slot] of slots.entries()) {
+    const counts = new Map<Slot['name'], number>();
+    for (const slot of plan) {
       let n: number | null;
       try {
-        n = await reserve(env.DB, slot, limits[i] ?? 0);
+        n = await reserve(env.DB, slot);
       } catch {
         await release(env.DB, taken);
         return failure({ code: 'unavailable', detail: 'db' }, started, cv.kind, size);
       }
       if (n === null) {
         await release(env.DB, taken);
-        const until = i === 0 ? days.nextMonth : days.tomorrow;
-        return failure({ code: 'limit', params: { until } }, started, cv.kind, size);
+        const full: Failure = { code: 'limit', params: { until: slot.until }, detail: slot.name };
+        return failure(full, started, cv.kind, size);
       }
       taken.push(slot);
-      counts.push(n);
+      counts.set(slot.name, n);
     }
     const answer = await askAi(env, cv);
     if ('code' in answer) {
-      await release(env.DB, taken);
-      return failure(answer, started, cv.kind, size);
+      // Only a call that cost nothing gives its tries back; a charged one counts.
+      const free = isFree(answer.call);
+      if (free) {
+        await release(env.DB, taken);
+      }
+      const tries = free ? 'returned' : 'counted';
+      return failure({ ...answer, tries }, started, cv.kind, size);
     }
-    const [month = 0, today = 0] = counts;
-    const remainingToday = Math.max(0, Math.min(LIMIT_ID_DAY - today, LIMIT_ID_MONTH - month));
+    const left = remaining(counts.get('month') ?? 0, counts.get('day') ?? 0, days);
     const body: Record<string, unknown> = {
       profile: answer.profile,
-      remainingToday,
+      remainingToday: left.remainingToday,
       costUsd: answer.costUsd,
     };
-    if (remainingToday === 0) {
-      body.until = month >= LIMIT_ID_MONTH ? days.nextMonth : days.tomorrow;
+    if (left.until !== null) {
+      body.until = left.until;
     }
     log({ code: 'ok', kind: cv.kind, size, costUsd: answer.costUsd, ms: Date.now() - started });
     return json(body, 200);
@@ -260,26 +256,27 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /* ------------------------------------------------------------------ usage */
 
 /** Reserves one try in one statement; `null` when the counter is full. */
-async function reserve(db: D1Database, slot: Slot, limit: number): Promise<number | null> {
+async function reserve(db: D1Database, slot: Slot): Promise<number | null> {
   const row = await db
     .prepare(
       `INSERT INTO cv_usage (key, day, n) VALUES (?1, ?2, 1)
        ON CONFLICT (key, day) DO UPDATE SET n = n + 1 WHERE n < ?3
        RETURNING n`,
     )
-    .bind(slot.key, slot.day, limit)
+    .bind(slot.key, slot.day, slot.limit)
     .first<{ n: number }>();
   return row === null ? null : row.n;
 }
 
-/** Gives the tries back: a failed try never counts. */
-async function release(db: D1Database, slots: Slot[]): Promise<void> {
-  if (slots.length === 0) {
+/** Gives the tries back: of a request a full counter stopped, or whose AI call cost nothing
+ * (`isFree`). */
+async function release(db: D1Database, taken: Slot[]): Promise<void> {
+  if (taken.length === 0) {
     return;
   }
   try {
     await db.batch(
-      slots.map((slot) =>
+      taken.map((slot) =>
         db
           .prepare('UPDATE cv_usage SET n = n - 1 WHERE key = ?1 AND day = ?2 AND n > 0')
           .bind(slot.key, slot.day),
@@ -288,27 +285,6 @@ async function release(db: D1Database, slots: Slot[]): Promise<void> {
   } catch {
     log({ code: 'releaseFailed' });
   }
-}
-
-/** The days in UTC: today and this month as counter keys, and the first day of the next
- * day and month as the `until` of a full counter. */
-function calendar(now: Date): {
-  today: string;
-  month: string;
-  tomorrow: string;
-  nextMonth: string;
-} {
-  const y = now.getUTCFullYear();
-  const m = now.getUTCMonth();
-  const d = now.getUTCDate();
-  const iso = (date: Date) => date.toISOString().slice(0, 10);
-  const today = iso(now);
-  return {
-    today,
-    month: today.slice(0, 7),
-    tomorrow: iso(new Date(Date.UTC(y, m, d + 1))),
-    nextMonth: iso(new Date(Date.UTC(y, m + 1, 1))),
-  };
 }
 
 /** The counter key of an address: HMAC-SHA256 with the pepper, IPv6 by its /64. Throws
@@ -367,7 +343,10 @@ interface Completion {
   usage?: { cost?: number };
 }
 
-async function askAi(env: Env, cv: CvRequest): Promise<Answer | Failure> {
+/** A failed AI call, with what OpenRouter answered (`isFree` decides on its tries). */
+type AiFailure = Failure & { call: Call };
+
+async function askAi(env: Env, cv: CvRequest): Promise<Answer | AiFailure> {
   const content =
     cv.kind === 'text'
       ? [{ type: 'text', text: `<cv>\n${cv.text.replaceAll('</cv>', '</ cv>')}\n</cv>` }]
@@ -418,23 +397,28 @@ async function askAi(env: Env, cv: CvRequest): Promise<Answer | Failure> {
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
   } catch (error) {
+    // No answer came, so nothing was charged.
     const timeout = error instanceof Error && error.name === 'TimeoutError';
-    return { code: 'unavailable', detail: timeout ? 'timeout' : 'network' };
+    const call: Call = { status: null, costUsd: null };
+    return { code: 'unavailable', detail: timeout ? 'timeout' : 'network', call };
   }
+  let completion: Completion | null;
+  try {
+    completion = await response.json<Completion | null>();
+  } catch {
+    completion = null;
+  }
+  const call: Call = { status: response.status, costUsd: cost(completion) };
   if (!response.ok) {
     // 402: the credits are used up; 429 and 5xx: the provider; 400: the request.
-    return { code: 'unavailable', detail: `http ${response.status}` };
+    return { code: 'unavailable', detail: `http ${response.status}`, call };
   }
-  let completion: Completion;
-  try {
-    completion = await response.json<Completion>();
-  } catch {
-    return { code: 'unavailable', detail: 'body' };
+  if (completion === null) {
+    return { code: 'unavailable', detail: 'body', call };
   }
-  const costUsd = typeof completion.usage?.cost === 'number' ? completion.usage.cost : null;
   const choice = completion.choices?.[0];
   if (completion.error !== undefined || choice === undefined || choice.error !== undefined) {
-    return { code: 'unavailable', detail: 'error' };
+    return { code: 'unavailable', detail: 'error', call };
   }
   const refused =
     choice.finish_reason === 'length' ||
@@ -442,12 +426,18 @@ async function askAi(env: Env, cv: CvRequest): Promise<Answer | Failure> {
     choice.native_finish_reason === 'refusal' ||
     (typeof choice.message?.refusal === 'string' && choice.message.refusal !== '');
   if (refused) {
-    return { code: 'refused', detail: choice.finish_reason ?? 'refusal' };
+    return { code: 'refused', detail: choice.finish_reason ?? 'refusal', call };
   }
   const profile = parseProfile(choice.message?.content);
   return profile === null
-    ? { code: 'refused', detail: 'shape' }
-    : { profile, costUsd: costUsd === null ? null : Math.round(costUsd * 1e6) / 1e6 };
+    ? { code: 'refused', detail: 'shape', call }
+    : { profile, costUsd: call.costUsd };
+}
+
+/** The cost an answer names, to a millionth of a dollar; `null` when it names none. */
+function cost(completion: Completion | null): number | null {
+  const value = completion?.usage?.cost;
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value * 1e6) / 1e6 : null;
 }
 
 /** The answer as a profile of the schema's shape, or `null` (never half a profile). The
@@ -495,6 +485,8 @@ function failure(fail: Failure, started: number, kind?: string, size?: number): 
     detail: fail.detail,
     kind,
     size,
+    costUsd: fail.call?.costUsd,
+    tries: fail.tries,
     ms: Date.now() - started,
   });
   return json({ code: fail.code, params: fail.params ?? {} }, STATUS[fail.code]);

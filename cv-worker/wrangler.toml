@@ -5,7 +5,8 @@
 #   npx wrangler d1 execute cxact-cv --remote --file schema.sql   once, and after a schema change
 #   npx wrangler secret put IP_PEPPER                              once, a random value never shown
 #   npx wrangler deploy
-# The secret OPENROUTER_API_KEY is already set on the worker. The emergency switch is PAUSED:
+# The secret OPENROUTER_API_KEY is already set on the worker; give that key a credit limit in
+# OpenRouter as the last guard. The emergency switch is PAUSED:
 # "true" in the dashboard (Worker, Settings, Variables) answers every request with `paused`;
 # keep_vars keeps the dashboard's value over this file's on the next deploy.
 # Two optional vars choose the AI, unset here so the defaults in src/index.ts rule: MODEL (the
