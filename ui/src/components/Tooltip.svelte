@@ -15,28 +15,32 @@
   import { tokenPx } from '$lib/tokens';
   import type { Action } from 'svelte/action';
 
-  interface Placed {
-    anchor: HTMLElement;
-    text: string;
-    hint: string | null;
+  /** Below the anchor (above if there is no room), inside the window, from the bubble's
+   *  size as it is now. */
+  function position(node: HTMLElement, anchor: HTMLElement): void {
+    const gap = tokenPx('--tooltip-gap');
+    const edge = tokenPx('--viewport-gap');
+    const a = anchor.getBoundingClientRect();
+    const width = node.offsetWidth;
+    const height = node.offsetHeight;
+    const maxX = document.documentElement.clientWidth - width - edge;
+    const maxY = document.documentElement.clientHeight - height - edge;
+    const x = Math.max(edge, Math.min(a.left + a.width / 2 - width / 2, maxX));
+    const below = a.bottom + gap;
+    const top = below <= maxY ? below : a.top - gap - height;
+    setVars(node, { 'tooltip-x': px(x), 'tooltip-y': px(top) });
   }
 
-  const place: Action<HTMLElement, Placed> = (node, params) => {
-    const update = ({ anchor }: Placed): void => {
-      const gap = tokenPx('--tooltip-gap');
-      const edge = tokenPx('--viewport-gap');
-      const a = anchor.getBoundingClientRect();
-      const width = node.offsetWidth;
-      const height = node.offsetHeight;
-      const maxX = document.documentElement.clientWidth - width - edge;
-      const maxY = document.documentElement.clientHeight - height - edge;
-      const x = Math.max(edge, Math.min(a.left + a.width / 2 - width / 2, maxX));
-      const below = a.bottom + gap;
-      const top = below <= maxY ? below : a.top - gap - height;
-      setVars(node, { 'tooltip-x': px(x), 'tooltip-y': px(top) });
-    };
-    update(params);
-    return { update };
+  /** Places the layer whenever the anchor or the text changes, in an effect: it runs after
+   *  the new text and hint are in the DOM, so the bubble is measured at its new size (an
+   *  action's update ran before the text changed and placed the next anchor's tooltip from
+   *  the previous one's size). Still before the frame is painted: no jump. */
+  const place: Action<HTMLElement> = (node) => {
+    $effect(() => {
+      const anchor = tooltipState.anchor;
+      void tooltipState.text;
+      if (anchor !== null) position(node, anchor);
+    });
   };
 
   /** The second line the anchor carries (read again whenever the text changes). */
@@ -49,12 +53,7 @@
 
 {#if tooltipState.anchor}
   {@const hint = hintOf(tooltipState.anchor, tooltipState.text)}
-  <div
-    class="layer"
-    role="tooltip"
-    id={TOOLTIP_ID}
-    use:place={{ anchor: tooltipState.anchor, text: tooltipState.text, hint }}
-  >
+  <div class="layer" role="tooltip" id={TOOLTIP_ID} use:place>
     <div class="bubble" in:tooltipIn out:tooltipOut>
       {tooltipState.text}{#if hint}<span class="hint">{hint}</span>{/if}
     </div>
