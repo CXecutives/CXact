@@ -2,7 +2,7 @@
 //! industries (`ENGINE_VERSION` 4).
 //!
 //! external contract - do not translate: German and English wording of job ads and of the
-//! values a profile writes into `einsatzpraeferenzen`. All entries are case-folded and
+//! profile's wishes. All entries are case-folded and
 //! without umlauts (`fold`).
 
 /// Title words that mark a leading role (whole words); compounds ending in `leiter`,
