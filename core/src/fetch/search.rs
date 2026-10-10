@@ -422,7 +422,7 @@ async fn search_terms<F: PageFetcher, C: Fn() -> Timestamp>(
         let _ = notes.send(event);
     };
     let planned = urls.len();
-    let robots = search_robots_of(&mut fetcher, policy, portal, cancel, clock, |until| {
+    let robots = search_robots_of(&mut fetcher, (policy, on), portal, cancel, clock, |until| {
         send(SearchEvent::Waiting { portal, until });
     })
     .await?;
@@ -430,6 +430,17 @@ async fn search_terms<F: PageFetcher, C: Fn() -> Timestamp>(
         Ok(robots) => robots,
         Err(Blocker::Page(outcome)) if *outcome == PageOutcome::Cancelled => {
             return Ok(Ended::Cancelled);
+        }
+        // Switched off while the robots.txt waited for its turn: nothing was asked, and what
+        // the last search left (where its paging stopped, what its terms brought) stays.
+        Err(Blocker::Off) => {
+            log::info!(
+                "{}: switched off during the run, search ended",
+                portal.key()
+            );
+            shared.done.fetch_add(planned, Ordering::Relaxed);
+            send(SearchEvent::SourceDone { portal, new: 0 });
+            return Ok(Ended::Completed);
         }
         Err(Blocker::Stop(reason)) => {
             stopped(counts, portal, Some(reason), &send);
@@ -1306,6 +1317,35 @@ mod tests {
         assert!(done);
         assert_eq!(found[&HAYS].pages, 0);
         assert!(lock(&policy).state(HAYS).accesses.is_empty());
+    }
+
+    /// A source switched off while its robots.txt waits for its turn is not asked at all: the
+    /// robots.txt is not requested, nothing is kept of it, and its search ends quietly.
+    #[tokio::test(start_paused = true)]
+    async fn a_source_switched_off_while_its_robots_txt_waits_is_not_asked() {
+        let store = Store::in_memory().unwrap();
+        let policy = Mutex::new(Policy::in_memory());
+        let mut fakes = BTreeMap::from([(HAYS, Fake::default())]);
+        // On when the search starts, off by the time the robots.txt's turn comes.
+        let asked = AtomicUsize::new(0);
+        let on = |_: Portal| asked.fetch_add(1, Ordering::Relaxed) == 0;
+        let (done, found, events) =
+            search(&mut fakes, &store, &policy, &[HAYS], &terms(&["CFO"]), &on).await;
+        assert!(done);
+        assert_eq!(found[&HAYS], SearchCounts::default());
+        assert!(lock(&policy).state(HAYS).robots.is_none());
+        assert!(
+            !events
+                .iter()
+                .any(|event| matches!(event, SearchEvent::Stopped { .. }))
+        );
+        assert_eq!(
+            events.last(),
+            Some(&SearchEvent::SourceDone {
+                portal: HAYS,
+                new: 0
+            })
+        );
     }
 
     fn hits(ids: std::ops::Range<u32>) -> Vec<Hit> {

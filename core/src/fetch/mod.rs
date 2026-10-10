@@ -314,26 +314,37 @@ pub(crate) enum Blocker {
     Stop(StopReason),
     /// The request ended otherwise; the outcome decides like a page's.
     Page(Box<PageOutcome>),
+    /// The source was switched off while its request waited for its turn: no request.
+    Off,
 }
 
 /// The rules of `portal`'s robots.txt: the copy of the last day, else read now, each request
-/// through `admit` like any other.
+/// through `admit` like any other - and, like any other, none once `on` says the source is
+/// switched off.
 pub(crate) async fn robots_of<F: PageFetcher>(
     fetcher: &mut F,
-    policy: &Mutex<Policy>,
+    (policy, on): (&Mutex<Policy>, &PortalOnFn<'_>),
     portal: Portal,
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
     on_wait: impl Fn(Timestamp),
 ) -> crate::Result<Result<Robots, Blocker>> {
-    robots_at(fetcher, policy, (portal, false), cancel, clock, on_wait).await
+    robots_at(
+        fetcher,
+        (policy, on),
+        (portal, false),
+        cancel,
+        clock,
+        on_wait,
+    )
+    .await
 }
 
 /// The robots.txt of the host `portal`'s search pages lie on: its own where they lie beside
 /// its ads, else that host's (`PortalAdapter::search_robots_url`), kept apart for a day.
 pub(crate) async fn search_robots_of<F: PageFetcher>(
     fetcher: &mut F,
-    policy: &Mutex<Policy>,
+    (policy, on): (&Mutex<Policy>, &PortalOnFn<'_>),
     portal: Portal,
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
@@ -342,7 +353,7 @@ pub(crate) async fn search_robots_of<F: PageFetcher>(
     let other_host = portal.adapter().search_robots_url().is_some();
     robots_at(
         fetcher,
-        policy,
+        (policy, on),
         (portal, other_host),
         cancel,
         clock,
@@ -357,10 +368,11 @@ pub(crate) async fn search_robots_of<F: PageFetcher>(
 /// (`http::ROBOTS_MAX_BODY`), a 4xx as "unavailable" (everything allowed) - each kept for the
 /// day. An unreachable one (no answer, a throttle, a block) decides like a page; one that
 /// cannot be read otherwise (moved too often, an odd answer) allows no page of the source in
-/// this run, and nothing is kept.
+/// this run, and nothing is kept. A source switched off during the wait for a request's turn
+/// ([`Blocker::Off`]) gets no further request, a redirect's hop included.
 async fn robots_at<F: PageFetcher>(
     fetcher: &mut F,
-    policy: &Mutex<Policy>,
+    (policy, on): (&Mutex<Policy>, &PortalOnFn<'_>),
     (portal, search): (Portal, bool),
     cancel: &CancellationToken,
     clock: &impl Fn() -> Timestamp,
@@ -384,6 +396,8 @@ async fn robots_at<F: PageFetcher>(
             Admission::Cancelled => {
                 return Ok(Err(Blocker::Page(Box::new(PageOutcome::Cancelled))));
             }
+            // Switched off during the wait: the request the pace let through is not made.
+            Admission::Go if !on(portal) => return Ok(Err(Blocker::Off)),
             Admission::Go => {}
         }
         let read = fetcher.robots(&url, cancel).await;
@@ -1483,7 +1497,7 @@ async fn access<F: PageFetcher>(
     // The sources that ask for it: no page their robots.txt does not allow.
     let adapter = portal.adapter();
     if adapter.checks_robots() {
-        let robots = robots_of(fetcher, policy, portal, cancel, clock, |until| {
+        let robots = robots_of(fetcher, (policy, on), portal, cancel, clock, |until| {
             note(notes, FetchEvent::Waiting { portal, until });
         })
         .await?;
@@ -1492,6 +1506,7 @@ async fn access<F: PageFetcher>(
             Ok(_) => return Ok(Ok(PageOutcome::Suspicious(Cause::Robots))),
             Err(Blocker::Stop(reason)) => return Ok(Err(Halt::Stop(reason))),
             Err(Blocker::Page(outcome)) => return Ok(Ok(*outcome)),
+            Err(Blocker::Off) => return Ok(Err(Halt::Off)),
         }
     }
     let admission = admit(policy, portal, cancel, clock, |until| {

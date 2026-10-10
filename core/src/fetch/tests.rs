@@ -164,6 +164,11 @@ fn key(portal: Portal, id: u64) -> JobKey {
     job_link(&url(portal, id)).unwrap().key
 }
 
+/// Every portal is switched on.
+fn all_on(_: Portal) -> bool {
+    true
+}
+
 struct Run {
     summary: FetchSummary,
     completed: bool,
@@ -1862,7 +1867,7 @@ async fn a_robots_txt_that_answers_4xx_allows_and_is_kept() {
             .mount(&server)
             .await;
         let policy = Mutex::new(Policy::in_memory());
-        let read = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+        let read = robots_of(&mut fetcher, (&policy, &all_on), hays, &cancel, &c, |_| {})
             .await
             .unwrap();
         match status {
@@ -1882,7 +1887,7 @@ async fn a_robots_txt_that_answers_4xx_allows_and_is_kept() {
                     "{status}"
                 );
                 // Kept: the next job asks no robots.txt again.
-                let again = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+                let again = robots_of(&mut fetcher, (&policy, &all_on), hays, &cancel, &c, |_| {})
                     .await
                     .unwrap();
                 assert!(again.is_ok(), "{status}");
@@ -1943,7 +1948,7 @@ async fn a_robots_txt_that_moved_is_followed_through_admit() {
         .await;
     let policy = Mutex::new(Policy::in_memory());
     let c = ticking();
-    let read = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+    let read = robots_of(&mut fetcher, (&policy, &all_on), hays, &cancel, &c, |_| {})
         .await
         .unwrap();
     assert!(read.is_ok_and(|robots| !robots.allows("/jobsuche/x")));
@@ -1972,7 +1977,7 @@ async fn a_robots_txt_that_moved_is_followed_through_admit() {
             .mount(&server)
             .await;
         let policy = Mutex::new(Policy::in_memory());
-        let read = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+        let read = robots_of(&mut fetcher, (&policy, &all_on), hays, &cancel, &c, |_| {})
             .await
             .unwrap();
         match redirects {
@@ -2029,7 +2034,7 @@ async fn a_large_robots_txt_is_read_in_its_first_part() {
     let c = ticking();
     let read = robots_of(
         &mut fetcher,
-        &policy,
+        (&policy, &all_on),
         hays,
         &CancellationToken::new(),
         &c,
@@ -2093,6 +2098,112 @@ async fn an_unreadable_robots_txt_costs_no_job() {
     assert!(asked.iter().all(|p| p == "/robots.txt"), "{asked:?}");
 }
 
+/// A robots.txt that always moves on, and a switch the user flips while its first request is
+/// on its way: the number of requests it was asked, shared between the copies.
+#[derive(Clone)]
+struct Moving {
+    asked: Arc<std::sync::atomic::AtomicUsize>,
+    off: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl Moving {
+    fn new() -> Moving {
+        Moving {
+            asked: Arc::default(),
+            off: Arc::default(),
+        }
+    }
+
+    fn asked(&self) -> usize {
+        self.asked.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// The portals' switches right now: all on until the first robots.txt request.
+    fn on(&self) -> impl Fn(Portal) -> bool + Send + Sync + use<> {
+        let off = self.off.clone();
+        move |_| !off.load(std::sync::atomic::Ordering::Relaxed)
+    }
+}
+
+impl PageFetcher for Moving {
+    async fn fetch(&mut self, _: &JobLink, _: &CancellationToken) -> PageOutcome {
+        PageOutcome::Gone
+    }
+
+    async fn robots(
+        &mut self,
+        _: &Url,
+        _: &CancellationToken,
+    ) -> Result<RobotsAnswer, PageOutcome> {
+        self.asked
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.off.store(true, std::sync::atomic::Ordering::Relaxed);
+        Ok(RobotsAnswer::Moved(
+            "https://www.hays.de/elsewhere/robots.txt".parse().unwrap(),
+        ))
+    }
+}
+
+/// A source switched off while its robots.txt waits for the pace gets no request of it - not
+/// the next hop of a redirect either: the first request is the only one, and nothing is kept.
+#[tokio::test]
+async fn a_source_switched_off_gets_no_further_robots_request() {
+    let hays = Portal::Hays;
+    let moving = Moving::new();
+    let on = moving.on();
+    let policy = Mutex::new(Policy::in_memory());
+    let c = ticking();
+    let read = robots_of(
+        &mut moving.clone(),
+        (&policy, &on),
+        hays,
+        &CancellationToken::new(),
+        &c,
+        |_| {},
+    )
+    .await
+    .unwrap();
+    assert!(matches!(read, Err(Blocker::Off)));
+    assert_eq!(moving.asked(), 1);
+    assert!(lock(&policy).robots(hays, c()).is_none());
+}
+
+/// The same in a fetch: the job waits, untouched, for a run with the source switched on - it
+/// is no failure, no stop, and its page is never requested.
+#[tokio::test]
+async fn a_job_of_a_source_switched_off_during_its_robots_txt_waits() {
+    let hays = Portal::Hays;
+    let store = store_with(&[(hays, 891_480, 1)]);
+    let job = key(hays, 891_480);
+    let before = store.job(&job).unwrap().unwrap();
+    let moving = Moving::new();
+    let on = moving.on();
+    let policy = Mutex::new(Policy::in_memory());
+    let mut summary = FetchSummary::default();
+    let completed = fetch_all(
+        |_| Ok(moving.clone()),
+        &store,
+        &policy,
+        (Selection::Queue(&[hays]), &|_: &str, _: &str| 0, &on),
+        &CancellationToken::new(),
+        ticking(),
+        &mut summary,
+        |_| {},
+    )
+    .await
+    .unwrap();
+    assert!(completed);
+    assert_eq!(moving.asked(), 1);
+    let counts = &summary.per_portal[&hays];
+    assert_eq!((counts.skipped, counts.failed, counts.gone), (1, 0, 0));
+    assert_eq!(counts.stop, None);
+    let after = store.job(&job).unwrap().unwrap();
+    assert_eq!(
+        (after.desc_status, after.desc_attempts),
+        (before.desc_status, before.desc_attempts)
+    );
+}
+
 /// The app's fetch path hands on the robots.txt of the search pages' host: Amadeus Fire's
 /// search goes by its directory host's rules, not by those beside its ads, and only those are
 /// kept as its search rules.
@@ -2121,7 +2232,7 @@ async fn the_fetch_path_reads_the_search_hosts_robots() {
     let policy = Mutex::new(Policy::in_memory());
     let mut fetcher: Fetchers<TwoHosts> = Fetchers::Session(TwoHosts);
     let cancel = CancellationToken::new();
-    let read = search_robots_of(&mut fetcher, &policy, af, &cancel, &base, |_| {})
+    let read = search_robots_of(&mut fetcher, (&policy, &all_on), af, &cancel, &base, |_| {})
         .await
         .unwrap();
     let Ok(robots) = read else {
