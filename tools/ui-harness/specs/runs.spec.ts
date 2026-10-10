@@ -112,7 +112,7 @@ test('from another view Zeigen opens Aktuell without its search, filtered to the
   const run = (await lastQuery(page))?.run;
   expect(await lastQuery(page)).toMatchObject({ search: null, bands: ['high'] });
   expect(run).toEqual(expect.any(Number));
-  // The next fetch takes "Aus dem letzten Abruf" off (it would speak of the one before).
+  // The next search takes "Aus der letzten Suche" off (it would speak of the one before).
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(chip(page, 'run')).toHaveCount(0);

@@ -207,7 +207,7 @@ class RunStore {
   }
 
   /** The jobs a fetch's toast counts (its "Zeigen"): Aktuell without a search, filtered
-   *  to the new jobs of that fetch ("Aus dem letzten Abruf"), to those of the high band when
+   *  to the new jobs of that fetch ("Aus der letzten Suche"), to those of the high band when
    *  the toast names them. Each chip takes its part off again; none of it is kept as the
    *  user's filter. */
   showNew(summary: RunSummary): void {

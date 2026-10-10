@@ -211,7 +211,7 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Wunschrolle
 - Tagessatz, Stundensatz, Gehalt (in the job); Wunschtagessatz, Mindesttagessatz, Mindestgehalt (in the
   profile)
-- Festanstellung, Zeitarbeit
+- Projekt und Interim (in the job Projekt or Interim), Festanstellung, Zeitarbeit
 - Vertragsart, Arbeitsmodell, Remote-Anteil
 - Auslastung, Laufzeit, Mindestlaufzeit, Länder, Regionen
 - Einstellungen, Daten, Profil-Ordner

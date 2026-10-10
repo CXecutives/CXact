@@ -972,7 +972,7 @@ class JobsStore {
   }
 
   private onRun(event: RunEvent): void {
-    // Another fetch: "Aus dem letzten Abruf" would speak of the one before.
+    // Another search: "Aus der letzten Suche" would speak of the one before.
     if (event.type === 'started' && event.kind === 'fetch' && this.filterChoice.run !== null) {
       this.setFilter({ run: null }, false);
     }

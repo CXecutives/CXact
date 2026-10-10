@@ -1,7 +1,7 @@
 <!--
   Feedback where the action happened: info | success | warning | danger, inline (icon and
-  sentence, the app's small text) or row (a calm line at the top of the list, the text in the
-  body size, with an optional heading), with at most one action, a small secondary button
+  sentence, the app's small text) or row (a calm line in the list, at its top or its end, the
+  text in the body size, with an optional heading), with at most one action, a small secondary button
   with the glyph the same action has everywhere else; inline, the button is centred on the
   sentence's first line. Info, success and warning colour only their sign (the words stay
   ink), danger is red all through. A sentence with links in it (the missing line of the
