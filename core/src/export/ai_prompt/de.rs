@@ -356,11 +356,6 @@ impl Wording for German {
     fn factor(&self, code: FactorCode, p: &Map<String, Value>) -> Option<String> {
         let said = match code {
             FactorCode::Musts | FactorCode::Nice => return None,
-            FactorCode::Focus => format!(
-                "Schwerpunkte: {} von {} getroffen",
-                int(p, "hit").unwrap_or(0),
-                int(p, "total").unwrap_or(0)
-            ),
             FactorCode::TargetRole => match (text_param(p, "fit"), text_param(p, "role")) {
                 (Some("full"), Some(role)) => format!("Wunschrolle: {role} passt zum Titel"),
                 (Some("half"), Some(role)) => format!("Wunschrolle: der Titel kommt {role} nahe"),
@@ -656,14 +651,6 @@ impl Wording for German {
                     .to_owned()
             }
             ReasonCode::ShortText => "Der Text ist zu kurz für eine Bewertung.".to_owned(),
-            ReasonCode::Focus => {
-                let focus = text_param(p, "focus").unwrap_or_default();
-                if int(p, "met").unwrap_or(0) > 0 || flag(p, "inTitle") {
-                    format!("Der Schwerpunkt {focus} ist gefragt.")
-                } else {
-                    format!("Die Anzeige streift den Schwerpunkt {focus}.")
-                }
-            }
             ReasonCode::TargetRole => {
                 let role = text_param(p, "role").unwrap_or_default();
                 if text_param(p, "fit") == Some("half") {
@@ -758,11 +745,7 @@ impl Wording for German {
                 format!("Profil {}{years}{via}", entry.text)
             }
         };
-        let focus = line
-            .focus
-            .map(|f| format!("; Schwerpunkt {f}, zählt doppelt"))
-            .unwrap_or_default();
-        format!("{what} ({}): {evidence}{focus}", kind.join(", "))
+        format!("{what} ({}): {evidence}", kind.join(", "))
     }
 }
 

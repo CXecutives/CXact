@@ -184,9 +184,9 @@ fn state(
     }
 }
 
-/// The reasons of the app's assessment of [`AD`]: three musts met (one through the
-/// Schwerpunkt), English open, Power BI open as a nice-to-have, a start before the
-/// availability (its id comes back), the target role and two wishes.
+/// The reasons of the app's assessment of [`AD`]: three musts met, English open, Power BI
+/// open as a nice-to-have, a start before the availability (its id comes back), the target
+/// role and two wishes.
 fn reasons() -> (Built, u16) {
     use ReasonCode as C;
     use ReasonKind as K;
@@ -195,7 +195,7 @@ fn reasons() -> (Built, u16) {
     b.reason(
         (K::Met, Weight::Must, C::Requirement),
         Some("Mehrjährige Erfahrung im Controlling"),
-        json!({ "class": "skill", "source": "section", "focus": "Controlling" }),
+        requirement.clone(),
         Some(("Controlling", "kernkompetenzen[0].kompetenz", Via::Exact)),
         Some("Mehrjährige Erfahrung im Controlling"),
     );
@@ -246,13 +246,6 @@ fn reasons() -> (Built, u16) {
         Some("ab 01.11.2026"),
     );
     b.reason(
-        (K::Met, Weight::Info, C::Focus),
-        None,
-        json!({ "focus": "Controlling", "met": 1, "partial": 0, "inTitle": false, "relevance": 100 }),
-        Some(("Controlling", "schwerpunkte[0]", Via::Exact)),
-        Some("Mehrjährige Erfahrung im Controlling"),
-    );
-    b.reason(
         (K::Met, Weight::Info, C::TargetRole),
         None,
         json!({ "role": "Interim CFO", "fit": "full", "points": 8 }),
@@ -285,7 +278,7 @@ fn factor(code: FactorCode, params: Value) -> Factor {
 }
 
 /// The app's assessment of [`AD`] for [`profile`] (the reasons of [`reasons`], and what
-/// moved the score: the counts, the Schwerpunkt, the target role and the wishes).
+/// moved the score: the counts, the target role and the wishes).
 fn assessment() -> Assessment {
     let (b, gap) = reasons();
     Assessment {
@@ -320,7 +313,6 @@ fn assessment() -> Assessment {
                 json!({ "met": 3, "partial": 0, "total": 4 }),
             ),
             factor(FactorCode::Nice, json!({ "met": 0, "total": 1 })),
-            factor(FactorCode::Focus, json!({ "hit": 1, "total": 1 })),
             factor(
                 FactorCode::TargetRole,
                 json!({ "role": "Interim CFO", "fit": "full" }),
@@ -465,20 +457,18 @@ fn the_pre_assessment_says_what_the_app_found() {
         "- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen",
         "- Kann-Anforderungen: 0 von 1 erfüllt",
         // What moved the score, as the reader's "why this number" shows it.
-        "- Schwerpunkte: 1 von 1 getroffen",
         "- Wünsche: heben die Punktzahl um 3 von 100 Punkten",
         // Every criterion the profile sets, with its threshold and the ad's words.
         "- Tagessatz mindestens 1.100 €: erfüllt, 1.250 € pro Tag („Tagessatz bis 1.250 €“)",
         "- Einsatzland DE, AT oder voll remote: erfüllt, Ort Hamburg",
         "- Keine Arbeitnehmerüberlassung: erfüllt, Vertragsart Interim („Freiberuflich“)",
         "- Verfügbar ab 01.12.2026: zu prüfen. Der Start liegt 30 Tage vor meiner Verfügbarkeit. „ab 01.11.2026“",
-        // The requirements with the profile entry, its years and the Schwerpunkt.
-        "- „Mehrjährige Erfahrung im Controlling“ (Muss): Profil Controlling, 12 Jahre; Schwerpunkt Controlling, zählt doppelt",
+        // The requirements with the profile entry and its years.
+        "- „Mehrjährige Erfahrung im Controlling“ (Muss): Profil Controlling, 12 Jahre",
         "- „Sehr gute Kenntnisse im Konzernabschluss nach HGB“ (Muss): Profil Konzernabschluss nach HGB, 8 Jahre",
         "- „Erfahrung mit SAP S/4HANA“ (Muss): Profil SAP S/4HANA",
         "- „Verhandlungssichere Englischkenntnisse“ (Muss, Sprache): kein Beleg im Profil gefunden",
         "- „Idealerweise Erfahrung mit Power BI“ (Kann): kein Beleg im Profil gefunden",
-        "- Der Schwerpunkt Controlling ist gefragt.",
         "- Der Titel passt zur Wunschrolle Interim CFO.",
         "- Der Tagessatz von 1.250 € liegt knapp unter dem Wunsch von 1.300 €. „Tagessatz bis 1.250 €“",
         "- Die Stelle ist zu 60 % remote, gewünscht ist teilweise remote. „Remote-Anteil 60 %“",
@@ -837,7 +827,6 @@ fn every_code() -> Vec<ReasonCode> {
         C::Overqualified,
         C::ContractType,
         C::AnueRisk,
-        C::Focus,
         C::TargetRole,
         C::DayRateWish,
         C::RemoteWish,
@@ -872,7 +861,6 @@ fn every_code() -> Vec<ReasonCode> {
             | C::Overqualified
             | C::ContractType
             | C::AnueRisk
-            | C::Focus
             | C::TargetRole
             | C::DayRateWish
             | C::RemoteWish
@@ -893,7 +881,6 @@ fn every_factor() -> Vec<Factor> {
     let all = [
         F::Musts,
         F::Nice,
-        F::Focus,
         F::TargetRole,
         F::Wishes,
         F::Evidence,
@@ -904,7 +891,6 @@ fn every_factor() -> Vec<Factor> {
         match code {
             F::Musts
             | F::Nice
-            | F::Focus
             | F::TargetRole
             | F::Wishes
             | F::Evidence
@@ -913,7 +899,7 @@ fn every_factor() -> Vec<Factor> {
         }
     }
     let params = json!({
-        "met": 1, "partial": 0, "total": 2, "hit": 0, "role": "Interim CFO", "fit": "half",
+        "met": 1, "partial": 0, "total": 2, "role": "Interim CFO", "fit": "half",
         "points": 2, "evidence": "low", "percent": 90, "cap": "severalOpen", "max": 40
     });
     all.iter()
@@ -928,7 +914,7 @@ fn every_reason() -> Assessment {
         "allowed": ["DE", "AT"], "excluded": true, "stated": true, "location": "Zürich",
         "salary": 90_000, "lowerBound": true, "years": 3, "target": 10, "junior": true,
         "type": "unclear", "inferred": true, "class": "licence", "mandatory": true,
-        "focus": "Controlling", "met": 1, "role": "Interim CFO", "fit": "half",
+        "met": 1, "role": "Interim CFO", "fit": "half",
         "state": "missed", "wish": 1300, "share": 40, "level": "mostly", "industry": "Handel",
         "source": "vocabulary"
     });

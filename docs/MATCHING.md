@@ -68,7 +68,7 @@ recall >= 0.80, NDCG@10 >= 0.75, P@5 >= 0.80, no grade-3 job buried, high-band p
 1v3 >= 0.80, 2v3 >= 0.70 (0v1 and 1v2 are reported only: the labelers themselves disagree most
 there).
 
-## Measurements at version 19
+## Measurements at version 20
 
 `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`:
 
@@ -76,14 +76,40 @@ there).
 |---|---|---|---|---|---|---|---|
 | heldout1 | 0.923 | 1.000 | 0.782 | 0.755 | 0.621 | 0 | 1.000 / 0.971 |
 | heldout2 | 0.892 | 0.875 | 0.717 | 0.663 | 0.774 | 0 | 1.000 / 0.845 |
-| heldout3 | 0.871 | 0.967 | 0.634 | 0.578 | 0.718 | 0 | 1.000 / 0.900 |
-| heldout4 | 0.832 | 0.843 | 0.570 | 0.500 | 0.826 | 0 | 1.000 / 0.959 |
-| heldout5 | 0.802 | 0.967 | 0.721 | 0.848 | 0.703 | 0 | 0.987 / 0.955 |
+| heldout3 | 0.911 | 0.933 | 0.595 | 0.595 | 0.667 | 0 | 1.000 / 0.900 |
+| heldout4 | 0.830 | 0.843 | 0.564 | 0.481 | 0.833 | 0 | 1.000 / 0.959 |
+| heldout5 | 0.802 | 0.967 | 0.717 | 0.826 | 0.693 | 0 | 0.987 / 0.955 |
 | heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.982 |
-| heldout7 | 0.918 | 0.888 | 0.668 | 0.812 | 0.593 | 2 | 1.000 / 0.851 |
-| heldout8 | 0.954 | 0.957 | 0.819 | 0.868 | 0.776 | 0 | 1.000 / 0.856 |
-| heldout9 | 0.898 | 0.854 | 0.659 | 0.755 | 0.680 | 0 | 1.000 / 0.860 |
-| heldout10 | 0.945 | 1.000 | 0.842 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
+| heldout7 | 0.921 | 0.910 | 0.673 | 0.824 | 0.583 | 2 | 1.000 / 0.851 |
+| heldout8 | 0.952 | 0.957 | 0.815 | 0.855 | 0.776 | 0 | 1.000 / 0.856 |
+| heldout9 | 0.890 | 0.854 | 0.652 | 0.755 | 0.676 | 0 | 1.000 / 0.860 |
+| heldout10 | 0.942 | 1.000 | 0.836 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
+
+Engine 20 has no Schwerpunkte (the owner's decision of 2026-10-10): every competence counts the
+same, without a weight by its years. Gone are the double weight of a requirement met in full
+through a starred competence, the relevance a demanded one added (100 for at most three), the
+exemption from the off-field cap for a title that names one, the reason `focus`, the factor
+`focus` and the wish `focus` of the profile summary. NDCG@10, P@5, Spearman over the relevant
+pairs and concordance 2v3, engine 19 and engine 20:
+
+| Set | Engine 19 | Engine 20 |
+|---|---|---|
+| heldout1 | 0.923 / 1.000 / 0.782 / 0.755 | 0.923 / 1.000 / 0.782 / 0.755 |
+| heldout2 | 0.892 / 0.875 / 0.717 / 0.663 | 0.892 / 0.875 / 0.717 / 0.663 |
+| heldout3 | 0.911 / 0.933 / 0.595 / 0.595 | 0.911 / 0.933 / 0.595 / 0.595 |
+| heldout4 | 0.832 / 0.843 / 0.570 / 0.500 | 0.830 / 0.843 / 0.564 / 0.481 |
+| heldout5 | 0.802 / 0.967 / 0.721 / 0.848 | 0.802 / 0.967 / 0.717 / 0.826 |
+| heldout6 | 0.902 / 0.950 / 0.797 / 0.818 | 0.902 / 0.950 / 0.797 / 0.818 |
+| heldout7 | 0.918 / 0.888 / 0.668 / 0.812 | 0.921 / 0.910 / 0.673 / 0.824 |
+| heldout8 | 0.953 / 0.957 / 0.819 / 0.868 | 0.952 / 0.957 / 0.815 / 0.855 |
+| heldout9 | 0.900 / 0.854 / 0.661 / 0.748 | 0.890 / 0.854 / 0.652 / 0.755 |
+| heldout10 | 0.945 / 1.000 / 0.842 / 0.734 | 0.942 / 1.000 / 0.836 / 0.734 |
+
+P@5 drops on no set; buried grade-3 jobs and the exclusions are unchanged. The largest losses are
+NDCG@10 of heldout9 (0.900 to 0.890; its floor follows the decision at 0.889) and concordance
+2v3 of heldout4 (0.500 to 0.481). In the corpus only the two profiles with Schwerpunkte move
+(wish K03, K04, K07, K11, K21, K22, K26, K30, K34, K39, K42, K54, K58; wishSap K31, K57), down
+by 1 to 7 points; 331 of 348 rows stay in their band (wishSap K31 off band before, 50 to 47).
 
 Engine 19 reads Profil-JSON v19 through its typed form (`profile::ProfileForm`) and nothing else.
 Every fixture profile was migrated in one pass: contract types from the excluded ones, `titel` to
@@ -282,13 +308,10 @@ not read at all. An empty value turns its rule off.
 
 Integer per-mille, parameters in `params.rs`.
 
-- Requirements: `M = sum(w*f*e)/sum(w*f)` over the musts (`w` 1000, soft and language 250, frame
-  0; `e` the evidence 1000, 500 or 0), `K = sum(f*e)/sum(f)` over the nice-to-haves, `P = must ?
-  (nice ? (3M+K)/4 : M) : K`. A must or nice met in full through a Schwerpunkt entry weighs `f` =
-  `FOCUS_FACTOR` 2, else 1; the evidence `n = sum(w_must) + 500 * n_nice` stays unweighted.
-- Relevance: a Schwerpunkt the ad demands (the title names it, or a requirement names it and is
-  met in full) adds `FOCUS_RELEVANCE` 100, for at most `FOCUS_RELEVANCE_MAX` 3: `R' = min(1000,
-  R + 100 * demanded)`. Partial hits are shown, never counted.
+- Requirements: `M = sum(w*e)/sum(w)` over the musts (`w` 1000, soft and language 250, frame 0;
+  `e` the evidence 1000, 500 or 0), `K` the mean of `e` over the nice-to-haves, `P = must ? (nice
+  ? (3M+K)/4 : M) : K`; every competence counts the same. The evidence is `n = sum(w_must) + 500
+  * n_nice`.
 - Shrinkage: `P' = (n*P + k*R' + prior_w*prior) / (n + k + prior_w)` with `k` = `K_SHRINK` 2000;
   low evidence (a teaser, vocabulary only, nice-to-haves only, fewer than two items) also
   shrinks towards `LOW_PRIOR` 400 with weight 1500; permanent roles x 0.9.
@@ -316,8 +339,7 @@ Integer per-mille, parameters in `params.rs`.
 ### Reasons, criteria and key facts
 
 Every input is a reason with code and params (no prose): the requirements with their profile
-entry and its JSON path as evidence (`params.focus` when met through a Schwerpunkt), `focus
-{focus, met, partial, inTitle, relevance}`, `targetRole {role, fit, points}`, `dayRateWish`,
+entry and its JSON path as evidence, `targetRole {role, fit, points}`, `dayRateWish`,
 `remoteWish`, `regionWish`, `industryWish`, each with `state`, `points` and the passages. The
 requirement's params carry `max`, `general`, `have` (the years compared with), `yearsFit` and
 `entryYears`, so the reader's row "Erfahrung" and every tooltip say one thing.
@@ -332,11 +354,11 @@ contract, `salaryFrom`, `salaryBonus`, the application deadline and the contact,
 `application.rs`) are stored in the match note and sent on `JobMatch.facts`.
 
 The assessment also says what moved its score (`Assessment::factors`, the reader's "Warum diese
-Zahl?"): the musts met, the optional requirements, the Schwerpunkte the ad demands, the target
-role, the summed wishes, a text with little evidence, the factor of a permanent role and the cap
-that held the score down (`engine::CapKind`, only when the rounded score lay above it). At most
-five lines (`MAX_FACTORS`; a cap, the permanent factor and the musts stay first), codes and
-params only (`factors.rs`); they never change a score.
+Zahl?"): the musts met, the optional requirements, the target role, the summed wishes, a text
+with little evidence, the factor of a permanent role and the cap that held the score down
+(`engine::CapKind`, only when the rounded score lay above it). At most five lines
+(`MAX_FACTORS`; a cap, the permanent factor and the musts stay first), codes and params only
+(`factors.rs`); they never change a score.
 
 ### Limits of an engagement
 

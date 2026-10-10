@@ -58,17 +58,8 @@ pub(crate) const OFF_FIELD_CAP: u8 = 25;
 /// A scored ad keeps at least this (the rubric never shows a 1 of 10).
 pub(crate) const SCORE_FLOOR: u8 = 10;
 
-// --- ENGINE_VERSION 4: Schwerpunkte, target roles and wishes (all off without their key) ---
+// --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 
-/// Schwerpunkte that count (profiles name three to five; more are cut with a warning).
-pub(crate) const FOCUS_MAX: usize = 5;
-/// A requirement met in full through a Schwerpunkt weighs this many times in `M` and `K`;
-/// the evidence `n` stays as it was, so the shrinkage does not change.
-pub(crate) const FOCUS_FACTOR: u64 = 2;
-/// Relevance (per-mille) a Schwerpunkt demanded in the title or a requirement adds, for at
-/// most `FOCUS_RELEVANCE_MAX` Schwerpunkte (in profile order).
-pub(crate) const FOCUS_RELEVANCE: u64 = 100;
-pub(crate) const FOCUS_RELEVANCE_MAX: usize = 3;
 /// Target roles: per-mille added to the shrunk fit when the title matches a target role in
 /// full or in half (the best role counts; the caps still apply afterwards).
 pub(crate) const ROLE_FULL: i64 = 80;

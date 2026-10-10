@@ -33,7 +33,7 @@ pub(crate) struct Domain {
     /// Stable id, shown in the profile summary.
     pub name: &'static str,
     /// The field's names as job boards write them, the most common first: a profile whose
-    /// target roles and Schwerpunkte lie in the field searches for them too
+    /// target roles lie in the field searches for them too
     /// (`profile::deep_search_terms`).
     pub search: &'static [&'static str],
     /// Folded token prefixes in the profile's competences that switch the pack on.

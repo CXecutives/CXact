@@ -2,11 +2,10 @@
 //! ladder (V1-V4, V8, V9, V15), hard criteria decided or checked (V10-V13), relevance
 //! (V17, V18) and the shrunk score (V19). Integer arithmetic only.
 //!
-//! `M = sum(w*f*e)/sum(w*f)` over musts (w 1000, soft 250, frame 0; f = 2 for a requirement
-//! met in full through a Schwerpunkt, else 1), `K = sum(f*e)/sum(f)` over nice-to-haves,
-//! `P = must ? (nice ? (3M+K)/4 : M) : K` (`(M+3K)/4` when the musts are languages and soft
-//! skills only), evidence `n = sum(w_must) + 500*n_nice`,
-//! `R' = min(1000, R + 100*demanded Schwerpunkte (at most 3))`, `P' = (n*P + k*R')/(n + k)`,
+//! `M = sum(w*e)/sum(w)` over musts (w 1000, soft 250, frame 0), `K = mean(e)` over
+//! nice-to-haves, `P = must ? (nice ? (3M+K)/4 : M) : K` (`(M+3K)/4` when the musts are
+//! languages and soft skills only), evidence `n = sum(w_must) + 500*n_nice`, the relevance
+//! `R'`, `P' = (n*P + k*R')/(n + k)`,
 //! permanent roles `P' * 0.9`, then `+ role + clamp(sum(wishes), -100, 100)` per-mille (a
 //! lift ends at 790 while fewer than half of the musts are met),
 //! `score = round_half_even(P'/10)`, the caps, the floor.
@@ -21,17 +20,15 @@ use super::contract::{self, Contract, ContractKind};
 use super::exclusion;
 use super::facts::{self, Finding, HardCriteria, JobFacts, Segment};
 use super::fit::{self, ItemFit, Skills};
-use super::focus::{self, Focus};
 use super::job::{self, Class, Item, Stage};
 use super::lexicon::engine as lex;
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    E_FULL, E_HALF, E_NONE, FOCUS_FACTOR, FOCUS_RELEVANCE, FOCUS_RELEVANCE_MAX, FORMAL_CAP,
-    JUNIOR_CAP, K_SHRINK, LIFT_CAP, LOW_EVIDENCE_ITEMS, LOW_PRIOR, LOW_PRIOR_WEIGHT,
-    MIN_TEXT_CHARS, N_NICE, NO_ITEMS_CAP, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT,
-    PERMANENT_FACTOR, ROLE_FULL, ROLE_HALF, SCORE_FLOOR, SENIOR_YEARS, SEVERAL_OPEN_CAP,
-    TITLE_OPEN_CAP, W_MUST, W_SOFT, W_TERM, WISH_MAX,
+    E_FULL, E_HALF, E_NONE, FORMAL_CAP, JUNIOR_CAP, K_SHRINK, LIFT_CAP, LOW_EVIDENCE_ITEMS,
+    LOW_PRIOR, LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, N_NICE, NO_ITEMS_CAP, OFF_FIELD_CAP,
+    OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, ROLE_FULL, ROLE_HALF, SCORE_FLOOR,
+    SENIOR_YEARS, SEVERAL_OPEN_CAP, TITLE_OPEN_CAP, W_MUST, W_SOFT, W_TERM, WISH_MAX,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
@@ -53,8 +50,6 @@ pub(crate) struct EngineProfile {
     pub query: Vec<(String, u64)>,
     /// The query plus the topics of the target roles: what the title may name.
     pub title_query: Vec<(String, u64)>,
-    /// Schwerpunkte: the starred competences (at most `FOCUS_MAX`).
-    pub focus: Vec<Focus>,
     pub roles: Vec<Role>,
     pub wishes: Wishes,
 }
@@ -65,7 +60,6 @@ impl EngineProfile {
         let skills = Skills::new(&core, form);
         let criteria = HardCriteria::new(form);
         let query = relevance::query(&skills);
-        let focus = focus::of_profile(&skills, form);
         let roles = roles::read(form, &skills.vocab);
         let title_query = relevance::title_query(&query, &roles::topics(&roles));
         let wishes = Wishes::new(form, &skills.vocab);
@@ -75,7 +69,6 @@ impl EngineProfile {
             criteria,
             query,
             title_query,
-            focus,
             roles,
             wishes,
         }
@@ -88,22 +81,6 @@ pub(crate) struct Scored {
     pub item: Item,
     pub fit: ItemFit,
     pub weight: u64,
-    /// The Schwerpunkt that meets the item, and whether in full (then it counts double).
-    pub focus: Option<(usize, bool)>,
-}
-
-/// A Schwerpunkt the ad demands.
-#[derive(Debug, Clone)]
-pub(crate) struct FocusHit {
-    /// Index into [`EngineProfile::focus`].
-    pub index: usize,
-    /// Items it meets in full / in half (indices into [`Evaluation::items`]).
-    pub met: Vec<usize>,
-    pub partial: Vec<usize>,
-    /// The title names it.
-    pub title: bool,
-    /// Relevance it added (per-mille).
-    pub relevance: u64,
 }
 
 /// Everything the engine found for one job.
@@ -115,8 +92,6 @@ pub(crate) struct Evaluation {
     pub score: u8,
     pub evidence: EvidenceLevel,
     pub short: bool,
-    /// Demanded Schwerpunkte (empty for an unscorable job).
-    pub focus: Vec<FocusHit>,
     /// The best target role with its points (per-mille) and the title it met.
     pub role: Option<(RoleFit, i64, String)>,
     /// The wishes with their points (per-mille).
@@ -288,21 +263,15 @@ fn cap(
     .reduce(lower)
 }
 
-/// `P` with the must weight and the number of nice-to-haves. A requirement met in full
-/// through a Schwerpunkt weighs `FOCUS_FACTOR` times in `M` and `K`; the returned must
-/// weight and nice count (the evidence `n`) stay unweighted, and a language counts there
-/// with the full must weight (it is a requirement the ad states, only a light one in `M`).
+/// `P` with the must weight and the number of nice-to-haves (the evidence `n`); a language
+/// counts there with the full must weight (it is a requirement the ad states, only a light
+/// one in `M`).
 /// Musts of languages and soft skills alone weigh a quarter beside the nice-to-haves
 /// (`(M + 3K)/4`): an ad that asks for German and English names its field in the rest.
 fn fit_score(items: &[Scored]) -> (u64, u64, u64) {
     let (mut must_weight, mut must_fit_weight, mut must_mass) = (0u64, 0u64, 0u64);
-    let (mut nice_count, mut nice_fit_count, mut nice_mass) = (0u64, 0u64, 0u64);
+    let (mut nice_count, mut nice_mass) = (0u64, 0u64);
     for s in items {
-        let factor = if matches!(s.focus, Some((_, true))) {
-            FOCUS_FACTOR
-        } else {
-            1
-        };
         match s.item.kind {
             ReqKind::Must => {
                 must_weight += if matches!(s.item.class, Class::Language(..)) {
@@ -310,13 +279,12 @@ fn fit_score(items: &[Scored]) -> (u64, u64, u64) {
                 } else {
                     s.weight
                 };
-                must_fit_weight += s.weight * factor;
-                must_mass += s.weight * factor * u64::from(s.fit.value);
+                must_fit_weight += s.weight;
+                must_mass += s.weight * u64::from(s.fit.value);
             }
             ReqKind::Nice => {
                 nice_count += 1;
-                nice_fit_count += factor;
-                nice_mass += factor * u64::from(s.fit.value);
+                nice_mass += u64::from(s.fit.value);
             }
         }
     }
@@ -327,7 +295,7 @@ fn fit_score(items: &[Scored]) -> (u64, u64, u64) {
             && !matches!(s.item.class, Class::Language(..) | Class::Soft)
     });
     let must_score = must_mass.checked_div(must_fit_weight);
-    let nice_score = nice_mass.checked_div(nice_fit_count);
+    let nice_score = nice_mass.checked_div(nice_count);
     let fit = match (must_score, nice_score) {
         (Some(must), Some(nice)) if hygiene_only => (must + 3 * nice) / 4,
         (Some(must), Some(nice)) => (3 * must + nice) / 4,
@@ -357,52 +325,6 @@ fn criteria_findings(
         segments,
     ));
     (findings, contract)
-}
-
-/// Demanded Schwerpunkte in profile order; the first `FOCUS_RELEVANCE_MAX` add relevance
-/// (none for a text that cannot be read).
-fn focus_hits(
-    profile: &EngineProfile,
-    items: &[Scored],
-    title: &str,
-    readable: bool,
-) -> Vec<FocusHit> {
-    if profile.focus.is_empty() || !readable {
-        return Vec::new();
-    }
-    let in_title = focus::in_title(&profile.skills, &profile.focus, title);
-    let mut hits: Vec<FocusHit> = profile
-        .focus
-        .iter()
-        .enumerate()
-        .map(|(index, _)| {
-            let with = |full: bool| -> Vec<usize> {
-                items
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, s)| s.focus == Some((index, full)))
-                    .map(|(i, _)| i)
-                    .collect()
-            };
-            FocusHit {
-                index,
-                met: with(true),
-                partial: with(false),
-                title: in_title[index],
-                relevance: 0,
-            }
-        })
-        .filter(|h| h.title || !h.met.is_empty() || !h.partial.is_empty())
-        .collect();
-    // Named in full (title or a requirement met in full): the Schwerpunkt is demanded.
-    for hit in hits
-        .iter_mut()
-        .filter(|h| h.title || !h.met.is_empty())
-        .take(FOCUS_RELEVANCE_MAX)
-    {
-        hit.relevance = FOCUS_RELEVANCE;
-    }
-    hits
 }
 
 /// The target role the title matches (with its points) and the wishes for one ad.
@@ -478,7 +400,7 @@ fn evidence_level(kind: TextKind, items: &[Scored], must_weight: u64) -> Evidenc
     }
 }
 
-/// Every requirement item with its fit, weight and Schwerpunkt.
+/// Every requirement item with its fit and weight.
 fn scored(profile: &EngineProfile, items: Vec<Item>) -> Vec<Scored> {
     items
         .into_iter()
@@ -488,7 +410,6 @@ fn scored(profile: &EngineProfile, items: Vec<Item>) -> Vec<Scored> {
                 // A profile rarely proves soft skills: unproven counts half.
                 fit.value = fit.value.max(E_HALF);
             }
-            let focus = focus::of_item(&profile.skills, &profile.focus, &item, fit.value);
             // General experience without the profile's years: nothing to judge it by.
             let unjudged = item.years.is_some()
                 && profile.skills.total_years.is_none()
@@ -497,7 +418,6 @@ fn scored(profile: &EngineProfile, items: Vec<Item>) -> Vec<Scored> {
                 weight: if unjudged { 0 } else { weight(&item) },
                 fit,
                 item,
-                focus,
             }
         })
         .collect()
@@ -517,7 +437,7 @@ fn job_facts<'a>(job: &JobInput<'a>) -> JobFacts<'a> {
 
 /// Every cap of a job: the rubric's caps, a text without requirements (`NO_ITEMS_CAP`)
 /// and a junior role for a senior profile (`JUNIOR_CAP`); no off-field cap where the title
-/// names the profile's field (`field_title`: it meets a target role or names a Schwerpunkt).
+/// names the profile's field (`field_title`: it meets a target role).
 fn all_caps(
     profile: &EngineProfile,
     items: &[Scored],
@@ -568,8 +488,7 @@ fn page_levels(job: &JobInput<'_>) -> Vec<String> {
         .collect()
 }
 
-/// The relevance `R'` of a job: lexical and title fit plus the demanded Schwerpunkte;
-/// without any requirement only the title speaks for the field (a teaser's few words name
+/// The relevance `R'` of a job: lexical and title fit; without any requirement only the title speaks for the field (a teaser's few words name
 /// tools of every field).
 fn relevance_of(
     profile: &EngineProfile,
@@ -577,22 +496,21 @@ fn relevance_of(
     title: &str,
     requirement_lines: &[Range<usize>],
     no_items: bool,
-    focus_relevance: u64,
 ) -> u64 {
     let vocab = &profile.skills.vocab;
     if no_items {
         return relevance::field_title_fit(&profile.title_query, title, vocab);
     }
     // With requirements the target role counts once, as its points (not in the title fit).
-    (relevance::relevance(
+    relevance::relevance(
         &profile.query,
         &profile.query,
         vocab,
         title,
         job.text,
         requirement_lines,
-    ) + focus_relevance)
-        .min(1000)
+    )
+    .min(1000)
 }
 
 /// The score (rounded, capped, at least the floor; 0 when unscorable), the rank (the
@@ -679,16 +597,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
 
     let weight_of_evidence = must_weight + N_NICE * nice_count;
     let readable = !short || title_only;
-    let focus = focus_hits(profile, &items, &title, readable);
-    let focus_relevance: u64 = focus.iter().map(|h| h.relevance).sum();
-    let relevance = relevance_of(
-        profile,
-        job,
-        &title,
-        &requirement_lines,
-        items.is_empty(),
-        focus_relevance,
-    );
+    let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
     let (prior_weight, prior) = if evidence == EvidenceLevel::Full {
         (0, 0)
     } else {
@@ -727,7 +636,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         job,
         formal_cap,
         no_items,
-        role.is_some() || focus.iter().any(|h| h.title),
+        role.is_some(),
     );
     let adjusted = adjust(shrunk, role.as_ref(), &wishes, &items);
     let (score, rank, capped) = final_score(adjusted, cap, unscorable);
@@ -743,7 +652,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         score,
         evidence,
         short,
-        focus,
         role,
         wishes,
         facts: ad_facts,
@@ -776,7 +684,6 @@ mod tests {
                 via: Via::Exact,
             },
             weight: W_MUST,
-            focus: None,
         }
     }
 

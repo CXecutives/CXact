@@ -1,5 +1,5 @@
 //! What moved a score, for the reader's "why this number": the musts met, the optional
-//! requirements, the Schwerpunkte, the target role, the wishes, a text with little evidence,
+//! requirements, the target role, the wishes, a text with little evidence,
 //! the factor of a permanent role and the cap that held the score down. Codes and params
 //! only, read from the evaluation the score came from (it never changes the score). At most
 //! [`MAX_FACTORS`] lines: where there are more, the ones that explain the most stay (a cap,
@@ -15,10 +15,9 @@ use super::types::{EvidenceLevel, Factor, FactorCode, MAX_FACTORS, Summary, Verd
 const PERMANENT_PERCENT: u64 = super::params::PERMANENT_FACTOR / 10;
 
 /// The lines in the order they are read.
-const READING: [FactorCode; 8] = [
+const READING: [FactorCode; 7] = [
     FactorCode::Musts,
     FactorCode::Nice,
-    FactorCode::Focus,
     FactorCode::TargetRole,
     FactorCode::Wishes,
     FactorCode::Evidence,
@@ -27,11 +26,10 @@ const READING: [FactorCode; 8] = [
 ];
 
 /// The lines kept first where there are more than [`MAX_FACTORS`].
-const KEPT_FIRST: [FactorCode; 8] = [
+const KEPT_FIRST: [FactorCode; 7] = [
     FactorCode::Cap,
     FactorCode::Permanent,
     FactorCode::Musts,
-    FactorCode::Focus,
     FactorCode::TargetRole,
     FactorCode::Wishes,
     FactorCode::Evidence,
@@ -62,17 +60,6 @@ fn all(profile: &EngineProfile, evaluation: &Evaluation, summary: &Summary) -> V
         out.push(factor(
             FactorCode::Nice,
             &json!({ "met": summary.nice_met, "total": summary.nice_total }),
-        ));
-    }
-    if !profile.focus.is_empty() {
-        let hit = evaluation
-            .focus
-            .iter()
-            .filter(|h| h.title || !h.met.is_empty())
-            .count();
-        out.push(factor(
-            FactorCode::Focus,
-            &json!({ "hit": hit, "total": profile.focus.len() }),
         ));
     }
     if !profile.roles.is_empty() {
@@ -170,7 +157,8 @@ mod tests {
             {"kompetenz": "Restrukturierung", "schwerpunkt": true},
             {"kompetenz": "Treasury", "schwerpunkt": true}
         ],
-        "wunschrollen": ["Interim CFO"]
+        "wunschrollen": ["Interim CFO"],
+        "arbeitsmodell": "remote"
     }"#;
 
     const AD: &str = "Wir suchen einen Interim CFO für ein Familienunternehmen in Hamburg.\n\n\
@@ -189,30 +177,25 @@ mod tests {
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
         assert_eq!(
             codes,
-            [
-                FactorCode::Musts,
-                FactorCode::Nice,
-                FactorCode::Focus,
-                FactorCode::TargetRole
-            ]
+            [FactorCode::Musts, FactorCode::Nice, FactorCode::TargetRole]
         );
         assert_eq!(a.factors[0].params["met"], json!(a.summary.must_met));
         assert_eq!(a.factors[0].params["total"], json!(a.summary.must_total));
-        assert_eq!(a.factors[2].params["total"], json!(2));
-        assert_eq!(a.factors[3].params["fit"], json!("full"));
-        assert_eq!(a.factors[3].params["role"], json!("Interim CFO"));
+        assert_eq!(a.factors[2].params["fit"], json!("full"));
+        assert_eq!(a.factors[2].params["role"], json!("Interim CFO"));
     }
 
     #[test]
     fn a_permanent_role_and_a_cap_say_so_and_the_lines_stay_five() {
-        // A senior profile (20 years) and a junior role: the junior cap holds the score.
+        // A senior profile (20 years) and a junior role on site: the junior cap holds the
+        // score, the remote wish missed lowers it.
         let mut data = crate::profile::parse(PROFILE).unwrap();
         data.years = Some(20);
         let profile = compile_profile(&data);
         let requirements = AD.split_once("\n\n").map_or(AD, |(_, rest)| rest);
         let ad = format!(
-            "Wir suchen einen Controller in Festanstellung, Vollzeit und unbefristet.\n\n\
-             {requirements}"
+            "Wir suchen einen Controller in Festanstellung, Vollzeit und unbefristet, \
+             zu 100 % vor Ort in Hamburg.\n\n{requirements}"
         );
         let a = assess(&profile, &job("Junior Controller (m/w/d)", &ad), None).unwrap();
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
@@ -220,8 +203,8 @@ mod tests {
             codes,
             [
                 FactorCode::Musts,
-                FactorCode::Focus,
                 FactorCode::TargetRole,
+                FactorCode::Wishes,
                 FactorCode::Permanent,
                 FactorCode::Cap
             ],

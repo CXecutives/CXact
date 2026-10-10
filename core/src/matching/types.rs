@@ -116,8 +116,6 @@ pub enum FactorCode {
     Musts,
     /// The optional requirements met at least in part (`met`) of all of them (`total`).
     Nice,
-    /// The Schwerpunkte of the profile the ad demands (`hit`) of all of them (`total`).
-    Focus,
     /// The title meets a target role (`role`, `fit` full or half), or none (`fit` none).
     TargetRole,
     /// The wishes together lift (`points` above 0) or lower (below 0) the score, in points.
@@ -198,9 +196,6 @@ pub enum ReasonCode {
     ContractType,
     /// A staffing agency without contract details: temporary agency work is possible.
     AnueRisk,
-    /// A Schwerpunkt of the profile the ad demands (`focus`, `met`, `partial`, `inTitle`,
-    /// `relevance`): its requirements met in full count double.
-    Focus,
     /// The title matches a target role (`role`, `fit` full or half, `points`).
     TargetRole,
     /// Day rate wish (`state` met, near, missed or unknown, `points`, `wish`, `rate`,
@@ -380,8 +375,6 @@ pub enum ProfileWarningCode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WishKey {
-    /// Schwerpunkte (the starred `kernkompetenzen`).
-    Focus,
     /// Target roles (`wunschrollen`).
     TargetRoles,
     /// Wished day rate (`tagessatz_wunsch`).
@@ -419,6 +412,6 @@ pub struct ProfileSummary {
     pub years: Option<u32>,
     /// Degrees as written in the profile.
     pub degrees: Vec<String>,
-    /// Schwerpunkte, target roles and the wishes, each with `set`.
+    /// Target roles and the wishes, each with `set`.
     pub wishes: Vec<WishInfo>,
 }

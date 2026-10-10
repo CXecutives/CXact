@@ -123,7 +123,6 @@ Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter de
 - Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)
 - Muss-Anforderungen: 3 von 4 erfüllt, 1 offen
 - Kann-Anforderungen: 0 von 1 erfüllt
-- Schwerpunkte: 1 von 1 getroffen
 - Wünsche: heben die Punktzahl um 3 von 100 Punkten
 
 **Harte Kriterien**
@@ -133,7 +132,7 @@ Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter de
 - Verfügbar ab 01.12.2026: zu prüfen. Der Start liegt 30 Tage vor meiner Verfügbarkeit. „ab 01.11.2026“
 
 **Erfüllt**
-- „Mehrjährige Erfahrung im Controlling“ (Muss): Profil Controlling, 12 Jahre; Schwerpunkt Controlling, zählt doppelt
+- „Mehrjährige Erfahrung im Controlling“ (Muss): Profil Controlling, 12 Jahre
 - „Sehr gute Kenntnisse im Konzernabschluss nach HGB“ (Muss): Profil Konzernabschluss nach HGB, 8 Jahre
 - „Erfahrung mit SAP S/4HANA“ (Muss): Profil SAP S/4HANA
 
@@ -142,7 +141,6 @@ Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter de
 - „Idealerweise Erfahrung mit Power BI“ (Kann): kein Beleg im Profil gefunden
 
 **Schwerpunkte, Wunschrolle und Wünsche**
-- Der Schwerpunkt Controlling ist gefragt.
 - Der Titel passt zur Wunschrolle Interim CFO.
 - Der Tagessatz von 1.250 € liegt knapp unter dem Wunsch von 1.300 €. „Tagessatz bis 1.250 €“
 - Die Stelle ist zu 60 % remote, gewünscht ist teilweise remote. „Remote-Anteil 60 %“

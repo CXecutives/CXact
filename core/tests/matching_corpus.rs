@@ -34,7 +34,8 @@ use sha2::Digest as _;
 /// permanent roles is no rule (K33 and K43 of senior and wish), a table of role names; the
 /// function words and generic activity words of the gap finder (K12 of five profiles); a
 /// title that meets a target role or names a Schwerpunkt is not off the field (wish K55).
-const GOLDEN_DIGEST: &str = "1c6baf112b89e88d";
+/// Version 20: no Schwerpunkte (the owner's decision of 2026-10-10).
+const GOLDEN_DIGEST: &str = "1839c3473cb048b7";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")

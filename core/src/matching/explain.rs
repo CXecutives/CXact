@@ -195,8 +195,8 @@ pub(crate) fn assessment(
 /// The params of a requirement: where it stands and its class; the years it asks (a range
 /// with its upper end), whether they are general experience, the years they were judged
 /// against (`have`, none: no verdict) and how the years alone fit (`yearsFit`, the Jobdetails
-/// row "Erfahrung"); the entry's own years, whether the profile holds a language at all (an
-/// open one is then a level too low), and the Schwerpunkt that meets it in full.
+/// row "Erfahrung"); the entry's own years and whether the profile holds a language at all (an
+/// open one is then a level too low).
 fn requirement_params(profile: &EngineProfile, scored: &Scored) -> Value {
     let item = &scored.item;
     let source = match item.stage {
@@ -236,45 +236,11 @@ fn requirement_params(profile: &EngineProfile, scored: &Scored) -> Value {
     {
         params["held"] = json!(true);
     }
-    if let Some((index, true)) = scored.focus {
-        // Met in full through a Schwerpunkt: it counts double.
-        params["focus"] = json!(profile.focus[index].text);
-    }
     params
 }
 
-/// Reasons of the version-4 inputs: every demanded Schwerpunkt (with the passages it
-/// meets), the target role the title matches, every wish.
+/// Reasons of the version-4 inputs: the target role the title matches, every wish.
 fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evaluation) {
-    for hit in &evaluation.focus {
-        let focus = &profile.focus[hit.index];
-        let kind = if hit.title || !hit.met.is_empty() {
-            ReasonKind::Met
-        } else {
-            ReasonKind::Partial
-        };
-        let first = hit.met.iter().chain(&hit.partial).next();
-        let quote_of = first.map(|&i| quote(&evaluation.items[i].item.text));
-        let reason = b.reason(kind, Weight::Info, ReasonCode::Focus);
-        reason.params = object(&json!({
-            "focus": focus.text,
-            "met": hit.met.len(),
-            "partial": hit.partial.len(),
-            "inTitle": hit.title,
-            "relevance": hit.relevance,
-        }));
-        reason.evidence = quote_of.map(|quote| Evidence {
-            profile: focus.text.clone(),
-            path: focus.path.clone(),
-            via: Via::Exact,
-            quote,
-        });
-        for &i in hit.met.iter().chain(&hit.partial) {
-            if let Some(span) = evaluation.items[i].item.span.clone() {
-                b.highlight(span);
-            }
-        }
-    }
     if let Some((fit, points, title)) = &evaluation.role {
         let role = &profile.roles[fit.role];
         let (kind, name, via) = if fit.full {

@@ -269,9 +269,11 @@ const HELDOUT8: Floor = Floor {
 /// Set 9 after the one correction round of engine 16 (first contact 0.828, 0.407, 0.908,
 /// 0.923 and 4 buried; engine 15 0.814 and 5 buried): the target years the labels read
 /// differently between profiles (tooJunior for P7 and P8 against the labels, a senior title
-/// with fewer years than P9 and P12 ask for left in) stay as they are.
+/// with fewer years than P9 and P12 ask for left in) stay as they are. Engine 20 (the owner's
+/// decision of 2026-10-10: no Schwerpunkte, every competence counts the same) moved NDCG@10
+/// from 0.900 to 0.889; the floor follows that decision.
 const HELDOUT9: Floor = Floor {
-    ndcg10: 0.89,
+    ndcg10: 0.889,
     spearman: 0.44,
     exclusion_precision: 0.98,
     exclusion_recall: 0.85,

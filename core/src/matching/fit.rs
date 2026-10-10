@@ -3,9 +3,6 @@
 //! two thirds of a long phrase = 0.5, generic atoms never alone (V1-V4, V15), language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-
 use super::atoms::{self, Fit, Vocab, fold};
 use super::job::{Class, Item, Stage, contains_word, language_of, names_degree};
 use super::lexicon::domains::DOMAINS;
@@ -126,32 +123,8 @@ impl Broad {
     }
 }
 
-thread_local! {
-    /// What ESCO names in the requirements read on this thread, by vocabulary.
-    static ITEM_BROAD: RefCell<HashMap<(u64, String), Broad>> = RefCell::new(HashMap::new());
-}
-
-/// What ESCO names in a requirement ([`Broad::skills`]), each text once per job: the ladder
-/// asks again for every Schwerpunkt.
-fn item_broad(text: &str, vocab: &Vocab) -> Broad {
-    let key = (vocab.id(), text.to_owned());
-    if let Some(found) = ITEM_BROAD.with(|read| read.borrow().get(&key).cloned()) {
-        return found;
-    }
-    let found = Broad::skills(text, vocab);
-    ITEM_BROAD.with(|read| {
-        let mut read = read.borrow_mut();
-        if read.len() >= atoms::ATOMS_KEPT {
-            read.clear();
-        }
-        read.insert(key, found.clone());
-    });
-    found
-}
-
-/// Forgets the texts read on this thread (a new job): the requirements and their atoms.
+/// Forgets the texts read on this thread (a new job): their atoms.
 pub(crate) fn forget() {
-    ITEM_BROAD.with(|read| read.borrow_mut().clear());
     atoms::forget_atoms();
 }
 
@@ -477,9 +450,9 @@ fn covered(skills: &Skills, atom: &str) -> bool {
                 .all(related))
 }
 
-/// The ladder over all entries, or only over `only` (entry indices); `broad`: ESCO too (not
-/// for a soft skill, which counts half unproven anyway).
-fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool) -> ItemFit {
+/// The ladder over all entries; `broad`: ESCO too (not for a soft skill, which counts half
+/// unproven anyway).
+fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     let job = joined(atoms::atoms(text, &skills.vocab), &skills.joins);
     if job.is_empty() {
         return NONE;
@@ -487,9 +460,6 @@ fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool
     let expanded = expand(&job);
     let mut best = NONE;
     for (index, entry) in skills.entries.iter().enumerate() {
-        if only.is_some_and(|only| !only.contains(&index)) {
-            continue;
-        }
         let (value, via) = entry_fit(&job, &expanded, entry);
         if value > best.value {
             best = ItemFit {
@@ -558,11 +528,8 @@ fn skill_fit_in(skills: &Skills, text: &str, only: Option<&[usize]>, broad: bool
     }
     // ESCO, the broad layer: a concept the item and an entry both name.
     if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
-        let item = item_broad(text, &skills.vocab);
+        let item = Broad::skills(text, &skills.vocab);
         for (index, entry) in skills.entries.iter().enumerate() {
-            if only.is_some_and(|only| !only.contains(&index)) {
-                continue;
-            }
             if let Some((value, via)) = item.meets(&entry.broad)
                 && value > best.value
             {
@@ -684,38 +651,6 @@ fn alternatives(item: &Item) -> Vec<&str> {
     alternatives
 }
 
-/// How well only the entries `only` meet a skill item (best alternative, no years). `via`
-/// tells whether the item names the entry (exact), something narrower (general, half) or
-/// only a broader term inside the entry (specific).
-pub(crate) fn focus_fit(skills: &Skills, item: &Item, only: &[usize]) -> ItemFit {
-    // An entry that names the item beats one it only lies inside at the same value.
-    let rank = |fit: &ItemFit| (fit.value, fit.via != Via::Specific);
-    alternatives(item)
-        .iter()
-        .flat_map(|alt| {
-            only.iter()
-                .map(move |&index| skill_fit_in(skills, alt, Some(&[index]), true))
-        })
-        .fold(
-            NONE,
-            |best, fit| {
-                if rank(&fit) > rank(&best) { fit } else { best }
-            },
-        )
-}
-
-/// Does the title name one of the entries `only` (every atom of the entry, equal)?
-pub(crate) fn title_names(skills: &Skills, title: &str, only: &[usize]) -> bool {
-    let job = atoms::atoms(title, &skills.vocab);
-    if job.is_empty() {
-        return false;
-    }
-    let expanded = expand(&job);
-    only.iter()
-        .filter_map(|&index| skills.entries.get(index))
-        .any(|entry| entry_fit(&job, &expanded, entry) == (E_FULL, Via::Exact))
-}
-
 /// The packs whose triggers an atom starts with.
 fn packs_of(atom: &str) -> Vec<&'static str> {
     DOMAINS
@@ -788,7 +723,7 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
         Class::Licence(word) => licence_fit(skills, word),
         Class::Soft | Class::Skill => alternatives(item)
             .iter()
-            .map(|alt| skill_fit_in(skills, alt, None, item.class == Class::Skill))
+            .map(|alt| skill_fit_in(skills, alt, item.class == Class::Skill))
             .max_by_key(|f| f.value)
             .unwrap_or(NONE),
     };
@@ -865,7 +800,7 @@ mod tests {
             "methoden_tools": ["Zendesk", "Genesys Cloud", "DIN 276"]
         }));
         let skills = Skills::new(&core_texts(&data), &data);
-        let value = |text: &str| skill_fit_in(&skills, text, None, true).value;
+        let value = |text: &str| skill_fit_in(&skills, text, true).value;
         for met in [
             "Leitung Kundenservice",
             "Erfahrung im Kundenservice",
@@ -891,24 +826,23 @@ mod tests {
         );
         let skills = Skills::new(&core_texts(&data), &data);
         assert_eq!(
-            skill_fit_in(&skills, "Sehr gute SAP-Kenntnisse", None, true).value,
+            skill_fit_in(&skills, "Sehr gute SAP-Kenntnisse", true).value,
             E_FULL
         );
         assert_eq!(
-            skill_fit_in(&skills, "Kenntnisse in SAP BW", None, true).value,
+            skill_fit_in(&skills, "Kenntnisse in SAP BW", true).value,
             E_NONE
         );
-        assert_eq!(skill_fit_in(&skills, "SAP", None, true).value, E_NONE);
+        assert_eq!(skill_fit_in(&skills, "SAP", true).value, E_NONE);
         // Leadership alone is met half by a leading role; inside another skill it is not.
         assert_eq!(
-            skill_fit_in(&skills, "Führungserfahrung", None, true).value,
+            skill_fit_in(&skills, "Führungserfahrung", true).value,
             E_HALF
         );
         assert_eq!(
             skill_fit_in(
                 &skills,
                 "8 Jahre Controlling, davon 3 mit Führungsverantwortung",
-                None,
                 true
             )
             .value,
@@ -938,7 +872,7 @@ mod tests {
             "branchen": [{"branche": "Maschinenbau"}]
         }));
         let skills = Skills::new(&core_texts(&data), &data);
-        let fit = |text: &str| skill_fit_in(&skills, text, None, true).value;
+        let fit = |text: &str| skill_fit_in(&skills, text, true).value;
         assert_eq!(fit("Vertriebserfahrung im Maschinenbau"), E_NONE);
         assert_eq!(fit("Controlling im Maschinenbau"), E_FULL);
         assert_eq!(fit("Controlling in der Automobilindustrie"), E_HALF);
@@ -976,7 +910,7 @@ mod tests {
         let fit = |profile: &str, item: &str| {
             let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": profile}]}));
             let skills = Skills::new(&core_texts(&data), &data);
-            let fit = skill_fit_in(&skills, item, None, true);
+            let fit = skill_fit_in(&skills, item, true);
             (fit.value, fit.via)
         };
         // The preferred labels in German and English.

@@ -237,8 +237,6 @@ struct Requirement<'a> {
     years: Option<i64>,
     years_max: Option<i64>,
     evidence: Option<Entry>,
-    /// The Schwerpunkt it meets in full (it counts double).
-    focus: Option<&'a str>,
 }
 
 /// The profile entry behind a requirement.
@@ -652,19 +650,13 @@ fn pre_assessment(w: &dyn Wording, item: PromptJob<'_>, consultant: &Consultant<
         .collect();
     push_group(&mut blocks, l.checks, &checks);
 
-    // A Schwerpunkt's words stand at its requirements already.
     let preferences: Vec<String> = assessment
         .reasons
         .iter()
         .filter(|r| is_preference(r.code))
         .filter_map(|r| {
-            let quote = if r.code == ReasonCode::Focus {
-                None
-            } else {
-                quoted(r)
-            };
             w.reason(r.code, &r.params)
-                .map(|said| format!("- {}", sentence(Some(said), quote)))
+                .map(|said| format!("- {}", sentence(Some(said), quoted(r))))
         })
         .collect();
     push_group(&mut blocks, l.preferences, &preferences);
@@ -741,8 +733,7 @@ fn push_group(blocks: &mut Vec<String>, label: &str, lines: &[String]) {
 fn is_preference(code: ReasonCode) -> bool {
     matches!(
         code,
-        ReasonCode::Focus
-            | ReasonCode::TargetRole
+        ReasonCode::TargetRole
             | ReasonCode::DayRateWish
             | ReasonCode::RemoteWish
             | ReasonCode::RegionWish
@@ -810,7 +801,6 @@ fn requirement<'a>(reason: &'a Reason, profile: &ProfileForm) -> Requirement<'a>
         years: int(&reason.params, "years"),
         years_max: int(&reason.params, "max"),
         evidence,
-        focus: text_param(&reason.params, "focus"),
     }
 }
 

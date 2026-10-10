@@ -13,7 +13,6 @@ mod explain;
 mod factors;
 pub(crate) mod facts;
 mod fit;
-mod focus;
 /// The gap finder (`core/examples/vocab_gaps.rs`), a developer's tool: in debug builds only, so
 /// the shipped app carries the fixed vocabulary alone.
 #[cfg(debug_assertions)]
@@ -57,7 +56,7 @@ use engine::EngineProfile;
 use facts::{Availability, HardCriteria};
 
 /// Version of the scoring behaviour; part of the match revision (`match_rev`). 4: the
-/// Schwerpunkte, target roles and wishes of the profile. 5: frame and soft words as words
+/// Schwerpunkte (gone in 20), target roles and wishes of the profile. 5: frame and soft words as words
 /// (not prefixes of skills), real compound boundaries, codes with their number and short
 /// skills, multiword terms across dropped words, doctorate and QP. 6: rules from the unseen
 /// held-out set 3 (rates next to a currency, reading noise, English language names, texts
@@ -90,8 +89,10 @@ use facts::{Availability, HardCriteria};
 /// only (no free key walk, no synonyms of a competence, no USPs or career stations); the
 /// contract types, the work mode (`hybrid` at least partly remote), the workload (full time at
 /// least four days, part time at most three) and the starred industries; remote work abroad
-/// and the region of permanent roles are no rules any more.
-pub const ENGINE_VERSION: u32 = 19;
+/// and the region of permanent roles are no rules any more. 20: no Schwerpunkte (owner decision
+/// 2026-10-10): every competence counts the same, no requirement double and no relevance for
+/// a demanded one.
+pub const ENGINE_VERSION: u32 = 20;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.
@@ -288,24 +289,15 @@ fn warnings(
     warnings
 }
 
-/// Schwerpunkte, target roles and the wishes as understood.
+/// Target roles and the wishes as understood.
 fn wishes_info(engine: &EngineProfile) -> Vec<WishInfo> {
-    let mut wishes = vec![
-        WishInfo {
-            key: WishKey::Focus,
-            set: !engine.focus.is_empty(),
-            params: object(json!({
-                "focus": engine.focus.iter().map(|f| f.text.clone()).collect::<Vec<_>>(),
-            })),
-        },
-        WishInfo {
-            key: WishKey::TargetRoles,
-            set: !engine.roles.is_empty(),
-            params: object(json!({
-                "roles": engine.roles.iter().map(|r| r.text.clone()).collect::<Vec<_>>(),
-            })),
-        },
-    ];
+    let mut wishes = vec![WishInfo {
+        key: WishKey::TargetRoles,
+        set: !engine.roles.is_empty(),
+        params: object(json!({
+            "roles": engine.roles.iter().map(|r| r.text.clone()).collect::<Vec<_>>(),
+        })),
+    }];
     wishes.extend(engine.wishes.info());
     wishes
 }
@@ -349,8 +341,6 @@ fn fingerprint(engine: &EngineProfile) -> String {
     let c = &engine.criteria;
     let mut countries = c.countries.clone().unwrap_or_default();
     countries.sort();
-    // Schwerpunkte keep their order (the first ones add relevance); roles do not.
-    let focus: Vec<String> = engine.focus.iter().map(|f| atoms::fold(&f.text)).collect();
     let mut roles: Vec<String> = engine.roles.iter().map(|r| atoms::fold(&r.text)).collect();
     roles.sort();
     let mut exclusions: Vec<String> = c.exclusion_words.iter().map(|w| atoms::fold(w)).collect();
@@ -359,7 +349,7 @@ fn fingerprint(engine: &EngineProfile) -> String {
         "engine {ENGINE_VERSION}\nentries {}\nlanguages {languages:?}\ndegree {:?} {}\nyears {:?}\n\
          min {:?}\ncountries {countries:?}\nanue {}\npermanent {}\navailable {:?}\n\
          salary {:?}\npacks {:?}\n\
-         focus {focus:?}\nroles {roles:?}\nwishes {}\nworkload {:?} {:?}\nmonths {:?}\n\
+         roles {roles:?}\nwishes {}\nworkload {:?} {:?}\nmonths {:?}\n\
          exclusions {exclusions:?}\n",
         entries.join("|"),
         engine.skills.degree_fields,
@@ -423,7 +413,7 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
     atoms::broad_search_term(term)
 }
 
-/// The field of target roles and Schwerpunkte for the deep search: the names job boards give
+/// The field of the target roles for the deep search: the names job boards give
 /// it, and whether a competence lies in it.
 pub(crate) use atoms::SearchField;
 

@@ -1,7 +1,6 @@
-//! The Schwerpunkte, target roles and wishes of the profile, one test per feature: the
-//! starred competences, `wunschrollen` and the wishes (day rate, work mode, regions, the
-//! starred industries). Each is off while it is empty, visible as a reason with code and
-//! params, bounded, and never an exclusion.
+//! The target roles and wishes of the profile, one test per feature: `wunschrollen` and the
+//! wishes (day rate, work mode, regions, the starred industries). Each is off while it is
+//! empty, visible as a reason with code and params, bounded, and never an exclusion.
 
 use std::path::Path;
 
@@ -13,7 +12,7 @@ use jobalert_core::portal::Portal;
 use jobalert_core::profile::{ProfileForm, ProfileIndustry, WorkWish, parse};
 use serde_json::{Value, json};
 
-/// An invented interim finance consultant without Schwerpunkte, target roles or wishes.
+/// An invented interim finance consultant without target roles or wishes.
 fn base() -> ProfileForm {
     let value = json!({
         "kernkompetenzen": [
@@ -29,15 +28,6 @@ fn base() -> ProfileForm {
         "laender": ["DE"]
     });
     parse(&value.to_string()).expect("a v19 profile")
-}
-
-/// The base profile with these competences starred.
-fn focus(names: &[&str]) -> ProfileForm {
-    let mut profile = base();
-    for competence in &mut profile.competences {
-        competence.focus = names.contains(&competence.name.as_str());
-    }
-    profile
 }
 
 /// The base profile with these target roles.
@@ -104,16 +94,6 @@ fn state(a: &Assessment, code: ReasonCode) -> String {
         .to_owned()
 }
 
-/// Two musts met, one open: a mid score with room up and down.
-const TREASURY_TEXT: &str = "Über uns\n\
-Ein Maschinenbauer aus dem Allgäu.\n\n\
-Ihr Profil\n\
-- Erfahrung im Treasury\n\
-- Erfahrung im Controlling\n\
-- Kenntnisse in der Zollabwicklung\n\n\
-Rahmenbedingungen\n\
-Tagessatz 1.100 € pro Tag\n";
-
 const CONTROLLING_TEXT: &str = "Über uns\n\
 Ein Mittelständler aus dem Norden.\n\n\
 Ihr Profil\n\
@@ -125,58 +105,6 @@ Tagessatz 1.100 € pro Tag\n";
 
 fn ad(text: &str) -> Ad<'_> {
     Ad { text, ..AD }
-}
-
-#[test]
-fn a_schwerpunkt_the_ad_demands_counts_double_and_raises_relevance() {
-    let plain = run(&base(), &ad(TREASURY_TEXT));
-    let focus = focus(&["Treasury"]);
-    let a = run(&focus, &ad(TREASURY_TEXT));
-    assert!(a.score > plain.score, "{} vs {}", a.score, plain.score);
-    let r = reason(&a, ReasonCode::Focus).expect("focus reason");
-    assert_eq!(r.kind, ReasonKind::Met);
-    assert_eq!(r.params["focus"], "Treasury");
-    assert_eq!(r.params["met"], 1);
-    assert_eq!(r.params["relevance"], 100);
-    assert_eq!(
-        r.evidence.as_ref().expect("evidence").path,
-        "kernkompetenzen[2].kompetenz"
-    );
-    assert!(!r.ranges.is_empty(), "the requirement is highlighted");
-    let requirement = a
-        .reasons
-        .iter()
-        .find(|r| r.label.as_deref() == Some("Erfahrung im Treasury"))
-        .expect("requirement");
-    assert_eq!(requirement.params["focus"], "Treasury");
-}
-
-#[test]
-fn an_ad_that_demands_no_schwerpunkt_gets_nothing() {
-    let focus = focus(&["Treasury", "Restrukturierung"]);
-    let plain = run(&base(), &ad(CONTROLLING_TEXT));
-    let a = run(&focus, &ad(CONTROLLING_TEXT));
-    assert_eq!(a.score, plain.score);
-    assert!(reason(&a, ReasonCode::Focus).is_none());
-    // A broader requirement inside the Schwerpunkt does not demand it.
-    let ifrs = self::focus(&["Konzernrechnungslegung nach IFRS"]);
-    let text = "Ihr Profil\n- Kenntnisse in IFRS\n- Erfahrung im Controlling\n\
-                - Kenntnisse in der Zollabwicklung\nRahmenbedingungen\nTagessatz 1.100 € pro Tag\n";
-    assert_eq!(run(&ifrs, &ad(text)).score, run(&base(), &ad(text)).score);
-    assert!(reason(&run(&ifrs, &ad(text)), ReasonCode::Focus).is_none());
-}
-
-#[test]
-fn a_schwerpunkt_in_the_title_raises_relevance() {
-    let title = Ad {
-        title: "Interim Treasury Manager (m/w/d)",
-        ..ad(CONTROLLING_TEXT)
-    };
-    let focus = focus(&["Treasury"]);
-    let a = run(&focus, &title);
-    let r = reason(&a, ReasonCode::Focus).expect("focus from the title");
-    assert_eq!(r.params["inTitle"], true);
-    assert!(a.score > run(&base(), &title).score);
 }
 
 #[test]
@@ -443,7 +371,7 @@ type Change = Box<dyn Fn(&mut ProfileForm)>;
 fn the_summary_and_the_fingerprint_follow_the_fields() {
     let plain = compile_profile(&base());
     assert!(plain.summary().wishes.iter().all(|w| !w.set));
-    assert_eq!(plain.summary().wishes.len(), 6);
+    assert_eq!(plain.summary().wishes.len(), 5);
     let full = ProfileForm {
         day_rate_wish: Some(1300),
         work_mode: WorkWish::Hybrid,
@@ -465,8 +393,7 @@ fn the_summary_and_the_fingerprint_follow_the_fields() {
     assert_eq!(set(WishKey::Remote).params["level"], "hybrid");
     assert!(set(WishKey::Regions).set && set(WishKey::Industries).set);
     let mut seen = vec![plain.fingerprint()];
-    let changes: [(&str, Change); 7] = [
-        ("focus", Box::new(|p| p.competences[2].focus = true)),
+    let changes: [(&str, Change); 6] = [
         ("projects", Box::new(|p| p.project = false)),
         ("role", Box::new(|p| p.roles = vec!["Interim CFO".into()])),
         ("rate", Box::new(|p| p.day_rate_wish = Some(1200))),

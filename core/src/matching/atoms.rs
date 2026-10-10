@@ -130,11 +130,6 @@ impl Vocab {
         Self::with(DOMAINS)
     }
 
-    /// Its own number ([`Vocab::id`]).
-    pub(crate) fn id(&self) -> u64 {
-        self.id
-    }
-
     /// Names of the switched-on packs.
     pub(crate) fn packs(&self) -> &[&'static str] {
         &self.packs
@@ -350,8 +345,8 @@ fn kept(token: &str) -> Option<String> {
 /// concept whose words include a filler, a stopword or a short word (`US GAAP`, `Order to
 /// Cash`, `Year End Closing`) is found before those words go.
 pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Vec<String> {
-    // One job reads its title, items and lines many times (the ladder per Schwerpunkt, the
-    // caps, the relevance): each text once per vocabulary and thread.
+    // One job reads its title, items and lines many times (the ladder, the caps, the
+    // relevance): each text once per vocabulary and thread.
 
     let key = (vocab.id, text.to_owned());
     if let Some(found) = READ_ATOMS.with(|read| read.borrow().get(&key).cloned()) {
@@ -380,7 +375,7 @@ thread_local! {
 }
 
 /// So many texts [`atoms`] keeps per thread before it starts anew.
-pub(crate) const ATOMS_KEPT: usize = 4096;
+const ATOMS_KEPT: usize = 4096;
 
 /// [`atoms`], read.
 fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
@@ -594,8 +589,8 @@ fn field_shares<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<usize> {
     shares
 }
 
-/// The field of a profile for the deep search: the one domain pack its target roles and
-/// Schwerpunkte lie in most ([`field_shares`]); none on a tie or when they lie in none.
+/// The field of a profile for the deep search: the one domain pack its target roles lie in
+/// most ([`field_shares`]); none on a tie or when they lie in none.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SearchField(usize);
 
