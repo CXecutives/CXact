@@ -203,7 +203,10 @@ impl HttpFetcher {
             .map_err(|e| net_error(&e))?;
         match status_outcome(response.status(), retry_after(&response)) {
             None => Ok(Some(body(response).await?)),
-            Some(PageOutcome::Gone) => Ok(None),
+            // RFC 9309 2.3.1.3: a robots.txt that is "unavailable" (4xx) allows everything,
+            // like none at all - kept for the day like a read one. A sign-in wall (401), a
+            // ban (403) and a throttle (429) are no such answer: they stop the source.
+            Some(PageOutcome::Gone | PageOutcome::Suspicious(Cause::Http(400..=499))) => Ok(None),
             Some(outcome) => Err(outcome),
         }
     }
@@ -267,8 +270,9 @@ fn status_outcome(status: StatusCode, retry_after: Option<Duration>) -> Option<P
             cause: Cause::Http(code),
             retry_after,
         },
-        // 999 is LinkedIn's own "bot detected".
-        403 | 999 => PageOutcome::Blocked(Cause::Http(code)),
+        // 999 is LinkedIn's own "bot detected". 401 is a sign-in wall: on the guest client a
+        // block like a redirect to a sign-in page, never one job's own failure.
+        401 | 403 | 999 => PageOutcome::Blocked(Cause::Http(code)),
         _ => PageOutcome::Suspicious(Cause::Http(code)),
     })
 }
@@ -419,6 +423,14 @@ mod tests {
             }),
             (ResponseTemplate::new(403), |o| {
                 matches!(o, PageOutcome::Blocked(_))
+            }),
+            // A sign-in wall answered as a status: a block like the redirect to one.
+            (ResponseTemplate::new(401), |o| {
+                matches!(o, PageOutcome::Blocked(Cause::Http(401)))
+            }),
+            // Any other 4xx is the page's own verdict (the portal loop sees a series).
+            (ResponseTemplate::new(405), |o| {
+                matches!(o, PageOutcome::Suspicious(Cause::Http(405)))
             }),
             (
                 ResponseTemplate::new(302)

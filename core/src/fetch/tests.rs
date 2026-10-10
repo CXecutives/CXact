@@ -1919,3 +1919,58 @@ async fn the_robots_txt_of_a_source_decides_its_pages() {
     run(&fake, &store, &mut policy, Selection::Queue(&[hays]), &c).await;
     assert_eq!(fake.calls().len(), 1);
 }
+
+/// A robots.txt that answers a 4xx is "unavailable" (RFC 9309): everything is allowed, and it
+/// is kept for the day like a read one - one request, not one per job (and never the job's
+/// failure). A sign-in wall (401), a ban (403) or a throttle (429) stop the source instead,
+/// and nothing is kept.
+#[tokio::test]
+async fn a_robots_txt_that_answers_4xx_allows_and_is_kept() {
+    use wiremock::matchers::path;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+    crate::install_crypto();
+    let server = MockServer::start().await;
+    let mut fetcher =
+        HttpFetcher::with_base("Mozilla/5.0 Test", server.uri().parse().unwrap()).unwrap();
+    let hays = Portal::Hays;
+    let c = base;
+    let cancel = CancellationToken::new();
+    for status in [400, 401, 403, 405, 406, 418, 429, 451] {
+        server.reset().await;
+        Mock::given(path("/robots.txt"))
+            .respond_with(ResponseTemplate::new(status))
+            .mount(&server)
+            .await;
+        let policy = Mutex::new(Policy::in_memory());
+        let read = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+            .await
+            .unwrap();
+        match status {
+            401 | 403 => assert!(
+                matches!(&read, Err(Blocker::Page(o)) if **o == PageOutcome::Blocked(Cause::Http(status))),
+                "{status}"
+            ),
+            429 => assert!(
+                matches!(&read, Err(Blocker::Page(o)) if matches!(**o, PageOutcome::Throttled { .. })),
+                "{status}"
+            ),
+            _ => {
+                assert!(
+                    read.is_ok_and(
+                        |robots| robots.allows("/jobsuche/stellenangebote-jobs-detail-1/1")
+                    ),
+                    "{status}"
+                );
+                // Kept: the next job asks no robots.txt again.
+                let again = robots_of(&mut fetcher, &policy, hays, &cancel, &c, |_| {})
+                    .await
+                    .unwrap();
+                assert!(again.is_ok(), "{status}");
+            }
+        }
+        let kept = lock(&policy).robots(hays, c()).is_some();
+        assert_eq!(kept, !matches!(status, 401 | 403 | 429), "{status}");
+        let asked = server.received_requests().await.unwrap().len();
+        assert_eq!(asked, 1, "{status}");
+    }
+}
