@@ -84,12 +84,6 @@ interface Context {
   /** A passage of the text shown states the value (else a number is the engine's estimate). */
   stated: boolean;
   now: Date;
-  offline: Offline | null;
-}
-
-/** The ad is gone or takes no applications; since when, if the app knows (an ISO moment). */
-export interface Offline {
-  since: string | null;
 }
 
 interface Value {
@@ -277,16 +271,19 @@ const TERMS: Record<TermKey, Term> = {
     read: ({ code }) => ({ value: text(code('industryWish')?.params.industry) }),
   },
   // How and when the job came (user decision 2026-10-01: "Gefunden"): the search of its
-  // portal, its alert mail, both, then the portals it is also on and the moment it came into
-  // CXact; quietly after them an ad that is no longer online (once, here).
+  // portal, its alert mail, or both in one phrase that names the portal once, then the
+  // portals it is also on and the moment it came into CXact. An ad that is no longer online
+  // says so in the ad's note, not here.
   portal: {
     ...NONE,
-    read: ({ job, offline, now }) => {
-      const since = offline?.since ? formatDay(offline.since, now) : '';
+    read: ({ job, now }) => {
       const own = t.portal[job.portal];
-      const ways = job.origins.map((origin) =>
-        origin === 'search' ? t.reader.foundSearch(own) : t.reader.foundMail(own),
-      );
+      const both = job.origins.includes('search') && job.origins.includes('mail');
+      const ways = both
+        ? [t.reader.foundBoth(own)]
+        : job.origins.map((origin) =>
+            origin === 'search' ? t.reader.foundSearch(own) : t.reader.foundMail(own),
+          );
       const also = job.alsoOn
         .filter((portal) => portal !== job.portal)
         .map((portal) => t.portal[portal]);
@@ -298,8 +295,6 @@ const TERMS: Record<TermKey, Term> = {
           ...(also.length > 0 ? [t.job.alsoOn(also.join(', '))] : []),
           ...(when === '' ? [] : [when]),
         ].join(', '),
-        note:
-          offline === null ? null : since === '' ? t.reader.offline : t.reader.offlineSince(since),
       };
     },
   },
@@ -353,8 +348,6 @@ export interface TermInput {
   textLength: number;
   /** The page's clock (a deadline near, the day of the alert mail in words). */
   now: Date;
-  /** The ad is no longer online (null: it is, or the app does not know otherwise). */
-  offline?: Offline | null;
 }
 
 /** The rows of the table for one job, in the facts table's order. */
@@ -394,7 +387,6 @@ function build(
     claimed,
     stated,
     now: input.now,
-    offline: input.offline ?? null,
   };
   if (term.shows && !term.shows(ctx)) return null;
   const read = term.read(ctx);

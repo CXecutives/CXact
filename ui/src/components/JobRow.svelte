@@ -13,15 +13,15 @@
      Jobdetails name it). An ad that no longer takes applications says "Beendet" there, its
      title muted (the order by match puts it after the open ones).
   2. a building and the company, a map pin and the place (without the work mode a portal
-     appends to it, lib/place.ts), and when the ad states it the euro and the day rate or
-     the salary in the reader's money form ("1.250 €/Tag", "95.000 €/Jahr"); the company and
-     the place are cut at the line's end, the pay never.
+     appends to it, lib/place.ts), and when the ad states it the day rate or the salary in
+     the reader's money form, without a glyph (its currency says it: "1.250 €/Tag", "95.000
+     €/Jahr"); the company and the place are cut at the line's end, the pay never.
   No portal, no facts, no badges: the reader has them. Under the pointer (and while the
   row's menu is open) the row's tools, the moves of its place (actions.ts rowTools:
   Archivieren and Löschen, Zurückholen and Löschen, Wiederherstellen and Endgültig
   löschen), fade in as icons over the date, which fades out: they stand in a fixed slot at
   the end of the title line that is always as wide as they are, so nothing moves and the
-  title keeps its room. Each names itself in its tooltip; the ones that delete are red.
+  title keeps its room. Each names itself in its tooltip; Endgültig löschen is red.
   They are siblings of the row's button (a click on one never opens the job, a double click
   never its ad: that is the row button's own), out of the Tab
   order (the row's menu is there for the keyboard), and exist only while they show. After a
@@ -39,7 +39,6 @@
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
 
-  import { termIcon } from '$lib/facts';
   import { t } from '$lib/i18n/t';
   import type { JobView } from '$lib/ipc/types';
 
@@ -57,9 +56,6 @@
     if (facts.rate === null) return null;
     return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', facts.currency);
   }
-
-  /** The icon of the pay: the euro, pay in another currency its banknote (lib/facts.ts). */
-  const payIcon = (job: JobView): IconName => termIcon('rate', job);
 
   /** A character as the search compares it: lower case, without its accents. */
   const fold = (char: string): string =>
@@ -259,8 +255,7 @@
       {#if place}<span class="part place" data-testid="row-place"
           ><Icon name="place" size="sm" /><span class="text">{place}</span></span
         >{/if}
-      {#if pay}<span class="part pay" data-testid="row-pay"
-          ><Icon name={payIcon(job)} size="sm" /><span class="text">{pay}</span></span
+      {#if pay}<span class="part pay" data-testid="row-pay"><span class="text">{pay}</span></span
         >{/if}
     </span>
   </ListRow>

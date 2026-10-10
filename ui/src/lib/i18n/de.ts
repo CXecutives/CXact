@@ -47,23 +47,6 @@ const str = (value: unknown): string =>
 const num = (value: unknown): number => (typeof value === 'number' ? value : Number(value) || 0);
 const n = (value: number): string => formatNumber(value);
 /** German plural for a count. */
-/** A small number as a word ("acht Portale"), a larger one in digits. */
-const NUMBER_WORDS = [
-  'kein',
-  'ein',
-  'zwei',
-  'drei',
-  'vier',
-  'fünf',
-  'sechs',
-  'sieben',
-  'acht',
-  'neun',
-  'zehn',
-  'elf',
-  'zwölf',
-];
-const numberWord = (value: number): string => NUMBER_WORDS[value] ?? formatNumber(value);
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
 
@@ -200,6 +183,8 @@ const emptyMails = (mails: number): string =>
 
 /** A profile file the app cannot read (the list and the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
+/** No usable profile, no match: one wording for the ring, the filter and the list. */
+const NO_PROFILE = 'Ohne Profil keine Übereinstimmung.';
 /** The CV could not be evaluated: a file that does not read. */
 const CV_UNREADABLE = 'Die Datei lässt sich nicht lesen.';
 /** The choice of the profile that wishes nothing. */
@@ -413,8 +398,8 @@ const reasonCode = {
   permanent: (p) => {
     if (p.excluded !== true) return 'Das klingt nach einer Festanstellung.';
     return p.stated === true
-      ? 'Der Job ist eine Festanstellung, sie wird ausgeschlossen.'
-      : 'Das klingt nach einer Festanstellung, sie wird ausgeschlossen.';
+      ? 'Der Job ist eine Festanstellung, die in deinem Profil nicht gewählt ist.'
+      : 'Das klingt nach einer Festanstellung, die in deinem Profil nicht gewählt ist.';
   },
   permanentRegion: (p) => {
     const place = p.location
@@ -528,12 +513,12 @@ const criteria = {
   noAnue: {
     label: 'Zeitarbeit',
     short: 'Zeitarbeit',
-    exclusion: 'Zeitarbeit wird ausgeschlossen.',
+    exclusion: 'Zeitarbeit ist in deinem Profil nicht gewählt.',
   },
   noPermanent: {
     label: 'Festanstellung',
     short: 'Festanstellung',
-    exclusion: 'Festanstellungen werden ausgeschlossen.',
+    exclusion: 'Festanstellung ist in deinem Profil nicht gewählt.',
   },
   availability: {
     label: 'Verfügbarkeit',
@@ -704,13 +689,6 @@ export const de = {
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** Search hits in another place: a button under the results that goes there (its count
-     *  after it, quiet like the tabs'). */
-    hitsIn: {
-      inbox: 'Aktuelle Jobs',
-      archive: 'Im Archiv',
-      trash: 'Im Papierkorb',
-    } satisfies Record<Place, string>,
     /** An empty Archiv or Papierkorb (an empty Aktuell says what comes, list.empty*). */
     empty: {
       archive: 'Das Archiv ist leer.',
@@ -773,7 +751,7 @@ export const de = {
      *  not scorable. */
     none: 'Noch nicht bewertet',
     /** A ring without a usable profile. */
-    off: 'Ohne Profil keine Übereinstimmung',
+    off: NO_PROFILE,
     /** The info symbol beside the band words of the job view. */
     info: 'Wie gut die Anforderungen der Anzeige zu deinem Profil passen.',
     infoLabel: 'Mehr zur Übereinstimmung',
@@ -786,7 +764,7 @@ export const de = {
   reason: {
     weight: {
       must: 'Pflicht',
-      nice: 'Optional',
+      nice: 'optional',
       hard: 'Ausschluss',
       info: 'Hinweis',
     } satisfies Record<ReasonWeight, string>,
@@ -829,7 +807,7 @@ export const de = {
       low: 'Gering',
     } satisfies Record<Band, string>,
     /** Without a usable profile there is no match to filter by. */
-    bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
+    bandNoProfile: NO_PROFILE,
     /** The day a job came into CXact (its first sighting), and the chips of the choices. */
     receivedHeading: 'Neu seit',
     received: {
@@ -858,7 +836,8 @@ export const de = {
       portals: (done: number, total: number) =>
         `Portale werden durchsucht, ${n(done)} von ${n(total)} fertig`,
       portalsStart: 'Portale werden durchsucht',
-      ads: (done: number, total: number) => `${n(done)} von ${n(total)} Anzeigen geladen`,
+      ads: (done: number, total: number) =>
+        `Anzeigen werden geladen, ${n(done)} von ${n(total)} fertig`,
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
       /** Under the line: the new jobs (not excluded) the finished portals brought so far. */
@@ -874,12 +853,12 @@ export const de = {
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
-    /** Aktuell before any job came, and after a search that found none that fits. */
-    emptyHeading: 'Noch keine Jobs',
-    /** Before the first search: how many portals it searches (the ones switched on). */
-    emptyText: (portals: number) =>
-      `„Jobs suchen“ durchsucht ${portals === 1 ? 'ein Portal' : `${numberWord(portals)} Portale`}. Die erste Suche dauert ein paar Minuten.`,
-    noMatch: 'Noch keine passenden Jobs gefunden',
+    /** Aktuell before the first search. */
+    emptyText: 'Starte eine Suche mit „Jobs suchen“.',
+    /** Aktuell after a search that found none that fits (nothing archived or deleted). */
+    noMatch: 'Noch keine passenden Jobs gefunden.',
+    /** Aktuell after a search, its jobs all archived or deleted. */
+    noActive: 'Keine aktuellen Jobs.',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
     /** The filter of the inbox leaves nothing in the list. */
     noFilterHit: 'Kein Job passt zum Filter.',
@@ -888,7 +867,7 @@ export const de = {
     createProfile: 'Profil anlegen',
     openProfile: 'Profil öffnen',
     /** No usable profile: said once, at the top of the list. */
-    noProfile: 'Ohne Profil keine Übereinstimmung.',
+    noProfile: NO_PROFILE,
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profil unvollständig',
     profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',
@@ -978,7 +957,7 @@ export const de = {
     /** The contract type in the row "Vertragsart". */
     contractKind: {
       interim: 'Interim',
-      freelance: 'Freiberuflich',
+      freelance: 'Projekt',
       permanent: 'Festanstellung',
       anue: 'Zeitarbeit',
       unclear: 'unklar',
@@ -997,16 +976,10 @@ export const de = {
     } satisfies Record<Exclude<TermVerdict, 'unset'>, string>,
     criterion: criteria,
     note,
-    /** "Anzeige öffnen" of an ad that is gone or takes no applications (the portal's page
-     *  still opens). */
-    openOffline: 'Offline-Anzeige öffnen',
-    /** Quiet after the portal in the Jobdetails: the ad is gone or closed, since when if the
-     *  app knows. */
-    offline: 'nicht mehr online',
-    offlineSince: (day: string) => `nicht mehr online seit ${day}`,
     /** How the job came, in the row "Gefunden" of the Jobdetails. */
     foundSearch: (portal: string) => `Suche bei ${portal}`,
     foundMail: (portal: string) => `Alert-Mail von ${portal}`,
+    foundBoth: (portal: string) => `Alert-Mail und Suche bei ${portal}`,
     close: 'Schließen',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',

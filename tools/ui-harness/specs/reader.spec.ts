@@ -162,7 +162,7 @@ test.describe('the head and the match', () => {
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     // How and when it came: the moment it came into CXact ends the row.
     expect(await cell(page, 'portal')).toEqual([
-      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 08:24',
+      `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
       '',
     ]);
     // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
@@ -317,6 +317,11 @@ test.describe('the actions', () => {
     expect(tools.labels).toEqual(['Archivieren', 'Löschen']);
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
     const close = stage(page).getByTestId('reader-close');
+    // Löschen only moves the job into the Papierkorb: grey like Archivieren.
+    await expect(stage(page).getByTestId('reader-trash')).not.toHaveCSS(
+      'color',
+      await tokenColour(page, '--danger-strong'),
+    );
     for (const id of ['reader-archive', 'reader-trash']) {
       const tool = stage(page).getByTestId(id);
       await expect(tool).toHaveClass(/ghost/);
@@ -639,7 +644,7 @@ test.describe('Jobdetails', () => {
     await expect(term(page, 'workload')).toHaveCount(0);
     // How and when it came: the moment it came into CXact ends the row, quietly.
     expect(await cell(page, 'portal')).toEqual([
-      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 08:24',
+      `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
       '',
     ]);
     await expect(term(page, 'portal').locator('.value')).toHaveClass(/quiet/);
@@ -989,9 +994,15 @@ test.describe('Anforderungen', () => {
         await tokenColour(page, token),
       );
     }
-    // Untagged is Pflicht: the only tag is "Optional".
-    expect(new Set(await why(page).locator('.badge').allInnerTexts())).toEqual(
-      new Set(['Optional']),
+    // Untagged is Pflicht: the only tag is the quiet word "optional", no pill, and only on a
+    // requirement that is not met.
+    expect(new Set(await why(page).locator('.optional').allInnerTexts())).toEqual(
+      new Set([T.reason.weight.nice]),
+    );
+    await expect(why(page).getByTestId('reasons-met').locator('.optional')).toHaveCount(0);
+    await expect(why(page).locator('.optional').first()).toHaveCSS(
+      'color',
+      await tokenColour(page, '--text-subtle'),
     );
     // Only the groups a job has.
     await openJob(page, 'freelancermap-2804');
@@ -1244,30 +1255,24 @@ test.describe('the ad', () => {
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
   });
 
-  test('an ad no longer online: its button says so and still opens it, the Jobdetails once', async ({
+  test('an ad no longer online: one "Anzeige öffnen" still opens it, only the ad note says it', async ({
     page,
   }) => {
-    // Closed: since the day the app read the closed page.
     await openAt(page, 'linkedin-4100200304');
     const openAd = stage(page).getByTestId('open-ad');
-    await expect(openAd).toHaveText(T.reader.openOffline);
+    await expect(openAd).toHaveText(T.actions.openAd);
     await openAd.click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'jobUrl', key: { portal: 'linkedin', id: '4100200304' } },
     });
-    const note = term(page, 'portal').locator('.term-note');
-    await expect(note).toHaveText(new RegExp(`^${T.reader.offlineSince('\\d\\d\\.\\d\\d\\.')}$`));
-    await expect(terms(page).getByText(T.reader.offline, { exact: false })).toHaveCount(1);
-    // Gone, the day unknown.
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.closed);
+    await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
+    // Gone: the same.
     await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
     await openJob(page, 'linkedin-4100200302');
-    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.reader.openOffline);
-    await expect(term(page, 'portal').locator('.term-note')).toHaveText(T.reader.offline);
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
-    // An ad that is online says nothing of it.
-    await openJob(page, 'freelancermap-2801');
     await expect(stage(page).getByTestId('open-ad')).toHaveText(T.actions.openAd);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
   });
 
   test('every note of the ad is one short sentence', async () => {

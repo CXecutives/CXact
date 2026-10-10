@@ -1,9 +1,10 @@
 <!--
-  The run under the list header, one slim line. While a fetch or the details of an ad run: a
-  thin progress bar and what happens ("Postfach wird gelesen", "Portale werden durchsucht, 3
-  von 8 fertig", "12 von 30 Anzeigen geladen", "Jobs werden bewertet"), no portal named since
-  the portals run side by side; under it, once the portals brought some, "Bisher 12 neue
-  Jobs". The bar follows the portals that are done, then the ads, and never moves back
+  The run under the list header, one slim line. While a search runs (never for one ad, which
+  its ad section shows): a thin progress bar and what happens ("Postfach wird gelesen",
+  "Portale werden durchsucht, 3 von 8 fertig", "Anzeigen werden geladen, 12 von 30 fertig",
+  "Jobs werden bewertet"), no portal named since the portals run side by side; under it, once
+  the portals brought some, "Bisher 12 neue Jobs", on a line kept from the start of the search
+  so nothing moves when it comes. The bar follows the portals that are done, then the ads, and never moves back
   (lib/state/run.svelte.ts). A count moves on in place (tabular numbers); the next step
   cross-fades with the last in the same cell. "Abbrechen" stands in the header. What a fetch
   brought is a toast at its end, and so is what went wrong. The line unfolds and folds away
@@ -43,7 +44,7 @@
   }
 </script>
 
-{#if run.fetching}
+{#if run.searching}
   <div class="unfold" transition:unfold>
     <div class="line" data-testid="run-line">
       <Meter value={run.fraction} size="sm" label={t.toolbar.progress} testid="run-progress" />
@@ -51,11 +52,13 @@
         {#key run.step}<span class="doing" data-testid="run-text" in:fade out:leave>{doing}</span
           >{/key}
       </span>
-      {#if run.newSoFar > 0}
-        <span class="doing so-far" data-testid="run-new" transition:fade
-          >{t.run.line.newSoFar(run.newSoFar)}</span
-        >
-      {/if}
+      <span class="words">
+        {#if run.newSoFar > 0}
+          <span class="doing" data-testid="run-new" transition:fade
+            >{t.run.line.newSoFar(run.newSoFar)}</span
+          >
+        {/if}
+      </span>
     </div>
   </div>
 {/if}
@@ -74,7 +77,8 @@
     padding-top: var(--space-12);
   }
 
-  /* One cell: the words of the next step fade in over the last ones. */
+  /* One cell of one line, there from the start: the words of the next step fade in over the
+     last ones, and the new jobs so far come into a line kept for them. */
   .words {
     display: grid;
     min-height: var(--leading-sm);
@@ -88,9 +92,5 @@
     font-variant-numeric: var(--numeric);
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .so-far {
-    min-height: var(--leading-sm);
   }
 </style>

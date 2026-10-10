@@ -5,20 +5,20 @@
   stands in two of them:
   - head: the title (without gender tags), then the moves of the place as quiet icons like
     the row's tools (Aktuell Archivieren, Löschen; Archiv Zurückholen, Löschen; Papierkorb
-    Wiederherstellen, Endgültig löschen; actions.ts rowTools) and the close "×" (the same at
-    every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
-    offers none while the next one loads.
+    Wiederherstellen, Endgültig löschen in red; actions.ts rowTools) and the close "×" (the
+    same at every width; user 2026-10-01: no menu, no outline). A job that just moved away
+    offers none while the next one loads. The ring sits right under the title.
   - match: the ring (44, hollow; opening a job fills its arc once, the number stands at once)
-    beside its band and an info symbol that says what the match is (the ring's own tooltip
-    names it; the symbol reaches it from the keyboard). A job not scored yet shows the ring's
+    beside its band and, for a scored job, an info symbol that says what the match is (the
+    ring's own tooltip names it; the symbol reaches it from the keyboard). A job not scored yet shows the ring's
     dash and "Wird bewertet, sobald die Anzeige geladen ist." and no buttons. No popover of
     what moved the score (user, 2026-10-01). An excluded job shows one neutral bordered box
     instead: the red ban, "Ausgeschlossen" in red, one sentence why from the profile's side
     (its first violation; the row it violates says what the ad states) and "Trotzdem
     bewerten" at its end (design round 3).
-  - actions: the text buttons with their glyphs, Anzeige öffnen (Offline-Anzeige öffnen for
-    an ad that is gone or closed: the portal's page still opens), Alert-Mail öffnen (only for
-    a job a mail brought), Prompt kopieren (not for a job without a score); an excluded job
+  - actions: the text buttons with their glyphs, Anzeige öffnen (also for an ad that is gone
+    or closed: the portal's page still opens, the ad's note says it), Alert-Mail öffnen (only
+    for a job a mail brought), Prompt kopieren (not for a job without a score); an excluded job
     keeps Anzeige öffnen and Prompt kopieren; the row wraps.
     Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and
@@ -27,11 +27,13 @@
     table (lib/facts.ts): the ad's value (a row the ad says nothing about shows "–" only
     where a verdict judges it; for an ad the app never read in full only what it knows), a
     quiet note, and the verdict as an icon whose tooltip is the reason that decided it (none
-    for an excluded job: its head says why). "Gefunden" stays quiet. The contact's e-mail is
-    a link: a new mail to it in the default mail program, the job's title its subject.
+    for an excluded job: its head says why). "Gefunden" stays quiet and names the portal once.
+    Every row stands at its first line. The contact's e-mail is a link: a new mail to it in
+    the default mail program, the job's title its subject.
   - requirements (not for an excluded job): "Anforderungen" in the groups of
     reader-sections.ts, a quiet count after
-    each title; a missing must that is a term has a small "+" into its field of the profile
+    each title, a quiet "optional" after one that is only nice to have and not met; a missing
+    must that is a term has a small "+" into its field of the profile
     (addToProfile.ts); once it is there, a quiet check stands in place of its cross.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
@@ -151,9 +153,6 @@
   );
 
   const detailKind = $derived(job.detail.kind);
-  /** The ad is gone or takes no applications: "Anzeige öffnen" says so (the portal's page
-   *  still opens), and the Jobdetails once, since the day the app read the closed page. */
-  const offline = $derived(detailKind === 'gone' || job.closed);
   /** Every name a row of the Jobdetails can have (the names' column is as wide as the
    *  longest). */
   const NAMES = $derived([
@@ -170,7 +169,6 @@
       withVerdict: judged,
       textLength: detail.text?.length ?? 0,
       now: clock.now,
-      offline: offline ? { since: job.closed ? detail.fetchedAt : null } : null,
     }).filter(
       (row) =>
         !row.missing || (detail.text !== null && detailKind !== 'teaser' && row.verdict !== null),
@@ -316,7 +314,7 @@
           iconOnly
           icon={tool.icon}
           label={tool.label}
-          warns={tool.deletes}
+          deletes={tool.deletes}
           disabled={tool.disabled || !inPlace}
           disabledReason={tool.reason}
           testid="reader-{tool.id}"
@@ -365,7 +363,9 @@
         <p class="band {band ?? 'none'} {step}" data-testid="band">
           {band ? t.score.band[band] : t.score.none}
         </p>
-        <InfoTip text={t.score.info} label={t.score.infoLabel} testid="band-info" />
+        {#if band !== null}
+          <InfoTip text={t.score.info} label={t.score.infoLabel} testid="band-info" />
+        {/if}
       {/if}
     </div>
   {/if}
@@ -408,13 +408,7 @@
         {#each NAMES as name (name)}<span class="sizer-name">{name}</span>{/each}
       </li>
       {#each rows as row (row.key)}
-        <li
-          class="term"
-          class:tall={row.parts !== null}
-          data-row={row.key}
-          data-testid="term-{row.key}"
-          in:fade
-        >
+        <li class="term" data-row={row.key} data-testid="term-{row.key}" in:fade>
           <span class="term-name"><Icon name={row.icon} size="sm" />{row.name}</span>
           <!-- The verdict in its own column between the name and the value (the names are the
                same for every job, so it never moves); a row or a job without one leaves it
@@ -487,7 +481,7 @@
                        says so in words). -->
                   <ReasonItem
                     kind={reason.kind}
-                    optional={reason.weight === 'nice'}
+                    optional={reason.weight === 'nice' && reason.kind !== 'met'}
                     label={reasonText(reason)}
                     settled={added ? t.reader.added : null}
                     testid="reason"
@@ -569,7 +563,8 @@
     container-type: inline-size;
   }
 
-  /* The job view's column under the head, its sections 20 apart. */
+  /* The job view's column under the head (the ring right under the title, as far below it
+     as the head's own padding), its sections 20 apart. */
   .body {
     display: flex;
     flex-direction: column;
@@ -577,7 +572,7 @@
     width: 100%;
     max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--space-20) var(--pane-padding) var(--space-64);
+    padding: 0 var(--pane-padding) var(--space-64);
   }
 
   /* The ring, or the ban, beside its words; the words centre on it. */
@@ -741,17 +736,14 @@
     column-gap: var(--space-24);
   }
 
+  /* Each part stands at the row's first line (a value of several lines, the contact, goes on
+     below it). */
   .term {
     display: grid;
     grid-column: 1 / -1;
     grid-template-columns: subgrid;
-    align-items: center;
-    justify-items: start;
-  }
-
-  /* A value of several lines (the contact): the name stands at its first line. */
-  .term.tall {
     align-items: start;
+    justify-items: start;
   }
 
   .term-name {
@@ -819,10 +811,12 @@
     --btn-type: var(--type-md);
   }
 
+  /* The icon centred on the row's first line. */
   .verdict {
     display: inline-flex;
     grid-column: 2;
     min-width: var(--icon-sm);
+    margin-top: calc((var(--leading-md) - var(--icon-sm)) / 2);
   }
 
   /* The groups of the requirements under their sub-labels. */

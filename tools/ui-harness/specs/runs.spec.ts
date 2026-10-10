@@ -131,17 +131,20 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
 });
 
-test('a details run shows its line and brings no fetch toast', async ({ page }) => {
+test('loading ads is no search: no run line, no Abbrechen, no fetch toast', async ({ page }) => {
   await open(page, `${WIN}&tick=40`);
   await page.evaluate(() => {
     window.__harness.holdAfter = 3;
     window.__harness.appRun('details');
   });
-  await expect(page.getByTestId('run-line')).toBeVisible();
-  await expect(page.getByTestId('run-text')).not.toHaveText(/Postfach/);
+  // "Jobs suchen" waits for it and says why; nothing else of a search shows.
+  const fetch = page.getByTestId('fetch');
+  await expect(fetch).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
+  await expect(page.getByTestId('cancel-run')).toHaveCount(0);
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-  await expect(page.getByTestId('run-line')).toHaveCount(0);
+  await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 

@@ -29,8 +29,8 @@
   - warns: a quiet (secondary or ghost) button whose action deletes or loses something
     (empty the trash, remove the mailbox, reset the app): its text and glyph are red at
     rest, before the dialog asks; no icon warns by itself.
-  - deletes: a quiet icon button that deletes (a job row's Löschen and Endgültig löschen):
-    its glyph red at rest like every delete of the app, on a red wash under the pointer.
+  - deletes: a quiet icon button that deletes for good (a job's Endgültig löschen, in its row
+    and its reader): its glyph red at rest, on a red wash under the pointer.
   - count: a quiet number after the label (how many lie there), like the place tabs.
   - hoverIcon: the glyph that says what a click does, in the place of the glyph at rest under
     the pointer and the keyboard focus (the top bar's panels: panel-left, and its -close).
@@ -81,7 +81,7 @@
     isDefault?: boolean;
     /** Deletes, removes or resets something: red text and glyph (secondary and ghost). */
     warns?: boolean;
-    /** Deletes (a row's tool): red at rest, on a red wash under the pointer (ghost). */
+    /** Deletes for good (a job's tool): red at rest, on a red wash under the pointer (ghost). */
     deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;

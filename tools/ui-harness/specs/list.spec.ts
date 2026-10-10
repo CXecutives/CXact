@@ -1334,16 +1334,22 @@ test.describe('one list', () => {
   test('an empty inbox says what comes: an icon and one sentence, the header fetches', async ({
     page,
   }) => {
-    // Before the first search: "Noch keine Jobs" and what "Jobs suchen" does.
+    // Before the first search: one plain sentence, no heading, no duration.
     await open(page, `${WIN}&scenario=fresh`);
-    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyHeading);
-    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyText(8));
+    await expect(page.getByTestId('empty-all')).toHaveText(T.list.emptyText);
+    expect(T.list.emptyText).toBe('Starte eine Suche mit „Jobs suchen“.');
+    await expect(page.getByTestId('empty-all').locator('h2')).toHaveCount(0);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
     // After a search that found nothing that fits: that, and the way to the profile.
     await open(page, `${WIN}&scenario=empty`);
     const empty = page.getByTestId('empty-all');
     await expect(empty).toBeVisible();
-    await expect(empty).toHaveText(new RegExp(T.list.noMatch));
+    await expect(empty.locator('.text')).toHaveText(T.list.noMatch);
+    // Its jobs all archived or deleted: no hint that the profile does not fit.
+    await open(page, `${WIN}&scenario=archived`);
+    await expect(page.getByTestId('empty-all')).toHaveText(T.list.noActive);
+    await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
+    await open(page, `${WIN}&scenario=empty`);
     // The place's own icon, like the empty Archiv and Papierkorb.
     await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
       new RegExp(`lucide-${ICONS.inbox}`),
@@ -1527,8 +1533,8 @@ test.describe('rows', () => {
       T.actions.trash,
     ]);
     await expectMenuIcons(page, [...showIcons, 'archive', 'trash']);
-    // Deleting is one look everywhere: the trash, in red.
-    await expect(menuItem(page, 'trash')).toHaveClass(/danger/);
+    // Löschen only moves the job into the Papierkorb: not red.
+    await expect(menuItem(page, 'trash')).not.toHaveClass(/danger/);
     await expect(menuItem(page, 'archive')).not.toHaveClass(/danger/);
     await expect(menu.getByRole('separator')).toHaveCount(1);
     await expect(menu.locator('.keys')).toHaveCount(0);
@@ -1673,7 +1679,8 @@ test.describe('search', () => {
     await open(page, WIN);
     await page.getByTestId('search').fill('Kreditoren');
     const button = page.getByTestId('also-archive');
-    await expect(button.locator('.label')).toHaveText(T.place.hitsIn.archive);
+    // Named like its tab.
+    await expect(button.locator('.label')).toHaveText(T.place.archive);
     await expect(button.locator('.count')).toHaveText('1');
     const a = (await page.getByTestId('empty-search').boundingBox())!;
     const b = (await button.boundingBox())!;
@@ -1968,18 +1975,20 @@ test.describe('run line', () => {
     await expect(page.getByTestId('list-header').getByTestId('run-line')).toHaveCount(1);
     // One line of what happens, in the catalog's words.
     const said = new Set<string>();
+    // "Anzeigen werden geladen, 3 von 7 fertig", whatever the counts.
+    const adsCount = new RegExp(`^${T.run.line.ads(0, 0).replace(/0/g, String.raw`\d+`)}$`);
     await expect
       .poll(
         async () => {
           said.add((await page.getByTestId('run-text').textContent()) ?? '');
-          return [...said].some((text) => /^\d+ von \d+ Anzeigen geladen$/.test(text));
+          return [...said].some((text) => adsCount.test(text));
         },
         { intervals: [20], timeout: 10_000 },
       )
       .toBe(true);
     // The count moves on in place: the same words, only the number changes (no blink).
     const text = page.getByTestId('run-text');
-    const count = /^\d+ von \d+ Anzeigen geladen$/;
+    const count = adsCount;
     const now = async (): Promise<string> => (await text.textContent()) ?? '';
     await expect.poll(now, { intervals: [10], timeout: 10_000 }).toMatch(count);
     await text.evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
@@ -1995,7 +2004,7 @@ test.describe('run line', () => {
       T.run.line.scoring,
     ]);
     for (const text of said) {
-      expect(words.has(text) || /^\d+ von \d+ Anzeigen geladen$/.test(text), text).toBe(true);
+      expect(words.has(text) || adsCount.test(text), text).toBe(true);
     }
     // What the portals brought so far, under the line (freelancermap's job).
     expect(T.run.line.newSoFar(1)).toBe('Bisher 1 neuer Job');

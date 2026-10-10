@@ -1,8 +1,8 @@
 // The job row (user decision 2026-09-27): line 1 the title and at its end the stamp of a mail
 // list (the time today, "Gestern", "Vorgestern", then the weekday with the date; "Beendet"
 // for an ad that takes no applications); line 2 a building and the company, a map pin and
-// the place (without the work mode a portal appends), and the pay the ad states with the
-// euro. No portal, no facts, no badges, no middle dot. Under the pointer the
+// the place (without the work mode a portal appends), and the pay the ad states, without a
+// glyph. No portal, no facts, no badges, no middle dot. Under the pointer the
 // moves of the row's place fade in as its tools over the date (the same table as its menu),
 // in a slot that never moves the title. The ring stays hollow on the open row; an excluded
 // job shows the ban in the ring's place. The icons are the ones of lib/icons.ts, read from
@@ -123,7 +123,7 @@ test('line 2: the company and the place, each with its icon, no middle dot', asy
   );
 });
 
-test('line 2 ends with the pay the ad states: the day rate or the salary, with the euro', async ({
+test('line 2 ends with the pay the ad states: the day rate or the salary, no glyph before it', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -134,7 +134,8 @@ test('line 2 ends with the pay the ad states: the day rate or the salary, with t
   const rated = facts('freelancermap-2801');
   const day = row(page, 'freelancermap-2801').getByTestId('row-pay');
   await expect(day).toHaveText(T.facts.pay(rated.rate!, 'day', null));
-  expect((await glyphs(day))[0]).toContain(`lucide-${ICONS.money}`);
+  // Its currency says it: no euro glyph before it.
+  expect(await glyphs(day)).toHaveLength(0);
   // A salary (a permanent job).
   const salaried = facts('linkedin-4100200303');
   await expect(row(page, 'linkedin-4100200303').getByTestId('row-pay')).toHaveText(
@@ -249,7 +250,7 @@ test.describe('tools', () => {
     expect(await boxes()).toBe(rest);
   });
 
-  test('a tool that deletes is red, on a red wash under the pointer; the others stay quiet', async ({
+  test('only Endgültig löschen is red, on a red wash under the pointer; Löschen stays quiet', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -257,16 +258,16 @@ test.describe('tools', () => {
     const wash = await tokenColour(page, '--danger-soft');
     const key = 'linkedin-4100200301';
     await pointAt(page, key);
+    // Löschen only moves the job into the Papierkorb: grey like Archivieren.
     const trash = job(page, key).getByTestId('tool-trash');
     const archive = job(page, key).getByTestId('tool-archive');
-    await expect(trash).toHaveCSS('color', danger);
+    await expect(trash).not.toHaveCSS('color', danger);
     await trash.hover();
-    await expect(trash).toHaveCSS('color', danger);
-    await expect(trash).toHaveCSS('background-color', wash);
+    await expect(trash).not.toHaveCSS('color', danger);
+    await expect(trash).not.toHaveCSS('background-color', wash);
     await archive.hover();
     await expect(archive).not.toHaveCSS('color', danger);
-    await expect(trash).not.toHaveCSS('background-color', wash);
-    // In the Papierkorb Endgültig löschen looks the same.
+    // In the Papierkorb Endgültig löschen is red.
     await viaMenu(page, 'trash', key);
     await settleMoves(page);
     await openPlace(page, 'trash');
@@ -391,7 +392,7 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
   const closed = await offered('linkedin-4100200304');
   expect(closed.menu).toEqual([
     `${T.actions.mail} on`,
-    `${T.reader.openOffline} on`,
+    `${T.actions.openAd} on`,
     `${T.actions.prompt} on`,
   ]);
   expect(closed.reader).toEqual(closed.menu);

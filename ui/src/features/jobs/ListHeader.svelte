@@ -80,7 +80,7 @@
       (totals[place] > 0 ||
         jobs.search.trim() !== '' ||
         jobs.filtered ||
-        (run.fetching && place === 'inbox')),
+        (run.searching && place === 'inbox')),
   );
 
   let searchBox = $state<HTMLElement | null>(null);
@@ -201,9 +201,9 @@
       </span>
     {/snippet}
     {#snippet actions()}
-      {#if run.fetching || place === 'inbox' || emptiable}
+      {#if run.searching || place === 'inbox' || emptiable}
         <span class="action" data-testid="place-action">
-          {#if run.fetching}
+          {#if run.searching}
             <Button
               variant="secondary"
               icon="cancel"

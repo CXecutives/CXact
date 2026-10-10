@@ -122,7 +122,7 @@ menu names a key.
   kopieren; a click on the row opens the job; what changes it: Trotzdem bewerten, then the moves of its place); the
   reader shows its buttons (its archive and delete beside the close button), and
   the row's tools under the pointer are the moves of its place (`rowTools`, icons with their
-  label as tooltip; the ones that delete turn red). The moves per place are `OF_PLACE`, their
+  label as tooltip; only Endgültig löschen is red, `deletes` in `ACTIONS`). The moves per place are `OF_PLACE`, their
   icons `ACTIONS`, their toast words `SAID`. No entry names a key.
 - **The portals' order in the UI**: `PORTAL_ORDER` in `ui/src/lib/portals.ts` (freelance.de,
   LinkedIn, freelancermap: Einstellungen, the first-run page, the filter). Core's

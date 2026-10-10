@@ -27,7 +27,7 @@ test('the menu shows only when asked for; an entry opens its state', async ({ pa
   await menu.getByRole('button', { name: 'Leere Liste' }).click();
   await expect(page).toHaveURL(/scenario=fresh/);
   await expect(page).toHaveURL(/platform=windows/);
-  await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyHeading);
+  await expect(page.getByTestId('empty-all')).toHaveText(T.list.emptyText);
 });
 
 test('the app never holds the menu: no import of the harness, nothing of it in the build', () => {

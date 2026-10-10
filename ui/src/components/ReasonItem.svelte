@@ -3,7 +3,8 @@
   same as the reader's verdicts, in the colours of the rings (--verdict-*): met a green check,
   partial an amber minus in a circle, open (not met) a red cross, check (unclear) a muted
   question mark; a violation that excludes the job is the ban, red like a cross. Then its
-  words, and the badge "Optional" for an optional one.
+  words, and after them the quiet word "optional" for an optional one (like "geschätzt" in
+  the Jobdetails, no pill).
   iconOnly (a verdict of the reader's Jobdetails): the icon alone, named by `label`, with the
   reason that decided it in its tooltip (`hint`).
   settled (a missing term the user just added to the profile): a quiet check in place of its
@@ -26,13 +27,12 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { fade } from '$lib/motion/transitions';
-  import Badge from './Badge.svelte';
   import Icon from './Icon.svelte';
 
   interface Props {
     kind: ReasonKind;
     label: string;
-    /** An optional requirement: the quiet badge "Optional" after its words. */
+    /** An optional requirement: the quiet word "optional" after its words. */
     optional?: boolean;
     /** Tooltip: why (the reason that decided a verdict). */
     hint?: string | null;
@@ -76,8 +76,9 @@
     {:else}
       <span class="icon"><Icon name={ICON[kind]} size="sm" /></span>
     {/if}
-    <span class="label">{label}</span>
-    {#if optional}<Badge label={t.reason.weight.nice} />{/if}
+    <span class="label"
+      >{label}{#if optional}<span class="optional">{t.reason.weight.nice}</span>{/if}</span
+    >
   </span>
 {/if}
 
@@ -102,6 +103,13 @@
     flex: 0 1 auto;
     min-width: 0;
     overflow-wrap: break-word;
+  }
+
+  /* Quiet after the words, in their line. */
+  .optional {
+    margin-inline-start: var(--space-6);
+    color: var(--text-subtle);
+    font: var(--type-sm);
   }
 
   .icon-only {

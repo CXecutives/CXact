@@ -17,7 +17,7 @@ export const ICONS = {
   /** Zurückholen: out of the archive, back into the inbox. */
   unarchive: 'archive-restore',
   /** Delete (Löschen), delete for good, empty the trash, remove the mailbox: one glyph, in
-   *  red wherever it deletes. */
+   *  red where nothing brings it back (not Löschen, which moves a job into the trash). */
   trash: 'trash-2',
   /** Take back: Wiederherstellen from the trash, Rückgängig in a field. */
   undo: 'undo-2',

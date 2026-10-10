@@ -10,18 +10,18 @@
   red ban in the ring's place, in one section "Ausgeschlossen (n)" that is folded by default (the choice is
   kept; it opens when its job is opened from elsewhere). A page that fails to load while
   scrolling says so at the end of the list, with a retry. A search looks in the list's place;
-  under its hits a button names each other place with hits ("Im Archiv (2)", counted with
-  the same filter) and goes there with the search. A click opens a job, a double click opens
+  under its hits a button names each other place with hits like its tab ("Archiv 2", counted
+  with the same filter) and goes there with the search. A click opens a job, a double click opens
   its ad in the browser, a right click its menu (jobMenu of actions.ts); under the pointer
   the row shows the moves of its place as its tools (rowTools, the same table); one coral bar marks
   the open job's row and slides from row to row (RowBar). Back in the Jobs view, the open
   job's row is in view again. A job action that fails says so in the list header. Every
   empty state is one pattern at one place: an icon and one short sentence, centred, at most
   one way out (secondary: the header holds the view's primary). A filter that leaves nothing
-  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell says "Noch keine
-  Jobs" and what "Jobs suchen" does; after a search that found nothing that fits "Noch keine
-  passenden Jobs gefunden" with "Profil öffnen"; while a search fills it, that the jobs come
-  one by one. Without a usable profile one says
+  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell says to start a
+  search with "Jobs suchen"; after a search that found nothing that fits "Noch keine passenden
+  Jobs gefunden." with "Profil öffnen", or "Keine aktuellen Jobs." when its jobs were all
+  archived or deleted; while a search fills it, that the jobs come one by one. Without a usable profile one says
   that there is no match without it and leads to the Profil view (the rings stay, empty); a
   thin profile one calm line that the match stays rough. A list that fails to load says only
   that, with a retry (the header hides its tools).
@@ -113,25 +113,19 @@
     jobs.filtered && (jobs.overviewCounts ?? jobs.counts)[jobs.place] > 0,
   );
   /** An empty Aktuell: while a search fills it, what comes; after one that found nothing
-   *  that fits, that and the way to the profile; before any, what "Jobs suchen" does. */
+   *  that fits, that and the way to the profile (or only that there are none, when its jobs
+   *  went to the Archiv or the Papierkorb); before any, how to start one. */
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
-  const emptyInbox = $derived.by(
-    (): { icon: IconName; heading: string | null; text: string | null; profile: boolean } => {
-      if (run.fetching) {
-        return { icon: 'inbox', heading: null, text: t.list.emptyWhileRun, profile: false };
-      }
-      if (lastFetch?.outcome.kind === 'completed') {
-        return { icon: 'inbox', heading: t.list.noMatch, text: null, profile: true };
-      }
-      const searched = (app.state?.portals ?? []).filter((p) => p.way === 'search' && p.enabled);
-      return {
-        icon: 'search',
-        heading: t.list.emptyHeading,
-        text: t.list.emptyText(searched.length),
-        profile: false,
-      };
-    },
-  );
+  const emptyInbox = $derived.by((): { icon: IconName; text: string; profile: boolean } => {
+    if (run.searching) return { icon: 'inbox', text: t.list.emptyWhileRun, profile: false };
+    if (lastFetch?.outcome.kind === 'completed') {
+      const totals = jobs.overviewCounts ?? jobs.counts;
+      return totals.archive + totals.trash === 0
+        ? { icon: 'inbox', text: t.list.noMatch, profile: true }
+        : { icon: 'inbox', text: t.list.noActive, profile: false };
+    }
+    return { icon: 'search', text: t.list.emptyText, profile: false };
+  });
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
   // No profile: the fit needs one. One that is there but cannot be used is named.
   const profileNote = $derived.by(() => {
@@ -392,7 +386,7 @@
       <Button
         variant="secondary"
         icon={PLACE_ICON[hit.place]}
-        label={t.place.hitsIn[hit.place]}
+        label={t.place[hit.place]}
         count={hit.count}
         testid="also-{hit.place}"
         onclick={() => jobs.setPlace(hit.place)}
@@ -504,7 +498,6 @@
         <EmptyState
           icon={emptyInbox.icon}
           tone="neutral"
-          heading={emptyInbox.heading}
           text={emptyInbox.text}
           secondary={emptyInbox.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
           testid="empty-all"

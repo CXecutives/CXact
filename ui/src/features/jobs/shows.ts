@@ -26,13 +26,12 @@ export const SHOWS: readonly ShowId[] = ['open-ad', 'mail', 'prompt'];
 
 /**
  * Alert-Mail öffnen, only for a job an alert mail brought (user, 2026-10-01: a job of the
- * search has none, the button is not there); Anzeige öffnen, which says Offline-Anzeige
- * öffnen for an ad that is gone or takes no applications (the portal's page still opens);
+ * search has none, the button is not there); Anzeige öffnen, the same words for an ad that
+ * is gone or takes no applications (the portal's page still opens; the ad's note says it);
  * Prompt kopieren, only for a job with a score (scored or excluded; none without a profile)
  * and off without the ad's text (a preview is one).
  */
 export function showActions(job: JobView): Record<ShowId, ShowAction> {
-  const offline = job.detail.kind === 'gone' || job.closed;
   const text = job.detail.kind === 'ok' || job.detail.kind === 'teaser';
   return {
     mail: {
@@ -44,7 +43,7 @@ export function showActions(job: JobView): Record<ShowId, ShowAction> {
     },
     'open-ad': {
       id: 'open-ad',
-      label: offline ? t.reader.openOffline : t.actions.openAd,
+      label: t.actions.openAd,
       icon: 'external',
       reason: null,
       hidden: false,

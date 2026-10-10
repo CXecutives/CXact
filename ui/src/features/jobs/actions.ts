@@ -44,13 +44,14 @@ const TARGET: Record<MoveId, Place> = {
 };
 
 /** One icon per meaning: archiving looks like the archive, Zurückholen like taking out of
- *  it, Wiederherstellen from the Papierkorb like taking back. Deleting is one look
- *  everywhere: Löschen and Endgültig löschen take the trash, in red (`deletes`: the row's
- *  tool, the reader's, the entry of the menu). */
+ *  it, Wiederherstellen from the Papierkorb like taking back. Löschen and Endgültig löschen
+ *  take the trash; only Endgültig löschen, which cannot be taken back, is red (`deletes`:
+ *  the row's tool, the reader's, the entry of the menu). Löschen only moves the job into
+ *  the Papierkorb, grey like Archivieren. */
 const ACTIONS: Record<ActionId, { icon: IconName; deletes: boolean }> = {
   archive: { icon: 'archive', deletes: false },
   unarchive: { icon: 'unarchive', deletes: false },
-  trash: { icon: 'trash', deletes: true },
+  trash: { icon: 'trash', deletes: false },
   restore: { icon: 'undo', deletes: false },
   purge: { icon: 'trash', deletes: true },
 };
@@ -163,7 +164,7 @@ function placeMoves(job: JobView, context: JobMenuContext): MenuItem[] {
 
 /**
  * The row's tools under the pointer: the moves of its place, the same entries in the same
- * order as its menu (an icon each, its label the tooltip; the ones that delete are red).
+ * order as its menu (an icon each, its label the tooltip; Endgültig löschen is red).
  */
 export function rowTools(job: JobView, context: JobMenuContext): RowTool[] {
   return placeMoves(job, context).map((entry) => {

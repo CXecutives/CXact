@@ -60,23 +60,31 @@ pre-assessment to any AI chat for a deeper check.
   - The places Aktuell, Archiv, Papierkorb as tabs, at their right one action in one slot
     (`--place-action`): "Jobs suchen", the view's one primary, with or without a mailbox; "Abbrechen"
     with the hollow square while a search goes, in every place; "Papierkorb leeren" in the Papierkorb.
-    While it runs one line under the header ("Portale werden durchsucht, 3 von 8 fertig", under it
-    "Bisher 12 neue Jobs") with a thin bar that never moves back; no spinner in the sidebar. An empty Aktuell says "Noch keine
-    Jobs"; after a search without a fitting job "Noch keine passenden Jobs gefunden" with "Profil
-    öffnen"; the end toast says "Keine neuen passenden Jobs, n ausgeschlossen".
+    While it runs one line under the header ("Portale werden durchsucht, 3 von 8 fertig", under it on a
+    line kept from the start "Bisher 12 neue Jobs") with a thin bar that never moves back; no spinner in
+    the sidebar. Loading one ad ("Anzeige laden") is no search: only its ad section shows it. Empty
+    states are one quiet sentence without a heading: an empty Aktuell says "Starte eine Suche mit „Jobs
+    suchen“."; after a search without a fitting job "Noch keine passenden Jobs gefunden." with "Profil
+    öffnen", or "Keine aktuellen Jobs." when its jobs went to the Archiv or the Papierkorb; the end
+    toast says "Keine neuen passenden Jobs, n ausgeschlossen". Search hits in another place are a
+    button named like its tab.
   - The search over every word, and the funnel: the order Übereinstimmung, Datum or Tagessatz; the filters
     Portal, Übereinstimmung and Neu seit (Heute, 7, 30 Tagen). The date is the day a job came into CXact
     (`first_seen_at`).
-  - One row height. A row holds the ring, the unread dot, the title, the company, the place, the pay and the
-    date. Excluded jobs stand behind a divider.
+  - One row height. A row holds the ring, the unread dot, the title, the company, the place, the pay (no
+    glyph, its currency says it) and the date. Excluded jobs stand behind a divider.
+  - Löschen (into the Papierkorb) is grey like Archivieren; only Endgültig löschen is red.
   - The job view, right of the list or in place of it when narrow:
-    - The head: the title, Archivieren and Löschen as icon buttons, close.
-    - The ring (its name in its tooltip) with its band words and an info symbol, then three text buttons
-      that wrap: Anzeige öffnen, Alert-Mail öffnen (only for a job a mail brought), Prompt kopieren (only
-      for a job with a score); "Trotzdem bewerten" before them for an excluded job.
+    - The head: the title, Archivieren and Löschen as icon buttons, close; the ring right under it.
+    - The ring (its name in its tooltip) with its band words and, for a scored job, an info symbol, then
+      three text buttons that wrap: Anzeige öffnen (the same words for an ad no longer online; the ad's
+      note says it), Alert-Mail öffnen (only for a job a mail brought), Prompt kopieren (only for a job
+      with a score); "Trotzdem bewerten" before them for an excluded job.
     - The Jobdetails table with the verdict icons (a row with only "–" shows only where a verdict judges
-      it; "Gefunden" quiet), the Anforderungen (Erfüllt, Teilweise erfüllt, Nicht erfüllt; a missing term
-      goes into the profile with a plus) and the ad's text. An excluded job shows neither verdicts nor
+      it; "Gefunden" quiet, the portal named once: "Alert-Mail und Suche bei …"; every row at its first
+      line), the Anforderungen (Erfüllt, Teilweise erfüllt, Nicht erfüllt; a quiet "optional" after an
+      unmet one that is only nice to have; a missing term goes into the profile with a plus) and the
+      ad's text. An excluded job shows neither verdicts nor
       Anforderungen: its head says why.
   - Moves have an undo toast. Delete for good stays in the Papierkorb.
 - **Profil:**
@@ -186,7 +194,7 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Jobs suchen, Suche (never Abruf)
 - bewerten, neu bewerten
 - Ausgeschlossen, Trotzdem bewerten
-- Anforderungen, Pflicht, Optional
+- Anforderungen, Pflicht, optional
 - Erfüllt, Teilweise erfüllt, Nicht erfüllt
 - Jobdetails, Gefunden
 - Anzeige (öffnen), Prompt kopieren

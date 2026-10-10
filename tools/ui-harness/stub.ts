@@ -854,6 +854,10 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   offline: () => {
     state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
   },
+  // Every job went to the Archiv after the last search: Aktuell is empty.
+  archived: () => {
+    for (const job of jobs) job.place = 'archive';
+  },
   paused: () => {
     state.portals[0]!.health = { kind: 'paused', until: later(95), reason: 'throttled' };
     state.portals[1]!.health = { kind: 'layoutSuspect', emptyMails: 2, pages: 0 };

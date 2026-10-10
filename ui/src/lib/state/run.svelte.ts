@@ -102,9 +102,15 @@ class RunStore {
     for (const event of snapshot.replay) this.handle(event, false);
   }
 
-  /** A run the run line shows is going (a fetch or details run, never a rescore). */
+  /** A run that loads ads is going (a fetch or details run, never a rescore). */
   get fetching(): boolean {
     return this.active && this.kind !== 'rescore';
+  }
+
+  /** A search ("Jobs suchen") is going: the run line, "Abbrechen" and the empty list say
+   *  so. Loading one ad ("Anzeige laden") is no search: its ad section says it. */
+  get searching(): boolean {
+    return this.active && this.kind === 'fetch';
   }
 
   /** Why an action waits while a run goes, by its kind (a fetch, the ads of a details run, a
