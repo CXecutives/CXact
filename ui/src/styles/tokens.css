@@ -208,8 +208,6 @@
      in focus is --border-focus). */
   --caret: hsl(var(--p-navy));
   --selection: hsl(var(--p-navy) / 0.2);
-  /* The lifetime line of a toast. */
-  --toast-bar: hsl(var(--p-navy) / 0.35);
   /* Scrollbars stay ink. */
   --scrollbar: hsl(var(--p-ink) / 0.2);
   --scrollbar-hover: hsl(var(--p-ink) / 0.34);
@@ -238,7 +236,6 @@
   --mark: hsl(var(--p-score-yellow) / 0.4);
   /* One blue in the app: info is the navy. */
   --info: hsl(var(--p-navy));
-  --info-strong: hsl(var(--p-navy-deep));
   --info-soft: hsl(var(--p-navy-50));
   /* The words of the list's search where they stand (the list, the ad's text). */
   --mark-search: hsl(var(--p-score-yellow) / 0.45);
@@ -329,7 +326,7 @@
      - quiet: no fill at rest (ghost button, list row, reason, sidebar entry, run status,
        segment, text chip, menu entry): a wash under the pointer, a deeper one pressed.
      - control: a white box with an edge (secondary button, field): a muted fill and a
-       darker edge under the pointer and while pressed (a button also gives a little).
+       darker edge under the pointer, a button one opaque step darker still while pressed.
      - raised: a white tile or card (stat tile, interactive card): a navy edge and a soft
        shadow under the pointer; pressed it darkens like a control and drops the shadow.
      - label: text without a box (disclosure, divider, tab): ink under the pointer, its
@@ -339,6 +336,8 @@
   --quiet-press: var(--surface-press);
   --control-hover: var(--surface-muted);
   --control-hover-edge: var(--border-input);
+  --control-press: hsl(var(--p-track));
+  --control-press-edge: hsl(var(--p-border-press));
   /* The edge of a text field and a chip field at rest and under the pointer (TextField,
      ChipInput); a wrong value draws the danger red instead, a required field that is still
      empty the coral ([data-missing] below), and a field in focus is always --border-focus. */
@@ -541,9 +540,11 @@
   --row-inset: 0px;
   /* The inner padding of a card: its rows' sides, a box's content. */
   --card-padding: 14px;
-  /* How far a small ghost button hangs out of its column so its text or icon starts (or
-     ends) on the column's edge: its padding and its (transparent) border. */
-  --ghost-inset: calc(var(--space-8) + var(--border-width));
+  /* The padding of a button's content at its sides (Button). */
+  --button-pad: var(--space-10);
+  /* How far a ghost button hangs out of its column so its text or icon starts (or ends) on
+     the column's edge: its padding and its (transparent) border. */
+  --ghost-inset: calc(var(--button-pad) + var(--border-width));
   /* The one inner padding of every content column: list header, list rows, reader, the
      pages, and the left edge of the top strip, so their edges line up. */
   --pane-padding: 16px;
@@ -687,8 +688,8 @@
   /* Snappy and calm (user test of the installed app), quiet at rest and rich on contact
      (user, 2026-09-24): every control answers without waiting for an animation. Hover-in
      takes 80 ms (--dur-hover on the :hover rule), hover-out relaxes in 150 ms (--dur-base on
-     the base rule), a press takes 60 ms with a small scale, the release settles in 150 ms
-     (--ease-emphasized). Colour changes 100 ms, entries 150 ms, every slide (nav pill,
+     the base rule), a press darkens in 60 ms (nothing scales or moves), the release settles in
+     150 ms. Colour changes 100 ms, entries 150 ms, every slide (nav pill,
      segmented and toggle thumbs, chevrons, dialog) 180 ms, the ring fill 360 ms. Only
      transform and opacity move; nothing overshoots; the only pop is a keyframed 1, 1.18, 1;
      no lift, glow, stagger, blur or replay. */

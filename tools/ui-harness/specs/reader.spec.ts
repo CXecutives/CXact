@@ -1175,7 +1175,11 @@ test.describe('the ad', () => {
 
   test('a preview says so once, here, with its sign-in right there', async ({ page }) => {
     await openAt(page, 'freelance-900411');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.teaser);
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.adNote.teaser);
+    // Like every info notice: its sign navy, its words ink.
+    await expect(note).toHaveCSS('color', await tokenColour(page, '--text'));
+    await expect(note.locator('svg')).toHaveCSS('color', await tokenColour(page, '--info'));
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
@@ -1307,18 +1311,18 @@ test('while a job loads, the reader stands in its shape as placeholders', async 
   expect(Math.abs(placeholder.y - title.y)).toBeLessThanOrEqual(8);
 });
 
-test('switching jobs fades the old one out before the new one comes in', async ({ page }) => {
+test('switching jobs puts the new one in place at once: nothing fades, nothing flashes', async ({
+  page,
+}) => {
   await openAt(page, 'freelancermap-2801');
-  // Every frame from the click on: how many stages show at once, and whether two were there.
+  // Every frame from the click on: the stages there and how opaque they are.
   await page.evaluate(() => {
-    const seen = { most: 0, both: false };
+    const seen = { frames: [] as string[] };
     (window as unknown as { __stages: typeof seen }).__stages = seen;
     const until = performance.now() + 700;
     const look = (): void => {
       const all = [...document.querySelectorAll('.stage')];
-      if (all.length > 1) seen.both = true;
-      const shown = all.filter((stage) => Number(getComputedStyle(stage).opacity) > 0.02);
-      seen.most = Math.max(seen.most, shown.length);
+      seen.frames.push(all.map((stage) => getComputedStyle(stage).opacity).join(' '));
       if (performance.now() < until) requestAnimationFrame(look);
     };
     requestAnimationFrame(look);
@@ -1327,10 +1331,10 @@ test('switching jobs fades the old one out before the new one comes in', async (
   await expect(stage(page).getByTestId('reader-title')).toHaveText('Interim Head of Finance');
   await page.waitForTimeout(700);
   const seen = await page.evaluate(
-    () => (window as unknown as { __stages: { most: number; both: boolean } }).__stages,
+    () => (window as unknown as { __stages: { frames: string[] } }).__stages,
   );
-  expect(seen.both).toBe(true);
-  expect(seen.most).toBe(1);
+  // One stage in every frame, always opaque: never two, never a blank pane.
+  expect(new Set(seen.frames)).toEqual(new Set(['1']));
 });
 
 // Carried over from the reader's rounds of fixes: the column, the run card and the trash

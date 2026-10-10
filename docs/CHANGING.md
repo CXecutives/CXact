@@ -155,9 +155,11 @@ Each role of the UI has one pattern, decided in one place; the components only r
   the catalog), only at the places `docs/PLAN.md` names; a field shows a hint or an info symbol,
   never both. No "·" as a separator: an icon, a comma or a
   line of its own. Both are rules of `ui_contract.rs`.
-- **Motion**: only through `ui/src/lib/motion/`: a view switch fades out,
-  then in; a row that leaves folds its height; what comes under the list header unfolds;
-  bars, notices, dialogs, menus and toasts have their entrances there.
+- **Motion**: only through `ui/src/lib/motion/`: a view switch and another job in the job
+  view show the new content at once (nothing fades, nothing flashes); a row that leaves
+  folds its height; what comes under the list header unfolds; bars, notices, dialogs, menus
+  and toasts have their entrances there. A press only darkens (no scale, no shift), a menu's
+  highlight follows the pointer at once.
 - **Check**: `cargo test -p jobalert-core --test ui_contract`, `npm run check`, and
   `tools/ui-harness/specs/shell.spec.ts` and `input.spec.ts` in Chromium (the components are
   checked on the real screens).

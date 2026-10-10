@@ -42,6 +42,8 @@
   /** A click hides the job view: it stands beside the list, or in one column a job stands in
    *  the list's place. */
   const readerShown = $derived(viewport.narrow ? jobs.selected !== null : shell.readerOpen);
+  /** A click hides the sidebar: it stands docked, or floats over the view. */
+  const sidebarOut = $derived(shell.docked || shell.peek);
   /** Hidden, the job view closes its job too (the list shows none chosen); shown again, it
    *  asks for one. In one column it closes the job that stands in place of the list. */
   function toggleReader(): void {
@@ -114,8 +116,8 @@
     variant="ghost"
     iconOnly
     icon="sidebar"
-    hoverIcon={shell.docked ? 'sidebarHide' : 'sidebarShow'}
-    label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
+    hoverIcon={sidebarOut ? 'sidebarHide' : 'sidebarShow'}
+    label={sidebarOut ? t.nav.sidebarHide : t.nav.sidebarShow}
     testid="toggle-sidebar"
     onclick={() => shell.toggleSidebar()}
   />

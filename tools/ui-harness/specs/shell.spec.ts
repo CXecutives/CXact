@@ -17,21 +17,8 @@ import {
   nav,
   test,
   text,
-  viewsSettled,
 } from './fixtures';
 import { failNext, rowMenu, SEARCHED, reveal, T, tokenColour, tokenPx, viaMenu } from './helpers';
-
-// Every view switch, the Jobs view included, is the same: the old view fades out, then the new
-// one fades in, so two views are never readable at once. Recorded from the Web Animations
-// Svelte starts (deterministic, no frame timing involved): a delayed entrance starts with a
-// still frame at 0 as long as its delay.
-interface Fade {
-  view: string;
-  from: string;
-  to: string;
-  ms: number;
-  order: string[];
-}
 
 // Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
 // direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
@@ -167,55 +154,34 @@ test('the shell renders sidebar and the jobs view', async ({ page }) => {
   await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
 });
 
-test('every view switch fades the old view out, then the new one in', async ({ page }) => {
+test('every view switch shows the new view at once: nothing fades, nothing flashes', async ({
+  page,
+}) => {
   await page.addInitScript(() => {
-    const fades: Fade[] = [];
-    (window as unknown as { __fades: Fade[] }).__fades = fades;
+    const fades: string[] = [];
+    (window as unknown as { __fades: string[] }).__fades = fades;
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (this: Element, keyframes, options) {
       const view = this instanceof HTMLElement ? (this.dataset.testid ?? '') : '';
-      const ms = typeof options === 'number' ? options : Number(options?.duration ?? 0);
-      if (view.startsWith('view-') && Array.isArray(keyframes) && keyframes.length > 0 && ms > 0) {
-        fades.push({
-          view,
-          from: String(keyframes[0]?.opacity),
-          to: String(keyframes.at(-1)?.opacity),
-          ms,
-          order: [...(this.parentElement?.children ?? [])].map(
-            (node) => (node as HTMLElement).dataset.testid ?? '',
-          ),
-        });
-      }
+      if (view.startsWith('view-')) fades.push(view);
       return animate.call(this, keyframes, options);
     };
   });
-  // At start nothing animates: the first view is simply there.
   await open(page, '?platform=windows');
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  expect(await page.evaluate(() => (window as unknown as { __fades: Fade[] }).__fades)).toEqual([]);
-  const steps = [
-    ['jobs', 'profile'],
-    ['profile', 'settings'],
-    ['settings', 'jobs'],
-    ['jobs', 'settings'],
-    ['settings', 'profile'],
-    ['profile', 'jobs'],
-  ];
-  for (const [from, to] of steps) {
-    await page.evaluate(() => (window as unknown as { __fades: Fade[] }).__fades.splice(0));
+  for (const to of ['profile', 'settings', 'jobs', 'settings', 'profile', 'jobs']) {
     await page.getByTestId(`nav-${to}`).click();
-    await expect(page.locator('main.views > section')).toHaveCount(1);
-    await expect(page.getByTestId(`view-${to}`)).toBeVisible();
-    const fades = await page.evaluate(() => (window as unknown as { __fades: Fade[] }).__fades);
-    const out = fades.filter((fade) => fade.view === `view-${from}`);
-    const into = fades.filter((fade) => fade.view === `view-${to}`);
-    expect(out, `${from} -> ${to}`).toMatchObject([{ from: '1', to: '0', ms: 100 }]);
-    // The new view waits at 0 while the old one fades out, then fades in.
-    expect(into, `${from} -> ${to}`).toMatchObject([
-      { from: '0', to: '0', ms: 100 },
-      { from: '0', to: '1', ms: 100 },
-    ]);
+    // One view only, at full opacity, in the frame the click ends in.
+    const shown = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('main.views > section')].map(
+        (node) => `${node.dataset.testid} ${getComputedStyle(node).opacity}`,
+      ),
+    );
+    expect(shown).toEqual([`view-${to} 1`]);
   }
+  expect(await page.evaluate(() => (window as unknown as { __fades: string[] }).__fades)).toEqual(
+    [],
+  );
 });
 
 // The OS window's focus (Tauri's window events) is one attribute on <html>; selections grey
@@ -590,11 +556,31 @@ for (const os of [WIN, MAC]) {
     await page.mouse.move(1, 400);
     await page.waitForTimeout(300);
     await expect(floating).toHaveCount(0);
-    // Its button floats it out; a choice there folds it again.
-    await page.getByTestId('toggle-sidebar').click();
+    // Its button floats it out (and then offers to hide it); a choice there folds it again.
+    const toggle = page.getByTestId('toggle-sidebar');
+    await expect(toggle).toHaveAccessibleName(T.nav.sidebarShow);
+    await toggle.click();
     await expect(floating).toBeVisible();
+    await expect(toggle).toHaveAccessibleName(T.nav.sidebarHide);
     await floating.getByTestId('nav-profile').click();
     await expect(page.getByTestId('view-profile')).toBeVisible();
+    await expect(floating).toHaveCount(0);
+    // Esc folds it, and so does a press beside it, which still does what it presses.
+    await toggle.click();
+    await expect(floating).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(floating).toHaveCount(0);
+    await toggle.click();
+    await expect(floating).toBeVisible();
+    const field = page.getByTestId('profile-wish-rate');
+    const box = (await field.boundingBox())!;
+    await page.mouse.click(box.x + box.width - 8, box.y + box.height / 2);
+    await expect(floating).toHaveCount(0);
+    await expect(field).toBeFocused();
+    // Its button folds it too (the press beside it is the button's own).
+    await toggle.click();
+    await expect(floating).toBeVisible();
+    await toggle.click();
     await expect(floating).toHaveCount(0);
   });
 
@@ -788,16 +774,12 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await expect(page.getByTestId('portal-hays')).toBeVisible();
   await view('settings').evaluate((node) => (node.scrollTop = 200));
   await page.getByTestId('nav-profile').click();
-  await viewsSettled(page);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await view('profile').evaluate((node) => (node.scrollTop = 260));
   await page.getByTestId('nav-jobs').click();
-  await viewsSettled(page);
   await page.getByTestId('nav-settings').click();
-  await viewsSettled(page);
   await expect.poll(() => view('settings').evaluate((node) => node.scrollTop)).toBe(200);
   await page.getByTestId('nav-profile').click();
-  await viewsSettled(page);
   await expect.poll(() => view('profile').evaluate((node) => node.scrollTop)).toBe(260);
 });
 
@@ -1070,6 +1052,36 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
   }
 });
 
+test('a secondary button darkens a step on hover and one more while pressed; nothing moves', async ({
+  page,
+}) => {
+  await settings(page);
+  const button = await reveal(page, page.getByTestId('folder-open'));
+  const look = (): Promise<string[]> =>
+    button.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return [style.backgroundColor, style.borderColor, style.transform];
+    });
+  await page.mouse.move(0, 0);
+  await page.waitForTimeout(250);
+  const rest = await look();
+  const box = (await button.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(250);
+  const hover = await look();
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  const pressed = await look();
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  for (const at of [0, 1]) {
+    expect(new Set([rest[at], hover[at], pressed[at]]).size, `${rest} ${hover} ${pressed}`).toBe(3);
+  }
+  // Opaque fills, and no scale or shift.
+  expect(pressed[0]).toMatch(/^rgb\(/);
+  expect([rest[2], hover[2], pressed[2]]).toEqual(['none', 'none', 'none']);
+});
+
 test('only Endgültig löschen is red: Löschen is grey like the other moves', async ({ page }) => {
   await open(page, WIN);
   await rowMenu(page, 'freelancermap-2802');
@@ -1144,7 +1156,7 @@ async function heldFetch(page: Page): Promise<void> {
   await expect.poll(() => page.evaluate(() => window.__harness.runs())).toBe(true);
 }
 
-test('closing during a fetch asks first: Abbrechen keeps both, Schließen stops it and closes', async ({
+test('closing during a fetch asks first: Weitersuchen keeps both, Schließen stops it and closes', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=40`);
@@ -1156,12 +1168,12 @@ test('closing during a fetch asks first: Abbrechen keeps both, Schließen stops 
   await heldFetch(page);
   await requestClose(page);
   const dialog = page.getByTestId('dialog-close-running');
-  // Like every other dialog: the question as its heading, the one sentence under it.
+  // The question as its heading, no sentence; its second button keeps the search.
   await expect(dialog.getByRole('heading')).toHaveText(T.shell.closeHeading);
-  await expect(dialog).toContainText(T.shell.closeText);
+  await expect(dialog.locator('.text')).toHaveCount(0);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.shell.closeAction);
-  await expect(dialog.getByTestId('dialog-cancel')).toHaveText(T.common.cancel);
-  // Abbrechen: the window and the fetch stay.
+  await expect(dialog.getByTestId('dialog-cancel')).toHaveText(T.shell.keep);
+  // Weitersuchen: the window and the fetch stay.
   await dialog.getByTestId('dialog-cancel').click();
   await expect(dialog).toHaveCount(0);
   expect(await windowClosed(page)).toBe(false);

@@ -143,18 +143,17 @@
     min-height: var(--control-field);
   }
 
-  /* The note, like an inline notice: its icon (or the spinner) and its words in its tone. */
+  /* The note, like an inline notice: its sign (or the spinner) in its tone, its words ink. */
   .note {
     display: inline-flex;
     align-items: center;
     gap: var(--space-8);
-    color: var(--info-strong);
+    color: var(--text);
     font: var(--type-sm);
   }
 
-  /* A warning's words are ink, its sign the rings' yellow. */
-  .note.warning {
-    color: var(--text);
+  .note > :global(:first-child) {
+    color: var(--info);
   }
 
   .note.warning > :global(:first-child) {

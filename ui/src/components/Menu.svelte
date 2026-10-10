@@ -8,7 +8,9 @@
   and a fixed icon column (the check of a choice or a switch sits there too); no entry names
   a key. A group may carry a small muted heading, which the keys pass over.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
-  lib/input/input.ts; hover marks a row, a left click chooses it.
+  lib/input/input.ts; hover marks a row at once (the highlight follows the pointer without a
+  fade, like the OS's menus), a left click chooses it. An entry that is off is faded as a
+  whole, like every control that is off.
 -->
 <script lang="ts">
   import { px, setVars } from '$lib/actions/cssVars';
@@ -165,19 +167,16 @@
     font: var(--type-md);
     text-align: start;
     cursor: default;
-    transition: background-color var(--dur-base) var(--ease-out);
   }
 
   /* The quiet kind (tokens.css): a wash on the entry under the pointer or the keys, a
      deeper one while the left button holds it. */
   .item.active:not([aria-disabled='true']) {
     background-color: var(--quiet-hover);
-    transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .item:not([aria-disabled='true']):active:hover {
     background-color: var(--quiet-press);
-    transition-duration: var(--dur-instant);
   }
 
   /* Deleting (Löschen, Endgültig löschen): red at rest like its button, on a red wash when
@@ -191,7 +190,7 @@
   }
 
   .item[aria-disabled='true'] {
-    color: var(--text-subtle);
+    opacity: var(--opacity-disabled);
   }
 
   .lead {

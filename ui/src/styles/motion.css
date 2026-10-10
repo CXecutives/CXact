@@ -7,7 +7,7 @@
  *     loop starts at its resting frame, so a paused one simply stands).
  *   - one-shots started by a state change the user caused, never on mount (no replay): the
  *     late appearance of a placeholder, a drawn check (draw, on stroke-dashoffset), the
- *     shake of a field after a wrong password, and the lifetime line of a toast (drain).
+ *     shake of a field after a wrong password.
  * Components reference them by name with token durations (`animation: spin var(--dur-loop)
  * linear infinite`). Only transform and opacity move (stroke-dashoffset for the check).
  */
@@ -49,16 +49,6 @@
 
   85% {
     transform: translateX(calc(-1 * var(--move-sm)));
-  }
-}
-
-@keyframes drain {
-  from {
-    transform: scaleX(1);
-  }
-
-  to {
-    transform: scaleX(0);
   }
 }
 

@@ -1489,10 +1489,10 @@ export const de = {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
-    /** Closing the window while a fetch runs asks first; its button closes anyway. */
-    closeHeading: 'Trotzdem schließen?',
-    closeText: 'Die Suche läuft noch.',
+    /** Closing the window while a fetch runs asks first: close anyway, or keep searching. */
+    closeHeading: 'Suche abbrechen und schließen?',
     closeAction: 'Schließen',
+    keep: 'Weitersuchen',
   },
   /** The calendar beside a day field (Verfügbar): the week starts on Monday. */
   calendar: {

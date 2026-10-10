@@ -1,8 +1,8 @@
 <!--
   The shell: the window's top bar (the same on both OS, TitleBar), below it the sidebar and
-  the white sheet with the three views. Every view switch is the same: the old view fades out (100 ms), then the new
-  one fades in (100 ms), so two views are never readable at once (lib/motion). On start
-  nothing animates and the app shows useful content at once: the setup until it was finished
+  the white sheet with the three views. Every view switch is the same: the new view is there
+  at once, nothing fades, so nothing flashes between them. On start nothing animates and the
+  app shows useful content at once: the setup until it was finished
   once (a mode of the shell of its own: no sidebar, the top bar without its buttons, every
   switch of the view refused, the mouse's back button is the setup's Zurück), otherwise the
   Jobs view with the last results. Closing while a
@@ -29,7 +29,7 @@
   import { onBack } from '$lib/input/input';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
-  import { fade, viewIn, viewOut } from '$lib/motion/transitions';
+  import { fade } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { history } from '$lib/state/history.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
@@ -114,7 +114,7 @@
       >
     {:else if shell.peek}
       <!-- A narrow window: the sidebar's button floats it over the view. -->
-      <div class="peek" transition:fade>
+      <div class="peek" data-peek transition:fade>
         <Sidebar floating onchoose={() => shell.fold()} />
       </div>
     {/if}
@@ -167,35 +167,21 @@
           </div>
         </section>
       {:else}
-        <!-- The views are the branches of one block: on a switch the old one fades out, then
-             the new one fades in (local transitions), while the first view after loading is
-             simply there. -->
+        <!-- The views are the branches of one block: a switch shows the new one at once. -->
         {#if firstRun}
-          <section class="view" data-testid="view-first-run" in:viewIn out:viewOut>
+          <section class="view" data-testid="view-first-run">
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
-          <section class="view fixed" data-testid="view-jobs" in:viewIn out:viewOut>
+          <section class="view fixed" data-testid="view-jobs">
             <JobsView />
           </section>
         {:else if navigation.current === 'profile'}
-          <section
-            class="view"
-            data-testid="view-profile"
-            in:viewIn
-            out:viewOut
-            use:keepScroll={'profile'}
-          >
+          <section class="view" data-testid="view-profile" use:keepScroll={'profile'}>
             <ProfileView />
           </section>
         {:else}
-          <section
-            class="view"
-            data-testid="view-settings"
-            in:viewIn
-            out:viewOut
-            use:keepScroll={'settings'}
-          >
+          <section class="view" data-testid="view-settings" use:keepScroll={'settings'}>
             <SettingsView />
           </section>
         {/if}
@@ -290,7 +276,7 @@
     box-shadow: var(--sh-menu);
   }
 
-  /* All views share one cell; during a switch the new one lies on top and covers the old. */
+  /* The one view fills the sheet. */
   .view {
     grid-area: 1 / 1;
     min-width: 0;

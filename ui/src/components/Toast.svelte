@@ -3,11 +3,9 @@
   draws a toast: short confirmations that rise in (150 ms) and slide out sideways (100 ms),
   at most three, the stack moving up as one leaves. Each kind's glyph and each toast's time
   come from the tables of lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain
-  toast stays 4 s, one with a button 10 s. A 2 px navy line at the
-  bottom drains over that time and stops while the toast is hovered (so does its timer),
-  and every toast waits while the window is in the back or a modal dialog is open; under
-  reduced motion there is no line. The stack lies below a dialog's scrim: dimmed, and its
-  undo cannot act behind the dialog.
+  toast stays 4 s, one with a button 10 s. Its time stops while it is hovered, and every
+  toast waits while the window is in the back or a modal dialog is open. The stack lies
+  below a dialog's scrim: dimmed, and its undo cannot act behind the dialog.
   A toast is as wide as its sentence (at least 280 px): a short confirmation stays compact.
   One that quotes a name (a job's title, a term) has room for it (520 px) and wraps to at
   most two lines: the title in the catalog's quotes („…“ or “…”) keeps to one line and ends in an ellipsis
@@ -18,7 +16,7 @@
   the user just did sits before the close button; a
   toast about something that happened in another view (a fetch that finished) may carry
   the way to it instead ("Zeigen"). A merged toast (two rows archived one after the other)
-  cross-fades its sentence (100 ms) and starts its line again.
+  cross-fades its sentence (100 ms) and starts its time again.
   A press on a toast never takes the focus (like a notification of the OS); a toast the
   keyboard reached gives the focus back to where it came from when
   it goes by its buttons. The stack lies above a bar that sticks to the bottom of the view
@@ -124,18 +122,17 @@
 </script>
 
 <script lang="ts">
-  import { cssVars, px, setVars } from '$lib/actions/cssVars';
+  import { px, setVars } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
   import { onWindowFocus } from '$lib/ipc/api';
   import { fade, flip, toastIn, toastOut } from '$lib/motion/transitions';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { actionKind, TOAST_KINDS, TOAST_LIFE, toasts } from '$lib/state/toasts.svelte';
+  import { TOAST_KINDS, toasts } from '$lib/state/toasts.svelte';
   import { tokenPx } from '$lib/tokens';
   import { tick } from 'svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
 
-  let hovered = $state<number | null>(null);
   let stack = $state<HTMLElement | null>(null);
   /** Where the focus was before the keyboard brought it into the stack. */
   let cameFrom: HTMLElement | null = null;
@@ -235,7 +232,6 @@
 
 <div
   class="stack"
-  class:held={toasts.held}
   role="status"
   aria-live="polite"
   data-testid="toasts"
@@ -248,23 +244,15 @@
     <div
       class="toast {toast.kind}"
       class:named={quoted(toast.text) !== null}
-      class:paused={hovered === toast.id}
       class:draws={look.draws}
       role="group"
       data-testid="toast"
       data-kind={toast.kind}
-      use:cssVars={{ 'toast-life': `var(${TOAST_LIFE[actionKind(toast.action)]})` }}
       animate:flip
       in:toastIn
       out:toastOut
-      onpointerenter={() => {
-        hovered = toast.id;
-        toasts.pause(toast.id);
-      }}
-      onpointerleave={() => {
-        hovered = null;
-        toasts.resume(toast.id);
-      }}
+      onpointerenter={() => toasts.pause(toast.id)}
+      onpointerleave={() => toasts.resume(toast.id)}
     >
       <span class="icon"><Icon name={look.icon} size="sm" /></span>
       {#key toast.text}<span class="text" data-testid="toast-text" in:fade
@@ -288,7 +276,6 @@
         label={t.common.hide}
         onclick={() => act(() => toasts.dismiss(toast.id))}
       />
-      {#key toast.round}<span class="life" aria-hidden="true"></span>{/key}
     </div>
   {/each}
 </div>
@@ -308,7 +295,6 @@
   }
 
   .toast {
-    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-8);
@@ -375,27 +361,5 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  /* The lifetime line: it drains from the right over the toast's time, and stops while
-     the toast is hovered or every toast waits. */
-  .life {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: var(--focus-width);
-    background-color: var(--toast-bar);
-    transform-origin: left center;
-    animation: drain var(--toast-life) linear forwards;
-  }
-
-  .paused .life,
-  .held .life {
-    animation-play-state: paused;
-  }
-
-  :global(:root[data-motion='reduce']) .life {
-    display: none;
   }
 </style>

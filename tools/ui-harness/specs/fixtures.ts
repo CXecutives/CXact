@@ -93,21 +93,12 @@ export async function runFinished(page: Page): Promise<void> {
 
 /** Visible elements matching a selector. */
 export async function visibleCount(page: Page, selector: string): Promise<number> {
-  await viewsSettled(page);
   return page.evaluate((css) => {
     return [...document.querySelectorAll(css)].filter((node) => {
       const box = node.getBoundingClientRect();
       return box.width > 0 && box.height > 0;
     }).length;
   }, selector);
-}
-
-/**
- * A view switch fades the old view out (100 ms), then the new one in. What the screen shows
- * is counted once only the new view is left.
- */
-export async function viewsSettled(page: Page): Promise<void> {
-  await page.waitForFunction(() => document.querySelectorAll('main.views > section').length <= 1);
 }
 
 /**
@@ -211,7 +202,7 @@ export async function motionSettled(page: Page): Promise<void> {
 }
 
 /**
- * Wait until no animation runs (a view or the reader fading in, the ring filling). While one
+ * Wait until no animation runs (a notice rising in, the ring filling). While one
  * runs, Playwright's hover and click may find their target covered and scroll the pane to
  * try again (a real pointer never scrolls).
  */
@@ -222,7 +213,6 @@ export async function animationsDone(page: Page): Promise<void> {
 }
 
 export async function settle(page: Page): Promise<void> {
-  await viewsSettled(page);
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

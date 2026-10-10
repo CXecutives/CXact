@@ -47,7 +47,9 @@
 //   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
 //   Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
-//   focus is. Esc closes only the layer on top: the menu, then the dialog.
+//   focus is. Esc closes only the layer on top: the menu, then the dialog, then the sidebar
+//   that floats over the view in a narrow window; a left press beside that sidebar (and
+//   beside its button, which folds it itself) folds it too, and still does what it presses.
 // - removing never puts a caret anywhere (`removeBy`): a click on an × drops the focus; from
 //   the keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×) the
 //   next × of the same list takes it, the previous one after the last.
@@ -77,6 +79,7 @@ import {
   openMenu,
   type MenuEntry,
 } from '../state/menu.svelte';
+import { shell } from '../state/shell.svelte';
 import { tokenMs, tokenPx } from '../tokens';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
@@ -97,6 +100,8 @@ const ENTER_PRESSES =
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
+/** The sidebar floating over the view (App.svelte) and its button in the top bar. */
+const PEEK = '[data-peek], [data-testid="toggle-sidebar"]';
 const FOCUSABLE = [
   'button:not([tabindex="-1"])',
   'input:not([tabindex="-1"])',
@@ -644,6 +649,11 @@ function onKeyDown(event: KeyboardEvent): void {
   if (event.ctrlKey || event.metaKey) guardZoom(true);
   if (isWindowShortcut(event)) return;
   const modal = topModal();
+  if (modal === null && event.key === 'Escape' && shell.peek) {
+    event.preventDefault();
+    shell.fold();
+    return;
+  }
   if (modal !== null) {
     if (isFocusMove(event)) {
       event.preventDefault();
@@ -1459,6 +1469,7 @@ export function installInput(): void {
       }
       if (event.button === LEFT) {
         if (!otherButtonsDown(event)) auxPress(false);
+        if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
         // A button inside a field (show password, clear) leaves the caret in the field.
         if (closest(event.target, KEEP_FOCUS) !== null || pressesEditableChip(event)) {

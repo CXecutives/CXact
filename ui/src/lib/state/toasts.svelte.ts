@@ -68,8 +68,6 @@ export interface ToastItem {
   text: string;
   kind: ToastKind;
   action: ToastAction | null;
-  /** Counts up when a merged result starts the toast's time again (its line restarts). */
-  round: number;
 }
 
 const MAX = 3;
@@ -113,8 +111,6 @@ async function failure(undo: Undo): Promise<string | null> {
 
 class Toasts {
   items = $state<ToastItem[]>([]);
-  /** Every toast waits (the window is in the back, a modal dialog is open): for the view. */
-  held = $state(false);
   #next = 1;
   #timers = new Map<number, Timer>();
   #merged = new Map<number, Merged>();
@@ -141,14 +137,12 @@ class Toasts {
         keys.length === 0,
     );
     if (same !== undefined) {
-      this.items = this.items.map((item) =>
-        item.id === same.id ? { ...item, action, round: item.round + 1 } : item,
-      );
+      this.items = this.items.map((item) => (item.id === same.id ? { ...item, action } : item));
       this.#restart(same.id, action);
       return same.id;
     }
     const id = this.#next++;
-    this.items = [...this.items, { id, text, kind, action, round: 0 }];
+    this.items = [...this.items, { id, text, kind, action }];
     // Too many: the oldest without an action goes, never the new one, so a tip never takes
     // an undo away; while the others all carry an action a fourth stands (one more is the
     // most).
@@ -238,7 +232,7 @@ class Toasts {
     const known = new Set([...(this.#keys.get(id) ?? []), ...keys]);
     if (known.size > 0) this.#keys.set(id, known);
     this.items = this.items.map((item) =>
-      item.id === id ? { ...item, text: text(merged.count), round: item.round + 1 } : item,
+      item.id === id ? { ...item, text: text(merged.count) } : item,
     );
     // The toast stays its full time from the last result.
     this.#restart(id, this.items.find((each) => each.id === id)?.action ?? null);
@@ -295,17 +289,11 @@ class Toasts {
    * out while the user cannot reach it.
    */
   hold(): () => void {
-    // Only the plain set decides (reading `held` here would make a calling effect depend
-    // on what it writes).
     const reason = Symbol('hold');
     this.#holds.add(reason);
-    if (this.#holds.size === 1) {
-      this.held = true;
-      for (const id of this.#timers.keys()) this.#stop(id);
-    }
+    if (this.#holds.size === 1) for (const id of this.#timers.keys()) this.#stop(id);
     return () => {
       if (!this.#holds.delete(reason) || this.#holds.size > 0) return;
-      this.held = false;
       for (const id of this.#timers.keys()) this.#start(id);
     };
   }

@@ -210,15 +210,14 @@
     color: var(--btn-fg);
     font: var(--btn-type);
     white-space: nowrap;
-    --btn-pad: var(--space-10);
+    --btn-pad: var(--button-pad);
     --btn-gap: var(--space-6);
     --btn-type: var(--type-label);
 
     transition:
       background-color var(--dur-base) var(--ease-standard),
       border-color var(--dur-base) var(--ease-standard),
-      color var(--dur-base) var(--ease-standard),
-      transform var(--dur-base) var(--ease-emphasized);
+      color var(--dur-base) var(--ease-standard);
   }
 
   .content {
@@ -284,12 +283,12 @@
     opacity: 0;
   }
 
-  /* Hover-in in 80 ms; the release of a press keeps its 150 ms (the last duration). */
+  /* Hover-in in 80 ms; leaving relaxes in the base rule's 150 ms. */
   .btn:not([aria-disabled='true'], .loading):hover {
     border-color: var(--btn-border-hover);
     background-color: var(--btn-bg-hover);
     color: var(--btn-fg-hover);
-    transition-duration: var(--dur-hover), var(--dur-hover), var(--dur-hover), var(--dur-base);
+    transition-duration: var(--dur-hover);
   }
 
   /* The button of an open menu keeps its hover look while the menu is open. */
@@ -337,14 +336,15 @@
     font-weight: var(--weight-semibold);
   }
 
-  /* The control kind (tokens.css): a muted fill and a darker edge under the pointer. */
+  /* The control kind (tokens.css): a muted fill and a darker edge under the pointer, one
+     opaque step darker while pressed. */
   .secondary {
     --btn-bg: var(--surface);
     --btn-bg-hover: var(--control-hover);
-    --btn-bg-active: var(--control-hover);
+    --btn-bg-active: var(--control-press);
     --btn-border: var(--border-strong);
     --btn-border-hover: var(--control-hover-edge);
-    --btn-border-active: var(--control-hover-edge);
+    --btn-border-active: var(--control-press-edge);
     --btn-fg: var(--text);
     --btn-fg-hover: var(--text);
     --btn-shadow: var(--sh-xs);

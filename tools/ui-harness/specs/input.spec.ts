@@ -1288,6 +1288,17 @@ test('a field menu greys out Undo while there is nothing to undo', async ({ page
   const undo = page.getByTestId('menu-item-undo');
   await search.click({ button: 'right' });
   await expect(undo).toHaveAttribute('aria-disabled', 'true');
+  // Faded as a whole like every control that is off, its words as dark as the others'.
+  const paste = page.getByTestId('menu-item-paste');
+  await expect(undo).toHaveCSS('opacity', '0.5');
+  await expect(undo).toHaveCSS(
+    'color',
+    await paste.evaluate((node) => getComputedStyle(node).color),
+  );
+  // The highlight follows the pointer at once, without a fade.
+  await paste.hover();
+  await expect(paste).toHaveCSS('background-color', await tokenColour(page, '--quiet-hover'));
+  await expect(paste).toHaveCSS('transition-duration', '0s');
   await page.keyboard.press('Escape');
   await search.click();
   await page.keyboard.type('CFO');

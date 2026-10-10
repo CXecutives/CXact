@@ -4,7 +4,8 @@
   the tone, the text in ink), with at most one action, a small secondary button with the
   glyph the same action has everywhere else, and an optional × at the end that hides the
   note (a problem that waits for the next run); inline, the button is centred on the
-  sentence's first line. Info is navy. A sentence with links in it (the missing line of the
+  sentence's first line. Info, success and warning colour only their sign (the words stay
+  ink), danger is red all through. A sentence with links in it (the missing line of the
   profile) comes as `children` instead of `text`. A notice that appears in
   a view already on screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that
   comes with its view is simply there.
@@ -163,13 +164,14 @@
     gap: var(--space-4);
   }
 
+  /* Info, a success and a warning: the sign in its colour, the words ink. */
   .info {
-    --notice-fg: var(--info-strong);
+    --notice-fg: var(--text);
+    --notice-sign: var(--info);
     --notice-bg: var(--info-soft);
     --notice-line: var(--info-soft);
   }
 
-  /* A success and a warning: the sign in the rings' colour, the words ink. */
   .success {
     --notice-fg: var(--text);
     --notice-sign: var(--success);

@@ -10,12 +10,10 @@
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps what it shows (the empty state or the previous job), so it
-  never goes blank. The old stage fades out first (100 ms, at its own scroll position: the old
-  text never jumps), then the new one rises in (150 ms), so two texts are never readable at
-  once; the new job starts at the top. The old stage is the real one on its way out (nothing is
-  copied or laid out again); it answers no pointer and drops its test ids. The close "×" in the
-  reader head (at every width) and a search that no longer finds the job close it (the
-  place's empty state). Esc closes only menus and dialogs: the app has no keys of its own.
+  never goes blank. Then the new stage takes the old one's place at once, nothing fades, so
+  nothing flashes between them; the new job starts at the top. The close "×" in the reader
+  head (at every width) and a search that no longer finds the job close it (the place's empty
+  state). Esc closes only menus and dialogs: the app has no keys of its own.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -24,8 +22,6 @@
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
   import { t } from '$lib/i18n/t';
-  import { duration } from '$lib/motion/motion';
-  import { fade, rise, viewOut } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
@@ -56,7 +52,7 @@
    * Job" beside a chosen one).
    */
   let shown = NO_JOB;
-  /** Counts the changes: a stage that comes back while the old one still fades is new. */
+  /** Counts the changes: each one is a new stage, which starts at the top. */
   let turns = 0;
   const stage = $derived.by((): { what: string; turn: number } => {
     const selected = jobs.selected !== null;
@@ -180,30 +176,6 @@
       if (complete && !listed.some((row) => sameKey(row.key, selected))) close();
     });
   });
-
-  /** A job rises in (2 px, 150 ms), the empty state and the placeholders only fade (100 ms),
-   *  each once the old stage has faded out (the one-column layout has none to wait for). */
-  function enter(node: Element, job: boolean): ReturnType<typeof fade> {
-    const delay = viewport.narrow ? 0 : duration('fast');
-    return job
-      ? rise(node, { distance: 'sm', duration: 'base', easing: 'out', delay })
-      : fade(node, { duration: 'fast', delay });
-  }
-
-  /**
-   * The stage that leaves stays where it is, at its own scroll position, and fades out (100
-   * ms, ease-in) before the next one comes in. On its way out it is hidden from assistive
-   * technology and drops its test ids, so nothing on the page exists twice. The one-column
-   * layout switches columns instead: there the old stage simply goes.
-   */
-  function leave(node: HTMLElement): ReturnType<typeof fade> | Record<string, never> {
-    if (viewport.narrow) return {};
-    for (const element of [node, ...node.querySelectorAll('[data-testid]')]) {
-      element.removeAttribute('data-testid');
-    }
-    node.setAttribute('aria-hidden', 'true');
-    return viewOut(node);
-  }
 </script>
 
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
@@ -230,7 +202,7 @@
       >
       <section class="right" data-testid="reader-pane" bind:this={right}>
         {#key stage.turn}
-          <div class="stage" data-testid="stage" in:enter={stage.what !== NO_JOB} out:leave>
+          <div class="stage" data-testid="stage">
             <div
               class="column"
               class:idle={stage.what === NO_JOB}
@@ -376,7 +348,7 @@
     pointer-events: none;
   }
 
-  /* One cell: a leaving stage and the next one lie on top of each other. */
+  /* One cell: the stage fills the pane. */
   .right {
     display: grid;
     flex: 1;
@@ -385,7 +357,7 @@
     overflow: hidden;
   }
 
-  /* Each stage scrolls on its own; the sheet colour lets the next one cover the last. */
+  /* Each stage scrolls on its own. */
   .stage {
     grid-area: 1 / 1;
     min-height: 0;

@@ -1,9 +1,9 @@
 <!--
   Closing the window while a fetch runs asks first (src-tauri/src/main.rs sends
-  `close-running`): "Trotzdem schließen?" over "Die Suche läuft noch." with Schließen and
-  Abbrechen.
+  `close-running`): "Suche abbrechen und schließen?" with Schließen and Weitersuchen, no
+  sentence.
   Schließen cancels the fetch and closes once it has stopped (the closing note of App.svelte
-  says so meanwhile); Abbrechen keeps the window and the fetch. A fetch that ends while the
+  says so meanwhile); Weitersuchen keeps the window and the fetch. A fetch that ends while the
   question is open ends the question too: the next close goes through without one. Only a
   fetch the page has seen running ends it: a close asked right as a fetch starts (the backend
   knows before the page does) keeps its question.
@@ -41,8 +41,8 @@
 <Dialog
   {open}
   heading={t.shell.closeHeading}
-  text={t.shell.closeText}
   confirmLabel={t.shell.closeAction}
+  cancelLabel={t.shell.keep}
   testid="dialog-close-running"
   onconfirm={() => answer(true)}
   oncancel={() => answer(false)}
