@@ -19,7 +19,7 @@ Palette first, roles second.
    the coral, the navy, the cream, the ink, the greys, the status colours, the ten score steps
    (`--p-score-0` ... `--p-score-9`). Only tokens.css refers to a palette entry, so renaming one
    (a blue brand is no longer `--p-coral`) is a change inside this file.
-2. **Roles** (`--bg`, `--text`, `--accent`, `--primary`, `--brand`, `--score-ring-0`, ...). A
+2. **Roles** (`--bg`, `--text`, `--icon-accent`, `--primary`, `--brand`, `--score-ring-0`, ...). A
    role points at a palette entry (`hsl(var(--p-coral))`) or at another role
    (`var(--text-subtle)`). Point a role elsewhere to move one use to another colour and leave
    the rest alone: `--brand` changes only the app icon, `--unread` only the dot of a new job.
@@ -29,7 +29,7 @@ Components use roles only; so do the consumers outside the page:
 | Consumer | Roles | Read through |
 |---|---|---|
 | Window background, both OS (before the page paints; the top bar is the page's, `--titlebar-*`) | `bg` | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json` |
-| App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
+| App icon (Windows, macOS 14 and 15, macOS 26) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
 
 Only opaque colour roles leave the page: a role with an alpha (`--selection`), gradients and
 shadows stay in it. `palette.rs` holds only the roles a Rust consumer reads (`OUTSIDE` in
@@ -85,13 +85,18 @@ Commit them together with tokens.css.
 - The look of the pages' groups (Profil, Einstellungen): `components/Section.svelte` (the
   heading), `components/Group.svelte` (the white box), `components/Page.svelte` (the column)
   and the `--layout-*` tokens in `tokens.css`.
-- The work folder of a new install is `Documents\CXact` (`default_workspace` in
+- The Profil-Ordner of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`). "Ordner öffnen" makes a missing folder first.
 - A step of the setup is one entry in `STEPS` of `ui/src/features/first-run/steps.ts` (order,
   heading, sentence, its stage in the indicator, where Zurück leads, the words of its primary)
   and its snippet of the same id in `FirstRunView.svelte`; `onboarding.svelte.ts` walks them. A
   failure of the CV's evaluation is its sentence in `profile.cvError`; whether a new try can
   work after it is `FINAL` in `ui/src/features/shared/fromCv.svelte.ts` (Profil and the setup).
+- The setup's frame: every step stands in the Profil page's column (`components/Page.svelte`),
+  flush left, a form in one `Group`. The stepper on top is `components/Steps.svelte` (its two
+  names `firstRun.stages`, a step's `stage` in `steps.ts`); the foot (Zurück at the left, the
+  step's buttons at the right, sticky only on the long profile steps, where it lifts the
+  toasts) is the `footer` of `FirstRunView.svelte`.
 
 ## Keys
 
@@ -117,6 +122,9 @@ menu names a key.
   the order and the filter, and its menu stays open while choosing (`stays` entries of
   `lib/state/menu.svelte.ts`, which shows the entries anew after each choice). The order is no
   part of the filter: it sets no dot and no chip, and "Filter zurücksetzen" keeps it.
+- **The place action**: one slot at the right of the tabs (at least `--place-action` wide) in
+  `ui/src/features/jobs/ListHeader.svelte`, one `{#if}` chain: Abbrechen while a search runs,
+  else Jobs suchen in Aktuell, else Papierkorb leeren. Another action is one more branch there.
 - **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
   on a row shows both groups (what shows the job: Anzeige öffnen, Alert-Mail öffnen, Prompt
   kopieren; a click on the row opens the job; what changes it: Trotzdem bewerten, then the moves of its place); the
@@ -125,7 +133,7 @@ menu names a key.
   label as tooltip; only Endgültig löschen is red, `deletes` in `ACTIONS`). The moves per place are `OF_PLACE`, their
   icons `ACTIONS`, their toast words `SAID`. No entry names a key.
 - **The portals' order in the UI**: `PORTAL_ORDER` in `ui/src/lib/portals.ts` (freelance.de,
-  LinkedIn, freelancermap: Einstellungen, the first-run page, the filter). Core's
+  LinkedIn, freelancermap: Einstellungen, the setup, the filter). Core's
   `Portal::ALL` is the order the backend works in and stays as it is.
 
 ## Change a role of the controls
@@ -141,8 +149,15 @@ Each role of the UI has one pattern, decided in one place; the components only r
 - **A view in the sidebar** (name, icon): `ui/src/lib/views.ts`.
 - **A toast**: `TOAST_KINDS` (glyph, colour) and `TOAST_LIFE` (how long, by its button) in
   `ui/src/lib/state/toasts.svelte.ts`; a quiet success is always a toast (`toasts.show`),
-  never a note that stays in the view.
-- **Hover, press and focus**: one answer per surface kind (quiet, control, raised, label) in
+  never a note that stays in the view. A bar that sticks to the window's bottom edge lifts the
+  stack above it with `use:liftToasts` (`ui/src/lib/actions/liftToasts.ts`).
+- **A suggestion chip** (the quick picks of "Häufig verlangt"): `Button` with
+  `variant="suggest"` and its `count`, read by `ui/src/features/profile/AskedTerms.svelte`; its
+  words on `--surface-track` keep AA (`CONTRAST` in `tools/tokens.mjs`).
+- **An empty state**: `components/EmptyState.svelte`, always a meaningful icon and one quiet
+  sentence, no heading; a notice is `components/Notice.svelte` (inline, or a row at the top of
+  the list).
+- **Hover, press and focus**: one answer per surface kind (quiet, control, label) in
   `ui/src/styles/tokens.css` ("one answer per surface kind").
 - **Buttons**: one height (`docs/PLAN.md` "Controls", `--btn-height` in
   `ui/src/components/Button.svelte`); a button that loses something for good is `warns` (red
@@ -396,7 +411,7 @@ and profiles: an external contract, never translated):
    sandbox redirects AppData, so its install is not the real one). The setup replaces the
    program only: the data folder (`%LOCALAPPDATA%\de.cxecutives.job-alert-monitor\`, on macOS
    `~/Library/Application Support/de.cxecutives.job-alert-monitor/`: the database with the
-   settings, `backups/`, the log), the work folder and the keychain entry stay (unless the
+   settings, `backups/`, the log), the Profil-Ordner and the keychain entry stay (unless the
    schema changed, step 2). The identifier `de.cxecutives.job-alert-monitor` never
    changes: it names the data folder and the keychain entry.
 6. **Check**: the new version in the installed apps of Windows (on macOS in the About

@@ -545,7 +545,7 @@ fn input_listeners_only_in_input_ts() {
 }
 
 /// Letter-bearing text in markup outside `{...}` expressions, or as a literal value of a
-/// text prop. Texts come from `lib/i18n/de.ts` (gallery samples from its `gallery.ts`).
+/// text prop. Texts come from `lib/i18n/de.ts`.
 #[test]
 fn no_text_literals_in_markup() {
     let all = scanned(MIN_FILES);
@@ -1057,7 +1057,7 @@ fn at_most_one_primary_button_per_view() {
     let mut problems = Vec::new();
     for source in all
         .iter()
-        .filter(|s| s.ext == "svelte" && s.under("features/") && !s.under("features/gallery/"))
+        .filter(|s| s.ext == "svelte" && s.under("features/"))
     {
         let count = source.code.matches("variant=\"primary\"").count();
         if count > 1 {
@@ -1348,8 +1348,8 @@ fn quoted(text: &str) -> Vec<&str> {
 /// meanings; every icon position in the UI names a meaning (`icon="trash"`), never a glyph.
 #[test]
 fn icons_by_meaning() {
-    // The texts (the catalog, the gallery's words) name no icons.
-    const TEXTS: [&str; 2] = ["lib/i18n/de.ts", "features/gallery/gallery.ts"];
+    // The texts (the catalog) name no icons.
+    const TEXTS: [&str; 1] = ["lib/i18n/de.ts"];
     let all = scanned(MIN_FILES);
     let map = icon_map(&all);
     assert!(
@@ -1510,20 +1510,12 @@ fn one_tooltip() {
 }
 
 /// A success whose result shows nowhere else is a toast, never a lasting note in the view.
-/// The notes below still say one inline; their views move them to a toast.
 #[test]
 fn quiet_successes_are_toasts() {
-    const MOVING: [&str; 3] = [
-        "features/profile/ProfileEditor.svelte",
-        "features/settings/SettingsView.svelte",
-        "features/first-run/FirstRunView.svelte",
-    ];
     let all = scanned(MIN_FILES);
     let mut problems = Vec::new();
     let mut notices = 0;
-    for source in all.iter().filter(|s| {
-        s.ext == "svelte" && !s.under("features/gallery/") && !MOVING.contains(&s.path.as_str())
-    }) {
+    for source in all.iter().filter(|s| s.ext == "svelte") {
         for (line, tag) in component_tags(&source.code, "Notice") {
             notices += 1;
             if tag.contains("tone=\"success\"") || tag.contains("'success'") {
@@ -1542,15 +1534,9 @@ fn quiet_successes_are_toasts() {
 }
 
 /// Every control answers by the kind of its surface (tokens.css "one answer per surface
-/// kind"): the components read the kind tokens, not the washes behind them. The files below
-/// belong to views that move to the kind tokens.
+/// kind"): the components read the kind tokens, not the washes behind them.
 #[test]
 fn one_answer_per_surface_kind() {
-    const MOVING: [&str; 3] = [
-        "components/JobRow.svelte",
-        "components/ReasonItem.svelte",
-        "components/StatTile.svelte",
-    ];
     let all = scanned(MIN_FILES);
     let tokens = source(&all, "styles/tokens.css");
     let mut problems = Vec::new();
@@ -1559,11 +1545,8 @@ fn one_answer_per_surface_kind() {
         "--quiet-press:",
         "--control-hover:",
         "--control-hover-edge:",
-        "--raised-hover-edge:",
-        "--raised-hover-shadow:",
-        "--raised-press:",
         "--label-hover:",
-        "--label-press:",
+        "--label-glyph-hover:",
     ] {
         if !tokens.code.contains(kind) {
             problems.push(format!("tokens.css: {kind} missing"));
@@ -1571,12 +1554,8 @@ fn one_answer_per_surface_kind() {
     }
     problems.extend(find(
         &all,
-        &[
-            "var(--surface-hover)",
-            "var(--surface-press)",
-            "var(--sh-hover)",
-        ],
-        |s| s.is("styles/tokens.css") || MOVING.contains(&s.path.as_str()),
+        &["var(--surface-hover)", "var(--surface-press)"],
+        |s| s.is("styles/tokens.css"),
     ));
     fail(&problems, "controls read the kind tokens of their surface");
 }
@@ -1610,14 +1589,13 @@ fn no_app_shortcuts() {
 
 /// No "·" as a separator (user decision 2026-09-27): company and place carry their icons,
 /// everything else takes a comma or a line of its own. Nothing the user reads writes the dot:
-/// no markup, no CSS `content`, no catalog text, also not as an escape. Comments may name it;
-/// the gallery (a developer board) is left out.
+/// no markup, no CSS `content`, no catalog text, also not as an escape. Comments may name it.
 #[test]
 fn no_middle_dot() {
     let all = scanned(MIN_FILES);
     let mut problems = Vec::new();
     let mut scanned_files = 0;
-    for source in all.iter().filter(|s| !s.under("features/gallery/")) {
+    for source in &all {
         scanned_files += 1;
         for (n, line) in source.lines() {
             let lower = line.to_lowercase();
@@ -1697,7 +1675,7 @@ fn tooltips_only_where_something_is_missing() {
 /// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    const ROLES: [(&str, &[&str]); 9] = [
+    const ROLES: [(&str, &[&str]); 7] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // A switch that is on, the check of a chosen row, and a chosen checkbox (the
@@ -1710,40 +1688,19 @@ fn coral_only_in_its_roles() {
                 "components/CheckGroup.svelte",
             ],
         ),
-        // The dot of a job not opened yet, what is new in a place (the tab's count) and the
-        // dot of a filter that is on (the approved design, 2026-09-26).
+        // The dot of a job not opened yet and the dot of a filter that is on (the approved
+        // design, 2026-09-26).
         (
             "var(--unread",
-            &[
-                "components/JobRow.svelte",
-                "components/Tabs.svelte",
-                "components/Button.svelte",
-            ],
+            &["components/JobRow.svelte", "components/Button.svelte"],
         ),
-        // Where you are: the selected row, its bar and its ring track, the active view.
+        // Where you are: the selected row and its bar, the active view.
         (
             "var(--surface-selected",
             &["components/ListRow.svelte", "components/JobRow.svelte"],
         ),
-        (
-            "var(--selection-bar",
-            &["components/ListRow.svelte", "features/jobs/RowBar.svelte"],
-        ),
-        ("var(--ring-track-selected", &["components/ListRow.svelte"]),
-        (
-            "var(--nav-active-icon",
-            &["components/SideNav.svelte", "components/Tabs.svelte"],
-        ),
-        // New: the soft count and the coral tone of a tile and a stat; the check of a chosen
-        // option of a choice of several (Vertragsart, design round 4).
-        (
-            "var(--accent",
-            &[
-                "components/IconTile.svelte",
-                "components/StatTile.svelte",
-                "components/Segmented.svelte",
-            ],
-        ),
+        ("var(--selection-bar", &["features/jobs/RowBar.svelte"]),
+        ("var(--nav-active-icon", &["components/SideNav.svelte"]),
         // A required field that is still empty (design round 6): its coral edge is confined to
         // the `[data-missing]` block of tokens.css, which hands it to the fields' own edge
         // tokens; no component draws it.
@@ -1753,14 +1710,9 @@ fn coral_only_in_its_roles() {
     let mut problems = Vec::new();
     for (needle, allowed) in ROLES {
         problems.extend(find(&all, &[needle], |s| {
-            s.is("styles/tokens.css")
-                || s.under("features/gallery/")
-                || allowed.contains(&s.path.as_str())
+            s.is("styles/tokens.css") || allowed.contains(&s.path.as_str())
         }));
     }
-    problems.extend(find(&all, &["var(--count-soft-"], |s| {
-        s.is("styles/tokens.css") || s.is("components/Count.svelte")
-    }));
     problems.extend(find(&all, &["var(--p-coral"], |s| {
         s.is("styles/tokens.css")
     }));
@@ -1768,38 +1720,4 @@ fn coral_only_in_its_roles() {
         &problems,
         "coral only in its roles (act, new, where you are)",
     );
-}
-
-/// The release build must not ship the gallery (it is compiled out via `__GALLERY__`).
-#[test]
-fn the_release_build_has_no_gallery() {
-    scanned(MIN_FILES);
-    let dist = repo("ui/dist");
-    if !dist.exists() {
-        return;
-    }
-    let mut files = Vec::new();
-    walk(&dist, &mut files);
-    let mut problems = Vec::new();
-    let mut checked = 0;
-    for file in files {
-        let Some(ext) = file.extension().and_then(|e| e.to_str()) else {
-            continue;
-        };
-        if !["js", "css", "html"].contains(&ext) {
-            continue;
-        }
-        checked += 1;
-        let text = std::fs::read_to_string(&file).unwrap_or_default();
-        for bad in ["Galerie", "gallery", "ColourBoard", "MotionBoard"] {
-            if text.contains(bad) {
-                problems.push(format!("{}: {bad}", file.display()));
-            }
-        }
-    }
-    assert!(
-        checked >= 2,
-        "ui/dist exists but holds no build ({checked} files)"
-    );
-    fail(&problems, "the gallery is development-only");
 }

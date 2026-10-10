@@ -15,7 +15,7 @@ One geometry, every output:
   src-tauri/icons/CXact.icon  macOS 26: an Icon Composer package (the coral fill and the white
                               glyph as a vector); the system draws shape, glass and shadow. The
                               macOS CI compiles it into Assets.car (see build_icon_composer)
-  ui/src/assets/app-icon.svg  the same paths as a vector (brand mark in the title bar)
+  ui/src/assets/app-icon.svg  the same paths as a vector (no UI reads it today)
 
 Edges, in every raster output: coverage is exact - the share of each pixel inside the outline,
 from the curves flattened far below a level (see `coverage`), not a supersampled polygon - so

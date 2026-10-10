@@ -49,12 +49,9 @@
   --p-muted-fg: 30 5% 33%;
   --p-line: 30 14% 88%;
   --p-danger: 355.8 71.8% 47.3%;
-  --p-coral-800: 12 68% 36%;
   --p-coral-25: 16 65% 97%;
-  --p-coral-40: 18 75% 95%;
   --p-coral-50: 16 60% 95.5%;
   --p-coral-70: 16 55% 94%;
-  --p-coral-150: 16 45% 86%;
   /* The navy of cxpertise.de (#3E5C7E) a step richer, so it reads beside the coral (user,
      2026-10-01). */
   --p-navy: 212 50% 36%;
@@ -68,9 +65,6 @@
   --p-border-input: 34 8% 60%;
   --p-border-press: 34 8% 50%;
   --p-wash: 28 30% 24%;
-  /* The soft fills of a success and a warning: light tints of the rings' green and yellow. */
-  --p-success-soft: 142 45% 94%;
-  --p-warning-soft: 42 90% 93%;
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-danger-700: 350.4 84.3% 34.9%;
@@ -87,7 +81,6 @@
   --p-scrim: 212 30% 14%;
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
-  --p-shade-navy: 213 40% 20%;
   /* The tooltip (like Claude's): a dark bubble with a light edge. */
   --p-emphasis: 213 40% 20%;
   --p-tooltip-edge: 213 25% 36%;
@@ -141,12 +134,8 @@
   --border: hsl(var(--p-line));
   --border-strong: hsl(var(--p-border-strong));
   --border-input: hsl(var(--p-border-input));
-  --border-accent: hsl(var(--p-coral) / 0.2);
-  /* The hover edge of tiles, interactive cards and filter chips. */
-  --border-navy: hsl(var(--p-navy-200));
 
   /* ------------------------------------------------ coral: act or new */
-  --accent: hsl(var(--p-coral));
   /* Primary fills in the cxpertise coral; hover and pressed one step deeper each. */
   --primary: hsl(var(--p-coral));
   --primary-hover: hsl(var(--p-coral-variant));
@@ -162,13 +151,9 @@
   --toggle-knob: hsl(var(--p-knob));
   /* The unread dot of a list row. */
   --unread: hsl(var(--p-coral));
-  /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's wash)
-     and the ring track on its wash. */
+  /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's
+     wash). */
   --selection-bar: hsl(var(--p-coral) / 0.85);
-  --ring-track-selected: hsl(var(--p-coral-150));
-  /* The ring track on that wash while the window is in the back (the selection greys out):
-     translucent ink, as clear on the grey wash as the plain track is on white. */
-  --ring-track-inactive: hsl(var(--p-ink) / 0.1);
   /* The sliding pill of the active sidebar entry: a surface a step above the sidebar, lifted
      by the thumbs' shadow and without an edge, like a chosen tab or segment
      (user, 2026-09-30); in CXact a warm white, its label navy and its icon coral. */
@@ -178,16 +163,6 @@
   --nav-press: var(--quiet-press);
   --nav-active-fg: hsl(var(--p-navy));
   --nav-active-icon: hsl(var(--p-coral));
-  /* The soft accent wash: a light coral surface for what is chosen and small (a selected
-     pill or tab, a brand notice), one step deeper under the pointer, its text coral-800
-     (5.3:1 on it). */
-  --accent-wash: hsl(var(--p-coral-40));
-  --accent-wash-hover: hsl(var(--p-coral-70));
-  --accent-wash-text: hsl(var(--p-coral-800));
-  /* The soft count pill (the chosen segment, dividers, sub-labels, countdown, "n neu"). */
-  --count-soft-bg: var(--accent-wash);
-  --count-soft-fg: var(--accent-wash-text);
-  --count-soft-hover: var(--accent-wash-hover);
 
   /* ------------------------------------------ navy: the data and the quiet structure */
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
@@ -214,11 +189,9 @@
 
   /* ------------------------------------------------------------------ status */
   /* A success and a warning take the rings' green and yellow (user, 2026-10-01: one green, one
-     yellow in the app): their signs and dots in it, their words in ink, their fills a tint. */
+     yellow in the app): their signs and dots in it, their words in ink. */
   --success: var(--score-ring-9);
-  --success-soft: hsl(var(--p-success-soft));
   --warning: var(--score-ring-5);
-  --warning-soft: hsl(var(--p-warning-soft));
   /* A required field that is still empty: only a coral edge, no halo (user, design round
      6); the [data-missing] block below gives it to the fields of its cell. */
   --missing-edge: hsl(var(--p-coral-variant));
@@ -236,7 +209,6 @@
   --mark: hsl(var(--p-score-yellow) / 0.4);
   /* One blue in the app: info is the navy. */
   --info: hsl(var(--p-navy));
-  --info-soft: hsl(var(--p-navy-50));
   /* The words of the list's search where they stand (the list, the ad's text). */
   --mark-search: hsl(var(--p-score-yellow) / 0.45);
 
@@ -268,9 +240,6 @@
   --score-text-9: var(--score-ring-9);
   --score-digits: hsl(var(--p-ink));
   --score-track: hsl(var(--p-line));
-  --score-excluded: var(--text-subtle);
-  /* The solid track of an excluded ring (one silhouette for every state). */
-  --score-excluded-track: var(--score-track);
   /* An excluded job: the red ban (in the list on a light red track as large as a ring, in
      the job view beside the red word on a neutral box). */
   --ban: var(--danger-strong);
@@ -301,15 +270,12 @@
   /* ----------------------------------------------------------------- shadows */
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
      floats above the sheet (dialog, toast, tooltip) casts one; nothing animates a shadow.
-     A hover shadow (tiles, interactive cards) is painted once on ::after and fades by
-     opacity; the primary's inner highlight is static. */
+     The primary's inner highlight is static. */
   --sh-xs: 0 1px 2px hsl(var(--p-shade-xs) / 0.06);
   --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.18);
   --sh-pop: 0 8px 24px -6px hsl(var(--p-shade-pop) / 0.2), 0 1px 3px hsl(var(--p-shade-pop) / 0.08);
   --sh-tooltip:
     0 4px 12px -4px hsl(var(--p-shade-pop) / 0.22), 0 1px 2px hsl(var(--p-shade-pop) / 0.1);
-  --sh-hover:
-    0 4px 12px -4px hsl(var(--p-shade-navy) / 0.14), 0 1px 2px hsl(var(--p-shade-navy) / 0.06);
   /* A menu floats close above the page: a near and a far soft shadow (its edge is the same
      hairline border every floating surface has: menus, toasts, dialogs, popovers). */
   --sh-menu: 0 4px 12px hsl(var(--p-shade-pop) / 0.08), 0 16px 40px hsl(var(--p-shade-pop) / 0.12);
@@ -325,10 +291,8 @@
        segment, text chip, menu entry): a wash under the pointer, a deeper one pressed.
      - control: a white box with an edge (secondary button, field): a muted fill and a
        darker edge under the pointer, a button one opaque step darker still while pressed.
-     - raised: a white tile or card (stat tile, interactive card): a navy edge and a soft
-       shadow under the pointer; pressed it darkens like a control and drops the shadow.
-     - label: text without a box (disclosure, divider, tab): ink under the pointer, its
-       chevron navy, and --pressed while pressed.
+     - label: text without a box (the excluded divider): ink under the pointer, its chevron
+       in the accent of an icon.
      Focus draws no ring (user decision 2026-10-04). */
   --quiet-hover: var(--surface-hover);
   --quiet-press: var(--surface-press);
@@ -341,21 +305,16 @@
      empty the coral ([data-missing] below), and a field in focus is always --border-focus. */
   --field-edge: var(--border-strong);
   --field-edge-hover: var(--control-hover-edge);
-  --raised-hover-edge: var(--border-navy);
-  --raised-hover-shadow: var(--sh-hover);
-  --raised-press: var(--surface-muted);
   --label-hover: var(--text);
-  --label-press: var(--pressed);
   --label-glyph-hover: var(--icon-accent);
 
   /* ----------------------------------------------------------- top bar */
   /* The window's top bar in the design's colours, never the system's (user, 2026-09-27):
-     the window's surface with a hairline under it; the caption buttons (Windows) take the
+     the sidebar's colour over the sidebar, the view's beside it, no line under it (TitleBar
+     draws them); the caption buttons (Windows) take the
      design's quiet wash under the pointer and a deeper one pressed, the close button the
      app's own danger red of the delete actions with a white glyph and a darker red pressed;
      the glyphs fade while the window is in the back. */
-  --titlebar-bg: var(--bg);
-  --titlebar-border: var(--border);
   --titlebar-fg: var(--text-muted);
   --titlebar-fg-hover: var(--text);
   --titlebar-fg-inactive: var(--text-subtle);
@@ -367,7 +326,6 @@
 
   /* ------------------------------------------------------------------- radii */
   --radius-xs: 4px;
-  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-xl: 14px;
@@ -392,7 +350,6 @@
   --space-20: 20px;
   --space-24: 24px;
   --space-32: 32px;
-  --space-40: 40px;
   --space-48: 48px;
   --space-64: 64px;
 
@@ -580,9 +537,6 @@
   --tooltip-gap: 6px;
   --tracking-tooltip: 0.01em;
   --viewport-gap: 8px;
-  --badge-height: 17px;
-  /* The narrowest count pill: 4 and 12 weigh the same. */
-  --count-min: 19px;
   --meter-sm: 4px;
   --meter-md: 6px;
   --meter-lg: 8px;
@@ -725,7 +679,6 @@
 
   /* ------------------------------------------------------------------ layers */
   --z-below: -1;
-  --z-base: 0;
   --z-raised: 1;
   --z-sticky: 10;
   /* Toasts lie below a dialog's scrim: dimmed, and no undo acts behind a modal. */

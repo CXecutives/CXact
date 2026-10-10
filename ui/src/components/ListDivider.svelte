@@ -97,7 +97,7 @@
   }
 
   .toggle:hover {
-    color: var(--text);
+    color: var(--label-hover);
     transition-duration: var(--dur-hover);
   }
 
@@ -111,7 +111,7 @@
   }
 
   .toggle:hover .chevron {
-    color: var(--icon-accent);
+    color: var(--label-glyph-hover);
   }
 
   .turned {

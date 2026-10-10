@@ -64,12 +64,10 @@ const CONTRAST = [
   },
   { text: ['text-on-danger'], on: ['danger-fill', 'danger-fill-hover', 'danger-fill-active'] },
   { text: ['text-inverse', 'text-inverse-muted'], on: ['surface-inverse'] },
-  { text: ['count-soft-fg'], on: ['count-soft-bg', 'count-soft-hover'] },
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },
   { text: ['active-text'], on: ['active-surface', 'active-hover'] },
-  { text: ['text'], on: ['success-soft', 'warning-soft'] },
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
-  { text: ['info'], on: ['surface', 'info-soft'] },
+  { text: ['info'], on: ['surface'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
   // A suggestion chip (Button `suggest`): its words and its count on the track's fill.
   { text: ['text', 'text-muted', 'text-subtle'], on: ['surface-track'] },

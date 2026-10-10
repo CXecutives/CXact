@@ -109,7 +109,7 @@ pre-assessment to any AI chat for a deeper check.
   - Under some fields, "Häufig verlangt": the terms the recent jobs ask for that the profile lacks, one click
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's
-    JSON in the work folder (`profil/`), keeping unknown keys, with one backup.
+    JSON in the Profil-Ordner (`profil/`), keeping unknown keys, with one backup.
 - **Einstellungen**, one page in the groups of the Profil, every row a `SettingRow` (hairlines only
   between rows, every text button outlined with its glyph, the switch last):
   - Jobportale: "Suche und Alert-Mails" (the eight portals the app searches, each open in the browser)
@@ -134,7 +134,7 @@ pre-assessment to any AI chat for a deeper check.
   resumes from what is stored; Enter is "Weiter"; usable at 480 x 360.
 - **Shell:**
   - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
-    Einstellungen. Zurück and Vor also walk the tabs of Einstellungen.
+    Einstellungen. Zurück and Vor walk the views, the places of the jobs and the jobs shown.
   - The app's own menus, toasts (at most three, bottom right) and tooltips.
   - A start whose data cannot load offers to restore a daily copy of the database.
 - **Dry run:** `--dry-run` changes nothing outside its own data.
@@ -153,8 +153,8 @@ pre-assessment to any AI chat for a deeper check.
   bar, 19 in the sidebar.
   - The top bar shows panel-left and panel-right at rest; under the pointer, the panel close or open glyph
     of what a click does. arrow-left and arrow-right.
-  - In the job: Öffnen is the open book, Alert-Mails lesen the open envelope, Trotzdem bewerten the plain
-    plus.
+  - In the job: Anzeige öffnen is external-link, Alert-Mail öffnen the envelope, Prompt kopieren copy,
+    Trotzdem bewerten the plain plus.
 - **Controls:** one height, 28 px, for every button, field, choice of a few, menu row and sidebar entry (only
   a control inside a field is lower, 22 px). A choice of a few gives its options equal widths; the places keep
   theirs. Menus open from a chevron button.
@@ -164,7 +164,7 @@ pre-assessment to any AI chat for a deeper check.
   reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the database, `backups/`,
   the sessions and the Gmail entry go, the old profiles are set aside as `profil.alt`, `policy.json`
   stays, and the reset notice shows. The app writes no files of jobs;
-  its work folder holds the profiles.
+  its Profil-Ordner holds the profile.
 - **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`
   (`docs/CHANGING.md`).
 
