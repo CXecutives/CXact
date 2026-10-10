@@ -8,7 +8,9 @@
 //!
 //! The install id ([`install_id`]) is a random UUID in a small file next to `policy.json` in
 //! the app's data folder; a reset keeps it (it is not among the reset's targets), so a reset
-//! never gives new tries. The worker counts tries by it and, unseen, by the address.
+//! never gives new tries. The worker counts tries by it and, unseen, by the address, under a
+//! cap for all installs a day (also answered with `limit`); a try the AI was paid for counts
+//! even when its answer is no profile.
 //!
 //! Logs: code, format, size, duration and cost only; never the id, a name, a path, the text
 //! or the answer.

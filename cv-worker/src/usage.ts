@@ -6,6 +6,8 @@
 export const LIMIT_ID_DAY = 2;
 export const LIMIT_ID_MONTH = 5;
 export const LIMIT_IP_DAY = 10;
+/** Tries of all installs together a day, unless the variable LIMIT_ALL_DAY names another. */
+export const DEFAULT_LIMIT_ALL_DAY = 200;
 
 /** The days in UTC: today and this month as counter keys, and the first day of the next day
  * and month as the `until` of a full counter. */
@@ -19,7 +21,7 @@ export interface Days {
 /** One counter a request reserves a try in. `name` is for the log only (never the key: it
  * holds the install id or the address's hash). */
 export interface Slot {
-  name: 'month' | 'day' | 'ip';
+  name: 'month' | 'day' | 'ip' | 'all';
   key: string;
   day: string;
   limit: number;
@@ -49,14 +51,25 @@ export function calendar(now: Date): Days {
   };
 }
 
+/** The variable LIMIT_ALL_DAY as the cap of all installs a day: a whole number of at least 1,
+ * else the default (a missing, empty or mistyped value never lifts the cap). PAUSED, not 0,
+ * stops every try. */
+export function dailyCap(raw: unknown): number {
+  const text = typeof raw === 'number' ? String(raw) : typeof raw === 'string' ? raw.trim() : '';
+  const cap = /^[1-9]\d*$/.test(text) ? Number(text) : NaN;
+  return Number.isSafeInteger(cap) ? cap : DEFAULT_LIMIT_ALL_DAY;
+}
+
 /** The counters a request reserves, in this order: the install's month first (when it is
- * full, the next day would not help), its day, and the address's day. */
-export function slots(installId: string, ipKey: string, days: Days): Slot[] {
+ * full, the next day would not help), its day, the address's day, and all installs' day last,
+ * so a request over its own limits never takes a place of the shared cap. */
+export function slots(installId: string, ipKey: string, days: Days, capAll: number): Slot[] {
   const id = `id:${installId}`;
   return [
     { name: 'month', key: id, day: days.month, limit: LIMIT_ID_MONTH, until: days.nextMonth },
     { name: 'day', key: id, day: days.today, limit: LIMIT_ID_DAY, until: days.tomorrow },
     { name: 'ip', key: ipKey, day: days.today, limit: LIMIT_IP_DAY, until: days.tomorrow },
+    { name: 'all', key: 'all', day: days.today, limit: capAll, until: days.tomorrow },
   ];
 }
 

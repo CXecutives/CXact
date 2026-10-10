@@ -1,5 +1,5 @@
 // The CV worker of CXact: one route, POST /v1/cv. It checks the request, reserves a try in the
-// usage counters (D1: the install's and the address's, usage.ts),
+// usage counters (D1: the install's, the address's and all installs' together, usage.ts),
 // sends the CV to OpenRouter with a strict JSON schema and answers with the AI part of the
 // profile. A try counts once OpenRouter charged for it, also when the answer is no profile.
 // Every error is {code, params}, never prose; the app words it. The install id and the address
@@ -7,7 +7,7 @@
 
 import PROMPT_FILE from './prompt.de.md';
 import SCHEMA from '../schema.json';
-import { calendar, isFree, remaining, slots, type Call, type Slot } from './usage';
+import { calendar, dailyCap, isFree, remaining, slots, type Call, type Slot } from './usage';
 
 interface Env {
   DB: D1Database;
@@ -18,6 +18,8 @@ interface Env {
   MODEL?: string;
   /** The reasoning effort, low, medium or high; anything else means DEFAULT_EFFORT. */
   EFFORT?: string;
+  /** The tries of all installs together a day (`dailyCap`); unset, the default. */
+  LIMIT_ALL_DAY?: string;
 }
 
 /** Version of the request; older builds get `outdated`. */
@@ -101,7 +103,7 @@ export default {
     let plan: Slot[];
     try {
       const ip = await ipKey(env, request.headers.get('CF-Connecting-IP') ?? '');
-      plan = slots(cv.installId, ip, days);
+      plan = slots(cv.installId, ip, days, dailyCap(env.LIMIT_ALL_DAY));
     } catch {
       return failure({ code: 'unavailable', detail: 'config' }, started, cv.kind, size);
     }

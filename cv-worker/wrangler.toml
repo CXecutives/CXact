@@ -14,6 +14,10 @@
 # medium or high, default low). Set them in the dashboard or per deploy, for example
 #   npx wrangler deploy --var MODEL:anthropic/claude-haiku-5.5 --var EFFORT:medium
 # keep_vars keeps them over later deploys, so set both back explicitly when switching.
+# The tries (src/usage.ts): two a day and five a month per install, ten a day per address, and
+# LIMIT_ALL_DAY a day for all installs together (200 while it is unset or no whole number of at
+# least 1), answered with `limit` until the next day. LIMIT_ALL_DAY is set in the dashboard only,
+# never in [vars] here, so a deploy never resets it.
 name = "cxact-cv"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"

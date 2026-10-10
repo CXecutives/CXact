@@ -290,6 +290,11 @@ compare two term lists). Its row lands in the card Suche of Einstellungen by its
 - The days the first mailbox scan reads: `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`
   (`Scope::New`; later fetches read from the last one with a day of overlap). Not generated
   yet: the catalog texts name the 30 by hand.
+- The CV import's tries: `cv-worker/src/usage.ts` (per install a day and a month, per address
+  a day, and which failed calls give their try back: only those OpenRouter did not charge for);
+  the cap of all installs a day is the worker's variable `LIMIT_ALL_DAY`, set in the Cloudflare
+  dashboard (200 when unset). The worker is deployed by hand (`cv-worker/wrangler.toml` says
+  how); `README.md` names the tries per install.
 
 ## The preview's demo data
 
