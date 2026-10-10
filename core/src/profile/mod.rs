@@ -1,7 +1,9 @@
 //! The consultant profile: one file in `profil/` of the workspace, `beraterprofil.json`
 //! (Profil-JSON v19, [`form`]; user decision 2026-10-03: one profile only). Saving writes the
 //! editor's form, rebased on what the file holds by then, and keeps the previous file next to
-//! it as the one backup (`beraterprofil.json.bak`).
+//! it as the one backup (`beraterprofil.json.bak`). A file that does not read and is replaced
+//! by a save is also kept in a file of its own (`beraterprofil.unlesbar.json`), which the next
+//! save does not rotate away.
 
 pub mod cv;
 mod form;
@@ -32,6 +34,9 @@ pub const PROFILE_FILE: &str = "beraterprofil.json";
 /// The profile's previous version, kept next to it on every save (one backup, replaced each
 /// time).
 pub const BACKUP_FILE: &str = "beraterprofil.json.bak";
+/// The last profile file that did not read when a save replaced it (edited by hand, or of
+/// another version): kept until another such file replaces it, or a reset.
+pub const UNREADABLE_FILE: &str = "beraterprofil.unlesbar.json";
 
 /// One save at a time: two saves close together (two terms added from the reader) each read
 /// the file the other one wrote, so neither drops what the other changed.
@@ -61,10 +66,15 @@ pub fn backup_path(workspace: &Path) -> PathBuf {
     workspace.join(PROFILE_DIR).join(BACKUP_FILE)
 }
 
-/// A file the app keeps in the profile folder: the profile and its backup (what a reset
-/// deletes).
+/// The last unreadable profile a save replaced.
+pub fn unreadable_path(workspace: &Path) -> PathBuf {
+    workspace.join(PROFILE_DIR).join(UNREADABLE_FILE)
+}
+
+/// A file the app keeps in the profile folder: the profile, its backup and the unreadable
+/// profile a save replaced (what a reset deletes).
 pub fn is_app_file(name: &str) -> bool {
-    name == PROFILE_FILE || name == BACKUP_FILE
+    name == PROFILE_FILE || name == BACKUP_FILE || name == UNREADABLE_FILE
 }
 
 fn read(workspace: &Path) -> Result<Option<Vec<u8>>> {
@@ -131,8 +141,9 @@ pub fn country_codes() -> Vec<&'static str> {
 
 /// Saves the editor's form (without a profile it becomes the profile). `before` is the form
 /// as the editor received it: what the user changed is applied to what the file holds now
-/// ([`form::merge`]); a file that does not read is replaced. The previous file becomes the
-/// one backup next to it; the file is replaced atomically, and not touched when nothing
+/// ([`form::merge`]); a file that does not read is replaced, and kept as [`UNREADABLE_FILE`]
+/// (the backup is replaced by the next save, which would lose it). The previous file becomes
+/// the one backup next to it; the file is replaced atomically, and not touched when nothing
 /// changes. One save at a time ([`WRITING`]).
 pub fn save_form(
     workspace: &Path,
@@ -152,6 +163,9 @@ pub fn save_form(
     let text = form::write(&form);
     if previous.as_deref() != Some(text.as_bytes()) {
         if let Some(old) = &previous {
+            if now.is_none() {
+                write_atomic(&unreadable_path(workspace), old)?;
+            }
             write_atomic(&backup_path(workspace), old)?;
         }
         write_atomic(&profile_path(workspace), text.as_bytes())?;
@@ -322,8 +336,9 @@ mod tests {
         assert!(info(dir.path()).unwrap().is_none(), "nothing stored");
     }
 
-    /// A file that does not read is named, loads as none, and a save replaces it (its bytes
-    /// stay as the backup).
+    /// A file that does not read is named, loads as none, and a save replaces it: its bytes
+    /// stay as the backup and in a file of their own, which outlives the next save's backup
+    /// and is an app file (a reset deletes it).
     #[test]
     fn a_file_that_does_not_read() {
         let dir = workspace();
@@ -342,11 +357,25 @@ mod tests {
         }
         let new = form(&["SAP"]);
         save_form(dir.path(), &ProfileForm::default(), &new).unwrap();
-        assert_eq!(load(dir.path()).unwrap(), Some(new));
+        assert_eq!(load(dir.path()).unwrap(), Some(new.clone()));
         assert_eq!(
             std::fs::read(backup_path(dir.path())).unwrap(),
             [0xff, 0xfe, 0x00]
         );
+        let first = stored(dir.path());
+        let next = form(&["SAP", "HGB"]);
+        save_form(dir.path(), &new, &next).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(backup_path(dir.path())).unwrap(),
+            first,
+            "the backup moved on"
+        );
+        assert_eq!(
+            std::fs::read(unreadable_path(dir.path())).unwrap(),
+            [0xff, 0xfe, 0x00],
+            "the unreadable file is still there"
+        );
+        assert!(is_app_file(UNREADABLE_FILE));
     }
 
     /// DS-3: saves close together each read what the other wrote: eight tools added at once,

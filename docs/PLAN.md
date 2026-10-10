@@ -112,7 +112,8 @@ pre-assessment to any AI chat for a deeper check.
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. One profile,
     `profil/beraterprofil.json` in Profil-JSON v19 (flat German keys, `core/src/profile/form.rs`), with one
-    backup; a save applies what the user changed to what the file holds by then, in every list.
+    backup; a save applies what the user changed to what the file holds by then, in every list. The last
+    file that did not read and was replaced by a save stays as `beraterprofil.unlesbar.json` until a reset.
 - **Einstellungen**, on tabs like the Profil:
   - Suche: the eight search sources, each a compact row with its tile, the calls of today, open in the
     browser and a switch.
