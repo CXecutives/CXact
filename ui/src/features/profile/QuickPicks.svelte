@@ -1,7 +1,8 @@
 <!--
-  Quick picks under a field of the profile (Länder, Sprachen; user 2026-10-04): a quiet row
-  of small buttons, "+" and a common value not chosen yet; a click takes it. The row shows
-  only while it has a value. Same look as "Häufig verlangt" (AskedTerms), without counts.
+  Quick picks under a field of the profile (Länder, Sprachen; user 2026-10-04): a row of
+  quiet suggestion chips (Button `suggest`), "+" and a common value not chosen yet; a click
+  takes it. The row shows only while it has a value. The look of "Häufig verlangt"
+  (AskedTerms), without counts.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -20,7 +21,7 @@
     {#each picks as pick (pick.id)}
       <li>
         <Button
-          variant="secondary"
+          variant="suggest"
           icon="add"
           label={pick.label}
           testid="{testid}-{pick.id}"

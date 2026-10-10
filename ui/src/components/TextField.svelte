@@ -15,8 +15,8 @@
   competence) it suggests terms the same way (Suggestions.svelte), but nothing is marked
   until the arrows or the pointer mark one: Enter without a mark goes on to the form.
   `trailing` puts a small control inside the field at its right end, like the picker button
-  of a native date field (the calendar of Verfügbar ab); it keeps its own Tab stop. `suffix`
-  is a quiet unit at the field's right end (`€`, `Jahre`), read with the value.
+  of a native date field (the calendar of Verfügbar, a button `inField`). `suffix` is a quiet
+  unit at the field's right end (`€`, `Jahre`), read with the value.
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';

@@ -1,7 +1,7 @@
-// Einstellungen against the stub: one page under its sticky head, three sections in their
-// order (Portale, Postfach für Alert-Mails, Daten), their rows flush on one edge, the portals
-// with how they bring their jobs and what they brought, the mailbox and its dialog, the
-// profile's folder and the reset.
+// Einstellungen against the stub: one page without a title, three groups in their order
+// (Jobportale, Postfach, Daten), their rows flush on one edge, the portals with how they bring
+// their jobs and what they brought, the mailbox and its dialog, the profile's folder and the
+// reset.
 
 import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
@@ -81,9 +81,7 @@ const middle = (box: { y: number; height: number } | null): number =>
 
 /* ---------------------------------------------------------------- the page */
 
-test('one page: Jobportale, Postfach, Daten and the reset in a group of its own', async ({
-  page,
-}) => {
+test('one page: Jobportale, Postfach and Daten, the reset last in Daten', async ({ page }) => {
   await settings(page);
   const view = page.getByTestId('settings');
   await expect(view.getByRole('tab')).toHaveCount(0);
@@ -96,15 +94,13 @@ test('one page: Jobportale, Postfach, Daten and the reset in a group of its own'
     'settings-portals',
     'settings-mailbox',
     'settings-data',
-    'settings-reset',
   ]);
   // Every portal in one list: the ones the app searches, then the ones of alert mails.
   expect(await ids(page, 'settings-portals', '[data-setting-row]')).toEqual(
     [...SEARCHED, ...ALERT_PORTALS].map((portal) => `portal-${portal}`),
   );
   expect(await ids(page, 'settings-mailbox', '[data-setting-row]')).toEqual(['mailbox']);
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder']);
-  expect(await ids(page, 'settings-reset', '[data-setting-row]')).toEqual(['reset-all']);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
   // No info symbol at the headings (user 2026-10-04); no version, no search terms; no
   // primary.
   await expect(view.locator('[data-testid^="info-"]')).toHaveCount(0);
@@ -121,13 +117,11 @@ test('one page: Jobportale, Postfach, Daten and the reset in a group of its own'
     expect(Math.abs(middle(await first.boundingBox()) - line), query).toBeLessThanOrEqual(1);
   }
 });
-test('button styles: the text buttons of a row are outlined, the calls of a portal quiet; red deletes', async ({
-  page,
-}) => {
+test('button styles: every text button of a row is outlined; red deletes', async ({ page }) => {
   await settings(page);
   const view = page.getByTestId('settings');
-  // Every button with words in a row: outlined, a portal's calls quiet; one height like
-  // all, each with the glyph of its meaning.
+  // Every button with words in a row, a portal's calls too: outlined, one height like all,
+  // each with the glyph of its meaning.
   const kinds = await view
     .locator('[data-setting-row] button.btn:not(.icon-only):not(.link)')
     .evaluateAll((nodes) =>
@@ -139,9 +133,9 @@ test('button styles: the text buttons of a row are outlined, the calls of a port
       })),
     );
   expect(kinds.map((kind) => [kind.id, kind.kind])).toEqual([
-    ['setup-linkedin', 'ghost'],
-    ['sign-in-freelance', 'ghost'],
-    ['setup-freelance', 'ghost'],
+    ['setup-linkedin', 'secondary'],
+    ['sign-in-freelance', 'secondary'],
+    ['setup-freelance', 'secondary'],
     ['mailbox-change', 'secondary'],
     ['mailbox-remove', 'secondary'],
     ['folder-change', 'secondary'],
@@ -204,7 +198,7 @@ test('narrow, a row puts its control under the label only where the two do not f
     const row = page.getByTestId(id);
     const [text, control] = await Promise.all([
       row.locator('.text').boundingBox(),
-      row.locator('.control').boundingBox(),
+      row.locator('.actions').boundingBox(),
     ]);
     expect(control!.x, id).toBeGreaterThanOrEqual(text!.x + text!.width);
   }
@@ -214,7 +208,7 @@ test('narrow, a row puts its control under the label only where the two do not f
   const profiles = page.getByTestId('folder');
   const [text, control] = await Promise.all([
     profiles.locator('.text').boundingBox(),
-    profiles.locator('.control').boundingBox(),
+    profiles.locator('.actions').boundingBox(),
   ]);
   const under = control!.y >= text!.y + text!.height;
   const beside = control!.x >= text!.x + text!.width;
@@ -227,7 +221,7 @@ test('narrow, the calls go to a line of their own under the portal', async ({ pa
   await reveal(page, page.getByTestId('sign-in-freelance'));
   const [signIn, status] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
-    page.getByTestId('status-freelance').boundingBox(),
+    page.getByTestId('portal-freelance-hint').boundingBox(),
   ]);
   expect(signIn!.y).toBeGreaterThanOrEqual(status!.y + status!.height);
 });
@@ -346,7 +340,7 @@ test('portals: two groups in the order of the UI, each portal with its state and
   page,
 }) => {
   await settings(page);
-  expect(await ids(page, 'settings-portals', '[data-testid^="portal-"]')).toEqual(
+  expect(await ids(page, 'settings-portals', '[data-setting-row]')).toEqual(
     [...SEARCHED, ...ALERT_PORTALS].map((portal) => `portal-${portal}`),
   );
   await expect(page.getByTestId('portals-search')).toHaveText(T.settings.way.search);
@@ -367,8 +361,8 @@ test('portals: two groups in the order of the UI, each portal with its state and
     const row = await reveal(page, page.getByTestId(`portal-${portal}`));
     await expect(row.locator('.badge')).toHaveCount(0);
     await expect(row.locator('.monogram')).toHaveText(/^[A-Z]{2}$/);
-    if (state === null) await expect(page.getByTestId(`status-${portal}`)).toHaveCount(0);
-    else await expect(page.getByTestId(`status-${portal}`)).toHaveText(state);
+    if (state === null) await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveCount(0);
+    else await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
     await expect(row).not.toContainText('Aufrufen');
     await expect(row.getByTestId(`open-portal-${portal}`)).toBeVisible();
@@ -388,13 +382,13 @@ test('portals: two groups in the order of the UI, each portal with its state and
   ]);
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  // The calls 4 apart; the browser's glyph and the switch each in one column in every row.
+  // The calls 8 apart; the browser's glyph and the switch each in one column in every row.
   const [signIn, setup, otherSetup] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
     page.getByTestId('setup-freelance').boundingBox(),
     page.getByTestId('setup-linkedin').boundingBox(),
   ]);
-  expect(Math.round(setup!.x - (signIn!.x + signIn!.width))).toBe(4);
+  expect(Math.round(setup!.x - (signIn!.x + signIn!.width))).toBe(8);
   expect(Math.round(setup!.x + setup!.width)).toBe(Math.round(otherSetup!.x + otherSetup!.width));
   const glyphs = await page
     .locator('[data-testid^="open-portal-"]')
@@ -411,7 +405,7 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
   // Off, the row keeps its state; no toast answers a switch.
-  await expect(page.getByTestId('status-linkedin')).toBeVisible();
+  await expect(page.getByTestId('portal-linkedin-hint')).toBeVisible();
   await expect(page.getByTestId('toast')).toHaveCount(0);
   expect(await saved(page)).toEqual([
     patch({ portals: [{ portal: 'linkedin', enabled: false, loginEnabled: null }] }),
@@ -477,7 +471,7 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   page,
 }) => {
   await settings(page, `${WIN}&scenario=paused`);
-  const status = await reveal(page, page.getByTestId('status-linkedin'));
+  const status = await reveal(page, page.getByTestId('portal-linkedin-hint'));
   await expect(status).toHaveText(/^Pausiert bis /);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
@@ -519,7 +513,7 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
   await settings(page, `${WIN}&scenario=no-mailbox`);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   for (const portal of ALERT_PORTALS) {
-    await expect(page.getByTestId(`status-${portal}`)).toHaveText(T.settings.needsMailbox);
+    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
   }
   await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
 });
@@ -530,11 +524,11 @@ test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles z
 }) => {
   await settings(page, `${WIN}&folder=other`);
   const data = page.getByTestId('settings-data');
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder']);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
   const folder = page.getByTestId('folder');
   await expect(folder).toContainText(T.settings.folder);
   await expect(folder.locator('[data-copy]')).toContainText('Job-Alerts');
-  await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetAction);
+  await expect(page.getByTestId('reset-all')).toContainText(T.settings.reset);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
   for (const gone of ['backup-restore', 'logs-open']) {

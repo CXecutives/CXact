@@ -72,6 +72,8 @@ const CONTRAST = [
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info', 'info-strong'], on: ['surface', 'info-soft'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
+  // A suggestion chip (Button `suggest`): its words and its count on the track's fill.
+  { text: ['text', 'text-muted', 'text-subtle'], on: ['surface-track'] },
 ];
 /** WCAG AA for body text. */
 const AA = 4.5;

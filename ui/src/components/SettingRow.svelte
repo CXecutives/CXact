@@ -1,52 +1,65 @@
-<!-- One setting: label and one-sentence hint on the left, badges and the control right. A
-     hint that is a value to copy (a path) selects like text (`copy`; it breaks only after a
-     separator), and so does a label that is such a value (`copyLabel`, the address of the
-     mailbox).
-     The row runs edge to edge in its container and pads its content by the container's
-     --row-inset, so its divider and its text share the container's grid.
-     With `for` (the id of its switch) the row works like a row of the system settings of
-     Windows 11 and macOS: only the switch switches (user decision). The label names the
-     switch and the hint describes it (`{for}-label`, and `{for}-hint` while there is a hint,
-     read by Toggle), but neither is a click target, and the row never reacts to the pointer.
-     With `form` (a row among the fields of a form) the label has the 13/500 of a form's
-     control labels. A row without a label leads with its hint. A row may lead with a tile
-     (`lead`, the mailbox's, 12 from its text) and say a state with a dot before its hint
-     (`dot`: Verbunden green, a failure red). -->
+<!--
+  The one row of a list in a page's box (Einstellungen: a portal, the mailbox, the profile's
+  folder, the reset; the setup's Alert-Mails): its tile (`lead`, 10 from its text), its label
+  and one line under it, then its buttons (`children`: outlined, each with its glyph, 8
+  apart) and what always ends the row (`end`: a portal's icon link and its switch, the switch
+  last). Every row is 12 above and below its line, which is as high as a label and its line
+  (--row-line): the tile, the buttons and the switch are centred on it, so a list keeps one
+  rhythm whether a row has its line or not, and lines that unfold under the text (`notes`: a
+  portal's problem) move nothing beside it. The row runs edge to edge in its box and pads its
+  content by the box's --row-inset, so its hairline (between rows only) and its text share the
+  box's grid.
+  The line under the label is quiet; a value to copy (a path) selects like text (`copy`; it
+  breaks only after a separator), and so does a label that is such a value (`copyLabel`, the
+  address of the mailbox). A dot before it says a state (`dot`: Verbunden green, a failure
+  red); in the warning's ink it says what the row needs first (`waits`: a portal of alert mails
+  without a mailbox). Its test id is the row's with `-hint`.
+  With `for` (the id of its switch) the row works like a row of the system settings of
+  Windows 11 and macOS: only the switch switches (user decision). The label names the switch
+  and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
+  Toggle), but neither is a click target, and the row never reacts to the pointer.
+  In a narrow box (the minimum window) the buttons go to a line of their own at the row's end;
+  the text keeps its room and `end` stays at the right.
+-->
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
 
   interface Props {
-    label?: string | null;
+    label: string;
     hint?: string | null;
-    /** Badges next to the label. */
-    badges?: Snippet | null;
-    /** A tile before the text (the mailbox's). */
-    lead?: Snippet | null;
+    /** The tile before the text. */
+    lead: Snippet;
     /** A dot before the hint that says a state (connected, or a failure). */
     dot?: 'success' | 'danger' | null;
+    /** The hint in the warning's ink: what the row needs first. */
+    waits?: boolean;
     /** The hint is a value a user would copy (a folder path). */
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
     copyLabel?: boolean;
     /** The id of the switch this row labels (Toggle `id`). */
     for?: string | null;
-    /** A row of a form: the label in the size of every control label there (13/500). */
-    form?: boolean;
+    /** Lines under the text that come and go (a portal's problem). */
+    notes?: Snippet | null;
+    /** What ends the row whatever the width (an icon link, the switch). */
+    end?: Snippet | null;
     testid?: string | null;
-    children: Snippet;
+    /** The row's buttons. */
+    children?: Snippet;
   }
 
   let {
-    label = null,
+    label,
     hint = null,
-    badges = null,
-    lead = null,
+    lead,
     dot = null,
+    waits = false,
     copy = false,
     copyLabel = false,
     for: control = null,
-    form = false,
+    notes = null,
+    end = null,
     testid = null,
     children,
   }: Props = $props();
@@ -58,74 +71,66 @@
   const parts = (path: string): string[] => path.match(/[^/\\]*[/\\]|[^/\\]+$/g) ?? [path];
 </script>
 
-<div
-  class="row"
-  data-setting-row
-  data-toggle-row={control !== null ? '' : undefined}
-  data-testid={testid ?? undefined}
->
-  {#if lead}<span class="lead">{@render lead()}</span>{/if}
+<div class="row" data-setting-row data-testid={testid ?? undefined}>
+  <span class="lead">{@render lead()}</span>
   <div class="text">
-    {#if label !== null || badges}
-      <span class="title">
-        {#if label !== null}<span
-            class="label"
-            class:form
-            class:path={copyLabel}
-            id={control !== null ? `${control}-label` : undefined}
-            data-copy={copyLabel ? '' : undefined}>{label}</span
-          >{/if}
-        {#if badges}{@render badges()}{/if}
-      </span>
-    {/if}
+    <span
+      class="label"
+      class:path={copyLabel}
+      id={control !== null ? `${control}-label` : undefined}
+      data-copy={copyLabel ? '' : undefined}>{label}</span
+    >
     {#if hint}<p
         class="hint"
-        class:alone={label === null && !badges}
         class:path={copy}
         class:status={dot !== null}
+        class:waits
         id={control !== null ? `${control}-hint` : undefined}
         data-copy={copy ? '' : undefined}
+        data-testid={testid ? `${testid}-hint` : undefined}
       >
-        {#if dot}<span class="dot {dot}" aria-hidden="true"></span>{/if}
-        {#if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr />{/if}<span
-              class="part">{part}</span
-            >{/each}{:else}{hint}{/if}
+        {#if dot}<span class="dot {dot}" aria-hidden="true"
+          ></span>{/if}{#if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr
+              />{/if}<span class="part">{part}</span>{/each}{:else}{hint}{/if}
       </p>{/if}
+    {#if notes}{@render notes()}{/if}
   </div>
-  <div class="control">{@render children()}</div>
+  {#if children}<div class="actions">{@render children()}</div>{/if}
+  {#if end}<div class="end">{@render end()}</div>{/if}
 </div>
 
 <style>
   .row {
-    position: relative;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-16);
-    min-height: var(--row-min);
+    align-items: flex-start;
+    gap: var(--space-8) var(--space-16);
     margin-inline: calc(-1 * var(--row-inset));
     padding: var(--row-pad) var(--row-inset);
     border-bottom: var(--border-width) solid var(--border);
-    isolation: isolate;
   }
 
   .row:last-child {
     border-bottom: 0;
   }
 
+  /* The tile stands 10 from the text (the row's other parts keep their 16). */
+  .lead {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: var(--row-line);
+    margin-inline-end: calc(var(--space-10) - var(--space-16));
+  }
+
+  /* Label and line 2 apart, centred on the row's line. */
   .text {
     display: flex;
     flex: 1;
     flex-direction: column;
+    justify-content: center;
     gap: var(--space-2);
     min-width: 0;
-  }
-
-  .title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8);
+    min-height: var(--row-line);
   }
 
   .label {
@@ -133,27 +138,13 @@
     font: var(--type-label);
   }
 
-  .label.form {
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
-  }
-
   .hint {
     color: var(--text-muted);
     font: var(--type-sm);
   }
 
-  /* A row of one sentence: it reads as the row's text. */
-  .hint.alone {
-    color: var(--text);
-    font: var(--type-md);
-  }
-
-  /* The tile stands 10 from the text (the row's other parts keep its 16). */
-  .lead {
-    display: inline-flex;
-    flex: none;
-    margin-inline-end: calc(var(--space-10) - var(--space-16));
+  .hint.waits {
+    color: var(--warning-text);
   }
 
   .hint.status {
@@ -193,36 +184,28 @@
     max-width: 100%;
   }
 
-  .control {
+  .actions,
+  .end {
     display: flex;
     flex: none;
     align-items: center;
     gap: var(--space-8);
+    height: var(--row-line);
   }
 
-  /* A ghost button at the end lines its text up with the edge, like toggles and bordered
-     buttons (the ghost's own padding would inset it). */
-  .control :global(.btn.ghost:last-child) {
-    margin-right: calc(-1 * var(--ghost-inset));
-  }
-
-  /* In a narrow container (the settings page at the minimum window) the control goes under
-     the text only where the two do not fit side by side (the text keeps at least a column's
-     width, so a path keeps room to read); a switch stays at the right. */
+  /* In a narrow box the buttons take a line of their own at the row's end (they wrap within
+     its width rather than run past its edge); the text keeps its room, `end` its place. */
   @container (width < 520px) {
-    .row:not([data-toggle-row]) {
+    .row {
       flex-wrap: wrap;
-      row-gap: var(--space-8);
     }
 
-    .row:not([data-toggle-row]) .text {
-      flex: 1 1 var(--stat-min);
-    }
-
-    /* The buttons wrap within the row's width rather than run past its edge. */
-    .row:not([data-toggle-row]) .control {
-      max-width: 100%;
-      margin-left: auto;
+    .actions {
+      order: 1;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      width: 100%;
+      height: auto;
     }
   }
 </style>

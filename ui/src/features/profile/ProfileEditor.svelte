@@ -1,13 +1,13 @@
 <!--
-  The profile as one page of fields: the three sections of `sections.ts` in their order (Was
-  du suchst, Was du mitbringst, Was nicht passt), each a group of rows between hairlines
-  (Section, "Native Gruppen"); the same page in the setup. The page's actions (`actions`,
-  "Aus Lebenslauf ausfüllen") end the first heading's line. Each field as the table describes
-  it: a single value (number, choice, day) at the right of its label, a list of values under
-  its label at full width (and, only where docs/PLAN.md places one, an info symbol beside the
-  label). Vertragsart is three checkboxes (Projekt und Interim, Festanstellung, Zeitarbeit;
-  one stays). Every control is 28 px high; a number field has its unit inside; a number is
-  formatted when its field is left.
+  The profile as one page of fields: the four groups of `sections.ts` in their order
+  (Wunschjob, Einsatz, Qualifikation, Ausschlüsse), each a Section with its fields in one white
+  box (Group), 16 apart and without lines between them ("Luftige Gruppen", design round 6);
+  the same page in the setup. The page's actions (`actions`, "Aus Lebenslauf ausfüllen") end
+  the first heading's line. Each field as the table describes it, its label above it (and,
+  only where docs/PLAN.md places one, an info symbol beside the label): a list fills the box's
+  width, a number (its unit inside) or a day is --number-width, a choice of a few as wide as
+  its options. Vertragsart is three checkboxes (Projekt und Interim, Festanstellung,
+  Zeitarbeit; one stays). A number is formatted when its field is left.
   A required field that is still empty shows its amber edge and halo only once Speichern or
   the setup's Weiter was pressed (`missing`, ProfileView) and loses it as it is filled; a
   link of the missing sentence puts the caret into it and lets it flash (`focusField`). A
@@ -32,6 +32,7 @@
   import ChipInput from '$components/ChipInput.svelte';
   import CheckGroup from '$components/CheckGroup.svelte';
   import Field from '$components/Field.svelte';
+  import Group from '$components/Group.svelte';
   import Section from '$components/Section.svelte';
   import Segmented from '$components/Segmented.svelte';
   import { t } from '$lib/i18n/t';
@@ -58,7 +59,7 @@
     missing: readonly string[];
     /** The setup's page: no "Häufig verlangt", Esc does nothing. */
     setup?: boolean;
-    /** The page's actions, at the end of the first section's heading line. */
+    /** The page's actions, at the end of the first group's heading line. */
     actions?: Snippet | null;
     onsave: () => void;
     ondiscard: () => void;
@@ -244,9 +245,11 @@
       actions={index === 0 ? actions : null}
       testid="section-{section.id}"
     >
-      <div class="fields">
-        {#each section.rows as row, index (index)}{@render cell(row)}{/each}
-      </div>
+      <Group>
+        <div class="fields">
+          {#each section.rows as row, index (index)}{@render cell(row)}{/each}
+        </div>
+      </Group>
     </Section>
   {/each}
 </div>
@@ -273,7 +276,6 @@
     <Field
       label={words[c.label]}
       for="{id}-{c.key}"
-      single
       info={infoOf(c)}
       hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
       {error}
@@ -318,7 +320,7 @@
       />
     </Field>
   {:else if c.kind === 'choice'}
-    <Field label={words[c.label]} info={infoOf(c)} error={errorOf(c.key)} single>
+    <Field label={words[c.label]} info={infoOf(c)} error={errorOf(c.key)}>
       <Segmented
         options={CHOICES[c.key]}
         value={choiceOf(c.key)}
@@ -339,7 +341,7 @@
     </Field>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
-    <Field label={words.available} {error} single>
+    <Field label={words.available} {error}>
       <AvailableField invalid={error !== null} />
     </Field>
   {:else if c.kind === 'competences'}
@@ -376,21 +378,18 @@
 {/snippet}
 
 <style>
-  /* The sections, a hairline and room between them (Section). */
+  /* The groups, 32 apart (Section). */
   .editor {
     display: flex;
     flex-direction: column;
     gap: var(--layout-section-gap);
   }
 
-  /* The fields of a section, rows between hairlines. */
+  /* The fields of a group, 16 apart, no lines between them. */
   .fields {
     display: flex;
     flex-direction: column;
-  }
-
-  .fields > :global(* + *) {
-    box-shadow: inset 0 var(--border-width) 0 var(--layout-row-rule);
+    gap: var(--layout-field-gap);
   }
 
   /* A number (euros, years) is as wide as a day field, its unit inside at its right; the
@@ -411,7 +410,6 @@
   .cell {
     position: relative;
     min-width: 0;
-    padding-block: var(--layout-row-pad);
   }
 
   .cell::after {

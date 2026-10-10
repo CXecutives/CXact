@@ -84,15 +84,15 @@ pre-assessment to any AI chat for a deeper check.
   - The head: "Profil" with "Aus Lebenslauf ausfüllen", then "Noch n Angaben offen" with "Zum ersten"
     (the required fields core names in `ProfileInfo.missing`) and, after a CV, "aus dem Lebenslauf" for
     the small dot at every field it filled (`aiFilled`, until the next save).
-  - Jump links to three sections on one page (`sections.ts`), they stay in view unless the window is low:
-    - Was du suchst: Wunschrollen, Vertragsart (Projekt und Interim always, Festanstellung and Zeitarbeit
-      as check buttons), Wunsch- and Mindesttagessatz, Mindestjahresgehalt (with Festanstellung or
-      Zeitarbeit), Arbeitsmodell, Länder (DE, AT, CH first) and Regionen, Verfügbar ab, Auslastung and
+  - Four groups on one page (`sections.ts`; "Luftige Gruppen", design round 6), each field with its label
+    above it:
+    - Wunschjob: Wunschrollen, Vertragsart (check boxes, one stays), Wunschtagessatz, Mindesttagessatz,
+      Mindestgehalt (with Festanstellung or Zeitarbeit).
+    - Einsatz: Arbeitsmodell, Länder (DE, AT, CH first) and Regionen, Verfügbar, Auslastung and
       Mindestlaufzeit.
-    - Was du mitbringst: Kompetenzen with years and up to five stars, Tools und Methoden,
-      Berufserfahrung, Branchen with a star for the preferred ones, Sprachen with their level,
-      Abschlüsse and Zertifikate.
-    - Was nicht passt: Ausschlusswörter.
+    - Qualifikation: Kompetenzen with years and up to five stars, Tools und Methoden, Berufserfahrung,
+      Branchen with a star for the preferred ones, Sprachen with their level, Abschlüsse and Zertifikate.
+    - Ausschlüsse: Ausschlusswörter.
   - Info symbols (one sentence each) only at Wunschrollen, Vertragsart, Tagessatz, Arbeitsmodell, Länder,
     the stars of Kompetenzen and Branchen, Ausschlusswörter, the app password, "CXact sucht nach" and the
     match in the job view; a field has a hint or an info symbol, never both.
@@ -100,13 +100,13 @@ pre-assessment to any AI chat for a deeper check.
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's
     JSON in the work folder (`profil/`), keeping unknown keys, with one backup.
-- **Einstellungen**, on two tabs like the Profil:
-  - Portale: "CXact sucht nach" (the search's terms, each with "zuletzt n passende" or "neu", and "Im
-    Profil ändern"); Jobportale (the eight portals, each a compact row with its tile, "Zuletzt n neue
-    Jobs", open in the browser and a switch); Alert-Mails (the account card on top, without a mailbox
-    "Ohne Postfach ruhen LinkedIn und freelance.de.", then LinkedIn and freelance.de with "Alert
-    anlegen", freelance.de with its sign-in).
-  - Daten: Profile ("Ordner öffnen"), "Alle Daten zurücksetzen", a quiet line with the version.
+- **Einstellungen**, one page in the groups of the Profil, every row a `SettingRow` (hairlines only
+  between rows, every text button outlined with its glyph, the switch last):
+  - Jobportale: "Suche und Alert-Mails" (the eight portals the app searches) and "Nur Alert-Mails"
+    (LinkedIn and freelance.de with "Alert anlegen", freelance.de with its sign-in), each portal with its
+    tile, its state line, open in the browser and a switch.
+  - Postfach: the mailbox with Ändern and Entfernen, or "Kein Postfach" with Verbinden.
+  - Daten: Profil-Ordner (Ändern, Öffnen) and "Alles zurücksetzen" (Zurücksetzen, asks first).
 - **Setup** (`features/first-run`, until it was finished once, `onboarded`): a mode of the shell of its
   own, without the sidebar and the top bar's buttons, every switch of the view refused. Its steps from a
   table: Willkommen, Weg wählen (the CV or by hand), Upload (drop zone, "Wird von einer KI
@@ -184,10 +184,10 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Jobdetails, Gefunden
 - Anzeige (öffnen), Prompt kopieren
 - Postfach, Alert-Mail, Alert anlegen
-- Profil, Wünsche, Können, Erfahrung, Ausschlüsse
-- Kompetenz, Schwerpunkt, Werkzeuge und Methoden
+- Profil, Wunschjob, Einsatz, Qualifikation, Ausschlüsse
+- Kompetenz, Schwerpunkt, Tools und Methoden
 - Wunschrolle, Suchbegriffe
-- Tagessatz, Mindesttagessatz, Gehalt
+- Tagessatz, Wunschtagessatz, Mindesttagessatz, Gehalt
 - Festanstellung, Zeitarbeit
 - Vertragsart, Arbeitsmodell, Remote-Anteil
 - Auslastung, Laufzeit, Einsatzländer

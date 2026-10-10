@@ -105,9 +105,9 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   await expect(page.getByTestId('cv-cancel')).toBeVisible();
   await expectStep(page, T.firstRun.review);
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
-  // The whole Profil page: its three sections, without its head, the CV button and the bar.
+  // The whole Profil page: its four groups, without its head, the CV button and the bar.
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  await expect(page.locator('[data-section]')).toHaveCount(5);
+  await expect(page.locator('[data-section]')).toHaveCount(4);
   for (const gone of ['profile-heading', 'profile-from-cv', 'profile-save-bar']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
@@ -167,7 +167,7 @@ test('by hand: Weiter marks what is missing and says it beside itself; Esc does 
   await open(page, `${WIN}&scenario=first-run&step=way`);
   await page.getByTestId('way-self').click();
   await expectStep(page, T.firstRun.self);
-  await expect(page.locator('[data-section]')).toHaveCount(5);
+  await expect(page.locator('[data-section]')).toHaveCount(4);
   const roles = page.getByTestId('profile-roles').locator('input');
   await roles.focus();
   await page.keyboard.press('Escape');

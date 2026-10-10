@@ -810,7 +810,7 @@ test('the first line: the sidebar entry, the tabs and the titles share one middl
   expect(middle(await page.getByTestId('places').boundingBox())).toBe(line);
   // The first heading of every page without a title stands on the same row.
   for (const [view, title] of [
-    ['profile', '#profile-section-search-heading'],
+    ['profile', '#profile-section-job-heading'],
     ['settings', '#settings-portals-heading'],
   ] as const) {
     await open(page, `${WIN}&view=${view}`);

@@ -103,7 +103,7 @@ export function rise(node: Element, params: RiseParams = {}): TransitionConfig {
 }
 
 /** Fade in while sliding in from the start side by a token distance (default 8 px): a field
- *  that appears beside the choice that asked for it (the day of Verfügbar ab), 150 ms. */
+ *  that appears beside the choice that asked for it (the day of Verfügbar), 150 ms. */
 export function slideIn(node: Element, params: RiseParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
   const x = move(params.distance ?? 'lg');

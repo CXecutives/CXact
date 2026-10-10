@@ -1,7 +1,7 @@
 // The Profil view against the stub, in one spec: the head (the title, the CV button and its
 // popover), the floating bar (Verwerfen and Speichern only while something changed), what is
 // still missing once Speichern was pressed, the form as the table of sections.ts lays it out
-// (three sections on one page, each field with its label above, the info symbols at their
+// (four groups on one page, each field with its label above, the info symbols at their
 // places), the two ways in, the
 // CV and its failures, saving (answered by a toast), discarding,
 // leaving and closing with unsaved changes, values that hold the save, refused values, a
@@ -13,7 +13,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import { chooseWay, failNext, fillRequired, reveal as show, T, WIN } from './helpers';
+import { chooseWay, failNext, fillRequired, reveal as show, T, tokenPx, WIN } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -124,7 +124,7 @@ test('no title; "Aus Lebenslauf ausfüllen" ends the first heading line; Speiche
   await profile(page);
   // No page title (the sidebar names the place; user 2026-10-04).
   await expect(page.getByTestId('profile-heading')).toHaveCount(0);
-  const head = page.locator('[data-section="search"] .head');
+  const head = page.locator('[data-section="job"] .head');
   const cv = page.getByTestId('profile-from-cv');
   const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
   const heading = head.getByRole('heading', { level: 2 });
@@ -146,12 +146,12 @@ test('no title; "Aus Lebenslauf ausfüllen" ends the first heading line; Speiche
   await expect(save(page)).toHaveClass(/primary/);
   await expect(discard(page)).toHaveClass(/ghost/);
 });
-test('five groups on one page in their order, no info symbol at their headings', async ({
+test('four groups on one page in their order, no info symbol at their headings', async ({
   page,
 }) => {
   await profile(page);
-  const ids = ['search', 'where', 'skills', 'experience', 'exclusions'] as const;
-  await expect(page.locator('[data-section]')).toHaveCount(5);
+  const ids = ['job', 'work', 'skills', 'exclusions'] as const;
+  await expect(page.locator('[data-section]')).toHaveCount(4);
   for (const [index, id] of ids.entries()) {
     const section = page.locator('[data-section]').nth(index);
     await expect(section).toHaveAttribute('data-section', id);
@@ -159,18 +159,20 @@ test('five groups on one page in their order, no info symbol at their headings',
     await expect(section.locator('.head').getByTestId('info-tip')).toHaveCount(0);
   }
 });
-test('each field in its group, a single value at the right of its label', async ({ page }) => {
+test('each field in its group, its label above it; a list fills the box, a number does not', async ({
+  page,
+}) => {
   await profile(page);
   const words = T.profile.field;
   const layout: Record<string, [string, string][]> = {
-    search: [
+    job: [
       ['roles', words.roles],
       ['permanent', words.contracts],
       ['dayRateWish', words.dayRateWish],
       ['dayRateMin', words.dayRateMin],
       ['minSalary', words.minSalary],
     ],
-    where: [
+    work: [
       ['workMode', words.workMode],
       ['countries', words.countries],
       ['regions', words.regions],
@@ -181,8 +183,6 @@ test('each field in its group, a single value at the right of its label', async 
     skills: [
       ['competences', words.competences],
       ['tools', words.tools],
-    ],
-    experience: [
       ['years', words.totalYears],
       ['industries', words.industries],
       ['languages', words.languages],
@@ -198,28 +198,34 @@ test('each field in its group, a single value at the right of its label', async 
       await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
     }
   }
-  // A list under its label, on the label's left edge; a single value at the right of its
-  // label, on its line ("Native Gruppen", user decision 2026-10-04).
-  for (const name of ['roles', 'countries', 'regions']) {
+  // Every label above its control on the label's left edge, and the heading on the box's
+  // edge ("Luftige Gruppen", design round 6).
+  const gap = await tokenPx(page, '--label-gap');
+  for (const name of ['roles', 'dayRateWish', 'workMode', 'available', 'years']) {
     const scope = field(page, name);
     const [words, control] = await Promise.all([
       label(scope).boundingBox(),
       scope.locator('.control').first().boundingBox(),
     ]);
-    expect(control!.y, name).toBeGreaterThan(words!.y + words!.height);
-    expect(Math.abs(control!.x - words!.x), name).toBeLessThan(12);
+    expect(Math.round(control!.y - (words!.y + words!.height)), name).toBe(gap);
+    expect(Math.round(control!.x), name).toBe(Math.round(words!.x));
   }
-  for (const name of ['dayRateWish', 'years', 'workMode']) {
-    const scope = field(page, name);
-    const [words, control] = await Promise.all([
-      label(scope).boundingBox(),
-      scope.locator('.control').first().boundingBox(),
-    ]);
-    const middle = (box: { y: number; height: number }): number => box.y + box.height / 2;
-    expect(Math.abs(middle(control!) - middle(words!)), name).toBeLessThanOrEqual(1);
-    expect(control!.x, name).toBeGreaterThan(words!.x + words!.width);
-  }
+  const box = page.getByTestId('section-job').locator('.box').first();
+  const heading = page.getByTestId('section-job').getByRole('heading', { level: 2 });
+  expect(Math.round((await heading.boundingBox())!.x)).toBe(
+    Math.round((await box.boundingBox())!.x),
+  );
+  // No line between the fields of a box.
+  await expect(field(page, 'dayRateMin')).toHaveCSS('box-shadow', 'none');
+  // A list as wide as the box's inside; a number as wide as a day, its unit inside; a choice
+  // as wide as its options.
+  const inside = (await field(page, 'roles').boundingBox())!.width;
+  expect((await roles(page).boundingBox())!.width).toBeCloseTo(inside, 0);
+  const number = await tokenPx(page, '--number-width');
+  const rate = page.getByTestId('profile-wish-rate').locator('xpath=..');
+  expect(Math.round((await rate.boundingBox())!.width)).toBe(number);
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.unit.euro);
+  expect((await page.getByTestId('profile-work-mode').boundingBox())!.width).toBeLessThan(inside);
 });
 test('the stored profile fills every field', async ({ page }) => {
   await profile(page);
@@ -337,7 +343,7 @@ test('Vertragsart is a choice of several, one stays; the salary comes with Festa
   await save(page).click();
   expect((await lastSave(page)).after).toMatchObject({ temporary: false, minSalary: null });
 });
-test('the rates side by side; a wish under the minimum says so quietly', async ({ page }) => {
+test('the rates; a wish under the minimum says so quietly under the wish', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-wish-rate').fill('900');
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.field.belowMinRate);
@@ -347,7 +353,7 @@ test('the rates side by side; a wish under the minimum says so quietly', async (
   await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.belowMinRate);
 });
 
-test('Arbeitsmodell, Verfügbar ab, Auslastung and Mindestlaufzeit are one segmented look', async ({
+test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit are one segmented look', async ({
   page,
 }) => {
   await profile(page);

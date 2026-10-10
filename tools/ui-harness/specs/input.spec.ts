@@ -1131,20 +1131,16 @@ test('a switch held with the right button looks at rest and keeps its state', as
 test('a click beside a focused field ends its focus', async ({ page }) => {
   await open(page, `${WIN}&view=profile`);
   const field = page.getByTestId('profile-years');
-  await field.scrollIntoViewIfNeeded();
-  const box = (await field.boundingBox())!;
   const label = page.locator(`label[for="${await field.getAttribute('id')}"]`);
-  const labelBox = (await label.boundingBox())!;
+  // Measured where the field stands now (a click on the heading may scroll the page).
+  const at = async (target: typeof field, dx: (box: { width: number }) => number) => {
+    const box = (await target.boundingBox())!;
+    await page.mouse.click(box.x + dx(box), box.y + box.height / 2);
+  };
   const beside: [string, () => Promise<void>][] = [
-    [
-      'the empty part of the label column',
-      () => page.mouse.click(labelBox.x + labelBox.width + 8, labelBox.y + labelBox.height / 2),
-    ],
+    ['the empty part of the label line', () => at(label, (box) => box.width + 8)],
     ['the heading', () => page.getByTestId('section-skills').getByRole('heading').first().click()],
-    [
-      'the empty area to the right',
-      () => page.mouse.click(box.x + box.width + 24, box.y + box.height / 2),
-    ],
+    ['the empty area to the right', () => at(field.locator('xpath=..'), (box) => box.width + 24)],
   ];
   for (const [where, click] of beside) {
     await field.click();
@@ -1154,7 +1150,7 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   }
   // The words of its own label still lead into the field.
   await field.click();
-  await page.mouse.click(labelBox.x + 4, labelBox.y + labelBox.height / 2);
+  await at(label, () => 4);
   await expect(field).toBeFocused();
   // The chips and the empty part of a chip field keep its caret.
   const tools = page.getByTestId('profile-tools');
@@ -1488,7 +1484,7 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   const view = page.getByTestId('view-profile');
   /** Ends the autoscroll with a press on the Profil's first plain heading. */
   const end = async (): Promise<void> => {
-    await view.locator('#profile-section-search-heading').click();
+    await view.locator('#profile-section-job-heading').click();
   };
   // A choice (a radio group): the chosen option stays chosen.
   const group = page.getByTestId('profile-work-mode');
@@ -1529,7 +1525,7 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
     .click({ button: 'middle' });
   await end();
   await expect(menuOpen(page)).toHaveCount(0);
-  // Verfügbar ab: the calendar's button opens nothing, its days take nothing.
+  // Verfügbar: the calendar's button opens nothing, its days take nothing.
   const available = await reveal(page, page.getByTestId('profile-available'));
   await available.getByRole('radio').last().click();
   const calendar = page.getByTestId('profile-date-calendar');
@@ -1559,7 +1555,7 @@ test('the wheel over a date field, the calendar, a level and the filter menu cha
   await available.getByRole('radio').last().click();
   const date = page.getByTestId('profile-date');
   await date.fill('01.11.2026');
-  await page.getByTestId('view-profile').locator('#profile-section-search-heading').click();
+  await page.getByTestId('view-profile').locator('#profile-section-job-heading').click();
   expect(await wheelOver(page, date, 'view-profile')).not.toBe(0);
   await expect(date).toHaveValue('01.11.2026');
   // Over the calendar the page scrolls; its month stays.

@@ -434,11 +434,12 @@
      2026-10-01). */
   --row-place-max: 160px;
   /* The vertical padding of a row: a list row's two lines (title and company), and a row of
-     a page's section (a setting, a portal) with its control, roomy. */
+     a page's group (a setting, a portal) with its control, roomy. */
   --list-row-pad: 9px;
-  --row-pad: 6px;
-  /* The least height of such a row (a setting, a portal). */
-  --row-min: 44px;
+  --row-pad: 12px;
+  /* A row of a page's group: its label and its one line under it, the line its tile, buttons
+     and switch are centred on (every row this high, so a list keeps one rhythm). */
+  --row-line: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
   /* Mail-style rows: the title line and the company line beside the ring. */
   --row-height: calc(
     2 * var(--list-row-pad) + var(--leading-title) + var(--space-2) + var(--leading-sm)
@@ -519,34 +520,20 @@
   --number-width: 128px;
   /* The years of a competence (two digits and "Jahre" as the placeholder). */
   --years-width: 64px;
-  /* The fields of a page (design B, the Profil): the label above its control, this far
-     apart; one field below the other this far; two small fields side by side this far. */
-  --label-gap: 5px;
-  --field-gap: 14px;
-  --pair-gap: var(--space-16);
-  /* The sections of a page: a hairline and this much room above each heading but the first,
-     and this much under the heading's line. */
-  --section-top: 18px;
-  --section-head-gap: 10px;
-  /* The pages Profil and Einstellungen ("Native Gruppen", user decision 2026-10-04): white
-     rounded groups on the cream page like the settings of macOS and Windows, a small muted
-     heading above each group, rows between hairlines; a single value (a number, a choice, a
-     day) at the right of its label, a list of values under its label at full width. */
+  /* A field of a page: its label above its control, this far apart (Field). */
+  --label-gap: 6px;
+  /* The pages Profil and Einstellungen ("Luftige Gruppen", design round 6): white rounded
+     boxes on the cream page, a navy heading flush with each box's left edge (--type-heading)
+     this far above it, the groups this far apart; in a box 16 all round and the fields 16
+     apart, no hairlines between fields (only between the rows of a list). */
   --layout-page: var(--bg);
   --layout-group: var(--surface);
   --layout-group-edge: var(--border);
   --layout-group-radius: 12px;
   --layout-group-pad: 16px;
-  --layout-group-pad-block: 2px;
-  --layout-section-gap: 28px;
-  --layout-heading-font: var(--type-label);
-  --layout-heading-color: var(--text-muted);
-  --layout-heading-inset: 16px;
-  --layout-field-columns: minmax(0, 1fr) auto;
-  --layout-column-gap: var(--space-16);
-  --layout-label-height: var(--control-field);
-  --layout-row-rule: var(--border);
-  --layout-row-pad: 9px;
+  --layout-field-gap: 16px;
+  --layout-heading-gap: 8px;
+  --layout-section-gap: 32px;
   /* The setup (features/first-run): one centred card this wide (the profile takes the
      page's column instead), the step indicator above it with its numbered dots and their
      edge. */
@@ -582,9 +569,9 @@
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
   --head-pad: var(--space-12);
-  /* A page without a title (Profil, Einstellungen): its first heading's line lies where a
-     head's first row would, centred on the sidebar's first entry. */
-  --page-top: calc(var(--head-pad) + (var(--first-row) - var(--control-field)) / 2);
+  /* A page without a title (Profil, Einstellungen): its first heading's line (as high as its
+     text) lies where a head's first row would, centred on the sidebar's first entry. */
+  --page-top: calc(var(--head-pad) + (var(--first-row) - var(--leading-heading)) / 2);
   --ring-sm: 30px;
   --ring-sm-stroke: 3.5px;
   --ring-md: 44px;
@@ -688,7 +675,8 @@
   /* The digits of a large ring, the letters of a large tile (semibold). */
   --font-lg: 14px;
   --leading-lg: 20px;
-  /* The heading of a group of a view (the job view's Jobdetails, an empty state's). */
+  /* The heading of a group of a view (the groups of Profil and Einstellungen, the job view's
+     Jobdetails, an empty state's). */
   --font-heading: 15px;
   --leading-heading: 20px;
   /* The title of a view, a step of the setup, the job view. */

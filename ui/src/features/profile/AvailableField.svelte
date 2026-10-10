@@ -1,11 +1,12 @@
 <!--
-  Verfügbar ab: one choice of the segments ("Sofort", "Datum"; after the label they read "ab
-  sofort", "ab Datum"). The day of "Datum" exists only while it is chosen and gets the caret
-  when it is (it slides in beside the choice, as high as the choice and as wide as every
-  number field); it is judged when its field is left with text in it or on saving
-  (`editor.judged`), never while it is typed, and a day that does not read is said by its
-  Field and holds the save. Beside the day's field a calendar offers one (Calendar); typing
-  stays the way to write it, and a chosen day is written into the field in its form.
+  Verfügbar: one choice of the segments ("Sofort", "Ab Datum"). The day of "Ab Datum" exists
+  only while it is chosen and gets the caret when it is: it slides in beside the choice, as
+  wide as every number field (--number-width), and the choice keeps its width and place. It
+  is judged when its field is left with text in it or on saving (`editor.judged`), never
+  while it is typed, and a day that does not read is said by its Field and holds the save.
+  Inside the day's field at its right end a calendar offers one (Calendar, TextField's
+  `trailing`); typing stays the way to write it, and a chosen day is written into the field
+  in its form.
 -->
 <script lang="ts">
   import Calendar from '$components/Calendar.svelte';
@@ -33,7 +34,7 @@
     { id: 'from', label: t.profile.availability.from },
   ]);
 
-  /** "Datum" puts the caret into its day, which is judged anew when it is left. */
+  /** "Ab Datum" puts the caret into its day, which is judged anew when it is left. */
   async function choose(kind: Choice): Promise<void> {
     form.available = kind === 'from' ? { kind, date: keptDate(editor.dateText) } : { kind };
     editor.judged = false;
@@ -48,6 +49,14 @@
     editor.judged = false;
   }
 </script>
+
+{#snippet calendar()}
+  <Calendar
+    value={isoDate(editor.dateText)}
+    testid="profile-date-calendar"
+    onpick={(day) => type(shownDate(day))}
+  />
+{/snippet}
 
 <div class="choice">
   <Segmented
@@ -71,12 +80,8 @@
         placeholder={words.datePlaceholder}
         {invalid}
         testid="profile-date"
+        trailing={calendar}
         oninput={type}
-      />
-      <Calendar
-        value={isoDate(editor.dateText)}
-        testid="profile-date-calendar"
-        onpick={(day) => type(shownDate(day))}
       />
     </span>
   {/if}
@@ -90,14 +95,10 @@
     gap: var(--space-8);
   }
 
-  /* The day is as wide as every number field (NumberField), its calendar beside it. */
+  /* The choice keeps its width (Segmented); the day beside it, or under it where the row is
+     short, is as wide as every number field. */
   .date {
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
-  .date > :global(:first-child) {
     width: var(--number-width);
   }
 </style>

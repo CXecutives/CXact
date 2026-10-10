@@ -73,14 +73,18 @@ Commit them together with tokens.css.
 
 ## Add or change a setting or a step of the setup
 
-- Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
-  their order on their tab (Portale: CXact sucht nach, Jobportale, Alert-Mails; Daten), each
-  with its heading, its info symbol, its block (the search's terms, or the portals by their
-  `way()`), its rows and a quiet footnote (the version). A setting is one row there: its
-  buttons, its texts from the catalog. A button is one entry in `ACTIONS` (it opens a checked
-  target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
-  stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
-  `Settings::default()`) and `SettingsPatch` (`view.rs`).
+- Einstellungen is one table, `SECTIONS` in `ui/src/features/settings/cards.ts`: the groups
+  in their order (Jobportale, Postfach, Daten), each with its heading, its block (the portals
+  in two boxes by their `way`, or the mailbox) and its rows. A setting is one row there: its
+  tile, its texts from the catalog, its buttons. A button is one entry in `ACTIONS` (it opens
+  a checked target, or names a command of `SettingsView.svelte`), with `locked` for why it
+  waits. Every row is a `components/SettingRow.svelte` (PortalRow and MailboxCard compose
+  it); its look is decided there once. A new stored value also needs its field in `Settings`
+  (`core/src/settings.rs`, its default in `Settings::default()`) and `SettingsPatch`
+  (`view.rs`).
+- The look of the pages' groups (Profil, Einstellungen): `components/Section.svelte` (the
+  heading), `components/Group.svelte` (the white box), `components/Page.svelte` (the column)
+  and the `--layout-*` tokens in `tokens.css`.
 - The work folder of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`). "Ordner öffnen" makes a missing folder first.
 - A step of the setup is one entry in `STEPS` of `ui/src/features/first-run/steps.ts` (order,
@@ -217,12 +221,12 @@ the section's switches, anything else a control kind of `sections.ts` with its c
 
 ## Change the Profil form
 
-Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the three
-sections in their order (also the order of the jump links) and each one's lines of fields,
-one field or a pair side by side. Moving, adding or removing a field is one entry there (a new
-section also needs its heading in `profile.section`); a quiet hint where values contradict each
-other is the field's `advice`, a field that shows only with another its `shown`, an info symbol
-its `info` (a sentence of `profile.info`). Which fields are required is core's
+Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the four
+groups in their order (Wunschjob, Einsatz, Qualifikation, Ausschlüsse) and each one's fields,
+one under the other, each with its label above it (`components/Field.svelte`, one layout).
+Moving, adding or removing a field is one entry there (a new group also needs its heading in
+`profile.section`); a field that shows only with another is its `shown`, an info symbol its
+`info` (a sentence of `profile.info`). Which fields are required is core's
 (`ProfileInfo.missing`); the page only lists them in its order.
 
 While typing, the wished roles, the competence and the tools suggest the engine's skills, the
@@ -294,7 +298,7 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
   pages, requests per hour and per day). The hour rolls, the day counts from local midnight
   (`core/src/fetch/policy.rs`, `time::day_start`); the settings show the day's requests.
 - The week after which a portal's row says it sent no alert mail: `QUIET_DAYS` in
-  `ui/src/features/settings/PortalRow.svelte` (counted to the last completed fetch, from
+  `ui/src/features/shared/PortalRow.svelte` (counted to the last completed fetch, from
   `PortalState.lastAlert`).
 - How long the toast of a profile save waits for the rescore to say what it changed:
   `--dur-toast` (`ui/src/features/profile/saveEffect.ts`).

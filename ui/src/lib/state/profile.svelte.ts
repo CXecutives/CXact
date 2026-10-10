@@ -181,7 +181,7 @@ class ProfileEditor {
   origin = $state<DraftOrigin | null>(null);
   before = $state.raw<ProfileForm>(emptyForm());
   after = $state<ProfileForm>(emptyForm());
-  /** The day of "Verfügbar ab" as typed. */
+  /** The day of "Verfügbar" as typed. */
   dateText = $state('');
   /** The day is judged (said when it does not read): once its field is left with text in it
    *  or on saving, never while it is typed. */

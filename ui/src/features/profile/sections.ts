@@ -1,6 +1,5 @@
-// The Profil form as data: the fields of the page in five groups (Was du suchst, Wo und wann,
-// Was du mitbringst, Erfahrung, Was nicht passt; user decision 2026-10-04, "Native Gruppen"),
-// the same page in the setup. ProfileEditor renders these tables and nothing else, so adding,
+// The Profil form as data: the fields of the page in four groups (Wunschjob, Einsatz,
+// Qualifikation, Ausschlüsse; design round 6, "Luftige Gruppen"), the same page in the setup. ProfileEditor renders these tables and nothing else, so adding,
 // moving or removing a field is one entry here (docs/CHANGING.md "Add a profile field"). A
 // field names the value of the form it edits, its control, its words by their key in the
 // catalog (`t.profile.field`) and, at the few places docs/PLAN.md names, its info symbol
@@ -64,14 +63,12 @@ export type Control =
   | { kind: 'industries' }
   | { kind: 'languages' };
 
-/** A row of a group: one field. */
-export type Row = Control;
-
 export type SectionId = keyof Catalog['profile']['section'];
 
 export interface Section {
   id: SectionId;
-  rows: readonly Row[];
+  /** Its fields, one under the other. */
+  rows: readonly Control[];
 }
 
 const chips = (
@@ -90,7 +87,7 @@ const chips = (
 
 export const SECTIONS: readonly Section[] = [
   {
-    id: 'search',
+    id: 'job',
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
@@ -121,7 +118,7 @@ export const SECTIONS: readonly Section[] = [
     ],
   },
   {
-    id: 'where',
+    id: 'work',
     rows: [
       { kind: 'choice', key: 'workMode', label: 'workMode', testid: 'profile-work-mode' },
       { kind: 'countries', info: 'countries' },
@@ -136,11 +133,6 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       { kind: 'competences', info: 'competences' },
       chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
-    ],
-  },
-  {
-    id: 'experience',
-    rows: [
       {
         kind: 'number',
         key: 'years',

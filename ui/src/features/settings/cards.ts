@@ -1,4 +1,4 @@
-// Einstellungen as data: one page of sections in their order ("Native Gruppen"), each with its
+// Einstellungen as data: one page of groups in their order ("Luftige Gruppen"), each with its
 // heading and its block or its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
@@ -7,8 +7,8 @@
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
 // answer; every text button of a row is the same outlined button with the glyph of its
 // meaning, whether it opens something or runs a command, and the ones that lose something
-// for good are red (`warns`: Alle Daten zurücksetzen, like Entfernen of the mailbox); a
-// locked button says why (`locked`).
+// for good are red (`warns`: Zurücksetzen, like Entfernen of the mailbox); a locked button
+// says why (`locked`).
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
@@ -85,8 +85,7 @@ export type Block = 'portals' | 'mailbox';
 
 export interface SectionSpec {
   id: string;
-  /** None: a group of its own under the one before (Alle Daten zurücksetzen). */
-  heading?: Text;
+  heading: Text;
   block?: Block;
   rows: readonly Row[];
 }
@@ -115,17 +114,11 @@ export const SECTIONS: readonly SectionSpec[] = [
         path: (_t, state) => state.settings.workspace,
         actions: ['folderChange', 'folderOpen'],
       },
-    ],
-  },
-  // The one action that deletes for good, alone in the last group; what it deletes is said
-  // in its dialog too.
-  {
-    id: 'reset',
-    rows: [
+      // The one action that deletes for good, last; what it deletes is said in its dialog too.
       {
         id: 'reset-all',
         tile: 'trash',
-        label: (t) => t.settings.resetAction,
+        label: (t) => t.settings.reset,
         hint: (t) => t.settings.resetHint,
         actions: ['reset'],
       },

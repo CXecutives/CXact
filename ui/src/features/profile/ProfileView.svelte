@@ -1,10 +1,11 @@
 <!--
-  Profil: one page without a title (the sidebar names the place; user 2026-10-04); "Aus
-  Lebenslauf ausfüllen" ends the first section's heading line (ProfileActions). A CV dropped
-  on the page (Tauri's drag and drop, never a path) is evaluated the same way, with a dashed
-  edge while it is over the page; it fills the profile at once.
-  The column (600): what went wrong with the CV or the last save, the rescore
-  a save started, and the three sections. While the form holds a change a dark bar floats at
+  Profil: one page without a title (the sidebar names the place; user 2026-10-04) in the
+  pages' frame (Page); "Aus Lebenslauf ausfüllen" ends the first group's heading line
+  (ProfileActions). A CV dropped on the page (Tauri's drag and drop, never a path) is
+  evaluated the same way, with a dashed edge while it is over the page; it fills the profile
+  at once.
+  The column: what went wrong with the CV or the last save, the rescore a save started, and
+  the four groups (ProfileEditor). While the form holds a change a dark bar floats at
   the foot (SaveBar): "Ungespeicherte Änderungen", Verwerfen and Speichern (the view's one
   primary). Without a profile the two ways in (ProfileStart); a file that no longer reads says
   so in the same place, with its folder at hand. A save is answered by a toast with what its
@@ -27,6 +28,7 @@
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
   import Notice from '$components/Notice.svelte';
+  import Page from '$components/Page.svelte';
   import PageHeader from '$components/PageHeader.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
@@ -382,55 +384,58 @@
     </div>
   {/if}
 {:else}
-  <div class="page" class:over data-testid="profile">
-    {#if editor.origin === null && profile?.parseError}
-      <PageHeader
-        heading={t.profile.unreadable}
-        headingTestid="profile-heading"
-        column="page"
-        testid="profile-head"
+  {#snippet unreadable()}
+    <PageHeader
+      heading={t.profile.unreadable}
+      headingTestid="profile-heading"
+      column="page"
+      testid="profile-head"
+    />
+  {/snippet}
+  {#snippet bar()}
+    <SaveBar
+      dirty={editor.dirty}
+      {busy}
+      held={panel?.held() ?? false}
+      failure={saveNote?.() ?? null}
+      missing={markedNames}
+      onjump={(field) => void jump(field)}
+      onsave={() => void trySave()}
+      ondiscard={discard}
+    />
+  {/snippet}
+  <Page
+    testid="profile"
+    {over}
+    head={editor.origin === null && profile?.parseError ? unreadable : null}
+    foot={barShown && editor.origin !== null ? bar : null}
+  >
+    {#if editor.origin === null}
+      <ProfileStart
+        text={profile?.parseError
+          ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
+          : t.profile.noneText}
+        unreadable={(profile?.parseError ?? null) !== null}
+        note={note?.() ?? null}
+        onfilled={(info) => filled(info.form)}
+        onempty={() => void create()}
+        onopenfolder={openFolder}
       />
-    {/if}
-    <div class="body">
-      {#if editor.origin === null}
-        <ProfileStart
-          text={profile?.parseError
-            ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-            : t.profile.noneText}
-          unreadable={(profile?.parseError ?? null) !== null}
-          note={note?.() ?? null}
-          onfilled={(info) => filled(info.form)}
-          onempty={() => void create()}
-          onopenfolder={openFolder}
-        />
-      {:else}
-        {@render notes()}
-        {#snippet actions()}
-          <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
-        {/snippet}
-        <ProfileEditor
-          bind:this={panel}
-          {fieldError}
-          missing={marked}
-          {actions}
-          onsave={() => void trySave()}
-          ondiscard={discard}
-        />
-      {/if}
-    </div>
-    {#if barShown && editor.origin !== null}
-      <SaveBar
-        dirty={editor.dirty}
-        {busy}
-        held={panel?.held() ?? false}
-        failure={saveNote?.() ?? null}
-        missing={markedNames}
-        onjump={(field) => void jump(field)}
+    {:else}
+      {@render notes()}
+      {#snippet actions()}
+        <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
+      {/snippet}
+      <ProfileEditor
+        bind:this={panel}
+        {fieldError}
+        missing={marked}
+        {actions}
         onsave={() => void trySave()}
         ondiscard={discard}
       />
     {/if}
-  </div>
+  </Page>
 {/if}
 
 <!-- The heading says it all: the dialog does not repeat it. -->
@@ -447,42 +452,6 @@
 />
 
 <style>
-  /* At least as high as the view, so the floating bar stands at its foot under a short page. */
-  .page {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    background-color: var(--layout-page);
-  }
-
-  /* The column under the head: 600 wide, centred, the room of the page's end below. */
-  .body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-    width: 100%;
-    max-width: calc(var(--page-width) + 2 * var(--pane-padding));
-    margin: 0 auto;
-    padding: var(--page-top) var(--pane-padding) var(--page-end);
-  }
-
-  /* Under the heading of a file that no longer reads. */
-  .page:has(> :global(header)) .body {
-    padding-top: var(--space-8);
-  }
-
-  /* With the floating bar, the bar ends the page: its own room replaces the page's end. */
-  .page:has(> :global([data-testid='profile-save-bar'])) .body {
-    padding-bottom: 0;
-  }
-
-  /* A CV over the page: a dashed edge inside the view. */
-  .page.over {
-    border-radius: var(--radius-lg);
-    outline: var(--drop-edge) dashed var(--border-strong);
-    outline-offset: calc(-1 * var(--space-8));
-  }
-
   .setup {
     display: flex;
     flex-direction: column;

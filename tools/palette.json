@@ -126,8 +126,6 @@
     "grip-drag":              { "css": "hsl(30 4% 41%)", "rgb": [109, 105, 100] },
     "layout-page":            { "css": "hsl(30 22% 96.5%)", "rgb": [248, 246, 244] },
     "layout-group":           { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
-    "layout-group-edge":      { "css": "hsl(30 14% 88%)", "rgb": [229, 224, 220] },
-    "layout-heading-color":   { "css": "hsl(30 5% 33%)", "rgb": [88, 84, 80] },
-    "layout-row-rule":        { "css": "hsl(30 14% 88%)", "rgb": [229, 224, 220] }
+    "layout-group-edge":      { "css": "hsl(30 14% 88%)", "rgb": [229, 224, 220] }
   }
 }

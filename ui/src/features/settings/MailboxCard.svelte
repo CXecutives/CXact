@@ -8,8 +8,8 @@
   The state is the answer to a saved mailbox ("Verbunden" after a green dot, no note, no
   toast). It says "Nicht erreichbar" or "Abgelehnt" after a red one only for a mail error of
   a fetch that finished after Gmail last accepted the mailbox (`mailbox.checkedAt`), with a
-  sentence at the end of the card where it adds the next step; a sentence unfolds, so the
-  card below glides. A run and the dry run lock the mailbox with their reason. A
+  sentence at the end of its box where it adds the next step; a sentence unfolds, so the
+  groups below glide. A run and the dry run lock the mailbox with their reason. A
   dialog whose action fails stays open and says why inside; its button tries again.
 -->
 <script lang="ts">
@@ -114,30 +114,28 @@
     dot={mailFailure === null ? 'success' : 'danger'}
     testid="mailbox"
   >
-    <div class="buttons">
-      <Button
-        variant="secondary"
-        icon="edit"
-        label={t.common.change}
-        disabled={locked !== null}
-        disabledReason={locked}
-        testid="mailbox-change"
-        onclick={openForm}
-      />
-      <Button
-        variant="secondary"
-        icon="trash"
-        label={t.common.remove}
-        disabled={locked !== null}
-        disabledReason={locked}
-        warns
-        testid="mailbox-remove"
-        onclick={() => {
-          removeError = null;
-          confirmRemove = true;
-        }}
-      />
-    </div>
+    <Button
+      variant="secondary"
+      icon="edit"
+      label={t.common.change}
+      disabled={locked !== null}
+      disabledReason={locked}
+      testid="mailbox-change"
+      onclick={openForm}
+    />
+    <Button
+      variant="secondary"
+      icon="trash"
+      label={t.common.remove}
+      disabled={locked !== null}
+      disabledReason={locked}
+      warns
+      testid="mailbox-remove"
+      onclick={() => {
+        removeError = null;
+        confirmRemove = true;
+      }}
+    />
   </SettingRow>
 {:else}
   <SettingRow
@@ -205,16 +203,8 @@
 />
 
 <style>
-  /* The buttons of a row end on its trailing edge, 8 apart, one size (24). */
-  .buttons {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-8);
-  }
-
-  /* A sentence of the card unfolds with the card's inset of what is not a row as its own
-     padding (a margin would jump at once; `.slot` has no box, so Card's margin passes it). */
+  /* A sentence of the box unfolds with its own padding (a margin would jump at once; `.slot`
+     has no box). */
   .slot {
     display: contents;
   }

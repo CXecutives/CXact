@@ -1,9 +1,9 @@
 <!--
   "Häufig verlangt" under a field of the profile (user, 2026-09-29): the terms the jobs of the
   last 30 days ask for most that the profile does not name (`asked_terms`: "Anaplan" of
-  "Kenntnisse in Anaplan"), each under the field it belongs to (Kompetenzen, Werkzeuge und
-  Methoden, Branchen, Sprachen, Zertifikate, Abschlüsse), as a quiet row of small buttons:
-  the term and how many jobs ask for it. A click puts the term into this field of the form,
+  "Kenntnisse in Anaplan"), each under the field it belongs to (Kompetenzen, Tools und
+  Methoden, Branchen, Sprachen, Zertifikate, Abschlüsse), as a row of quiet suggestion chips
+  (Button `suggest`, the look of the quick picks): the term and how many jobs ask for it. A click puts the term into this field of the form,
   an unsaved change like any other (Speichern comes); its button goes, and so does a term
   the form names already in any field. The row shows only while it has a term, unfolds when
   it comes and folds away when it goes. The terms are asked once for all the fields, after
@@ -128,7 +128,7 @@
           out:fade={{ on: motion.ready }}
         >
           <Button
-            variant="secondary"
+            variant="suggest"
             icon="add"
             label={term.term}
             count={term.count}
@@ -153,7 +153,7 @@
     flex: none;
     color: var(--text-subtle);
     font: var(--type-sm);
-    line-height: var(--control-field);
+    line-height: var(--control-sm);
   }
 
   .terms {

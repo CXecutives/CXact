@@ -1,15 +1,15 @@
 <!--
-  Label above the control (the app's text in medium, 5 apart), hint (or the error in its place)
-  and the hint's way on, which stays while an error shows: it is what helps most then. The
-  way on is a navy link (it underlines on hover) whose text lines up with the edges of the
-  field, and it always ends the helper line: the message beside it shrinks and wraps, so it
-  stands in the same place in a half-width field as in a full-width one. The message's id is
-  shared with the control inside (its `aria-describedby`) only while a message shows.
+  One field, one layout (design round 6): the label (the app's text in medium, ink) above the
+  control, 6 apart (--label-gap), then the hint (or the error in its place) and the hint's
+  way on under the control on the same left edge; the way on stays while an error shows: it
+  is what helps most then. The way on is a navy link (it underlines on hover) whose text
+  lines up with the edges of the field, and it always ends the helper line: the message
+  beside it shrinks and wraps. The message's id is shared with the control inside (its
+  `aria-describedby`) only while a message shows.
   Beside the label an info symbol (`info`, InfoTip: only where docs/PLAN.md places one, and
   never with a hint). Without `for` the field holds a group of controls (rows, choices) that
-  its label names. `single` marks a control of one value (a number, a choice, a day): it
-  stands at the right of its label (the pages' groups, user decision 2026-10-04), a list
-  stays under its label.
+  its label names. The control keeps its own width: a list fills the field, a number or a
+  day is --number-width, a choice of a few as wide as its options.
 -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
@@ -29,8 +29,6 @@
     /** A way on that belongs to the hint (opens a page), at the end of the helper line. */
     action?: { label: string; icon?: IconName; testid?: string; onclick: () => void } | null;
     error?: string | null;
-    /** A control of one value (number, choice, day), not a list. */
-    single?: boolean;
     children: Snippet;
   }
 
@@ -41,7 +39,6 @@
     info = null,
     action = null,
     error = null,
-    single = false,
     children,
   }: Props = $props();
 
@@ -52,7 +49,6 @@
 
 <div
   class="field"
-  class:single
   role={target === null ? 'group' : undefined}
   aria-labelledby={target === null ? `${own}-label` : undefined}
 >
@@ -91,17 +87,12 @@
 </div>
 
 <style>
-  /* The label above the control; a single value at the right of its label. */
+  /* The label, the control and the help one under the other on one left edge. */
   .field {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--label-gap) var(--layout-column-gap);
-    align-items: start;
+    display: flex;
+    flex-direction: column;
+    gap: var(--label-gap);
     min-width: 0;
-  }
-
-  .field.single {
-    grid-template-columns: var(--layout-field-columns);
   }
 
   .top {
@@ -111,24 +102,12 @@
     min-width: 0;
   }
 
-  .single .top {
-    min-height: var(--layout-label-height);
-  }
-
-  .single .label {
-    align-self: center;
-  }
-
   /* The control and what belongs under it ("Häufig verlangt"), one under the other. */
   .control {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
     min-width: 0;
-  }
-
-  .single .control {
-    justify-self: end;
   }
 
   /* As wide as its text: a click beside the label is a click beside the field, and that ends
@@ -150,7 +129,6 @@
   }
 
   .help {
-    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;

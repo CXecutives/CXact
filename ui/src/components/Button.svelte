@@ -1,13 +1,12 @@
 <!--
-  The button of the app: primary | secondary | ghost | danger | link. Native
+  The button of the app: primary | secondary | ghost | danger | link | suggest. Native
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
   (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
   - One height for every button, 28 px (design round 6, core/tests/ui_contract.rs): in rows,
     tools, the top bar, dialogs and empty states alike; the app's text in medium (a primary's
-    in semibold), every glyph 15 px. Only a button inside a field (`inField`) is a notch
-    lower, a part of the field. A text button carries the glyph of its meaning
-    (lib/icons.ts).
+    in semibold), every glyph 15 px. Only a button in a field (`inField`) and a suggestion are
+    a notch lower. A text button carries the glyph of its meaning (lib/icons.ts).
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
     (the x that removes a row) goes without the tooltip (`plain`). A button with its words
@@ -23,6 +22,7 @@
     glyph stands half a turn (180 ms).
   - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
     filter narrows it; the chips say what). link: navy text that underlines on hover.
+    suggest: a quiet chip under a Profil field ("Häufig verlangt", the quick picks).
   - inText: a link inside a sentence (the upload's "auswählen"), in the sentence's type.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
@@ -33,12 +33,11 @@
     its glyph red at rest like every delete of the app, on a red wash under the pointer.
   - count: a quiet number after the label (how many lie there), like the place tabs.
   - hoverIcon: the glyph that says what a click does, in the place of the glyph at rest under
-    the pointer and the keyboard focus (the top bar's panels: panel-left, and
-    panel-left-close while the sidebar is shown).
+    the pointer and the keyboard focus (the top bar's panels: panel-left, and its -close).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
-  export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
+  export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link' | 'suggest';
 </script>
 
 <script lang="ts">
@@ -175,7 +174,7 @@
   <span class="content">
     {#if icon}
       <span class="glyph" data-icon={icon} bind:this={glyph}>
-        <Icon name={icon} size="sm" filled={pressed === true} />
+        <Icon name={icon} size={variant === 'suggest' ? 'xs' : 'sm'} filled={pressed === true} />
         {#if hoverIcon}<span class="swap" data-hover-icon={hoverIcon}
             ><Icon name={hoverIcon} size="sm" /></span
           >{/if}
@@ -409,6 +408,24 @@
     --btn-shadow: var(--sh-primary);
   }
 
+  /* A suggestion: a quiet chip on the track's fill, small words, ink under the pointer. */
+  .suggest {
+    --btn-bg: var(--surface-track);
+    --btn-bg-hover: var(--btn-bg);
+    --btn-bg-active: var(--btn-bg);
+    --btn-border: var(--btn-bg);
+    --btn-border-hover: var(--btn-bg);
+    --btn-border-active: var(--btn-bg);
+    --btn-fg: var(--text-muted);
+    --btn-fg-hover: var(--text);
+    --btn-shadow: none;
+    --btn-pad: var(--space-8);
+    --btn-gap: var(--space-4);
+    --btn-type: var(--type-sm);
+
+    font-weight: var(--weight-medium);
+  }
+
   /* Navy text, no box; it underlines on hover and dims while pressed (it is text). */
   .btn.link {
     --btn-bg: transparent;
@@ -453,13 +470,14 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* One height, one type: 28 px; inside a field a notch lower, within its frame. */
+  /* One height, one type: 28 px; in a field (and a suggestion) a notch lower. */
   .btn {
     --btn-height: var(--control-field);
   }
 
   .in-field,
-  .link {
+  .link,
+  .suggest {
     --btn-height: var(--control-sm);
   }
 

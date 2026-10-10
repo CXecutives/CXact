@@ -84,7 +84,7 @@ for (const [place, tab] of [
   });
 }
 
-test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused, and leads back to the job', async ({
+test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused; Zurück leads back to the job', async ({
   page,
 }) => {
   const title = 'SAP S/4HANA Finance Projektleitung';
@@ -96,19 +96,14 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
   await expect(page.getByTestId('portal-freelance')).toBeInViewport();
-  // The way back stands beside the tabs (scrolled away with them while the row is in view).
-  const back = page.getByTestId('back-to-job');
-  await expect(back).toHaveText('Zurück zum Job');
-  await back.click();
+  // No way back of its own: the top bar's Zurück shows the job again.
+  await expect(page.getByTestId('back-to-job')).toHaveCount(0);
+  await page.getByTestId('history-back').click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
-  // The job's row has the focus: the keys go on from the job, not from the top of the page.
-  const row = page.getByTestId('job-list').getByTestId('job-row-freelance-900411');
-  await expect(row).toBeFocused();
   // Read once: Einstellungen from the sidebar is the plain page again.
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await expect(page.getByTestId('portal-freelance')).toBeVisible();
-  await expect(page.getByTestId('back-to-job')).toHaveCount(0);
   await expect(page.getByTestId('sign-in-freelance')).not.toBeFocused();
 });

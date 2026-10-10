@@ -246,7 +246,7 @@ test('with the focus nowhere the arrows, Home and End scroll Profil too', async 
   await page.getByTestId('nav-profile').click();
   const view = page.getByTestId('view-profile');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
-  await page.locator('#profile-section-search-heading').click();
+  await page.locator('#profile-section-job-heading').click();
   await page.keyboard.press('ArrowDown');
   await expect.poll(top).toBe(40);
   await page.keyboard.press('End');

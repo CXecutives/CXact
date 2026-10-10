@@ -1,8 +1,9 @@
 <!--
   A small calendar inside a day field at its right end, like a native date picker
-  (TextField's `trailing`; Verfügbar ab): its button (a small ghost one, a Tab stop of its own)
-  opens a month under the field, its right edge on the field's, the week from Monday, the
-  month's name from the catalog. The chosen day is filled, today has a ring. The keys move
+  (TextField's `trailing`; Verfügbar): its button (a part of the field like the picker's of a
+  native date field, `inField`: a notch lower, no Tab stop of its own; typing is the
+  keyboard's way to a day) opens a month under the field, its right edge on the field's, the
+  week from Monday, the month's name from the catalog. The chosen day is filled, today has a ring. The keys move
   like a native date picker (input.ts gridKeys): the arrows a day or a week, Home and End the
   week's ends, PageUp and PageDown a month; Enter or Space and a click take the day, Esc
   closes and gives the focus back to the button; leaving it closes it. The month's buttons
@@ -158,6 +159,7 @@
       iconOnly
       icon="pickDay"
       label={t.calendar.open}
+      inField
       expanded={open}
       {testid}
       onclick={() => void toggle()}
@@ -240,13 +242,13 @@
     display: inline-flex;
   }
 
-  /* Under the field, over what follows, like a menu: the small button sits 2 px inside the
-     field's bottom edge and 4 px and the border inside its right edge. */
+  /* Under the field, over what follows, like a menu: the small button sits 2 px and the
+     border inside the field's bottom and right edges. */
   .popover {
     position: absolute;
     z-index: var(--z-overlay);
-    top: calc(100% + var(--space-2) + var(--menu-gap));
-    right: calc(-1 * (var(--space-4) + var(--border-width)));
+    top: calc(100% + var(--space-2) + var(--border-width) + var(--menu-gap));
+    right: calc(-1 * (var(--space-2) + var(--border-width)));
     display: flex;
     flex-direction: column;
     gap: var(--space-4);

@@ -1,27 +1,29 @@
 <!--
-  Einstellungen: one page without a title (the sidebar names the place; user 2026-10-04), in
-  the column of the pages (600), in white rounded groups on the cream page ("Native
-  Gruppen"), the sections of cards.ts, each with its heading, its rows between hairlines: Jobportale (all ten portals in one list,
-  PortalRow: the eight the app searches, then LinkedIn and freelance.de), Postfach
-  (MailboxCard) and Daten (the profile's folder and the reset, each one sentence and its
-  button). Every text button of a Daten row is the same outlined button with its glyph; every
-  row ends on the column's edge. This file only renders the list and runs its commands; what
-  a row is, says and does is one entry in cards.ts.
+  Einstellungen: one page without a title (the sidebar names the place; user 2026-10-04) in
+  the pages' frame (Page), its groups (Section) in the order of cards.ts, each with its heading
+  and its white box: Jobportale (all ten portals in two boxes under their captions, the eight
+  the app searches, then LinkedIn and freelance.de; PortalRow), Postfach (MailboxCard) and
+  Daten (the profile's folder and "Alles zurücksetzen", each one sentence and its buttons).
+  Every row is a SettingRow with a hairline between rows; every text button of a row is the
+  same outlined button with its glyph, and every row ends on the column's edge. This file
+  only renders the list and runs its commands; what a row is, says and does is one entry in
+  cards.ts.
 
   A switch moves at once (the state is patched before the save) and is its own answer.
-  Errors stay a note at the end of their section, which unfolds (the sections below glide
-  down instead of jumping). Only "Alle Daten zurücksetzen" and "Entfernen" of the mailbox ask
-  first; a dialog whose action fails stays open and says why inside. The dry run changes
-  nothing, and a run holds the mailbox and the reset, locked with the reason of that run
-  instead of failing. Opened from a job for one portal ("Anmeldung einrichten") the page
-  glides to the portal's row, focuses its sign-in and offers "Zurück zum Job" in a head above it.
+  Errors stay a note at the end of their group, which unfolds (the groups below glide down
+  instead of jumping). Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog
+  whose action fails stays open and says why inside. The dry run changes nothing, and a run
+  holds the mailbox and the reset, locked with the reason of that run instead of failing.
+  Opened from a job for one portal ("Anmeldung einrichten") the page glides to the portal's
+  row and focuses its sign-in; the top bar's Zurück leads back to the job.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
-  import PageHeader from '$components/PageHeader.svelte';
+  import Group from '$components/Group.svelte';
+  import Page from '$components/Page.svelte';
   import Section from '$components/Section.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
@@ -33,7 +35,6 @@
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
-  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -135,29 +136,14 @@
 
   /**
    * Einstellungen opened for one portal from a job (the reader's "Anmeldung einrichten",
-   * `navigation.focusPortal`, read once and set back): its row glides into view, its sign-in
-   * button (else its switch) takes the focus, and a link leads back to the job, which stays
-   * open in Jobs.
+   * `navigation.focusPortal`, read once and set back): its row glides into view and its
+   * sign-in button (else its switch) takes the focus.
    */
   let root = $state<HTMLElement | null>(null);
-  let fromJob = $state(false);
-  const backToJob = $derived(fromJob && jobs.selected !== null);
-
-  /** Back to the job: the way is spent (a quick return may find this page still fading out,
-   *  and it opens as the plain page). The job's row takes the focus once the list is back,
-   *  as when the reader closes, so the keys go on from the job. */
-  function goBackToJob(): void {
-    const open = jobs.selected;
-    fromJob = false;
-    navigation.go('jobs', false, () => {
-      if (open !== null) void tick().then(() => jobs.reach(open, true));
-    });
-  }
   $effect(() => {
     const portal = navigation.focusPortal;
     if (portal === null || root === null || cfg === null) return;
     navigation.focusPortal = null;
-    fromJob = jobs.selected !== null;
     const scope = root;
     void tick().then(() => {
       const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
@@ -215,59 +201,48 @@
   </div>
 {/snippet}
 
-<div class="page" data-testid="settings" bind:this={root}>
-  {#if backToJob}
-    <PageHeader column="page" testid="settings-head">
-      {#snippet actions()}
-        <Button
-          variant="ghost"
-          icon="back"
-          label={t.settings.backToJob}
-          testid="back-to-job"
-          onclick={goBackToJob}
-        />
-      {/snippet}
-    </PageHeader>
-  {/if}
-  <div class="body">
-    {#if cfg === null}
-      {#if app.slow}
-        <div class="skeleton">
-          <Skeleton width={40} /><Skeleton /><Skeleton width={70} />
-        </div>
-      {/if}
-    {:else}
-      {#if cfg.dryRun}
-        <Notice tone="info" text={t.settings.dryRun} />
-      {/if}
+<Page testid="settings" bind:element={root}>
+  {#if cfg === null}
+    {#if app.slow}
+      <div class="skeleton">
+        <Skeleton width={40} /><Skeleton /><Skeleton width={70} />
+      </div>
+    {/if}
+  {:else}
+    {#if cfg.dryRun}
+      <Notice tone="info" text={t.settings.dryRun} />
+    {/if}
+    <div class="groups">
       {#each SECTIONS as section (section.id)}
         {@const feedback = notes[section.id] ?? null}
         <Section
           id="settings-{section.id}"
           name={section.id}
-          heading={section.heading?.(t, cfg) ?? null}
-          plain={section.block === 'portals'}
+          heading={section.heading(t, cfg)}
           testid="settings-{section.id}"
         >
           {#if section.block === 'portals'}
             {#each WAYS as way (way)}
-              <h3 class="group" data-testid="portals-{way}">{t.settings.way[way]}</h3>
-              <div class="surface">
+              <Group caption={t.settings.way[way]} captionTestid="portals-{way}">
                 {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
                   <PortalRow {portal} />
                 {/each}
-              </div>
+              </Group>
             {/each}
-          {:else if section.block === 'mailbox'}
-            <MailboxCard {cfg} locked={mailboxLocked} />
+          {:else}
+            <Group>
+              {#if section.block === 'mailbox'}
+                <MailboxCard {cfg} locked={mailboxLocked} />
+              {/if}
+              {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
+              {#if feedback}{@render noteOf(section.id, feedback)}{/if}
+            </Group>
           {/if}
-          {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
-          {#if feedback}{@render noteOf(section.id, feedback)}{/if}
         </Section>
       {/each}
-    {/if}
-  </div>
-</div>
+    </div>
+  {/if}
+</Page>
 
 <Dialog
   bind:open={confirmReset}
@@ -282,53 +257,10 @@
 />
 
 <style>
-  .page {
-    min-height: 100%;
-    background-color: var(--layout-page);
-  }
-
-  /* The column under the head: 600 wide, centred; a section's hairline as far from what
-     ends the section before as from its own heading. */
-  .body {
-    container-type: inline-size;
+  .groups {
     display: flex;
     flex-direction: column;
     gap: var(--layout-section-gap);
-    max-width: calc(var(--page-width) + 2 * var(--pane-padding));
-    margin: 0 auto;
-    padding: var(--page-top) var(--pane-padding) var(--page-end);
-  }
-
-  .page:has(> :global(header)) .body {
-    padding-top: var(--space-8);
-  }
-
-  /* A group of portals: a small heading over its rows. */
-  .group {
-    padding: var(--space-12) var(--layout-heading-inset) calc(var(--layout-group-pad) / 2);
-    color: var(--text-muted);
-    font: var(--type-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  .group:first-child {
-    padding-top: 0;
-  }
-
-  /* The group of portals in the page's layout (the same as a section's, Section). */
-  .surface {
-    --row-inset: var(--layout-group-pad);
-
-    display: flex;
-    flex-direction: column;
-    padding: var(--layout-group-pad-block) var(--layout-group-pad);
-    border-radius: var(--layout-group-radius);
-    background-color: var(--layout-group);
-    box-shadow: inset 0 0 0 var(--border-width) var(--layout-group-edge);
-  }
-
-  .surface + .group {
-    padding-top: var(--space-16);
   }
 
   .fold {

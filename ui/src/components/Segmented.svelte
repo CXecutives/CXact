@@ -4,7 +4,7 @@
   like the sidebar's pill (180 ms, emphasized; the first placement, a change of size and
   reduced motion never slide), always exactly the option's box whatever the labels, counts or
   window width. Every small single choice takes it: the places above the list (Aktuell,
-  Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar ab, Auslastung and
+  Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar, Auslastung and
   Mindestlaufzeit.
   The role decides the widths: a choice (a radiogroup) gives every option the room of the
   widest, so the thumb is one size whichever is chosen; the places (tabs) keep each option as

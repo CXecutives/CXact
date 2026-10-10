@@ -634,7 +634,7 @@ const warning = {
   noCompetences: 'Das Profil nennt keine Kompetenzen.',
   fewCompetences: 'Das Profil nennt nur wenige Kompetenzen.',
   noCriteria: 'Das Profil setzt keine Bedingungen.',
-  availabilityNotUnderstood: '„Verfügbar ab“ ist nicht lesbar.',
+  availabilityNotUnderstood: '„Verfügbar“ ist nicht lesbar.',
   // Keys of a criteria section the engine does not read (a typo, an unknown rule).
   ignoredKeys: (p) => `Die App liest ${joined(rawKeys(p.keys))} in den Bedingungen nicht.`,
   criterionNotUnderstood: (p) => `„${keyLabel(str(p.key))}“ ist nicht lesbar.`,
@@ -945,7 +945,7 @@ export const de = {
     /** A must requirement the profile lacks: its term goes into the field it belongs to. */
     addTo: {
       competence: (term: string) => `${term} zu den Kompetenzen hinzufügen`,
-      tool: (term: string) => `${term} zu den Werkzeugen hinzufügen`,
+      tool: (term: string) => `${term} zu den Tools hinzufügen`,
       industry: (term: string) => `${term} zu den Branchen hinzufügen`,
       language: (term: string) => `${term} zu den Sprachen hinzufügen`,
       certificate: (term: string) => `${term} zu den Zertifikaten hinzufügen`,
@@ -1130,13 +1130,12 @@ export const de = {
     /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
      *  does not name, each with its number of jobs (a click puts it into that field). */
     asked: 'Häufig verlangt',
-    /** The five groups of the page. */
+    /** The four groups of the page. */
     section: {
-      search: 'Was du suchst',
-      where: 'Wo und wann',
-      skills: 'Was du mitbringst',
-      experience: 'Erfahrung',
-      exclusions: 'Was nicht passt',
+      job: 'Wunschjob',
+      work: 'Einsatz',
+      skills: 'Qualifikation',
+      exclusions: 'Ausschlüsse',
     },
     field: {
       roles: 'Wunschrollen',
@@ -1146,9 +1145,9 @@ export const de = {
       /** The contract types, a choice of several; one at least stays. */
       contracts: 'Vertragsart',
       keepOneContract: 'Mindestens eine Vertragsart',
-      /** The day rate's two fields, side by side. */
-      dayRateWish: 'Tagessatz Wunsch',
-      dayRateMin: 'Tagessatz Minimum',
+      /** The day rate's two fields. */
+      dayRateWish: 'Wunschtagessatz',
+      dayRateMin: 'Mindesttagessatz',
       minSalary: 'Mindestgehalt',
       workMode: 'Arbeitsmodell',
       countries: 'Länder',
@@ -1160,7 +1159,7 @@ export const de = {
       regions: 'Regionen',
       regionsPlaceholder: 'z. B. Hamburg',
       regionsMore: '+ Region',
-      available: 'Verfügbar ab',
+      available: 'Verfügbar',
       date: 'Datum',
       datePlaceholder: '01.11.2026',
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
@@ -1410,11 +1409,11 @@ export const de = {
   },
   settings: {
     title: 'Einstellungen',
-    /** The three sections of the page. */
+    /** The three groups of the page. */
     portals: 'Jobportale',
     mailbox: 'Postfach',
     data: 'Daten',
-    /** How CXact uses a portal: the two groups of the list. */
+    /** How CXact uses a portal: the captions of the two boxes of Jobportale. */
     way: {
       search: 'Suche und Alert-Mails',
       alert: 'Nur Alert-Mails',
@@ -1433,8 +1432,6 @@ export const de = {
       value === 0
         ? 'Zuletzt keine neuen Jobs'
         : `Zuletzt ${count(value, 'neuer Job', 'neue Jobs')}`,
-    /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
-    backToJob: 'Zurück zum Job',
     connected: 'Verbunden',
     /** The row of the mailbox while none is connected. */
     notConnected: 'Kein Postfach',
@@ -1484,9 +1481,11 @@ export const de = {
     backupRestored: 'Sicherung wiederhergestellt',
     /** Its undo brought the state before it back. */
     backupUndone: 'Der vorherige Stand ist zurück.',
-    /** The row of the reset: its one sentence, its button and its dialog. */
+    /** The row of the reset in Daten: its label, its one sentence, its button (also the
+     *  dialog's) and its dialog. */
+    reset: 'Alles zurücksetzen',
     resetHint: 'Löscht Jobs, Profil, Postfach und Anmeldungen.',
-    resetAction: 'Alles zurücksetzen',
+    resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText:
       'Löscht Jobs, Profil, Postfach und Anmeldungen. CXact startet mit der Einrichtung neu.',
@@ -1533,7 +1532,7 @@ export const de = {
     closeText: 'Die Suche läuft noch.',
     closeAction: 'Schließen',
   },
-  /** The calendar beside a day field (Verfügbar ab): the week starts on Monday. */
+  /** The calendar beside a day field (Verfügbar): the week starts on Monday. */
   calendar: {
     open: 'Kalender öffnen',
     previous: 'Vorheriger Monat',

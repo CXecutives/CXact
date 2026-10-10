@@ -1,102 +1,79 @@
 <!--
-  A section of a page (Profil, Einstellungen): its heading alone on its line, the page's
-  actions at its end where the page puts them there (Profil's "Aus Lebenslauf ausfüllen" on
-  the first one), then its content in a white rounded group on the cream page, like the
-  settings of macOS and Windows; the heading small and muted above it ("Native Gruppen", user
-  decision 2026-10-04). `plain` leaves the group out (a section of several groups draws its own, Jobportale). Its
-  rows bring their own padding and hairlines (SettingRow, PortalRow), its fields their own
-  gaps (the Profil's).
+  A group of a page (Profil, Einstellungen; "Luftige Gruppen", design round 6): its heading
+  in navy (--type-heading) flush with the left edge of its box, 8 above it
+  (--layout-heading-gap), then its content: one white box (Group), or several, each under its
+  own caption and 16 apart (Jobportale). The heading's line holds only the heading, and the
+  page's action where the page puts one there (Profil's "Aus Lebenslauf ausfüllen" on its
+  first group): it hangs out of the line above and below, so every heading's line is as high
+  as its text and the gap to the box stays 8. Groups are --layout-section-gap apart (the
+  page's list of them).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
   interface Props {
-    /** None: a group without a heading (under the one before). */
-    heading?: string | null;
+    heading: string;
     /** The id of the section (its heading's is `{id}-heading`). */
     id: string;
     /** Its name in the page's table (`data-section`). */
     name: string;
-    /** The page's actions at the end of the heading's line. */
+    /** The page's action at the end of the heading's line. */
     actions?: Snippet | null;
-    /** No group around the content (the section draws its own groups). */
-    plain?: boolean;
     testid?: string | null;
+    /** Its box or boxes (Group). */
     children: Snippet;
   }
 
-  let {
-    heading = null,
-    id,
-    name,
-    actions = null,
-    plain = false,
-    testid = null,
-    children,
-  }: Props = $props();
+  let { heading, id, name, actions = null, testid = null, children }: Props = $props();
 </script>
 
 <section
   class="section"
   {id}
-  aria-labelledby={heading !== null ? `${id}-heading` : undefined}
+  aria-labelledby="{id}-heading"
   data-section={name}
   data-testid={testid ?? undefined}
 >
-  {#if heading !== null || actions}
-    <div class="head">
-      {#if heading !== null}<h2 class="heading" id="{id}-heading">{heading}</h2>{/if}
-      {#if actions}<div class="actions">{@render actions()}</div>{/if}
-    </div>
-  {/if}
-  <div class="body" class:plain>{@render children()}</div>
+  <div class="head">
+    <h2 class="heading" id="{id}-heading">{heading}</h2>
+    {#if actions}<div class="actions">{@render actions()}</div>{/if}
+  </div>
+  <div class="groups">{@render children()}</div>
 </section>
 
 <style>
   .section {
     display: flex;
     flex-direction: column;
-    gap: var(--section-head-gap);
+    gap: var(--layout-heading-gap);
+    min-width: 0;
   }
 
   .head {
     display: flex;
     align-items: center;
     gap: var(--space-4);
-    min-height: var(--control-field);
-    padding-inline: var(--layout-heading-inset);
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-  }
-
-  /* The rows one under the other (each brings its padding and hairline), in the group; rows bleed to the group's edges (--row-inset). */
-  .body {
-    --row-inset: var(--layout-group-pad);
-
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding: var(--layout-group-pad-block) var(--layout-group-pad);
-    border-radius: var(--layout-group-radius);
-    background-color: var(--layout-group);
-    box-shadow: inset 0 0 0 var(--border-width) var(--layout-group-edge);
-  }
-
-  .body.plain {
-    --row-inset: 0;
-
-    padding: 0;
-    background-color: transparent;
-    box-shadow: none;
   }
 
   .heading {
-    color: var(--layout-heading-color);
-    font: var(--layout-heading-font);
+    color: var(--text-heading);
+    font: var(--type-heading);
     letter-spacing: var(--tracking-tight);
+  }
+
+  /* A control is higher than the heading's text: it hangs out evenly above and below. */
+  .actions {
+    display: flex;
+    align-items: center;
+    height: var(--leading-heading);
+    margin-left: auto;
+  }
+
+  /* Several boxes of one group, each under its caption. */
+  .groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-width: 0;
   }
 </style>

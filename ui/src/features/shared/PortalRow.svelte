@@ -1,18 +1,19 @@
 <!--
-  One portal in the list of Einstellungen > Jobportale (and the setup's Alert-Mails), the same
-  airy row for each (design B): its tile (the navy tint, its two capitals), its name, under it
+  One portal in the list of Einstellungen > Jobportale (and the setup's Alert-Mails), a
+  SettingRow like every row: its tile (the navy tint, its two capitals), its name, under it
   one quiet line of its state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen", or "Braucht ein Postfach" in the warning's ink without one, its switch dimmed;
-  "Pausiert bis …" while it rests), then the portal in the browser, its calls as quiet buttons where they
-  apply ("Anmelden" or "Abmelden" where the portal offers a sign-in, "Alert anlegen" for a
-  portal of alert mails: its page in the browser) and its switch (the name names the switch
-  but, like every text next to a switch, does not switch it); at the smallest window the
-  calls go to a line of their own at the row's end. A
-  problem of the portal is one quiet line under the calls (whether the user has to act, the
-  time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
-  jobs); it unfolds and folds away, so the rows below glide. A portal that is on and sent no
-  alert mail for a week before the last fetch says so in one quiet line ("Seit 9 Tagen keine
-  Alert-Mail"; its alert may have run out) with "Alert prüfen", its page in the browser.
+  "Pausiert bis …" while it rests), then its calls where they apply, outlined like every text
+  button of a row ("Anmelden" or "Abmelden" where the portal offers a sign-in, "Alert anlegen"
+  for a portal of alert mails: its page in the browser), the portal in the browser (a quiet
+  icon) and its switch, always last (the name names the switch but, like every text next to a
+  switch, does not switch it); at the smallest window the calls go to a line of their own at
+  the row's end. A problem of the portal is one quiet line under its state (whether the user
+  has to act, the time and the reason where it has them, "Alert-Mail öffnen" when alert mails
+  came without jobs); it unfolds and folds away, so the rows below glide. A portal that is on
+  and sent no alert mail for a week before the last fetch says so in one quiet line ("Seit 9
+  Tagen keine Alert-Mail"; its alert may have run out) with "Alert prüfen", its page in the
+  browser.
   Signing in lets the fetch use the sign-in, signing out ends that. A stored sign-in that the
   fetch does not use looks like none while the portal is on, and "Anmelden" then only lets
   the fetch use it (no sign-in window); while the portal is off the row keeps "Abmelden"
@@ -24,6 +25,7 @@
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
+  import SettingRow from '$components/SettingRow.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
@@ -177,110 +179,64 @@
   }
 </script>
 
-<!-- A row of the card like a SettingRow (edge to edge, its own padding: `data-setting-row`
-     keeps the card's inset for other content off it). -->
-<div class="row" data-setting-row data-testid="portal-{portal.portal}">
-  <span class="lead"><IconTile tone="navy" monogram={PORTAL_MARK[portal.portal]} size="sm" /></span>
-  <div class="text">
-    <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
-    {#if standing}
-      <span class="quiet" class:waiting data-testid="status-{portal.portal}">{standing}</span>
-    {/if}
-    {#if problem}
-      <div class="fold" transition:unfold>
-        <div class="line">
-          <Notice
-            tone={portal.actionNeeded ? 'warning' : 'info'}
-            variant="inline"
-            text={problem}
-            action={alertMail
-              ? {
-                  label: t.reader.mail,
-                  icon: 'alertMail',
-                  onclick: () => open({ gmailId: alertMail }),
-                }
-              : null}
-            testid="health-{portal.portal}"
-          />
-        </div>
-      </div>
-    {/if}
-    {#if quietDays !== null}
-      <div class="fold" transition:unfold>
-        <div class="line">
-          <Notice
-            tone="warning"
-            variant="inline"
-            text={t.settings.alertQuiet(quietDays)}
-            action={{
-              label: t.settings.checkAlert,
-              icon: 'external',
-              onclick: () => open('home'),
-            }}
-            testid="alert-quiet-{portal.portal}"
-          />
-        </div>
-      </div>
-    {/if}
-    {#if error}
-      <div class="fold" transition:unfold>
-        <div class="line">
-          <Notice tone="danger" variant="inline" text={error()} testid="portal-error" />
-        </div>
-      </div>
-    {/if}
-  </div>
-  {#if portal.way === 'alert' || loginShown}
-    <span class="calls">
-      {#if loginShown}
-        <span class="sign" transition:fade>
-          {#if signedIn}
-            <Button
-              variant="ghost"
-              icon="signOut"
-              label={t.settings.signOut}
-              loading={busy}
-              disabled={loginLocked !== null}
-              disabledReason={loginLocked}
-              testid="sign-out-{portal.portal}"
-              onclick={() => void session(false)}
-            />
-          {:else}
-            <Button
-              variant="ghost"
-              icon="signIn"
-              label={t.settings.signIn}
-              loading={busy}
-              disabled={loginLocked !== null}
-              disabledReason={loginLocked}
-              testid="sign-in-{portal.portal}"
-              onclick={() => void session(true)}
-            />
-          {/if}
-        </span>
-      {/if}
-      {#if portal.way === 'alert'}
-        <Button
-          variant="ghost"
-          icon="alertAdd"
-          label={t.settings.setUpAlert}
-          testid="setup-{portal.portal}"
-          onclick={() => open('setup')}
+{#snippet tile()}<IconTile tone="navy" monogram={PORTAL_MARK[portal.portal]} size="sm" />{/snippet}
+
+{#snippet notes()}
+  {#if problem}
+    <div class="fold" transition:unfold>
+      <div class="line">
+        <Notice
+          tone={portal.actionNeeded ? 'warning' : 'info'}
+          variant="inline"
+          text={problem}
+          action={alertMail
+            ? {
+                label: t.reader.mail,
+                icon: 'alertMail',
+                onclick: () => open({ gmailId: alertMail }),
+              }
+            : null}
+          testid="health-{portal.portal}"
         />
-      {/if}
-    </span>
+      </div>
+    </div>
   {/if}
-  <span class="tools">
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="external"
-      label={t.settings.openPortal}
-      testid="open-portal-{portal.portal}"
-      onclick={() => open('home')}
-    />
-  </span>
-  <span class="tools" class:dim={waiting}>
+  {#if quietDays !== null}
+    <div class="fold" transition:unfold>
+      <div class="line">
+        <Notice
+          tone="warning"
+          variant="inline"
+          text={t.settings.alertQuiet(quietDays)}
+          action={{
+            label: t.settings.checkAlert,
+            icon: 'external',
+            onclick: () => open('home'),
+          }}
+          testid="alert-quiet-{portal.portal}"
+        />
+      </div>
+    </div>
+  {/if}
+  {#if error}
+    <div class="fold" transition:unfold>
+      <div class="line">
+        <Notice tone="danger" variant="inline" text={error()} testid="portal-error" />
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet end()}
+  <Button
+    variant="ghost"
+    iconOnly
+    icon="external"
+    label={t.settings.openPortal}
+    testid="open-portal-{portal.portal}"
+    onclick={() => open('home')}
+  />
+  <span class="switch" class:dim={waiting}>
     <Toggle
       {id}
       checked={portal.enabled}
@@ -289,60 +245,62 @@
       onchange={(on) => change({ enabled: on })}
     />
   </span>
-</div>
+{/snippet}
+
+<SettingRow
+  label={t.portal[portal.portal]}
+  hint={standing}
+  waits={waiting}
+  for={id}
+  lead={tile}
+  {notes}
+  {end}
+  testid="portal-{portal.portal}"
+>
+  {#if loginShown}
+    <span class="sign" transition:fade>
+      {#if signedIn}
+        <Button
+          variant="secondary"
+          icon="signOut"
+          label={t.settings.signOut}
+          loading={busy}
+          disabled={loginLocked !== null}
+          disabledReason={loginLocked}
+          testid="sign-out-{portal.portal}"
+          onclick={() => void session(false)}
+        />
+      {:else}
+        <Button
+          variant="secondary"
+          icon="signIn"
+          label={t.settings.signIn}
+          loading={busy}
+          disabled={loginLocked !== null}
+          disabledReason={loginLocked}
+          testid="sign-in-{portal.portal}"
+          onclick={() => void session(true)}
+        />
+      {/if}
+    </span>
+  {/if}
+  {#if portal.way === 'alert'}
+    <Button
+      variant="secondary"
+      icon="alertAdd"
+      label={t.settings.setUpAlert}
+      testid="setup-{portal.portal}"
+      onclick={() => open('setup')}
+    />
+  {/if}
+</SettingRow>
 
 <style>
-  /* A row of the card, edge to edge like a SettingRow: its divider and its inset. */
-  .row {
+  .switch {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: var(--space-6) var(--space-10);
-    margin-inline: calc(-1 * var(--row-inset));
-    padding: var(--row-pad) var(--row-inset);
-    border-bottom: var(--border-width) solid var(--border);
   }
 
-  .row:last-child {
-    border-bottom: 0;
-  }
-
-  /* The tile centred on the name and its state. */
-  .lead {
-    display: flex;
-    flex: none;
-    align-items: center;
-    height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
-  }
-
-  /* Name and state 2 apart like a setting row's label and hint, centred on the tile; every
-     row as high as two lines, so the list keeps one rhythm whether a row has its state or
-     not. A line brings its 6 along, so it folds in one piece. */
-  .text {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    justify-content: center;
-    gap: var(--space-2);
-    min-width: 0;
-    min-height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
-  }
-
-  .name {
-    color: var(--text);
-    font: var(--type-label);
-  }
-
-  .quiet {
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  .quiet.waiting {
-    color: var(--warning-text);
-  }
-
-  .tools.dim {
+  .switch.dim {
     opacity: var(--opacity-muted);
   }
 
@@ -356,30 +314,8 @@
     padding-top: var(--space-6);
   }
 
-  /* Centred on the two lines: the calls (4 apart), the browser's glyph and the switch, the
-     glyph and the switch in one column in every row. */
-  .calls,
-  .tools {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: var(--space-4);
-    height: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
-  }
-
   /* The sign-in fades in and out on its own, before "Alert anlegen". */
   .sign {
     display: flex;
-  }
-
-  /* Narrow (the smallest window) the calls go to a line of their own at the row's end, as
-     the buttons of a setting row do. */
-  @container (width < 520px) {
-    .calls {
-      order: 1;
-      flex-basis: 100%;
-      justify-content: flex-end;
-      min-height: 0;
-    }
   }
 </style>
