@@ -1,5 +1,5 @@
 <!--
-  The Profil's floating bar (FloatBar, design B): what a failed save says, else what is still
+  The Profil's floating bar (FloatBar): what a failed save says, else what is still
   missing after a press of Speichern (its names lead to their fields), else "Ungespeicherte
   Änderungen"; while the form holds a change Verwerfen (quiet) and Speichern (the view's one
   primary; it waits while a value is marked), in the order of the OS.

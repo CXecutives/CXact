@@ -81,9 +81,9 @@ pre-assessment to any AI chat for a deeper check.
 - **Profil:**
   - One profile. Without one, a page with two ways: Aus Lebenslauf ausfüllen (an AI evaluates the CV,
     the profile is saved at once) and Selbst ausfüllen (the empty form).
-  - The head: "Profil" with "Aus Lebenslauf ausfüllen", then "Noch n Angaben offen" with "Zum ersten"
-    (the required fields core names in `ProfileInfo.missing`) and, after a CV, "aus dem Lebenslauf" for
-    the small dot at every field it filled (`aiFilled`, until the next save).
+  - No title (the sidebar names the place); "Aus Lebenslauf ausfüllen" ends the first group's heading
+    line. Once Speichern was pressed, the save bar names the required fields still empty (core's
+    `ProfileInfo.missing`), each a link to its field.
   - Four groups on one page (`sections.ts`; "Luftige Gruppen", design round 6), each field with its label
     above it:
     - Wunschjob: Wunschrollen, Vertragsart (check boxes, one stays), Wunschtagessatz, Mindesttagessatz,
@@ -93,9 +93,9 @@ pre-assessment to any AI chat for a deeper check.
     - Qualifikation: Kompetenzen with years and up to five stars, Tools und Methoden, Berufserfahrung,
       Branchen with a star for the preferred ones, Sprachen with their level, Abschlüsse and Zertifikate.
     - Ausschlüsse: Ausschlusswörter.
-  - Info symbols (one sentence each) only at Wunschrollen, Vertragsart, Tagessatz, Arbeitsmodell, Länder,
-    the stars of Kompetenzen and Branchen, Ausschlusswörter, the app password, "CXact sucht nach" and the
-    match in the job view; a field has a hint or an info symbol, never both.
+  - Info symbols (one sentence each) only at Vertragsart, Mindesttagessatz, Länder, the stars of
+    Kompetenzen, Ausschlusswörter, the app password and the match in the job view; a field has a hint or
+    an info symbol, never both.
   - Under some fields, "Häufig verlangt": the terms the recent jobs ask for that the profile lacks, one click
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's

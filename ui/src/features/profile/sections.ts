@@ -1,11 +1,11 @@
 // The Profil form as data: the fields of the page in four groups (Wunschjob, Einsatz,
-// Qualifikation, Ausschlüsse; design round 6, "Luftige Gruppen"), the same page in the setup. ProfileEditor renders these tables and nothing else, so adding,
-// moving or removing a field is one entry here (docs/CHANGING.md "Add a profile field"). A
-// field names the value of the form it edits, its control, its words by their key in the
-// catalog (`t.profile.field`) and, at the few places docs/PLAN.md names, its info symbol
-// (`t.profile.info`). Controls with more to
-// them than a field (the competences, the industries, the languages, the countries, the day)
-// are components the table names by their kind.
+// Qualifikation, Ausschlüsse; design round 6, "Luftige Gruppen"), the same page in the setup.
+// ProfileEditor renders these tables and nothing else, so adding, moving or removing a field
+// is one entry here (docs/CHANGING.md "Change the Profil form"). A field names the value of
+// the form it edits, its control, its words by their key in the catalog (`t.profile.field`)
+// and, at the few places docs/PLAN.md names, its info symbol (`t.profile.info`). Controls with
+// more to them than a field (the competences, the industries, the languages, the countries,
+// the day) are components the table names by their kind.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, TermField } from '$lib/ipc/types';

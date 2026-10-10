@@ -409,7 +409,8 @@
   /* Design round 6 (user, 2026-10-10): one control height for the whole app, 28 px
      (--control-field): every button, field, choice of a few, toolbar control, menu row and
      sidebar entry. Only a control inside a field (a link or a button in a field, a day of
-     the calendar, a suggestion row) is a notch lower (--control-sm). */
+     the calendar, a suggestion row) and a suggestion chip under a field (Button `suggest`)
+     are a notch lower (--control-sm). */
   --control-sm: 22px;
   --control-field: 28px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are

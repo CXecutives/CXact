@@ -1,5 +1,5 @@
 <!--
-  The floating bar at the foot of a page (design B: the Profil's unsaved changes): a dark
+  The floating bar at the foot of a page (the Profil's unsaved changes): a dark
   rounded bar centred at the bottom of the view, a little above its edge, that stays in view
   while the page scrolls under it. Its sentence at the left (`children`, light on the dark
   surface: tokens.css `[data-surface='inverse']`), its buttons at the right (`actions`: a

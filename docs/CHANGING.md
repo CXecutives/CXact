@@ -285,7 +285,7 @@ than the ads (Amadeus Fire) name that host's robots.txt in `search_robots_url()`
 search and the ads; the app checks it again at run time. Fixtures: a shortened search page
 and ad in the adapter's tests, the real pages under `core/tests/fixtures/private/pages`
 (ignored tests `the_real_*`); `cargo run -p jobalert-core --example live_search -- <terms>`
-asks the live pages once. Its row lands in the card Suche of Einstellungen by its `way`.
+asks the live pages once. Its row lands in Einstellungen > Jobportale, in the box of its `way`.
 
 ## Change a threshold or a default
 

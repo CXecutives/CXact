@@ -3,10 +3,10 @@
   (TextField's `trailing`; Verfügbar): its button (a part of the field like the picker's of a
   native date field, `inField`: a notch lower, no Tab stop of its own; typing is the
   keyboard's way to a day) opens a month under the field, its right edge on the field's, the
-  week from Monday, the month's name from the catalog. The chosen day is filled, today has a ring. The keys move
-  like a native date picker (input.ts gridKeys): the arrows a day or a week, Home and End the
-  week's ends, PageUp and PageDown a month; Enter or Space and a click take the day, Esc
-  closes and gives the focus back to the button; leaving it closes it. The month's buttons
+  week from Monday, the month's name from the catalog. The chosen day is filled, today has a
+  ring. The keys move like a native date picker (input.ts gridKeys): the arrows a day or a
+  week, Home and End the week's ends, PageUp and PageDown a month; Enter or Space and a click
+  take the day, Esc closes and gives the focus back to the button; leaving it closes it. The month's buttons
   move the focus to the same day in the other month. It only offers a day: the field keeps
   what is typed.
 -->

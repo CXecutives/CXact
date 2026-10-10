@@ -3,9 +3,9 @@
   last 30 days ask for most that the profile does not name (`asked_terms`: "Anaplan" of
   "Kenntnisse in Anaplan"), each under the field it belongs to (Kompetenzen, Tools und
   Methoden, Branchen, Sprachen, Zertifikate, Abschlüsse), as a row of quiet suggestion chips
-  (Button `suggest`, the look of the quick picks): the term and how many jobs ask for it. A click puts the term into this field of the form,
-  an unsaved change like any other (Speichern comes); its button goes, and so does a term
-  the form names already in any field. The row shows only while it has a term, unfolds when
+  (Button `suggest`, the look of the quick picks): the term and how many jobs ask for it. A
+  click puts the term into this field of the form, an unsaved change like any other
+  (Speichern comes); its button goes, and so does a term the form names already in any field. The row shows only while it has a term, unfolds when
   it comes and folds away when it goes. The terms are asked once for all the fields, after
   every save (a new stored profile) and every finished run (a fetch, the rescore after a
   save). A focused button that goes hands the focus to the next one, else to its field.
