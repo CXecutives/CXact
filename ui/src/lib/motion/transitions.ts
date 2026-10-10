@@ -10,7 +10,7 @@
 //
 // No replay by construction: Svelte plays a local transition only when its own block has
 // run before, so an entry never plays when a view, a list or the app mounts (main.ts also
-// mounts with `intro: false`). One-shots (pulseOnce) are started only from event handlers.
+// mounts with `intro: false`).
 //
 // fade and rise never read the element's style: svelte/transition's versions call
 // getComputedStyle for the element's own opacity and transform, which forces a style and
@@ -31,7 +31,6 @@ import {
   isReducedMotion,
   move,
   play,
-  popScale,
   type Duration,
   type Easing,
   type Move,
@@ -320,29 +319,6 @@ export function tooltipIn(node: Element): TransitionConfig {
 
 export function tooltipOut(_node: Element): TransitionConfig {
   return opacity(duration('instant'), easing('in'));
-}
-
-/**
- * The one pop of the UI: the star when a job is pinned (1, --scale-pop, 1 in 180 ms). Call
- * it from the click handler that pins (never from an effect, so it cannot replay), on the
- * HTML wrapper of the glyph. The finished animation is dropped at once.
- */
-export function pulseOnce(element: Element): void {
-  const peak = popScale();
-  if (peak === 1) return;
-  const animation = play(
-    element,
-    [
-      { transform: 'scale(1)' },
-      { transform: `scale(${peak})`, offset: 0.45 },
-      { transform: 'scale(1)' },
-    ],
-    { duration: 'slow', easing: 'out' },
-  );
-  void animation?.finished.then(
-    () => animation.cancel(),
-    () => undefined,
-  );
 }
 
 /**

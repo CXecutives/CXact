@@ -1086,11 +1086,6 @@ export const de = {
       years: 'Jahre',
       addCompetence: 'Kompetenz hinzufügen',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
-      /** The star of a Schwerpunkt says what a click does; a sixth waits. */
-      star: 'Als Schwerpunkt markieren',
-      unstar: 'Schwerpunkt entfernen',
-      starEmpty: 'Trag erst eine Kompetenz ein.',
-      focusFull: 'Höchstens fünf Schwerpunkte.',
       tools: 'Tools und Methoden',
       toolsPlaceholder: 'z. B. Scrum',
       toolsMore: '+ Tool',
@@ -1138,7 +1133,6 @@ export const de = {
       contracts: 'Was du nicht wählst, wird ausgeschlossen.',
       dayRate: 'Jobs darunter werden ausgeschlossen.',
       countries: 'Jobs in anderen Ländern werden ausgeschlossen, außer voll remote.',
-      competences: 'Bis zu fünf Schwerpunkte mit Stern zählen doppelt.',
       exclusionWords: 'Nennt eine Anzeige eines dieser Wörter, wird der Job ausgeschlossen.',
     },
     /** The unit right of a number field. */

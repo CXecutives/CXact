@@ -15,8 +15,7 @@
     not react otherwise. Tab passes them like native disabled buttons, except one that says
     why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
     (one that is disabled while focused keeps the focus).
-  - Loading keeps the width: the content fades out under the spinner. A ghost toggle (the
-    star of a Schwerpunkt) pops once when a click switches it on.
+  - Loading keeps the width: the content fades out under the spinner.
   - radio: an option of a radiogroup, like a secondary toggle, chosen while `checked`, only
     the group's Tab stop (`stop`) in the Tab order, the arrows move (input.ts). turned: the
     glyph stands half a turn (180 ms).
@@ -43,7 +42,7 @@
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
   import { formatNumber } from '$lib/i18n/format';
-  import { fade, pulseOnce } from '$lib/motion/transitions';
+  import { fade } from '$lib/motion/transitions';
   import Icon, { type IconName } from './Icon.svelte';
   import Spinner from './Spinner.svelte';
 
@@ -57,7 +56,7 @@
     /** Why the button is disabled - shown in the tooltip. */
     disabledReason?: string | null;
     type?: 'button' | 'submit';
-    /** Toggle buttons (the star of a Schwerpunkt). */
+    /** Toggle buttons. */
     pressed?: boolean | null;
     /** An option of a radiogroup: whether it is chosen and whether it is the group's Tab stop. */
     radio?: { checked: boolean; stop: boolean } | null;
@@ -126,17 +125,12 @@
     disabled && disabledReason ? disabledReason : iconOnly && !plain ? label : null,
   );
 
-  let glyph = $state<HTMLElement | null>(null);
-
   function handle(event: MouseEvent): void {
     if (inactive) {
       event.preventDefault();
       return;
     }
-    // A ghost toggle that a click switches on pops once (the star when pinning).
-    const switchesOn = variant === 'ghost' && pressed === false;
     onclick?.(event);
-    if (switchesOn && glyph !== null) pulseOnce(glyph);
   }
 </script>
 
@@ -173,7 +167,7 @@
 >
   <span class="content">
     {#if icon}
-      <span class="glyph" data-icon={icon} bind:this={glyph}>
+      <span class="glyph" data-icon={icon}>
         <Icon name={icon} size={variant === 'suggest' ? 'xs' : 'sm'} filled={pressed === true} />
         {#if hoverIcon}<span class="swap" data-hover-icon={hoverIcon}
             ><Icon name={hoverIcon} size="sm" /></span

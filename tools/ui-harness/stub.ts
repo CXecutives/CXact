@@ -99,12 +99,7 @@ import type {
 } from '../../ui/src/lib/ipc/types';
 import { bandOf } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
-import {
-  EMPTY_FORM,
-  MAX_FOCUS,
-  MAX_YEARS,
-  NUMBER_LIMITS,
-} from '../../ui/src/lib/ipc/types/profile';
+import { EMPTY_FORM, MAX_YEARS, NUMBER_LIMITS } from '../../ui/src/lib/ipc/types/profile';
 import type { CvFailure } from '../../ui/src/lib/ipc/api';
 import snapshot from './demo/snapshot.json';
 // The engine's words of the suggestions (written by core's matching::vocabulary test).
@@ -427,8 +422,8 @@ const DEMO_FORM: ProfileForm = {
   minMonths: 6,
   competences: [
     { name: 'Interim Management', years: 12, focus: false },
-    { name: 'Controlling', years: 18, focus: true },
-    { name: 'Konzernrechnungslegung nach IFRS', years: 14, focus: true },
+    { name: 'Controlling', years: 18, focus: false },
+    { name: 'Konzernrechnungslegung nach IFRS', years: 14, focus: false },
     { name: 'Konsolidierung', years: 11, focus: false },
     { name: 'Liquiditätsplanung', years: 10, focus: false },
     { name: 'Restrukturierung', years: 8, focus: false },
@@ -515,8 +510,7 @@ function mergeCv(stored: ProfileForm | null): ProfileForm {
       )
     )
       continue;
-    const stars = competences.filter((c) => c.focus).length;
-    competences.push({ ...row, focus: row.focus && stars < MAX_FOCUS });
+    competences.push({ ...row, focus: false });
   }
   return {
     ...base,
@@ -1953,8 +1947,6 @@ const handlers: Handlers = {
     };
     const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > MAX_YEARS);
     if (tooLong >= 0) refuse('competences', MAX_YEARS, tooLong);
-    if (after.competences.filter((r) => r.focus).length > MAX_FOCUS)
-      refuse('competences', MAX_FOCUS);
     // Like core (form::validate, the limits of types/profile.ts), shown or not.
     for (const [key, max] of Object.entries(NUMBER_LIMITS) as [
       keyof typeof NUMBER_LIMITS,

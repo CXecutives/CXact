@@ -1480,41 +1480,19 @@ test('the reader ring fills from empty the first time a job opens, once', async 
   expect(await fills()).toEqual(['100', '100']);
 });
 
-test("a ghost toggle's star pops once when switched on, never when off", async ({ page }) => {
-  await open(page, `${WIN}&view=profile`);
-  const star = page.getByTestId('competence-star').first();
-  await star.scrollIntoViewIfNeeded();
-  await expect(star).toHaveAttribute('aria-pressed', 'false');
-  // Pops are Web Animations on the glyph (hover nudges are CSS transitions).
-  const clickAndCount = (): Promise<number> =>
-    page.evaluate(() => {
-      const button = document.querySelector<HTMLElement>('[data-testid="competence-star"]')!;
-      button.click();
-      return button
-        .querySelector('.glyph')!
-        .getAnimations()
-        .filter((a) => !(a instanceof CSSTransition)).length;
-    });
-  expect(await clickAndCount()).toBe(1);
-  await expect(star).toHaveAttribute('aria-pressed', 'true');
-  await page.waitForTimeout(400);
-  expect(await clickAndCount()).toBe(0);
-  await expect(star).toHaveAttribute('aria-pressed', 'false');
-});
-
 test('under reduced motion nothing scales or pops', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, `${WIN}&view=profile`);
   const tokens = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
-    return ['--scale-pop', '--move-xs', '--dur-hover'].map((name) =>
+    return ['--scale-enter', '--move-xs', '--dur-hover'].map((name) =>
       parseFloat(style.getPropertyValue(name)),
     );
   });
   expect(tokens).toEqual([1, 0, 0]);
   // Clicked without the pointer over it (no tooltip comes).
   await page.evaluate(() =>
-    document.querySelector<HTMLElement>('[data-testid="competence-star"]')!.click(),
+    document.querySelector<HTMLElement>('[data-testid="chip-star"]')!.click(),
   );
   const scripted = await page.evaluate(
     // What comes meanwhile (the save bar) only fades: nothing moves or scales.

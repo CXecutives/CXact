@@ -1,9 +1,7 @@
 <!--
-  The core competences: one row each with the star of a Schwerpunkt (outlined, filled while
-  marked), the competence and its years at the right ("Jahre" as their placeholder), then
-  the quiet row "Kompetenz hinzufügen". The star says what a click does (mark, or remove the Schwerpunkt).
-  At most five: a sixth star is disabled and its tooltip says why, as does the star of a row
-  without a competence. The x of a row needs no tooltip. Without a competence a blank field
+  The core competences, all counting the same: one row each with the competence and its years
+  at the right ("Jahre" as their placeholder), then the quiet row "Kompetenz hinzufügen". The
+  x of a row needs no tooltip. Without a competence a blank field
   stands instead (coral while its cell is marked as missing, like every field in it): what
   is typed there becomes the first row. A value that is too large (the years) or that the backend refused
   marks its row. Enter goes to the next row, adds one after the last and ends the list on an
@@ -19,7 +17,7 @@
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys, removeBy } from '$lib/input/input';
-  import { MAX_FOCUS, type Competence } from '$lib/state/profile.svelte';
+  import { type Competence } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
   import NumberField from './NumberField.svelte';
   import { enterRow, focusRow } from './rows';
@@ -37,8 +35,6 @@
   vocabulary.load();
   const id = $props.id();
   let list = $state<HTMLElement | null>(null);
-
-  const stars = $derived(rows.filter((row) => row.focus && row.name.trim() !== '').length);
 
   /** The row the backend refused: counted among the rows with a name, as the backend does. */
   const refused = $derived.by((): Competence | null => {
@@ -100,27 +96,12 @@
   {/if}
   {#each shown as row, index (row)}
     {@const wrong = row === refused}
-    {@const named = row.name.trim() !== ''}
     <div
       class="row"
       data-row
       data-testid="competence-row"
       use:formKeys={{ save: () => enter(row) }}
     >
-      <!-- Its words follow its state. -->
-      <span class="star">
-        <Button
-          variant="ghost"
-          iconOnly
-          icon="star"
-          label={row.focus && named ? words.unstar : words.star}
-          pressed={row.focus && named}
-          disabled={!named || (!row.focus && stars >= MAX_FOCUS)}
-          disabledReason={!named ? words.starEmpty : words.focusFull}
-          testid="competence-star"
-          onclick={() => (row.focus = !row.focus)}
-        />
-      </span>
       <span class="name">
         <TextField
           bind:value={row.name}
@@ -186,12 +167,10 @@
     gap: var(--space-6);
   }
 
-  /* star | competence | years | remove */
+  /* competence | years | remove */
   .row {
     display: grid;
-    grid-template-columns: var(--control-field) minmax(0, 1fr) var(--years-width) var(
-        --control-field
-      );
+    grid-template-columns: minmax(0, 1fr) var(--years-width) var(--control-field);
     align-items: start;
     gap: var(--space-6);
   }
@@ -200,23 +179,17 @@
     display: flex;
   }
 
-  .star,
   .remove {
     display: flex;
     align-items: center;
     height: var(--control-field);
   }
 
-  /* Under the rows the quiet add row and an error line up with the competence column (the
-     add's glyph on the names' text). */
+  /* Under the rows the quiet add row lines up with the names (its glyph on their text). */
   .add.indent {
     display: flex;
     justify-content: space-between;
-    margin-left: calc(var(--control-field) + var(--space-6) - var(--space-2));
-  }
-
-  .error {
-    margin-left: calc(var(--control-field) + var(--space-6));
+    margin-left: calc(-1 * var(--space-2));
   }
 
   .error {

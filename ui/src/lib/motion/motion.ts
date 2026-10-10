@@ -20,7 +20,6 @@ interface Values {
   moves: Record<Move, number>;
   staggerMax: number;
   enterScale: number;
-  popScale: number;
   tooltipDelay: number;
 }
 
@@ -97,7 +96,6 @@ function read(): Values {
     >,
     staggerMax: tokenNumber('--stagger-max'),
     enterScale: tokenNumber('--scale-enter'),
-    popScale: tokenNumber('--scale-pop'),
     tooltipDelay: tokenMs('--delay-tooltip'),
   };
 }
@@ -147,12 +145,6 @@ export function move(name: Move): number {
 
 export function enterScale(): number {
   return reduced ? 1 : current().enterScale;
-}
-
-/** Peak of the one-shot pop (the star on pin); 1 under reduced motion. WAAPI keyframes
- *  cannot take var(), so the token is resolved here. */
-export function popScale(): number {
-  return reduced ? 1 : current().popScale;
 }
 
 /** How many items of a list may animate at the same time; the others are simply there. */

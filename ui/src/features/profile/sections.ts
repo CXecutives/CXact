@@ -59,7 +59,7 @@ export type Control =
   | { kind: 'choice'; key: ChoiceKey; label: Word; info?: Info; testid: string }
   | { kind: 'countries'; info: Info }
   | { kind: 'available' }
-  | { kind: 'competences'; info: Info }
+  | { kind: 'competences' }
   | { kind: 'industries' }
   | { kind: 'languages' };
 
@@ -131,7 +131,7 @@ export const SECTIONS: readonly Section[] = [
   {
     id: 'skills',
     rows: [
-      { kind: 'competences', info: 'competences' },
+      { kind: 'competences' },
       chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
       {
         kind: 'number',

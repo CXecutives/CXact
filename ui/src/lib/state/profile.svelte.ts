@@ -11,11 +11,9 @@
 import { invoke } from '../ipc/api';
 import { app } from './app.svelte';
 import type { ProfileForm, ProfileInfo } from '../ipc/types';
-import { EMPTY_FORM, MAX_FOCUS } from '../ipc/types/profile';
+import { EMPTY_FORM } from '../ipc/types/profile';
 import { putTerm, takeTerm, type ProfileTerm } from './terms';
 import { TypedText } from './typed.svelte';
-
-export { MAX_FOCUS };
 
 export type Competence = ProfileForm['competences'][number];
 export type Language = ProfileForm['languages'][number];

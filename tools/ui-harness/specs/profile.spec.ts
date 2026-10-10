@@ -90,19 +90,6 @@ async function refuseNext(
   }, params);
 }
 
-/** The competences marked as Schwerpunkt (their star pressed), in the order of the rows. */
-async function marked(page: Page): Promise<string[]> {
-  return page
-    .getByTestId('competence-row')
-    .evaluateAll((rows) =>
-      rows
-        .filter((row) => row.querySelector('[data-testid="competence-star"][aria-pressed="true"]'))
-        .map(
-          (row) => row.querySelector<HTMLInputElement>('[data-testid="competence-name"]')!.value,
-        ),
-    );
-}
-
 /** How many saves of the page a test has read (the next read waits for a newer one). */
 const read = new WeakMap<Page, number>();
 
@@ -258,7 +245,6 @@ test('the stored profile fills every field', async ({ page }) => {
     page.getByTestId('profile-min-months').getByRole('radio', { checked: true }),
   ).toHaveText(T.profile.minMonths[6]);
   await expect(page.getByTestId('competence-name')).toHaveCount(6);
-  expect(await marked(page)).toEqual(['Controlling', 'Konzernrechnungslegung nach IFRS']);
   await expect(page.getByTestId('competence-years').first()).toHaveValue('12');
   await expect(chips(page.getByTestId('profile-tools'))).toContainText(['SAP S/4HANA']);
   await expect(page.getByTestId('profile-years')).toHaveValue('20');
@@ -290,7 +276,6 @@ test('info symbols only at their places, their sentence on hover, keyboard focus
     ['project', 'contracts', T.profile.field.contracts],
     ['dayRateMin', 'dayRate', T.profile.field.dayRateMin],
     ['countries', 'countries', T.profile.field.countries],
-    ['competences', 'competences', T.profile.field.competences],
     ['exclusionWords', 'exclusionWords', T.profile.field.exclusionWords],
   ];
   // Beside these fields' labels only (user 2026-10-04).
@@ -442,34 +427,6 @@ test('Regionen suggest the regions of Germany, Austria and Switzerland; typed te
     'Oberösterreich',
     'Rheinhessen',
   ]);
-});
-
-test('at most five Schwerpunkte: the star says what a click does, a sixth waits', async ({
-  page,
-}) => {
-  await profile(page);
-  const stars = page.getByTestId('competence-star');
-  await expect(stars.nth(1)).toHaveAccessibleName(T.profile.field.unstar);
-  await expect(stars.nth(0)).toHaveAccessibleName(T.profile.field.star);
-  for (const index of [0, 3, 4]) await stars.nth(index).click();
-  await expect(stars.nth(5)).toHaveAttribute('aria-disabled', 'true');
-  expect(await tooltipOf(page, stars.nth(5))).toBe(T.profile.field.focusFull);
-  // A row without a competence has no star to give yet.
-  await page.getByTestId('competence-add').click();
-  await expect(stars.nth(6)).toHaveAttribute('aria-disabled', 'true');
-  expect(await tooltipOf(page, stars.nth(6))).toBe(T.profile.field.starEmpty);
-  await stars.nth(1).click();
-  await expect(stars.nth(5)).not.toHaveAttribute('aria-disabled', 'true');
-  await save(page).click();
-  const sent = await lastSave(page);
-  expect(sent.after.competences.filter((row) => row.focus).map((row) => row.name)).toEqual([
-    'Interim Management',
-    'Konzernrechnungslegung nach IFRS',
-    'Konsolidierung',
-    'Liquiditätsplanung',
-  ]);
-  // The empty row is not saved.
-  expect(sent.after.competences).toHaveLength(6);
 });
 
 test('Branchen: a star marks a preferred industry', async ({ page }) => {

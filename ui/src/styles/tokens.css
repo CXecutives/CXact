@@ -679,9 +679,7 @@
   --move-md: 4px;
   --move-lg: 8px;
   --scale-enter: 0.98;
-  /* The one-shot pop of the star on pin (keyframes 1, 1.18, 1): state feedback, not a hover.
-     No icon moves on hover (user, 2026-09-25). */
-  --scale-pop: 1.18;
+  /* No icon moves on hover (user, 2026-09-25). */
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
      motion. */
   --turn-half: 180deg;
@@ -738,6 +736,5 @@
   --move-md: 0px;
   --move-lg: 0px;
   --scale-enter: 1;
-  --scale-pop: 1;
   --loop-state: paused;
 }

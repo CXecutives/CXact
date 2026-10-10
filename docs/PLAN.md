@@ -105,8 +105,8 @@ pre-assessment to any AI chat for a deeper check.
     - Ausschlüsse: Ausschlusswörter.
   - A new profile looks for projects only: Festanstellung and Zeitarbeit are off, so Mindestgehalt is hidden
     (`EMPTY_FORM`, core's `ProfileForm::default`).
-  - Info symbols (one sentence each) only at Vertragsart, Mindesttagessatz, Länder, the stars of
-    Kompetenzen, Ausschlusswörter, the app password and the match in the job view; a field has a hint or
+  - Info symbols (one sentence each) only at Vertragsart, Mindesttagessatz, Länder,
+    Ausschlusswörter, the app password and the match in the job view; a field has a hint or
     an info symbol, never both.
   - Under some fields, "Häufig verlangt": the terms the recent jobs ask for that the profile lacks, one click
     adds them.
