@@ -30,7 +30,9 @@ pub use crate::profile::{
     ProfileLanguage, WorkWish, Workload, WorkspaceProfile,
 };
 use crate::settings::{PortalSwitches, Settings};
-use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, PortalAlerts, Store};
+use crate::store::{
+    AlertMailRow, JobRow, ListFilter, PageQuery, PortalAlerts, Store, StoredMailRow,
+};
 use crate::text::split_company_location;
 
 #[cfg(test)]
@@ -223,8 +225,8 @@ pub struct JobView {
     /// The user marked the job as fitting although the engine excludes it ("Trotzdem
     /// passend"): it counts as scored with its fit score, its note is `userOverride`.
     pub overridden: bool,
-    /// Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
-    /// reader).
+    /// Its alert mail can be opened ("Alert-Mail öffnen"): in Gmail by `JobMail.gmailUrl` in
+    /// the reader, else in the app (`alert_mail`).
     pub has_mail: bool,
     /// How the job came (the filter "Herkunft"): an alert mail named it, the search found it,
     /// or both.
@@ -262,7 +264,7 @@ impl From<&JobRow> for JobView {
             place: job.place(),
             trashed_at: job.trashed_at,
             overridden: job.override_include,
-            has_mail: job.gmail_id.and_then(gmail_url).is_some(),
+            has_mail: job.gmail_id.and_then(gmail_url).is_some() || job.mail_key.is_some(),
             origins: [
                 job.mailed_at.map(|_| Origin::Mail),
                 job.searched_at.map(|_| Origin::Search),
@@ -498,7 +500,41 @@ impl TextLayout {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct JobMail {
     pub subject: String,
+    /// The mail in Gmail; `null` for a mail of another provider, which opens in the app
+    /// (`alert_mail`) when `JobView.hasMail`.
     pub gmail_url: Option<String>,
+}
+
+/// A job's alert mail as the app keeps it, to read in the app where no Gmail link opens it
+/// (`alert_mail`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct StoredMail {
+    pub subject: String,
+    /// The sender's name, else the address.
+    pub sender: String,
+    pub date: Option<Timestamp>,
+    /// The mail as running text (its HTML without markup); empty for a mail of Gmail, whose
+    /// text the app does not keep.
+    pub text: String,
+}
+
+impl From<StoredMailRow> for StoredMail {
+    fn from(row: StoredMailRow) -> StoredMail {
+        StoredMail {
+            subject: row.subject,
+            sender: row.sender,
+            date: row.mail_date,
+            text: row.body.unwrap_or_default(),
+        }
+    }
+}
+
+/// The alert mail of the job `key` ("Alert-Mail öffnen" without Gmail); `None` when no
+/// mail named it (the search found it).
+pub fn alert_mail(store: &Store, key: &JobKey) -> crate::Result<Option<StoredMail>> {
+    Ok(store.stored_mail(key)?.map(StoredMail::from))
 }
 
 /// One job in the reader.
@@ -1623,6 +1659,57 @@ mod tests {
         // The row knows it too: its menu offers the alert mail like the reader.
         assert!(view.has_mail && detail.job.has_mail);
         assert_eq!(json["hasMail"], true);
+    }
+
+    /// A job from a mailbox without Gmail has no Gmail link, yet its alert mail opens in the
+    /// app: subject, sender, date and text as the store keeps them.
+    #[test]
+    fn an_alert_mail_without_gmail_opens_in_the_app() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let link = job_link("https://www.linkedin.com/jobs/view/4123456789/").unwrap();
+        let date: Timestamp = "2026-09-03T06:15:00Z".parse().unwrap();
+        let alert = crate::model::AlertMail {
+            key: "mid:eins@linkedin.com".into(),
+            portal: Portal::LinkedIn,
+            subject: "Neue Jobs".into(),
+            sender: "LinkedIn Job Alerts".into(),
+            date: Some(date),
+            gmail_id: None,
+            text: Some("Senior Controller (m/w/d)\nMusterwerke GmbH".into()),
+            postings: vec![Posting::new(
+                link.key.clone(),
+                link.url,
+                "Senior Controller",
+                "Musterwerke GmbH",
+                "Köln",
+            )],
+        };
+        store.record_alert(run, &alert, Timestamp::now()).unwrap();
+        let detail = job_detail(&store, &link.key, None, true, Timestamp::now())
+            .unwrap()
+            .unwrap();
+        assert_eq!(detail.mail.gmail_url, None);
+        assert!(detail.job.has_mail);
+        let mail = alert_mail(&store, &link.key).unwrap().unwrap();
+        assert_eq!(
+            serde_json::to_value(&mail).unwrap(),
+            serde_json::json!({
+                "subject": "Neue Jobs",
+                "sender": "LinkedIn Job Alerts",
+                "date": "2026-09-03T06:15:00Z",
+                "text": "Senior Controller (m/w/d)\nMusterwerke GmbH",
+            })
+        );
+        // A job the search found has no alert mail.
+        let found = job_link("https://www.freelancermap.de/nproj/12345.html").unwrap();
+        let posting = Posting::new(found.key.clone(), found.url, "Rolle", "", "");
+        store
+            .record_found(run, &[posting], Timestamp::now())
+            .unwrap();
+        assert_eq!(alert_mail(&store, &found.key).unwrap(), None);
+        let row = store.job(&found.key).unwrap().unwrap();
+        assert!(!JobView::from(&row).has_mail);
     }
 
     /// A closed ad reaches the list, marked as closed, until its page says it is open again.

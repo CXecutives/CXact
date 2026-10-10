@@ -75,6 +75,8 @@ pub struct JobRow {
     pub mailed_at: Option<Timestamp>,
     /// When the app's search last found the job (`None`: it never did).
     pub searched_at: Option<Timestamp>,
+    /// The alert mail that first named the job (`None`: none did, or the search came first).
+    pub mail_key: Option<String>,
 }
 
 impl JobRow {
@@ -263,6 +265,16 @@ pub struct PageCounts {
     pub excluded_trash: u32,
 }
 
+/// The alert mail of a job as the store keeps it ([`Store::stored_mail`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredMailRow {
+    pub subject: String,
+    pub sender: String,
+    pub mail_date: Option<Timestamp>,
+    /// The mail's text; `None` for a mail with a Gmail id (it opens in Gmail).
+    pub body: Option<String>,
+}
+
 /// An alert mail without recognised entries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlertMailRow {
@@ -322,21 +334,25 @@ impl Store {
     }
 
     /// Records a recognised alert mail with its entries - as one change. A mail without
-    /// entries is remembered too (layout guard). Returns the classification of each entry.
+    /// entries is remembered too (layout guard). Returns the classification of each entry. A
+    /// job first seen here keeps the mail (`mail_key`) like its subject and Gmail id.
     pub fn record_alert(&self, run: i64, alert: &AlertMail, now: Timestamp) -> Result<Vec<Seen>> {
         self.write(|conn| {
             conn.execute(
-                "INSERT INTO alert_mail (mail_key, portal, subject, mail_date, gmail_id,
-                                         n_postings, last_seen_run)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                "INSERT INTO alert_mail (mail_key, portal, subject, sender, mail_date, gmail_id,
+                                         body, n_postings, last_seen_run)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
                  ON CONFLICT (mail_key) DO UPDATE SET
+                    sender = excluded.sender, body = excluded.body,
                     n_postings = excluded.n_postings, last_seen_run = excluded.last_seen_run",
                 params![
                     alert.key,
                     alert.portal.key(),
                     alert.subject,
+                    alert.sender,
                     alert.date.map(to_db),
                     alert.gmail_id.map(|id| id.to_string()),
+                    alert.text,
                     i64::try_from(alert.postings.len()).unwrap_or(i64::MAX),
                     run,
                 ],
@@ -346,11 +362,40 @@ impl Store {
                 .iter()
                 .map(|posting| {
                     let seen = upsert(conn, run, posting, MailRef::from(alert), now)?;
+                    if seen == Seen::New {
+                        conn.execute(
+                            "UPDATE job SET mail_key = ?3 WHERE portal = ?1 AND job_id = ?2",
+                            params![posting.key.portal.key(), posting.key.id, alert.key],
+                        )?;
+                    }
                     came(conn, &posting.key, Origin::Mail, now)?;
                     Ok(seen)
                 })
                 .collect()
         })
+    }
+
+    /// The alert mail that first named the job `key`; `None` when no mail did (the search
+    /// found it, or it is unknown).
+    pub fn stored_mail(&self, key: &JobKey) -> Result<Option<StoredMailRow>> {
+        let conn = self.conn();
+        let row = conn
+            .query_row(
+                "SELECT a.subject, a.sender, a.mail_date, a.body
+                 FROM job j JOIN alert_mail a ON a.mail_key = j.mail_key
+                 WHERE j.portal = ?1 AND j.job_id = ?2",
+                params![key.portal.key(), key.id],
+                |r| {
+                    Ok(StoredMailRow {
+                        subject: r.get(0)?,
+                        sender: r.get(1)?,
+                        mail_date: r.get::<_, Option<i64>>(2)?.and_then(from_db),
+                        body: r.get(3)?,
+                    })
+                },
+            )
+            .optional()?;
+        Ok(row)
     }
 
     /// Jobs the app's own search found (user decision 2026-10-01): rows like an alert mail's,
@@ -743,8 +788,8 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     mail_subject, gmail_id, first_seen_at, first_seen_run, desc_status, desc_short, desc_closed,
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
     desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
-    desc_facts, archived_at, trashed_at, override_include, mailed_at, searched_at";
-pub(super) const JOB_COLUMN_COUNT: usize = 30;
+    desc_facts, archived_at, trashed_at, override_include, mailed_at, searched_at, mail_key";
+pub(super) const JOB_COLUMN_COUNT: usize = 31;
 
 /// The jobs whose ads the app fetches by itself: the inbox - never the archive, the trash or
 /// a duplicate (its original's row stands for it; a merged guest teaser would cost a
@@ -850,6 +895,7 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         override_include: r.get::<_, Option<i64>>(col(27))?.is_some(),
         mailed_at: r.get::<_, Option<i64>>(col(28))?.and_then(from_db),
         searched_at: r.get::<_, Option<i64>>(col(29))?.and_then(from_db),
+        mail_key: r.get(col(30))?,
     }))
 }
 
@@ -1503,6 +1549,7 @@ mod tests {
             sender: "LinkedIn".into(),
             date: None,
             gmail_id: Some(1),
+            text: None,
             postings: vec![
                 posting(
                     "https://www.linkedin.com/jobs/view/4000000001/",
@@ -1563,6 +1610,72 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM alert_mail", [], |r| r.get(0))
             .unwrap();
         assert_eq!(mails, 1);
+    }
+
+    /// A job keeps the alert mail that first named it, with the mail's head and its text (a
+    /// mail without a Gmail id); a later mail naming it again does not replace it, and a job
+    /// the search found first has none.
+    #[test]
+    fn a_job_keeps_its_first_alert_mail() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let url = "https://www.linkedin.com/jobs/view/4000000001/";
+        let key = job_link(url).unwrap().key;
+        let first = AlertMail {
+            key: "mid:eins@linkedin.com".into(),
+            portal: Portal::LinkedIn,
+            subject: "2 neue Jobs".into(),
+            sender: "LinkedIn".into(),
+            date: Some(now()),
+            gmail_id: None,
+            text: Some("Controller\n\nMuster GmbH".into()),
+            postings: vec![posting(url, "A", "", "")],
+        };
+        store.record_alert(run, &first, now()).unwrap();
+        let later = AlertMail {
+            key: "mid:zwei@linkedin.com".into(),
+            subject: "Noch ein Job".into(),
+            text: Some("Anders".into()),
+            ..first.clone()
+        };
+        store.record_alert(run, &later, now()).unwrap();
+        assert_eq!(
+            store.stored_mail(&key).unwrap(),
+            Some(StoredMailRow {
+                subject: "2 neue Jobs".into(),
+                sender: "LinkedIn".into(),
+                mail_date: Some(now()),
+                body: Some("Controller\n\nMuster GmbH".into()),
+            })
+        );
+        assert_eq!(
+            store.job(&key).unwrap().unwrap().mail_key.as_deref(),
+            Some("mid:eins@linkedin.com")
+        );
+        let found = posting(
+            "https://www.linkedin.com/jobs/view/4000000002/",
+            "B",
+            "",
+            "",
+        );
+        store
+            .record_found(run, std::slice::from_ref(&found), now())
+            .unwrap();
+        store
+            .record_alert(
+                run,
+                &AlertMail {
+                    postings: vec![found.clone()],
+                    ..later
+                },
+                now(),
+            )
+            .unwrap();
+        assert_eq!(store.stored_mail(&found.key).unwrap(), None);
+        let unknown = job_link("https://www.linkedin.com/jobs/view/4000000009/")
+            .unwrap()
+            .key;
+        assert_eq!(store.stored_mail(&unknown).unwrap(), None);
     }
 
     #[test]
@@ -1743,6 +1856,7 @@ mod tests {
                 sender: "freelance.de".into(),
                 date: None,
                 gmail_id: Some(u64::try_from(run).unwrap()),
+                text: None,
                 postings: vec![posting(url, title, "", "")],
             };
             store.record_alert(run, &mail, now()).unwrap();

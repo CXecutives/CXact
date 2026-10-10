@@ -144,6 +144,7 @@ mod tests {
                 sender: String::new(),
                 date,
                 gmail_id: None,
+                text: None,
                 postings: Vec::new(),
             };
             store.record_alert(run, &alert, now()).unwrap();

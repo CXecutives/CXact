@@ -184,6 +184,7 @@ fn record(store: &Store, run: i64, ad: &Ad, text: Option<&str>, index: u64) -> J
         sender: key.portal.label().to_owned(),
         date: Some(mail),
         gmail_id: Some(GMAIL_ID + index),
+        text: None,
         postings: vec![Posting::new(
             key.clone(),
             url,

@@ -8,9 +8,9 @@ use rusqlite::{Connection, OpenFlags};
 
 use crate::error::{Error, Result};
 
-pub(super) const SCHEMA_VERSION: i64 = 9;
+pub(super) const SCHEMA_VERSION: i64 = 10;
 
-/// The tables of schema 9. Timestamps are Unix seconds. The columns of `job` beyond the
+/// The tables of schema 10. Timestamps are Unix seconds. The columns of `job` beyond the
 /// mail's and the page's:
 ///
 /// - `match_score` (0-100), `match_status` (`scored`, `excluded`, `unscorable`),
@@ -22,7 +22,10 @@ pub(super) const SCHEMA_VERSION: i64 = 9;
 /// - the user's marks: `archived_at`, `trashed_at` (it wins over the archive), `inbox_at`
 ///   (when the user last moved it into the inbox), `override_include` (`1` = fits anyway);
 /// - how it came: `mailed_at` (an alert mail last named it), `searched_at` (the search last
-///   found it); both can be set.
+///   found it); both can be set; `mail_key` the alert mail that first named it.
+///
+/// `alert_mail` keeps each alert mail's head and, for a mail without a Gmail id, its text
+/// (`body`, read in the app: `view::alert_mail`).
 ///
 /// `tombstone` keeps the keys of jobs deleted for good, so a later scan of an old alert mail
 /// never brings them back.
@@ -63,6 +66,7 @@ CREATE TABLE job (
     inbox_at          INTEGER,
     mailed_at         INTEGER,
     searched_at       INTEGER,
+    mail_key          TEXT,
     PRIMARY KEY (portal, job_id)
 ) WITHOUT ROWID;
 CREATE INDEX job_by_run ON job (first_seen_run);
@@ -71,8 +75,10 @@ CREATE TABLE alert_mail (
     mail_key       TEXT    PRIMARY KEY,
     portal         TEXT    NOT NULL,
     subject        TEXT    NOT NULL,
+    sender         TEXT    NOT NULL,
     mail_date      INTEGER,
     gmail_id       TEXT,
+    body           TEXT,
     n_postings     INTEGER NOT NULL,
     last_seen_run  INTEGER NOT NULL
 ) WITHOUT ROWID;

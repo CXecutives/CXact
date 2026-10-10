@@ -1927,6 +1927,20 @@ const handlers: Handlers = {
     const detail = structuredClone(detailOf(j));
     return harness.editDetail === null ? detail : harness.editDetail(detail);
   },
+  // The alert mail as the app keeps it, for a mailbox without Gmail (view::alert_mail).
+  alert_mail: ({ key }) => {
+    const j = find(key);
+    if (j === undefined) throw fail('notFound', { what: 'job' });
+    if (!j.hasMail) throw fail('notFound', { what: 'mail' });
+    return {
+      subject: detailOf(j).mail.subject,
+      sender: PORTAL_LABEL[j.portal],
+      date: j.mailDate,
+      text: `${j.title}
+${j.company}
+${j.location}`,
+    };
+  },
   mark_read: ({ key }) => {
     const j = find(key);
     if (j === undefined || !j.unread) return false;

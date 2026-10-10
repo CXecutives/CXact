@@ -3,4 +3,9 @@
 /**
  * The alert mail a job came from.
  */
-export type JobMail = { subject: string, gmailUrl: string | null, };
+export type JobMail = { subject: string, 
+/**
+ * The mail in Gmail; `null` for a mail of another provider, which opens in the app
+ * (`alert_mail`) when `JobView.hasMail`.
+ */
+gmailUrl: string | null, };

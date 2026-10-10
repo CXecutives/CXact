@@ -20,6 +20,7 @@ import type { ProfileSave } from "./ProfileSave";
 import type { RunEvent } from "./RunEvent";
 import type { RunRequest } from "./RunRequest";
 import type { SettingsPatch } from "./SettingsPatch";
+import type { StoredMail } from "./StoredMail";
 import type { Vocabulary } from "./Vocabulary";
 import type { WorkspacePick } from "./WorkspacePick";
 
@@ -30,6 +31,7 @@ export type Commands = {
   cancel_run: { args: Record<string, never>; result: null };
   list_jobs: { args: { query: JobQuery }; result: JobPage };
   job_detail: { args: { key: JobKey }; result: JobDetail };
+  alert_mail: { args: { key: JobKey }; result: StoredMail };
   mark_read: { args: { key: JobKey }; result: boolean };
   move_jobs: { args: { to: Place; keys: JobKey[] }; result: JobKey[] };
   move_back: { args: { jobs: MoveBack[] }; result: JobKey[] };

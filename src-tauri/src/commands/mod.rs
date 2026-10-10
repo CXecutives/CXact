@@ -42,6 +42,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         run::cancel_run,
         jobs::list_jobs,
         jobs::job_detail,
+        jobs::alert_mail,
         jobs::mark_read,
         jobs::move_jobs,
         jobs::move_back,

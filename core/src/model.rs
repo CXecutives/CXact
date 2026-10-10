@@ -72,6 +72,9 @@ pub struct AlertMail {
     pub date: Option<Timestamp>,
     /// Gmail message id (`X-GM-MSGID`) for the direct link.
     pub gmail_id: Option<u64>,
+    /// The mail's text to read in the app ("Alert-Mail öffnen", `view::alert_mail`), only for
+    /// a mail without a Gmail id: Gmail's opens in Gmail.
+    pub text: Option<String>,
     pub postings: Vec<Posting>,
 }
 

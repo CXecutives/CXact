@@ -206,6 +206,7 @@ fn read_db(conn: &Connection) -> Res<(Vec<DbJob>, usize)> {
                 override_include: false,
                 mailed_at: None,
                 searched_at: None,
+                mail_key: None,
             },
             text: r.get(11)?,
             facts,

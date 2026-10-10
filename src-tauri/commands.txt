@@ -10,6 +10,7 @@ start_run         { request: RunRequest; channel: Channel<RunEvent> }           
 cancel_run        {}                                                                 -> null
 list_jobs         { query: JobQuery }                                                -> JobPage
 job_detail        { key: JobKey }                                                    -> JobDetail
+alert_mail        { key: JobKey }                                                    -> StoredMail
 mark_read         { key: JobKey }                                                    -> boolean
 move_jobs         { to: Place; keys: JobKey[] }                                      -> JobKey[]
 move_back         { jobs: MoveBack[] }                                               -> JobKey[]

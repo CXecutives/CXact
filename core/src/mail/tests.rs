@@ -622,3 +622,45 @@ fn the_new_sources_read_by_their_links_whatever_the_layout() {
     let portals: Vec<Portal> = a.postings.iter().map(|p| p.key.portal).collect();
     assert_eq!(portals, [Portal::Gulp, Portal::Gulp, Portal::InterimX]);
 }
+
+/// A mail without a Gmail id (iCloud, GMX, WEB.DE) keeps its text to read in the app: the
+/// HTML as running text, without its styles; Gmail's opens in Gmail and keeps none.
+#[test]
+fn only_a_mail_without_gmail_keeps_its_text() {
+    let gmail = mail(
+        "LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>",
+        "Controller: 2 neue Jobs in Köln",
+        Some(LINKEDIN_HTML),
+        None,
+    );
+    assert_eq!(alert(&gmail, ALL).text, None);
+    let other = RawMail {
+        gmail_id: None,
+        ..gmail
+    };
+    let text = alert(&other, ALL).text.unwrap();
+    assert!(text.contains("Senior Controller (m/w/d)"), "{text}");
+    assert!(text.contains("Nordlicht AG"), "{text}");
+    assert!(
+        !text.contains("color:red") && !text.contains("<a"),
+        "{text}"
+    );
+    // Without HTML the text part.
+    let plain = RawMail {
+        gmail_id: None,
+        ..mail(
+            "interim-x <projekte@interim-x.com>",
+            "Neues Projekt",
+            None,
+            Some(
+                "Interim CFO (m/w/d)\r\nhttps://www.interim-x.com/de/projekt/interim_cfo_mwd-2412\r\n",
+            ),
+        )
+    };
+    assert!(
+        alert(&plain, ALL)
+            .text
+            .unwrap()
+            .starts_with("Interim CFO (m/w/d)")
+    );
+}

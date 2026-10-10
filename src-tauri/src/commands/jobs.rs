@@ -6,7 +6,7 @@ use jobalert_core::model::Place;
 use jobalert_core::pipeline::{self, dry_run};
 use jobalert_core::portal::JobKey;
 use jobalert_core::profile;
-use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack};
+use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack, StoredMail};
 use tauri::{AppHandle, State};
 
 use super::{AppState, CmdResult, not_found};
@@ -32,6 +32,17 @@ pub async fn job_detail(state: State<'_, AppState>, key: JobKey) -> CmdResult<Jo
         Timestamp::now(),
     )?
     .ok_or_else(|| not_found("job"))
+}
+
+/// "Alert-Mail öffnen" for a mailbox without Gmail: the job's alert mail as the app keeps
+/// it (subject, sender, date, text). `notFound` with `what: job` for an unknown job,
+/// `what: mail` for one no mail named.
+#[tauri::command]
+pub async fn alert_mail(state: State<'_, AppState>, key: JobKey) -> CmdResult<StoredMail> {
+    if state.store.job(&key)?.is_none() {
+        return Err(not_found("job"));
+    }
+    view::alert_mail(&state.store, &key)?.ok_or_else(|| not_found("mail"))
 }
 
 /// Marks a job as read - only on a real click in the list; `false` = it was read already.

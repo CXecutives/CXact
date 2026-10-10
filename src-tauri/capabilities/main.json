@@ -11,6 +11,7 @@
     "allow-cancel-run",
     "allow-list-jobs",
     "allow-job-detail",
+    "allow-alert-mail",
     "allow-mark-read",
     "allow-move-jobs",
     "allow-move-back",

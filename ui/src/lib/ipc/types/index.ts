@@ -67,6 +67,7 @@ export type { SettingsPatch } from "./SettingsPatch";
 export type { SettingsView } from "./SettingsView";
 export type { StatusCode } from "./StatusCode";
 export type { Step } from "./Step";
+export type { StoredMail } from "./StoredMail";
 export type { TermField } from "./TermField";
 export type { TextLayout } from "./TextLayout";
 export type { TextRange } from "./TextRange";

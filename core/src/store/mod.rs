@@ -29,7 +29,10 @@ mod pages;
 mod schema;
 
 pub use backup::{BACKUP_DIR, Backup, BackupKind, backup_dir};
-pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen};
+pub use jobs::{
+    AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen,
+    StoredMailRow,
+};
 pub use matches::Judgement;
 pub use overview::{BandCounts, PortalAlerts};
 

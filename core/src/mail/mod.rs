@@ -12,7 +12,10 @@ use sha2::{Digest, Sha256};
 
 use crate::model::{AlertMail, MAX_FIELD_CHARS, MAX_TITLE_CHARS, Posting};
 use crate::portal::{Portal, hex12};
-use crate::text::truncate_chars;
+use crate::text::{html_to_text, truncate_chars};
+
+/// Most characters of an alert mail's text the store keeps ([`readable_text`]).
+pub const MAX_MAIL_TEXT_CHARS: usize = 20_000;
 
 pub(crate) use extract::Found;
 
@@ -127,8 +130,28 @@ pub fn classify_mail(raw: &RawMail, allowed: &[Portal]) -> MailKind {
         sender: truncate_chars(&mail.sender, MAX_FIELD_CHARS),
         date: mail.date,
         gmail_id: raw.gmail_id,
+        text: raw.gmail_id.is_none().then(|| readable_text(&mail)),
         postings,
     })
+}
+
+/// A mail's text to read in the app: its HTML parts as running text (the portals' plain text
+/// parts are mostly tracking links), else its text parts; at most [`MAX_MAIL_TEXT_CHARS`].
+fn readable_text(mail: &ParsedMail) -> String {
+    let parts: Vec<String> = if mail.html.is_empty() {
+        mail.text
+            .iter()
+            .map(|text| text.trim().to_owned())
+            .collect()
+    } else {
+        mail.html.iter().map(|html| html_to_text(html)).collect()
+    };
+    let text = parts
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    truncate_chars(&text, MAX_MAIL_TEXT_CHARS)
 }
 
 /// Lasting key of a mail: Gmail id, else message id, else a hash of the content.
