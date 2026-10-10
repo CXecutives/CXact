@@ -88,8 +88,6 @@
       animate:flip
       in:toastIn
       out:toastOut
-      onpointerenter={() => toasts.pause(toast.id)}
-      onpointerleave={() => toasts.resume(toast.id)}
     >
       <span class="icon"><Icon name={look.icon} size="sm" /></span>
       {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span>{/key}

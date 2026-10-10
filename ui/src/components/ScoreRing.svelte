@@ -137,9 +137,9 @@
       // The arc holds its final value in CSS; the fill is one Web Animation from empty, so
       // it cannot depend on when the engine first computes the style of a new circle.
       shown = value;
-      // Opening a job: the number stands at once, only the arc fills. A live score counts
-      // along with its arc.
-      void number.set(live ? 0 : value, { duration: 0 });
+      // Opening a job, and a live score: the number counts up along with its arc (design
+      // round 7).
+      void number.set(0, { duration: 0 });
       number.target = value;
       let fill: Animation | null = null;
       // After the flush: a circle that was just created is bound by then.

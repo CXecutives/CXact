@@ -284,22 +284,26 @@ export function dotOut(node: Element): TransitionConfig {
   };
 }
 
-/** The toast enters rising --move-lg from --scale-enter (150 ms, ease-out). */
+/** The toast comes up from below by --move-xl while it fades in, nothing scales (180 ms,
+ *  ease-out; user, 2026-10-10). */
 export function toastIn(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('lg');
-  const scale = enterScale();
-  return { duration: duration('base'), easing: easing('out'), css: (t) => lifted(t, y, scale) };
+  const y = move('xl');
+  return {
+    duration: duration('slow'),
+    easing: easing('out'),
+    css: (t, u) => `opacity: ${t}; transform: translateY(${Math.round(u * y)}px)`,
+  };
 }
 
-/** The toast leaves sideways by --move-lg while it fades (100 ms, ease-in). */
+/** The toast goes down by --move-lg the way it came while it fades (150 ms, ease-out). */
 export function toastOut(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const x = move('lg');
+  const y = move('lg');
   return {
-    duration: duration('fast'),
-    easing: easing('in'),
-    css: (t) => `opacity: ${t}; transform: translateX(${Math.round((1 - t) * x)}px)`,
+    duration: duration('base'),
+    easing: easing('out'),
+    css: (t, u) => `opacity: ${t}; transform: translateY(${Math.round(u * y)}px)`,
   };
 }
 

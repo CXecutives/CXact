@@ -284,6 +284,8 @@
      floats above the sheet (dialog, toast, tooltip) casts one; nothing animates a shadow.
      The primary's inner highlight is static. */
   --sh-xs: 0 1px 2px hsl(var(--p-shade-xs) / 0.06);
+  /* A tile under the pointer: a soft shadow, it does not move (design round 7). */
+  --sh-tile: 0 4px 14px -4px hsl(var(--p-shade-pop) / 0.12);
   --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.18);
   --sh-pop: 0 8px 24px -6px hsl(var(--p-shade-pop) / 0.2), 0 1px 3px hsl(var(--p-shade-pop) / 0.08);
   --sh-tooltip:
@@ -590,7 +592,7 @@
   --toast-width: 400px;
   /* The fade under the top bar where a view scrolls beneath it; it comes in over the first
      scroll of this height (lib/actions/scrollFade.ts), so at rest it lies over nothing. */
-  --fade-height: 36px;
+  --fade-height: 24px;
   /* The floating bar at the foot of a page (the Profil's unsaved changes): this far above
      the window's bottom edge, at most this wide. */
   --float-gap: var(--space-16);
@@ -708,6 +710,8 @@
   --move-sm: 2px;
   --move-md: 4px;
   --move-lg: 8px;
+  /* A toast coming up from below (design round 7). */
+  --move-xl: 12px;
   --scale-enter: 0.98;
   /* No icon moves on hover (user, 2026-09-25). */
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
@@ -753,6 +757,7 @@
   --move-sm: 0px;
   --move-md: 0px;
   --move-lg: 0px;
+  --move-xl: 0px;
   --scale-enter: 1;
   --loop-state: paused;
 }

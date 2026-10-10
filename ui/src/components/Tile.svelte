@@ -67,7 +67,14 @@
       background-color var(--dur-base) var(--ease-out);
   }
 
-  .tile:hover,
+  /* Under the pointer a darker edge and a soft shadow, nothing moves (design round 7); a file
+     over a drop zone takes the navy of a target. */
+  .tile:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--sh-tile);
+    transition-duration: var(--dur-hover);
+  }
+
   .tile.over {
     border-color: var(--active-edge);
     background-color: var(--active-surface);
@@ -75,7 +82,7 @@
   }
 
   :global(:where(:root:not([data-aux-press]))) .tile:active:hover {
-    background-color: var(--active-hover);
+    background-color: var(--control-press);
     transition-duration: var(--dur-instant);
   }
 

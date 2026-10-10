@@ -7,9 +7,10 @@
 // below (TOAST_KINDS, TOAST_LIFE); components/Toast.svelte draws them and is the only
 // reader of `items` (core/tests/ui_contract.rs).
 // At most three at once; a fourth stands only while the other three carry an action (a
-// plain one never pushes an undo out, and a new one never pushes itself out). A toast waits
-// while the pointer is on it, and every toast waits while the window is in the back or a
-// modal dialog is open (`hold`): its time only runs while the user can act on it. Results of
+// plain one never pushes an undo out, and a new one never pushes itself out). A toast goes
+// after its time even under the pointer (user, 2026-10-10); every toast waits while the window
+// is in the back or a modal dialog is open (`hold`): its time only runs while the user can
+// see it. Results of
 // the same kind in quick succession merge into one toast with one undo (`undoable`); a toast
 // that says what one already up says (a fetch refused twice) takes its place and starts its
 // time again, never a second one. An
@@ -117,8 +118,6 @@ class Toasts {
   #next = 1;
   #timers = new Map<number, Timer>();
   #merged = new Map<number, Merged>();
-  /** Toasts under the pointer. */
-  #hovered = new Set<number>();
   /** The jobs (keyOf) each undo of a toast concerns. */
   #keys = new Map<number, Set<string>>();
   /** Why the toasts wait; each hold is released on its own. */
@@ -254,7 +253,6 @@ class Toasts {
     this.#stop(id);
     this.#timers.delete(id);
     this.#merged.delete(id);
-    this.#hovered.delete(id);
     this.#keys.delete(id);
     this.items = this.items.filter((item) => item.id !== id);
   }
@@ -275,17 +273,6 @@ class Toasts {
     for (const item of [...this.items]) this.dismiss(item.id);
   }
 
-  /** Hovered: the toast stays. */
-  pause(id: number): void {
-    this.#hovered.add(id);
-    this.#stop(id);
-  }
-
-  resume(id: number): void {
-    this.#hovered.delete(id);
-    this.#start(id);
-  }
-
   /**
    * Every toast waits until the returned release is called: while the window is in the
    * back (Toast.svelte) or a modal dialog is open (Dialog.svelte), so an undo cannot run
@@ -301,10 +288,10 @@ class Toasts {
     };
   }
 
-  /** The time runs (unless the toast is hovered or all toasts are held). */
+  /** The time runs (unless all toasts are held). */
   #start(id: number): void {
     const entry = this.#timers.get(id);
-    if (!entry || entry.timer !== null || this.#holds.size > 0 || this.#hovered.has(id)) return;
+    if (!entry || entry.timer !== null || this.#holds.size > 0) return;
     entry.since = Date.now();
     entry.timer = setTimeout(() => this.dismiss(id), entry.left);
   }

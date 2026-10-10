@@ -10,7 +10,7 @@ import { tokenMs, tokenNumber, tokenPx, token } from '../tokens';
 
 export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'slow' | 'reveal' | 'loop';
 export type Easing = 'standard' | 'out' | 'in' | 'emphasized';
-export type Move = 'xs' | 'sm' | 'md' | 'lg';
+export type Move = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export type EasingFn = (t: number) => number;
 
 interface Values {
@@ -33,7 +33,7 @@ const DURATIONS: readonly Duration[] = [
   'loop',
 ];
 const EASINGS: readonly Easing[] = ['standard', 'out', 'in', 'emphasized'];
-const MOVES: readonly Move[] = ['xs', 'sm', 'md', 'lg'];
+const MOVES: readonly Move[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
 let values: Values | null = null;
 let reduced = false;

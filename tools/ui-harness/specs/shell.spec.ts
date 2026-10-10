@@ -1648,7 +1648,7 @@ test('the start of a new profile asks for no primary; the Jobs view keeps its fe
   await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
 });
 
-test('toasts stay while hovered and leave on their own', async ({ page }) => {
+test('toasts leave on their own, even under the pointer', async ({ page }) => {
   // Ten seconds of it are the toasts' own life: a busy machine needs more than the usual 30 s.
   test.slow();
   await open(page, `${WIN}&view=settings`);
@@ -1666,12 +1666,11 @@ test('toasts stay while hovered and leave on their own', async ({ page }) => {
   await page.getByTestId('profile-wish-rate').fill('1.300');
   await page.getByTestId('profile-wish-rate').press('Enter');
   await expect(toasts).toHaveCount(3);
+  // Under the pointer they do not wait (user, 2026-10-10): their time runs once the window
+  // is in front again.
   await toasts.first().hover();
   await page.evaluate(() => window.__harness.fire('tauri://focus', null));
-  await page.waitForTimeout(4500);
-  await expect(toasts).toHaveCount(1);
-  await page.mouse.move(5, 5);
-  await expect(toasts).toHaveCount(0, { timeout: 6000 });
+  await expect(toasts).toHaveCount(0, { timeout: 7000 });
 });
 
 // Every view in every scenario, and every step of the setup (a mode without the sidebar).

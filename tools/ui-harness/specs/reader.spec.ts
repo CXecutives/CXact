@@ -190,7 +190,7 @@ test.describe('the head and the match', () => {
     expect((await cell(page, 'place'))[0]).toBe('München');
   });
 
-  test('opening a job fills the ring, its number stands at once', async ({ page }) => {
+  test('opening a job fills the ring, its number counts up with it', async ({ page }) => {
     await open(page, WIN);
     await settle(page);
     // Every number the reader's ring shows, frame by frame, from before the click on.
@@ -211,7 +211,11 @@ test.describe('the head and the match', () => {
     await page.waitForTimeout(600);
     const seen = await page.evaluate(() => (window as unknown as { __ring: string[] }).__ring);
     expect(seen.length).toBeGreaterThan(0);
-    expect(new Set(seen)).toEqual(new Set([BEST]));
+    // It counts up to the score and never down (design round 7).
+    const numbers = seen.map(Number);
+    expect(numbers.at(-1)).toBe(Number(BEST));
+    expect(numbers.some((n) => n < Number(BEST))).toBe(true);
+    expect(numbers.every((n, i) => i === 0 || n >= numbers[i - 1]!)).toBe(true);
   });
 
   test('a job without a score: no ring, its state box with its own button, no other buttons', async ({
