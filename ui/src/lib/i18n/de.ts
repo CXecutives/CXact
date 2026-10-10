@@ -690,7 +690,7 @@ export const de = {
     excluded: 'Ausgeschlossen',
     /** Every ring without a score is one state and one name: not scored yet, being scored,
      *  not scorable. */
-    none: 'Noch nicht bewertet',
+    none: 'Nicht bewertet',
     /** A ring without a usable profile. */
     off: NO_PROFILE,
     /** The info symbol beside the band words of the job view. */

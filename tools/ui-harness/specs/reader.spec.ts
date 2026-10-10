@@ -217,17 +217,17 @@ test.describe('the head and the match', () => {
     await openAt(page, 'linkedin-4100200302');
     let ring = stage(page).getByTestId('reader-ring');
     await expect(ring).toHaveText('–');
-    await expect(ring).toHaveAttribute('aria-label', 'Noch nicht bewertet');
+    await expect(ring).toHaveAttribute('aria-label', T.score.none);
     const band = stage(page).getByTestId('band');
     await expect(band).toHaveText(T.reader.unscored);
     await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
     await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
     await expect(stage(page).getByTestId('band-info')).toHaveCount(0);
-    // One too short to score: the same ring, "Noch nicht bewertet", its buttons.
+    // One too short to score: the same ring, "Nicht bewertet", its buttons.
     await openJob(page, 'freelancermap-2806');
     ring = stage(page).getByTestId('reader-ring');
     await expect(ring).toHaveText('–');
-    await expect(band).toHaveText('Noch nicht bewertet');
+    await expect(band).toHaveText(T.score.none);
     await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
     await expect(stage(page).getByTestId('open-ad')).toBeVisible();
     // The short text says so once, where the text is.

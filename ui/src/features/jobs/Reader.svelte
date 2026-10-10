@@ -110,7 +110,7 @@
   /** The engine excludes the job (its head says why; no verdicts, no requirements). */
   const excluded = $derived((match?.status ?? job.match?.status) === 'excluded');
   /** A match to judge the rows by (without one, or one that could not score the ad, they show
-   *  the ad's side only, as the ring says "Noch nicht bewertet"; an excluded job shows none). */
+   *  the ad's side only, as the ring says "Nicht bewertet"; an excluded job shows none). */
   const judged = $derived(withRing && match !== null && match.status !== 'unscorable' && !excluded);
   const ring = $derived(
     ringState(job.match, job.match === null && Boolean(app.state?.matchPending), job.detail.kind),
@@ -135,7 +135,7 @@
   });
   const band = $derived(ring.status === 'scored' ? ring.band : null);
   /** Not scored yet because its ad is still to come (to load, or on request): the ring's
-   *  dash and the sentence, no buttons. An ad that is gone or cannot be read says "Noch nicht
+   *  dash and the sentence, no buttons. An ad that is gone or cannot be read says "Nicht
    *  bewertet" and keeps its buttons. */
   const unscored = $derived(
     withRing &&
