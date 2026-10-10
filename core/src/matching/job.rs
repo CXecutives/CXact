@@ -129,9 +129,10 @@ fn nice_cue(line: &str) -> bool {
     NICE_CUES.iter().any(|c| folded.contains(c))
 }
 
-/// A line that ends requirements from its start on (`Skills: ...`, `Hinweis`, `Datenschutz`).
+/// A line that ends requirements from its start on (`Skills: ...`, `Hinweis`, `Datenschutz`),
+/// a bullet or not.
 fn closing_start(line: &str) -> bool {
-    let folded = fold(line);
+    let folded = fold(sections::clean_phrase(line));
     lex::CLOSING_STARTS.iter().any(|w| folded.starts_with(w))
 }
 
@@ -1141,6 +1142,30 @@ mod tests {
         );
         let items: Vec<&str> = doc.items.iter().map(|i| i.text.as_str()).collect();
         assert_eq!(items, ["Erste Führungserfahrung"]);
+    }
+
+    /// Application, contact and privacy lines and the sign-off close the requirements too.
+    #[test]
+    fn application_and_contact_lines_close_the_requirements() {
+        for closing in [
+            "Bewerbung: Bei Interesse senden Sie bitte Ihren CV",
+            "Bei Interesse senden Sie mir Ihr Profil",
+            "Sind Sie aktuell verfügbar und passt dies zu Ihren Kompetenzen?",
+            "Ich freue mich auf Ihre Rückmeldung!",
+            "Wir bestätigen, dass wir alle Bewerbungen vertraulich behandeln",
+            "Ihr Ansprechpartner: Max Muster",
+            "Kind regards,",
+            "© 2026 Muster GmbH",
+        ] {
+            let doc = read(
+                &format!(
+                    "Ihr Profil\n- Erste Führungserfahrung\n- {closing}\n- Datenmodellierung\n"
+                ),
+                &Vocab::all(),
+            );
+            let items: Vec<&str> = doc.items.iter().map(|i| i.text.as_str()).collect();
+            assert_eq!(items, ["Erste Führungserfahrung"], "{closing}");
+        }
     }
 
     #[test]

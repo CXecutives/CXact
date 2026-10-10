@@ -2874,6 +2874,19 @@ pub(crate) const CLOSING_STARTS: &[&str] = &[
     "bitte senden sie",
     "wir melden uns",
     "datenschutz",
+    "bei interesse",
+    "interesse?",
+    "haben wir ihr interesse",
+    "sind sie aktuell verfugbar",
+    "dann melden sie sich",
+    "bewerbung:",
+    "fur ihre bewerbung",
+    "kontakt:",
+    "kontaktperson",
+    "ihr kontakt",
+    "ihr ansprechpartner",
+    "ihre ansprechpartnerin",
+    "©",
 ];
 /// What a page shows in place of a hidden address (Cloudflare's email protection, as the
 /// HTML gives it with a space or a no-break space): no word of the ad, masked before
@@ -2921,8 +2934,19 @@ pub(crate) const CLOSING_WORDS: &[&str] = &[
     "freuen uns auf",
     "bitte beachten sie",
     "we look forward",
+    "look forward to hearing",
+    "freue mich auf",
+    "freue ich mich",
     "jetzt bewerben",
     "apply now",
+    "beste grusse",
+    "besten grussen",
+    "liebe grusse",
+    "herzliche grusse",
+    "kind regards",
+    "best regards",
+    "datenschutzerklarung",
+    "vertraulich behandeln",
 ];
 /// Bullet glyphs of pasted and LinkedIn ads on top of `BULLETS`.
 pub(crate) const EXTRA_BULLETS: &[char] = &[
