@@ -179,6 +179,13 @@ impl Store {
     pub fn kv_set(&self, key: &str, value: &str) -> Result<()> {
         kv_set(&self.conn(), key, value)
     }
+
+    /// Tests only: runs `sql` on the database (a trigger that makes one write fail, a value
+    /// that does not read).
+    #[cfg(test)]
+    pub(crate) fn execute_for_test(&self, sql: &str) {
+        self.conn().execute_batch(sql).unwrap();
+    }
 }
 
 // ---------------------------------------------------------------------- Helpers

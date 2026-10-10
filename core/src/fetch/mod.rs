@@ -865,7 +865,7 @@ fn fetch_order() -> impl Iterator<Item = &'static dyn PortalAdapter> {
 /// current time (controllable in tests).
 ///
 /// Errors of the database or while saving `policy.json` abort - without a durable safety
-/// state no portal is fetched any further.
+/// state no portal is fetched any further; what the other portals did stays in `summary`.
 #[expect(
     clippy::too_many_arguments,
     reason = "run context: store, rules, selection, clock and events come separately (tests)"
@@ -981,14 +981,32 @@ pub async fn fetch_all<F: PageFetcher>(
     })
     .await;
 
-    let mut completed = true;
-    for result in runs.into_iter().flatten() {
-        let run = result?;
-        completed &= run.completed;
-        summary.per_portal.insert(run.portal, run.counts);
-    }
+    let completed = collect(runs, summary);
     report_sign_in_needed(summary, need_sign_in, on_event);
-    Ok(completed)
+    completed
+}
+
+/// The portal loops' results into `summary`. A portal that failed takes nothing from the
+/// others: their counts and stops stay, and the first error is the fetch's. `true` when every
+/// loop ran to its end.
+fn collect(
+    runs: Vec<Option<crate::Result<PortalRun>>>,
+    summary: &mut FetchSummary,
+) -> crate::Result<bool> {
+    let mut completed = true;
+    let mut failure = None;
+    for result in runs.into_iter().flatten() {
+        match result {
+            Ok(run) => {
+                completed &= run.completed;
+                summary.per_portal.insert(run.portal, run.counts);
+            }
+            Err(e) => {
+                failure.get_or_insert(e);
+            }
+        }
+    }
+    failure.map_or(Ok(completed), Err)
 }
 
 /// So many ads of a searched source one run reads by itself at most: half its daily cap, so

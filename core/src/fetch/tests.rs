@@ -2070,3 +2070,39 @@ async fn a_broken_4xx_series_reads_on() {
     assert_eq!(state(10_004), (DescStatus::Failed, 1));
     assert_eq!(state(10_005), (DescStatus::Failed, 1));
 }
+
+/// A database error in one portal stops the others, but what they did stays in the summary:
+/// their counts and their stops.
+#[tokio::test(start_paused = true)]
+async fn a_failing_portal_keeps_the_others_counts() {
+    let c = clock();
+    let store = store_with(&[
+        (LI, 4_000_000_001, 1),
+        (LI, 4_000_000_002, 2),
+        (FM, 10_001, 1),
+    ]);
+    // LinkedIn's second page cannot be stored - after freelancermap is done.
+    store.execute_for_test(
+        "CREATE TRIGGER no_page BEFORE UPDATE ON job WHEN NEW.job_id = '4000000002'
+         BEGIN SELECT RAISE(ABORT, 'Test'); END;",
+    );
+    let policy = Mutex::new(Policy::in_memory());
+    let fake = Fake::default();
+    let mut summary = FetchSummary::default();
+    let (prescore, on) = (|_: &str, _: &str| 0, |_: Portal| true);
+    let result = fetch_all(
+        |_| Ok(fake.clone()),
+        &store,
+        &policy,
+        (Selection::Queue(&[LI, FM]), &prescore, &on),
+        &CancellationToken::new(),
+        &c,
+        &mut summary,
+        |_| {},
+    )
+    .await;
+    assert!(result.is_err());
+    assert_eq!(fake.ids().len(), 3);
+    assert_eq!(summary.per_portal[&FM].ok, 1);
+    assert!(!summary.per_portal.contains_key(&LI));
+}
