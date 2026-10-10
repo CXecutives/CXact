@@ -491,7 +491,7 @@ function infoOf(form: ProfileForm): ProfileInfo {
 const PROFILE: ProfileInfo = { ...DEMO.profile, form: DEMO_FORM, missing: [] };
 
 /** A CV merged into a stored profile like core: by normalized names, nothing overwritten
- *  (stars, levels and years stay), new stars only up to five. */
+ *  (stars, levels and years stay). */
 function mergeCv(stored: ProfileForm | null): ProfileForm {
   const base = stored ?? structuredClone(EMPTY_FORM);
   const cv = DEMO_FORM;

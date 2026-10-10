@@ -21,8 +21,8 @@ export const ICONS = {
   trash: 'trash-2',
   /** Take back: Wiederherstellen from the trash, Rückgängig in a field. */
   undo: 'undo-2',
-  /** A Schwerpunkt of the profile: outlined, filled while marked (a glyph made to be
-   *  filled). */
+  /** A preferred industry of the profile: outlined, filled while marked (a glyph made to
+   *  be filled). */
   star: 'star',
 
   // A job and its ad.
