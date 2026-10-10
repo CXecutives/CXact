@@ -170,7 +170,7 @@ test('the mail part fails, the search works: it ends completed, the mailbox is t
   const { active } = await stubList(page, {});
   expect(active).toContain('freelancermap-2899');
   expect(active).not.toContain('linkedin-4100200399');
-  const warning = page.getByTestId('toast').filter({ hasText: 'Gmail ist nicht erreichbar.' });
+  const warning = page.getByTestId('toast').filter({ hasText: T.error.text('mailConnect', {}) });
   await expect(warning.getByTestId('toast-action')).toHaveText(T.run.checkMailbox);
   await expect(page.getByTestId('toast').filter({ hasText: T.toast.runDone(1) })).toHaveCount(1);
   // "Postfach prüfen" leads to the Postfach, which says what failed.

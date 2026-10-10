@@ -48,8 +48,9 @@ test('every portal may be switched off; Jobs suchen then waits for one and says 
 test('a profile that no longer reads leaves no verdicts in the list', async ({ page }) => {
   await open(page, `${WIN}&scenario=profile-broken`);
   await expect(page.getByTestId('no-profile')).toContainText(T.list.profileBrokenText);
+  // Without a profile no job has a score: they all stand in "Noch nicht bewertet".
   await expect(
-    page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first(),
+    page.getByTestId('unscored-rows').locator('[data-testid^="job-row-"]').first(),
   ).toBeVisible();
   // Nothing is excluded or scored by a profile that is not there.
   await expect(page.getByTestId('excluded-divider')).toHaveCount(0);

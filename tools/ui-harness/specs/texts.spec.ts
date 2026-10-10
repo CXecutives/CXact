@@ -21,7 +21,7 @@ test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async (
   // The clock stands on Thursday 24.09.2026, 09:30.
   await open(page, WIN);
   const date = (key: string) =>
-    page.getByTestId('job-rows').getByTestId(`job-row-${key}`).locator('.date');
+    page.getByTestId('job-list').getByTestId(`job-row-${key}`).locator('.date');
   // Two days back still reads as a word (capitalised like the start of a line), earlier days
   // by weekday and date.
   await expect(date('freelance-900413')).toHaveText('Vorgestern');
@@ -51,7 +51,7 @@ test('an ad the app cannot reach says so in the reader, its row carries no badge
       fresh: false,
     });
   }, job!);
-  const row = page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2805');
+  const row = page.getByTestId('job-list').getByTestId('job-row-freelancermap-2805');
   // The row carries no badge; the reader says it.
   await expect(row.locator('.badge')).toHaveCount(0);
   await row.click();

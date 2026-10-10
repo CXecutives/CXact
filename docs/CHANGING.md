@@ -88,15 +88,20 @@ Commit them together with tokens.css.
 - The Profil-Ordner of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`). "Ordner öffnen" makes a missing folder first.
 - A step of the setup is one entry in `STEPS` of `ui/src/features/first-run/steps.ts` (order,
-  heading, sentence, its stage in the indicator, where Zurück leads, the words of its primary)
-  and its snippet of the same id in `FirstRunView.svelte`; `onboarding.svelte.ts` walks them. A
-  failure of the CV's evaluation is its sentence in `profile.cvError`; whether a new try can
-  work after it is `FINAL` in `ui/src/features/shared/fromCv.svelte.ts` (Profil and the setup).
-- The setup's frame: every step stands in the Profil page's column (`components/Page.svelte`),
-  flush left, a form in one `Group`, no step indicator (every heading says where the user is);
-  the foot (Zurück at the left, the
-  step's buttons at the right, sticky only on the long profile steps, where it lifts the
-  toasts) is the `footer` of `FirstRunView.svelte`.
+  heading, sentence, where Zurück leads, the words of its primary, its dot of the four in the
+  foot and the picture beside it) and its snippet of the same id in `FirstRunView.svelte`;
+  `onboarding.svelte.ts` walks them. A failure of the CV's evaluation is its sentence in
+  `profile.cvError`; whether a new try can work after it is `FINAL` in
+  `ui/src/features/shared/fromCv.svelte.ts` (Profil and the setup).
+- The setup's frame (design round 7): from 900 px on a short step stands beside the picture of
+  the app (`StepPicture.svelte`: which picture each step shows is `picture` in `steps.ts`, the
+  example scores in `pictures.ts`, the words in `t.firstRun.picture`), the top bar follows the
+  two colours (`shell.setupPicture`); the long profile steps take the whole column. The foot
+  (Zurück as an arrow, `components/StepDots.svelte`, the step's buttons; on the long steps the
+  light floating bar that lifts the toasts) is the `footer` of `FirstRunView.svelte`.
+- An info symbol is a decision of its own: five exist (Vertragsart, Mindesttagessatz, Länder,
+  Ausschlusswörter, the app password); a new one is a line in `five_info_symbols`
+  (`core/tests/ui_contract.rs`) and in docs/PLAN.md.
 
 ## Keys
 
