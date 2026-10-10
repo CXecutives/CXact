@@ -63,11 +63,6 @@ const HOUR: SignedDuration = SignedDuration::from_hours(1);
 const ROBOTS_FRESH: SignedDuration = SignedDuration::from_hours(24);
 const DAY: SignedDuration = SignedDuration::from_hours(24);
 
-/// Pause reasons of earlier versions, which stored only a German text. Only read to
-/// derive the code of a pause that is still running - do not translate.
-const LEGACY_BREAKER_TEXT: &str = "zwei Seiten ohne Beschreibung in Folge";
-const LEGACY_UNREADABLE_TEXT: &str = "Sicherheitsstand war unlesbar";
-
 /// How long a pause lasts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -114,7 +109,7 @@ impl From<PauseKind> for PauseReason {
 pub struct PortalState {
     pub paused_until: Option<Timestamp>,
     pub pause_kind: Option<PauseKind>,
-    /// Code of the last pause (missing in files of earlier versions).
+    /// Code of the last pause.
     pub pause_code: Option<PauseReason>,
     /// Detail of the last pause for the log (e.g. "HTTP 999"); never shown as a sentence.
     pub pause_reason: Option<String>,
@@ -124,8 +119,7 @@ pub struct PortalState {
     /// Pages without a description in a row - across runs (clicking again does not reset
     /// the breaker).
     pub suspicious_streak: u32,
-    /// Requests of the local day and the last hour (files of earlier versions: of the last
-    /// 24 hours).
+    /// Requests of the local day and the last hour.
     pub accesses: Vec<Timestamp>,
     /// End of the last request - the gap counts from the answer, also across runs.
     pub last_done_at: Option<Timestamp>,
@@ -145,19 +139,10 @@ pub struct PortalState {
 }
 
 impl PortalState {
-    /// Code of the current pause; files of earlier versions only carry a text.
+    /// Code of the current pause (every pause stores one; without, its kind).
     pub fn pause_code(&self) -> PauseReason {
-        if let Some(code) = self.pause_code {
-            return code;
-        }
-        let text = self.pause_reason.as_deref().unwrap_or_default();
-        if text.starts_with(LEGACY_BREAKER_TEXT) {
-            PauseReason::LayoutChanged
-        } else if text == LEGACY_UNREADABLE_TEXT {
-            PauseReason::StateUnreadable
-        } else {
-            self.pause_kind.map_or(PauseReason::Throttled, Into::into)
-        }
+        self.pause_code
+            .unwrap_or_else(|| self.pause_kind.map_or(PauseReason::Throttled, Into::into))
     }
 }
 
@@ -181,20 +166,8 @@ pub enum Allowance {
 pub struct Policy {
     #[serde(skip)]
     path: Option<PathBuf>,
-    #[serde(default, deserialize_with = "known_portals")]
+    #[serde(default)]
     portals: BTreeMap<Portal, PortalState>,
-}
-
-/// The sources' states of `policy.json`; a source this version does not know (one taken out
-/// again) is left out instead of making the whole file unreadable (which pauses every source).
-fn known_portals<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<BTreeMap<Portal, PortalState>, D::Error> {
-    let all = BTreeMap::<String, PortalState>::deserialize(deserializer)?;
-    Ok(all
-        .into_iter()
-        .filter_map(|(key, state)| Some((Portal::from_key(&key)?, state)))
-        .collect())
 }
 
 impl Policy {
@@ -561,27 +534,6 @@ mod tests {
         assert!(missing_dir.is_dir(), "the stand-in is never saved");
     }
 
-    /// A source this version no longer knows (one taken out again) is left out: the file
-    /// stays readable and nothing pauses.
-    #[test]
-    fn a_source_taken_out_leaves_the_file_readable() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("policy.json");
-        let mut policy = Policy::load(&path, at(0));
-        policy.record_access(Portal::LinkedIn, at(1));
-        policy.save().unwrap();
-        let mut json: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-        json["portals"]["etengo"] = json["portals"]["linkedin"].clone();
-        std::fs::write(&path, serde_json::to_vec(&json).unwrap()).unwrap();
-        let again = Policy::load(&path, at(2));
-        assert!(!matches!(
-            again.allowance(Portal::Hays, at(2)),
-            Allowance::Paused { .. }
-        ));
-        assert_eq!(again.portals.len(), 1, "only the known source");
-    }
-
     #[test]
     fn an_unreadable_file_is_set_aside_and_the_pause_is_anchored() {
         let dir = tempfile::tempdir().unwrap();
@@ -804,10 +756,9 @@ mod tests {
         );
     }
 
-    /// Pause codes: explicit ones are kept, files of earlier versions only carried a German
-    /// text - their running pauses still get the right code.
+    /// Pause codes: explicit ones are kept, a pause by its kind takes the kind's code.
     #[test]
-    fn pause_codes_survive_and_legacy_texts_map() {
+    fn pause_codes_survive() {
         let mut p = Policy::in_memory();
         p.pause_for(
             Portal::LinkedIn,
@@ -827,27 +778,6 @@ mod tests {
         assert_eq!(
             p.state(Portal::Freelancermap).pause_code(),
             PauseReason::Blocked
-        );
-        let legacy = |text: &str, kind| PortalState {
-            pause_kind: Some(kind),
-            pause_reason: Some(text.into()),
-            ..PortalState::default()
-        };
-        assert_eq!(
-            legacy(
-                "zwei Seiten ohne Beschreibung in Folge – Seitenaufbau geändert?",
-                PauseKind::Throttled
-            )
-            .pause_code(),
-            PauseReason::LayoutChanged
-        );
-        assert_eq!(
-            legacy("Sicherheitsstand war unlesbar", PauseKind::Blocked).pause_code(),
-            PauseReason::StateUnreadable
-        );
-        assert_eq!(
-            legacy("HTTP 429", PauseKind::Throttled).pause_code(),
-            PauseReason::Throttled
         );
     }
 
