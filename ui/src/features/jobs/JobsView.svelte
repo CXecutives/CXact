@@ -9,9 +9,10 @@
   The run's line is part of the header. Closing a job from the reader focuses its row.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
-  there: until then the pane keeps what it shows (the empty state or the previous job), so it
-  never goes blank. Then the new stage takes the old one's place at once, nothing fades, so
-  nothing flashes between them; the new job starts at the top. The close "×" in the reader
+  there: until then the pane keeps the previous job; the empty state goes at once (the pane
+  stays empty, a placeholder once the load takes a while). Then the new stage takes the old
+  one's place at once, nothing fades, so nothing flashes between them; the new job starts at
+  the top. The close "×" in the reader
   head (at every width) and a search that no longer finds the job close it (the place's empty
   state). Esc closes only menus and dialogs: the app has no keys of its own.
 -->

@@ -23,15 +23,15 @@
   - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
     filter narrows it; the chips say what). link: navy text that underlines on hover.
     suggest: a quiet chip under a Profil field ("Häufig verlangt", the quick picks).
-  - inText: a link inside a sentence (the upload's "auswählen"), in the sentence's type.
+  - inText: a link inside a sentence (the missing line's names), in the sentence's type.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
   - warns: a quiet (secondary or ghost) button whose action deletes or loses something
-    (empty the trash, remove the mailbox, reset the app): its text and glyph are red at
+    (empty the trash, remove the mailbox, reset everything): its text and glyph are red at
     rest, before the dialog asks; no icon warns by itself.
   - deletes: a quiet icon button that deletes for good (a job's Endgültig löschen, in its row
     and its reader): its glyph red at rest, on a red wash under the pointer.
-  - count: a quiet number after the label (how many lie there), like the place tabs.
+  - count: a quiet number after the label (a suggestion chip, the hits in another place).
   - hoverIcon: the glyph that says what a click does, in the place of the glyph at rest under
     the pointer and the keyboard focus (the top bar's panels: panel-left, and its -close).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
@@ -232,7 +232,7 @@
     margin-right: calc(-1 * var(--space-4));
   }
 
-  /* Quiet, like the count of a place tab: how many lie there. */
+  /* Quiet: how many there are. */
   .count {
     color: var(--text-subtle);
     font-variant-numeric: var(--numeric);

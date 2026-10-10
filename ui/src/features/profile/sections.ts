@@ -54,7 +54,7 @@ export type Control =
       asked?: TermField;
       testid: string;
     }
-  /** Vertragsart: Projekt und Interim, Festanstellung, Zeitarbeit, a choice of several. */
+  /** The contract types (`profile.contract`), a choice of several. */
   | { kind: 'contracts'; info: Info }
   | { kind: 'choice'; key: ChoiceKey; label: Word; info?: Info; testid: string }
   | { kind: 'countries'; info: Info }

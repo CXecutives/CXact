@@ -32,7 +32,6 @@ import type {
   Place,
   Portal,
   ProfileForm,
-  ReasonWeight,
   TermField,
   Way,
   WorkMode,
@@ -274,7 +273,7 @@ const contract = {
   anue: 'Zeitarbeit',
   unclear: 'Vertragsart unklar',
 } as const;
-export type ContractKind = keyof typeof contract;
+type ContractKind = keyof typeof contract;
 
 function contractName(p: Params): string {
   const type = typeof p.type === 'string' && p.type in contract ? (p.type as ContractKind) : null;
@@ -478,73 +477,25 @@ const reasonCode = {
 } satisfies Record<string, Text>;
 export type ReasonCode = keyof typeof reasonCode;
 
-interface CriterionText {
-  /** Short name in the criteria strip of the reader. */
-  label: string;
-  /** Why a job is excluded by it, in the short words of a list row. */
-  short: string;
-  /** Why a job is excluded by it, from the profile's side (the reader's head; the row the
-   *  criterion judges says what the ad states). */
-  exclusion: string;
-}
-
 /**
  * Hard criteria of the profile (`MatchDetail.criteria[].code`, `ProfileUnderstanding.
- * criteria[].code`). One entry per criterion: a new criterion needs exactly one entry here.
+ * criteria[].code`): why a job is excluded by each, from the profile's side (the reader's
+ * head; the row the criterion judges says what the ad states). One entry per criterion: a new
+ * criterion needs exactly one entry here.
  */
 const criteria = {
-  minDayRate: {
-    label: 'Tagessatz',
-    short: 'Tagessatz zu niedrig',
-    exclusion: 'Der Tagessatz liegt unter deinem Mindesttagessatz.',
-  },
-  countries: {
-    label: 'Einsatzländer',
-    short: 'Einsatzland passt nicht',
-    exclusion: 'Der Einsatzort liegt nicht in deinen Ländern.',
-  },
-  noAnue: {
-    label: 'Zeitarbeit',
-    short: 'Zeitarbeit',
-    exclusion: 'Zeitarbeit ist in deinem Profil nicht gewählt.',
-  },
-  noPermanent: {
-    label: 'Festanstellung',
-    short: 'Festanstellung',
-    exclusion: 'Festanstellung ist in deinem Profil nicht gewählt.',
-  },
-  availability: {
-    label: 'Verfügbarkeit',
-    short: 'Start passt nicht',
-    exclusion: 'Der Start liegt vor deiner Verfügbarkeit.',
-  },
-  minSalary: {
-    label: 'Jahresgehalt',
-    short: 'Gehalt zu niedrig',
-    exclusion: 'Das Gehalt liegt unter deinem Mindestgehalt.',
-  },
-  permanentRegion: {
-    label: 'Orte',
-    short: 'Ort passt nicht',
-    exclusion: 'Der Ort liegt nicht in deinen Orten für Festanstellung.',
-  },
+  minDayRate: 'Der Tagessatz liegt unter deinem Mindesttagessatz.',
+  countries: 'Der Einsatzort liegt nicht in deinen Ländern.',
+  noAnue: 'Zeitarbeit ist in deinem Profil nicht gewählt.',
+  noPermanent: 'Festanstellung ist in deinem Profil nicht gewählt.',
+  availability: 'Der Start liegt vor deiner Verfügbarkeit.',
+  minSalary: 'Das Gehalt liegt unter deinem Mindestgehalt.',
+  permanentRegion: 'Der Ort liegt nicht in deinen Orten für Festanstellung.',
   // The workload and the duration are checks, never an exclusion (engine 16).
-  workload: {
-    label: 'Auslastung',
-    short: 'Auslastung passt nicht',
-    exclusion: WORKLOAD,
-  },
-  duration: {
-    label: 'Laufzeit',
-    short: 'Laufzeit zu kurz',
-    exclusion: DURATION,
-  },
-  exclusionWords: {
-    label: 'Ausschlusswörter',
-    short: 'Ausschlusswort',
-    exclusion: 'Die Anzeige nennt eines deiner Ausschlusswörter.',
-  },
-} satisfies Record<string, CriterionText>;
+  workload: WORKLOAD,
+  duration: DURATION,
+  exclusionWords: 'Die Anzeige nennt eines deiner Ausschlusswörter.',
+} satisfies Record<string, string>;
 export type CriterionKey = keyof typeof criteria;
 
 /** How a row of the reader's Jobdetails fits the profile (features/jobs/terms.ts): met, met in
@@ -564,7 +515,7 @@ export type MatchNote = keyof typeof note;
 /** The keys of the profile file the app speaks about (Profil-JSON v19, an external
  *  contract), each by the field it belongs to, which every catalog names by the label of its
  *  form field (`fieldName`). */
-export const PROFILE_KEY_FIELD: Readonly<Record<string, string>> = {
+const PROFILE_KEY_FIELD: Readonly<Record<string, string>> = {
   wunschrollen: 'roles',
   vertragsarten: 'contracts',
   tagessatz_wunsch: 'dayRateWish',
@@ -620,9 +571,6 @@ const warning = {
 } satisfies Record<string, Text>;
 
 export const de = {
-  app: {
-    name: 'CXact',
-  },
   nav: {
     label: 'Bereiche',
     jobs: 'Jobs',
@@ -682,7 +630,7 @@ export const de = {
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** An empty Archiv or Papierkorb (an empty Aktuell says what comes, list.empty*). */
+    /** An empty Archiv or Papierkorb (an empty Aktuell says what comes, list.emptyText). */
     empty: {
       archive: 'Das Archiv ist leer.',
       trash: 'Der Papierkorb ist leer.',
@@ -755,12 +703,8 @@ export const de = {
     } satisfies Record<Band, string>,
   },
   reason: {
-    weight: {
-      must: 'Pflicht',
-      nice: 'optional',
-      hard: 'Ausschluss',
-      info: 'Hinweis',
-    } satisfies Record<ReasonWeight, string>,
+    /** The quiet word after an unmet requirement that is only nice to have. */
+    optional: 'optional',
     code: reasonCode,
   },
   job: {
@@ -843,8 +787,8 @@ export const de = {
     label: 'Jobs',
     /** The folding section at the end of every place (its count after it where known). */
     excluded: 'Ausgeschlossen',
-    /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
-     *  arrive during the fetch, each once its details are in). */
+    /** While the first search runs, the empty list only says what comes (the rows arrive
+     *  during the search, each once its details are in). */
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
     /** Aktuell before the first search. */
     emptyText: 'Starte eine Suche mit „Jobs suchen“.',
@@ -1017,8 +961,6 @@ export const de = {
     },
   },
   profile: {
-    /** The title of the view: the app has one profile. */
-    title: 'Profil',
     /** The file does not read (edited by hand): the start page says so. */
     unreadable: PROFILE_UNREADABLE,
     noneText: 'Mit einem Profil zeigt jeder Job seine Übereinstimmung.',
@@ -1127,7 +1069,6 @@ export const de = {
       competences: 'Kompetenzen',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
-      competencesMore: '+ Kompetenz',
       years: 'Jahre',
       addCompetence: 'Kompetenz hinzufügen',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
@@ -1365,7 +1306,6 @@ export const de = {
     },
   },
   settings: {
-    title: 'Einstellungen',
     /** The three groups of the page. */
     portals: 'Jobportale',
     mailbox: 'Postfach',
@@ -1425,19 +1365,6 @@ export const de = {
     folderMoved: 'Profil kopiert',
     folderFiles: 'Ordner geändert',
     folderOwnProfile: 'Profil aus dem neuen Ordner übernommen',
-    /** The database's copies (the failed start offers them). */
-    backupHeading: 'Sicherung wiederherstellen',
-    backupAction: 'Wiederherstellen',
-    backupNone: 'Es gibt noch keine Sicherung.',
-    /** After a copy's day and time: why it is there (the copy of a day says nothing). */
-    backupKind: {
-      daily: null,
-      restore: 'vor dem Wiederherstellen',
-    } satisfies Record<BackupKind, string | null>,
-    backupText: 'Der jetzige Stand wird vorher gesichert.',
-    backupRestored: 'Sicherung wiederhergestellt',
-    /** Its undo brought the state before it back. */
-    backupUndone: 'Rückgängig gemacht',
     /** The row of the reset in Daten: its label, its one sentence, its button (also the
      *  dialog's) and its dialog. */
     reset: 'Alles zurücksetzen',
@@ -1486,6 +1413,19 @@ export const de = {
     closeHeading: 'Suche abbrechen und schließen?',
     closeAction: 'Schließen',
     keep: 'Weitersuchen',
+    /** The database's copies (the failed start offers them). */
+    backupHeading: 'Sicherung wiederherstellen',
+    backupAction: 'Wiederherstellen',
+    backupNone: 'Es gibt noch keine Sicherung.',
+    /** After a copy's day and time: why it is there (the copy of a day says nothing). */
+    backupKind: {
+      daily: null,
+      restore: 'vor dem Wiederherstellen',
+    } satisfies Record<BackupKind, string | null>,
+    backupText: 'Der jetzige Stand wird vorher gesichert.',
+    backupRestored: 'Sicherung wiederhergestellt',
+    /** Its undo brought the state before it back. */
+    backupUndone: 'Rückgängig gemacht',
   },
   /** The calendar beside a day field (Verfügbar): the week starts on Monday. */
   calendar: {

@@ -32,6 +32,7 @@
   import Page from '$components/Page.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Steps from '$components/Steps.svelte';
+  import { liftToasts } from '$lib/actions/liftToasts';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
   import { fade } from '$lib/motion/transitions';
@@ -249,6 +250,7 @@
           class:stuck={long && stuck}
           data-testid="first-bar"
           use:watchStuck
+          use:liftToasts={long}
         >
           {#if back !== null}
             <span class="back">

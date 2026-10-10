@@ -1,27 +1,25 @@
 <!--
   Modal question with at most two actions: confirm | danger, plus an optional third one
-  (`altLabel`, a secondary button, as "Verwerfen" in "Änderungen speichern?"). A plain
-  scrim (no blur: a
-  blurred backdrop over the whole window drops frames in the web view); the dialog rises in
-  180 ms (ease-out) and leaves in 100 ms. It holds the focus like a native one (input.ts):
-  Tab and Shift+Tab cycle through its buttons, Esc cancels wherever the focus is, Enter
-  presses the focused button or, on the dialog itself, its default button (cancel for
-  danger, confirm otherwise). The focus starts on that default button (no focus ring,
-  user decision 2026-10-04). The
-  heading stays ink also in a danger dialog (its red button says it). A click on its text
+  (`altLabel`, a secondary button, as "Verwerfen" in "Änderungen speichern?"). A plain scrim
+  (no blur: a blurred backdrop over the whole window drops frames in the web view); the
+  dialog rises in 180 ms (ease-out) and leaves in 100 ms. It holds the focus like a native
+  one (input.ts): Tab and Shift+Tab cycle through its buttons, Esc cancels wherever the focus
+  is, Enter presses the focused button or, on the dialog itself, its default button (cancel
+  for danger, confirm otherwise). The focus starts on that default button (no focus ring,
+  user decision 2026-10-04). The heading stays ink also in a danger dialog (its red button
+  says it). A click on its text
   keeps the focus inside; on close the focus goes back to where it was. A failure of the
-  action shows inside the dialog (`error`), never behind the scrim. The toasts lie below the scrim and wait while it is
-  open.
+  action shows inside the dialog (`error`), never behind the scrim. The toasts lie below the
+  scrim and wait while it is open.
   Pressing inside and releasing on the scrim keeps it open; only the left button counts.
   The buttons follow the OS: the action first on Windows (then the third action, then
   cancel), last (right) on macOS with the third action on the far left. The scrim starts
   below the window's top bar, which keeps moving the window and its buttons keep working (a
   sheet leaves the title bar free).
   A dialog may hold content of its own (`children`: the list of the backups, the mailbox
-  form); `alone` leaves only its one button. The sentence under the heading is left out where
-  the heading says it all; `items` lists what the action concerns (everything a reset
-  deletes) under it. An action that can be stopped while it runs (the sign-in of "Verbinden")
-  keeps cancel and Esc live (`stoppable`).
+  form). The sentence under the heading is left out where the heading says it all. An action
+  that can be stopped while it runs (the check of "Verbinden") keeps cancel and Esc live
+  (`stoppable`).
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -40,12 +38,8 @@
     heading: string;
     /** One or two sentences under the heading (null: the content says it). */
     text?: string | null;
-    /** What the action concerns, one item each (what a reset deletes). */
-    items?: readonly string[] | null;
     /** Content of its own under the text (the backups, the mailbox form). */
     children?: Snippet;
-    /** Only the confirm button: a card that informs and closes. */
-    alone?: boolean;
     /** The verb of the button that opened it ("Entfernen" opens "Postfach entfernen?", its
      *  button says Entfernen; "Zurücksetzen" opens "Alles zurücksetzen?"), in every dialog. */
     confirmLabel: string;
@@ -68,9 +62,7 @@
     variant = 'confirm',
     heading,
     text = null,
-    items = null,
     children,
-    alone = false,
     confirmLabel,
     cancelLabel,
     busy = false,
@@ -146,7 +138,7 @@
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="{id}-heading"
-        aria-describedby={text || items !== null ? `${id}-text` : undefined}
+        aria-describedby={text ? `${id}-text` : undefined}
         tabindex="-1"
         data-testid={testid ?? undefined}
         in:dialogIn
@@ -155,16 +147,7 @@
         use:focusFirst={variant}
       >
         <h2 class="heading" id="{id}-heading">{heading}</h2>
-        {#if text || items !== null}
-          <div class="body" id="{id}-text">
-            {#if text}<p class="text">{text}</p>{/if}
-            {#if items !== null}
-              <ul class="items" data-testid="dialog-items">
-                {#each items as item (item)}<li>{item}</li>{/each}
-              </ul>
-            {/if}
-          </div>
-        {/if}
+        {#if text}<p class="text" id="{id}-text">{text}</p>{/if}
         {@render children?.()}
         {#if error}
           <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
@@ -193,7 +176,7 @@
               </span>
             {/if}
           {/snippet}
-          {#if !actionFirst && !alone}{@render alt()}{@render dismiss()}{/if}
+          {#if !actionFirst}{@render alt()}{@render dismiss()}{/if}
           <Button
             variant={variant === 'danger' ? 'danger' : 'primary'}
             label={confirmLabel}
@@ -202,7 +185,7 @@
             testid="dialog-confirm"
             onclick={confirm}
           />
-          {#if actionFirst && !alone}{@render alt()}{@render dismiss()}{/if}
+          {#if actionFirst}{@render alt()}{@render dismiss()}{/if}
         </div>
       </div>
     </div>
@@ -231,7 +214,6 @@
 
   .dialog {
     position: relative;
-    z-index: var(--z-dialog);
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
@@ -252,24 +234,10 @@
     letter-spacing: var(--tracking-tight);
   }
 
-  .body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
   .text {
     color: var(--text-muted);
     font: var(--type-body);
     text-wrap: balance;
-  }
-
-  /* A plain list of what the action concerns, in the words of the sentence above. */
-  .items {
-    padding-left: var(--space-20);
-    color: var(--text-muted);
-    font: var(--type-body);
-    list-style: disc;
   }
 
   .actions {

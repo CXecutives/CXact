@@ -77,7 +77,7 @@
       <span class="icon"><Icon name={ICON[kind]} size="sm" /></span>
     {/if}
     <span class="label"
-      >{label}{#if optional}<span class="optional">{t.reason.weight.nice}</span>{/if}</span
+      >{label}{#if optional}<span class="optional">{t.reason.optional}</span>{/if}</span
     >
   </span>
 {/if}

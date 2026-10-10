@@ -312,7 +312,7 @@ asks the live pages once. Its row lands in Einstellungen > Jobportale, in the bo
 - The copies of the database live in `backups/` next to `jobs.db` in the data folder
   (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `RESTORE_KEPT`);
   a start whose data cannot load lists and restores them (`list_backups`, `restore_backup`,
-  `BackupDialog.svelte` from `App.svelte`).
+  `features/shell/BackupDialog.svelte` from `App.svelte`).
 - The days the first mailbox scan reads: `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`
   (`Scope::New`; later fetches read from the last one with a day of overlap). Not generated
   yet: the catalog texts name the 30 by hand.

@@ -186,31 +186,6 @@ export function scrim(
   return opacity(duration(out ? 'fast' : 'slow'), easing(out ? 'in' : 'out'));
 }
 
-export interface RollParams {
-  /** The number went up (it rises from below) or down (it drops from above). */
-  up: boolean;
-  /** Roll at all (false while the view is still being built: the number is simply there). */
-  on?: boolean;
-}
-
-/**
- * A count that changes while it is visible (segment counts, tiles, run
- * counters): `{#key value}<span class="roll" in:roll={{ up }}>{value}</span>{/key}` on an
- * inline-block span. The new number rises --move-md in the direction of the change and
- * fades in (150 ms, emphasized); the old one leaves at once (no out, so nothing stacks or
- * reflows). It does not play when the count first appears (a local transition).
- */
-export function roll(node: Element, { up, on = true }: RollParams): TransitionConfig {
-  if (!on) return {};
-  if (isReducedMotion()) return crossfade(node);
-  const y = move('md') * (up ? 1 : -1);
-  return {
-    duration: duration('base'),
-    easing: easing('emphasized'),
-    css: (t) => `opacity: ${t}; transform: translateY(${Math.round((1 - t) * y)}px)`,
-  };
-}
-
 export interface CollapseParams {
   /** Collapse at all: only a job that the user moves out of the list (archive, delete,
    *  restore); a row that a filter or a search hides is simply gone. */
@@ -331,26 +306,16 @@ export function menuOut(_node: Element): TransitionConfig {
   return opacity(duration('instant'), easing('in'));
 }
 
-export interface TooltipParams {
-  /** Where the bubble sits: it comes --move-sm out of its anchor as it appears. */
-  placement: 'top' | 'bottom' | 'right';
-}
-
-/** The tooltip pops out of its anchor (100 ms, ease-out) and leaves with a 60 ms fade. */
-export function tooltipIn(node: Element, { placement }: TooltipParams): TransitionConfig {
+/** The tooltip pops --move-sm out of its anchor above it (100 ms, ease-out) and leaves with
+ *  a 60 ms fade. */
+export function tooltipIn(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const scale = enterScale();
-  if (placement === 'right') {
-    const x = -move('sm');
-    return {
-      duration: duration('fast'),
-      easing: easing('out'),
-      css: (t) =>
-        `opacity: ${t}; transform: translateX(${Math.round((1 - t) * x)}px) scale(${scale + (1 - scale) * t})`,
-    };
-  }
-  const y = move('sm') * (placement === 'top' ? 1 : -1);
-  return { duration: duration('fast'), easing: easing('out'), css: (t) => lifted(t, y, scale) };
+  const y = -move('sm');
+  return {
+    duration: duration('fast'),
+    easing: easing('out'),
+    css: (t) => lifted(t, y, enterScale()),
+  };
 }
 
 export function tooltipOut(_node: Element): TransitionConfig {

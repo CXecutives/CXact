@@ -1,11 +1,11 @@
 <!--
-  The menu layer: mounted once (App, Gallery), fed by lib/state/menu.svelte.ts. One menu at a
+  The menu layer: mounted once (App), fed by lib/state/menu.svelte.ts. One menu at a
   time, drawn by the app on both OS instead of the OS's own popup (a native popup could hang
   the window). It opens at the pointer (a right click) or below its button, above it where
   only there is room, and never covers its button, the title bar or the window's edge: a
   menu taller than the room takes the roomier side and scrolls inside itself (the wheel over
-  it scrolls only the menu). Rows are the one control height (--menu-row) with the text of a field
-  and a fixed icon column (the check of a choice or a switch sits there too); no entry names
+  it scrolls only the menu). Rows are the one control height (--menu-row) with the text of a
+  field and a fixed icon column (the check of a choice or a switch sits there too); no entry names
   a key. A group may carry a small muted heading, which the keys pass over.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row at once (the highlight follows the pointer without a

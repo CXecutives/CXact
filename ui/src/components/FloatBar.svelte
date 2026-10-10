@@ -5,9 +5,10 @@
   surface: tokens.css `[data-surface='inverse']`), its buttons at the right (`actions`: a
   quiet one and the view's primary). It rises in (8 px, 150 ms) and fades out. It ends the
   page: the page is at least as high as the view, so under a short page it still stands at
-  the bottom. The toast stack rises above it (Toast measures what sticks to the bottom).
+  the bottom. The toast stack rises above it (`use:liftToasts`).
 -->
 <script lang="ts">
+  import { liftToasts } from '$lib/actions/liftToasts';
   import { fade, rise } from '$lib/motion/transitions';
   import type { Snippet } from 'svelte';
 
@@ -21,7 +22,13 @@
   let { actions = null, testid = null, children }: Props = $props();
 </script>
 
-<div class="float" data-testid={testid ?? undefined} in:rise={{ distance: 'lg' }} out:fade>
+<div
+  class="float"
+  data-testid={testid ?? undefined}
+  in:rise={{ distance: 'lg' }}
+  out:fade
+  use:liftToasts
+>
   <div class="bar" data-surface="inverse">
     <div class="message">{@render children()}</div>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
@@ -29,8 +36,8 @@
 </div>
 
 <style>
-  /* Sticks to the view's bottom edge with the gap as its own padding (so the toast stack
-     sees it touch the edge); as wide as the bar. */
+  /* Sticks to the view's bottom edge with the gap as its own padding (the toast stack rises
+     by its whole height); as wide as the bar. */
   .float {
     position: sticky;
     z-index: var(--z-sticky);

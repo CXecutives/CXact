@@ -1,13 +1,14 @@
 <!--
   Connect a Gmail mailbox: address and app password, Enter saves, Esc cancels. Errors land
   at the field they belong to (empty fields are said before anything is sent); when Gmail
-  refuses the pair, both fields are marked, the password shakes once and the one sentence
-  stands above the button. The password never leaves this form except to save_mailbox (it
-  goes straight into the OS keychain). The app password has an info symbol (what it is), and
-  under its field "App-Passwort erstellen" opens Google's page. The fields stand one under
-  the other across their box. Einstellungen shows it in a dialog and the setup in its group:
-  their buttons ("Verbinden") call `save` and `cancel`. A saved mailbox needs no note: its
-  state "Verbunden" (Einstellungen) or the setup's "Postfach verbunden" is the answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
+  refuses the pair, both fields are marked, the password comes into view and the one
+  sentence stands under the fields. The password never leaves this form except to
+  save_mailbox (it goes straight into the OS keychain). The app password has an info symbol
+  (what it is) and "App-Passwort erstellen" as its field's link to Google's page. The fields
+  stand one under the other across their box. Einstellungen shows it in a dialog and the
+  setup in its group: their buttons ("Verbinden") call `save` and `cancel`. A saved mailbox
+  needs no note: its state "Verbunden" (Einstellungen) or the setup's "Postfach verbunden" is
+  the answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
   live: they stop the check (`cancel_run`, the backend holds the app for it); the stop itself
   says nothing.
 -->
@@ -80,10 +81,10 @@
       if (kind === 'mailCancelled') {
         // Stopped on purpose (cancel, Esc, the window closing): nothing to say.
       } else if (kind === 'mailAuth') {
-        // Gmail refuses address or password: both are marked, the password shakes once.
+        // Gmail refuses address or password: both are marked, the password comes into view.
         refused = true;
         formError = words;
-        passwordField?.shake();
+        passwordField?.bringIntoView();
       } else if (reason === 'mailAddress' || kind === 'mailNotGmail') {
         userError = words;
       } else if (reason === 'appPassword') {

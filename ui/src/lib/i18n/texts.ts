@@ -54,7 +54,7 @@ export function noteText(note: Notice | null): string | null {
   if (note === null) return null;
   if (note.code === 'hardCriterion') {
     const key = criterionKey(note.params.criterion);
-    return key ? t.reader.criterion[key].exclusion : t.reader.note.hardCriterion;
+    return key ? t.reader.criterion[key] : t.reader.note.hardCriterion;
   }
   if (has(t.reader.note, note.code)) {
     return textOf(t.reader.note[note.code as MatchNote], note.params);
@@ -64,7 +64,7 @@ export function noteText(note: Notice | null): string | null {
     if (text) return text;
   }
   const key = criterionKey(note.code);
-  return key ? t.reader.criterion[key].exclusion : null;
+  return key ? t.reader.criterion[key] : null;
 }
 
 /**

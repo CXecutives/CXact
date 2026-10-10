@@ -8,9 +8,9 @@
   the arc fills). A view that comes back shows its rings as they are. At most 10 rings fill
   at the same time, the others are placed at once.
   A scored ring takes the colour of its decile (ten steps, red through orange and yellow to
-  green; `d0` ... `d9`) with ink digits. provisional (a score from a teaser only) looks exactly
-  like a scored ring: the reader says once that the ad is only a preview. excluded: the ring
-  and its number in grey (the fit is kept, so a wrong exclusion shows at once).
+  green; `d0` ... `d9`) with ink digits; a score from a teaser only looks the same (the reader
+  says once that the ad is only a preview). An excluded job shows the ban instead (`ban` in
+  the list, the reader's own box), never a ring of its kept fit.
   The tooltip names the band and the percentage; a ring with a number adds under it the one
   sentence of what the match means (`score.info`, as the info symbol of the reader says it).
   Every ring without a score is one state and one look (not scored yet, being scored, not
@@ -22,8 +22,6 @@
 
   export type RingState =
     | { status: 'scored'; score: number; band: Band }
-    | { status: 'provisional'; score: number; band: Band }
-    | { status: 'excluded'; score: number }
     | { status: 'unscorable' }
     | { status: 'pending' }
     | { status: 'none' }
@@ -31,8 +29,8 @@
 
   /**
    * The ring state of a job's match (null = not scored yet). `detail` is the state of the
-   * job's details: a score from a teaser is provisional, and a job whose details are still
-   * coming is not "not rateable" yet but simply not scored.
+   * job's details: a job whose details are still coming is not "not rateable" yet but simply
+   * not scored.
    */
   export function ringState(
     match: JobMatch | null,
@@ -40,16 +38,12 @@
     detail: DetailState['kind'] | null = null,
   ): RingState {
     if (match === null) return pending ? { status: 'pending' } : { status: 'none' };
-    if (match.status === 'excluded') return { status: 'excluded', score: match.score };
     // No text, no verdict: an ad still to come (or to fetch again, or on request) is scored
     // once it is there; only an ad that cannot be fetched at all is not scorable.
     if (match.status === 'unscorable') {
       return detail === 'pending' || detail === 'failed' || detail === 'onRequest'
         ? { status: 'none' }
         : { status: 'unscorable' };
-    }
-    if (detail === 'teaser') {
-      return { status: 'provisional', score: match.score, band: match.band };
     }
     return { status: 'scored', score: match.score, band: match.band };
   }
@@ -83,11 +77,9 @@
 
   let { ring, size = 'sm', animate = null, ban = false, testid = null }: Props = $props();
 
-  /** A number on the ring (final or provisional). */
-  const valued = $derived(
-    ring.status === 'scored' || ring.status === 'provisional' || ring.status === 'excluded',
-  );
-  const score = $derived(valued && 'score' in ring ? Math.max(0, Math.min(100, ring.score)) : 0);
+  /** A number on the ring. */
+  const valued = $derived(ring.status === 'scored');
+  const score = $derived(ring.status === 'scored' ? Math.max(0, Math.min(100, ring.score)) : 0);
 
   const number = countUp(untrack(() => score));
   let shown = $state(untrack(() => score));
@@ -96,18 +88,13 @@
   let wasScored = false;
   let arc = $state<SVGCircleElement | null>(null);
   /** The colour step: the decile of the score, 100 in the last one. */
-  const step = $derived(
-    valued && ring.status !== 'excluded' ? `d${Math.min(9, Math.floor(score / 10))}` : '',
-  );
+  const step = $derived(valued ? `d${Math.min(9, Math.floor(score / 10))}` : '');
 
   const label = $derived.by(() => {
     if (ban) return t.score.excluded;
     switch (ring.status) {
       case 'scored':
-      case 'provisional':
         return t.score.value(t.score.band[ring.band], formatPercent(ring.score));
-      case 'excluded':
-        return t.score.value(t.score.excluded, formatPercent(ring.score));
       case 'off':
         return t.score.off;
       default:
@@ -239,16 +226,8 @@
     stroke: var(--score-track);
   }
 
-  .excluded .track {
-    stroke: var(--score-excluded-track);
-  }
-
   .ring.ban .track {
     stroke: var(--ban-track);
-  }
-
-  .excluded .value {
-    stroke: var(--score-excluded);
   }
 
   .value {
@@ -278,8 +257,7 @@
   }
 
   /* The digits of a score are ink. */
-  .scored,
-  .provisional {
+  .scored {
     --ring-text: var(--score-digits);
   }
 
@@ -322,10 +300,6 @@
 
   .d9 {
     --ring-color: var(--score-ring-9);
-  }
-
-  .excluded {
-    --ring-text: var(--score-excluded);
   }
 
   .sm {

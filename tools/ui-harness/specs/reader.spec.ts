@@ -548,9 +548,7 @@ test.describe('an excluded job', () => {
     await expect(box.getByTestId('reader-include')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
     // Its first violation, once, from the profile's side; no way into the ad.
-    await expect(stage(page).getByTestId('exclusion')).toHaveText(
-      T.reader.criterion.noAnue.exclusion,
-    );
+    await expect(stage(page).getByTestId('exclusion')).toHaveText(T.reader.criterion.noAnue);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
     // The head says why: no verdicts in the rows and no Anforderungen (user, 2026-10-03).
     expect(await cell(page, 'contract')).toEqual(['Zeitarbeit', '']);
@@ -617,9 +615,7 @@ test.describe('an excluded job', () => {
     page,
   }) => {
     await openAt(page, 'linkedin-4100200305');
-    await expect(stage(page).getByTestId('exclusion')).toHaveText(
-      T.reader.criterion.countries.exclusion,
-    );
+    await expect(stage(page).getByTestId('exclusion')).toHaveText(T.reader.criterion.countries);
     expect(await cell(page, 'place')).toEqual(['Zürich', '']);
   });
 });
@@ -998,7 +994,7 @@ test.describe('Anforderungen', () => {
     // Untagged is Pflicht: the only tag is the quiet word "optional", no pill, and only on a
     // requirement that is not met.
     expect(new Set(await why(page).locator('.optional').allInnerTexts())).toEqual(
-      new Set([T.reason.weight.nice]),
+      new Set([T.reason.optional]),
     );
     await expect(why(page).getByTestId('reasons-met').locator('.optional')).toHaveCount(0);
     await expect(why(page).locator('.optional').first()).toHaveCSS(

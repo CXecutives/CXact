@@ -861,7 +861,7 @@ test('a start whose data cannot load offers the backups; a restore loads the app
 }) => {
   await open(page, `${WIN}&scenario=load-failed`);
   await expect(page.getByTestId('restore-backup')).toHaveText(
-    await text(page, 'settings.backupHeading'),
+    await text(page, 'shell.backupHeading'),
   );
   // A failure to list them stays a note under the ways.
   await failNext(page, 'list_backups');
@@ -1336,18 +1336,16 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
   }
 });
 
-test('a notice banner stands in the page column and draws no line of its own', async ({ page }) => {
+test('the dry-run note is a plain line in the page column, no tinted box', async ({ page }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
-  const banner = page.locator('.notice.banner').first();
-  const edge = (await banner.boundingBox())!.x;
+  const note = page.getByTestId('dry-run-note');
+  await expect(note).toHaveText(T.settings.dryRun);
+  const edge = (await note.boundingBox())!.x;
   const heading = (await page.getByTestId('settings-portals').boundingBox())!.x;
   expect(Math.abs(edge - heading)).toBeLessThanOrEqual(1);
-  const same = async (notice: Locator): Promise<boolean> =>
-    notice.evaluate((node) => {
-      const style = getComputedStyle(node);
-      return style.borderTopColor === style.backgroundColor;
-    });
-  expect(await same(banner)).toBe(true);
+  expect(await note.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
+    'rgba(0, 0, 0, 0)',
+  );
 });
 
 test('one glyph per action: retries load again, what deletes for good shares its glyph', async ({

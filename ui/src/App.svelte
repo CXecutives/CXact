@@ -42,7 +42,7 @@
   import CloseDialog from './features/shell/CloseDialog.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
-  import BackupDialog from './features/settings/BackupDialog.svelte';
+  import BackupDialog from './features/shell/BackupDialog.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
   import Sidebar from './features/shell/Sidebar.svelte';
   import TitleBar from './features/shell/TitleBar.svelte';
@@ -91,7 +91,7 @@
   }
   function restoreBackup(): void {
     void backupDialog?.show(asBackupStep, () => {
-      backupNote = { tone: 'info', text: () => t.settings.backupNone };
+      backupNote = { tone: 'info', text: () => t.shell.backupNone };
     });
   }
 </script>
@@ -136,7 +136,7 @@
               <Button
                 variant="link"
                 icon="backup"
-                label={t.settings.backupHeading}
+                label={t.shell.backupHeading}
                 loading={restoring}
                 testid="restore-backup"
                 onclick={restoreBackup}

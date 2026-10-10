@@ -71,8 +71,8 @@ export type NextRunSummary = Omit<RunSummary, 'newJobs'> & {
 };
 
 /**
- * Fields of the app state the backend adds next: `cvUntil`, the day (`YYYY-MM-DD`, UTC) "Aus
- * Lebenslauf ausfüllen" works again while its tries are used up; null while it works.
+ * Fields of the app state the backend adds next: `cvUntil`, the day (`YYYY-MM-DD`, UTC) the
+ * CV import works again while its tries are used up; null while it works.
  */
 export type NextAppState = AppState & { cvUntil?: string | null };
 

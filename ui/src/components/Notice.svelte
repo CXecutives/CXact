@@ -1,14 +1,13 @@
 <!--
   Feedback where the action happened: info | success | warning | danger, inline (icon and
-  sentence in the tone), banner (tinted box) or row (a calm line inside a card: the icon in
-  the tone, the text in ink), with at most one action, a small secondary button with the
-  glyph the same action has everywhere else, and an optional × at the end that hides the
-  note (a problem that waits for the next run); inline, the button is centred on the
+  sentence, the app's small text) or row (a calm line at the top of the list, the text in the
+  body size, with an optional heading), with at most one action, a small secondary button
+  with the glyph the same action has everywhere else; inline, the button is centred on the
   sentence's first line. Info, success and warning colour only their sign (the words stay
   ink), danger is red all through. A sentence with links in it (the missing line of the
-  profile) comes as `children` instead of `text`. A notice that appears in
-  a view already on screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that
-  comes with its view is simply there.
+  profile) comes as `children` instead of `text`. A notice that appears in a view already on
+  screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its
+  view is simply there.
 -->
 <script lang="ts" module>
   export type NoticeTone = 'info' | 'success' | 'warning' | 'danger';
@@ -22,7 +21,7 @@
 
   interface Props {
     tone?: NoticeTone;
-    variant?: 'inline' | 'banner' | 'row';
+    variant?: 'inline' | 'row';
     heading?: string | null;
     text?: string;
     action?: {
@@ -31,8 +30,6 @@
       testid?: string | null;
       onclick: () => void;
     } | null;
-    /** The × at the end that hides the note (its label is its accessible name). */
-    dismiss?: { label: string; testid?: string | null; onclick: () => void } | null;
     testid?: string | null;
     /** The sentence when it holds more than words (links). */
     children?: Snippet;
@@ -40,11 +37,10 @@
 
   let {
     tone = 'info',
-    variant = 'banner',
+    variant = 'inline',
     heading = null,
     text = '',
     action = null,
-    dismiss = null,
     testid = null,
     children,
   }: Props = $props();
@@ -59,7 +55,7 @@
 
 <div
   class="notice {tone} {variant}"
-  class:acts={action !== null || dismiss !== null}
+  class:acts={action !== null}
   role={tone === 'danger' || tone === 'warning' ? 'alert' : 'status'}
   data-testid={testid ?? undefined}
   in:rise={{ distance: 'sm' }}
@@ -72,27 +68,15 @@
       {#if children}{@render children()}{:else}{text}{/if}
     </p>
   </div>
-  {#if action || dismiss}
+  {#if action}
     <span class="action">
-      {#if action}
-        <Button
-          variant="secondary"
-          label={action.label}
-          icon={action.icon ?? null}
-          testid={action.testid ?? null}
-          onclick={action.onclick}
-        />
-      {/if}
-      {#if dismiss}
-        <Button
-          variant="ghost"
-          iconOnly
-          icon="close"
-          label={dismiss.label}
-          testid={dismiss.testid ?? null}
-          onclick={dismiss.onclick}
-        />
-      {/if}
+      <Button
+        variant="secondary"
+        label={action.label}
+        icon={action.icon ?? null}
+        testid={action.testid ?? null}
+        onclick={action.onclick}
+      />
     </span>
   {/if}
 </div>
@@ -104,19 +88,6 @@
     gap: var(--space-8);
     color: var(--notice-fg);
     font: var(--type-sm);
-  }
-
-  /* A tinted box whose content starts where a card's does; its edge is its own tint in every
-     tone, so no tone draws a line of its own. */
-  .banner {
-    align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-8) var(--card-padding);
-    border: var(--border-width) solid var(--notice-line);
-    border-radius: var(--radius-card);
-    background-color: var(--notice-bg);
-    color: var(--text);
-    font: var(--type-md);
   }
 
   .row {
@@ -133,7 +104,6 @@
     color: var(--notice-sign, var(--notice-fg));
   }
 
-  .banner .icon,
   .row .icon {
     padding-top: 0;
   }
@@ -161,34 +131,25 @@
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-4);
   }
 
   /* Info, a success and a warning: the sign in its colour, the words ink. */
   .info {
     --notice-fg: var(--text);
     --notice-sign: var(--info);
-    --notice-bg: var(--info-soft);
-    --notice-line: var(--info-soft);
   }
 
   .success {
     --notice-fg: var(--text);
     --notice-sign: var(--success);
-    --notice-bg: var(--success-soft);
-    --notice-line: var(--success-soft);
   }
 
   .warning {
     --notice-fg: var(--text);
     --notice-sign: var(--warning);
-    --notice-bg: var(--warning-soft);
-    --notice-line: var(--warning-soft);
   }
 
   .danger {
     --notice-fg: var(--danger-strong);
-    --notice-bg: var(--danger-soft);
-    --notice-line: var(--danger-soft);
   }
 </style>

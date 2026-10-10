@@ -39,7 +39,7 @@ export interface ListFilter {
   /** Only the jobs that came on these days (`receivedSince`). */
   received: Received | null;
   /** Only the new jobs of this fetch (`RunSummary.run`), the ones its toast counts: the
-   *  "Zeigen" of the toast sets it, its chip "Aus dem letzten Abruf" takes it off. No group
+   *  "Zeigen" of the toast sets it, its chip "Aus der letzten Suche" takes it off. No group
    *  of the menu, never kept, and the next fetch drops it (its chip would say another). */
   run: number | null;
 }

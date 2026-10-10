@@ -126,8 +126,6 @@
   interface Props {
     job: JobView;
     selected?: boolean;
-    /** A selected row draws its own bar (false: the list's one sliding bar marks it). */
-    bar?: boolean;
     /** Scoring is still running for this job. */
     pending?: boolean;
     /** A usable profile is there (without one the ring is an empty placeholder: no match). */
@@ -151,7 +149,6 @@
   let {
     job,
     selected = false,
-    bar = true,
     pending = false,
     ring = true,
     now,
@@ -232,7 +229,6 @@
   <ListRow
     {leading}
     {selected}
-    {bar}
     onclick={onselect ? () => onselect?.(job) : null}
     ondouble={onopen ? () => onopen?.(job) : null}
     testid={rowId}

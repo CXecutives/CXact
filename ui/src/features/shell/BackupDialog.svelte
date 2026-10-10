@@ -1,17 +1,16 @@
 <!--
-  "Wiederherstellen" of the Sicherung (Einstellungen > Daten, and "Sicherung wiederherstellen"
-  of a start whose data could not load, App.svelte): the copies of the database,
-  newest first and chosen, each by its moment in the one format of a moment at the start of
-  a line (formatDayTime: "Heute 08:05", "Gestern 08:41", "Mo 09:12", then "18.09. 08:41")
-  and why a copy from before an update or a restore is there. The one button restores the
-  chosen copy (the current state is saved first, the dialog says so); a failure stays in the
-  dialog. After the restore the undos of before go (their jobs may be gone), the app state,
-  the list and the counts load again, and a toast offers "Rückgängig": the copy of the state
-  before.
+  "Sicherung wiederherstellen" of a start whose data could not load (App.svelte): the copies
+  of the database, newest first and chosen, each by its moment in the one format of a moment
+  at the start of a line (formatDayTime: "Heute 08:05", "Gestern 08:41", "Mo 09:12", then
+  "18.09. 08:41") and why a copy from before an update or a restore is there. The one button
+  restores the chosen copy (the current state is saved first, the dialog says so); a failure
+  stays in the dialog. After the restore the undos of before go (their jobs may be gone), the
+  app state, the list and the counts load again, and a toast offers "Rückgängig": the copy of
+  the state before.
 -->
 <script lang="ts" module>
-  /** Runs a step as a command of the card the row is on: its button turns meanwhile and a
-   *  failure is the card's note. */
+  /** Runs a step for the button that opened it: the button turns meanwhile and a failure is
+   *  its note. */
   export type Runner = (work: () => Promise<void>) => Promise<void>;
 </script>
 
@@ -34,10 +33,10 @@
   let busy = $state(false);
   let error = $state<(() => string) | null>(null);
   const chosen = $derived(backups.find((backup) => backup.id === chosenId) ?? null);
-  /** The card's runner of the last `show` (the toast's undo runs through it too). */
+  /** The runner of the last `show` (the toast's undo runs through it too). */
   let run: Runner = (work) => work();
 
-  /** Lists the copies and opens on the newest; `onempty` says in the card there is none. */
+  /** Lists the copies and opens on the newest; `onempty` says there is none. */
   export function show(runner: Runner, onempty: () => void): Promise<void> {
     run = runner;
     return run(async () => {
@@ -67,7 +66,7 @@
       const before = await invoke('restore_backup', { id: chosen.id });
       open = false;
       await reloadAll();
-      toasts.show(t.settings.backupRestored, 'success', {
+      toasts.show(t.shell.backupRestored, 'success', {
         label: t.common.undo,
         onclick: () => void undo(before.id),
       });
@@ -82,15 +81,15 @@
     run(async () => {
       await invoke('restore_backup', { id });
       await reloadAll();
-      toasts.show(t.settings.backupUndone);
+      toasts.show(t.shell.backupUndone);
     });
 </script>
 
 <Dialog
   bind:open
-  heading={t.settings.backupHeading}
-  text={t.settings.backupText}
-  confirmLabel={t.settings.backupAction}
+  heading={t.shell.backupHeading}
+  text={t.shell.backupText}
+  confirmLabel={t.shell.backupAction}
   {busy}
   error={error?.() ?? null}
   testid="dialog-backup"
@@ -100,10 +99,10 @@
     options={backups.map((backup) => ({
       id: backup.id,
       label: formatDayTime(backup.at, clock.now),
-      note: t.settings.backupKind[backup.kind],
+      note: t.shell.backupKind[backup.kind],
     }))}
     value={chosenId}
-    label={t.settings.backupHeading}
+    label={t.shell.backupHeading}
     testid="backup-list"
     onchange={(id) => (chosenId = id)}
   />

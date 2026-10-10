@@ -8,8 +8,7 @@
   edge navy (100 ms) whatever it was, one calm edge and no ring around it; the magnifier
   turns navy. The clear button pops in with the first character and leaves at once. A wrong
   value (a password Gmail refused) shows as the red edge (`invalid`) and the one sentence of
-  its Field; nothing shakes (`shake()` stays for its callers and only keeps the field in
-  view).
+  its Field; nothing shakes, `bringIntoView()` only scrolls it into view.
   With `options` (the languages of the profile) it suggests while typing, like the countries
   field: the options whose names start with the text drop down under it, the arrows move the
   one mark, Enter or a click takes the marked one, Esc closes the list; any other text stays
@@ -176,7 +175,7 @@
 
   /** The answer to a wrong value where it was typed: the red edge and the sentence say it,
    *  nothing moves (a shake read as a toy); the field is brought into view. */
-  export function shake(): void {
+  export function bringIntoView(): void {
     box?.scrollIntoView({ block: 'nearest' });
   }
 </script>

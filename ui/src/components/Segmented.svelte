@@ -2,20 +2,16 @@
   The one choice of a few, one look everywhere (design round 3): two to four options on a light
   track, the chosen one on a white thumb with a hairline ring that slides to the next choice
   like the sidebar's pill (180 ms, emphasized; the first placement, a change of size and
-  reduced motion never slide), always exactly the option's box whatever the labels, counts or
-  window width. Every small single choice takes it: the places above the list (Aktuell,
+  reduced motion never slide), always exactly the option's box whatever the labels or window
+  width. Every small single choice takes it: the places above the list (Aktuell,
   Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar, Auslastung and
   Mindestlaufzeit.
   The role decides the widths: a choice (a radiogroup) gives every option the room of the
   widest, so the thumb is one size whichever is chosen; the places (tabs) keep each option as
-  wide as its label and count. When the track has less room than the options want, the labels
-  shorten with an ellipsis (the counts stay); nothing ever overlaps.
-  The chosen label is navy (ink while the window is in the back) and its count a soft warm
-  pill, the others stay muted with a plain count (same box, so nothing moves); an option may
-  keep one tone whatever is chosen. A count that goes (`null`: none now, 0 is not shown) keeps
-  its room, unseen, as wide as it was last, so the options keep their widths and nothing
-  jumps. An unchosen option washes on hover and darkens while pressed. Counts roll when they
-  change.
+  wide as its label. When the track has less room than the options want, the labels shorten
+  with an ellipsis; nothing ever overlaps.
+  The chosen label is navy (ink while the window is in the back), the others stay muted. An
+  unchosen option washes on hover and darkens while pressed.
   Like native radio buttons (and native tabs, `tabs`) the group is one Tab stop and the
   arrows, Home and End choose (lib/input/input.ts). As high as a field (28 px, the thumb 2 px
   inside it), so it lines up with the fields and buttons of its row, in the app's text in
@@ -25,20 +21,14 @@
   export interface SegmentedOption<Id extends string = string> {
     id: Id;
     label: string;
-    /** The count; `null` hides it but keeps its room (undefined: the option has none). */
-    count?: number | null;
-    /** The count's tone whatever is chosen (default: soft when chosen, plain otherwise). */
-    tone?: 'soft' | 'plain' | null;
     testid?: string;
   }
 </script>
 
 <script lang="ts" generics="Id extends string">
-  import { untrack } from 'svelte';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
   import { settled } from '$lib/motion/settled.svelte';
-  import Count from './Count.svelte';
 
   interface Props {
     options: readonly SegmentedOption<Id>[];
@@ -55,20 +45,11 @@
 
   const isChosen = (id: Id): boolean => id === value;
 
-  /** The count each option showed last: a count that goes keeps its room with it. */
-  const kept = $state<Record<string, number>>({});
-  $effect.pre(() => {
-    const shown = options.map((option) => [option.id, option.count] as const);
-    untrack(() => {
-      for (const [id, count] of shown) if (count !== undefined && count !== null) kept[id] = count;
-    });
-  });
-
   /** One Tab stop: the chosen option (the arrows move between them, lib/input/input.ts). */
   const stop = $derived(options.some((option) => option.id === value) ? value : options[0]?.id);
 
   // The thumb's box: the chosen option's, measured in the track. A choice slides it; a
-  // resize or a count that changes a width moves it at once (`instant`).
+  // resize moves it at once (`instant`).
   const motion = settled();
   let track: HTMLDivElement | undefined = $state();
   let thumb = $state<{ x: number; width: number } | null>(null);
@@ -132,13 +113,6 @@
       <span class="pill" aria-hidden="true"></span>
       <span class="label" use:tooltip={{ text: option.label, truncated: true }}>{option.label}</span
       >
-      {#if option.count !== undefined && option.count !== null}
-        <Count value={option.count} tone={option.tone ?? (chosen ? 'soft' : 'plain')} />
-      {:else if option.count === null}
-        <span class="spare" aria-hidden="true"
-          ><Count value={kept[option.id] ?? 0} tone="plain" /></span
-        >
-      {/if}
     </button>
   {/each}
 </div>
@@ -199,7 +173,6 @@
     flex: 0 1 auto;
     align-items: center;
     justify-content: center;
-    gap: var(--space-4);
     min-width: 0;
     padding: 0 var(--space-12);
     border-radius: var(--radius-inner);
@@ -243,12 +216,6 @@
 
   :global(:root[data-window='inactive']) .option[data-chosen] {
     color: var(--text);
-  }
-
-  /* The room of a count that went: unseen, as wide as the count was. */
-  .spare {
-    display: inline-flex;
-    visibility: hidden;
   }
 
   .label {

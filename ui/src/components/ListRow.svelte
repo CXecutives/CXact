@@ -1,15 +1,12 @@
 <!--
-  A list row: leading, content, trailing, top-aligned (mail style: two lines of content, one
-  row height), the one inner padding of the columns on the sides. A hairline under each row;
-  a list whose rows reach past its column (for the wash) insets the line with
-  `--row-rule-inset`, so it is as wide as every other hairline there. Hover washes the row
-  (80 ms in, 150 ms out), a press darkens it (60 ms); rows never move or scale. The selected
-  row takes a very light warm wash (one step deeper under the pointer, one more while
-  pressed) and a coral bar on the left, inset by the row's padding, that fades in (150 ms)
-  and out (100 ms); a row created as selected is simply there. A list that marks its open
-  row with one bar of its own, which slides from row to row (the job list), turns the row's
-  bar off (`bar={false}`): it goes at once, as the list's bar takes its place. While the
-  window is inactive the selection turns grey, as in Mail and Explorer. While the list
+  A list row: leading and content (mail style: two lines of content, one row height), the
+  one inner padding of the columns on the sides. A hairline under each row; a list whose rows
+  reach past its column (for the wash) insets the line with `--row-rule-inset`, so it is as
+  wide as every other hairline there. Hover washes the row (80 ms in, 150 ms out), a press
+  darkens it (60 ms); rows never move or scale. The selected row takes a very light warm
+  wash (one step deeper under the pointer, one more while pressed); the job list marks it
+  with its one bar that slides from row to row (RowBar). While the window is inactive the
+  selection turns grey, as in Mail and Explorer. While the list
   scrolls rows take no hover: a row rests (`data-rests`), and the rows the pointer passes
   during a scroll carry `data-still` (input.ts) until it is over, so only those rows
   restyle. A mark on :root or a property that inherits (pointer-events) would restyle every
@@ -22,8 +19,6 @@
 
   interface Props {
     selected?: boolean;
-    /** A selected row draws its own bar (false: the list's one sliding bar marks it). */
-    bar?: boolean;
     /** The click. */
     onclick?: ((event: MouseEvent) => void) | null;
     /** A double click on the row itself (a job row opens its ad); one on a control laid
@@ -31,18 +26,15 @@
     ondouble?: (() => void) | null;
     testid?: string | null;
     leading?: Snippet | null;
-    trailing?: Snippet | null;
     children: Snippet;
   }
 
   let {
     selected = false,
-    bar = true,
     onclick = null,
     ondouble = null,
     testid = null,
     leading = null,
-    trailing = null,
     children,
   }: Props = $props();
 </script>
@@ -51,7 +43,6 @@
   type="button"
   class="row"
   class:selected
-  class:bar
   aria-current={selected ? 'true' : undefined}
   data-rests=""
   data-testid={testid ?? undefined}
@@ -60,7 +51,6 @@
 >
   {#if leading}<span class="leading">{@render leading()}</span>{/if}
   <span class="content">{@render children()}</span>
-  {#if trailing}<span class="trailing">{@render trailing()}</span>{/if}
 </button>
 
 <style>
@@ -103,23 +93,6 @@
     transition-duration: var(--dur-instant);
   }
 
-  /* The selection bar on the left edge: always there, shown by opacity (it never
-     changes shape). */
-  .row::before {
-    position: absolute;
-    top: var(--row-bar-inset);
-    bottom: var(--row-bar-inset);
-    left: 0;
-    width: var(--row-bar);
-    border-radius: var(--radius-full);
-    background-color: var(--selection-bar);
-    content: '';
-    opacity: 0;
-    transition:
-      opacity var(--dur-fast) var(--ease-in),
-      background-color var(--dur-base) var(--ease-standard);
-  }
-
   /* The hairline under the row (inset where the list says so). */
   .row::after {
     position: absolute;
@@ -131,36 +104,14 @@
     content: '';
   }
 
-  .selected.bar::before {
-    opacity: 1;
-    transition-duration: var(--dur-base);
-    transition-timing-function: var(--ease-out), var(--ease-standard);
-  }
-
-  /* The list's own bar takes over this row in the same frame: no fade under it. */
-  .selected:not(.bar)::before {
-    transition: none;
-  }
-
   /* Like Mail and Explorer: the selection greys out while the window is in the back. */
   :global(:root[data-window='inactive']) .selected {
     background-color: var(--surface-selected-inactive);
   }
 
-  :global(:root[data-window='inactive']) .selected::before {
-    background-color: var(--text-subtle);
-  }
-
-  .leading,
-  .trailing {
+  .leading {
     display: flex;
     flex: none;
-  }
-
-  .trailing {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--space-4);
   }
 
   .content {

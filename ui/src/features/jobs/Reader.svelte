@@ -122,19 +122,18 @@
 
   /** Why the engine excludes the job, in one sentence: its first violation, else the note. A
    *  violation a row of the Jobdetails judges speaks from the profile's side (its criterion's
-   *  sentence, "Zeitarbeit wird ausgeschlossen."); the row's tooltip says what the ad states. */
+   *  sentence, "Zeitarbeit ist in deinem Profil nicht gewählt."); the row's tooltip says what
+   *  the ad states. */
   const exclusion = $derived.by((): string => {
     for (const reason of all) {
       if (reason.kind !== 'violation') continue;
       const key = rowOf(reason) === null ? null : criterionKey(reason.code);
-      const text = key === null ? reasonText(reason) : t.reader.criterion[key].exclusion;
+      const text = key === null ? reasonText(reason) : t.reader.criterion[key];
       if (text !== '') return text;
     }
     return noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.note.hardCriterion;
   });
-  const band = $derived(
-    ring.status === 'scored' || ring.status === 'provisional' ? ring.band : null,
-  );
+  const band = $derived(ring.status === 'scored' ? ring.band : null);
   /** Not scored yet because its ad is still to come (to load, or on request): the ring's
    *  dash and the sentence, no buttons. An ad that is gone or cannot be read says "Noch nicht
    *  bewertet" and keeps its buttons. */
@@ -560,7 +559,6 @@
     display: flex;
     flex-direction: column;
     min-height: 100%;
-    container-type: inline-size;
   }
 
   /* The job view's column under the head (the ring right under the title, as far below it
@@ -580,12 +578,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-12);
-  }
-
-  @container (width < 480px) {
-    .match {
-      gap: var(--space-12);
-    }
   }
 
   .lines {

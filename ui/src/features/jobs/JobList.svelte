@@ -151,22 +151,18 @@
   // Jobs without a match get one soon while a run goes or a rescore is pending.
   const pending = $derived(jobs.scoring);
 
-  /** The rows in the order they stand, section by section (the store's order). */
-  const order = $derived(shown);
   /** The rows the list shows (a row on the page that is not among them is leaving). */
   const listed = $derived(new Set(shown.map((job) => keyOf(job.key))));
   const openKey = $derived(jobs.selected ? keyOf(jobs.selected) : null);
-  /** The open job's row: the list's one bar marks it. */
-  const marked = $derived(openKey);
   const markedExcluded = $derived(
-    marked !== null && excluded.some((job) => keyOf(job.key) === marked),
+    openKey !== null && excluded.some((job) => keyOf(job.key) === openKey),
   );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
   // is folded away: its section opens (for now; the kept choice stays).
   let lastMarked: string | null = null;
   $effect(() => {
-    const key = marked;
+    const key = openKey;
     const out = markedExcluded;
     untrack(() => {
       if (key !== lastMarked && out && !excludedOpen) excludedOpen = true;
@@ -289,7 +285,7 @@
       entered = {};
       return;
     }
-    for (const job of order.slice(0, staggerLimit())) {
+    for (const job of shown.slice(0, staggerLimit())) {
       const key = keyOf(job.key);
       if (!jobs.fresh.has(key) || key in entered) continue;
       entered[key] = true;
@@ -513,7 +509,6 @@
         marks={searchWords}
         pending={pending && job.match === null}
         selected={open}
-        bar={false}
         onselect={select}
         onopen={(job) => void openAd(job).then(report)}
         menu={() => menuOf(job)}
@@ -578,7 +573,7 @@
   <RowBar
     bind:this={rowBar}
     rows={groups}
-    open={marked}
+    open={openKey}
     muted={markedExcluded}
     {listed}
     folding={moving}

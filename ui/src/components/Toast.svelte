@@ -6,129 +6,24 @@
   toast stays 4 s, one with a button 10 s. Its time stops while it is hovered, and every
   toast waits while the window is in the back or a modal dialog is open. The stack lies
   below a dialog's scrim: dimmed, and its undo cannot act behind the dialog.
-  A toast is as wide as its sentence (at least 280 px): a short confirmation stays compact.
-  One that quotes a name (a job's title, a term) has room for it (520 px) and wraps to at
-  most two lines: the title in the catalog's quotes („…“ or “…”) keeps to one line and ends in an ellipsis
-  that the closing quote follows directly (the full title in a tooltip; cut by measuring
-  the text, since CSS would leave the rest of the box blank before the quote), the rest
-  of the sentence follows it.
+  Every toast is one width (--toast-width); its sentence wraps to at most two lines and ends
+  in an ellipsis beyond them.
   The check of a success draws itself once as the toast appears. Closable; an undo of what
-  the user just did sits before the close button; a
-  toast about something that happened in another view (a fetch that finished) may carry
-  the way to it instead ("Zeigen"). A merged toast (two rows archived one after the other)
-  cross-fades its sentence (100 ms) and starts its time again.
+  the user just did sits before the close button; a toast about something that happened in
+  another view (a fetch that finished) may carry the way to it instead ("Zeigen"). A merged
+  toast (two rows archived one after the other) cross-fades its sentence (100 ms) and starts
+  its time again.
   A press on a toast never takes the focus (like a notification of the OS); a toast the
-  keyboard reached gives the focus back to where it came from when
-  it goes by its buttons. The stack lies above a bar that sticks to the bottom of the view
-  (the setup's foot in a low window): it measures what lies under its column at the window's
-  bottom edge whenever a toast comes or the view changes, and rises by it (--toast-bottom).
+  keyboard reached gives the focus back to where it came from when it goes by its buttons.
+  The stack rises above a bar that sticks to the window's bottom edge (the Profil's FloatBar,
+  the setup's foot on its long steps: `toasts.lift`, lib/actions/liftToasts.ts).
 -->
-<script lang="ts" module>
-  import type { Action } from 'svelte/action';
-  import { tooltip } from '$lib/actions/tooltip';
-
-  /** A sentence around one quoted name („…“). */
-  const QUOTED = /^(.*?)(„)([^“]+)(“)(.*)$/su;
-
-  interface Quoted {
-    before: string;
-    open: string;
-    name: string;
-    close: string;
-    after: string;
-  }
-
-  /** The quoted name of a toast's sentence (a job's title), or null. */
-  export function quoted(text: string): Quoted | null {
-    const match = QUOTED.exec(text);
-    if (match === null) return null;
-    const [, before = '', open = '', name = '', close = '', after = ''] = match;
-    return { before, open, name, close, after };
-  }
-
-  const ELLIPSIS = '…';
-
-  /**
-   * The longest start of `name` that fits `room` together with the quotes and an ellipsis
-   * (`width` measures a string), or `name` itself when it fits whole.
-   */
-  export function fitted(
-    split: Pick<Quoted, 'open' | 'name' | 'close'>,
-    room: number,
-    width: (text: string) => number,
-  ): string {
-    const { open, name, close } = split;
-    if (width(`${open}${name}${close}`) <= room) return name;
-    const chars = [...name];
-    let low = 0;
-    let high = chars.length - 1;
-    while (low < high) {
-      const mid = Math.ceil((low + high) / 2);
-      const cut = `${chars.slice(0, mid).join('').trimEnd()}${ELLIPSIS}`;
-      if (width(`${open}${cut}${close}`) <= room) low = mid;
-      else high = mid - 1;
-    }
-    return `${chars.slice(0, low).join('').trimEnd()}${ELLIPSIS}`;
-  }
-
-  let pen: CanvasRenderingContext2D | null = null;
-
-  /** The width of `text` in the font of `node` (no layout: the canvas measures it). */
-  function textWidth(node: Element, text: string): number {
-    pen ??= document.createElement('canvas').getContext('2d');
-    if (pen === null) return 0;
-    const style = getComputedStyle(node);
-    pen.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-    return pen.measureText(text).width;
-  }
-
-  /**
-   * The quoted title fits the line of the toast (the width of its sentence, watched): cut
-   * after the last character that fits with the ellipsis, so the closing quote follows it
-   * directly; only a cut title has the full one in a tooltip.
-   */
-  const fitName: Action<HTMLElement, Quoted> = (node, split) => {
-    const tip = tooltip(node, null);
-    const line = node.closest('.text');
-    const place = (room: number): void => {
-      // A pixel of room is kept: the canvas and the layout may round apart.
-      const shown = fitted(split, room - 1, (text) => textWidth(node, text));
-      if (node.textContent !== shown) node.textContent = shown;
-      tip?.update?.(shown === split.name ? null : split.name);
-    };
-    node.textContent = split.name;
-    if (line === null) return { destroy: () => tip?.destroy?.() };
-    // Placed in the next frame and only for a new width: the text it sets never answers the
-    // observer within the same frame (WebKit reports that as a loop).
-    let room = -1;
-    let frame = 0;
-    const watch = new ResizeObserver(([entry]) => {
-      if (entry === undefined) return;
-      const width = Math.round(entry.contentRect.width);
-      if (width === room) return;
-      room = width;
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => place(entry.contentRect.width));
-    });
-    watch.observe(line);
-    return {
-      destroy() {
-        cancelAnimationFrame(frame);
-        watch.disconnect();
-        tip?.destroy?.();
-      },
-    };
-  };
-</script>
-
 <script lang="ts">
-  import { px, setVars } from '$lib/actions/cssVars';
+  import { cssVars, px } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
   import { onWindowFocus } from '$lib/ipc/api';
   import { fade, flip, toastIn, toastOut } from '$lib/motion/transitions';
-  import { navigation } from '$lib/state/navigation.svelte';
   import { TOAST_KINDS, toasts } from '$lib/state/toasts.svelte';
-  import { tokenPx } from '$lib/tokens';
   import { tick } from 'svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
@@ -154,49 +49,6 @@
     });
   }
 
-  /** How high a bar stuck to the window's bottom edge reaches under the stack's column (the
-   *  setup's foot): the stack rises above it. Hits in the app's own layers do not
-   *  count. */
-  function barRoom(node: HTMLElement): number {
-    const root = document.documentElement;
-    const bottom = root.clientHeight - 1;
-    const right = root.clientWidth - tokenPx('--space-24');
-    const left = Math.max(0, right - tokenPx('--toast-width'));
-    const step = tokenPx('--space-24');
-    let room = 0;
-    for (let x = left; x <= right; x += step) {
-      for (const hit of document.elementsFromPoint(x, bottom)) {
-        if (node.contains(hit) || hit.closest('[data-menu-layer], [role="tooltip"]')) continue;
-        const bar = stuck(hit, bottom);
-        if (bar !== null)
-          room = Math.max(room, root.clientHeight - bar.getBoundingClientRect().top);
-        break;
-      }
-    }
-    return room;
-  }
-
-  /** The sticky or fixed bar at `hit` or around it that touches the bottom edge (a layer
-   *  over the whole window, a dialog's scrim, is no bar). */
-  function stuck(hit: Element, bottom: number): Element | null {
-    for (let at: Element | null = hit; at !== null && at !== document.body; at = at.parentElement) {
-      const position = getComputedStyle(at).position;
-      if (position !== 'sticky' && position !== 'fixed') continue;
-      const box = at.getBoundingClientRect();
-      return box.bottom >= bottom && box.height < bottom / 2 ? at : null;
-    }
-    return null;
-  }
-
-  // A toast comes or the view changes: the stack rises above a bar at the bottom.
-  $effect(() => {
-    void navigation.current;
-    const count = toasts.items.length;
-    const node = stack;
-    if (node === null || count === 0) return;
-    void tick().then(() => setVars(node, { 'toast-bottom': px(barRoom(node)) }));
-  });
-
   // The window in the back: every toast waits until it is in front again.
   $effect(() => {
     let release: (() => void) | null = null;
@@ -215,27 +67,13 @@
   });
 </script>
 
-{#snippet sentence(text: string)}
-  {@const split = quoted(text)}
-  {#if split}{split.before}<span class="quoted"
-      >{split.open}<span class="name" use:fitName={split}></span>{split.close}</span
-    >{split.after}{:else}{text}{/if}
-{/snippet}
-
-<svelte:window
-  onresize={() => {
-    if (stack !== null && toasts.items.length > 0) {
-      setVars(stack, { 'toast-bottom': px(barRoom(stack)) });
-    }
-  }}
-/>
-
 <div
   class="stack"
   role="status"
   aria-live="polite"
   data-testid="toasts"
   data-press-only
+  use:cssVars={{ 'toast-lift': px(toasts.lift) }}
   bind:this={stack}
   onfocusin={focusIn}
 >
@@ -243,7 +81,6 @@
     {@const look = TOAST_KINDS[toast.kind]}
     <div
       class="toast {toast.kind}"
-      class:named={quoted(toast.text) !== null}
       class:draws={look.draws}
       role="group"
       data-testid="toast"
@@ -255,9 +92,7 @@
       onpointerleave={() => toasts.resume(toast.id)}
     >
       <span class="icon"><Icon name={look.icon} size="sm" /></span>
-      {#key toast.text}<span class="text" data-testid="toast-text" in:fade
-          >{@render sentence(toast.text)}</span
-        >{/key}
+      {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span>{/key}
       {#if toast.action}
         {@const action = toast.action}
         <span class="action">
@@ -281,17 +116,20 @@
 </div>
 
 <style>
-  /* Below the scrim of a dialog (--z-toast < --z-overlay): dimmed with the page. */
+  /* Below the scrim of a dialog (--z-toast < --z-overlay): dimmed with the page. Above a bar
+     at the window's bottom edge it glides up and back. */
   .stack {
     position: fixed;
     right: var(--space-24);
-    bottom: calc(var(--space-24) + var(--toast-bottom));
+    bottom: var(--space-24);
     z-index: var(--z-toast);
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: var(--space-8);
     pointer-events: none;
+    transform: translateY(calc(-1 * var(--toast-lift)));
+    transition: transform var(--dur-base) var(--ease-out);
   }
 
   .toast {
@@ -309,11 +147,6 @@
     color: var(--text);
     font: var(--type-md);
     pointer-events: auto;
-  }
-
-  /* A quoted name gets the whole width at once (its fitting measures the line). */
-  .named {
-    width: var(--toast-width);
   }
 
   .icon,
@@ -341,25 +174,17 @@
     animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
   }
 
-  /* One or two lines with room above and below (10 px to the edge with the padding). */
+  /* One or two lines with room above and below (10 px to the edge with the padding); a
+     longer sentence ends in an ellipsis. */
   .text {
+    display: -webkit-box;
     flex: 1;
     min-width: 0;
-    padding-block: var(--space-4);
-    text-wrap: pretty;
-  }
-
-  /* The quoted title keeps to one line, cut to fit by fitName; the rest of the sentence
-     follows it. */
-  .quoted {
-    display: inline-flex;
-    max-width: 100%;
-    white-space: nowrap;
-  }
-
-  .name {
-    min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
+    margin-block: var(--space-4);
+    text-wrap: pretty;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 </style>

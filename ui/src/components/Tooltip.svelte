@@ -1,8 +1,6 @@
 <!--
-  The tooltip layer: mounted once (App), fed by the `tooltip` action. Placed below
-  its anchor (above if there is no room), or to its right (the icon rail, the column handle:
-  centred on the anchor, to the left if there is no room), kept inside
-  the window, whole-pixel positions. The deep navy bubble pops toward its anchor (100 ms)
+  The tooltip layer: mounted once (App), fed by the `tooltip` action. Placed below its anchor
+  (above if there is no room), kept inside the window, whole-pixel positions. The deep navy bubble pops toward its anchor (100 ms)
   and leaves with a 60 ms fade; moving on to the next anchor while it shows just moves it
   (no second entrance). An anchor may add a second, smaller line in a quieter white (a key
   or a hint: "Strg+F", "Doppelklick setzt zurück"), like the tooltips of native apps. It
@@ -32,25 +30,9 @@
       const height = node.offsetHeight;
       const maxX = document.documentElement.clientWidth - width - edge;
       const maxY = document.documentElement.clientHeight - height - edge;
-      if (tooltipState.placement === 'right') {
-        const right = a.right + gap;
-        const x = right <= maxX ? right : Math.max(edge, a.left - gap - width);
-        const y = Math.max(edge, Math.min(a.top + a.height / 2 - height / 2, maxY));
-        setVars(node, { 'tooltip-x': px(x), 'tooltip-y': px(y) });
-        return;
-      }
       const x = Math.max(edge, Math.min(a.left + a.width / 2 - width / 2, maxX));
       const below = a.bottom + gap;
-      const above = a.top - gap - height;
-      const fitsBelow = below + height <= document.documentElement.clientHeight - edge;
-      const top =
-        tooltipState.placement === 'top'
-          ? above >= edge
-            ? above
-            : below
-          : fitsBelow
-            ? below
-            : above;
+      const top = below <= maxY ? below : a.top - gap - height;
       setVars(node, { 'tooltip-x': px(x), 'tooltip-y': px(top) });
     };
     update(params);
@@ -73,7 +55,7 @@
     id={TOOLTIP_ID}
     use:place={{ anchor: tooltipState.anchor, text: tooltipState.text, hint }}
   >
-    <div class="bubble" in:tooltipIn={{ placement: tooltipState.placement }} out:tooltipOut>
+    <div class="bubble" in:tooltipIn out:tooltipOut>
       {tooltipState.text}{#if hint}<span class="hint">{hint}</span>{/if}
     </div>
   </div>

@@ -111,6 +111,9 @@ async function failure(undo: Undo): Promise<string | null> {
 
 class Toasts {
   items = $state<ToastItem[]>([]);
+  /** How high a bar that sticks to the window's bottom edge reaches (lib/actions/
+   *  liftToasts.ts): the stack rises above it. */
+  lift = $state(0);
   #next = 1;
   #timers = new Map<number, Timer>();
   #merged = new Map<number, Merged>();

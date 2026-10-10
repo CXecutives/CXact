@@ -13,7 +13,7 @@
 
 import type { Action } from 'svelte/action';
 import { tooltipDelay } from '../motion/motion';
-import { tooltipState, type TooltipPlacement } from '../state/tooltip.svelte';
+import { tooltipState } from '../state/tooltip.svelte';
 
 export type TooltipParam =
   | string
@@ -21,7 +21,6 @@ export type TooltipParam =
   | undefined
   | {
       text: string | null | undefined;
-      placement?: TooltipPlacement;
       truncated?: boolean;
       /** With `truncated`: the element inside the anchor whose text may be cut (a CSS
        *  selector; the anchor itself without one). */
@@ -34,7 +33,6 @@ export type TooltipParam =
 
 interface Options {
   text: string;
-  placement: TooltipPlacement;
   truncated: boolean;
   measure: string | null;
   hint: string | null;
@@ -51,7 +49,6 @@ function normalize(param: TooltipParam): Options | null {
       ? null
       : {
           text: param,
-          placement: 'bottom',
           truncated: false,
           measure: null,
           hint: null,
@@ -61,7 +58,6 @@ function normalize(param: TooltipParam): Options | null {
   if (!param.text) return null;
   return {
     text: param.text,
-    placement: param.placement ?? 'bottom',
     truncated: param.truncated ?? false,
     measure: param.measure ?? null,
     hint: param.hint || null,
@@ -88,7 +84,7 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
   };
   const show = (): void => {
     timer = undefined;
-    if (options !== null) tooltipState.show(node, options.text, options.placement);
+    if (options !== null) tooltipState.show(node, options.text);
   };
   const enter = (): void => {
     cancel();

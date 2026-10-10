@@ -45,7 +45,7 @@ export async function addTerm(term: ProfileTerm): Promise<string | null> {
           label: t.common.undo,
           onclick: () => {
             added.delete(fold(term));
-            undo().catch((error: unknown) => toasts.show(errorText(error), 'info'));
+            undo().catch((error: unknown) => toasts.show(errorText(error), 'warning'));
           },
         },
   );

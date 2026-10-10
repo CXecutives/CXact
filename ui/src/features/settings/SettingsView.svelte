@@ -201,7 +201,7 @@
     {/if}
   {:else}
     {#if cfg.dryRun}
-      <Notice tone="info" text={t.settings.dryRun} />
+      <Notice tone="info" text={t.settings.dryRun} testid="dry-run-note" />
     {/if}
     <div class="groups">
       {#each SECTIONS as section (section.id)}

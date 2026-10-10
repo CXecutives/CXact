@@ -282,13 +282,11 @@
   --verdict-unmet: var(--score-ring-0);
 
   /* ------------------------------------------------------------------- brand */
-  /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
-     and the folder with the check cut out of it. tools/icon.py draws every icon file in
-     these two (through tools/palette.json): the CXact orange plate and a white folder, fixed, so
-     the icon never changes with a design. */
+  /* The app icon (assets/app-icon.svg): its plate and the folder with the check cut out of
+     it. tools/icon.py draws every icon file in these two (through tools/palette.json): the
+     CXact orange plate and a white folder, fixed, so the icon never changes with a design. */
   --brand: hsl(var(--p-brand));
   --brand-glyph: hsl(var(--p-brand-glyph));
-  --brand-radius: 22.37%;
 
   /* --------------------------------------------------------------- gradients */
   /* Two, for the light of a loading placeholder and the fade under the top bar. No
@@ -567,10 +565,6 @@
   --ring-md-stroke: 4.5px;
   --border-width: 1px;
   --focus-width: 2px;
-  --brand-mark-xs: var(--icon-sm);
-  --brand-mark-sm: 24px;
-  --brand-mark: 28px;
-  --brand-mark-lg: 38px;
   --tile-sm: 28px;
   --tile-md: 34px;
   --tile-lg: 48px;
@@ -611,9 +605,6 @@
   /* One width for every toast: the longest sentence ("2 neue Jobs, 1 mit hoher
      Übereinstimmung") with its action and ×. */
   --toast-width: 400px;
-  /* How far the toast stack rises above the bottom edge of the window beside its gap
-     (components/Toast.svelte measures a bar that sticks to the bottom of the view). */
-  --toast-bottom: 0px;
   /* The fade under the top bar where a view scrolls beneath it. */
   --fade-height: 20px;
   /* The floating bar at the foot of a page (the Profil's unsaved changes): this far above
@@ -740,13 +731,10 @@
   /* Toasts lie below a dialog's scrim: dimmed, and no undo acts behind a modal. */
   --z-toast: 90;
   --z-overlay: 100;
-  --z-dialog: 110;
   --z-menu: 115;
   --z-tooltip: 120;
   --opacity-disabled: 0.5;
   --opacity-muted: 0.6;
-  /* The low point of a waiting ring's breath. */
-  --opacity-wait: 0.35;
   /* A link while it is pressed. */
   --opacity-press: 0.7;
 }

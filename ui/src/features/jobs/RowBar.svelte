@@ -1,16 +1,16 @@
 <!--
-  The job list's one selection bar: the coral bar on the left edge of the open job's row.
-  Opening another job slides it there like the sidebar's pill (180 ms, emphasized), top and
-  height together, so it keeps the row's inset on rows of 86 and 106 px; far jumps (Home,
-  End) place it. It lies in the list's scroll content, so it scrolls with the rows, and it
-  stays with its row whatever moves the rows: at once when rows arrive or fold away above it
-  or its row grows, gliding along when the list re-sorts. It is simply there the first time:
-  when the list is built or comes back, and after a reload, another filter or a search.
-  Opening a job while none is open
-  fades it in (150 ms), closing fades it out (100 ms). A job that leaves the list (archive,
-  trash) keeps it where its row was until the next job opens there: it waits there while the
-  next row rises into that place, however long the fold takes. It greys while the window is inactive, like a
-  row's own bar (ListRow). Under reduced motion it never moves.
+  The job list's one selection bar: the coral bar on the left edge of the open job's row,
+  inset by the row's padding (--row-bar-inset). Opening another job slides it there like the
+  sidebar's pill (180 ms, emphasized), top and height together; far jumps (Home, End) place
+  it. It lies in the list's scroll content, so it scrolls with the rows, and it stays with
+  its row whatever moves the rows: at once when rows arrive or fold away above it or its row
+  grows, gliding along when the list re-sorts. It is simply there the first time: when the
+  list is built or comes back, and after a reload, another filter or a search. Opening a job
+  while none is open fades it in (150 ms), closing fades it out (100 ms). A job that leaves
+  the list (archive, trash) keeps it where its row was until the next job opens there: it
+  waits there while the next row rises into that place, however long the fold takes. It
+  greys while the window is inactive, like the selected row's wash. Under reduced motion it
+  never moves.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';

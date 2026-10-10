@@ -1,5 +1,5 @@
 <!--
-  Loading placeholder: line | block | circle, with a shimmer sweeping on ::after. It fades in
+  Loading placeholder: line | circle, with a shimmer sweeping on ::after. It fades in
   (--dur-fast) as it is placed: the state that places it has waited --delay-placeholder
   already (a list or a job that takes that long to load), so a quicker load never shows one,
   and one that shows is visible at once. `late` waits that long itself, for a placeholder
@@ -9,8 +9,8 @@
   import { cssVars } from '$lib/actions/cssVars';
 
   interface Props {
-    shape?: 'line' | 'block' | 'circle';
-    /** Width in percent of the container (lines and blocks). */
+    shape?: 'line' | 'circle';
+    /** Width in percent of the container (lines). */
     width?: number;
     /** Circle diameter. */
     size?: 'sm' | 'md';
@@ -57,12 +57,6 @@
     width: var(--skeleton-width);
     height: var(--space-12);
     border-radius: var(--radius-full);
-  }
-
-  .block {
-    width: var(--skeleton-width);
-    height: var(--row-height);
-    border-radius: var(--radius-md);
   }
 
   .circle {
