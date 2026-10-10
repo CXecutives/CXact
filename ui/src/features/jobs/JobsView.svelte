@@ -24,6 +24,7 @@
   import EmptyState from '$components/EmptyState.svelte';
   import { t } from '$lib/i18n/t';
   import { inView } from '$lib/actions/inView';
+  import { scrollFade } from '$lib/actions/scrollFade';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
@@ -204,7 +205,7 @@
       >
       <section class="right" data-testid="reader-pane" bind:this={right}>
         {#key stage.turn}
-          <div class="stage" data-testid="stage">
+          <div class="stage" data-testid="stage" use:scrollFade>
             <div
               class="column"
               class:idle={stage.what === NO_JOB}
@@ -347,6 +348,7 @@
     height: var(--fade-height);
     margin-bottom: calc(-1 * var(--fade-height));
     background: var(--grad-fade);
+    opacity: var(--fade-shown, 0);
     pointer-events: none;
   }
 

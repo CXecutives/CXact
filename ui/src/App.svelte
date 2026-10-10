@@ -24,6 +24,7 @@
   import Toast from '$components/Toast.svelte';
   import Tooltip from '$components/Tooltip.svelte';
   import { keepScroll } from '$lib/actions/keepScroll';
+  import { scrollFade } from '$lib/actions/scrollFade';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { onBack } from '$lib/input/input';
@@ -169,7 +170,7 @@
       {:else}
         <!-- The views are the branches of one block: a switch shows the new one at once. -->
         {#if firstRun}
-          <section class="view" data-testid="view-first-run">
+          <section class="view" data-testid="view-first-run" use:scrollFade>
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
@@ -177,11 +178,21 @@
             <JobsView />
           </section>
         {:else if navigation.current === 'profile'}
-          <section class="view" data-testid="view-profile" use:keepScroll={'profile'}>
+          <section
+            class="view"
+            data-testid="view-profile"
+            use:keepScroll={'profile'}
+            use:scrollFade
+          >
             <ProfileView />
           </section>
         {:else}
-          <section class="view" data-testid="view-settings" use:keepScroll={'settings'}>
+          <section
+            class="view"
+            data-testid="view-settings"
+            use:keepScroll={'settings'}
+            use:scrollFade
+          >
             <SettingsView />
           </section>
         {/if}
@@ -303,7 +314,8 @@
     display: block;
     height: var(--fade-height);
     margin-bottom: calc(-1 * var(--fade-height));
-    background: var(--grad-fade-page);
+    background: var(--grad-fade);
+    opacity: var(--fade-shown, 0);
     pointer-events: none;
   }
 

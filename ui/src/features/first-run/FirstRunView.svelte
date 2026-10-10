@@ -2,11 +2,11 @@
   The setup, a mode of the shell of its own (App.svelte: no sidebar, no sidebar button, no
   Zurück and Vor in the top bar, no job view button; every switch of the view is refused
   while it stands). One step at a time from the table of steps.ts, every step in the frame of
-  the Profil page (Page: the pages' column on the cream, the view scrolls under the top bar's
+  the Profil page (Page: the pages' column on the white, the view scrolls under the top bar's
   fade, nothing centred): at the column's top the step indicator ("Profil", "Postfach", two
   thin bars), under it the step's heading flush left (it takes the focus on every step, so a
   screen reader starts there), at most one sentence, its body (the snippet of its id; a form
-  in one white group, tiles and the drop zone as white boxes on the cream) and its foot right
+  in one white group, tiles and the drop zone as white boxes with an edge on the page) and its foot right
   under it: Zurück at the left, the step's buttons at the right, the one primary last. Enter
   is the primary while the step can go on; the mouse's back button is Zurück
   (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360.
@@ -313,7 +313,7 @@
     font: var(--type-label);
   }
 
-  /* The foot on the cream right under the step: Zurück's words on the column's edge, the
+  /* The foot on the page right under the step: Zurück's words on the column's edge, the
      buttons at the right; what is missing beside Weiter, in a narrow column on a line of its
      own above Zurück and Weiter. */
   .foot {
@@ -351,7 +351,7 @@
     }
   }
 
-  /* A long step's foot stays at the window's bottom, on the cream over the form. */
+  /* A long step's foot stays at the window's bottom, on the page's ground over the form. */
   .sticky {
     position: sticky;
     z-index: var(--z-sticky);

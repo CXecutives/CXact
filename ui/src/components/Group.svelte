@@ -1,7 +1,7 @@
 <!--
   The white box of a page's group (Section; Profil, Einstellungen, the setup's mailbox form
   and its portals' rows): white with a 1 px edge,
-  12 round, 16 inside all round, like the settings of macOS and Windows on the cream page.
+  12 round, 16 inside all round, like the settings of macOS and Windows, on the white page (--layout-page).
   Fields stand 16 apart in it without a line between them (ProfileEditor). A list of rows
   (SettingRow, PortalRow) brings its own padding: the rows run edge to edge (they bleed out
   by the box's inset, --row-inset, and pad back in by it) with a hairline between them, the

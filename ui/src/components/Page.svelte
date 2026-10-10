@@ -1,6 +1,6 @@
 <!--
   The frame of a page without a title (Profil, Einstellungen, every step of the setup): the
-  cream page at least as high as the view, its column (--page-width) centred in it, its first
+  white page (--layout-page) at least as high as the view, its column (--page-width) centred in it, its first
   heading's line on the window's first row (--page-top) and the room of the page's end under
   the column (--page-end). The column is the container its rows ask for their width (a
   narrow window puts a row's buttons on a line of their own). A head above the column (`head`: the Profil

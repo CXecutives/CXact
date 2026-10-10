@@ -261,11 +261,18 @@
   /* Two, for the light of a loading placeholder and the fade under the top bar. No
      decorative gradients. */
   --grad-shimmer: linear-gradient(90deg, transparent, hsl(var(--p-white) / 0.6), transparent);
-  /* The fade under the top bar (user, 2026-09-27; back in design round 4): the view's colour
-     into nothing. */
-  --grad-fade: linear-gradient(hsl(var(--p-white)), hsl(var(--p-white) / 0));
-  /* The same over the cream ground of Profil and Einstellungen. */
-  --grad-fade-page: linear-gradient(var(--layout-page), transparent);
+  /* The fade under the top bar (user, 2026-09-27; smoother on 2026-10-10): the views' white
+     (Jobs and the pages, --layout-page) into nothing along an eased curve, so neither end
+     shows an edge. */
+  --grad-fade: linear-gradient(
+    hsl(var(--p-white)),
+    hsl(var(--p-white) / 0.9) 20%,
+    hsl(var(--p-white) / 0.7) 38%,
+    hsl(var(--p-white) / 0.45) 56%,
+    hsl(var(--p-white) / 0.22) 74%,
+    hsl(var(--p-white) / 0.07) 88%,
+    hsl(var(--p-white) / 0)
+  );
 
   /* ----------------------------------------------------------------- shadows */
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
@@ -475,10 +482,12 @@
   /* A field of a page: its label above its control, this far apart (Field). */
   --label-gap: 6px;
   /* The pages Profil and Einstellungen ("Luftige Gruppen", design round 6): white rounded
-     boxes on the cream page, a navy heading flush with each box's left edge (--type-heading)
+     boxes with a hairline edge on the white page (white like Jobs, user 2026-10-10, so the
+     pages no longer melt into the cream sidebar), a navy heading flush with each box's left
+     edge (--type-heading)
      this far above it, the groups this far apart; in a box 16 all round and the fields 16
      apart, no hairlines between fields (only between the rows of a list). */
-  --layout-page: var(--bg);
+  --layout-page: var(--surface);
   --layout-group: var(--surface);
   --layout-group-edge: var(--border);
   --layout-group-radius: 12px;
@@ -559,8 +568,9 @@
   /* One width for every toast: the longest sentence ("2 neue Jobs, 1 mit hoher
      Übereinstimmung") with its action and ×. */
   --toast-width: 400px;
-  /* The fade under the top bar where a view scrolls beneath it. */
-  --fade-height: 20px;
+  /* The fade under the top bar where a view scrolls beneath it; it comes in over the first
+     scroll of this height (lib/actions/scrollFade.ts), so at rest it lies over nothing. */
+  --fade-height: 36px;
   /* The floating bar at the foot of a page (the Profil's unsaved changes): this far above
      the window's bottom edge, at most this wide. */
   --float-gap: var(--space-16);

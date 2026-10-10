@@ -151,7 +151,7 @@
     background-color: var(--surface);
   }
 
-  /* Profil, Einstellungen and the setup: the cream ground of their groups. */
+  /* Profil, Einstellungen and the setup: the ground of their page (--layout-page). */
   .bar.page {
     background-color: var(--layout-page);
   }
