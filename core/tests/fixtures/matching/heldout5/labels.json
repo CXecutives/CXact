@@ -505,7 +505,7 @@
     "A04": {
       "grade": 0,
       "excluded": true,
-      "reason": "outside field; years below zielprofil_min_jahre 10 \"3 bis 6 Jahre Berufserfahrung\"",
+      "reason": "Owner decision: outside field; years below zielprofil_min_jahre 10 \"3 bis 6 Jahre Berufserfahrung\"",
       "quote": ""
     },
     "A05": {
@@ -529,7 +529,7 @@
     "A08": {
       "grade": 0,
       "excluded": true,
-      "reason": "outside field; years below zielprofil_min_jahre 10 \"5+ years in internal audit\"",
+      "reason": "Owner decision: outside field; years below zielprofil_min_jahre 10 \"5+ years in internal audit\"",
       "quote": ""
     },
     "A09": {
@@ -571,7 +571,7 @@
     "B05": {
       "grade": 0,
       "excluded": true,
-      "reason": "outside field; years below zielprofil_min_jahre 10 \"Mindestens 5 Jahre Erfahrung\"",
+      "reason": "Owner decision: outside field; years below zielprofil_min_jahre 10 \"Mindestens 5 Jahre Erfahrung\"",
       "quote": ""
     },
     "B06": {
@@ -1987,7 +1987,7 @@
     "A09": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"mindestens 4 Jahren Erfahrung im IT-Recht\" below 5 without senior title",
+      "reason": "Owner decision: \"mindestens 4 Jahren Erfahrung im IT-Recht\" below 5 without senior title",
       "quote": ""
     },
     "A10": {
@@ -2211,7 +2211,7 @@
     "A06": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"5+ years in data protection\" below zielprofil_min_jahre 10 without senior title",
+      "reason": "Owner decision: \"5+ years in data protection\" below zielprofil_min_jahre 10 without senior title",
       "quote": ""
     },
     "A07": {
@@ -2223,13 +2223,13 @@
     "A08": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"5+ years in internal audit\" below 10 for an \"Internal Audit Manager\" without senior title",
+      "reason": "Owner decision: \"5+ years in internal audit\" below 10 for an \"Internal Audit Manager\" without senior title",
       "quote": ""
     },
     "A09": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"mindestens 4 Jahren\" below zielprofil_min_jahre 10",
+      "reason": "Owner decision: \"mindestens 4 Jahren\" below zielprofil_min_jahre 10",
       "quote": ""
     },
     "A10": {

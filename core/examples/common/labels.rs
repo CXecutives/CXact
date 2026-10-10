@@ -19,6 +19,18 @@ pub struct Label {
     pub quote: String,
 }
 
+/// Starts the reason of an exclusion the engine leaves out on purpose, by the owner's
+/// decisions (`docs/MATCHING.md` "Where the engine and the labels part on purpose"): the
+/// retired target years and the hourly pay of agency or student work read as a day rate.
+pub const OWNER_DECISION: &str = "Owner decision: ";
+
+impl Label {
+    /// An exclusion the engine leaves out on purpose ([`OWNER_DECISION`]).
+    pub fn owner_decision(&self) -> bool {
+        self.excluded && self.reason.starts_with(OWNER_DECISION)
+    }
+}
+
 /// Profile key -> job key -> label.
 pub type Labels = BTreeMap<String, BTreeMap<String, Label>>;
 

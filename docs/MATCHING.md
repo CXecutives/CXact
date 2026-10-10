@@ -39,7 +39,14 @@ Ten held-out sets (`heldout1/` to `heldout10/`): invented ads with blind labels 
 excluded) written by independent agents for profiles the engine was not tuned on at the time.
 Every set was later used to find and fix systematic gaps, so they are regression corpora, not an
 unseen measurement. `matching_heldout.rs` freezes a floor per set (NDCG@10, Spearman, exclusion
-precision and recall, buried grade-3 jobs); a floor is never lowered to let a change pass.
+precision and recall, the recall without the owner's decisions, buried grade-3 jobs); a floor is
+never lowered to let a change pass.
+
+208 labels exclude only by a rule the owner retired on purpose: the target years (122) and the
+hourly pay of agency or student work read as a day rate (86). They stay as the labelers wrote
+them, their reason starting with `Owner decision:` (`labels::OWNER_DECISION`); the second recall
+(`R kept`) leaves them out, so it measures what the engine is meant to find, gated per set at its
+measured value.
 
 `matching_profiles.rs`: an invented clinical project manager (no domain pack, own English terms
 among the tools) scores a clinical ad high and a finance ad low; packs, years, degrees, criteria;
@@ -52,7 +59,8 @@ set) and `heldout_report`:
 - NDCG@10 and @20 (gain `2^grade - 1`, grade 0 for a job the labels exclude; mean over the
   profiles with a relevant job), P@5 against what a profile can reach (`P@5 / min(5,
   relevant)`), Spearman over all pairs, high-band precision, grade-3 jobs buried (below 40,
-  excluded or unscorable), exclusion precision and recall. Excluded jobs rank last, unscorable
+  excluded or unscorable), exclusion precision and recall (in the held-out sets also the recall
+  without the owner's decisions, `R kept`). Excluded jobs rank last, unscorable
   ones just above them, and equal scores follow `Assessment.rank` (per-mille before caps and
   rounding), as in the app's list.
 - The order below the top: the Spearman correlation of list order and gain over the relevant
@@ -72,18 +80,18 @@ there).
 
 `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`:
 
-| Set | NDCG@10 | P@5 | Spearman relevant | Concordance 2v3 | Concordance 1v2 | Buried | Exclusions P / R |
-|---|---|---|---|---|---|---|---|
-| heldout1 | 0.923 | 1.000 | 0.782 | 0.755 | 0.621 | 0 | 1.000 / 0.971 |
-| heldout2 | 0.892 | 0.875 | 0.717 | 0.663 | 0.774 | 0 | 1.000 / 0.845 |
-| heldout3 | 0.911 | 0.933 | 0.595 | 0.595 | 0.667 | 0 | 1.000 / 0.900 |
-| heldout4 | 0.830 | 0.843 | 0.564 | 0.481 | 0.833 | 0 | 1.000 / 0.959 |
-| heldout5 | 0.802 | 0.967 | 0.717 | 0.826 | 0.693 | 0 | 0.987 / 0.955 |
-| heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.982 |
-| heldout7 | 0.921 | 0.910 | 0.673 | 0.824 | 0.583 | 2 | 1.000 / 0.851 |
-| heldout8 | 0.952 | 0.957 | 0.815 | 0.855 | 0.776 | 0 | 1.000 / 0.856 |
-| heldout9 | 0.890 | 0.854 | 0.652 | 0.755 | 0.676 | 0 | 1.000 / 0.860 |
-| heldout10 | 0.942 | 1.000 | 0.836 | 0.734 | 0.812 | 0 | 1.000 / 1.000 |
+| Set | NDCG@10 | P@5 | Spearman relevant | Concordance 2v3 | Concordance 1v2 | Buried | Exclusions P / R | R kept |
+|---|---|---|---|---|---|---|---|---|
+| heldout1 | 0.923 | 1.000 | 0.782 | 0.755 | 0.621 | 0 | 1.000 / 0.971 | 1.000 |
+| heldout2 | 0.892 | 0.875 | 0.717 | 0.663 | 0.774 | 0 | 1.000 / 0.845 | 1.000 |
+| heldout3 | 0.911 | 0.933 | 0.595 | 0.595 | 0.667 | 0 | 1.000 / 0.900 | 1.000 |
+| heldout4 | 0.830 | 0.843 | 0.564 | 0.481 | 0.833 | 0 | 1.000 / 0.959 | 0.988 |
+| heldout5 | 0.802 | 0.967 | 0.717 | 0.826 | 0.693 | 0 | 0.987 / 0.955 | 1.000 |
+| heldout6 | 0.902 | 0.950 | 0.797 | 0.818 | 0.836 | 0 | 1.000 / 0.988 | 1.000 |
+| heldout7 | 0.917 | 0.910 | 0.673 | 0.824 | 0.583 | 2 | 1.000 / 0.867 | 0.998 |
+| heldout8 | 0.952 | 0.957 | 0.815 | 0.855 | 0.776 | 0 | 1.000 / 0.873 | 0.984 |
+| heldout9 | 0.890 | 0.854 | 0.652 | 0.755 | 0.676 | 0 | 1.000 / 0.860 | 1.000 |
+| heldout10 | 0.942 | 1.000 | 0.836 | 0.734 | 0.812 | 0 | 1.000 / 1.000 | 1.000 |
 
 Engine 20 has no Schwerpunkte (the owner's decision of 2026-10-10): every competence counts the
 same, without a weight by its years. Gone are the double weight of a requirement met in full
@@ -119,7 +127,13 @@ Schwerpunkte as stars, the remote wish to the work mode (`ueberwiegend` to `remo
 to full or part time, degrees with their field; titles, USPs and career stations have no field
 any more. 86 held-out pairs the labels excluded only for remote work abroad or the region of
 permanent roles (rules v19 dropped) are relabeled (`Profil v19:` in their reason); in the corpus
-the expectations of the region (senior and wish K33, K43, K45, K46, K51) are gone.
+the expectations of the region (senior and wish K33, K43, K45, K46, K51) are gone. A second pass
+relabeled 18 pairs the first one missed (heldout6 P8 F03; heldout7 L07 for P6, P11, P14 and
+wishSap, K12 for P14, M12 for P6, P11, P14 and wishSap; heldout8 Q11 for P1, P4, P6, P7, P11,
+P13, P14 and wishSap): exclusion recall heldout6 0.982 to 0.988, heldout7 0.851 to 0.867, heldout8
+0.856 to 0.873, NDCG@10 of heldout7 0.921 to 0.917 (three of them are grade 1 and count as gain
+now). Five more (heldout7 L07 for P1, P4 and P13, K12 and M12 for P13) stay excluded by their day
+rate, which their reason names now.
 
 Two steps, NDCG@10 and exclusion recall (engine 18 on the old profiles; engine 18 on the migrated
 ones, relabeled; engine 19):
@@ -180,12 +194,12 @@ The error analysis, by kind:
   the ANÜ notice headings, portal buttons and badges as no part of the ad, a place split off a
   frame line (no set moved).
 
-Where the engine and the labels part on purpose:
+Where the engine and the labels part on purpose (the labels say `Owner decision:`):
 - The labels exclude by the retired target years (`zielprofil_min_jahre`); the engine scores
   those pairs, so exclusion recall stays below 1.0, most on sets 2, 3 and 9.
 - The labels of sets 2, 7 and 8 read the pay of temporary agency work x 8 as a day rate and
   exclude such jobs for freelance profiles that allow ANÜ and set no salary; the engine reads it
-  as employment pay (the user's decision).
+  as employment pay (the user's decision). Set 7 and 8 read a student's hourly wage alike.
 - Set 5 reads a student wage as no salary; the engine excludes C10 for two profiles by that wage
   per year, as the labels of set 3 do (T04).
 

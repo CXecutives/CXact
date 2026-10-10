@@ -51,13 +51,13 @@
     "X10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Pharma QA off field; 'Mind. 8 Jahre' below 10 without senior title",
+      "reason": "Owner decision: Pharma QA off field; 'Mind. 8 Jahre' below 10 without senior title",
       "quote": ""
     },
     "X11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Off field; 'Min. 5 years' below 10, 'Specialist' no senior title",
+      "reason": "Owner decision: Off field; 'Min. 5 years' below 10, 'Specialist' no senior title",
       "quote": ""
     },
     "X12": {
@@ -135,7 +135,7 @@
     "Y12": {
       "grade": 0,
       "excluded": true,
-      "reason": "Off field; '7+ years' below 10, 'Manager' no senior title",
+      "reason": "Owner decision: Off field; '7+ years' below 10, 'Manager' no senior title",
       "quote": ""
     },
     "X03": {
@@ -179,7 +179,7 @@
     "X06": {
       "grade": 1,
       "excluded": true,
-      "reason": "Operative buyer far below level; '42 - 48 € pro Stunde' = 384/day < 850",
+      "reason": "Owner decision: Operative buyer far below level; '42 - 48 € pro Stunde' = 384/day < 850",
       "quote": ""
     },
     "X07": {
@@ -501,7 +501,7 @@
     "X11": {
       "grade": 2,
       "excluded": true,
-      "reason": "RA 8y, 'eCTD Module 3' met, biologics gap; but 'Min. 5 years' below 8 with 'Specialist' title; CHF rate and 'via our staffing partner' partial",
+      "reason": "Owner decision: RA 8y, 'eCTD Module 3' met, biologics gap; but 'Min. 5 years' below 8 with 'Specialist' title; CHF rate and 'via our staffing partner' partial",
       "quote": ""
     },
     "X12": {
@@ -579,7 +579,7 @@
     "Y12": {
       "grade": 0,
       "excluded": true,
-      "reason": "Off field; '7+ years' below 8 without senior title",
+      "reason": "Owner decision: Off field; '7+ years' below 8 without senior title",
       "quote": ""
     }
   },
@@ -1079,13 +1079,13 @@
     "X10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Off field; 'Mind. 8 Jahre' below 10 without senior title",
+      "reason": "Owner decision: Off field; 'Mind. 8 Jahre' below 10 without senior title",
       "quote": ""
     },
     "X11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Off field; 'Min. 5 years' below 10 without senior title",
+      "reason": "Owner decision: Off field; 'Min. 5 years' below 10 without senior title",
       "quote": ""
     },
     "X12": {
@@ -1157,7 +1157,7 @@
     "Y12": {
       "grade": 2,
       "excluded": true,
-      "reason": "Finanztransformation, S/4, PRINCE2 fit, overqualified; '7+ years' below 10 with 'Manager' title excludes by rubric",
+      "reason": "Owner decision: Finanztransformation, S/4, PRINCE2 fit, overqualified; '7+ years' below 10 with 'Manager' title excludes by rubric",
       "quote": ""
     },
     "Y05": {

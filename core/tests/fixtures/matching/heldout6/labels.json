@@ -219,7 +219,7 @@
     "H07": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"8+ Jahre Erfahrung\" below 10 with title \"Manager\" (no senior title)",
+      "reason": "Owner decision: \"8+ Jahre Erfahrung\" below 10 with title \"Manager\" (no senior title)",
       "quote": ""
     },
     "H08": {
@@ -1526,8 +1526,8 @@
     },
     "F03": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Employment 'befristete Anstellung' in Ludwigshafen, 'Remote-Anteil 40 %' below 60",
+      "excluded": false,
+      "reason": "Employment 'befristete Anstellung' in Ludwigshafen, 'Remote-Anteil 40 %' below 60 Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "F04": {
@@ -2591,7 +2591,7 @@
     "H07": {
       "grade": 2,
       "excluded": true,
-      "reason": "'8+ Jahre Erfahrung' below 10 without senior title (Manager)",
+      "reason": "Owner decision: '8+ Jahre Erfahrung' below 10 without senior title (Manager)",
       "quote": ""
     },
     "H08": {

@@ -9,7 +9,7 @@
     "R02": {
       "grade": 0,
       "excluded": true,
-      "reason": "'8+ years' below 10 without senior title; controlling off-field",
+      "reason": "Owner decision: '8+ years' below 10 without senior title; controlling off-field",
       "quote": ""
     },
     "R03": {
@@ -81,13 +81,13 @@
     "S05": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Mindestens 5 Jahre' below 10 without senior title; off-field",
+      "reason": "Owner decision: 'Mindestens 5 Jahre' below 10 without senior title; off-field",
       "quote": ""
     },
     "S06": {
       "grade": 0,
       "excluded": true,
-      "reason": "'At least 4 years' below 10; off-field",
+      "reason": "Owner decision: 'At least 4 years' below 10; off-field",
       "quote": ""
     },
     "S07": {
@@ -171,7 +171,7 @@
     "S01": {
       "grade": 3,
       "excluded": true,
-      "reason": "Core fit (Sozialplan, Betriebsrat, IG Metall, SuccessFactors, Automobilzulieferer), overqualified; 'Mindestens 8 Jahre' below 10 and 'HR Business Partner' no senior title",
+      "reason": "Owner decision: Core fit (Sozialplan, Betriebsrat, IG Metall, SuccessFactors, Automobilzulieferer), overqualified; 'Mindestens 8 Jahre' below 10 and 'HR Business Partner' no senior title",
       "quote": ""
     },
     "T04": {
@@ -717,13 +717,13 @@
     "S05": {
       "grade": 3,
       "excluded": true,
-      "reason": "Core GMP QA sterile, CAPA, Change Control, Annex 1, TrackWise/Veeva, overqualified; 'Mindestens 5 Jahre' below 8 and 'Manager' no senior title",
+      "reason": "Owner decision: Core GMP QA sterile, CAPA, Change Control, Annex 1, TrackWise/Veeva, overqualified; 'Mindestens 5 Jahre' below 8 and 'Manager' no senior title",
       "quote": ""
     },
     "S06": {
       "grade": 3,
       "excluded": true,
-      "reason": "RA CMC, CTD Module 3, variations, eCTD, docuBridge, generics nearly all met; 'At least 4 years' below 8, 'Consultant' no senior title",
+      "reason": "Owner decision: RA CMC, CTD Module 3, variations, eCTD, docuBridge, generics nearly all met; 'At least 4 years' below 8, 'Consultant' no senior title",
       "quote": ""
     }
   },
@@ -1179,7 +1179,7 @@
     "S06": {
       "grade": 0,
       "excluded": true,
-      "reason": "'At least 4 years' below 5 without senior title; off-field",
+      "reason": "Owner decision: 'At least 4 years' below 5 without senior title; off-field",
       "quote": ""
     },
     "S07": {
@@ -1283,7 +1283,7 @@
     "R02": {
       "grade": 2,
       "excluded": true,
-      "reason": "content fits (IFRS, HGB, forecast) but '8+ years' below 10 without senior title",
+      "reason": "Owner decision: content fits (IFRS, HGB, forecast) but '8+ years' below 10 without senior title",
       "quote": ""
     },
     "R03": {
@@ -1331,7 +1331,7 @@
     "S01": {
       "grade": 0,
       "excluded": true,
-      "reason": "off-field; 'Mindestens 8 Jahre' below 10 without senior title",
+      "reason": "Owner decision: off-field; 'Mindestens 8 Jahre' below 10 without senior title",
       "quote": ""
     },
     "S02": {
@@ -1355,13 +1355,13 @@
     "S05": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Mindestens 5 Jahre' below 10 without senior title; off-field",
+      "reason": "Owner decision: 'Mindestens 5 Jahre' below 10 without senior title; off-field",
       "quote": ""
     },
     "S06": {
       "grade": 0,
       "excluded": true,
-      "reason": "'At least 4 years' below 10; off-field",
+      "reason": "Owner decision: 'At least 4 years' below 10; off-field",
       "quote": ""
     },
     "S07": {

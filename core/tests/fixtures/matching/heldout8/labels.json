@@ -57,7 +57,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, 'Werkstudent' at '17 €/Std. - 19 €/Std.', far below her rate and level.",
+      "reason": "Owner decision: Student job, 'Werkstudent' at '17 €/Std. - 19 €/Std.', far below her rate and level.",
       "quote": ""
     },
     "N11": {
@@ -158,8 +158,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated to HR; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated to HR; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -177,7 +177,7 @@
     "Q14": {
       "grade": 0,
       "excluded": true,
-      "reason": "Entry-level nursing job, 'Berufseinsteigerinnen und Berufseinsteiger sind herzlich willkommen'.",
+      "reason": "Owner decision: Entry-level nursing job, 'Berufseinsteigerinnen und Berufseinsteiger sind herzlich willkommen'.",
       "quote": ""
     },
     "Q15": {
@@ -189,7 +189,7 @@
     "Q16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Customer service job at entry level, 'Berufseinstieg'.",
+      "reason": "Owner decision: Customer service job at entry level, 'Berufseinstieg'.",
       "quote": ""
     },
     "R01": {
@@ -363,7 +363,7 @@
     "S13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior pharma QA job with 'ein bis drei Jahren Berufserfahrung'.",
+      "reason": "Owner decision: Junior pharma QA job with 'ein bis drei Jahren Berufserfahrung'.",
       "quote": ""
     },
     "S14": {
@@ -401,7 +401,7 @@
     "N03": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior SAP accounts payable support; '62 - 68 € pro Stunde' is below 850 EUR per day.",
+      "reason": "Owner decision: Junior SAP accounts payable support; '62 - 68 € pro Stunde' is below 850 EUR per day.",
       "quote": ""
     },
     "N04": {
@@ -443,7 +443,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student controlling job; '17 €/Std. - 19 €/Std.' is far below 850 EUR per day.",
+      "reason": "Owner decision: Student controlling job; '17 €/Std. - 19 €/Std.' is far below 850 EUR per day.",
       "quote": ""
     },
     "N11": {
@@ -479,7 +479,7 @@
     "N16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior engineering job; 'Stundensatz 48 €' is far below 850 EUR per day.",
+      "reason": "Owner decision: Junior engineering job; 'Stundensatz 48 €' is far below 850 EUR per day.",
       "quote": ""
     },
     "Q01": {
@@ -491,7 +491,7 @@
     "Q02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR integration project, not procurement; 'Stundenlohn liegt bei 58 € brutto' is below 850 EUR per day.",
+      "reason": "Owner decision: HR integration project, not procurement; 'Stundenlohn liegt bei 58 € brutto' is below 850 EUR per day.",
       "quote": ""
     },
     "Q03": {
@@ -569,7 +569,7 @@
     "Q15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Electrician job; 'Stundenlohn 21,50 €' is far below 850 EUR per day.",
+      "reason": "Owner decision: Electrician job; 'Stundenlohn 21,50 €' is far below 850 EUR per day.",
       "quote": ""
     },
     "Q16": {
@@ -701,7 +701,7 @@
     "S05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Medical controlling job; 'Stundensatz von 36 €' is far below 850 EUR per day.",
+      "reason": "Owner decision: Medical controlling job; 'Stundensatz von 36 €' is far below 850 EUR per day.",
       "quote": ""
     },
     "S06": {
@@ -767,7 +767,7 @@
     "S16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Nursing job; 'ab 32 € brutto pro Stunde' is far below 850 EUR per day.",
+      "reason": "Owner decision: Nursing job; 'ab 32 € brutto pro Stunde' is far below 850 EUR per day.",
       "quote": ""
     }
   },
@@ -930,8 +930,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated to pharma quality; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated to pharma quality; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -1135,7 +1135,7 @@
     "S13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior QA job in her field but far below her level, 'ein bis drei Jahren Berufserfahrung'.",
+      "reason": "Owner decision: Junior QA job in her field but far below her level, 'ein bis drei Jahren Berufserfahrung'.",
       "quote": ""
     },
     "S14": {
@@ -1215,7 +1215,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job; \"17 €/Std. - 19 €/Std.\".",
+      "reason": "Owner decision: Student job; \"17 €/Std. - 19 €/Std.\".",
       "quote": ""
     },
     "N11": {
@@ -1559,7 +1559,7 @@
     "N03": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior SAP accounting support, unrelated; rate \"62 - 68 € pro Stunde\" is far below 950 per day.",
+      "reason": "Owner decision: Junior SAP accounting support, unrelated; rate \"62 - 68 € pro Stunde\" is far below 950 per day.",
       "quote": ""
     },
     "N04": {
@@ -1601,7 +1601,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job; \"17 €/Std. - 19 €/Std.\".",
+      "reason": "Owner decision: Student job; \"17 €/Std. - 19 €/Std.\".",
       "quote": ""
     },
     "N11": {
@@ -1637,7 +1637,7 @@
     "N16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior commissioning engineer, wrong level; \"Stundensatz 48 €\" is far below 950 per day.",
+      "reason": "Owner decision: Junior commissioning engineer, wrong level; \"Stundensatz 48 €\" is far below 950 per day.",
       "quote": ""
     },
     "Q01": {
@@ -1649,7 +1649,7 @@
     "Q02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR integration project role unrelated; \"der Stundenlohn liegt bei 58 € brutto\".",
+      "reason": "Owner decision: HR integration project role unrelated; \"der Stundenlohn liegt bei 58 € brutto\".",
       "quote": ""
     },
     "Q03": {
@@ -1702,8 +1702,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated to operations; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated to operations; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -1727,7 +1727,7 @@
     "Q15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Shift electrician job, wrong level; \"Stundenlohn 21,50 €\" is far below 950 per day.",
+      "reason": "Owner decision: Shift electrician job, wrong level; \"Stundenlohn 21,50 €\" is far below 950 per day.",
       "quote": ""
     },
     "Q16": {
@@ -1859,7 +1859,7 @@
     "S05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Medical controlling job unrelated; \"Stundensatz von 36 €\" is far below 950 per day.",
+      "reason": "Owner decision: Medical controlling job unrelated; \"Stundensatz von 36 €\" is far below 950 per day.",
       "quote": ""
     },
     "S06": {
@@ -1925,7 +1925,7 @@
     "S16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Nurse job; \"ab 32 € brutto pro Stunde\" is far below 950 per day.",
+      "reason": "Owner decision: Nurse job; \"ab 32 € brutto pro Stunde\" is far below 950 per day.",
       "quote": ""
     }
   },
@@ -1987,7 +1987,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job; \"17 €/Std. - 19 €/Std.\".",
+      "reason": "Owner decision: Student job; \"17 €/Std. - 19 €/Std.\".",
       "quote": ""
     },
     "N11": {
@@ -2088,8 +2088,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated to compliance; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated to compliance; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -2331,7 +2331,7 @@
     "N03": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAP accounts payable support job; excluded by 'Honorar: 62 - 68 € pro Stunde', far below 1000 per day.",
+      "reason": "Owner decision: SAP accounts payable support job; excluded by 'Honorar: 62 - 68 € pro Stunde', far below 1000 per day.",
       "quote": ""
     },
     "N04": {
@@ -2759,7 +2759,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Working student job, far below level: \"17 €/Std. - 19 €/Std.\" and \"Praktikum\".",
+      "reason": "Owner decision: Working student job, far below level: \"17 €/Std. - 19 €/Std.\" and \"Praktikum\".",
       "quote": ""
     },
     "N11": {
@@ -2879,7 +2879,7 @@
     "Q14": {
       "grade": 0,
       "excluded": true,
-      "reason": "Entry-level nursing job, clearly below her target seniority: \"Berufseinsteigerinnen und Berufseinsteiger sind herzlich willkommen\".",
+      "reason": "Owner decision: Entry-level nursing job, clearly below her target seniority: \"Berufseinsteigerinnen und Berufseinsteiger sind herzlich willkommen\".",
       "quote": ""
     },
     "Q15": {
@@ -2891,7 +2891,7 @@
     "Q16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Entry-level call centre job, clearly below her target seniority: \"Berufseinstieg\".",
+      "reason": "Owner decision: Entry-level call centre job, clearly below her target seniority: \"Berufseinstieg\".",
       "quote": ""
     },
     "R01": {
@@ -3065,7 +3065,7 @@
     "S13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior pharma QA job, clearly below her target seniority: \"mit ein bis drei Jahren Berufserfahrung\".",
+      "reason": "Owner decision: Junior pharma QA job, clearly below her target seniority: \"mit ein bis drei Jahren Berufserfahrung\".",
       "quote": ""
     },
     "S14": {
@@ -3103,7 +3103,7 @@
     "N03": {
       "grade": 0,
       "excluded": true,
-      "reason": "Unrelated junior SAP support role and the rate is far below the minimum: \"Honorar: 62 - 68 € pro Stunde\".",
+      "reason": "Owner decision: Unrelated junior SAP support role and the rate is far below the minimum: \"Honorar: 62 - 68 € pro Stunde\".",
       "quote": ""
     },
     "N04": {
@@ -3531,7 +3531,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Working student controlling job, rate far below minimum: \"17 €/Std. - 19 €/Std.\".",
+      "reason": "Owner decision: Working student controlling job, rate far below minimum: \"17 €/Std. - 19 €/Std.\".",
       "quote": ""
     },
     "N11": {
@@ -3632,8 +3632,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated to logistics; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated to logistics; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -3875,7 +3875,7 @@
     "N03": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAP FI support is unrelated and '62 - 68 € pro Stunde' is far below 750 per day.",
+      "reason": "Owner decision: SAP FI support is unrelated and '62 - 68 € pro Stunde' is far below 750 per day.",
       "quote": ""
     },
     "N04": {
@@ -3917,7 +3917,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Working student job is the wrong field and level and '17 €/Std. - 19 €/Std.' is far below 750 per day.",
+      "reason": "Owner decision: Working student job is the wrong field and level and '17 €/Std. - 19 €/Std.' is far below 750 per day.",
       "quote": ""
     },
     "N11": {
@@ -3953,7 +3953,7 @@
     "N16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Commissioning packaging lines is his field but this is a junior role for 1 to 3 years and 'Stundensatz 48 €' is far below 750 per day.",
+      "reason": "Owner decision: Commissioning packaging lines is his field but this is a junior role for 1 to 3 years and 'Stundensatz 48 €' is far below 750 per day.",
       "quote": ""
     },
     "Q01": {
@@ -3965,7 +3965,7 @@
     "Q02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR integration project is unrelated and 'der Stundenlohn liegt bei 58 € brutto' is far below 750 per day.",
+      "reason": "Owner decision: HR integration project is unrelated and 'der Stundenlohn liegt bei 58 € brutto' is far below 750 per day.",
       "quote": ""
     },
     "Q03": {
@@ -4043,7 +4043,7 @@
     "Q15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Maintenance electrician is a trade job below his level and 'Stundenlohn 21,50 €' is far below 750 per day.",
+      "reason": "Owner decision: Maintenance electrician is a trade job below his level and 'Stundenlohn 21,50 €' is far below 750 per day.",
       "quote": ""
     },
     "Q16": {
@@ -4175,7 +4175,7 @@
     "S05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Medical coding job is unrelated and 'Der angegebene Stundensatz von 36 €' is far below 750 per day.",
+      "reason": "Owner decision: Medical coding job is unrelated and 'Der angegebene Stundensatz von 36 €' is far below 750 per day.",
       "quote": ""
     },
     "S06": {
@@ -4241,7 +4241,7 @@
     "S16": {
       "grade": 0,
       "excluded": true,
-      "reason": "ICU nursing is unrelated and 'ab 32 € brutto pro Stunde' is far below 750 per day.",
+      "reason": "Owner decision: ICU nursing is unrelated and 'ab 32 € brutto pro Stunde' is far below 750 per day.",
       "quote": ""
     }
   },
@@ -4303,7 +4303,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Working student controlling job is far below her level and '17 €/Std. - 19 €/Std.' is far below 1100 per day.",
+      "reason": "Owner decision: Working student controlling job is far below her level and '17 €/Std. - 19 €/Std.' is far below 1100 per day.",
       "quote": ""
     },
     "N11": {
@@ -4404,8 +4404,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated and the employer is 'Amsterdam, North Holland, Netherlands (Remote)', while she does not accept remote work abroad.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated and the employer is 'Amsterdam, North Holland, Netherlands (Remote)', while she does not accept remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -4647,7 +4647,7 @@
     "N03": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAP FI support is unrelated and '62 - 68 € pro Stunde' is far below 850 per day.",
+      "reason": "Owner decision: SAP FI support is unrelated and '62 - 68 € pro Stunde' is far below 850 per day.",
       "quote": ""
     },
     "N04": {
@@ -4689,7 +4689,7 @@
     "N10": {
       "grade": 0,
       "excluded": true,
-      "reason": "Working student job is the wrong field and level and '17 €/Std. - 19 €/Std.' is far below 850 per day.",
+      "reason": "Owner decision: Working student job is the wrong field and level and '17 €/Std. - 19 €/Std.' is far below 850 per day.",
       "quote": ""
     },
     "N11": {
@@ -4725,7 +4725,7 @@
     "N16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior engineering role is unrelated and 'Stundensatz 48 €' is far below 850 per day.",
+      "reason": "Owner decision: Junior engineering role is unrelated and 'Stundensatz 48 €' is far below 850 per day.",
       "quote": ""
     },
     "Q01": {
@@ -4737,7 +4737,7 @@
     "Q02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR integration project is unrelated and 'der Stundenlohn liegt bei 58 € brutto' is far below 850 per day.",
+      "reason": "Owner decision: HR integration project is unrelated and 'der Stundenlohn liegt bei 58 € brutto' is far below 850 per day.",
       "quote": ""
     },
     "Q03": {
@@ -4790,8 +4790,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated and the employer is 'Amsterdam, North Holland, Netherlands (Remote)', while he does not accept remote work abroad.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated and the employer is 'Amsterdam, North Holland, Netherlands (Remote)', while he does not accept remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -4815,7 +4815,7 @@
     "Q15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Electrician job is unrelated and 'Stundenlohn 21,50 €' is far below 850 per day.",
+      "reason": "Owner decision: Electrician job is unrelated and 'Stundenlohn 21,50 €' is far below 850 per day.",
       "quote": ""
     },
     "Q16": {
@@ -4947,7 +4947,7 @@
     "S05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Medical coding job is unrelated and 'Der angegebene Stundensatz von 36 €' is far below 850 per day.",
+      "reason": "Owner decision: Medical coding job is unrelated and 'Der angegebene Stundensatz von 36 €' is far below 850 per day.",
       "quote": ""
     },
     "S06": {
@@ -5013,7 +5013,7 @@
     "S16": {
       "grade": 0,
       "excluded": true,
-      "reason": "ICU nursing is unrelated and 'ab 32 € brutto pro Stunde' is far below 850 per day.",
+      "reason": "Owner decision: ICU nursing is unrelated and 'ab 32 € brutto pro Stunde' is far below 850 per day.",
       "quote": ""
     }
   },
@@ -5176,8 +5176,8 @@
     },
     "Q11": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sales leadership is unrelated to SAP finance; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12.",
+      "excluded": false,
+      "reason": "Sales leadership is unrelated to SAP finance; 'Amsterdam, North Holland, Netherlands (Remote)' with a 'Contract with Kraanvogel Automation B.V.' is a fully remote role seated abroad, which the profile does not allow (remote_ausserhalb_erlaubt false), as in the agreed exclusions for P13 and P14 and set 7's K12. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "Q12": {
@@ -5381,7 +5381,7 @@
     "S13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior QA job; excluded as 'ein bis drei Jahren Berufserfahrung', below five years.",
+      "reason": "Owner decision: Junior QA job; excluded as 'ein bis drei Jahren Berufserfahrung', below five years.",
       "quote": ""
     },
     "S14": {
@@ -5413,7 +5413,7 @@
     "N02": {
       "grade": 0,
       "excluded": true,
-      "reason": "A hands-on SAP consultant role is the wrong field and level for an interim CFO; 'At least 8 years of experience as SAP FI/CO consultant' with a Consultant title is below her 10-year target.",
+      "reason": "Owner decision: A hands-on SAP consultant role is the wrong field and level for an interim CFO; 'At least 8 years of experience as SAP FI/CO consultant' with a Consultant title is below her 10-year target.",
       "quote": ""
     },
     "N03": {
@@ -5515,7 +5515,7 @@
     "Q03": {
       "grade": 0,
       "excluded": true,
-      "reason": "A procurement category role is outside her finance field; '8+ years in strategic procurement' for an 'Interim Category Manager' (no senior title) is below her 10-year target.",
+      "reason": "Owner decision: A procurement category role is outside her finance field; '8+ years in strategic procurement' for an 'Interim Category Manager' (no senior title) is below her 10-year target.",
       "quote": ""
     },
     "Q04": {
@@ -5767,7 +5767,7 @@
     "S13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior QA job; excluded as 'ein bis drei Jahren Berufserfahrung', below ten years.",
+      "reason": "Owner decision: Junior QA job; excluded as 'ein bis drei Jahren Berufserfahrung', below ten years.",
       "quote": ""
     },
     "S14": {

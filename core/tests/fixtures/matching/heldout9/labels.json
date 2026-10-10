@@ -183,7 +183,7 @@
     "S047": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAFe release train engineer is outside the field; 'mind. 3 jahre' without a senior title is below 5 years.",
+      "reason": "Owner decision: SAFe release train engineer is outside the field; 'mind. 3 jahre' without a senior title is below 5 years.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -279,7 +279,7 @@
     "S067": {
       "grade": 0,
       "excluded": true,
-      "reason": "Azure, Intune and M365 infrastructure engineering is not her process and KI work; 'min 3 jahre' without a senior title is below 5 years.",
+      "reason": "Owner decision: Azure, Intune and M365 infrastructure engineering is not her process and KI work; 'min 3 jahre' without a senior title is below 5 years.",
       "quote": "MUST: Azure + Terraform min 3 jahre"
     },
     "S068": {
@@ -561,7 +561,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Part-time junior controller role is outside the field; '2-3 Jahre' is a range below 5 years.",
+      "reason": "Owner decision: Part-time junior controller role is outside the field; '2-3 Jahre' is a range below 5 years.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {
@@ -761,7 +761,7 @@
     "S047": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAFe release train engineer is outside the field; 'mind. 3 jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: SAFe release train engineer is outside the field; 'mind. 3 jahre' without a senior title is below 10 years.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -881,7 +881,7 @@
     "S073": {
       "grade": 0,
       "excluded": true,
-      "reason": "Information security officer is outside the field; 'Mindestens 8 Jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: Information security officer is outside the field; 'Mindestens 8 Jahre' without a senior title is below 10 years.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit"
     },
     "S074": {
@@ -893,7 +893,7 @@
     "S075": {
       "grade": 0,
       "excluded": true,
-      "reason": "SIEM engineering is outside the field; 'mind. 6 Jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: SIEM engineering is outside the field; 'mind. 6 Jahre' without a senior title is below 10 years.",
       "quote": "Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld"
     },
     "S076": {
@@ -917,7 +917,7 @@
     "S081": {
       "grade": 0,
       "excluded": true,
-      "reason": "Functional safety management is outside his field; '8+ years' with a Manager title is below 10 years.",
+      "reason": "Owner decision: Functional safety management is outside his field; '8+ years' with a Manager title is below 10 years.",
       "quote": "8+ years in automotive E/E development"
     },
     "S082": {
@@ -941,7 +941,7 @@
     "S085": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive requirements engineering is outside the field; 'mind. 7 Jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: Automotive requirements engineering is outside the field; 'mind. 7 Jahre' without a senior title is below 10 years.",
       "quote": "Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld"
     },
     "S086": {
@@ -1139,7 +1139,7 @@
     "S126": {
       "grade": 1,
       "excluded": true,
-      "reason": "Reporting, contribution margins, budget and 13-week liquidity fit his controlling topics, but it is a junior part-time controller role; '2-3 Jahre' is a range below 10 years.",
+      "reason": "Owner decision: Reporting, contribution margins, budget and 13-week liquidity fit his controlling topics, but it is a junior part-time controller role; '2-3 Jahre' is a range below 10 years.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {
@@ -1339,7 +1339,7 @@
     "S047": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAFe release train engineer is outside the field; 'mind. 3 jahre' without a senior title is below 15 years.",
+      "reason": "Owner decision: SAFe release train engineer is outside the field; 'mind. 3 jahre' without a senior title is below 15 years.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -1459,7 +1459,7 @@
     "S073": {
       "grade": 0,
       "excluded": true,
-      "reason": "Information security officer is outside the field; 'Mindestens 8 Jahre' without a senior title is below 15 years.",
+      "reason": "Owner decision: Information security officer is outside the field; 'Mindestens 8 Jahre' without a senior title is below 15 years.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit"
     },
     "S074": {
@@ -1471,7 +1471,7 @@
     "S075": {
       "grade": 0,
       "excluded": true,
-      "reason": "SIEM engineering is outside the field; 'mind. 6 Jahre' without a senior title is below 15 years.",
+      "reason": "Owner decision: SIEM engineering is outside the field; 'mind. 6 Jahre' without a senior title is below 15 years.",
       "quote": "Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld"
     },
     "S076": {
@@ -1519,7 +1519,7 @@
     "S085": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive requirements engineering is outside the field; 'mind. 7 Jahre' without a senior title is below 15 years.",
+      "reason": "Owner decision: Automotive requirements engineering is outside the field; 'mind. 7 Jahre' without a senior title is below 15 years.",
       "quote": "Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld"
     },
     "S086": {
@@ -1717,7 +1717,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Part-time junior controller role is outside the field; '2-3 Jahre' is a range below 15 years.",
+      "reason": "Owner decision: Part-time junior controller role is outside the field; '2-3 Jahre' is a range below 15 years.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {
@@ -1917,7 +1917,7 @@
     "S047": {
       "grade": 1,
       "excluded": true,
-      "reason": "SAFe release train engineer is adjacent to her programme work but needs a SAFe RTE certificate; 'mind. 3 jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: SAFe release train engineer is adjacent to her programme work but needs a SAFe RTE certificate; 'mind. 3 jahre' without a senior title is below 10 years.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -2037,7 +2037,7 @@
     "S073": {
       "grade": 0,
       "excluded": true,
-      "reason": "Information security officer is outside the field; 'Mindestens 8 Jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: Information security officer is outside the field; 'Mindestens 8 Jahre' without a senior title is below 10 years.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit"
     },
     "S074": {
@@ -2049,7 +2049,7 @@
     "S075": {
       "grade": 0,
       "excluded": true,
-      "reason": "SIEM engineering is outside the field; 'mind. 6 Jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: SIEM engineering is outside the field; 'mind. 6 Jahre' without a senior title is below 10 years.",
       "quote": "Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld"
     },
     "S076": {
@@ -2097,7 +2097,7 @@
     "S085": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive requirements engineering is outside the field; 'mind. 7 Jahre' without a senior title is below 10 years.",
+      "reason": "Owner decision: Automotive requirements engineering is outside the field; 'mind. 7 Jahre' without a senior title is below 10 years.",
       "quote": "Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld"
     },
     "S086": {
@@ -2295,7 +2295,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Part-time junior controller role is outside the field; '2-3 Jahre' is a range below 10 years.",
+      "reason": "Owner decision: Part-time junior controller role is outside the field; '2-3 Jahre' is a range below 10 years.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {
@@ -4029,7 +4029,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Part-time controlling and FP&A is outside his infrastructure and security field; a target of two to three years is clearly below his five-year minimum: \"2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up\".",
+      "reason": "Owner decision: Part-time controlling and FP&A is outside his infrastructure and security field; a target of two to three years is clearly below his five-year minimum: \"2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up\".",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up"
     },
     "S127": {
@@ -4607,7 +4607,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Part-time controlling and FP&A is outside her automotive embedded and safety field; a target of two to three years is clearly below her six-year minimum: \"2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up\".",
+      "reason": "Owner decision: Part-time controlling and FP&A is outside her automotive embedded and safety field; a target of two to three years is clearly below her six-year minimum: \"2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up\".",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up"
     },
     "S127": {
@@ -4633,7 +4633,7 @@
     "S012": {
       "grade": 0,
       "excluded": true,
-      "reason": "Machine learning engineering, unrelated to construction project steering; it asks 'Mindestens 5 Jahre Erfahrung als ML Engineer oder Data Scientist', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Machine learning engineering, unrelated to construction project steering; it asks 'Mindestens 5 Jahre Erfahrung als ML Engineer oder Data Scientist', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 5 Jahre Erfahrung als ML Engineer oder Data Scientist"
     },
     "S013": {
@@ -4807,7 +4807,7 @@
     "S047": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAFe release train engineer, unrelated to construction project steering; it asks 'mind. 3 jahre RTE oder Scrum master in SAFe umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: SAFe release train engineer, unrelated to construction project steering; it asks 'mind. 3 jahre RTE oder Scrum master in SAFe umfeld', below the 10-year target, so the role is too junior.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -4819,13 +4819,13 @@
     "S051": {
       "grade": 0,
       "excluded": true,
-      "reason": "Java backend development, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung in der Backend-Entwicklung mit Java', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Java backend development, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung in der Backend-Entwicklung mit Java', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung in der Backend-Entwicklung mit Java"
     },
     "S052": {
       "grade": 0,
       "excluded": true,
-      "reason": "Data engineering, unrelated to construction project steering; it asks '6+ years as a data engineer', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Data engineering, unrelated to construction project steering; it asks '6+ years as a data engineer', below the 10-year target, so the role is too junior.",
       "quote": "6+ years as a data engineer"
     },
     "S053": {
@@ -4873,7 +4873,7 @@
     "S062": {
       "grade": 0,
       "excluded": true,
-      "reason": "Cloud platform lead, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Cloud platform lead, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur"
     },
     "S063": {
@@ -4903,7 +4903,7 @@
     "S067": {
       "grade": 0,
       "excluded": true,
-      "reason": "Azure and M365 engineering, unrelated to construction project steering; it asks 'MUST: Azure + Terraform min 3 jahre', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Azure and M365 engineering, unrelated to construction project steering; it asks 'MUST: Azure + Terraform min 3 jahre', below the 10-year target, so the role is too junior.",
       "quote": "MUST: Azure + Terraform min 3 jahre"
     },
     "S068": {
@@ -4927,7 +4927,7 @@
     "S073": {
       "grade": 0,
       "excluded": true,
-      "reason": "Information security officer, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Information security officer, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit"
     },
     "S074": {
@@ -4939,19 +4939,19 @@
     "S075": {
       "grade": 0,
       "excluded": true,
-      "reason": "SIEM engineering, unrelated to construction project steering; it asks 'Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: SIEM engineering, unrelated to construction project steering; it asks 'Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld', below the 10-year target, so the role is too junior.",
       "quote": "Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld"
     },
     "S076": {
       "grade": 0,
       "excluded": true,
-      "reason": "IT project lead for workforce software, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung als IT-Projektleiter:in bei Softwareeinführungen', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: IT project lead for workforce software, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung als IT-Projektleiter:in bei Softwareeinführungen', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung als IT-Projektleiter:in bei Softwareeinführungen"
     },
     "S077": {
       "grade": 0,
       "excluded": true,
-      "reason": "DevOps engineering, unrelated to construction project steering; it asks 'min. 6 jahre DevOps erfahrung', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: DevOps engineering, unrelated to construction project steering; it asks 'min. 6 jahre DevOps erfahrung', below the 10-year target, so the role is too junior.",
       "quote": "min. 6 jahre DevOps erfahrung"
     },
     "S078": {
@@ -4963,7 +4963,7 @@
     "S081": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive functional safety, unrelated to construction project steering; it asks '8+ years in automotive E/E development', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive functional safety, unrelated to construction project steering; it asks '8+ years in automotive E/E development', below the 10-year target, so the role is too junior.",
       "quote": "8+ years in automotive E/E development"
     },
     "S082": {
@@ -4975,19 +4975,19 @@
     "S083": {
       "grade": 0,
       "excluded": true,
-      "reason": "AUTOSAR integration, unrelated to construction project steering; it asks 'Mind. 7 Jahre Erfahrung in der Embedded-Entwicklung im Automotive-Umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: AUTOSAR integration, unrelated to construction project steering; it asks 'Mind. 7 Jahre Erfahrung in der Embedded-Entwicklung im Automotive-Umfeld', below the 10-year target, so the role is too junior.",
       "quote": "Mind. 7 Jahre Erfahrung in der Embedded-Entwicklung im Automotive-Umfeld"
     },
     "S084": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive SPICE process lead, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung in der Automobilelektronik', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive SPICE process lead, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung in der Automobilelektronik', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung in der Automobilelektronik"
     },
     "S085": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive requirements engineering, unrelated to construction project steering; it asks 'Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive requirements engineering, unrelated to construction project steering; it asks 'Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld', below the 10-year target, so the role is too junior.",
       "quote": "Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld"
     },
     "S086": {
@@ -4999,7 +4999,7 @@
     "S087": {
       "grade": 0,
       "excluded": true,
-      "reason": "PLC programming, unrelated to construction project steering; it asks 'min 7 jahre erfahrung SPS + IBN', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: PLC programming, unrelated to construction project steering; it asks 'min 7 jahre erfahrung SPS + IBN', below the 10-year target, so the role is too junior.",
       "quote": "min 7 jahre erfahrung SPS + IBN"
     },
     "S088": {
@@ -5065,19 +5065,19 @@
     "S102": {
       "grade": 0,
       "excluded": true,
-      "reason": "Smart meter rollout programme, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung in der Energiewirtschaft', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Smart meter rollout programme, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung in der Energiewirtschaft', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung in der Energiewirtschaft"
     },
     "S103": {
       "grade": 0,
       "excluded": true,
-      "reason": "Energy trading process consulting, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung im Energiehandel', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Energy trading process consulting, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung im Energiehandel', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung im Energiehandel"
     },
     "S104": {
       "grade": 0,
       "excluded": true,
-      "reason": "Renewable energy billing, unrelated to construction project steering; it asks 'min. 8 Jahre Energiewirtschaft, EEG Abrechnung MUST', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Renewable energy billing, unrelated to construction project steering; it asks 'min. 8 Jahre Energiewirtschaft, EEG Abrechnung MUST', below the 10-year target, so the role is too junior.",
       "quote": "min. 8 Jahre Energiewirtschaft, EEG Abrechnung MUST"
     },
     "S105": {
@@ -5089,7 +5089,7 @@
     "S106": {
       "grade": 0,
       "excluded": true,
-      "reason": "Municipal heat planning, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Berufserfahrung in der Energieplanung', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Municipal heat planning, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Berufserfahrung in der Energieplanung', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Energieplanung"
     },
     "S107": {
@@ -5107,13 +5107,13 @@
     "S111": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAP test management, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung im Testmanagement', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: SAP test management, unrelated to construction project steering; it asks 'Mindestens 8 Jahre Erfahrung im Testmanagement', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung im Testmanagement"
     },
     "S112": {
       "grade": 0,
       "excluded": true,
-      "reason": "Test management, unrelated to construction project steering; it asks 'min. 7 Jahre Testmanagement', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Test management, unrelated to construction project steering; it asks 'min. 7 Jahre Testmanagement', below the 10-year target, so the role is too junior.",
       "quote": "min. 7 Jahre Testmanagement"
     },
     "S113": {
@@ -5125,7 +5125,7 @@
     "S114": {
       "grade": 0,
       "excluded": true,
-      "reason": "Release management, unrelated to construction project steering; it asks 'At least 5 years of experience as release manager', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Release management, unrelated to construction project steering; it asks 'At least 5 years of experience as release manager', below the 10-year target, so the role is too junior.",
       "quote": "At least 5 years of experience as release manager"
     },
     "S115": {
@@ -5173,7 +5173,7 @@
     "S124": {
       "grade": 0,
       "excluded": true,
-      "reason": "Fractional CFO, unrelated to construction project steering; it asks '8+ years in finance, including at least 3 years as CFO', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Fractional CFO, unrelated to construction project steering; it asks '8+ years in finance, including at least 3 years as CFO', below the 10-year target, so the role is too junior.",
       "quote": "8+ years in finance, including at least 3 years as CFO"
     },
     "S125": {
@@ -5185,7 +5185,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior controlling, unrelated to construction project steering; it asks '2-3 Jahre Erfahrung im Controlling ODER FP&A', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Junior controlling, unrelated to construction project steering; it asks '2-3 Jahre Erfahrung im Controlling ODER FP&A', below the 10-year target, so the role is too junior.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {
@@ -5385,7 +5385,7 @@
     "S047": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAFe release train engineer, unrelated to energy regulation; it asks 'mind. 3 jahre RTE oder Scrum master in SAFe umfeld', below the 8-year target, so the role is too junior.",
+      "reason": "Owner decision: SAFe release train engineer, unrelated to energy regulation; it asks 'mind. 3 jahre RTE oder Scrum master in SAFe umfeld', below the 8-year target, so the role is too junior.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -5481,7 +5481,7 @@
     "S067": {
       "grade": 0,
       "excluded": true,
-      "reason": "Azure and M365 engineering, unrelated to energy regulation; it asks 'MUST: Azure + Terraform min 3 jahre', below the 8-year target, so the role is too junior.",
+      "reason": "Owner decision: Azure and M365 engineering, unrelated to energy regulation; it asks 'MUST: Azure + Terraform min 3 jahre', below the 8-year target, so the role is too junior.",
       "quote": "MUST: Azure + Terraform min 3 jahre"
     },
     "S068": {
@@ -5517,7 +5517,7 @@
     "S075": {
       "grade": 0,
       "excluded": true,
-      "reason": "SIEM engineering, unrelated to energy regulation; it asks 'Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld', below the 8-year target, so the role is too junior.",
+      "reason": "Owner decision: SIEM engineering, unrelated to energy regulation; it asks 'Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld', below the 8-year target, so the role is too junior.",
       "quote": "Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld"
     },
     "S076": {
@@ -5565,7 +5565,7 @@
     "S085": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive requirements engineering, unrelated to energy regulation; it asks 'Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld', below the 8-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive requirements engineering, unrelated to energy regulation; it asks 'Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld', below the 8-year target, so the role is too junior.",
       "quote": "Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld"
     },
     "S086": {
@@ -5763,7 +5763,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior controlling, unrelated to energy regulation; it asks '2-3 Jahre Erfahrung im Controlling ODER FP&A', below the 8-year target, so the role is too junior.",
+      "reason": "Owner decision: Junior controlling, unrelated to energy regulation; it asks '2-3 Jahre Erfahrung im Controlling ODER FP&A', below the 8-year target, so the role is too junior.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {
@@ -6541,7 +6541,7 @@
     "S047": {
       "grade": 0,
       "excluded": true,
-      "reason": "SAFe release train engineer, unrelated to CFO work; it asks 'mind. 3 jahre RTE oder Scrum master in SAFe umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: SAFe release train engineer, unrelated to CFO work; it asks 'mind. 3 jahre RTE oder Scrum master in SAFe umfeld', below the 10-year target, so the role is too junior.",
       "quote": "mind. 3 jahre RTE oder Scrum master in SAFe umfeld"
     },
     "S048": {
@@ -6607,7 +6607,7 @@
     "S062": {
       "grade": 0,
       "excluded": true,
-      "reason": "Cloud platform lead, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Cloud platform lead, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur"
     },
     "S063": {
@@ -6637,7 +6637,7 @@
     "S067": {
       "grade": 0,
       "excluded": true,
-      "reason": "Azure and M365 engineering, unrelated to CFO work; it asks 'MUST: Azure + Terraform min 3 jahre', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Azure and M365 engineering, unrelated to CFO work; it asks 'MUST: Azure + Terraform min 3 jahre', below the 10-year target, so the role is too junior.",
       "quote": "MUST: Azure + Terraform min 3 jahre"
     },
     "S068": {
@@ -6661,7 +6661,7 @@
     "S073": {
       "grade": 0,
       "excluded": true,
-      "reason": "Information security officer, unrelated to CFO work; it asks 'Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Information security officer, unrelated to CFO work; it asks 'Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit"
     },
     "S074": {
@@ -6673,7 +6673,7 @@
     "S075": {
       "grade": 0,
       "excluded": true,
-      "reason": "SIEM engineering, unrelated to CFO work; it asks 'Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: SIEM engineering, unrelated to CFO work; it asks 'Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld', below the 10-year target, so the role is too junior.",
       "quote": "Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld"
     },
     "S076": {
@@ -6697,7 +6697,7 @@
     "S081": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive functional safety, unrelated to CFO work; it asks '8+ years in automotive E/E development', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive functional safety, unrelated to CFO work; it asks '8+ years in automotive E/E development', below the 10-year target, so the role is too junior.",
       "quote": "8+ years in automotive E/E development"
     },
     "S082": {
@@ -6715,13 +6715,13 @@
     "S084": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive SPICE process lead, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung in der Automobilelektronik', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive SPICE process lead, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung in der Automobilelektronik', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung in der Automobilelektronik"
     },
     "S085": {
       "grade": 0,
       "excluded": true,
-      "reason": "Automotive requirements engineering, unrelated to CFO work; it asks 'Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Automotive requirements engineering, unrelated to CFO work; it asks 'Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld', below the 10-year target, so the role is too junior.",
       "quote": "Mehrjährige Erfahrung (mind. 7 Jahre) im Requirements Engineering im Automotive-Umfeld"
     },
     "S086": {
@@ -6799,19 +6799,19 @@
     "S102": {
       "grade": 0,
       "excluded": true,
-      "reason": "Smart meter rollout programme, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung in der Energiewirtschaft', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Smart meter rollout programme, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung in der Energiewirtschaft', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung in der Energiewirtschaft"
     },
     "S103": {
       "grade": 0,
       "excluded": true,
-      "reason": "Energy trading process consulting, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung im Energiehandel', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Energy trading process consulting, unrelated to CFO work; it asks 'Mindestens 8 Jahre Erfahrung im Energiehandel', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Erfahrung im Energiehandel"
     },
     "S104": {
       "grade": 0,
       "excluded": true,
-      "reason": "Renewable energy billing, unrelated to CFO work; it asks 'min. 8 Jahre Energiewirtschaft, EEG Abrechnung MUST', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Renewable energy billing, unrelated to CFO work; it asks 'min. 8 Jahre Energiewirtschaft, EEG Abrechnung MUST', below the 10-year target, so the role is too junior.",
       "quote": "min. 8 Jahre Energiewirtschaft, EEG Abrechnung MUST"
     },
     "S105": {
@@ -6823,7 +6823,7 @@
     "S106": {
       "grade": 0,
       "excluded": true,
-      "reason": "Municipal heat planning, unrelated to CFO work; it asks 'Mindestens 8 Jahre Berufserfahrung in der Energieplanung', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Municipal heat planning, unrelated to CFO work; it asks 'Mindestens 8 Jahre Berufserfahrung in der Energieplanung', below the 10-year target, so the role is too junior.",
       "quote": "Mindestens 8 Jahre Berufserfahrung in der Energieplanung"
     },
     "S107": {
@@ -6907,7 +6907,7 @@
     "S124": {
       "grade": 1,
       "excluded": true,
-      "reason": "Fractional CFO for a VC-backed SaaS company needs SaaS metrics and equity fundraising experience she lacks; it asks '8+ years in finance, including at least 3 years as CFO', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Fractional CFO for a VC-backed SaaS company needs SaaS metrics and equity fundraising experience she lacks; it asks '8+ years in finance, including at least 3 years as CFO', below the 10-year target, so the role is too junior.",
       "quote": "8+ years in finance, including at least 3 years as CFO"
     },
     "S125": {
@@ -6919,7 +6919,7 @@
     "S126": {
       "grade": 0,
       "excluded": true,
-      "reason": "Part-time junior controlling far below her level; it asks '2-3 Jahre Erfahrung im Controlling ODER FP&A', below the 10-year target, so the role is too junior.",
+      "reason": "Owner decision: Part-time junior controlling far below her level; it asks '2-3 Jahre Erfahrung im Controlling ODER FP&A', below the 10-year target, so the role is too junior.",
       "quote": "2-3 Jahre Erfahrung im Controlling ODER FP&A"
     },
     "S127": {

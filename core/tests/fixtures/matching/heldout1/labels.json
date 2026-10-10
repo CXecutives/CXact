@@ -353,7 +353,7 @@
     "B01": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Mindestens fuenf Jahre' consultant role, below 10-year target without senior title",
+      "reason": "Owner decision: 'Mindestens fuenf Jahre' consultant role, below 10-year target without senior title",
       "quote": ""
     },
     "B02": {
@@ -419,7 +419,7 @@
     "C03": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Mindestens 5 Jahre' developer role below 10-year target, no senior title",
+      "reason": "Owner decision: 'Mindestens 5 Jahre' developer role below 10-year target, no senior title",
       "quote": ""
     },
     "C04": {

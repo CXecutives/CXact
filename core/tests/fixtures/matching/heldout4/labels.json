@@ -141,7 +141,7 @@
     "W04": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"Mind. 3 Jahre Berufserfahrung\" below 10 years, no senior title",
+      "reason": "Owner decision: \"Mind. 3 Jahre Berufserfahrung\" below 10 years, no senior title",
       "quote": ""
     },
     "W05": {
@@ -165,7 +165,7 @@
     "W08": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"Min. 7 years in treasury\" below 10 years, no senior title",
+      "reason": "Owner decision: \"Min. 7 years in treasury\" below 10 years, no senior title",
       "quote": ""
     },
     "W09": {
@@ -879,7 +879,7 @@
     "W08": {
       "grade": 0,
       "excluded": true,
-      "reason": "\"Min. 7 years in treasury\" below 8 years, no senior title",
+      "reason": "Owner decision: \"Min. 7 years in treasury\" below 8 years, no senior title",
       "quote": ""
     },
     "W09": {
@@ -1255,7 +1255,7 @@
     "U08": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Stundensatz: 115 €' = 920/day < 950",
+      "reason": "Owner decision: 'Stundensatz: 115 €' = 920/day < 950",
       "quote": ""
     },
     "U09": {
@@ -2391,7 +2391,7 @@
     "W08": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Min. 7 years in treasury' below 10 and 'Treasury Consultant' is no senior title",
+      "reason": "Owner decision: 'Min. 7 years in treasury' below 10 and 'Treasury Consultant' is no senior title",
       "quote": ""
     },
     "X06": {

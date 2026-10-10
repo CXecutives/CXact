@@ -75,7 +75,7 @@
     "J13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior SAP consultant job with '0 bis 2 Jahre Berufserfahrung', clearly below the 10-year target profile.",
+      "reason": "Owner decision: Junior SAP consultant job with '0 bis 2 Jahre Berufserfahrung', clearly below the 10-year target profile.",
       "quote": ""
     },
     "J14": {
@@ -87,7 +87,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Werkstudent' finance job paying '17,50 € pro Stunde', a student role clearly below the 10-year target profile.",
+      "reason": "Owner decision: 'Werkstudent' finance job paying '17,50 € pro Stunde', a student role clearly below the 10-year target profile.",
       "quote": ""
     },
     "J16": {
@@ -159,7 +159,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Werkstudent' job at '16 €/Std. - 18 €/Std.', a student role clearly below the 10-year target profile.",
+      "reason": "Owner decision: 'Werkstudent' job at '16 €/Std. - 18 €/Std.', a student role clearly below the 10-year target profile.",
       "quote": ""
     },
     "K12": {
@@ -171,7 +171,7 @@
     "K13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Engineering development lead unrelated to HR, asking 'Mindestens 3 Jahre Berufserfahrung', clearly below the 10-year target profile.",
+      "reason": "Owner decision: Engineering development lead unrelated to HR, asking 'Mindestens 3 Jahre Berufserfahrung', clearly below the 10-year target profile.",
       "quote": ""
     },
     "K14": {
@@ -183,7 +183,7 @@
     "K15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Entry-level SAP consultant job for '1 to 3 years of experience', clearly below the 10-year target profile.",
+      "reason": "Owner decision: Entry-level SAP consultant job for '1 to 3 years of experience', clearly below the 10-year target profile.",
       "quote": ""
     },
     "K16": {
@@ -207,7 +207,7 @@
     "L03": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR business partner for '2 bis 4 Jahre Erfahrung' is far below an interim HR director's level and clearly below her 10-year target.",
+      "reason": "Owner decision: HR business partner for '2 bis 4 Jahre Erfahrung' is far below an interim HR director's level and clearly below her 10-year target.",
       "quote": ""
     },
     "L04": {
@@ -231,7 +231,7 @@
     "L07": {
       "grade": 0,
       "excluded": true,
-      "reason": "Procurement category role unrelated to HR, based in 'Antwerp, Flemish Region, Belgium (Remote)' while remote work abroad is not allowed.",
+      "reason": "Procurement category role unrelated to HR; 'Day rate: EUR 850 to 950' is below the 1100 minimum. Profil v19: remote work abroad ('Antwerp, Flemish Region, Belgium (Remote)') no longer excludes; the rate does.",
       "quote": ""
     },
     "L08": {
@@ -255,7 +255,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "'Werkstudent' lean management job, a student role clearly below the 10-year target profile.",
+      "reason": "Owner decision: 'Werkstudent' lean management job, a student role clearly below the 10-year target profile.",
       "quote": ""
     },
     "L12": {
@@ -369,7 +369,7 @@
     "M14": {
       "grade": 0,
       "excluded": true,
-      "reason": "ICU nurse job where 'Berufseinsteiger:innen sind herzlich willkommen', clearly below the 10-year target profile.",
+      "reason": "Owner decision: ICU nurse job where 'Berufseinsteiger:innen sind herzlich willkommen', clearly below the 10-year target profile.",
       "quote": ""
     },
     "M15": {
@@ -381,7 +381,7 @@
     "M16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior sales development job for '0 to 2 years of experience', clearly below the 10-year target profile.",
+      "reason": "Owner decision: Junior sales development job for '0 to 2 years of experience', clearly below the 10-year target profile.",
       "quote": ""
     }
   },
@@ -473,7 +473,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Finance student job at 'Vergütung 17,50 € pro Stunde' (140 EUR/day), below the 850 minimum.",
+      "reason": "Owner decision: Finance student job at 'Vergütung 17,50 € pro Stunde' (140 EUR/day), below the 850 minimum.",
       "quote": ""
     },
     "J16": {
@@ -545,7 +545,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job at '16 €/Std. - 18 €/Std.', far below the 850 minimum.",
+      "reason": "Owner decision: Student job at '16 €/Std. - 18 €/Std.', far below the 850 minimum.",
       "quote": ""
     },
     "K12": {
@@ -587,7 +587,7 @@
     "L02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR-IT project lead unrelated to procurement at 'Stundensatz 78 € brutto' (624 EUR/day), below the 850 minimum.",
+      "reason": "Owner decision: HR-IT project lead unrelated to procurement at 'Stundensatz 78 € brutto' (624 EUR/day), below the 850 minimum.",
       "quote": ""
     },
     "L03": {
@@ -605,7 +605,7 @@
     "L05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Intralogistics commissioning engineering is unrelated, and 'Vergütung 95 €/h' (760 EUR/day) is below the 850 minimum.",
+      "reason": "Owner decision: Intralogistics commissioning engineering is unrelated, and 'Vergütung 95 €/h' (760 EUR/day) is below the 850 minimum.",
       "quote": ""
     },
     "L06": {
@@ -641,7 +641,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student lean job at '17,50 € pro Stunde' (140 EUR/day), far below the 850 minimum.",
+      "reason": "Owner decision: Student lean job at '17,50 € pro Stunde' (140 EUR/day), far below the 850 minimum.",
       "quote": ""
     },
     "L12": {
@@ -701,7 +701,7 @@
     "M05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior KYC role unrelated to procurement at '41,50 € pro Stunde (brutto)' (332 EUR/day), below the 850 minimum.",
+      "reason": "Owner decision: Junior KYC role unrelated to procurement at '41,50 € pro Stunde (brutto)' (332 EUR/day), below the 850 minimum.",
       "quote": ""
     },
     "M06": {
@@ -761,7 +761,7 @@
     "M15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Electrician job at '21,50 € pro Stunde (brutto)' (172 EUR/day), far below the 850 minimum.",
+      "reason": "Owner decision: Electrician job at '21,50 € pro Stunde (brutto)' (172 EUR/day), far below the 850 minimum.",
       "quote": ""
     },
     "M16": {
@@ -1003,7 +1003,7 @@
     "L07": {
       "grade": 0,
       "excluded": true,
-      "reason": "Procurement category role unrelated to QA, based in 'Antwerp, Flemish Region, Belgium (Remote)' outside DE/CH.",
+      "reason": "Procurement category role unrelated to QA; 'Day rate: EUR 850 to 950' is below the 1050 minimum. Profil v19: remote work abroad ('Antwerp, Flemish Region, Belgium (Remote)') no longer excludes; the rate does.",
       "quote": ""
     },
     "L08": {
@@ -1245,7 +1245,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job in accounting paying \"Vergütung 17,50 € pro Stunde\".",
+      "reason": "Owner decision: Student job in accounting paying \"Vergütung 17,50 € pro Stunde\".",
       "quote": ""
     },
     "J16": {
@@ -1317,7 +1317,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying \"16 €/Std. - 18 €/Std.\".",
+      "reason": "Owner decision: Student job paying \"16 €/Std. - 18 €/Std.\".",
       "quote": ""
     },
     "K12": {
@@ -1413,7 +1413,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying \"Die Vergütung beträgt 17,50 € pro Stunde\".",
+      "reason": "Owner decision: Student job paying \"Die Vergütung beträgt 17,50 € pro Stunde\".",
       "quote": ""
     },
     "L12": {
@@ -1631,7 +1631,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job in accounting paying \"Vergütung 17,50 € pro Stunde\".",
+      "reason": "Owner decision: Student job in accounting paying \"Vergütung 17,50 € pro Stunde\".",
       "quote": ""
     },
     "J16": {
@@ -1703,7 +1703,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying \"16 €/Std. - 18 €/Std.\".",
+      "reason": "Owner decision: Student job paying \"16 €/Std. - 18 €/Std.\".",
       "quote": ""
     },
     "K12": {
@@ -1745,7 +1745,7 @@
     "L02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR-IT project, unrelated; \"Stundensatz 78 € brutto\" is below 950 per day.",
+      "reason": "Owner decision: HR-IT project, unrelated; \"Stundensatz 78 € brutto\" is below 950 per day.",
       "quote": ""
     },
     "L03": {
@@ -1763,7 +1763,7 @@
     "L05": {
       "grade": 1,
       "excluded": true,
-      "reason": "Automation commissioning lead is adjacent to her ramp-up work, but \"Vergütung 95 €/h\" is below 950 per day.",
+      "reason": "Owner decision: Automation commissioning lead is adjacent to her ramp-up work, but \"Vergütung 95 €/h\" is below 950 per day.",
       "quote": ""
     },
     "L06": {
@@ -1774,8 +1774,8 @@
     },
     "L07": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Procurement role for a Belgian client, \"fully remote from Belgium, the Netherlands or Germany\", and remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "Procurement role for a Belgian client, \"fully remote from Belgium, the Netherlands or Germany\", and remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "L08": {
@@ -1799,7 +1799,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job in lean management, far below her level, paying \"Die Vergütung beträgt 17,50 € pro Stunde\".",
+      "reason": "Owner decision: Student job in lean management, far below her level, paying \"Die Vergütung beträgt 17,50 € pro Stunde\".",
       "quote": ""
     },
     "L12": {
@@ -1859,7 +1859,7 @@
     "M05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior KYC role, unrelated; \"Honorar: 41,50 € pro Stunde (brutto)\".",
+      "reason": "Owner decision: Junior KYC role, unrelated; \"Honorar: 41,50 € pro Stunde (brutto)\".",
       "quote": ""
     },
     "M06": {
@@ -1900,8 +1900,8 @@
     },
     "M12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sustainable procurement for an Amsterdam client, \"head office in Amsterdam-Noord or fully remote\", and remote work abroad is not allowed.",
+      "excluded": false,
+      "reason": "Sustainable procurement for an Amsterdam client, \"head office in Amsterdam-Noord or fully remote\", and remote work abroad is not allowed. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M13": {
@@ -1919,7 +1919,7 @@
     "M15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Electrician job, unrelated; \"Honorar: 21,50 € pro Stunde (brutto)\".",
+      "reason": "Owner decision: Electrician job, unrelated; \"Honorar: 21,50 € pro Stunde (brutto)\".",
       "quote": ""
     },
     "M16": {
@@ -2017,7 +2017,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job in accounting paying \"Vergütung 17,50 € pro Stunde\".",
+      "reason": "Owner decision: Student job in accounting paying \"Vergütung 17,50 € pro Stunde\".",
       "quote": ""
     },
     "J16": {
@@ -2089,7 +2089,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying \"16 €/Std. - 18 €/Std.\".",
+      "reason": "Owner decision: Student job paying \"16 €/Std. - 18 €/Std.\".",
       "quote": ""
     },
     "K12": {
@@ -2185,7 +2185,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying \"Die Vergütung beträgt 17,50 € pro Stunde\".",
+      "reason": "Owner decision: Student job paying \"Die Vergütung beträgt 17,50 € pro Stunde\".",
       "quote": ""
     },
     "L12": {
@@ -2517,7 +2517,7 @@
     "L02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR IT project at 'Stundensatz 78 € brutto', about 624 EUR per day.",
+      "reason": "Owner decision: HR IT project at 'Stundensatz 78 € brutto', about 624 EUR per day.",
       "quote": ""
     },
     "L03": {
@@ -2535,7 +2535,7 @@
     "L05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Intralogistics project at 'Vergütung 95 €/h', 760 EUR per day.",
+      "reason": "Owner decision: Intralogistics project at 'Vergütung 95 €/h', 760 EUR per day.",
       "quote": ""
     },
     "L06": {
@@ -2777,7 +2777,7 @@
     "J13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Entry-level SAP consulting job asking for '0 bis 2 Jahre Berufserfahrung', far below her target level.",
+      "reason": "Owner decision: Entry-level SAP consulting job asking for '0 bis 2 Jahre Berufserfahrung', far below her target level.",
       "quote": ""
     },
     "J14": {
@@ -2789,7 +2789,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job ('Werkstudent', 'Vergütung 17,50 € pro Stunde') far below her level.",
+      "reason": "Owner decision: Student job ('Werkstudent', 'Vergütung 17,50 € pro Stunde') far below her level.",
       "quote": ""
     },
     "J16": {
@@ -2861,7 +2861,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying '16 €/Std. - 18 €/Std.', far below her level.",
+      "reason": "Owner decision: Student job paying '16 €/Std. - 18 €/Std.', far below her level.",
       "quote": ""
     },
     "K12": {
@@ -2873,7 +2873,7 @@
     "K13": {
       "grade": 0,
       "excluded": true,
-      "reason": "Engineering development job asking for 'Mindestens 3 Jahre Berufserfahrung', unrelated and below her target level.",
+      "reason": "Owner decision: Engineering development job asking for 'Mindestens 3 Jahre Berufserfahrung', unrelated and below her target level.",
       "quote": ""
     },
     "K14": {
@@ -2885,7 +2885,7 @@
     "K15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior SAP consultant role asking for '1 to 3 years of experience', far below her target level.",
+      "reason": "Owner decision: Junior SAP consultant role asking for '1 to 3 years of experience', far below her target level.",
       "quote": ""
     },
     "K16": {
@@ -2909,7 +2909,7 @@
     "L03": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR business partner role asking for '2 bis 4 Jahre Erfahrung', unrelated and below her target level.",
+      "reason": "Owner decision: HR business partner role asking for '2 bis 4 Jahre Erfahrung', unrelated and below her target level.",
       "quote": ""
     },
     "L04": {
@@ -2957,7 +2957,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job where 'Die Vergütung beträgt 17,50 € pro Stunde', far below her level.",
+      "reason": "Owner decision: Student job where 'Die Vergütung beträgt 17,50 € pro Stunde', far below her level.",
       "quote": ""
     },
     "L12": {
@@ -3071,7 +3071,7 @@
     "M14": {
       "grade": 0,
       "excluded": true,
-      "reason": "Nursing job where 'Berufseinsteiger:innen sind herzlich willkommen', unrelated and below her target level.",
+      "reason": "Owner decision: Nursing job where 'Berufseinsteiger:innen sind herzlich willkommen', unrelated and below her target level.",
       "quote": ""
     },
     "M15": {
@@ -3083,7 +3083,7 @@
     "M16": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior sales role asking for '0 to 2 years of experience', far below her target level.",
+      "reason": "Owner decision: Junior sales role asking for '0 to 2 years of experience', far below her target level.",
       "quote": ""
     }
   },
@@ -3289,7 +3289,7 @@
     "L02": {
       "grade": 0,
       "excluded": true,
-      "reason": "HR IT project paying 'Stundensatz 78 € brutto', below her minimum.",
+      "reason": "Owner decision: HR IT project paying 'Stundensatz 78 € brutto', below her minimum.",
       "quote": ""
     },
     "L03": {
@@ -3307,7 +3307,7 @@
     "L05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Warehouse automation project paying 'Vergütung 95 €/h', below her minimum.",
+      "reason": "Owner decision: Warehouse automation project paying 'Vergütung 95 €/h', below her minimum.",
       "quote": ""
     },
     "L06": {
@@ -3561,7 +3561,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Accounting student job paying 'Vergütung 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Accounting student job paying 'Vergütung 17,50 € pro Stunde'.",
       "quote": ""
     },
     "J16": {
@@ -3633,7 +3633,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job paying '16 €/Std. - 18 €/Std.'.",
+      "reason": "Owner decision: Student job paying '16 €/Std. - 18 €/Std.'.",
       "quote": ""
     },
     "K12": {
@@ -3704,8 +3704,8 @@
     },
     "L07": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Indirect category management with logistics services is only adjacent, and it is based in 'Antwerp, Flemish Region, Belgium (Remote)'.",
+      "excluded": false,
+      "reason": "Indirect category management with logistics services is only adjacent, and it is based in 'Antwerp, Flemish Region, Belgium (Remote)'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "L08": {
@@ -3729,7 +3729,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Lean student job where 'Die Vergütung beträgt 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Lean student job where 'Die Vergütung beträgt 17,50 € pro Stunde'.",
       "quote": ""
     },
     "L12": {
@@ -3830,8 +3830,8 @@
     },
     "M12": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Sustainable procurement is only adjacent to supply chain, and the Dutch role says 'Location: head office in Amsterdam-Noord or fully remote'.",
+      "excluded": false,
+      "reason": "Sustainable procurement is only adjacent to supply chain, and the Dutch role says 'Location: head office in Amsterdam-Noord or fully remote'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M13": {
@@ -3947,7 +3947,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level and field, paid 'Vergütung 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Student job, wrong level and field, paid 'Vergütung 17,50 € pro Stunde'.",
       "quote": ""
     },
     "J16": {
@@ -4019,7 +4019,7 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level and field, paid '16 €/Std. - 18 €/Std.'.",
+      "reason": "Owner decision: Student job, wrong level and field, paid '16 €/Std. - 18 €/Std.'.",
       "quote": ""
     },
     "K12": {
@@ -4061,7 +4061,7 @@
     "L02": {
       "grade": 0,
       "excluded": true,
-      "reason": "An HR IT project is unrelated, and the rate is below his minimum: 'Stundensatz 78 € brutto'.",
+      "reason": "Owner decision: An HR IT project is unrelated, and the rate is below his minimum: 'Stundensatz 78 € brutto'.",
       "quote": ""
     },
     "L03": {
@@ -4115,7 +4115,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level, paid 'Die Vergütung beträgt 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Student job, wrong level, paid 'Die Vergütung beträgt 17,50 € pro Stunde'.",
       "quote": ""
     },
     "L12": {
@@ -4175,7 +4175,7 @@
     "M05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior KYC work is unrelated and paid far below his minimum: 'Honorar: 41,50 € pro Stunde (brutto)'.",
+      "reason": "Owner decision: Junior KYC work is unrelated and paid far below his minimum: 'Honorar: 41,50 € pro Stunde (brutto)'.",
       "quote": ""
     },
     "M06": {
@@ -4235,7 +4235,7 @@
     "M15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Electrician fitter job far below his level, paid 'Honorar: 21,50 € pro Stunde (brutto)'.",
+      "reason": "Owner decision: Electrician fitter job far below his level, paid 'Honorar: 21,50 € pro Stunde (brutto)'.",
       "quote": ""
     },
     "M16": {
@@ -4333,7 +4333,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job in group accounting, wrong level, paid 'Vergütung 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Student job in group accounting, wrong level, paid 'Vergütung 17,50 € pro Stunde'.",
       "quote": ""
     },
     "J16": {
@@ -4405,13 +4405,13 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level and field, paid '16 €/Std. - 18 €/Std.'.",
+      "reason": "Owner decision: Student job, wrong level and field, paid '16 €/Std. - 18 €/Std.'.",
       "quote": ""
     },
     "K12": {
       "grade": 0,
       "excluded": true,
-      "reason": "A procurement system rollout is unrelated, and it is remote work for a foreign client: '1017 Amsterdam, Niederlande // Remote: 100 %'.",
+      "reason": "A procurement system rollout is unrelated; 'Daily rate: 800 - 850 EUR' is below the 1100 minimum. Profil v19: remote work for a foreign client no longer excludes; the rate does.",
       "quote": ""
     },
     "K13": {
@@ -4477,7 +4477,7 @@
     "L07": {
       "grade": 0,
       "excluded": true,
-      "reason": "Category management is unrelated, and it is remote work for a foreign company: 'Antwerp, Flemish Region, Belgium (Remote)'.",
+      "reason": "Category management is unrelated; 'Day rate: EUR 850 to 950' is below the 1100 minimum. Profil v19: remote work for a foreign company no longer excludes; the rate does.",
       "quote": ""
     },
     "L08": {
@@ -4501,7 +4501,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level and field, paid 'Die Vergütung beträgt 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Student job, wrong level and field, paid 'Die Vergütung beträgt 17,50 € pro Stunde'.",
       "quote": ""
     },
     "L12": {
@@ -4603,7 +4603,7 @@
     "M12": {
       "grade": 0,
       "excluded": true,
-      "reason": "Sustainable procurement is unrelated, and it is remote work for a foreign client: 'head office in Amsterdam-Noord or fully remote'.",
+      "reason": "Sustainable procurement is unrelated; 'Rate: EUR 900 to 950 per day' is below the 1100 minimum. Profil v19: remote work for a foreign client no longer excludes; the rate does.",
       "quote": ""
     },
     "M13": {
@@ -4719,7 +4719,7 @@
     "J15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level and field, paid 'Vergütung 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Student job, wrong level and field, paid 'Vergütung 17,50 € pro Stunde'.",
       "quote": ""
     },
     "J16": {
@@ -4791,13 +4791,13 @@
     "K11": {
       "grade": 0,
       "excluded": true,
-      "reason": "OZG topic but a student job far below his level, paid '16 €/Std. - 18 €/Std.'.",
+      "reason": "Owner decision: OZG topic but a student job far below his level, paid '16 €/Std. - 18 €/Std.'.",
       "quote": ""
     },
     "K12": {
       "grade": 1,
-      "excluded": true,
-      "reason": "Only his project and programme management carries over, as in the agreed 1s for L02, K06 and M09; the client is abroad ('1017 Amsterdam, Niederlande // Remote: 100 %') and he allows no remote work abroad.",
+      "excluded": false,
+      "reason": "Only his project and programme management carries over, as in the agreed 1s for L02, K06 and M09; the client is abroad ('1017 Amsterdam, Niederlande // Remote: 100 %') and he allows no remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "K13": {
@@ -4833,7 +4833,7 @@
     "L02": {
       "grade": 1,
       "excluded": true,
-      "reason": "Leading an IT introduction with process harmonisation and co-determination is partly relevant, but the rate is below his minimum: 'Stundensatz 78 € brutto'.",
+      "reason": "Owner decision: Leading an IT introduction with process harmonisation and co-determination is partly relevant, but the rate is below his minimum: 'Stundensatz 78 € brutto'.",
       "quote": ""
     },
     "L03": {
@@ -4851,7 +4851,7 @@
     "L05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Intralogistics commissioning is unrelated, and the rate is below his minimum: 'Vergütung 95 €/h'.",
+      "reason": "Owner decision: Intralogistics commissioning is unrelated, and the rate is below his minimum: 'Vergütung 95 €/h'.",
       "quote": ""
     },
     "L06": {
@@ -4862,8 +4862,8 @@
     },
     "L07": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Category management is unrelated, and it is remote work for a foreign company: 'Antwerp, Flemish Region, Belgium (Remote)'.",
+      "excluded": false,
+      "reason": "Category management is unrelated, and it is remote work for a foreign company: 'Antwerp, Flemish Region, Belgium (Remote)'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "L08": {
@@ -4887,7 +4887,7 @@
     "L11": {
       "grade": 0,
       "excluded": true,
-      "reason": "Student job, wrong level and field, paid 'Die Vergütung beträgt 17,50 € pro Stunde'.",
+      "reason": "Owner decision: Student job, wrong level and field, paid 'Die Vergütung beträgt 17,50 € pro Stunde'.",
       "quote": ""
     },
     "L12": {
@@ -4947,7 +4947,7 @@
     "M05": {
       "grade": 0,
       "excluded": true,
-      "reason": "Junior KYC work is unrelated and paid far below his minimum: 'Honorar: 41,50 € pro Stunde (brutto)'.",
+      "reason": "Owner decision: Junior KYC work is unrelated and paid far below his minimum: 'Honorar: 41,50 € pro Stunde (brutto)'.",
       "quote": ""
     },
     "M06": {
@@ -4988,8 +4988,8 @@
     },
     "M12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Sustainable procurement is unrelated, and it is remote work for a foreign client: 'head office in Amsterdam-Noord or fully remote'.",
+      "excluded": false,
+      "reason": "Sustainable procurement is unrelated, and it is remote work for a foreign client: 'head office in Amsterdam-Noord or fully remote'. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M13": {
@@ -5007,7 +5007,7 @@
     "M15": {
       "grade": 0,
       "excluded": true,
-      "reason": "Electrician fitter job, unrelated, paid 'Honorar: 21,50 € pro Stunde (brutto)'.",
+      "reason": "Owner decision: Electrician fitter job, unrelated, paid 'Honorar: 21,50 € pro Stunde (brutto)'.",
       "quote": ""
     },
     "M16": {
@@ -5248,8 +5248,8 @@
     },
     "L07": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Procurement role for a Belgian client, 'Antwerp, Flemish Region, Belgium (Remote)', and he allows no remote work abroad.",
+      "excluded": false,
+      "reason": "Procurement role for a Belgian client, 'Antwerp, Flemish Region, Belgium (Remote)', and he allows no remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "L08": {
@@ -5374,8 +5374,8 @@
     },
     "M12": {
       "grade": 0,
-      "excluded": true,
-      "reason": "Procurement role for an Amsterdam client, 'Location: head office in Amsterdam-Noord or fully remote', and he allows no remote work abroad.",
+      "excluded": false,
+      "reason": "Procurement role for an Amsterdam client, 'Location: head office in Amsterdam-Noord or fully remote', and he allows no remote work abroad. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
       "quote": ""
     },
     "M13": {
