@@ -34,7 +34,7 @@ use super::{Activity, AppState, CmdResult, lock, scoring};
 /// Title of the folder dialog (the only words this side shows itself here).
 mod texts {
     // User-facing text, German.
-    pub const PICK_WORKSPACE: &str = "Ordner für das Profil wählen";
+    pub const PICK_WORKSPACE: &str = "Profil-Ordner wählen";
     // end of user-facing text
 }
 
