@@ -1174,6 +1174,15 @@ pub(crate) const MANDATORY_WORDS: &[&str] = &[
     "mandatory",
     "is a must",
     "must-have",
+    "strictly required",
+];
+/// Words of a certificate (`Six Sigma Black Belt Zertifizierung`, `Pega Certified`).
+pub(crate) const CERTIFICATE_WORDS: &[&str] = &[
+    "certification",
+    "certified",
+    "zertifikat",
+    "zertifizierung",
+    "zertifiziert",
 ];
 /// Licences and admissions that cannot be acquired within a project.
 pub(crate) const LICENCE_WORDS: &[&str] = &[

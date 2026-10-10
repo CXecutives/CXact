@@ -176,6 +176,38 @@ fn a_mandatory_licence_excludes_an_optional_one_caps() {
     assert!(optional.score <= 40, "capped, got {}", optional.score);
 }
 
+/// A certificate the ad makes mandatory and the profile does not hold excludes; asked for
+/// without that word it is a requirement like any other.
+#[test]
+fn a_mandatory_certificate_excludes() {
+    let profile = fixture("sample_profile_senior.json");
+    let ad = |certificate: &str| {
+        format!(
+            "Anforderungen:
+- {certificate}
+- Mehrjährige Erfahrung im Controlling
+             - Fundierte Kenntnisse in der Konzernrechnungslegung nach IFRS
+             Rahmenbedingungen:
+Tagessatz: 1.300 € pro Tag
+"
+        )
+    };
+    let title = "Interim Leiter Controlling (m/w/d)";
+    let mandatory = run(
+        &profile,
+        title,
+        &ad("Six Sigma Black Belt Zertifizierung (zwingend)"),
+    );
+    assert_eq!(mandatory.verdict, Verdict::Excluded);
+    assert!(has(
+        &mandatory,
+        ReasonCode::FormalOpen,
+        ReasonKind::Violation
+    ));
+    let plain = run(&profile, title, &ad("Six Sigma Black Belt Zertifizierung"));
+    assert_eq!(plain.verdict, Verdict::Scored);
+}
+
 /// Ordinary German requirement lines that once panicked the splitter (overlapping ", " and
 /// " oder ", "z. B." after a closed bracket) - for every sample profile.
 #[test]

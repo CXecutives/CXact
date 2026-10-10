@@ -157,26 +157,37 @@ fn weight(item: &Item) -> u64 {
 
 /// Formal requirements the profile does not hold: without any degree in the profile a
 /// check (as before); a must degree of another field or a missing licence is a check with
-/// a score cap, decided only when the ad makes it mandatory.
+/// a score cap, decided only when the ad makes it mandatory; a certificate the ad makes
+/// mandatory and the profile does not hold in full is decided too.
+/// (`Six Sigma Black Belt Zertifizierung (zwingend)` for a Green Belt)
 fn formal(profile: &EngineProfile, items: &[Scored]) -> (Vec<Finding>, bool) {
     let mut findings = Vec::new();
     let mut cap = false;
     let mut no_degree = false;
     for s in items {
+        let folded = fold(&s.item.text);
+        let mandatory = lex::MANDATORY_WORDS.iter().any(|w| folded.contains(w));
+        let certificate = s.item.class == Class::Skill
+            && mandatory
+            && lex::CERTIFICATE_WORDS.iter().any(|w| folded.contains(w));
         let class = match s.item.class {
             Class::Degree => "degree",
             Class::Licence(_) => "licence",
+            _ if certificate => "certificate",
             _ => continue,
         };
         if class == "degree" && profile.skills.degree_fields.is_none() {
             no_degree = true;
             continue;
         }
-        if s.item.kind != ReqKind::Must || s.fit.value != E_NONE {
+        let held = if certificate {
+            s.fit.value == E_FULL
+        } else {
+            s.fit.value != E_NONE
+        };
+        if s.item.kind != ReqKind::Must || held {
             continue;
         }
-        let folded = fold(&s.item.text);
-        let mandatory = lex::MANDATORY_WORDS.iter().any(|w| folded.contains(w));
         cap = true;
         findings.push(Finding::new(
             ReasonCode::FormalOpen,

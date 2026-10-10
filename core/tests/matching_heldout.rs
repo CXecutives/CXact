@@ -226,12 +226,15 @@ const HELDOUT1: Floor = Floor {
     kept_recall: 1.0,
     grade3_buried: 0,
 };
+/// Engine 21: a certificate the ad makes mandatory and the profile does not hold in full
+/// excludes, as the rubric says (V02 for P2 and P3; X02 of set 2 relabeled for P3): recall
+/// 0.970 and every kept exclusion.
 const HELDOUT4: Floor = Floor {
     ndcg10: 0.83,
     spearman: 0.54,
     exclusion_precision: 1.0,
-    exclusion_recall: 0.95,
-    kept_recall: 0.987,
+    exclusion_recall: 0.97,
+    kept_recall: 1.0,
     grade3_buried: 0,
 };
 /// Engine 18 moved set 3 most (0.955 to 0.869): P1's S01 (grade 3, the labels exclude it for

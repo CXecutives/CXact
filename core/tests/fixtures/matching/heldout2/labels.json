@@ -300,8 +300,8 @@
     },
     "X02": {
       "grade": 0,
-      "excluded": false,
-      "reason": "SAP SuccessFactors EC configuration, not BI",
+      "excluded": true,
+      "reason": "SAP SuccessFactors EC configuration, not BI; 'Zertifizierung SAP SuccessFactors Employee Central zwingend' is not held, and a mandatory formal requirement excludes (the rubric).",
       "quote": ""
     },
     "X03": {
