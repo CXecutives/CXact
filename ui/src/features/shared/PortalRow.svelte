@@ -3,24 +3,26 @@
   connected, `setup`: only its tile, name, state and "Alert anlegen"), a SettingRow like
   every row: its tile (the navy tint, its two capitals), its name, under it
   one quiet line of its state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
-  30 Tagen", or "Braucht ein Postfach" in the warning's ink without one, its switch dimmed;
-  "Pausiert bis …" while it rests), then its calls where they apply, outlined like every text
-  button of a row ("Anmelden" or "Abmelden" where the portal offers a sign-in, "Alert anlegen"
-  for a portal of alert mails: its page in the browser), the portal in the browser (a quiet
-  icon) and its switch, always last (the name names the switch but, like every text next to a
-  switch, does not switch it); at the smallest window the calls go to a line of their own at
-  the row's end. A problem of the portal is one quiet line under its state (whether the user
+  30 Tagen", or "Braucht ein Postfach" without one; "Pausiert bis …" while it rests), then
+  its calls where they apply, outlined like every text button of a row ("Anmelden" or
+  "Abmelden" where the portal offers a sign-in, "Alert anlegen" for a portal of alert mails:
+  its page in the browser), the portal in the browser (a quiet icon, only for the portals the
+  app searches: "Alert anlegen" is that way for the others) and its switch, always last (the
+  name names the switch but, like every text next to a switch, does not switch it); at the
+  smallest window the calls go to a line of their own at the row's end. A problem of the
+  portal is one quiet line under its state (whether the user
   has to act, the time and the reason where it has them, "Alert-Mail öffnen" when alert mails
   came without jobs); it unfolds and folds away, so the rows below glide. A portal that is on
   and sent no alert mail for a week before the last fetch says so in one quiet line ("Seit 9
   Tagen keine Alert-Mail"; its alert may have run out) with "Alert prüfen", its page in the
   browser.
-  Signing in lets the fetch use the sign-in, signing out ends that. A stored sign-in that the
+  Signing in lets the fetch use the sign-in, signing out ends that (lib/state/portalSession.ts,
+  also the reader's "Anmelden"). A stored sign-in that the
   fetch does not use looks like none while the portal is on, and "Anmelden" then only lets
   the fetch use it (no sign-in window); while the portal is off the row keeps "Abmelden"
   until the sign-in is gone. A run holds the sign-in (both buttons wait with its reason). A
-  switch moves at once (the state is patched before the save); a failure puts it back and
-  says why in the row. The switch itself is the answer: no toast.
+  switch moves at once; a failure puts it back and says why in the row. The switch itself is
+  the answer: no toast.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -34,7 +36,13 @@
   import type { PortalState } from '$lib/ipc/types';
   import { fade, unfold } from '$lib/motion/transitions';
   import { PORTAL_MARK } from '$lib/portals';
-  import { app, settingsPatch } from '$lib/state/app.svelte';
+  import { app } from '$lib/state/app.svelte';
+  import {
+    portalSession,
+    savePortal,
+    signInLocked,
+    type PortalSwitches,
+  } from '$lib/state/portalSession';
   import { run } from '$lib/state/run.svelte';
 
   interface Props {
@@ -44,16 +52,12 @@
   }
   let { portal, setup = false }: Props = $props();
 
-  type Switches = Partial<Pick<PortalState, 'enabled' | 'loginEnabled'>>;
-
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
   const DAY_MS = 24 * 60 * 60 * 1000;
   /** Why the last action failed, said when it shows. */
   let error = $state<(() => string) | null>(null);
   let busy = $state(false);
-  /** Only the answer to the latest save may replace the state (quick double flips). */
-  let saves = 0;
 
   const id = $derived(`switch-enabled-${portal.portal}`);
   /** Alert mails of the portal that came without jobs (a mail problem, not one of the pages). */
@@ -104,9 +108,6 @@
     const line = last.perPortal.find((p) => p.portal === portal.portal);
     return line === undefined ? null : t.settings.lastNew(line.new);
   });
-  /** A portal of alert mails without a mailbox: its line in the warning's ink, its switch
-   *  dimmed (it stays on and works once a mailbox is there). */
-  const waiting = $derived(portal.way === 'alert' && !app.hasMailbox);
   /** Its problem in one sentence, where the state line does not say it already. */
   const problem = $derived(
     health !== null &&
@@ -124,48 +125,22 @@
   /** Where the portal offers a sign-in, also for a stored sign-in of a portal that is off
    *  (its Abmelden stays until it is gone). */
   const loginShown = $derived(portal.login === 'optional' && (portal.enabled || stored));
-  /** The dry run touches no portal: no sign-in, no sign-out (the backend refuses them the
-   *  same way). */
-  const noPortal = $derived(app.state?.dryRun ? t.error.text('dryRun', {}) : null);
-  const loginLocked = $derived(noPortal ?? (run.active ? run.busyText : null));
+  const loginLocked = $derived(signInLocked());
 
-  async function change(patch: Switches): Promise<void> {
+  async function change(patch: PortalSwitches): Promise<void> {
     error = null;
-    const save = ++saves;
-    // The switch and what hangs on it follow at once, not after the round trip.
-    const item = app.state?.portals.find((p) => p.portal === portal.portal);
-    if (item) Object.assign(item, patch);
     try {
-      const next = await invoke('save_settings', {
-        patch: settingsPatch({
-          portals: [
-            {
-              portal: portal.portal,
-              enabled: patch.enabled ?? null,
-              loginEnabled: patch.loginEnabled ?? null,
-            },
-          ],
-        }),
-      });
-      if (save === saves) app.set(next);
+      await savePortal(portal.portal, patch);
     } catch (failure) {
       error = () => errorText(failure);
-      void app.load();
     }
   }
 
-  /** Anmelden: the sign-in window (unless a sign-in is stored), and once signed in the fetch
-   *  uses it; Abmelden ends both. */
   async function session(on: boolean): Promise<void> {
     error = null;
     busy = true;
     try {
-      const done =
-        on && stored
-          ? true
-          : await invoke(on ? 'portal_login' : 'portal_logout', { portal: portal.portal });
-      if (done && portal.loginEnabled !== on) await change({ loginEnabled: on });
-      await app.load();
+      await portalSession(portal, on);
     } catch (failure) {
       error = () => errorText(failure);
     } finally {
@@ -235,15 +210,17 @@
 {/snippet}
 
 {#snippet end()}
-  <Button
-    variant="ghost"
-    iconOnly
-    icon="external"
-    label={t.settings.openPortal}
-    testid="open-portal-{portal.portal}"
-    onclick={() => open('home')}
-  />
-  <span class="switch" class:dim={waiting}>
+  {#if portal.way !== 'alert'}
+    <Button
+      variant="ghost"
+      iconOnly
+      icon="external"
+      label={t.settings.openPortal}
+      testid="open-portal-{portal.portal}"
+      onclick={() => open('home')}
+    />
+  {/if}
+  <span class="switch">
     <Toggle
       {id}
       checked={portal.enabled}
@@ -257,7 +234,6 @@
 <SettingRow
   label={t.portal[portal.portal]}
   hint={standing}
-  waits={waiting}
   for={setup ? null : id}
   lead={tile}
   {notes}
@@ -305,10 +281,6 @@
 <style>
   .switch {
     display: flex;
-  }
-
-  .switch.dim {
-    opacity: var(--opacity-muted);
   }
 
   .fold {

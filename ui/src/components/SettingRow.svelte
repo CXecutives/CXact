@@ -9,11 +9,10 @@
   portal's problem) move nothing beside it. The row runs edge to edge in its box and pads its
   content by the box's --row-inset, so its hairline (between rows only) and its text share the
   box's grid.
-  The line under the label is quiet; a value to copy (a path) selects like text (`copy`; it
-  breaks only after a separator), and so does a label that is such a value (`copyLabel`, the
+  The line under the label is quiet; a value to copy (a path, in the line's font) selects like
+  text (`copy`; it breaks only after a separator), and so does a label that is such a value (`copyLabel`, the
   address of the mailbox). A dot before it says a state (`dot`: Verbunden green, a failure
-  red); in the warning's ink it says what the row needs first (`waits`: a portal of alert mails
-  without a mailbox). Its test id is the row's with `-hint`.
+  red). Its test id is the row's with `-hint`.
   With `for` (the id of its switch) the row works like a row of the system settings of
   Windows 11 and macOS: only the switch switches (user decision). The label names the switch
   and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
@@ -32,8 +31,6 @@
     lead: Snippet;
     /** A dot before the hint that says a state (connected, or a failure). */
     dot?: 'success' | 'danger' | null;
-    /** The hint in the warning's ink: what the row needs first. */
-    waits?: boolean;
     /** The hint is a value a user would copy (a folder path). */
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
@@ -54,7 +51,6 @@
     hint = null,
     lead,
     dot = null,
-    waits = false,
     copy = false,
     copyLabel = false,
     for: control = null,
@@ -84,7 +80,6 @@
         class="hint"
         class:path={copy}
         class:status={dot !== null}
-        class:waits
         id={control !== null ? `${control}-hint` : undefined}
         data-copy={copy ? '' : undefined}
         data-testid={testid ? `${testid}-hint` : undefined}
@@ -143,10 +138,6 @@
     font: var(--type-sm);
   }
 
-  .hint.waits {
-    color: var(--warning-text);
-  }
-
   .hint.status {
     display: flex;
     align-items: center;
@@ -170,11 +161,6 @@
 
   .path {
     overflow-wrap: anywhere;
-  }
-
-  /* A path to copy in the system's monospace, small. */
-  .hint.path {
-    font: var(--type-mono);
   }
 
   /* A part of a path is kept whole and moves to the next line as one; only a part wider than

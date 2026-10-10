@@ -9,7 +9,7 @@
 // („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs suchen (the button: the mails, then the
-// portals' search; what it does is the Suche), Anzeige laden, Arbeitsordner, Ausgeschlossen, Trotzdem
+// portals' search; what it does is the Suche), Anzeige laden, Profil-Ordner, Ausgeschlossen, Trotzdem
 // bewerten, Neu, Aktuell (the place of the active jobs, user 2026-10-01), Archiv (Zurückholen:
 // back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
@@ -984,7 +984,6 @@ export const de = {
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
-    setUpSignIn: 'Anmeldung einrichten',
     promptNoText: 'Der Text der Anzeige fehlt noch.',
     /** Beside the ring of a job not scored yet (it shows no buttons then). */
     unscored: 'Wird bewertet, sobald die Anzeige geladen ist.',
@@ -1399,12 +1398,11 @@ export const de = {
         : `Zuletzt ${count(value, 'neuer Job', 'neue Jobs')}`,
     connected: 'Verbunden',
     /** The row of the mailbox while none is connected. */
-    notConnected: 'Kein Postfach',
+    notConnected: 'Nicht verbunden',
     notConnectedHint: 'Ohne Postfach liest CXact keine Alert-Mails.',
     /** The last fetch could not reach Gmail, or Gmail refused the password. */
-    unreachable: 'Nicht erreichbar',
-    refused: 'Abgelehnt',
-    mailRefused: 'Gmail lehnt Adresse oder App-Passwort ab, trag sie über „Ändern“ neu ein.',
+    unreachable: 'Gmail nicht erreichbar',
+    refused: 'App-Passwort abgelehnt',
     address: 'Gmail-Adresse',
     password: 'App-Passwort',
     /** The info symbol beside it. */
@@ -1450,11 +1448,10 @@ export const de = {
     /** The row of the reset in Daten: its label, its one sentence, its button (also the
      *  dialog's) and its dialog. */
     reset: 'Alles zurücksetzen',
-    resetHint: 'Löscht Jobs, Profil, Postfach und Anmeldungen.',
+    resetHint: 'Löscht alles, was CXact gespeichert hat.',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
-    resetText:
-      'Löscht Jobs, Profil, Postfach und Anmeldungen. CXact startet mit der Einrichtung neu.',
+    resetText: 'CXact startet danach mit der Einrichtung neu.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
   },
 

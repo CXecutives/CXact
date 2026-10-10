@@ -32,7 +32,8 @@
 // Scenarios (`?scenario=`): default · first-run · setup-cv (the setup after the CV: no
 // wished role, country or language) · setup-profile (a profile, no mailbox) · setup-mailbox
 // (a profile and a mailbox just connected) · mailbox-only · no-profile · empty ·
-// many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
+// many (2000 jobs) · offline · mailbox-refused (Gmail refused the app password while the
+// search went on) · paused · running · slow · list-error · profile-broken ·
 // concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
 // profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
 // two required fields open) · first-run-empty-profile (no competence, no language)
@@ -332,10 +333,12 @@ const NO_ALERTS: MailboxCheck = {
   total: 0,
   perPortal: DEMO_CHECK.perPortal.map((count) => ({ ...count, count: 0 })),
 };
-const HOME = MAC ? '/Users/demo' : 'C:/Users/demo';
+/** The folders as the OS writes them (Windows with backslashes). */
+const SEP = MAC ? '/' : '\\';
+const HOME = MAC ? '/Users/demo' : 'C:\\Users\\demo';
 const DATA_DIR = MAC
-  ? '/Users/demo/Library/Application Support/job-alert-monitor'
-  : 'C:/Users/demo/AppData/Roaming/job-alert-monitor';
+  ? `${HOME}/Library/Application Support/job-alert-monitor`
+  : `${HOME}\\AppData\\Roaming\\job-alert-monitor`;
 const TICK = Number(params.get('tick') ?? (DEMO_MODE ? 150 : PREVIEW ? 300 : 40));
 const DELAY = scenario === 'slow' ? 900 : 0;
 /** How long the CV evaluation takes: in the specs short, in the preview about as long as a
@@ -854,6 +857,10 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   offline: () => {
     state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
   },
+  // Gmail refused the app password in the last search, whose search part went on.
+  'mailbox-refused': () => {
+    state.lastRun = { ...lastRun(), mail: { kind: 'mailAuth', params: {} } } as NextRunSummary;
+  },
   // Every job went to the Archiv after the last search: Aktuell is empty.
   archived: () => {
     for (const job of jobs) job.place = 'archive';
@@ -955,7 +962,7 @@ function initial(): void {
     firstRun: false,
     running: null,
     settings: {
-      workspace: `${HOME}/Documents/Job-Alerts`,
+      workspace: [HOME, 'Documents', 'CXact'].join(SEP),
       workspaceIsDefault: true,
     },
     mailbox: {
@@ -987,7 +994,7 @@ function initial(): void {
     counts: countsOf([]),
     matchPending: 0,
     dataDir: DATA_DIR,
-    logDir: `${DATA_DIR}/logs`,
+    logDir: `${DATA_DIR}${SEP}logs`,
     resetReport: null,
     cvUntil: params.get('cv') === 'used' ? CV_UNTIL : null,
   };
@@ -2123,7 +2130,7 @@ const handlers: Handlers = {
   pick_workspace: () => {
     const kind = params.get('folder');
     if (kind !== 'other' && kind !== 'own') return null;
-    const folder = `${HOME}/Documents/Jobs`;
+    const folder = [HOME, 'Documents', 'Jobs'].join(SEP);
     state.settings = { ...state.settings, workspace: folder, workspaceIsDefault: false };
     const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
     return { folder, profile };

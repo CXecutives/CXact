@@ -713,22 +713,21 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
   await open(page, `${WIN}&view=settings`);
   const words = await text(page, 'settings.openPortal');
   await byKeys(page);
-  const first = page.getByTestId('open-portal-freelance');
+  const first = page.getByTestId('open-portal-hays');
   await first.focus();
   // Not at once: after the same delay as hovering (checked right away, not after a fixed
   // wait, which a busy machine can stretch past the delay).
   await expect(tooltip(page)).toHaveCount(0);
   await expect(tooltip(page)).toHaveText(words);
-  // Blur: the focus moves back to a button that names itself ("Alert anlegen" stands before
-  // it), which has none.
+  // Blur: the focus moves back to the switch of the row before, which has none.
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByTestId('setup-freelance')).toBeFocused();
+  await expect(page.getByTestId('toggle-enabled-gulp')).toBeFocused();
   await expect(tooltip(page)).toHaveCount(0);
   await first.focus();
   await expect(tooltip(page)).toHaveText(words);
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await expect(tooltip(page)).toHaveCount(0);
-  await page.getByTestId('open-portal-linkedin').focus();
+  await page.getByTestId('open-portal-solcom').focus();
   await expect(tooltip(page)).toHaveText(words);
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect(tooltip(page)).toHaveCount(0);

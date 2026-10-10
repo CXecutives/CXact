@@ -1,9 +1,10 @@
 <!--
   What the reader's section "Anzeige" holds under its heading (Reader.svelte): the note on a
   text that is not all there (a preview, an ad still to come or being loaded, one the app
-  cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung einrichten" where they
-  help, the quiet note on a very short text, and the ad's text in its structure with the words
-  of the list's search marked (AdText.svelte).
+  cannot reach, gone or closed) with "Anzeige laden" or "Anmelden" (the sign-in right here,
+  lib/state/portalSession.ts; then "Anzeige laden") where they help, the quiet note on a very
+  short text, and the ad's text in its structure with the words of the list's search marked
+  (AdText.svelte). A failed sign-in says so in a toast, like every result of the reader.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -11,12 +12,14 @@
   import Notice from '$components/Notice.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
+  import { errorText } from '$lib/i18n/texts';
   import type { JobDetail } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
-  import { navigation } from '$lib/state/navigation.svelte';
+  import { portalSession, signInLocked } from '$lib/state/portalSession';
   import { run } from '$lib/state/run.svelte';
+  import { toasts } from '$lib/state/toasts.svelte';
   import AdText from './AdText.svelte';
 
   interface Props {
@@ -70,10 +73,19 @@
     void run.start({ kind: 'details', keys: [job.key] });
   }
 
-  /** "Anmeldung einrichten": Einstellungen at the card of this portal. */
-  function setUpSignIn(): void {
-    navigation.focusPortal = job.portal;
-    navigation.go('settings');
+  /** "Anmelden": the portal's sign-in, right here. */
+  let signingIn = $state(false);
+  const signInLock = $derived(signInLocked());
+  async function signIn(): Promise<void> {
+    if (portalState === null) return;
+    signingIn = true;
+    try {
+      await portalSession(portalState, true);
+    } catch (error) {
+      toasts.show(errorText(error), 'warning');
+    } finally {
+      signingIn = false;
+    }
   }
 </script>
 
@@ -92,9 +104,12 @@
       <Button
         variant="secondary"
         icon="signIn"
-        label={t.reader.setUpSignIn}
-        testid="set-up-sign-in"
-        onclick={setUpSignIn}
+        label={t.settings.signIn}
+        loading={signingIn}
+        disabled={signInLock !== null}
+        disabledReason={signInLock}
+        testid="reader-sign-in"
+        onclick={() => void signIn()}
       />
     {:else if canLoad}
       <Button

@@ -14,6 +14,7 @@ import {
   SEARCHED,
   reveal,
   T,
+  tokenColour,
   tokenPx,
 } from './helpers';
 
@@ -294,7 +295,7 @@ test('mailbox: a saved change is answered by its state; a mail error before it i
   const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
   // The last fetch could not reach Gmail: said once, after a red dot.
   await expectMailboxState(page, T.settings.unreachable, 'danger');
-  await expect(page.getByTestId('mailbox-failure')).toHaveCount(0);
+  await expect(mailbox.locator('.notice')).toHaveCount(0);
   // A new sign-in: Gmail accepted it, the state says so, no note and no toast.
   await page.getByTestId('mailbox-change').click();
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
@@ -304,7 +305,16 @@ test('mailbox: a saved change is answered by its state; a mail error before it i
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
 
-test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connects', async ({
+test('mailbox: Gmail refused the app password while the search went on; said once', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=mailbox-refused`);
+  const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
+  await expectMailboxState(page, T.settings.refused, 'danger');
+  await expect(mailbox.locator('.notice')).toHaveCount(0);
+});
+
+test('mailbox: removing asks first, a failure stays; then "Nicht verbunden" connects', async ({
   page,
 }) => {
   await settings(page);
@@ -370,7 +380,10 @@ test('portals: two groups in the order of the UI, each portal with its state and
     else await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
     await expect(row).not.toContainText('Aufrufen');
-    await expect(row.getByTestId(`open-portal-${portal}`)).toBeVisible();
+    // The browser's glyph only where "Alert anlegen" does not open the portal already.
+    await expect(row.getByTestId(`open-portal-${portal}`)).toHaveCount(
+      ALERT_PORTALS.includes(portal) ? 0 : 1,
+    );
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);
   }
   // Only freelance.de offers a sign-in; no "Details holen".
@@ -399,8 +412,8 @@ test('portals: two groups in the order of the UI, each portal with its state and
     .locator('[data-testid^="open-portal-"]')
     .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().x)));
   expect(new Set(glyphs).size).toBe(1);
-  await page.getByTestId('open-portal-linkedin').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
+  await page.getByTestId('open-portal-hays').click();
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'hays' } });
 });
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);
@@ -517,14 +530,22 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
 }) => {
   await settings(page, `${WIN}&scenario=no-mailbox`);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
+  const muted = await tokenColour(page, '--text-muted');
   for (const portal of ALERT_PORTALS) {
-    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
+    const hint = page.getByTestId(`portal-${portal}-hint`);
+    await expect(hint).toHaveText(T.settings.needsMailbox);
+    // Grey like every state line; the switch at rest like every switch.
+    await expect(hint).toHaveCSS('color', muted);
+    await expect(page.getByTestId(`toggle-enabled-${portal}`).locator('..')).toHaveCSS(
+      'opacity',
+      '1',
+    );
   }
   await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
 });
 /* ------------------------------------------------------------------- Daten */
 
-test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles zurücksetzen', async ({
+test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zurücksetzen', async ({
   page,
 }) => {
   await settings(page, `${WIN}&folder=other`);
@@ -532,7 +553,12 @@ test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles z
   expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
   const folder = page.getByTestId('folder');
   await expect(folder).toContainText(T.settings.folder);
-  await expect(folder.locator('[data-copy]')).toContainText('Job-Alerts');
+  // The path as Windows writes it, in the line's own font.
+  await expect(folder.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\CXact');
+  await expect(folder.locator('[data-copy]')).toHaveCSS(
+    'font-family',
+    await folder.getByText(T.settings.folder).evaluate((node) => getComputedStyle(node).fontFamily),
+  );
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.reset);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
@@ -540,7 +566,8 @@ test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles z
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
   await (await reveal(page, page.getByTestId('folder-open'))).click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'profileDir' } });
+  // Öffnen opens the folder shown.
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'workspace' } });
   // A folder that does not open says so at the end of its section.
   await failNext(page, 'open_target');
   await page.getByTestId('folder-open').click();
@@ -548,7 +575,7 @@ test('Daten: the profile folder with its path, Ändern and Öffnen; then Alles z
   // Ändern: the folder dialog; the profile comes along and the toast says so.
   await page.getByTestId('folder-change').click();
   await expect(page.getByTestId('toast-text')).toHaveText(T.settings.folderMoved);
-  await expect(data.locator('[data-copy]')).toContainText('Documents/Jobs');
+  await expect(data.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
@@ -557,7 +584,7 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
   const dialog = page.getByTestId('dialog-reset');
   await expect(dialog.getByRole('button', { name: T.common.cancel })).toBeFocused();
   await expect(dialog.getByRole('heading')).toHaveText(T.settings.resetHeading);
-  // What it does in two short sentences: it deletes, then the setup starts anew.
+  // One short sentence: the setup starts anew.
   await expect(dialog).toContainText(T.settings.resetText);
   await expect(dialog.getByTestId('dialog-items')).toHaveCount(0);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.resetAction);

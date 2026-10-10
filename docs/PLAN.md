@@ -112,11 +112,15 @@ pre-assessment to any AI chat for a deeper check.
     JSON in the work folder (`profil/`), keeping unknown keys, with one backup.
 - **Einstellungen**, one page in the groups of the Profil, every row a `SettingRow` (hairlines only
   between rows, every text button outlined with its glyph, the switch last):
-  - Jobportale: "Suche und Alert-Mails" (the eight portals the app searches) and "Nur Alert-Mails"
-    (LinkedIn and freelance.de with "Alert anlegen", freelance.de with its sign-in), each portal with its
-    tile, its state line, open in the browser and a switch.
-  - Postfach: the mailbox with Ändern and Entfernen, or "Kein Postfach" with Verbinden.
-  - Daten: Profil-Ordner (Ändern, Öffnen) and "Alles zurücksetzen" (Zurücksetzen, asks first).
+  - Jobportale: "Suche und Alert-Mails" (the eight portals the app searches, each open in the browser)
+    and "Nur Alert-Mails" (LinkedIn and freelance.de with "Alert anlegen", freelance.de with its
+    sign-in), each portal with its tile, its state line in grey and a switch. "Anmelden" under a job's
+    preview signs in right there.
+  - Postfach: the mailbox with Ändern and Entfernen, or "Nicht verbunden" with Verbinden. A failed fetch
+    says "App-Passwort abgelehnt" or "Gmail nicht erreichbar" after a red dot; "Postfach prüfen" of its
+    toast leads there.
+  - Daten: Profil-Ordner (its path, Ändern, Öffnen opens it) and "Alles zurücksetzen" (Zurücksetzen,
+    asks first).
 - **Setup** (`features/first-run`, until it was finished once, `onboarded`): a mode of the shell of its
   own, without the sidebar and the top bar's buttons, every switch of the view refused. Every step in
   the Profil page's frame, flush left, the two stages "Profil" and "Postfach" as two thin bars on top
@@ -206,7 +210,7 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Festanstellung, Zeitarbeit
 - Vertragsart, Arbeitsmodell, Remote-Anteil
 - Auslastung, Laufzeit, Einsatzländer
-- Einstellungen, Daten, Arbeitsordner
+- Einstellungen, Daten, Profil-Ordner
 - Aufrufe, Anmelden, Abmelden
 - Probelauf
 

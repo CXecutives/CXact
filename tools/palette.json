@@ -62,7 +62,6 @@
     "success-soft":           { "css": "hsl(142 45% 94%)", "rgb": [233, 247, 238] },
     "warning":                { "css": "hsl(40 88% 59%)", "rgb": [242, 181, 58] },
     "warning-soft":           { "css": "hsl(42 90% 93%)", "rgb": [253, 244, 221] },
-    "warning-text":           { "css": "hsl(32 85% 31%)", "rgb": [146, 84, 12] },
     "missing-edge":           { "css": "hsl(13 64% 56%)", "rgb": [215, 102, 71] },
     "danger":                 { "css": "hsl(355.8 71.8% 47.3%)", "rgb": [207, 34, 46] },
     "danger-strong":          { "css": "hsl(356.2 70.6% 48%)", "rgb": [209, 36, 47] },

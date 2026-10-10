@@ -173,9 +173,11 @@ test('the mail part fails, the search works: it ends completed, the mailbox is t
   const warning = page.getByTestId('toast').filter({ hasText: 'Gmail ist nicht erreichbar.' });
   await expect(warning.getByTestId('toast-action')).toHaveText(T.run.checkMailbox);
   await expect(page.getByTestId('toast').filter({ hasText: T.toast.runDone(1) })).toHaveCount(1);
+  // "Postfach prüfen" leads to the Postfach, which says what failed.
   await warning.getByTestId('toast-action').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  await expect(page.getByTestId('settings-mailbox')).toBeVisible();
+  await expect(page.getByTestId('settings-mailbox')).toBeInViewport({ ratio: 1 });
+  await expect(page.getByTestId('mailbox-hint')).toHaveText(T.settings.unreachable);
 });
 
 test('the reader stays with the selected job while a run updates the one before', async ({

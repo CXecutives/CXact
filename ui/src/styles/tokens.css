@@ -71,8 +71,6 @@
   /* The soft fills of a success and a warning: light tints of the rings' green and yellow. */
   --p-success-soft: 142 45% 94%;
   --p-warning-soft: 42 90% 93%;
-  /* Words that warn (a portal that waits for a mailbox): the rings' amber deep enough to read. */
-  --p-warning-ink: 32 85% 31%;
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-danger-700: 350.4 84.3% 34.9%;
@@ -223,7 +221,6 @@
   --success-soft: hsl(var(--p-success-soft));
   --warning: var(--score-ring-5);
   --warning-soft: hsl(var(--p-warning-soft));
-  --warning-text: hsl(var(--p-warning-ink));
   /* A required field that is still empty: only a coral edge, no halo (user, design round
      6); the [data-missing] block below gives it to the fields of its cell. */
   --missing-edge: hsl(var(--p-coral-variant));
@@ -633,8 +630,6 @@
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  /* A path to copy (the profile's folder): the system's monospace. */
-  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
 
   --weight-regular: 430;
   --weight-medium: 500;
@@ -673,7 +668,6 @@
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
   --type-xs: var(--weight-regular) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --type-sm: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
-  --type-mono: var(--weight-regular) var(--font-xs) / var(--leading-sm) var(--font-mono);
   /* The app's text and the text in fields. */
   --type-md: var(--weight-regular) var(--font-md) / var(--leading-md) var(--font-sans);
   /* The app's text in medium: the label of a field or a row, a button's words, a tab, a

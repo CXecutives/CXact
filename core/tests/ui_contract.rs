@@ -1107,9 +1107,10 @@ fn the_catalog_keeps_the_glossary() {
             ("Passung", "Übereinstimmung"),
             ("Mailbox", "Postfach"),
             ("Details holen", "Anzeige laden"),
-            // The work folder holds the profiles (and the overviews while they are written).
-            ("Exportordner", "Arbeitsordner"),
-            ("Ergebnisordner", "Arbeitsordner"),
+            // The work folder holds the profile: the Profil-Ordner (design round 6).
+            ("Exportordner", "Profil-Ordner"),
+            ("Ergebnisordner", "Profil-Ordner"),
+            ("Arbeitsordner", "Profil-Ordner"),
             ("Dearchivieren", "Zurückholen"),
             ("Eingang", "Aktuell"),
             ("Farben", "Design"),

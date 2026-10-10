@@ -3,7 +3,7 @@
   the pages' frame (Page), its groups (Section) in the order of cards.ts, each with its heading
   and its white box: Jobportale (all ten portals in two boxes under their captions, the eight
   the app searches, then LinkedIn and freelance.de; PortalRow), Postfach (MailboxCard) and
-  Daten (the profile's folder and "Alles zurücksetzen", each one sentence and its buttons).
+  Daten (the Profil-Ordner and "Alles zurücksetzen", each one sentence and its buttons).
   Every row is a SettingRow with a hairline between rows; every text button of a row is the
   same outlined button with its glyph, and every row ends on the column's edge. This file
   only renders the list and runs its commands; what a row is, says and does is one entry in
@@ -14,8 +14,8 @@
   instead of jumping). Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog
   whose action fails stays open and says why inside. The dry run changes nothing, and a run
   holds the mailbox and the reset, locked with the reason of that run instead of failing.
-  Opened from a job for one portal ("Anmeldung einrichten") the page glides to the portal's
-  row and focuses its sign-in; the top bar's Zurück leads back to the job.
+  Opened for one of its groups (`navigation.section`: "Postfach prüfen" of a failed fetch) the
+  page glides to that group.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -134,26 +134,17 @@
 
   const testidOf = (id: string): string => id.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
-  /**
-   * Einstellungen opened for one portal from a job (the reader's "Anmeldung einrichten",
-   * `navigation.focusPortal`, read once and set back): its row glides into view and its
-   * sign-in button (else its switch) takes the focus.
-   */
+  /** Einstellungen opened for one of its groups (`navigation.section`, read once and set
+   *  back): the group glides into view. */
   let root = $state<HTMLElement | null>(null);
   $effect(() => {
-    const portal = navigation.focusPortal;
-    if (portal === null || root === null || cfg === null) return;
-    navigation.focusPortal = null;
+    const section = navigation.section;
+    if (section === null || root === null || cfg === null) return;
+    navigation.section = null;
     const scope = root;
     void tick().then(() => {
-      const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
-      if (row === null) return;
-      glideIntoView(row, 'center');
-      const target =
-        row.querySelector<HTMLElement>(
-          `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
-        ) ?? row.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
-      target?.focus({ preventScroll: true });
+      const group = scope.querySelector(`[data-section="${section}"]`);
+      if (group !== null) glideIntoView(group, 'center');
     });
   });
 </script>

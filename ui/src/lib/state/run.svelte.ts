@@ -367,9 +367,9 @@ export function failureAction(summary: RunSummary | null, error: ErrorInfo): Fai
   }
 }
 
-/** "Postfach prüfen": Einstellungen, whose section Postfach für Alert-Mails holds it. */
+/** "Postfach prüfen": Einstellungen at its Postfach, which says what failed. */
 function toMailbox(): void {
-  navigation.go('settings');
+  navigation.go('settings', false, () => (navigation.section = 'mailbox'));
 }
 
 export const run = new RunStore();

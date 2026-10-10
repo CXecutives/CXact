@@ -68,7 +68,6 @@ const CONTRAST = [
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },
   { text: ['active-text'], on: ['active-surface', 'active-hover'] },
   { text: ['text'], on: ['success-soft', 'warning-soft'] },
-  { text: ['warning-text'], on: ['surface'] },
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info', 'info-strong'], on: ['surface', 'info-soft'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },

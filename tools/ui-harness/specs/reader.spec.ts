@@ -16,6 +16,7 @@ import { demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
+  failNext,
   lastQuery,
   openJob,
   openPlace,
@@ -1172,27 +1173,31 @@ test.describe('the ad', () => {
     await expect(hits).toHaveCount(0);
   });
 
-  test('a preview says so once, here, with the way to its sign-in', async ({ page }) => {
+  test('a preview says so once, here, with its sign-in right there', async ({ page }) => {
     await openAt(page, 'freelance-900411');
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.teaser);
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
-    // The same height as the reader's other buttons.
-    const signIn = stage(page).getByTestId('set-up-sign-in');
+    // "Anmelden", as high as the reader's other buttons.
+    const signIn = stage(page).getByTestId('reader-sign-in');
+    await expect(signIn).toHaveText(T.settings.signIn);
     expect((await signIn.boundingBox())!.height).toBe(
       (await stage(page).getByTestId('open-ad').boundingBox())!.height,
     );
+    // A sign-in that fails says so; the job stays.
+    await failNext(page, 'portal_login');
     await signIn.click();
-    await expect(page.getByTestId('view-settings')).toBeVisible();
-    // Einstellungen at the row of freelance.de: in view, its sign-in focused; nothing lights
-    // up (user, 2026-09-29).
-    const portalRow = page.getByTestId('portal-freelance');
-    await expect(portalRow).toBeInViewport();
-    await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
-    await page.waitForTimeout(800);
-    await expect(portalRow).not.toHaveAttribute('data-flash');
-    await expect(portalRow).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(page.getByTestId('toast-text')).toHaveText('Die Datenbank meldet einen Fehler.');
+    // The sign-in window opens from here, the job stays, and the ad can be loaded now.
+    await signIn.click();
+    expect(await calls(page, 'portal_login')).toHaveLength(2);
+    await expect(page.getByTestId('view-jobs')).toBeVisible();
+    await expect(stage(page).getByTestId('load-ad')).toBeVisible();
+    await expect(signIn).toHaveCount(0);
+    // Einstellungen know it: freelance.de offers Abmelden.
+    await page.getByTestId('nav-settings').click();
+    await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   });
 
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {

@@ -49,10 +49,11 @@ export const ACTIONS = {
     icon: 'edit',
     locked: ownOnly,
   },
+  // The folder shown in the row.
   folderOpen: {
     label: (t) => t.common.open,
     icon: 'folder',
-    open: { kind: 'profileDir' },
+    open: { kind: 'workspace' },
   },
   // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
   // deleting a job for good).
@@ -114,7 +115,7 @@ export const SECTIONS: readonly SectionSpec[] = [
         path: (_t, state) => state.settings.workspace,
         actions: ['folderChange', 'folderOpen'],
       },
-      // The one action that deletes for good, last; what it deletes is said in its dialog too.
+      // The one action that deletes for good, last; its dialog says what comes after.
       {
         id: 'reset-all',
         tile: 'trash',

@@ -3,7 +3,7 @@
 // there: the first open (the default, a demo the whole way through), every step of the setup,
 // every failure of the CV, an empty list, a search that runs, no fitting job, a scored, an
 // unscored and an excluded job, the profile complete, incomplete and missing, Einstellungen
-// with and without a mailbox; "Von vorn" starts the state shown again (the stub keeps its data
+// with and without a mailbox and with the errors of the mailbox and the portals; "Von vorn" starts the state shown again (the stub keeps its data
 // in memory and the demo in sessionStorage, both are cleared with the page's store). It lives in the
 // stub, which only the harness build contains (vite.config.ts aliases @tauri-apps/api to it in
 // `--mode harness`), so the app never has it (specs/preview.spec.ts checks the release build).
@@ -76,6 +76,11 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
     entries: [
       { label: 'Mit Postfach', query: 'scenario=default&view=settings' },
       { label: 'Ohne Postfach', query: 'scenario=no-mailbox&view=settings' },
+      { label: 'Gmail nicht erreichbar', query: 'scenario=offline&view=settings' },
+      { label: 'App-Passwort abgelehnt', query: 'scenario=mailbox-refused&view=settings' },
+      { label: 'Portal pausiert', query: 'scenario=paused&view=settings' },
+      { label: 'Alert-Mail bleibt aus', query: 'scenario=quiet-alert&view=settings' },
+      { label: 'Noch angemeldet', query: 'scenario=session-left&view=settings' },
     ],
   },
 ];
