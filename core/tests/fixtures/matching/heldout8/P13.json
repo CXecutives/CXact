@@ -212,26 +212,11 @@
   ],
   "berufserfahrung_jahre": 20,
   "branchen": [
-    {
-      "branche": "Krankenhäuser",
-      "wunsch": true
-    },
-    {
-      "branche": "Klinikverbünde",
-      "wunsch": true
-    },
-    {
-      "branche": "Rehabilitationskliniken",
-      "wunsch": false
-    },
-    {
-      "branche": "Medizinische Versorgungszentren",
-      "wunsch": false
-    },
-    {
-      "branche": "Gesundheitswesen",
-      "wunsch": false
-    }
+    "Krankenhäuser",
+    "Klinikverbünde",
+    "Rehabilitationskliniken",
+    "Medizinische Versorgungszentren",
+    "Gesundheitswesen"
   ],
   "sprachen": [
     {

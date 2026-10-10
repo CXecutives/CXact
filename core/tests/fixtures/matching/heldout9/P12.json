@@ -160,30 +160,12 @@
   ],
   "berufserfahrung_jahre": 30,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Medizintechnik",
-      "wunsch": true
-    },
-    {
-      "branche": "Konsumgüter",
-      "wunsch": false
-    },
-    {
-      "branche": "Private-Equity-Portfoliounternehmen",
-      "wunsch": false
-    },
-    {
-      "branche": "Private Equity",
-      "wunsch": true
-    }
+    "Maschinenbau",
+    "Automobilzulieferer",
+    "Medizintechnik",
+    "Konsumgüter",
+    "Private-Equity-Portfoliounternehmen",
+    "Private Equity"
   ],
   "sprachen": [
     {

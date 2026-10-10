@@ -20,7 +20,6 @@ pub(crate) mod key {
     pub const COMPETENCE: &str = "kompetenz";
     pub const TOOLS: &str = "methoden_tools";
     pub const INDUSTRIES: &str = "branchen";
-    pub const INDUSTRY: &str = "branche";
     pub const LANGUAGES: &str = "sprachen";
     pub const LANGUAGE: &str = "sprache";
     pub const DEGREES: &str = "abschluesse";
@@ -99,9 +98,8 @@ pub struct ProfileForm {
     pub tools: Vec<String>,
     /// `berufserfahrung_jahre`.
     pub years: Option<u32>,
-    /// `branchen`, the starred ones preferred.
-    #[cfg_attr(test, ts(inline))]
-    pub industries: Vec<ProfileIndustry>,
+    /// `branchen`, the industries of the experience.
+    pub industries: Vec<String>,
     /// `sprachen`.
     #[cfg_attr(test, ts(inline))]
     pub languages: Vec<ProfileLanguage>,
@@ -150,15 +148,6 @@ impl Default for ProfileForm {
 pub struct ProfileCompetence {
     pub name: String,
     pub years: Option<u32>,
-}
-
-/// One industry of the consultant's experience; `preferred` = the star.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ProfileIndustry {
-    pub name: String,
-    pub preferred: bool,
 }
 
 /// One language with its level.
@@ -287,16 +276,6 @@ impl ProfileForm {
                 });
             }
         }
-        let mut industries: Vec<ProfileIndustry> = Vec::new();
-        for row in &self.industries {
-            let name = row.name.trim();
-            if !name.is_empty() && !industries.iter().any(|i| same(&i.name, name)) {
-                industries.push(ProfileIndustry {
-                    name: name.to_owned(),
-                    preferred: row.preferred,
-                });
-            }
-        }
         let mut languages: Vec<ProfileLanguage> = Vec::new();
         for row in &self.languages {
             let language = row.language.trim();
@@ -335,7 +314,7 @@ impl ProfileForm {
             competences,
             tools: clean(&self.tools),
             years: self.years,
-            industries,
+            industries: clean(&self.industries),
             languages,
             degrees: clean(&self.degrees),
             certificates: clean(&self.certificates),
@@ -379,7 +358,7 @@ fn clean(items: &[String]) -> Vec<String> {
 }
 
 /// The form normalized, or the first value out of range: `field` names it, `row` the entry
-/// of a list of rows (competences, industries, languages; counted in the normalized list),
+/// of a list of rows (competences, languages; counted in the normalized list),
 /// `max` the highest number (or count) it takes.
 pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> {
     let form = form.normalized();
@@ -407,6 +386,7 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
         (&form.countries, "countries"),
         (&form.regions, "regions"),
         (&form.tools, "tools"),
+        (&form.industries, "industries"),
         (&form.degrees, "degrees"),
         (&form.certificates, "certificates"),
         (&form.exclusion_words, "exclusionWords"),
@@ -435,12 +415,6 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
         if long(&row.name) {
             return Err(at("competences", Some(i), None));
         }
-    }
-    if form.industries.len() > MAX_ITEMS {
-        return Err(at("industries", None, None));
-    }
-    if let Some(i) = form.industries.iter().position(|row| long(&row.name)) {
-        return Err(at("industries", Some(i), None));
     }
     if form.languages.len() > MAX_ITEMS {
         return Err(at("languages", None, None));
@@ -501,12 +475,7 @@ pub(crate) fn merge(now: &ProfileForm, before: &ProfileForm, after: &ProfileForm
         ),
         tools: list(&now.tools, &before.tools, &after.tools, text),
         years: pick(&now.years, &before.years, &after.years),
-        industries: list(
-            &now.industries,
-            &before.industries,
-            &after.industries,
-            |i| &i.name,
-        ),
+        industries: list(&now.industries, &before.industries, &after.industries, text),
         languages: list(&now.languages, &before.languages, &after.languages, |l| {
             &l.language
         }),
@@ -529,7 +498,7 @@ pub(crate) fn merge(now: &ProfileForm, before: &ProfileForm, after: &ProfileForm
 /// The list `after` made of `before`, applied to `now`; entries are the same by their
 /// `name` (case-insensitive). The entries of `after` in its order, without one the file
 /// dropped meanwhile; an entry `after` took over unchanged keeps what the file has now (its
-/// spelling, years, star, level). An entry the file gained meanwhile stays, after the entry
+/// spelling, years, level). An entry the file gained meanwhile stays, after the entry
 /// it follows in the file.
 fn rebase<T: Clone + PartialEq>(
     now: &[T],
@@ -578,7 +547,7 @@ struct File {
     kernkompetenzen: Vec<FileCompetence>,
     methoden_tools: Vec<String>,
     berufserfahrung_jahre: Option<u32>,
-    branchen: Vec<FileIndustry>,
+    branchen: Vec<String>,
     sprachen: Vec<FileLanguage>,
     abschluesse: Vec<String>,
     zertifizierungen: Vec<String>,
@@ -624,14 +593,6 @@ struct FileCompetence {
     kompetenz: String,
     #[serde(default)]
     jahre: Option<u32>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct FileIndustry {
-    branche: String,
-    #[serde(default)]
-    wunsch: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -701,14 +662,7 @@ impl File {
                 .collect(),
             methoden_tools: form.tools.clone(),
             berufserfahrung_jahre: form.years,
-            branchen: form
-                .industries
-                .iter()
-                .map(|i| FileIndustry {
-                    branche: i.name.clone(),
-                    wunsch: i.preferred,
-                })
-                .collect(),
+            branchen: form.industries.clone(),
             sprachen: form
                 .languages
                 .iter()
@@ -774,14 +728,7 @@ impl File {
                 .collect(),
             tools: self.methoden_tools,
             years: self.berufserfahrung_jahre,
-            industries: self
-                .branchen
-                .into_iter()
-                .map(|i| ProfileIndustry {
-                    name: i.branche,
-                    preferred: i.wunsch,
-                })
-                .collect(),
+            industries: self.branchen,
             languages: self
                 .sprachen
                 .into_iter()
@@ -885,10 +832,7 @@ mod tests {
             ],
             tools: texts(&["SAP S/4HANA"]),
             years: Some(18),
-            industries: vec![ProfileIndustry {
-                name: "Pharma".into(),
-                preferred: true,
-            }],
+            industries: texts(&["Pharma"]),
             languages: vec![ProfileLanguage {
                 language: "Deutsch".into(),
                 level: LanguageLevel::Native,
@@ -917,7 +861,7 @@ mod tests {
             value["kernkompetenzen"][0],
             serde_json::json!({"kompetenz": "Controlling", "jahre": 15})
         );
-        assert_eq!(value["branchen"][0]["wunsch"], true);
+        assert_eq!(value["branchen"], serde_json::json!(["Pharma"]));
         // The default form writes every key and reads back the same.
         let empty = write(&ProfileForm::default());
         assert_eq!(parse(&empty).unwrap(), ProfileForm::default());
@@ -943,7 +887,6 @@ mod tests {
             assert!(value.get(k).is_some(), "{k}");
         }
         assert!(value[key::COMPETENCES][0].get(key::COMPETENCE).is_some());
-        assert!(value[key::INDUSTRIES][0].get(key::INDUSTRY).is_some());
         assert!(value[key::LANGUAGES][0].get(key::LANGUAGE).is_some());
     }
 

@@ -180,30 +180,12 @@
   ],
   "berufserfahrung_jahre": 19,
   "branchen": [
-    {
-      "branche": "Handel",
-      "wunsch": true
-    },
-    {
-      "branche": "Pharmagroßhandel",
-      "wunsch": false
-    },
-    {
-      "branche": "Energieversorgung",
-      "wunsch": false
-    },
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": true
-    }
+    "Handel",
+    "Pharmagroßhandel",
+    "Energieversorgung",
+    "Versicherungen",
+    "Logistik",
+    "Pharma"
   ],
   "sprachen": [
     {

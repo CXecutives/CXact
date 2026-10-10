@@ -59,18 +59,9 @@
   ],
   "berufserfahrung_jahre": 20,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    },
-    {
-      "branche": "Automotive",
-      "wunsch": false
-    },
-    {
-      "branche": "Chemie",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Automotive",
+    "Chemie"
   ],
   "sprachen": [
     {

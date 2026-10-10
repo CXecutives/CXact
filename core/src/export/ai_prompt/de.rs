@@ -61,10 +61,7 @@ const GLOSSARY: &[(&str, &str)] = &[
         "berufserfahrung_jahre",
         "Jahre Berufserfahrung insgesamt; gegen sie zählen die Jahre, die eine Anzeige verlangt",
     ),
-    (
-        "branchen",
-        "Branchen meiner Erfahrung; `wunsch` markiert die, in denen ich bevorzugt arbeite",
-    ),
+    ("branchen", "Branchen meiner Erfahrung"),
     ("sprachen", "Sprachen mit Niveau"),
     ("abschluesse", "Abschlüsse mit Fach"),
     ("zertifizierungen", "Zertifikate"),
@@ -669,17 +666,6 @@ impl Wording for German {
                     format!("{} liegt außerhalb der Wunschregionen.", place("Der Ort"))
                 }
                 _ => "Ob der Einsatzort in einer Wunschregion liegt, steht nicht fest.".to_owned(),
-            },
-            ReasonCode::IndustryWish => match text_param(p, "state") {
-                Some("met") => format!(
-                    "Die Branche {} ist gewünscht.",
-                    text_param(p, "wish").unwrap_or_default()
-                ),
-                Some("missed") => format!(
-                    "Die Branche {} gehört nicht zu den Wunschbranchen.",
-                    text_param(p, "industry").unwrap_or_default()
-                ),
-                _ => "Die Anzeige nennt keine Branche.".to_owned(),
             },
             ReasonCode::Workload => {
                 "Die Auslastung der Anzeige passt nicht zu den Tagen pro Woche im Profil."

@@ -1,5 +1,5 @@
-//! Word lists of the consultant's wishes: target roles, remote work, regions and
-//! industries (`ENGINE_VERSION` 4).
+//! Word lists of the consultant's wishes (target roles, remote work, regions;
+//! `ENGINE_VERSION` 4) and the industries the vocabulary and the terms know.
 //!
 //! external contract - do not translate: German and English wording of job ads and of the
 //! profile's wishes. All entries are case-folded and
@@ -337,26 +337,6 @@ pub(crate) const REGION_PLACES: &[(&str, &[&str])] = &[
         ],
     ),
     ("rhein-neckar", &["mannheim", "heidelberg", "ludwigshafen"]),
-];
-
-/// Headings of task sections (normalised heading starts): the tasks of a role say little
-/// about the client's industry (`Gespräche mit den Banken`).
-pub(crate) const TASK_HEADINGS: &[&str] = &[
-    "aufgaben",
-    "deine aufgaben",
-    "deine rolle",
-    "ihr aufgabengebiet",
-    "ihre aufgaben",
-    "ihre rolle",
-    "ihre tatigkeiten",
-    "responsibilities",
-    "tasks",
-    "tatigkeiten",
-    "what you will do",
-    "what you'll do",
-    "your responsibilities",
-    "your role",
-    "your tasks",
 ];
 
 /// Industries named by a whole word only (a longer word is something else: a bank relation

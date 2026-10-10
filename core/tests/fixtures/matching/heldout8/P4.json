@@ -144,26 +144,11 @@
   ],
   "berufserfahrung_jahre": 19,
   "branchen": [
-    {
-      "branche": "Pharma",
-      "wunsch": false
-    },
-    {
-      "branche": "Biotechnologie",
-      "wunsch": false
-    },
-    {
-      "branche": "Lohnherstellung (CDMO)",
-      "wunsch": false
-    },
-    {
-      "branche": "Generika",
-      "wunsch": false
-    },
-    {
-      "branche": "Wirkstoffherstellung (API)",
-      "wunsch": false
-    }
+    "Pharma",
+    "Biotechnologie",
+    "Lohnherstellung (CDMO)",
+    "Generika",
+    "Wirkstoffherstellung (API)"
   ],
   "sprachen": [
     {

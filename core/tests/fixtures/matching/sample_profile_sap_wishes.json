@@ -113,26 +113,11 @@
   ],
   "berufserfahrung_jahre": 14,
   "branchen": [
-    {
-      "branche": "Automotive",
-      "wunsch": false
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": true
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    },
-    {
-      "branche": "Banken",
-      "wunsch": true
-    },
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    }
+    "Automotive",
+    "Pharma",
+    "Handel",
+    "Banken",
+    "Versicherungen"
   ],
   "sprachen": [
     {

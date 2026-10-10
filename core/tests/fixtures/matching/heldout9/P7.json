@@ -215,34 +215,13 @@
   ],
   "berufserfahrung_jahre": 20,
   "branchen": [
-    {
-      "branche": "Energieversorgung und Stadtwerke",
-      "wunsch": false
-    },
-    {
-      "branche": "Öffentliche Verwaltung",
-      "wunsch": true
-    },
-    {
-      "branche": "Krankenhäuser",
-      "wunsch": true
-    },
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    },
-    {
-      "branche": "Finanzdienstleistung",
-      "wunsch": false
-    },
-    {
-      "branche": "Energieversorgung",
-      "wunsch": true
-    }
+    "Energieversorgung und Stadtwerke",
+    "Öffentliche Verwaltung",
+    "Krankenhäuser",
+    "Maschinenbau",
+    "Logistik",
+    "Finanzdienstleistung",
+    "Energieversorgung"
   ],
   "sprachen": [
     {

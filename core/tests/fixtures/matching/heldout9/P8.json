@@ -180,22 +180,10 @@
   ],
   "berufserfahrung_jahre": 18,
   "branchen": [
-    {
-      "branche": "Automobilindustrie",
-      "wunsch": false
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": true
-    },
-    {
-      "branche": "Nutzfahrzeuge",
-      "wunsch": false
-    },
-    {
-      "branche": "Elektromobilität",
-      "wunsch": true
-    }
+    "Automobilindustrie",
+    "Automobilzulieferer",
+    "Nutzfahrzeuge",
+    "Elektromobilität"
   ],
   "sprachen": [
     {

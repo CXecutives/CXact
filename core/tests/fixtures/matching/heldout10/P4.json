@@ -132,26 +132,11 @@
   ],
   "berufserfahrung_jahre": 21,
   "branchen": [
-    {
-      "branche": "Konsumgüter",
-      "wunsch": true
-    },
-    {
-      "branche": "E-Commerce",
-      "wunsch": true
-    },
-    {
-      "branche": "Mode und Lifestyle",
-      "wunsch": false
-    },
-    {
-      "branche": "Handel",
-      "wunsch": true
-    },
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    }
+    "Konsumgüter",
+    "E-Commerce",
+    "Mode und Lifestyle",
+    "Handel",
+    "Maschinenbau"
   ],
   "sprachen": [
     {

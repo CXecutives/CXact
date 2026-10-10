@@ -217,30 +217,12 @@
   ],
   "berufserfahrung_jahre": 21,
   "branchen": [
-    {
-      "branche": "Großhandel",
-      "wunsch": false
-    },
-    {
-      "branche": "Einzelhandel",
-      "wunsch": false
-    },
-    {
-      "branche": "E-Commerce",
-      "wunsch": false
-    },
-    {
-      "branche": "Elektrotechnik",
-      "wunsch": false
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Kontraktlogistik",
-      "wunsch": false
-    }
+    "Großhandel",
+    "Einzelhandel",
+    "E-Commerce",
+    "Elektrotechnik",
+    "Automobilzulieferer",
+    "Kontraktlogistik"
   ],
   "sprachen": [
     {

@@ -21,7 +21,7 @@ fn profile() -> Value {
             {"kompetenz": "Reporting", "jahre": 12}
         ],
         "berufserfahrung_jahre": 20,
-        "branchen": [{"branche": "Maschinenbau", "wunsch": true}]
+        "branchen": ["Maschinenbau"]
     })
 }
 
@@ -108,24 +108,5 @@ fn a_limited_employment_type_is_project_work() {
             .contract
             .as_deref(),
         Some("interim")
-    );
-}
-
-#[test]
-fn the_stated_industries_answer_the_industry_wish() {
-    let state = |facts: &Value| {
-        run(facts)
-            .reasons
-            .iter()
-            .find(|r| r.code == ReasonCode::IndustryWish)
-            .and_then(|r| r.params.get("state"))
-            .and_then(Value::as_str)
-            .unwrap_or("none")
-            .to_owned()
-    };
-    assert_eq!(state(&json!({})), "unknown");
-    assert_eq!(
-        state(&json!({ "industries": "Maschinenbau und Metallverarbeitung" })),
-        "met"
     );
 }

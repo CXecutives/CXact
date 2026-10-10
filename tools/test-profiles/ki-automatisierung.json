@@ -117,18 +117,9 @@
   ],
   "berufserfahrung_jahre": 12,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": true
-    },
-    {
-      "branche": "Großhandel",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Logistik",
+    "Großhandel"
   ],
   "sprachen": [
     {

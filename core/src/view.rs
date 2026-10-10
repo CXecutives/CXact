@@ -26,8 +26,8 @@ use crate::model::{
 use crate::pipeline::{LocalMatcher, Matcher, RunSnapshot, RunSummary, local};
 use crate::portal::{JobKey, Portal, Way};
 pub use crate::profile::{
-    LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileForm, ProfileIndustry,
-    ProfileLanguage, WorkWish, Workload, WorkspaceProfile,
+    LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileForm, ProfileLanguage, WorkWish,
+    Workload, WorkspaceProfile,
 };
 use crate::settings::{PortalSwitches, Settings};
 use crate::store::{
@@ -1496,7 +1496,7 @@ fn named_terms(form: &ProfileForm) -> BTreeSet<String> {
         .chain(&form.tools)
         .chain(&form.certificates)
         .chain(&form.degrees)
-        .chain(form.industries.iter().map(|i| &i.name))
+        .chain(&form.industries)
         .chain(form.languages.iter().map(|l| &l.language));
     let mut known = BTreeSet::new();
     for entry in entries {
@@ -2906,10 +2906,7 @@ Rahmenbedingungen:
         );
         let mut form = ProfileForm::default();
         form.tools.push("anaplan".into());
-        form.industries.push(ProfileIndustry {
-            name: "Energiewirtschaft".into(),
-            preferred: false,
-        });
+        form.industries.push("Energiewirtschaft".into());
         form.languages.push(ProfileLanguage {
             language: "English".into(),
             level: LanguageLevel::C1,

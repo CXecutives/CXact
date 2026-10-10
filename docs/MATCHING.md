@@ -309,7 +309,7 @@ not read at all. An empty value turns its rule off.
 | `kernkompetenzen[]` | `kompetenz`, `jahre`; every competence counts the same |
 | `methoden_tools` | tools and methods |
 | `berufserfahrung_jahre` | total years of experience |
-| `branchen[]` | `branche`, `wunsch` (the star: a preferred industry, the industry wish) |
+| `branchen` | industries of the experience (no wish since 21) |
 | `sprachen[]` | `sprache`, `niveau` (A1 to C2, `Muttersprache`) |
 | `abschluesse` | degrees, each with its field |
 | `zertifizierungen` | certificates |
@@ -334,8 +334,8 @@ Integer per-mille, parameters in `params.rs`.
   `ROLE_FULL` 80; a junior title or a lead role without lead title = `ROLE_HALF` 40.
   Every name of a role group of `ROLE_GROUPS` (the one table of role names, which the search
   and the Profil's suggestions use too) reads as that group's first name.
-- Wishes: met `+w`, clearly missed `-w`, near or unknown 0; `w` = rate 30, remote 30, region 20,
-  industry 20; the sum clamped to `WISH_MAX` +-100. Day rate: met at or above the wish, near from
+- Wishes: met `+w`, clearly missed `-w`, near or unknown 0; `w` = rate 30, remote 30, region 20;
+  the sum clamped to `WISH_MAX` +-100. Day rate: met at or above the wish, near from
   `WISH_RATE_NEAR` 95 %, else missed (only for non-permanent roles). Work mode: as minimum
   shares `remote` 100, `hybrid` 20, `vor_ort` at most `ONSITE_MAX` 60; the
   ad's share is an interval (page fact > stated percent or days (`2 Tage vor Ort` = 60 %) > full
@@ -343,8 +343,7 @@ Integer per-mille, parameters in `params.rs`.
   (0)); met when the interval's low end reaches the wish, missed when its high end is 0 or more
   than `REMOTE_MARGIN` 30 below it. Region: the first place of the ad in a wished region = met,
   outside with at least `REGION_REMOTE_NEAR` 60 % remote = near, outside = missed, fully remote
-  = met. Industry: the page's industries, else title, company and context lines, in the wish =
-  met, another named industry = missed.
+  = met.
 - `S = clamp(P' + role + clamp(sum wishes, -100, 100), 0, 1000)`; while fewer than half of the
   musts are met in full, a lift ends at `LIFT_CAP` 790 (score 79, below the high band 80); then
   `round_half_even(S/10)`, the caps (target role and wishes never lift a capped score) and the
@@ -354,7 +353,7 @@ Integer per-mille, parameters in `params.rs`.
 
 Every input is a reason with code and params (no prose): the requirements with their profile
 entry and its JSON path as evidence, `targetRole {role, fit, points}`, `dayRateWish`,
-`remoteWish`, `regionWish`, `industryWish`, each with `state`, `points` and the passages. The
+`remoteWish`, `regionWish`, each with `state`, `points` and the passages. The
 requirement's params carry `max`, `general`, `have` (the years compared with), `yearsFit` and
 `entryYears`, so the reader's row "Erfahrung" and every tooltip say one thing.
 

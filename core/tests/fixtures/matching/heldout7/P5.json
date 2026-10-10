@@ -157,30 +157,12 @@
   ],
   "berufserfahrung_jahre": 22,
   "branchen": [
-    {
-      "branche": "Handel",
-      "wunsch": true
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    },
-    {
-      "branche": "Finanzdienstleistungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Energie",
-      "wunsch": true
-    },
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": false
-    }
+    "Handel",
+    "Logistik",
+    "Finanzdienstleistungen",
+    "Energie",
+    "Maschinenbau",
+    "Pharma"
   ],
   "sprachen": [
     {

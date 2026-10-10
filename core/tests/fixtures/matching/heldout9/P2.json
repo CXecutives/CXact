@@ -167,30 +167,12 @@
   ],
   "berufserfahrung_jahre": 24,
   "branchen": [
-    {
-      "branche": "Metallverarbeitung",
-      "wunsch": true
-    },
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Kunststofftechnik",
-      "wunsch": false
-    },
-    {
-      "branche": "Baustoffe",
-      "wunsch": false
-    },
-    {
-      "branche": "Großhandel",
-      "wunsch": true
-    },
-    {
-      "branche": "Lebensmittelherstellung",
-      "wunsch": false
-    }
+    "Metallverarbeitung",
+    "Maschinenbau",
+    "Kunststofftechnik",
+    "Baustoffe",
+    "Großhandel",
+    "Lebensmittelherstellung"
   ],
   "sprachen": [
     {

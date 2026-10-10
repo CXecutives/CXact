@@ -24,7 +24,7 @@ Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat v
 - `kernkompetenzen`: meine Kompetenzen mit Jahren Erfahrung (`jahre`)
 - `methoden_tools`: Tools und Methoden; sie belegen Anforderungen wie Kompetenzen
 - `berufserfahrung_jahre`: Jahre Berufserfahrung insgesamt; gegen sie zählen die Jahre, die eine Anzeige verlangt
-- `branchen`: Branchen meiner Erfahrung; `wunsch` markiert die, in denen ich bevorzugt arbeite
+- `branchen`: Branchen meiner Erfahrung
 - `sprachen`: Sprachen mit Niveau
 - `abschluesse`: Abschlüsse mit Fach
 - `zertifizierungen`: Zertifikate

@@ -164,26 +164,11 @@
   ],
   "berufserfahrung_jahre": 16,
   "branchen": [
-    {
-      "branche": "Finanzdienstleistungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Energieversorgung",
-      "wunsch": true
-    },
-    {
-      "branche": "E-Commerce",
-      "wunsch": true
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    },
-    {
-      "branche": "Softwareindustrie",
-      "wunsch": false
-    }
+    "Finanzdienstleistungen",
+    "Energieversorgung",
+    "E-Commerce",
+    "Logistik",
+    "Softwareindustrie"
   ],
   "sprachen": [
     {

@@ -300,9 +300,11 @@ const HELDOUT8: Floor = Floor {
 /// differently between profiles (tooJunior for P7 and P8 against the labels, a senior title
 /// with fewer years than P9 and P12 ask for left in) stay as they are. Engine 20 (the owner's
 /// decision of 2026-10-10: no Schwerpunkte, every competence counts the same) moved NDCG@10
-/// from 0.900 to 0.889; the floor follows that decision.
+/// from 0.900 to 0.889, engine 21 (the owner's decision of 2026-10-10: the industries are
+/// experience, no wish; every profile of the set starred some) to 0.869; the floor follows those
+/// decisions.
 const HELDOUT9: Floor = Floor {
-    ndcg10: 0.889,
+    ndcg10: 0.868,
     spearman: 0.44,
     exclusion_precision: 0.98,
     exclusion_recall: 0.85,
@@ -324,10 +326,11 @@ const HELDOUT2: Floor = Floor {
 };
 
 /// Set 10 (customer service, CX, ITSM and marketing), its floors set after engine 19 as the
-/// plan decided.
+/// plan decided. Engine 21 (no industry wish, the owner's decision) moved Spearman from 0.705 to
+/// 0.697.
 const HELDOUT10: Floor = Floor {
     ndcg10: 0.94,
-    spearman: 0.70,
+    spearman: 0.69,
     exclusion_precision: 1.0,
     exclusion_recall: 1.0,
     kept_recall: 1.0,

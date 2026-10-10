@@ -127,26 +127,11 @@
   ],
   "berufserfahrung_jahre": 19,
   "branchen": [
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Banken",
-      "wunsch": false
-    },
-    {
-      "branche": "Automotive",
-      "wunsch": true
-    },
-    {
-      "branche": "IT-Dienstleistung",
-      "wunsch": false
-    },
-    {
-      "branche": "Öffentlicher Sektor",
-      "wunsch": false
-    }
+    "Versicherungen",
+    "Banken",
+    "Automotive",
+    "IT-Dienstleistung",
+    "Öffentlicher Sektor"
   ],
   "sprachen": [
     {

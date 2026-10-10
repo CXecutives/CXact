@@ -77,7 +77,7 @@ The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSIO
 - **Requirements:** must-haves and optional ones, each met, partly met or not met against the
   competences, tools, languages, degrees, certificates and years of experience. Every competence counts
   the same: no Schwerpunkte (the owner's decision of 2026-10-10, engine 20).
-- **The rest:** target roles and wishes (rate, work mode, regions, preferred industries, availability,
+- **The rest:** target roles and wishes (rate, work mode, regions, availability,
   workload, duration).
 - **Words:** its own (a core and domain packs, German and English) and ESCO under them, the EU
   classification of occupations, skills and knowledge.
@@ -264,7 +264,7 @@ build.
   - Drop Suchbegriffe; the search derives its terms.
   - Drop the field Rolle; it repeats the profile's title, which is renamed in place.
   - Merge Stichworte into the Kompetenzen.
-  - One Branchen field with stars for the wished ones.
+  - One Branchen field, plain chips without stars (engine 21: the industries are experience, no wish).
   - Perhaps Können as the first tab, the one block the profile needs.
 - [ ] The search as one pipeline with the scoring: the queries from the whole profile, expanded through the
   engine's own lexicon (synonyms, role phrases, German and English), and the sources' own filters from the

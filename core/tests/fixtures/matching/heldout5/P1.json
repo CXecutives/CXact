@@ -173,30 +173,12 @@
   ],
   "berufserfahrung_jahre": 25,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Medizintechnik",
-      "wunsch": false
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    },
-    {
-      "branche": "IT-Dienstleistung",
-      "wunsch": false
-    },
-    {
-      "branche": "Private-Equity-Portfoliounternehmen",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Automobilzulieferer",
+    "Medizintechnik",
+    "Logistik",
+    "IT-Dienstleistung",
+    "Private-Equity-Portfoliounternehmen"
   ],
   "sprachen": [
     {

@@ -194,26 +194,11 @@
   ],
   "berufserfahrung_jahre": 17,
   "branchen": [
-    {
-      "branche": "Öffentliche Verwaltung",
-      "wunsch": false
-    },
-    {
-      "branche": "Bundesbehörden",
-      "wunsch": false
-    },
-    {
-      "branche": "Landesverwaltung",
-      "wunsch": false
-    },
-    {
-      "branche": "Kommunalverwaltung",
-      "wunsch": false
-    },
-    {
-      "branche": "IT-Dienstleister der öffentlichen Hand",
-      "wunsch": false
-    }
+    "Öffentliche Verwaltung",
+    "Bundesbehörden",
+    "Landesverwaltung",
+    "Kommunalverwaltung",
+    "IT-Dienstleister der öffentlichen Hand"
   ],
   "sprachen": [
     {

@@ -114,26 +114,11 @@
   ],
   "berufserfahrung_jahre": 12,
   "branchen": [
-    {
-      "branche": "Food and Beverage",
-      "wunsch": false
-    },
-    {
-      "branche": "Chemicals",
-      "wunsch": false
-    },
-    {
-      "branche": "Packaging",
-      "wunsch": false
-    },
-    {
-      "branche": "Consumer Electronics",
-      "wunsch": false
-    },
-    {
-      "branche": "Logistics",
-      "wunsch": false
-    }
+    "Food and Beverage",
+    "Chemicals",
+    "Packaging",
+    "Consumer Electronics",
+    "Logistics"
   ],
   "sprachen": [
     {

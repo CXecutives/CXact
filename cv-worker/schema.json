@@ -47,18 +47,8 @@
     },
     "branchen": {
       "type": "array",
-      "description": "Branchen der Arbeitgeber, bei Beratern, Freelancern und Interim Managern der Kunden; die meisten Jahre zuerst, höchstens zehn.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["branche"],
-        "properties": {
-          "branche": {
-            "type": "string",
-            "description": "Die Branche, wie Jobbörsen sie nennen, etwa Maschinenbau, Automotive oder Pharma."
-          }
-        }
-      }
+      "description": "Branchen der Arbeitgeber, bei Beratern, Freelancern und Interim Managern der Kunden, so genannt, wie Jobbörsen sie nennen, etwa Maschinenbau, Automotive oder Pharma; die meisten Jahre zuerst, höchstens zehn.",
+      "items": { "type": "string" }
     },
     "sprachen": {
       "type": "array",

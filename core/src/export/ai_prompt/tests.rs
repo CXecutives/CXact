@@ -970,7 +970,6 @@ fn every_code() -> Vec<ReasonCode> {
         C::DayRateWish,
         C::RemoteWish,
         C::RegionWish,
-        C::IndustryWish,
         C::Workload,
         C::Duration,
         C::ExclusionWord,
@@ -1004,7 +1003,6 @@ fn every_code() -> Vec<ReasonCode> {
             | C::DayRateWish
             | C::RemoteWish
             | C::RegionWish
-            | C::IndustryWish
             | C::Workload
             | C::Duration
             | C::ExclusionWord => {}
@@ -1054,7 +1052,7 @@ fn every_reason() -> Assessment {
         "salary": 90_000, "lowerBound": true, "years": 3, "target": 10, "junior": true,
         "type": "unclear", "inferred": true, "class": "licence", "mandatory": true,
         "met": 1, "role": "Interim CFO", "fit": "half",
-        "state": "missed", "wish": 1300, "share": 40, "level": "mostly", "industry": "Handel",
+        "state": "missed", "wish": 1300, "share": 40, "level": "mostly",
         "source": "vocabulary"
     });
     let mut b = Built::new(AD);

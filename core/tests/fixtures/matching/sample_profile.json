@@ -108,22 +108,10 @@
   ],
   "berufserfahrung_jahre": null,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    },
-    {
-      "branche": "Automotive",
-      "wunsch": false
-    },
-    {
-      "branche": "Chemie",
-      "wunsch": false
-    },
-    {
-      "branche": "Konsumgüter",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Automotive",
+    "Chemie",
+    "Konsumgüter"
   ],
   "sprachen": [
     {

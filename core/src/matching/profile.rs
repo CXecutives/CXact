@@ -32,10 +32,7 @@ pub(crate) fn core_texts(form: &ProfileForm) -> Vec<CoreText> {
         raw.push((format!("{}[{i}]", key::CERTIFICATES), certificate));
     }
     for (i, industry) in form.industries.iter().enumerate() {
-        raw.push((
-            format!("{}[{i}].{}", key::INDUSTRIES, key::INDUSTRY),
-            &industry.name,
-        ));
+        raw.push((format!("{}[{i}]", key::INDUSTRIES), industry));
     }
     for (i, language) in form.languages.iter().enumerate() {
         raw.push((

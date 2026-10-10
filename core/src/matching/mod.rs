@@ -91,8 +91,9 @@ use facts::{Availability, HardCriteria};
 /// least four days, part time at most three) and the starred industries; remote work abroad
 /// and the region of permanent roles are no rules any more. 20: no Schwerpunkte (owner decision
 /// 2026-10-10): every competence counts the same, no requirement double and no relevance for
-/// a demanded one.
-pub const ENGINE_VERSION: u32 = 20;
+/// a demanded one. 21: the industries of the profile are experience, no wish (owner decision
+/// 2026-10-10).
+pub const ENGINE_VERSION: u32 = 21;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.

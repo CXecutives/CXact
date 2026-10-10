@@ -123,26 +123,11 @@
   ],
   "berufserfahrung_jahre": 15,
   "branchen": [
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Banken",
-      "wunsch": true
-    },
-    {
-      "branche": "Telekommunikation",
-      "wunsch": false
-    },
-    {
-      "branche": "Energie",
-      "wunsch": true
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    }
+    "Versicherungen",
+    "Banken",
+    "Telekommunikation",
+    "Energie",
+    "Handel"
   ],
   "sprachen": [
     {

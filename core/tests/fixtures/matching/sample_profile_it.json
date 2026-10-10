@@ -105,22 +105,10 @@
   ],
   "berufserfahrung_jahre": null,
   "branchen": [
-    {
-      "branche": "Automotive",
-      "wunsch": false
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": false
-    }
+    "Automotive",
+    "Handel",
+    "Logistik",
+    "Pharma"
   ],
   "sprachen": [
     {

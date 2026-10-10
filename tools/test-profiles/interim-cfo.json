@@ -122,22 +122,10 @@
   ],
   "berufserfahrung_jahre": 30,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": true
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    },
-    {
-      "branche": "Chemie",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Automobilzulieferer",
+    "Handel",
+    "Chemie"
   ],
   "sprachen": [
     {

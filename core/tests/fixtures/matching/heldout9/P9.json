@@ -179,30 +179,12 @@
   ],
   "berufserfahrung_jahre": 24,
   "branchen": [
-    {
-      "branche": "Immobilienwirtschaft",
-      "wunsch": true
-    },
-    {
-      "branche": "Bauwirtschaft",
-      "wunsch": false
-    },
-    {
-      "branche": "Rechenzentren",
-      "wunsch": true
-    },
-    {
-      "branche": "Logistikimmobilien",
-      "wunsch": false
-    },
-    {
-      "branche": "Banken",
-      "wunsch": false
-    },
-    {
-      "branche": "Öffentliche Auftraggeber",
-      "wunsch": false
-    }
+    "Immobilienwirtschaft",
+    "Bauwirtschaft",
+    "Rechenzentren",
+    "Logistikimmobilien",
+    "Banken",
+    "Öffentliche Auftraggeber"
   ],
   "sprachen": [
     {

@@ -179,30 +179,12 @@
   ],
   "berufserfahrung_jahre": 20,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Automatisierungstechnik",
-      "wunsch": true
-    },
-    {
-      "branche": "Elektroindustrie",
-      "wunsch": false
-    },
-    {
-      "branche": "Software und SaaS",
-      "wunsch": true
-    },
-    {
-      "branche": "Industrielle Dienstleistungen",
-      "wunsch": false
-    },
-    {
-      "branche": "Medizintechnik",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Automatisierungstechnik",
+    "Elektroindustrie",
+    "Software und SaaS",
+    "Industrielle Dienstleistungen",
+    "Medizintechnik"
   ],
   "sprachen": [
     {

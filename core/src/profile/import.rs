@@ -4,7 +4,7 @@
 //! filled is logged.
 //!
 //! The merge never overwrites: an entry the profile has (the same name, case aside) keeps its
-//! years, level and star; a new industry never carries the wish star. Contract types, rates,
+//! years and level. Contract types, rates,
 //! countries, work mode, availability, workload and exclusion words are the user's alone: the
 //! answer never touches them.
 
@@ -24,8 +24,8 @@ pub const MAX_CV_TOOLS: usize = 30;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoProfile;
 
-/// The form of the answer: only the keys a CV fills, capped (competences, tools), the
-/// industries without the wish star; `NoProfile` when it does not read as a profile.
+/// The form of the answer: only the keys a CV fills, capped (competences, tools);
+/// `NoProfile` when it does not read as a profile.
 pub fn cv_form(answer: &Map<String, Value>) -> std::result::Result<ProfileForm, NoProfile> {
     let mut part: Map<String, Value> = answer
         .iter()
@@ -37,13 +37,6 @@ pub fn cv_form(answer: &Map<String, Value>) -> std::result::Result<ProfileForm, 
     }
     if let Some(Value::Array(tools)) = part.get_mut(key::TOOLS) {
         tools.truncate(MAX_CV_TOOLS);
-    }
-    if let Some(Value::Array(rows)) = part.get_mut(key::INDUSTRIES) {
-        for row in rows.iter_mut() {
-            if let Some(wish) = row.get_mut("wunsch") {
-                *wish = Value::Bool(false);
-            }
-        }
     }
     form::parse(&Value::Object(part).to_string()).map_err(|_| NoProfile)
 }
@@ -94,15 +87,7 @@ pub fn merge(now: &ProfileForm, cv: &ProfileForm) -> (ProfileForm, Vec<&'static 
         out.competences.push(row.clone());
         note("competences", true);
     }
-    for row in &cv.industries {
-        if !out.industries.iter().any(|i| same(&i.name, &row.name)) {
-            out.industries.push(super::ProfileIndustry {
-                name: row.name.clone(),
-                preferred: false,
-            });
-            note("industries", true);
-        }
-    }
+    note("industries", union(&mut out.industries, &cv.industries));
     for row in &cv.languages {
         if !out
             .languages
@@ -157,7 +142,7 @@ mod tests {
             "wunschrollen": ["Interim CFO"],
             "kernkompetenzen": competences,
             "methoden_tools": tools,
-            "branchen": [{"branche": "Pharma", "wunsch": true}],
+            "branchen": ["Pharma"],
             // Never from a CV.
             "tagessatz_min": 900,
         })))
@@ -165,7 +150,7 @@ mod tests {
         assert_eq!(cv.competences.len(), MAX_CV_COMPETENCES);
         assert_eq!(cv.competences[3].years, Some(3));
         assert_eq!(cv.tools.len(), MAX_CV_TOOLS);
-        assert!(!cv.industries[0].preferred);
+        assert_eq!(cv.industries, ["Pharma"]);
         assert_eq!(cv.day_rate_min, None);
         for bad in [
             json!({"sprachen": [{"sprache": "Deutsch", "niveau": "gut"}]}),

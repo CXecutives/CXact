@@ -172,26 +172,11 @@
   ],
   "berufserfahrung_jahre": 14,
   "branchen": [
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Banken",
-      "wunsch": false
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": true
-    },
-    {
-      "branche": "E-Commerce",
-      "wunsch": true
-    },
-    {
-      "branche": "Öffentlicher Sektor",
-      "wunsch": false
-    }
+    "Versicherungen",
+    "Banken",
+    "Logistik",
+    "E-Commerce",
+    "Öffentlicher Sektor"
   ],
   "sprachen": [
     {

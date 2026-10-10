@@ -65,11 +65,10 @@ pub(crate) const SCORE_FLOOR: u8 = 10;
 pub(crate) const ROLE_FULL: i64 = 80;
 pub(crate) const ROLE_HALF: i64 = 40;
 /// Wishes: per-mille added for a wish met and taken for a wish clearly missed; near and
-/// unknown add nothing. The four together reach at most `WISH_MAX`.
+/// unknown add nothing. Together they reach at most `WISH_MAX`.
 pub(crate) const WISH_RATE: i64 = 30;
 pub(crate) const WISH_REMOTE: i64 = 30;
 pub(crate) const WISH_REGION: i64 = 20;
-pub(crate) const WISH_INDUSTRY: i64 = 20;
 /// Tokens of the profile a domain pack needs among its triggers to switch on.
 pub(crate) const PACK_HITS: usize = 2;
 /// Bound of the summed wish effect (per-mille, both directions).

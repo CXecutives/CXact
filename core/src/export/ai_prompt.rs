@@ -758,7 +758,6 @@ fn is_preference(code: ReasonCode) -> bool {
             | ReasonCode::DayRateWish
             | ReasonCode::RemoteWish
             | ReasonCode::RegionWish
-            | ReasonCode::IndustryWish
     )
 }
 

@@ -179,30 +179,12 @@
   ],
   "berufserfahrung_jahre": 16,
   "branchen": [
-    {
-      "branche": "Banken",
-      "wunsch": false
-    },
-    {
-      "branche": "Finanzdienstleistungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": true
-    },
-    {
-      "branche": "Medizintechnik",
-      "wunsch": false
-    },
-    {
-      "branche": "Maschinenbau",
-      "wunsch": false
-    }
+    "Banken",
+    "Finanzdienstleistungen",
+    "Versicherungen",
+    "Pharma",
+    "Medizintechnik",
+    "Maschinenbau"
   ],
   "sprachen": [
     {

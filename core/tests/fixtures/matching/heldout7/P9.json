@@ -243,30 +243,12 @@
   ],
   "berufserfahrung_jahre": 23,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Chemie",
-      "wunsch": true
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    },
-    {
-      "branche": "Finanzdienstleistungen",
-      "wunsch": true
-    },
-    {
-      "branche": "Energieversorgung",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Chemie",
+    "Automobilzulieferer",
+    "Handel",
+    "Finanzdienstleistungen",
+    "Energieversorgung"
   ],
   "sprachen": [
     {

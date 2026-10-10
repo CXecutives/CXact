@@ -115,22 +115,10 @@
   ],
   "berufserfahrung_jahre": 22,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Konsumgüter",
-      "wunsch": true
-    },
-    {
-      "branche": "Bauzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Konsumgüter",
+    "Bauzulieferer",
+    "Handel"
   ],
   "sprachen": [
     {

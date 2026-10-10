@@ -110,18 +110,9 @@
   ],
   "berufserfahrung_jahre": 15,
   "branchen": [
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": true
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": true
-    },
-    {
-      "branche": "Energieversorgung",
-      "wunsch": false
-    }
+    "Automobilzulieferer",
+    "Pharma",
+    "Energieversorgung"
   ],
   "sprachen": [
     {

@@ -163,34 +163,13 @@
   ],
   "berufserfahrung_jahre": 30,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Chemie",
-      "wunsch": false
-    },
-    {
-      "branche": "Handel",
-      "wunsch": false
-    },
-    {
-      "branche": "Private-Equity-Portfoliounternehmen",
-      "wunsch": false
-    },
-    {
-      "branche": "Automobilindustrie",
-      "wunsch": true
-    },
-    {
-      "branche": "Private Equity",
-      "wunsch": true
-    }
+    "Maschinenbau",
+    "Automobilzulieferer",
+    "Chemie",
+    "Handel",
+    "Private-Equity-Portfoliounternehmen",
+    "Automobilindustrie",
+    "Private Equity"
   ],
   "sprachen": [
     {

@@ -171,34 +171,13 @@
   ],
   "berufserfahrung_jahre": 20,
   "branchen": [
-    {
-      "branche": "Chemie",
-      "wunsch": true
-    },
-    {
-      "branche": "Pharma",
-      "wunsch": true
-    },
-    {
-      "branche": "Konsumgüter",
-      "wunsch": false
-    },
-    {
-      "branche": "Automobilzulieferer",
-      "wunsch": false
-    },
-    {
-      "branche": "Industriegüter",
-      "wunsch": true
-    },
-    {
-      "branche": "Energie",
-      "wunsch": false
-    },
-    {
-      "branche": "Private-Equity-Portfoliounternehmen",
-      "wunsch": false
-    }
+    "Chemie",
+    "Pharma",
+    "Konsumgüter",
+    "Automobilzulieferer",
+    "Industriegüter",
+    "Energie",
+    "Private-Equity-Portfoliounternehmen"
   ],
   "sprachen": [
     {

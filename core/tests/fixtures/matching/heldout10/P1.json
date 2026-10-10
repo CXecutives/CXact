@@ -160,22 +160,10 @@
   ],
   "berufserfahrung_jahre": 23,
   "branchen": [
-    {
-      "branche": "Energie",
-      "wunsch": true
-    },
-    {
-      "branche": "Telekommunikation",
-      "wunsch": true
-    },
-    {
-      "branche": "Versandhandel und E-Commerce",
-      "wunsch": false
-    },
-    {
-      "branche": "Versicherungen",
-      "wunsch": true
-    }
+    "Energie",
+    "Telekommunikation",
+    "Versandhandel und E-Commerce",
+    "Versicherungen"
   ],
   "sprachen": [
     {

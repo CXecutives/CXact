@@ -206,30 +206,12 @@
   ],
   "berufserfahrung_jahre": 18,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Anlagenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Automobilindustrie",
-      "wunsch": false
-    },
-    {
-      "branche": "Verpackungsindustrie",
-      "wunsch": true
-    },
-    {
-      "branche": "Lebensmittelindustrie",
-      "wunsch": false
-    },
-    {
-      "branche": "Intralogistik",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Anlagenbau",
+    "Automobilindustrie",
+    "Verpackungsindustrie",
+    "Lebensmittelindustrie",
+    "Intralogistik"
   ],
   "sprachen": [
     {

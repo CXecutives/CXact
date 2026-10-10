@@ -869,7 +869,7 @@ mod tests {
     fn an_industry_is_the_setting_not_the_function() {
         let data = of_json(&json!({
             "kernkompetenzen": [{"kompetenz": "Controlling"}],
-            "branchen": [{"branche": "Maschinenbau"}]
+            "branchen": ["Maschinenbau"]
         }));
         let skills = Skills::new(&core_texts(&data), &data);
         let fit = |text: &str| skill_fit_in(&skills, text, true).value;

@@ -62,7 +62,7 @@ impl EngineProfile {
         let query = relevance::query(&skills);
         let roles = roles::read(form, &skills.vocab);
         let title_query = relevance::title_query(&query, &roles::topics(&roles));
-        let wishes = Wishes::new(form, &skills.vocab);
+        let wishes = Wishes::new(form);
         Self {
             core,
             skills,
@@ -337,16 +337,7 @@ fn preferences(
         let points = if fit.full { ROLE_FULL } else { ROLE_HALF };
         (fit, points, title.to_owned())
     });
-    let context: Vec<Range<usize>> = if profile.wishes.industries.is_some() {
-        job::context_lines(ad.job.text)
-    } else {
-        Vec::new()
-    };
-    let ad = wishes::Ad {
-        context: &context,
-        ..*ad
-    };
-    (role, wishes::evaluate(&profile.wishes, &ad))
+    (role, wishes::evaluate(&profile.wishes, ad))
 }
 
 /// The shrunk fit plus the target role and the bounded wishes (per-mille, 0..=1000). While
@@ -611,11 +602,9 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let (role, wishes) = if readable {
         let ad = wishes::Ad {
             job: &facts,
-            company: job.company,
             segments: &segments,
             folded: &folded,
             contract,
-            context: &[],
             vocab,
         };
         preferences(profile, &ad, &title)

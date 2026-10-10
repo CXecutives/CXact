@@ -208,30 +208,12 @@
   ],
   "berufserfahrung_jahre": 17,
   "branchen": [
-    {
-      "branche": "Konsumgüter",
-      "wunsch": true
-    },
-    {
-      "branche": "Lebensmittel und Getränke",
-      "wunsch": true
-    },
-    {
-      "branche": "Einzelhandel",
-      "wunsch": false
-    },
-    {
-      "branche": "E-Commerce",
-      "wunsch": true
-    },
-    {
-      "branche": "Kosmetik",
-      "wunsch": false
-    },
-    {
-      "branche": "Tourismus",
-      "wunsch": false
-    }
+    "Konsumgüter",
+    "Lebensmittel und Getränke",
+    "Einzelhandel",
+    "E-Commerce",
+    "Kosmetik",
+    "Tourismus"
   ],
   "sprachen": [
     {

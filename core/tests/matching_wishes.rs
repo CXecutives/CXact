@@ -1,5 +1,5 @@
 //! The target roles and wishes of the profile, one test per feature: `wunschrollen` and the
-//! wishes (day rate, work mode, regions, the starred industries). Each is off while it is
+//! wishes (day rate, work mode, regions). Each is off while it is
 //! empty, visible as a reason with code and params, bounded, and never an exclusion.
 
 use std::path::Path;
@@ -9,7 +9,7 @@ use jobalert_core::matching::{
     compile_profile,
 };
 use jobalert_core::portal::Portal;
-use jobalert_core::profile::{ProfileForm, ProfileIndustry, WorkWish, parse};
+use jobalert_core::profile::{ProfileForm, WorkWish, parse};
 use serde_json::{Value, json};
 
 /// An invented interim finance consultant without target roles or wishes.
@@ -34,20 +34,6 @@ fn base() -> ProfileForm {
 fn roles(names: &[&str]) -> ProfileForm {
     ProfileForm {
         roles: names.iter().map(|r| (*r).to_owned()).collect(),
-        ..base()
-    }
-}
-
-/// The base profile with these industries preferred.
-fn preferring(industries: &[&str]) -> ProfileForm {
-    ProfileForm {
-        industries: industries
-            .iter()
-            .map(|name| ProfileIndustry {
-                name: (*name).to_owned(),
-                preferred: true,
-            })
-            .collect(),
         ..base()
     }
 }
@@ -295,48 +281,12 @@ fn region_wish_places_states_and_remote_only() {
 }
 
 #[test]
-fn industry_wish_from_intro_company_and_title() {
-    let profile = preferring(&["Automobilindustrie", "Versicherungen"]);
-    let case = |ad: &Ad<'_>| state(&run(&profile, ad), ReasonCode::IndustryWish);
-    let text = |intro: &str| {
-        format!(
-            "Über uns\n{intro}\n\nIhre Aufgaben\nGespräche mit den Banken\n\n\
-             Ihr Profil\n- Erfahrung im Treasury\n- Erfahrung im Controlling\n\
-             Rahmenbedingungen\nTagessatz 1.100 € pro Tag\n"
-        )
-    };
-    let automotive = text("Ein Automobilzulieferer mit 900 Mitarbeitenden.");
-    assert_eq!(case(&ad(&automotive)), "met");
-    let retail = text("Ein Handelskonzern aus dem Norden.");
-    assert_eq!(case(&ad(&retail)), "missed");
-    // Tasks say nothing about the client's industry.
-    let banks = preferring(&["Banken"]);
-    let plain = text("Ein Mittelständler.");
-    assert_eq!(
-        state(&run(&banks, &ad(&plain)), ReasonCode::IndustryWish),
-        "unknown"
-    );
-    // The company counts on LinkedIn; on a freelance portal it is the agency.
-    let wiesbaden = text("Ein Unternehmen aus Wiesbaden.");
-    let insurer = Ad {
-        company: "Rheingau Versicherung AG",
-        ..ad(&wiesbaden)
-    };
-    assert_eq!(case(&insurer), "met");
-    let agency = Ad {
-        portal: Portal::Freelancermap,
-        ..insurer
-    };
-    assert_eq!(case(&agency), "unknown");
-}
-
-#[test]
 fn wishes_are_bounded_and_never_exclude() {
     let profile = ProfileForm {
         day_rate_wish: Some(1500),
         work_mode: WorkWish::Remote,
         regions: vec!["München".into()],
-        ..preferring(&["Automobilindustrie"])
+        ..base()
     };
     let missed = Ad {
         location: "Hamburg, Deutschland",
@@ -350,15 +300,15 @@ fn wishes_are_bounded_and_never_exclude() {
     assert_eq!(a.verdict, Verdict::Scored, "wishes never exclude");
     let delta = i32::from(plain.score) - i32::from(a.score);
     assert!(
-        (9..=11).contains(&delta),
-        "all four missed take ten points, got {delta}"
+        (7..=9).contains(&delta),
+        "all three missed take eight points, got {delta}"
     );
     let points: i64 = a
         .reasons
         .iter()
         .filter_map(|r| r.params.get("points").and_then(Value::as_i64))
         .sum();
-    assert_eq!(points, -10);
+    assert_eq!(points, -8);
     for r in &a.reasons {
         assert_ne!(r.kind, ReasonKind::Violation, "{r:?}");
     }
@@ -371,12 +321,12 @@ type Change = Box<dyn Fn(&mut ProfileForm)>;
 fn the_summary_and_the_fingerprint_follow_the_fields() {
     let plain = compile_profile(&base());
     assert!(plain.summary().wishes.iter().all(|w| !w.set));
-    assert_eq!(plain.summary().wishes.len(), 5);
+    assert_eq!(plain.summary().wishes.len(), 4);
     let full = ProfileForm {
         day_rate_wish: Some(1300),
         work_mode: WorkWish::Hybrid,
         regions: vec!["München".into()],
-        ..preferring(&["Maschinenbau"])
+        ..base()
     };
     let compiled = compile_profile(&full);
     let set = |key| {
@@ -391,7 +341,7 @@ fn the_summary_and_the_fingerprint_follow_the_fields() {
     assert_eq!(set(WishKey::DayRate).params["wish"], 1300);
     assert_eq!(set(WishKey::Remote).params["min"], 20);
     assert_eq!(set(WishKey::Remote).params["level"], "hybrid");
-    assert!(set(WishKey::Regions).set && set(WishKey::Industries).set);
+    assert!(set(WishKey::Regions).set);
     let mut seen = vec![plain.fingerprint()];
     let changes: [(&str, Change); 6] = [
         ("projects", Box::new(|p| p.project = false)),
@@ -401,12 +351,7 @@ fn the_summary_and_the_fingerprint_follow_the_fields() {
         ("region", Box::new(|p| p.regions = vec!["Hamburg".into()])),
         (
             "industry",
-            Box::new(|p| {
-                p.industries = vec![ProfileIndustry {
-                    name: "Chemie".into(),
-                    preferred: true,
-                }];
-            }),
+            Box::new(|p| p.industries = vec!["Chemie".into()]),
         ),
     ];
     for (name, change) in changes {

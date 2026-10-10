@@ -206,8 +206,6 @@ pub enum ReasonCode {
     RemoteWish,
     /// Region wish (`state`, `points`, `location`, `remote`).
     RegionWish,
-    /// Industry wish (`state`, `points`, `industry`, `wish`).
-    IndustryWish,
     /// The ad's workload is outside the profile's days per week (`from`, `to`: percent of a
     /// five-day week, `from` left out when unknown; `minDays`, `maxDays` as the profile sets
     /// them); a check, never an exclusion.
@@ -383,8 +381,6 @@ pub enum WishKey {
     Remote,
     /// Wished regions (`regionen`).
     Regions,
-    /// Preferred industries (the starred `branchen`).
-    Industries,
 }
 
 /// A wish as understood from the profile.

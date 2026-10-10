@@ -172,26 +172,11 @@
   ],
   "berufserfahrung_jahre": 21,
   "branchen": [
-    {
-      "branche": "Energiewirtschaft",
-      "wunsch": false
-    },
-    {
-      "branche": "Netzbetreiber",
-      "wunsch": true
-    },
-    {
-      "branche": "Stadtwerke",
-      "wunsch": true
-    },
-    {
-      "branche": "Messstellenbetreiber",
-      "wunsch": false
-    },
-    {
-      "branche": "Unternehmensberatung",
-      "wunsch": false
-    }
+    "Energiewirtschaft",
+    "Netzbetreiber",
+    "Stadtwerke",
+    "Messstellenbetreiber",
+    "Unternehmensberatung"
   ],
   "sprachen": [
     {

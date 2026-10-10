@@ -174,30 +174,12 @@
   ],
   "berufserfahrung_jahre": 14,
   "branchen": [
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Großhandel",
-      "wunsch": true
-    },
-    {
-      "branche": "Handwerk",
-      "wunsch": true
-    },
-    {
-      "branche": "Personaldienstleistung",
-      "wunsch": false
-    },
-    {
-      "branche": "Steuerberatung und Kanzleien",
-      "wunsch": false
-    },
-    {
-      "branche": "Logistik",
-      "wunsch": false
-    }
+    "Maschinenbau",
+    "Großhandel",
+    "Handwerk",
+    "Personaldienstleistung",
+    "Steuerberatung und Kanzleien",
+    "Logistik"
   ],
   "sprachen": [
     {

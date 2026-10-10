@@ -154,26 +154,11 @@
   ],
   "berufserfahrung_jahre": 18,
   "branchen": [
-    {
-      "branche": "Automotive",
-      "wunsch": true
-    },
-    {
-      "branche": "Maschinenbau",
-      "wunsch": true
-    },
-    {
-      "branche": "Metallverarbeitung",
-      "wunsch": false
-    },
-    {
-      "branche": "Kunststofftechnik",
-      "wunsch": false
-    },
-    {
-      "branche": "Elektrotechnik",
-      "wunsch": false
-    }
+    "Automotive",
+    "Maschinenbau",
+    "Metallverarbeitung",
+    "Kunststofftechnik",
+    "Elektrotechnik"
   ],
   "sprachen": [
     {

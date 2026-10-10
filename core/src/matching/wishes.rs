@@ -1,11 +1,10 @@
-//! Wishes of the profile (`ENGINE_VERSION` 4, the v19 fields since 19): day rate, work mode,
-//! regions and the starred industries. Each wish is off while it is empty; a wish never
-//! excludes (exclusions are the hard criteria).
+//! Wishes of the profile (`ENGINE_VERSION` 4, the v19 fields since 19): day rate, work mode
+//! and regions. Each wish is off while it is empty; a wish never excludes (exclusions are the
+//! hard criteria). The industries of the profile are experience, no wish (21).
 //!
 //! Every wish ends in a state: met adds its points, clearly missed takes them, near and
-//! unknown change nothing. The points are `WISH_RATE`, `WISH_REMOTE`, `WISH_REGION` and
-//! `WISH_INDUSTRY` per-mille; their sum is bounded by `WISH_MAX`, so the wishes never
-//! outweigh the fit.
+//! unknown change nothing. The points are `WISH_RATE`, `WISH_REMOTE` and `WISH_REGION`
+//! per-mille; their sum is bounded by `WISH_MAX`, so the wishes never outweigh the fit.
 //!
 //! - Day rate (`tagessatz_wunsch`, not for permanent roles): the upper bound of the stated
 //!   EUR rate per day (hourly x 8) at or above the wish is met, at least `WISH_RATE_NEAR`
@@ -21,11 +20,6 @@
 //!   on-site sentence is met; another known place (larger German cities, states, foreign
 //!   cities and countries) is missed, or near with at least `REGION_REMOTE_NEAR` percent
 //!   remote; no known place (a country of the profile only, a small town) is unknown.
-//! - Industries (the starred `branchen`, preferred among those of the experience) against the
-//!   title, the company (LinkedIn only: on the
-//!   freelance portals it is the posting agency) and the ad's text outside requirements
-//!   and tasks: a wished industry named is met, only other industries named is missed,
-//!   none named is unknown.
 
 use std::cell::LazyCell;
 use std::ops::Range;
@@ -33,17 +27,16 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
-use super::atoms::{self, Fit, Vocab, fold};
+use super::atoms::{Vocab, fold};
 use super::contract::ContractKind;
 use super::facts::{self, JobFacts, Segment, fact};
 use super::job::contains_word;
 use super::lexicon::{engine as core_lex, wishes as lex};
 use super::params::{
     HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
-    REMOTE_PARTLY, WISH_INDUSTRY, WISH_RATE, WISH_RATE_NEAR, WISH_REGION, WISH_REMOTE, WORKDAYS,
+    REMOTE_PARTLY, WISH_RATE, WISH_RATE_NEAR, WISH_REGION, WISH_REMOTE, WORKDAYS,
 };
 use super::types::{ReasonCode, ReasonKind, WishInfo, WishKey};
-use crate::portal::Portal;
 use crate::profile::{ProfileForm, WorkWish, key};
 
 /// The remote share a profile wishes.
@@ -83,15 +76,6 @@ impl RemoteWish {
     }
 }
 
-/// An industry wish: its text, the industries it names and its atoms (for industries the
-/// word list does not know).
-#[derive(Debug, Clone)]
-struct Industry {
-    text: String,
-    keys: Vec<&'static str>,
-    atoms: Vec<String>,
-}
-
 /// The wishes of a profile.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Wishes {
@@ -99,11 +83,8 @@ pub(crate) struct Wishes {
     pub remote: Option<RemoteWish>,
     /// Regions as written.
     pub regions: Option<Vec<String>>,
-    /// Industries as written.
-    pub industries: Option<Vec<String>>,
     /// The regions folded, with the places of states, regions and countries.
     places: Vec<String>,
-    industry: Vec<Industry>,
     /// Per wish reason: the profile value as written and its JSON path.
     sources: Vec<(ReasonCode, String, String)>,
 }
@@ -186,43 +167,10 @@ fn word_is(folded: &str, entry: &str) -> bool {
     folded == entry || (entry.len() >= 6 && folded.starts_with(entry))
 }
 
-/// Industries named in a text: (industry, the word as written).
-fn industries_in(text: &str) -> Vec<(&'static str, String)> {
-    let mut found: Vec<(&'static str, String)> = Vec::new();
-    for word in words(text) {
-        let folded = fold(word);
-        let whole = lex::INDUSTRY_WORDS
-            .iter()
-            .find(|(entry, _)| folded == *entry);
-        let start = || {
-            lex::INDUSTRIES
-                .iter()
-                .find(|(entry, _)| !entry.contains(' ') && word_is(&folded, entry))
-        };
-        if let Some(&(_, key)) = whole.or_else(start) {
-            found.push((key, word.to_owned()));
-        }
-    }
-    let folded = fold(text);
-    for (phrase, key) in lex::INDUSTRIES.iter().filter(|(e, _)| e.contains(' ')) {
-        if contains_word(&folded, phrase) {
-            found.push((key, (*phrase).to_owned()));
-        }
-    }
-    found
-}
-
 impl Wishes {
     /// Reads the wishes of a profile.
-    pub(crate) fn new(form: &ProfileForm, vocab: &Vocab) -> Self {
+    pub(crate) fn new(form: &ProfileForm) -> Self {
         let mut wishes = Wishes::default();
-        let preferred: Vec<String> = form
-            .industries
-            .iter()
-            .filter(|i| i.preferred)
-            .map(|i| i.name.trim().to_owned())
-            .filter(|t| !t.is_empty())
-            .collect();
         let regions: Vec<String> = form
             .regions
             .iter()
@@ -232,7 +180,6 @@ impl Wishes {
         wishes.rate = form.day_rate_wish.filter(|n| *n > 0).map(u64::from);
         wishes.remote = RemoteWish::of(form.work_mode);
         wishes.regions = (!regions.is_empty()).then_some(regions);
-        wishes.industries = (!preferred.is_empty()).then_some(preferred);
         if let Some(rate) = wishes.rate {
             wishes.sources.push((
                 ReasonCode::DayRateWish,
@@ -249,19 +196,12 @@ impl Wishes {
                 .sources
                 .push((ReasonCode::RemoteWish, mode, key::WORK_MODE.to_owned()));
         }
-        for (code, list, path) in [
-            (ReasonCode::RegionWish, &wishes.regions, key::REGIONS),
-            (
-                ReasonCode::IndustryWish,
-                &wishes.industries,
-                key::INDUSTRIES,
-            ),
-        ] {
-            if let Some(list) = list {
-                wishes
-                    .sources
-                    .push((code, list.join(", "), path.to_owned()));
-            }
+        if let Some(list) = &wishes.regions {
+            wishes.sources.push((
+                ReasonCode::RegionWish,
+                list.join(", "),
+                key::REGIONS.to_owned(),
+            ));
         }
         let mut places: Vec<String> = wishes
             .regions
@@ -272,22 +212,6 @@ impl Wishes {
         places.sort();
         places.dedup();
         wishes.places = places;
-        wishes.industry = wishes
-            .industries
-            .iter()
-            .flatten()
-            .map(|text| {
-                let mut keys: Vec<&'static str> =
-                    industries_in(text).into_iter().map(|(k, _)| k).collect();
-                keys.sort_unstable();
-                keys.dedup();
-                Industry {
-                    atoms: atoms::atoms(text, vocab),
-                    keys,
-                    text: text.clone(),
-                }
-            })
-            .collect();
         wishes
     }
 
@@ -314,11 +238,6 @@ impl Wishes {
                 self.regions.is_some(),
                 json!({ "regions": self.regions }),
             ),
-            info(
-                WishKey::Industries,
-                self.industries.is_some(),
-                json!({ "industries": self.industries }),
-            ),
         ]
     }
 
@@ -332,11 +251,10 @@ impl Wishes {
             })
         };
         format!(
-            "rate {:?} remote {:?} regions {:?} industries {:?}",
+            "rate {:?} remote {:?} regions {:?}",
             self.rate,
             self.remote,
-            sorted(&self.regions),
-            sorted(&self.industries)
+            sorted(&self.regions)
         )
     }
 
@@ -349,10 +267,7 @@ impl Wishes {
     }
 
     fn any(&self) -> bool {
-        self.rate.is_some()
-            || self.remote.is_some()
-            || self.regions.is_some()
-            || self.industries.is_some()
+        self.rate.is_some() || self.remote.is_some() || self.regions.is_some()
     }
 }
 
@@ -426,16 +341,13 @@ fn result(
 /// What an ad says for the wishes.
 pub(crate) struct Ad<'a> {
     pub job: &'a JobFacts<'a>,
-    pub company: &'a str,
     pub segments: &'a [Segment],
     pub folded: &'a str,
     pub contract: ContractKind,
-    /// Lines outside requirements and tasks.
-    pub context: &'a [Range<usize>],
     pub vocab: &'a Vocab,
 }
 
-/// The wishes for one ad, in the order day rate, remote, region, industry.
+/// The wishes for one ad, in the order day rate, remote, region.
 pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
     if !wishes.any() {
         return Vec::new();
@@ -452,9 +364,6 @@ pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
     }
     if wishes.regions.is_some() {
         out.push(region(&wishes.places, ad, share));
-    }
-    if wishes.industries.is_some() {
-        out.push(industry(&wishes.industry, ad));
     }
     out
 }
@@ -756,79 +665,11 @@ fn region(places: &[String], ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResu
     result(code, State::Unknown, WISH_REGION, json!({}), Vec::new())
 }
 
-fn industry(wished: &[Industry], ad: &Ad<'_>) -> WishResult {
-    let code = ReasonCode::IndustryWish;
-    let job = ad.job;
-    // The page's own industries field (LinkedIn's "Branchen") first: stated, not guessed.
-    let stated = facts::fact(job.facts, super::fact_key::INDUSTRIES).and_then(Value::as_str);
-    let mut sources: Vec<(&str, Option<Range<usize>>)> =
-        stated.map(|s| (s, None)).into_iter().collect();
-    sources.push((job.title, None));
-    // On the freelance portals the company is the agency that posts the project.
-    if job.portal == Portal::LinkedIn {
-        sources.push((ad.company, None));
-    }
-    sources.extend(
-        ad.context
-            .iter()
-            .filter_map(|r| job.text.get(r.clone()).map(|t| (t, Some(r.clone())))),
-    );
-    let mut named: Vec<(&'static str, String, Option<Range<usize>>)> = Vec::new();
-    for (text, range) in &sources {
-        named.extend(
-            industries_in(text)
-                .into_iter()
-                .map(|(key, word)| (key, word, range.clone())),
-        );
-    }
-    let hit = named.iter().find_map(|(key, word, range)| {
-        wished
-            .iter()
-            .find(|w| w.keys.contains(key))
-            .map(|w| (w.text.clone(), word.clone(), range.clone()))
-    });
-    // A wish the word list does not know: all its atoms in one text.
-    let hit = hit.or_else(|| {
-        wished
-            .iter()
-            .filter(|w| w.keys.is_empty() && !w.atoms.is_empty())
-            .find_map(|w| {
-                sources.iter().find_map(|(text, range)| {
-                    let found = atoms::atoms(text, ad.vocab);
-                    w.atoms
-                        .iter()
-                        .all(|a| found.iter().any(|f| atoms::fit(f, a) == Fit::Equal))
-                        .then(|| (w.text.clone(), w.text.clone(), range.clone()))
-                })
-            })
-    });
-    if let Some((wish, word, range)) = hit {
-        let params = json!({ "industry": word, "wish": wish });
-        return result(
-            code,
-            State::Met,
-            WISH_INDUSTRY,
-            params,
-            range.into_iter().collect(),
-        );
-    }
-    if let Some((_, word, range)) = named.first() {
-        let params = json!({ "industry": word });
-        return result(
-            code,
-            State::Missed,
-            WISH_INDUSTRY,
-            params,
-            range.clone().into_iter().collect(),
-        );
-    }
-    result(code, State::Unknown, WISH_INDUSTRY, json!({}), Vec::new())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::matching::facts::segments;
+    use crate::portal::Portal;
 
     #[test]
     fn work_modes_as_remote_wishes() {
@@ -936,27 +777,6 @@ mod tests {
     }
 
     #[test]
-    fn industries_by_whole_words_and_word_starts() {
-        let keys = |text: &str| {
-            industries_in(text)
-                .into_iter()
-                .map(|(k, _)| k)
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(keys("Ein familiengeführter Maschinenbauer"), ["machinery"]);
-        assert_eq!(
-            keys("ein Unternehmen der Automobilzulieferindustrie"),
-            ["automotive"]
-        );
-        assert_eq!(keys("Für eine Bank migrieren wir"), ["banking"]);
-        assert!(keys("Weiterentwicklung der Bankenbeziehungen").is_empty());
-        assert!(keys("Datenbanken und Medienbrüche").is_empty());
-        assert_eq!(keys("Private Equity"), ["privateEquity"]);
-        assert_eq!(keys("Rheingau Versicherung AG"), ["insurance"]);
-        assert!(keys("Handelsgesetzbuch und Handelsrecht").is_empty());
-    }
-
-    #[test]
     fn tables_are_folded() {
         let folded = |w: &str| fold(w) == w;
         for (word, _) in lex::INDUSTRIES.iter().chain(lex::INDUSTRY_WORDS) {
@@ -976,7 +796,6 @@ mod tests {
             lex::ONSITE_AD_WORDS,
             lex::REMOTE_NONE,
             lex::HYBRID_WORDS,
-            lex::TASK_HEADINGS,
         ] {
             assert!(list.iter().all(|w| folded(w)), "{list:?}");
         }
