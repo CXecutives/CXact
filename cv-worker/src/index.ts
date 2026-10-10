@@ -11,6 +11,10 @@ interface Env {
   OPENROUTER_API_KEY: string;
   IP_PEPPER: string;
   PAUSED: string;
+  /** The OpenRouter model; unset means DEFAULT_MODEL. */
+  MODEL?: string;
+  /** The reasoning effort, low, medium or high; anything else means DEFAULT_EFFORT. */
+  EFFORT?: string;
 }
 
 /** Version of the request; older builds get `outdated`. */
@@ -28,7 +32,9 @@ const MAX_BODY = 40 * 1024 * 1024;
 /** Below the app's own timeout (160 s), so the app hears the code. */
 const UPSTREAM_TIMEOUT_MS = 150_000;
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL = 'anthropic/claude-sonnet-5.5';
+const DEFAULT_MODEL = 'anthropic/claude-sonnet-5.5';
+const DEFAULT_EFFORT = 'low';
+const EFFORTS = new Set(['low', 'medium', 'high']);
 const PDF = 'application/pdf';
 const IMAGES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const INSTALL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -376,13 +382,13 @@ async function askAi(env: Env, cv: CvRequest): Promise<Answer | Failure> {
         );
   const hasPdf = cv.kind === 'files' && cv.files.some((f) => f.mime === PDF);
   const request: Record<string, unknown> = {
-    model: MODEL,
+    model: env.MODEL?.trim() || DEFAULT_MODEL,
     messages: [
       { role: 'system', content: PROMPT },
       { role: 'user', content },
     ],
     max_tokens: 8000,
-    reasoning: { effort: 'low' },
+    reasoning: { effort: EFFORTS.has(env.EFFORT ?? '') ? env.EFFORT : DEFAULT_EFFORT },
     response_format: {
       type: 'json_schema',
       json_schema: { name: 'profil', strict: true, schema: SCHEMA },

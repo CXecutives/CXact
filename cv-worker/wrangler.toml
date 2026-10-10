@@ -8,6 +8,11 @@
 # The secret OPENROUTER_API_KEY is already set on the worker. The emergency switch is PAUSED:
 # "true" in the dashboard (Worker, Settings, Variables) answers every request with `paused`;
 # keep_vars keeps the dashboard's value over this file's on the next deploy.
+# Two optional vars choose the AI, unset here so the defaults in src/index.ts rule: MODEL (the
+# OpenRouter model, default anthropic/claude-sonnet-5.5) and EFFORT (the reasoning effort, low,
+# medium or high, default low). Set them in the dashboard or per deploy, for example
+#   npx wrangler deploy --var MODEL:anthropic/claude-haiku-5.5 --var EFFORT:medium
+# keep_vars keeps them over later deploys, so set both back explicitly when switching.
 name = "cxact-cv"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
