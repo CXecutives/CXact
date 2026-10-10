@@ -126,6 +126,37 @@ fn plain_text_markdown_and_html_are_read() {
     assert!(!html.contains("geheim"), "{html}");
 }
 
+/// A CV whose personal data stands in table cells, one per line: the address, birth date,
+/// nationality, religion, marital status and children never go out, the career does.
+#[test]
+fn a_cv_sends_no_address_nationality_religion_or_children() {
+    let text = "Max Mustermann\nMusterstraße 12\n20095 Hamburg\nPersönliche Daten\nGeburtsdatum\n01.01.1970\nStaatsangehörigkeit\ndeutsch\nKonfession\nevangelisch\nFamilienstand\nverheiratet, 2 Kinder\nBerufserfahrung\n01/2015 – heute\nInterim CFO, Beispiel AG, Hamburg\n03/2008 – 12/2014\nLeiter Controlling, Muster GmbH, München\nKenntnisse\nSAP S/4HANA, ISO 27001, IFRS 16\n";
+    let cv = cv::from_files(vec![("cv.txt".into(), text.as_bytes().to_vec())]).unwrap();
+    let CvInput::Text(sent) = cv.input else {
+        panic!("files instead of text")
+    };
+    for kept in [
+        "Max Mustermann",
+        "Persönliche Daten",
+        "Berufserfahrung\n01/2015 – heute\nInterim CFO, Beispiel AG, Hamburg",
+        "03/2008 – 12/2014\nLeiter Controlling, Muster GmbH, München",
+        "SAP S/4HANA, ISO 27001, IFRS 16",
+    ] {
+        assert!(sent.contains(kept), "`{kept}` missing in\n{sent}");
+    }
+    for gone in [
+        "Musterstraße",
+        "20095",
+        "1970",
+        "deutsch",
+        "evangelisch",
+        "verheiratet",
+        "Kinder",
+    ] {
+        assert!(!sent.contains(gone), "`{gone}` in\n{sent}");
+    }
+}
+
 #[test]
 fn a_pdf_goes_as_a_file_within_its_limits() {
     let cv = read(&["lebenslauf.pdf"]).unwrap();
