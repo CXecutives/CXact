@@ -307,7 +307,8 @@
     transition-duration: var(--dur-hover);
   }
 
-  /* Quiet: no edge and no fill at rest, the edge on hover, the field's look while edited. */
+  /* Quiet (a row of a list, the competences): no edge and no fill at rest, the edge under
+     the pointer, the field's look while edited (design round 7). */
   .quiet {
     --field-edge: transparent;
     --field-edge-hover: var(--border-strong);
@@ -317,15 +318,6 @@
 
   .quiet:focus-within {
     background-color: var(--surface);
-  }
-
-  .quiet .input {
-    padding: 0 var(--space-8);
-    color: var(--text-muted);
-  }
-
-  .quiet:focus-within .input {
-    color: var(--text);
   }
 
   .invalid {

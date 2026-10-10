@@ -208,11 +208,11 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     const empty = page.getByTestId('empty-trash');
     await expect(empty).toHaveText(T.actions.emptyTrash);
-    // Outlined in the red of every button that deletes, as large as "Alert-Mails lesen".
+    // Outlined and grey like every row button (the dialog's confirm is the red one), as large
+    // as "Jobs suchen".
     await expect(empty).toHaveClass(/secondary/);
-    await expect(empty).toHaveClass(/warns/);
     await expect(empty).toHaveClass(/wide/);
-    await expect(empty).toHaveCSS('color', await tokenColour(page, '--danger-strong'));
+    await expect(empty).not.toHaveCSS('color', await tokenColour(page, '--danger-strong'));
     await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.trash}`));
     expect(await rightOf(page, 'empty-trash')).toBe(end);
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);

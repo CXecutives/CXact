@@ -1,9 +1,8 @@
-<!-- A soft tinted tile holding an icon, a portal monogram (in / fd / fm) or a portal's own
-     mark (`logo`, an image of the app: a full square the tile's corners round, with a
-     hairline so a light mark keeps its edge). Data sources (portals, the profile file) take
-     the navy tone. -->
+<!-- A soft tile holding an icon, a portal monogram (in / fd / fm) or a portal's own mark
+     (`logo`, an image of the app: a full square the tile's corners round, with a hairline so a
+     light mark keeps its edge). Neutral everywhere (design round 7), red for a failure. -->
 <script lang="ts" module>
-  export type TileTone = 'navy' | 'danger' | 'neutral';
+  export type TileTone = 'danger' | 'neutral';
   export type TileSize = 'sm' | 'md' | 'lg';
 </script>
 
@@ -76,11 +75,6 @@
     font: var(--tile-type);
     font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-tight);
-  }
-
-  .navy {
-    --tile-bg: var(--active-surface);
-    --tile-fg: var(--active-text);
   }
 
   .danger {

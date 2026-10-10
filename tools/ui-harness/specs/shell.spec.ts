@@ -796,10 +796,10 @@ test('the first line: the sidebar entry, the tabs and the titles share one middl
   await open(page, WIN);
   const line = middle(await page.getByTestId('nav-jobs').boundingBox());
   expect(middle(await page.getByTestId('places').boundingBox())).toBe(line);
-  // The first heading of every page without a title stands on the same row.
+  // The title of every page stands on the same row.
   for (const [view, title] of [
-    ['profile', '#profile-section-job-heading'],
-    ['settings', '#settings-portals-heading'],
+    ['profile', '[data-testid="profile-heading"]'],
+    ['settings', '[data-testid="settings-heading"]'],
   ] as const) {
     await open(page, `${WIN}&view=${view}`);
     const first = page.locator(title);
@@ -1499,7 +1499,7 @@ test('under reduced motion nothing scales or pops', async ({ page }) => {
   expect(tokens).toEqual([1, 0, 0]);
   // Clicked without the pointer over it (no tooltip comes).
   await page.evaluate(() =>
-    document.querySelector<HTMLElement>('[data-testid="chip-star"]')!.click(),
+    document.querySelector<HTMLElement>('[data-testid="contract-temporary"]')!.click(),
   );
   const scripted = await page.evaluate(
     // What comes meanwhile (the save bar) only fades: nothing moves or scales.

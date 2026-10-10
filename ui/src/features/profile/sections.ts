@@ -5,7 +5,9 @@
 // the form it edits, its control, its words by their key in the catalog (`t.profile.field`)
 // and, at the few places docs/PLAN.md names, its info symbol (`t.profile.info`). Controls with
 // more to them than a field (the competences, the industries, the languages, the countries,
-// the day) are components the table names by their kind.
+// the day) are components the table names by their kind. A short field (`half`) shares its
+// line with the short field next to it (design round 7: two columns where a group is wide
+// enough, ProfileEditor).
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, TermField } from '$lib/ipc/types';
@@ -36,6 +38,7 @@ export type Control =
       label: Word;
       unit: Unit;
       info?: Info;
+      half?: true;
       shown?: (form: ProfileForm) => boolean;
       testid: string;
     }
@@ -56,7 +59,7 @@ export type Control =
     }
   /** The contract types (`profile.contract`), a choice of several. */
   | { kind: 'contracts'; info: Info }
-  | { kind: 'choice'; key: ChoiceKey; label: Word; info?: Info; testid: string }
+  | { kind: 'choice'; key: ChoiceKey; label: Word; info?: Info; half?: true; testid: string }
   | { kind: 'countries'; info: Info }
   | { kind: 'available' }
   | { kind: 'competences' }
@@ -67,7 +70,7 @@ export type SectionId = keyof Catalog['profile']['section'];
 
 export interface Section {
   id: SectionId;
-  /** Its fields, one under the other. */
+  /** Its fields, one under the other (two short ones side by side). */
   rows: readonly Control[];
 }
 
@@ -96,6 +99,7 @@ export const SECTIONS: readonly Section[] = [
         key: 'dayRateWish',
         label: 'dayRateWish',
         unit: 'euro',
+        half: true,
         testid: 'profile-wish-rate',
       },
       {
@@ -104,6 +108,7 @@ export const SECTIONS: readonly Section[] = [
         label: 'dayRateMin',
         unit: 'euro',
         info: 'dayRate',
+        half: true,
         testid: 'profile-min-rate',
       },
       {
@@ -120,12 +125,29 @@ export const SECTIONS: readonly Section[] = [
   {
     id: 'work',
     rows: [
-      { kind: 'choice', key: 'workMode', label: 'workMode', testid: 'profile-work-mode' },
       { kind: 'countries', info: 'countries' },
       chips('regions', 'profile-regions', { suggest: 'regions' }),
+      {
+        kind: 'choice',
+        key: 'workMode',
+        label: 'workMode',
+        half: true,
+        testid: 'profile-work-mode',
+      },
+      {
+        kind: 'choice',
+        key: 'workload',
+        label: 'workload',
+        half: true,
+        testid: 'profile-workload',
+      },
       { kind: 'available' },
-      { kind: 'choice', key: 'workload', label: 'workload', testid: 'profile-workload' },
-      { kind: 'choice', key: 'minMonths', label: 'minMonths', testid: 'profile-min-months' },
+      {
+        kind: 'choice',
+        key: 'minMonths',
+        label: 'minMonths',
+        testid: 'profile-min-months',
+      },
     ],
   },
   {

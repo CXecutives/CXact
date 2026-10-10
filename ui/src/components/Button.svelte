@@ -21,13 +21,10 @@
     glyph stands half a turn (180 ms).
   - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
     filter narrows it; the chips say what). link: navy text that underlines on hover.
-    suggest: a quiet chip under a Profil field ("Häufig verlangt", the quick picks).
+    suggest: a white chip with its + under a Profil field ("Häufig verlangt", the quick picks).
   - inText: a link inside a sentence (the missing line's names), in the sentence's type.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
-  - warns: a quiet (secondary or ghost) button whose action deletes or loses something
-    (empty the trash, remove the mailbox, reset everything): its text and glyph are red at
-    rest, before the dialog asks; no icon warns by itself.
   - deletes: a quiet icon button that deletes for good (a job's Endgültig löschen, in its row
     and its reader): its glyph red at rest, on a red wash under the pointer.
   - count: a quiet number after the label (a suggestion chip, the hits in another place).
@@ -78,8 +75,6 @@
     expanded?: boolean;
     /** The default of a dialog (Enter presses it); Dialog gives it the focus. */
     isDefault?: boolean;
-    /** Deletes, removes or resets something: red text and glyph (secondary and ghost). */
-    warns?: boolean;
     /** Deletes for good (a job's tool): red at rest, on a red wash under the pointer (ghost). */
     deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
@@ -111,7 +106,6 @@
     menu = false,
     expanded = false,
     isDefault = false,
-    warns = false,
     deletes = false,
     plain = false,
     count = null,
@@ -144,7 +138,6 @@
   class:loading
   class:turned
   class:default={isDefault}
-  class:warns
   class:deletes
   class:swaps={hoverIcon !== null}
   aria-label={iconOnly ? label : undefined}
@@ -368,13 +361,6 @@
     --btn-shadow: none;
   }
 
-  /* Deleting or losing something: red at rest, before the dialog asks (its confirm fills). */
-  .ghost.warns,
-  .secondary.warns {
-    --btn-fg: var(--danger-strong);
-    --btn-fg-hover: var(--danger-strong);
-  }
-
   /* Deleting (a row's tool): red at rest like every delete, on a red wash under the pointer. */
   .ghost.deletes {
     --btn-fg: var(--danger-strong);
@@ -400,14 +386,16 @@
     --btn-shadow: var(--sh-primary);
   }
 
-  /* A suggestion: a quiet chip on the track's fill, small words, ink under the pointer. */
+  /* A suggestion: white with a hairline and its +, so it never reads as a chip already in
+     the field (those sit on the track); small words, ink and a darker edge under the
+     pointer (design round 7). */
   .suggest {
-    --btn-bg: var(--surface-track);
-    --btn-bg-hover: var(--btn-bg);
-    --btn-bg-active: var(--btn-bg);
-    --btn-border: var(--btn-bg);
-    --btn-border-hover: var(--btn-bg);
-    --btn-border-active: var(--btn-bg);
+    --btn-bg: var(--surface);
+    --btn-bg-hover: var(--surface);
+    --btn-bg-active: var(--control-press);
+    --btn-border: var(--border);
+    --btn-border-hover: var(--border-strong);
+    --btn-border-active: var(--border-strong);
     --btn-fg: var(--text-muted);
     --btn-fg-hover: var(--text);
     --btn-shadow: none;

@@ -162,7 +162,7 @@
 </script>
 
 {#snippet tile()}
-  <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
+  <IconTile monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
 {/snippet}
 
 {#snippet notes()}

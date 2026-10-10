@@ -100,17 +100,17 @@ test('one page: Jobportale, Postfach and Daten, the reset last in Daten', async 
   await expect(view).not.toContainText('Version');
   await expect(page.getByTestId('search-terms')).toHaveCount(0);
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  // No title (the sidebar names the place; user 2026-10-04): the first heading stands on the
-  // first row, centred on the sidebar's first entry (macOS too).
-  await expect(page.getByTestId('settings-heading')).toHaveCount(0);
-  const first = page.getByTestId('settings-portals').getByRole('heading', { level: 2 });
+  // The page's title (design round 7) stands on the first row, centred on the sidebar's
+  // first entry (macOS too).
+  await expect(page.getByTestId('settings-heading')).toHaveText(T.nav.settings);
+  const first = page.getByTestId('settings-heading');
   for (const query of [WIN, MAC]) {
     await settings(page, query);
     const line = middle(await page.getByTestId('nav-jobs').boundingBox());
     expect(Math.abs(middle(await first.boundingBox()) - line), query).toBeLessThanOrEqual(1);
   }
 });
-test('button styles: every text button of a row is outlined; red deletes', async ({ page }) => {
+test('button styles: every text button of a row is outlined and grey', async ({ page }) => {
   await settings(page);
   const view = page.getByTestId('settings');
   // Every button with words in a row, a portal's calls too: outlined, one height like all,
@@ -137,20 +137,20 @@ test('button styles: every text button of a row is outlined; red deletes', async
   ]);
   const height = await tokenPx(page, '--control-field');
   expect(kinds.filter((kind) => !kind.icon || kind.height !== height)).toEqual([]);
-  // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
-  // Entfernen and Alles zurücksetzen.
+  // No row button is red, not even one that loses something (only the dialog's confirm is);
+  // those carry the one glyph of deleting (icons.ts): Entfernen and Alles zurücksetzen.
   const danger = await colour(page, '--danger-strong');
-  for (const [id, warns] of [
+  for (const [id, deletes] of [
     ['mailbox-remove', true],
     ['reset', true],
     ['mailbox-change', false],
     ['folder-open', false],
   ] as const) {
     const button = await reveal(page, page.getByTestId(id));
-    if (warns) {
-      await expect(button, id).toHaveCSS('color', danger);
+    await expect(button, id).not.toHaveCSS('color', danger);
+    if (deletes) {
       await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
-    } else await expect(button, id).not.toHaveCSS('color', danger);
+    }
   }
   await expect(page.getByTestId('folder-open').locator('[data-icon]')).toHaveAttribute(
     'data-icon',

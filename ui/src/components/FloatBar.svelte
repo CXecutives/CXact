@@ -1,11 +1,11 @@
 <!--
-  The floating bar at the foot of a page (the Profil's unsaved changes): a dark
-  rounded bar centred at the bottom of the view, a little above its edge, that stays in view
-  while the page scrolls under it. Its sentence at the left (`children`, light on the dark
-  surface: tokens.css `[data-surface='inverse']`), its buttons at the right (`actions`: a
-  quiet one and the view's primary). It rises in (8 px, 150 ms) and fades out. It ends the
-  page: the page is at least as high as the view, so under a short page it still stands at
-  the bottom. The toast stack rises above it (`use:liftToasts`).
+  The floating bar at the foot of a page (the Profil's unsaved changes): a light rounded bar
+  in the look of the toasts and menus (white, hairline, their shadow; design round 7),
+  centred at the bottom of the view, a little above its edge, that stays in view while the
+  page scrolls under it. Its sentence at the left (`children`, muted), its buttons at the
+  right (`actions`: a quiet one and the view's primary). It rises in (8 px) and fades out.
+  It ends the page: the page is at least as high as the view, so under a short page it still
+  stands at the bottom. The toast stack rises above it (`use:liftToasts`).
 -->
 <script lang="ts">
   import { liftToasts } from '$lib/actions/liftToasts';
@@ -29,7 +29,7 @@
   out:fade
   use:liftToasts
 >
-  <div class="bar" data-surface="inverse">
+  <div class="bar">
     <div class="message">{@render children()}</div>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
   </div>
@@ -57,8 +57,9 @@
     gap: var(--space-8) var(--space-16);
     min-height: calc(var(--control-field) + 2 * var(--space-8));
     padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
+    border: var(--border-width) solid var(--border);
     border-radius: var(--radius-lg);
-    background-color: var(--surface-inverse);
+    background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
     color: var(--text);
   }
@@ -66,6 +67,7 @@
   .message {
     flex: 1 1 auto;
     min-width: 0;
+    color: var(--text-muted);
     font: var(--type-md);
   }
 

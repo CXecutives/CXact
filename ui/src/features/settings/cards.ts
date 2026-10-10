@@ -6,9 +6,8 @@
 //
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
 // answer; every text button of a row is the same outlined button with the glyph of its
-// meaning, whether it opens something or runs a command, and the ones that lose something
-// for good are red (`warns`: Zurücksetzen, like Entfernen of the mailbox); a locked button
-// says why (`locked`).
+// meaning, whether it opens something or runs a command, grey even when it loses something
+// (only the dialog's confirm is red, design round 7); a locked button says why (`locked`).
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
@@ -35,7 +34,6 @@ export interface Action {
   /** Why it waits now, or null. */
   locked?: (lock: Lock) => string | null;
   open?: OpenTarget;
-  warns?: boolean;
 }
 
 /** Why the dry run refuses a change of what is outside its own data, and a run holds it. */
@@ -60,7 +58,6 @@ export const ACTIONS = {
   reset: {
     label: (t) => t.settings.resetAction,
     icon: 'trash',
-    warns: true,
     locked: ownOnly,
   },
 } satisfies Record<string, Action>;

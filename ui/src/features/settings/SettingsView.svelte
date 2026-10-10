@@ -23,6 +23,7 @@
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import Group from '$components/Group.svelte';
+  import PageHeader from '$components/PageHeader.svelte';
   import Page from '$components/Page.svelte';
   import Section from '$components/Section.svelte';
   import SettingRow from '$components/SettingRow.svelte';
@@ -169,7 +170,6 @@
           loading={busy === id}
           disabled={locked !== null}
           disabledReason={locked}
-          warns={action.warns ?? false}
           testid={testidOf(id)}
           onclick={() => act(section, id)}
         />
@@ -192,7 +192,16 @@
   </div>
 {/snippet}
 
-<Page testid="settings" bind:element={root}>
+{#snippet head()}
+  <PageHeader
+    heading={t.nav.settings}
+    headingTestid="settings-heading"
+    column="page"
+    testid="settings-head"
+  />
+{/snippet}
+
+<Page testid="settings" bind:element={root} {head}>
   {#if cfg === null}
     {#if app.slow}
       <div class="skeleton">

@@ -8,12 +8,14 @@
   Mindestlaufzeit.
   The role decides the widths: a choice (a radiogroup) gives every option the room of the
   widest, so the thumb is one size whichever is chosen; the places (tabs) keep each option as
-  wide as its label. When the track has less room than the options want, the labels shorten
+  wide as its label, and so does a choice of many short codes and one long word (`fit`, the
+  language levels A1 to C2 and Muttersprache). When the track has less room than the options
+  want, the labels shorten
   with an ellipsis; nothing ever overlaps.
   The chosen label is navy (ink while the window is in the back), the others stay muted. An
   unchosen option washes on hover and darkens while pressed.
   Like native radio buttons (and native tabs, `tabs`) the group is one Tab stop and the
-  arrows, Home and End choose (lib/input/input.ts). As high as a field (28 px, the thumb 2 px
+  arrows, Home and End choose (lib/input/input.ts). As high as a field (30 px, the thumb 2 px
   inside it), so it lines up with the fields and buttons of its row, in the app's text in
   medium.
 -->
@@ -37,11 +39,21 @@
     label: string;
     /** The places of a list: a tablist of tabs instead of a radiogroup. */
     tabs?: boolean;
+    /** A choice whose options keep their own widths (short codes beside one long word). */
+    fit?: boolean;
     testid?: string | null;
     onchange: (id: Id) => void;
   }
 
-  let { options, value = null, label, tabs = false, testid = null, onchange }: Props = $props();
+  let {
+    options,
+    value = null,
+    label,
+    tabs = false,
+    fit = false,
+    testid = null,
+    onchange,
+  }: Props = $props();
 
   const isChosen = (id: Id): boolean => id === value;
 
@@ -84,6 +96,7 @@
 
 <div
   class="segmented"
+  class:fit
   role={tabs ? 'tablist' : 'radiogroup'}
   aria-label={label}
   data-testid={testid ?? undefined}
@@ -142,6 +155,10 @@
     grid-auto-columns: minmax(0, 1fr);
     grid-auto-flow: column;
     width: max-content;
+  }
+
+  .segmented.fit[role='radiogroup'] {
+    grid-auto-columns: auto;
   }
 
   /* The one white thumb under the chosen option, a hairline ring around it; it slides like

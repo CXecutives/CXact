@@ -1,13 +1,15 @@
 <!--
-  The core competences, all counting the same: one row each with the competence and its years
-  at the right ("Jahre" as their placeholder), then the quiet row "Kompetenz hinzufügen". The
+  The core competences, all counting the same: a quiet list (design round 7), one row each
+  with the competence and its years at the right ("Jahre" inside), hairlines between the rows
+  and fields without an edge until the pointer or the caret is in them, then the quiet row
+  "+ Kompetenz". The
   x of a row needs no tooltip. Without a competence a blank field
   stands instead (coral while its cell is marked as missing, like every field in it): what
   is typed there becomes the first row. A value that is too large (the years) or that the backend refused
   marks its row. Enter goes to the next row, adds one after the last and ends the list on an
   empty last row (rows.ts); it never saves the profile. Removing a row puts no caret anywhere
   (input.ts removeBy): after a click the focus is dropped, from the keyboard it goes to the
-  next row's x (the previous one after the last, "Kompetenz hinzufügen" once none is left).
+  next row's x (the previous one after the last, "+ Kompetenz" once none is left).
   The competence suggests the engine's words while typing (vocabulary.svelte.ts). A long
   list shows its first eight rows and "Alle anzeigen (n)" beside the add row ("Weniger
   anzeigen" folds it again); adding a row or a refused row further down shows them all.
@@ -109,6 +111,7 @@
           label={words.competence}
           placeholder={rows.length === 1 ? words.competencePlaceholder : null}
           invalid={wrong}
+          quiet
           describedby={wrong ? `${id}-error` : null}
           suggestions={vocabulary.skills}
           testid="competence-name"
@@ -118,8 +121,9 @@
         <NumberField
           bind:value={row.years}
           label={words.years}
-          placeholder={words.years}
+          unit={words.years}
           invalid={wrong}
+          quiet
           testid="competence-years"
         />
       </span>
@@ -164,15 +168,20 @@
   .list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
   }
 
-  /* competence | years | remove */
+  /* competence | years | remove, a hairline between the rows. */
   .row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) var(--years-width) var(--control-field);
     align-items: start;
     gap: var(--space-6);
+    padding: var(--space-4) 0;
+    border-bottom: var(--border-width) solid var(--border);
+  }
+
+  .row:first-of-type {
+    border-top: var(--border-width) solid var(--border);
   }
 
   .blank {
@@ -188,11 +197,13 @@
   /* Under the rows the quiet add row lines up with the names (its glyph on their text). */
   .add.indent {
     display: flex;
+    margin-top: var(--space-6);
     justify-content: space-between;
     margin-left: calc(-1 * var(--space-2));
   }
 
   .error {
+    margin-top: var(--space-6);
     color: var(--danger-strong);
     font: var(--type-sm);
   }

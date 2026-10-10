@@ -121,7 +121,6 @@
       label={t.common.remove}
       disabled={locked !== null}
       disabledReason={locked}
-      warns
       testid="mailbox-remove"
       onclick={() => {
         removeError = null;

@@ -25,6 +25,8 @@
     invalid?: boolean;
     /** Waits for another value (its field's hint says for which). */
     disabled?: boolean;
+    /** A row of a list: no edge until the pointer or the caret is in it. */
+    quiet?: boolean;
     describedby?: string | null;
     testid?: string | null;
   }
@@ -38,6 +40,7 @@
     placeholder = null,
     invalid = false,
     disabled = false,
+    quiet = false,
     describedby = null,
     testid = null,
   }: Props = $props();
@@ -92,6 +95,7 @@
       {placeholder}
       {invalid}
       {disabled}
+      {quiet}
       describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
       suffix={unit}
       {testid}

@@ -1,9 +1,9 @@
 <!--
   The profile as one page of fields: the four groups of `sections.ts` in their order
   (Wunschjob, Einsatz, Qualifikation, Ausschlüsse), each a Section with its fields in one white
-  box (Group), 16 apart and without lines between them ("Luftige Gruppen", design round 6);
-  the same page in the setup. The page's actions (`actions`, "Aus Lebenslauf ausfüllen") end
-  the first heading's line. Each field as the table describes it, its label above it (and,
+  box (Group), 16 apart and without lines between them ("Luftige Gruppen", design round 6),
+  two short fields side by side where the box is wide enough (`half`, design round 7); the
+  same page in the setup. Each field as the table describes it, its label above it (and,
   only where docs/PLAN.md places one, an info symbol beside the label): a list fills the box's
   width, a number (its unit inside) or a day is --number-width, a choice of a few as wide as
   its options. Vertragsart is three checkboxes (Projekt und Interim, Festanstellung,
@@ -44,7 +44,7 @@
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
   import { fade } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
-  import { tick, type Snippet } from 'svelte';
+  import { tick } from 'svelte';
   import AskedTerms from './AskedTerms.svelte';
   import AvailableField from './AvailableField.svelte';
   import CompetenceList from './CompetenceList.svelte';
@@ -61,13 +61,11 @@
     missing: readonly string[];
     /** The setup's page: no "Häufig verlangt", Esc does nothing. */
     setup?: boolean;
-    /** The page's actions, at the end of the first group's heading line. */
-    actions?: Snippet | null;
     onsave: () => void;
     ondiscard: () => void;
   }
 
-  let { fieldError, missing, setup = false, actions = null, onsave, ondiscard }: Props = $props();
+  let { fieldError, missing, setup = false, onsave, ondiscard }: Props = $props();
 
   // Text typed into a chip field of the form counts as a change.
   editor.typed.share();
@@ -175,21 +173,12 @@
 
   const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
   const industryNames = (): string[] => form.industries.map((row) => row.name);
-  /** The names as the chip field leaves them, each keeping its star. */
+  /** The names as the chip field leaves them. */
   function setIndustries(names: string[]): void {
     form.industries = names.map(
       (name) => form.industries.find((row) => same(row.name, name)) ?? { name, preferred: false },
     );
   }
-  const INDUSTRY_STAR = {
-    on: (name: string): boolean =>
-      form.industries.some((row) => same(row.name, name) && row.preferred),
-    label: (name: string, on: boolean): string => (on ? words.unprefer(name) : words.prefer(name)),
-    toggle: (name: string): void => {
-      const row = form.industries.find((each) => same(each.name, name));
-      if (row) row.preferred = !row.preferred;
-    },
-  };
 
   // ------------------------------------------------------------ saving
 
@@ -239,12 +228,11 @@
   use:formKeys={untouched && !setup ? { save: onsave, cancel: ondiscard } : { save: onsave }}
   data-testid="profile-form"
 >
-  {#each SECTIONS as section, index (section.id)}
+  {#each SECTIONS as section (section.id)}
     <Section
       id="profile-section-{section.id}"
       name={section.id}
       heading={t.profile.section[section.id]}
-      actions={index === 0 ? actions : null}
       testid="section-{section.id}"
     >
       <Group>
@@ -260,6 +248,7 @@
   {#if shown(c)}
     <div
       class="cell"
+      class:half={'half' in c && c.half}
       data-field={fieldOf(c)}
       data-missing={isMissing(c) ? '' : undefined}
       transition:fade
@@ -352,7 +341,6 @@
         more={words.industriesMore}
         invalid={error !== null}
         suggestions={vocabulary.industries}
-        star={INDUSTRY_STAR}
         fold
         testid="profile-industries"
       />
@@ -374,11 +362,23 @@
     gap: var(--layout-section-gap);
   }
 
-  /* The fields of a group, 16 apart, no lines between them. */
+  /* The fields of a group, 16 apart, no lines between them; two short ones side by side
+     (20 apart) while the box is wide enough, else one under the other. */
   .fields {
-    display: flex;
-    flex-direction: column;
-    gap: var(--layout-field-gap);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--layout-field-gap) var(--layout-column-gap);
+    container-type: inline-size;
+  }
+
+  @container (min-width: 560px) {
+    .fields {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cell:not(.half) {
+      grid-column: 1 / -1;
+    }
   }
 
   /* A number (euros, years) is as wide as a day field, its unit inside at its right; the

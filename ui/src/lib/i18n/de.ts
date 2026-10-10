@@ -1083,7 +1083,7 @@ export const de = {
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
       years: 'Jahre',
-      addCompetence: 'Kompetenz hinzufügen',
+      addCompetence: 'Kompetenz',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
       tools: 'Tools und Methoden',
       toolsPlaceholder: 'z. B. Scrum',
@@ -1093,8 +1093,6 @@ export const de = {
       industriesPlaceholder: 'z. B. Handel',
       industriesMore: '+ Branche',
       /** The star of an industry chip says what a click does. */
-      prefer: (name: string) => `${name} bevorzugen`,
-      unprefer: (name: string) => `${name} nicht mehr bevorzugen`,
       languages: 'Sprachen',
       language: 'Sprache',
       languagePlaceholder: 'Sprache eingeben',
@@ -1162,14 +1160,17 @@ export const de = {
       6: '6 Monate',
       12: '12 Monate',
     } satisfies Record<ProfileForm['minMonths'], string>,
-    /** The four plain levels of a language (user 2026-10-04), stored as A2, B2, C1 and
-     *  native; A1 and B1 read as Grundkenntnisse, C2 as Fließend (LanguageList). */
+    /** The levels of a language, the European ones as ads and CVs name them (design round 7,
+     *  user 2026-10-10), stored as shown. */
     level: {
-      A2: 'Grundkenntnisse',
-      B2: 'Gut',
-      C1: 'Fließend',
+      A1: 'A1',
+      A2: 'A2',
+      B1: 'B1',
+      B2: 'B2',
+      C1: 'C1',
+      C2: 'C2',
       native: 'Muttersprache',
-    } satisfies Partial<Record<ProfileForm['languages'][number]['level'], string>>,
+    } satisfies Record<ProfileForm['languages'][number]['level'], string>,
     availability: {
       now: 'Sofort',
       from: 'Ab Datum',

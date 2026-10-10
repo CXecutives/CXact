@@ -383,10 +383,14 @@
     </div>
   {/if}
 {:else}
-  {#snippet unreadable()}
+  {#snippet head()}
+    {#snippet actions()}
+      <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
+    {/snippet}
     <PageHeader
-      heading={t.profile.unreadable}
+      heading={editor.origin === null && profile?.parseError ? t.profile.unreadable : t.nav.profile}
       headingTestid="profile-heading"
+      actions={editor.origin !== null ? actions : null}
       column="page"
       testid="profile-head"
     />
@@ -403,12 +407,7 @@
       ondiscard={discard}
     />
   {/snippet}
-  <Page
-    testid="profile"
-    {over}
-    head={editor.origin === null && profile?.parseError ? unreadable : null}
-    foot={barShown && editor.origin !== null ? bar : null}
-  >
+  <Page testid="profile" {over} {head} foot={barShown && editor.origin !== null ? bar : null}>
     {#if editor.origin === null}
       <ProfileStart
         text={profile?.parseError
@@ -422,14 +421,10 @@
       />
     {:else}
       {@render notes()}
-      {#snippet actions()}
-        <ProfileActions dirty={editor.dirty} oncv={() => void fillFromCv()} />
-      {/snippet}
       <ProfileEditor
         bind:this={panel}
         {fieldError}
         missing={marked}
-        {actions}
         onsave={() => void trySave()}
         ondiscard={discard}
       />

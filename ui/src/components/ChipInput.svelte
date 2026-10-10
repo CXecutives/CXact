@@ -23,8 +23,8 @@
   typing (Suggestions.svelte): nothing is marked until the arrows or the pointer mark one,
   Enter or a click takes the marked term as a chip, Esc closes the list; Enter without a
   mark and leaving the field take the typed text as always.
-  As tall as a text field (28 px) with one line of chips; with `star` each chip starts with
-  its star (a preferred industry, ChipStar); with chips its input says "+ Rolle" (`more`).
+  As tall as a text field (30 px) with one line of chips, each neutral on the track; with
+  chips its input says "+ Rolle" (`more`).
   Its edge is the text field's (`--field-edge`, coral in a required cell that is still
   empty, red while `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
@@ -44,7 +44,6 @@
   import { ChipFold } from '$lib/state/chipFold.svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
-  import ChipStar from './ChipStar.svelte';
   import Suggestions, {
     folded,
     suggest,
@@ -76,12 +75,6 @@
     noMatch?: string | null;
     /** Terms to suggest while typing, free text stays (null: not loaded yet). */
     suggestions?: Vocabulary | null | undefined;
-    /** A star at the start of each chip that marks it. */
-    star?: {
-      on: (value: string) => boolean;
-      label: (value: string, on: boolean) => string;
-      toggle: (value: string) => void;
-    } | null;
     /** Two lines of chips and "+ n weitere" while the field has no focus. */
     fold?: boolean;
     testid?: string | null;
@@ -101,7 +94,6 @@
     options = null,
     noMatch = null,
     suggestions = undefined,
-    star = null,
     fold = false,
     testid = null,
     onchange,
@@ -339,15 +331,7 @@
     use:chipEdit={entry && options === null ? edit : null}
   >
     {#each visible as value, index (value)}
-      <span class="chip" class:starred={star !== null} data-chip={index} data-value={value}>
-        {#if star}
-          {@const on = star.on(value)}
-          <ChipStar
-            {on}
-            label={star.label(labelOf(value), on)}
-            onclick={() => star.toggle(value)}
-          />
-        {/if}
+      <span class="chip" data-chip={index} data-value={value}>
         <span class="text" data-copy>{labelOf(value)}</span>
         <button
           type="button"
@@ -495,15 +479,11 @@
     min-height: var(--chip-line);
     padding: 0 var(--space-2) 0 var(--space-8);
     border-radius: var(--radius-inner);
-    background-color: var(--active-surface);
-    color: var(--active-text);
+    background-color: var(--chip-surface);
+    color: var(--chip-text);
     font: var(--type-sm);
     font-weight: var(--weight-medium);
     cursor: default;
-  }
-
-  .chip.starred {
-    padding-left: var(--space-2);
   }
 
   /* A long value wraps at its spaces; a word breaks only when it cannot fit alone. */
@@ -520,14 +500,15 @@
     width: calc(var(--chip-line) - 2 * var(--space-2));
     height: calc(var(--chip-line) - 2 * var(--space-2));
     border-radius: var(--radius-xs);
-    color: var(--active-text);
+    color: var(--chip-remove);
     transition:
       background-color var(--dur-fast) var(--ease-standard),
       color var(--dur-fast) var(--ease-standard);
   }
 
   .remove:hover {
-    background-color: var(--active-hover);
+    background-color: var(--chip-remove-hover);
+    color: var(--chip-text);
     transition-duration: var(--dur-hover);
   }
 

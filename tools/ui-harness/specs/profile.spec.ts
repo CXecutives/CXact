@@ -114,18 +114,20 @@ async function tooltipOf(page: Page, target: Locator): Promise<string> {
 
 // ------------------------------------------------------------------ the head
 
-test('no title; "Aus Lebenslauf ausfüllen" ends the first heading line; Speichern floats only with a change', async ({
+test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; Speichern floats only with a change', async ({
   page,
 }) => {
   await profile(page);
-  // No page title (the sidebar names the place; user 2026-10-04).
-  await expect(page.getByTestId('profile-heading')).toHaveCount(0);
-  const head = page.locator('[data-section="job"] .head');
+  // The page's title (design round 7), its one action at the end of its line.
+  await expect(page.getByTestId('profile-heading')).toHaveText(T.nav.profile);
+  const head = page.getByTestId('profile-head');
   const cv = page.getByTestId('profile-from-cv');
   const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
-  const heading = head.getByRole('heading', { level: 2 });
   expect(
-    Math.abs(middle(await cv.boundingBox()) - middle(await heading.boundingBox())),
+    Math.abs(
+      middle(await cv.boundingBox()) -
+        middle(await page.getByTestId('profile-heading').boundingBox()),
+    ),
   ).toBeLessThanOrEqual(1);
   await expect(cv).toHaveText(T.profile.fromCv);
   await expect(cv.locator('[data-icon]')).toHaveAttribute('data-icon', 'pickFile');
@@ -429,36 +431,29 @@ test('Regionen suggest the regions of Germany, Austria and Switzerland; typed te
   ]);
 });
 
-test('Branchen: a star marks a preferred industry', async ({ page }) => {
+test('Branchen: plain names, no star', async ({ page }) => {
   await profile(page);
   const industries = page.getByTestId('profile-industries');
-  const star = industries.getByTestId('chip-star');
-  await expect(star).toHaveCount(3);
-  await expect(star.first()).toHaveAccessibleName(T.profile.field.prefer('Maschinenbau'));
-  await expect(star.first()).toHaveAttribute('aria-pressed', 'false');
-  await star.first().click();
-  await expect(star.first()).toHaveAttribute('aria-pressed', 'true');
-  await expect(star.first()).toHaveAccessibleName(T.profile.field.unprefer('Maschinenbau'));
-  // A new industry starts without one; removing one keeps the others' stars.
+  await expect(industries.getByTestId('chip-star')).toHaveCount(0);
   await industries.locator('input').fill('Energie');
   await industries.locator('input').press('Enter');
   await industries.getByRole('button', { name: 'Automotive entfernen' }).click();
   await save(page).click();
-  expect((await lastSave(page)).after.industries).toEqual([
-    { name: 'Maschinenbau', preferred: true },
-    { name: 'Chemie', preferred: false },
-    { name: 'Energie', preferred: false },
+  expect((await lastSave(page)).after.industries.map((row) => row.name)).toEqual([
+    'Maschinenbau',
+    'Chemie',
+    'Energie',
   ]);
 });
 
-test('Sprachen: no dropdowns, four plain levels, + Sprache with quick picks and typing', async ({
+test('Sprachen: no dropdowns, the levels A1 to C2, + Sprache with quick picks and typing', async ({
   page,
 }) => {
   await profile(page);
   const level = (index: number) => page.getByTestId('language-level').nth(index);
   await expect(level(0).getByRole('radio')).toHaveText(Object.values(T.profile.level));
   await page.getByTestId('language-add').click();
-  // The common languages not chosen yet as quick picks; a new one starts at Gut (B2).
+  // The common languages not chosen yet as quick picks; a new one starts at B2.
   const picks = page.getByTestId('language-pick');
   await expect(picks.getByRole('button')).not.toContainText(['Deutsch']);
   await page.getByTestId('language-pick-Französisch').click();
@@ -677,7 +672,9 @@ test('no profile: one sentence and the two ways as tiles, a click goes its way',
   page,
 }) => {
   await profile(page, '&scenario=no-profile');
-  await expect(page.getByTestId('profile-heading')).toHaveCount(0);
+  // The title without an action: nothing to fill from a CV before a profile exists.
+  await expect(page.getByTestId('profile-heading')).toHaveText(T.nav.profile);
+  await expect(page.getByTestId('profile-from-cv')).toHaveCount(0);
   await expect(page.getByTestId('profile-empty')).toContainText(T.profile.noneText);
   const ways = page.getByTestId('new-profile-ways');
   await expect(ways.getByTestId('way-cv')).toContainText(T.profile.fromCv);
@@ -1037,9 +1034,9 @@ test('"Häufig verlangt" under its field: the terms the jobs ask for, each where
     const row = askedRow(page, term);
     await expect(row).toHaveCount(1);
     await expect(page.locator(`[data-field~="${key}"] [data-for="${kind}"]`)).toContainText(term);
-    const count = Number(await row.getByTestId('asked-add').locator('.count').textContent());
-    expect(count).toBeGreaterThanOrEqual(2);
-    expect(count).toBeLessThanOrEqual(askingJobs(term));
+    // Only the term with its +: no count (design round 7).
+    await expect(row.getByTestId('asked-add').locator('.count')).toHaveCount(0);
+    expect(askingJobs(term)).toBeGreaterThanOrEqual(2);
   }
   const stored = (await page.evaluate(() => window.__harness.form()))!;
   const names = [

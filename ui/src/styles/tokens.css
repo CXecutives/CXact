@@ -172,8 +172,13 @@
   --active-surface: hsl(var(--p-navy-50));
   --active-edge: hsl(var(--p-navy));
   --active-text: hsl(var(--p-navy-deep));
-  /* Under the pointer inside a navy chip (the remove button of a chip). */
+  /* Under the pointer inside a navy chip. */
   --active-hover: hsl(var(--p-navy-150));
+  /* A chip in a field: neutral, the app's ink on the track (design round 7, professional). */
+  --chip-surface: hsl(var(--p-track));
+  --chip-text: var(--text);
+  --chip-remove: var(--text-subtle);
+  --chip-remove-hover: hsl(var(--p-wash) / 0.08);
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
   --meter-fill: hsl(var(--p-navy));
   --meter-track: hsl(var(--p-navy-100));
@@ -478,8 +483,8 @@
   /* A number of the Profil (euros, years) with its unit inside at its right, and a day
      field: one width. */
   --number-width: 128px;
-  /* The years of a competence (two digits and "Jahre" as the placeholder). */
-  --years-width: 64px;
+  /* The years of a competence (two digits and "Jahre" inside). */
+  --years-width: 96px;
   /* The input after the chips of a chip field: room for its whole "+ Zertifikat". */
   --chip-entry-min: 96px;
   /* A field of a page: its label above its control, this far apart (Field). */
@@ -496,6 +501,8 @@
   --layout-group-radius: 12px;
   --layout-group-pad: 16px;
   --layout-field-gap: 16px;
+  /* Between two short fields side by side (design round 7). */
+  --layout-column-gap: 20px;
   --layout-heading-gap: 8px;
   --layout-section-gap: 32px;
   /* The dashed edge of a drop zone (the CV's upload). */
@@ -709,18 +716,6 @@
   --opacity-muted: 0.6;
   /* A link while it is pressed. */
   --opacity-press: 0.7;
-}
-
-/* A dark surface (the floating bar of the Profil's unsaved changes, on --surface-inverse):
-   what stands on it takes the light ink, its links a light navy, its quiet buttons a light
-   wash, the keyboard's ring white. */
-[data-surface='inverse'] {
-  --text: var(--text-inverse);
-  --text-muted: var(--text-inverse-muted);
-  --link: hsl(var(--p-navy-200));
-  --link-hover: var(--text-inverse);
-  --quiet-hover: hsl(var(--p-white) / 0.1);
-  --quiet-press: hsl(var(--p-white) / 0.16);
 }
 
 /* A required field that is still empty (its cell in the profile carries `data-missing`,

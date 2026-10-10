@@ -231,7 +231,6 @@
               label={t.actions.emptyTrash}
               disabled={run.active}
               disabledReason={run.busyText}
-              warns
               wide
               testid="empty-trash"
               onclick={askEmpty}

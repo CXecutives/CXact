@@ -131,7 +131,6 @@
             variant="suggest"
             icon="add"
             label={term.term}
-            count={term.count}
             testid="asked-add"
             onclick={(event) => void add(term, event)}
           />

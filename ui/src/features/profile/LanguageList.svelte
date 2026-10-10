@@ -1,11 +1,11 @@
 <!--
-  The languages (user 2026-10-04), no dropdowns: one row each with the language's name, its
-  level as a segmented control of four plain levels (Grundkenntnisse, Gut, Fließend,
-  Muttersprache, stored as A2, B2, C1 and native; a stored A1 or B1 shows as Grundkenntnisse,
-  a C2 as Fließend, and stays until another level is chosen) and its x. "+ Sprache" opens an
+  The languages, no dropdowns: one row each with the language's name, its level as a
+  segmented control of the European levels A1 to C2 and Muttersprache (design round 7, as ads
+  and CVs name them; stored as shown) and its x, the rows in the quiet list of the
+  competences (hairlines between them). "+ Sprache" opens an
   inline field under the rows: the common languages not chosen yet as quick picks
   (QuickPicks), and typing finds any other language the app knows; a new language starts at
-  Gut, the level the engine assumes. Without a language the field stands open (coral while
+  B2, the level the engine assumes. Without a language the field stands open (coral while
   its cell is marked as missing). The x needs no tooltip; removing a row puts no caret
   anywhere (input.ts removeBy). A value the backend refused is said under the rows.
 -->
@@ -30,21 +30,10 @@
 
   const words = $derived(t.profile.field);
   const id = $props.id();
-  type Shown = keyof typeof de.profile.level;
   /** The level a new language starts at (the one the engine assumes without one). */
-  const ASSUMED: Shown = 'B2';
-  /** The plain level a stored level shows as. */
-  const SHOWN: Record<LanguageLevel, Shown> = {
-    A1: 'A2',
-    A2: 'A2',
-    B1: 'A2',
-    B2: 'B2',
-    C1: 'C1',
-    C2: 'C1',
-    native: 'native',
-  };
+  const ASSUMED: LanguageLevel = 'B2';
   const LEVELS = $derived(
-    (Object.keys(t.profile.level) as Shown[]).map((level) => ({
+    (Object.keys(t.profile.level) as LanguageLevel[]).map((level) => ({
       id: level,
       label: t.profile.level[level],
     })),
@@ -88,7 +77,8 @@
           <span class="name" data-copy data-testid="language-name">{row.language}</span>
           <Segmented
             options={LEVELS}
-            value={SHOWN[row.level]}
+            value={row.level}
+            fit
             label={words.level}
             testid="language-level"
             onchange={(next) => (row.level = next)}
@@ -153,17 +143,25 @@
     min-width: 0;
   }
 
-  /* name | level | remove in one grid for every row, the levels lined up; where the room is
-     short the levels give way (their labels shorten), never the names. */
+  /* name | level | remove, a hairline between the rows like the competences; the levels
+     line up at the right; where the room is short they give way (their labels shorten),
+     never the names. */
   .list {
-    display: grid;
-    grid-template-columns: minmax(min-content, 1fr) minmax(0, max-content) var(--control-field);
-    align-items: center;
-    gap: var(--space-6) var(--space-12);
+    display: flex;
+    flex-direction: column;
   }
 
   .row {
-    display: contents;
+    display: grid;
+    grid-template-columns: minmax(min-content, 1fr) minmax(0, max-content) var(--control-field);
+    align-items: center;
+    gap: var(--space-12);
+    padding: var(--space-6) 0;
+    border-bottom: var(--border-width) solid var(--border);
+  }
+
+  .row:first-child {
+    border-top: var(--border-width) solid var(--border);
   }
 
   .name {
