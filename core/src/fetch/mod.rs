@@ -51,6 +51,8 @@ const MIN_TEXT_CHARS: usize = 100;
 const WAIT_NOTICE: Duration = Duration::from_secs(1);
 /// So many suspicious pages in a row stop a portal for the run.
 pub(crate) const SUSPICIOUS_STREAK: u32 = 2;
+/// So many job pages in a row with the same 4xx status stop a portal for the run.
+pub(crate) const REJECTED_STREAK: u32 = 3;
 
 /// Why a page gave no full text, or why a portal stopped - a code, never prose. Stored as
 /// its [`Display`](fmt::Display) form (`noDescription`, `http429`).
@@ -124,7 +126,8 @@ impl Cause {
     /// forced interstitial) rather than about one job? Only such pages feed the breaker and
     /// the "layout changed" health. A per-job verdict - another job's page, an expired
     /// project that leads to the search, an odd redirect, a 4xx status, an oversized page -
-    /// costs that job an attempt and says nothing about the portal.
+    /// costs that job an attempt and says nothing about the portal (the same 4xx on page
+    /// after page does: [`REJECTED_STREAK`]).
     pub fn is_layout_signal(self) -> bool {
         !matches!(
             self,
@@ -540,6 +543,9 @@ pub enum StopReason {
     Network { cause: Cause },
     /// The search found no page its robots.txt allows (every page refused, none asked).
     Refused,
+    /// The same 4xx status on [`REJECTED_STREAK`] job pages in a row: the portal turns the
+    /// pages away (an anti-bot answer), not each job its own - it rests until the next run.
+    Rejected { cause: Cause },
 }
 
 impl StopReason {
@@ -563,6 +569,10 @@ impl StopReason {
             StopReason::Refused => PortalHealth::Paused {
                 until: None,
                 reason: PauseReason::Robots,
+            },
+            StopReason::Rejected { .. } => PortalHealth::Paused {
+                until: None,
+                reason: PauseReason::Blocked,
             },
             StopReason::Network { .. } => PortalHealth::Paused {
                 until: None,
@@ -594,6 +604,10 @@ impl StopReason {
                 format!("{key}: network trouble ({cause}), {skipped} left")
             }
             StopReason::Refused => format!("{key}: robots.txt allowed no search page"),
+            StopReason::Rejected { cause } => format!(
+                "{key}: {cause} on {REJECTED_STREAK} pages in a row, {skipped} left until the \
+                 next run"
+            ),
         }
     }
 }
@@ -1059,6 +1073,8 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
     // of every run always does: a series that never ends (the streak persists across runs)
     // must not keep requesting the same page for free.
     let mut charged = false;
+    // The 4xx status of the last pages and how many in a row answered it (this run only).
+    let mut rejected: (u16, u32) = (0, 0);
     let mut index = 0;
     while index < jobs.len() {
         let job = &jobs[index];
@@ -1114,6 +1130,16 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 PageOutcome::Suspicious(Cause::RepeatedRedirect)
             }
             other => other,
+        };
+        // The same 4xx on page after page (a sign-in wall, an anti-bot answer) is the
+        // portal's answer, not each job's: only the first page of the series costs its job an
+        // attempt, the next jobs stay queued untouched, and the series stops the portal.
+        rejected = match outcome {
+            PageOutcome::Suspicious(Cause::Http(code @ 400..=499)) if code == rejected.0 => {
+                (code, rejected.1 + 1)
+            }
+            PageOutcome::Suspicious(Cause::Http(code @ 400..=499)) => (code, 1),
+            _ => (0, 0),
         };
 
         let now = clock();
@@ -1209,6 +1235,15 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                         status: DescStatus::Gone,
                     },
                 );
+                None
+            }
+            // The same 4xx as the page before: this job stays as it was (queued, no attempt),
+            // and the series stops the portal for this run when it is long enough.
+            PageOutcome::Suspicious(cause) if rejected.1 >= REJECTED_STREAK => {
+                Some(StopReason::Rejected { cause })
+            }
+            PageOutcome::Suspicious(_) if rejected.1 > 1 => {
+                counts.skipped += 1;
                 None
             }
             // One job's own odd page (another job, an expired project, an odd redirect, a

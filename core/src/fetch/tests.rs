@@ -1974,3 +1974,99 @@ async fn a_robots_txt_that_answers_4xx_allows_and_is_kept() {
         assert_eq!(asked, 1, "{status}");
     }
 }
+
+/// The same 4xx on page after page is the portal turning pages away (a sign-in wall, an
+/// anti-bot answer), not every job its own: the first job of the series is charged, the next
+/// ones stay queued untouched, and the third in a row stops the portal for the run - without a
+/// pause. So a portal that answers 4xx to everything charges one job a run, never the whole
+/// queue.
+#[tokio::test(start_paused = true)]
+async fn the_same_4xx_on_page_after_page_stops_the_portal_for_the_run() {
+    let c = clock();
+    let ids = [10_001, 10_002, 10_003, 10_004, 10_005];
+    let jobs: Vec<(Portal, u64, i64)> = ids
+        .iter()
+        .zip(1..)
+        .map(|(&id, days)| (FM, id, days))
+        .collect();
+    let store = store_with(&jobs);
+    let rejected = PageOutcome::Suspicious(Cause::Http(405));
+    let mut fake = Fake::default();
+    for id in ids {
+        fake = fake.with(&id.to_string(), vec![rejected.clone(); 3]);
+    }
+    let mut policy = Policy::in_memory();
+    let r = run(&fake, &store, &mut policy, Selection::Queue(&[FM]), &c).await;
+    assert_eq!(fake.ids(), ["10001", "10002", "10003"]);
+    let reason = StopReason::Rejected {
+        cause: Cause::Http(405),
+    };
+    assert_eq!(r.stops, [(FM, reason.clone(), 3)]);
+    let n = &r.summary.per_portal[&FM];
+    assert_eq!((n.ok, n.failed, n.skipped), (0, 1, 4));
+    let job = |id| store.job(&key(FM, id)).unwrap().unwrap();
+    let state = |id| {
+        let job = job(id);
+        (job.desc_status, job.desc_attempts)
+    };
+    assert_eq!(state(10_001), (DescStatus::Failed, 1));
+    for id in [10_002, 10_003, 10_004, 10_005] {
+        assert_eq!(state(id), (DescStatus::Missing, 0), "{id}");
+        let job = job(id);
+        assert!(
+            job.desc_error.is_none() && job.desc_attempted_at.is_none(),
+            "{id}"
+        );
+    }
+    // For the run only: no pause, no layout warning; the interface hears of a block that the
+    // next fetch tries again.
+    assert_eq!(policy.allowance(FM, c()), Allowance::Go);
+    assert_eq!(policy.state(FM).suspicious_streak, 0);
+    assert_eq!(
+        reason.health(),
+        PortalHealth::Paused {
+            until: None,
+            reason: PauseReason::Blocked
+        }
+    );
+    // The next run: the open jobs first, again one charged.
+    let r = run(&fake, &store, &mut policy, Selection::Queue(&[FM]), &c).await;
+    assert_eq!(&fake.ids()[3..], ["10002", "10003", "10004"]);
+    assert_eq!(r.stops, [(FM, reason, 2)]);
+    assert_eq!(state(10_002), (DescStatus::Failed, 1));
+    assert_eq!(state(10_003), (DescStatus::Missing, 0));
+}
+
+/// A 4xx series that breaks before it stops the portal: the jobs behind it are read, its
+/// later pages left untouched; another status starts a series anew and is charged.
+#[tokio::test(start_paused = true)]
+async fn a_broken_4xx_series_reads_on() {
+    let c = clock();
+    let store = store_with(&[
+        (FM, 10_001, 1),
+        (FM, 10_002, 2),
+        (FM, 10_003, 3),
+        (FM, 10_004, 4),
+        (FM, 10_005, 5),
+    ]);
+    let fake = Fake::default()
+        .with("10001", [PageOutcome::Suspicious(Cause::Http(405))])
+        .with("10002", [PageOutcome::Suspicious(Cause::Http(405))])
+        .with("10004", [PageOutcome::Suspicious(Cause::Http(405))])
+        .with("10005", [PageOutcome::Suspicious(Cause::Http(406))]);
+    let mut policy = Policy::in_memory();
+    let r = run(&fake, &store, &mut policy, Selection::Queue(&[FM]), &c).await;
+    assert!(r.stops.is_empty(), "{:?}", r.stops);
+    assert_eq!(fake.calls().len(), 5);
+    let n = &r.summary.per_portal[&FM];
+    assert_eq!((n.ok, n.failed, n.skipped), (1, 3, 1));
+    let state = |id| {
+        let job = store.job(&key(FM, id)).unwrap().unwrap();
+        (job.desc_status, job.desc_attempts)
+    };
+    assert_eq!(state(10_001), (DescStatus::Failed, 1));
+    assert_eq!(state(10_002), (DescStatus::Missing, 0));
+    assert_eq!(state(10_003).0, DescStatus::Ok);
+    assert_eq!(state(10_004), (DescStatus::Failed, 1));
+    assert_eq!(state(10_005), (DescStatus::Failed, 1));
+}
