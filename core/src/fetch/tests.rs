@@ -2229,7 +2229,7 @@ async fn a_broken_4xx_series_reads_on() {
 }
 
 /// A database error in one portal stops the others, but what they did stays in the summary:
-/// their counts and their stops.
+/// their counts and their stops - and the failing portal's own, up to the job it failed on.
 #[tokio::test(start_paused = true)]
 async fn a_failing_portal_keeps_the_others_counts() {
     let c = clock();
@@ -2261,5 +2261,6 @@ async fn a_failing_portal_keeps_the_others_counts() {
     assert!(result.is_err());
     assert_eq!(fake.ids().len(), 3);
     assert_eq!(summary.per_portal[&FM].ok, 1);
-    assert!(!summary.per_portal.contains_key(&LI));
+    // LinkedIn's first page was stored before the second one failed: it stays counted.
+    assert_eq!(summary.per_portal[&LI].ok, 1);
 }

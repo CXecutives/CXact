@@ -836,11 +836,12 @@ struct Shared<'a, C: Fn() -> Timestamp> {
     clock: &'a C,
 }
 
-/// What a portal loop leaves behind.
+/// What a portal loop leaves behind: its counts also when it failed, and how it ended
+/// (`true`: it ran to its end).
 struct PortalRun {
     portal: Portal,
     counts: PortalCounts,
-    completed: bool,
+    result: crate::Result<bool>,
 }
 
 /// Message of a portal loop to the one event collector.
@@ -981,7 +982,7 @@ pub async fn fetch_all<F: PageFetcher>(
         .into_iter()
         .map(|work| Box::pin(fetch_portal(work, &shared, notes.clone())))
         .collect();
-    let mut runs: Vec<Option<crate::Result<PortalRun>>> = loops.iter().map(|_| None).collect();
+    let mut runs: Vec<Option<PortalRun>> = loops.iter().map(|_| None).collect();
     let mut done = 0;
     let mut deliver = |note: Note| match note {
         Note::Event(event) => on_event(event),
@@ -1020,20 +1021,15 @@ pub async fn fetch_all<F: PageFetcher>(
 }
 
 /// The portal loops' results into `summary`. A portal that failed takes nothing from the
-/// others: their counts and stops stay, and the first error is the fetch's. `true` when every
-/// loop ran to its end.
-fn collect(
-    runs: Vec<Option<crate::Result<PortalRun>>>,
-    summary: &mut FetchSummary,
-) -> crate::Result<bool> {
+/// others, and nothing of its own: every portal's counts and stops stay, and the first error is
+/// the fetch's. `true` when every loop ran to its end.
+fn collect(runs: Vec<Option<PortalRun>>, summary: &mut FetchSummary) -> crate::Result<bool> {
     let mut completed = true;
     let mut failure = None;
-    for result in runs.into_iter().flatten() {
-        match result {
-            Ok(run) => {
-                completed &= run.completed;
-                summary.per_portal.insert(run.portal, run.counts);
-            }
+    for run in runs.into_iter().flatten() {
+        summary.per_portal.insert(run.portal, run.counts);
+        match run.result {
+            Ok(done) => completed &= done,
             Err(e) => {
                 failure.get_or_insert(e);
             }
@@ -1089,17 +1085,18 @@ async fn fetch_portal<F: PageFetcher, C: Fn() -> Timestamp>(
     work: (Portal, Vec<JobRow>, F),
     shared: &Shared<'_, C>,
     notes: mpsc::UnboundedSender<Note>,
-) -> crate::Result<PortalRun> {
+) -> PortalRun {
     let portal = work.0;
-    let result = portal_loop(work, shared, &notes).await;
+    let mut counts = PortalCounts::default();
+    let result = portal_loop(work, shared, &notes, &mut counts).await;
     if result.is_err() {
         shared.cancel.cancel();
     }
-    result.map(|(counts, completed)| PortalRun {
+    PortalRun {
         portal,
         counts,
-        completed,
-    })
+        result,
+    }
 }
 
 #[expect(
@@ -1110,10 +1107,10 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
     (portal, jobs, mut fetcher): (Portal, Vec<JobRow>, F),
     shared: &Shared<'_, C>,
     notes: &mpsc::UnboundedSender<Note>,
-) -> crate::Result<(PortalCounts, bool)> {
+    counts: &mut PortalCounts,
+) -> crate::Result<bool> {
     let (store, policy, cancel, clock) = (shared.store, shared.policy, shared.cancel, shared.clock);
     let on = shared.on;
-    let mut counts = PortalCounts::default();
     let session = fetcher.session();
     // One sign-in per portal and run; afterwards the same job is tried again.
     let mut login_tried = false;
@@ -1137,11 +1134,11 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
             match access(&mut fetcher, (policy, on), &link, cancel, clock, notes).await? {
                 Ok(outcome) => outcome,
                 Err(Halt::Stop(reason)) => {
-                    stop(&mut counts, &reason, remaining, portal, notes);
+                    stop(counts, &reason, remaining, portal, notes);
                     break;
                 }
                 Err(Halt::Off) => {
-                    switched_off(&mut counts, portal, remaining);
+                    switched_off(counts, portal, remaining);
                     break;
                 }
             };
@@ -1155,7 +1152,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 },
             );
             if !sleep_for(NET_RETRY, cancel).await {
-                return Ok((counts, false));
+                return Ok(false);
             }
             outcome = match access(&mut fetcher, (policy, on), &link, cancel, clock, notes).await? {
                 Ok(PageOutcome::NetError { timeout: true, .. }) => PageOutcome::Throttled {
@@ -1164,11 +1161,11 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 },
                 Ok(outcome) => outcome,
                 Err(Halt::Stop(reason)) => {
-                    stop(&mut counts, &reason, remaining, portal, notes);
+                    stop(counts, &reason, remaining, portal, notes);
                     break;
                 }
                 Err(Halt::Off) => {
-                    switched_off(&mut counts, portal, remaining);
+                    switched_off(counts, portal, remaining);
                     break;
                 }
             };
@@ -1198,7 +1195,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
             PageOutcome::Cancelled => {
                 // The answer time counts for the next gap even after a cancellation.
                 lock(policy).save()?;
-                return Ok((counts, false));
+                return Ok(false);
             }
             PageOutcome::Retry(_) => {
                 retried = Some(index);
@@ -1354,8 +1351,8 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                 } else {
                     login_tried = true;
                     if !on(portal) {
-                        switched_off(&mut counts, portal, remaining);
-                        return Ok((counts, true));
+                        switched_off(counts, portal, remaining);
+                        return Ok(true);
                     }
                     // The sign-in page is a portal request like any other.
                     let admission = admit(policy, portal, cancel, clock, |until| {
@@ -1366,13 +1363,13 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                         Admission::Stop(reason) => Some(reason),
                         Admission::Cancelled => {
                             lock(policy).save()?;
-                            return Ok((counts, false));
+                            return Ok(false);
                         }
                         // Switched off during the wait: no sign-in window.
                         Admission::Go if !on(portal) => {
                             lock(policy).save()?;
-                            switched_off(&mut counts, portal, remaining);
-                            return Ok((counts, true));
+                            switched_off(counts, portal, remaining);
+                            return Ok(true);
                         }
                         Admission::Go => {
                             note(notes, FetchEvent::SigningIn { portal });
@@ -1392,7 +1389,7 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
                                 }
                                 Login::NotSignedIn if cancel.is_cancelled() => {
                                     lock(policy).save()?;
-                                    return Ok((counts, false));
+                                    return Ok(false);
                                 }
                                 Login::NotSignedIn => Some(StopReason::LoginRequired),
                             }
@@ -1436,12 +1433,12 @@ async fn portal_loop<F: PageFetcher, C: Fn() -> Timestamp>(
             } else {
                 remaining
             };
-            stop(&mut counts, &reason, skipped, portal, notes);
+            stop(counts, &reason, skipped, portal, notes);
             break;
         }
         index += 1;
     }
-    Ok((counts, true))
+    Ok(true)
 }
 
 /// Open jobs: automatically only from the last 30 days; explicitly chosen jobs older ones

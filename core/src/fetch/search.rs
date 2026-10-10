@@ -335,7 +335,7 @@ pub async fn search_all<F: PageFetcher>(
         })
         .collect();
     drop(notes);
-    let mut results: Vec<Option<crate::Result<(Portal, SearchCounts, Ended)>>> =
+    let mut results: Vec<Option<(Portal, SearchCounts, crate::Result<Ended>)>> =
         searches.iter().map(|_| None).collect();
     // All sources side by side in this one task; what a search reports is delivered right
     // after its step.
@@ -362,28 +362,52 @@ pub async fn search_all<F: PageFetcher>(
     while let Ok(event) = incoming.try_recv() {
         on_event(event);
     }
+    // A source that failed takes nothing from the others: every source's counts stay in
+    // `found`, and the first error is the search's.
     let mut completed = true;
-    for result in results.into_iter().flatten() {
-        let (portal, counts, ended) = result?;
-        completed &= matches!(ended, Ended::Completed);
+    let mut failure = None;
+    for (portal, counts, ended) in results.into_iter().flatten() {
         found.insert(portal, counts);
+        match ended {
+            Ok(ended) => completed &= matches!(ended, Ended::Completed),
+            Err(e) => {
+                failure.get_or_insert(e);
+            }
+        }
     }
-    Ok(completed)
+    failure.map_or(Ok(completed), Err)
+}
+
+/// One source's search with what it brought: the counts come back even when the search
+/// failed (a database error, a state that could not be saved), so the run keeps what the
+/// pages already brought.
+async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
+    portal: Portal,
+    urls: FirstPages,
+    fetcher: F,
+    shared: &Shared<'_, C>,
+    notes: mpsc::UnboundedSender<SearchEvent>,
+) -> (Portal, SearchCounts, crate::Result<Ended>) {
+    let mut counts = SearchCounts::default();
+    let ended = search_terms(portal, urls, fetcher, shared, notes, &mut counts).await;
+    (portal, counts, ended)
 }
 
 /// One source's search: its robots.txt, then each term's pages one after the other at the
-/// source's pace, deeper while a page brings new jobs.
+/// source's pace, deeper while a page brings new jobs. What it brings goes into `counts` as
+/// it goes.
 #[expect(
     clippy::too_many_lines,
     reason = "the robots.txt, the pages, the paging and the outcome of each read best in one piece"
 )]
-async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
+async fn search_terms<F: PageFetcher, C: Fn() -> Timestamp>(
     portal: Portal,
     urls: FirstPages,
     mut fetcher: F,
     shared: &Shared<'_, C>,
     notes: mpsc::UnboundedSender<SearchEvent>,
-) -> crate::Result<(Portal, SearchCounts, Ended)> {
+    counts: &mut SearchCounts,
+) -> crate::Result<Ended> {
     let Shared {
         store,
         policy,
@@ -397,7 +421,6 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     let send = |event: SearchEvent| {
         let _ = notes.send(event);
     };
-    let mut counts = SearchCounts::default();
     let planned = urls.len();
     let robots = search_robots_of(&mut fetcher, policy, portal, cancel, clock, |until| {
         send(SearchEvent::Waiting { portal, until });
@@ -406,20 +429,20 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     let robots = match robots {
         Ok(robots) => robots,
         Err(Blocker::Page(outcome)) if *outcome == PageOutcome::Cancelled => {
-            return Ok((portal, counts, Ended::Cancelled));
+            return Ok(Ended::Cancelled);
         }
         Err(Blocker::Stop(reason)) => {
-            stopped(&mut counts, portal, Some(reason), &send);
+            stopped(counts, portal, Some(reason), &send);
             shared.done.fetch_add(planned, Ordering::Relaxed);
             send(SearchEvent::SourceDone { portal, new: 0 });
-            return Ok((portal, counts, Ended::Completed));
+            return Ok(Ended::Completed);
         }
         Err(Blocker::Page(outcome)) => {
             let reason = stop_reason(policy, portal, &outcome, clock())?;
-            stopped(&mut counts, portal, reason, &send);
+            stopped(counts, portal, reason, &send);
             shared.done.fetch_add(planned, Ordering::Relaxed);
             send(SearchEvent::SourceDone { portal, new: 0 });
-            return Ok((portal, counts, Ended::Completed));
+            return Ok(Ended::Completed);
         }
     };
     let adapter = portal.adapter();
@@ -478,7 +501,7 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
                 }
                 Admission::Stop(reason) => {
                     left.insert(first.to_string(), page);
-                    stopped(&mut counts, portal, Some(reason), &send);
+                    stopped(counts, portal, Some(reason), &send);
                     break 'terms;
                 }
                 Admission::Go => {}
@@ -562,7 +585,7 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
             lock(policy).save()?;
             if let Some(reason) = reason {
                 left.insert(first.to_string(), page);
-                stopped(&mut counts, portal, reason, &send);
+                stopped(counts, portal, reason, &send);
                 break 'terms;
             }
             // Deeper while the page brought jobs the list did not know; where the last search
@@ -608,13 +631,13 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     }
     // Every page refused and none asked: no "ok" with no jobs.
     if counts.pages == 0 && counts.refused > 0 && counts.stop.is_none() {
-        stopped(&mut counts, portal, Some(StopReason::Refused), &send);
+        stopped(counts, portal, Some(StopReason::Refused), &send);
     }
     send(SearchEvent::SourceDone {
         portal,
         new: counts.new.saturating_sub(counts.excluded),
     });
-    Ok((portal, counts, ended))
+    Ok(ended)
 }
 
 /// The source's search ends for this run; a reason the user should learn is told.
@@ -789,6 +812,22 @@ mod tests {
         plan: &SearchPlan<'_>,
         on: &PortalOnFn<'_>,
     ) -> (bool, BTreeMap<Portal, SearchCounts>, Vec<SearchEvent>) {
+        let (done, found, events) = try_search_with(fakes, store, policy, plan, on).await;
+        (done.unwrap(), found, events)
+    }
+
+    /// Like [`search_with`], with the search's own result (it may fail).
+    async fn try_search_with(
+        fakes: &mut BTreeMap<Portal, Fake>,
+        store: &Store,
+        policy: &Mutex<Policy>,
+        plan: &SearchPlan<'_>,
+        on: &PortalOnFn<'_>,
+    ) -> (
+        crate::Result<bool>,
+        BTreeMap<Portal, SearchCounts>,
+        Vec<SearchEvent>,
+    ) {
         let mut found = BTreeMap::new();
         let mut events = Vec::new();
         let start = Timestamp::now();
@@ -805,8 +844,7 @@ mod tests {
             &mut found,
             |event| events.push(event),
         )
-        .await
-        .unwrap();
+        .await;
         (done, found, events)
     }
 
@@ -1189,6 +1227,72 @@ mod tests {
                 ));
             }
         }
+    }
+
+    /// A hit of `portal`'s own search.
+    fn hit_at(portal: Portal, id: &str) -> Hit {
+        let adapter = portal.adapter();
+        Hit {
+            link: adapter
+                .canonical_url(id)
+                .and_then(|url| adapter.job_link(&url))
+                .unwrap(),
+            title: format!("Interim CFO {id}"),
+            company: String::new(),
+            location: "Hamburg".to_owned(),
+            contract: None,
+        }
+    }
+
+    /// A database error in one source's search ends that source and fails the search, but
+    /// loses nothing of what the run found: the other source's counts and the pages the
+    /// failing one had stored stay in `found`.
+    #[tokio::test(start_paused = true)]
+    async fn a_failing_source_keeps_the_counts_of_all() {
+        let store = Store::in_memory().unwrap();
+        let policy = Mutex::new(Policy::in_memory());
+        // Hays's second page cannot be stored: its job is refused by the database.
+        store.execute_for_test(
+            "CREATE TRIGGER no_page BEFORE INSERT ON job WHEN NEW.job_id = '891482'
+             BEGIN SELECT RAISE(ABORT, 'Test'); END;",
+        );
+        let mut fakes = BTreeMap::from([
+            (
+                HAYS,
+                Fake {
+                    answers: VecDeque::from([
+                        Ok(vec![hit("891480"), hit("891481")]),
+                        Ok(vec![hit("891482")]),
+                    ]),
+                    ..Fake::default()
+                },
+            ),
+            (
+                FM,
+                Fake {
+                    answers: VecDeque::from([
+                        Ok(vec![hit_at(FM, "10001"), hit_at(FM, "10002")]),
+                        Ok(Vec::new()),
+                    ]),
+                    ..Fake::default()
+                },
+            ),
+        ]);
+        let on = |_: Portal| true;
+        let words = terms(&["CFO"]);
+        let plan = SearchPlan {
+            portals: &[HAYS, FM],
+            terms: &words,
+            contracts: Contracts::PROJECTS,
+            prescore: None,
+            screen: None,
+        };
+        let (result, found, _) = try_search_with(&mut fakes, &store, &policy, &plan, &on).await;
+        assert!(result.is_err(), "the database error is the search's");
+        let hays = &found[&HAYS];
+        assert_eq!((hays.pages, hays.hits, hays.new), (2, 2, 2));
+        let fm = &found[&FM];
+        assert_eq!((fm.pages, fm.hits, fm.new), (2, 2, 2));
     }
 
     #[tokio::test(start_paused = true)]

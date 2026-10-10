@@ -1612,3 +1612,34 @@ async fn a_search_bookkeeping_error_does_not_fail_the_run() {
         assert_eq!(finished(&events), 1);
     }
 }
+
+/// A search that fails (here: a hit the database refuses) fails the run, but the run's summary
+/// keeps what the search did until then: the pages it asked for.
+#[tokio::test(start_paused = true)]
+async fn a_failed_search_keeps_its_counts_in_the_summary() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::in_memory().unwrap();
+    store.execute_for_test(
+        "CREATE TRIGGER no_hit BEFORE INSERT ON job WHEN NEW.job_id = '896260'
+         BEGIN SELECT RAISE(ABORT, 'Test'); END;",
+    );
+    let ctx = RunContext {
+        search_portals: vec![Portal::Hays],
+        search_terms: vec!["Interim CFO".to_owned()],
+        ..ctx(dir.path(), true)
+    };
+    let c = clock();
+    let (summary, events) = go(
+        &mut DryRunBackends,
+        &store,
+        &request(),
+        &ctx,
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    assert!(matches!(summary.outcome, Outcome::Failed { .. }));
+    let found = &summary.search.as_ref().unwrap()[&Portal::Hays];
+    assert_eq!(found.pages, 1);
+    assert_eq!(finished(&events), 1);
+}
