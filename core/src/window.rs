@@ -163,11 +163,11 @@ pub fn restore(stored: Option<Placement>, screens: &[Screen]) -> Restore {
 pub const BAR_HEIGHT: u32 = 36;
 pub const CAPTION_BUTTON: u32 = 46;
 /// The page's own buttons at the left of the bar, from the window's edge: an inset of 6 px and
-/// three 28 px buttons 2 px apart (the sidebar, Zurück, Vor). `--titlebar-tools-start`.
-pub const TOOLS_START: u32 = 94;
+/// three 30 px buttons 2 px apart (Zurück, Vor, the sidebar). `--titlebar-tools-start`.
+pub const TOOLS_START: u32 = 100;
 /// The page's own button at the right of the bar, directly left of the caption buttons: a
-/// 28 px button and 6 px before them (the reader). `--titlebar-tools-end`.
-pub const TOOLS_END: u32 = 34;
+/// 30 px button and 6 px before them (the reader). `--titlebar-tools-end`.
+pub const TOOLS_END: u32 = 36;
 
 /// What a point of the window's client area is to the OS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -274,8 +274,8 @@ mod tests {
         assert_eq!(bar.hit(1360 - 92, 35), BarHit::Maximize);
         assert_eq!(bar.hit(1360 - 93, 35), BarHit::Minimize);
         assert_eq!(bar.hit(1360 - 138, 0), BarHit::Minimize);
-        assert_eq!(bar.hit(1360 - 173, 0), BarHit::Caption);
-        assert_eq!(bar.hit(94, 0), BarHit::Caption);
+        assert_eq!(bar.hit(1360 - 175, 0), BarHit::Caption);
+        assert_eq!(bar.hit(100, 0), BarHit::Caption);
         // Below the bar and beside the client area: the page and the frame.
         assert_eq!(bar.hit(1359, 36), BarHit::Page);
         assert_eq!(bar.hit(-1, 10), BarHit::Page);
@@ -296,8 +296,8 @@ mod tests {
         assert_eq!(bar.hit(2040 - 138, 0), BarHit::Maximize);
         assert_eq!(bar.hit(2040 - 139, 0), BarHit::Minimize);
         assert_eq!(bar.hit(2040 - 208, 0), BarHit::Page);
-        assert_eq!(bar.hit(2040 - 259, 0), BarHit::Caption);
-        assert_eq!(bar.hit(141, 0), BarHit::Caption);
+        assert_eq!(bar.hit(2040 - 262, 0), BarHit::Caption);
+        assert_eq!(bar.hit(150, 0), BarHit::Caption);
         assert_eq!(bar.hit(10, 54), BarHit::Page);
         // 125 %: the bar is 45 px high.
         assert_eq!(Bar { dpi: 120, ..bar }.height(), 45);
@@ -323,8 +323,8 @@ mod tests {
         assert_eq!(maximized.hit(999, 0), BarHit::Close);
     }
 
-    /// The page's own buttons take the pointer at the left (94 px from the edge) and right
-    /// before the caption buttons (34 px), over the bar's full height; the top resize edge of
+    /// The page's own buttons take the pointer at the left (100 px from the edge) and right
+    /// before the caption buttons (36 px), over the bar's full height; the top resize edge of
     /// a window that is not maximized still lies over them.
     #[test]
     fn the_page_keeps_its_own_buttons_in_the_bar() {
@@ -333,49 +333,49 @@ mod tests {
             dpi: 96,
             edge: 0,
         };
-        assert_eq!(maximized.tools(), [0..94, 1920 - 172..1920 - 138]);
+        assert_eq!(maximized.tools(), [0..100, 1920 - 174..1920 - 138]);
         assert_eq!(maximized.hit(0, 0), BarHit::Page);
-        assert_eq!(maximized.hit(93, 0), BarHit::Page);
-        assert_eq!(maximized.hit(93, 35), BarHit::Page);
-        assert_eq!(maximized.hit(94, 0), BarHit::Caption);
+        assert_eq!(maximized.hit(99, 0), BarHit::Page);
+        assert_eq!(maximized.hit(99, 35), BarHit::Page);
+        assert_eq!(maximized.hit(100, 0), BarHit::Caption);
         assert_eq!(maximized.hit(1920 - 138, 10), BarHit::Minimize);
         assert_eq!(maximized.hit(1920 - 139, 10), BarHit::Page);
-        assert_eq!(maximized.hit(1920 - 172, 35), BarHit::Page);
-        assert_eq!(maximized.hit(1920 - 173, 35), BarHit::Caption);
+        assert_eq!(maximized.hit(1920 - 174, 35), BarHit::Page);
+        assert_eq!(maximized.hit(1920 - 175, 35), BarHit::Caption);
 
         let restored = Bar {
             width: 1000,
             dpi: 96,
             edge: 4,
         };
-        assert_eq!(restored.tools(), [0..94, 1000 - 172..1000 - 138]);
+        assert_eq!(restored.tools(), [0..100, 1000 - 174..1000 - 138]);
         assert_eq!(restored.hit(0, 3), BarHit::TopEdge);
-        assert_eq!(restored.hit(93, 3), BarHit::TopEdge);
+        assert_eq!(restored.hit(99, 3), BarHit::TopEdge);
         assert_eq!(restored.hit(1000 - 139, 3), BarHit::TopEdge);
         assert_eq!(restored.hit(0, 4), BarHit::Page);
-        assert_eq!(restored.hit(93, 4), BarHit::Page);
-        assert_eq!(restored.hit(94, 4), BarHit::Caption);
+        assert_eq!(restored.hit(99, 4), BarHit::Page);
+        assert_eq!(restored.hit(100, 4), BarHit::Caption);
         assert_eq!(restored.hit(1000 - 139, 4), BarHit::Page);
-        assert_eq!(restored.hit(1000 - 172, 35), BarHit::Page);
-        assert_eq!(restored.hit(1000 - 173, 35), BarHit::Caption);
+        assert_eq!(restored.hit(1000 - 174, 35), BarHit::Page);
+        assert_eq!(restored.hit(1000 - 175, 35), BarHit::Caption);
         assert_eq!(restored.hit(1000 - 138, 35), BarHit::Minimize);
-        assert_eq!(restored.hit(93, 36), BarHit::Page);
+        assert_eq!(restored.hit(99, 36), BarHit::Page);
 
-        // 150 %: 141 px at the left, 51 px before the caption buttons' 207.
+        // 150 %: 150 px at the left, 54 px before the caption buttons' 207.
         let large = Bar {
             width: 2040,
             dpi: 144,
             edge: 0,
         };
-        assert_eq!(large.tools(), [0..141, 2040 - 258..2040 - 207]);
-        // 125 %: 117.5 px; the column whose middle lies on the line belongs to the bar.
+        assert_eq!(large.tools(), [0..150, 2040 - 261..2040 - 207]);
+        // 125 %: 125 px.
         let odd = Bar {
             width: 1600,
             dpi: 120,
             edge: 0,
         };
-        assert_eq!(odd.hit(116, 10), BarHit::Page);
-        assert_eq!(odd.hit(117, 10), BarHit::Caption);
+        assert_eq!(odd.hit(124, 10), BarHit::Page);
+        assert_eq!(odd.hit(125, 10), BarHit::Caption);
         // Minimized (no client area): no room for the page's buttons.
         let minimized = Bar {
             width: 0,

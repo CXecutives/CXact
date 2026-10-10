@@ -4,14 +4,14 @@
  * scrolling, and the arrow cursor everywhere like in a native app (never the hand).
  */
 
-/* Inter ships with the app (nothing is loaded from the network) and looks the same on
-   Windows and macOS. License: ui/src/assets/fonts/Inter-LICENSE.txt */
+/* Geist ships with the app (nothing is loaded from the network) and looks the same on
+   Windows and macOS (user, 2026-10-10). License: ui/src/assets/fonts/Geist-LICENSE.txt */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Geist';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 100 900;
   font-display: block;
-  src: url('../assets/fonts/InterVariable.woff2') format('woff2');
+  src: url('../assets/fonts/GeistVariable.woff2') format('woff2');
 }
 
 *,

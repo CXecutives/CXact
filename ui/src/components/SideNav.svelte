@@ -72,7 +72,7 @@
     top: 0;
     right: 0;
     left: 0;
-    height: var(--control-field);
+    height: var(--nav-row);
     border-radius: var(--radius-md);
     background-color: var(--nav-active-bg);
     box-shadow: var(--sh-thumb);
@@ -93,7 +93,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    height: var(--control-field);
+    height: var(--nav-row);
     padding: 0 var(--space-8);
     border-radius: var(--radius-md);
     color: var(--text-muted);

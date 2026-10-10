@@ -1,6 +1,6 @@
 // Generates src-tauri/resources/THIRD-PARTY.txt: the license notices of everything that
 // ships inside the app - Rust crates, the npm runtime packages bundled into the UI, and the
-// Inter font.
+// Geist font.
 //
 // MIT, Apache-2.0 and ISC require the copyright notice to travel with the program; MPL-2.0
 // additionally requires telling where the source is. The file is bundled as an app resource
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(repo, 'src-tauri', 'resources', 'THIRD-PARTY.txt');
-const FONT_LICENSE = join(repo, 'ui', 'src', 'assets', 'fonts', 'Inter-LICENSE.txt');
+const FONT_LICENSE = join(repo, 'ui', 'src', 'assets', 'fonts', 'Geist-LICENSE.txt');
 
 // Both platforms together: Windows-only crates would be missing from a Mac run and vice versa.
 const TARGETS = ['x86_64-pc-windows-msvc', 'aarch64-apple-darwin', 'x86_64-apple-darwin'];
@@ -170,7 +170,7 @@ lines.push('Source code: Rust crates at https://crates.io/crates/<name>, npm pac
 lines.push('https://www.npmjs.com/package/<name>; both name the repository. This fulfils');
 lines.push('the source information of the MPL-2.0.');
 lines.push('');
-lines.push('The font Inter is licensed under the SIL Open Font License 1.1; its text is');
+lines.push('The font Geist is licensed under the SIL Open Font License 1.1; its text is');
 lines.push('at the end of this file.');
 lines.push('');
 lines.push(`Rust crates: ${rustList.length}`);
@@ -192,7 +192,7 @@ for (const [body, number] of [...bodies.entries()].sort((a, b) => a[1] - b[1])) 
   lines.push('', `[${number}]`, '', body, '', RULE);
 }
 
-lines.push('', RULE, 'Font: Inter', RULE, '');
+lines.push('', RULE, 'Font: Geist', RULE, '');
 lines.push(readFileSync(FONT_LICENSE, 'utf8').replace(/\r\n/g, '\n').trim());
 
 const text = `${lines.join('\n')}\n`;

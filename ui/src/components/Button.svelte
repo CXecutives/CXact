@@ -3,9 +3,9 @@
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
   (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
-  - One height for every button, 28 px (design round 6, core/tests/ui_contract.rs): in rows,
-    tools, the top bar, dialogs and empty states alike; the app's text in medium (a primary's
-    in semibold), every glyph 15 px. Only a button in a field (`inField`) and a suggestion are
+  - One height for every button, 30 px (design round 7, core/tests/ui_contract.rs): in rows,
+    tools, the top bar, dialogs and empty states alike; the app's text in medium (a primary
+    stands out by its colour only), every glyph 16 px. Only a button in a field (`inField`) and a suggestion are
     a notch lower. A text button carries the glyph of its meaning (lib/icons.ts).
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
@@ -326,8 +326,6 @@
     --btn-fg: var(--text-on-accent);
     --btn-fg-hover: var(--text-on-accent);
     --btn-shadow: var(--sh-primary);
-
-    font-weight: var(--weight-semibold);
   }
 
   /* The control kind (tokens.css): a muted fill and a darker edge under the pointer, one

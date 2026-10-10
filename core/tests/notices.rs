@@ -117,7 +117,7 @@ fn the_notice_file_is_complete() {
     // The font is kept separate, so the reference to it must be correct.
     assert!(
         Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../ui/src/assets/fonts/Inter-LICENSE.txt")
+            .join("../ui/src/assets/fonts/Geist-LICENSE.txt")
             .exists(),
         "the licence of the bundled font is missing"
     );

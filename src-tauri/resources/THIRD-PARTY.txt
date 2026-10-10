@@ -9,7 +9,7 @@ Source code: Rust crates at https://crates.io/crates/<name>, npm packages at
 https://www.npmjs.com/package/<name>; both name the repository. This fulfils
 the source information of the MPL-2.0.
 
-The font Inter is licensed under the SIL Open Font License 1.1; its text is
+The font Geist is licensed under the SIL Open Font License 1.1; its text is
 at the end of this file.
 
 Rust crates: 389
@@ -7851,10 +7851,10 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 ---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
-Font: Inter
+Font: Geist
 ---------------------------------------------------------------------------
 
-Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
+Copyright (c) 2023 Vercel, in collaboration with basement.studio
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

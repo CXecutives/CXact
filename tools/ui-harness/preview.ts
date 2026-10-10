@@ -115,7 +115,7 @@ export const preview = {
 const STYLE = `
   :host { all: initial; }
   .corner { position: fixed; z-index: 2147483000; right: 3px; bottom: 3px;
-    font: 13px/1.4 Inter, system-ui, sans-serif; color: var(--text, #222); }
+    font: 13px/1.4 Geist, system-ui, sans-serif; color: var(--text, #222); }
   button { font: inherit; color: inherit; cursor: default; }
   .open { display: grid; place-items: center; width: 16px; height: 16px; padding: 0;
     border-radius: 8px; border: 1px solid var(--border, #ccc); background: var(--surface, #fff);

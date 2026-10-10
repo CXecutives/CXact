@@ -16,7 +16,7 @@
     "text":                   { "css": "hsl(30 8% 13%)", "rgb": [36, 33, 30] },
     "text-muted":             { "css": "hsl(30 5% 33%)", "rgb": [88, 84, 80] },
     "text-subtle":            { "css": "hsl(30 4% 41%)", "rgb": [109, 105, 100] },
-    "text-heading":           { "css": "hsl(212 50% 36%)", "rgb": [46, 89, 138] },
+    "text-heading":           { "css": "hsl(30 8% 13%)", "rgb": [36, 33, 30] },
     "text-label":             { "css": "hsl(30 8% 13%)", "rgb": [36, 33, 30] },
     "text-on-accent":         { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "text-on-danger":         { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },

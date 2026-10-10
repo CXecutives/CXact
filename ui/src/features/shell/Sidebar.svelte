@@ -76,6 +76,6 @@
 
   /* The first entry is centred in the first row of every view. */
   .nav {
-    margin-top: calc(var(--head-pad) + (var(--first-row) - var(--control-field)) / 2);
+    margin-top: calc(var(--head-pad) + (var(--first-row) - var(--nav-row)) / 2);
   }
 </style>
