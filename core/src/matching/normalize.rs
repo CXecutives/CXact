@@ -5,6 +5,7 @@
 //! `python_unicode.txt`, so no behaviour depends on the Unicode version of the Rust
 //! toolchain.
 
+use std::borrow::Cow;
 use std::sync::LazyLock;
 
 use super::lexicon;
@@ -170,6 +171,20 @@ pub(crate) fn splitlines(text: &str) -> Vec<&str> {
     lines
 }
 
+/// The text with every page placeholder (a hidden address,
+/// `lexicon::engine::PAGE_PLACEHOLDERS`) blanked out by spaces of the same byte length, so
+/// every byte offset into it is one into the original text.
+pub(crate) fn mask_placeholders(text: &str) -> Cow<'_, str> {
+    let mut masked = Cow::Borrowed(text);
+    for placeholder in lexicon::engine::PAGE_PLACEHOLDERS {
+        if masked.contains(placeholder) {
+            let blank = " ".repeat(placeholder.len());
+            masked = Cow::Owned(masked.replace(placeholder, &blank));
+        }
+    }
+    masked
+}
+
 /// Length in code points, like Python's `len(str)`.
 pub(crate) fn char_len(text: &str) -> usize {
     text.chars().count()
@@ -235,6 +250,16 @@ pub(crate) fn canonical_stream(tokens: Vec<String>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn placeholders_are_blanked_in_place() {
+        let text = "SOLCOM GmbH\n[email protected]\n[email\u{a0}protected]\nSAP";
+        let masked = mask_placeholders(text);
+        assert_eq!(masked.len(), text.len());
+        assert!(!masked.contains("protected"));
+        assert!(masked.ends_with("\nSAP"));
+        assert!(matches!(mask_placeholders("SAP FI"), Cow::Borrowed(_)));
+    }
 
     #[test]
     fn casefold_follows_python() {

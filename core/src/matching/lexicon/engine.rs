@@ -2875,6 +2875,10 @@ pub(crate) const CLOSING_STARTS: &[&str] = &[
     "wir melden uns",
     "datenschutz",
 ];
+/// What a page shows in place of a hidden address (Cloudflare's email protection, as the
+/// HTML gives it with a space or a no-break space): no word of the ad, masked before
+/// matching.
+pub(crate) const PAGE_PLACEHOLDERS: &[&str] = &["[email protected]", "[email\u{a0}protected]"];
 /// Phrases that make an item soft (`Freude an Zahlen`, `Leadership style`, `build teams`).
 pub(crate) const SOFT_PHRASES: &[&str] = &[
     "freude an",

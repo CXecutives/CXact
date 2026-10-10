@@ -397,7 +397,14 @@ pub fn assess(
     }
     // A new job: the texts the last one read are not read again.
     fit::forget();
-    let evaluation = engine::evaluate(&profile.engine, job);
+    // A page's placeholder is no word of the ad; the masked text keeps every byte offset, so
+    // the passages are counted in the text as the reader shows it.
+    let masked = normalize::mask_placeholders(job.text);
+    let read = JobInput {
+        text: &masked,
+        ..*job
+    };
+    let evaluation = engine::evaluate(&profile.engine, &read);
     Some(explain::assessment(&profile.engine, job.text, &evaluation))
 }
 
