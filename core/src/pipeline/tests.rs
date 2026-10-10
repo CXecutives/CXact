@@ -49,7 +49,7 @@ fn scan_only(workspace: &Path) -> RunContext {
     }
 }
 
-/// The files in the folder of the text files earlier versions wrote.
+/// One run with the events it sent.
 async fn go<B: Backends>(
     backends: &mut B,
     store: &Store,
@@ -1014,11 +1014,6 @@ fn run_requests_are_flat_json() {
         let request: RunRequest = serde_json::from_str(&json).unwrap();
         assert_eq!(serde_json::to_string(&request).unwrap(), json);
     }
-    // The whole mailbox is the fetch range "Alle Alert-Mails" now, no kind of its own.
-    for gone in ["scan", "fullMailbox"] {
-        let json = format!(r#"{{"kind":"{gone}"}}"#);
-        assert!(serde_json::from_str::<RunRequest>(&json).is_err(), "{gone}");
-    }
 }
 
 /// Records which fetch path the run builds per portal (mails and pages from the dry run).
@@ -1362,27 +1357,6 @@ async fn a_fetch_counts_its_new_jobs() {
     )
     .await;
     assert_eq!(r.new_jobs, None);
-}
-
-/// Summaries stored by an earlier version (without `newJobs`, of a run over the whole
-/// mailbox, or with the counts of the text files it wrote) are still read, the second as a
-/// fetch, the text files forgotten.
-#[test]
-fn an_older_stored_summary_still_reads() {
-    let store = Store::in_memory().unwrap();
-    let summary = RunSummary::new(RunKindName::Fetch, false, Timestamp::now());
-    let mut json = serde_json::to_value(&summary).unwrap();
-    json.as_object_mut().unwrap().remove("newJobs");
-    store.kv_set(LAST_RUN, &json.to_string()).unwrap();
-    assert_eq!(last_run(&store).unwrap(), Some(summary.clone()));
-    json["kind"] = "fullMailbox".into();
-    store.kv_set(LAST_RUN, &json.to_string()).unwrap();
-    assert_eq!(last_run(&store).unwrap(), Some(summary.clone()));
-    // The export of an earlier version (its files, its counts of text files) is forgotten.
-    let mut json = serde_json::to_value(&summary).unwrap();
-    json["export"] = serde_json::json!({"overviewXlsx": null, "txtWritten": 7, "txtFailed": 0});
-    store.kv_set(LAST_RUN, &json.to_string()).unwrap();
-    assert_eq!(last_run(&store).unwrap(), Some(summary));
 }
 
 /// A job deleted for good: the next run never brings it back from the old alert mail.

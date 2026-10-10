@@ -387,8 +387,7 @@ pub struct RunSummary {
     pub mail: Option<ErrorInfo>,
     pub scan: Option<ScanCounts>,
     pub per_portal: Vec<PortalSummary>,
-    /// Set by a mailbox run (summaries of earlier versions have none).
-    #[serde(default)]
+    /// Set by a mailbox run.
     pub new_jobs: Option<NewJobs>,
     pub score: Option<ScoreSummary>,
     /// Alert mails of this run without recognised jobs (at most [`MAX_EMPTY_ALERTS`]).
@@ -753,16 +752,11 @@ pub fn last_scan_run(store: &Store) -> crate::Result<i64> {
         .unwrap_or(0))
 }
 
-/// The summary of the last fetch, if one is stored (and readable). One of a run over the
-/// whole mailbox (a kind of its own in earlier versions) reads as a fetch.
+/// The summary of the last fetch, if one is stored (and readable).
 pub fn last_run(store: &Store) -> crate::Result<Option<RunSummary>> {
-    Ok(store.kv_get(LAST_RUN)?.and_then(|json| {
-        let mut summary: serde_json::Value = serde_json::from_str(&json).ok()?;
-        if summary["kind"] == "fullMailbox" {
-            summary["kind"] = "fetch".into();
-        }
-        serde_json::from_value(summary).ok()
-    }))
+    Ok(store
+        .kv_get(LAST_RUN)?
+        .and_then(|json| serde_json::from_str(&json).ok()))
 }
 
 fn status(code: StatusCode, portal: Option<Portal>, until: Option<Timestamp>) -> RunEvent {

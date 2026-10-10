@@ -441,24 +441,18 @@ mod tests {
         );
     }
 
-    /// A store that holds account A's scan state (its watermark and the account the links
-    /// point into).
+    /// A store that holds account A's scan state (its watermark).
     fn scanned_by_a() -> Store {
         let store = Store::in_memory().unwrap();
         store
             .set_last_scan(Portal::LinkedIn, Timestamp::now())
             .unwrap();
         store
-            .kv_set(crate::store::GMAIL_ACCOUNT, "a@example.org")
-            .unwrap();
-        store
     }
 
-    fn scan_state(store: &Store) -> (bool, Option<String>) {
-        (
-            store.last_scan(Portal::LinkedIn).unwrap().is_some(),
-            store.kv_get(crate::store::GMAIL_ACCOUNT).unwrap(),
-        )
+    /// Whether the store holds a scan state.
+    fn scan_state(store: &Store) -> bool {
+        store.last_scan(Portal::LinkedIn).unwrap().is_some()
     }
 
     /// CRED-4: switching the account clears the old scan state before the vault holds the
@@ -476,21 +470,21 @@ mod tests {
         });
         assert_eq!(
             seen,
-            Some((false, None)),
+            Some(false),
             "the vault got the new account while the old scan state was still there"
         );
         assert_eq!(result.unwrap_err().kind, ErrorKind::SecretStore);
-        assert_eq!(scan_state(&store), (false, None));
+        assert!(!scan_state(&store));
 
         // The same account again keeps its scan state; so does the first save after a start
         // whose vault held it.
         let store = scanned_by_a();
         let a = Credentials::new("a@example.org", GOOD_PASSWORD);
         store_account(&store, Some("a@example.org"), &a, |_| Ok(())).unwrap();
-        assert_eq!(scan_state(&store), (true, Some("a@example.org".to_owned())));
+        assert!(scan_state(&store));
         // No account before: nothing of another account may stay.
         let store = scanned_by_a();
         store_account(&store, None, &a, |_| Ok(())).unwrap();
-        assert_eq!(scan_state(&store), (false, None));
+        assert!(!scan_state(&store));
     }
 }

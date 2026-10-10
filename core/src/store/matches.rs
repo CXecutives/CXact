@@ -49,10 +49,10 @@ struct StoredNote {
     must_met: u16,
     must_total: u16,
     top: Vec<String>,
-    /// Open must requirements (quoted); older notes have none.
+    /// Open must requirements (quoted); left out when there are none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     open: Vec<String>,
-    /// Open must and nice requirements that are terms; older notes have none.
+    /// Open must and nice requirements that are terms; left out when there are none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     terms: Vec<String>,
     #[serde(skip_serializing_if = "KeyFacts::is_empty", serialize_with = "compact")]
@@ -111,7 +111,7 @@ pub(super) fn encode_note(judged: &Judgement) -> String {
     }
 }
 
-/// The open terms of a stored note (none in an older or unreadable one).
+/// The open terms of a stored note (none in an unreadable one).
 pub(super) fn note_terms(note: &str) -> Vec<String> {
     #[derive(Deserialize)]
     struct Terms {
@@ -542,15 +542,15 @@ mod tests {
         assert!(!left.is_empty() && left.len() < 8, "{json}");
         assert_eq!(left, terms[..left.len()], "the first terms stay");
         assert_eq!(kept.facts, with_facts.facts, "the facts stay");
-        // A note of an earlier version has none, neither open quotes nor terms.
-        let old = r#"{"code":null,"params":{},"mustMet":1,"mustTotal":2,"top":["A"]}"#;
+        // A note without open quotes and terms leaves both out.
+        let bare = r#"{"code":null,"params":{},"mustMet":1,"mustTotal":2,"top":["A"]}"#;
         assert!(
-            decode_match(Some("scored"), Some(40), Some(old))
+            decode_match(Some("scored"), Some(40), Some(bare))
                 .unwrap()
                 .1
                 .is_empty()
         );
-        assert!(note_terms(old).is_empty());
+        assert!(note_terms(bare).is_empty());
         assert!(note_terms("no json").is_empty());
         // A new text or title makes the job pending again.
         store

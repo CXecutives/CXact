@@ -209,23 +209,21 @@ mod tests {
         assert!(partial.portal(Portal::LinkedIn).enabled);
     }
 
-    /// The setup is open until it is finished; a stored file of an earlier version keeps its
-    /// work folder and reads without the setup's end.
+    /// The setup is open until it is finished; its end is kept with the work folder.
     #[test]
     fn the_setup_is_open_until_finished() {
         let store = Store::in_memory().unwrap();
-        let fresh = Settings::load(&store).unwrap();
+        let mut fresh = Settings::load(&store).unwrap();
         assert!(!fresh.onboarded);
         let default = Path::new("Documents/CXact");
         assert_eq!(fresh.workspace_or(default), default);
-        store
-            .kv_set(KEY, r#"{"workspace":"D:/Daten","fetchMail":true}"#)
-            .unwrap();
-        let mut old = Settings::load(&store).unwrap();
-        assert!(!old.onboarded);
-        assert_eq!(old.workspace_or(default), Path::new("D:/Daten"));
-        old.onboarded = true;
-        old.save(&store).unwrap();
+        fresh.workspace = Some(PathBuf::from("D:/Daten"));
+        fresh.save(&store).unwrap();
+        let mut chosen = Settings::load(&store).unwrap();
+        assert!(!chosen.onboarded);
+        assert_eq!(chosen.workspace_or(default), Path::new("D:/Daten"));
+        chosen.onboarded = true;
+        chosen.save(&store).unwrap();
         let back = Settings::load(&store).unwrap();
         assert!(back.onboarded);
         assert_eq!(back.workspace, Some(PathBuf::from("D:/Daten")));

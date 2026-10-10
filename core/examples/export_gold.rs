@@ -146,32 +146,16 @@ struct DbJob {
     dup_of: Option<String>,
 }
 
-/// The column, or `NULL` for an older schema without it.
-fn column_or_null(columns: &HashSet<String>, name: &str) -> String {
-    if columns.contains(name) {
-        name.to_owned()
-    } else {
-        "NULL".to_owned()
-    }
-}
-
 /// Jobs with a description (`ok` or `teaser`); the second value counts unreadable rows.
 fn read_db(conn: &Connection) -> Res<(Vec<DbJob>, usize)> {
-    let columns: HashSet<String> = conn
-        .prepare("PRAGMA table_info(job)")?
-        .query_map([], |r| r.get::<_, String>(1))?
-        .collect::<rusqlite::Result<_>>()?;
-    let sql = format!(
+    let mut stmt = conn.prepare(
         "SELECT portal, job_id, url, title, company, location, mail_date, mail_subject,
                 first_seen_at, first_seen_run, desc_status, desc_text, desc_fetched_at,
-                {}, {}
+                desc_facts, dup_of
          FROM job
          WHERE desc_status IN ('ok', 'teaser') AND desc_text IS NOT NULL AND TRIM(desc_text) <> ''
          ORDER BY portal, job_id",
-        column_or_null(&columns, "desc_facts"),
-        column_or_null(&columns, "dup_of"),
-    );
-    let mut stmt = conn.prepare(&sql)?;
+    )?;
     let mut rows = stmt.query([])?;
     let (mut jobs, mut unreadable) = (Vec::new(), 0);
     while let Some(r) = rows.next()? {

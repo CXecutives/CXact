@@ -33,11 +33,6 @@ pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts,
 pub use matches::Judgement;
 pub use overview::{BandCounts, PortalAlerts};
 
-/// Key of the Gmail address earlier versions stored with the last mailbox scan (the Excel
-/// file's links went into that account); no longer written, and cleared with the scan state
-/// so an old value goes too. Never a password.
-pub(crate) const GMAIL_ACCOUNT: &str = "gmail_account";
-
 pub struct Store {
     conn: Mutex<Connection>,
     /// The database file (`None` in memory).
@@ -137,13 +132,10 @@ impl Store {
     }
 
     /// Forgets the scan state of every portal - after a switch of the Gmail account the new
-    /// mailbox starts with the first run (30 days) instead of at the state of the old one -
-    /// and the account whose mails the files link to.
+    /// mailbox starts with the first run (30 days) instead of at the state of the old one.
     pub fn clear_scan_state(&self) -> Result<()> {
-        self.conn().execute(
-            "DELETE FROM kv WHERE key LIKE 'last_scan:%' OR key = ?1",
-            [GMAIL_ACCOUNT],
-        )?;
+        self.conn()
+            .execute("DELETE FROM kv WHERE key LIKE 'last_scan:%'", [])?;
         Ok(())
     }
 

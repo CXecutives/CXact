@@ -345,9 +345,9 @@ fn fingerprint(engine: &EngineProfile) -> String {
     roles.sort();
     let mut exclusions: Vec<String> = c.exclusion_words.iter().map(|w| atoms::fold(w)).collect();
     exclusions.sort();
-    let mut canonical = format!(
+    let canonical = format!(
         "engine {ENGINE_VERSION}\nentries {}\nlanguages {languages:?}\ndegree {:?} {}\nyears {:?}\n\
-         min {:?}\ncountries {countries:?}\nanue {}\npermanent {}\navailable {:?}\n\
+         min {:?}\ncountries {countries:?}\nanue {}\npermanent {}\nprojects {}\navailable {:?}\n\
          salary {:?}\npacks {:?}\n\
          roles {roles:?}\nwishes {}\nworkload {:?} {:?}\nmonths {:?}\n\
          exclusions {exclusions:?}\n",
@@ -358,6 +358,7 @@ fn fingerprint(engine: &EngineProfile) -> String {
         c.min_rate,
         c.anue_excluded,
         c.permanent_excluded,
+        c.project_excluded,
         c.available,
         c.min_salary,
         engine.skills.vocab.packs(),
@@ -366,14 +367,6 @@ fn fingerprint(engine: &EngineProfile) -> String {
         c.workload_max,
         c.min_months,
     );
-    // Only when set: the profiles of every earlier version allowed projects and keep their
-    // fingerprint (no rescore of the same scores).
-    if c.project_excluded {
-        canonical.push_str(
-            "projects excluded
-",
-        );
-    }
     let digest = Sha256::digest(canonical.as_bytes());
     digest.iter().take(8).fold(String::new(), |mut hex, b| {
         let _ = write!(hex, "{b:02x}");

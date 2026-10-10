@@ -180,8 +180,7 @@ pub struct JobMatch {
     pub must_total: u16,
     /// At most two met requirements, quoted from the ad.
     pub top: Vec<String>,
-    /// At most two open must requirements, quoted from the ad (empty for a job scored by an
-    /// earlier version until it is scored again).
+    /// At most two open must requirements, quoted from the ad.
     pub open: Vec<String>,
     /// Rate, start, duration, remote share and contract type of the ad.
     pub facts: KeyFacts,
@@ -226,8 +225,8 @@ pub struct JobView {
     /// Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
     /// reader).
     pub has_mail: bool,
-    /// How the job came (the filter "Herkunft"): an alert mail named it, the search found it;
-    /// both, or none for a job of an earlier version without either time.
+    /// How the job came (the filter "Herkunft"): an alert mail named it, the search found it,
+    /// or both.
     pub origins: Vec<Origin>,
 }
 
@@ -845,22 +844,18 @@ pub struct JobQuery {
     pub search: Option<String>,
     /// The filter (funnel menu): only these portals' jobs; empty = every portal. Like the
     /// search it narrows the list and all its counts.
-    #[serde(default)]
     pub portals: Vec<Portal>,
     /// The filter: only jobs scored in these bands (`high`, `mid`, `low`); unscored and
     /// excluded jobs pass only while it is empty.
-    #[serde(default)]
     pub bands: Vec<Band>,
     /// The filter "Aus dem letzten Abruf" (the "Zeigen" of a fetch's toast): only the new
     /// jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
     /// it, not excluded). `null` = every job.
-    #[serde(default)]
     pub run: Option<i64>,
     /// The filter "Gefunden": only jobs that came at or after this moment (Unix seconds;
     /// the alert mail's date, else when the app first saw the job, as "Nach Datum" orders
     /// them). The page names the start of today, of the last 7 or of the last 30 days in
     /// the user's time zone. `null` = every job.
-    #[serde(default)]
     pub received_since: Option<i64>,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
@@ -1833,9 +1828,7 @@ mod tests {
         }
     }
 
-    /// The filter narrows the list and every count like the search: one portal's jobs, or
-    /// only the jobs scored in one band (unscored and excluded ones only without it). A query
-    /// without the fields, or with the fields of an earlier version, reads as none.
+    /// A job's origins say how it came: an alert mail, the search, or both.
     #[test]
     fn the_origins_say_how_a_job_came() {
         let store = Store::in_memory().unwrap();
@@ -1877,6 +1870,8 @@ mod tests {
         );
     }
 
+    /// The filter narrows the list and every count like the search: one portal's jobs, or
+    /// only the jobs scored in one band (unscored and excluded ones only without it).
     #[test]
     fn the_filter_narrows_list_and_counts() {
         let store = four_jobs();
@@ -1950,26 +1945,8 @@ mod tests {
         assert_eq!(titles(&job_page(&store, &q).unwrap()), ["D", "B", "C"]);
         q.received_since = Some(0);
         assert_eq!(job_page(&store, &q).unwrap().jobs.len(), 5);
-        // The fields may be missing (an older page): no filter.
-        let json = r#"{"place":"inbox","unread":false,"sort":"match",
-                       "search":null,"limit":10,"offset":0}"#;
-        let old: JobQuery = serde_json::from_str(json).unwrap();
-        assert_eq!(old.filter(), ListFilter::default());
-        // The fields of an earlier version filter nothing.
-        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
-                       "minBand":"mid","remoteOnly":true,"remoteOrHybrid":true,
-                       "minDayRate":900,"minSalary":90000,"deadlineSoon":true,
-                       "limit":10,"offset":0}"#;
-        let old: JobQuery = serde_json::from_str(json).unwrap();
-        assert_eq!(old.filter(), ListFilter::default());
-        // One portal and one band of an earlier version filter nothing now.
-        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
-                       "portal":"freelance","band":"low","limit":10,"offset":0}"#;
-        let single: JobQuery = serde_json::from_str(json).unwrap();
-        assert_eq!(single.filter(), ListFilter::default());
-        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
-                       "portals":["freelance","hays"],"bands":["high","low"],
-                       "contracts":["interim","anue"],"workMode":"onsite","run":7,
+        let json = r#"{"place":"inbox","sort":"match","search":null,
+                       "portals":["freelance","hays"],"bands":["high","low"],"run":7,
                        "receivedSince":1790000000,"limit":10,"offset":0}"#;
         let new: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(

@@ -964,7 +964,7 @@
         "score": 61,
         "status": "scored",
         "band": "mid",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1324,7 +1324,7 @@
         "score": 40,
         "status": "excluded",
         "band": "mid",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1743,7 +1743,7 @@
         "score": 10,
         "status": "scored",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -2229,7 +2229,7 @@
         "score": 76,
         "status": "scored",
         "band": "mid",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -2859,7 +2859,7 @@
         "score": 52,
         "status": "scored",
         "band": "mid",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -3470,7 +3470,7 @@
         "score": 32,
         "status": "scored",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -3917,7 +3917,7 @@
         "score": 25,
         "status": "scored",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4241,7 +4241,7 @@
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4412,7 +4412,7 @@
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4620,7 +4620,7 @@
         "score": 40,
         "status": "excluded",
         "band": "mid",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4984,7 +4984,7 @@
         "score": 79,
         "status": "scored",
         "band": "mid",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5536,7 +5536,7 @@
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5767,7 +5767,7 @@
         "score": 28,
         "status": "scored",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6203,7 +6203,7 @@
         "score": 18,
         "status": "scored",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6600,7 +6600,7 @@
         "score": 10,
         "status": "excluded",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6988,7 +6988,7 @@
         "score": 10,
         "status": "scored",
         "band": "low",
-        "rev": "e20.7:55307357bd6e8e99",
+        "rev": "e20.7:08506e901c97e470",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -7513,7 +7513,7 @@
           "score": 39,
           "status": "excluded",
           "band": "low",
-          "rev": "e20.7:55307357bd6e8e99",
+          "rev": "e20.7:08506e901c97e470",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -7923,7 +7923,7 @@
           "score": 20,
           "status": "excluded",
           "band": "low",
-          "rev": "e20.7:55307357bd6e8e99",
+          "rev": "e20.7:08506e901c97e470",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -8445,7 +8445,7 @@
           "score": 40,
           "status": "scored",
           "band": "mid",
-          "rev": "e20.7:55307357bd6e8e99",
+          "rev": "e20.7:08506e901c97e470",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -8986,7 +8986,7 @@
           "score": 37,
           "status": "scored",
           "band": "low",
-          "rev": "e20.7:55307357bd6e8e99",
+          "rev": "e20.7:08506e901c97e470",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -9489,7 +9489,7 @@
           "score": 79,
           "status": "scored",
           "band": "mid",
-          "rev": "e20.7:55307357bd6e8e99",
+          "rev": "e20.7:08506e901c97e470",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",

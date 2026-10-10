@@ -15,7 +15,7 @@ export type RunSummary = { run: number, kind: RunKindName, outcome: Outcome, dry
  */
 mail: ErrorInfo | null, scan: ScanCounts | null, perPortal: Array<PortalSummary>, 
 /**
- * Set by a mailbox run (summaries of earlier versions have none).
+ * Set by a mailbox run.
  */
 newJobs: NewJobs | null, score: ScoreSummary | null, 
 /**

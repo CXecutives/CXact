@@ -1166,14 +1166,14 @@ pub fn session_storage<'a, R: Runtime, M: Manager<R>>(
 }
 
 /// Deletes a portal's session storage once its window is closed. `true` only if it is
-/// verifiably gone: the profile folder (all OS; older versions created it on macOS too)
-/// and, on macOS, the data store.
+/// verifiably gone: the profile folder on Windows, the data store on macOS
+/// ([`session_storage`]).
 pub async fn delete_session_storage<R: Runtime>(
     app: &AppHandle<R>,
     portal_key: &str,
     profile: &Path,
 ) -> bool {
-    let mut folder_gone = false;
+    let mut folder_gone = cfg!(target_os = "macos");
     let mut store_gone = !cfg!(target_os = "macos");
     for _ in 0..(STORAGE_RELEASE.as_millis() / STORAGE_STEP.as_millis()) {
         folder_gone = folder_gone

@@ -46,7 +46,7 @@ overridden: boolean,
  */
 hasMail: boolean, 
 /**
- * How the job came (the filter "Herkunft"): an alert mail named it, the search found it;
- * both, or none for a job of an earlier version without either time.
+ * How the job came (the filter "Herkunft"): an alert mail named it, the search found it,
+ * or both.
  */
 origins: Array<Origin>, };

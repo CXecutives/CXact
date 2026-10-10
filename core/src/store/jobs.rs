@@ -59,8 +59,7 @@ pub struct JobRow {
     pub read_at: Option<Timestamp>,
     /// `None` = not scored yet.
     pub match_: Option<MatchRecord>,
-    /// Up to two open must requirements of the match, quoted from the ad (empty for a note
-    /// of an earlier version).
+    /// Up to two open must requirements of the match, quoted from the ad.
     pub match_open: Vec<String>,
     /// Who scored it; `None` = to be scored (again).
     pub match_rev: Option<String>,
