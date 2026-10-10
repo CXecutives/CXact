@@ -27,7 +27,7 @@ fn profile() -> ProfileForm {
         "laender": ["DE", "AT"],
         "verfuegbar_ab": "01.12.2026",
         "kernkompetenzen": [
-            { "kompetenz": "Controlling", "jahre": 12, "schwerpunkt": true },
+            { "kompetenz": "Controlling", "jahre": 12 },
             { "kompetenz": "Konzernabschluss nach HGB", "jahre": 8 }
         ],
         "methoden_tools": [
@@ -711,7 +711,6 @@ fn long_texts_are_cut() {
         .map(|i| crate::profile::ProfileCompetence {
             name: format!("Kompetenz {i}"),
             years: Some(3),
-            focus: false,
         })
         .collect();
     let text = "Anforderung ".repeat(5_000);

@@ -154,8 +154,7 @@ mod tests {
         "kernkompetenzen": [
             {"kompetenz": "Controlling"}, {"kompetenz": "Reporting nach IFRS"},
             {"kompetenz": "Konsolidierung"}, {"kompetenz": "Liquiditätsplanung"},
-            {"kompetenz": "Restrukturierung", "schwerpunkt": true},
-            {"kompetenz": "Treasury", "schwerpunkt": true}
+            {"kompetenz": "Restrukturierung"}, {"kompetenz": "Treasury"}
         ],
         "wunschrollen": ["Interim CFO"],
         "arbeitsmodell": "remote"

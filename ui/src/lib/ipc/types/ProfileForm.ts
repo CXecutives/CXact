@@ -59,9 +59,9 @@ workload: "any" | "fulltime" | "parttime",
  */
 minMonths: 0 | 3 | 6 | 12, 
 /**
- * `kernkompetenzen`, the starred ones the Schwerpunkte.
+ * `kernkompetenzen`, every one counting the same.
  */
-competences: Array<{ name: string, years: number | null, focus: boolean, }>, 
+competences: Array<{ name: string, years: number | null, }>, 
 /**
  * `methoden_tools`.
  */

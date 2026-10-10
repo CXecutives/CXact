@@ -68,8 +68,8 @@ mail, store, engine, view, UI:
    into job links. Then `fetch/search.rs` searches the sources that have a search
    (`PortalAdapter::search_urls`, `Way::Search`) side by side with the deep search's terms
    (`profile::deep_search_terms`: the roles with their other names and ESCO occupation names,
-   the Schwerpunkte, the names of their field (`matching::SearchField`), competences and tools
-   that are not too broad alone, at most 24), each term deeper
+   the names of their field (`matching::SearchField`), competences in the profile's order and
+   tools that are not too broad alone, at most 24), each term deeper
    (`search_page_url`) while its pages bring new jobs, a cut-short paging going on at the
    next fetch; after their robots.txt (`fetch/robots.rs`, kept a day in policy.json, its
    Crawl-delay the least gap); the hits are jobs without a mail (`Store::record_found`). A

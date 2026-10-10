@@ -2761,7 +2761,6 @@ Rahmenbedingungen:
         form.competences.push(ProfileCompetence {
             name: "Microsoft Power-BI".into(),
             years: None,
-            focus: false,
         });
         form.tools.push("power bi".into());
         form.tools.push("Kanban".into());
@@ -2848,7 +2847,6 @@ Rahmenbedingungen:
         form.competences.push(ProfileCompetence {
             name: "Jedox".into(),
             years: None,
-            focus: false,
         });
         assert_eq!(
             asked(Some(&form)),

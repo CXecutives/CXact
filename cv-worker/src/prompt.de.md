@@ -20,7 +20,6 @@ Der Lebenslauf folgt in der Nachricht des Nutzers: als Text zwischen `<cv>` und 
 - `berufserfahrung_jahre`: ganze Jahre seit dem Berufseinstieg, ohne Schule, Ausbildung und Studium. Zeiten, die sich überlappen, zählen einmal. Ohne Datumsangaben `null`.
 - `kernkompetenzen`: bis zu 25 fachliche Kompetenzen. Die Hauptfunktion selbst ist eine Kompetenz, etwa „Controlling“ bei einer Controllerin oder „Projektmanagement“ bei einem Projektleiter.
   - `jahre`: ganze Jahre, in denen die Kompetenz ausgeübt wurde. Parallele Stationen zählen nur einmal, Jahre überlappen sich nicht. Unklar heißt `null`.
-  - `schwerpunkt`: `true` für höchstens 5 Kompetenzen, die stärksten und jüngsten. Alle anderen `false`.
 - `methoden_tools`: bis zu 30 Software-Produkte, Tools, Methoden und Standards, etwa „SAP S/4HANA“, „Scrum“ oder „IFRS“. Was schon eine Kompetenz ist, steht nicht noch einmal hier.
 - `branchen`: die Branchen, in denen gearbeitet wurde, etwa „Pharma“ oder „Automotive“. `wunsch` ist immer `false`.
 - `sprachen`: jede Sprache mit `niveau` von „A1“ bis „C2“ oder „Muttersprache“. Ordne Angaben ohne Stufe so zu: Grundkenntnisse A2, gut B2, sehr gut, fließend oder verhandlungssicher C1, Muttersprache oder native „Muttersprache“. Ohne jede Angabe zur Stufe B2.

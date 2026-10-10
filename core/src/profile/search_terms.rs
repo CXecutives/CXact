@@ -7,11 +7,10 @@
 //!   (`Projektleiter Customer Service` -> `Project Manager Customer Service`, never a bare
 //!   `Project Manager`), and its ESCO occupation's German and English name (`Contact Center
 //!   Manager` -> `Leiter des Kundendienstes`);
-//! - the Schwerpunkte;
-//! - the names job boards give the field the roles and Schwerpunkte lie in (`Kundenservice`,
-//!   `Contact Center`, `Call Center`: `matching::field_search_terms`);
-//! - the competences, those of that field first, the longest experience first; then the
-//!   tools.
+//! - the names job boards give the field the roles lie in (`Kundenservice`, `Contact Center`,
+//!   `Call Center`: `matching::SearchField`);
+//! - the competences, those of that field first, each in the profile's order (every
+//!   competence counts the same, the owner's decision of 2026-10-10); then the tools.
 //!
 //! Each once, at most [`MAX_CANDIDATES`]; a search asks for the first [`MAX_DEEP_TERMS`] of them
 //! that it has not set aside (`fetch::terms`). A competence or a tool the engine finds too broad to
@@ -136,25 +135,13 @@ pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
             terms.add(name);
         }
     }
-    let focus: Vec<&str> = form.focus().map(|f| f.name.as_str()).collect();
-    for name in &focus {
-        terms.add_specific(name);
-    }
-    let field = crate::matching::SearchField::of(
-        form.roles
-            .iter()
-            .map(String::as_str)
-            .chain(focus.iter().copied()),
-    );
+    let field = crate::matching::SearchField::of(form.roles.iter().map(String::as_str));
     for name in field.map_or(&[][..], |f| f.names()) {
         terms.add(name);
     }
-    // The competences of the field first, the longest experience first.
+    // The competences of the field first, each in the profile's order.
     let mut competences: Vec<_> = form.competences.iter().collect();
-    competences.sort_by_cached_key(|c| {
-        let of_field = field.is_some_and(|f| f.holds(&c.name));
-        (!of_field, std::cmp::Reverse(c.years.unwrap_or(0)))
-    });
+    competences.sort_by_cached_key(|c| !field.is_some_and(|f| f.holds(&c.name)));
     for competence in &competences {
         terms.add_specific(&competence.name);
     }
@@ -199,11 +186,10 @@ mod tests {
     use super::*;
     use crate::profile::ProfileCompetence;
 
-    fn competence(name: &str, years: u32, focus: bool) -> ProfileCompetence {
+    fn competence(name: &str, years: u32) -> ProfileCompetence {
         ProfileCompetence {
             name: name.to_owned(),
             years: Some(years),
-            focus,
         }
     }
 
@@ -212,14 +198,10 @@ mod tests {
         let form = ProfileForm {
             roles: vec!["Interim CFO".into(), "Head of Controlling".into()],
             competences: vec![
-                competence("Liquiditätsplanung", 10, false),
-                competence("Controlling", 18, false),
-                competence("Restrukturierung", 5, true),
-                competence(
-                    "Rund elf Jahre Treasury, Cash Management und Factoring",
-                    11,
-                    false,
-                ),
+                competence("Liquiditätsplanung", 10),
+                competence("Controlling", 18),
+                competence("Restrukturierung", 5),
+                competence("Rund elf Jahre Treasury, Cash Management und Factoring", 11),
             ],
             tools: vec!["SAP S/4HANA".into(), "LucaNet".into()],
             ..ProfileForm::default()
@@ -244,10 +226,10 @@ mod tests {
         ] {
             assert!(terms.iter().any(|t| t == wanted), "{wanted} in {terms:?}");
         }
-        // The Schwerpunkte before the competences, the longest experience first among these.
+        // The competences in the profile's order, whatever their years.
         let at = |t: &str| terms.iter().position(|x| x == t).unwrap();
-        assert!(at("Restrukturierung") < at("Controlling"));
-        assert!(at("Controlling") < at("Liquiditätsplanung"));
+        assert!(at("Liquiditätsplanung") < at("Controlling"));
+        assert!(at("Controlling") < at("Restrukturierung"));
         // A sentence is no search term; every term once, in any case.
         assert!(!terms.iter().any(|t| t.starts_with("Rund elf")));
         let keys: std::collections::HashSet<_> = terms.iter().map(|t| key(t)).collect();
@@ -272,10 +254,10 @@ mod tests {
         let form = ProfileForm {
             roles: vec!["Contact Center Manager".into(), "Interim Manager".into()],
             competences: vec![
-                competence("Projektmanagement", 20, true),
-                competence("Personalführung", 15, false),
-                competence("Generative KI", 2, false),
-                competence("Workforce Management", 8, false),
+                competence("Projektmanagement", 20),
+                competence("Personalführung", 15),
+                competence("Generative KI", 2),
+                competence("Workforce Management", 8),
             ],
             tools: vec!["SAP".into(), "Genesys".into()],
             ..ProfileForm::default()
@@ -326,22 +308,21 @@ mod tests {
         assert!(joined.contains(&"Finanzvorstand".to_owned()), "{joined:?}");
     }
 
-    /// A head of customer service as a CV names it: the roles with their field, the
-    /// Schwerpunkte, the names job boards give the field, then its competences; generic words
-    /// stay out.
+    /// A head of customer service as a CV names it: the roles with their field, the names job
+    /// boards give the field, then its competences; generic words stay out.
     #[test]
-    fn the_field_of_roles_and_schwerpunkte_is_searched() {
+    fn the_field_of_the_roles_is_searched() {
         let form = ProfileForm {
             roles: vec![
                 "Interim Head of Customer Service".into(),
                 "Projektleiter Customer Service".into(),
             ],
             competences: vec![
-                competence("Customer Service Management", 30, true),
-                competence("Automatisierung", 8, true),
-                competence("Coaching", 20, false),
-                competence("Workforce Management", 15, false),
-                competence("Training & Weiterbildung", 6, false),
+                competence("Customer Service Management", 30),
+                competence("Automatisierung", 8),
+                competence("Coaching", 20),
+                competence("Workforce Management", 15),
+                competence("Training & Weiterbildung", 6),
             ],
             ..ProfileForm::default()
         };
@@ -364,12 +345,12 @@ mod tests {
         ] {
             assert!(!terms.iter().any(|t| t == noise), "{noise} in {terms:?}");
         }
-        // The field's competences before the others, whatever their years.
+        // The field's competences before the others.
         let at = |t: &str| terms.iter().position(|x| x == t).unwrap();
         assert!(at("Workforce Management") < at("Coaching"));
         // A profile without a field of its own searches no field's names.
         let finance = ProfileForm {
-            competences: vec![competence("Controlling", 10, false)],
+            competences: vec![competence("Controlling", 10)],
             ..ProfileForm::default()
         };
         assert_eq!(deep_search_terms(&finance), ["Controlling"]);

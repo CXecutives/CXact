@@ -8,6 +8,7 @@
 //! `schema.json`) - do not translate. [`key`] names the keys the engine writes into its paths.
 
 use jiff::civil::Date;
+use serde::de::IgnoredAny;
 use serde::{Deserialize, Serialize};
 
 use crate::error::InvalidInput;
@@ -43,8 +44,6 @@ pub(crate) const CV_KEYS: [&str; 8] = [
     key::CERTIFICATES,
 ];
 
-/// At most this many competences carry the star (Schwerpunkte).
-pub const MAX_FOCUS: usize = 5;
 /// The most years of experience, in total and per competence.
 pub const MAX_YEARS: u32 = 70;
 const MAX_DAY_RATE: u32 = 100_000;
@@ -94,7 +93,7 @@ pub struct ProfileForm {
     /// `mindestlaufzeit_monate`, one of [`MIN_MONTHS`].
     #[cfg_attr(test, ts(type = "0 | 3 | 6 | 12"))]
     pub min_months: u8,
-    /// `kernkompetenzen`, the starred ones the Schwerpunkte.
+    /// `kernkompetenzen`, every one counting the same.
     #[cfg_attr(test, ts(inline))]
     pub competences: Vec<ProfileCompetence>,
     /// `methoden_tools`.
@@ -145,14 +144,13 @@ impl Default for ProfileForm {
     }
 }
 
-/// One competence with its years; `focus` = the star (a Schwerpunkt).
+/// One competence with its years.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileCompetence {
     pub name: String,
     pub years: Option<u32>,
-    pub focus: bool,
 }
 
 /// One industry of the consultant's experience; `preferred` = the star.
@@ -345,11 +343,6 @@ impl ProfileForm {
             exclusion_words: clean(&self.exclusion_words),
         }
     }
-
-    /// The competences with the star, in their order.
-    pub fn focus(&self) -> impl Iterator<Item = &ProfileCompetence> {
-        self.competences.iter().filter(|c| c.focus)
-    }
 }
 
 /// The fields a usable profile still needs, by their names in the form (`roles`, `countries`,
@@ -443,9 +436,6 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
         if long(&row.name) {
             return Err(at("competences", Some(i), None));
         }
-    }
-    if form.focus().count() > MAX_FOCUS {
-        return Err(at("competences", None, u32::try_from(MAX_FOCUS).ok()));
     }
     if form.industries.len() > MAX_ITEMS {
         return Err(at("industries", None, None));
@@ -635,8 +625,11 @@ struct FileCompetence {
     kompetenz: String,
     #[serde(default)]
     jahre: Option<u32>,
-    #[serde(default)]
-    schwerpunkt: bool,
+    /// The star of a Schwerpunkt, retired (the owner's decision of 2026-10-10: every
+    /// competence counts the same). Old files and CV answers may still carry it: it reads,
+    /// whatever its value, and is never written.
+    #[serde(default, rename = "schwerpunkt", skip_serializing)]
+    _schwerpunkt: IgnoredAny,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -710,7 +703,7 @@ impl File {
                 .map(|c| FileCompetence {
                     kompetenz: c.name.clone(),
                     jahre: c.years,
-                    schwerpunkt: c.focus,
+                    _schwerpunkt: IgnoredAny,
                 })
                 .collect(),
             methoden_tools: form.tools.clone(),
@@ -784,7 +777,6 @@ impl File {
                 .map(|c| ProfileCompetence {
                     name: c.kompetenz,
                     years: c.jahre,
-                    focus: c.schwerpunkt,
                 })
                 .collect(),
             tools: self.methoden_tools,
@@ -855,8 +847,6 @@ pub(crate) fn typescript() -> String {
          minSalary: {MAX_SALARY},\n  years: {MAX_YEARS},\n\
          }} as const satisfies Partial<Record<keyof ProfileForm, number>>;\n\
          export type NumberField = keyof typeof NUMBER_LIMITS;\n\n\
-         /** At most this many competences are Schwerpunkte. */\n\
-         export const MAX_FOCUS = {MAX_FOCUS};\n\
          /** The most years of experience, in total and per competence. */\n\
          export const MAX_YEARS = {MAX_YEARS};\n\
          /** The most entries of a list, and characters of an entry. */\n\
@@ -894,12 +884,10 @@ mod tests {
                 ProfileCompetence {
                     name: "Controlling".into(),
                     years: Some(15),
-                    focus: true,
                 },
                 ProfileCompetence {
                     name: "Treasury".into(),
                     years: None,
-                    focus: false,
                 },
             ],
             tools: texts(&["SAP S/4HANA"]),
@@ -932,12 +920,40 @@ mod tests {
         assert_eq!(value["auslastung"], "vollzeit");
         assert_eq!(value["verfuegbar_ab"], "01.11.2026");
         assert_eq!(value["sprachen"][0]["niveau"], "Muttersprache");
-        assert_eq!(value["kernkompetenzen"][0]["schwerpunkt"], true);
+        assert_eq!(
+            value["kernkompetenzen"][0],
+            serde_json::json!({"kompetenz": "Controlling", "jahre": 15})
+        );
         assert_eq!(value["branchen"][0]["wunsch"], true);
         // The default form writes every key and reads back the same.
         let empty = write(&ProfileForm::default());
         assert_eq!(parse(&empty).unwrap(), ProfileForm::default());
         assert!(empty.contains("\"verfuegbar_ab\": \"sofort\""), "{empty}");
+    }
+
+    /// The retired star of a Schwerpunkt: a file that still carries `schwerpunkt` (any value)
+    /// reads as the same file without it, and saving writes no such key.
+    #[test]
+    fn an_old_star_reads_and_is_not_written_back() {
+        let old = parse(
+            r#"{"kernkompetenzen": [
+                {"kompetenz": "Controlling", "jahre": 15, "schwerpunkt": true},
+                {"kompetenz": "Treasury", "schwerpunkt": false},
+                {"kompetenz": "Reporting", "schwerpunkt": null}
+            ]}"#,
+        )
+        .unwrap();
+        let plain = parse(
+            r#"{"kernkompetenzen": [
+                {"kompetenz": "Controlling", "jahre": 15},
+                {"kompetenz": "Treasury"},
+                {"kompetenz": "Reporting"}
+            ]}"#,
+        )
+        .unwrap();
+        assert_eq!(old, plain);
+        let text = write(&old);
+        assert!(!text.contains("schwerpunkt"), "{text}");
     }
 
     /// The keys the engine names are keys of the file.
@@ -1029,11 +1045,6 @@ mod tests {
         ] {
             assert!(parse(text).is_err(), "{text}");
         }
-        let six = (0..6)
-            .map(|n| format!(r#"{{"kompetenz": "K{n}", "schwerpunkt": true}}"#))
-            .collect::<Vec<_>>()
-            .join(",");
-        assert!(parse(&format!(r#"{{"kernkompetenzen": [{six}]}}"#)).is_err());
         assert_eq!(
             parse("\u{feff}{}").unwrap(),
             ProfileForm::default(),
@@ -1128,7 +1139,6 @@ mod tests {
         after.competences.push(ProfileCompetence {
             name: "Konsolidierung".into(),
             years: Some(5),
-            focus: false,
         });
         after.day_rate_min = Some(1_100);
         let merged = merge(&now, &p0, &after);

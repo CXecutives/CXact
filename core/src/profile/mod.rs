@@ -22,7 +22,7 @@ pub(crate) use form::key;
 #[cfg(test)]
 pub(crate) use form::typescript as form_typescript;
 pub use form::{
-    LanguageLevel, MAX_FOCUS, MIN_MONTHS, ProfileAvailability, ProfileCompetence, ProfileForm,
+    LanguageLevel, MIN_MONTHS, ProfileAvailability, ProfileCompetence, ProfileForm,
     ProfileIndustry, ProfileLanguage, WorkWish, Workload, file_value, missing_required, parse,
 };
 pub use import::{MAX_CV_COMPETENCES, MAX_CV_TOOLS, import as import_cv};

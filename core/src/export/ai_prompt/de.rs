@@ -51,7 +51,7 @@ const GLOSSARY: &[(&str, &str)] = &[
     ),
     (
         "kernkompetenzen",
-        "meine Kompetenzen mit Jahren Erfahrung (`jahre`); `schwerpunkt` markiert die bis zu fünf, für die ich gebucht werden will",
+        "meine Kompetenzen mit Jahren Erfahrung (`jahre`)",
     ),
     (
         "methoden_tools",

@@ -19,11 +19,10 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kompetenz", "jahre", "schwerpunkt"],
+        "required": ["kompetenz", "jahre"],
         "properties": {
           "kompetenz": { "type": "string" },
-          "jahre": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
-          "schwerpunkt": { "type": "boolean" }
+          "jahre": { "anyOf": [{ "type": "integer" }, { "type": "null" }] }
         }
       }
     },

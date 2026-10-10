@@ -18,8 +18,8 @@ invented profiles (Profil-JSON v19, migrated from the old format with engine 19)
 | it | `sample_profile_it.json` | SAP/IT project lead, 950 EUR/day, later availability |
 | senior | `sample_profile_senior.json` | very senior interim finance and transformation consultant: about 30 years, Diplom-Kauffrau, 1,000 EUR/day, permanent roles from 150,000 EUR |
 | sap | `sample_profile_sap.json` | SAP FI/CO consultant: business bachelor, 950 EUR/day, permanent roles from 95,000 EUR |
-| wish | `sample_profile_senior_wishes.json` | senior with Schwerpunkte, target roles and wishes |
-| wishSap | `sample_profile_sap_wishes.json` | sap with Schwerpunkte, target roles and wishes |
+| wish | `sample_profile_senior_wishes.json` | senior with target roles and wishes |
+| wishSap | `sample_profile_sap_wishes.json` | sap with target roles and wishes |
 
 `corpus.json` fixes per job and profile, written before the engine work it gates: band (width
 <= 30), status (excluded > unscorable > scored), decided violations, expected checks and musts
@@ -292,7 +292,7 @@ not read at all. An empty value turns its rule off.
 | `verfuegbar_ab` | `sofort` or `TT.MM.JJJJ` |
 | `auslastung` | `vollzeit` at least four days a week, `teilzeit` at most three, `egal` none |
 | `mindestlaufzeit_monate` | 0, 3, 6 or 12 |
-| `kernkompetenzen[]` | `kompetenz`, `jahre`, `schwerpunkt` (at most 5 stars: the Schwerpunkte) |
+| `kernkompetenzen[]` | `kompetenz`, `jahre`; every competence counts the same (an old file's `schwerpunkt` reads and is ignored, never written) |
 | `methoden_tools` | tools and methods |
 | `berufserfahrung_jahre` | total years of experience |
 | `branchen[]` | `branche`, `wunsch` (the star: a preferred industry, the industry wish) |

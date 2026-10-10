@@ -4,16 +4,16 @@
 //! filled is logged.
 //!
 //! The merge never overwrites: an entry the profile has (the same name, case aside) keeps its
-//! star, years and level; a new competence gets its star only while fewer than [`MAX_FOCUS`]
-//! carry one; a new industry never carries the wish star. Contract types, rates, countries,
-//! work mode, availability, workload and exclusion words are the user's alone: the answer
-//! never touches them.
+//! years, level and star; a new industry never carries the wish star. Contract types, rates,
+//! countries, work mode, availability, workload and exclusion words are the user's alone: the
+//! answer never touches them. A `schwerpunkt` an older worker still sends is read and ignored,
+//! as in a file.
 
 use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use super::form::{self, MAX_FOCUS, key};
+use super::form::{self, key};
 use super::{ProfileForm, ProfileInfo};
 use crate::error::Result;
 
@@ -25,7 +25,7 @@ pub const MAX_CV_TOOLS: usize = 30;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoProfile;
 
-/// The form of the answer: only the keys a CV fills, capped (competences, tools, stars), the
+/// The form of the answer: only the keys a CV fills, capped (competences, tools), the
 /// industries without the wish star; `NoProfile` when it does not read as a profile.
 pub fn cv_form(answer: &Map<String, Value>) -> std::result::Result<ProfileForm, NoProfile> {
     let mut part: Map<String, Value> = answer
@@ -35,17 +35,6 @@ pub fn cv_form(answer: &Map<String, Value>) -> std::result::Result<ProfileForm, 
         .collect();
     if let Some(Value::Array(rows)) = part.get_mut(key::COMPETENCES) {
         rows.truncate(MAX_CV_COMPETENCES);
-        let mut stars = 0;
-        for row in rows.iter_mut() {
-            if let Some(star) = row.get_mut("schwerpunkt")
-                && star.as_bool() == Some(true)
-            {
-                stars += 1;
-                if stars > MAX_FOCUS {
-                    *star = Value::Bool(false);
-                }
-            }
-        }
     }
     if let Some(Value::Array(tools)) = part.get_mut(key::TOOLS) {
         tools.truncate(MAX_CV_TOOLS);
@@ -103,10 +92,7 @@ pub fn merge(now: &ProfileForm, cv: &ProfileForm) -> (ProfileForm, Vec<&'static 
             }
             continue;
         }
-        let stars = out.competences.iter().filter(|c| c.focus).count();
-        let mut row = row.clone();
-        row.focus &= stars < MAX_FOCUS;
-        out.competences.push(row);
+        out.competences.push(row.clone());
         note("competences", true);
     }
     for row in &cv.industries {
@@ -160,8 +146,8 @@ mod tests {
         }
     }
 
-    /// The answer is capped and read as the form reads a file; anything that does not read
-    /// saves nothing.
+    /// The answer is capped and read as the form reads a file (an old worker's `schwerpunkt`
+    /// read and ignored); anything that does not read saves nothing.
     #[test]
     fn the_answer_is_capped_and_read_by_the_form() {
         let competences: Vec<Value> = (0..30)
@@ -178,7 +164,7 @@ mod tests {
         })))
         .unwrap();
         assert_eq!(cv.competences.len(), MAX_CV_COMPETENCES);
-        assert_eq!(cv.focus().count(), MAX_FOCUS);
+        assert_eq!(cv.competences[3].years, Some(3));
         assert_eq!(cv.tools.len(), MAX_CV_TOOLS);
         assert!(!cv.industries[0].preferred);
         assert_eq!(cv.day_rate_min, None);
@@ -203,7 +189,6 @@ mod tests {
                 .map(|n| ProfileCompetence {
                     name: format!("K{n}"),
                     years: if n == 0 { None } else { Some(3) },
-                    focus: true,
                 })
                 .collect(),
             ..ProfileForm::default()
@@ -212,9 +197,9 @@ mod tests {
             "wunschrollen": ["interim cfo", "Head of Finance"],
             "berufserfahrung_jahre": 18,
             "kernkompetenzen": [
-                {"kompetenz": "k0", "jahre": 12, "schwerpunkt": false},
-                {"kompetenz": "k1", "jahre": 9, "schwerpunkt": false},
-                {"kompetenz": "Treasury", "jahre": 7, "schwerpunkt": true},
+                {"kompetenz": "k0", "jahre": 12},
+                {"kompetenz": "k1", "jahre": 9},
+                {"kompetenz": "Treasury", "jahre": 7},
             ],
             "sprachen": [{"sprache": "Englisch", "niveau": "C1"}],
         })))
@@ -233,8 +218,10 @@ mod tests {
             "a year the profile has stays"
         );
         let treasury = merged.competences.last().unwrap();
-        assert_eq!(treasury.name, "Treasury");
-        assert!(!treasury.focus, "five stars already");
+        assert_eq!(
+            (treasury.name.as_str(), treasury.years),
+            ("Treasury", Some(7))
+        );
         assert_eq!(merged.languages[0].level, LanguageLevel::C1);
         assert_eq!((merged.permanent, merged.day_rate_min), (true, Some(1_000)));
         assert_eq!(filled, ["roles", "competences", "languages"]);

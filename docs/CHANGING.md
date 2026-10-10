@@ -164,7 +164,7 @@ writes `commands.ts`. Never edit them by hand. The PascalCase files are the IPC 
 | `commands.ts` | `src-tauri/commands.txt` | every command, its arguments and its result |
 | `bands.ts` | `core/src/model.rs` | `HIGH_FROM`, `MID_FROM`, `BAND_FROM`, `bandOf` |
 | `portals.ts`, `Portal.ts` | the registry in `core/src/portal/` | `PORTALS` (the order), `PORTAL_LABEL`, `PORTAL_MONOGRAM` |
-| `profile.ts` | `core/src/profile/form.rs` | `NUMBER_LIMITS`, `MAX_FOCUS`, `MAX_YEARS`, the list limits, `EMPTY_FORM` |
+| `profile.ts` | `core/src/profile/form.rs` | `NUMBER_LIMITS`, `MAX_YEARS`, the list limits, `EMPTY_FORM` |
 
 ## Add or remove a command
 

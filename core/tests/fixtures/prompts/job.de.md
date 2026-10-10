@@ -19,7 +19,7 @@ Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat m
 - `verfuegbar_ab`: frühester Start
 - `auslastung`: `vollzeit` mindestens vier Tage pro Woche, `teilzeit` höchstens drei
 - `mindestlaufzeit_monate`: kürzeste Laufzeit eines Einsatzes in Monaten (0 = egal)
-- `kernkompetenzen`: meine Kompetenzen mit Jahren Erfahrung (`jahre`); `schwerpunkt` markiert die bis zu fünf, für die ich gebucht werden will
+- `kernkompetenzen`: meine Kompetenzen mit Jahren Erfahrung (`jahre`)
 - `methoden_tools`: Tools und Methoden; sie belegen Anforderungen wie Kompetenzen
 - `berufserfahrung_jahre`: Jahre Berufserfahrung insgesamt; gegen sie zählen die Jahre, die eine Anzeige verlangt
 - `branchen`: Branchen meiner Erfahrung; `wunsch` markiert die, in denen ich bevorzugt arbeite
@@ -39,13 +39,11 @@ Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat m
   "kernkompetenzen": [
     {
       "jahre": 12,
-      "kompetenz": "Controlling",
-      "schwerpunkt": true
+      "kompetenz": "Controlling"
     },
     {
       "jahre": 8,
-      "kompetenz": "Konzernabschluss nach HGB",
-      "schwerpunkt": false
+      "kompetenz": "Konzernabschluss nach HGB"
     }
   ],
   "laender": [
