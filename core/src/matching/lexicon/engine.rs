@@ -2776,9 +2776,11 @@ pub(crate) const AGENCY_CUES: &[&str] = &[
 
 /// Salary statements: cue words, units and bounds.
 pub(crate) const SALARY_CUES: &[&str] = &[
-    // LinkedIn's salary chip.
+    // LinkedIn's salary chip, per year or per month.
     "€/jahr",
     "eur/jahr",
+    "€/monat",
+    "eur/monat",
     "/yr",
     "gehalt",
     "salary",

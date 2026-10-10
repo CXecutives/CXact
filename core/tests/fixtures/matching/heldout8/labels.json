@@ -948,8 +948,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": false,
-      "reason": "Permanent nursing job at 'zwischen 3.900 und 4.800 €' per month, far below her minimum annual salary. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
+      "excluded": true,
+      "reason": "Permanent nursing job at 'zwischen 3.900 und 4.800 €' per month: even fourteen salaries stay far below her minimum annual salary.",
       "quote": ""
     },
     "Q15": {
@@ -2492,8 +2492,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": false,
-      "reason": "Nursing job; excluded as 'Unbefristeter Arbeitsvertrag' at '3.900 €/Monat - 4.800 €/Monat', below 140000 per year. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
+      "excluded": true,
+      "reason": "Nursing job; 'Unbefristeter Arbeitsvertrag' at '3.900 €/Monat - 4.800 €/Monat': even fourteen salaries stay below 140000 per year.",
       "quote": ""
     },
     "Q15": {
@@ -3264,8 +3264,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": false,
-      "reason": "Nursing job with permanent salary far below her minimum: \"3.900 €/Monat - 4.800 €/Monat\". Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
+      "excluded": true,
+      "reason": "Nursing job with a permanent salary far below her minimum: \"3.900 €/Monat - 4.800 €/Monat\", even fourteen salaries.",
       "quote": ""
     },
     "Q15": {
@@ -5580,8 +5580,8 @@
     },
     "Q14": {
       "grade": 0,
-      "excluded": false,
-      "reason": "Nursing job; excluded as a permanent job at '3.900 €/Monat - 4.800 €/Monat', below 150000 per year. Profil v19: the profile no longer rules out remote work abroad or a permanent role outside its region.",
+      "excluded": true,
+      "reason": "Nursing job; a permanent job at '3.900 €/Monat - 4.800 €/Monat': even fourteen salaries stay below 150000 per year.",
       "quote": ""
     },
     "Q15": {

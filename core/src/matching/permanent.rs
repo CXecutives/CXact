@@ -4,8 +4,9 @@
 //!
 //! Salary: EUR per year, the upper bound counts (`110.000 bis 130.000 €` -> 130,000) with the
 //! bonus share its sentence names (`plus bis zu 20 % Bonus`), `ab 100.000` is only a lower
-//! bound, a monthly amount is a check, one in another currency is not compared with a minimum
-//! in euros (a check, like a day rate in another currency).
+//! bound, a monthly amount decides only when fourteen of them stay below the minimum (else a
+//! check: the number of salaries a year is unknown), one in another currency is not compared
+//! with a minimum in euros (a check, like a day rate in another currency).
 
 use serde_json::json;
 
@@ -15,6 +16,9 @@ use super::facts::{Finding, HardCriteria, Segment, hourly_pay_in};
 use super::lexicon::engine as lex;
 use super::params::HOURS_PER_YEAR;
 use super::types::{CriterionKey, ReasonCode};
+
+/// The most salaries a year a monthly amount stands for (twelve and two extra).
+const MONTHLY_SALARIES_MAX: u64 = 14;
 
 /// Does a rule for permanent roles apply, and may it decide?
 fn scope(contract: &Contract) -> Option<bool> {
@@ -264,7 +268,12 @@ pub(crate) fn salary(
         params["bonus"] = json!(bonus);
         params["withBonus"] = json!(compared);
     }
-    let decided = may_decide && !salary.monthly && salary.upper.is_some();
+    // A monthly salary decides only when even fourteen of them stay below the minimum.
+    let clear = !salary.monthly
+        || salary.upper.is_some_and(|upper| {
+            with_bonus(upper.saturating_mul(MONTHLY_SALARIES_MAX), bonus) < min
+        });
+    let decided = may_decide && salary.upper.is_some() && clear;
     vec![Finding::new(
         ReasonCode::Salary,
         decided,
@@ -368,6 +377,11 @@ mod tests {
         let from = with("Gehalt ab 100.000 € brutto.");
         assert_eq!(salary_of(&from), [(ReasonCode::Salary, false)]);
         assert!(salary_of("Interim-Mandat, Tagessatz 1.200 € pro Tag.").is_empty());
+        // A monthly salary decides only when fourteen of them stay below the minimum.
+        let monthly = with("3.950 €/Monat - 4.850 €/Monat");
+        assert_eq!(salary_of(&monthly), [(ReasonCode::Salary, true)]);
+        let near = with("Monatsgehalt 11.000 € brutto.");
+        assert_eq!(salary_of(&near), [(ReasonCode::Salary, false)]);
     }
 
     /// LinkedIn's salary chip states a permanent role and its salary; a bonus share in the

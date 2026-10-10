@@ -275,24 +275,27 @@ const HELDOUT5: Floor = Floor {
 /// rate (the user's decision), so the agency jobs L02, L05, M05 and M15 the labels exclude
 /// by that pay x 8 stay in for the freelance profiles that allow ANÜ and set no salary
 /// (0.844; remote work abroad a profile rules out, decided since version 16, gives 0.863).
+/// Engine 21: a monthly salary decides when even fourteen of them stay below the minimum
+/// (M14 of four profiles, back to excluded in the labels), 0.870 and every kept exclusion.
 const HELDOUT7: Floor = Floor {
     ndcg10: 0.91,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.86,
-    kept_recall: 0.997,
+    exclusion_recall: 0.87,
+    kept_recall: 1.0,
     grade3_buried: 2,
 };
 /// The agency wage of version 16 costs the recall of set 7's reason (N03, N16, Q15, S05,
 /// S16); the rules of set 9 bring it back to 0.850. Engine 19: P10's S07 (a hybrid permanent
 /// role at the cap of 40) loses a point to the work mode `remote` its migrated profile wishes
-/// (`ueberwiegend` before).
+/// (`ueberwiegend` before). Engine 21: the monthly salary of Q14 decides for four profiles
+/// (back to excluded in the labels).
 const HELDOUT8: Floor = Floor {
     ndcg10: 0.95,
     spearman: 0.41,
     exclusion_precision: 1.0,
     exclusion_recall: 0.87,
-    kept_recall: 0.983,
+    kept_recall: 0.986,
     grade3_buried: 0,
 };
 /// Set 9 after the one correction round of engine 16 (first contact 0.828, 0.407, 0.908,
