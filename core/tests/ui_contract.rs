@@ -1616,6 +1616,36 @@ fn no_middle_dot() {
     );
 }
 
+/// Five info symbols in the whole app (design round 7), each a consequence that does not show:
+/// what Vertragsart, Mindesttagessatz, Länder and Ausschlusswörter exclude, and what the app
+/// password is. A new one is a decision: a line here and in docs/PLAN.md.
+#[test]
+fn five_info_symbols() {
+    let all = scanned(MIN_FILES);
+    let mut problems = find(&all, &["InfoTip"], |s| {
+        s.is("components/Field.svelte") || s.is("components/InfoTip.svelte")
+    });
+    problems.extend(find(&all, &["info={"], |s| {
+        s.is("components/Field.svelte")
+            || s.is("features/profile/ProfileEditor.svelte")
+            || s.is("features/shared/MailboxForm.svelte")
+    }));
+    let sections = all
+        .iter()
+        .find(|s| s.is("features/profile/sections.ts"))
+        .expect("features/profile/sections.ts");
+    let infos = sections.code.matches("info: '").count();
+    if infos != 4 {
+        problems.push(format!(
+            "features/profile/sections.ts: {infos} info symbols, the plan names 4"
+        ));
+    }
+    fail(
+        &problems,
+        "five info symbols, each where docs/PLAN.md places it",
+    );
+}
+
 /// Tooltips only where something is missing (user decision 2026-09-27): a button that shows
 /// only its glyph, text that is cut off, the reason a control waits. A tooltip never repeats
 /// the words that stand there: `Button` has no second tooltip line (`hint`) and no key
