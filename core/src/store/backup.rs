@@ -23,7 +23,7 @@ use rusqlite::backup::StepResult;
 use rusqlite::{Connection, OpenFlags, params};
 use serde::Serialize;
 
-use super::{jobs, kv_set, schema};
+use super::{kv_set, schema};
 use crate::error::{Error, Result};
 
 /// The folder of the copies, next to the database.
@@ -183,7 +183,6 @@ fn stage(db: &Path, id: &str) -> Result<Connection> {
     let mut staged = Connection::open_in_memory()?;
     replace(&source, &mut staged).map_err(|e| corrupt(e.to_string()))?;
     drop(source);
-    jobs::refresh_all_searches(&staged).map_err(|e| corrupt(e.to_string()))?;
     Ok(staged)
 }
 

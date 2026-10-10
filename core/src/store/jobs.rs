@@ -3,11 +3,11 @@
 
 use jiff::{SignedDuration, Timestamp};
 use rusqlite::types::Value;
-use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
+use rusqlite::{Connection, OptionalExtension, Row, params};
 use url::Url;
 
+use super::Store;
 use super::marks::{INBOX, place_condition};
-use super::{Store, kv_get_i64, kv_set};
 use crate::error::{Error, Result};
 use crate::fetch::policy::MAX_FETCH_ATTEMPTS;
 use crate::mail::MAIL_PARSER_VERSION;
@@ -1045,48 +1045,6 @@ fn usable_details<'a>((company, location): (&'a str, &'a str)) -> (&'a str, &'a 
     }
 }
 
-/// Version of what the search column holds: raised with every change of [`search_text`],
-/// so that [`refresh_all_searches`] recomputes the column of the jobs stored before.
-const SEARCH_VERSION: i64 = 2;
-
-/// Recomputes the search column of every job once after [`search_text`] changed (a row keeps
-/// the column of the version that wrote it).
-pub(super) fn refresh_all_searches(conn: &Connection) -> Result<()> {
-    if kv_get_i64(conn, "search_version")? == Some(SEARCH_VERSION) {
-        return Ok(());
-    }
-    let tx = Transaction::new_unchecked(conn, TransactionBehavior::Immediate)?;
-    let rows = tx
-        .prepare("SELECT portal, job_id, title, company, location, desc_text FROM job")?
-        .query_map([], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, String>(1)?,
-                r.get::<_, String>(2)?,
-                r.get::<_, String>(3)?,
-                r.get::<_, String>(4)?,
-                r.get::<_, Option<String>>(5)?,
-            ))
-        })?
-        .collect::<rusqlite::Result<Vec<_>>>()?;
-    for (portal, id, title, company, location, text) in rows {
-        let search = search_text(
-            Portal::from_key(&portal),
-            &title,
-            &company,
-            &location,
-            text.as_deref().unwrap_or(""),
-        );
-        tx.execute(
-            "UPDATE job SET search = ?3 WHERE portal = ?1 AND job_id = ?2",
-            params![portal, id, search],
-        )?;
-    }
-    kv_set(&tx, "search_version", &SEARCH_VERSION.to_string())?;
-    tx.commit()?;
-    Ok(())
-}
-
 /// Recomputes the search column (lower case, umlauts included).
 fn refresh_search(conn: &Connection, key: &JobKey) -> Result<()> {
     let row: Option<(String, String, String, Option<String>)> = conn
@@ -1971,41 +1929,6 @@ mod tests {
         };
         assert_eq!(find("freelancermap"), std::slice::from_ref(&a.key));
         assert_eq!(find("LinkedIn controller"), std::slice::from_ref(&b.key));
-    }
-
-    #[test]
-    fn rows_stored_before_the_portal_name_get_it_once() {
-        let store = Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        let a = posting(
-            "https://www.linkedin.com/jobs/view/4000000001/",
-            "Controller",
-            "",
-            "",
-        );
-        store.upsert_posting(run, &a, mail(), now()).unwrap();
-        // The column as an older version wrote it, before the portal's name was in it.
-        store
-            .conn()
-            .execute_batch(
-                "UPDATE job SET search = 'controller'; UPDATE kv SET value = '1'
-                 WHERE key = 'search_version';",
-            )
-            .unwrap();
-        let hits = |q: &str| {
-            let filter = JobFilter {
-                search: Some(q.into()),
-                ..JobFilter::default()
-            };
-            store.jobs(&filter).unwrap().len()
-        };
-        assert_eq!(hits("linkedin"), 0);
-        refresh_all_searches(&store.conn()).unwrap();
-        assert_eq!(hits("linkedin"), 1);
-        assert_eq!(
-            store.kv_get("search_version").unwrap().as_deref(),
-            Some(SEARCH_VERSION.to_string().as_str())
-        );
     }
 
     #[test]
