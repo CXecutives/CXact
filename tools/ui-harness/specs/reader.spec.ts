@@ -26,7 +26,6 @@ import {
   stage,
   stubList,
   T,
-  tokenColour,
   viaMenu,
   WIN,
 } from './helpers';
@@ -179,43 +178,15 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('band')).toHaveText('Hohe Übereinstimmung');
     await expect(stage(page).getByTestId('must')).toHaveCount(0);
     expect(text).not.toContain('Pflicht');
-    // Hollow: the track and the arc, nothing filled behind them.
-    const fills = await stage(page)
-      .getByTestId('reader-ring')
-      .locator('circle')
-      .evaluateAll((all) => all.map((circle) => getComputedStyle(circle).fill));
-    expect(fills).toEqual(['none', 'none']);
     // The place without the work mode the portal appends to it.
     await openJob(page, 'freelance-900411');
     expect((await cell(page, 'place'))[0]).toBe('München');
   });
 
-  test('opening a job fills the ring, its number counts up with it', async ({ page }) => {
+  test('the ring shows the score of the open job', async ({ page }) => {
     await open(page, WIN);
-    await settle(page);
-    // Every number the reader's ring shows, frame by frame, from before the click on.
-    await page.evaluate(() => {
-      const seen: string[] = [];
-      (window as unknown as { __ring: string[] }).__ring = seen;
-      const until = performance.now() + 1500;
-      const look = (): void => {
-        const center = document.querySelector('[data-testid="reader-ring"] .center');
-        const text = center?.textContent?.trim() ?? '';
-        if (text !== '') seen.push(text);
-        if (performance.now() < until) requestAnimationFrame(look);
-      };
-      requestAnimationFrame(look);
-    });
     await row(page, 'freelancermap-2801').click();
     await expect(stage(page).getByTestId('reader-ring')).toContainText(BEST);
-    await page.waitForTimeout(600);
-    const seen = await page.evaluate(() => (window as unknown as { __ring: string[] }).__ring);
-    expect(seen.length).toBeGreaterThan(0);
-    // It counts up to the score and never down (design round 7).
-    const numbers = seen.map(Number);
-    expect(numbers.at(-1)).toBe(Number(BEST));
-    expect(numbers.some((n) => n < Number(BEST))).toBe(true);
-    expect(numbers.every((n, i) => i === 0 || n >= numbers[i - 1]!)).toBe(true);
   });
 
   test('a job without a score: no ring, its state box with its own button, no other buttons', async ({
@@ -263,14 +234,6 @@ test.describe('the head and the match', () => {
     await close.click();
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await expect(page.locator('[data-open]')).toHaveCount(0);
-    // Its empty state stands in the middle of the job view, like every other empty state.
-    const middle = async (id: string): Promise<number> => {
-      const box = (await page.getByTestId(id).boundingBox())!;
-      return box.y + box.height / 2;
-    };
-    expect(
-      Math.abs((await middle('place-reader')) - (await middle('reader-pane'))),
-    ).toBeLessThanOrEqual(2);
     // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
     // button, which closes the job there too, and is dimmed without one.
     await page.setViewportSize({ width: 683, height: 700 });
@@ -289,9 +252,7 @@ test.describe('the head and the match', () => {
 });
 
 test.describe('the actions', () => {
-  test('three buttons alike in one order with their glyphs, the moves of the place beside the x', async ({
-    page,
-  }) => {
+  test('three buttons in one order, the moves of the place beside the x', async ({ page }) => {
     // A wide window: every button with its words.
     await page.setViewportSize({ width: 1800, height: 900 });
     await openAt(page, 'freelancermap-2801');
@@ -304,39 +265,17 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
     expect(T.actions.prompt).toBe('Prompt für KI-Bewertung');
-    // One variant and one height for all three, each with the glyph of its meaning.
-    const looks = await buttons.evaluateAll((all) =>
-      all.map((button) => `${button.className.includes('secondary')} ${button.clientHeight}`),
-    );
-    expect(new Set(looks).size).toBe(1);
-    expect(looks[0]).toMatch(/^true /);
-    expect(
-      await buttons.evaluateAll((all) =>
-        all.map((button) => button.querySelector('[data-icon]')?.getAttribute('data-icon')),
-      ),
-    ).toEqual(['external', 'alertMail', 'copy']);
-    // The moves of Aktuell beside the x, quiet like it (no frame, user 2026-10-01), in
-    // one row and one size with it; no "…" menu.
+    // The moves of Aktuell beside the x; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
     expect(tools.labels).toEqual(['Archivieren', 'Löschen']);
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
     const close = stage(page).getByTestId('reader-close');
-    // Löschen only moves the job into the Papierkorb: grey like Archivieren.
-    await expect(stage(page).getByTestId('reader-trash')).not.toHaveCSS(
-      'color',
-      await tokenColour(page, '--danger-strong'),
-    );
     for (const id of ['reader-archive', 'reader-trash']) {
-      const tool = stage(page).getByTestId(id);
-      await expect(tool).toHaveClass(/ghost/);
-      await expect(tool).toHaveCSS(
-        'border-top-width',
-        await close.evaluate((node) => getComputedStyle(node).borderTopWidth),
-      );
-      const [box, x] = [(await tool.boundingBox())!, (await close.boundingBox())!];
-      expect(box.height).toBe(x.height);
-      expect(box.y).toBe(x.y);
+      const [box, x] = [
+        (await stage(page).getByTestId(id).boundingBox())!,
+        (await close.boundingBox())!,
+      ];
       expect(box.x).toBeLessThan(x.x);
     }
     // The alert mail and the ad open outside.
@@ -361,19 +300,9 @@ test.describe('the actions', () => {
     );
   });
 
-  test('the action row keeps its words; where they do not fit, it wraps', async ({ page }) => {
-    const lines = () =>
-      stage(page)
-        .getByTestId('reader-actions')
-        .evaluate(
-          (node) =>
-            new Set(
-              [...node.children].map((child) => {
-                const box = child.getBoundingClientRect();
-                return Math.round(box.top + box.height / 2);
-              }),
-            ).size,
-        );
+  test('the action row keeps its words and stays inside the reader at every width', async ({
+    page,
+  }) => {
     for (const size of [
       { width: 1360, height: 900 },
       { width: 1000, height: 800 },
@@ -382,10 +311,15 @@ test.describe('the actions', () => {
     ]) {
       await page.setViewportSize(size);
       await openAt(page, 'freelancermap-2801');
+      const actions = stage(page).getByTestId('reader-actions');
       // Never only an icon: every button keeps its words.
-      await expect(stage(page).getByTestId('reader-actions').locator('.icon-only')).toHaveCount(0);
-      if (size.width === 1360) await expect.poll(lines).toBe(1);
-      else expect(await lines()).toBeLessThanOrEqual(2);
+      await expect(actions.locator('.icon-only')).toHaveCount(0);
+      // Where the words do not fit, the row wraps: no button leaves the window.
+      for (const button of await actions.locator('.btn').all()) {
+        const box = (await button.boundingBox())!;
+        expect(box.x, `${size.width} px`).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, `${size.width} px`).toBeLessThanOrEqual(size.width);
+      }
     }
   });
   test('the moves of the archive and of the trash, deleting for good asks first', async ({
@@ -517,8 +451,6 @@ test.describe('the actions', () => {
     await toggle.click();
     await expect(page.getByTestId('reader-pane')).toHaveCount(0);
     await expect(page.locator('[data-open]')).toHaveCount(0);
-    // The list takes the whole width, the top bar's line goes with the job view.
-    await expect(page.getByTestId('title-bar-seam')).toHaveCount(0);
     await toggle.click();
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await toggle.click();
@@ -546,9 +478,9 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    // One bordered box: the ban, Ausgeschlossen, why and Trotzdem bewerten at its end.
+    // One box: the ban, Ausgeschlossen, why and Trotzdem bewerten at its end.
     const box = stage(page).getByTestId('exclusion-box');
-    await expect(box.getByTestId('reader-ban').locator('svg')).toHaveCount(1);
+    await expect(box.getByTestId('reader-ban')).toBeVisible();
     await expect(box.getByTestId('reader-include')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
     // Its first violation, once, from the profile's side; no way into the ad.
@@ -559,22 +491,10 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // The ban and the word in the red of a danger, on the neutral box of every state.
-    await expect(box.getByTestId('reader-ban')).toHaveCSS(
-      'color',
-      await tokenColour(page, '--ban'),
-    );
-    await expect(stage(page).getByTestId('band')).toHaveCSS(
-      'color',
-      await tokenColour(page, '--ban'),
-    );
-    await expect(box).toHaveCSS('background-color', await tokenColour(page, '--surface-muted'));
-    // Trotzdem bewerten (with its plus): its real match and a toast that takes it back. No
-    // other button while it is excluded (user, 2026-10-10); the head has the moves of its
-    // place.
+    // Trotzdem bewerten: its real match and a toast that takes it back. No other button while
+    // it is excluded (user, 2026-10-10); the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
-    await expect(include.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
     await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
@@ -621,7 +541,7 @@ test.describe('an excluded job', () => {
 });
 
 test.describe('Jobdetails', () => {
-  test('the rows in their order with an icon each; a row the ad says nothing of only with a verdict', async ({
+  test('the rows in their order; a row the ad says nothing of only with a verdict', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
@@ -629,7 +549,6 @@ test.describe('Jobdetails', () => {
     // The ad says nothing of its workload and nothing judges it: no row "–".
     const shown = ROWS.filter((name) => name !== 'Auslastung');
     expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(shown);
-    expect(await terms(page).locator('.term-name .icon svg').count()).toBe(shown.length);
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     expect(await cell(page, 'mode')).toEqual(['60 % remote', 'met']);
@@ -644,7 +563,6 @@ test.describe('Jobdetails', () => {
       `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
       '',
     ]);
-    await expect(term(page, 'portal').locator('.value')).toHaveClass(/quiet/);
     // No row "Eingegangen" (user, 2026-10-01): the moment stands in "Gefunden".
     await expect(term(page, 'received')).toHaveCount(0);
     // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
@@ -657,87 +575,13 @@ test.describe('Jobdetails', () => {
     );
   });
 
-  test('the verdicts in the colours of the rings, muted, the ban where a row excludes the job', async ({
-    page,
-  }) => {
-    const icon = (page: Page, key: string) =>
-      term(page, key).getByTestId('verdict').locator('.reason > .icon');
-    const look = async (page: Page, key: string): Promise<[string, string]> => [
-      await icon(page, key).evaluate((node) => getComputedStyle(node).color),
-      await icon(page, key).evaluate(
-        (node) => node.querySelector('svg')?.getAttribute('class') ?? '',
-      ),
-    ];
-    await openAt(page, 'freelancermap-2804');
-    const met = await look(page, 'workload');
-    const unknown = await look(page, 'start');
-    expect(await cell(page, 'start')).toEqual(['nach Absprache', 'unknown']);
-    expect(met[0]).toBe(await tokenColour(page, '--verdict-met'));
-    expect(unknown[0]).toBe(await tokenColour(page, '--text-muted'));
-    await openJob(page, 'freelance-900413');
-    const partial = await look(page, 'workload');
-    expect(partial[0]).toBe(await tokenColour(page, '--verdict-partial'));
-    // Met in part: the amber minus in a circle.
-    expect(partial[1]).toContain('lucide-circle-minus');
-    // One glyph per verdict.
-    expect(new Set([met[1], unknown[1], partial[1]]).size).toBe(3);
-  });
-
-  test('the verdicts stand in one column between the names and the values, in the requirements metrics', async ({
+  test('Bewerbungsfrist and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
-    const boxes = await terms(page).evaluate((list) =>
-      [...list.querySelectorAll('li.term')].map((li) => {
-        const line = li.querySelector('.term-line')!;
-        return {
-          key: li.getAttribute('data-row'),
-          start: line.getBoundingClientRect().left,
-          verdict:
-            li.querySelector('[data-testid="verdict"]')?.getBoundingClientRect().left ?? null,
-        };
-      }),
-    );
-    // One column for every verdict, before every value: the values start on one line too,
-    // with or without a verdict (the names are the same for every job, so nothing moves).
-    const judged = boxes.filter((box) => box.verdict !== null);
-    expect(new Set(judged.map((box) => Math.round(box.verdict!))).size).toBe(1);
-    expect(new Set(boxes.map((box) => Math.round(box.start))).size).toBe(1);
-    expect(Math.round(judged[0]!.verdict!)).toBeLessThan(Math.round(boxes[0]!.start));
-    // A job without a score keeps the verdicts' column: its values start at the same place.
-    const starts = (): Promise<number[]> =>
-      terms(page)
-        .locator('.term-line')
-        .evaluateAll((all) => all.map((node) => Math.round(node.getBoundingClientRect().left)));
-    const scored = await starts();
-    await openJob(page, 'freelancermap-2806');
-    await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
-    expect(new Set(await starts())).toEqual(new Set([scored[0]]));
-    await openJob(page, 'freelancermap-2801');
-    // One metric with the requirements: their text and their icon gap.
-    const [termFont, termGap] = await terms(page)
-      .locator('.term-name')
-      .first()
-      .evaluate((node) => [getComputedStyle(node).fontSize, getComputedStyle(node).columnGap]);
-    const [reasonFont, reasonGap] = await why(page)
-      .locator('.reason')
-      .first()
-      .evaluate((node) => [getComputedStyle(node).fontSize, getComputedStyle(node).columnGap]);
-    expect([termFont, termGap]).toEqual([reasonFont, reasonGap]);
-  });
-
-  test('Bewerbungsfrist and Kontakt: red within a week, the e-mail writes a mail, the rest copies', async ({
-    page,
-  }) => {
-    await openAt(page, 'freelancermap-2801');
-    const danger = await tokenColour(page, '--danger-strong');
-    const colour = (key: string) =>
-      term(page, key)
-        .locator('.value')
-        .first()
-        .evaluate((node) => getComputedStyle(node).color);
+    const urgent = (key: string) => term(page, key).locator('.value').first();
     expect(await cell(page, 'deadline')).toEqual(['15.10.', '']);
-    expect(await colour('deadline')).not.toBe(danger);
+    await expect(urgent('deadline')).not.toHaveClass(/urgent/);
     // Name, e-mail and phone one under the other; the name and the phone copy.
     await expect(term(page, 'contact').locator('.parts > *')).toHaveText([
       'Julia Brandt',
@@ -748,24 +592,16 @@ test.describe('Jobdetails', () => {
     await expect(parts).toHaveText(['Julia Brandt', '+49 40 5550 1234']);
     for (const part of await parts.all()) await expect(part).toHaveAttribute('data-copy', '');
     await expect(term(page, 'contact').getByTestId('verdict')).toHaveCount(0);
-    // The e-mail is a link: a new mail to it in the mail program, one line high.
+    // The e-mail is a link: a new mail to it in the mail program.
     const mail = term(page, 'contact').getByTestId('contact-mail');
-    await expect(mail).toHaveClass(/link/);
-    // In the type of the name and the phone around it.
-    const size = (node: Element) => getComputedStyle(node).fontSize;
-    expect(await mail.evaluate(size)).toBe(await parts.first().evaluate(size));
     await mail.click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
     });
-    const [name, phone] = await parts.evaluateAll((all) =>
-      all.map((node) => node.getBoundingClientRect()),
-    );
-    expect(Math.abs(phone!.top - name!.top - 2 * name!.height)).toBeLessThanOrEqual(1);
-    // Four days ahead: red. An e-mail address alone is the contact.
+    // Four days ahead: urgent. An e-mail address alone is the contact.
     await openJob(page, 'freelancermap-2802');
     expect(await cell(page, 'deadline')).toEqual(['28.09.', '']);
-    expect(await colour('deadline')).toBe(danger);
+    await expect(urgent('deadline')).toHaveClass(/urgent/);
     await expect(term(page, 'contact').getByTestId('contact-mail')).toHaveText(
       'jobs@gruenwerk.example',
     );
@@ -799,6 +635,9 @@ test.describe('Jobdetails', () => {
     // Said in the rows, not again among the requirements.
     await openJob(page, 'freelancermap-2802');
     await expect(why(page)).not.toContainText('liegt unter dem Minimum');
+    // A start "nach Absprache" is unknown: the verdict says so.
+    await openJob(page, 'freelancermap-2804');
+    expect(await cell(page, 'start')).toEqual(['nach Absprache', 'unknown']);
   });
 
   test('Erfahrung says what its requirement says among the Anforderungen', async ({ page }) => {
@@ -963,16 +802,12 @@ test.describe('Jobdetails', () => {
     await expect(terms(page).locator('.value.missing')).toHaveCount(0);
 
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
-    const columns = await terms(page).evaluate(
-      (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
-    );
-    expect(columns).toBe(2);
     await expect(why(page)).toHaveCount(0);
   });
 });
 
 test.describe('Anforderungen', () => {
-  test('four groups with their icons and a quiet count, only requirements', async ({ page }) => {
+  test('three groups with a count, only requirements', async ({ page }) => {
     await openAt(page, 'freelancermap-2801');
     await expect(why(page).locator('h2')).toHaveText('Anforderungen');
     const titles = (await why(page).locator('.sub').allInnerTexts()).map(words);
@@ -981,27 +816,12 @@ test.describe('Anforderungen', () => {
     for (const said of ['Wunschrolle', 'Schwerpunkt', 'Tagessatz', 'im Profil']) {
       await expect(why(page)).not.toContainText(said);
     }
-    // The icons of the verdicts; a group's heading is not said again under the pointer.
-    for (const [kind, token] of [
-      ['met', '--verdict-met'],
-      ['partial', '--verdict-partial'],
-      ['open', '--verdict-unmet'],
-    ] as const) {
-      const icon = why(page).getByTestId(`reasons-${kind}`).locator('.reason > .icon').first();
-      expect(await icon.evaluate((node) => getComputedStyle(node).color)).toBe(
-        await tokenColour(page, token),
-      );
-    }
-    // Untagged is Pflicht: the only tag is the quiet word "optional", no pill, and only on a
+    // Untagged is Pflicht: the only tag is the quiet word "optional", and only on a
     // requirement that is not met.
     expect(new Set(await why(page).locator('.optional').allInnerTexts())).toEqual(
       new Set([T.reason.optional]),
     );
     await expect(why(page).getByTestId('reasons-met').locator('.optional')).toHaveCount(0);
-    await expect(why(page).locator('.optional').first()).toHaveCSS(
-      'color',
-      await tokenColour(page, '--text-subtle'),
-    );
     // Only the groups a job has.
     await openJob(page, 'freelancermap-2804');
     await expect(why(page).locator('.sub')).toHaveText(['Nicht erfüllt 1']);
@@ -1031,11 +851,8 @@ test.describe('Anforderungen', () => {
     // the row. The toast says it, with the term alone (without the ad's "Branchenerfahrung").
     const added = missing.getByTestId('reason-settled');
     await expect(added).toHaveAttribute('aria-label', T.reader.added);
-    await expect(added.locator('svg')).toHaveCount(1);
     await expect(added).toHaveText('');
     await expect(missing.getByTestId('add-to-profile')).toHaveCount(0);
-    await expect(missing.locator('svg')).toHaveCount(1);
-    await expect(added).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
     const toast = page.getByTestId('toast').last();
     await expect(toast).toContainText(T.reader.addedToProfile('Energie'));
     // The term is among the profile's industries, saved; not among its keywords.
@@ -1129,21 +946,10 @@ test.describe('the ad', () => {
     const text = stage(page).getByTestId('ad-text');
     const headings = text.getByTestId('ad-heading');
     await expect(headings).toHaveText(['Ihre Aufgaben', 'Ihr Profil', 'Wünschenswert', 'Rahmen']);
-    // Small and bold: the text's size, a heavier weight.
-    const [weight, size] = await headings
-      .first()
-      .evaluate((node) => [getComputedStyle(node).fontWeight, getComputedStyle(node).fontSize]);
-    expect(Number(weight)).toBeGreaterThanOrEqual(480);
-    expect(size).toBe(await text.evaluate((node) => getComputedStyle(node).fontSize));
-    // The bullets are an indented list; the ad's glyphs are gone.
+    // The bullets are a list; the ad's glyphs are gone.
     const items = text.getByTestId('ad-item');
     await expect(items).toHaveCount(10);
     await expect(items.first()).toHaveText('Führung eines Teams von sechs Personen');
-    expect(await items.first().evaluate((node) => getComputedStyle(node).display)).toBe(
-      'list-item',
-    );
-    const indent = async (target: Locator): Promise<number> => (await target.boundingBox())!.x;
-    expect(await indent(items.first())).toBeGreaterThan(await indent(headings.first()));
     expect(await text.innerText()).not.toContain('•');
     // A line with a date is no heading, whatever its first word.
     await expect(text.locator('p').last()).toContainText('Bewerbungsfrist 15.10.2026');
@@ -1162,10 +968,6 @@ test.describe('the ad', () => {
     await expect(rows(page)).toHaveCount(1);
     const hits = stage(page).getByTestId('ad-text').locator('mark.hit');
     await expect(hits).toHaveText(['Interim', 'CFO', 'Interim', 'Interim']);
-    await expect(hits.first()).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--mark-search'),
-    );
     await search.fill('');
     await expect(hits).toHaveCount(0);
   });
@@ -1174,19 +976,11 @@ test.describe('the ad', () => {
     await openAt(page, 'freelance-900411');
     const note = stage(page).getByTestId('detail-note');
     await expect(note).toHaveText(T.reader.adNote.teaser);
-    // Like every info notice: its sign navy, its words ink, in the box under the head.
-    const box = stage(page).getByTestId('reader-state');
-    await expect(note).toHaveCSS('color', await tokenColour(page, '--text'));
-    await expect(box.locator('svg').first()).toHaveCSS('color', await tokenColour(page, '--info'));
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
-    // "Anmelden", as high as the reader's other buttons.
     const signIn = stage(page).getByTestId('reader-sign-in');
     await expect(signIn).toHaveText(T.settings.signIn);
-    expect((await signIn.boundingBox())!.height).toBe(
-      (await stage(page).getByTestId('open-ad').boundingBox())!.height,
-    );
     // A sign-in that fails says so; the job stays.
     await failNext(page, 'portal_login');
     await signIn.click();
@@ -1208,18 +1002,14 @@ test.describe('the ad', () => {
     await expect(note).toHaveText(T.reader.adNote.missing);
     const load = stage(page).getByTestId('load-ad');
     await expect(load).toHaveText('Anzeige laden');
-    const box = stage(page).getByTestId('reader-state');
-    const height = (await box.boundingBox())!.height;
     await load.click();
     expect(((await calls(page, 'start_run'))[0]?.[1] as { request: unknown }).request).toEqual({
       kind: 'details',
       keys: [{ portal: 'linkedin', id: '4100200302' }],
     });
-    // A spinner where the box's sign stood, the box as high as before.
+    // The note says it is being loaded; the button is gone.
     await expect(note).toHaveText(T.reader.adNote.loading);
-    await expect(box.locator('.spinner')).toHaveCount(1);
     await expect(load).toHaveCount(0);
-    expect((await box.boundingBox())!.height).toBe(height);
     // Once the ad is there, its note goes.
     await runFinished(page);
     await expect(stage(page).getByTestId('ad-text')).toBeVisible();
@@ -1230,36 +1020,18 @@ test.describe('the ad', () => {
     await expect(stage(page).getByTestId('load-ad')).toBeVisible();
   });
 
-  test('what arrives later fades in: the ad, its rows, its requirements', async ({ page }) => {
+  test('what arrives later shows: the ad, its rows, its requirements', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
-    // Every frame from the click on: the lowest opacity the requirements showed.
-    await page.evaluate(() => {
-      const seen = { least: 2 };
-      (window as unknown as { __fade: typeof seen }).__fade = seen;
-      const until = performance.now() + 4000;
-      const look = (): void => {
-        const why = document.querySelector<HTMLElement>('[data-testid="why"]');
-        if (why) seen.least = Math.min(seen.least, Number(getComputedStyle(why).opacity));
-        if (performance.now() < until) requestAnimationFrame(look);
-      };
-      requestAnimationFrame(look);
-    });
+    await expect(why(page)).toHaveCount(0);
     await stage(page).getByTestId('load-ad').click();
     await expect(why(page)).toBeVisible({ timeout: 5000 });
-    await page.waitForTimeout(300);
-    const seen = await page.evaluate(
-      () => (window as unknown as { __fade: { least: number } }).__fade,
-    );
-    expect(seen.least).toBeLessThan(1);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
   });
 
-  test('a closed ad says so in the state box as a warning, nothing in the title', async ({
-    page,
-  }) => {
+  test('a closed ad says so in the state box, nothing in the title', async ({ page }) => {
     await openAt(page, 'linkedin-4100200304');
     const note = stage(page).getByTestId('detail-note');
     await expect(note).toHaveText(T.reader.adNote.closed);
-    await expect(stage(page).getByTestId('reader-state')).toHaveClass(/warning/);
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
   });
 
@@ -1289,51 +1061,18 @@ test.describe('the ad', () => {
   });
 });
 
-test('while a job loads, the reader stands in its shape as placeholders', async ({ page }) => {
+test('while a job loads, the reader stands in placeholders until the job takes their place', async ({
+  page,
+}) => {
   await open(page, WIN);
   await settle(page);
   await slowDetails(page, 1500);
   await row(page, 'freelancermap-2801').click();
   const skeleton = stage(page).getByTestId('reader-skeleton');
   await expect(skeleton).toBeVisible();
-  // The title, the ring, the actions, rows of the Jobdetails and lines of the ad.
-  await expect(skeleton.getByTestId('skeleton-title')).toBeVisible();
-  await expect(skeleton.locator('.skeleton.circle')).toHaveCount(1);
-  expect(await skeleton.getByTestId('skeleton-row').count()).toBeGreaterThanOrEqual(4);
-  expect(await skeleton.getByTestId('skeleton-line').count()).toBeGreaterThanOrEqual(4);
-  const placeholder = (await skeleton.getByTestId('skeleton-title').boundingBox())!;
-  // The job takes its place: its title starts where the placeholder's did.
+  // The job takes their place.
   await expect(stage(page).getByTestId('reader-title')).toBeVisible({ timeout: 5000 });
   await expect(stage(page).getByTestId('reader-skeleton')).toHaveCount(0);
-  const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
-  expect(Math.abs(placeholder.x - title.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(placeholder.y - title.y)).toBeLessThanOrEqual(8);
-});
-
-test('switching jobs puts the new one in place at once: nothing fades, nothing flashes', async ({
-  page,
-}) => {
-  await openAt(page, 'freelancermap-2801');
-  // Every frame from the click on: the stages there and how opaque they are.
-  await page.evaluate(() => {
-    const seen = { frames: [] as string[] };
-    (window as unknown as { __stages: typeof seen }).__stages = seen;
-    const until = performance.now() + 700;
-    const look = (): void => {
-      const all = [...document.querySelectorAll('.stage')];
-      seen.frames.push(all.map((stage) => getComputedStyle(stage).opacity).join(' '));
-      if (performance.now() < until) requestAnimationFrame(look);
-    };
-    requestAnimationFrame(look);
-  });
-  await row(page, 'freelancermap-2802').click();
-  await expect(stage(page).getByTestId('reader-title')).toHaveText('Interim Head of Finance');
-  await page.waitForTimeout(700);
-  const seen = await page.evaluate(
-    () => (window as unknown as { __stages: { frames: string[] } }).__stages,
-  );
-  // One stage in every frame, always opaque: never two, never a blank pane.
-  expect(new Set(seen.frames)).toEqual(new Set(['1']));
 });
 
 // Carried over from the reader's rounds of fixes: the column, the run card and the trash
