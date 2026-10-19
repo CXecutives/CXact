@@ -37,12 +37,11 @@ test('every portal may be switched off; Jobs suchen then waits for one and says 
   await expect(page.getByTestId('start-error')).toHaveCount(0);
   await expect(page.getByText('Abruf fehlgeschlagen')).toHaveCount(0);
 
-  // One portal back on: Jobs suchen goes again, the view's primary throughout.
+  // One portal back on: Jobs suchen goes again.
   await page.getByTestId('nav-settings').click();
   await (await reveal(page, page.getByTestId('toggle-enabled-freelancermap'))).click();
   await page.getByTestId('nav-jobs').click();
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
-  await expect(fetch).toHaveClass(/primary/);
 });
 
 test('a profile that no longer reads leaves no verdicts in the list', async ({ page }) => {

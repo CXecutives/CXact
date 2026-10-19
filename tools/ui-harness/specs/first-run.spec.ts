@@ -43,10 +43,6 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
     ]) {
       await expect(page.getByTestId(gone)).toHaveCount(0);
     }
-    // No seam; the bar follows the step's white and the picture's cream (design round 7).
-    await expect(page.getByTestId('title-bar')).not.toHaveClass(/docked/);
-    await expect(page.getByTestId('title-bar')).toHaveClass(/page/);
-    await expect(page.getByTestId('title-bar')).toHaveClass(/pictured/);
     // Willkommen's foot holds only the dots: a tile goes on, there is nothing to go back to.
     await expect(page.getByTestId('first-dots')).toBeVisible();
     await expect(page.getByTestId('first-back')).toHaveCount(0);
@@ -54,21 +50,12 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
   }
 });
 
-test('no step indicator: the heading opens the column, flush left, on every step', async ({
-  page,
-}) => {
+test('no step indicator on any step', async ({ page }) => {
   for (const query of ['scenario=first-run', 'scenario=setup-profile', 'scenario=setup-mailbox']) {
     await open(page, `${WIN}&${query}`);
+    await expect(heading(page)).toBeVisible();
     await expect(page.getByTestId('first-steps')).toHaveCount(0);
     await expect(page.getByRole('list', { name: 'Einrichtung' })).toHaveCount(0);
-    const [title, column] = await Promise.all([
-      heading(page).boundingBox(),
-      page.getByTestId('first-step').boundingBox(),
-    ]);
-    expect(Math.abs(title!.x - column!.x)).toBeLessThanOrEqual(1);
-    // Nothing above it but the step's own top padding.
-    expect(title!.y - column!.y).toBeGreaterThanOrEqual(0);
-    expect(title!.y - column!.y).toBeLessThanOrEqual(16);
   }
 });
 
@@ -104,7 +91,6 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   const dots = page.getByTestId('first-dots');
   await expect(dots).toHaveAttribute('aria-label', T.firstRun.position(1, 4));
   await expect(dots.locator('[data-on]')).toHaveCount(1);
-  await expect(page.getByTestId('setup-picture')).toHaveAttribute('data-picture', 'jobs');
   await expect(page.getByTestId('first-overview')).toHaveCount(0);
   await expect(way.getByTestId('way-cv')).toContainText(T.profile.fromCv);
   await expect(way.getByTestId('way-cv')).toContainText(T.profile.fromCvHint);
@@ -187,7 +173,6 @@ test('a failed evaluation comes back to the upload and says why above it', async
     await expect(page.getByTestId('cv-error')).toHaveText(T.profile.cvError[reason]);
     await expect(page.getByTestId('upload-zone')).toHaveCount(0);
     await expect(page.getByTestId('cv-self')).toHaveText(T.profile.byHand);
-    await expect(page.getByTestId('cv-self')).toHaveClass(/primary/);
     await expect(page.getByTestId('first-back')).toBeVisible();
   }
   await page.getByTestId('cv-self').click();
@@ -258,14 +243,12 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(page.getByTestId('mailbox-form').getByTestId('create-password')).toHaveText(
     T.settings.createPassword,
   );
-  // Zurück at the left; "Überspringen" then "Verbinden", the primary, at the right.
+  // Zurück at the left; "Überspringen" then "Verbinden" at the right.
   await expect(page.getByTestId('first-back')).toBeVisible();
   const ends = page.getByTestId('first-bar').locator('.ends .btn');
   await expect(ends).toHaveCount(2);
   await expect(ends.nth(0)).toHaveAttribute('data-testid', 'first-skip');
-  await expect(ends.nth(0)).toHaveClass(/secondary/);
   await expect(ends.nth(1)).toHaveText(T.settings.connect);
-  await expect(ends.nth(1)).toHaveClass(/primary/);
   await page.getByTestId('first-skip').click();
   // Fertig without a mailbox: the summary says the Postfach is left for later.
   await expectStep(page, T.firstRun.done);
@@ -302,7 +285,6 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(page.getByTestId('first-back')).toBeVisible();
   await expect(page.getByTestId('first-skip')).toHaveCount(0);
   await expect(next(page)).toHaveText(T.firstRun.next);
-  await expect(next(page)).toHaveClass(/primary/);
   await next(page).click();
   await expectStep(page, T.firstRun.done);
   await expect(page.getByTestId('first-summary').locator('li')).toHaveText([

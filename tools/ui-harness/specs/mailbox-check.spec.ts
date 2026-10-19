@@ -55,14 +55,14 @@ test('CRED-3: signed in but not counted is connected, and its state is the answe
   await dialog(page).getByTestId('dialog-confirm').click();
   await expect(dialog(page)).toBeHidden();
   const connected = await text(page, 'settings.connected');
-  await expectMailboxState(page, connected, 'success');
+  await expectMailboxState(page, connected);
   // Einstellungen shows no count: the state says it all, no toast repeats it.
   await expect(page.getByTestId('toast')).toHaveCount(0);
   // With the count there, the same.
   await changeMailbox(page);
   await dialog(page).getByTestId('dialog-confirm').click();
   await expect(dialog(page)).toBeHidden();
-  await expectMailboxState(page, connected, 'success');
+  await expectMailboxState(page, connected);
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 

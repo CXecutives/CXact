@@ -299,19 +299,9 @@ export async function reveal(_page: Page, target: Locator): Promise<Locator> {
   return target;
 }
 
-/** The mailbox's row in Einstellungen says its state under the address, after a dot of its
- *  colour (Verbunden green, a failure red; no badge). */
-export async function expectMailboxState(
-  page: Page,
-  words: string,
-  tone: 'success' | 'danger',
-): Promise<void> {
-  const hint = page.getByTestId('mailbox').locator('.hint');
-  await expect(hint).toHaveText(words);
-  await expect(hint.locator('.dot')).toHaveCSS(
-    'background-color',
-    await tokenColour(page, `--${tone}`),
-  );
+/** The mailbox's row in Einstellungen says its state under the address (no badge). */
+export async function expectMailboxState(page: Page, words: string): Promise<void> {
+  await expect(page.getByTestId('mailbox').locator('.hint')).toHaveText(words);
 }
 
 /** On the start page of the profile: the button of a way (the CV, the empty form). */

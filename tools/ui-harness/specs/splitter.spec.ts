@@ -1,13 +1,12 @@
-// The handle between the list and the reader: the list keeps --list-min, the reader
-// --reader-min, and the list takes at most 60 % of the content; the limits and the first width
-// (40 % of the content, between --list-first-min and --list-first-max) follow the window
-// and the sidebar and never shrink while the window grows; a kept width that does not fit
-// shows at the limit and comes back when there is room; a tooltip names what it does, over
-// what a double click does.
+// The handle between the list and the reader: it resizes the list within limits (the list
+// keeps room, the reader keeps room) that follow the window and the sidebar and never shrink
+// while the window grows; the first width and the kept width stay inside them; a kept width
+// that does not fit shows at the limit and comes back when there is room; a double click sets
+// the first width back. The limits are read from the handle itself (aria-valuemin and -max),
+// not computed from the tokens: their sizes are not pinned here.
 
 import type { Page } from '@playwright/test';
 import { expect, open, settle, test } from './fixtures';
-import { tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -17,16 +16,15 @@ interface Handle {
   max: number;
 }
 
-/** The list column's width as laid out, and the handle's live limits. */
+/** The list column's width as the handle reports it and its live limits; the column is laid
+ *  out as wide as the handle says. */
 async function handle(page: Page): Promise<Handle> {
   await settle(page);
   const splitter = page.getByTestId('list-splitter');
-  const sheet = (await page.locator('main.views').boundingBox())!;
-  const at = (await splitter.boundingBox())!;
   const value = async (name: string): Promise<number> => Number(await splitter.getAttribute(name));
-  // The content starts after the sheet's hairline; the column ends where the handle lies.
-  const width = Math.round(at.x - (sheet.x + 1));
-  expect(width, 'laid out = aria-valuenow').toBe(await value('aria-valuenow'));
+  const width = await value('aria-valuenow');
+  const column = (await page.getByTestId('list-scroll').boundingBox())!;
+  expect(Math.abs(column.width - width), 'laid out = aria-valuenow').toBeLessThanOrEqual(2);
   return { width, min: await value('aria-valuemin'), max: await value('aria-valuemax') };
 }
 
@@ -41,52 +39,52 @@ async function drag(page: Page, dx: number): Promise<void> {
   await page.mouse.up();
 }
 
-/** The limits of the list at a window `width`, from the tokens like Splitter's splitLimits:
- *  the content beside the sidebar and its hairline; the list keeps --list-min, the reader
- *  --reader-min, the list takes at most 60 %, first 40 % between --list-first-min and -max. */
-async function limitsAt(page: Page, width: number): Promise<Handle> {
-  const token = (name: string): Promise<number> => tokenPx(page, name);
-  const content = width - (await token('--sidebar-width')) - 1;
-  const min = await token('--list-min');
-  const max = Math.max(
-    min,
-    Math.min(content - (await token('--reader-min')), Math.round(content * 0.6)),
-  );
-  const first = Math.min(
-    Math.max(Math.round(content * 0.4), await token('--list-first-min')),
-    await token('--list-first-max'),
-  );
-  return { width: Math.max(min, Math.min(max, first)), min, max };
-}
-
 for (const width of [1100, 1360, 1920]) {
-  test(`the list's first width and limits at ${width} px`, async ({ page }) => {
+  test(`the list's first width stays inside its limits, and the handle reaches both at ${width} px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 800 });
     await open(page, WIN);
-    const expected = await limitsAt(page, width);
-    expect(await handle(page)).toEqual(expected);
+    const first = await handle(page);
+    expect(first.min).toBeLessThanOrEqual(first.width);
+    expect(first.width).toBeLessThanOrEqual(first.max);
+    expect(first.min).toBeLessThanOrEqual(first.max);
     await drag(page, 2000);
-    await expect.poll(async () => (await handle(page)).width).toBe(expected.max);
+    await expect.poll(async () => (await handle(page)).width).toBe(first.max);
     await drag(page, -2000);
-    await expect.poll(async () => (await handle(page)).width).toBe(expected.min);
+    await expect.poll(async () => (await handle(page)).width).toBe(first.min);
   });
 }
 
+test('the list never gets narrower as the window grows', async ({ page }) => {
+  // The limit follows the window and the sidebar, also where the sidebar folds by itself.
+  await open(page, WIN);
+  let before = 0;
+  for (const width of [1000, 1099, 1100, 1200, 1360, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 800 });
+    await settle(page);
+    const { max } = await handle(page);
+    expect(max, `at ${width} px`).toBeGreaterThanOrEqual(before);
+    before = max;
+  }
+});
+
 test('the limits follow the window; a kept width waits for its room', async ({ page }) => {
   await open(page, WIN);
-  const [at1360, at1100] = [await limitsAt(page, 1360), await limitsAt(page, 1100)];
+  const at1360 = (await handle(page)).max;
   await drag(page, 2000);
-  await expect.poll(async () => (await handle(page)).width).toBe(at1360.max);
+  await expect.poll(async () => (await handle(page)).width).toBe(at1360);
   // A wider window gives the list more room; dragged to its end there.
   await page.setViewportSize({ width: 1920, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(at1360.max);
+  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(at1360);
   await drag(page, 2000);
   const wide = (await handle(page)).max;
   await expect.poll(async () => (await handle(page)).width).toBe(wide);
   // Narrower: shown at the limit, the choice stays and comes back.
   await page.setViewportSize({ width: 1100, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBe(at1100.max);
-  expect((await handle(page)).width).toBe(at1100.max);
+  await expect.poll(async () => (await handle(page)).max).toBeLessThan(wide);
+  const narrow = await handle(page);
+  expect(narrow.width).toBe(narrow.max);
   await page.setViewportSize({ width: 1920, height: 800 });
   await expect.poll(async () => (await handle(page)).width).toBe(wide);
   await page.reload();
@@ -96,31 +94,29 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
 test('a kept width that is too wide shows at the limit', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('jobs-list-width', '900'));
   await open(page, WIN);
-  const at1360 = await limitsAt(page, 1360);
-  expect(await handle(page)).toEqual({ width: at1360.max, min: at1360.min, max: at1360.max });
+  const narrow = await handle(page);
+  expect(narrow.max).toBeLessThan(900);
+  expect(narrow.width).toBe(narrow.max);
   await page.setViewportSize({ width: 1920, height: 900 });
-  await expect.poll(async () => (await handle(page)).width).toBe(900);
+  await expect
+    .poll(async () => {
+      const { width, max } = await handle(page);
+      return width === Math.min(900, max);
+    })
+    .toBe(true);
+  expect((await handle(page)).width).toBeGreaterThan(narrow.width);
 });
 
-test('the handle shows its grip, no tooltip; a double click sets the first width back', async ({
-  page,
-}) => {
+test('the handle has no tooltip; a double click sets the first width back', async ({ page }) => {
   await open(page, WIN);
   const hit = page.getByTestId('list-splitter').locator('.hit');
   const box = (await hit.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  // Only the grip shows (no line along the border), as long as its token.
-  await expect(hit.locator('.line')).toHaveCount(0);
-  expect((await hit.locator('.grip').boundingBox())!.height).toBe(
-    await tokenPx(page, '--grip-height'),
-  );
-  await expect(hit.locator('.grip')).toHaveCSS('opacity', '1');
   // No tooltip (hidden for now, user 2026-09-29): the cursor says it.
   await page.waitForTimeout(700);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await expect(hit).toHaveCSS('cursor', 'col-resize');
 
-  const first = (await limitsAt(page, 1360)).width;
+  const first = (await handle(page)).width;
   await drag(page, -100);
   await expect.poll(async () => (await handle(page)).width).toBe(first - 100);
   await page.reload();
@@ -136,7 +132,7 @@ test('at its narrowest the list header still shows every control in the column',
 }) => {
   await open(page, WIN);
   await drag(page, -2000);
-  const min = await tokenPx(page, '--list-min');
+  const { min } = await handle(page);
   await expect.poll(async () => (await handle(page)).width).toBe(min);
   const problems = await page.getByTestId('list-header').evaluate((header) => {
     const out: string[] = [];

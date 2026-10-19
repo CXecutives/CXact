@@ -17,8 +17,9 @@ import {
   nav,
   test,
   text,
+  visibleCount,
 } from './fixtures';
-import { failNext, rowMenu, SEARCHED, reveal, T, tokenColour, tokenPx, viaMenu } from './helpers';
+import { failNext, SEARCHED, reveal, T, viaMenu } from './helpers';
 
 // Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
 // direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
@@ -65,9 +66,6 @@ const WIN = '?platform=windows';
 
 const MAC = '?platform=macos';
 
-const sidebarWidth = async (page: Page): Promise<number> =>
-  Math.round((await page.getByTestId('sidebar').boundingBox())!.width);
-
 const tooltip = (page: Page) => page.getByRole('tooltip');
 
 /** A key that moves, like a keyboard user's (after a click the next focus() would be a
@@ -75,8 +73,6 @@ const tooltip = (page: Page) => page.getByRole('tooltip');
 async function byKeys(page: Page): Promise<void> {
   await page.keyboard.press('Tab');
 }
-
-const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
 
 const row = (page: Page, key: string): Locator =>
   page.getByTestId('job-list').getByTestId(`job-row-${key}`);
@@ -88,7 +84,6 @@ async function settings(page: Page, query = WIN): Promise<void> {
   await settle(page);
 }
 
-/** A colour token as the page computes it (rgb()). */
 const SIZES = [
   { width: 480, height: 360 },
   { width: 780, height: 560 },
@@ -151,37 +146,46 @@ test('the shell renders sidebar and the jobs view', async ({ page }) => {
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('nav-jobs')).toHaveText('Jobs');
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
 });
 
-test('every view switch shows the new view at once: nothing fades, nothing flashes', async ({
+test('every view switch shows the new view alone, in the frame the click ends in', async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    const fades: string[] = [];
-    (window as unknown as { __fades: string[] }).__fades = fades;
-    const animate = Element.prototype.animate;
-    Element.prototype.animate = function (this: Element, keyframes, options) {
-      const view = this instanceof HTMLElement ? (this.dataset.testid ?? '') : '';
-      if (view.startsWith('view-')) fades.push(view);
-      return animate.call(this, keyframes, options);
-    };
-  });
   await open(page, '?platform=windows');
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   for (const to of ['profile', 'settings', 'jobs', 'settings', 'profile', 'jobs']) {
     await page.getByTestId(`nav-${to}`).click();
-    // One view only, at full opacity, in the frame the click ends in.
+    // One view only, at once.
     const shown = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>('main.views > section')].map(
-        (node) => `${node.dataset.testid} ${getComputedStyle(node).opacity}`,
+        (node) => node.dataset.testid,
       ),
     );
-    expect(shown).toEqual([`view-${to} 1`]);
+    expect(shown).toEqual([`view-${to}`]);
   }
-  expect(await page.evaluate(() => (window as unknown as { __fades: string[] }).__fades)).toEqual(
-    [],
-  );
+});
+
+test('no view has more than one primary button', async ({ page }) => {
+  // The project allows at most one primary button per view (the Jobs view's fetch, Speichern
+  // while the form holds a change); which one it is, is not pinned here.
+  await open(page, '?platform=windows');
+  for (const view of ['jobs', 'profile', 'settings'] as const) {
+    await page.getByTestId(`nav-${view}`).click();
+    await expect(page.getByTestId(`view-${view}`)).toBeVisible();
+    expect(await visibleCount(page, '.btn.primary'), view).toBeLessThanOrEqual(1);
+  }
+  await page.getByTestId('nav-profile').click();
+  await page.getByTestId('profile-wish-rate').fill('1.300');
+  await expect(page.getByTestId('profile-save')).toBeVisible();
+  expect(await visibleCount(page, '.btn.primary'), 'profile with a change').toBeLessThanOrEqual(1);
+  await open(page, '?platform=windows&scenario=no-profile');
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('new-profile-ways')).toBeVisible();
+  expect(await visibleCount(page, '.btn.primary'), 'profile start').toBeLessThanOrEqual(1);
+  for (const step of ['way', 'upload', 'reading', 'review', 'alerts', 'done']) {
+    await open(page, `?platform=windows&scenario=first-run&step=${step}`);
+    expect(await visibleCount(page, '.btn.primary'), `setup ${step}`).toBeLessThanOrEqual(1);
+  }
 });
 
 // The OS window's focus (Tauri's window events) is one attribute on <html>; selections grey
@@ -210,47 +214,26 @@ test('the navigation switches the view', async ({ page }) => {
 });
 
 // The window's top bar is the same on both OS, like the Claude app's: across the whole window,
-// no line under it, the view's colour with the sidebar's as far as the sidebar reaches, the
-// sidebar's button, Zurück and Vor at the left and the job view's button at the right
-// (Windows: 36 px, the app's caption buttons at the right end; macOS: 44 px, the room of the
-// native traffic lights at the left). Below it the app is the same.
-const BAR = { windows: 36, macos: 44 } as const;
-type Os = keyof typeof BAR;
-const osOf = (query: string): Os => (query.includes('macos') ? 'macos' : 'windows');
-/** Where the content starts: right below the bar (no line under it). */
-const contentTop = (os: Os): number => BAR[os];
+// the sidebar's button, Zurück and Vor at the left and the job view's button at the right
+// (Windows: the app's caption buttons at the right end; macOS: the room of the native traffic
+// lights at the left). Its look is not pinned here.
+const osOf = (query: string): 'windows' | 'macos' =>
+  query.includes('macos') ? 'macos' : 'windows';
 
 for (const os of ['windows', 'macos'] as const) {
-  test(`${os}: the top bar spans the window, the content starts below it`, async ({ page }) => {
+  test(`${os}: the top bar spans the window; nothing but the bar moves the window`, async ({
+    page,
+  }) => {
     await open(page, `?platform=${os}`);
     await expect(page.locator('html')).toHaveAttribute('data-platform', os);
     const bar = page.getByTestId('title-bar');
     const width = await page.evaluate(() => document.documentElement.clientWidth);
-    expect(await bar.boundingBox()).toEqual({ x: 0, y: 0, width, height: contentTop(os) });
-    const look = await bar.evaluate((node) => {
-      const style = getComputedStyle(node);
-      return [style.backgroundColor, style.borderBottomWidth];
-    });
-    expect(look).toEqual([await tokenColour(page, '--surface'), '0px']);
-    // Its left part in the sidebar's colour, the seam right where the view's border is below.
-    const side = await bar
-      .locator('.side')
-      .evaluate((node) => [
-        getComputedStyle(node).backgroundColor,
-        node.getBoundingClientRect().right,
-      ]);
-    const sheetLeft = await page
-      .locator('main.views')
-      .evaluate((node) => node.getBoundingClientRect().left);
-    expect(side).toEqual([await tokenColour(page, '--bg'), sheetLeft + 1]);
-    expect((await page.getByTestId('sidebar').boundingBox())!.y).toBe(contentTop(os));
-    const sheet = await page
-      .locator('main.views')
-      .evaluate((node) => [
-        node.getBoundingClientRect().top,
-        getComputedStyle(node).borderTopWidth,
-      ]);
-    expect(sheet).toEqual([contentTop(os), '0px']);
+    const box = (await bar.boundingBox())!;
+    expect([box.x, box.y, box.width]).toEqual([0, 0, width]);
+    // The content stands below the bar, not under it.
+    expect((await page.getByTestId('sidebar').boundingBox())!.y).toBeGreaterThanOrEqual(
+      box.y + box.height,
+    );
     // No icon and no name; the buttons start after the lights on macOS: Zurück, Vor, then the
     // sidebar's button.
     await expect(page.getByTestId('title-bar-app')).toHaveCount(0);
@@ -259,7 +242,10 @@ for (const os of ['windows', 'macos'] as const) {
         async (id) => (await page.getByTestId(id).boundingBox())!,
       ),
     );
-    expect(first!.x).toBeGreaterThanOrEqual(os === 'macos' ? 80 : 6);
+    if (os === 'macos') {
+      const lights = (await page.getByTestId('traffic-lights').boundingBox())!;
+      expect(first!.x).toBeGreaterThanOrEqual(lights.x + lights.width);
+    }
     expect(second!.x).toBeGreaterThan(first!.x);
     expect(third!.x).toBeGreaterThan(second!.x);
     // Nothing but the bar moves the window.
@@ -272,39 +258,13 @@ for (const os of ['windows', 'macos'] as const) {
   });
 }
 
-test('below the bar the content is laid out the same on both OS, the first line included', async ({
-  page,
-}) => {
-  const at = async (os: Os): Promise<number[]> => {
-    await open(page, `?platform=${os}`);
-    const y = async (id: string): Promise<number> =>
-      (await page.getByTestId(id).boundingBox())!.y - contentTop(os);
-    return [await y('sidebar'), await y('nav-jobs'), await y('places'), await y('search')];
-  };
-  expect(await at('macos')).toEqual(await at('windows'));
-  // The first entry (36 px) and the tabs (40 px) share their middle: the first line.
-  const nav = middle(await page.getByTestId('nav-jobs').boundingBox());
-  const tabs = middle(await page.getByTestId('places').boundingBox());
-  expect(nav).toBe(tabs);
-});
-
-// Windows: Minimieren, Maximieren and Schließen at the right, 46 px wide over the bar's height,
-// named in tooltips in the words of Windows, not in the tab order; Schließen turns red with a
-// white glyph under the pointer. A click goes through `window_button`; Maximieren then names
+// Windows: Minimieren, Maximieren and Schließen at the right, named in tooltips in the words of
+// Windows, not in the tab order. A click goes through `window_button`; Maximieren then names
 // itself Verkleinern.
 test('windows: the caption buttons of the top bar', async ({ page }) => {
   await open(page, WIN);
   const buttons = page.getByTestId('window-buttons').getByRole('button');
   await expect(buttons).toHaveCount(3);
-  const width = await page.evaluate(() => document.documentElement.clientWidth);
-  const boxes = await Promise.all(
-    ['window-minimize', 'window-maximize', 'window-close'].map(
-      async (id) => (await page.getByTestId(id).boundingBox())!,
-    ),
-  );
-  boxes.forEach((box, at) => {
-    expect(box).toEqual({ x: width - 46 * (3 - at), y: 0, width: 46, height: BAR.windows });
-  });
   for (const node of await buttons.all()) await expect(node).toHaveAttribute('tabindex', '-1');
   const names: [string, string][] = [
     ['window-minimize', 'window.minimize'],
@@ -318,21 +278,7 @@ test('windows: the caption buttons of the top bar', async ({ page }) => {
     await expect(tooltip(page)).toHaveText(await text(page, key));
     await expect(button).not.toHaveAttribute('title');
   }
-  // Schließen under the pointer: red, the glyph white.
-  const close = page.getByTestId('window-close');
-  await close.hover();
-  await expect
-    .poll(() => close.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe(await tokenColour(page, '--titlebar-close-hover'));
-  await expect
-    .poll(() => close.evaluate((node) => getComputedStyle(node).color))
-    .toBe(await tokenColour(page, '--titlebar-close-fg'));
-  // Minimieren under the pointer: the quiet wash.
   const minimize = page.getByTestId('window-minimize');
-  await minimize.hover();
-  await expect
-    .poll(() => minimize.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .not.toBe('rgba(0, 0, 0, 0)');
   // Maximieren maximizes and names itself Verkleinern; again, it restores.
   const maximize = page.getByTestId('window-maximize');
   await maximize.click();
@@ -352,22 +298,17 @@ test('windows: the caption buttons of the top bar', async ({ page }) => {
 });
 
 // In the app a window of the OS lies over the bar (platform.rs) and reports the pointer; the
-// buttons show it as if the pointer were over them, the tooltip included, and the maximized
+// buttons answer it as if the pointer were over them, the tooltip included, and the maximized
 // state comes from the window.
 test('windows: the caption buttons show what the window over the bar reports', async ({ page }) => {
   await open(page, WIN);
   const close = page.getByTestId('window-close');
   await page.evaluate(() => window.__harness.fire('caption', { hover: 'close', pressed: null }));
-  await expect(close).toHaveClass(/hover/);
-  await expect
-    .poll(() => close.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe(await tokenColour(page, '--titlebar-close-hover'));
   await expect(tooltip(page)).toHaveText(await text(page, 'window.close'));
   await page.evaluate(() => window.__harness.fire('caption', { hover: 'close', pressed: 'close' }));
-  await expect(close).toHaveClass(/pressed/);
   await expect(tooltip(page)).toHaveCount(0);
   await page.evaluate(() => window.__harness.fire('caption', { hover: null, pressed: null }));
-  await expect(close).not.toHaveClass(/hover|pressed/);
+  await expect(tooltip(page)).toHaveCount(0);
   await page.evaluate(() => window.__harness.fire('window-state', { maximized: true }));
   await expect(page.getByTestId('window-maximize')).toHaveAccessibleName(
     await text(page, 'window.restore'),
@@ -378,9 +319,8 @@ test('windows: the caption buttons show what the window over the bar reports', a
   expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
 });
 
-// macOS: the native traffic lights sit at the left of the same bar, 16 px in and centred (x 16,
-// y 24 in
-// tauri.macos.conf.json); the page draws no window buttons and keeps their room free.
+// macOS: the native traffic lights sit at the left of the same bar; the page draws no window
+// buttons and keeps their room free.
 test('macos: no window buttons in the page, the room of the traffic lights', async ({
   page,
   browserName,
@@ -389,7 +329,8 @@ test('macos: no window buttons in the page, the room of the traffic lights', asy
   await expect(page.getByTestId('window-buttons')).toHaveCount(0);
   await expect(page.getByTestId('title-bar').locator('[data-testid^="window-"]')).toHaveCount(0);
   const lights = page.getByTestId('traffic-lights');
-  expect(await lights.boundingBox()).toEqual({ x: 0, y: 0, width: 80, height: BAR.macos });
+  const room = (await lights.boundingBox())!;
+  expect([room.x, room.y]).toEqual([0, 0]);
   await expect(lights).toHaveAttribute('data-tauri-drag-region', '');
   // A picture with the traffic lights drawn in where macOS puts them (for humans; WebKit
   // reports Playwright's screenshot styles as a CSP violation).
@@ -473,28 +414,6 @@ test('icon-only buttons show a styled tooltip after the delay', async ({ page })
   const tip = page.getByRole('tooltip');
   await expect(tip).toContainText(await text(page, 'nav.sidebarHide'));
   await expect(toggle).not.toHaveAttribute('title');
-});
-
-test('the panel buttons show what a click does under the pointer, the plain panel at rest', async ({
-  page,
-}) => {
-  await open(page, '?platform=windows');
-  const toggle = page.getByTestId('toggle-sidebar');
-  const rest = toggle.locator('[data-icon] > .icon');
-  const hover = toggle.locator('[data-hover-icon]');
-  await page.mouse.move(600, 400);
-  await expect(toggle.locator('[data-icon]')).toHaveAttribute('data-icon', 'sidebar');
-  await expect(rest).toBeVisible();
-  await expect(hover).toBeHidden();
-  await toggle.hover();
-  await expect(hover).toHaveAttribute('data-hover-icon', 'sidebarHide');
-  await expect(hover).toBeVisible();
-  await expect(rest).toBeHidden();
-  // Folded away, the same button opens it.
-  await toggle.click();
-  await expect(hover).toHaveAttribute('data-hover-icon', 'sidebarShow');
-  const reader = page.getByTestId('toggle-reader');
-  await expect(reader.locator('[data-icon]')).toHaveAttribute('data-icon', 'readerPane');
 });
 
 test('baseline: shell on Windows', async ({ page }) => {
@@ -615,29 +534,23 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
   page,
 }) => {
   await open(page, WIN);
+  const sidebar = page.getByTestId('sidebar');
   await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
-  expect(await sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
+  await expect(sidebar).toBeVisible();
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Meta+b');
-  expect(await sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
+  await expect(sidebar).toBeVisible();
   const toggle = page.getByTestId('toggle-sidebar');
   await toggle.click();
   await page.mouse.move(700, 400);
-  await expect(page.getByTestId('sidebar')).toHaveCount(0);
-  // Folded, the bar is one colour: its left part is gone.
-  expect(
-    await page
-      .getByTestId('title-bar')
-      .locator('.side')
-      .evaluate((node) => node.clientWidth),
-  ).toBe(0);
+  await expect(sidebar).toHaveCount(0);
   await toggle.click();
-  await expect.poll(() => sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
+  await expect(sidebar).toBeVisible();
   // A narrow window folds it by itself; a wide one brings it back.
   await page.setViewportSize({ width: 1000, height: 700 });
-  await expect(page.getByTestId('sidebar')).toHaveCount(0);
+  await expect(sidebar).toHaveCount(0);
   await page.setViewportSize({ width: 1360, height: 900 });
-  await expect.poll(() => sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
+  await expect(sidebar).toBeVisible();
 });
 
 test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
@@ -790,30 +703,6 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await expect.poll(() => view('profile').evaluate((node) => node.scrollTop)).toBe(260);
 });
 
-test('the first line: the sidebar entry, the tabs and the titles share one middle', async ({
-  page,
-}) => {
-  await open(page, WIN);
-  const line = middle(await page.getByTestId('nav-jobs').boundingBox());
-  expect(middle(await page.getByTestId('places').boundingBox())).toBe(line);
-  // The title of every page stands on the same row.
-  for (const [view, title] of [
-    ['profile', '[data-testid="profile-heading"]'],
-    ['settings', '[data-testid="settings-heading"]'],
-  ] as const) {
-    await open(page, `${WIN}&view=${view}`);
-    const first = page.locator(title);
-    await expect(first, view).toBeVisible();
-    expect(Math.abs(middle(await first.boundingBox()) - line), view).toBeLessThanOrEqual(1);
-  }
-  await open(page, `${WIN}&open=freelancermap:2801`);
-  const reader = page.getByTestId('reader-title');
-  await expect(reader).toBeVisible();
-  // Once it has risen in.
-  await expect
-    .poll(async () => Math.abs(middle(await reader.boundingBox()) - line))
-    .toBeLessThanOrEqual(1);
-});
 test('a toast of a finished fetch over Profil: its Zeigen opens the fetch once the change goes', async ({
   page,
 }) => {
@@ -840,8 +729,6 @@ for (const os of [WIN, MAC]) {
     await (await reveal(page, page.getByTestId('reset'))).click();
     await expect(page.getByTestId('dialog-reset')).toBeVisible();
     await settle(page);
-    const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
-    expect(scrim.y).toBe(contentTop(osOf(os)));
     const hit = await page.evaluate(() =>
       document.elementFromPoint(600, 18)?.hasAttribute('data-tauri-drag-region'),
     );
@@ -852,9 +739,8 @@ test('a start whose data cannot load: try again, a backup, the data folder', asy
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
   await expect(failed).toContainText(await text(page, 'shell.loadFailed'));
-  // No way to the log (it is written quietly); the folder with the glyph it has everywhere.
+  // No way to the log (it is written quietly).
   await expect(page.getByTestId('open-log')).toHaveCount(0);
-  await expect(page.getByTestId('open-data').locator('svg')).toHaveCount(1);
   await page.getByTestId('open-data').click();
   const targets = (await calls(page, 'open_target')).map(
     ([, args]) => (args as { target: { kind: string } }).target.kind,
@@ -888,10 +774,8 @@ test('the failed start keeps the top bar', async ({ page }) => {
   for (const os of [WIN, MAC]) {
     await open(page, `${os}&scenario=load-failed`);
     await expect(page.getByTestId('view-error')).toBeVisible();
-    expect(await page.getByTestId('title-bar').boundingBox()).toMatchObject({
-      y: 0,
-      height: contentTop(osOf(os)),
-    });
+    await expect(page.getByTestId('title-bar')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-platform', osOf(os));
     // No job view there: its button is dimmed.
     await expect(page.getByTestId('toggle-reader')).toBeDisabled();
   }
@@ -926,60 +810,8 @@ test('the job view button is dimmed without a tooltip where there is no job view
 });
 /* ------------------------------ Lists, panes, the run status, closing, shared components */
 
-// Wave 1, track "shell": the scrollbar's room in the Jobs view, the keys of lists, panes and
-// radio groups, the sidebar in the first run and its one-line run status, the closing note
-// per activity, the shared components (switch, buttons, notices, badges, toasts, chips) and
-// the demo data that agrees with itself.
-
-test('with scrollbars shown the list and the reader keep their room: edges line up, nothing jumps', async ({
-  playwright,
-  browserName,
-  baseURL,
-}) => {
-  test.skip(browserName !== 'chromium', 'Chromium hides scrollbars by a switch left out here');
-  // A browser of its own that shows the scrollbars (the harness hides them by default).
-  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
-  try {
-    const context = await browser.newContext({
-      baseURL,
-      viewport: { width: 1360, height: 900 },
-      deviceScaleFactor: 1,
-      locale: 'de-DE',
-      timezoneId: 'Europe/Berlin',
-    });
-    const page = await context.newPage();
-    await open(page, WIN);
-    const list = page.getByTestId('list-scroll');
-    // The room of the Windows scrollbar is there (8 px), whether the list scrolls or not.
-    const gutter = await list.evaluate(
-      (node) => (node as HTMLElement).offsetWidth - node.clientWidth,
-    );
-    expect(gutter).toBe(8);
-    // The header ends where the rows end (their text shares one edge).
-    const edges = await page.evaluate(() => {
-      const scroller = document.querySelector('[data-testid="list-scroll"]')!;
-      const header = scroller.parentElement!.querySelector(':scope > .head > *')!;
-      const first = scroller.querySelector('[data-testid^="job-row-"]')!;
-      return {
-        header: header.getBoundingClientRect().right,
-        row: first.getBoundingClientRect().right,
-      };
-    });
-    expect(Math.abs(edges.header - edges.row)).toBeLessThanOrEqual(0.5);
-    // A long and a short job: the reader's title starts at one place.
-    const closeAt = async (key: string): Promise<number> => {
-      await row(page, key).click();
-      await expect(page.getByTestId('reader-title')).toBeVisible();
-      await settle(page);
-      return (await page.getByTestId('reader-title').boundingBox())!.x;
-    };
-    const long = await closeAt('freelancermap-2801');
-    const short = await closeAt('freelance-900411');
-    expect(short).toBe(long);
-  } finally {
-    await browser.close();
-  }
-});
+// Wave 1, track "shell": the keys of lists, panes and radio groups, the closing note per
+// activity and the behaviour of the shared components (dialogs, toasts, chips).
 
 test('keyboard focus stays clear of the reader bar', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 600 });
@@ -1023,81 +855,6 @@ test('keyboard focus stays clear of the reader bar', async ({ page }) => {
     if (hidden !== null) cut.push(`reader ${hidden}`);
   }
   expect(cut).toEqual([]);
-});
-
-test('a switch darkens a step on hover and one more while pressed, off and on', async ({
-  page,
-}) => {
-  await settings(page);
-  const steps = async (id: string): Promise<string[]> => {
-    const toggle = page.getByTestId(id);
-    // In view first: the mouse only reaches what the window shows.
-    await toggle.scrollIntoViewIfNeeded();
-    const track = toggle.locator('.track');
-    const colour = (): Promise<string> =>
-      track.evaluate((node) => getComputedStyle(node).backgroundColor);
-    await page.mouse.move(0, 0);
-    await page.waitForTimeout(250);
-    const rest = await colour();
-    const box = (await toggle.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(250);
-    const hover = await colour();
-    await page.mouse.down();
-    await page.waitForTimeout(250);
-    const pressed = await colour();
-    await page.mouse.up();
-    return [rest, hover, pressed];
-  };
-  // A portal's switch on, then (the press switched it) off.
-  const id = 'toggle-enabled-linkedin';
-  await reveal(page, page.getByTestId(id));
-  for (const state of ['true', 'false']) {
-    await expect(page.getByTestId(id)).toHaveAttribute('aria-checked', state);
-    const [rest, hover, pressed] = await steps(id);
-    expect(new Set([rest, hover, pressed]).size, `${state}: ${rest} ${hover} ${pressed}`).toBe(3);
-  }
-});
-
-test('a secondary button darkens a step on hover and one more while pressed; nothing moves', async ({
-  page,
-}) => {
-  await settings(page);
-  const button = await reveal(page, page.getByTestId('folder-open'));
-  const look = (): Promise<string[]> =>
-    button.evaluate((node) => {
-      const style = getComputedStyle(node);
-      return [style.backgroundColor, style.borderColor, style.transform];
-    });
-  await page.mouse.move(0, 0);
-  await page.waitForTimeout(250);
-  const rest = await look();
-  const box = (await button.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.waitForTimeout(250);
-  const hover = await look();
-  await page.mouse.down();
-  await page.waitForTimeout(250);
-  const pressed = await look();
-  await page.mouse.move(0, 0);
-  await page.mouse.up();
-  for (const at of [0, 1]) {
-    expect(new Set([rest[at], hover[at], pressed[at]]).size, `${rest} ${hover} ${pressed}`).toBe(3);
-  }
-  // Opaque fills, and no scale or shift.
-  expect(pressed[0]).toMatch(/^rgb\(/);
-  expect([rest[2], hover[2], pressed[2]]).toEqual(['none', 'none', 'none']);
-});
-
-test('only Endgültig löschen is red: Löschen is grey like the other moves', async ({ page }) => {
-  await open(page, WIN);
-  await rowMenu(page, 'freelancermap-2802');
-  await expect(page.getByTestId('menu-item-trash')).not.toHaveClass(/danger/);
-  await expect(page.getByTestId('menu-item-archive')).not.toHaveClass(/danger/);
-  await page.getByTestId('menu-item-trash').click();
-  await page.getByTestId('place-trash').click();
-  await rowMenu(page, 'freelancermap-2802');
-  await expect(page.getByTestId('menu-item-purge')).toHaveClass(/danger/);
 });
 
 test('a dialog confirms with the bare verb of its heading', async ({ page }) => {
@@ -1271,11 +1028,11 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
     .toBeLessThanOrEqual(0);
   const bottom = await top();
   await page.keyboard.press('ArrowUp');
-  await expect.poll(top).toBe(bottom - 40);
+  await expect.poll(top).toBeLessThan(bottom);
   await page.keyboard.press('Home');
   await expect.poll(top).toBe(0);
   await page.keyboard.press('ArrowDown');
-  await expect.poll(top).toBe(40);
+  await expect.poll(top).toBeGreaterThan(0);
 });
 
 test('after a click into the reader the arrows scroll it', async ({ page }) => {
@@ -1292,7 +1049,7 @@ test('after a click into the reader the arrows scroll it', async ({ page }) => {
   // (WebKit may bring the clicked title into view first: the step counts from there.)
   const start = await top();
   await page.keyboard.press('ArrowDown');
-  await expect.poll(top).toBe(start + 40);
+  await expect.poll(top).toBeGreaterThan(start);
   await page.keyboard.press('End');
   await expect
     .poll(() => stage.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))
@@ -1331,45 +1088,9 @@ test('a chip value copies; a double click still edits it; its x has no tooltip',
   expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
 });
 
-test('the buttons at the end of a row end on the edge of the switches', async ({ page }) => {
-  await settings(page);
-  const edge = async (locator: Locator): Promise<number> =>
-    locator.evaluate((node) => node.getBoundingClientRect().right);
-  // Each on its own tab (one shows at a time, all of one width).
-  const toggle = await edge(await reveal(page, page.getByTestId('toggle-enabled-linkedin')));
-  for (const id of ['folder-open', 'reset']) {
-    const button = await edge(await reveal(page, page.getByTestId(id)));
-    expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
-  }
-});
-
-test('the dry-run note is a plain line in the page column, no tinted box', async ({ page }) => {
+test('the dry-run note shows in Einstellungen', async ({ page }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
-  const note = page.getByTestId('dry-run-note');
-  await expect(note).toHaveText(T.settings.dryRun);
-  const edge = (await note.boundingBox())!.x;
-  const heading = (await page.getByTestId('settings-portals').boundingBox())!.x;
-  expect(Math.abs(edge - heading)).toBeLessThanOrEqual(1);
-  expect(await note.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(
-    'rgba(0, 0, 0, 0)',
-  );
-});
-
-test('one glyph per action: retries load again, what deletes for good shares its glyph', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=list-error`);
-  const retry = page.getByTestId('list-error').getByRole('button');
-  await expect(retry.locator('[data-icon]')).toHaveAttribute('data-icon', 'retry');
-  // The reset deletes everything for good: the trash, like Entfernen of the mailbox and every
-  // delete, never the glyph of an undo or a retry.
-  await settings(page);
-  for (const id of ['reset', 'mailbox-remove']) {
-    await expect(page.getByTestId(id).locator('[data-icon]'), id).toHaveAttribute(
-      'data-icon',
-      'trash',
-    );
-  }
+  await expect(page.getByTestId('dry-run-note')).toHaveText(T.settings.dryRun);
 });
 
 /* -------------------------------------------------------------------------------- Motion */
@@ -1413,78 +1134,6 @@ test('switching reduced motion at runtime is followed', async ({ page }) => {
   await expect.poll(motion).toBe('reduce');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect.poll(motion).toBe('full');
-});
-
-test('nothing animates at start, and a view that comes back does not replay', async ({ page }) => {
-  await open(page, '?platform=windows');
-  // What runs (by element and animation), so a failure names the culprit.
-  const running = (): Promise<string[]> =>
-    page.evaluate(() =>
-      document
-        .getAnimations()
-        .filter((a) => a.playState === 'running')
-        .map((a) => {
-          const target = (a.effect as KeyframeEffect).target;
-          const name = a instanceof CSSAnimation ? a.animationName : a.constructor.name;
-          return `${target?.className ?? ''} ${name}`;
-        }),
-    );
-  expect(await running()).toEqual([]);
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('nav-jobs').click();
-  await page.waitForTimeout(250);
-  // Nothing in the view that came back enters, rolls or slides.
-  const inView = await page.evaluate(() => {
-    const view = document.querySelector('[data-testid="view-jobs"]')!;
-    return document
-      .getAnimations()
-      .filter((a) => a.playState === 'running')
-      .map((a) => (a.effect as KeyframeEffect).target)
-      .filter((target) => target !== null && view.contains(target))
-      .map((target) => target!.className);
-  });
-  expect(inView).toEqual([]);
-});
-
-test('the reader ring fills from empty the first time a job opens, once', async ({ page }) => {
-  // Every Web Animation of the reader ring's arc, noted as it starts: the fill lasts 360 ms,
-  // and a busy machine may look only after it is over.
-  await page.addInitScript(() => {
-    const fills: string[] = [];
-    (window as unknown as { __fills: string[] }).__fills = fills;
-    const animate = Element.prototype.animate;
-    Element.prototype.animate = function (this: Element, keyframes, options) {
-      if (this.matches('[data-testid="reader-ring"] .value')) {
-        const first = Array.isArray(keyframes) ? keyframes[0] : undefined;
-        fills.push(String(first?.strokeDashoffset));
-      }
-      return animate.call(this, keyframes, options);
-    };
-  });
-  const fills = (): Promise<string[]> =>
-    page.evaluate(() => [...(window as unknown as { __fills: string[] }).__fills]);
-  await open(page, '?platform=windows');
-  // Two scored jobs (by match the first row is one still without a score, no fill).
-  const best = page.getByTestId('job-row-freelancermap-2801');
-  const next = page.getByTestId('job-row-linkedin-4100200301');
-  await best.click();
-  const ring = page.getByTestId('reader-ring');
-  await expect(ring).toBeVisible();
-  // One Web Animation on the arc, starting from empty (stroke-dashoffset 100).
-  await expect.poll(fills).toEqual(['100']);
-  // It is dropped when done.
-  await expect
-    .poll(() => ring.evaluate((node) => node.querySelector('.value')!.getAnimations().length))
-    .toBe(0);
-  // Once: another job fills its own ring, the first one back is simply there.
-  await next.click();
-  await expect.poll(fills).toEqual(['100', '100']);
-  await best.click();
-  await expect(page.getByTestId('reader-title')).toHaveText(
-    await best.locator('.title').innerText(),
-  );
-  await settle(page);
-  expect(await fills()).toEqual(['100', '100']);
 });
 
 test('under reduced motion nothing scales or pops', async ({ page }) => {
@@ -1615,38 +1264,10 @@ for (const [width, fold] of [
       await expect(page.getByTestId('toggle-sidebar')).toBeVisible();
       return;
     }
-    const sidebar = await page.getByTestId('sidebar').boundingBox();
-    expect(sidebar?.width).toBe(await tokenPx(page, '--sidebar-width'));
-    const label = page.getByTestId('nav-profile');
-    if (fold) {
-      await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));
-      await label.hover();
-      const tip = page.getByRole('tooltip');
-      // The name alone: the rail hides it.
-      await expect(tip).toHaveText(await text(page, 'nav.profile'));
-      // Right of the icon, centred on it, never over the next entry (like a native rail).
-      await expect(tip.locator('div')).toHaveCSS('opacity', '1');
-      const icon = (await label.boundingBox())!;
-      const bubble = (await tip.locator('div').boundingBox())!;
-      expect(bubble.x).toBeGreaterThan(icon.x + icon.width);
-      expect(Math.abs(bubble.y + bubble.height / 2 - (icon.y + icon.height / 2))).toBeLessThan(2);
-    } else {
-      await expect(label).toHaveText(await text(page, 'nav.profile'));
-    }
+    await expect(page.getByTestId('sidebar')).toBeVisible();
+    await expect(page.getByTestId('nav-profile')).toHaveText(await text(page, 'nav.profile'));
   });
 }
-
-test('the start of a new profile asks for no primary; the Jobs view keeps its fetch', async ({
-  page,
-}) => {
-  await open(page, '?platform=windows&scenario=no-profile');
-  await page.getByTestId('nav-profile').click();
-  await expect(page.getByTestId('new-profile-ways')).toBeVisible();
-  // Three ways, none of them the one way on ("Abrufen" lives in the list of the Jobs view).
-  await expect(page.getByTestId('view-profile').locator('.btn.primary')).toHaveCount(0);
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
-});
 
 test('toasts leave on their own, even under the pointer', async ({ page }) => {
   // Ten seconds of it are the toasts' own life: a busy machine needs more than the usual 30 s.

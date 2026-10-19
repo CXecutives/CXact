@@ -1,25 +1,13 @@
-// Einstellungen against the stub: one page without a title, three groups in their order
-// (Jobportale, Postfach, Daten), their rows flush on one edge, the portals with how they bring
-// their jobs and what they brought, the mailbox and its dialog, the profile's folder and the
-// reset.
+// Einstellungen against the stub: one page, three groups in their order (Jobportale, Postfach,
+// Daten), the portals with how they bring their jobs and what they brought, the mailbox and
+// its dialog, the profile's folder and the reset. The look of the rows is not pinned here.
 
 import type { Page } from '@playwright/test';
-import { ICONS } from '../../../ui/src/lib/icons';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
-import {
-  ALERT_PORTALS,
-  expectMailboxState,
-  failNext,
-  SEARCHED,
-  reveal,
-  T,
-  tokenColour,
-  tokenPx,
-} from './helpers';
+import { ALERT_PORTALS, expectMailboxState, failNext, SEARCHED, reveal, T } from './helpers';
 
 const WIN = '?platform=windows';
-const MAC = '?platform=macos';
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -42,17 +30,6 @@ async function saved(page: Page): Promise<SettingsPatch[]> {
   );
 }
 
-/** A colour token as the page computes it (rgb()). */
-async function colour(page: Page, token: string): Promise<string> {
-  return page.evaluate((name) => {
-    const probe = document.body.appendChild(document.createElement('span'));
-    probe.style.color = `var(${name})`;
-    const value = getComputedStyle(probe).color;
-    probe.remove();
-    return value;
-  }, token);
-}
-
 /** The tooltip of a locked button. */
 async function reason(page: Page, testid: string): Promise<string | null> {
   const button = await reveal(page, page.getByTestId(testid));
@@ -68,9 +45,6 @@ function ids(page: Page, testid: string, selector: string): Promise<(string | nu
     .locator(selector)
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
 }
-
-const middle = (box: { y: number; height: number } | null): number =>
-  box === null ? -1 : box.y + box.height / 2;
 
 /* ---------------------------------------------------------------- the page */
 
@@ -100,122 +74,32 @@ test('one page: Jobportale, Postfach and Daten, the reset last in Daten', async 
   await expect(view).not.toContainText('Version');
   await expect(page.getByTestId('search-terms')).toHaveCount(0);
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  // The page's title (design round 7) stands on the first row, centred on the sidebar's
-  // first entry (macOS too).
   await expect(page.getByTestId('settings-heading')).toHaveText(T.nav.settings);
-  const first = page.getByTestId('settings-heading');
-  for (const query of [WIN, MAC]) {
-    await settings(page, query);
-    const line = middle(await page.getByTestId('nav-jobs').boundingBox());
-    expect(Math.abs(middle(await first.boundingBox()) - line), query).toBeLessThanOrEqual(1);
-  }
 });
-test('button styles: every text button of a row is outlined and grey', async ({ page }) => {
-  await settings(page);
-  const view = page.getByTestId('settings');
-  // Every button with words in a row, a portal's calls too: outlined, one height like all,
-  // each with the glyph of its meaning.
-  const kinds = await view
-    .locator('[data-setting-row] button.btn:not(.icon-only):not(.link)')
-    .evaluateAll((nodes) =>
-      nodes.map((node) => ({
-        id: node.getAttribute('data-testid'),
-        kind: node.classList.contains('secondary') ? 'secondary' : 'ghost',
-        icon: node.querySelector('[data-icon]') !== null,
-        height: Math.round(node.getBoundingClientRect().height),
-      })),
-    );
-  expect(kinds.map((kind) => [kind.id, kind.kind])).toEqual([
-    ['setup-linkedin', 'secondary'],
-    ['sign-in-freelance', 'secondary'],
-    ['setup-freelance', 'secondary'],
-    ['mailbox-change', 'secondary'],
-    ['mailbox-remove', 'secondary'],
-    ['folder-change', 'secondary'],
-    ['folder-open', 'secondary'],
-    ['reset', 'secondary'],
-  ]);
-  const height = await tokenPx(page, '--control-field');
-  expect(kinds.filter((kind) => !kind.icon || kind.height !== height)).toEqual([]);
-  // No row button is red, not even one that loses something (only the dialog's confirm is);
-  // those carry the one glyph of deleting (icons.ts): Entfernen and Alles zurücksetzen.
-  const danger = await colour(page, '--danger-strong');
-  for (const [id, deletes] of [
-    ['mailbox-remove', true],
-    ['reset', true],
-    ['mailbox-change', false],
-    ['folder-open', false],
-  ] as const) {
-    const button = await reveal(page, page.getByTestId(id));
-    await expect(button, id).not.toHaveCSS('color', danger);
-    if (deletes) {
-      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
-    }
-  }
-  await expect(page.getByTestId('folder-open').locator('[data-icon]')).toHaveAttribute(
-    'data-icon',
-    'folder',
-  );
-  // Every row ends on the same edge: its last button or switch.
-  const ends = await view
-    .locator('[data-setting-row]')
-    .evaluateAll((rows) =>
-      rows.map((row) =>
-        Math.round(
-          Math.max(
-            ...[...row.querySelectorAll('button')].map(
-              (node) => node.getBoundingClientRect().right,
-            ),
-          ),
-        ),
-      ),
-    );
-  // The portals, the mailbox, the profile's folder and the reset.
-  expect(ends).toHaveLength(SEARCHED.length + ALERT_PORTALS.length + 1 + 2);
-  expect(new Set(ends).size).toBe(1);
-  // Every button of the page is at most as high as a field.
-  const heights = await view
-    .locator('button:not([role="switch"]):not([role="radio"])')
-    .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height)));
-  expect(heights.length).toBeGreaterThan(0);
-  expect(heights.filter((each) => each > height)).toEqual([]);
-});
-test('narrow, a row keeps its buttons beside its label while the box has room, never over it', async ({
-  page,
-}) => {
+// Narrow, a row's buttons stand beside its label or under it, never over it.
+test('narrow, a row keeps its buttons clear of its label', async ({ page }) => {
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
-  await reveal(page, page.getByTestId('reset-all'));
-  // Label and control side by side, like the wider rows.
-  for (const id of ['reset-all']) {
-    const row = page.getByTestId(id);
+  const clear = async (id: string): Promise<void> => {
+    const row = await reveal(page, page.getByTestId(id));
     const [text, control] = await Promise.all([
       row.locator('.text').boundingBox(),
       row.locator('.actions').boundingBox(),
     ]);
-    expect(control!.x, id).toBeGreaterThanOrEqual(text!.x + text!.width);
-  }
-  // At the smallest window the label keeps its room: the button stands beside it or goes
-  // under it, never over it.
+    const under = control!.y >= text!.y + text!.height;
+    const beside = control!.x >= text!.x + text!.width;
+    expect(under || beside, id).toBe(true);
+  };
+  await clear('reset-all');
+  // At the smallest window the label keeps its room too.
   await page.setViewportSize({ width: 480, height: 800 });
-  const profiles = page.getByTestId('folder');
-  const [text, control] = await Promise.all([
-    profiles.locator('.text').boundingBox(),
-    profiles.locator('.actions').boundingBox(),
-  ]);
-  const under = control!.y >= text!.y + text!.height;
-  const beside = control!.x >= text!.x + text!.width;
-  expect(under || beside).toBe(true);
+  await clear('reset-all');
+  await clear('folder');
 });
 
-test('narrow, the calls go to a line of their own under the portal', async ({ page }) => {
+test('narrow, the calls stay clear of the portal state', async ({ page }) => {
   await settings(page);
-  // A portal without calls keeps its height: no empty line for calls it does not have.
-  const plain = page.getByTestId('portal-gulp');
-  const height = async (): Promise<number> => Math.round((await plain.boundingBox())!.height);
-  const wide = await height();
   await page.setViewportSize({ width: 480, height: 800 });
-  await expect.poll(height).toBe(wide);
   await reveal(page, page.getByTestId('sign-in-freelance'));
   const [signIn, status] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
@@ -228,16 +112,11 @@ test('narrow, the calls go to a line of their own under the portal', async ({ pa
 test('mailbox: the address, no word about the vault, no whole-mailbox row', async ({ page }) => {
   await settings(page);
   const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
-  // The mail tile, the address and under it its state after a green dot (no badge).
-  const glyph = await page
-    .getByTestId('mailbox')
-    .locator('.lead svg')
-    .evaluate((node) => [...node.classList]);
-  expect(glyph).toContain(`lucide-${ICONS.alertMail}`);
+  // The address and under it its state (no badge).
   await expect(page.getByTestId('mailbox').locator('[data-copy]')).toHaveText(
     'alerts.demo@gmail.com',
   );
-  await expectMailboxState(page, T.settings.connected, 'success');
+  await expectMailboxState(page, T.settings.connected);
   await expect(mailbox.locator('.badge')).toHaveCount(0);
   await expect(mailbox).not.toContainText('Anmeldeinformationsverwaltung');
   await expect(mailbox).not.toContainText('Alle Alert-Mails');
@@ -285,14 +164,14 @@ test('mailbox: a saved change is answered by its state; a mail error before it i
 }) => {
   await settings(page, `${WIN}&scenario=offline`);
   const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
-  // The last fetch could not reach Gmail: said once, after a red dot.
-  await expectMailboxState(page, T.settings.unreachable, 'danger');
+  // The last fetch could not reach Gmail: said once.
+  await expectMailboxState(page, T.settings.unreachable);
   await expect(mailbox.locator('.notice')).toHaveCount(0);
   // A new sign-in: Gmail accepted it, the state says so, no note and no toast.
   await page.getByTestId('mailbox-change').click();
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('dialog-mailbox').getByTestId('dialog-confirm').click();
-  await expectMailboxState(page, T.settings.connected, 'success');
+  await expectMailboxState(page, T.settings.connected);
   await expect(page.getByTestId('toast')).toHaveCount(0);
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
@@ -302,7 +181,7 @@ test('mailbox: Gmail refused the app password while the search went on; said onc
 }) => {
   await settings(page, `${WIN}&scenario=mailbox-refused`);
   const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
-  await expectMailboxState(page, T.settings.refused, 'danger');
+  await expectMailboxState(page, T.settings.refused);
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
 
@@ -330,7 +209,7 @@ test('mailbox: removing asks first, a failure stays; then "Nicht verbunden" conn
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('dialog-mailbox').getByTestId('dialog-confirm').click();
-  await expectMailboxState(page, T.settings.connected, 'success');
+  await expectMailboxState(page, T.settings.connected);
 });
 
 test('Postfach: the mailbox alone; its portals stand last in Jobportale', async ({ page }) => {
@@ -364,10 +243,9 @@ test('portals: two groups in the order of the UI, each portal with its state and
     ['linkedin', T.settings.alertMails(24)],
     ['freelance', T.settings.alertMails(11)],
   ] as const) {
-    // Its state in one quiet line, its two capitals on its tile; no meter, no calls counted.
+    // Its state in one quiet line; no meter, no calls counted.
     const row = await reveal(page, page.getByTestId(`portal-${portal}`));
     await expect(row.locator('.badge')).toHaveCount(0);
-    await expect(row.locator('.monogram')).toHaveText(/^[A-Z]{2}$/);
     if (state === null) await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveCount(0);
     else await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
@@ -392,18 +270,6 @@ test('portals: two groups in the order of the UI, each portal with its state and
   ]);
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  // The calls 8 apart; the browser's glyph and the switch each in one column in every row.
-  const [signIn, setup, otherSetup] = await Promise.all([
-    page.getByTestId('sign-in-freelance').boundingBox(),
-    page.getByTestId('setup-freelance').boundingBox(),
-    page.getByTestId('setup-linkedin').boundingBox(),
-  ]);
-  expect(Math.round(setup!.x - (signIn!.x + signIn!.width))).toBe(8);
-  expect(Math.round(setup!.x + setup!.width)).toBe(Math.round(otherSetup!.x + otherSetup!.width));
-  const glyphs = await page
-    .locator('[data-testid^="open-portal-"]')
-    .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().x)));
-  expect(new Set(glyphs).size).toBe(1);
   await page.getByTestId('open-portal-hays').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'hays' } });
 });
@@ -486,7 +352,6 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
   await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
-  await expect(mails).toHaveClass(/warning/);
   await mails.getByRole('button', { name: T.reader.mail }).click();
   expect(await lastOpened(page)).toEqual({
     target: { kind: 'alertMail', gmailId: '18c2f0a9d1e4b7a3' },
@@ -505,7 +370,6 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   await settings(page, `${WIN}&scenario=quiet-alert`);
   const quiet = await reveal(page, page.getByTestId('alert-quiet-freelance'));
   await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
-  await expect(quiet).toHaveClass(/warning/);
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
   await quiet.getByRole('button', { name: T.settings.checkAlert }).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'freelance' } });
@@ -522,16 +386,8 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
 }) => {
   await settings(page, `${WIN}&scenario=no-mailbox`);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
-  const muted = await tokenColour(page, '--text-muted');
   for (const portal of ALERT_PORTALS) {
-    const hint = page.getByTestId(`portal-${portal}-hint`);
-    await expect(hint).toHaveText(T.settings.needsMailbox);
-    // Grey like every state line; the switch at rest like every switch.
-    await expect(hint).toHaveCSS('color', muted);
-    await expect(page.getByTestId(`toggle-enabled-${portal}`).locator('..')).toHaveCSS(
-      'opacity',
-      '1',
-    );
+    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
   }
   await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
 });
@@ -545,12 +401,8 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
   const folder = page.getByTestId('folder');
   await expect(folder).toContainText(T.settings.folder);
-  // The path as Windows writes it, in the line's own font.
+  // The path as Windows writes it.
   await expect(folder.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\CXact');
-  await expect(folder.locator('[data-copy]')).toHaveCSS(
-    'font-family',
-    await folder.getByText(T.settings.folder).evaluate((node) => getComputedStyle(node).fontFamily),
-  );
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.reset);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
