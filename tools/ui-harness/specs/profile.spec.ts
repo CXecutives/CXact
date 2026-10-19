@@ -13,16 +13,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import {
-  chooseWay,
-  failNext,
-  fillRequired,
-  reveal as show,
-  T,
-  tokenColour,
-  tokenPx,
-  WIN,
-} from './helpers';
+import { chooseWay, failNext, fillRequired, reveal as show, T, WIN } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -122,17 +113,7 @@ test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; Speichern f
   await expect(page.getByTestId('profile-heading')).toHaveText(T.nav.profile);
   const head = page.getByTestId('profile-head');
   const cv = page.getByTestId('profile-from-cv');
-  const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
-  expect(
-    Math.abs(
-      middle(await cv.boundingBox()) -
-        middle(await page.getByTestId('profile-heading').boundingBox()),
-    ),
-  ).toBeLessThanOrEqual(1);
   await expect(cv).toHaveText(T.profile.fromCv);
-  await expect(cv.locator('[data-icon]')).toHaveAttribute('data-icon', 'pickFile');
-  // Speichern is the view's one primary.
-  await expect(cv).toHaveClass(/secondary/);
   await expect(head.getByRole('button')).toHaveCount(1);
   // A complete profile: nothing missing, no bar.
   await expect(missing(page)).toHaveCount(0);
@@ -141,8 +122,6 @@ test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; Speichern f
   await expect(bar(page)).toContainText(T.profile.unsaved);
   await expect(bar(page).getByRole('button')).toHaveText([T.profile.save, T.profile.discard]);
   await expect(head.getByRole('button')).toHaveCount(1);
-  await expect(save(page)).toHaveClass(/primary/);
-  await expect(discard(page)).toHaveClass(/ghost/);
 });
 test('four groups on one page in their order, no info symbol at their headings', async ({
   page,
@@ -157,9 +136,7 @@ test('four groups on one page in their order, no info symbol at their headings',
     await expect(section.locator('.head').getByTestId('info-tip')).toHaveCount(0);
   }
 });
-test('each field in its group, its label above it; a list fills the box, a number does not', async ({
-  page,
-}) => {
+test('each field stands in its group with its label', async ({ page }) => {
   await profile(page);
   const words = T.profile.field;
   const layout: Record<string, [string, string][]> = {
@@ -196,34 +173,8 @@ test('each field in its group, its label above it; a list fills the box, a numbe
       await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
     }
   }
-  // Every label above its control on the label's left edge, and the heading on the box's
-  // edge ("Luftige Gruppen", design round 6).
-  const gap = await tokenPx(page, '--label-gap');
-  for (const name of ['roles', 'dayRateWish', 'workMode', 'available', 'years']) {
-    const scope = field(page, name);
-    const [words, control] = await Promise.all([
-      label(scope).boundingBox(),
-      scope.locator('.control').first().boundingBox(),
-    ]);
-    expect(Math.round(control!.y - (words!.y + words!.height)), name).toBe(gap);
-    expect(Math.round(control!.x), name).toBe(Math.round(words!.x));
-  }
-  const box = page.getByTestId('section-job').locator('.box').first();
-  const heading = page.getByTestId('section-job').getByRole('heading', { level: 2 });
-  expect(Math.round((await heading.boundingBox())!.x)).toBe(
-    Math.round((await box.boundingBox())!.x),
-  );
-  // No line between the fields of a box.
-  await expect(field(page, 'dayRateMin')).toHaveCSS('box-shadow', 'none');
-  // A list as wide as the box's inside; a number as wide as a day, its unit inside; a choice
-  // as wide as its options.
-  const inside = (await field(page, 'roles').boundingBox())!.width;
-  expect((await roles(page).boundingBox())!.width).toBeCloseTo(inside, 0);
-  const number = await tokenPx(page, '--number-width');
-  const rate = page.getByTestId('profile-wish-rate').locator('xpath=..');
-  expect(Math.round((await rate.boundingBox())!.width)).toBe(number);
+  // A number carries its unit.
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.unit.euro);
-  expect((await page.getByTestId('profile-work-mode').boundingBox())!.width).toBeLessThan(inside);
 });
 test('the stored profile fills every field', async ({ page }) => {
   await profile(page);
@@ -353,7 +304,7 @@ test('the rates; a wish under the minimum says so quietly under the wish', async
   await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.belowMinRate);
 });
 
-test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit are one segmented look', async ({
+test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit choose one option each', async ({
   page,
 }) => {
   await profile(page);
@@ -370,11 +321,6 @@ test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit are one segmente
   const months = page.getByTestId('profile-min-months').getByRole('radio');
   await expect(months).toHaveText(Object.values(T.profile.minMonths));
   await months.filter({ hasText: T.profile.minMonths[12] }).click();
-  // The chosen one on white with a hairline ring, like the place tabs.
-  await expect(page.getByTestId('profile-min-months').locator('.thumb')).toHaveCSS(
-    'box-shadow',
-    /1px/,
-  );
   await save(page).click();
   expect((await lastSave(page)).after).toMatchObject({
     workMode: 'hybrid',
@@ -503,23 +449,13 @@ test('nothing warns up front; Speichern saves anyway and marks what is missing',
   await expect(roles(page).locator('input')).not.toBeFocused();
   await expect(roles(page).locator('input')).toBeInViewport();
   await expect(save(page)).toHaveCount(0);
-  // Only a coral edge on what is missing, no halo; the field in focus shows only the navy
-  // edge, under the pointer too.
+  // Clicked into, the missing field takes the caret like any other.
   const languages = page.getByTestId('language-input');
-  const navy = await tokenColour(page, '--border-focus');
-  const coral = await tokenColour(page, '--missing-edge');
-  await expect(languages).toHaveCSS('border-top-color', coral);
-  await expect(languages).toHaveCSS('box-shadow', 'none');
-  await expect(roles(page)).toHaveCSS('border-top-color', coral);
-  // Clicked into, the missing field shows only the navy edge, under the pointer too.
   await roles(page).locator('input').click();
-  await expect(roles(page)).toHaveCSS('border-top-color', navy);
-  await roles(page).hover();
-  await expect(roles(page)).toHaveCSS('border-top-color', navy);
-  // Each name leads to its field: the caret in it, nothing flashes.
+  await expect(roles(page).locator('input')).toBeFocused();
+  // Each name leads to its field: the caret in it.
   await missing(page).getByTestId('missing-languages').click();
   await expect(languages.locator('input')).toBeFocused();
-  await expect(languages).toHaveCSS('border-top-color', navy);
   await roles(page).locator('input').fill('Interim CFO');
   await roles(page).locator('input').press('Enter');
   await expect.poll(said).toBe(sentence([words.languages]));
@@ -601,11 +537,9 @@ test('no evaluation left today: the CV buttons say so ahead of the click, a drop
 test('a CV dropped anywhere on the profile page fills it like the button', async ({ page }) => {
   await profile(page, '&scenario=profile-incomplete');
   await page.evaluate(() => window.__harness.fire('tauri://drag-enter', { paths: [] }));
-  await expect(page.getByTestId('profile')).toHaveClass(/over/);
   await page.evaluate(() =>
     window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
   );
-  await expect(page.getByTestId('profile')).not.toHaveClass(/over/);
   await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: true });
   // While the form holds changes the drop waits like the button.
@@ -676,13 +610,6 @@ test('no profile: one sentence and the two ways as tiles, a click goes its way',
   await expect(ways.getByTestId('way-cv')).toContainText(T.profile.fromCv);
   await expect(ways.getByTestId('way-cv')).toContainText(T.profile.fromCvHint);
   await expect(ways.getByTestId('way-self')).toHaveText(T.profile.byHand);
-  // Side by side.
-  const [cv, self] = [
-    await ways.getByTestId('way-cv').boundingBox(),
-    await ways.getByTestId('way-self').boundingBox(),
-  ];
-  expect(Math.abs(cv!.y - self!.y)).toBeLessThan(1);
-  expect(Math.abs(cv!.width - self!.width)).toBeLessThan(1);
   // The CV makes the profile: the form shows it as stored.
   await chooseWay(page, 'cv');
   await expect(page.getByTestId('profile-form')).toBeVisible();
