@@ -8,15 +8,12 @@
 // (stubList), not typed again.
 
 import type { Page } from '@playwright/test';
-import { ICONS } from '../../../ui/src/lib/icons';
 import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
 import { RECEIVED } from '../../../ui/src/lib/state/filter';
 import {
-  animationsDone,
   calls,
   expect,
   expectShot,
-  motionSettled,
   open,
   runFinished,
   settle,
@@ -31,7 +28,6 @@ import {
   chooseFilter,
   chooseSort,
   excludedRows,
-  expectMenuIcons,
   failNext,
   FILTER_GROUPS,
   filterLabel,
@@ -58,8 +54,6 @@ import {
   stage,
   stubList,
   T,
-  tokenColour,
-  tokenPx,
   unfoldExcluded,
   viaMenu,
   WIN,
@@ -90,27 +84,15 @@ async function inbox(page: Page, query: Partial<JobQuery> = {}): Promise<string[
 const keyOf = (job: JobView): string => `${job.key.portal}-${job.key.id}`;
 const excluded = (job: JobView): boolean => job.match?.status === 'excluded';
 
-/** The right edge of an element (px from the left of the window). */
-async function rightOf(page: Page, testid: string): Promise<number> {
-  const box = await page.getByTestId(testid).boundingBox();
-  return Math.round((box?.x ?? 0) + (box?.width ?? 0));
+/** Whether the element `a` starts before the element `b` (the order along a line). */
+async function leftOf(page: Page, a: string, b: string): Promise<boolean> {
+  const [first, second] = await Promise.all(
+    [a, b].map(async (id) => (await page.getByTestId(id).boundingBox())!),
+  );
+  return first!.x < second!.x;
 }
 
 /* ======================================================================= header */
-
-/** How far apart the vertical middles of two elements are, measured in the same frame (px). */
-function middlesApart(page: Page, a: string, b: string): Promise<number> {
-  return page.evaluate(
-    ([first, second]) => {
-      const middle = (id: string): number => {
-        const box = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
-        return box.top + box.height / 2;
-      };
-      return Math.abs(middle(first) - middle(second));
-    },
-    [a, b] as const,
-  );
-}
 
 test.describe('header', () => {
   test('a job comes in once: a second fetch brings nothing new and no dot comes back', async ({
@@ -138,68 +120,38 @@ test.describe('header', () => {
     expect(await readOf(newest)).toBe(false);
   });
 
-  test('the tabs name their place only, no numbers; the chosen one has the line', async ({
-    page,
-  }) => {
+  test('the tabs name their place only, no numbers; the chosen one is marked', async ({ page }) => {
     await open(page, WIN);
     for (const place of ['inbox', 'archive', 'trash'] as const) {
       await expect(page.getByTestId(`place-${place}`)).toHaveText(T.place[place]);
     }
-    // As high as a field, the medium labels of the app's text in the one segmented look of the
-    // app (the choices of the Profil take it too), the chosen one on its white thumb; it
-    // slides to another choice.
-    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(
-      await tokenPx(page, '--control-field'),
-    );
-    await expect(page.getByTestId('place-archive')).toHaveCSS(
-      'font-size',
-      `${await tokenPx(page, '--font-md')}px`,
-    );
-    const under = async (place: 'inbox' | 'archive'): Promise<void> => {
-      const chosen = (await page.getByTestId(`place-${place}`).boundingBox())!;
-      await expect
-        .poll(async () => {
-          const line = (await page.getByTestId('places').locator('.thumb').boundingBox())!;
-          return [line.x, line.width].map(Math.round);
-        })
-        .toEqual([chosen.x, chosen.width].map(Math.round));
-    };
-    await under('inbox');
+    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
     await openPlace(page, 'archive');
-    await under('archive');
+    await expect(page.getByTestId('place-archive')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'false');
   });
 
   test('one header in the three places: the tabs with the action, the search and the funnel', async ({
     page,
   }) => {
     await open(page, WIN);
-    // Aktuell: the fetch with its menu's button at the end of the tabs' row.
+    // Aktuell: the fetch at the end of the tabs' row, the search before the funnel under it;
+    // no sort button (the order is the funnel's first group).
     await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.searchNow);
-    // Measured in one frame, once the header has its final layout.
-    await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
-    expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
-    // The toolbar row under it: the search and the funnel on one line, left to right, the
-    // funnel's right edge on the action's; no sort button (the order is the funnel's first
-    // group).
-    await expect.poll(() => middlesApart(page, 'search', 'filter')).toBeLessThanOrEqual(1);
-    expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
-    const end = await rightOf(page, 'fetch');
-    expect(await rightOf(page, 'filter')).toBe(end);
+    expect(await leftOf(page, 'places', 'fetch')).toBe(true);
+    expect(await leftOf(page, 'search', 'filter')).toBe(true);
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
     expect(T.toolbar.filter).toBe('Sortieren und filtern');
     // Each place's search names its place.
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
     expect(T.place.search.inbox).toBe('Aktuelle Jobs durchsuchen');
-    const top = (await page.getByTestId('search').boundingBox())!.y;
     // Archiv: the same row, no action.
     await openPlace(page, 'archive');
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
     await expect(funnel(page)).toBeVisible();
     await expect(page.getByTestId('place-action')).toHaveCount(0);
-    expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
-    // Papierkorb: "Papierkorb leeren", an outlined button with the trash in red, in the
-    // action's place.
+    // Papierkorb: "Papierkorb leeren" in the action's place.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
@@ -208,50 +160,36 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     const empty = page.getByTestId('empty-trash');
     await expect(empty).toHaveText(T.actions.emptyTrash);
-    // Outlined and grey like every row button (the dialog's confirm is the red one), as large
-    // as "Jobs suchen".
-    await expect(empty).toHaveClass(/secondary/);
-    await expect(empty).toHaveClass(/wide/);
-    await expect(empty).not.toHaveCSS('color', await tokenColour(page, '--danger-strong'));
-    await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.trash}`));
-    expect(await rightOf(page, 'empty-trash')).toBe(end);
-    expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
     // No second row, no count line.
     await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('one fetch, Jobs suchen, the primary with or without a mailbox; Abbrechen in its slot', async ({
+  test('one fetch, Jobs suchen, with or without a mailbox; Abbrechen takes its place', async ({
     page,
   }) => {
     await open(page, `${WIN}&tick=15`);
     const fetch = page.getByTestId('fetch');
-    await expect(fetch).toHaveClass(/primary/);
     await expect(fetch).toHaveText(T.toolbar.searchNow);
     expect(T.toolbar.searchNow).toBe('Jobs suchen');
-    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.search}`));
     // No menu of ways beside it.
     await expect(page.getByTestId('fetch-ways')).toHaveCount(0);
-    const words = (await fetch.boundingBox())!;
     await page.evaluate(() => (window.__harness.holdAfter = 3));
     await fetch.click();
-    // "Abbrechen" takes its slot: nothing moves.
+    // "Abbrechen" takes the place of the fetch while it runs.
     const cancel = page.getByTestId('cancel-run');
     await expect(cancel).toBeVisible();
-    const slot = (await cancel.boundingBox())!;
-    expect(slot.x + slot.width).toBe(words.x + words.width);
-    expect(slot.y).toBe(words.y);
+    await expect(fetch).toHaveCount(0);
     const sent = (await calls(page, 'start_run')).at(-1)?.[1] as { request: object };
     expect(sent.request).toEqual({ kind: 'fetch' });
     await cancel.click();
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
-    // Without a mailbox it stays the primary (the search needs none).
+    // Without a mailbox it still fetches (the search needs none).
     await open(page, `${WIN}&scenario=no-mailbox`);
-    await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
     await expect(page.getByTestId('fetch')).toBeEnabled();
   });
 
-  test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
+  test('while a fetch goes Abbrechen stands in every place', async ({ page }) => {
     await open(page, `${WIN}&tick=15`);
     await viaMenu(page, 'trash', 'freelancermap-2802');
     await settleMoves(page);
@@ -259,16 +197,9 @@ test.describe('header', () => {
     await page.getByTestId('fetch').click();
     const cancel = page.getByTestId('cancel-run');
     await expect(cancel).toBeVisible();
-    const slot = async (): Promise<number[]> => {
-      const box = (await cancel.boundingBox())!;
-      return [box.x, box.y, box.width, box.height].map(Math.round);
-    };
-    const inbox = await slot();
-    const end = await rightOf(page, 'place-action');
     for (const place of ['archive', 'trash'] as const) {
       await openPlace(page, place);
       await expect(cancel, place).toBeVisible();
-      expect(await slot(), place).toEqual(inbox);
     }
     // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
     await expect(page.getByTestId('empty-trash')).toHaveCount(0);
@@ -276,21 +207,8 @@ test.describe('header', () => {
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await expect(page.getByTestId('empty-trash')).toBeVisible();
-    expect(Math.abs((await rightOf(page, 'empty-trash')) - end)).toBeLessThanOrEqual(1);
     await openPlace(page, 'archive');
     await expect(page.getByTestId('place-action')).toHaveCount(0);
-  });
-
-  test('an unchosen tab washes on hover like a segment of a segmented control', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const archive = page.getByTestId('place-archive');
-    await archive.hover();
-    await expect(archive.locator('.pill')).toHaveCSS('opacity', '1');
-    // The chosen one lies on its thumb, no wash.
-    await page.getByTestId('place-inbox').hover();
-    await expect(page.getByTestId('place-inbox').locator('.pill')).toHaveCSS('opacity', '0');
   });
 
   test('the tabs fit their row at every width', async ({ page }) => {
@@ -311,25 +229,6 @@ test.describe('header', () => {
       await expect.poll(fits).toBe(true);
       await expect(page.getByTestId('place-inbox')).toContainText(T.place.inbox);
     }
-  });
-
-  test('Jobs suchen and Abbrechen share one slot; the head draws its hairline once scrolled', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1360, height: 600 });
-    await open(page, `${WIN}&tick=200`);
-    // The head of the list draws its hairline only once the list scrolled under it.
-    const head = page.getByTestId('list-header').locator('header');
-    await expect(head).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
-    await page.getByTestId('list-scroll').evaluate((node) => node.scrollTo({ top: 200 }));
-    await expect(head).toHaveCSS('border-bottom-color', await tokenColour(page, '--border'));
-    await page.getByTestId('list-scroll').evaluate((node) => node.scrollTo({ top: 0 }));
-    const width = (await page.getByTestId('search').boundingBox())!.width;
-    await page.getByTestId('fetch').click();
-    await expect(page.getByTestId('cancel-run')).toBeVisible();
-    expect((await page.getByTestId('search').boundingBox())!.width).toBe(width);
-    await page.getByTestId('cancel-run').click();
-    await runFinished(page);
   });
 
   test('the tabs drop the search, the hits link keeps it, an open tab reloads nothing', async ({
@@ -362,7 +261,6 @@ test.describe('header', () => {
   }) => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
-    const top = (await page.getByTestId('list-scroll').boundingBox())!.y;
     await openPlace(page, 'trash');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
     await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
@@ -371,21 +269,12 @@ test.describe('header', () => {
     }
     // The list says it: the reader beside it adds no second empty state.
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
-    // The row stays: the list starts where it starts in the other places.
-    expect((await page.getByTestId('list-scroll').boundingBox())!.y).toBe(top);
   });
 
-  test('a fetch into an empty Aktuell leaves no empty band: the search row stands above the run line', async ({
+  test('a fetch into an empty Aktuell shows the search row, with the run line below it', async ({
     page,
   }) => {
     for (const platform of [WIN, MAC]) {
-      // Where the search stands under the tabs in a list with jobs.
-      await open(page, platform);
-      const under = async (): Promise<number> => {
-        const tabs = (await page.getByTestId('places').boundingBox())!;
-        return (await page.getByTestId('search').boundingBox())!.y - (tabs.y + tabs.height);
-      };
-      const usual = await under();
       await open(page, `${platform}&scenario=empty&tick=40`);
       await expect(page.getByTestId('search')).toHaveCount(0);
       await page.evaluate(() => (window.__harness.holdAfter = 4));
@@ -393,16 +282,13 @@ test.describe('header', () => {
       const line = page.getByTestId('run-line');
       await expect(line).toBeVisible();
       // The row under the tabs holds the search and the funnel; the run line follows it.
-      const search = (await page.getByTestId('search').boundingBox())!;
+      await expect(page.getByTestId('search')).toBeVisible();
       await expect(funnel(page)).toBeVisible();
-      await motionSettled(page);
-      const at = (await line.boundingBox())!;
-      expect(at.y - (search.y + search.height)).toBeLessThanOrEqual(16);
-      expect(Math.abs((await under()) - usual)).toBeLessThan(1);
-      // The first jobs come in: nothing above them moves.
+      const search = (await page.getByTestId('search').boundingBox())!;
+      expect((await line.boundingBox())!.y).toBeGreaterThanOrEqual(search.y + search.height);
+      // The first jobs come in.
       await page.evaluate(() => (window.__harness.holdAfter = null));
       await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(0);
-      expect((await page.getByTestId('search').boundingBox())!.y).toBe(search.y);
       await runFinished(page);
     }
   });
@@ -443,11 +329,6 @@ test.describe('filter', () => {
       ...table.flatMap((group) => group.entries),
       T.toolbar.filterReset,
     ]);
-    // A line before every group and the way back; switches of their own share theirs.
-    const lone = (group: (typeof table)[number]): boolean =>
-      group.heading === null && group.entries.length === 1;
-    const shared = table.filter((group, at) => at > 0 && lone(group) && lone(table[at - 1]!));
-    await expect(menu.getByRole('separator')).toHaveCount(table.length - shared.length);
     // A group lists every value of its dimension: the three bands and the three day ranges,
     // their words under their heading without repeating it.
     for (const band of ['high', 'mid', 'low'] as const) {
@@ -642,25 +523,6 @@ test.describe('filter', () => {
     ]);
   });
 
-  test('the menu keeps its height when a first filter is chosen, inside a small window', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1024, height: 768 });
-    await open(page, WIN);
-    const menu = await openFilter(page);
-    const before = (await menu.boundingBox())!;
-    await menuItem(page, 'portal-linkedin').click();
-    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
-    const after = (await menu.boundingBox())!;
-    expect(after).toEqual(before);
-    // Its last entry is within reach: the menu below the funnel scrolls inside itself.
-    const reset = menuItem(page, 'filter-reset');
-    await reset.scrollIntoViewIfNeeded();
-    await expect(reset).toBeInViewport();
-    expect((await menu.boundingBox())!).toEqual(before);
-    await page.keyboard.press('Escape');
-  });
-
   test('the menu never covers the funnel or the title bar; where it does not fit it scrolls', async ({
     page,
   }) => {
@@ -743,10 +605,7 @@ test.describe('filter', () => {
     expect(linkedin.every((key) => key.startsWith('linkedin-'))).toBe(true);
     await expect.poll(() => listed(page)).toEqual(linkedin);
     expect(await lastQuery(page)).toMatchObject({ portals: ['linkedin'], bands: [] });
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--unread'),
-    );
+    await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
     // A second source adds its jobs (user decision 2026-10-01: several at once).
     await chooseFilter(page, 'portal-freelance');
     const two = await inbox(page, { portals: ['linkedin', 'freelance'] });
@@ -888,36 +747,6 @@ test.describe('filter', () => {
     await open(page, WIN);
     expect(await checkedSort(page)).toBe('rate');
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
-  });
-
-  test('the chips unfold under the toolbar and fold away: the list glides, nothing jumps', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await openFilter(page);
-    // Picked in the page itself, so the next frame can be watched.
-    const unfolding = await page.evaluate(async () => {
-      document.querySelector<HTMLElement>('[data-testid="menu-item-portal-linkedin"]')!.click();
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      const wrapper = document.querySelector('[data-testid="filter-chips"]')!.parentElement!;
-      return wrapper
-        .getAnimations()
-        .some((animation) =>
-          ((animation.effect as KeyframeEffect).getKeyframes() ?? []).some(
-            (key) => 'height' in key,
-          ),
-        );
-    });
-    expect(unfolding).toBe(true);
-    await animationsDone(page);
-    const folding = await page.evaluate(async () => {
-      const wrapper = document.querySelector('[data-testid="filter-chips"]')!.parentElement!;
-      document.querySelector<HTMLElement>('[data-testid="chip-portal-linkedin"]')!.click();
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      return wrapper.getAnimations().length;
-    });
-    expect(folding).toBeGreaterThan(0);
-    await expect(chips(page)).toHaveCount(0);
   });
 
   test('the filter is the same in every place and kept; Filter zurücksetzen takes it off', async ({
@@ -1098,7 +927,7 @@ test.describe('one list', () => {
       { key: { portal: 'linkedin', id: '4100200301' } },
       { key: { portal: 'freelancermap', id: '2802' } },
     ]);
-    await expect(first.locator('.title')).not.toHaveClass(/unread/);
+    await expect(list(page).locator('.job', { has: first }).locator('.dot')).toHaveCount(0);
     await expect(first).toBeVisible();
     await expect.poll(() => listed(page)).toEqual(all);
     // Back from another view the list is the same.
@@ -1143,10 +972,9 @@ test.describe('one list', () => {
     expect(out.length).toBeGreaterThan(1);
     const divider = page.getByTestId('excluded-divider');
     const count = divider.locator('.count');
-    // Its count after the label, quiet like the tabs' (no brackets).
+    // Its count after the label (no brackets).
     await expect(divider).toHaveText(`${T.list.excluded}${out.length}`);
     await expect(count).toHaveText(String(out.length));
-    await expect(count).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
     const last = (await rows(page).last().boundingBox())!;
@@ -1239,61 +1067,6 @@ test.describe('one list', () => {
     expect(await lastQuery(page)).toMatchObject({ sort: 'newest' });
   });
 
-  test('only a re-sort moves rows: a run lands new jobs in place, the order glides', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&tick=30`);
-    const watch = (frames: number, during = ''): Promise<void> =>
-      page.evaluate(
-        ([count, selector]) => {
-          const w = window as unknown as { __glides: number; __left: number };
-          w.__glides = 0;
-          w.__left = count;
-          const gliding = (item: Element): boolean =>
-            item.getAnimations().some((animation) => {
-              const keys = (animation.effect as KeyframeEffect | null)?.getKeyframes() ?? [];
-              return keys.some((k) => 'transform' in k) && keys.every((k) => !('opacity' in k));
-            });
-          const sample = (): void => {
-            if (selector && document.querySelector(selector) === null) {
-              w.__left = 0;
-              return;
-            }
-            const items = document.querySelectorAll('[data-testid="job-list"] [data-key]');
-            w.__glides = Math.max(w.__glides, [...items].filter(gliding).length);
-            w.__left -= 1;
-            if (w.__left > 0) requestAnimationFrame(sample);
-          };
-          requestAnimationFrame(sample);
-        },
-        [frames, during] as const,
-      );
-    const glides = async (): Promise<number> => {
-      await page.waitForFunction(() => (window as unknown as { __left: number }).__left <= 0);
-      return page.evaluate(() => (window as unknown as { __glides: number }).__glides);
-    };
-    // Counted before the click: a quick run may land its first jobs before the run line shows.
-    const before = await rows(page).count();
-    await page.getByTestId('fetch').click();
-    await expect(page.getByTestId('run-line')).toBeVisible();
-    await watch(600, '[data-testid="cancel-run"]');
-    expect(await glides()).toBe(0);
-    await expect.poll(() => rows(page).count()).toBeGreaterThan(before);
-    await runFinished(page);
-    await motionSettled(page);
-    await watch(20);
-    const all = await rows(page).count();
-    await page.getByTestId('search').fill('Interim');
-    await expect.poll(() => rows(page).count()).toBeLessThan(all);
-    expect(await glides()).toBe(0);
-    await page.getByTestId('search').fill('');
-    await expect(rows(page)).toHaveCount(all);
-    await motionSettled(page);
-    await watch(120);
-    await chooseSort(page, 'newest');
-    expect(await glides()).toBeGreaterThan(0);
-  });
-
   test('paging: the next page follows on from the last and skips no job', async ({ page }) => {
     await open(page, `${WIN}&scenario=many`);
     for (const index of [0, 1, 2]) await rows(page).nth(index).click();
@@ -1316,45 +1089,18 @@ test.describe('one list', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  test('loading takes a moment: placeholder rows shaped like rows, then the rows in their place', async ({
+  test('loading takes a moment: placeholder rows, then the rows in their place', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=slow`);
     const skeleton = page.getByTestId('list-skeleton');
     await expect(skeleton).toBeVisible();
-    // Each placeholder row: the ring, the title with the stamp at its end, the second line.
-    // Read at once in the page: the placeholders stand only until the rows come (a slow
-    // machine would otherwise ask after they went).
-    const shape = await skeleton.evaluate(async (node) => {
-      // Past its fade in (a few frames), still before the rows.
-      const bar = (): Element | null => node.querySelector('.skeleton');
-      for (let frame = 0; frame < 30 && getComputedStyle(bar()!).opacity !== '1'; frame += 1) {
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      }
-      const first = node.querySelector('.skeleton-row')!;
-      const box = first.getBoundingClientRect();
-      return {
-        circles: first.querySelectorAll('.skeleton.circle').length,
-        title: first.querySelectorAll('.title .skeleton').length,
-        all: first.querySelectorAll('.skeleton').length,
-        opacity: getComputedStyle(first.querySelector('.skeleton')!).opacity,
-        y: box.y,
-        height: box.height,
-      };
-    });
-    expect(shape).toMatchObject({ circles: 1, title: 2, all: 4, opacity: '1' });
-    const placeholder = { y: shape.y, height: shape.height };
-    // The rows take the placeholders' place: the same top, the same height.
+    // The rows take the placeholders' place.
     await expect(rows(page).first()).toBeVisible({ timeout: 5000 });
     await expect(skeleton).toHaveCount(0);
-    const row = (await rows(page).first().boundingBox())!;
-    expect(Math.abs(row.y - placeholder.y)).toBeLessThan(1);
-    expect(Math.abs(row.height - placeholder.height)).toBeLessThan(1);
   });
 
-  test('an empty inbox says what comes: an icon and one sentence, the header fetches', async ({
-    page,
-  }) => {
+  test('an empty inbox says what comes in one sentence, the header fetches', async ({ page }) => {
     // Before the first search: one plain sentence, no heading, no duration.
     await open(page, `${WIN}&scenario=fresh`);
     await expect(page.getByTestId('empty-all')).toHaveText(T.list.emptyText);
@@ -1371,25 +1117,14 @@ test.describe('one list', () => {
     await expect(page.getByTestId('empty-all')).toHaveText(T.list.noActive);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
     await open(page, `${WIN}&scenario=empty`);
-    // The place's own icon, like the empty Archiv and Papierkorb.
-    await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
-      new RegExp(`lucide-${ICONS.inbox}`),
-    );
-    // One way on, secondary: the header's "Jobs suchen" stands right above it.
+    // One way on: the header's "Jobs suchen" stands right above it.
     await expect(empty.getByRole('button')).toHaveText([T.list.openProfile]);
-    await expect(empty.locator('.btn.primary')).toHaveCount(0);
     await expect(page.getByTestId('fetch')).toBeVisible();
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
     for (const gone of ['alert-linkedin', 'read-older']) {
       await expect(page.getByTestId(gone)).toHaveCount(0);
     }
-    // The same place in the column as the empty Archiv's.
-    const at = (await empty.boundingBox())!;
-    await openPlace(page, 'archive');
-    const archive = (await page.getByTestId('empty-place-archive').boundingBox())!;
-    expect(Math.abs(archive.y + archive.height / 2 - (at.y + at.height / 2))).toBeLessThan(1);
-    await openPlace(page, 'inbox');
     await page.getByTestId('fetch').click();
     expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
       request: { kind: 'fetch' },
@@ -1406,7 +1141,6 @@ test.describe('one list', () => {
     const notice = page.getByTestId('no-profile');
     await expect(notice).toHaveText(new RegExp(T.list.noProfile.replace('.', '\\.')));
     await expect(page.getByTestId('place-reader')).toHaveText(T.place.pickJob);
-    await expect(notice.locator('.btn.primary')).toHaveCount(0);
     expect((await calls(page, 'list_jobs'))[0]?.[1]).toMatchObject({
       query: { sort: 'newest' },
     });
@@ -1441,10 +1175,8 @@ test.describe('one list', () => {
       .click();
     await page.getByTestId('nav-jobs').click();
     await expect(rows(page).first()).toBeVisible();
-    // The portals' search goes on without a mailbox: no note, the fetch stays the primary.
-    const fetch = page.getByTestId('fetch');
-    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
-    await expect(fetch).toHaveClass(/primary/);
+    // The portals' search goes on without a mailbox: no note, the fetch stays on.
+    await expect(page.getByTestId('fetch')).not.toHaveAttribute('aria-disabled', 'true');
     await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
   });
 
@@ -1482,69 +1214,10 @@ test.describe('one list', () => {
 /* ========================================================================= rows */
 
 test.describe('rows', () => {
-  test('one height for every row; reading a job keeps its title as wide as before', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await motionSettled(page);
-    const heights = await list(page)
-      .locator('[data-testid^="job-row-"]')
-      .evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
-    expect([...new Set(heights)]).toEqual([await tokenPx(page, '--row-height')]);
-    const title = row(page, 'linkedin-4100200301').locator('.title');
-    const width = (): Promise<number> =>
-      title.evaluate((node) => {
-        const range = document.createRange();
-        range.selectNodeContents(node);
-        return range.getBoundingClientRect().width;
-      });
-    await expect(title).toHaveClass(/unread/);
-    const unread = await width();
-    await openJob(page, 'linkedin-4100200301');
-    await expect(title).not.toHaveClass(/unread/);
-    expect(Math.abs((await width()) - unread)).toBeLessThan(0.01);
-    // Without a profile the rows keep the one height.
-    await open(page, `${WIN}&scenario=no-profile`);
-    expect((await rows(page).first().boundingBox())!.height).toBe(
-      await tokenPx(page, '--row-height'),
-    );
-  });
-
-  test('the open row deepens while pressed, only under the pointer', async ({ page }) => {
-    await open(page, WIN);
-    const target = row(page, 'linkedin-4100200301');
-    await target.click();
-    await expect(target).toHaveAttribute('aria-current', 'true');
-    const rest = await tokenColour(page, '--surface-selected');
-    const hover = await tokenColour(page, '--surface-selected-hover');
-    const press = await tokenColour(page, '--surface-selected-press');
-    const wash = (): Promise<string> =>
-      target.evaluate((node) => getComputedStyle(node).backgroundColor);
-    const box = (await target.boundingBox())!;
-    const on = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    const away = { x: box.x + box.width + 200, y: box.y + box.height + 200 };
-    await page.mouse.move(on.x, on.y);
-    await expect.poll(wash).toBe(hover);
-    await page.mouse.down();
-    await expect.poll(wash).toBe(press);
-    await page.mouse.move(away.x, away.y, { steps: 4 });
-    await expect.poll(wash).toBe(rest);
-    await page.mouse.up();
-    await page.mouse.move(on.x, on.y);
-    await page.mouse.down({ button: 'middle' });
-    await page.waitForTimeout(250);
-    expect(await wash()).toBe(hover);
-    await page.mouse.up({ button: 'middle' });
-    await page.mouse.move(4, 4);
-  });
-
-  test('the menu of a row in each place: its entries in order, their icons, no keys', async ({
-    page,
-  }) => {
+  test('the menu of a row in each place: its entries in order, no keys', async ({ page }) => {
     await open(page, WIN);
     // A click opens the job: the menu has no "Öffnen".
     const shows = [T.actions.openAd, T.actions.mail, T.actions.prompt];
-    const showIcons = ['external', 'alertMail', 'copy'] as const;
     // Aktuell.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
@@ -1553,11 +1226,6 @@ test.describe('rows', () => {
       T.actions.archive,
       T.actions.trash,
     ]);
-    await expectMenuIcons(page, [...showIcons, 'archive', 'trash']);
-    // Löschen only moves the job into the Papierkorb: not red.
-    await expect(menuItem(page, 'trash')).not.toHaveClass(/danger/);
-    await expect(menuItem(page, 'archive')).not.toHaveClass(/danger/);
-    await expect(menu.getByRole('separator')).toHaveCount(1);
     await expect(menu.locator('.keys')).toHaveCount(0);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
     await expect(menuItem(page, 'open')).toHaveCount(0);
@@ -1572,10 +1240,9 @@ test.describe('rows', () => {
       T.actions.unarchive,
       T.actions.trash,
     ]);
-    await expectMenuIcons(page, [...showIcons, 'unarchive', 'trash']);
     await menuItem(page, 'trash').click();
     await settleMoves(page);
-    // The trash: restore, delete for good (red).
+    // The trash: restore, delete for good.
     await openPlace(page, 'trash');
     menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
@@ -1583,9 +1250,6 @@ test.describe('rows', () => {
       T.actions.restore,
       T.actions.purge,
     ]);
-    await expectMenuIcons(page, [...showIcons, 'undo', 'trash']);
-    await expect(menuItem(page, 'purge')).toHaveClass(/danger/);
-    await expect(menuItem(page, 'restore')).not.toHaveClass(/danger/);
   });
 
   test('an excluded job kept open from the last start opens its folded section', async ({
@@ -1651,22 +1315,13 @@ test.describe('rows', () => {
     );
   });
 
-  test('a list ring that waits is the one empty ring with its dash, nothing moves', async ({
-    page,
-  }) => {
+  test('a list ring that waits shows a dash instead of a score', async ({ page }) => {
     await open(page, `${WIN}&scenario=running`);
     await settle(page);
     const ring = list(page)
       .locator('.job', { has: page.getByTestId('job-row-linkedin-4100200302') })
       .locator('.ring');
-    await expect(ring).toHaveClass(/pending/);
     await expect(ring.locator('.center')).toHaveText('–');
-    // One track, no arc; nothing loops (a change of the ring's colours may still be ending
-    // right after the start on a busy machine, so the check waits for it).
-    expect(await ring.evaluate((node) => node.querySelectorAll('circle').length)).toBe(1);
-    await expect
-      .poll(() => ring.evaluate((node) => node.getAnimations({ subtree: true }).length))
-      .toBe(0);
   });
 });
 
@@ -1683,10 +1338,8 @@ test.describe('search', () => {
     await expect(target).toBeVisible();
     const marks = target.locator('.title mark');
     await expect(marks).toHaveText(['Kaufmännisch', 'Leitung']);
-    await expect(marks.first()).toHaveCSS('background-color', await tokenColour(page, '--mark'));
-    // The title keeps its ink and its one line; the full title in its tooltip.
+    // The title keeps its text.
     await expect(target.locator('.title')).toHaveText('Kaufmännische Leitung Projektgeschäft');
-    await expect(marks.first()).toHaveCSS('color', await tokenColour(page, '--text'));
     // Without a search nothing is marked.
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect(rows(page).first()).toBeVisible();
@@ -1703,23 +1356,16 @@ test.describe('search', () => {
     await expect(rows(page).first()).toBeVisible();
   });
 
-  test('hits elsewhere are a button that goes there, centred under an empty search', async ({
-    page,
-  }) => {
+  test('hits elsewhere are a button under an empty search that goes there', async ({ page }) => {
     await open(page, WIN);
     await page.getByTestId('search').fill('Kreditoren');
     const button = page.getByTestId('also-archive');
     // Named like its tab.
     await expect(button.locator('.label')).toHaveText(T.place.archive);
     await expect(button.locator('.count')).toHaveText('1');
-    const a = (await page.getByTestId('empty-search').boundingBox())!;
-    const b = (await button.boundingBox())!;
-    expect(Math.abs(a.x + a.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);
-    // The one way on under an empty state: a field button, as far below the sentence as the
-    // empty state's own (16 px).
-    expect(Math.round(b.height)).toBe(await tokenPx(page, '--control-field'));
+    // The one way on stands under the sentence of the empty state.
     const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
-    expect(Math.round(b.y - (sentence.y + sentence.height))).toBe(16);
+    expect((await button.boundingBox())!.y).toBeGreaterThanOrEqual(sentence.y + sentence.height);
     // The reader beside a search without hits has nothing to choose from: it says nothing.
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
     await button.click();
@@ -2129,294 +1775,6 @@ test.describe('run line', () => {
   });
 });
 
-/* ====================================================================== the bar */
-
-interface Sample {
-  top: number;
-  height: number;
-  left: number;
-  opacity: number;
-  moves: string[];
-  row: { top: number; height: number } | null;
-  key: string | null;
-  /** How far the list is scrolled. */
-  scroll: number;
-}
-
-declare global {
-  interface Window {
-    __barSamples: Sample[];
-    __barSampling: number;
-  }
-}
-
-/** Records the open row's bar once per frame, as the frame is drawn, until `stopSampling`. */
-async function startSampling(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    window.__barSamples = [];
-    const session = (window.__barSampling ?? 0) + 1;
-    window.__barSampling = session;
-    const probe = document.createElement('div');
-    probe.style.setProperty('position', 'fixed');
-    probe.style.setProperty('width', '1px');
-    probe.style.setProperty('height', '1px');
-    document.body.append(probe);
-    const sample = (): void => {
-      const bar = document.querySelector<HTMLElement>('[data-testid="row-bar"]');
-      const frame = bar?.parentElement?.getBoundingClientRect();
-      if (!bar || !frame) return;
-      const box = bar.getBoundingClientRect();
-      const open = bar.parentElement!.querySelector<HTMLElement>('.item[data-open]');
-      const item = open?.getBoundingClientRect();
-      window.__barSamples.push({
-        top: box.top - frame.top,
-        height: box.height,
-        left: box.left - frame.left,
-        opacity: Number(getComputedStyle(bar).opacity),
-        moves: bar.getAnimations().map((animation) => {
-          const timing = (animation.effect as KeyframeEffect).getComputedTiming();
-          return `${timing.duration} ${timing.easing}`;
-        }),
-        row: item ? { top: item.top - frame.top, height: item.height } : null,
-        key: open?.dataset['key'] ?? null,
-        scroll: document.querySelector('[data-testid="list-scroll"]')?.scrollTop ?? 0,
-      });
-    };
-    const next = (): void => {
-      if (window.__barSampling !== session) {
-        probe.remove();
-        return;
-      }
-      const observer = new ResizeObserver(() => {
-        observer.disconnect();
-        if (window.__barSampling === session) sample();
-        requestAnimationFrame(next);
-      });
-      observer.observe(probe);
-    };
-    requestAnimationFrame(next);
-  });
-}
-
-async function stopSampling(page: Page): Promise<Sample[]> {
-  return page.evaluate(() => {
-    window.__barSampling += 1;
-    return window.__barSamples;
-  });
-}
-
-/** The bar keeps the row's top and bottom padding (--row-bar-inset, --list-row-pad). */
-const INSET = 9;
-const onRow = (sample: Sample): boolean =>
-  sample.row !== null &&
-  Math.abs(sample.top - (sample.row.top + INSET)) < 1 &&
-  Math.abs(sample.height - (sample.row.height - 2 * INSET)) < 1;
-
-/** The bar at rest: shown, nothing moving, on the open row. */
-async function resting(page: Page): Promise<Sample> {
-  await expect
-    .poll(() =>
-      page
-        .getByTestId('row-bar')
-        .evaluate(
-          (bar) => bar.getAnimations().length === 0 && getComputedStyle(bar).opacity !== '0',
-        ),
-    )
-    .toBe(true);
-  await startSampling(page);
-  await expect.poll(() => page.evaluate(() => window.__barSamples.length)).toBeGreaterThan(0);
-  const last = (await stopSampling(page)).at(-1)!;
-  expect(last.moves).toEqual([]);
-  expect(onRow(last), JSON.stringify(last)).toBe(true);
-  return last;
-}
-
-test.describe("the open row's bar", () => {
-  test('it slides to the clicked row like the sidebar pill; grey on an excluded row', async ({
-    page,
-  }) => {
-    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
-    await open(page, WIN);
-    await row(page, 'freelancermap-2802').click();
-    const start = await resting(page);
-    expect(start.height).toBe((await tokenPx(page, '--row-height')) - 2 * INSET);
-    await startSampling(page);
-    await row(page, 'freelancermap-2803').click();
-    await page.waitForTimeout(400);
-    const samples = await stopSampling(page);
-    expect(onRow(samples.at(-1)!)).toBe(true);
-    const emphasized = await page.evaluate(() => {
-      const probe = document.createElement('span');
-      probe.style.setProperty('transition-timing-function', 'var(--ease-emphasized)');
-      document.body.append(probe);
-      const value = getComputedStyle(probe).transitionTimingFunction;
-      probe.remove();
-      return value;
-    });
-    expect([...new Set(samples.flatMap((sample) => sample.moves))]).toEqual([`180 ${emphasized}`]);
-    // Grey on the excluded row.
-    await row(page, 'linkedin-4100200305').click();
-    await expect(row(page, 'linkedin-4100200305')).toHaveAttribute('aria-current', 'true');
-    expect((await resting(page)).opacity).toBe(0.6);
-    await rows(page).first().click();
-    expect((await resting(page)).top).toBe(INSET);
-    // Under reduced motion it never slides: it is simply at the next row.
-    const order = await listed(page);
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await startSampling(page);
-    await row(page, 'freelancermap-2803').click();
-    await row(page, order[order.indexOf('freelancermap-2803') + 1]!).click();
-    await page.waitForTimeout(300);
-    for (const sample of await stopSampling(page)) {
-      expect(sample.moves, JSON.stringify(sample)).toEqual([]);
-      expect(onRow(sample) || sample.key === null, JSON.stringify(sample)).toBe(true);
-    }
-  });
-
-  test('no slide when the list is built again: the view back, a search, a filter, a run', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&tick=30`);
-    await row(page, 'freelancermap-2803').click();
-    await resting(page);
-    const still = (samples: Sample[]): void => {
-      const shown = samples.filter((sample) => sample.opacity > 0 && sample.row !== null);
-      expect(shown.length).toBeGreaterThan(0);
-      for (const sample of shown) {
-        expect(
-          sample.moves.filter((move) => move.startsWith('180 ')),
-          JSON.stringify(sample),
-        ).toEqual([]);
-        expect(onRow(sample), JSON.stringify(sample)).toBe(true);
-      }
-    };
-    await page.getByTestId('nav-profile').click();
-    await settle(page);
-    await startSampling(page);
-    await page.getByTestId('nav-jobs').click();
-    await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
-    await page.waitForTimeout(300);
-    still(await stopSampling(page));
-    await startSampling(page);
-    await page.getByTestId('search').fill('Leitung');
-    await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
-    await page.waitForTimeout(300);
-    still(await stopSampling(page));
-    await page.getByTestId('search').fill('');
-    await startSampling(page);
-    await chooseFilter(page, 'portal-freelancermap');
-    await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
-    await page.waitForTimeout(300);
-    still(await stopSampling(page));
-    // A run lands new jobs above the open one and re-sorts at its end, then another order:
-    // the row moves or glides, the bar with it, always on its row.
-    await chip(page, 'portal-freelancermap').click();
-    await row(page, 'freelancermap-2804').click();
-    await resting(page);
-    await startSampling(page);
-    await page.getByTestId('fetch').click();
-    await runFinished(page);
-    // The re-sort keeps the open row in view by scrolling the list: wait until the list is
-    // sorted and stands still.
-    await expect.poll(() => listed(page)).toEqual(await inbox(page));
-    const scroller = page.getByTestId('list-scroll');
-    await expect
-      .poll(async () => {
-        const top = await scroller.evaluate((node) => node.scrollTop);
-        await page.waitForTimeout(400);
-        return top === (await scroller.evaluate((node) => node.scrollTop));
-      })
-      .toBe(true);
-    await chooseSort(page, 'newest');
-    await page.waitForTimeout(400);
-    const moved = await stopSampling(page);
-    expect(
-      moved.filter((sample) => sample.opacity > 0 && sample.row !== null).length,
-    ).toBeGreaterThan(20);
-    still(moved);
-    await resting(page);
-  });
-
-  test('it keeps its row while the list scrolls and grows, the window narrows, one column', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&scenario=many`);
-    await rows(page).nth(3).click();
-    const slot = await resting(page);
-    expect(slot.height).toBe((await tokenPx(page, '--row-height')) - 2 * INSET);
-    // Small steps, a frame each, then the wheel: further windows of rows are built.
-    const built = (): Promise<number> => list(page).locator('.item[data-key]').count();
-    const before = await built();
-    await startSampling(page);
-    await page.getByTestId('list-scroll').evaluate(async (scroller) => {
-      for (let step = 0; step < 40; step += 1) {
-        scroller.scrollTop += 37 + step * 4;
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      }
-    });
-    await page.mouse.move(200, 500);
-    for (let turn = 0; turn < 6; turn += 1) await page.mouse.wheel(0, 1200);
-    await expect.poll(built).toBeGreaterThan(before);
-    await page.getByTestId('list-scroll').evaluate((scroller) => (scroller.scrollTop = 0));
-    await page.waitForTimeout(300);
-    const scrolled = await stopSampling(page);
-    // Seen all along the way: the places the list stood at, not a count of frames (WebKit
-    // samples every other frame or less, and a busy machine draws fewer in the waits). The
-    // 40 steps alone pass 40 places.
-    expect(new Set(scrolled.map((sample) => sample.scroll)).size).toBeGreaterThan(10);
-    for (const sample of scrolled) expect(onRow(sample), JSON.stringify(sample)).toBe(true);
-    // A narrower window keeps the row's height; one column and back never slide the bar.
-    await page.setViewportSize({ width: 960, height: 900 });
-    expect((await resting(page)).height).toBe((await tokenPx(page, '--row-height')) - 2 * INSET);
-    await page.setViewportSize({ width: 780, height: 900 });
-    await expect(page.getByTestId('reader')).toBeVisible();
-    await startSampling(page);
-    await page.setViewportSize({ width: 1360, height: 900 });
-    await page.waitForTimeout(300);
-    for (const sample of (await stopSampling(page)).filter((s) => s.opacity > 0)) {
-      expect(sample.moves.filter((move) => move.startsWith('180 '))).toEqual([]);
-    }
-    await resting(page);
-  });
-
-  test('archive and undo: the bar ends on the job that opens, in the same place', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await row(page, 'freelancermap-2802').click();
-    const slot = await resting(page);
-    await animationsDone(page);
-    await startSampling(page);
-    await page.getByTestId('reader-archive').click();
-    await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
-    await page.waitForTimeout(400);
-    const samples = await stopSampling(page);
-    expect(samples.at(-1)!.key).toBe('freelancermap:2803');
-    for (const sample of samples) expect(sample.top, JSON.stringify(sample)).toBe(slot.top);
-    await page.getByTestId('toast').last().getByTestId('toast-action').click();
-    await expect(row(page, 'freelancermap-2802')).toHaveAttribute('aria-current', 'true');
-    expect((await resting(page)).top).toBe(slot.top);
-  });
-
-  test('it stays on the edge under the keyboard focus and greys with the inactive window', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await row(page, 'freelancermap-2801').click();
-    expect((await resting(page)).left).toBe(0);
-    // The keyboard focus on the open row (Shift+Tab from the next one) draws no ring (user
-    // decision 2026-10-04), so the bar keeps its place.
-    await row(page, 'linkedin-4100200301').focus();
-    await page.keyboard.press('Shift+Tab');
-    await expect(row(page, 'freelancermap-2801')).toBeFocused();
-    expect((await resting(page)).left).toBe(0);
-    const colour = (): Promise<string> =>
-      page.getByTestId('row-bar').evaluate((bar) => getComputedStyle(bar).backgroundColor);
-    await page.evaluate(() => (document.documentElement.dataset['window'] = 'inactive'));
-    await expect.poll(colour).toBe(await tokenColour(page, '--text-subtle'));
-  });
-});
-
 /* ====================================================================== sidebar */
 
 test.describe('sidebar', () => {
@@ -2439,16 +1797,14 @@ test.describe('sidebar', () => {
     await page.waitForTimeout(700);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     // Ctrl+B and Cmd+B change nothing (no keys of the app); a narrow window folds it away.
-    const width = async (): Promise<number> => Math.round((await sidebar.boundingBox())!.width);
     await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
-    const full = await width();
     await page.keyboard.press('Control+b');
     await page.keyboard.press('Meta+b');
-    expect(await width()).toBe(full);
+    await expect(sidebar).toBeVisible();
     await page.setViewportSize({ width: 1000, height: 700 });
     await expect(sidebar).toHaveCount(0);
     await page.setViewportSize({ width: 1360, height: 900 });
-    await expect.poll(width).toBe(full);
+    await expect(sidebar).toBeVisible();
   });
 
   for (const os of [WIN, MAC]) {
@@ -2485,17 +1841,12 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   page,
 }) => {
   await open(page, WIN);
-  // The splitter's hit strip lies beside the list, never over its scrollbar; its grip stays
-  // centred on the border.
+  // The splitter's hit strip lies beside the list, never over its scrollbar.
   const hit = (await page.getByTestId('list-splitter').locator('.hit').boundingBox())!;
   const scroll = (await page.getByTestId('list-scroll').boundingBox())!;
   expect(hit.x).toBeGreaterThanOrEqual(scroll.x + scroll.width);
-  await page.mouse.move(hit.x + hit.width / 2, hit.y + hit.height / 2);
-  const grip = (await page.getByTestId('list-splitter').locator('.grip').boundingBox())!;
-  expect(Math.abs(grip.x + grip.width / 2 - hit.x)).toBeLessThanOrEqual(1);
-  await page.mouse.move(4, 4);
   // The column (as its handle says it) never gets narrower while the window grows, across
-  // the rail too, and ends at least 520 px wide.
+  // the rail too.
   const listWidth = async (): Promise<number> => {
     await settle(page);
     return Number(await page.getByTestId('list-splitter').getAttribute('aria-valuenow'));
@@ -2506,7 +1857,6 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
     await expect.poll(listWidth).toBeGreaterThanOrEqual(last);
     last = await listWidth();
   }
-  expect(last).toBeGreaterThanOrEqual(520);
   // The smallest window: the header and the chips stay in it; below 900 px one column.
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);

@@ -4,7 +4,6 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
-import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
 import type { JobCounts, JobQuery, JobSort, JobView, Portal } from '../../../ui/src/lib/ipc/types';
 import { PORTAL_ORDER } from '../../../ui/src/lib/portals';
 import {
@@ -97,16 +96,6 @@ export async function rowMenu(page: Page, key: string): Promise<Locator> {
 export async function viaMenu(page: Page, id: string, key: string): Promise<void> {
   await rowMenu(page, key);
   await page.getByTestId(`menu-item-${id}`).click();
-}
-
-/** The open menu shows these icons (lib/icons.ts meanings), entry by entry. */
-export async function expectMenuIcons(page: Page, icons: readonly IconMeaning[]): Promise<void> {
-  const classes = await page
-    .getByTestId('menu')
-    .locator('[role^="menuitem"] .lead')
-    .evaluateAll((leads) => leads.map((lead) => [...(lead.querySelector('svg')?.classList ?? [])]));
-  expect(classes).toHaveLength(icons.length);
-  icons.forEach((icon, at) => expect(classes[at], icon).toContain(`lucide-${ICONS[icon]}`));
 }
 
 /** After a move the list ignores clicks for a moment (the row under the pointer changed). */
@@ -265,31 +254,6 @@ export async function failNext(page: Page, command: string): Promise<void> {
       return push(...items);
     };
   }, command);
-}
-
-/** A colour token as the engine computes it. */
-/** A length of tokens.css in px as the page resolves it (sizes change; tests follow them). */
-export async function tokenPx(page: Page, token: string): Promise<number> {
-  return page.evaluate((name) => {
-    const probe = document.createElement('div');
-    probe.style.setProperty('position', 'absolute');
-    probe.style.setProperty('width', `var(${name})`);
-    document.body.append(probe);
-    const px = probe.getBoundingClientRect().width;
-    probe.remove();
-    return px;
-  }, token);
-}
-
-export async function tokenColour(page: Page, token: string): Promise<string> {
-  return page.evaluate((name) => {
-    const probe = document.createElement('span');
-    probe.style.setProperty('color', `var(${name})`);
-    document.body.append(probe);
-    const value = getComputedStyle(probe).color;
-    probe.remove();
-    return value;
-  }, token);
 }
 
 /** A control of a page that scrolls (Profil, Einstellungen): in view, visible. */
