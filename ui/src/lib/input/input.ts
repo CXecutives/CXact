@@ -35,7 +35,8 @@
 // - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
 //   presses the focused button, switch or radio, Enter a button only; in a radio group (the
-//   segments) and a row of tabs the arrows, Home and End choose; in a grid of days (the
+//   segments) and a row of tabs the arrows, Home and End choose; on a select the arrows open
+//   its list (`selectKeys`); in a grid of days (the
 //   calendar, `gridKeys`) the arrows, Home, End, PageUp and PageDown move. Inside a field every
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
@@ -402,6 +403,40 @@ function dispatchGridKey(event: KeyboardEvent): boolean {
   return true;
 }
 
+const SELECTS = '[data-select-keys]';
+const selects = new WeakMap<Element, () => void>();
+
+/**
+ * The button of a select (components/Select.svelte): ArrowDown and ArrowUp (with Alt too)
+ * open its list, like a popup button of the OS; Enter and Space press it like any button,
+ * which opens it as well. While the list is open the menu takes every key (dispatchMenuKey).
+ */
+export const selectKeys: Action<HTMLElement, () => void> = (node, open) => {
+  selects.set(node, open);
+  node.dataset.selectKeys = '';
+  return {
+    update(next: () => void) {
+      selects.set(node, next);
+    },
+    destroy() {
+      selects.delete(node);
+      delete node.dataset.selectKeys;
+    },
+  };
+};
+
+/** The arrows on a select's button open its list; `true` if one did. */
+function dispatchSelectKey(event: KeyboardEvent): boolean {
+  if (event.ctrlKey || event.metaKey || event.shiftKey) return false;
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return false;
+  const node = closest(event.target, SELECTS);
+  const open = node === null ? undefined : selects.get(node);
+  if (open === undefined) return false;
+  event.preventDefault();
+  open();
+  return true;
+}
+
 const isFocusMove = (event: KeyboardEvent): boolean => event.key === 'Tab' && !hasModifier(event);
 
 /** The focused control is a button that Enter presses (not a switch or a radio). */
@@ -695,6 +730,7 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
+  if (dispatchSelectKey(event)) return;
   if (dispatchGridKey(event) || removesByKey(event)) return;
   // Everything else is the app's or nothing: never a shortcut of the web view (reload,
   // find, print, zoom, history).

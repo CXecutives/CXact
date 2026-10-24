@@ -66,6 +66,8 @@ const FEATURE_PUBLIC = {
 const TEMPORARY = {
   // The motion layer (frontend plan, package 4) lands before the components that use it.
   'ui/src/lib/motion/count.svelte.ts': 'ScoreRing counts with Count (countUp goes)',
+  // The controls (package 5) land before the screens that use them.
+  'ui/src/components/Select.svelte': "a language's level (Profil) and the mailbox's provider",
   'ui/src/lib/motion/enter.ts: enterList': 'the job list staggers its rows when it opens',
   'ui/src/lib/motion/enter.ts: enterCards': 'the job view staggers its cards on a new job',
   'ui/src/lib/motion/enter.ts: enterGroups': 'the profile and the settings stagger their groups',

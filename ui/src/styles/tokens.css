@@ -774,6 +774,8 @@
   /* The least a glyph is hit by the pointer (the chip's x, the info symbol): 24 px, larger
      than the glyph, unseen. */
   --hit-min: 24px;
+  /* A select's chevron: 6 px from its right edge (its words --field-inset in). */
+  --select-pad-end: 6px;
 
   /* ------------------------------------------- round 10: surfaces */
   /* (surfaces tokens below) */
