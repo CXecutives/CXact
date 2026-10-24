@@ -25,8 +25,6 @@
     Profil field ("Häufig verlangt", the quick picks).
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
-  - hoverIcon: the glyph that says what a click does, in the place of the glyph at rest under
-    the pointer and the keyboard focus (the top bar's panels: panel-left, and its -close).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
@@ -71,7 +69,6 @@
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
     /** The glyph under the pointer and the keyboard focus: what a click does. */
-    hoverIcon?: IconName | null;
     /** The faces that take this button's place: it keeps the width of the widest. */
     sizeTo?: readonly ButtonFace[] | null;
     testid?: string | null;
@@ -95,7 +92,6 @@
     expanded = false,
     isDefault = false,
     plain = false,
-    hoverIcon = null,
     sizeTo = null,
     testid = null,
     onclick,
@@ -132,7 +128,6 @@
   class:wide={wide && !iconOnly}
   class:loading
   class:default={isDefault}
-  class:swaps={hoverIcon !== null}
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
@@ -150,9 +145,6 @@
       {#if icon}
         <span class="glyph" data-icon={icon}>
           <Icon name={icon} size={glyphSize} filled={pressed === true} />
-          {#if hoverIcon}<span class="swap" data-hover-icon={hoverIcon}
-              ><Icon name={hoverIcon} size="sm" /></span
-            >{/if}
         </span>
       {/if}
       {#if !iconOnly}<span class="label">{label}</span>{/if}
@@ -239,23 +231,6 @@
 
   .btn:not([aria-disabled='true'], .loading):hover .glyph[data-icon='next'] {
     transform: translateX(var(--move-sm));
-  }
-
-  /* What a click does stands in for the glyph at rest under the pointer and the keyboard
-     focus, at once: both share their frame, so only the arrow comes and goes. */
-  .swap {
-    position: absolute;
-    inset: 0;
-    display: inline-flex;
-    visibility: hidden;
-  }
-
-  .swaps:not([aria-disabled='true'], .loading):is(:hover, :focus-visible) .swap {
-    visibility: visible;
-  }
-
-  .swaps:not([aria-disabled='true'], .loading):is(:hover, :focus-visible) .glyph > :global(.icon) {
-    visibility: hidden;
   }
 
   .busy {

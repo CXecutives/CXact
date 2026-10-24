@@ -63,11 +63,7 @@
   import Mail from '@lucide/svelte/icons/mail';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import PanelLeft from '@lucide/svelte/icons/panel-left';
-  import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
-  import PanelLeftOpen from '@lucide/svelte/icons/panel-left-open';
   import PanelRight from '@lucide/svelte/icons/panel-right';
-  import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
-  import PanelRightOpen from '@lucide/svelte/icons/panel-right-open';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
@@ -137,11 +133,7 @@
     mail: Mail,
     'map-pin': MapPin,
     'panel-left': PanelLeft,
-    'panel-left-close': PanelLeftClose,
-    'panel-left-open': PanelLeftOpen,
     'panel-right': PanelRight,
-    'panel-right-close': PanelRightClose,
-    'panel-right-open': PanelRightOpen,
     pencil: Pencil,
     plus: Plus,
     'rotate-ccw': RotateCcw,

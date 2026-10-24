@@ -86,12 +86,8 @@ export const ICONS = {
   arrowDown: 'arrow-down',
   /** The top bar's sidebar button at rest; under the pointer it says what a click does. */
   sidebar: 'panel-left',
-  sidebarHide: 'panel-left-close',
-  sidebarShow: 'panel-left-open',
   /** The top bar's job view button, the same way. */
   readerPane: 'panel-right',
-  readerHide: 'panel-right-close',
-  readerShow: 'panel-right-open',
   search: 'search',
   filter: 'funnel',
   signIn: 'log-in',
