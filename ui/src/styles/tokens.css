@@ -580,7 +580,12 @@
   --row-rule-start: 56px;
   --row-highlight-inset: 6px;
   /* a row of Einstellungen: its least height and where its hairline starts */
-  --setting-row-min: 54px;
+  /* One row measure for Profil and Einstellungen (owner, 2026-10-24): a row of a page's card,
+     at least 56 high, 12 above and below, 20 at the sides. */
+  --form-row-min: 56px;
+  --form-row-pad-y: 12px;
+  --form-row-pad-x: 20px;
+  --setting-row-min: var(--form-row-min);
   --setting-rule-start: 64px;
   /* the label column of Jobdetails */
   --facts-label: 96px;
@@ -720,7 +725,7 @@
   --error-text: hsl(var(--p-word-red));
   /* A row of Einstellungen: 10 above and below, 20 at the sides, its tile 12 from its words;
      the name 14/540, the line 13 subtle. */
-  --setting-row-pad-y: 10px;
+  --setting-row-pad-y: var(--form-row-pad-y);
   --setting-row-gap: var(--space-12);
   /* A status word (StatusText): the dot in the exact colour, the word one step darker. */
   --status-success: var(--success);
@@ -863,9 +868,6 @@
   --profile-label-width: 188px;
   --profile-label-gap: var(--space-24);
   --profile-label-gap-narrow: var(--space-8);
-  --form-row-min: 56px;
-  --form-row-pad-y: 12px;
-  --form-row-pad-x: 20px;
   --profile-money-width: 170px;
   --profile-years-width: 130px;
   --profile-date-width: 122px;
