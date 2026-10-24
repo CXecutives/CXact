@@ -27,7 +27,6 @@
 // the same.
 
 import { flip as svelteFlip } from 'svelte/animate';
-import { Tween } from 'svelte/motion';
 import type { AnimationConfig } from 'svelte/animate';
 import type { TransitionConfig } from 'svelte/transition';
 import {
@@ -354,17 +353,4 @@ export function tooltipIn(node: Element): TransitionConfig {
 
 export function tooltipOut(_node: Element): TransitionConfig {
   return opacity(duration('instant'), easing('in'));
-}
-
-/**
- * A number that counts up (score rings, stat tiles). Rounds to whole numbers; under
- * reduced motion it jumps to the target.
- * Replaced by `Count` (count.svelte.ts), which moves the ring's arc in step: deleted once
- * ScoreRing uses it.
- */
-export function countUp(initial = 0, length: Duration = 'reveal'): Tween<number> {
-  return new Tween(initial, {
-    duration: () => duration(length),
-    easing: easing('out'),
-  });
 }

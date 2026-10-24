@@ -3,11 +3,13 @@
   digits (list rows), md 56 with a 5 px stroke and 17/650 digits (the job view). Hollow at both
   sizes: the solid track (--score-track), the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
-  (360 ms, ease-out) only when that means something: when a score arrives while the ring is
-  on screen (live scoring during a run; the number counts along), or the first time a job is
-  opened (`animate` names the job; once per job and session; the number stands at once, only
-  the arc fills). A view that comes back shows its rings as they are. At most 10 rings fill
-  at the same time, the others are placed at once.
+  and its number counts up along with the arc (400 ms, ease-out; lib/motion's Count) only
+  when that means something: each time a job is opened in the job view (`animate` names the
+  job; decision 6, 2026-10-24), but not while the user browses fast (pace.ts: the arrow keys
+  held or opens close together, each job then simply shows its ring); when a score arrives
+  while the ring is on screen (live scoring during a run); and when a list opens (`reveal`,
+  the list passes it for the rows it lets count). A view that comes back shows its rings as
+  they are. At most 10 rings count at the same time, the others stand at their value.
   A scored ring takes the colour of its decile (ten steps, red through orange and yellow to
   green; `d0` ... `d9`) with ink digits; a score from a teaser only looks the same (the reader
   says once that the ad is only a preview). An excluded job shows the red ban on the light
@@ -49,46 +51,47 @@
     }
     return { status: 'scored', score: match.score, band: match.band };
   }
-
-  const MAX_ANIMATING = 10;
-  let animating = 0;
-  /** Jobs whose ring has filled on opening already (it does not replay; not reactive). */
-  const filled: Record<string, true> = {};
 </script>
 
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import Icon from './Icon.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { formatPercent } from '$lib/i18n/format';
-  import { duration, isReducedMotion, play } from '$lib/motion/motion';
-  import { countUp } from '$lib/motion/transitions';
+  import { Count } from '$lib/motion/count.svelte';
+  import { animateOpen } from '$lib/motion/pace';
 
   interface Props {
     ring: RingState;
     size?: 'sm' | 'md';
-    /** Fill on mount the first time this job is shown (the reader passes the job's key). */
+    /** The job it shows in the job view (its key): another one is an open, which fills. */
     animate?: string | null;
+    /** Fill and count up as it mounts (a list that opens, for the rows it lets count). */
+    reveal?: boolean;
     /** An excluded job in the list: a light red track with the red ban in the middle, no
      *  number, as large as every other row's ring (design round 3). */
     ban?: boolean;
     testid?: string | null;
   }
 
-  let { ring, size = 'sm', animate = null, ban = false, testid = null }: Props = $props();
+  let {
+    ring,
+    size = 'sm',
+    animate = null,
+    reveal = false,
+    ban = false,
+    testid = null,
+  }: Props = $props();
 
   /** A number on the ring. */
   const valued = $derived(ring.status === 'scored');
   const score = $derived(ring.status === 'scored' ? Math.max(0, Math.min(100, ring.score)) : 0);
 
-  const number = countUp(untrack(() => score));
-  let shown = $state(untrack(() => score));
-  let counting = false;
+  const count = new Count(untrack(() => score));
   let mounted = false;
   let wasScored = false;
-  let arc = $state<SVGCircleElement | null>(null);
   /** The colour step: the decile of the score, 100 in the last one. */
   const step = $derived(valued ? `d${Math.min(9, Math.floor(score / 10))}` : '');
 
@@ -107,12 +110,7 @@
   /** What the match means, under the label of a ring with a number. */
   const hint = $derived(valued && !ban ? t.score.info : null);
 
-  function place(value: number): void {
-    void number.set(value, { duration: 0 });
-    shown = value;
-  }
-
-  /** The job the ring showed last (`animate`): another one is an opening. */
+  /** The job the ring showed last (`animate`): another one is an open. */
   let opened: string | null = null;
 
   $effect(() => {
@@ -120,47 +118,23 @@
     const value = score;
     const job = animate;
     untrack(() => {
-      // Opening a job (the reader passes it as `animate`) for the first time this session.
-      const first = job !== null && job !== opened && !(job in filled);
+      const first = !mounted;
+      const open = job !== null && job !== opened;
       opened = job;
-      if (first && scored) filled[job] = true;
       // A score that arrives while the ring is on screen (the same job, scored live).
-      const live = mounted && !wasScored && !first;
-      const grow = scored && (first || live);
+      const live = !first && !open && !wasScored;
       mounted = true;
       wasScored = scored;
-      if (!scored || counting) return;
-      if (!grow || isReducedMotion() || animating >= MAX_ANIMATING) {
-        place(value);
+      if (!scored) {
+        count.place(0);
         return;
       }
-      animating += 1;
-      counting = true;
-      // The arc holds its final value in CSS; the fill is one Web Animation from empty, so
-      // it cannot depend on when the engine first computes the style of a new circle.
-      shown = value;
-      // Opening a job, and a live score: the number counts up along with its arc (design
-      // round 7).
-      void number.set(0, { duration: 0 });
-      number.target = value;
-      let fill: Animation | null = null;
-      // After the flush: a circle that was just created is bound by then.
-      void tick().then(() => {
-        if (arc === null) return;
-        fill = play(arc, [{ strokeDashoffset: 100 }, { strokeDashoffset: 100 - value }], {
-          duration: 'reveal',
-          easing: 'out',
-        });
-      });
-      setTimeout(() => {
-        // The animation fills both ways: drop it, or a later score would stay masked.
-        fill?.cancel();
-        animating -= 1;
-        counting = false;
-        place(score);
-      }, duration('reveal'));
+      if ((open && animateOpen()) || live || (first && reveal)) count.run(value);
+      else count.place(value);
     });
   });
+
+  $effect(() => () => count.stop());
 </script>
 
 <span
@@ -179,12 +153,11 @@
     <circle class="track" cx="18" cy="18" r="15.9155" />
     {#if valued && !ban}
       <circle
-        bind:this={arc}
         class="value"
         cx="18"
         cy="18"
         r="15.9155"
-        use:cssVars={{ value: shown }}
+        use:cssVars={{ value: score, fill: count.progress }}
       />
     {/if}
   </svg>
@@ -192,7 +165,7 @@
     {#if ban}
       <span class="ban"><Icon name="excluded" size={size === 'md' ? 'lg' : 'xs'} /></span>
     {:else if valued}
-      {Math.round(number.current)}
+      {count.value}
     {:else}
       –
     {/if}
@@ -234,7 +207,7 @@
   .value {
     stroke: var(--ring-color);
     stroke-dasharray: 100 100;
-    stroke-dashoffset: calc(100 - var(--value));
+    stroke-dashoffset: calc(100 - var(--value) * var(--fill));
     stroke-linecap: round;
     transform: rotate(-90deg);
     transform-origin: center;

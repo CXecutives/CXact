@@ -312,9 +312,7 @@
   --brand-glyph: hsl(var(--p-brand-glyph));
 
   /* --------------------------------------------------------------- gradients */
-  /* Two, for the light of a loading placeholder and the fade under the top bar. No
-     decorative gradients. */
-  --grad-shimmer: linear-gradient(90deg, transparent, hsl(var(--p-white) / 0.6), transparent);
+  /* Only the fades under the top bar. No decorative gradients. */
   /* The fade under the top bar (user, 2026-09-27; smoother on 2026-10-10): the views' white
      (Jobs and the pages, --layout-page) into nothing along an eased curve, so neither end
      shows an edge. */
