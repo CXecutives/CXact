@@ -65,7 +65,6 @@ const FEATURE_PUBLIC = {
 const TEMPORARY = {
   // The motion layer (frontend plan, package 4) lands before the components that use it.
   'ui/src/lib/motion/enter.ts: enterList': 'the job list staggers its rows when it opens',
-  'ui/src/lib/motion/enter.ts: enterGroups': 'the profile and the settings stagger their groups',
 };
 const temporaryUsed = new Set();
 /** Whether `key` is accepted for now (and remember that its entry is still needed). */

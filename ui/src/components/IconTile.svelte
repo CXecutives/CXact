@@ -5,7 +5,8 @@
      neutral (the track with a muted glyph: the rows of Einstellungen), raised (white with an
      edge and a lifted shadow: an empty state), accent (the track with a navy glyph: a step of
      the setup), success (the soft green with the green glyph: the setup done) and danger (the
-     soft red with the red glyph: a failure). No tinted portal tiles (round 10). -->
+     soft red with the red glyph: a failure). No tinted portal tiles (round 10). A glyph that
+     `draws` draws itself once as the tile appears (the check of the setup's Fertig). -->
 <script lang="ts" module>
   export type TileTone = 'neutral' | 'raised' | 'accent' | 'success' | 'danger';
   export type TileSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -22,6 +23,8 @@
     icon?: IconName | null;
     monogram?: string | null;
     logo?: string | null;
+    /** The glyph draws itself once as the tile appears. */
+    draws?: boolean;
   }
 
   let {
@@ -31,13 +34,20 @@
     icon = null,
     monogram = null,
     logo = null,
+    draws = false,
   }: Props = $props();
 
   /** A glyph in a tile is half the tile. */
   const ICON_SIZE: Record<TileSize, IconSize> = { sm: 'sm', md: 'nav', lg: 'xl', xl: 'xxl' };
 </script>
 
-<span class="tile {tone} {size}" class:round class:mark={logo !== null} aria-hidden="true">
+<span
+  class="tile {tone} {size}"
+  class:round
+  class:mark={logo !== null}
+  class:draws
+  aria-hidden="true"
+>
   {#if logo}
     <img class="logo" src={logo} alt="" draggable="false" />
   {:else if icon}
@@ -77,6 +87,11 @@
     box-shadow: inset 0 0 0 var(--border-width) var(--border);
     content: '';
     pointer-events: none;
+  }
+
+  .draws :global(path) {
+    stroke-dasharray: var(--draw-length);
+    animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
   }
 
   .logo {

@@ -8,6 +8,8 @@
 // answer; every text button of a row is the same outlined button with the glyph of its
 // meaning, whether it opens something or runs a command, grey even when it loses something
 // (only the dialog's confirm is red, design round 7); a locked button says why (`locked`).
+// A row's tile never repeats a glyph of its buttons (round 10: the folder's tile is the
+// document, the reset's the turning arrow).
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
@@ -107,15 +109,15 @@ export const SECTIONS: readonly SectionSpec[] = [
     rows: [
       {
         id: 'folder',
-        tile: 'folder',
+        tile: 'document',
         label: (t) => t.settings.folder,
         path: (_t, state) => state.settings.workspace,
-        actions: ['folderChange', 'folderOpen'],
+        actions: ['folderOpen', 'folderChange'],
       },
       // The one action that deletes for good, last; its dialog says what comes after.
       {
         id: 'reset-all',
-        tile: 'trash',
+        tile: 'reset',
         label: (t) => t.settings.reset,
         hint: (t) => t.settings.resetHint,
         actions: ['reset'],

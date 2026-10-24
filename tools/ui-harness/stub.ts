@@ -46,7 +46,7 @@
 // with `dryRun` like `ensure_real`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
-// before the last fetch).
+// before the last fetch) · sign-in-expired (freelance.de's sign-in ran out).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
 // with `?alerts=none` its check finds no alert mail.
 // One profile (core's profile::set): `save_profile` makes it or saves it, refuses a day rate
@@ -346,6 +346,8 @@ const CV_FAILURE: Readonly<Record<string, CvFailure>> = {
 };
 /** The day the CV import works again while its tries are used up. */
 const CV_UNTIL = '2026-09-25';
+/** Stops the CV evaluation under way (`cancel_run`). */
+let cvReading: (() => void) | null = null;
 /** What a drop of files on the window left for the CV import (the window keeps it). */
 let droppedFiles: string[] | null = null;
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
@@ -780,7 +782,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.lastRun = null;
   },
   // The setup right after the CV: the profile it filled (no wished role, no country, no
-  // language), the step "Fast fertig".
+  // language), the step "Dein Profil".
   'setup-cv': () => {
     jobs = [];
     state.firstRun = true;
@@ -864,6 +866,12 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'session-left': () => {
     // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
     state.portals[1]!.signedIn = true;
+  },
+  'sign-in-expired': () => {
+    // freelance.de's sign-in ran out: its row says so in red and offers Anmelden.
+    state.portals[1]!.health = { kind: 'loginRequired' };
+    state.portals[1]!.actionNeeded = true;
+    state.portals[1]!.signedIn = false;
   },
   'dry-run': () => {
     state.dryRun = true;
@@ -1915,6 +1923,7 @@ const handlers: Handlers = {
   },
   cancel_run: () => {
     mailboxCheck?.stop();
+    cvReading?.();
     cancelRun();
     return null;
   },
@@ -2015,8 +2024,16 @@ const handlers: Handlers = {
     droppedFiles = null;
     if (dropped && (files === null || files.length === 0)) throw fail('notFound', { what: 'file' });
     const cv = params.get('cv');
-    await new Promise((resolve) => setTimeout(resolve, cv === 'slow' ? 20_000 : CV_WAIT));
-    if (cv === 'none') return null;
+    // `cancel_run` stops it: the import answers with nothing, like core.
+    const cancelled = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), cv === 'slow' ? 20_000 : CV_WAIT);
+      cvReading = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+    });
+    cvReading = null;
+    if (cancelled || cv === 'none') return null;
     const failure = cv === null || cv === 'slow' ? null : (CV_FAILURE[cv] ?? null);
     if (failure === 'offline') throw fail('offline');
     if (failure === 'limit') state.cvUntil = CV_UNTIL;
