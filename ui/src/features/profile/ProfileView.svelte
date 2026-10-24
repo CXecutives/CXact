@@ -335,7 +335,7 @@
 </script>
 
 {#snippet notes()}
-  {#if !setup}<CvProblem onpick={() => void fillFromCv()} />{/if}
+  {#if !setup}<CvProblem />{/if}
   {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
 {/snippet}
 

@@ -4,9 +4,10 @@
   formats, and a CV dropped on the window (Tauri's drag and drop, `onFileDrag`; the window
   keeps the file, the page never sends a path) is taken at once. Under it one quiet line says
   who reads it (an AI). While a file is dragged over the window the zone looks as under the
-  pointer. Why the last evaluation filled nothing stands above it in a state box; where no
-  new try can work (the tries used up, paused, an app too old) the box offers "Selbst
-  ausfüllen" and the zone and its line go.
+  pointer. Why the last evaluation filled nothing stands above it in a state box, in the two
+  lines of the Profil's (CvProblem: "Der Lebenslauf wurde nicht ausgewertet." and the
+  reason); where no new try can work (the tries used up, paused, an app too old) the box
+  offers "Selbst ausfüllen" and the zone and its line go.
 -->
 <script lang="ts">
   import StateBox from '$components/StateBox.svelte';
@@ -39,12 +40,13 @@
   {#if problem !== null}
     <StateBox
       alert
-      heading={problem}
+      heading={t.profile.cvFailed}
+      text={problem}
       action={blocked
         ? { label: t.profile.byHand, icon: 'edit', testid: 'cv-self', onclick: onself }
         : null}
       testid="cv-error"
-      headingTestid="cv-error-text"
+      textTestid="cv-error-text"
     />
   {/if}
   {#if !blocked}
