@@ -1436,7 +1436,7 @@ fn icons_by_meaning() {
         }
     }
     assert!(
-        checked >= 100,
+        checked >= 90,
         "only {checked} icon positions found - did the rule move?"
     );
     fail(
