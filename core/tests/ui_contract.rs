@@ -14,10 +14,13 @@ const EXTENSIONS: [&str; 3] = ["svelte", "ts", "css"];
 const MIN_FILES: usize = 55;
 const MIN_SVELTE: usize = 35;
 
+/// A path of the checkout that runs the test. Cargo sets CARGO_MANIFEST_DIR at run time too, and
+/// that one wins: worktrees sharing a target dir share this test's binary (cargo leaves the
+/// path out of a workspace member's hash), so the compile-time value can name another checkout.
 fn repo(relative: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join(relative)
+    let crate_dir =
+        std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into());
+    Path::new(&crate_dir).join("..").join(relative)
 }
 
 struct Source {
