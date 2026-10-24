@@ -245,6 +245,6 @@
 
   .spinner {
     display: inline-flex;
-    margin-bottom: var(--setup-top-gap);
+    margin: var(--space-4) 0 var(--setup-top-gap);
   }
 </style>

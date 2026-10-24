@@ -94,10 +94,12 @@
 </Page>
 
 <style>
+  /* 2 in, like the titles of the groups under it. */
   .head {
     display: flex;
     flex-direction: column;
     gap: var(--setup-page-lead-gap);
+    padding-inline: var(--space-2);
   }
 
   .title {
