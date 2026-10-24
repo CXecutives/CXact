@@ -65,7 +65,7 @@ export function glideBy(pane: HTMLElement, delta: number): void {
 }
 
 /** The nearest scroll area of `node` that scrolls down (null: none). */
-function scrollerOf(node: Element): HTMLElement | null {
+export function scrollerOf(node: Element): HTMLElement | null {
   for (let at = node.parentElement; at !== null; at = at.parentElement) {
     const overflow = getComputedStyle(at).overflowY;
     if (/auto|scroll/.test(overflow) && at.scrollHeight > at.clientHeight) return at;

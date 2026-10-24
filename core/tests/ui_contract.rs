@@ -946,8 +946,9 @@ fn the_top_bar_measures_the_same_everywhere() {
 }
 
 /// Motion stays snappy and calm (user test of the installed app): colour changes, entries,
-/// view switches and dialogs within 180 ms, the fill of a ring within 400 ms, and no easing
-/// that overshoots (no bounce). Nothing blurs a large area or animates layout.
+/// view switches and dialogs within 180 ms, the fill of a ring and a whole stagger within
+/// 400 ms, and no easing that overshoots (no bounce). Nothing blurs a large area or animates
+/// layout.
 #[test]
 fn motion_stays_quick_and_calm() {
     let all = scanned(MIN_FILES);
@@ -975,11 +976,13 @@ fn motion_stays_quick_and_calm() {
         "--dur-hover",
         "--dur-fast",
         "--dur-base",
+        "--dur-fade",
         "--dur-slow",
     ] {
         assert!(ms(name) <= 180, "{name} is {} ms (at most 180)", ms(name));
     }
     assert!(ms("--dur-reveal") <= 400, "--dur-reveal above 400 ms");
+    assert!(ms("--stagger-span") <= 400, "--stagger-span above 400 ms");
     let mut problems = Vec::new();
     for (n, line) in tokens.lines() {
         let Some(at) = line.find("cubic-bezier(") else {
