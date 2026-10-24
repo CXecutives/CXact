@@ -177,8 +177,9 @@
     box-shadow: var(--sidebar-max) 0 0 0 var(--ground-end);
   }
 
+  /* Its seam on the sidebar's last pixel, like the view's below. */
   .ground.docked {
-    left: var(--bar-side, var(--sidebar-width));
+    left: calc(var(--bar-side, var(--sidebar-width)) - var(--border-width));
     border-left: var(--border-width) solid var(--border);
   }
 
