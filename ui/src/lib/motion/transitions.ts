@@ -1,16 +1,24 @@
 // Token-bound wrappers of svelte/transition, svelte/animate and svelte/motion.
 // This folder is the only place allowed to import them (eslint + ui_contract.rs).
 //
-// Rules: only transform and opacity move (and the height of a folding row, of a line that
-// unfolds under the list header and of the job list's selection bar, each one small box); end
-// values are whole pixels; at most
-// --stagger-max list rows animate at once, and only rows that arrive while the list is on
-// screen. Nothing staggers, nothing bounces. Under reduced motion every movement is dropped
-// and what remains is a cross-fade of --dur-crossfade.
+// The rules of all motion in the UI (lib/motion is their one home):
+//   - Only transform and opacity move, plus colour and stroke-dashoffset. The exceptions are
+//     single small boxes: the height of a row or line that folds or unfolds, and the size of
+//     an element out of the flow that glides to another box (glide.ts, barSlide). End values
+//     are whole pixels.
+//   - At most 180 ms per piece (--dur-slow), the ring and its count 400 ms (--dur-reveal), a
+//     whole stagger at most 400 ms (--stagger-span). Ease-out in, ease-in out. Nothing
+//     overshoots, bounces, scales or deforms, not even on press.
+//   - Entries play only when a view opens, a list opens or a new job opens, never on a
+//     re-render: the staggers of enter.ts are called explicitly, capped (--stagger-max items
+//     step, the later ones come with the last), and skipped while the user browses fast
+//     (pace.ts). A glide jumps when its target is out of sight (glide.ts).
+//   - Under reduced motion every movement is dropped: an entry or a glide is simply there,
+//     and what remains of a transition is a cross-fade of --dur-crossfade.
 //
 // No replay by construction: Svelte plays a local transition only when its own block has
-// run before, so an entry never plays when a view, a list or the app mounts (main.ts also
-// mounts with `intro: false`).
+// run before, so a transition never plays when a view, a list or the app mounts (main.ts
+// also mounts with `intro: false`).
 //
 // fade and rise never read the element's style: svelte/transition's versions call
 // getComputedStyle for the element's own opacity and transform, which forces a style and
@@ -20,14 +28,12 @@
 
 import { flip as svelteFlip } from 'svelte/animate';
 import { Tween } from 'svelte/motion';
-import { scale as svelteScale } from 'svelte/transition';
 import type { AnimationConfig } from 'svelte/animate';
 import type { TransitionConfig } from 'svelte/transition';
 import {
   crossfadeDuration,
   duration,
   easing,
-  enterScale,
   isReducedMotion,
   move,
   play,
@@ -109,16 +115,33 @@ export function stepIn(
   };
 }
 
-/** Fade in from --scale-enter (popovers, dialogs, tooltips). */
+/** A small thing that appears in its place (the trailing button of a field): it fades in,
+ *  nothing scales (100 ms, ease-out). */
 export function pop(node: Element, params: MotionParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  return svelteScale(node, {
-    start: enterScale(),
-    duration: duration(params.duration ?? 'fast'),
+  return opacity(
+    duration(params.duration ?? 'fast'),
+    easing(params.easing ?? 'out'),
+    params.delay ?? 0,
+  );
+}
+
+/**
+ * A chip that the user adds rises by --move-chip (3 px) while it fades in (150 ms, ease-out).
+ * `in:chipIn` on the chip inside a `{#each}` keyed by the chip's value (a reload of the same
+ * chips then creates nothing): Svelte plays a local intro only in a block that ran before,
+ * so the chips a field mounts with are simply there, and only an added chip rises.
+ */
+export function chipIn(node: Element, params: MotionParams = {}): TransitionConfig {
+  if (params.on === false) return {};
+  if (isReducedMotion()) return crossfade(node);
+  const y = move('chip');
+  return {
+    duration: duration(params.duration ?? 'base'),
     easing: easing(params.easing ?? 'out'),
     delay: params.delay ?? 0,
-    opacity: 0,
-  });
+    css: (t, u) => `opacity: ${t}; transform: translateY(${u * y}px)`,
+  };
 }
 
 /** Maximum rows that may FLIP; above this a list cross-fades. */
@@ -168,25 +191,23 @@ export function rowEnter(row: Element): void {
   motion?.addEventListener('finish', () => motion.cancel());
 }
 
-function lifted(t: number, y: number, scale: number): string {
-  const s = scale + (1 - scale) * t;
-  return `opacity: ${t}; transform: translateY(${Math.round((1 - t) * y)}px) scale(${s})`;
+function lifted(t: number, y: number): string {
+  return `opacity: ${t}; transform: translateY(${Math.round((1 - t) * y)}px)`;
 }
 
-/** Dialog entrance: slow/out (180 ms), rising 4 px from --scale-enter. */
+/** Dialog entrance: it rises by --move-lg (8 px) while it fades in, nothing scales (180 ms,
+ *  ease-out). */
 export function dialogIn(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('md');
-  const scale = enterScale();
-  return { duration: duration('slow'), easing: easing('out'), css: (t) => lifted(t, y, scale) };
+  const y = move('lg');
+  return { duration: duration('slow'), easing: easing('out'), css: (t) => lifted(t, y) };
 }
 
-/** Dialog exit: fast (100 ms) with ease-in. */
+/** Dialog exit: it sinks by --move-md while it fades (100 ms, ease-in). */
 export function dialogOut(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
   const y = move('md');
-  const scale = enterScale();
-  return { duration: duration('fast'), easing: easing('in'), css: (t) => lifted(t, y, scale) };
+  return { duration: duration('fast'), easing: easing('in'), css: (t) => lifted(t, y) };
 }
 
 /** The scrim behind a dialog follows the dialog's timing. */
@@ -223,10 +244,10 @@ export function rowCollapse(node: Element, { on }: CollapseParams): TransitionCo
 }
 
 /**
- * A slim line that comes and goes under the list header (the filter chips, the progress of a
- * run): it unfolds to its height while it fades in (150 ms, ease-out) and folds away while it
- * fades out (100 ms, ease-in), so the list below glides instead of jumping. A cross-fade
- * under reduced motion. `transition:unfold` on the line.
+ * Something that comes and goes in the flow (a line under the list header, the minimum salary,
+ * the mailbox form, a row of the profile): it unfolds to its height while it fades in (150 ms,
+ * ease-out) and folds away the same way back, so what is below glides instead of jumping. A
+ * cross-fade under reduced motion. `transition:unfold` on it.
  */
 export function unfold(node: Element, params: MotionParams = {}): TransitionConfig {
   if (params.on === false) return {};
@@ -296,24 +317,24 @@ export function toastIn(node: Element): TransitionConfig {
   };
 }
 
-/** The toast goes down by --move-lg the way it came while it fades (150 ms, ease-out). */
+/** The toast goes down by --move-lg the way it came while it fades (140 ms, ease-in). */
 export function toastOut(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
   const y = move('lg');
   return {
-    duration: duration('base'),
-    easing: easing('out'),
+    duration: duration('fade'),
+    easing: easing('in'),
     css: (t, u) => `opacity: ${t}; transform: translateY(${Math.round(u * y)}px)`,
   };
 }
 
-/** A menu drops in from --move-sm toward where it opened (100 ms, ease-out, a fade): down
- *  below its button or pointer, up when it opened above. */
+/** A menu drops in by --move-md (4 px) toward where it opened while it fades in (150 ms,
+ *  ease-out): down below its button or pointer, up when it opened above. */
 export function menuIn(node: Element, { up = false }: { up?: boolean } = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('sm') * (up ? 1 : -1);
+  const y = move('md') * (up ? 1 : -1);
   return {
-    duration: duration('fast'),
+    duration: duration('base'),
     easing: easing('out'),
     css: (t) => `opacity: ${t}; transform: translateY(${Math.round((1 - t) * y)}px)`,
   };
@@ -324,16 +345,11 @@ export function menuOut(_node: Element): TransitionConfig {
   return opacity(duration('instant'), easing('in'));
 }
 
-/** The tooltip pops --move-sm out of its anchor above it (100 ms, ease-out) and leaves with
- *  a 60 ms fade. */
+/** The tooltip fades in where it stands, nothing moves or scales (100 ms, ease-out; it comes
+ *  after --delay-tooltip, lib/actions/tooltip.ts), and leaves with a 60 ms fade. */
 export function tooltipIn(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = -move('sm');
-  return {
-    duration: duration('fast'),
-    easing: easing('out'),
-    css: (t) => lifted(t, y, enterScale()),
-  };
+  return opacity(duration('fast'), easing('out'));
 }
 
 export function tooltipOut(_node: Element): TransitionConfig {
@@ -343,6 +359,8 @@ export function tooltipOut(_node: Element): TransitionConfig {
 /**
  * A number that counts up (score rings, stat tiles). Rounds to whole numbers; under
  * reduced motion it jumps to the target.
+ * Replaced by `Count` (count.svelte.ts), which moves the ring's arc in step: deleted once
+ * ScoreRing uses it.
  */
 export function countUp(initial = 0, length: Duration = 'reveal'): Tween<number> {
   return new Tween(initial, {

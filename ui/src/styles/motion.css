@@ -1,9 +1,11 @@
 /*
  * The only keyframes of the UI. Two kinds:
  *   - loops of something that waits: the light of a loading placeholder, a spinner, the
- *     sweep of an indeterminate progress bar (linear, so no turn seems to stall). They take
- *     `animation-play-state: var(--loop-state)`, which reduced motion sets to `paused` (a
- *     loop starts at its resting frame, so a paused one simply stands).
+ *     sweep of an indeterminate progress bar (linear, so no turn seems to stall), the pulse
+ *     of a dot while a run works (`animation: pulse var(--dur-loop) var(--ease-standard)
+ *     infinite alternate`). They take `animation-play-state: var(--loop-state)`, which
+ *     reduced motion sets to `paused` (a loop starts at its resting frame, so a paused one
+ *     simply stands).
  *   - one-shots started by a state change, never replayed: the late appearance of a
  *     placeholder, a drawn check (draw, on stroke-dashoffset).
  * Components reference them by name with token durations (`animation: spin var(--dur-loop)
@@ -37,6 +39,17 @@
 
   to {
     transform: translateX(100%);
+  }
+}
+
+/* The dot breathes between full and faint; it rests full. */
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.35;
   }
 }
 
