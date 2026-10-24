@@ -1,0 +1,251 @@
+<!--
+  The head of the job view, its hero card (the round 10 draft): the ring (56) and beside it
+  the title (20/650, copyable) with the band under it in the word colour of its ring; the quiet
+  tools in the card's top right corner, the moves of the job's place (actions.ts rowTools: the
+  same as its row's) and "×" Schließen; under the top the job's state box (ReaderState), and
+  the buttons that show the job in a row of their own under a hairline (shows.ts).
+  - The ring: scored, it fills and counts up each time a job opens (not while the user browses
+    fast, ScoreRing and lib/motion/pace.ts); not scored yet a dash with "Noch nicht bewertet";
+    not scorable "Nicht bewertbar"; without a profile "Nicht bewertet"; an excluded job the
+    red ban on the light red track with "Ausgeschlossen" in the ban red.
+  - The buttons (a job neither excluded nor without its text): Anzeige öffnen, Alert-Mail
+    öffnen (only for a job a mail brought), Prompt für KI-Bewertung (only with a score and the
+    ad's text); the row wraps. An excluded job and one whose ad is still to come show only the
+    button of their state box.
+  A job that just moved away keeps its tools off while the next one loads (`inPlace`).
+-->
+<script lang="ts">
+  import Button from '$components/Button.svelte';
+  import Card from '$components/Card.svelte';
+  import ScoreRing, { type RingState } from '$components/ScoreRing.svelte';
+  import { t } from '$lib/i18n/t';
+  import type { JobDetail } from '$lib/ipc/types';
+  import { keyOf } from '$lib/state/jobs.svelte';
+  import type { rowTools } from './actions';
+  import ReaderState from './ReaderState.svelte';
+  import { SHOWS, showActions, type ShowId } from './shows';
+
+  interface Props {
+    detail: JobDetail;
+    /** The title without gender tags. */
+    heading: string;
+    ring: RingState;
+    /** A usable profile: without one no job is scored. */
+    withRing: boolean;
+    excluded: boolean;
+    /** Why the engine excludes the job (null: it does not). */
+    exclusion: string | null;
+    includable: boolean;
+    including: boolean;
+    oninclude: (event: MouseEvent) => void;
+    /** The moves of the job's place. */
+    tools: ReturnType<typeof rowTools>;
+    /** The job still lies in the list's place (its moves are its place's). */
+    inPlace: boolean;
+    onclose: (() => void) | null;
+    /** What each button that shows the job does. */
+    onshow: (id: ShowId) => void;
+    /** The row of those buttons (the focus goes to its first one after "Trotzdem bewerten"). */
+    actions?: HTMLElement | null;
+  }
+
+  let {
+    detail,
+    heading,
+    ring,
+    withRing,
+    excluded,
+    exclusion,
+    includable,
+    including,
+    oninclude,
+    tools,
+    inPlace,
+    onclose,
+    onshow,
+    actions = $bindable(null),
+  }: Props = $props();
+
+  const job = $derived(detail.job);
+  /** The ring the hero shows: without a profile the dash of a ring that is off. */
+  const shown = $derived<RingState>(withRing ? ring : { status: 'off' });
+  /** The band under the title and its colour. */
+  const band = $derived.by((): { words: string; tone: string } => {
+    if (excluded) return { words: t.score.excluded, tone: 'ban' };
+    switch (shown.status) {
+      case 'scored':
+        return {
+          words: t.score.band[shown.band],
+          tone: `d${Math.min(9, Math.floor(Math.max(0, shown.score) / 10))}`,
+        };
+      case 'unscorable':
+        return { words: t.reader.unscorable, tone: 'quiet' };
+      case 'off':
+        return { words: t.score.none, tone: 'quiet' };
+      default:
+        return { words: t.reader.unscored, tone: 'quiet' };
+    }
+  });
+  /** The ad's text is there (a preview counts): the buttons that show the job make sense. */
+  const hasText = $derived(
+    detail.text !== null || job.detail.kind === 'ok' || job.detail.kind === 'teaser',
+  );
+  /** The test id of each button that shows the job. */
+  const SHOW_TESTIDS: Record<ShowId, string> = {
+    'open-ad': 'open-ad',
+    mail: 'reader-mail',
+    prompt: 'reader-prompt',
+  };
+</script>
+
+{#snippet heroTools()}
+  {#each tools as tool (tool.id)}
+    <Button
+      variant="ghost"
+      iconOnly
+      icon={tool.icon}
+      label={tool.label}
+      disabled={tool.disabled || !inPlace}
+      disabledReason={tool.reason}
+      testid="reader-{tool.id}"
+      onclick={tool.run}
+    />
+  {/each}
+  {#if onclose}
+    <Button
+      variant="ghost"
+      iconOnly
+      icon="close"
+      label={t.reader.close}
+      testid="reader-close"
+      onclick={onclose}
+    />
+  {/if}
+{/snippet}
+
+<Card hero tools={heroTools} testid="reader-head">
+  <div class="body">
+    <div class="top" data-testid="reader-match">
+      {#if excluded}
+        <ScoreRing ring={shown} size="md" ban testid="reader-ban" />
+      {:else}
+        <ScoreRing ring={shown} size="md" animate={keyOf(job.key)} testid="reader-ring" />
+      {/if}
+      <div class="heads">
+        <h1 class="title" data-copy data-testid="reader-title">{heading}</h1>
+        <p class="band {band.tone}" data-testid="band">{band.words}</p>
+      </div>
+    </div>
+    <ReaderState {detail} {exclusion} {includable} {including} {oninclude} />
+    {#if !excluded && hasText}
+      <!-- Words, glyphs, what is off and what is not there come from the one table the row's
+         menu reads too. -->
+      {@const shows = showActions(job)}
+      <div class="actions" bind:this={actions} data-testid="reader-actions">
+        {#each SHOWS.filter((id) => !shows[id].hidden) as id (id)}
+          <Button
+            variant="secondary"
+            icon={shows[id].icon}
+            label={shows[id].label}
+            disabled={shows[id].reason !== null}
+            disabledReason={shows[id].reason}
+            testid={SHOW_TESTIDS[id]}
+            onclick={() => onshow(id)}
+          />
+        {/each}
+      </div>
+    {/if}
+  </div>
+</Card>
+
+<style>
+  /* The top, the state box and the button row, 14 apart. */
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hero-gap);
+  }
+
+  /* The ring beside the title and its band; the room at the right keeps the tools free. */
+  .top {
+    display: flex;
+    align-items: center;
+    gap: var(--hero-gap);
+    padding-right: var(--hero-tools-room);
+  }
+
+  .heads {
+    min-width: 0;
+  }
+
+  .title {
+    color: var(--text-heading);
+    font: var(--type-xl);
+    letter-spacing: var(--tracking-tight);
+    overflow-wrap: break-word;
+  }
+
+  .band {
+    margin-top: var(--hero-band-gap);
+    font: var(--type-field-label);
+  }
+
+  .band.quiet {
+    color: var(--text-subtle);
+  }
+
+  .band.ban {
+    color: var(--ban);
+  }
+
+  /* The band in the word colour of its ring's step (a step darker than the ring for the
+     yellows and greens, decision 4). */
+  .band.d0 {
+    color: var(--score-text-0);
+  }
+
+  .band.d1 {
+    color: var(--score-text-1);
+  }
+
+  .band.d2 {
+    color: var(--score-text-2);
+  }
+
+  .band.d3 {
+    color: var(--score-text-3);
+  }
+
+  .band.d4 {
+    color: var(--score-text-4);
+  }
+
+  .band.d5 {
+    color: var(--score-text-5);
+  }
+
+  .band.d6 {
+    color: var(--score-text-6);
+  }
+
+  .band.d7 {
+    color: var(--score-text-7);
+  }
+
+  .band.d8 {
+    color: var(--score-text-8);
+  }
+
+  .band.d9 {
+    color: var(--score-text-9);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-8);
+    padding-top: var(--hero-gap);
+    border-top: var(--border-width) solid var(--border);
+  }
+</style>

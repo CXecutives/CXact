@@ -1139,7 +1139,7 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
   // A click on a text that takes no focus (a source's name on Suche, the tab it opens on).
-  await page.getByTestId('portal-hays').getByText(T.portal.hays).click();
+  await page.getByTestId('portal-hays').getByText(T.portalName.hays).click();
   await page.keyboard.press('End');
   // Once the glide has ended (a key during it would add to where it is going).
   await expect

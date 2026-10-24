@@ -39,7 +39,6 @@ const LARGE = {
   'ui/src/lib/i18n/de.ts': [null, 'the catalog: every text of the UI in one table'],
   'ui/src/lib/input/input.ts': [1800, 'the one place of all input handling (CLAUDE.md)'],
   // Known large files: split along their parts when next touched.
-  'ui/src/features/jobs/Reader.svelte': [1000, 'known large: its sections become files'],
   'ui/src/lib/state/jobs.svelte.ts': [1100, 'known large: query, selection and moves apart'],
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],
   'ui/src/components/ChipInput.svelte': [600, 'known large: its editing keys into input.ts'],
@@ -66,7 +65,6 @@ const FEATURE_PUBLIC = {
 const TEMPORARY = {
   // The motion layer (frontend plan, package 4) lands before the components that use it.
   'ui/src/lib/motion/enter.ts: enterList': 'the job list staggers its rows when it opens',
-  'ui/src/lib/motion/enter.ts: enterCards': 'the job view staggers its cards on a new job',
 };
 const temporaryUsed = new Set();
 /** Whether `key` is accepted for now (and remember that its entry is still needed). */

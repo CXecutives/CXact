@@ -13,8 +13,7 @@
 // pay row reads the codes and the criterion of the pay that applies only: a salary is never
 // judged by a day rate wish, a day rate never by the minimum salary.
 
-import type { IconName } from '$components/Icon.svelte';
-import { TERM_ROWS, modeWords, startWords, termIcon, type TermKey } from '$lib/facts';
+import { TERM_ROWS, modeWords, startWords, type TermKey } from '$lib/facts';
 import { formatDay, formatMoment } from '$lib/i18n/format';
 import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
@@ -32,8 +31,6 @@ type ContractWord = keyof typeof t.reader.contractKind;
 export interface TermRow {
   key: TermKey;
   name: string;
-  /** The icon of its fact (lib/facts.ts). */
-  icon: IconName;
   /** The ad's value in words ("1.200 €/Tag"), or "–". */
   value: string;
   /** A value of several parts, each copied on its own (the contact: name, e-mail, phone). */
@@ -301,7 +298,7 @@ const TERMS: Record<TermKey, Term> = {
   },
 };
 
-const KEYS: readonly TermKey[] = TERM_ROWS.map((row) => row.key);
+const KEYS: readonly TermKey[] = TERM_ROWS;
 
 /** The row of each reason code, whatever the pay (a reason a row stands for is never listed
  *  again). */
@@ -422,7 +419,6 @@ function build(
   return {
     key,
     name: term.name?.(ctx) ?? t.reader.term[key],
-    icon: termIcon(key, input.job),
     value: read.value ?? t.reader.missing,
     parts: missing ? null : (read.parts ?? null),
     mail: missing ? null : (read.mail ?? null),

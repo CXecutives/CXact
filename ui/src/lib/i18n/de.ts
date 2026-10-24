@@ -56,6 +56,19 @@ const count = (value: number, one: string, many: string): string =>
 /** The portals by their web address, everywhere (a sentence never starts with one); the
  *  names come from the portal registry, no catalog translates them. */
 const portalName = PORTAL_LABEL;
+/** The portals by their brand name (Einstellungen > Jobportale, the setup's Postfach step). */
+const BRAND = {
+  linkedin: 'LinkedIn',
+  freelance: 'freelance.de',
+  freelancermap: 'freelancermap',
+  hays: 'Hays',
+  michaelpage: 'Michael Page',
+  solcom: 'SOLCOM',
+  gulp: 'GULP',
+  amadeusfire: 'Amadeus Fire',
+  interimx: 'interim-x',
+  fratch: 'FRATCH',
+} satisfies Record<Portal, string>;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 
@@ -897,7 +910,7 @@ export const de = {
       duration: 'Laufzeit',
       workload: 'Auslastung',
       experience: 'Erfahrung',
-      deadline: 'Bewerbungsfrist',
+      deadline: 'Bewerben bis',
       contact: 'Kontakt',
       portal: 'Gefunden',
     },
@@ -940,21 +953,54 @@ export const de = {
     /** Loads the whole ad (a preview, a missing one). */
     fetchDetails: 'Anzeige laden',
     why: 'Anforderungen',
+    /** Beside "Anforderungen": how many of them the profile meets. */
+    metOf: (met: number, all: number) => `${n(met)} von ${n(all)} erfüllt`,
     noReasons: 'Die Anzeige nennt keine klaren Anforderungen.',
     ad: 'Anzeige',
-    /** The note of the ad section where its text is not all there, one short sentence under
-     *  the heading "Anzeige": a preview, an ad still to come or being loaded, one the app
-     *  cannot reach, gone or closed. */
-    adNote: {
-      teaser: 'Nur eine Vorschau.',
-      missing: 'Noch nicht geladen.',
-      loading: 'Wird geladen.',
-      unfetchable: 'Nicht erreichbar.',
-      gone: 'Nicht mehr online.',
-      closed: 'Keine Bewerbung mehr möglich.',
+    /** The band under the title of a job without a score (a job without a profile says
+     *  score.none). */
+    unscored: 'Noch nicht bewertet',
+    unscorable: 'Nicht bewertbar',
+    /** The state box under the job's title: its title and one sentence under it. */
+    state: {
+      missing: {
+        heading: 'Die Anzeige ist noch nicht geladen.',
+        text: 'Danach wird der Job bewertet.',
+      },
+      loading: 'Die Anzeige wird geladen.',
+      /** After "Trotzdem bewerten", until the job has its match. */
+      scoring: 'Der Job wird bewertet.',
+      /** Under the sentence that says why the job is excluded. */
+      excluded: 'Darum wurde der Job nicht bewertet.',
+      teaser: {
+        heading: 'Die Anzeige ist nur eine Vorschau.',
+        text: 'Mit der ganzen Anzeige wird die Bewertung genauer.',
+      },
+      gone: {
+        heading: 'Die Anzeige ist nicht mehr online.',
+        text: 'Du siehst die zuletzt geladene Fassung.',
+      },
+      /** Gone before its text came. */
+      goneEarly: 'Ihr Text wurde nicht mehr geladen.',
+      unfetchable: {
+        heading: 'Die Anzeige lässt sich nicht laden.',
+        text: 'Das Portal gibt sie nicht heraus.',
+      },
+      closed: {
+        heading: 'Die Anzeige ist beendet.',
+        text: 'Bewerbungen sind nicht mehr möglich.',
+      },
+      short: { heading: SHORT_TEXT, text: 'Für eine Bewertung reicht sie nicht.' },
     },
-    short: SHORT_TEXT,
+    /** The job view while no job is open. */
+    noJob: 'Kein Job gewählt',
+    pickJob: 'Wähle einen Job aus der Liste.',
     loadFailed: 'Der Job ließ sich nicht laden.',
+    /** Deleting a job of the Papierkorb for good, from its job view. */
+    purgeHeading: 'Endgültig löschen?',
+    purgeText: (name: string) =>
+      `„${name}“ wird endgültig gelöscht. Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
+    purgeConfirm: 'Löschen',
   },
   health: {
     /** A portal problem in one sentence that says whether to act (its row in the settings). */
@@ -1303,6 +1349,8 @@ export const de = {
      *  many alert mails of it came in the last 30 days, resting until a moment, what the last
      *  search brought. */
     needsMailbox: 'Braucht ein Postfach',
+    /** Why the switch of a portal of alert mails waits without a mailbox. */
+    needsMailboxReason: 'Verbinde erst ein Postfach.',
     alertMails: (value: number) =>
       value === 0
         ? 'Keine Alert-Mails in 30 Tagen'
@@ -1313,14 +1361,19 @@ export const de = {
       value === 0
         ? 'Zuletzt keine neuen Jobs'
         : `Zuletzt ${count(value, 'neuer Job', 'neue Jobs')}`,
+    /** A portal's sign-in ran out, or its sign-in window waits for the user. */
+    signInExpired: 'Anmeldung abgelaufen',
+    signInWaiting: 'Wartet auf die Anmeldung',
     connected: 'Verbunden',
     /** The row of the mailbox while none is connected. */
-    notConnected: 'Nicht verbunden',
-    notConnectedHint: 'Ohne Postfach liest CXact keine Alert-Mails.',
-    /** The last fetch could not reach Gmail, or Gmail refused the password. */
-    unreachable: 'Gmail nicht erreichbar',
-    refused: 'App-Passwort abgelehnt',
-    /** The providers of a mailbox (design round 7), in their order. */
+    notConnected: 'Kein Postfach verbunden',
+    notConnectedHint: 'Mit einem Postfach liest CXact auch deine Alert-Mails.',
+    /** The last fetch could not reach the mailbox, or it refused the password. */
+    unreachable: 'Postfach nicht erreichbar',
+    refused: (appPassword: boolean) =>
+      appPassword ? 'App-Passwort abgelehnt' : 'Passwort abgelehnt',
+    /** The providers of a mailbox (design round 7), in their order, and the domain of the
+     *  address field's example. */
     provider: {
       gmail: 'Gmail',
       icloud: 'iCloud',
@@ -1329,27 +1382,35 @@ export const de = {
     } satisfies Record<MailProvider, string>,
     providerLabel: 'Anbieter',
     address: 'E-Mail-Adresse',
-    /** Gmail and iCloud sign in with an app password, GMX and WEB.DE with the password. */
+    addressExample: (provider: MailProvider) =>
+      `name@${{ gmail: 'gmail.com', icloud: 'icloud.com', gmx: 'gmx.de', webde: 'web.de' }[provider]}`,
+    /** Gmail and iCloud sign in with an app password (16 letters), GMX and WEB.DE with the
+     *  password. */
     password: 'App-Passwort',
     plainPassword: 'Passwort',
-    /** The info symbol beside the app password. */
-    passwordInfo:
-      'Ein eigenes Passwort für CXact, das dein Anbieter mit Bestätigung in zwei Schritten erstellt.',
+    passwordExample: '16 Buchstaben',
+    /** The info symbol beside the app password, by its provider. */
+    passwordInfo: {
+      gmail:
+        'Ein eigenes Passwort für CXact, das du mit Bestätigung in zwei Schritten in deinem Google-Konto erstellst.',
+      icloud:
+        'Ein eigenes Passwort für CXact, das du mit Zwei-Faktor-Authentifizierung in deinem Apple Account erstellst.',
+    } satisfies Partial<Record<MailProvider, string>>,
     createPassword: 'App-Passwort erstellen',
     /** GMX and WEB.DE read alert mails only once IMAP is allowed in their web mailer. */
     allowImap: 'IMAP-Abruf erlauben',
-    addressMissing: 'Die Gmail-Adresse fehlt.',
-    passwordMissing: 'Das App-Passwort fehlt.',
+    addressMissing: 'Die E-Mail-Adresse fehlt.',
+    passwordMissing: (appPassword: boolean) =>
+      appPassword ? 'Das App-Passwort fehlt.' : 'Das Passwort fehlt.',
     connect: 'Verbinden',
-    /** The dialog of "Verbinden", and of "Ändern" (named after the button that opens it). */
+    /** The setup's step of the mailbox (its heading). */
     connectHeading: 'Postfach verbinden',
-    changeHeading: 'Postfach ändern',
     removeMailbox: 'Postfach entfernen?',
-    removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
+    removeMailboxText: (appPassword: boolean) =>
+      `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
-    signInWaiting: 'Das Anmeldefenster ist offen.',
     /** A portal that is on sent no alert mail for a week or longer (its alert may have run
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
@@ -1367,9 +1428,14 @@ export const de = {
     resetHint: 'Löscht alles, was CXact gespeichert hat.',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
-    resetText: 'CXact startet danach mit der Einrichtung neu.',
+    resetText:
+      'CXact löscht Jobs, Profil, Postfach und Anmeldungen und beginnt mit der Einrichtung.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
   },
+
+  /** The portals by their brand name (Einstellungen > Jobportale; settings.spec checks that
+   *  every portal has one). */
+  portalName: BRAND,
 
   /** The setup (features/first-run/steps.ts): each step's heading and lead, and its words. */
   firstRun: {
@@ -1406,7 +1472,7 @@ export const de = {
     mailbox: 'Postfach verbinden',
     optional: 'Optional',
     mailboxText: (portals: readonly Portal[]) =>
-      `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => portalName[p]))}.`,
+      `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => BRAND[p]))}.`,
     skip: 'Überspringen',
     connect: 'Verbinden',
     /** Fertig: everything with a mailbox, else the profile. */

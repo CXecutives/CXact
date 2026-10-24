@@ -919,7 +919,19 @@
   /* (jobs list tokens below) */
 
   /* ------------------------------------------- round 10: job view */
-  /* (job view tokens below) */
+  /* The hero: the band 3 under the title, the state box and the action row 14 under the top,
+     and room at the top's right for the three quiet tools (3 x 28, their gaps and air). */
+  --hero-band-gap: 3px;
+  --hero-gap: 14px;
+  --hero-tools-room: 96px;
+  /* Jobdetails: the verdict's column at a fact's end; the facts 8 under the card's title, the
+     requirements 12, the ad's text 10. */
+  --facts-mark: 18px;
+  --facts-top: var(--space-8);
+  --reqs-top: var(--space-12);
+  --ad-top: var(--space-10);
+  /* The ad's lists, this far in. */
+  --ad-indent: 18px;
 
   /* ------------------------------------------- round 10: profile */
   /* The Profil's number fields with their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170,
@@ -938,6 +950,10 @@
 
   /* ------------------------------------------- round 10: settings */
   /* (settings tokens below) */
+  /* The mailbox form that unfolds under its row: 4 below the row, 18 at its end, the row's 20
+     at the right and the text's 64 at the left; its parts 14 apart. */
+  --mail-form-pad: var(--space-4) var(--card-pad-x) 18px var(--setting-rule-start);
+  --mail-form-gap: 14px;
 
   /* ------------------------------------------- round 10: setup */
   /* The card of a step (--setup-card wide at most, --radius-sheet round): 34 36 20 inside, 24

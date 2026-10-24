@@ -1,11 +1,10 @@
-// The reader, one structure top to bottom (ui/src/features/jobs/reader-sections.ts): the title,
-// the ring or the ban of an excluded job, the four actions and their "…" menu per place, the
-// Jobdetails (the order and icons of lib/facts.ts, "/" for what the ad does not say, the value
-// and the verdict only, an icon whose tooltip says why), the Anforderungen (only requirements,
-// a quiet count, "+" for a missing term, each icon saying why), the ad as plain text with its
-// one note (nothing in it
-// marked by the rows above), and the switch between two jobs. At the end what the
-// reader's rounds of fixes carried around it (one column, the run card, the focus).
+// The job view, its cards top to bottom (ui/src/features/jobs/reader-sections.ts): the hero
+// (the ring or the ban of an excluded job beside the title and its band, the moves of the
+// place and "×" in its corner, the state box, the buttons that show the job), the Jobdetails
+// (the order of lib/facts.ts, the value and the verdict only, two columns), the Anforderungen
+// (only requirements, "x von N erfüllt", one flat list, "+" for a missing term), the ad as
+// plain text (nothing in it marked by the facts above), and the switch between two jobs. At
+// the end what the job view's rounds of fixes carried around it (one column, the focus).
 //
 // The stub's demo profile: a minimum day rate of 1.100 € and a wish of 1.200 €, mostly remote,
 // three to five days a week for at least six months, 20 years of experience (Controlling 18),
@@ -48,7 +47,7 @@ const ROWS = [
   'Laufzeit',
   'Auslastung',
   'Erfahrung',
-  'Bewerbungsfrist',
+  'Bewerben bis',
   'Kontakt',
   'Gefunden',
 ];
@@ -92,7 +91,7 @@ const tip = async (page: Page, target: Locator): Promise<string> =>
 /** The moves beside the head's x (their ids, their names), the x not among them. */
 async function headTools(page: Page): Promise<{ ids: string[]; labels: string[] }> {
   const tools = stage(page)
-    .locator('[data-testid="reader-head"] .actions .btn')
+    .locator('[data-testid="reader-head"] .tools .btn')
     .and(page.locator(':not([data-testid="reader-close"])'));
   await expect(tools.first()).toBeVisible();
   const ids = await tools.evaluateAll((all) =>
@@ -132,7 +131,7 @@ async function toolsOf(page: Page, key: string): Promise<string[]> {
 /** The moves of a job that just left the list are off (they would be the new place's). */
 async function movesOff(page: Page): Promise<void> {
   const tools = stage(page)
-    .locator('[data-testid="reader-head"] .actions .btn')
+    .locator('[data-testid="reader-head"] .tools .btn')
     .and(page.locator(':not([data-testid="reader-close"])'));
   for (const tool of await tools.all()) {
     await expect(tool).toHaveAttribute('aria-disabled', 'true');
@@ -145,21 +144,34 @@ async function slowDetails(page: Page, ms: number): Promise<void> {
 }
 
 test.describe('the head and the match', () => {
-  test('the title and its line, then the ring with its band, then the buttons; the rest in Jobdetails', async ({
+  test('the hero: the ring beside the title and its band, the buttons under a hairline; the rest in Jobdetails', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
-    // Under the title the job at a glance, like its row (design round 7): company, place, pay.
-    await expect(stage(page).getByTestId('reader-company')).toHaveText('Hanseatic Holding GmbH');
-    await expect(stage(page).getByTestId('reader-place')).toHaveText('Hamburg');
-    for (const id of ['reader-where', 'reader-source']) {
+    const hero = stage(page).getByTestId('reader-head');
+    // Nothing under the title but its band (round 10): company and place are facts.
+    for (const id of ['reader-company', 'reader-place', 'reader-where', 'reader-source']) {
       await expect(stage(page).getByTestId(id)).toHaveCount(0);
     }
-    const top = async (id: string): Promise<number> =>
-      (await stage(page).getByTestId(id).boundingBox())!.y;
-    expect(await top('reader-title')).toBeLessThan(await top('reader-match'));
-    expect(await top('reader-match')).toBeLessThan(await top('reader-actions'));
-    expect(await top('reader-actions')).toBeLessThan(await top('terms'));
+    const box = async (id: string) => (await stage(page).getByTestId(id).boundingBox())!;
+    const ring = await box('reader-ring');
+    const title = await box('reader-title');
+    const band = await box('band');
+    const actions = await box('reader-actions');
+    const facts = await box('terms');
+    // The ring 56 at the left, the title beside it, the band under the title.
+    expect(Math.round(ring.width)).toBe(56);
+    expect(title.x).toBeGreaterThan(ring.x + ring.width);
+    expect(band.y).toBeGreaterThan(title.y);
+    expect(Math.abs(band.x - title.x)).toBeLessThan(1);
+    // The buttons in the hero under the top, the Jobdetails in the next card.
+    await expect(hero.getByTestId('reader-actions')).toBeVisible();
+    expect(actions.y).toBeGreaterThan(ring.y + ring.height);
+    expect(facts.y).toBeGreaterThan(actions.y + actions.height);
+    // The title copies; the band says the ring's band in its colour step.
+    await expect(stage(page).getByTestId('reader-title')).toHaveAttribute('data-copy', '');
+    await expect(stage(page).getByTestId('band')).toHaveText('Hohe Übereinstimmung');
+    await expect(stage(page).getByTestId('band')).toHaveClass(/\bd[89]\b/);
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     // How and when it came: the moment it came into CXact ends the row.
@@ -167,20 +179,35 @@ test.describe('the head and the match', () => {
       `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
       '',
     ]);
-    // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
+    // Nothing is joined by a dot, no info symbol beside the band, no count line.
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text).not.toContain('·');
-    // No info symbol beside the band (user, 2026-10-10): the band says it.
     await expect(stage(page).getByTestId('band-info')).toHaveCount(0);
-    await expect(stage(page).getByTestId('reader-compact')).toHaveCount(0);
-    await expect(stage(page).getByTestId('place-line')).toHaveCount(0);
-    // The ring beside its band, and no count line.
-    await expect(stage(page).getByTestId('band')).toHaveText('Hohe Übereinstimmung');
     await expect(stage(page).getByTestId('must')).toHaveCount(0);
     expect(text).not.toContain('Pflicht');
     // The place without the work mode the portal appends to it.
     await openJob(page, 'freelance-900411');
     expect((await cell(page, 'place'))[0]).toBe('München');
+  });
+
+  test('the hero tools: quiet 28 px buttons in its top right corner, the title kept clear', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const hero = (await stage(page).getByTestId('reader-head').boundingBox())!;
+    const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
+    const tools = stage(page).locator('[data-testid="reader-head"] .tools .btn');
+    await expect(tools).toHaveCount(3);
+    for (const tool of await tools.all()) {
+      const at = (await tool.boundingBox())!;
+      expect(Math.round(at.width)).toBe(28);
+      expect(Math.round(at.height)).toBe(28);
+      // 14 inside its edge.
+      expect(Math.round(at.y - hero.y)).toBe(15);
+      expect(at.x).toBeGreaterThan(title.x + title.width);
+    }
+    const close = (await stage(page).getByTestId('reader-close').boundingBox())!;
+    expect(Math.round(hero.x + hero.width - (close.x + close.width))).toBe(15);
   });
 
   test('the ring shows the score of the open job', async ({ page }) => {
@@ -189,22 +216,27 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('reader-ring')).toContainText(BEST);
   });
 
-  test('a job without a score: no ring, its state box with its own button, no other buttons', async ({
+  test('a job without a score: the dash ring, its state box with its own button, no other buttons', async ({
     page,
   }) => {
-    // An ad still to come: no ring, the box with "Anzeige laden", no buttons that show it.
+    // An ad still to come: the dash, "Noch nicht bewertet", the box with "Anzeige laden" in the
+    // hero, no buttons that show it, no ad card.
     await openAt(page, 'linkedin-4100200302');
-    await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    await expect(stage(page).getByTestId('band')).toHaveCount(0);
-    const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText(T.reader.adNote.missing);
-    await expect(stage(page).getByTestId('load-ad')).toBeVisible();
+    await expect(stage(page).getByTestId('reader-ring')).toHaveText('–');
+    await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
+    await expect(stage(page).getByTestId('band')).toHaveClass(/quiet/);
+    const box = stage(page).getByTestId('reader-head').getByTestId('reader-state');
+    await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
+    await expect(box.getByTestId('detail-text')).toHaveText(T.reader.state.missing.text);
+    await expect(box.getByTestId('load-ad')).toBeVisible();
     await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
-    await expect(stage(page).getByTestId('band-info')).toHaveCount(0);
-    // One too short to score: no ring, the short note as its box, the buttons of its text.
+    await expect(stage(page).getByTestId('ad')).toHaveCount(0);
+    // One too short to score: "Nicht bewertbar", the short note as its box, the buttons of
+    // its text.
     await openJob(page, 'freelancermap-2806');
-    await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    await expect(stage(page).getByTestId('short-note')).toHaveText(T.reader.short);
+    await expect(stage(page).getByTestId('reader-ring')).toHaveText('–');
+    await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscorable);
+    await expect(stage(page).getByTestId('short-note')).toHaveText(T.reader.state.short.heading);
     await expect(stage(page).getByTestId('open-ad')).toBeVisible();
     await expect(stage(page).getByTestId('reader-prompt')).toHaveCount(0);
   });
@@ -235,13 +267,13 @@ test.describe('the head and the match', () => {
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await expect(page.locator('[data-open]')).toHaveCount(0);
     // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
-    // button, which closes the job there too, and is dimmed without one.
+    // button, which closes the job there too, and hides it without one (decision 29).
     await page.setViewportSize({ width: 683, height: 700 });
     await openAt(page, 'freelancermap-2801');
     await expect(page.getByTestId('toggle-reader')).toBeEnabled();
     await stage(page).getByTestId('reader-close').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
-    await expect(page.getByTestId('toggle-reader')).toBeDisabled();
+    await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
     await row(page, 'freelancermap-2801').click();
     await page.getByTestId('history-back').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
@@ -338,11 +370,15 @@ test.describe('the actions', () => {
     tools = await headTools(page);
     expect(tools.ids).toEqual(['restore', 'purge']);
     expect(tools.labels).toEqual(['Wiederherstellen', 'Endgültig löschen']);
+    const title = await stage(page).getByTestId('reader-title').innerText();
     await choose(page, 'purge');
+    // The red dialog carries the danger and names the job.
     const dialog = page.getByTestId('dialog-purge');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Endgültig löschen' })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Endgültig löschen' }).click();
+    await expect(dialog.getByRole('heading')).toHaveText(T.reader.purgeHeading);
+    await expect(dialog).toContainText(T.reader.purgeText(title));
+    await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.reader.purgeConfirm);
+    await dialog.getByTestId('dialog-confirm').click();
     expect((await calls(page, 'purge_jobs')).at(-1)?.[1]).toEqual({
       keys: [{ portal: 'linkedin', id: '4100200306' }],
     });
@@ -478,11 +514,14 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    // One box: the ban, Ausgeschlossen, why and Trotzdem bewerten at its end.
-    const box = stage(page).getByTestId('exclusion-box');
-    await expect(box.getByTestId('reader-ban')).toBeVisible();
-    await expect(box.getByTestId('reader-include')).toBeVisible();
+    // The ban in the ring's place, "Ausgeschlossen" in the ban red; one soft red box with why,
+    // why it is not scored and Trotzdem bewerten at its end.
+    await expect(stage(page).getByTestId('reader-ban')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
+    await expect(stage(page).getByTestId('band')).toHaveClass(/ban/);
+    const box = stage(page).getByTestId('exclusion-box');
+    await expect(box).toContainText(T.reader.state.excluded);
+    await expect(box.getByTestId('reader-include')).toBeVisible();
     // Its first violation, once, from the profile's side; no way into the ad.
     await expect(stage(page).getByTestId('exclusion')).toHaveText(T.reader.criterion.noAnue);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
@@ -575,7 +614,7 @@ test.describe('Jobdetails', () => {
     );
   });
 
-  test('Bewerbungsfrist and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
+  test('Bewerben bis and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
@@ -630,8 +669,17 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'mode')).toEqual([T.facts.mode.remote, 'met']);
     expect(T.facts.mode.remote).toBe('Voll remote');
     // A hybrid job without a share: its mode in the one set of words.
-    await openJob(page, 'linkedin-4100200302');
+    await page.evaluate(() => {
+      window.__harness.editDetail = (detail) => {
+        detail.job.workMode = 'hybrid';
+        const facts = detail.job.match?.facts;
+        if (facts) Object.assign(facts, { remoteFrom: null, remoteTo: null });
+        return detail;
+      };
+    });
+    await openJob(page, 'freelancermap-2803');
     expect((await cell(page, 'mode'))[0]).toBe('Hybrid');
+    await page.evaluate(() => (window.__harness.editDetail = null));
     // Said in the rows, not again among the requirements.
     await openJob(page, 'freelancermap-2802');
     await expect(why(page)).not.toContainText('liegt unter dem Minimum');
@@ -645,15 +693,20 @@ test.describe('Jobdetails', () => {
     // skill: the row and the Anforderungen say the same.
     await openAt(page, 'freelancermap-2801');
     expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'partial']);
-    await expect(why(page).getByTestId('reasons-partial')).toContainText(
-      'Mindestens 15 Jahre Berufserfahrung im Controlling',
-    );
+    await expect(
+      why(page).locator('li[data-kind="partial"]', {
+        hasText: 'Mindestens 15 Jahre Berufserfahrung im Controlling',
+      }),
+    ).toHaveCount(1);
     // Ten years of a field the profile does not name: nothing judges the years (no icon),
     // the requirement stands under "Nicht erfüllt" and says why.
     await openJob(page, 'linkedin-4100200304');
     expect(await cell(page, 'experience')).toEqual(['10 Jahre', '']);
-    const open = why(page).getByTestId('reasons-open');
-    await expect(open).toContainText('Mindestens 10 Jahre Berufserfahrung im Rechnungswesen');
+    await expect(
+      why(page).locator('li[data-kind="open"]', {
+        hasText: 'Mindestens 10 Jahre Berufserfahrung im Rechnungswesen',
+      }),
+    ).toHaveCount(1);
     // A working student job: its level by its word; it is excluded, so no verdict.
     await openJob(page, 'freelancermap-2807');
     expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, '']);
@@ -762,9 +815,10 @@ test.describe('Jobdetails', () => {
   });
 
   test('an ad the app never read in full shows only what it knows', async ({ page }) => {
+    // Not loaded yet: what its mail said (round 10: Unternehmen, Ort, Gefunden).
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
-    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Gefunden']);
+    expect(names).toEqual(['Unternehmen', 'Ort', 'Gefunden']);
     // Its way and its source: the alert mail of LinkedIn.
     const [found] = await cell(page, 'portal');
     expect(found).toMatch(/^Alert-Mail von linkedin\.com, \S/);
@@ -783,18 +837,19 @@ test.describe('Jobdetails', () => {
 
   test('a job the engine could not score shows no verdicts', async ({ page }) => {
     await openAt(page, 'freelancermap-2806');
-    await expect(stage(page).getByTestId('short-note')).toHaveText(T.reader.short);
-    await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
+    await expect(stage(page).getByTestId('short-note')).toHaveText(T.reader.state.short.heading);
+    await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscorable);
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     await expect(why(page)).toHaveCount(0);
   });
 
-  test('without a profile: the values without verdicts, no ring, no requirements', async ({
+  test('without a profile: the values without verdicts, the dash ring, no requirements', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=no-profile`);
     await openJob(page, 'freelancermap-2801');
-    await expect(stage(page).getByTestId('reader-match')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-ring')).toHaveText('–');
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.none);
     // Without verdicts no row says "–": what the ad states, and how it came.
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names).toEqual(ROWS.filter((name) => names.includes(name)));
@@ -807,11 +862,32 @@ test.describe('Jobdetails', () => {
 });
 
 test.describe('Anforderungen', () => {
-  test('three groups with a count, only requirements', async ({ page }) => {
+  test('one flat list in its order with "x von N erfüllt", only requirements', async ({ page }) => {
     await openAt(page, 'freelancermap-2801');
-    await expect(why(page).locator('h2')).toHaveText('Anforderungen');
-    const titles = (await why(page).locator('.sub').allInnerTexts()).map(words);
-    expect(titles).toEqual(['Erfüllt 5', 'Teilweise erfüllt 2', 'Nicht erfüllt 1']);
+    await expect(why(page).getByTestId('why-title')).toContainText('Anforderungen');
+    await expect(why(page).locator('.count')).toHaveText(T.reader.metOf(5, 8));
+    // Met first, then in part, then not met; within each a must before a nice one.
+    const order = await why(page)
+      .locator('li')
+      .evaluateAll((all) =>
+        all.map((li) => [(li as HTMLElement).dataset.kind, (li as HTMLElement).dataset.weight]),
+      );
+    expect(order.map(([kind]) => kind)).toEqual([
+      ...Array<string>(5).fill('met'),
+      'partial',
+      'partial',
+      'open',
+    ]);
+    const RANK: Record<string, number> = { must: 0, hard: 1, nice: 2, info: 3 };
+    order.forEach(([kind, weight], at) => {
+      const [before, beforeWeight] = order[at - 1] ?? [];
+      if (kind === before) expect(RANK[weight!]).toBeGreaterThanOrEqual(RANK[beforeWeight!]!);
+    });
+    // Two columns: the second requirement beside the first.
+    const tops = await why(page)
+      .locator('li')
+      .evaluateAll((all) => all.slice(0, 2).map((li) => li.getBoundingClientRect().top));
+    expect(Math.abs(tops[0]! - tops[1]!)).toBeLessThan(1);
     // No title, wish or Schwerpunkt, no line of the profile's words.
     for (const said of ['Wunschrolle', 'Schwerpunkt', 'Tagessatz', 'im Profil']) {
       await expect(why(page)).not.toContainText(said);
@@ -821,17 +897,17 @@ test.describe('Anforderungen', () => {
     expect(new Set(await why(page).locator('.optional').allInnerTexts())).toEqual(
       new Set([T.reason.optional]),
     );
-    await expect(why(page).getByTestId('reasons-met').locator('.optional')).toHaveCount(0);
-    // Only the groups a job has.
+    await expect(why(page).locator('li[data-kind="met"] .optional')).toHaveCount(0);
+    // Only what a job has.
     await openJob(page, 'freelancermap-2804');
-    await expect(why(page).locator('.sub')).toHaveText(['Nicht erfüllt 1']);
+    await expect(why(page).locator('.count')).toHaveText(T.reader.metOf(0, 1));
   });
 
   test('a missing must that is a term goes into its field of the profile with "+", a sentence has none', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2802');
-    const missing = why(page).getByTestId('reasons-open').locator('li', {
+    const missing = why(page).locator('li[data-kind="open"]', {
       hasText: 'Branchenerfahrung Energie',
     });
     await expect(missing).toHaveCount(1);
@@ -842,8 +918,7 @@ test.describe('Anforderungen', () => {
     // An optional one has none.
     await expect(
       why(page)
-        .getByTestId('reasons-open')
-        .locator('li', { hasText: 'Französisch' })
+        .locator('li[data-kind="open"]', { hasText: 'Französisch' })
         .getByTestId('add-to-profile'),
     ).toHaveCount(0);
     await add.click();
@@ -869,7 +944,7 @@ test.describe('Anforderungen', () => {
     // The other bullets lose their lead words too, and go into their own field: the tool
     // "Anaplan" into the tools.
     await page.getByTestId('nav-jobs').click();
-    const anaplan = why(page).getByTestId('reasons-open').locator('li', {
+    const anaplan = why(page).locator('li[data-kind="open"]', {
       hasText: 'Kenntnisse in Anaplan',
     });
     await expect(anaplan.getByTestId('add-to-profile')).toHaveAccessibleName(
@@ -884,7 +959,7 @@ test.describe('Anforderungen', () => {
     // A requirement the ad words as a sentence cannot go into the profile.
     await page.getByTestId('nav-jobs').click();
     await openJob(page, 'freelancermap-2804');
-    const sentence = why(page).getByTestId('reasons-open').locator('li').first();
+    const sentence = why(page).locator('li[data-kind="open"]').first();
     await expect(sentence).toContainText('Kenntnisse in Anaplan helfen dabei');
     await expect(sentence.getByTestId('add-to-profile')).toHaveCount(0);
   });
@@ -975,7 +1050,8 @@ test.describe('the ad', () => {
   test('a preview says so once, here, with its sign-in right there', async ({ page }) => {
     await openAt(page, 'freelance-900411');
     const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText(T.reader.adNote.teaser);
+    await expect(note).toHaveText(T.reader.state.teaser.heading);
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(T.reader.state.teaser.text);
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
@@ -999,7 +1075,7 @@ test.describe('the ad', () => {
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
     const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText(T.reader.adNote.missing);
+    await expect(note).toHaveText(T.reader.state.missing.heading);
     const load = stage(page).getByTestId('load-ad');
     await expect(load).toHaveText('Anzeige laden');
     await load.click();
@@ -1007,8 +1083,9 @@ test.describe('the ad', () => {
       kind: 'details',
       keys: [{ portal: 'linkedin', id: '4100200302' }],
     });
-    // The note says it is being loaded; the button is gone.
-    await expect(note).toHaveText(T.reader.adNote.loading);
+    // The box says it is being loaded, its spinner before the words; the button is gone.
+    await expect(note).toHaveText(T.reader.state.loading);
+    await expect(stage(page).getByTestId('detail-text')).toHaveCount(0);
     await expect(load).toHaveCount(0);
     // Once the ad is there, its note goes.
     await runFinished(page);
@@ -1016,7 +1093,7 @@ test.describe('the ad', () => {
     await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
     // An ad that could not be fetched is not being loaded while nothing loads it.
     await openJob(page, 'freelancermap-2805');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.missing);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
     await expect(stage(page).getByTestId('load-ad')).toBeVisible();
   });
 
@@ -1031,8 +1108,9 @@ test.describe('the ad', () => {
   test('a closed ad says so in the state box, nothing in the title', async ({ page }) => {
     await openAt(page, 'linkedin-4100200304');
     const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText(T.reader.adNote.closed);
-    await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
+    await expect(note).toHaveText(T.reader.state.closed.heading);
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(T.reader.state.closed.text);
+    await expect(stage(page).getByTestId('reader-title')).not.toContainText('Beendet');
   });
 
   test('an ad no longer online: its text keeps "Anzeige öffnen", the state box says it', async ({
@@ -1045,19 +1123,22 @@ test.describe('the ad', () => {
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'jobUrl', key: { portal: 'linkedin', id: '4100200304' } },
     });
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.closed);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.closed.heading);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
     // Gone before its text came: only the sentence, no button (nothing of it to show).
     await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
     await openJob(page, 'linkedin-4100200302');
     await expect(stage(page).getByTestId('open-ad')).toHaveCount(0);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.gone.heading);
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(T.reader.state.goneEarly);
   });
 
-  test('every note of the ad is one short sentence', async () => {
-    for (const note of Object.values(T.reader.adNote)) expect(note).toMatch(/^[^.]+\.$/);
-    expect(T.reader.adNote.missing).not.toContain('Anzeige');
+  test('every line of a state box is one short sentence', async () => {
+    const lines = Object.values(T.reader.state).flatMap((value) =>
+      typeof value === 'string' ? [value] : [value.heading, value.text],
+    );
+    for (const line of lines) expect(line).toMatch(/^[^.]+\.$/);
   });
 });
 
@@ -1073,6 +1154,142 @@ test('while a job loads, the reader stands in placeholders until the job takes t
   // The job takes their place.
   await expect(stage(page).getByTestId('reader-title')).toBeVisible({ timeout: 5000 });
   await expect(stage(page).getByTestId('reader-skeleton')).toHaveCount(0);
+});
+
+test.describe('the cards', () => {
+  test('on the page ground, 8 under the top bar, 28 from the sides, 12 apart, at most 760', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1800, height: 900 });
+    await openAt(page, 'freelancermap-2801');
+    const reader = stage(page).getByTestId('reader');
+    const ground = await reader.evaluate((node) => getComputedStyle(node).backgroundColor);
+    const page_ = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = 'var(--page)';
+      document.body.append(probe);
+      const colour = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return colour;
+    });
+    expect(ground).toBe(page_);
+    const pane = (await reader.boundingBox())!;
+    const cards = stage(page).locator('[data-card]');
+    const boxes = await cards.evaluateAll((all) =>
+      all.map((card) => {
+        const box = card.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, bottom: box.bottom };
+      }),
+    );
+    expect(boxes).toHaveLength(4);
+    expect(Math.round(boxes[0]!.y - pane.y)).toBe(8);
+    for (const box of boxes) expect(Math.round(box.width)).toBe(760);
+    // Centred in the pane.
+    const left = boxes[0]!.x - pane.x;
+    const right = pane.x + pane.width - (boxes[0]!.x + boxes[0]!.width);
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(9);
+    for (let at = 1; at < boxes.length; at += 1) {
+      expect(Math.round(boxes[at]!.y - boxes[at - 1]!.bottom)).toBe(12);
+    }
+    // A narrow pane: 28 from its sides.
+    await page.setViewportSize({ width: 1100, height: 800 });
+    const narrow = (await reader.boundingBox())!;
+    const hero = (await cards.first().boundingBox())!;
+    expect(Math.round(hero.x - narrow.x)).toBe(28);
+  });
+
+  test('Jobdetails: two columns of label 96, value and verdict; one column in a narrow card', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await openAt(page, 'freelancermap-2801');
+    const company = (await term(page, 'company').boundingBox())!;
+    const place = (await term(page, 'place').boundingBox())!;
+    // Unternehmen and Ort side by side, the label 96 wide.
+    expect(Math.abs(company.y - place.y)).toBeLessThan(1);
+    expect(place.x).toBeGreaterThan(company.x + company.width);
+    const label = (await term(page, 'company').locator('.term-name').boundingBox())!;
+    expect(Math.round(label.width)).toBe(96);
+    // The contact spans both columns.
+    const contact = (await term(page, 'contact').boundingBox())!;
+    expect(Math.round(contact.width)).toBe(Math.round(place.x + place.width - company.x));
+    // The verdict in its own column at the fact's end.
+    const verdict = (await term(page, 'place').getByTestId('verdict').boundingBox())!;
+    expect(Math.round(place.x + place.width - (verdict.x + verdict.width))).toBeLessThanOrEqual(1);
+    // A narrow window: one column.
+    await page.setViewportSize({ width: 480, height: 360 });
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    const one = (await term(page, 'company').boundingBox())!;
+    const two = (await term(page, 'place').boundingBox())!;
+    expect(two.y).toBeGreaterThan(one.y + one.height - 1);
+    expect(Math.abs(two.x - one.x)).toBeLessThan(1);
+    const reqs = await why(page)
+      .locator('li')
+      .evaluateAll((all) => all.slice(0, 2).map((li) => li.getBoundingClientRect().left));
+    expect(Math.abs(reqs[0]! - reqs[1]!)).toBeLessThan(1);
+  });
+
+  test('a new job: the cards rise one after the other, not while browsing fast', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await settle(page);
+    // Every animation the cards' slots start.
+    await page.evaluate(() => {
+      const started: string[] = [];
+      (window as unknown as { started: string[] }).started = started;
+      const original = Element.prototype.animate;
+      Element.prototype.animate = function (
+        this: Element,
+        ...args: Parameters<Element['animate']>
+      ) {
+        if (this.classList.contains('slot'))
+          started.push(String(args[1] && typeof args[1] === 'object' ? args[1].delay : 0));
+        return original.apply(this, args);
+      };
+    });
+    const started = (): Promise<string[]> =>
+      page.evaluate(() => [...(window as unknown as { started: string[] }).started]);
+    await row(page, 'freelancermap-2801').click();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    await expect.poll(started).toEqual(['0', '60', '120', '180']);
+    await page.waitForTimeout(600);
+    // Two jobs within a quarter second: the second simply stands there.
+    await page.evaluate(() => ((window as unknown as { started: string[] }).started.length = 0));
+    await row(page, 'freelancermap-2802').click();
+    await row(page, 'freelancermap-2803').click();
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await row(page, 'freelancermap-2803').locator('.title').innerText(),
+    );
+    await page.waitForTimeout(300);
+    expect((await started()).length).toBeLessThanOrEqual(4);
+    // The same job loading again swaps at once.
+    await page.waitForTimeout(400);
+    await page.evaluate(() => ((window as unknown as { started: string[] }).started.length = 0));
+    await stage(page).getByTestId('reader-title').click();
+    await page.evaluate(() =>
+      window.__harness.emit({
+        type: 'jobUpdated',
+        job: window.__harness.job({ portal: 'freelancermap', id: '2803' })!,
+        fresh: false,
+      }),
+    );
+    await page.waitForTimeout(300);
+    expect(await started()).toEqual([]);
+  });
+
+  test('"Trotzdem bewerten": the box says the job is being scored until its match is there', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelance-900412');
+    await slowDetails(page, 1200);
+    await stage(page).getByTestId('reader-include').click();
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.state.scoring);
+    await expect(stage(page).getByTestId('reader-include')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-ring')).toBeVisible({ timeout: 5000 });
+    await expect(note).toHaveCount(0);
+  });
 });
 
 // Carried over from the reader's rounds of fixes: the column, the run card and the trash

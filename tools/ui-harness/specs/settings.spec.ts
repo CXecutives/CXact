@@ -5,7 +5,15 @@
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
-import { ALERT_PORTALS, expectMailboxState, failNext, SEARCHED, reveal, T } from './helpers';
+import {
+  ALERT_PORTALS,
+  expectMailboxState,
+  failNext,
+  PORTALS,
+  SEARCHED,
+  reveal,
+  T,
+} from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -123,40 +131,83 @@ test('mailbox: the address, no word about the vault, no whole-mailbox row', asyn
   await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
 });
 
-test('mailbox: Ändern opens the form in a dialog; Verbinden saves, Esc gives the focus back', async ({
+test('mailbox: Ändern unfolds the form under the row; Esc folds it, Verbinden saves', async ({
   page,
 }) => {
   await settings(page);
   const change = await reveal(page, page.getByTestId('mailbox-change'));
   await change.focus();
   await page.keyboard.press('Enter');
-  // The dialog follows the verb of its button.
-  const dialog = page.getByTestId('dialog-mailbox');
-  await expect(dialog.getByRole('heading')).toHaveText(T.settings.changeHeading);
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.connect);
-  // The address stays, so the caret waits in the app password; its info symbol beside it
-  // and Google's page of the app passwords below.
+  // No dialog: the form unfolds in the box and the row's buttons step aside.
+  const form = page.getByTestId('mailbox-form');
+  await expect(form).toBeVisible();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(page.getByTestId('mailbox-change')).toHaveCount(0);
+  await expect(page.getByTestId('mailbox-remove')).toHaveCount(0);
+  await expect(page.getByTestId('mailbox-save')).toHaveText(T.settings.connect);
+  // The address stays, so the caret waits in the app password; its info symbol beside it,
+  // the provider's page at the label's right and its example in the field.
   await expect(page.getByTestId('mailbox-password')).toBeFocused();
   await expect(page.getByTestId('mailbox-user')).toHaveValue('alerts.demo@gmail.com');
-  await expect(dialog.getByTestId('info-tip')).toHaveAccessibleName(
+  await expect(form.getByTestId('info-tip')).toHaveAccessibleName(
     T.common.infoAbout(T.settings.password),
   );
-  await expect(dialog.getByTestId('two-step')).toHaveCount(0);
-  await expect(dialog.getByTestId('create-password')).toBeVisible();
-  await expect(dialog).not.toContainText('16 Buchstaben');
+  await expect(form.getByTestId('create-password')).toHaveText(T.settings.createPassword);
+  await expect(page.getByTestId('mailbox-password')).toHaveAttribute(
+    'placeholder',
+    T.settings.passwordExample,
+  );
   await page.keyboard.press('Escape');
-  await expect(dialog).toBeHidden();
-  await expect(change).toBeFocused();
-  // Empty password: said at its field, the dialog stays.
-  await change.click();
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog).toContainText(T.settings.passwordMissing);
+  await expect(form).toHaveCount(0);
+  await expect(page.getByTestId('mailbox-change')).toBeFocused();
+  // Empty password: said at its field, the form stays.
+  await page.getByTestId('mailbox-change').click();
+  await page.getByTestId('mailbox-save').click();
+  await expect(form).toContainText(T.settings.passwordMissing(true));
   expect(await calls(page, 'save_mailbox')).toHaveLength(0);
-  // Enter in the field connects; the dialog closes once saved.
+  // Enter in the field connects; the form folds away once saved.
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-password').press('Enter');
-  await expect(dialog).toBeHidden();
+  await expect(form).toHaveCount(0);
   expect(await calls(page, 'save_mailbox')).toHaveLength(1);
+  await expect(page.getByTestId('mailbox-change')).toBeFocused();
+});
+
+test('mailbox form: provider and address side by side, the buttons in the order of the OS', async ({
+  page,
+}) => {
+  for (const [os, words] of [
+    ['windows', [T.settings.connect, T.common.cancel]],
+    ['macos', [T.common.cancel, T.settings.connect]],
+  ] as const) {
+    await settings(page, `?platform=${os}`);
+    await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+    const buttons = page.getByTestId('mailbox-buttons').getByRole('button');
+    await expect(buttons).toHaveText([...words]);
+    // A pair keeps one least width, so a short word does not look thin.
+    for (const button of await buttons.all()) {
+      expect((await button.boundingBox())!.width).toBeGreaterThanOrEqual(88);
+    }
+  }
+  const [provider, address] = await Promise.all([
+    page.getByTestId('mailbox-provider').boundingBox(),
+    page.getByTestId('mailbox-user').boundingBox(),
+  ]);
+  // The provider fills its cell: the two halves stand on one line.
+  expect(Math.abs(provider!.y - address!.y)).toBeLessThan(2);
+  expect(address!.x).toBeGreaterThan(provider!.x + provider!.width);
+  // The example follows the provider.
+  await expect(page.getByTestId('mailbox-user')).toHaveAttribute(
+    'placeholder',
+    T.settings.addressExample('gmail'),
+  );
+  // The smallest window stacks them.
+  await page.setViewportSize({ width: 480, height: 800 });
+  const [narrowProvider, narrowAddress] = await Promise.all([
+    page.getByTestId('mailbox-provider').boundingBox(),
+    page.getByTestId('mailbox-user').boundingBox(),
+  ]);
+  expect(narrowAddress!.y).toBeGreaterThan(narrowProvider!.y + narrowProvider!.height);
 });
 
 test('mailbox: a saved change is answered by its state; a mail error before it is past', async ({
@@ -164,34 +215,39 @@ test('mailbox: a saved change is answered by its state; a mail error before it i
 }) => {
   await settings(page, `${WIN}&scenario=offline`);
   const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
-  // The last fetch could not reach Gmail: said once.
+  // The last fetch could not reach the mailbox: said once, in red.
   await expectMailboxState(page, T.settings.unreachable);
+  await expect(page.getByTestId('mailbox-hint').locator('.status')).toHaveClass(/danger/);
   await expect(mailbox.locator('.notice')).toHaveCount(0);
-  // A new sign-in: Gmail accepted it, the state says so, no note and no toast.
+  // A new sign-in: the mailbox accepted it, the state says so, no note and no toast.
   await page.getByTestId('mailbox-change').click();
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
-  await page.getByTestId('dialog-mailbox').getByTestId('dialog-confirm').click();
+  await page.getByTestId('mailbox-save').click();
   await expectMailboxState(page, T.settings.connected);
+  await expect(page.getByTestId('mailbox-hint').locator('.status')).toHaveClass(/success/);
   await expect(page.getByTestId('toast')).toHaveCount(0);
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
 
-test('mailbox: Gmail refused the app password while the search went on; said once', async ({
+test('mailbox: the app password was refused while the search went on; said once', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=mailbox-refused`);
   const mailbox = await reveal(page, page.getByTestId('settings-mailbox'));
-  await expectMailboxState(page, T.settings.refused);
+  await expectMailboxState(page, T.settings.refused(true));
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
 
-test('mailbox: removing asks first, a failure stays; then "Nicht verbunden" connects', async ({
+test('mailbox: removing asks first, a failure stays; then "Kein Postfach verbunden" connects', async ({
   page,
 }) => {
   await settings(page);
   await reveal(page, page.getByTestId('mailbox-remove'));
+  // Entfernen is a plain button; its dialog carries the danger.
+  await expect(page.getByTestId('mailbox-remove')).toHaveClass(/secondary/);
   await page.getByTestId('mailbox-remove').click();
   const dialog = page.getByTestId('dialog-remove-mailbox');
+  await expect(dialog).toContainText(T.settings.removeMailboxText(true));
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.common.remove);
   await failNext(page, 'remove_mailbox');
   await dialog.getByTestId('dialog-confirm').click();
@@ -199,16 +255,14 @@ test('mailbox: removing asks first, a failure stays; then "Nicht verbunden" conn
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog).toBeHidden();
   expect(await calls(page, 'remove_mailbox')).toHaveLength(2);
-  // Without a mailbox its row says so and connects in the same dialog.
+  // Without a mailbox its row says so and connects in the same form.
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
+  await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnectedHint);
   await page.getByTestId('mailbox-connect').click();
-  await expect(page.getByTestId('dialog-mailbox').getByRole('heading')).toHaveText(
-    T.settings.connectHeading,
-  );
   await expect(page.getByTestId('mailbox-user')).toBeFocused();
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
-  await page.getByTestId('dialog-mailbox').getByTestId('dialog-confirm').click();
+  await page.getByTestId('mailbox-save').click();
   await expectMailboxState(page, T.settings.connected);
 });
 
@@ -231,6 +285,9 @@ test('portals: two groups in the order of the UI, each portal with its state and
   );
   await expect(page.getByTestId('portals-search')).toHaveText(T.settings.way.search);
   await expect(page.getByTestId('portals-alert')).toHaveText(T.settings.way.alert);
+  // Every portal has its brand name (LinkedIn, not linkedin.com).
+  for (const portal of PORTALS) expect(T.portalName[portal], portal).toMatch(/\S/);
+  expect(T.portalName.linkedin).toBe('LinkedIn');
   for (const [portal, state] of [
     ['freelancermap', T.settings.lastNew(3)],
     ['hays', null],
@@ -254,7 +311,7 @@ test('portals: two groups in the order of the UI, each portal with its state and
     await expect(row.getByTestId(`open-portal-${portal}`)).toHaveCount(
       ALERT_PORTALS.includes(portal) ? 0 : 1,
     );
-    await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);
+    await expect(row.getByRole('switch')).toHaveAccessibleName(T.portalName[portal]);
   }
   // Only freelance.de offers a sign-in; no "Details holen".
   await expect(page.locator('[data-testid^="note-"]')).toHaveCount(0);
@@ -264,10 +321,11 @@ test('portals: two groups in the order of the UI, each portal with its state and
   await expect(page.getByTestId('settings-portals')).not.toContainText('Details');
   await expect(page.getByTestId('settings-portals')).not.toContainText('Seiten');
   // Only a portal of alert mails offers "Alert anlegen", its page in the browser.
-  await expect(page.locator('[data-testid^="setup-"]')).toHaveText([
-    T.settings.setUpAlert,
-    T.settings.setUpAlert,
-  ]);
+  const setUp = page.locator('[data-testid^="setup-"]');
+  await expect(setUp).toHaveCount(2);
+  for (const button of await setUp.all()) {
+    await expect(button).toHaveAccessibleName(T.settings.setUpAlert);
+  }
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
   await page.getByTestId('open-portal-hays').click();
@@ -276,7 +334,7 @@ test('portals: two groups in the order of the UI, each portal with its state and
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);
   const toggle = await reveal(page, page.getByTestId('toggle-enabled-linkedin'));
-  await page.getByTestId('portal-linkedin').getByText(T.portal.linkedin).click();
+  await page.getByTestId('portal-linkedin').getByText(T.portalName.linkedin).click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
@@ -349,10 +407,14 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await settings(page, `${WIN}&scenario=paused`);
   const status = await reveal(page, page.getByTestId('portal-linkedin-hint'));
   await expect(status).toHaveText(/^Pausiert bis /);
+  // A status word: the warning's dot and colour.
+  await expect(status.locator('.status')).toHaveClass(/warning/);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
   await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
-  await mails.getByRole('button', { name: T.reader.mail }).click();
+  // Its way out takes the place of "Alert anlegen", in its width.
+  await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
+  await page.getByTestId('alert-mail-freelance').click();
   expect(await lastOpened(page)).toEqual({
     target: { kind: 'alertMail', gmailId: '18c2f0a9d1e4b7a3' },
   });
@@ -371,7 +433,10 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   const quiet = await reveal(page, page.getByTestId('alert-quiet-freelance'));
   await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
-  await quiet.getByRole('button', { name: T.settings.checkAlert }).click();
+  await expect(page.getByTestId('check-alert-freelance')).toHaveAccessibleName(
+    T.settings.checkAlert,
+  );
+  await page.getByTestId('check-alert-freelance').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'freelance' } });
   // A portal that is off says nothing about its alert mails.
   await page.getByTestId('toggle-enabled-freelance').click();
@@ -381,6 +446,27 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   await expect(page.getByText(T.settings.alertQuiet(9))).toHaveCount(0);
 });
 
+test('another provider than Gmail: the alert calls wait for the place of the mail', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=quiet-alert`);
+  await expect(page.getByTestId('check-alert-freelance')).toHaveCount(1);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await page.getByTestId('mailbox-provider').click();
+  await page
+    .getByRole('listbox', { name: T.settings.providerLabel })
+    .getByRole('option', { name: 'GMX' })
+    .click();
+  await page.getByTestId('mailbox-user').fill('jobs@gmx.de');
+  await page.getByTestId('mailbox-password').fill('geheim');
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  // The line stays; its call waits, "Alert anlegen" keeps its place.
+  await expect(page.getByTestId('alert-quiet-freelance')).toBeVisible();
+  await expect(page.getByTestId('check-alert-freelance')).toHaveCount(0);
+  await expect(page.getByTestId('setup-freelance')).toBeVisible();
+});
+
 test('without a mailbox the portals of alert mails say they need one; one Verbinden', async ({
   page,
 }) => {
@@ -388,8 +474,35 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   for (const portal of ALERT_PORTALS) {
     await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
+    // The row cannot work: no calls, its switch off and waiting with its reason, while the
+    // stored value stays on.
+    const row = page.getByTestId(`portal-${portal}`);
+    await expect(row.getByRole('button')).toHaveCount(0);
+    expect(await reason(page, `toggle-enabled-${portal}`)).toBe(T.settings.needsMailboxReason);
+    await expect(row.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   }
+  await page.getByTestId('toggle-enabled-linkedin').click({ force: true });
+  expect(await saved(page)).toEqual([]);
   await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
+});
+
+test('portals: a sign-in that ran out says so in red and offers Anmelden', async ({ page }) => {
+  await settings(page, `${WIN}&scenario=sign-in-expired`);
+  const status = await reveal(page, page.getByTestId('portal-freelance-hint'));
+  await expect(status).toHaveText(T.settings.signInExpired);
+  await expect(status.locator('.status')).toHaveClass(/danger/);
+  // Said once: no problem line repeats it.
+  await expect(page.getByTestId('health-freelance')).toHaveCount(0);
+  await expect(page.getByTestId('sign-in-freelance')).toBeVisible();
+});
+
+test('portals: Anmelden and Abmelden keep one width', async ({ page }) => {
+  await settings(page);
+  const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
+  const before = (await signIn.boundingBox())!.width;
+  await signIn.click();
+  const after = (await page.getByTestId('sign-out-freelance').boundingBox())!.width;
+  expect(Math.abs(after - before)).toBeLessThan(1);
 });
 /* ------------------------------------------------------------------- Daten */
 
