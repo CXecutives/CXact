@@ -1530,7 +1530,7 @@ fn quiet_successes_are_toasts() {
         }
     }
     assert!(
-        notices >= 10,
+        notices >= 5,
         "only {notices} Notices found - did the rule move?"
     );
     fail(

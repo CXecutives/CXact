@@ -411,7 +411,9 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await expect(status.locator('.status')).toHaveClass(/warning/);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
-  await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
+  // The word in its line, the sentence quiet under it.
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.emptyMails);
+  await expect(mails).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
   // Its way out takes the place of "Alert anlegen", in its width.
   await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
   await page.getByTestId('alert-mail-freelance').click();
@@ -431,7 +433,8 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   // freelance.de sent its last one nine days before the last fetch.
   await settings(page, `${WIN}&scenario=quiet-alert`);
   const quiet = await reveal(page, page.getByTestId('alert-quiet-freelance'));
-  await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
+  await expect(quiet).toHaveText(T.settings.alertQuiet(9));
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.quiet);
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
   await expect(page.getByTestId('check-alert-freelance')).toHaveAccessibleName(
     T.settings.checkAlert,

@@ -5,21 +5,24 @@
   but, like every text next to a switch, does not switch it).
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
-  "Wartet auf die Anmeldung" (warning) while its sign-in window waits; else its quiet state
-  ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in 30 Tagen").
+  "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
+  ("Alert-Mails ohne Jobs", "Alert-Mail bleibt aus"; "Fehlgeschlagen" in red after a failed
+  call); else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
+  30 Tagen").
   The calls, outlined with the glyph of their meaning: "Anmelden" or "Abmelden" where the
-  portal offers a sign-in (one width), then the one call about its alert, in one place and
-  one width: "Alert-Mail öffnen" when alert mails came without jobs, "Alert prüfen" when its
+  portal offers a sign-in (one width), then the one call about its alert, in one place, each
+  in its own width (its face follows the portal's state, never the pointer): "Alert-Mail
+  öffnen" when alert mails came without jobs, "Alert prüfen" when its
   alert went quiet, else "Alert anlegen" for a portal of alert mails (its page in the
   browser); for the portals the app searches the portal in the browser (a quiet icon before
   the switch). In a narrow box the calls go to a line of their own at the row's end.
   A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
   Postfach", has no calls, and its switch stands off and waits with its reason (the stored
   value stays; decision 26).
-  A problem of the portal is one quiet line under its state (whether the user has to act,
-  the time and the reason where it has them); it unfolds and folds away, so the rows below
-  glide. A portal that is on and sent no alert mail for a week before the last fetch says so
-  in one line ("Seit 9 Tagen keine Alert-Mail."). "Alert-Mail öffnen" and "Alert prüfen" need
+  A problem of the portal is its sentence in one quiet line under the word (whether the user
+  has to act, the time and the reason where it has them); it unfolds and folds away, so the
+  rows below glide. A portal that is on and sent no alert mail for a week before the last
+  fetch says so in one line ("Seit 9 Tagen keine Alert-Mail."). "Alert-Mail öffnen" and "Alert prüfen" need
   the mail's place in Gmail, so they wait for the other providers (decision 32).
   Signing in lets the fetch use the sign-in, signing out ends that (lib/state/portalSession.ts,
   also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
@@ -32,7 +35,6 @@
   import Button from '$components/Button.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import IconTile from '$components/IconTile.svelte';
-  import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import type { StatusTone } from '$components/StatusText.svelte';
   import Toggle from '$components/Toggle.svelte';
@@ -122,13 +124,30 @@
     const line = last.perPortal.find((p) => p.portal === portal.portal);
     return line === undefined ? null : t.settings.lastNew(line.new);
   });
-  /** Its problem in one sentence, where the status word does not say it already;
-   *  `portal.actionNeeded` says whether she has to act. */
+  /** Its problem in one sentence, where the status word does not say it already (the
+   *  sentence says whether she has to act). */
   const problem = $derived(
     portal.enabled && !idle && status === null && portal.health.kind !== 'loginRequired'
       ? healthAdvice(portal.health)
       : null,
   );
+  /** The word of its line: a failed call, what holds it, its problem, a quiet alert. */
+  const flag = $derived.by((): { tone: StatusTone; text: string } | null => {
+    if (error) return { tone: 'danger', text: t.settings.problem.failed };
+    if (status) return status;
+    if (problem) {
+      const now = portal.health;
+      const word =
+        now.kind === 'layoutSuspect'
+          ? now.emptyMails > 0
+            ? t.settings.problem.emptyMails
+            : t.settings.problem.pages
+          : t.settings.problem.paused;
+      return { tone: 'warning', text: word };
+    }
+    if (quietDays !== null) return { tone: 'warning', text: t.settings.problem.quiet };
+    return null;
+  });
   /** A sign-in is stored (in the session window's profile). */
   const stored = $derived(portal.signedIn === true);
   /** Signed in as the fetch sees it: a stored sign-in it does not use counts as none while
@@ -139,8 +158,8 @@
   const loginShown = $derived(portal.login === 'optional' && !idle && (portal.enabled || stored));
   const loginLocked = $derived(signInLocked());
 
-  /** The one call about its alert, in one place and one width: the mail that came without
-   *  jobs, the alert that went quiet, or a new alert (a portal of alert mails). */
+  /** The one call about its alert, in one place: the mail that came without jobs, the alert
+   *  that went quiet, or a new alert (a portal of alert mails). */
   const alert = $derived.by(
     (): { id: string; label: string; icon: IconName; onclick: () => void } | null => {
       if (idle) return null;
@@ -170,11 +189,6 @@
     icon: 'alertAdd' as IconName,
     onclick: () => open('setup'),
   });
-  const alertFaces = $derived([
-    { label: t.reader.mail, icon: 'alertMail' as IconName },
-    { label: t.settings.checkAlert, icon: 'external' as IconName },
-    { label: t.settings.setUpAlert, icon: 'alertAdd' as IconName },
-  ]);
 
   async function change(patch: PortalSwitches): Promise<void> {
     error = null;
@@ -217,33 +231,19 @@
 {#snippet notes()}
   {#if problem}
     <div class="fold" transition:unfold>
-      <div class="line">
-        <Notice
-          tone={portal.actionNeeded ? 'warning' : 'info'}
-          variant="inline"
-          text={problem}
-          testid="health-{portal.portal}"
-        />
-      </div>
+      <p class="line" data-testid="health-{portal.portal}">{problem}</p>
     </div>
   {/if}
   {#if quietDays !== null}
     <div class="fold" transition:unfold>
-      <div class="line">
-        <Notice
-          tone="warning"
-          variant="inline"
-          text={t.settings.alertQuiet(quietDays)}
-          testid="alert-quiet-{portal.portal}"
-        />
-      </div>
+      <p class="line" data-testid="alert-quiet-{portal.portal}">
+        {t.settings.alertQuiet(quietDays)}
+      </p>
     </div>
   {/if}
   {#if error}
     <div class="fold" transition:unfold>
-      <div class="line">
-        <Notice tone="danger" variant="inline" text={error()} testid="portal-error" />
-      </div>
+      <p class="line" data-testid="portal-error">{error()}</p>
     </div>
   {/if}
 {/snippet}
@@ -274,8 +274,8 @@
 
 <SettingRow
   label={t.portalName[portal.portal]}
-  hint={status?.text ?? standing}
-  status={status?.tone ?? null}
+  hint={flag?.text ?? standing}
+  status={flag?.tone ?? null}
   disabled={idle}
   for={id}
   lead={tile}
@@ -317,7 +317,6 @@
       variant="secondary"
       icon={alert.icon}
       label={alert.label}
-      sizeTo={alertFaces}
       testid="{alert.id}-{portal.portal}"
       onclick={alert.onclick}
     />
@@ -334,9 +333,11 @@
     flex-direction: column;
   }
 
+  /* A problem's sentence: quiet, like the line under the name, the word above says it. */
   .line {
-    display: flex;
-    padding-top: var(--space-6);
+    padding-top: var(--space-2);
+    color: var(--text-muted);
+    font: var(--type-sm);
   }
 
   /* The sign-in fades in and out on its own, before "Alert anlegen". */
