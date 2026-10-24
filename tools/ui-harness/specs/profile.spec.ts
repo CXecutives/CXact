@@ -193,7 +193,7 @@ test('each field stands in its group with its label', async ({ page }) => {
   expect(await width('profile-years')).toBe(130);
   // Pairs side by side in a wide box: the two rates on one line.
   const top = (name: string): Promise<number> =>
-    field(page, name).evaluate((cell) => cell.getBoundingClientRect().top);
+    field(page, name).evaluate((cell) => Math.round(cell.getBoundingClientRect().top));
   expect(await top('dayRateMin')).toBe(await top('dayRateWish'));
   expect(await top('certificates')).toBe(await top('degrees'));
   // The placeholders say what to do.
