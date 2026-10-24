@@ -1108,6 +1108,8 @@ export const de = {
       dayRateWish: 'Wunschtagessatz',
       dayRateMin: 'Mindesttagessatz',
       minSalary: 'Mindestgehalt',
+      /** An empty minimum salary: none is asked. */
+      minSalaryPlaceholder: 'Keins',
       workMode: 'Arbeitsmodell',
       countries: 'Länder',
       countriesPlaceholder: 'Land hinzufügen',

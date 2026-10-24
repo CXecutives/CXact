@@ -40,6 +40,8 @@ export type Control =
       key: NumberKey;
       label: Word;
       unit: Unit;
+      /** What an empty field means. */
+      placeholder?: Word;
       info?: Info;
       shown?: (form: ProfileForm) => boolean;
       testid: string;
@@ -118,6 +120,7 @@ export const SECTIONS: readonly Section[] = [
         key: 'minSalary',
         label: 'minSalary',
         unit: 'year',
+        placeholder: 'minSalaryPlaceholder',
         shown: (form) => form.permanent || form.temporary,
         testid: 'profile-min-salary',
       },

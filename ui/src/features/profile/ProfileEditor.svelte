@@ -296,6 +296,7 @@
           id="{id}-{c.key}"
           money={c.unit !== 'years'}
           unit={t.profile.unit[c.unit]}
+          placeholder={c.placeholder ? words[c.placeholder] : null}
           bind:value={form[c.key]}
           invalid={error !== null}
           testid={c.testid}
