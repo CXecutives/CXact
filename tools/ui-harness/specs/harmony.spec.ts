@@ -85,7 +85,9 @@ function audit(rules: Rules): string[] {
     }
     const rgb = /rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/.exec(style.backgroundColor);
     if (rgb && (rgb[4] === undefined || Number(rgb[4]) > 0.2)) {
-      const [r, g, b] = [rgb[1], rgb[2], rgb[3]].map((v) => Number(v) / 255);
+      const r = Number(rgb[1]) / 255;
+      const g = Number(rgb[2]) / 255;
+      const b = Number(rgb[3]) / 255;
       const max = Math.max(r, g, b);
       const min = Math.min(r, g, b);
       const light = (max + min) / 2;
