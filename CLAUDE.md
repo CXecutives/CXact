@@ -15,12 +15,14 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
   modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
   patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts`. `core/tests/language.rs` enforces it.
-- UI: one palette, CXact (cxpertise.de's cream, the coral #E67A5C of the icon and a richer cxpertise
-  navy), defined only in `ui/src/styles/tokens.css`. It must feel like a native app with one top bar
+- UI: one palette, CXact (cxpertise.de's cream, a warm page, coral for what acts and is chosen, navy only for small
+  chosen things: a segment's word, the active sidebar entry, links, the focus edge; the app icon is the coral plate with
+  Lucide's briefcase and search lens, `tools/icon.py`), defined only in `ui/src/styles/tokens.css`. It must feel like a native app with one top bar
   like the Claude app's: the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
-  Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
-  the sidebar's edge, the rest in the view's; at the left Zurück, Vor and the sidebar's button (macOS right of the
-  traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
+  Windows, 44 px on macOS, no line under it, no icon, no name; each part in the colour of the column below it (the
+  sidebar's cream, the list's white, the job view's and the pages' warm page), the seams of the columns run through
+  it; at the left Zurück, Vor and the sidebar's button (quiet 28 px, macOS right of the traffic lights), at the right
+  the job view's button, shown only where it does something; no app shortcuts; its empty parts move the window, a double
   click maximizes; during the setup, a mode of the shell of its own without the sidebar, the bar is one colour
   without a seam and holds none of these buttons). The sidebar docks or folds away like Claude's (its button a plain switch, nothing on hover;
   folds by itself below 1100 px, where its button floats it out; kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
@@ -40,7 +42,16 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   editing keys (word and line moves, delete word, Home/End, Shift selection, undo/redo, copy/paste/cut/select all),
   Tab, Enter, Esc. No browser context menu, no zoom, no reload, no find/print. All input handling in
   `ui/src/lib/input/input.ts`, per-OS key conventions in `ui/src/lib/platform.ts`. Motion is quick (<= 180 ms, ring
-  fill <= 400 ms), ease-out, no bounce; nothing deforms or shrinks on press; no grey washes behind switch rows.
+  fill <= 400 ms, a stagger <= 400 ms), ease-out, no bounce, only transform and opacity, and only on a real change
+  (a view or list opens, a new job, an insert), never on a re-render; the chosen row, the sidebar pill and a segment's
+  thumb glide; nothing deforms or shrinks on press; no grey washes behind switch rows.
+- Harmony (owner, 2026-10-24: it must look harmonious to the eye, not only be equal): one type ladder (12, 13, 14,
+  15, 16, 20, 26) and four weights (450, 500, 540, 650); one control height 30 (quiet icon buttons 28, controls in a
+  list row 26); buttons that swap in one place keep one width (Button `sizeTo`), pairs share a least width; one
+  icon stroke 2.1; the radius ladder 4, 6, 8, 10, 14, 20; one control per kind of value (free values a tag field,
+  several of a few checkboxes, one of a few modes segments, a scale value a Select, an amount a number field with
+  its unit, items with a value an item list, a closed set a search list). `specs/harmony.spec.ts` checks every
+  Vorschau state.
 - Styling only via tokens in `ui/src/styles/tokens.css`; controls only from `ui/src/components/`; Tauri only via
   `ui/src/lib/ipc/api.ts`; motion only via `ui/src/lib/motion/`. At most one primary button per view. Lint enforces it.
 - UI text (German only, `ui/src/lib/i18n/de.ts`): little text, only what is needed, plain and human. No AI-style writing: no dashes or
