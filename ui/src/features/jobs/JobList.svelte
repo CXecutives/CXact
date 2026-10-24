@@ -590,7 +590,7 @@
       icon="warning"
       tone="danger"
       placement="list"
-      text={t.list.loadFailed}
+      heading={t.list.loadFailed}
       secondary={{
         label: t.common.retry,
         icon: 'retry',
