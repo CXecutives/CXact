@@ -789,7 +789,7 @@ export const de = {
       ads: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
       rescore: 'Jobs werden neu bewertet',
-      waiting: (portal: string) => `Wartet auf die Anmeldung bei ${portal}`,
+      waiting: (portal: string) => `Wartet auf ${portal}`,
       count: (done: number, total: number) => `${n(done)} von ${n(total)}`,
       signIn: 'Anmelden',
     },
