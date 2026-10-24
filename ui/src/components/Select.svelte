@@ -166,8 +166,8 @@
     transition-duration: var(--dur-hover);
   }
 
-  /* Open: the navy edge, whatever it showed (like a field in focus). */
-  .select.open {
+  /* Open: the navy edge, whatever it showed, under the pointer too (like a field in focus). */
+  .select.open:not([aria-disabled='true']) {
     border-color: var(--border-focus);
   }
 
