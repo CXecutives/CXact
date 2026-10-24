@@ -74,25 +74,21 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
   const at1360 = (await handle(page)).max;
   await drag(page, 2000);
   await expect.poll(async () => (await handle(page)).width).toBe(at1360);
-  // A wider window gives the list more room; dragged to its end there.
-  await page.setViewportSize({ width: 1920, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(at1360);
-  await drag(page, 2000);
-  const wide = (await handle(page)).max;
-  await expect.poll(async () => (await handle(page)).width).toBe(wide);
-  // Narrower: shown at the limit, the choice stays and comes back.
+  // Narrower: the job view keeps its room, so the list is shown at the lower limit; the
+  // choice stays and comes back with the room.
   await page.setViewportSize({ width: 1100, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBeLessThan(wide);
+  await expect.poll(async () => (await handle(page)).max).toBeLessThan(at1360);
   const narrow = await handle(page);
   expect(narrow.width).toBe(narrow.max);
-  await page.setViewportSize({ width: 1920, height: 800 });
-  await expect.poll(async () => (await handle(page)).width).toBe(wide);
+  await page.setViewportSize({ width: 1360, height: 800 });
+  await expect.poll(async () => (await handle(page)).width).toBe(at1360);
   await page.reload();
-  expect((await handle(page)).width).toBe(wide);
+  expect((await handle(page)).width).toBe(at1360);
 });
 
 test('a kept width that is too wide shows at the limit', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('jobs-list-width', '900'));
+  await page.setViewportSize({ width: 1100, height: 800 });
   await open(page, WIN);
   const narrow = await handle(page);
   expect(narrow.max).toBeLessThan(900);
@@ -148,4 +144,63 @@ test('at its narrowest the list header still shows every control in the column',
     return out;
   });
   expect(problems).toEqual([]);
+});
+
+// The strip that takes the pointer is centred on the border and starts below the top bar
+// (the bar keeps moving the window); it draws nothing at rest and a line over the border
+// under the pointer, no grip.
+for (const id of ['list-splitter', 'sidebar-splitter']) {
+  test(`${id}: centred on the border below the bar, a line only under the pointer`, async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const hit = page.getByTestId(id).locator('.hit');
+    const box = (await hit.boundingBox())!;
+    const bar = (await page.getByTestId('title-bar').boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+    const border = await page.evaluate((which) => {
+      const edge =
+        which === 'list-splitter'
+          ? document.querySelector('[data-testid="list-scroll"]')!.parentElement!
+          : document.querySelector('main')!;
+      const rect = edge.getBoundingClientRect();
+      return which === 'list-splitter' ? rect.right - 0.5 : rect.left + 0.5;
+    }, id);
+    expect(Math.abs(box.x + box.width / 2 - border)).toBeLessThanOrEqual(1);
+    await expect(page.getByTestId(id).locator('.grip')).toHaveCount(0);
+    const line = (): Promise<string> =>
+      hit.evaluate((node) => getComputedStyle(node, '::after').opacity);
+    await page.mouse.move(box.x - 200, box.y + 200);
+    await expect.poll(line).toBe('0');
+    await hit.hover();
+    await expect.poll(line).toBe('1');
+  });
+}
+
+test('the sidebar keeps its width between its limits; a double click sets it back', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const handle = page.getByTestId('sidebar-splitter');
+  const width = async (): Promise<number> =>
+    (await page.getByTestId('sidebar').boundingBox())!.width;
+  const first = await width();
+  const min = Number(await handle.getAttribute('aria-valuemin'));
+  const max = Number(await handle.getAttribute('aria-valuemax'));
+  const pull = async (dx: number): Promise<void> => {
+    const box = (await handle.locator('.hit').boundingBox())!;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width / 2, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + dx, y, { steps: 4 });
+    await page.mouse.up();
+  };
+  await pull(400);
+  await expect.poll(width).toBe(max);
+  await pull(-400);
+  await expect.poll(width).toBe(min);
+  await page.reload();
+  await expect.poll(width).toBe(min);
+  await handle.locator('.hit').dblclick();
+  await expect.poll(width).toBe(first);
 });

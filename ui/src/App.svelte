@@ -1,6 +1,11 @@
 <!--
   The shell: the window's top bar (the same on both OS, TitleBar), below it the sidebar and
-  the white sheet with the three views. Every view switch is the same: the new view is there
+  the three views, each on its own ground (shell.ground: the list's white, the warm page of
+  the job view and the pages, the setup's cream), which the bar continues. The sidebar's
+  button docks or folds it: the sidebar fades in (100 ms) and the view slides from where it
+  stood by a transform (FLIP, 180 ms, with the bar's part over it); its width never
+  animates, and a window that folds it by its width just shows the new frame. Every view
+  switch is the same: the new view is there
   at once, nothing fades, so nothing flashes between them. On start nothing animates and the
   app shows useful content at once: the setup until it was finished
   once (a mode of the shell of its own: no sidebar, the top bar without its buttons, every
@@ -28,8 +33,10 @@
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { onBack } from '$lib/input/input';
+  import { untrack } from 'svelte';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
+  import { play } from '$lib/motion/motion';
   import { fade } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { history } from '$lib/state/history.svelte';
@@ -37,6 +44,7 @@
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
+  import { viewport } from '$lib/state/viewport.svelte';
   import { tokenPx } from '$lib/tokens';
   import FirstRunView from './features/first-run/FirstRunView.svelte';
   import { onboarding } from './features/first-run/onboarding.svelte';
@@ -65,6 +73,46 @@
   // A docked sidebar never floats as well.
   $effect(() => {
     if (shell.docked) shell.peek = false;
+  });
+
+  /** The views' sheet: it slides when the sidebar docks or folds. */
+  let views = $state<HTMLElement | null>(null);
+  const docked = $derived(shell.docked);
+  /** Where the sheet stood before the sidebar docked or folded, and the frame it stood in. */
+  let from: number | null = null;
+  let frame = { fold: viewport.fold, firstRun: shell.firstRun };
+  $effect.pre(() => {
+    void docked;
+    untrack(() => (from = views?.getBoundingClientRect().left ?? null));
+  });
+  /** Moves that end leave nothing behind (no fill holds the element). */
+  function once(motion: Animation | null): void {
+    motion?.addEventListener('finish', () => motion.cancel());
+  }
+  // The sidebar's button docked or folded it: the sidebar fades in, the sheet and the bar's
+  // part over it slide from where they stood (a slide still under way starts from where it
+  // is). A window that folds it by its width, and the setup's end, just show the new frame.
+  $effect(() => {
+    const now = docked;
+    untrack(() => {
+      const before = frame;
+      frame = { fold: viewport.fold, firstRun: shell.firstRun };
+      if (from === null || views === null) return;
+      if (before.fold !== frame.fold || before.firstRun !== frame.firstRun) return;
+      const slides = [...document.querySelectorAll('[data-dock-slide]')];
+      for (const node of slides) for (const motion of node.getAnimations()) motion.cancel();
+      const dx = Math.round(from - views.getBoundingClientRect().left);
+      if (dx === 0) return;
+      for (const node of slides) {
+        const keys = [{ transform: `translateX(${dx}px)` }, { transform: 'none' }];
+        once(play(node, keys, { duration: 'slow', easing: 'out' }));
+      }
+      const sidebar = now ? document.querySelector('[data-testid="sidebar"]') : null;
+      if (sidebar !== null) {
+        const keys = [{ opacity: 0 }, { opacity: 1 }];
+        once(play(sidebar, keys, { duration: 'fast', easing: 'out' }));
+      }
+    });
   });
 
   /** The data folder, after a start that could not load its data. */
@@ -119,7 +167,12 @@
         <Sidebar floating onchoose={() => shell.fold()} />
       </div>
     {/if}
-    <main class="views" class:docked={shell.docked}>
+    <main
+      class="views end-{shell.groundEnd}"
+      class:docked={shell.docked}
+      data-dock-slide
+      bind:this={views}
+    >
       {#if app.error !== null && app.state === null}
         <section class="view fixed stage" data-testid="view-error">
           <div class="center">
@@ -135,7 +188,7 @@
             />
             <div class="ways">
               <Button
-                variant="link"
+                variant="ghost"
                 icon="backup"
                 label={t.shell.backupHeading}
                 loading={restoring}
@@ -143,7 +196,7 @@
                 onclick={restoreBackup}
               />
               <Button
-                variant="link"
+                variant="ghost"
                 icon="folder"
                 label={t.common.openFolder}
                 testid="open-data"
@@ -153,7 +206,7 @@
             {#if backupNote}
               <Notice
                 tone={backupNote.tone}
-                variant="inline"
+                variant="box"
                 text={backupNote.text()}
                 testid="backup-note"
               />
@@ -170,11 +223,11 @@
       {:else}
         <!-- The views are the branches of one block: a switch shows the new one at once. -->
         {#if firstRun}
-          <section class="view" data-testid="view-first-run" use:scrollFade>
+          <section class="view side" data-testid="view-first-run" use:scrollFade>
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
-          <section class="view fixed" data-testid="view-jobs">
+          <section class="view fixed list" data-testid="view-jobs">
             <JobsView />
           </section>
         {:else if navigation.current === 'profile'}
@@ -201,7 +254,7 @@
     {#if closing}
       <div class="closing" data-testid="closing" role="status" transition:fade>
         <p class="closing-note">
-          <Spinner size="sm" label={null} />{t.shell.closing}
+          <Spinner size="sm" label={null} /><span>{t.shell.closing}</span>
         </p>
       </div>
     {/if}
@@ -228,7 +281,8 @@
     min-height: 0;
   }
 
-  /* Closing during a fetch: the window waits until the run has stopped. */
+  /* Closing during a fetch: the window waits until the run has stopped; one calm note says
+     so, in the words of a state box. */
   .closing {
     position: absolute;
     z-index: var(--z-overlay);
@@ -236,6 +290,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: var(--space-16);
     background-color: var(--scrim);
   }
 
@@ -243,27 +298,41 @@
     display: flex;
     align-items: center;
     gap: var(--space-12);
+    max-width: var(--dialog-width);
     padding: var(--space-16) var(--space-20);
     border-radius: var(--radius-dialog);
     background-color: var(--surface);
     box-shadow: var(--sh-pop);
     color: var(--text);
-    font: var(--type-md);
+    font: var(--type-label);
   }
 
-  /* One white sheet for every view: the sidebar stays on the cream, the sheet's hairline is
-     the only divider between them (the top bar's hairline runs above both). */
+  /* The sheet of the views: the docked sidebar's hairline is its left edge. Beyond its right
+     edge a strip of its end colour, out of sight at rest, fills the window while the sheet
+     slides in from the left (the sidebar docks). */
   .views {
     display: grid;
     flex: 1;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    background-color: var(--surface);
+    box-shadow: var(--sidebar-max) 0 0 0 var(--views-end);
   }
 
   .views.docked {
     border-left: var(--border-width) solid var(--border);
+  }
+
+  .end-side {
+    --views-end: var(--bg);
+  }
+
+  .end-page {
+    --views-end: var(--page);
+  }
+
+  .end-list {
+    --views-end: var(--surface);
   }
 
   /* The handle between the sidebar and the view: no room of its own. */
@@ -272,28 +341,41 @@
     flex: none;
   }
 
-  /* The sidebar of a narrow window, floated out by its button over the view, a little in
-     from the edges. */
+  /* The sidebar of a narrow window, floated out by its button over the view: a rounded card
+     --peek-inset in from the edges below the bar, its entries where the docked ones stand. */
   .peek {
     position: absolute;
     z-index: var(--z-overlay);
     top: var(--peek-inset);
     bottom: var(--peek-inset);
     left: var(--peek-inset);
+    width: calc(var(--sidebar-width) - 2 * var(--peek-inset));
     overflow: hidden;
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--peek-radius);
     background-color: var(--bg);
-    box-shadow: var(--sh-menu);
+    box-shadow: var(--sh-pop);
   }
 
-  /* The one view fills the sheet. */
+  /* The one view fills the sheet, on the warm page (Profil, Einstellungen, a start that
+     loads or failed); Jobs on the list's white (its job view paints its own page), the setup
+     on the cream. */
   .view {
     grid-area: 1 / 1;
     min-width: 0;
     min-height: 0;
     overflow: auto;
+    background-color: var(--page);
+    --view-fade: var(--grad-fade-page);
+  }
+
+  .view.list {
     background-color: var(--surface);
+  }
+
+  .view.side {
+    background-color: var(--bg);
+    --view-fade: var(--grad-fade-side);
   }
 
   /* A view that scrolls always keeps its scrollbar's room (Windows: a transparent track,
@@ -301,11 +383,11 @@
      column never jumps sideways between a short and a long view. */
   .view:not(.fixed) {
     overflow-y: scroll;
-    background-color: var(--layout-page);
   }
 
-  /* The fade under the top bar: the view's colour into nothing at the top of a view that
-     scrolls, over the empty padding at rest and over the content once it scrolled under it. */
+  /* The fade under the top bar (24 px): the view's ground into nothing at the top of a view
+     that scrolls; it grows in with the first scroll (scrollFade), so at rest it lies over
+     nothing. */
   .view:not(.fixed)::before {
     content: '';
     position: sticky;
@@ -314,7 +396,7 @@
     display: block;
     height: var(--fade-height);
     margin-bottom: calc(-1 * var(--fade-height));
-    background: var(--grad-fade);
+    background: var(--view-fade);
     opacity: var(--fade-shown, 0);
     pointer-events: none;
   }
@@ -323,10 +405,11 @@
     overflow: hidden;
   }
 
-  /* The loading and the failed start: centred. */
+  /* The loading and the failed start: centred on the page. */
   .stage {
     display: flex;
     flex-direction: column;
+    padding: var(--space-16);
   }
 
   .center {
@@ -339,12 +422,12 @@
     min-height: 0;
   }
 
-  /* The quieter ways on after a failed start: a backup and the data folder (they wrap in a
-     narrow window). */
+  /* The quieter ways on after a failed start: a backup and the data folder, side by side
+     (one above the other in a narrow window). */
   .ways {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: var(--space-8) var(--space-16);
+    gap: var(--space-6);
   }
 </style>

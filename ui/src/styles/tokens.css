@@ -749,7 +749,24 @@
   --ring-md-scale: 0.643;
 
   /* ------------------------------------------- round 10: shell */
-  /* (shell tokens below) */
+  /* The sidebar: 12 px at its sides and 14 below (nothing stands at its foot); an entry 10 px
+     in, its glyph 10 px before its label. */
+  --sidebar-pad-x: var(--space-12);
+  --sidebar-pad-end: 14px;
+  --nav-pad: var(--space-10);
+  --nav-gap: var(--space-10);
+  /* The sidebar a narrow window floats out: its corners, with the entries' pills concentric
+     inside it at --peek-inset. */
+  --peek-radius: var(--radius-xl);
+  /* The caption buttons (Windows): 14 px glyphs in the muted ink, under the pointer the
+     draft's warm grey wash (30 10% 50% at .1 is a film of the ink at .05), a step deeper
+     pressed. */
+  --caption-hover: hsl(var(--p-ink) / 0.05);
+  --caption-press: hsl(var(--p-ink) / 0.08);
+  --caption-glyph: var(--icon-xs);
+  /* The column handle: a 2 px line (--border-strong) over the border, on hover and while
+     dragged. */
+  --splitter-line: 2px;
 
   /* ------------------------------------------- round 10: controls */
   /* (controls tokens below) */

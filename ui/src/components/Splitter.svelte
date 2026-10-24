@@ -1,18 +1,17 @@
 <!--
-  The handle between two columns (the job list and the reader, nowhere else): it takes no
-  room of its own, an 8 px strip right of the columns' border catches the pointer (over the
-  reader's padding, never over the list's scrollbar); the grip stays centred on the border.
+  The handle between two columns (the sidebar and the view, the job list and the job view):
+  it takes no room of its own, an invisible 8 px strip centred on the columns' border catches
+  the pointer below the top bar (the bar keeps moving the window). Under the pointer and
+  while it is dragged a 2 px line shows over the border, the whole height; the col-resize
+  cursor says that it moves. No grip and no tooltip (tooltips only where needed, user
+  2026-09-29); no keyboard: the columns are not a document to navigate.
   Drag it with the left button to resize the column before it between `min` and `max`; a
-  double click sets the width back to the first width. The limits and the first width follow
-  the window and the sidebar (`splitLimits`): the list keeps at least 320 px, the reader at
-  least 440 px, and the list takes at most 60 % of the content; its first width is 40 % of
-  the content, at least 520 px where the reader keeps its room. The width is kept per user
-  (`storageKey`, in this browser profile; a store that cannot be read or written simply
-  keeps the first width), and a kept width that does not fit is shown at the limit and comes
-  back once there is room again. The col-resize cursor and, on hover or while dragging, a
-  calm grip in the middle (like the Claude app's: no line along the border) show that it
-  moves; no tooltip (tooltips only where needed, user 2026-09-29). No keyboard: the columns
-  are not a document to navigate.
+  double click sets the width back to the first width. For the list the limits follow the
+  window and the sidebar (`splitLimits`): the list keeps at least --list-min and at most
+  --list-max, the job view at least --reader-min; its first width is --list-first. The width
+  is kept per user (`storageKey`, in this browser profile; a store that cannot be read or
+  written simply keeps the first width), and a kept width that does not fit is shown at the
+  limit and comes back once there is room again.
 -->
 <script lang="ts" module>
   import { tokenPx } from '$lib/tokens';
@@ -25,30 +24,20 @@
     initial: number;
   }
 
-  /** The first width takes this share of the content (between --list-first-min and
-   *  --list-first-max). */
-  const FIRST_SHARE = 0.4;
-  /** The list never takes more than this share of the content. */
-  const MAX_SHARE = 0.6;
-
+  /** The list keeps --list-min and at most --list-max, and leaves the job view --reader-min;
+   *  it starts at --list-first (within those). */
   export function splitLimits(width: number): SplitLimits {
     const min = tokenPx('--list-min');
-    const max = Math.max(
-      min,
-      Math.min(width - tokenPx('--reader-min'), Math.round(width * MAX_SHARE)),
-    );
-    const first = Math.min(
-      Math.max(Math.round(width * FIRST_SHARE), tokenPx('--list-first-min')),
-      tokenPx('--list-first-max'),
-    );
-    return { min, max, initial: Math.max(min, Math.min(max, first)) };
+    const max = Math.max(min, Math.min(tokenPx('--list-max'), width - tokenPx('--reader-min')));
+    return { min, max, initial: Math.max(min, Math.min(max, tokenPx('--list-first'))) };
   }
 
   /**
    * The limits of the one limit set that never shrinks while the window grows: `own` (the
-   * content now) capped by `edge` (the content at the next wider layout's narrowest window,
-   * e.g. the full sidebar at the rail's breakpoint). Without the cap the list would be wider
-   * just below the breakpoint, where the rail leaves more content, than just above it.
+   * content now) capped by `edge` (the content at the next wider layout's narrowest window:
+   * the docked sidebar at the fold's breakpoint). Without the cap the list would be wider
+   * just below the breakpoint, where the folded sidebar leaves more content, than just above
+   * it.
    */
   export function cappedLimits(own: SplitLimits, edge: SplitLimits): SplitLimits {
     const max = Math.max(own.min, Math.min(own.max, edge.max));
@@ -80,9 +69,9 @@
 
   let {
     size = $bindable(),
-    initial = tokenPx('--list-min'),
+    initial = tokenPx('--list-first'),
     min = tokenPx('--list-min'),
-    max = tokenPx('--list-first-max'),
+    max = tokenPx('--list-max'),
     storageKey = null,
     label,
     testid = null,
@@ -190,14 +179,11 @@
     onpointerup={end}
     onpointercancel={end}
     onclick={reset}
-  >
-    <span class="grip"></span>
-  </button>
+  ></button>
 </div>
 
 <style>
-  /* No room of its own: the strip lies right of the border between the columns, over the
-     next column's padding (the scrollbar of the column before stays its own). */
+  /* No room of its own: the strip lies centred on the border between the columns. */
   .splitter {
     position: relative;
     z-index: var(--z-raised);
@@ -209,36 +195,28 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 0;
+    left: calc(-1 * var(--splitter-hit) / 2);
     width: var(--splitter-hit);
     cursor: col-resize;
     touch-action: none;
   }
 
-  /* The grip: a calm pill centred on the border, darker while it is dragged. It takes no
-     pointer, so its half over the column before never catches one. */
-  .grip {
+  /* The line: 2 px over the 1 px border in the middle of the strip, the whole height. */
+  .hit::after {
+    content: '';
     position: absolute;
-    top: calc(50% - var(--grip-height) / 2);
-    left: calc(-1 * var(--grip-width) / 2);
-    width: var(--grip-width);
-    height: var(--grip-height);
-    border-radius: var(--radius-full);
-    background-color: var(--grip-rest);
+    top: 0;
+    bottom: 0;
+    left: calc(var(--splitter-hit) / 2 - var(--border-width));
+    width: var(--splitter-line);
+    background-color: var(--border-strong);
     opacity: 0;
-    pointer-events: none;
-    transition:
-      opacity var(--dur-base) var(--ease-standard),
-      background-color var(--dur-base) var(--ease-standard);
+    transition: opacity var(--dur-base) var(--ease-standard);
   }
 
-  .hit:hover .grip,
-  .dragging .grip {
+  .hit:hover::after,
+  .dragging .hit::after {
     opacity: 1;
     transition-duration: var(--dur-hover);
-  }
-
-  .dragging .grip {
-    background-color: var(--grip-drag);
   }
 </style>
