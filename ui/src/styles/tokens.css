@@ -750,7 +750,9 @@
   --ring-md-scale: 0.643;
 
   /* ------------------------------------------- round 10: shell */
-  /* (shell tokens below) */
+  /* The column handle: a 2 px line (--border-strong) over the border, on hover and while
+     dragged. */
+  --splitter-line: 2px;
 
   /* ------------------------------------------- round 10: controls */
   /* (controls tokens below) */
