@@ -1,12 +1,16 @@
 <!--
-  The calm sidebar on the window's colour below the top bar: no surface of its own, the
-  view's sheet is the divider. It starts with the views: Jobs, Profil, Einstellungen, each
-  with its icon and no count, the first on the first line of every view. The places of the
-  jobs (Aktuell, Archiv, Papierkorb) are tabs above the list. The setup shows no sidebar. A
-  press here never takes the focus (the list keeps its keys).
+  The sidebar: a solid cream column below the top bar with a hairline at its right edge (the
+  view's border), the views in it (Jobs, Profil, Einstellungen, each with its glyph and no
+  count) and nothing at its foot. Its first entry is centred in the first row of every view,
+  so its middle lies on one line with the list's tabs and the pages' first heading (y = 59 on
+  Windows; the entry's top at 43, a pixel above --head-pad, because the entry is 2 px taller
+  than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) are tabs above the
+  list. The setup shows no sidebar. A press here never takes the focus (the list keeps its
+  keys).
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the
   user's, shell.sidebarWidth) or folded away; folded it floats over the view (`floating`,
-  App), and a choice there folds it again.
+  App: inside a rounded card, its entries where the docked ones stand), and a choice there
+  folds it again.
 -->
 <script lang="ts">
   import SideNav, { type SideNavItem } from '$components/SideNav.svelte';
@@ -43,7 +47,9 @@
   }
 
   const width = $derived(
-    shell.sidebarWidth === undefined ? {} : { 'sidebar-live': `${shell.sidebarWidth}px` },
+    shell.sidebarWidth === undefined || floating
+      ? {}
+      : { 'sidebar-live': `${shell.sidebarWidth}px` },
   );
 </script>
 
@@ -71,11 +77,24 @@
     flex-direction: column;
     width: var(--sidebar-live, var(--sidebar-width));
     height: 100%;
-    padding: 0 var(--space-8) var(--space-8);
+    padding: 0 var(--sidebar-pad-x) var(--sidebar-pad-end);
+    background-color: var(--bg);
   }
 
   /* The first entry is centred in the first row of every view. */
   .nav {
     margin-top: calc(var(--head-pad) + (var(--first-row) - var(--nav-row)) / 2);
+  }
+
+  /* Floating: the card around it is --peek-inset in from the window's edge and pads its
+     entries by as much again, so they stand where the docked ones do and their pills are
+     concentric with the card's corners. */
+  .floating {
+    width: 100%;
+    padding: var(--peek-inset);
+  }
+
+  .floating .nav {
+    margin-top: 0;
   }
 </style>

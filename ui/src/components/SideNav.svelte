@@ -1,10 +1,13 @@
 <!--
-  The navigation of the sidebar: icon and label per view, no counts (the list says how many
+  The navigation of the sidebar: glyph and label per view, no counts (the list says how many
   are new) and no spinner (the run line of the list says a search).
-  The active entry sits on one white pill that slides to it (180 ms, emphasized; the
-  sibling of the segmented thumb), its label ink and its icon in the accent. An idle entry
-  takes a much fainter wash on hover and keeps its icon, so the two never look alike. While
-  the window is inactive the active label turns ink.
+  Every entry is 32 high, its 18 px glyph and its label in ink, the label 540 whether idle or
+  active (decision 28): the active entry is told apart by its warm grey pill (no shadow, no
+  edge), its navy label and its coral glyph. The pill glides to the entry chosen (the one
+  glide of lib/motion: 180 ms, ease-out, a transform; it jumps when the nav mounts and under
+  reduced motion). An idle entry takes the quiet wash under
+  the pointer and keeps its glyph. While the window is in the back the active label and
+  glyph turn ink, like Mail and Explorer.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -18,8 +21,7 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
-  import { cssVars } from '$lib/actions/cssVars';
-  import { settled } from '$lib/motion/settled.svelte';
+  import { glide } from '$lib/motion/glide';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -31,16 +33,16 @@
   }
   let { items, active, label, onselect }: Props = $props();
 
-  const index = $derived(items.findIndex((item) => item.id === active));
-  /** Where the pill stands: the index of the current entry. */
-  const pill = $derived({ index: Math.max(0, index) });
-  const motion = settled();
+  /** The entries by id: the pill stands on the active one. */
+  const entries: Partial<Record<Id, HTMLElement>> = $state({});
+  const chosen = $derived(active === null ? null : (entries[active] ?? null));
 </script>
 
-<nav class="nav" class:ready={motion.ready} aria-label={label} use:cssVars={pill}>
-  <span class="indicator" class:none={index < 0} aria-hidden="true"></span>
+<nav class="nav" aria-label={label}>
+  <span class="pill" aria-hidden="true" use:glide={{ to: chosen }}></span>
   {#each items as item (item.id)}
     <button
+      bind:this={entries[item.id]}
       type="button"
       class="item"
       aria-current={item.id === active ? 'page' : undefined}
@@ -48,7 +50,7 @@
       onclick={() => onselect(item.id)}
     >
       <span class="glyph">
-        <Icon name={item.icon} size="md" />
+        <Icon name={item.icon} size="nav" />
       </span>
       <span class="label">{item.label}</span>
     </button>
@@ -64,39 +66,29 @@
     isolation: isolate;
   }
 
-  /* The one pill behind the active entry: a surface without an edge, lifted by the shadow
-     of every chosen thumb (the tabs, the segments). */
-  .indicator {
+  /* The one pill behind the active entry, the warm grey of the sidebar's choice, where the
+     glide places it. */
+  .pill {
     position: absolute;
     z-index: var(--z-below);
     top: 0;
-    right: 0;
     left: 0;
-    height: var(--nav-row);
+    width: var(--glide-width);
+    height: var(--glide-height);
     border-radius: var(--radius-md);
     background-color: var(--nav-active-bg);
-    box-shadow: var(--sh-thumb);
-    transform: translateY(calc(var(--index) * var(--nav-step)));
-    will-change: transform;
-  }
-
-  /* It slides only once the nav has been drawn (never when it mounts). */
-  .ready .indicator {
-    transition: transform var(--dur-slow) var(--ease-emphasized);
-  }
-
-  .indicator.none {
-    opacity: 0;
+    opacity: var(--glide-opacity, 0);
+    transform: translate(var(--glide-x), var(--glide-y));
   }
 
   .item {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--nav-gap);
     height: var(--nav-row);
-    padding: 0 var(--space-8);
+    padding: 0 var(--nav-pad);
     border-radius: var(--radius-md);
-    color: var(--text-muted);
+    color: var(--text);
     font: var(--type-label);
     transition:
       background-color var(--dur-base) var(--ease-standard),
@@ -104,13 +96,12 @@
   }
 
   .item:not([aria-current='page']):hover {
-    background-color: var(--nav-hover);
-    color: var(--text);
+    background-color: var(--surface-hover-quiet);
     transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .item:not([aria-current='page']):active:hover {
-    background-color: var(--nav-press);
+    background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
   }
 
@@ -119,7 +110,7 @@
     --nav-glyph: var(--nav-active-icon);
   }
 
-  /* Like Mail and Explorer: the selection greys out while the window is in the back. */
+  /* Like Mail and Explorer: the choice turns ink while the window is in the back. */
   :global(:root[data-window='inactive']) .item[aria-current='page'] {
     color: var(--text);
     --nav-glyph: var(--text);

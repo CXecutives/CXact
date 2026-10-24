@@ -65,7 +65,6 @@ const FEATURE_PUBLIC = {
  */
 const TEMPORARY = {
   // The motion layer (frontend plan, package 4) lands before the components that use it.
-  'ui/src/lib/motion/glide.ts': 'the segment thumb, the sidebar pill and the list selection',
   'ui/src/lib/motion/count.svelte.ts': 'ScoreRing counts with Count (countUp goes)',
   'ui/src/lib/motion/enter.ts: enterList': 'the job list staggers its rows when it opens',
   'ui/src/lib/motion/enter.ts: enterCards': 'the job view staggers its cards on a new job',
