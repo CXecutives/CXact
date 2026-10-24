@@ -277,7 +277,7 @@ test('Postfach: skipped, or connected with the portals rows; Fertig opens the jo
   await expect(rows.locator('[data-setting-row]')).toHaveCount(2);
   await expect(page.getByTestId('portal-linkedin-hint')).toHaveText(T.settings.alertMails(20));
   await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.alertMails(0));
-  await expect(rows.getByTestId('setup-linkedin')).toHaveText(T.settings.setUpAlert);
+  await expect(rows.getByTestId('setup-linkedin')).toHaveAccessibleName(T.settings.setUpAlert);
   await expect(rows.getByRole('switch')).toHaveCount(0);
   await expect(
     rows.locator('[data-testid^="open-portal-"], [data-testid^="sign-in-"]'),

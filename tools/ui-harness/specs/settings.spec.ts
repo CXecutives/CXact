@@ -321,10 +321,11 @@ test('portals: two groups in the order of the UI, each portal with its state and
   await expect(page.getByTestId('settings-portals')).not.toContainText('Details');
   await expect(page.getByTestId('settings-portals')).not.toContainText('Seiten');
   // Only a portal of alert mails offers "Alert anlegen", its page in the browser.
-  await expect(page.locator('[data-testid^="setup-"]')).toHaveText([
-    T.settings.setUpAlert,
-    T.settings.setUpAlert,
-  ]);
+  const setUp = page.locator('[data-testid^="setup-"]');
+  await expect(setUp).toHaveCount(2);
+  for (const button of await setUp.all()) {
+    await expect(button).toHaveAccessibleName(T.settings.setUpAlert);
+  }
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
   await page.getByTestId('open-portal-hays').click();
@@ -411,7 +412,9 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
   await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
-  await mails.getByRole('button', { name: T.reader.mail }).click();
+  // Its way out takes the place of "Alert anlegen", in its width.
+  await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
+  await page.getByTestId('alert-mail-freelance').click();
   expect(await lastOpened(page)).toEqual({
     target: { kind: 'alertMail', gmailId: '18c2f0a9d1e4b7a3' },
   });
@@ -430,7 +433,10 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   const quiet = await reveal(page, page.getByTestId('alert-quiet-freelance'));
   await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
-  await quiet.getByRole('button', { name: T.settings.checkAlert }).click();
+  await expect(page.getByTestId('check-alert-freelance')).toHaveAccessibleName(
+    T.settings.checkAlert,
+  );
+  await page.getByTestId('check-alert-freelance').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'freelance' } });
   // A portal that is off says nothing about its alert mails.
   await page.getByTestId('toggle-enabled-freelance').click();
@@ -438,6 +444,27 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   // The Jobs view shows nothing of it.
   await page.getByTestId('nav-jobs').click();
   await expect(page.getByText(T.settings.alertQuiet(9))).toHaveCount(0);
+});
+
+test('another provider than Gmail: the alert calls wait for the place of the mail', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=quiet-alert`);
+  await expect(page.getByTestId('check-alert-freelance')).toHaveCount(1);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await page.getByTestId('mailbox-provider').click();
+  await page
+    .getByRole('listbox', { name: T.settings.providerLabel })
+    .getByRole('option', { name: 'GMX' })
+    .click();
+  await page.getByTestId('mailbox-user').fill('jobs@gmx.de');
+  await page.getByTestId('mailbox-password').fill('geheim');
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  // The line stays; its call waits, "Alert anlegen" keeps its place.
+  await expect(page.getByTestId('alert-quiet-freelance')).toBeVisible();
+  await expect(page.getByTestId('check-alert-freelance')).toHaveCount(0);
+  await expect(page.getByTestId('setup-freelance')).toBeVisible();
 });
 
 test('without a mailbox the portals of alert mails say they need one; one Verbinden', async ({

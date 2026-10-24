@@ -52,8 +52,6 @@
   ];
 
   const actionFirst = primaryFirst();
-  /** The row's button that opened the form (Ändern, or Verbinden without a mailbox). */
-  const OPENERS = '[data-testid="mailbox-change"], [data-testid="mailbox-connect"]';
   /** The stored mailbox signs in with an app password (Gmail, iCloud). */
   const appPassword = $derived(
     cfg.mailbox.provider === 'gmail' || cfg.mailbox.provider === 'icloud',
@@ -61,7 +59,9 @@
   let editing = $state(false);
   let checking = $state(false);
   let form = $state<MailboxForm | null>(null);
-  let root = $state<HTMLElement | null>(null);
+  /** The form, and the place of the row's button that opens it (Ändern, or Verbinden). */
+  let editor = $state<HTMLElement | null>(null);
+  let opening = $state<HTMLElement | null>(null);
   let confirmRemove = $state(false);
   let removing = $state(false);
   /** Said when it shows. */
@@ -82,10 +82,10 @@
 
   /** The form folds away; the focus, if it was in the form, goes back to the row's button. */
   async function close(): Promise<void> {
-    const inside = root?.contains(document.activeElement) ?? false;
+    const inside = editor?.contains(document.activeElement) ?? false;
     editing = false;
     await tick();
-    if (inside) root?.querySelector<HTMLElement>(OPENERS)?.focus();
+    if (inside) opening?.querySelector('button')?.focus();
   }
 
   /** Abbrechen and Esc: a check in progress stops, the form folds away. */
@@ -118,15 +118,17 @@
 {#snippet tile()}<IconTile icon="alertMail" size="sm" />{/snippet}
 
 {#snippet opener(testid: string, icon: 'edit' | 'add', label: string)}
-  <Button
-    variant="secondary"
-    {icon}
-    {label}
-    disabled={locked !== null}
-    disabledReason={locked}
-    {testid}
-    onclick={() => (editing = true)}
-  />
+  <span class="opener" bind:this={opening}>
+    <Button
+      variant="secondary"
+      {icon}
+      {label}
+      disabled={locked !== null}
+      disabledReason={locked}
+      {testid}
+      onclick={() => (editing = true)}
+    />
+  </span>
 {/snippet}
 
 {#snippet connectButton()}
@@ -143,68 +145,66 @@
   <Button label={t.common.cancel} testid="mailbox-cancel" onclick={cancel} />
 {/snippet}
 
-<div class="card" bind:this={root}>
-  {#if cfg.mailbox.user}
-    <SettingRow
-      label={cfg.mailbox.user}
-      copyLabel
-      lead={tile}
-      hint={mailFailure === null
-        ? t.settings.connected
-        : mailFailure.kind === 'mailAuth'
-          ? t.settings.refused(appPassword)
-          : t.settings.unreachable}
-      status={mailFailure === null ? 'success' : 'danger'}
-      testid="mailbox"
-    >
-      {#if !editing}
-        {@render opener('mailbox-change', 'edit', t.common.change)}
-        <Button
-          variant="secondary"
-          icon="trash"
-          label={t.common.remove}
-          disabled={locked !== null}
-          disabledReason={locked}
-          testid="mailbox-remove"
-          onclick={() => {
-            removeError = null;
-            confirmRemove = true;
-          }}
-        />
-      {/if}
-    </SettingRow>
-  {:else}
-    <SettingRow
-      label={t.settings.notConnected}
-      hint={t.settings.notConnectedHint}
-      lead={tile}
-      testid="mailbox"
-    >
-      {#if !editing}{@render opener('mailbox-connect', 'add', t.settings.connect)}{/if}
-    </SettingRow>
-  {/if}
-  {#if editing}
-    <div class="fold" transition:unfold>
-      <div class="edit" use:formKeys={{ save: () => void connect(), cancel }}>
-        <MailboxForm bind:this={form} bind:busy={checking} autofocus />
-        <div class="buttons" data-testid="mailbox-buttons">
-          {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}
-        </div>
+{#if cfg.mailbox.user}
+  <SettingRow
+    label={cfg.mailbox.user}
+    copyLabel
+    lead={tile}
+    hint={mailFailure === null
+      ? t.settings.connected
+      : mailFailure.kind === 'mailAuth'
+        ? t.settings.refused(appPassword)
+        : t.settings.unreachable}
+    status={mailFailure === null ? 'success' : 'danger'}
+    testid="mailbox"
+  >
+    {#if !editing}
+      {@render opener('mailbox-change', 'edit', t.common.change)}
+      <Button
+        variant="secondary"
+        icon="trash"
+        label={t.common.remove}
+        disabled={locked !== null}
+        disabledReason={locked}
+        testid="mailbox-remove"
+        onclick={() => {
+          removeError = null;
+          confirmRemove = true;
+        }}
+      />
+    {/if}
+  </SettingRow>
+{:else}
+  <SettingRow
+    label={t.settings.notConnected}
+    hint={t.settings.notConnectedHint}
+    lead={tile}
+    testid="mailbox"
+  >
+    {#if !editing}{@render opener('mailbox-connect', 'add', t.settings.connect)}{/if}
+  </SettingRow>
+{/if}
+{#if editing}
+  <div class="fold" transition:unfold>
+    <div class="edit" bind:this={editor} use:formKeys={{ save: () => void connect(), cancel }}>
+      <MailboxForm bind:this={form} bind:busy={checking} autofocus />
+      <div class="buttons" data-testid="mailbox-buttons">
+        {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}
       </div>
     </div>
-  {/if}
-  {#if cfg.mailbox.error}
-    <div class="fold" transition:unfold>
-      <div class="note">
-        <Notice
-          tone="danger"
-          variant="inline"
-          text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
-        />
-      </div>
+  </div>
+{/if}
+{#if cfg.mailbox.error}
+  <div class="fold" transition:unfold>
+    <div class="note">
+      <Notice
+        tone="danger"
+        variant="inline"
+        text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
+      />
     </div>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <Dialog
   bind:open={confirmRemove}
@@ -219,9 +219,8 @@
 />
 
 <style>
-  /* The row and what unfolds under it are one block of the box (its rows' hairlines stay
-     the box's: `display: contents`). */
-  .card {
+  /* The row's button keeps its place in the row's buttons. */
+  .opener {
     display: contents;
   }
 

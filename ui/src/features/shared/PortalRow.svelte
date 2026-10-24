@@ -9,18 +9,19 @@
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits; else its quiet state
   ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in 30 Tagen").
   The calls, outlined with the glyph of their meaning: "Anmelden" or "Abmelden" where the
-  portal offers a sign-in, "Alert anlegen" for a portal of alert mails (its page in the
-  browser), and for the portals the app searches the portal in the browser (a quiet icon
-  before the switch); in a narrow box the calls go to a line of their own at the row's end.
+  portal offers a sign-in (one width), then the one call about its alert, in one place and
+  one width: "Alert-Mail öffnen" when alert mails came without jobs, "Alert prüfen" when its
+  alert went quiet, else "Alert anlegen" for a portal of alert mails (its page in the
+  browser); for the portals the app searches the portal in the browser (a quiet icon before
+  the switch). In a narrow box the calls go to a line of their own at the row's end.
   A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
   Postfach", has no calls, and its switch stands off and waits with its reason (the stored
   value stays; decision 26).
   A problem of the portal is one quiet line under its state (whether the user has to act,
-  the time and the reason where it has them, "Alert-Mail öffnen" when alert mails came
-  without jobs); it unfolds and folds away, so the rows below glide. A portal that is on and
-  sent no alert mail for a week before the last fetch says so in one line ("Seit 9 Tagen
-  keine Alert-Mail") with "Alert prüfen", its page in the browser. Both ways out need the
-  mail's place in Gmail, so they wait for the other providers (decision 32).
+  the time and the reason where it has them); it unfolds and folds away, so the rows below
+  glide. A portal that is on and sent no alert mail for a week before the last fetch says so
+  in one line ("Seit 9 Tagen keine Alert-Mail."). "Alert-Mail öffnen" and "Alert prüfen" need
+  the mail's place in Gmail, so they wait for the other providers (decision 32).
   Signing in lets the fetch use the sign-in, signing out ends that (lib/state/portalSession.ts,
   also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
   while the portal is on, and "Anmelden" then only lets the fetch use it (no sign-in window);
@@ -30,6 +31,7 @@
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
+  import type { IconName } from '$components/Icon.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
@@ -140,6 +142,43 @@
   const loginShown = $derived(portal.login === 'optional' && !idle && (portal.enabled || stored));
   const loginLocked = $derived(signInLocked());
 
+  /** The one call about its alert, in one place and one width: the mail that came without
+   *  jobs, the alert that went quiet, or a new alert (a portal of alert mails). */
+  const alert = $derived.by(
+    (): { id: string; label: string; icon: IconName; onclick: () => void } | null => {
+      if (idle || setup) return setup && portal.way === 'alert' ? setUp : null;
+      if (alertMail !== null) {
+        const gmailId = alertMail;
+        return {
+          id: 'alert-mail',
+          label: t.reader.mail,
+          icon: 'alertMail',
+          onclick: () => open({ gmailId }),
+        };
+      }
+      if (quietDays !== null && gmail) {
+        return {
+          id: 'check-alert',
+          label: t.settings.checkAlert,
+          icon: 'external',
+          onclick: () => open('home'),
+        };
+      }
+      return portal.way === 'alert' ? setUp : null;
+    },
+  );
+  const setUp = $derived({
+    id: 'setup',
+    label: t.settings.setUpAlert,
+    icon: 'alertAdd' as IconName,
+    onclick: () => open('setup'),
+  });
+  const alertFaces = $derived([
+    { label: t.reader.mail, icon: 'alertMail' as IconName },
+    { label: t.settings.checkAlert, icon: 'external' as IconName },
+    { label: t.settings.setUpAlert, icon: 'alertAdd' as IconName },
+  ]);
+
   async function change(patch: PortalSwitches): Promise<void> {
     error = null;
     try {
@@ -186,13 +225,6 @@
           tone={portal.actionNeeded ? 'warning' : 'info'}
           variant="inline"
           text={problem}
-          action={alertMail
-            ? {
-                label: t.reader.mail,
-                icon: 'alertMail',
-                onclick: () => open({ gmailId: alertMail }),
-              }
-            : null}
           testid="health-{portal.portal}"
         />
       </div>
@@ -205,9 +237,6 @@
           tone="warning"
           variant="inline"
           text={t.settings.alertQuiet(quietDays)}
-          action={gmail
-            ? { label: t.settings.checkAlert, icon: 'external', onclick: () => open('home') }
-            : null}
           testid="alert-quiet-{portal.portal}"
         />
       </div>
@@ -286,13 +315,14 @@
       {/if}
     </span>
   {/if}
-  {#if portal.way === 'alert' && !idle}
+  {#if alert}
     <Button
       variant="secondary"
-      icon="alertAdd"
-      label={t.settings.setUpAlert}
-      testid="setup-{portal.portal}"
-      onclick={() => open('setup')}
+      icon={alert.icon}
+      label={alert.label}
+      sizeTo={alertFaces}
+      testid="{alert.id}-{portal.portal}"
+      onclick={alert.onclick}
     />
   {/if}
 </SettingRow>
