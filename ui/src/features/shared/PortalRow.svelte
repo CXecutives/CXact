@@ -2,8 +2,7 @@
   One portal in Einstellungen > Jobportale (round 10 draft), a SettingRow like every row: its
   tile (its two capitals on the track), its brand name (`portalName`), under it one line of its
   state, then its calls and at the right its switch, always last (the name names the switch
-  but, like every text next to a switch, does not switch it). The setup's row (`setup`) shows
-  only its tile, name, state and "Alert anlegen".
+  but, like every text next to a switch, does not switch it).
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits; else its quiet state
@@ -54,10 +53,8 @@
 
   interface Props {
     portal: PortalState;
-    /** The setup's row: no sign-in, no link to the portal, no switch. */
-    setup?: boolean;
   }
-  let { portal, setup = false }: Props = $props();
+  let { portal }: Props = $props();
 
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
@@ -146,7 +143,7 @@
    *  jobs, the alert that went quiet, or a new alert (a portal of alert mails). */
   const alert = $derived.by(
     (): { id: string; label: string; icon: IconName; onclick: () => void } | null => {
-      if (idle || setup) return setup && portal.way === 'alert' ? setUp : null;
+      if (idle) return null;
       if (alertMail !== null) {
         const gmailId = alertMail;
         return {
@@ -280,13 +277,13 @@
   hint={status?.text ?? standing}
   status={status?.tone ?? null}
   disabled={idle}
-  for={setup ? null : id}
+  for={id}
   lead={tile}
   {notes}
-  end={setup ? null : end}
+  {end}
   testid="portal-{portal.portal}"
 >
-  {#if loginShown && !setup}
+  {#if loginShown}
     <span class="sign" transition:fade>
       {#if signedIn}
         <Button

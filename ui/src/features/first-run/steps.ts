@@ -1,16 +1,16 @@
-// The setup as data: its steps in their order, each with its heading, its one sentence, where
-// Zurück leads, the words of its one primary button, its dot in the foot (Start, Profil,
-// Postfach, Fertig) and the picture of the app beside it (pictures.ts; none beside the long
-// steps of the whole profile).
+// The setup as data: its seven steps in their order (the round 10 draft), each with what
+// stands at the top of its card (the app's mark, a tile with the step's glyph, the reading
+// spinner or the green disc of Fertig), its heading and lead, where Zurück leads and the
+// words of its one primary button. The profile is a whole page instead of a card.
 // FirstRunView.svelte renders this table (each step's body is its snippet of the same id),
 // onboarding.svelte.ts walks it. Adding, moving or removing a step is one entry here and its
 // snippet.
 
+import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
 import type { Portal } from '$lib/ipc/types';
-import type { PictureId } from './pictures';
 
-export type StepId = 'way' | 'upload' | 'reading' | 'review' | 'self' | 'alerts' | 'done';
+export type StepId = 'welcome' | 'way' | 'upload' | 'reading' | 'profile' | 'alerts' | 'done';
 /** How the profile comes: from the CV (the recommended way) or typed in. */
 export type Way = 'cv' | 'self';
 
@@ -22,89 +22,92 @@ export interface Walk {
   alerts: readonly Portal[];
 }
 
+/** What stands at the top of a step's card: the app's mark, a tile with a glyph, the
+ *  spinner while the CV is read, or the green disc with its check. */
+export type StepTop =
+  { kind: 'mark' } | { kind: 'tile'; icon: IconName } | { kind: 'spinner' } | { kind: 'success' };
+
 export interface StepSpec {
   id: StepId;
+  /** The top of its card (none: the step is a whole page). */
+  top?: StepTop;
   heading: (t: Catalog, walk: Walk) => string;
-  /** One sentence under the heading, or none. */
-  text?: (t: Catalog, walk: Walk) => string;
+  lead: (t: Catalog, walk: Walk) => string;
+  /** A small badge beside the heading ("Optional"). */
+  badge?: (t: Catalog) => string;
   /** Where Zurück leads (null: no Zurück; the evaluation is never a step to go back to). */
   back: (walk: Walk) => StepId | null;
   /** The words of its primary button (null: the step's own control goes on). */
-  next: ((t: Catalog, walk: Walk) => string) | null;
-  /** Its dot in the foot, from 0 (DOTS of them). */
-  dot: number;
-  /** The picture of the app beside it (none: the step takes the whole width). */
-  picture?: PictureId;
+  next: ((t: Catalog) => string) | null;
+  /** The primary goes on with an arrow (Loslegen, Weiter, Zu den Jobs). */
+  onward?: boolean;
 }
-
-/** The dots of the foot: Start, Profil, Postfach, Fertig. */
-export const DOTS = 4;
 
 export const STEPS: readonly StepSpec[] = [
   {
-    // Willkommen and the two ways in one: a click on a tile goes on.
-    id: 'way',
+    id: 'welcome',
+    top: { kind: 'mark' },
     heading: (t) => t.firstRun.welcome,
-    text: (t) => t.firstRun.welcomeText,
+    lead: (t) => t.firstRun.welcomeText,
     back: () => null,
+    next: (t) => t.firstRun.start,
+    onward: true,
+  },
+  {
+    // A click on a way tile goes on.
+    id: 'way',
+    top: { kind: 'tile', icon: 'profile' },
+    heading: (t) => t.firstRun.way,
+    lead: (t) => t.firstRun.wayText,
+    back: () => 'welcome',
     next: null,
-    dot: 0,
-    picture: 'jobs',
   },
   {
     // The drop zone goes on; a failed evaluation comes back here and says why.
     id: 'upload',
+    top: { kind: 'tile', icon: 'pickFile' },
     heading: (t) => t.firstRun.upload,
+    lead: (t) => t.firstRun.uploadText,
     back: () => 'way',
     next: null,
-    dot: 1,
-    picture: 'profile',
   },
   {
-    // "Abbrechen" (and the mouse's back button) go back to the upload.
+    // "Abbrechen" (and the mouse's back button) stop it and go back to the upload.
     id: 'reading',
+    top: { kind: 'spinner' },
     heading: (t) => t.firstRun.reading,
+    lead: (t) => t.firstRun.readingText,
     back: () => null,
     next: null,
-    dot: 1,
-    picture: 'profile',
   },
   {
-    // After the CV: the whole profile as the AI filled it, to check.
-    id: 'review',
-    heading: (t) => t.firstRun.review,
-    text: (t) => t.firstRun.reviewText,
-    back: () => 'upload',
+    // The whole profile as a page: as the CV filled it, or empty to fill in.
+    id: 'profile',
+    heading: (t) => t.firstRun.profile,
+    lead: (t, walk) => (walk.way === 'cv' ? t.firstRun.profileCv : t.firstRun.profileSelf),
+    back: (walk) => (walk.way === 'cv' ? 'upload' : 'way'),
     next: (t) => t.firstRun.next,
-    dot: 1,
+    onward: true,
   },
   {
-    // By hand: the whole profile, empty.
-    id: 'self',
-    heading: (t) => t.firstRun.self,
-    text: (t) => t.firstRun.later,
-    back: () => 'way',
-    next: (t) => t.firstRun.next,
-    dot: 1,
-  },
-  {
-    // Without a mailbox "Überspringen" and "Verbinden"; once connected the portals' rows.
+    // Optional: "Überspringen" or "Verbinden" go on to Fertig.
     id: 'alerts',
-    heading: (t, walk) => (walk.mailbox ? t.firstRun.connected : t.settings.connectHeading),
-    text: (t, walk) => (walk.mailbox ? t.firstRun.alertsDone : t.firstRun.alertsText(walk.alerts)),
-    back: (walk) => (walk.way === 'cv' ? 'review' : 'self'),
-    next: (t, walk) => (walk.mailbox ? t.firstRun.next : t.settings.connect),
-    dot: 2,
-    picture: 'mail',
+    top: { kind: 'tile', icon: 'alertMail' },
+    heading: (t) => t.firstRun.mailbox,
+    badge: (t) => t.firstRun.optional,
+    lead: (t, walk) => t.firstRun.mailboxText(walk.alerts),
+    back: () => 'profile',
+    next: (t) => t.firstRun.connect,
   },
   {
     // Says what was set up: everything with a mailbox, else the profile.
     id: 'done',
-    heading: (t) => t.firstRun.done,
+    top: { kind: 'success' },
+    heading: (t, walk) => (walk.mailbox ? t.firstRun.done : t.firstRun.doneProfile),
+    lead: (t) => t.firstRun.doneText,
     back: () => null,
     next: (t) => t.firstRun.toJobs,
-    dot: 3,
-    picture: 'jobs',
+    onward: true,
   },
 ];
 
