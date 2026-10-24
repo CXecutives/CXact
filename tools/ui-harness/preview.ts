@@ -67,6 +67,9 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
       { label: 'Bewerteter Job', query: 'scenario=default&open=freelancermap:2801' },
       { label: 'Unbewerteter Job', query: 'scenario=default&open=linkedin:4100200302' },
       { label: 'Ausgeschlossener Job', query: 'scenario=default&open=freelance:900412' },
+      { label: 'Nur Vorschau', query: 'scenario=default&open=freelance:900411' },
+      { label: 'Beendet', query: 'scenario=default&open=linkedin:4100200304' },
+      { label: 'Anzeige zu kurz', query: 'scenario=default&open=freelancermap:2806' },
     ],
   },
   {
@@ -75,6 +78,7 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
       { label: 'Profil vollständig', query: 'scenario=default&view=profile' },
       { label: 'Profil unvollständig', query: 'scenario=profile-incomplete&view=profile' },
       { label: 'Kein Profil', query: 'scenario=no-profile&view=profile' },
+      { label: 'Profil nicht lesbar', query: 'scenario=profile-broken&view=profile' },
       { label: 'Lebenslauf heute ausgeschöpft', query: 'scenario=default&view=profile&cv=used' },
     ],
   },

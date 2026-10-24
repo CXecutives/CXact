@@ -14,24 +14,18 @@
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
-  import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
-  import Banknote from '@lucide/svelte/icons/banknote';
   import BellPlus from '@lucide/svelte/icons/bell-plus';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
-  import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
-  import CircleDashed from '@lucide/svelte/icons/circle-dashed';
   import CircleMinus from '@lucide/svelte/icons/circle-minus';
   import CircleQuestionMark from '@lucide/svelte/icons/circle-question-mark';
   import CircleX from '@lucide/svelte/icons/circle-x';
@@ -42,7 +36,6 @@
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import Delete from '@lucide/svelte/icons/delete';
   import Download from '@lucide/svelte/icons/download';
-  import Euro from '@lucide/svelte/icons/euro';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
@@ -84,24 +77,18 @@
   const GLYPHS: Record<Glyph, Component<Record<string, unknown>>> = {
     archive: Archive,
     'archive-restore': ArchiveRestore,
-    'arrow-down': ArrowDown,
     'arrow-left': ArrowLeft,
     'arrow-right': ArrowRight,
     award: Award,
     ban: Ban,
-    banknote: Banknote,
     'bell-plus': BellPlus,
     briefcase: Briefcase,
     'building-2': Building2,
     calendar: Calendar,
     'calendar-clock': CalendarClock,
-    'calendar-days': CalendarDays,
     check: Check,
     'chevron-down': ChevronDown,
-    'chevron-left': ChevronLeft,
-    'chevron-right': ChevronRight,
     'circle-check': CircleCheck,
-    'circle-dashed': CircleDashed,
     'circle-minus': CircleMinus,
     'circle-question-mark': CircleQuestionMark,
     'circle-x': CircleX,
@@ -112,7 +99,6 @@
     'database-backup': DatabaseBackup,
     delete: Delete,
     download: Download,
-    euro: Euro,
     'external-link': ExternalLink,
     eye: Eye,
     'eye-off': EyeOff,
