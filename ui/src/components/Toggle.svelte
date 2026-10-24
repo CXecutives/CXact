@@ -137,7 +137,7 @@
     border-radius: var(--radius-full);
     background-color: var(--toggle-knob);
     box-shadow: var(--sh-knob);
-    transition: transform var(--dur-base) var(--ease-out);
+    transition: transform var(--dur-slow) var(--ease-out);
   }
 
   .toggle:not([aria-disabled='true']):hover .track {

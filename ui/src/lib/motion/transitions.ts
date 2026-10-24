@@ -6,19 +6,24 @@
 //     single small boxes: the height of a row or line that folds or unfolds, and the size of
 //     an element out of the flow that glides to another box (glide.ts, barSlide). End values
 //     are whole pixels.
-//   - At most 180 ms per piece (--dur-slow), the ring and its count 400 ms (--dur-reveal), a
-//     whole stagger at most 400 ms (--stagger-span). Ease-out in, ease-in out. Nothing
-//     overshoots, bounces, scales or deforms, not even on press.
-//   - Entries play only when a view opens, a list opens or a new job opens, never on a
-//     re-render: the staggers of enter.ts are called explicitly, capped (--stagger-max items
-//     step, the later ones come with the last), and skipped while the user browses fast
-//     (pace.ts). A glide jumps when its target is out of sight (glide.ts).
+//   - One curve per kind: entries ease out (--ease-out, 150 to 180 ms), exits ease in
+//     (--ease-in, 60 to 100 ms), every glide (a marker, a thumb, a chevron, rows that move)
+//     180 ms with --ease-out. Two travels: --move-sm (4 px) for small things and every exit,
+//     --move-lg (8 px) for large ones. The ring and its count 400 ms (--dur-reveal), a whole
+//     stagger at most 400 ms (--stagger-span). Nothing overshoots, bounces, scales or
+//     deforms, not even on press.
+//   - Motion only where something new comes: the rows of another place (enter.ts, capped
+//     and skipped while the user browses fast, pace.ts), a new job's ring, an insert or a
+//     removal, a state change. A view switch, a job swap or a re-render shows the new content
+//     at once: a cascade there would leave a frame without content and replay on every
+//     return. A glide jumps when its target is out of sight (glide.ts).
 //   - Under reduced motion every movement is dropped: an entry or a glide is simply there,
 //     and what remains of a transition is a cross-fade of --dur-crossfade.
 //
-// No replay by construction: Svelte plays a local transition only when its own block has
-// run before, so a transition never plays when a view, a list or the app mounts (main.ts
-// also mounts with `intro: false`).
+// No replay by construction: Svelte plays a local transition only when the block right
+// around it (if, each, key) is the one that changed, so a transition never plays when a
+// view, a list or the app mounts (main.ts also mounts with `intro: false`). Something that
+// comes and goes with a block further out (a menu inside its `{#key}`) takes `|global`.
 //
 // fade and rise never read the element's style: svelte/transition's versions call
 // getComputedStyle for the element's own opacity and transform, which forces a style and
@@ -74,10 +79,10 @@ export function fade(node: Element, params: MotionParams = {}): TransitionConfig
   );
 }
 
-/** Fade in while rising by a token distance (default 4 px). */
+/** Fade in while rising by a token distance (default --move-sm, 4 px). */
 export function rise(node: Element, params: RiseParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move(params.distance ?? 'md');
+  const y = move(params.distance ?? 'sm');
   return {
     duration: duration(params.duration ?? 'base'),
     easing: easing(params.easing ?? 'out'),
@@ -86,32 +91,16 @@ export function rise(node: Element, params: RiseParams = {}): TransitionConfig {
   };
 }
 
-/** Fade in while sliding in from the start side by a token distance (default 8 px): a field
- *  that appears beside the choice that asked for it (the day of Verfügbar), 150 ms. */
+/** Fade in while sliding in from the start side by --move-sm (4 px): a field that appears
+ *  beside the choice that asked for it (the day of Verfügbar), 150 ms. */
 export function slideIn(node: Element, params: RiseParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const x = move(params.distance ?? 'lg');
+  const x = move(params.distance ?? 'sm');
   return {
     duration: duration(params.duration ?? 'base'),
     easing: easing(params.easing ?? 'out'),
     delay: params.delay ?? 0,
     css: (t, u) => `transform: translateX(${-u * x}px); opacity: ${t}`,
-  };
-}
-
-/** A step of the setup comes in: it fades in while sliding by --move-lg from the side it was
- *  reached from (Weiter: from the right; Zurück: from the left), 150 ms, ease-out. */
-export function stepIn(
-  node: Element,
-  { forward = true, skip = false }: { forward?: boolean; skip?: boolean } = {},
-): TransitionConfig {
-  if (skip) return { duration: 0 };
-  if (isReducedMotion()) return crossfade(node);
-  const x = move('lg') * (forward ? 1 : -1);
-  return {
-    duration: duration('base'),
-    easing: easing('out'),
-    css: (t, u) => `transform: translateX(${u * x}px); opacity: ${t}`,
   };
 }
 
@@ -127,7 +116,7 @@ export function pop(node: Element, params: MotionParams = {}): TransitionConfig 
 }
 
 /**
- * A chip that the user adds rises by --move-chip (3 px) while it fades in (150 ms, ease-out).
+ * A chip that the user adds rises by --move-sm (4 px) while it fades in (150 ms, ease-out).
  * `in:chipIn` on the chip inside a `{#each}` keyed by the chip's value (a reload of the same
  * chips then creates nothing): Svelte plays a local intro only in a block that ran before,
  * so the chips a field mounts with are simply there, and only an added chip rises.
@@ -135,7 +124,7 @@ export function pop(node: Element, params: MotionParams = {}): TransitionConfig 
 export function chipIn(node: Element, params: MotionParams = {}): TransitionConfig {
   if (params.on === false) return {};
   if (isReducedMotion()) return crossfade(node);
-  const y = move('chip');
+  const y = move('sm');
   return {
     duration: duration(params.duration ?? 'base'),
     easing: easing(params.easing ?? 'out'),
@@ -152,7 +141,8 @@ export interface FlipParams extends MotionParams {
   count?: number;
 }
 
-/** FLIP reordering (`animate:flip={{ count: rows.length }}`). */
+/** FLIP reordering, a glide like every other (180 ms, ease-out):
+ *  `animate:flip={{ count: rows.length }}`. */
 export function flip(
   node: Element,
   fromTo: { from: DOMRect; to: DOMRect },
@@ -163,8 +153,8 @@ export function flip(
   const still =
     (params.count ?? 0) > FLIP_LIMIT || (offscreen(fromTo.from) && offscreen(fromTo.to));
   return svelteFlip(node, fromTo, {
-    duration: still ? 0 : duration(params.duration ?? 'base'),
-    easing: easing(params.easing ?? 'standard'),
+    duration: still ? 0 : duration(params.duration ?? 'slow'),
+    easing: easing(params.easing ?? 'out'),
     delay: params.delay ?? 0,
   });
 }
@@ -181,7 +171,7 @@ export function rowEnter(row: Element): void {
   const reduced = isReducedMotion();
   const from: Keyframe = reduced
     ? { opacity: 0 }
-    : { opacity: 0, transform: `translateY(${move('md')}px)` };
+    : { opacity: 0, transform: `translateY(${move('sm')}px)` };
   const to: Keyframe = reduced ? { opacity: 1 } : { opacity: 1, transform: 'none' };
   const motion = play(row, [from, to], {
     duration: 'base',
@@ -203,14 +193,15 @@ export function dialogIn(node: Element): TransitionConfig {
   return { duration: duration('slow'), easing: easing('out'), css: (t) => lifted(t, y) };
 }
 
-/** Dialog exit: it sinks by --move-md while it fades (100 ms, ease-in). */
+/** Dialog exit: it sinks by --move-sm while it fades (100 ms, ease-in). */
 export function dialogOut(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('md');
+  const y = move('sm');
   return { duration: duration('fast'), easing: easing('in'), css: (t) => lifted(t, y) };
 }
 
-/** The scrim behind a dialog follows the dialog's timing. */
+/** The scrim behind a dialog follows the dialog's timing (`in:scrim out:scrim`: with
+ *  `transition:` it gets no direction and would outlast its dialog). */
 export function scrim(
   node: Element,
   _params: unknown,
@@ -287,11 +278,11 @@ export interface BarBox {
   height: number;
 }
 
-/** The toast comes up from below by --move-xl while it fades in, nothing scales (180 ms,
+/** The toast comes up from below by --move-lg while it fades in, nothing scales (180 ms,
  *  ease-out; user, 2026-10-10). */
 export function toastIn(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('xl');
+  const y = move('lg');
   return {
     duration: duration('slow'),
     easing: easing('out'),
@@ -299,22 +290,22 @@ export function toastIn(node: Element): TransitionConfig {
   };
 }
 
-/** The toast goes down by --move-lg the way it came while it fades (140 ms, ease-in). */
+/** The toast goes down by --move-sm the way it came while it fades (100 ms, ease-in). */
 export function toastOut(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('lg');
+  const y = move('sm');
   return {
-    duration: duration('fade'),
+    duration: duration('fast'),
     easing: easing('in'),
     css: (t, u) => `opacity: ${t}; transform: translateY(${Math.round(u * y)}px)`,
   };
 }
 
-/** A menu drops in by --move-md (4 px) toward where it opened while it fades in (150 ms,
+/** A menu drops in by --move-sm (4 px) toward where it opened while it fades in (150 ms,
  *  ease-out): down below its button or pointer, up when it opened above. */
 export function menuIn(node: Element, { up = false }: { up?: boolean } = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  const y = move('md') * (up ? 1 : -1);
+  const y = move('sm') * (up ? 1 : -1);
   return {
     duration: duration('base'),
     easing: easing('out'),

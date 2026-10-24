@@ -105,7 +105,7 @@
           ? menuItemId(open.id, menuState.active)
           : null}
         data-testid="menu"
-        in:menuIn={{ up }}
+        in:menuIn|global={{ up }}
         out:menuOut
         onpointerleave={() => (menuState.active = -1)}
       >

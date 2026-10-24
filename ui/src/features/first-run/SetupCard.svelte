@@ -13,7 +13,7 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
-  import { stepIn } from '$lib/motion/transitions';
+  import { enterStep } from '$lib/motion/enter';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -30,9 +30,9 @@
     /** The step's body under the head (none: the head says it all). */
     body?: Snippet | null;
     actions?: Snippet | null;
-    /** The way the step came (Weiter or Zurück): its content slides in from that side while
-     *  the card itself stays, so nothing blinks between steps. */
-    forward?: boolean;
+    /** The way the step came (Weiter or Zurück; null: the first step): its content slides in
+     *  from that side while the card itself stays, so nothing blinks between steps. */
+    forward?: boolean | null;
   }
 
   let {
@@ -45,13 +45,13 @@
     top,
     body = null,
     actions = null,
-    forward = true,
+    forward = null,
   }: Props = $props();
 </script>
 
 <div class="frame">
   <div class="card">
-    <div class="content" in:stepIn={{ forward }}>
+    <div class="content" use:enterStep={{ forward }}>
       <header class="head">
         {@render top()}
         <h1

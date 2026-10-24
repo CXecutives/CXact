@@ -1,15 +1,14 @@
-// Staggered entries: the rows of a list that opens, the cards of a new job, the groups of a
-// page that opens. Each item rises by --move-lg (8 px) while it fades in (180 ms, ease-out),
-// one step later than the item before it. Web Animations started explicitly, because main.ts
-// mounts with `intro: false` and a Svelte transition would also play on every block that a
-// list or a view builds again. So they play only where the caller says an open happened (the
-// `on` flag; `animateOpen()` of pace.ts tells it), never on a re-render: the actions have no
-// update, a changed parameter replays nothing.
+// The staggered entry of a list of another place: its first rows rise by --move-lg (8 px)
+// while they fade in (180 ms, ease-out), each one --stagger-row later than the row before it.
+// Web Animations started explicitly, because main.ts mounts with `intro: false` and a Svelte
+// transition would also play on every block that a list builds again. So they play only
+// where the caller says an open happened (the `on` flag; `animateOpen()` of pace.ts tells
+// it), never on a re-render or a view switch: the action has no update, a changed parameter
+// replays nothing.
 //
-// The caps (one rule for every kind): at most --stagger-max items step, the later ones come
-// with the last of them, and the whole stagger (the last delay plus its piece) ends within
-// --stagger-span. With the tokens: 10 rows (24 ms), 4 cards (60 ms), 8 groups (30 ms). Under
-// reduced motion every item is simply there.
+// The caps: at most --stagger-max rows step, the later ones come with the last of them, and
+// the whole stagger (the last delay plus its piece) ends within --stagger-span: 10 rows,
+// 24 ms apart. Under reduced motion every row is simply there.
 //
 // For elements without a transform of their own (the animation sets it while it runs).
 
@@ -22,8 +21,6 @@ import {
   stagger,
   staggerLimit,
   staggerSpan,
-  type Move,
-  type Stagger,
 } from './motion';
 
 /**
@@ -43,33 +40,24 @@ export function staggerDelay(
   return Math.min(Math.max(0, Math.floor(index)), steps) * step;
 }
 
-export interface EnterParams {
-  /** The item's place in its stagger (0: the first, no delay). */
+/** Where a row stands in its stagger, and whether it plays at all. */
+export interface StaggerParams {
+  /** The row's place in its stagger (0: the first, no delay). */
   index?: number;
-  /** The step between two items (default the rows'). */
-  step?: Stagger;
-  /** How far it rises (default --move-lg). */
-  distance?: Move;
   /** Play at all (false: it is simply there; the caller passes whether an open happened). */
   on?: boolean;
 }
 
 /**
- * Rise `node` into its place as item `index` of a stagger. Returns the animation (null:
- * nothing plays, it is simply there). It holds the item hidden during its delay and is
- * dropped once it ends.
+ * Rise `node` into its place as row `index` of a stagger. Returns the animation (null:
+ * nothing plays, it is simply there). It holds the row hidden during its delay and is dropped
+ * once it ends.
  */
-export function enter(node: Element, params: EnterParams = {}): Animation | null {
+function enter(node: Element, params: StaggerParams = {}): Animation | null {
   if (params.on === false || isReducedMotion()) return null;
   const piece = duration('slow');
-  const delay = staggerDelay(
-    params.index ?? 0,
-    stagger(params.step ?? 'row'),
-    piece,
-    staggerSpan(),
-    staggerLimit(),
-  );
-  const y = move(params.distance ?? 'lg');
+  const delay = staggerDelay(params.index ?? 0, stagger(), piece, staggerSpan(), staggerLimit());
+  const y = move('lg');
   const motion = play(
     node,
     [
@@ -82,23 +70,29 @@ export function enter(node: Element, params: EnterParams = {}): Animation | null
   return motion;
 }
 
-/** Where an item stands in its stagger, and whether it plays at all. */
-export interface StaggerParams {
-  index?: number;
-  on?: boolean;
-}
-
-/** A row of a list that opens (24 ms apart, 8 px): `use:enterList={{ index, on: opened }}`. */
+/** A row of a list of another place: `use:enterList={{ index, on: opened }}`. */
 export const enterList: Action<Element, StaggerParams | undefined> = (node, params = {}) => {
-  enter(node, { ...params, step: 'row' });
+  enter(node, params);
 };
 
-/** A card of a job that opens (60 ms apart, 8 px): `use:enterCards={{ index, on: opened }}`. */
-export const enterCards: Action<Element, StaggerParams | undefined> = (node, params = {}) => {
-  enter(node, { ...params, step: 'card' });
-};
-
-/** A group of a page that opens (30 ms apart, 8 px): `use:enterGroups={{ index, on: opened }}`. */
-export const enterGroups: Action<Element, StaggerParams | undefined> = (node, params = {}) => {
-  enter(node, { ...params, step: 'group' });
+/**
+ * A step of the setup comes in: it fades in while sliding by --move-lg from the side it was
+ * reached from (Weiter: from the right; Zurück: from the left), 150 ms, ease-out; a
+ * cross-fade under reduced motion. `forward` null: no step change happened (the first step
+ * of the setup is simply there). An action, not a Svelte transition: the card's content
+ * comes with a block further out than its own (the setup's `{#key step}`), where a local
+ * transition never plays.
+ */
+export const enterStep: Action<Element, { forward: boolean | null }> = (node, { forward }) => {
+  if (forward === null) return;
+  const x = move('lg') * (forward ? 1 : -1);
+  const motion = play(
+    node,
+    [
+      { opacity: 0, transform: `translateX(${x}px)` },
+      { opacity: 1, transform: 'none' },
+    ],
+    { duration: 'base', easing: 'out', crossfade: true },
+  );
+  motion?.addEventListener('finish', () => motion.cancel());
 };

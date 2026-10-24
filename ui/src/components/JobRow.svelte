@@ -279,11 +279,11 @@
     gap: var(--space-2);
   }
 
-  /* Shown while the row is tooled; while the list scrolls the row rests: no tools. */
+  /* Shown while the row is tooled (their group fades in and out, one fade); while the list
+     scrolls the row rests: no tools. */
   .tool {
     display: inline-flex;
     opacity: 0;
-    transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
   .tooled:where(:not([data-still])) .tool {

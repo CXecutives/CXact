@@ -6,8 +6,8 @@
   (the Profil-Ordner and "Alles zurücksetzen", each one sentence and its buttons). Every row
   is a SettingRow with a hairline between rows; every text button of a row is the same
   outlined button with its glyph. This file only renders the list and runs its commands;
-  what a row is, says and does is one entry in cards.ts. The groups rise 30 ms apart when
-  the page opens (lib/motion enterGroups), never on a change.
+  what a row is, says and does is one entry in cards.ts. The page is there at once when it
+  opens.
 
   A switch moves at once (the state is patched before the save) and is its own answer.
   Errors stay a note at the end of their group, which unfolds (the groups below glide down
@@ -33,7 +33,6 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, Way } from '$lib/ipc/types';
-  import { enterGroups } from '$lib/motion/enter';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
@@ -215,9 +214,9 @@
       {#if cfg.dryRun}
         <StateBox heading={t.settings.dryRun} testid="dry-run-note" />
       {/if}
-      {#each SECTIONS as section, index (section.id)}
+      {#each SECTIONS as section (section.id)}
         {@const feedback = notes[section.id] ?? null}
-        <div class="group" use:enterGroups={{ index }}>
+        <div class="group">
           <Section
             id="settings-{section.id}"
             name={section.id}

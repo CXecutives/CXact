@@ -1231,9 +1231,7 @@ test.describe('the cards', () => {
     expect(Math.abs(reqs[0]! - reqs[1]!)).toBeLessThan(1);
   });
 
-  test('a new job: the cards rise one after the other, not while browsing fast', async ({
-    page,
-  }) => {
+  test('a new job: its cards are there at once, nothing cascades or fades', async ({ page }) => {
     await open(page, WIN);
     await settle(page);
     // Every animation the cards' slots start.
@@ -1245,34 +1243,28 @@ test.describe('the cards', () => {
         this: Element,
         ...args: Parameters<Element['animate']>
       ) {
-        if (this.classList.contains('slot'))
-          started.push(String(args[1] && typeof args[1] === 'object' ? args[1].delay : 0));
+        if (this.classList.contains('slot')) started.push('slot');
         return original.apply(this, args);
       };
     });
     const started = (): Promise<string[]> =>
       page.evaluate(() => [...(window as unknown as { started: string[] }).started]);
-    await row(page, 'freelancermap-2801').click();
-    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
-    await expect.poll(started).toEqual(['0', '60', '120', '180']);
-    await page.waitForTimeout(600);
-    // Two jobs within a quarter second: the second simply stands there.
-    await page.evaluate(() => ((window as unknown as { started: string[] }).started.length = 0));
-    await row(page, 'freelancermap-2802').click();
-    await row(page, 'freelancermap-2803').click();
-    await expect(stage(page).getByTestId('reader-title')).toHaveText(
-      await row(page, 'freelancermap-2803').locator('.title').innerText(),
-    );
-    await page.waitForTimeout(300);
-    expect((await started()).length).toBeLessThanOrEqual(4);
+    // The first job, then another one: every card stands at once.
+    for (const key of ['freelancermap-2801', 'freelancermap-2802']) {
+      await row(page, key).click();
+      await expect(stage(page).getByTestId('reader-title')).toHaveText(
+        await row(page, key).locator('.title').innerText(),
+      );
+      await page.waitForTimeout(300);
+      expect(await started(), key).toEqual([]);
+      await page.waitForTimeout(300);
+    }
     // The same job loading again swaps at once.
-    await page.waitForTimeout(400);
-    await page.evaluate(() => ((window as unknown as { started: string[] }).started.length = 0));
     await stage(page).getByTestId('reader-title').click();
     await page.evaluate(() =>
       window.__harness.emit({
         type: 'jobUpdated',
-        job: window.__harness.job({ portal: 'freelancermap', id: '2803' })!,
+        job: window.__harness.job({ portal: 'freelancermap', id: '2802' })!,
         fresh: false,
       }),
     );

@@ -1003,18 +1003,19 @@
      (user, 2026-09-24): every control answers without waiting for an animation. Hover-in
      takes 80 ms (--dur-hover on the :hover rule), hover-out relaxes in 150 ms (--dur-base on
      the base rule), a press darkens in 60 ms (nothing scales, moves or deforms), the release
-     settles in 150 ms. Colour changes 100 ms, entries 150 to 180 ms, every glide (list
-     selection, nav pill, segment and toggle thumbs, chevrons) 180 ms with ease-out, the ring
+     settles in 150 ms. Colour changes 100 ms. Three curves: entries ease out (150 to 180 ms,
+     rising 4 or 8 px), exits ease in (60 to 100 ms), and every glide (list selection, nav pill,
+     segment and toggle thumbs, chevrons, rows that move) takes 180 ms with ease-out. The ring
      fill and its count 400 ms. Only transform and opacity move (and colour and
-     stroke-dashoffset); nothing overshoots. Entries stagger only when a view, a list or a new
-     job opens, never on a re-render, and a whole stagger ends within --stagger-span
-     (lib/motion/transitions.ts states the rules). */
+     stroke-dashoffset); nothing overshoots. Motion only where something new comes: a list of
+     another place, a new job's ring, an insert or a removal, a state change; a view switch,
+     a re-render or a job swap shows the new content at once (lib/motion/transitions.ts
+     states the rules). */
   --dur-instant: 60ms;
   --dur-hover: 80ms;
   --dur-fast: 100ms;
   --dur-base: 150ms;
-  /* A fade beside a move: a glide's highlight appearing or hiding, a checkbox's fill, a toast
-     leaving. */
+  /* A fade beside a move: a glide's highlight appearing or hiding, a checkbox's fill. */
   --dur-fade: 140ms;
   --dur-slow: 180ms;
   /* The ring's fill and its count. */
@@ -1025,13 +1026,10 @@
   --dur-toast: 4000ms;
   --dur-toast-action: 10000ms;
   --dur-crossfade: 100ms;
-  /* Staggered entries (lib/motion/enter.ts): one step per item, rows of a list that opens,
-     the cards of a new job, the groups of a page that opens. At most --stagger-max items
-     step; the later ones come with the last of them, and the whole stagger (the last delay
-     plus its piece) ends within --stagger-span; so 10 rows, 4 cards, 8 groups. */
+  /* The staggered rows of a list of another place (lib/motion/enter.ts): one step per row,
+     at most --stagger-max rows step, the later ones come with the last of them, and the
+     whole stagger (the last delay plus its piece) ends within --stagger-span. */
   --stagger-row: 24ms;
-  --stagger-card: 60ms;
-  --stagger-group: 30ms;
   --stagger-max: 10;
   --stagger-span: 400ms;
   --delay-tooltip: 350ms;
@@ -1043,19 +1041,20 @@
   --delay-placeholder: 300ms;
   /* Hover stays suppressed this long after the last wheel or scroll event (input.ts). */
   --scroll-idle: 120ms;
+  /* Colour changes and hover. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Entries and glides: a soft ease-out (cubic), which starts quick without a jump. */
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  /* Exits. */
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
-  /* Everything that slides or settles: indicators, thumbs, chevrons, the release after a
-     press, rolling counts. */
-  --move-xs: 1px;
-  --move-sm: 2px;
-  /* A chip that the user adds rises by this. */
-  --move-chip: 3px;
+  /* The two travels: small things (a menu, a notice, a chip, a row that arrives, an exit)
+     move 4 px, large ones (a dialog, a toast, the save bar, the rows of a list, a setup
+     step) 8 px. */
+  --move-sm: 4px;
   --move-lg: 8px;
-  /* A toast coming up from below (design round 7). */
-  /* The one icon that moves on hover: the arrow of a back or next button nudges by --move-sm
-     (Button). */
+  /* The one icon that moves on hover, not a travel: the arrow of a button with words leans
+     the way it points (Button). */
+  --move-nudge: 2px;
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
      motion. */
   --turn-half: 180deg;
@@ -1100,12 +1099,9 @@
   --dur-slow: 0ms;
   --dur-reveal: 0ms;
   --stagger-row: 0ms;
-  --stagger-card: 0ms;
-  --stagger-group: 0ms;
   --stagger-span: 0ms;
-  --move-xs: 0px;
   --move-sm: 0px;
-  --move-chip: 0px;
   --move-lg: 0px;
+  --move-nudge: 0px;
   --loop-state: paused;
 }

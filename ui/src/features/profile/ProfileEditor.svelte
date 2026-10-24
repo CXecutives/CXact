@@ -8,9 +8,9 @@
   wide the label stands above the control. A tag field fills the control's column, a number
   is as wide as its unit needs (170 for euros, 130 for years), a choice of a few as wide as
   its options, Mindestlaufzeit a select. Kompetenzen and Sprachen are boxes whose rows are
-  their entries (CompetenceList, LanguageList). The groups rise in one after the other when
-  the page opens (not in the setup, whose step slides in). Mindestgehalt unfolds while
-  Festanstellung or Zeitarbeit is chosen. A number is formatted when its field is left.
+  their entries (CompetenceList, LanguageList). The page is there at once when it opens (a
+  view switch brings nothing new to show off). Mindestgehalt unfolds while Festanstellung or
+  Zeitarbeit is chosen. A number is formatted when its field is left.
   A required field that is still empty carries `data-missing` on its row, a required list
   on its group (`missing`, from ProfileView: on the Profil always, in the setup once Weiter
   asked): the field's edge and label turn red, a list's group title (tokens.css). A value
@@ -45,7 +45,6 @@
   import type { ContractKey } from '$lib/ipc/api';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
-  import { enterGroups } from '$lib/motion/enter';
   import { unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
@@ -70,7 +69,7 @@
     fieldError: FieldError | null;
     /** The required fields still empty that are marked. */
     missing: readonly string[];
-    /** The setup's page: no "Häufig verlangt", no rise of the groups, Esc does nothing. */
+    /** The setup's page: no "Häufig verlangt", Esc does nothing. */
     setup?: boolean;
     onsave: () => void;
     ondiscard: () => void;
@@ -233,13 +232,12 @@
   use:formKeys={untouched && !setup ? { save: onsave, cancel: ondiscard } : { save: onsave }}
   data-testid="profile-form"
 >
-  {#each SECTIONS as section, index (section.id)}
+  {#each SECTIONS as section (section.id)}
     {@const list = 'list' in section ? section.list : null}
     <div
       class="group"
       data-field={list ?? undefined}
       data-missing={list !== null && isMissing(list) ? '' : undefined}
-      use:enterGroups={{ index, on: !setup }}
     >
       <Section
         id="profile-section-{section.id}"
