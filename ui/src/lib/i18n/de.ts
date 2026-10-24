@@ -789,7 +789,7 @@ export const de = {
       ads: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
       rescore: 'Jobs werden neu bewertet',
-      waiting: (portal: string) => `Wartet auf die Anmeldung bei ${portal}`,
+      waiting: (portal: string) => `Wartet auf ${portal}`,
       count: (done: number, total: number) => `${n(done)} von ${n(total)}`,
       signIn: 'Anmelden',
     },
@@ -1370,6 +1370,14 @@ export const de = {
     /** A portal's sign-in ran out, or its sign-in window waits for the user. */
     signInExpired: 'Anmeldung abgelaufen',
     signInWaiting: 'Wartet auf die Anmeldung',
+    /** A portal's problem as the word of its line; its sentence is the quiet line under it. */
+    problem: {
+      paused: 'Pausiert',
+      emptyMails: 'Alert-Mails ohne Jobs',
+      pages: 'Seiten verändert',
+      quiet: 'Alert-Mail bleibt aus',
+      failed: 'Fehlgeschlagen',
+    },
     connected: 'Verbunden',
     /** The row of the mailbox while none is connected. */
     notConnected: 'Kein Postfach verbunden',

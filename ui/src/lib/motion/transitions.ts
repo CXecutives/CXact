@@ -238,17 +238,38 @@ export function rowCollapse(node: Element, { on }: CollapseParams): TransitionCo
  * Something that comes and goes in the flow (a line under the list header, the minimum salary,
  * the mailbox form, a row of the profile): it unfolds to its height while it fades in (150 ms,
  * ease-out) and folds away the same way back, so what is below glides instead of jumping. A
- * cross-fade under reduced motion. `transition:unfold` on it.
+ * cross-fade under reduced motion. `transition:unfold` on it. While it moves it carries
+ * `data-unfolding` (afterUnfold): what scrolls to a part of it waits for its height.
  */
 export function unfold(node: Element, params: MotionParams = {}): TransitionConfig {
   if (params.on === false) return {};
   if (isReducedMotion()) return crossfade(node);
   const height = node.getBoundingClientRect().height;
+  node.setAttribute(UNFOLDING, '');
+  const done = (): void => node.removeAttribute(UNFOLDING);
+  node.addEventListener('introend', done, { once: true });
+  node.addEventListener('outroend', done, { once: true });
   return {
     duration: duration('base'),
     easing: easing('out'),
     css: (t) => `overflow: hidden; height: ${Math.round(t * height)}px; opacity: ${t}`,
   };
+}
+
+const UNFOLDING = 'data-unfolding';
+
+/**
+ * Runs `then` once whatever unfolds around `node` has its height (`unfold`): a part scrolled
+ * into view while its block is still a few pixels high stays out of view, and the scroll
+ * shifts the clipped block's own content. Waits for the transitions of the current update to
+ * start first.
+ */
+export function afterUnfold(node: Element, then: () => void): void {
+  queueMicrotask(() => {
+    const block = node.closest(`[${UNFOLDING}]`);
+    if (block === null) then();
+    else block.addEventListener('introend', () => afterUnfold(node, then), { once: true });
+  });
 }
 
 /** Where the job list's highlight stands: its top in the list and its height (px). */

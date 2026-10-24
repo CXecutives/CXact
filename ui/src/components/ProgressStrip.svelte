@@ -2,9 +2,10 @@
   The progress of a run under the list's head (the round 10 draft): the cream ground with a
   hairline, 10 round, 10 12 inside. A coral pulse (8, it breathes by its opacity, no glow) and
   the step in navy words (13/540: "Portale werden durchsucht", "Jobs werden neu bewertet",
-  "Wartet auf die Anmeldung bei freelance.de"), at the right the count in muted tabular
-  figures ("3 von 8"), and under them the meter (white track on the cream, navy fill). A run
-  that waits for the user carries its one button at the line's end (`action`: Anmelden).
+  "Wartet auf freelance.de"), at the right the count in muted tabular figures ("3 von 8"),
+  and under them the meter (white track on the cream, navy fill). A run that waits for the
+  user carries its one button at the line's end (`action`: Anmelden), which keeps the line's
+  height.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -82,8 +83,11 @@
     font-variant-numeric: var(--numeric);
   }
 
+  /* The link keeps its hit area but not its height: the strip keeps its height while it
+     waits. */
   .action {
     display: flex;
     flex: none;
+    margin-block: calc((var(--leading-sm) - var(--control-sm)) / 2);
   }
 </style>

@@ -5,9 +5,9 @@
   durchsucht", "Anzeigen werden geladen", "Jobs werden bewertet"; a rescore after a save "Jobs
   werden neu bewertet"), at the right how far it is ("3 von 8": the portals that are done,
   the ads loaded, the jobs scored), and the meter, which never moves back
-  (lib/state/run.svelte.ts). A run that waits for a sign-in says so ("Wartet auf die
-  Anmeldung bei freelance.de") with "Anmelden", a link at the line's end (the strip keeps its
-  height). What a search brought is the toast at its end,
+  (lib/state/run.svelte.ts). A run that waits for a sign-in says so ("Wartet auf
+  freelance.de", short enough for the narrowest list with its scrollbar) with "Anmelden", a
+  link at the line's end (the strip keeps its height). What a search brought is the toast at its end,
   and so is what went wrong. "Abbrechen" stands in the header. The strip unfolds and folds
   away (lib/motion unfold), 10 under the search; its rows never flicker.
 -->

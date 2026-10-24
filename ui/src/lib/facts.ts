@@ -25,8 +25,9 @@ export const TERM_ROWS = [
   'workload',
   'experience',
   'deadline',
-  'contact',
   'portal',
+  // Last: it spans both columns, so every row above it keeps its pair.
+  'contact',
 ] as const satisfies readonly TermKey[];
 
 const factsOf = (job: JobView): KeyFacts | null => job.match?.facts ?? null;

@@ -55,7 +55,7 @@
   import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
-  import { rowEnter, unfold } from '$lib/motion/transitions';
+  import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { NO_FILTER } from '$lib/state/filter';
@@ -265,17 +265,22 @@
   });
 
   // The open job after a move or a re-sort: once its row is mounted it scrolls into view (and
-  // takes the focus when the focus was on the row that left).
+  // takes the focus when the focus was on the row that left). A row in a section that is
+  // still unfolding scrolls once the section has its height.
   $effect(() => {
     const want = jobs.reveal;
     void shown;
+    void excludedOpen;
+    void unscoredOpen;
     if (want === null) return;
     untrack(() => {
       const row = list?.querySelector<HTMLElement>(`[data-key="${CSS.escape(want.key)}"] .row`);
       if (!row) return;
       jobs.reveal = null;
       if (want.focus) row.focus({ preventScroll: true });
-      row.scrollIntoView({ block: 'nearest' });
+      afterUnfold(row, () => {
+        if (row.isConnected) row.scrollIntoView({ block: 'nearest' });
+      });
     });
   });
 

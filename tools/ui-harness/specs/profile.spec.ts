@@ -591,13 +591,17 @@ test('no evaluation left today: the CV buttons say so ahead of the click, a drop
   expect(await y(error)).toBeLessThan(await y(page.getByTestId('section-job')));
 });
 
-test('a CV failure on the Profil offers its way out under the head', async ({ page }) => {
+test('a CV failure on the Profil says why under the head, whose button is the way out', async ({
+  page,
+}) => {
   await profile(page, '&cv=offline');
   await pickCv(page);
   const error = page.getByTestId('cv-error');
+  await expect(error).toContainText(T.profile.cvFailed);
   await expect(page.getByTestId('cv-error-text')).toHaveText(T.profile.cvError.offline);
-  await expect(error.getByTestId('cv-pick')).toHaveText(T.profile.pickFile);
-  await error.getByTestId('cv-pick').click();
+  // No second "Datei auswählen" under the head's button that opens the same dialog.
+  await expect(error.getByTestId('cv-pick')).toHaveCount(0);
+  await page.getByTestId('profile-from-cv').click();
   await expect.poll(async () => (await calls(page, 'profile_from_cv')).length).toBe(2);
 });
 
@@ -723,7 +727,8 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await expect(empty).toContainText(
     'Die Datei ist beschädigt (Zeile 12). Ein neues Profil ersetzt die Datei.',
   );
-  await empty.getByTestId('profile-folder').click();
+  // Its folder is the page's own action, in the head.
+  await page.getByTestId('profile-head').getByTestId('profile-folder').click();
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
     target: { kind: 'profileDir' },
   });

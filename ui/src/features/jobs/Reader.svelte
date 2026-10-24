@@ -302,25 +302,28 @@
               <!-- No tooltip on its icon (user decision 2026-09-27). A missing must that went
                    into the profile trades its cross for a quiet check until the next score
                    (the toast says so in words). -->
+              {#snippet plus()}
+                {#if term !== null}
+                  <span class="reason-action">
+                    <Button
+                      variant="ghost"
+                      iconOnly
+                      icon="add"
+                      label={t.reader.addTo[term.field](term.term)}
+                      testid="add-to-profile"
+                      onclick={() => void add(term)}
+                    />
+                  </span>
+                {/if}
+              {/snippet}
               <ReasonItem
                 kind={reason.kind}
                 optional={reason.weight === 'nice' && reason.kind !== 'met'}
                 label={reasonText(reason)}
                 settled={added ? t.reader.added : null}
+                after={term !== null && !added ? plus : null}
                 testid="reason"
               />
-              {#if term !== null && !added}
-                <span class="reason-action">
-                  <Button
-                    variant="ghost"
-                    iconOnly
-                    icon="add"
-                    label={t.reader.addTo[term.field](term.term)}
-                    testid="add-to-profile"
-                    onclick={() => void add(term)}
-                  />
-                </span>
-              {/if}
             </li>
           {/each}
         </ul>
@@ -407,6 +410,13 @@
     padding: var(--head-pad) var(--reader-pad-x) var(--reader-pad-end);
   }
 
+  /* A narrow window: the sides of the pages (Page). */
+  @media (width < 560px) {
+    .column {
+      padding-inline: var(--page-side-narrow);
+    }
+  }
+
   .slot {
     min-width: 0;
   }
@@ -423,19 +433,19 @@
     gap: var(--space-8) var(--space-20);
   }
 
-  /* A requirement and, for a missing must, its "+" into the profile right after its words. */
+  /* A requirement and, for a missing must, its "+" into the profile right after its last
+     word (in the words' line, ReasonItem `after`). */
   .reason-line {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-4);
     min-width: 0;
   }
 
   /* The "+" keeps its hit area but not its height: the line stays a line of text. */
   .reason-action {
     display: inline-flex;
-    flex: none;
     margin-block: calc((var(--leading-md) - var(--control-icon)) / 2);
+    margin-inline-start: var(--space-4);
+    vertical-align: top;
   }
 
   .quiet {

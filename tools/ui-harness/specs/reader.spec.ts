@@ -48,8 +48,8 @@ const ROWS = [
   'Auslastung',
   'Erfahrung',
   'Bewerben bis',
-  'Kontakt',
   'Gefunden',
+  'Kontakt',
 ];
 
 /** Start the app and open a job of the one list. */

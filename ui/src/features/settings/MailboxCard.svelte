@@ -7,6 +7,7 @@
   the address as a pair, the password, then "Abbrechen" and the primary "Verbinden" at the
   right in the order of the OS (decision 19), each at least the pair's width. Enter
   connects, Esc and Abbrechen fold it away and give the focus back to the row's button.
+  Unfolded, the form glides into view as far as needed.
   While Verbinden signs in and counts it spins in its own width; Abbrechen and Esc stay live
   and stop the check (`cancel_run`).
   The state is the answer to a saved mailbox ("Verbunden", green; no note, no toast). After a
@@ -28,6 +29,7 @@
   import { formKeys } from '$lib/input/input';
   import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
+  import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { primaryFirst } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
@@ -185,7 +187,8 @@
   </SettingRow>
 {/if}
 {#if editing}
-  <div class="fold" transition:unfold>
+  <!-- Unfolded, the form comes into view whole (it may open below the window's edge). -->
+  <div class="fold" transition:unfold onintroend={() => editor && glideIntoView(editor)}>
     <div class="edit" bind:this={editor} use:formKeys={{ save: () => void connect(), cancel }}>
       <MailboxForm bind:this={form} bind:busy={checking} autofocus />
       <div class="buttons" data-testid="mailbox-buttons">

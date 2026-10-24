@@ -335,7 +335,7 @@
 </script>
 
 {#snippet notes()}
-  {#if !setup}<CvProblem onpick={() => void fillFromCv()} />{/if}
+  {#if !setup}<CvProblem />{/if}
   {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
 {/snippet}
 
@@ -365,6 +365,7 @@
       form={editor.origin !== null}
       dirty={editor.dirty}
       oncv={() => void fillFromCv()}
+      onfolder={editor.origin === null && profile?.parseError ? openFolder : null}
     />
   {/snippet}
   {#snippet bar()}
@@ -383,11 +384,9 @@
         text={profile?.parseError
           ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
           : t.profile.noneText}
-        unreadable={(profile?.parseError ?? null) !== null}
         note={note?.() ?? null}
         onfilled={(info) => filled(info.form)}
         onempty={() => void create()}
-        onopenfolder={openFolder}
       />
     {:else}
       {@render notes()}

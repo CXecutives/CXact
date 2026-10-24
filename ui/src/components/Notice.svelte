@@ -87,8 +87,9 @@
     in:rise={{ distance: 'sm' }}
     out:fade
   >
+    <!-- 14 beside the 13 px sentence, the inline size (centred on its 18 px line). -->
     <span class="icon" data-testid={signTestid ?? undefined}
-      ><Icon name={ICONS[tone]} size="sm" /></span
+      ><Icon name={ICONS[tone]} size="xs" /></span
     >
     <p class="text" data-testid={textTestid ?? undefined}>
       {#if children}{@render children()}{:else}{text}{/if}

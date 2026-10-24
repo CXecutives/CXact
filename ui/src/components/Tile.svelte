@@ -108,9 +108,11 @@
     letter-spacing: var(--tracking-tight);
   }
 
+  /* No word alone on its last line (like every sentence, base.css). */
   .way .note {
     color: var(--text-muted);
     font: var(--type-sm);
+    text-wrap: pretty;
   }
 
   /* The recommended way: coral fill, edge and glyph. */
@@ -162,6 +164,7 @@
   .drop .note {
     color: var(--text-subtle);
     font: var(--type-sm);
+    text-wrap: pretty;
   }
 
   .drop:hover,

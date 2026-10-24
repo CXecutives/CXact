@@ -388,15 +388,18 @@ test('portals: a stored sign-in the fetch does not use looks like none until it 
   page,
 }) => {
   await settings(page, `${WIN}&scenario=session-left`);
-  // Anmelden only lets the fetch use the stored sign-in: no sign-in window.
-  await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
+  // With the portal off the stored sign-in shows, so it can be removed.
+  await expect(await reveal(page, page.getByTestId('sign-out-freelance'))).toBeVisible();
+  // Switched on it looks like none, and Anmelden only lets the fetch use it: no sign-in
+  // window.
+  await page.getByTestId('toggle-enabled-freelance').click();
+  await page.getByTestId('sign-in-freelance').click();
   await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   expect(await calls(page, 'portal_login')).toHaveLength(0);
   expect((await saved(page)).at(-1)?.portals[0]?.loginEnabled).toBe(true);
+  // Off, Abmelden removes it.
   await settings(page, `${WIN}&scenario=session-left`);
-  // With the portal off the stored sign-in shows, so it can be removed.
-  await (await reveal(page, page.getByTestId('toggle-enabled-freelance'))).click();
-  await page.getByTestId('sign-out-freelance').click();
+  await (await reveal(page, page.getByTestId('sign-out-freelance'))).click();
   await expect(page.getByTestId('sign-out-freelance')).toHaveCount(0);
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
@@ -411,7 +414,9 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await expect(status.locator('.status')).toHaveClass(/warning/);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
   const mails = page.getByTestId('health-freelance');
-  await expect(mails.locator('.text')).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
+  // The word in its line, the sentence quiet under it.
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.emptyMails);
+  await expect(mails).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
   // Its way out takes the place of "Alert anlegen", in its width.
   await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
   await page.getByTestId('alert-mail-freelance').click();
@@ -431,7 +436,8 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   // freelance.de sent its last one nine days before the last fetch.
   await settings(page, `${WIN}&scenario=quiet-alert`);
   const quiet = await reveal(page, page.getByTestId('alert-quiet-freelance'));
-  await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
+  await expect(quiet).toHaveText(T.settings.alertQuiet(9));
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.quiet);
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
   await expect(page.getByTestId('check-alert-freelance')).toHaveAccessibleName(
     T.settings.checkAlert,

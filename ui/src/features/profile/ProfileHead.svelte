@@ -5,7 +5,8 @@
   the CV is evaluated a 16 px spinner and "Wird von einer KI ausgewertet" (13 muted) stand in
   its place, in the same width (both share one cell, the wider sets it). It waits, its
   tooltip saying why, while the form holds changes or no evaluation is left today. What went
-  wrong with the CV stands under the head as a state box (ProfileView).
+  wrong with the CV stands under the head as a state box (ProfileView). A file that no longer
+  reads has "Ordner öffnen" there instead, its folder at hand.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -22,10 +23,22 @@
     dirty: boolean;
     /** The file dialog of the CV. */
     oncv: () => void;
+    /** The folder of a file that no longer reads (no form): the head's action. */
+    onfolder?: (() => void) | null;
   }
 
-  let { heading, form, dirty, oncv }: Props = $props();
+  let { heading, form, dirty, oncv, onfolder = null }: Props = $props();
 </script>
+
+{#snippet folder()}
+  <Button
+    variant="secondary"
+    icon="folder"
+    label={t.common.openFolder}
+    testid="profile-folder"
+    onclick={() => onfolder?.()}
+  />
+{/snippet}
 
 {#snippet actions()}
   <span class="cv" class:busy={fromCv.busy}>
@@ -49,7 +62,7 @@
 <PageHeader
   {heading}
   headingTestid="profile-heading"
-  actions={form ? actions : null}
+  actions={form ? actions : onfolder ? folder : null}
   column="page"
   testid="profile-head"
 />
