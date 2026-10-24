@@ -1,11 +1,12 @@
-// The motion layer's own rules (lib/motion): the caps of a stagger, checked on its pure
-// function with the values of tokens.css (no page needed), and the motion tokens that reduced
-// motion zeroes, in the page.
+// The motion layer's own rules (lib/motion): the caps of a stagger and the pace of browsing,
+// checked on their pure functions with the values of tokens.css (no page needed), and the
+// motion tokens that reduced motion zeroes, in the page.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test as pure } from '@playwright/test';
 import { staggerDelay } from '../../../ui/src/lib/motion/enter';
+import { createPace } from '../../../ui/src/lib/motion/pace';
 import { expect, open, test } from './fixtures';
 import { WIN } from './helpers';
 
@@ -43,6 +44,44 @@ pure('a stagger steps through 10 rows, 4 cards or 8 groups and ends within its s
   }
   // Reduced motion zeroes the steps: everything at once.
   expect(new Set(delays(0))).toEqual(new Set([0]));
+});
+
+pure('an open soon after the last one, or with a key held, does not animate', () => {
+  let now = 0;
+  const frames: (() => void)[] = [];
+  const pace = createPace({
+    now: () => now,
+    gap: () => value('--delay-browse'),
+    nextFrame: (callback) => frames.push(callback),
+  });
+  const at = (ms: number): void => {
+    for (const callback of frames.splice(0)) callback();
+    now = ms;
+  };
+  expect(pace.animateOpen()).toBe(true);
+  // The list and the job view ask for the same open in one frame: one answer.
+  expect(pace.animateOpen()).toBe(true);
+  expect(pace.browsingFast()).toBe(false);
+  at(100);
+  expect(pace.browsingFast()).toBe(true);
+  expect(pace.animateOpen()).toBe(false);
+  expect(pace.animateOpen()).toBe(false);
+  at(400);
+  expect(pace.browsingFast()).toBe(false);
+  expect(pace.animateOpen()).toBe(true);
+  // A held arrow key repeats its keydown: every open while it repeats is fast.
+  at(1000);
+  pace.noteKey(true);
+  at(1100);
+  expect(pace.animateOpen()).toBe(false);
+  // Let go: no repeat for longer than the gap.
+  at(1500);
+  expect(pace.animateOpen()).toBe(true);
+  // Pressed anew (no repeat): not held.
+  at(2000);
+  pace.noteKey(true);
+  pace.noteKey(false);
+  expect(pace.animateOpen()).toBe(true);
 });
 
 test('reduced motion zeroes the steps, the fades and the travel of the motion tokens', async ({

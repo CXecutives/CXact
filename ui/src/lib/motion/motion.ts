@@ -25,6 +25,7 @@ interface Values {
   staggerMax: number;
   staggerSpan: number;
   tooltipDelay: number;
+  browseGap: number;
 }
 
 const DURATIONS: readonly Duration[] = [
@@ -107,6 +108,7 @@ function read(): Values {
     staggerMax: tokenNumber('--stagger-max'),
     staggerSpan: tokenMs('--stagger-span'),
     tooltipDelay: tokenMs('--delay-tooltip'),
+    browseGap: tokenMs('--delay-browse'),
   };
 }
 
@@ -172,19 +174,27 @@ export function tooltipDelay(): number {
   return current().tooltipDelay;
 }
 
+/** Two opens closer than this (ms) are fast browsing: the later one does not animate. */
+export function browseGap(): number {
+  return current().browseGap;
+}
+
 export interface PlayOptions {
   duration: Duration;
   easing?: Easing;
   delay?: number;
   /** Kept at --dur-crossfade under reduced motion (opacity-only animations). */
   crossfade?: boolean;
+  /** `add`: the keyframes add to the element's own style (a glide by a delta). */
+  composite?: CompositeOperation;
 }
 
 /**
  * The only use of the Web Animations API in the UI. Keyframes may animate transform,
- * opacity and stroke-dashoffset only, and the height of the job list's selection bar (a
- * 3 px element out of the flow, `barSlide`). Under reduced motion the animation jumps to
- * its end state unless it is a cross-fade.
+ * opacity and stroke-dashoffset only, and the size of an element out of the flow that
+ * glides to another box (`glide`, the job list's selection bar `barSlide`): its own box is
+ * laid out, nothing around it. Under reduced motion the animation jumps to its end state
+ * unless it is a cross-fade.
  */
 export function play(
   element: Element,
@@ -196,6 +206,7 @@ export function play(
     duration: ms,
     delay: reduced ? 0 : (options.delay ?? 0),
     fill: 'both',
+    composite: options.composite ?? 'replace',
   };
   if (ms === 0 && timing.delay === 0) return null;
   // WAAPI takes the CSS easing string of the token as it is.

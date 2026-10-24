@@ -710,6 +710,9 @@
   --stagger-max: 10;
   --stagger-span: 400ms;
   --delay-tooltip: 350ms;
+  /* Two opens (a job, a list) closer than this are fast browsing, a held arrow key too: the
+     later one is simply there, no stagger, no ring refill, no glide (lib/motion/pace.ts). */
+  --delay-browse: 250ms;
   /* A loading placeholder shows only once a load has taken this long (a quicker load
      never flashes one). */
   --delay-placeholder: 300ms;
