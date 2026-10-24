@@ -22,16 +22,23 @@ const CV = 'scenario=first-run&step=reading&cv=';
 
 export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[] }[] = [
   {
+    heading: 'Bausteine',
+    entries: [
+      { label: 'Bedienelemente', query: 'sheet=controls' },
+      { label: 'Flächen', query: 'sheet=surfaces' },
+    ],
+  },
+  {
     heading: 'Einrichtung',
     entries: [
       { label: 'Erster Start (Demo)', query: 'scenario=demo' },
-      { label: 'Willkommen', query: `${SETUP}way` },
+      { label: 'Willkommen', query: 'scenario=first-run' },
+      { label: 'Profil anlegen', query: `${SETUP}way` },
       { label: 'Upload', query: `${SETUP}upload` },
       { label: 'Auswertung', query: `${SETUP}reading` },
-      { label: 'Prüfen (nach KI)', query: 'scenario=setup-cv&step=review' },
-      { label: 'Selbst ausfüllen', query: `${SETUP}self` },
+      { label: 'Dein Profil (nach KI)', query: 'scenario=setup-cv&step=profile' },
+      { label: 'Dein Profil (selbst)', query: `${SETUP}profile&way=self` },
       { label: 'Postfach', query: 'scenario=setup-profile' },
-      { label: 'Postfach verbunden', query: 'scenario=setup-mailbox&step=alerts' },
       { label: 'Fertig', query: 'scenario=setup-mailbox' },
       { label: 'Fertig ohne Postfach', query: 'scenario=setup-profile&step=done' },
     ],
