@@ -1,34 +1,39 @@
 <!--
-  One portal in the list of Einstellungen > Jobportale (and the setup's Postfach once it is
-  connected, `setup`: only its tile, name, state and "Alert anlegen"), a SettingRow like
-  every row: its tile (the navy tint, its two capitals), its name, under it
-  one quiet line of its state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
-  30 Tagen", or "Braucht ein Postfach" without one; "Pausiert bis …" while it rests), then
-  its calls where they apply, outlined like every text button of a row ("Anmelden" or
-  "Abmelden" where the portal offers a sign-in, "Alert anlegen" for a portal of alert mails:
-  its page in the browser), the portal in the browser (a quiet icon, only for the portals the
-  app searches: "Alert anlegen" is that way for the others) and its switch, always last (the
-  name names the switch but, like every text next to a switch, does not switch it); at the
-  smallest window the calls go to a line of their own at the row's end. A problem of the
-  portal is one quiet line under its state (whether the user
-  has to act, the time and the reason where it has them, "Alert-Mail öffnen" when alert mails
-  came without jobs); it unfolds and folds away, so the rows below glide. A portal that is on
-  and sent no alert mail for a week before the last fetch says so in one quiet line ("Seit 9
-  Tagen keine Alert-Mail"; its alert may have run out) with "Alert prüfen", its page in the
-  browser.
+  One portal in Einstellungen > Jobportale (round 10 draft), a SettingRow like every row: its
+  tile (its two capitals on the track), its brand name (`portalName`), under it one line of its
+  state, then its calls and at the right its switch, always last (the name names the switch
+  but, like every text next to a switch, does not switch it). The setup's row (`setup`) shows
+  only its tile, name, state and "Alert anlegen".
+  The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
+  (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
+  "Wartet auf die Anmeldung" (warning) while its sign-in window waits; else its quiet state
+  ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in 30 Tagen").
+  The calls, outlined with the glyph of their meaning: "Anmelden" or "Abmelden" where the
+  portal offers a sign-in, "Alert anlegen" for a portal of alert mails (its page in the
+  browser), and for the portals the app searches the portal in the browser (a quiet icon
+  before the switch); in a narrow box the calls go to a line of their own at the row's end.
+  A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
+  Postfach", has no calls, and its switch stands off and waits with its reason (the stored
+  value stays; decision 26).
+  A problem of the portal is one quiet line under its state (whether the user has to act,
+  the time and the reason where it has them, "Alert-Mail öffnen" when alert mails came
+  without jobs); it unfolds and folds away, so the rows below glide. A portal that is on and
+  sent no alert mail for a week before the last fetch says so in one line ("Seit 9 Tagen
+  keine Alert-Mail") with "Alert prüfen", its page in the browser. Both ways out need the
+  mail's place in Gmail, so they wait for the other providers (decision 32).
   Signing in lets the fetch use the sign-in, signing out ends that (lib/state/portalSession.ts,
-  also the reader's "Anmelden"). A stored sign-in that the
-  fetch does not use looks like none while the portal is on, and "Anmelden" then only lets
-  the fetch use it (no sign-in window); while the portal is off the row keeps "Abmelden"
-  until the sign-in is gone. A run holds the sign-in (both buttons wait with its reason). A
-  switch moves at once; a failure puts it back and says why in the row. The switch itself is
-  the answer: no toast.
+  also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
+  while the portal is on, and "Anmelden" then only lets the fetch use it (no sign-in window);
+  while the portal is off the row keeps "Abmelden" until the sign-in is gone. A run holds the
+  sign-in (both buttons wait with its reason). A switch moves at once; a failure puts it back
+  and says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
+  import type { StatusTone } from '$components/StatusText.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
@@ -64,14 +69,27 @@
   const emptyMails = $derived(
     portal.health.kind === 'layoutSuspect' ? portal.health.emptyMails : 0,
   );
-  /** Its problem in one sentence; `portal.actionNeeded` says whether she has to act. The
-   *  sign-in window that waits for her says so instead. */
-  const health = $derived(
-    run.loginNeeded === portal.portal ? t.settings.signInWaiting : healthAdvice(portal.health),
-  );
+  /** A portal of alert mails without a mailbox: it cannot work (decision 26). */
+  const idle = $derived(portal.way === 'alert' && !app.hasMailbox);
+  /** The ways out of a problem need the mail's place in Gmail (decision 32). */
+  const gmail = $derived(app.state?.mailbox.provider === 'gmail');
+  /** What holds the portal, as a status word in its line (null: its quiet state). */
+  const status = $derived.by((): { tone: StatusTone; text: string } | null => {
+    const now = portal.health;
+    if (idle) return null;
+    if (now.kind === 'paused' && now.until !== null)
+      return { tone: 'warning', text: t.settings.pausedUntil(now.until) };
+    if (now.kind === 'quotaReached')
+      return { tone: 'warning', text: t.settings.pausedUntil(now.until) };
+    if (run.loginNeeded === portal.portal)
+      return { tone: 'warning', text: t.settings.signInWaiting };
+    if (now.kind === 'loginRequired' && portal.enabled)
+      return { tone: 'danger', text: t.settings.signInExpired };
+    return null;
+  });
   /** One of those mails to look at in Gmail (from the last fetch). */
   const alertMail = $derived(
-    emptyMails > 0
+    emptyMails > 0 && gmail
       ? (app.state?.lastRun?.emptyAlerts.find(
           (alert) => alert.portal === portal.portal && alert.gmailId !== null,
         )?.gmailId ?? null)
@@ -82,20 +100,17 @@
   const quietDays = $derived.by((): number | null => {
     const last = portal.lastAlert === null ? Number.NaN : Date.parse(portal.lastAlert);
     const fetch = app.state?.lastRun ?? null;
-    if (!portal.enabled || Number.isNaN(last)) return null;
+    if (!portal.enabled || idle || Number.isNaN(last)) return null;
     if (fetch?.outcome.kind !== 'completed') return null;
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** Its state: resting until a moment, a portal of alert mails without a mailbox, how many
-   *  alert mails came in 30 days, or what the last search brought from it ("noch keine
-   *  Suche" before the first, nothing when it was not asked). */
+  /** Its quiet state: a portal of alert mails without a mailbox, how many alert mails came
+   *  in 30 days, or what the last search brought from it ("noch keine Suche" before the
+   *  first, nothing when it was not asked). */
   const standing = $derived.by((): string | null => {
-    const now = portal.health;
-    if (now.kind === 'paused' && now.until !== null) return t.settings.pausedUntil(now.until);
-    if (now.kind === 'quotaReached') return t.settings.pausedUntil(now.until);
     if (portal.way === 'alert') {
-      if (!app.hasMailbox) return t.settings.needsMailbox;
+      if (idle) return t.settings.needsMailbox;
       // Before the first fetch: what "Verbinden" counted in the mailbox.
       const mails =
         portal.alertMails ??
@@ -108,13 +123,11 @@
     const line = last.perPortal.find((p) => p.portal === portal.portal);
     return line === undefined ? null : t.settings.lastNew(line.new);
   });
-  /** Its problem in one sentence, where the state line does not say it already. */
+  /** Its problem in one sentence, where the status word does not say it already;
+   *  `portal.actionNeeded` says whether she has to act. */
   const problem = $derived(
-    health !== null &&
-      portal.enabled &&
-      !(portal.health.kind === 'paused' && portal.health.until !== null) &&
-      portal.health.kind !== 'quotaReached'
-      ? health
+    portal.enabled && !idle && status === null && portal.health.kind !== 'loginRequired'
+      ? healthAdvice(portal.health)
       : null,
   );
   /** A sign-in is stored (in the session window's profile). */
@@ -124,7 +137,7 @@
   const signedIn = $derived(stored && (portal.loginEnabled || !portal.enabled));
   /** Where the portal offers a sign-in, also for a stored sign-in of a portal that is off
    *  (its Abmelden stays until it is gone). */
-  const loginShown = $derived(portal.login === 'optional' && (portal.enabled || stored));
+  const loginShown = $derived(portal.login === 'optional' && !idle && (portal.enabled || stored));
   const loginLocked = $derived(signInLocked());
 
   async function change(patch: PortalSwitches): Promise<void> {
@@ -192,11 +205,9 @@
           tone="warning"
           variant="inline"
           text={t.settings.alertQuiet(quietDays)}
-          action={{
-            label: t.settings.checkAlert,
-            icon: 'external',
-            onclick: () => open('home'),
-          }}
+          action={gmail
+            ? { label: t.settings.checkAlert, icon: 'external', onclick: () => open('home') }
+            : null}
           testid="alert-quiet-{portal.portal}"
         />
       </div>
@@ -225,8 +236,10 @@
   <span class="switch">
     <Toggle
       {id}
-      checked={portal.enabled}
-      label={t.portal[portal.portal]}
+      checked={portal.enabled && !idle}
+      disabled={idle}
+      disabledReason={idle ? t.settings.needsMailboxReason : null}
+      label={t.portalName[portal.portal]}
       testid="toggle-enabled-{portal.portal}"
       onchange={(on) => change({ enabled: on })}
     />
@@ -234,8 +247,10 @@
 {/snippet}
 
 <SettingRow
-  label={t.portal[portal.portal]}
-  hint={standing}
+  label={t.portalName[portal.portal]}
+  hint={status?.text ?? standing}
+  status={status?.tone ?? null}
+  disabled={idle}
   for={setup ? null : id}
   lead={tile}
   {notes}
@@ -249,6 +264,7 @@
           variant="secondary"
           icon="signOut"
           label={t.settings.signOut}
+          sizeTo={[{ label: t.settings.signIn, icon: 'signIn' }]}
           loading={busy}
           disabled={loginLocked !== null}
           disabledReason={loginLocked}
@@ -260,6 +276,7 @@
           variant="secondary"
           icon="signIn"
           label={t.settings.signIn}
+          sizeTo={[{ label: t.settings.signOut, icon: 'signOut' }]}
           loading={busy}
           disabled={loginLocked !== null}
           disabledReason={loginLocked}
@@ -269,7 +286,7 @@
       {/if}
     </span>
   {/if}
-  {#if portal.way === 'alert'}
+  {#if portal.way === 'alert' && !idle}
     <Button
       variant="secondary"
       icon="alertAdd"

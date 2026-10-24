@@ -1316,6 +1316,8 @@ export const de = {
      *  many alert mails of it came in the last 30 days, resting until a moment, what the last
      *  search brought. */
     needsMailbox: 'Braucht ein Postfach',
+    /** Why the switch of a portal of alert mails waits without a mailbox. */
+    needsMailboxReason: 'Verbinde erst ein Postfach.',
     alertMails: (value: number) =>
       value === 0
         ? 'Keine Alert-Mails in 30 Tagen'
@@ -1326,14 +1328,19 @@ export const de = {
       value === 0
         ? 'Zuletzt keine neuen Jobs'
         : `Zuletzt ${count(value, 'neuer Job', 'neue Jobs')}`,
+    /** A portal's sign-in ran out, or its sign-in window waits for the user. */
+    signInExpired: 'Anmeldung abgelaufen',
+    signInWaiting: 'Wartet auf die Anmeldung',
     connected: 'Verbunden',
     /** The row of the mailbox while none is connected. */
-    notConnected: 'Nicht verbunden',
-    notConnectedHint: 'Ohne Postfach liest CXact keine Alert-Mails.',
-    /** The last fetch could not reach Gmail, or Gmail refused the password. */
-    unreachable: 'Gmail nicht erreichbar',
-    refused: 'App-Passwort abgelehnt',
-    /** The providers of a mailbox (design round 7), in their order. */
+    notConnected: 'Kein Postfach verbunden',
+    notConnectedHint: 'Mit einem Postfach liest CXact auch deine Alert-Mails.',
+    /** The last fetch could not reach the mailbox, or it refused the password. */
+    unreachable: 'Postfach nicht erreichbar',
+    refused: (appPassword: boolean) =>
+      appPassword ? 'App-Passwort abgelehnt' : 'Passwort abgelehnt',
+    /** The providers of a mailbox (design round 7), in their order, and the domain of the
+     *  address field's example. */
     provider: {
       gmail: 'Gmail',
       icloud: 'iCloud',
@@ -1342,27 +1349,35 @@ export const de = {
     } satisfies Record<MailProvider, string>,
     providerLabel: 'Anbieter',
     address: 'E-Mail-Adresse',
-    /** Gmail and iCloud sign in with an app password, GMX and WEB.DE with the password. */
+    addressExample: (provider: MailProvider) =>
+      `name@${{ gmail: 'gmail.com', icloud: 'icloud.com', gmx: 'gmx.de', webde: 'web.de' }[provider]}`,
+    /** Gmail and iCloud sign in with an app password (16 letters), GMX and WEB.DE with the
+     *  password. */
     password: 'App-Passwort',
     plainPassword: 'Passwort',
-    /** The info symbol beside the app password. */
-    passwordInfo:
-      'Ein eigenes Passwort für CXact, das dein Anbieter mit Bestätigung in zwei Schritten erstellt.',
+    passwordExample: '16 Buchstaben',
+    /** The info symbol beside the app password, by its provider. */
+    passwordInfo: {
+      gmail:
+        'Ein eigenes Passwort für CXact, das du mit Bestätigung in zwei Schritten in deinem Google-Konto erstellst.',
+      icloud:
+        'Ein eigenes Passwort für CXact, das du mit Zwei-Faktor-Authentifizierung in deinem Apple Account erstellst.',
+    } satisfies Partial<Record<MailProvider, string>>,
     createPassword: 'App-Passwort erstellen',
     /** GMX and WEB.DE read alert mails only once IMAP is allowed in their web mailer. */
     allowImap: 'IMAP-Abruf erlauben',
-    addressMissing: 'Die Gmail-Adresse fehlt.',
-    passwordMissing: 'Das App-Passwort fehlt.',
+    addressMissing: 'Die E-Mail-Adresse fehlt.',
+    passwordMissing: (appPassword: boolean) =>
+      appPassword ? 'Das App-Passwort fehlt.' : 'Das Passwort fehlt.',
     connect: 'Verbinden',
-    /** The dialog of "Verbinden", and of "Ändern" (named after the button that opens it). */
+    /** The setup's step of the mailbox (its heading). */
     connectHeading: 'Postfach verbinden',
-    changeHeading: 'Postfach ändern',
     removeMailbox: 'Postfach entfernen?',
-    removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
+    removeMailboxText: (appPassword: boolean) =>
+      `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
-    signInWaiting: 'Das Anmeldefenster ist offen.',
     /** A portal that is on sent no alert mail for a week or longer (its alert may have run
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
@@ -1380,9 +1395,25 @@ export const de = {
     resetHint: 'Löscht alles, was CXact gespeichert hat.',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
-    resetText: 'CXact startet danach mit der Einrichtung neu.',
+    resetText:
+      'CXact löscht Jobs, Profil, Postfach und Anmeldungen und beginnt mit der Einrichtung.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
   },
+
+  /** The portals by their brand name (Einstellungen > Jobportale; settings.spec checks that
+   *  every portal has one). */
+  portalName: {
+    linkedin: 'LinkedIn',
+    freelance: 'freelance.de',
+    freelancermap: 'freelancermap',
+    hays: 'Hays',
+    michaelpage: 'Michael Page',
+    solcom: 'SOLCOM',
+    gulp: 'GULP',
+    amadeusfire: 'Amadeus Fire',
+    interimx: 'interim-x',
+    fratch: 'FRATCH',
+  } satisfies Record<Portal, string>,
 
   /** The setup (features/first-run/steps.ts): each step's heading, its one sentence where it
    *  has one, and its buttons. The Postfach's heading is the dialog's (settings.connectHeading). */

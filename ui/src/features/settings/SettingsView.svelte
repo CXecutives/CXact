@@ -1,27 +1,28 @@
 <!--
-  Einstellungen: one page without a title (the sidebar names the place; user 2026-10-04) in
-  the pages' frame (Page), its groups (Section) in the order of cards.ts, each with its heading
-  and its white box: Jobportale (all ten portals in two boxes under their captions, the eight
-  the app searches, then LinkedIn and freelance.de; PortalRow), Postfach (MailboxCard) and
-  Daten (the Profil-Ordner and "Alles zurücksetzen", each one sentence and its buttons).
-  Every row is a SettingRow with a hairline between rows; every text button of a row is the
-  same outlined button with its glyph, and every row ends on the column's edge. This file
-  only renders the list and runs its commands; what a row is, says and does is one entry in
-  cards.ts.
+  Einstellungen (the round 10 draft): the page's head "Einstellungen" and its groups (Section)
+  in the order of cards.ts, each with its title and its white box: Jobportale (all ten
+  portals in two boxes under their captions, the eight the app searches, then LinkedIn and
+  freelance.de; PortalRow), Postfach (MailboxCard, its form unfolds in its box) and Daten
+  (the Profil-Ordner and "Alles zurücksetzen", each one sentence and its buttons). Every row
+  is a SettingRow with a hairline between rows; every text button of a row is the same
+  outlined button with its glyph. This file only renders the list and runs its commands;
+  what a row is, says and does is one entry in cards.ts. The groups rise 30 ms apart when
+  the page opens (lib/motion enterGroups), never on a change.
 
   A switch moves at once (the state is patched before the save) and is its own answer.
   Errors stay a note at the end of their group, which unfolds (the groups below glide down
   instead of jumping). Only "Zurücksetzen" and "Entfernen" of the mailbox ask first; a dialog
-  whose action fails stays open and says why inside. The dry run changes nothing, and a run
-  holds the mailbox and the reset, locked with the reason of that run instead of failing.
-  Opened for one of its groups (`navigation.section`: "Postfach prüfen" of a failed fetch) the
-  page glides to that group.
+  whose action fails stays open and says why inside. The dry run changes nothing and says so
+  in a state box above the groups; a run holds the mailbox and the reset, locked with the
+  reason of that run instead of failing. Opened for one of its groups (`navigation.section`:
+  "Postfach prüfen" of a failed fetch) the page glides to that group.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
+  import StateBox from '$components/StateBox.svelte';
   import Group from '$components/Group.svelte';
   import PageHeader from '$components/PageHeader.svelte';
   import Page from '$components/Page.svelte';
@@ -32,6 +33,7 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, Way } from '$lib/ipc/types';
+  import { enterGroups } from '$lib/motion/enter';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
@@ -209,36 +211,38 @@
       </div>
     {/if}
   {:else}
-    {#if cfg.dryRun}
-      <Notice tone="info" text={t.settings.dryRun} testid="dry-run-note" />
-    {/if}
     <div class="groups">
-      {#each SECTIONS as section (section.id)}
+      {#if cfg.dryRun}
+        <StateBox heading={t.settings.dryRun} testid="dry-run-note" />
+      {/if}
+      {#each SECTIONS as section, index (section.id)}
         {@const feedback = notes[section.id] ?? null}
-        <Section
-          id="settings-{section.id}"
-          name={section.id}
-          heading={section.heading(t, cfg)}
-          testid="settings-{section.id}"
-        >
-          {#if section.block === 'portals'}
-            {#each WAYS as way (way)}
-              <Group caption={t.settings.way[way]} captionTestid="portals-{way}">
-                {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
-                  <PortalRow {portal} />
-                {/each}
+        <div class="group" use:enterGroups={{ index }}>
+          <Section
+            id="settings-{section.id}"
+            name={section.id}
+            heading={section.heading(t, cfg)}
+            testid="settings-{section.id}"
+          >
+            {#if section.block === 'portals'}
+              {#each WAYS as way (way)}
+                <Group caption={t.settings.way[way]} captionTestid="portals-{way}">
+                  {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
+                    <PortalRow {portal} />
+                  {/each}
+                </Group>
+              {/each}
+            {:else}
+              <Group>
+                {#if section.block === 'mailbox'}
+                  <MailboxCard {cfg} locked={mailboxLocked} />
+                {/if}
+                {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
+                {#if feedback}{@render noteOf(section.id, feedback)}{/if}
               </Group>
-            {/each}
-          {:else}
-            <Group>
-              {#if section.block === 'mailbox'}
-                <MailboxCard {cfg} locked={mailboxLocked} />
-              {/if}
-              {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
-              {#if feedback}{@render noteOf(section.id, feedback)}{/if}
-            </Group>
-          {/if}
-        </Section>
+            {/if}
+          </Section>
+        </div>
       {/each}
     </div>
   {/if}
@@ -260,7 +264,12 @@
   .groups {
     display: flex;
     flex-direction: column;
-    gap: var(--layout-section-gap);
+    gap: var(--group-section-gap);
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
   }
 
   .fold {

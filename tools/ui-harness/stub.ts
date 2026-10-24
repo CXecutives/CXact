@@ -46,7 +46,7 @@
 // with `dryRun` like `ensure_real`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
-// before the last fetch).
+// before the last fetch) · sign-in-expired (freelance.de's sign-in ran out).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
 // with `?alerts=none` its check finds no alert mail.
 // One profile (core's profile::set): `save_profile` makes it or saves it, refuses a day rate
@@ -864,6 +864,12 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'session-left': () => {
     // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
     state.portals[1]!.signedIn = true;
+  },
+  'sign-in-expired': () => {
+    // freelance.de's sign-in ran out: its row says so in red and offers Anmelden.
+    state.portals[1]!.health = { kind: 'loginRequired' };
+    state.portals[1]!.actionNeeded = true;
+    state.portals[1]!.signedIn = false;
   },
   'dry-run': () => {
     state.dryRun = true;
