@@ -1,62 +1,19 @@
-// Enter in a row list of the Profil form (competences, languages), like a table in a native
-// app: Enter goes to the next row, on the last row it adds a new one, and on an empty last
-// row it ends the list (the row goes, the caret moves to the next field after the list).
-// Removing a row by its x follows the one rule of input.ts (removeBy).
+// The rows of an item list of the Profil form (competences, languages) as the list shows
+// them: by their name, each name once and none without one. The name is the row's key, so a
+// list that comes back after a save (a new copy of the same rows) stays as it is; a second
+// row of the same name (a file edited by hand) waits unseen until the save drops it, as core
+// does.
 
-import { tick } from 'svelte';
-
-/** The rows of a list container, in order. */
-const rowsOf = (list: HTMLElement): HTMLElement[] => [
-  ...list.querySelectorAll<HTMLElement>('[data-row]'),
-];
-
-/** The caret into the first field of the row at `index`. */
-export function focusRow(list: HTMLElement | null, index: number): void {
-  if (list === null) return;
-  rowsOf(list)[index]?.querySelector('input')?.focus();
+/** The rows with a name, each name once (in any case), in their order. */
+export function named<Row>(rows: readonly Row[], name: (row: Row) => string): Row[] {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = keyOf(name(row));
+    if (key === '' || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
-/** The caret into the first field after the list. */
-function moveOn(list: HTMLElement): void {
-  const after = [...document.querySelectorAll<HTMLElement>('input, textarea')].find(
-    (field) =>
-      !list.contains(field) &&
-      (list.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-  );
-  after?.focus();
-}
-
-export interface RowEnter<Row> {
-  list: HTMLElement | null;
-  rows: Row[];
-  row: Row;
-  blank: (row: Row) => boolean;
-  add: () => void;
-  remove: (row: Row) => void;
-}
-
-/** What Enter does inside `row`. */
-export async function enterRow<Row>({
-  list,
-  rows,
-  row,
-  blank,
-  add,
-  remove,
-}: RowEnter<Row>): Promise<void> {
-  if (list === null) return;
-  const index = rows.indexOf(row);
-  if (index < rows.length - 1) {
-    focusRow(list, index + 1);
-    return;
-  }
-  if (blank(row)) {
-    remove(row);
-    await tick();
-    moveOn(list);
-    return;
-  }
-  add();
-  await tick();
-  focusRow(list, index + 1);
-}
+/** A name as the list compares it. */
+export const keyOf = (name: string): string => name.trim().toLowerCase();

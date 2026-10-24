@@ -1,32 +1,29 @@
 <!--
-  The Profil's floating bar (FloatBar): what a failed save says, else what is still
-  missing after a press of Speichern (its names lead to their fields), else "Ungespeicherte
-  Änderungen"; while the form holds a change Verwerfen (quiet) and Speichern (the view's one
-  primary; it waits while a value is marked), in the order of the OS.
+  The Profil's bar at the foot (BottomBar, the round 10 draft) while the form holds a change
+  or the last save failed: at its left "Ungespeicherte Änderungen" (13 muted) or why the save
+  failed (the deep red of words); at its right Verwerfen (quiet) and Speichern (the view's
+  one primary; it waits while a value is wrong, its tooltip naming that field), in the order
+  of the OS, each at least the pair's width. Speichern keeps its width while it saves.
 -->
 <script lang="ts">
+  import BottomBar from '$components/BottomBar.svelte';
   import Button from '$components/Button.svelte';
-  import FloatBar from '$components/FloatBar.svelte';
   import { t } from '$lib/i18n/t';
   import { primaryFirst } from '$lib/platform';
-  import MissingLine from '../shared/MissingLine.svelte';
 
   interface Props {
     /** The form holds a change: the buttons show. */
     dirty: boolean;
     busy: boolean;
-    /** A value is marked: Speichern waits. */
-    held: boolean;
+    /** The label of a value that is wrong: Speichern waits for it. */
+    wrong: string | null;
     /** Why the last save failed. */
     failure: string | null;
-    /** The required fields still empty once Speichern asked, with their names. */
-    missing: readonly { field: string; name: string }[];
-    onjump: (field: string) => void;
     onsave: () => void;
     ondiscard: () => void;
   }
 
-  let { dirty, busy, held, failure, missing, onjump, onsave, ondiscard }: Props = $props();
+  let { dirty, busy, wrong, failure, onsave, ondiscard }: Props = $props();
 
   const actionFirst = primaryFirst();
 </script>
@@ -41,27 +38,32 @@
   />
 {/snippet}
 
-<FloatBar testid="profile-save-bar">
+{#snippet actions()}
+  {#if dirty}
+    {#if !actionFirst}{@render discardButton()}{/if}
+    <Button
+      variant="primary"
+      label={t.profile.save}
+      disabled={wrong !== null}
+      disabledReason={wrong === null ? null : t.profile.fixFirst(wrong)}
+      loading={busy}
+      testid="profile-save"
+      onclick={onsave}
+    />
+    {#if actionFirst}{@render discardButton()}{/if}
+  {/if}
+{/snippet}
+
+<BottomBar {actions} testid="profile-save-bar">
   {#if failure}
-    <p role="alert" data-testid="profile-save-error">{failure}</p>
-  {:else if missing.length > 0}
-    <MissingLine fields={missing} {onjump} />
+    <p class="failure" role="alert" data-testid="profile-save-error">{failure}</p>
   {:else}
     <p data-testid="profile-unsaved">{t.profile.unsaved}</p>
   {/if}
-  {#snippet actions()}
-    {#if dirty}
-      {#if !actionFirst}{@render discardButton()}{/if}
-      <Button
-        variant="primary"
-        label={t.profile.save}
-        disabled={held}
-        disabledReason={t.profile.fixFirst}
-        loading={busy}
-        testid="profile-save"
-        onclick={onsave}
-      />
-      {#if actionFirst}{@render discardButton()}{/if}
-    {/if}
-  {/snippet}
-</FloatBar>
+</BottomBar>
+
+<style>
+  .failure {
+    color: var(--error-text);
+  }
+</style>

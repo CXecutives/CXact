@@ -1,25 +1,25 @@
 <!--
-  The profile as one page of fields: the four groups of `sections.ts` in their order
-  (Wunschjob, Einsatz, Qualifikation, Ausschlüsse), each a Section with its fields in one white
-  box (Group), 16 apart and without lines between them ("Luftige Gruppen", design round 6),
-  two short fields side by side where the box is wide enough (`half`, design round 7); the
-  same page in the setup. Each field as the table describes it, its label above it (and,
-  only where docs/PLAN.md places one, an info symbol beside the label): a list fills the box's
-  width, a number (its unit inside) or a day is --number-width, a choice of a few as wide as
-  its options. Vertragsart is three checkboxes (Projekt und Interim, Festanstellung,
-  Zeitarbeit; one stays). A number is formatted when its field is left.
-  A required field that is still empty shows its coral edge only once Speichern or the
-  setup's Weiter was pressed (`missing`, ProfileView) and loses it as it is filled: its cell
-  carries `data-missing`, and the token block of that name colours every field in it. A
-  link of the missing sentence puts the caret into it, in the middle of the view, without a
-  flash (`focusField`). A value that is too large, a 0 where at least 1 counts, a day that
-  does not read and a value the backend refused are said at their field, stay with their
-  error until they change, and hold the save (the field gets the caret when a save is
-  tried). A wished rate under the minimum says so quietly under it. Mindestgehalt shows only
-  while Festanstellung or Zeitarbeit is chosen. Enter in a field saves (the setup: goes on),
-  as in every form (in the row lists it goes to the next row, in a chip field it adds what
-  was typed); an untouched new form goes back to the ways in with Esc (not in the setup).
-  The setup shows no "Häufig verlangt".
+  The profile as one page of fields (the round 10 draft): the four groups of `sections.ts` in
+  their order (Wunschjob, Einsatz, Qualifikation, Ausschlüsse), each a Section with its fields
+  in one white box (Group), 18 apart and without lines between them; a pair of short fields
+  side by side once the box is 560 wide, else one under the other. The same page in the
+  setup. Each field as the table describes it, its label above it (and, only where
+  docs/PLAN.md places one, an info symbol beside the label): a tag field or a list fills the
+  box's width, a number is as wide as its unit needs (170 for euros, 130 for years), a
+  choice of a few as wide as its options, Mindestlaufzeit a select. The groups rise in one
+  after the other when the page opens (not in the setup, whose step slides in). Mindestgehalt
+  unfolds while Festanstellung or Zeitarbeit is chosen. A number is formatted when its field
+  is left.
+  A required field that is still empty carries `data-missing` on its cell (`missing`, from
+  ProfileView: on the Profil always, in the setup once Weiter asked): its edge and its label
+  turn red (tokens.css). A value that is too large, a 0 where at least 1 counts, a day that
+  does not read and a value the backend refused are said at their field in their own
+  sentence, stay with their error until they change, and only they hold the save (the first
+  of them is revealed when a save is tried; `wrongField` names it for Speichern's reason). A
+  wished rate under the minimum says so quietly under it. Enter in a field saves (the setup:
+  goes on), as in every form (in a tag field or an item list's add row it takes what was
+  typed); an untouched new form goes back to the ways in with Esc (not in the setup).
+  The setup shows no "Häufig verlangt" (the countries' "Vorschlag" stays).
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -37,12 +37,14 @@
   import Group from '$components/Group.svelte';
   import Section from '$components/Section.svelte';
   import Segmented from '$components/Segmented.svelte';
+  import Select from '$components/Select.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
   import type { ContractKey } from '$lib/ipc/api';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
-  import { fade } from '$lib/motion/transitions';
+  import { enterGroups } from '$lib/motion/enter';
+  import { unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
   import AskedTerms from './AskedTerms.svelte';
@@ -51,15 +53,24 @@
   import CountriesField from './CountriesField.svelte';
   import LanguageList from './LanguageList.svelte';
   import NumberField from './NumberField.svelte';
-  import { SECTIONS, fieldOf, type ChoiceKey, type Control, type NumberKey } from './sections';
+  import {
+    LABEL_OF,
+    SECTIONS,
+    controlsOf,
+    fieldOf,
+    type ChoiceKey,
+    type Control,
+    type NumberKey,
+    type Row,
+  } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
     /** A value the backend refused on the last save. */
     fieldError: FieldError | null;
-    /** The required fields still empty that are marked (once a press asked for them). */
+    /** The required fields still empty that are marked. */
     missing: readonly string[];
-    /** The setup's page: no "Häufig verlangt", Esc does nothing. */
+    /** The setup's page: no "Häufig verlangt", no rise of the groups, Esc does nothing. */
     setup?: boolean;
     onsave: () => void;
     ondiscard: () => void;
@@ -67,7 +78,7 @@
 
   let { fieldError, missing, setup = false, onsave, ondiscard }: Props = $props();
 
-  // Text typed into a chip field of the form counts as a change.
+  // Text typed into a tag field of the form counts as a change.
   editor.typed.share();
 
   const words = $derived(t.profile.field);
@@ -108,9 +119,16 @@
       : null,
   );
 
-  /** A value is marked: Speichern waits until it is put right. */
-  export function held(): boolean {
-    return invalid.length > 0 || fieldError !== null || (editor.judged && editor.dateInvalid);
+  /** A field's label as the page shows it. */
+  const labelOf = (field: string): string =>
+    String((words as Record<string, unknown>)[LABEL_OF[field as keyof ProfileForm] ?? field]);
+
+  /** The label of the first value that holds the save (null: none does). */
+  export function wrongField(): string | null {
+    const field =
+      fieldError?.field ??
+      (editor.judged && editor.dateInvalid ? 'available' : (invalid[0]?.field ?? null));
+    return field === null ? null : labelOf(field);
   }
 
   /** The error of a field: a value the backend refused, else one that is wrong as it is. */
@@ -130,8 +148,11 @@
   const infoOf = (control: Control): string | null =>
     'info' in control && control.info ? t.profile.info[control.info] : null;
   const isMissing = (control: Control): boolean => missing.includes(fieldOf(control));
-  const shown = (control: Control): boolean =>
-    control.kind !== 'number' || (control.shown?.(form) ?? true);
+  /** A row shows while its first field has something to do (Mindestgehalt). */
+  const shown = (row: Row): boolean => {
+    const first = controlsOf(row)[0];
+    return first?.kind !== 'number' || (first.shown?.(form) ?? true);
+  };
   /** The wished rate under the minimum: a quiet line under the wish. */
   const below = $derived(
     form.dayRateWish !== null && form.dayRateMin !== null && form.dayRateWish < form.dayRateMin,
@@ -142,11 +163,10 @@
   const CHOICES = $derived<Record<ChoiceKey, { id: string; label: string }[]>>({
     workMode: Object.entries(t.profile.workMode).map(([mode, label]) => ({ id: mode, label })),
     workload: Object.entries(t.profile.workload).map(([load, label]) => ({ id: load, label })),
-    minMonths: Object.entries(t.profile.minMonths).map(([months, label]) => ({
-      id: months,
-      label,
-    })),
   });
+  const MONTHS = $derived(
+    Object.entries(t.profile.minMonths).map(([months, label]) => ({ id: months, label })),
+  );
   /** Vertragsart: the contract types chosen. */
   const CONTRACT_KEYS: readonly ContractKey[] = ['project', 'permanent', 'temporary'];
   const CONTRACTS = $derived(
@@ -161,11 +181,8 @@
     form[key] = !form[key];
   }
 
-  /** A choice's value as the segmented control holds it, and back. */
-  const choiceOf = (key: ChoiceKey): string => String(form[key]);
   function choose(key: ChoiceKey, value: string): void {
-    if (key === 'minMonths') form.minMonths = Number(value) as ProfileForm['minMonths'];
-    else if (key === 'workload') form.workload = value as ProfileForm['workload'];
+    if (key === 'workload') form.workload = value as ProfileForm['workload'];
     else form.workMode = value as ProfileForm['workMode'];
   }
 
@@ -173,7 +190,8 @@
 
   let root = $state<HTMLElement | null>(null);
 
-  /** Ready to save: a value that holds the save is said at its field, which gets the caret. */
+  /** Ready to save: a value that holds the save is said at its field, which comes into view
+   *  (a day that does not read gets the caret). */
   export function ready(): boolean {
     editor.judged = true;
     if (editor.dateInvalid) {
@@ -198,7 +216,7 @@
     return target !== null && target !== undefined;
   }
 
-  /** A field of the form in the middle of the view, without the caret (Weiter and Speichern
+  /** A field of the form in the middle of the view, without the caret (Speichern and Weiter
    *  only show what is missing or wrong; the user clicks where they want to type). */
   export async function revealField(field: string): Promise<boolean> {
     await tick();
@@ -217,34 +235,34 @@
   use:formKeys={untouched && !setup ? { save: onsave, cancel: ondiscard } : { save: onsave }}
   data-testid="profile-form"
 >
-  {#each SECTIONS as section (section.id)}
-    <Section
-      id="profile-section-{section.id}"
-      name={section.id}
-      heading={t.profile.section[section.id]}
-      testid="section-{section.id}"
-    >
-      <Group>
-        <div class="fields">
-          {#each section.rows as row, index (index)}{@render cell(row)}{/each}
-        </div>
-      </Group>
-    </Section>
+  {#each SECTIONS as section, index (section.id)}
+    <div class="group" use:enterGroups={{ index, on: !setup }}>
+      <Section
+        id="profile-section-{section.id}"
+        name={section.id}
+        heading={t.profile.section[section.id]}
+        testid="section-{section.id}"
+      >
+        <Group>
+          <div class="rows">
+            {#each section.rows as row, at (at)}
+              {#if shown(row)}
+                <div class="row" class:pair={'pair' in row} transition:unfold>
+                  {#each controlsOf(row) as c (fieldOf(c))}{@render cell(c)}{/each}
+                </div>
+              {/if}
+            {/each}
+          </div>
+        </Group>
+      </Section>
+    </div>
   {/each}
 </div>
 
 {#snippet cell(c: Control)}
-  {#if shown(c)}
-    <div
-      class="cell"
-      class:half={'half' in c && c.half}
-      data-field={fieldOf(c)}
-      data-missing={isMissing(c) ? '' : undefined}
-      transition:fade
-    >
-      {@render control(c)}
-    </div>
-  {/if}
+  <div class="cell" data-field={fieldOf(c)} data-missing={isMissing(c) ? '' : undefined}>
+    {@render control(c)}
+  </div>
 {/snippet}
 
 {#snippet control(c: Control)}
@@ -257,10 +275,10 @@
       hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
       {error}
     >
-      <span class="number">
+      <span class="number {c.unit}">
         <NumberField
           id="{id}-{c.key}"
-          money={c.unit === 'euro'}
+          money={c.unit !== 'years'}
           unit={t.profile.unit[c.unit]}
           bind:value={form[c.key]}
           invalid={error !== null}
@@ -271,17 +289,19 @@
   {:else if c.kind === 'chips'}
     {@const error = errorOf(c.key)}
     <Field label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} {error}>
-      <ChipInput
-        id="{id}-{c.key}"
-        bind:values={form[c.key]}
-        split={c.lines ? 'lines' : 'list'}
-        placeholder={words[c.placeholder]}
-        invalid={error !== null}
-        suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
-        fold={c.key === 'tools'}
-        testid={c.testid}
-      />
-      {#if c.asked && !setup}<AskedTerms field={c.asked} home={c.testid} />{/if}
+      <div class="stack">
+        <ChipInput
+          id="{id}-{c.key}"
+          bind:values={form[c.key]}
+          split={c.lines ? 'lines' : 'list'}
+          placeholder={words[c.placeholder]}
+          invalid={error !== null}
+          suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
+          fold
+          testid={c.testid}
+        />
+        {#if c.asked && !setup}<AskedTerms field={c.asked} home={c.testid} />{/if}
+      </div>
     </Field>
   {:else if c.kind === 'contracts'}
     <Field label={words.contracts} info={infoOf(c)}>
@@ -295,19 +315,32 @@
       />
     </Field>
   {:else if c.kind === 'choice'}
-    <Field label={words[c.label]} info={infoOf(c)} error={errorOf(c.key)}>
+    <Field label={words[c.label]} error={errorOf(c.key)}>
       <Segmented
         options={CHOICES[c.key]}
-        value={choiceOf(c.key)}
+        value={form[c.key]}
         label={words[c.label]}
         testid={c.testid}
         onchange={(value) => choose(c.key, value)}
       />
     </Field>
+  {:else if c.kind === 'months'}
+    <Field label={words.minMonths} for="{id}-minMonths" error={errorOf('minMonths')}>
+      <Select
+        id="{id}-minMonths"
+        options={MONTHS}
+        value={String(form.minMonths)}
+        label={words.minMonths}
+        testid="profile-min-months"
+        onchange={(months) => (form.minMonths = Number(months) as ProfileForm['minMonths'])}
+      />
+    </Field>
   {:else if c.kind === 'countries'}
     {@const error = errorOf('countries')}
     <Field label={words.countries} for="{id}-countries" info={infoOf(c)} {error}>
-      <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
+      <div class="stack">
+        <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
+      </div>
     </Field>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
@@ -315,61 +348,96 @@
       <AvailableField invalid={error !== null} />
     </Field>
   {:else if c.kind === 'competences'}
-    <Field label={words.competences} info={infoOf(c)}>
-      <CompetenceList bind:rows={form.competences} error={listError('competences')} />
-      {#if !setup}<AskedTerms field="competence" home="competence-add" />{/if}
+    <Field label={words.competences} for="{id}-competences">
+      <div class="stack">
+        <CompetenceList
+          id="{id}-competences"
+          bind:rows={form.competences}
+          error={listError('competences')}
+        />
+        {#if !setup}<AskedTerms field="competence" home="competence-add" />{/if}
+      </div>
     </Field>
   {:else if c.kind === 'industries'}
     {@const error = errorOf('industries')}
-    <Field label={words.industries} for="{id}-industries" info={infoOf(c)} {error}>
-      <ChipInput
-        id="{id}-industries"
-        bind:values={form.industries}
-        placeholder={words.industriesPlaceholder}
-        invalid={error !== null}
-        suggestions={vocabulary.industries}
-        fold
-        testid="profile-industries"
-      />
-      {#if !setup}<AskedTerms field="industry" home="profile-industries" />{/if}
+    <Field label={words.industries} for="{id}-industries" {error}>
+      <div class="stack">
+        <ChipInput
+          id="{id}-industries"
+          bind:values={form.industries}
+          placeholder={words.industriesPlaceholder}
+          invalid={error !== null}
+          suggestions={vocabulary.industries}
+          fold
+          testid="profile-industries"
+        />
+        {#if !setup}<AskedTerms field="industry" home="profile-industries" />{/if}
+      </div>
     </Field>
   {:else if c.kind === 'languages'}
-    <Field label={words.languages}>
-      <LanguageList bind:rows={form.languages} error={listError('languages')} />
-      {#if !setup}<AskedTerms field="language" home="language-add" />{/if}
+    <Field label={words.languages} for="{id}-languages">
+      <div class="stack">
+        <LanguageList
+          id="{id}-languages"
+          bind:rows={form.languages}
+          error={listError('languages')}
+        />
+        {#if !setup}<AskedTerms field="language" home="language-add" />{/if}
+      </div>
     </Field>
   {/if}
 {/snippet}
 
 <style>
-  /* The groups, 32 apart (Section). */
+  /* The groups, 30 apart (Section). */
   .editor {
     display: flex;
     flex-direction: column;
-    gap: var(--layout-section-gap);
+    gap: var(--group-section-gap);
   }
 
-  /* The fields of a group, 16 apart, no lines between them; two short ones side by side
-     (20 apart) while the box is wide enough, else one under the other. */
-  .fields {
+  .group {
+    min-width: 0;
+  }
+
+  /* The rows of a box, 18 apart: the space is the row's own top, so a row that unfolds
+     (Mindestgehalt) brings it along instead of making the rows below jump. */
+  .rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row + .row {
+    padding-top: var(--group-field-gap);
+  }
+
+  /* A pair: one under the other in a narrow box, side by side (20 apart) once the box is
+     560 wide; a pair with one field keeps it in its half. */
+  .row.pair {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--layout-field-gap) var(--layout-column-gap);
-    container-type: inline-size;
+    gap: var(--group-field-gap) var(--layout-column-gap);
   }
 
   @container (min-width: 560px) {
-    .fields {
+    .row.pair {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .cell:not(.half) {
-      grid-column: 1 / -1;
     }
   }
 
-  /* A number (euros, years) is as wide as a day field, its unit inside at its right; the
-     note under it keeps its own line. */
+  .cell {
+    min-width: 0;
+  }
+
+  /* A field and the suggestion row under it, 8 apart. */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--suggest-row-gap);
+    min-width: 0;
+  }
+
+  /* A number is as wide as its unit needs; the note under it keeps its own line. */
   .number {
     display: flex;
     flex-direction: column;
@@ -377,20 +445,18 @@
   }
 
   .number > :global(:first-child) {
-    width: var(--number-width);
+    width: var(--profile-money-width);
     max-width: 100%;
   }
 
-  .cell {
-    min-width: 0;
+  .number.years > :global(:first-child) {
+    width: var(--profile-years-width);
   }
 
-  /* Tab and focus scrolling keep a field clear of the top bar's fade and of the floating
-     bar at the foot. */
+  /* Tab and focus scrolling keep a field clear of the top bar's fade and of the bar at the
+     foot. */
   .editor :global(:is(input, textarea, button, [role='switch'])) {
     scroll-margin-top: calc(var(--fade-height) + var(--space-8));
-    scroll-margin-bottom: calc(
-      var(--control-field) + 2 * var(--space-8) + var(--float-gap) + var(--space-16)
-    );
+    scroll-margin-bottom: calc(var(--bar-min) + var(--space-16));
   }
 </style>

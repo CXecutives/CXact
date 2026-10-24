@@ -36,8 +36,7 @@
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
 //   presses the focused button, switch or radio, Enter a button only; in a radio group (the
 //   segments) and a row of tabs the arrows, Home and End choose; on a select the arrows open
-//   its list (`selectKeys`); in a grid of days (the
-//   calendar, `gridKeys`) the arrows, Home, End, PageUp and PageDown move. Inside a field every
+//   its list (`selectKeys`). Inside a field every
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
@@ -352,54 +351,6 @@ function dispatchRadioKey(event: KeyboardEvent): boolean {
   if (next === undefined || next === option) return true;
   next.focus();
   next.click();
-  return true;
-}
-
-/** A move in a grid of cells (the days of the calendar): a cell, a row, the row's ends, a
- *  page (a month). */
-export type GridMove = 'left' | 'right' | 'up' | 'down' | 'rowStart' | 'rowEnd' | 'back' | 'on';
-
-const GRID_MOVES: Readonly<Record<string, GridMove>> = {
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  ArrowUp: 'up',
-  ArrowDown: 'down',
-  Home: 'rowStart',
-  End: 'rowEnd',
-  PageUp: 'back',
-  PageDown: 'on',
-};
-const GRIDS = '[data-grid-keys]';
-const grids = new WeakMap<Element, (move: GridMove) => void>();
-
-/**
- * A grid of cells whose focus the keys move, like the days of a native date picker
- * (components/Calendar.svelte): the arrows a cell or a row, Home and End the row's ends,
- * PageUp and PageDown a page. Enter and Space press the focused cell like any button.
- */
-export const gridKeys: Action<HTMLElement, (move: GridMove) => void> = (node, handler) => {
-  grids.set(node, handler);
-  node.dataset.gridKeys = '';
-  return {
-    update(next: (move: GridMove) => void) {
-      grids.set(node, next);
-    },
-    destroy() {
-      grids.delete(node);
-      delete node.dataset.gridKeys;
-    },
-  };
-};
-
-/** The keys of a grid of cells; `true` if the grid took the key. */
-function dispatchGridKey(event: KeyboardEvent): boolean {
-  if (hasModifier(event) || event.shiftKey) return false;
-  const grid = closest(event.target, GRIDS);
-  const handler = grid === null ? undefined : grids.get(grid);
-  const move = GRID_MOVES[event.key];
-  if (handler === undefined || move === undefined) return false;
-  event.preventDefault();
-  handler(move);
   return true;
 }
 
@@ -731,7 +682,7 @@ function onKeyDown(event: KeyboardEvent): void {
   }
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
   if (dispatchSelectKey(event)) return;
-  if (dispatchGridKey(event) || removesByKey(event)) return;
+  if (removesByKey(event)) return;
   // Everything else is the app's or nothing: never a shortcut of the web view (reload,
   // find, print, zoom, history).
   event.preventDefault();

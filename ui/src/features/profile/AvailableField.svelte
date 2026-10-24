@@ -1,20 +1,17 @@
 <!--
   Verfügbar: one choice of the segments ("Sofort", "Ab Datum"). The day of "Ab Datum" exists
-  only while it is chosen and gets the caret when it is: it slides in beside the choice, as
-  wide as every number field (--number-width), and the choice keeps its width and place. It
-  is judged when its field is left with text in it or on saving (`editor.judged`), never
-  while it is typed, and a day that does not read is said by its Field and holds the save.
-  Inside the day's field at its right end a calendar offers one (Calendar, TextField's
-  `trailing`); typing stays the way to write it, and a chosen day is written into the field
-  in its form.
+  only while it is chosen and gets the caret when it is: it slides in beside the choice (122
+  wide, TT.MM.JJJJ, no calendar: typing is the way to write it), and the choice keeps its
+  width and place. It is judged when its field is left with text in it or on saving
+  (`editor.judged`), never while it is typed, and a day that does not read is said by its
+  Field and holds the save.
 -->
 <script lang="ts">
-  import Calendar from '$components/Calendar.svelte';
   import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { slideIn } from '$lib/motion/transitions';
-  import { editor, isoDate, keptDate, shownDate } from '$lib/state/profile.svelte';
+  import { editor, keptDate } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
 
   interface Props {
@@ -50,14 +47,6 @@
   }
 </script>
 
-{#snippet calendar()}
-  <Calendar
-    value={isoDate(editor.dateText)}
-    testid="profile-date-calendar"
-    onpick={(day) => type(shownDate(day))}
-  />
-{/snippet}
-
 <div class="choice">
   <Segmented
     options={CHOICES}
@@ -80,7 +69,6 @@
         placeholder={words.datePlaceholder}
         {invalid}
         testid="profile-date"
-        trailing={calendar}
         oninput={type}
       />
     </span>
@@ -96,9 +84,9 @@
   }
 
   /* The choice keeps its width (Segmented); the day beside it, or under it where the row is
-     short, is as wide as every number field. */
+     short. */
   .date {
     display: flex;
-    width: var(--number-width);
+    width: var(--profile-date-width);
   }
 </style>

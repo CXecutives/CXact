@@ -18,8 +18,9 @@
   nothing is marked until the arrows or the pointer mark one: Enter without a mark goes on to
   the form.
   `trailing` puts a small control inside the field at its right end, like the picker button
-  of a native date field (the calendar of Verfügbar, a button `inField`). `suffix` is a quiet
-  unit at the field's right end (`€`, `Jahre`), read with the value.
+  of a native date field (a button `inField`). `suffix` is a quiet unit at the field's right
+  end (`€ am Tag`, `Jahre`), read with the value. `inline` is the 26 px field of a list's row
+  (a competence's years): 6 round, its digits at the right.
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
@@ -61,13 +62,12 @@
     /** Terms to suggest while typing, none marked at first (null: not loaded yet). */
     suggestions?: Vocabulary | null | undefined;
     testid?: string | null;
-    /** A small control inside the field at its right end (a calendar's button). */
+    /** A small control inside the field at its right end. */
     trailing?: Snippet | null;
     /** A unit at the right end inside the field (`€`), quiet; its id joins the description. */
     suffix?: string | null;
-    /** Reads like text until pointed at or edited (the Profil's name and role under its
-     *  title). */
-    quiet?: boolean;
+    /** 26 px, its text at the right: a short number in a list's row. */
+    inline?: boolean;
     oninput?: (value: string) => void;
   }
 
@@ -85,7 +85,7 @@
     testid = null,
     trailing = null,
     suffix = null,
-    quiet = false,
+    inline = false,
     oninput,
   }: Props = $props();
 
@@ -187,7 +187,7 @@
   class:invalid
   class:disabled
   class:trailed={trailing !== null}
-  class:quiet
+  class:inline
   use:formKeys={keys}
 >
   {#if kind === 'search'}
@@ -276,17 +276,15 @@
     transition-duration: var(--dur-hover);
   }
 
-  /* Quiet (a row of a list, the competences): no edge and no fill at rest, the edge under
-     the pointer, the field's look while edited (design round 7). */
-  .quiet {
-    --field-edge: transparent;
-    --field-edge-hover: var(--border-strong);
-
-    background-color: transparent;
+  /* The row of a list (a competence's years): 26 high, 6 round, the digits at the right. */
+  .inline {
+    height: var(--control-inline);
+    border-radius: var(--radius-inner);
   }
 
-  .quiet:focus-within {
-    background-color: var(--surface);
+  .inline .input {
+    padding: 0 var(--space-6);
+    text-align: end;
   }
 
   .invalid {

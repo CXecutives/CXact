@@ -507,8 +507,6 @@
   --titlebar-height-macos: 44px;
   --titlebar-button-width: 46px;
   --traffic-lights-width: 80px;
-  /* A day of the calendar beside a day field: as high as a small button, seven a week. */
-  --calendar-cell: var(--control-sm);
   /* A caption button's glyph: 10 px of thin lines, like Segoe Fluent Icons in the native
      buttons (the line in the glyph's own units: one CSS pixel). */
   --titlebar-glyph: 10px;
@@ -572,11 +570,6 @@
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
   --form-width: 500px;
-  /* A number of the Profil (euros, years) with its unit inside at its right, and a day
-     field: one width. */
-  --number-width: 128px;
-  /* The years of a competence (two digits and "Jahre" inside). */
-  --years-width: 96px;
   /* The input after the chips of a chip field: room for its whole "+ Zertifikat". */
   --chip-entry-min: 96px;
   /* A field of a page: its label above its control, this far apart (Field). */
@@ -932,7 +925,19 @@
   /* (job view tokens below) */
 
   /* ------------------------------------------- round 10: profile */
-  /* (profile tokens below) */
+  /* The Profil's number fields with their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170,
+     the years of experience 130, the day of "Ab Datum" 122; a competence's years 44 (26
+     high) with "Jahre" after it. */
+  --profile-money-width: 170px;
+  --profile-years-width: 130px;
+  --profile-date-width: 122px;
+  --profile-row-years: 44px;
+  /* The edge of an item list (Kompetenzen, Sprachen): a hairline, red in a required cell that
+     is still empty ([data-missing] below). */
+  --item-list-edge: var(--border);
+  /* A suggestion row under a field ("Häufig verlangt", "Vorschlag"): its label 12 subtle, 8
+     under the field, the chips 6 apart. */
+  --suggest-row-gap: var(--space-8);
 
   /* ------------------------------------------- round 10: settings */
   /* (settings tokens below) */
@@ -1104,6 +1109,7 @@
   --field-edge: var(--missing-edge);
   --field-edge-hover: var(--missing-edge);
   --field-label: var(--field-label-missing);
+  --item-list-edge: var(--missing-edge);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

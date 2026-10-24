@@ -201,13 +201,9 @@ class ProfileEditor {
     this.#start('stored', form, form);
   }
 
-  /** "Selbst ausfüllen": the form of a new profile with one empty competence row, so the
-   *  table and its star show at once. */
+  /** "Selbst ausfüllen": the form of a new profile. */
   create(): void {
-    this.#start('new', emptyForm(), {
-      ...emptyForm(),
-      competences: [{ name: '', years: null }],
-    });
+    this.#start('new', emptyForm(), emptyForm());
   }
 
   /** Nothing in the editor (the ways in show). */

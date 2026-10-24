@@ -1,8 +1,9 @@
 <!--
   The two ways to the profile as two tiles side by side, one look wherever they are (the
-  setup's Willkommen, the Profil without a profile): "Aus Lebenslauf ausfüllen" with the one
-  sentence about the AI (it opens the file dialog or the upload at once, so it says it here)
-  and "Selbst ausfüllen". A click on a tile goes its way at once. In a narrow window the
+  setup's "Profil anlegen", the Profil without a profile; the round 10 draft): "Aus
+  Lebenslauf" (file-up), the way the app recommends (coral), with the one sentence about the
+  AI ("Eine KI füllt es aus, du prüfst es danach."), and "Selbst ausfüllen" (pencil, "Du
+  trägst alles von Hand ein."). A click on a tile goes its way at once. In a narrow window the
   tiles stand one under the other.
 -->
 <script lang="ts">
@@ -20,19 +21,26 @@
 
 <div class="ways" data-testid={testid ?? undefined}>
   <Tile
-    icon="document"
-    label={t.profile.fromCv}
-    note={t.profile.fromCvHint}
+    icon="pickFile"
+    label={t.profile.wayCv}
+    note={t.profile.wayCvNote}
+    recommended
     testid="way-cv"
     onclick={oncv}
   />
-  <Tile icon="edit" label={t.profile.byHand} testid="way-self" onclick={onself} />
+  <Tile
+    icon="edit"
+    label={t.profile.byHand}
+    note={t.profile.byHandNote}
+    testid="way-self"
+    onclick={onself}
+  />
 </div>
 
 <style>
   .ways {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(var(--stat-min), 1fr));
-    gap: var(--space-8);
+    gap: var(--space-12);
   }
 </style>

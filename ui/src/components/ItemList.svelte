@@ -1,6 +1,7 @@
 <!--
   A list of items that carry a value (Kompetenzen with their years, Sprachen with their
-  level; the round 10 draft): one bordered box, 10 round, a hairline between its rows. A row
+  level; the round 10 draft): one bordered box, 10 round (its edge red in a required cell that
+  is still empty, `[data-missing]`), a hairline between its rows. A row
   is 38 high: the item's name (text a user would copy), its value (`value`: the control the
   caller puts there, a years field or a level's select, 26 high) and the remove button at
   the end (24, the × with the tooltip "Entfernen"). The last row adds an item: a 16 px plus
@@ -76,7 +77,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    border: var(--border-width) solid var(--border);
+    border: var(--border-width) solid var(--item-list-edge);
     border-radius: var(--radius-lg);
     background-color: var(--surface);
   }

@@ -1,42 +1,34 @@
 <!--
-  The core competences, all counting the same: a quiet list (design round 7), one row each
-  with the competence and its years at the right ("Jahre" inside), hairlines between the rows
-  and fields without an edge until the pointer or the caret is in them, then the quiet row
-  "+ Kompetenz". The
-  x of a row needs no tooltip. Without a competence a blank field
-  stands instead (coral while its cell is marked as missing, like every field in it): what
-  is typed there becomes the first row. A value that is too large (the years) or that the backend refused
-  marks its row. Enter goes to the next row, adds one after the last and ends the list on an
-  empty last row (rows.ts); it never saves the profile. Removing a row puts no caret anywhere
-  (input.ts removeBy): after a click the focus is dropped, from the keyboard it goes to the
-  next row's x (the previous one after the last, "+ Kompetenz" once none is left).
-  The competence suggests the engine's words while typing (vocabulary.svelte.ts). A long
-  list shows its first eight rows and "Alle anzeigen (n)" beside the add row ("Weniger
-  anzeigen" folds it again); adding a row or a refused row further down shows them all.
+  The core competences, all counting the same: an item list (ItemList; the round 10 draft),
+  one row each with the competence's name (plain text to copy, decision 14: never edited in
+  place), its years in a small field (44, 26 high) with "Jahre" after it, and the × that
+  removes it. The last row adds one: a field without an edge that suggests the engine's words
+  from the first character (vocabulary.svelte.ts); Enter or leaving the field takes what was
+  typed (a pasted list splits at commas), a name that is there already is not added twice.
+  A new row rises in, a removed one folds away. A value that is too large (the years) or
+  that the backend refused marks its row's field and is said under the list.
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
-  import TextField from '$components/TextField.svelte';
+  import ChipInput from '$components/ChipInput.svelte';
+  import ItemList from '$components/ItemList.svelte';
   import { t } from '$lib/i18n/t';
-  import { formKeys, removeBy } from '$lib/input/input';
   import { type Competence } from '$lib/state/profile.svelte';
-  import { tick } from 'svelte';
   import NumberField from './NumberField.svelte';
-  import { enterRow, focusRow } from './rows';
+  import { keyOf, named } from './rows';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
     rows: Competence[];
+    /** The id of the add row's field, for the label of its Field. */
+    id: string;
     /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
   }
 
-  let { rows = $bindable(), error = null }: Props = $props();
+  let { rows = $bindable(), id, error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   vocabulary.load();
-  const id = $props.id();
-  let list = $state<HTMLElement | null>(null);
 
   /** The row the backend refused: counted among the rows with a name, as the backend does. */
   const refused = $derived.by((): Competence | null => {
@@ -44,167 +36,64 @@
     return rows.filter((row) => row.name.trim() !== '')[error.row] ?? null;
   });
 
-  function remove(row: Competence): void {
-    rows = rows.filter((other) => other !== row);
+  const same = (a: string, b: string): boolean => keyOf(a) === keyOf(b);
+
+
+  /** What the add row took: each name not there yet becomes a row. */
+  let typed = $state<string[]>([]);
+  function take(names: string[]): void {
+    const fresh = names.filter((name) => !rows.some((row) => same(row.name, name)));
+    if (fresh.length > 0) rows = [...rows, ...fresh.map((name) => ({ name, years: null }))];
+    typed = [];
   }
-
-  /** Rows shown before "Alle anzeigen". */
-  const FOLDED = 8;
-  let unfolded = $state(false);
-  const all = $derived(
-    unfolded || rows.length <= FOLDED || (refused !== null && rows.indexOf(refused) >= FOLDED),
-  );
-  const shown = $derived(all ? rows : rows.slice(0, FOLDED));
-
-  const append = (): void => {
-    unfolded = true;
-    rows = [...rows, { name: '', years: null }];
-  };
-
-  async function add(): Promise<void> {
-    append();
-    await tick();
-    focusRow(list, rows.length - 1);
-  }
-
-  /** The first letters typed into the blank field: they become the first row, which keeps
-   *  the caret. */
-  async function begin(text: string): Promise<void> {
-    if (text === '') return;
-    rows = [{ name: text, years: null }];
-    await tick();
-    const input = list?.querySelector<HTMLInputElement>('[data-row] input');
-    input?.focus();
-    input?.setSelectionRange(text.length, text.length);
-  }
-
-  const blank = (row: Competence): boolean => row.name.trim() === '' && row.years === null;
-  const enter = (row: Competence): void =>
-    void enterRow({ list, rows, row, blank, add: append, remove });
 </script>
 
-<div class="list" bind:this={list} data-testid="competences" data-removes>
-  {#if rows.length === 0}
-    <span class="blank">
-      <TextField
-        value=""
-        id="{id}-name-0"
-        label={words.competence}
-        placeholder={words.competencePlaceholder}
-        testid="competence-blank"
-        oninput={(text) => void begin(text)}
-      />
-    </span>
-  {/if}
-  {#each shown as row, index (row)}
-    {@const wrong = row === refused}
-    <div
-      class="row"
-      data-row
-      data-testid="competence-row"
-      use:formKeys={{ save: () => enter(row) }}
-    >
-      <span class="name">
-        <TextField
-          bind:value={row.name}
-          id="{id}-name-{index}"
-          label={words.competence}
-          placeholder={rows.length === 1 ? words.competencePlaceholder : null}
-          invalid={wrong}
-          quiet
-          describedby={wrong ? `${id}-error` : null}
-          suggestions={vocabulary.skills}
-          testid="competence-name"
-        />
-      </span>
-      <span class="years">
-        <NumberField
-          bind:value={row.years}
-          label={words.years}
-          unit={words.years}
-          invalid={wrong}
-          quiet
-          testid="competence-years"
-        />
-      </span>
-      <span class="remove" data-remove>
-        <Button
-          variant="ghost"
-          iconOnly
-          icon="close"
-          plain
-          label={words.removeCompetence(row.name.trim())}
-          testid="competence-remove"
-          onclick={(event) => removeBy(event.currentTarget, () => remove(row))}
-        />
-      </span>
-    </div>
-  {/each}
-  {#if error}
-    <p class="error" id="{id}-error" role="alert" data-testid="competence-error">{error.text}</p>
-  {/if}
-  {#if rows.length > 0}
-    <span class="add indent" data-remove-fallback>
-      <Button
-        variant="ghost"
-        icon="add"
-        label={words.addCompetence}
-        testid="competence-add"
-        onclick={() => void add()}
-      />
-      {#if rows.length > FOLDED}
-        <Button
-          variant="ghost"
-          label={all ? words.showLess : words.showAll(rows.length)}
-          testid="competence-fold"
-          onclick={() => (unfolded = !all)}
-        />
-      {/if}
-    </span>
-  {/if}
-</div>
+{#snippet years(row: Competence)}
+  <span class="years">
+    <NumberField
+      bind:value={row.years}
+      label={words.yearsOf(row.name)}
+      inline
+      invalid={row === refused}
+      testid="competence-years"
+    />
+  </span>
+  {words.years}
+{/snippet}
+
+{#snippet add()}
+  <ChipInput
+    {id}
+    bind:values={typed}
+    placeholder={words.competencePlaceholder}
+    suggestions={vocabulary.skills}
+    bare
+    testid="competence-add"
+    onchange={take}
+  />
+{/snippet}
+
+<ItemList
+  items={named(rows, (row) => row.name)}
+  key={(row) => keyOf(row.name)}
+  name={(row) => row.name}
+  value={years}
+  {add}
+  testid="competences"
+  onremove={(row) => (rows = rows.filter((other) => other !== row))}
+/>
+{#if error}
+  <p class="error" role="alert" data-testid="competence-error">{error.text}</p>
+{/if}
 
 <style>
-  .list {
+  .years {
     display: flex;
-    flex-direction: column;
-  }
-
-  /* competence | years | remove, a hairline between the rows. */
-  .row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--years-width) var(--control-field);
-    align-items: start;
-    gap: var(--space-6);
-    padding: var(--space-4) 0;
-    border-bottom: var(--border-width) solid var(--border);
-  }
-
-  .row:first-of-type {
-    border-top: var(--border-width) solid var(--border);
-  }
-
-  .blank {
-    display: flex;
-  }
-
-  .remove {
-    display: flex;
-    align-items: center;
-    height: var(--control-field);
-  }
-
-  /* Under the rows the quiet add row lines up with the names (its glyph on their text). */
-  .add.indent {
-    display: flex;
-    margin-top: var(--space-6);
-    justify-content: space-between;
-    margin-left: calc(-1 * var(--space-2));
+    width: var(--profile-row-years);
   }
 
   .error {
-    margin-top: var(--space-6);
-    color: var(--danger-strong);
+    color: var(--error-text);
     font: var(--type-sm);
   }
 </style>
