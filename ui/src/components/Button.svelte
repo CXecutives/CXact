@@ -15,7 +15,8 @@
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
     not react otherwise. Tab passes them like native disabled buttons, except one that says
     why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus.
-  - One width while it swaps: `loading` keeps it (the content fades out under the spinner),
+  - One width while it swaps: `loading` keeps it (the content fades out under the spinner,
+    white on a filled button),
     and `sizeTo` names the words (and glyphs) that take its place (Jobs suchen and
     Abbrechen, Speichern and its busy state): hidden copies of them share its content's
     grid cell, so it is as wide as the widest, without a number. A container gives a pair
@@ -111,6 +112,8 @@
       : sizeTo.map((face) => (typeof face === 'string' ? { label: face, icon } : face)),
   );
   const glyphSize = $derived(variant === 'suggest' ? 'xxs' : 'sm');
+  /** A filled button: its spinner takes the colour of its words, not navy on coral. */
+  const filled = $derived(variant === 'primary' || variant === 'danger');
 
   function handle(event: MouseEvent): void {
     if (inactive) {
@@ -166,7 +169,9 @@
     {/each}
   </span>
   {#if loading}
-    <span class="busy" in:fade><Spinner size="sm" label={null} /></span>
+    <span class="busy" in:fade
+      ><Spinner size="sm" tone={filled ? 'current' : 'navy'} label={null} /></span
+    >
   {/if}
 </button>
 
