@@ -8,7 +8,7 @@ import { expect, open, test } from './fixtures';
 import { WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
-const SIZES = [12, 13, 14, 15, 16, 20, 26, 10.5, 17];
+const SIZES = [12, 13, 14, 15, 16, 20, 26, 11.5, 17];
 const WEIGHTS = [450, 500, 540, 650];
 /** In a field 24, inline 26, quiet icon 28, control 30, menu row and sidebar entry 32, a caption
  *  button of Windows 36. */

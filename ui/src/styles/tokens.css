@@ -35,34 +35,34 @@
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   /* The track of a choice of a few (the place tabs, Arbeitsmodell): a warm light grey. */
-  --p-track: 32 22% 93.6%;
-  --p-nav-active: 30 20% 90%; /* the chosen sidebar entry: a warm grey pill, no shadow (round 10) */
-  --p-cream: 30 22% 96.5%;
+  --p-track: 30 12% 94.6%;
+  --p-nav-active: 30 10% 91%; /* the chosen sidebar entry: a warm grey pill, no shadow (round 10) */
+  --p-cream: 30 16% 96.4%;
   --p-ink: 30 10% 12%;
-  --p-coral: 13 72% 60%;
+  --p-coral: 13 73% 63%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
   --p-brand-glyph: 0 0% 100%; /* the icon's briefcase and lens */
   --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
-  --p-coral-variant: 13 62% 52%;
-  --p-coral-press: 13 62% 46%;
+  --p-coral-variant: 13 64% 56%;
+  --p-coral-press: 13 62% 47%;
   --p-muted-fg: 30 5% 37%;
-  --p-line: 32 16% 89%;
+  --p-line: 30 10% 90%;
   --p-danger: 355.8 71.8% 47.3%;
-  --p-coral-25: 16 70% 97%;
-  --p-coral-50: 16 64% 94.5%;
-  --p-coral-100: 16 60% 89%;
+  --p-coral-25: 13 70% 97.2%;
+  --p-coral-50: 13 64% 95%;
+  --p-coral-100: 13 60% 90%;
   --p-coral-70: 16 55% 94%;
   /* The navy of cxpertise.de (#3E5C7E) a step richer, so it reads beside the coral (user,
      2026-10-01). */
-  --p-navy: 213 52% 30%;
-  --p-navy-deep: 213 52% 24%;
+  --p-navy: 212 50% 36%;
+  --p-navy-deep: 213 54% 27%;
   --p-navy-50: 212 50% 96.5%;
   --p-navy-150: 212 42% 89%;
   --p-fg-subtle: 30 4% 41%;
   /* Glyphs beside text (search, chevron, info, a chip's ×, placeholders): lighter than the
      subtle text, 3:1 is enough for a glyph (round 10 review). */
   --p-icon-subtle: 30 4% 50%;
-  --p-border-strong: 32 12% 80%;
+  --p-border-strong: 30 8% 82%;
   --p-border-input: 30 10% 68%;
   --p-border-press: 30 10% 62%;
   --p-wash: 28 30% 24%;
@@ -91,11 +91,11 @@
   --p-red-100: 358 60% 90%;
   --p-green-50: 142 45% 95%;
   /* The empty part of a ring and of a switch that is off. */
-  --p-ring-track: 32 20% 91%;
+  --p-ring-track: 30 8% 92%;
   --p-toggle-off: 30 10% 82%;
   /* The ground of the job view and the pages (round 10): a warm white between the cream and
      white, so the white cards on it read as cards. */
-  --p-page: 36 30% 98.2%;
+  --p-page: 30 12% 98.5%;
   --p-titlebar-fg: 30 6% 28%;
   --p-scrim: 30 15% 10%;
   --p-shade-xs: 30 15% 25%;
@@ -455,7 +455,7 @@
      2026-10-01). */
   /* The vertical padding of a row: a list row's two lines (title and company), and a row of
      a page's group (a setting, a portal) with its control, roomy. */
-  --list-row-pad: 9px;
+  --list-row-pad: 10px;
   /* A row of a page's group: its label and its one line under it, the line its tile, buttons
      and switch are centred on (every row this high, so a list keeps one rhythm). */
   /* Mail-style rows: the title line and the company line beside the ring. */
@@ -553,9 +553,9 @@
   /* A page without a title (Profil, Einstellungen): its first heading's line (as high as its
      text) lies where a head's first row would, centred on the sidebar's first entry. */
   --page-top: calc(var(--head-pad) + (var(--first-row) - var(--leading-heading)) / 2);
-  --ring-sm: 30px;
+  --ring-sm: 34px;
   --ring-sm-stroke: 3px;
-  --ring-sm-digits: 10.5px;
+  --ring-sm-digits: 11.5px;
   --ring-md: 56px;
   --ring-md-stroke: 5px;
   --ring-md-digits: 17px;
@@ -579,7 +579,7 @@
   /* a row of an item list (Kompetenzen, Sprachen) */
   --list-item: 38px;
   /* the list: the hairline between rows starts at the title; the highlight is inset this far */
-  --row-rule-start: 52px;
+  --row-rule-start: 56px;
   --row-highlight-inset: 6px;
   /* a row of Einstellungen: its least height and where its hairline starts */
   --setting-row-min: 54px;
@@ -641,7 +641,7 @@
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
      scaled into viewBox units: 36/30 and 36/44. */
-  --ring-sm-scale: 1.2;
+  --ring-sm-scale: 1.0588;
   --ring-md-scale: 0.643;
 
   /* ------------------------------------------- round 10: shell */
@@ -739,7 +739,7 @@
   --tile-accent: hsl(var(--p-navy));
   /* A way of the setup (Tile): 16 inside, its glyph tile 36 white with an edge, the title
      16/650 12 below it. The recommended way is coral: its fill, edge and glyph. */
-  --p-coral-150: 16 55% 82%;
+  --p-coral-150: 13 55% 82%;
   --way-pad: var(--space-16);
   --way-title-gap: var(--space-12);
   --recommended-surface: hsl(var(--p-coral-25));
@@ -807,7 +807,7 @@
   --pulse: hsl(var(--p-coral));
   /* An item list (Kompetenzen, Sprachen): rows of 38, 10 in at the left, a remove button of
      24 at the right. */
-  --item-pad-y: 5px;
+  --item-pad-y: 7px;
   --item-pad-start: var(--space-10);
   --item-pad-end: var(--space-4);
   --item-gap: var(--space-10);
@@ -931,7 +931,7 @@
   --weight-semibold: 650;
   --numeric: tabular-nums;
   /* Round 10 (2026-10-24), Geist on one ladder: meta 12/16, second lines and labels 13/18,
-     the app's text 14/20, the setup's lead 15/22, titles 16/22, view and job titles 20/25,
+     the app's text 14/20, list titles and the setup's lead 15, titles 16/22, view and job titles 20/25,
      the setup's titles 26/30; four weights 450, 500, 540, 650. */
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 12px;
@@ -946,7 +946,7 @@
   --font-md: 14px;
   --leading-md: 20px;
   /* List titles on a tight line, so two lines stay one block. */
-  --font-title: 14px;
+  --font-title: 15px;
   --leading-title: 20px;
   /* Running text (the ad, a dialog's sentence): the text's size on a roomier line. */
   --leading-body: 23px;
