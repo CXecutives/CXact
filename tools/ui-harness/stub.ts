@@ -39,7 +39,7 @@
 // scored, excluded) ·
 // profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
 // two required fields open) · first-run-empty-profile (no competence, no language)
-// · session-left (freelance.de still signed in while the fetch does not use the sign-in)
+// · session-left (freelance.de switched off and still signed in: its row offers Abmelden)
 // · first-fetch-failed (the setup page after a first fetch that could not reach Gmail: step 3
 // says why; "Abrufen" then completes and ends the setup)
 // · no-minimum (a profile without a minimum day rate: the reader's strip shows the ad's rate
@@ -930,8 +930,9 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.portals[2]!.quota = { usedHour: 12, capHour: 40, usedDay: 92, capDay: 100 };
   },
   'session-left': () => {
-    // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
+    // A sign-in still stored of a portal that is off: the row offers Abmelden.
     state.portals[1]!.signedIn = true;
+    state.portals[1]!.enabled = false;
   },
   'sign-in-expired': () => {
     // freelance.de's sign-in ran out: its row says so in red and offers Anmelden.

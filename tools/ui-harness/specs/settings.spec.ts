@@ -388,15 +388,18 @@ test('portals: a stored sign-in the fetch does not use looks like none until it 
   page,
 }) => {
   await settings(page, `${WIN}&scenario=session-left`);
-  // Anmelden only lets the fetch use the stored sign-in: no sign-in window.
-  await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
+  // With the portal off the stored sign-in shows, so it can be removed.
+  await expect(await reveal(page, page.getByTestId('sign-out-freelance'))).toBeVisible();
+  // Switched on it looks like none, and Anmelden only lets the fetch use it: no sign-in
+  // window.
+  await page.getByTestId('toggle-enabled-freelance').click();
+  await page.getByTestId('sign-in-freelance').click();
   await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   expect(await calls(page, 'portal_login')).toHaveLength(0);
   expect((await saved(page)).at(-1)?.portals[0]?.loginEnabled).toBe(true);
+  // Off, Abmelden removes it.
   await settings(page, `${WIN}&scenario=session-left`);
-  // With the portal off the stored sign-in shows, so it can be removed.
-  await (await reveal(page, page.getByTestId('toggle-enabled-freelance'))).click();
-  await page.getByTestId('sign-out-freelance').click();
+  await (await reveal(page, page.getByTestId('sign-out-freelance'))).click();
   await expect(page.getByTestId('sign-out-freelance')).toHaveCount(0);
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
