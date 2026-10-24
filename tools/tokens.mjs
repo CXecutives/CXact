@@ -71,6 +71,23 @@ const CONTRAST = [
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
   // A suggestion chip (Button `suggest`): its words and its count on the track's fill.
   { text: ['text', 'text-muted', 'text-subtle'], on: ['surface-track'] },
+  // Round 10: the warm page of the job view and the pages, the darker words in a ring's
+  // colour, the chosen word of a menu, the red label of a missing field.
+  { text: ['text', 'text-muted', 'text-subtle', 'link'], on: ['page'] },
+  {
+    text: [
+      'score-text-0',
+      'score-text-2',
+      'score-text-4',
+      'score-text-6',
+      'score-text-8',
+      'warning-text',
+    ],
+    on: ['surface', 'page'],
+  },
+  { text: ['chosen-text'], on: ['chosen-surface'] },
+  { text: ['field-label-missing'], on: ['surface', 'page'] },
+  { text: ['text'], on: ['selection-tint', 'danger-tint'] },
 ];
 /** WCAG AA for body text. */
 const AA = 4.5;

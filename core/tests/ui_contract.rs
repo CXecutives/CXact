@@ -894,11 +894,11 @@ fn the_top_bar_measures_the_same_everywhere() {
         "--titlebar-tools-end = window::TOOLS_END"
     );
     // Those zones count the bar's buttons at --titlebar-tool, and the bar's buttons are the
-    // one button height.
+    // one quiet icon-button height (round 10: 28, controls 30).
     assert_eq!(
         px("--titlebar-tool"),
-        px("--control-field"),
-        "--titlebar-tool = --control-field (the one button height)"
+        px("--control-icon"),
+        "--titlebar-tool = --control-icon (the quiet icon-button height)"
     );
     let lights =
         config("tauri.macos.conf.json")["app"]["windows"][0]["trafficLightPosition"].clone();
@@ -1439,7 +1439,7 @@ fn icons_by_meaning() {
     );
 }
 
-/// Buttons have one height, 28 px (design round 6, 2026-10-10): no size to choose (a button
+/// Buttons have one height, 30 px (round 10, 2026-10-24): no size to choose (a button
 /// inside a field is a notch lower, a part of it), every glyph one size, one type. Only
 /// Button.svelte sets its height: no place outside it overrides `--btn-height` (the top bar's
 /// buttons too are the one height).
@@ -1463,7 +1463,7 @@ fn buttons_have_one_height() {
     problems.extend(find(&all, &["--btn-height:"], |s| {
         s.is("components/Button.svelte")
     }));
-    fail(&problems, "buttons have one height (28 px)");
+    fail(&problems, "buttons have one height (30 px)");
 }
 
 /// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only

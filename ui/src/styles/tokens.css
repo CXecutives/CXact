@@ -35,35 +35,39 @@
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   /* The track of a choice of a few (the place tabs, Arbeitsmodell): a warm light grey. */
-  --p-track: 30 20% 93%;
-  --p-nav-active: 32 24% 98.6%; /* the chosen sidebar entry: a warm white, softer than white */
+  --p-track: 32 22% 93.6%;
+  --p-nav-active: 30 20% 90%; /* the chosen sidebar entry: a warm grey pill, no shadow (round 10) */
   --p-cream: 30 22% 96.5%;
-  --p-ink: 30 8% 13%;
-  --p-coral: 13 73% 63%;
+  --p-ink: 30 10% 12%;
+  --p-coral: 13 72% 60%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
   --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
-  --p-coral-variant: 13 64% 56%;
-  --p-coral-press: 13 64% 46%;
+  --p-coral-variant: 13 62% 52%;
+  --p-coral-press: 13 62% 46%;
   --p-muted: 30 20% 97%;
-  --p-muted-fg: 30 5% 33%;
-  --p-line: 30 14% 88%;
+  --p-muted-fg: 30 5% 37%;
+  --p-line: 32 16% 89%;
   --p-danger: 355.8 71.8% 47.3%;
-  --p-coral-25: 16 65% 97%;
-  --p-coral-50: 16 60% 95.5%;
+  --p-coral-25: 16 70% 97%;
+  --p-coral-50: 16 64% 94.5%;
+  --p-coral-100: 16 60% 89%;
   --p-coral-70: 16 55% 94%;
   /* The navy of cxpertise.de (#3E5C7E) a step richer, so it reads beside the coral (user,
      2026-10-01). */
-  --p-navy: 212 50% 36%;
-  --p-navy-deep: 213 54% 27%;
+  --p-navy: 213 52% 30%;
+  --p-navy-deep: 213 52% 24%;
   --p-navy-50: 212 50% 96.5%;
   --p-navy-100: 212 48% 93%;
   --p-navy-150: 212 42% 89%;
   --p-navy-200: 212 36% 81%;
   --p-fg-subtle: 30 4% 41%;
-  --p-border-strong: 30 12% 77%;
-  --p-border-input: 34 8% 60%;
-  --p-border-press: 34 8% 50%;
+  /* Glyphs beside text (search, chevron, info, a chip's ×, placeholders): lighter than the
+     subtle text, 3:1 is enough for a glyph (round 10 review). */
+  --p-icon-subtle: 30 4% 50%;
+  --p-border-strong: 32 12% 80%;
+  --p-border-input: 30 10% 68%;
+  --p-border-press: 30 10% 62%;
   --p-wash: 28 30% 24%;
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
@@ -73,16 +77,38 @@
   --p-titlebar-close: 358 75% 59%;
   --p-titlebar-close-press: 358 66% 52%;
   --p-on-accent: 0 0% 100%;
-  --p-score-red: 358 75% 59%;
-  --p-score-orange: 24 87% 56%;
-  --p-score-yellow: 40 88% 59%;
-  --p-score-lime: 84 56% 47%;
-  --p-score-green: 142 50% 41%;
-  --p-scrim: 212 30% 14%;
+  --p-score-red: 358 70% 55%;
+  --p-score-orange: 24 87% 54%;
+  --p-score-yellow: 40 88% 52%;
+  --p-score-lime: 84 56% 42%;
+  --p-score-green: 142 50% 38%;
+  /* The words in a ring's colour (band, status, verdicts): the same hue one step darker, so
+     yellow, orange and lime words read on white (decision 4, 2026-10-24); rings and dots keep
+     the exact colour. */
+  --p-word-red: 358 62% 46%;
+  --p-word-red-hover: 358 62% 40%;
+  --p-word-red-press: 358 62% 34%;
+  --p-word-orange: 24 80% 38%;
+  --p-word-yellow: 36 80% 34%;
+  --p-word-lime: 84 62% 28%;
+  --p-word-green: 142 52% 30%;
+  --p-red-50: 358 70% 96.5%;
+  --p-red-100: 358 60% 90%;
+  --p-green-50: 142 45% 95%;
+  /* The empty part of a ring and of a switch that is off. */
+  --p-ring-track: 32 20% 91%;
+  --p-toggle-off: 30 10% 82%;
+  /* The ground of the job view and the pages (round 10): a warm white between the cream and
+     white, so the white cards on it read as cards. */
+  --p-page: 36 30% 98.2%;
+  --p-titlebar-fg: 30 6% 28%;
+  --p-scrim: 30 15% 10%;
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
+  --p-shade-dialog: 220 30% 10%;
+  --p-shade-primary: 13 45% 30%;
   /* The tooltip (like Claude's): a dark bubble with a light edge. */
-  --p-emphasis: 213 40% 20%;
+  --p-emphasis: 213 40% 18%;
   --p-tooltip-edge: 213 25% 36%;
 
   /* ---------------------------------------------------------------- surfaces */
@@ -90,10 +116,14 @@
   --surface: hsl(var(--p-white));
   /* Menus, dialogs, toasts and pickers: a step above the content. */
   --surface-raised: hsl(var(--p-raised));
+  /* The ground of the job view, Profil and Einstellungen (round 10). */
+  --page: hsl(var(--p-page));
   --surface-muted: hsl(var(--p-muted));
   /* Under the pointer and pressed: the warm wash, never grey (every quiet surface). */
-  --surface-hover: hsl(var(--p-wash) / 0.04);
-  --surface-press: hsl(var(--p-wash) / 0.08);
+  --surface-hover: hsl(var(--p-wash) / 0.035);
+  /* A quiet control without a box (a title-bar tool, a row tool): a step more. */
+  --surface-hover-quiet: hsl(var(--p-wash) / 0.05);
+  --surface-press: hsl(var(--p-wash) / 0.07);
   /* The selected list row: a very light warm wash; one step deeper under the pointer and one
      more while pressed; grey while the window is inactive (like Mail, Explorer). */
   --surface-selected: hsl(var(--p-coral-25));
@@ -105,7 +135,7 @@
   /* The chosen option on its track: white with a hairline ring (design round 3). */
   --thumb: var(--surface);
   --thumb-edge: var(--border);
-  --scrim: hsl(var(--p-scrim) / 0.36);
+  --scrim: hsl(var(--p-scrim) / 0.26);
   /* The tooltip bubble: the brand's dark pill, softer than near-black ink. */
   --surface-inverse: hsl(var(--p-emphasis));
   /* The tooltip's edge: a faint light hairline around the dark bubble (every design's tooltip
@@ -121,6 +151,8 @@
      alone over a form reads as a link. */
   --text-heading: hsl(var(--p-ink));
   --text-label: hsl(var(--p-ink));
+  /* The label above a field ([data-missing] turns it red). */
+  --field-label: var(--text-label);
   --text-on-accent: hsl(var(--p-on-accent));
   /* The label of the filled danger button: white. */
   --text-on-danger: hsl(var(--p-on-accent));
@@ -129,6 +161,8 @@
   --text-inverse-muted: hsl(var(--p-white) / 0.72);
   --link: hsl(var(--p-navy));
   --link-hover: hsl(var(--p-navy-deep));
+  /* Glyphs beside text: see --p-icon-subtle. */
+  --icon-subtle: hsl(var(--p-icon-subtle));
 
   /* ------------------------------------------------------------------- lines */
   --border: hsl(var(--p-line));
@@ -142,7 +176,7 @@
   --primary-active: hsl(var(--p-coral-press));
   /* Switches are the accent when on, grey when off, the knob white; each state darkens a
      step under the pointer and one more while the left button is down. */
-  --toggle-off: hsl(var(--p-border-strong));
+  --toggle-off: hsl(var(--p-toggle-off));
   --toggle-off-hover: hsl(var(--p-border-input));
   --toggle-off-press: hsl(var(--p-border-press));
   --toggle-on: hsl(var(--p-coral));
@@ -153,7 +187,10 @@
   --unread: hsl(var(--p-coral));
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's
      wash). */
-  --selection-bar: hsl(var(--p-coral) / 0.85);
+  --selection-bar: hsl(var(--p-coral));
+  /* The chosen row of the list (round 10): one soft coral tint under the rows with the bar at
+     its left, gliding to the chosen job (RowBar). */
+  --selection-tint: hsl(var(--p-coral-25));
   /* The sliding pill of the active sidebar entry: a surface a step above the sidebar, lifted
      by the thumbs' shadow and without an edge, like a chosen tab or segment
      (user, 2026-09-30); in CXact a warm white, its label navy and its icon coral. */
@@ -181,13 +218,13 @@
   --chip-remove-hover: hsl(var(--p-wash) / 0.08);
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
   --meter-fill: hsl(var(--p-navy));
-  --meter-track: hsl(var(--p-navy-100));
+  --meter-track: hsl(var(--p-track));
   /* The pinned star and pressed ghost toggles. */
   --pressed: hsl(var(--p-navy-deep));
   /* Caret and text selection: navy, like the native blue of both OS (the edge of a field
      in focus is --border-focus). */
   --caret: hsl(var(--p-navy));
-  --selection: hsl(var(--p-navy) / 0.2);
+  --selection: hsl(var(--p-coral-100));
   /* Scrollbars stay ink. */
   --scrollbar: hsl(var(--p-ink) / 0.2);
   --scrollbar-hover: hsl(var(--p-ink) / 0.34);
@@ -199,16 +236,27 @@
   --warning: var(--score-ring-5);
   /* A required field that is still empty: only a coral edge, no halo (user, design round
      6); the [data-missing] block below gives it to the fields of its cell. */
-  --missing-edge: hsl(var(--p-coral-variant));
+  --missing-edge: hsl(var(--p-score-red));
+  /* The label of a required field that is still empty (round 10): red words. */
+  --field-label-missing: hsl(var(--p-word-red));
+  /* A chosen option in a menu or a select: the track with navy words, no tick. */
+  --chosen-surface: hsl(var(--p-track));
+  --chosen-text: hsl(var(--p-navy));
+  /* Soft grounds of a state: the ban (excluded) and success. */
+  --danger-tint: hsl(var(--p-red-50));
+  --danger-edge: hsl(var(--p-red-100));
+  --success-soft: hsl(var(--p-green-50));
+  --warning-text: hsl(var(--p-word-yellow));
   --danger: hsl(var(--p-danger));
   --danger-strong: hsl(var(--p-danger-strong));
   --danger-soft: hsl(var(--p-danger-soft));
   --danger-hover: hsl(var(--p-danger-700));
   --danger-active: hsl(var(--p-danger-750));
   /* The filled red button (Löschen in a dialog) and its white words. */
-  --danger-fill: var(--danger-strong);
-  --danger-fill-hover: var(--danger-hover);
-  --danger-fill-active: var(--danger-active);
+  /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
+  --danger-fill: hsl(var(--p-word-red));
+  --danger-fill-hover: hsl(var(--p-word-red-hover));
+  --danger-fill-active: hsl(var(--p-word-red-press));
   /* The words of a search in the list's titles: a soft yellow under the ink, translucent, so
      it reads on a plain, a hovered and a selected row alike. */
   --mark: hsl(var(--p-score-yellow) / 0.4);
@@ -233,22 +281,22 @@
   --score-ring-8: hsl(var(--p-score-green));
   --score-ring-9: hsl(var(--p-score-green));
   /* The band's words beside a ring: exactly the ring's colour (user, 2026-09-30). */
-  --score-text-0: var(--score-ring-0);
-  --score-text-1: var(--score-ring-1);
-  --score-text-2: var(--score-ring-2);
-  --score-text-3: var(--score-ring-3);
-  --score-text-4: var(--score-ring-4);
-  --score-text-5: var(--score-ring-5);
-  --score-text-6: var(--score-ring-6);
-  --score-text-7: var(--score-ring-7);
-  --score-text-8: var(--score-ring-8);
-  --score-text-9: var(--score-ring-9);
+  --score-text-0: hsl(var(--p-word-red));
+  --score-text-1: hsl(var(--p-word-red));
+  --score-text-2: hsl(var(--p-word-orange));
+  --score-text-3: hsl(var(--p-word-orange));
+  --score-text-4: hsl(var(--p-word-yellow));
+  --score-text-5: hsl(var(--p-word-yellow));
+  --score-text-6: hsl(var(--p-word-lime));
+  --score-text-7: hsl(var(--p-word-lime));
+  --score-text-8: hsl(var(--p-word-green));
+  --score-text-9: hsl(var(--p-word-green));
   --score-digits: hsl(var(--p-ink));
-  --score-track: hsl(var(--p-line));
+  --score-track: hsl(var(--p-ring-track));
   /* An excluded job: the red ban (in the list on a light red track as large as a ring, in
      the job view beside the red word on a neutral box). */
   --ban: var(--danger-strong);
-  --ban-track: hsl(var(--p-score-red) / 0.2);
+  --ban-track: hsl(var(--p-red-100));
   /* The verdict icons (Jobdetails, Anforderungen) take the rings'
      colours: met the top step, met in part the middle one, not met the lowest. */
   --verdict-met: var(--score-ring-9);
@@ -279,6 +327,25 @@
     hsl(var(--p-white) / 0)
   );
 
+  --grad-fade-page: linear-gradient(
+    hsl(var(--p-page)),
+    hsl(var(--p-page) / 0.9) 20%,
+    hsl(var(--p-page) / 0.7) 38%,
+    hsl(var(--p-page) / 0.45) 56%,
+    hsl(var(--p-page) / 0.22) 74%,
+    hsl(var(--p-page) / 0.07) 88%,
+    hsl(var(--p-page) / 0)
+  );
+  --grad-fade-side: linear-gradient(
+    hsl(var(--p-cream)),
+    hsl(var(--p-cream) / 0.9) 20%,
+    hsl(var(--p-cream) / 0.7) 38%,
+    hsl(var(--p-cream) / 0.45) 56%,
+    hsl(var(--p-cream) / 0.22) 74%,
+    hsl(var(--p-cream) / 0.07) 88%,
+    hsl(var(--p-cream) / 0)
+  );
+
   /* ----------------------------------------------------------------- shadows */
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
      floats above the sheet (dialog, toast, tooltip) casts one; nothing animates a shadow.
@@ -286,14 +353,22 @@
   --sh-xs: 0 1px 2px hsl(var(--p-shade-xs) / 0.06);
   /* A tile under the pointer: a soft shadow, it does not move (design round 7). */
   --sh-tile: 0 4px 14px -4px hsl(var(--p-shade-pop) / 0.12);
-  --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.18);
-  --sh-pop: 0 8px 24px -6px hsl(var(--p-shade-pop) / 0.2), 0 1px 3px hsl(var(--p-shade-pop) / 0.08);
+  --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.14), 0 0 0 0.5px hsl(var(--p-shade-xs) / 0.08);
+  /* A card or a group on the page (round 10), the job view's hero a step higher. */
+  --sh-card: 0 1px 2px hsl(var(--p-shade-xs) / 0.05);
+  --sh-raised:
+    0 1px 2px hsl(var(--p-shade-xs) / 0.06), 0 8px 24px -10px hsl(var(--p-shade-pop) / 0.14);
+  --sh-knob: 0 1px 2px hsl(var(--p-shade-xs) / 0.2);
+  --sh-dialog:
+    0 24px 80px -20px hsl(var(--p-shade-dialog) / 0.45), 0 2px 8px hsl(var(--p-shade-pop) / 0.2);
+  --sh-pop:
+    0 12px 40px -12px hsl(var(--p-shade-pop) / 0.28), 0 2px 6px hsl(var(--p-shade-pop) / 0.08);
   --sh-tooltip:
     0 4px 12px -4px hsl(var(--p-shade-pop) / 0.22), 0 1px 2px hsl(var(--p-shade-pop) / 0.1);
   /* A menu floats close above the page: a near and a far soft shadow (its edge is the same
      hairline border every floating surface has: menus, toasts, dialogs, popovers). */
   --sh-menu: 0 4px 12px hsl(var(--p-shade-pop) / 0.08), 0 16px 40px hsl(var(--p-shade-pop) / 0.12);
-  --sh-primary: inset 0 1px 0 hsl(var(--p-white) / 0.16), 0 1px 2px hsl(var(--p-shade-xs) / 0.12);
+  --sh-primary: 0 1px 1px hsl(var(--p-shade-primary) / 0.14);
   /* No focus ring anywhere, not for the keyboard either (user decision 2026-10-04); the
      keys still work. A text field in focus shows its edge in navy, as native fields do. */
   --border-focus: hsl(var(--p-navy));
@@ -329,7 +404,7 @@
      design's quiet wash under the pointer and a deeper one pressed, the close button the
      app's own danger red of the delete actions with a white glyph and a darker red pressed;
      the glyphs fade while the window is in the back. */
-  --titlebar-fg: var(--text-muted);
+  --titlebar-fg: hsl(var(--p-titlebar-fg));
   --titlebar-fg-hover: var(--text);
   --titlebar-fg-inactive: var(--text-subtle);
   --titlebar-button-hover: var(--surface-hover);
@@ -349,7 +424,9 @@
   /* What lies inside a control's track (the thumb of a choice): the track's radius less its
      2 px inset, so the two curves stay parallel. */
   --radius-inner: calc(var(--radius-control) - var(--space-2));
-  --radius-card: var(--radius-lg);
+  /* Cards, groups, toasts, dialogs and 48 px tiles (round 10); the setup card a step more. */
+  --radius-card: var(--radius-xl);
+  --radius-sheet: 20px;
   --radius-dialog: var(--radius-xl);
 
   /* ----------------------------------------------------- spacing (4 px grid) */
@@ -373,8 +450,12 @@
      the sidebar's entries one step taller (--nav-row). Only a control inside a field (a
      chip, a link or a button in a field, a day of the calendar, a suggestion row) and a
      suggestion chip under a field (Button `suggest`) are a notch lower (--control-sm). */
-  --control-sm: 22px;
-  --control-field: 28px;
+  --control-sm: 24px;
+  --control-field: 30px;
+  /* A quiet icon-only button (title bar, row tools, hero tools): 28 (round 10). */
+  --control-icon: 28px;
+  /* A control inside a list row (years, language level) and a suggestion chip. */
+  --control-inline: 26px;
   --nav-row: 32px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
      centred in it, so their middles lie on one line across the window). */
@@ -393,7 +474,7 @@
   --icon-xl: 24px;
   /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
      large one as strong as a small one for its size (user, 2026-10-01 and 2026-10-10). */
-  --icon-stroke: 2;
+  --icon-stroke: 2.1;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
   --row-place-max: 160px;
@@ -446,7 +527,10 @@
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps
      its room) and at most --list-first-max. */
-  --list-min: 310px;
+  --list-min: 320px;
+  --list-max: 600px;
+  /* The list's first width (round 10). */
+  --list-first: 440px;
   --list-first-min: 480px;
   --list-first-max: 560px;
   --reader-min: 420px;
@@ -463,7 +547,8 @@
      text of a field, a fixed icon column, keys right and quiet. It opens this far below
      its button and keeps --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
-  --menu-row: var(--control-field);
+  --menu-row: 32px;
+  --menu-max-height: 232px;
   /* A group's small heading (the filter menu's Sortierung, Portal, Passung). */
   --menu-heading: 24px;
   --menu-pad: var(--space-4);
@@ -472,8 +557,8 @@
   --menu-min: 190px;
   /* The widest a menu grows (a long name, a profile's, ends in an ellipsis there). */
   --menu-max: 420px;
-  --menu-radius: var(--radius-md);
-  --menu-row-radius: var(--radius-xs);
+  --menu-radius: var(--radius-lg);
+  --menu-row-radius: var(--radius-inner);
   /* A popover under its button (the Profil's "Aus Lebenslauf ausfüllen"). */
   --popover-width: 320px;
   --grip-width: 4px;
@@ -512,7 +597,7 @@
   --step-current: hsl(var(--p-coral));
   --layout-group: var(--surface);
   --layout-group-edge: var(--border);
-  --layout-group-radius: 12px;
+  --layout-group-radius: var(--radius-card);
   --layout-group-pad: 16px;
   --layout-field-gap: 16px;
   /* Between two short fields side by side (design round 7). */
@@ -529,7 +614,7 @@
   /* The inner padding of a card: its rows' sides, a box's content. */
   --card-padding: 14px;
   /* The padding of a button's content at its sides (Button). */
-  --button-pad: var(--space-10);
+  --button-pad: 11px;
   /* How far a ghost button hangs out of its column so its text or icon starts (or ends) on
      the column's edge: its padding and its (transparent) border. */
   --ghost-inset: calc(var(--button-pad) + var(--border-width));
@@ -545,47 +630,97 @@
   --first-row: var(--control-lg);
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
-  --head-pad: var(--space-12);
+  --head-pad: var(--space-8);
   /* A page without a title (Profil, Einstellungen): its first heading's line (as high as its
      text) lies where a head's first row would, centred on the sidebar's first entry. */
   --page-top: calc(var(--head-pad) + (var(--first-row) - var(--leading-heading)) / 2);
   --ring-sm: 30px;
-  --ring-sm-stroke: 3.5px;
-  --ring-md: 44px;
-  --ring-md-stroke: 4.5px;
+  --ring-sm-stroke: 3px;
+  --ring-sm-digits: 10.5px;
+  --ring-md: 56px;
+  --ring-md-stroke: 5px;
+  --ring-md-digits: 17px;
   --border-width: 1px;
   --focus-width: 2px;
-  --tile-sm: 28px;
-  --tile-md: 34px;
+  --tile-sm: 32px;
+  --tile-md: 36px;
   --tile-lg: 48px;
+  --tile-xl: 56px;
   /* The unread dot of a list row sits on the ring axis in the pane padding; the dot of a
      state (Verbunden) beside its words. */
   --dot-unread: 6px;
+  /* Round 10 (2026-10-24), the approved draft: */
+  /* the dot of a status word (Verbunden) and the pulse of a run */
+  --dot-status: 7px;
+  --pulse-dot: 8px;
+  /* a checkbox and its edge */
+  --check-box: 16px;
+  --check-edge: 1.5px;
+  /* a chip in a field and its remove button */
+  --chip-height: 24px;
+  --chip-x: 16px;
+  /* a row of an item list (Kompetenzen, Sprachen) */
+  --list-item: 38px;
+  /* the list: the hairline between rows starts at the title; the highlight is inset this far */
+  --row-rule-start: 52px;
+  --row-highlight-inset: 6px;
+  /* a row of Einstellungen: its least height and where its hairline starts */
+  --setting-row-min: 54px;
+  --setting-rule-start: 64px;
+  /* the label column of Jobdetails */
+  --facts-label: 96px;
+  /* cards and groups on the page */
+  --card-pad-y: 18px;
+  --card-pad-x: 20px;
+  --group-field-gap: 18px;
+  --group-heading-gap: 10px;
+  --group-section-gap: 30px;
+  /* the job view: its side padding, its foot and the widest its content gets */
+  --reader-pad-x: 28px;
+  --reader-pad-end: 40px;
+  --reader-max: 760px;
+  /* the pages: the column with its sides, and the sides of a narrow window */
+  --page-max: 780px;
+  --page-side: 32px;
+  --page-side-narrow: 16px;
+  /* number fields of the Profil: rates, years, a day, the years of a competence */
+  --number-rate: 170px;
+  --number-years: 130px;
+  --date-width: 122px;
+  --years-field: 44px;
+  /* a select trigger, a toast, a pair of buttons */
+  --select-min: 150px;
+  --toast-min: 280px;
+  --toast-max: 400px;
+  --button-pair-min: 88px;
+  /* the setup card */
+  --setup-card: 540px;
+  --setup-card-wide: 760px;
   --scrollbar-size: 8px;
   /* The Windows thumb: 2 px at rest (a 3 px border in the 8 px track), 4 px when hovered
      (--scrollbar-gap), as in Windows 11. */
   --scrollbar-gap: 2px;
   --scrollbar-thumb-rest: 3px;
-  --tooltip-max: 240px;
+  --tooltip-max: 260px;
   --tooltip-gap: 6px;
   --tracking-tooltip: 0.01em;
   --viewport-gap: 8px;
   --meter-sm: 4px;
   --meter-md: 6px;
   --meter-lg: 8px;
-  --toggle-width: 32px;
-  --toggle-height: 18px;
-  --toggle-thumb: 14px;
-  --toggle-travel: 14px;
+  --toggle-width: 36px;
+  --toggle-height: 21px;
+  --toggle-thumb: 17px;
+  --toggle-travel: 15px;
   --row-bar: 3px;
   /* The selection bar keeps the row's top and bottom padding. */
-  --row-bar-inset: var(--list-row-pad);
-  --dialog-width: 420px;
+  --row-bar-inset: 10px;
+  --dialog-width: 400px;
   --stat-min: 170px;
   /* Sidebar and the toast stack. */
-  --sidebar-width: 180px;
+  --sidebar-width: 232px;
   /* The sidebar's handle keeps it between these. */
-  --sidebar-min: 160px;
+  --sidebar-min: 200px;
   --sidebar-max: 300px;
   /* The sidebar of a narrow window floats this far in from the window's edges. */
   --peek-inset: 6px;
@@ -606,14 +741,41 @@
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
      scaled into viewBox units: 36/30 and 36/44. */
   --ring-sm-scale: 1.2;
-  --ring-md-scale: 0.818;
+  --ring-md-scale: 0.643;
+
+  /* ------------------------------------------- round 10: shell */
+  /* (shell tokens below) */
+
+  /* ------------------------------------------- round 10: controls */
+  /* (controls tokens below) */
+
+  /* ------------------------------------------- round 10: surfaces */
+  /* (surfaces tokens below) */
+
+  /* ------------------------------------------- round 10: jobs list */
+  /* (jobs list tokens below) */
+
+  /* ------------------------------------------- round 10: job view */
+  /* (job view tokens below) */
+
+  /* ------------------------------------------- round 10: profile */
+  /* (profile tokens below) */
+
+  /* ------------------------------------------- round 10: settings */
+  /* (settings tokens below) */
+
+  /* ------------------------------------------- round 10: setup */
+  /* (setup tokens below) */
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Geist draws lighter than Inter: one step heavier everywhere (user, 2026-10-10). */
   --weight-regular: 450;
-  --weight-medium: 560;
+  /* Four weights (round 10): 450 text, 500 buttons and quiet words, 540 labels, segments, list
+     titles and chips, 650 titles. */
+  --weight-control: 500;
+  --weight-medium: 540;
   --weight-semibold: 650;
   --numeric: tabular-nums;
   /* Design round 7 (user, 2026-10-10), Geist on one ladder 12.5 / 14 / 16 / 19 / 24 (Geist
@@ -625,19 +787,22 @@
   --font-2xs: 12px;
   --leading-2xs: 16px;
   /* Dates and stamps. */
-  --font-xs: 12.5px;
-  --leading-xs: 17px;
+  --font-xs: 12px;
+  --leading-xs: 16px;
   /* Small text: hints, the second line of a row, a section's line. */
-  --font-sm: 12.5px;
-  --leading-sm: 17px;
+  --font-sm: 13px;
+  --leading-sm: 18px;
   /* The text of the app: running lines, fields, labels, buttons, tabs. */
   --font-md: 14px;
   --leading-md: 20px;
   /* List titles on a tight line, so two lines stay one block. */
-  --font-title: 14.5px;
+  --font-title: 14px;
   --leading-title: 20px;
   /* Running text (the ad, a dialog's sentence): the text's size on a roomier line. */
-  --leading-body: 22px;
+  --leading-body: 23px;
+  /* The lead of a setup step. */
+  --font-lead: 15px;
+  --leading-lead: 22px;
   /* The digits of a large ring, the letters of a large tile (semibold). */
   --font-lg: 16px;
   --leading-lg: 22px;
@@ -646,10 +811,10 @@
   --font-heading: 16px;
   --leading-heading: 22px;
   /* The title of a view, a step of the setup, the job view. */
-  --font-xl: 19px;
-  --leading-xl: 26px;
+  --font-xl: 20px;
+  --leading-xl: 25px;
   /* The title of a setup step and of an empty state. */
-  --font-display: 24px;
+  --font-display: 26px;
   --leading-display: 30px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
   --type-xs: var(--weight-regular) var(--font-xs) / var(--leading-xs) var(--font-sans);
@@ -660,6 +825,10 @@
      sidebar entry. */
   --type-label: var(--weight-medium) var(--font-md) / var(--leading-md) var(--font-sans);
   --type-title: var(--weight-medium) var(--font-title) / var(--leading-title) var(--font-sans);
+  /* A button's words (500) and a field's label above it (540, 13). */
+  --type-control: var(--weight-control) var(--font-md) / var(--leading-md) var(--font-sans);
+  --type-field-label: var(--weight-medium) var(--font-sm) / var(--leading-sm) var(--font-sans);
+  --type-lead: var(--weight-regular) var(--font-lead) / var(--leading-lead) var(--font-sans);
   --type-body: var(--weight-regular) var(--font-md) / var(--leading-body) var(--font-sans);
   --type-lg: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
   /* A group's heading, in --text-heading with --tracking-tight. */
@@ -671,7 +840,7 @@
     var(--font-sans);
 
   --tracking-tight: -0.01em;
-  --tracking-display: -0.02em;
+  --tracking-display: -0.022em;
 
   /* ------------------------------------------------------------------ motion */
   /* Snappy and calm (user test of the installed app), quiet at rest and rich on contact
@@ -730,7 +899,7 @@
   --z-overlay: 100;
   --z-menu: 115;
   --z-tooltip: 120;
-  --opacity-disabled: 0.5;
+  --opacity-disabled: 0.45;
   --opacity-muted: 0.6;
   /* A link while it is pressed. */
   --opacity-press: 0.7;
@@ -742,6 +911,7 @@
 [data-missing] {
   --field-edge: var(--missing-edge);
   --field-edge-hover: var(--missing-edge);
+  --field-label: var(--field-label-missing);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,
