@@ -677,17 +677,22 @@
   /* Snappy and calm (user test of the installed app), quiet at rest and rich on contact
      (user, 2026-09-24): every control answers without waiting for an animation. Hover-in
      takes 80 ms (--dur-hover on the :hover rule), hover-out relaxes in 150 ms (--dur-base on
-     the base rule), a press darkens in 60 ms (nothing scales or moves), the release settles in
-     150 ms. Colour changes 100 ms, entries 150 ms, every slide (nav pill,
-     segmented and toggle thumbs, chevrons, dialog) 180 ms, the ring fill 360 ms. Only
-     transform and opacity move; nothing overshoots; the only pop is a keyframed 1, 1.18, 1;
-     no lift, glow, stagger, blur or replay. */
+     the base rule), a press darkens in 60 ms (nothing scales, moves or deforms), the release
+     settles in 150 ms. Colour changes 100 ms, entries 150 to 180 ms, every glide (list
+     selection, nav pill, segment and toggle thumbs, chevrons) 180 ms with ease-out, the ring
+     fill and its count 400 ms. Only transform and opacity move (and colour and
+     stroke-dashoffset); nothing overshoots, nothing staggers (lib/motion/transitions.ts states
+     the rules). */
   --dur-instant: 60ms;
   --dur-hover: 80ms;
   --dur-fast: 100ms;
   --dur-base: 150ms;
+  /* A fade beside a move: a glide's highlight appearing or hiding, a checkbox's fill, a toast
+     leaving. */
+  --dur-fade: 140ms;
   --dur-slow: 180ms;
-  --dur-reveal: 360ms;
+  /* The ring's fill and its count. */
+  --dur-reveal: 400ms;
   --dur-loop: 1400ms;
   /* How long a toast stays (paused while hovered, the window is in the back or a dialog is
      open); one with an undo stays long enough to read it and reach the button. */
@@ -696,7 +701,7 @@
   --dur-crossfade: 100ms;
   /* At most this many list rows animate at the same time; the others are simply there. */
   --stagger-max: 10;
-  --delay-tooltip: 400ms;
+  --delay-tooltip: 350ms;
   /* A loading placeholder shows only once a load has taken this long (a quicker load
      never flashes one). */
   --delay-placeholder: 300ms;
@@ -715,7 +720,8 @@
   /* A toast coming up from below (design round 7). */
   --move-xl: 12px;
   --scale-enter: 0.98;
-  /* No icon moves on hover (user, 2026-09-25). */
+  /* The one icon that moves on hover: the arrow of a back or next button nudges by --move-sm
+     (Button). */
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
      motion. */
   --turn-half: 180deg;
@@ -753,6 +759,7 @@
   --dur-hover: 0ms;
   --dur-fast: 0ms;
   --dur-base: 0ms;
+  --dur-fade: 0ms;
   --dur-slow: 0ms;
   --dur-reveal: 0ms;
   --move-xs: 0px;

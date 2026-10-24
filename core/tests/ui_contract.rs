@@ -975,6 +975,7 @@ fn motion_stays_quick_and_calm() {
         "--dur-hover",
         "--dur-fast",
         "--dur-base",
+        "--dur-fade",
         "--dur-slow",
     ] {
         assert!(ms(name) <= 180, "{name} is {} ms (at most 180)", ms(name));

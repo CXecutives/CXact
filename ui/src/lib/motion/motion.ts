@@ -8,7 +8,7 @@
 
 import { tokenMs, tokenNumber, tokenPx, token } from '../tokens';
 
-export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'slow' | 'reveal' | 'loop';
+export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'fade' | 'slow' | 'reveal' | 'loop';
 export type Easing = 'standard' | 'out' | 'in' | 'emphasized';
 export type Move = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export type EasingFn = (t: number) => number;
@@ -19,7 +19,6 @@ interface Values {
   easings: Record<Easing, EasingFn>;
   moves: Record<Move, number>;
   staggerMax: number;
-  enterScale: number;
   tooltipDelay: number;
 }
 
@@ -28,6 +27,7 @@ const DURATIONS: readonly Duration[] = [
   'hover',
   'fast',
   'base',
+  'fade',
   'slow',
   'reveal',
   'loop',
@@ -95,7 +95,6 @@ function read(): Values {
       number
     >,
     staggerMax: tokenNumber('--stagger-max'),
-    enterScale: tokenNumber('--scale-enter'),
     tooltipDelay: tokenMs('--delay-tooltip'),
   };
 }
@@ -141,10 +140,6 @@ export function easing(name: Easing): EasingFn {
 /** Travel distance in whole px; 0 under reduced motion. */
 export function move(name: Move): number {
   return reduced ? 0 : current().moves[name];
-}
-
-export function enterScale(): number {
-  return reduced ? 1 : current().enterScale;
 }
 
 /** How many items of a list may animate at the same time; the others are simply there. */
