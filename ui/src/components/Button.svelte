@@ -227,12 +227,15 @@
     transition: transform var(--dur-base) var(--ease-out);
   }
 
-  /* The arrows of Zurück and Weiter lean 2 px the way they point (the draft). */
-  .btn:not([aria-disabled='true'], .loading):hover .glyph[data-icon='back'] {
+  /* The arrows of Zurück and Weiter lean 2 px the way they point (the draft); only on buttons
+     with words: the top bar's quiet icon buttons answer alike, with their wash only (owner,
+     2026-10-24: no motion on two of the bar's three tools). */
+  .btn:not([aria-disabled='true'], .loading, .icon-only):hover .glyph[data-icon='back'] {
     transform: translateX(calc(-1 * var(--move-sm)));
   }
 
-  .btn:not([aria-disabled='true'], .loading):hover :is(.glyph, .trailing)[data-icon='next'] {
+  .btn:not([aria-disabled='true'], .loading, .icon-only):hover
+    :is(.glyph, .trailing)[data-icon='next'] {
     transform: translateX(var(--move-sm));
   }
 

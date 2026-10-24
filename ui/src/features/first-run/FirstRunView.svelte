@@ -191,7 +191,7 @@
       use:formKeys={step === 'alerts'
         ? { save: () => void next(), cancel: () => mailboxForm?.cancel() }
         : { save: () => void next() }}
-      in:stepIn={{ forward }}
+      in:stepIn={{ forward, skip: step !== 'profile' }}
     >
       {#if step === 'profile'}
         <ProfileStep
@@ -213,6 +213,7 @@
           {top}
           body={step === 'reading' || step === 'done' ? null : body}
           {actions}
+          {forward}
         />
       {/if}
     </section>

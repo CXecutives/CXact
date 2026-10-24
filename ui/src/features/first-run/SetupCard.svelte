@@ -13,6 +13,7 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
+  import { stepIn } from '$lib/motion/transitions';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -29,6 +30,9 @@
     /** The step's body under the head (none: the head says it all). */
     body?: Snippet | null;
     actions?: Snippet | null;
+    /** The way the step came (Weiter or Zurück): its content slides in from that side while
+     *  the card itself stays, so nothing blinks between steps. */
+    forward?: boolean;
   }
 
   let {
@@ -41,52 +45,62 @@
     top,
     body = null,
     actions = null,
+    forward = true,
   }: Props = $props();
 </script>
 
 <div class="frame">
   <div class="card">
-    <header class="head">
-      {@render top()}
-      <h1
-        class="title"
-        id="first-step-heading"
-        tabindex="-1"
-        bind:this={headingElement}
-        data-testid="first-heading"
-      >
-        <span data-heading>{heading}</span>
-        {#if badge}<span class="badge" data-testid="first-badge">{badge}</span>{/if}
-      </h1>
-      <p class="lead" data-testid="first-lead">{lead}</p>
-    </header>
-    {#if body}<div class="body">{@render body()}</div>{/if}
-    <footer class="foot" class:centred data-testid="first-bar">
-      {#if !centred}
-        <span class="back">
-          {#if onback}
-            <Button
-              variant="ghost"
-              icon="back"
-              label={t.common.back}
-              testid="first-back"
-              onclick={onback}
-            />
-          {/if}
-        </span>
-      {/if}
-      {#if actions}<span class="actions">{@render actions()}</span>{/if}
-    </footer>
+    <div class="content" in:stepIn={{ forward }}>
+      <header class="head">
+        {@render top()}
+        <h1
+          class="title"
+          id="first-step-heading"
+          tabindex="-1"
+          bind:this={headingElement}
+          data-testid="first-heading"
+        >
+          <span data-heading>{heading}</span>
+          {#if badge}<span class="badge" data-testid="first-badge">{badge}</span>{/if}
+        </h1>
+        <p class="lead" data-testid="first-lead">{lead}</p>
+      </header>
+      {#if body}<div class="body">{@render body()}</div>{/if}
+      <footer class="foot" class:centred data-testid="first-bar">
+        {#if !centred}
+          <span class="back">
+            {#if onback}
+              <Button
+                variant="ghost"
+                icon="back"
+                label={t.common.back}
+                testid="first-back"
+                onclick={onback}
+              />
+            {/if}
+          </span>
+        {/if}
+        {#if actions}<span class="actions">{@render actions()}</span>{/if}
+      </footer>
+    </div>
   </div>
 </div>
 
 <style>
-  /* The window's cream around the card; the card a little above the middle. */
+  /* The window's cream around the card. Its top stays put from step to step (where a card of
+     the usual height would stand a little above the middle), so a shorter or taller step only
+     moves the card's foot, never its head. */
   .frame {
     container: setup / inline-size;
     display: grid;
-    place-items: center;
-    padding: var(--space-16) var(--space-16) var(--setup-frame-bottom);
+    place-items: start center;
+    padding: var(--setup-frame-top) var(--space-16) var(--setup-frame-bottom);
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
   }
 
   .card {

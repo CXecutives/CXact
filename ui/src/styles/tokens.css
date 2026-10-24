@@ -897,6 +897,8 @@
   --setup-pad-x-narrow: var(--space-20);
   --setup-pad-bottom-narrow: var(--space-16);
   --setup-frame-bottom: 36px;
+  /* The card's top: where a 560 px card would stand a little above the middle, at least 16. */
+  --setup-frame-top: max(var(--space-16), calc(50vh - 316px));
   --setup-top-gap: var(--space-20);
   --setup-tile-gap: 18px;
   --setup-lead-gap: var(--space-8);

@@ -103,8 +103,9 @@ export function slideIn(node: Element, params: RiseParams = {}): TransitionConfi
  *  reached from (Weiter: from the right; Zurück: from the left), 150 ms, ease-out. */
 export function stepIn(
   node: Element,
-  { forward = true }: { forward?: boolean } = {},
+  { forward = true, skip = false }: { forward?: boolean; skip?: boolean } = {},
 ): TransitionConfig {
+  if (skip) return { duration: 0 };
   if (isReducedMotion()) return crossfade(node);
   const x = move('lg') * (forward ? 1 : -1);
   return {
