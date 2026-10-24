@@ -727,7 +727,8 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await expect(empty).toContainText(
     'Die Datei ist beschädigt (Zeile 12). Ein neues Profil ersetzt die Datei.',
   );
-  await empty.getByTestId('profile-folder').click();
+  // Its folder is the page's own action, in the head.
+  await page.getByTestId('profile-head').getByTestId('profile-folder').click();
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
     target: { kind: 'profileDir' },
   });
