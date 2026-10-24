@@ -287,7 +287,9 @@ async function jobOf(page: Page, portal: JobView['portal'], id: string): Promise
 
 test('an archived job leaves the list and every count but the archive', async ({ page }) => {
   await open(page, WIN);
-  const all = (await listed(page)).length;
+  // Every row mounted first (the list builds a few rows per frame).
+  const all = (await stubList(page)).active.length;
+  await expect.poll(async () => (await listed(page)).length).toBe(all);
   await row(page, 'linkedin-4100200301').click();
   await row(page, 'linkedin-4100200301').click({ button: 'right' });
   await page.getByTestId('menu-item-archive').click();
