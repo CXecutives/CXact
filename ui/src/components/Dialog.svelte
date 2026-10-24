@@ -129,7 +129,7 @@
 </script>
 
 {#if open}
-  <div class="layer" transition:scrim>
+  <div class="layer" in:scrim out:scrim>
     <div
       class="scrim"
       onpointerdown={(event) =>

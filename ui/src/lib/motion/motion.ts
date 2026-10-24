@@ -9,11 +9,10 @@
 import { tokenMs, tokenNumber, tokenPx, token } from '../tokens';
 
 export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'fade' | 'slow' | 'reveal' | 'loop';
-export type Easing = 'standard' | 'out' | 'in' | 'emphasized';
-/** `chip`: the 3 px a chip rises when it is added. */
-export type Move = 'xs' | 'sm' | 'chip' | 'md' | 'lg' | 'xl';
-/** The step of a stagger: the rows of a list, the cards of a job, the groups of a page. */
-export type Stagger = 'row' | 'card' | 'group';
+/** `standard`: colour and hover; `out`: entries and glides; `in`: exits. */
+export type Easing = 'standard' | 'out' | 'in';
+/** The two travels: `sm` (4 px) for small things and exits, `lg` (8 px) for large ones. */
+export type Move = 'sm' | 'lg';
 export type EasingFn = (t: number) => number;
 
 interface Values {
@@ -21,7 +20,7 @@ interface Values {
   crossfade: number;
   easings: Record<Easing, EasingFn>;
   moves: Record<Move, number>;
-  staggers: Record<Stagger, number>;
+  staggerRow: number;
   staggerMax: number;
   staggerSpan: number;
   tooltipDelay: number;
@@ -38,9 +37,8 @@ const DURATIONS: readonly Duration[] = [
   'reveal',
   'loop',
 ];
-const EASINGS: readonly Easing[] = ['standard', 'out', 'in', 'emphasized'];
-const MOVES: readonly Move[] = ['xs', 'sm', 'chip', 'md', 'lg', 'xl'];
-const STAGGERS: readonly Stagger[] = ['row', 'card', 'group'];
+const EASINGS: readonly Easing[] = ['standard', 'out', 'in'];
+const MOVES: readonly Move[] = ['sm', 'lg'];
 
 let values: Values | null = null;
 let reduced = false;
@@ -101,10 +99,7 @@ function read(): Values {
       Move,
       number
     >,
-    staggers: Object.fromEntries(STAGGERS.map((s) => [s, tokenMs(`--stagger-${s}`)])) as Record<
-      Stagger,
-      number
-    >,
+    staggerRow: tokenMs('--stagger-row'),
     staggerMax: tokenNumber('--stagger-max'),
     staggerSpan: tokenMs('--stagger-span'),
     tooltipDelay: tokenMs('--delay-tooltip'),
@@ -160,9 +155,9 @@ export function staggerLimit(): number {
   return current().staggerMax;
 }
 
-/** The step between two items of a stagger in ms; 0 under reduced motion. */
-export function stagger(name: Stagger): number {
-  return reduced ? 0 : current().staggers[name];
+/** The step between two rows of a stagger in ms; 0 under reduced motion. */
+export function stagger(): number {
+  return reduced ? 0 : current().staggerRow;
 }
 
 /** The longest a whole stagger may take, its last piece included (ms). */

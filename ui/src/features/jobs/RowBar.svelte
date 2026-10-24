@@ -121,11 +121,11 @@
   }
 
   /**
-   * The style holds `to`; the move starts from `from`: to another row 180 ms ease-out (the
-   * one glide of a choice), along with a row that glides to its new place in the row's own
-   * timing (150 ms). Its height moves only where the two rows differ (rows are one height).
+   * The style holds `to`; the move starts from `from`: 180 ms ease-out, to another row (the
+   * one glide of a choice) as along with a row that glides to its new place (the same
+   * timing). Its height moves only where the two rows differ (rows are one height).
    */
-  function slide(from: BarBox, to: BarBox, along = false): void {
+  function slide(from: BarBox, to: BarBox): void {
     stop();
     place(to);
     if (bar === null) return;
@@ -134,11 +134,7 @@
       transform: `translateY(${Math.round(box.top)}px)`,
       ...(sized ? { height: px(box.height) } : {}),
     });
-    const animation = play(
-      bar,
-      [at(from), at(to)],
-      along ? { duration: 'base' } : { duration: 'slow', easing: 'out' },
-    );
+    const animation = play(bar, [at(from), at(to)], { duration: 'slow', easing: 'out' });
     animation?.addEventListener('finish', () => animation.cancel());
     motion = animation === null ? null : { animation, from, to };
   }
@@ -239,7 +235,7 @@
   export function shift(offset: number): void {
     update();
     if (placed === null || !shown || at === null || inMotion()) return;
-    slide({ top: placed.top + offset, height: placed.height }, placed, true);
+    slide({ top: placed.top + offset, height: placed.height }, placed);
   }
 
   /** Reports the rows' layout, right after each layout that changed their size. */

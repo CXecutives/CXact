@@ -231,12 +231,12 @@
      with words: the top bar's quiet icon buttons answer alike, with their wash only (owner,
      2026-10-24: no motion on two of the bar's three tools). */
   .btn:not([aria-disabled='true'], .loading, .icon-only):hover .glyph[data-icon='back'] {
-    transform: translateX(calc(-1 * var(--move-sm)));
+    transform: translateX(calc(-1 * var(--move-nudge)));
   }
 
   .btn:not([aria-disabled='true'], .loading, .icon-only):hover
     :is(.glyph, .trailing)[data-icon='next'] {
-    transform: translateX(var(--move-sm));
+    transform: translateX(var(--move-nudge));
   }
 
   .busy {

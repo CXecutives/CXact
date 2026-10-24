@@ -1257,7 +1257,7 @@ test('under reduced motion nothing scales or pops', async ({ page }) => {
   await open(page, `${WIN}&view=profile`);
   const tokens = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
-    return ['--move-xs', '--dur-hover'].map((name) => parseFloat(style.getPropertyValue(name)));
+    return ['--move-sm', '--dur-hover'].map((name) => parseFloat(style.getPropertyValue(name)));
   });
   expect(tokens).toEqual([0, 0]);
   // Clicked without the pointer over it (no tooltip comes).

@@ -16,9 +16,9 @@
     place of its cross;
   - ad: the ad's text in its structure, the words of the list's search marked (AdText); only
     once the text is there.
-  A new job's cards rise 8 px one after the other (60 ms apart, lib/motion enterCards), not
-  while the user browses fast (pace.ts); the same job loading again swaps at once, and what
-  arrives later (the ad, its rows, its requirements) fades in. Hovering or clicking a fact or
+  A new job is there at once, every card in its place (a cascade would leave the pane empty
+  for a frame and replay on every job); its ring fills and counts up unless the user browses
+  fast (pace.ts). What arrives later on the same job (the ad, its rows) fades in. Hovering or clicking a fact or
   a requirement marks nothing in the ad (user decision 2026-09-27). Moving the job away from
   one of its buttons hands the focus to the same button of the next job. Every result and
   every failure is a toast.
@@ -43,7 +43,6 @@
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobDetail, OpenTarget, StoredMail } from '$lib/ipc/types';
-  import { enterCards } from '$lib/motion/enter';
   import { animateOpen } from '$lib/motion/pace';
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
@@ -84,14 +83,9 @@
   }
   let { detail, onclose = null }: Props = $props();
 
-  /** The job view opens anew for each job (JobsView's stage): its cards rise unless the user
-   *  browses fast; the ring asks the same in the same frame and gets the same answer. Cards
-   *  that come later on the same job fade in instead. */
-  const opened = animateOpen();
-  let entering = $state(true);
-  $effect(() => {
-    void tick().then(() => (entering = false));
-  });
+  // The job view opens anew for each job (JobsView's stage): the open counts for the pace of
+  // browsing (its ring, if any, asks in the same frame and gets the same answer).
+  void animateOpen();
 
   const job = $derived(detail.job);
   /** The title without gender tags. */
@@ -345,9 +339,9 @@
   }}
 >
   <div class="column">
-    {#each READER_CARDS.filter((card) => card !== 'requirements' || withRequirements) as card, index (card)}
+    {#each READER_CARDS.filter((card) => card !== 'requirements' || withRequirements) as card (card)}
       {#if card !== 'ad' || detail.text}
-        <div class="slot" use:enterCards={{ index, on: opened && entering }} in:fade>
+        <div class="slot" in:fade>
           {#if card === 'hero'}
             <ReaderHero
               {detail}

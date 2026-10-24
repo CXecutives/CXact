@@ -11,12 +11,12 @@
   the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
   folded by default (ListDivider, no count; each choice is kept; a section opens when its job
   is opened from elsewhere). Neither section has days.
-  A list that opens (entering Jobs, another place) lets its first 10 rows rise 8 px one after
-  the other (24 ms apart) while their rings fill and count up; a filter, a search, a selection
-  and fast browsing (pace.ts) open nothing. A new job of a run rises in where it lands (the
+  The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
+  apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
+  search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
   rows below simply make room; the rows already there never flicker). Rows move only for the
   user's own change and for the re-sort at the end of a run: after the order, another place
-  or a filter the rows on screen glide to their new place (150 ms); rows off screen and new
+  or a filter the rows on screen glide to their new place (180 ms); rows off screen and new
   rows are simply there. A row the user moves out folds its height away (its day with its last
   row). One highlight marks the open job's row and glides from row to row (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
@@ -307,9 +307,9 @@
 
   /* ---------------------------------------------------------------------- opens */
 
-  /** The next list that is there opens (rises and counts up): the Jobs view came, another
-   *  place was chosen. */
-  let opening = true;
+  /** The next list that is there opens (rises and counts up): another place was chosen. The
+   *  list the Jobs view comes with (the start, a return from another view) is simply there. */
+  let opening = false;
   let openedPlace = untrack(() => jobs.place);
   /** The list (its generation) that opened with motion; another one is simply there. */
   let openedGeneration = $state(Number.NaN);
@@ -351,7 +351,8 @@
     return [...root.querySelectorAll<HTMLElement>('[data-key]')];
   }
 
-  /** Every row on screen glides from where it stood (150 ms); rows far away are simply there.
+  /** Every row on screen glides from where it stood (180 ms, ease-out, as every glide); rows
+   *  far away are simply there.
    *  Every box is read before the first move starts: a read after a started animation lays
    *  the whole list out again, once per row. */
   function glide(root: HTMLElement, from: Map<string, number>): void {
@@ -368,7 +369,8 @@
     }
     for (const [row, offset] of moves) {
       const motion = play(row, [{ transform: `translateY(${offset}px)` }, { transform: 'none' }], {
-        duration: 'base',
+        duration: 'slow',
+        easing: 'out',
       });
       motion?.addEventListener('finish', () => motion.cancel());
       if (row.hasAttribute('data-open')) rowBar?.shift(offset);

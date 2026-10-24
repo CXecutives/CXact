@@ -26,7 +26,7 @@
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import { stepIn } from '$lib/motion/transitions';
+  import { enterStep } from '$lib/motion/enter';
   import { primaryFirst } from '$lib/platform';
   import { fromCv } from '../shared/fromCv.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
@@ -46,12 +46,14 @@
   /** The pair's order: the primary first on Windows, last on macOS. */
   const actionFirst = primaryFirst();
 
-  /** The direction the step was reached from: forward slides in from the right. */
-  let forward = $state(true);
-  let lastIndex = 0;
-  $effect(() => {
+  /** The direction the step was reached from: forward slides in from the right (null: no
+   *  step change yet, the first step is simply there). Before the DOM updates, so the new
+   *  step comes in from the side it was reached from, not from the last one's. */
+  let forward = $state<boolean | null>(null);
+  let lastIndex: number | null = null;
+  $effect.pre(() => {
     const index = STEPS.findIndex((each) => each.id === step);
-    forward = index >= lastIndex;
+    if (lastIndex !== null && index !== lastIndex) forward = index > lastIndex;
     lastIndex = index;
   });
 
@@ -191,7 +193,7 @@
       use:formKeys={step === 'alerts'
         ? { save: () => void next(), cancel: () => mailboxForm?.cancel() }
         : { save: () => void next() }}
-      in:stepIn={{ forward, skip: step !== 'profile' }}
+      use:enterStep={{ forward: step === 'profile' ? forward : null }}
     >
       {#if step === 'profile'}
         <ProfileStep
