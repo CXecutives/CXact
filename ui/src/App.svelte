@@ -319,7 +319,10 @@
     box-shadow: var(--sidebar-max) 0 0 0 var(--views-end);
   }
 
+  /* The seam lies on the sidebar's last pixel, inside its width: the view starts right at
+     --sidebar-width. */
   .views.docked {
+    margin-left: calc(-1 * var(--border-width));
     border-left: var(--border-width) solid var(--border);
   }
 

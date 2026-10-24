@@ -9,6 +9,8 @@
   reason that decided it in its tooltip (`hint`).
   settled (a missing term the user just added to the profile): a quiet check in place of its
   icon, named by these words, until the next score judges it anew.
+  after: what follows the words in their line (the reader's "+" into the profile), right after
+  the last word when the words wrap.
 -->
 <script lang="ts" module>
   import type { ReasonKind } from '$lib/ipc/types';
@@ -24,6 +26,7 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { fade } from '$lib/motion/transitions';
@@ -40,6 +43,8 @@
     iconOnly?: boolean;
     /** Taken care of (added to the profile): a quiet check in place of the icon, named so. */
     settled?: string | null;
+    /** In the words' line, after them. */
+    after?: Snippet | null;
     testid?: string | null;
   }
 
@@ -50,6 +55,7 @@
     hint = null,
     iconOnly = false,
     settled = null,
+    after = null,
     testid = null,
   }: Props = $props();
 </script>
@@ -77,7 +83,8 @@
       <span class="icon"><Icon name={ICON[kind]} size="sm" /></span>
     {/if}
     <span class="label"
-      >{label}{#if optional}<span class="optional">{t.reason.optional}</span>{/if}</span
+      >{label}{#if optional}<span class="optional">{t.reason.optional}</span
+        >{/if}{#if after}{@render after()}{/if}</span
     >
   </span>
 {/if}

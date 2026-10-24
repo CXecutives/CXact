@@ -520,9 +520,9 @@
   --menu-radius: var(--radius-lg);
   --menu-row-radius: var(--radius-inner);
   --form-width: 500px;
-  /* The input after the chips of a tag field: room for its whole placeholder (the longest,
-     "Abschluss hinzufügen", is 145 wide), else it takes a line of its own. */
-  --chip-entry-min: 160px;
+  /* The input after the chips of a tag field: at least its placeholder's width (ChipInput
+     measures it), and this much room to type where it has none. */
+  --chip-entry-min: 96px;
   /* A field of a page: its label above its control, this far apart (Field). */
   --label-gap: 6px;
   /* An alert mail read in the app: its text scrolls beyond this height. */
@@ -768,7 +768,7 @@
   --state-ban-surface: var(--danger-tint);
   --state-ban-edge: var(--danger-edge);
   --state-pad-y: var(--space-12);
-  --state-pad-start: var(--space-16);
+  --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
   --state-gap: 14px;
   /* A toast: 18 from the window's corner, 7 7 7 14 inside, its parts 10 apart, the words at
@@ -922,8 +922,11 @@
   --setup-badge-type: var(--weight-control) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --setup-badge-pad: var(--space-2) var(--space-8);
   --setup-badge-gap: var(--space-10);
-  /* The page of "Dein Profil": its lead 6 under the title. */
+  /* The page of "Dein Profil": its title 22 under the bar, its lead 6 under the title, and
+     its first group 50 under the lead (the draft's "5 selbst"). */
+  --setup-page-top: 22px;
   --setup-page-lead-gap: var(--space-6);
+  --setup-page-body-gap: 50px;
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;

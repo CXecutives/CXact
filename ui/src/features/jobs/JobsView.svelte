@@ -98,19 +98,15 @@
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
   const sidebar = $derived(shell.sidebarWidth ?? tokenPx('--sidebar-width'));
-  /** The content beside the sidebar (and the sheet's hairline): the list's limits and its
-   *  first width follow it when the window resizes or the sidebar folds or changes width. */
-  const content = $derived(
-    viewport.width - (shell.docked ? sidebar + tokenPx('--border-width') : 0),
-  );
+  /** The content beside the sidebar (its hairline lies inside its width): the list's limits
+   *  and its first width follow it when the window resizes or the sidebar folds or changes
+   *  width. */
+  const content = $derived(viewport.width - (shell.docked ? sidebar : 0));
   /** The list never gets narrower while the window grows: where the sidebar folded by itself
    *  it takes at most what it has beside the sidebar at the fold's breakpoint. */
   const limits = $derived(
     viewport.fold
-      ? cappedLimits(
-          splitLimits(content),
-          splitLimits(FOLD_BELOW - sidebar - tokenPx('--border-width')),
-        )
+      ? cappedLimits(splitLimits(content), splitLimits(FOLD_BELOW - sidebar))
       : splitLimits(content),
   );
   /** The job view stands beside the list unless the user hid it (one column shows a job in
@@ -450,6 +446,13 @@
 
     .column {
       padding-bottom: var(--space-32);
+    }
+  }
+
+  /* A narrow window: the sides of the pages (Page). */
+  @media (width < 560px) {
+    .column {
+      padding-inline: var(--page-side-narrow);
     }
   }
 </style>

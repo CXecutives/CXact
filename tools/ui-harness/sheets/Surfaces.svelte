@@ -387,11 +387,7 @@
           label="Fortschritt"
         />
         <ProgressStrip step="Jobs werden neu bewertet" value={null} label="Fortschritt" />
-        <ProgressStrip
-          step="Wartet auf die Anmeldung bei freelance.de"
-          value={5 / 8}
-          label="Fortschritt"
-        >
+        <ProgressStrip step="Wartet auf freelance.de" value={5 / 8} label="Fortschritt">
           {#snippet action()}<Button icon="signIn" label="Anmelden" onclick={noop} />{/snippet}
         </ProgressStrip>
         <Meter value={0.6} label="Fortschritt" />

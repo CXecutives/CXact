@@ -1,8 +1,8 @@
 <!--
   The state of something in a box (the round 10 draft): a job in the job view (not loaded yet,
   loading, being scored, excluded, a preview, gone, closed), the list without a profile, a
-  failure of the Profil's CV. The cream ground with a hairline, 10 round, 12 12 12 16 inside
-  and at least 56 high: its title (14/540 ink), one quiet sentence under it (13 muted), and
+  failure of the Profil's CV. The cream ground with a hairline, 10 round, 12 12 12 20 inside
+  (its words start where a card's labels do) and at least 56 high: its title (14/540 ink), one quiet sentence under it (13 muted), and
   its one button at the right end (`action`, a secondary button with its glyph, or a button of
   its own in that place: `end`). No sign: the state's mark is elsewhere (the ring) or none;
   only while something is being done an 18 px spinner stands before the words (`busy`). An

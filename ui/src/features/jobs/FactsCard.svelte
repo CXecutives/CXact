@@ -4,7 +4,7 @@
   fact is its label (96, muted, no icon), its value (14, copyable) and, at its end, an 18 px
   column for the verdict, an icon in the colours of the rings; a value without a verdict takes
   that column too. The contact (its name, e-mail and phone one under the other) spans both
-  columns; its e-mail writes a new mail to it, the job's title its subject. A hairline under
+  columns and comes last, so the rows above it pair up; its e-mail writes a new mail to it, the job's title its subject. A hairline under
   each fact starts at its label. "Gefunden" stays quiet.
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
 -->
