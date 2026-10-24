@@ -77,13 +77,6 @@ export const ICONS = {
   back: 'arrow-left',
   /** Vor in the top bar, Weiter, Loslegen and Zu den Jobs. */
   next: 'arrow-right',
-  /** The calendar's month before and after (the calendar goes in round 10). */
-  monthBack: 'chevron-left',
-  monthForward: 'chevron-right',
-  /** Opens the calendar beside a day field. */
-  pickDay: 'calendar-days',
-  /** What comes of something (the setup's picture: an alert mail, then its jobs). */
-  arrowDown: 'arrow-down',
   /** The top bar's sidebar button at rest; under the pointer it says what a click does. */
   sidebar: 'panel-left',
   /** The top bar's job view button, the same way. */
@@ -105,16 +98,11 @@ export const ICONS = {
   excluded: 'ban',
   /** Met in part. */
   partial: 'circle-minus',
-  /** The ad does not say. */
-  unstated: 'circle-dashed',
   /** The ad is unclear: to check. */
   unclear: 'circle-question-mark',
 
   // The facts of a job (lib/facts.ts).
   contract: 'file-pen-line',
-  money: 'euro',
-  /** Pay in another currency. */
-  otherMoney: 'banknote',
   start: 'calendar',
   duration: 'hourglass',
   workload: 'clock',

@@ -4,8 +4,10 @@
   A decimal part is cut off, never joined to the digits (`7,5` years count 7), and once the
   field is left a note under it says so; in money a group of three digits after a point or
   comma is a thousands separator (`1.100`, `1,100`), one or two digits are cents (`950,50`).
-  It fills the width its place gives it (a column of the form, the years of a competence);
-  its unit stands quiet at its right end inside it (`€`, `Jahre`).
+  It fills the width its place gives it (a field of the form, the years of a competence);
+  its unit stands quiet at its right end inside it (`€ am Tag`, `Jahre`). In a list's row
+  (`inline`) it is 26 high with its digits at the right and says no note (the row has no
+  room for one; the whole number is what it holds).
 -->
 <script lang="ts">
   import TextField from '$components/TextField.svelte';
@@ -17,7 +19,7 @@
     value: number | null;
     /** Euros: grouped (`1.100`), cents cut off with a note. */
     money?: boolean;
-    /** The unit at the field's right end (`€`, `Jahre`). */
+    /** The unit at the field's right end (`€ am Tag`, `Jahre`). */
     unit?: string | null;
     id?: string | null;
     label?: string | null;
@@ -25,8 +27,8 @@
     invalid?: boolean;
     /** Waits for another value (its field's hint says for which). */
     disabled?: boolean;
-    /** A row of a list: no edge until the pointer or the caret is in it. */
-    quiet?: boolean;
+    /** A row of a list: 26 high, no note. */
+    inline?: boolean;
     describedby?: string | null;
     testid?: string | null;
   }
@@ -40,7 +42,7 @@
     placeholder = null,
     invalid = false,
     disabled = false,
-    quiet = false,
+    inline = false,
     describedby = null,
     testid = null,
   }: Props = $props();
@@ -95,7 +97,7 @@
       {placeholder}
       {invalid}
       {disabled}
-      {quiet}
+      {inline}
       describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
       suffix={unit}
       {testid}
@@ -110,7 +112,7 @@
     />
   </span>
 </span>
-{#if rounded}
+{#if rounded && !inline}
   <p class="note" id="{noteId}-rounded" data-testid={testid ? `${testid}-rounded` : undefined}>
     {money ? t.profile.field.rounded : t.profile.field.roundedWhole}
   </p>

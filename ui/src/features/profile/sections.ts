@@ -1,13 +1,15 @@
 // The Profil form as data: the fields of the page in four groups (Wunschjob, Einsatz,
-// Qualifikation, Ausschlüsse; design round 6, "Luftige Gruppen"), the same page in the setup.
+// Qualifikation, Ausschlüsse; the round 10 draft), the same page in the setup.
 // ProfileEditor renders these tables and nothing else, so adding, moving or removing a field
 // is one entry here (docs/CHANGING.md "Change the Profil form"). A field names the value of
 // the form it edits, its control, its words by their key in the catalog (`t.profile.field`)
 // and, at the few places docs/PLAN.md names, its info symbol (`t.profile.info`). Controls with
 // more to them than a field (the competences, the industries, the languages, the countries,
-// the day) are components the table names by their kind. A short field (`half`) shares its
-// line with the short field next to it (design round 7: two columns where a group is wide
-// enough, ProfileEditor).
+// the day) are components the table names by their kind. A row holds one field, or a pair of
+// two short ones side by side where the group is wide enough (`pair`; the second may stay
+// empty, so a short field keeps its half). One kind of control per kind of value: free
+// values a tag field, several of a few checkboxes, one of a few modes segments, a value on a
+// scale a select, an amount a number with its unit, entries with a value an item list.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, TermField } from '$lib/ipc/types';
@@ -24,13 +26,13 @@ export type Info = keyof Catalog['profile']['info'];
 export type NumberKey = 'dayRateWish' | 'dayRateMin' | 'minSalary' | 'years';
 /** A list of words of the form. */
 export type ListKey = 'roles' | 'regions' | 'tools' | 'degrees' | 'certificates' | 'exclusionWords';
-/** The words a chip field suggests while typing (vocabulary.svelte.ts). */
+/** The words a tag field suggests while typing (vocabulary.svelte.ts). */
 export type Suggest = 'roles' | 'skills' | 'industries' | 'regions';
-/** A choice of a few, one segmented control each. */
-export type ChoiceKey = 'workMode' | 'workload' | 'minMonths';
+/** A choice of a few modes, one segmented control each. */
+export type ChoiceKey = 'workMode' | 'workload';
 
-/** A field of the form. `shown` keeps it out of the form while the values it depends on say
- *  it has nothing to do. */
+/** A field of the form. `shown` keeps its row out of the form while the values it depends on
+ *  say it has nothing to do. */
 export type Control =
   | {
       kind: 'number';
@@ -38,7 +40,6 @@ export type Control =
       label: Word;
       unit: Unit;
       info?: Info;
-      half?: true;
       shown?: (form: ProfileForm) => boolean;
       testid: string;
     }
@@ -47,8 +48,6 @@ export type Control =
       key: ListKey;
       label: Word;
       placeholder: Word;
-      /** The placeholder once it holds chips ("+ Rolle"). */
-      more: Word;
       info?: Info;
       /** Entries are names that may hold commas: only a line break splits a pasted list. */
       lines?: true;
@@ -59,19 +58,25 @@ export type Control =
     }
   /** The contract types (`profile.contract`), a choice of several. */
   | { kind: 'contracts'; info: Info }
-  | { kind: 'choice'; key: ChoiceKey; label: Word; info?: Info; half?: true; testid: string }
+  | { kind: 'choice'; key: ChoiceKey; label: Word; testid: string }
+  /** Mindestlaufzeit, a value on a scale. */
+  | { kind: 'months' }
   | { kind: 'countries'; info: Info }
   | { kind: 'available' }
   | { kind: 'competences' }
   | { kind: 'industries' }
   | { kind: 'languages' };
 
+/** A row of a group: one field, or two short ones side by side (null: the second half stays
+ *  empty). */
+export type Row = Control | { pair: readonly [Control, Control | null] };
+
 export type SectionId = keyof Catalog['profile']['section'];
 
 export interface Section {
   id: SectionId;
-  /** Its fields, one under the other (two short ones side by side). */
-  rows: readonly Control[];
+  /** Its rows, one under the other. */
+  rows: readonly Row[];
 }
 
 const chips = (
@@ -83,9 +88,12 @@ const chips = (
   key,
   label: key,
   placeholder: `${key}Placeholder` as Word,
-  more: `${key}More` as Word,
   testid,
   ...more,
+});
+
+const pair = (first: Control, second: Control | null = null): Row => ({
+  pair: [first, second],
 });
 
 export const SECTIONS: readonly Section[] = [
@@ -94,32 +102,32 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
-      {
-        kind: 'number',
-        key: 'dayRateWish',
-        label: 'dayRateWish',
-        unit: 'euro',
-        half: true,
-        testid: 'profile-wish-rate',
-      },
-      {
-        kind: 'number',
-        key: 'dayRateMin',
-        label: 'dayRateMin',
-        unit: 'euro',
-        info: 'dayRate',
-        half: true,
-        testid: 'profile-min-rate',
-      },
-      {
-        // The salary counts for Festanstellung and Zeitarbeit only.
+      pair(
+        {
+          kind: 'number',
+          key: 'dayRateWish',
+          label: 'dayRateWish',
+          unit: 'day',
+          testid: 'profile-wish-rate',
+        },
+        {
+          kind: 'number',
+          key: 'dayRateMin',
+          label: 'dayRateMin',
+          unit: 'day',
+          info: 'dayRate',
+          testid: 'profile-min-rate',
+        },
+      ),
+      // The salary counts for Festanstellung and Zeitarbeit only.
+      pair({
         kind: 'number',
         key: 'minSalary',
         label: 'minSalary',
-        unit: 'euro',
+        unit: 'year',
         shown: (form) => form.permanent || form.temporary,
         testid: 'profile-min-salary',
-      },
+      }),
     ],
   },
   {
@@ -127,45 +135,31 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       { kind: 'countries', info: 'countries' },
       chips('regions', 'profile-regions', { suggest: 'regions' }),
-      {
-        kind: 'choice',
-        key: 'workMode',
-        label: 'workMode',
-        half: true,
-        testid: 'profile-work-mode',
-      },
-      {
-        kind: 'choice',
-        key: 'workload',
-        label: 'workload',
-        half: true,
-        testid: 'profile-workload',
-      },
-      { kind: 'available' },
-      {
-        kind: 'choice',
-        key: 'minMonths',
-        label: 'minMonths',
-        testid: 'profile-min-months',
-      },
+      pair(
+        { kind: 'choice', key: 'workMode', label: 'workMode', testid: 'profile-work-mode' },
+        { kind: 'choice', key: 'workload', label: 'workload', testid: 'profile-workload' },
+      ),
+      pair({ kind: 'available' }, { kind: 'months' }),
     ],
   },
   {
     id: 'skills',
     rows: [
-      { kind: 'competences' },
-      chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
-      {
+      pair({
         kind: 'number',
         key: 'years',
         label: 'totalYears',
         unit: 'years',
         testid: 'profile-years',
-      },
+      }),
+      { kind: 'competences' },
+      chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
       { kind: 'industries' },
       { kind: 'languages' },
-      chips('degrees', 'profile-degrees', { lines: true, asked: 'degree' }),
-      chips('certificates', 'profile-certificates', { lines: true, asked: 'certificate' }),
+      pair(
+        chips('degrees', 'profile-degrees', { lines: true, asked: 'degree' }),
+        chips('certificates', 'profile-certificates', { lines: true, asked: 'certificate' }),
+      ),
     ],
   },
   {
@@ -173,6 +167,10 @@ export const SECTIONS: readonly Section[] = [
     rows: [chips('exclusionWords', 'profile-exclusion-words', { info: 'exclusionWords' })],
   },
 ];
+
+/** The fields of a row, in their order. */
+export const controlsOf = (row: Row): Control[] =>
+  'pair' in row ? row.pair.filter((control) => control !== null) : [row];
 
 /** The value of the form a control edits (the fields `ProfileInfo.missing` names). */
 export function fieldOf(control: Control): keyof ProfileForm {
@@ -183,15 +181,25 @@ export function fieldOf(control: Control): keyof ProfileForm {
       return control.key;
     case 'contracts':
       return 'project';
+    case 'months':
+      return 'minMonths';
     default:
       return control.kind;
   }
 }
 
-/** Every value of the form in the order of the page (the missing sentence names them so). */
+/** Every value of the form in the order of the page (the first marked one is revealed). */
 export const FIELD_ORDER: readonly (keyof ProfileForm)[] = SECTIONS.flatMap((section) =>
-  section.rows.map(fieldOf),
+  section.rows.flatMap(controlsOf).map(fieldOf),
 );
+
+/** The label of a field (`t.profile.field`) where its key is not the value's name. */
+export const LABEL_OF: Readonly<Partial<Record<keyof ProfileForm, Word>>> = {
+  years: 'totalYears',
+  project: 'contracts',
+  permanent: 'contracts',
+  temporary: 'contracts',
+};
 
 /** The value of a field holds nothing (a required field still to fill). */
 export function blank(form: ProfileForm, field: string): boolean {

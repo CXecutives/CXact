@@ -1430,7 +1430,7 @@ test("a middle click activates nothing: tabs, the fetch, the funnel, a row tool,
   await expect(page.getByTestId('reader')).toBeVisible();
 });
 
-test('a middle click activates nothing in the Profil: a choice, a chip x, the calendar, a level', async ({
+test('a middle click activates nothing in the Profil: a choice, a chip x, a suggestion, a level', async ({
   page,
 }) => {
   await open(page, `${WIN}&view=profile`);
@@ -1460,9 +1460,9 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   await input.fill('');
   await end();
   // A suggestion of the engine's words takes nothing.
-  const name = page.getByTestId('competence-name').first();
+  const name = (await reveal(page, page.getByTestId('competence-add'))).locator('input');
   await name.fill('Contr');
-  const hints = page.getByTestId('competence-name-suggestions').first();
+  const hints = page.getByTestId('competence-add-suggestions');
   await expect(hints.getByRole('option').first()).toBeVisible();
   await hints.getByRole('option').first().click({ button: 'middle' });
   await hints.getByRole('option').first().click({ button: 'right' });
@@ -1479,26 +1479,14 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
     .click({ button: 'middle' });
   await end();
   await expect(menuOpen(page)).toHaveCount(0);
-  // Verfügbar: the calendar's button opens nothing, its days take nothing.
-  const available = await reveal(page, page.getByTestId('profile-available'));
-  await available.getByRole('radio').last().click();
-  const calendar = page.getByTestId('profile-date-calendar');
-  await calendar.click({ button: 'middle' });
+  // Mindestlaufzeit (a select) neither.
+  await (await reveal(page, page.getByTestId('profile-min-months'))).click({ button: 'middle' });
   await end();
-  await expect(page.getByTestId('profile-date-calendar-popover')).toHaveCount(0);
-  await calendar.click();
-  const popover = page.getByTestId('profile-date-calendar-popover');
-  await expect(popover).toBeVisible();
-  const date = page.getByTestId('profile-date');
-  const typed = await date.inputValue();
-  await popover.locator('[data-day]').nth(10).click({ button: 'middle' });
-  await popover.locator('[data-day]').nth(11).click({ button: 'right' });
-  await page.waitForTimeout(150);
-  await expect(date).toHaveValue(typed);
+  await expect(menuOpen(page)).toHaveCount(0);
   expect(await calls(page, 'save_profile')).toHaveLength(0);
 });
 
-test('the wheel over a date field, the calendar, a level and the filter menu changes nothing', async ({
+test('the wheel over a date field, a level and the filter menu changes nothing', async ({
   page,
 }) => {
   // Low enough that the tab Suche scrolls.
@@ -1512,18 +1500,7 @@ test('the wheel over a date field, the calendar, a level and the filter menu cha
   await page.getByTestId('view-profile').locator('#profile-section-job-heading').click();
   expect(await wheelOver(page, date, 'view-profile')).not.toBe(0);
   await expect(date).toHaveValue('01.11.2026');
-  // Over the calendar the page scrolls; its month stays.
-  await page.getByTestId('profile-date-calendar').click();
-  const popover = page.getByTestId('profile-date-calendar-popover');
-  await expect(popover).toBeVisible();
-  const month = await popover.textContent();
-  // The tab Suche ends under the day, so the wheel goes up.
-  expect(await wheelOver(page, popover, 'view-profile', -120)).not.toBe(0);
-  await expect(popover).toBeVisible();
-  expect(await popover.textContent()).toBe(month);
-  await expect(date).toHaveValue('01.11.2026');
-  await page.keyboard.press('Escape');
-  // A language's level (a menu button) on the tab Erfahrung, from its end the wheel goes up.
+  // A language's level (a select), from the page's end the wheel goes up.
   const level = (await reveal(page, page.getByTestId('language-level'))).first();
   await page
     .getByTestId('view-profile')

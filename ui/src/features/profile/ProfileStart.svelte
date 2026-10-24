@@ -1,17 +1,18 @@
 <!--
   The Profil without a profile: under the view's head one sentence what the profile is for
   (or what is wrong with a stored file that no longer reads, with its folder at hand) and the
-  two ways in as tiles (shared/NewProfileWays): "Aus Lebenslauf ausfüllen" asks for the CV at
-  once (fromCv.svelte.ts), "Selbst ausfüllen" opens the empty form. What went wrong with the
-  CV is said under the tiles, with "Datei auswählen" where a new try can work.
+  two ways in as tiles (shared/NewProfileWays): "Aus Lebenslauf" asks for the CV at once
+  (fromCv.svelte.ts), "Selbst ausfüllen" opens the empty form. What went wrong with the CV
+  stands under the tiles as a state box, with "Datei auswählen" where a new try can work.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import Notice from '$components/Notice.svelte';
+  import StateBox from '$components/StateBox.svelte';
   import { t } from '$lib/i18n/t';
   import type { ProfileInfo } from '$lib/ipc/types';
   import NewProfileWays from '../shared/NewProfileWays.svelte';
   import { fromCv } from '../shared/fromCv.svelte';
+  import CvProblem from './CvProblem.svelte';
 
   interface Props {
     text: string;
@@ -34,22 +35,11 @@
 <div class="start" data-testid="profile-empty">
   <p class="text">{text}</p>
   <NewProfileWays oncv={() => void cv()} onself={onempty} testid="new-profile-ways" />
-  {#if fromCv.problem}
-    {@const problem = fromCv.problem}
-    <Notice
-      tone="danger"
-      variant="inline"
-      text={problem.text()}
-      action={problem.pick
-        ? { label: t.profile.pickFile, testid: 'cv-pick', onclick: () => void cv() }
-        : null}
-      testid="cv-error"
-    />
-  {/if}
+  <CvProblem onpick={() => void cv()} />
   {#if unreadable && onopenfolder}
     <div>
       <Button
-        variant="link"
+        variant="secondary"
         icon="folder"
         label={t.common.openFolder}
         testid="profile-folder"
@@ -58,7 +48,7 @@
     </div>
   {/if}
   {#if note}
-    <Notice tone="danger" variant="inline" text={note} testid="profile-note" />
+    <StateBox heading={note} alert testid="profile-note" />
   {/if}
 </div>
 
@@ -69,7 +59,9 @@
     gap: var(--space-16);
   }
 
+  /* 2 in like the page's title above it. */
   .text {
+    margin-inline: var(--section-inset);
     color: var(--text-muted);
     font: var(--type-md);
   }

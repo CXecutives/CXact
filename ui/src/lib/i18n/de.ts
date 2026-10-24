@@ -1031,31 +1031,31 @@ export const de = {
     noneText: 'Mit einem Profil zeigt jeder Job seine Übereinstimmung.',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
-    /** The two ways to the profile, one wording everywhere (the tiles of the setup and of
-     *  the Profil without a profile, the head of the Profil); the CV's tile says the AI. */
+    /** The Profil's head: the CV fills the profile (the file dialog at once), and while it
+     *  is evaluated what is going on in its place. */
     fromCv: 'Aus Lebenslauf ausfüllen',
-    fromCvHint: 'Wird von einer KI ausgewertet.',
-    /** The drop zone of the CV (the setup's upload, the Profil's popover): what it takes and
-     *  the formats it reads; under the Profil's what the import does. */
+    cvBusy: 'Wird von einer KI ausgewertet',
+    /** A CV that filled nothing: the state box under the head (its sentence is `cvError`). */
+    cvFailed: 'Der Lebenslauf wurde nicht ausgewertet.',
+    /** The drop zone of the CV (the setup's upload): what it takes and the formats it
+     *  reads. */
     cvDrop: 'Datei hierher ziehen oder auswählen',
     cvFormats: 'PDF, Word oder Foto',
-    cvNote: 'Ergänzt dein Profil, überschreibt nichts. Wird von einer KI ausgewertet.',
+    /** The two ways to the profile as tiles (the setup, the Profil without a profile); the
+     *  CV's says the AI. */
+    wayCv: 'Aus Lebenslauf',
+    wayCvNote: 'Eine KI füllt es aus, du prüfst es danach.',
     byHand: 'Selbst ausfüllen',
+    byHandNote: 'Du trägst alles von Hand ein.',
     /** Why "Aus Lebenslauf ausfüllen" waits while the form holds changes. */
     saveFirst: 'Speichere oder verwirf erst deine Änderungen.',
-    /** The toast once the CV filled the profile (saved at once). */
-    filled: 'Profil ausgefüllt. Bitte prüfen.',
+    /** The toast once the CV filled the profile (saved at once; it adds, never overwrites). */
+    filled: 'Profil ergänzt. Bitte prüfen.',
     /** Why the CV filled nothing; where a new try can work "Datei auswählen" stands beside
      *  it. */
     cvError,
     pickFile: 'Datei auswählen',
-    /** The required fields still empty, said once Speichern or the setup's Weiter was
-     *  pressed: its words before the names (each a link to its field) and what stands before
-     *  each name. */
-    missingLead: 'Es fehlen noch',
-    missingBefore: (index: number, total: number) =>
-      index === 0 ? ' ' : index === total - 1 ? ' und ' : ', ',
-    /** The floating bar while the form holds a change. */
+    /** The bar at the foot while the form holds a change. */
     unsaved: 'Ungespeicherte Änderungen',
     /** The toast of a save. */
     saved: 'Profil gespeichert',
@@ -1078,11 +1078,13 @@ export const de = {
     save: 'Speichern',
     discard: 'Verwerfen',
     leaveHeading: 'Änderungen speichern?',
-    /** Why Speichern waits while a value is marked. */
-    fixFirst: 'Korrigiere erst den markierten Wert.',
+    /** Why Speichern waits while a value is wrong: the field by its label. */
+    fixFirst: (label: string) => `Korrigiere erst „${label}“.`,
     /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
-     *  does not name, each with its number of jobs (a click puts it into that field). */
+     *  does not name (a click puts one into that field). */
     asked: 'Häufig verlangt',
+    /** Under Länder: the common countries not chosen yet. */
+    suggested: 'Vorschlag',
     /** The four groups of the page. */
     section: {
       job: 'Wunschjob',
@@ -1092,9 +1094,7 @@ export const de = {
     },
     field: {
       roles: 'Wunschrollen',
-      rolesPlaceholder: 'z. B. Interim CFO',
-      /** After the chips of a list field: its input takes one more. */
-      rolesMore: '+ Rolle',
+      rolesPlaceholder: 'Rolle hinzufügen',
       /** The contract types, a choice of several; one at least stays. */
       contracts: 'Vertragsart',
       keepOneContract: 'Mindestens eine Vertragsart bleibt gewählt.',
@@ -1105,13 +1105,11 @@ export const de = {
       workMode: 'Arbeitsmodell',
       countries: 'Länder',
       countriesPlaceholder: 'Land suchen',
-      countriesMore: '+ Land',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
       languageNone: 'Keine Sprache mit diesem Namen.',
       regions: 'Regionen',
-      regionsPlaceholder: 'z. B. Hamburg',
-      regionsMore: '+ Region',
+      regionsPlaceholder: 'Region hinzufügen',
       available: 'Verfügbar',
       date: 'Datum',
       datePlaceholder: 'TT.MM.JJJJ',
@@ -1121,39 +1119,27 @@ export const de = {
       workload: 'Auslastung',
       minMonths: 'Mindestlaufzeit',
       competences: 'Kompetenzen',
-      competence: 'Kompetenz',
-      competencePlaceholder: 'z. B. Projektleitung',
+      competencePlaceholder: 'Kompetenz hinzufügen',
       years: 'Jahre',
-      addCompetence: 'Kompetenz',
-      removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
+      /** The years of a competence, as a screen reader names the field. */
+      yearsOf: (name: string) => `Jahre in ${name}`,
       tools: 'Tools und Methoden',
-      toolsPlaceholder: 'z. B. Scrum',
-      toolsMore: '+ Tool',
+      toolsPlaceholder: 'Tool hinzufügen',
       totalYears: 'Berufserfahrung',
       industries: 'Branchen',
-      industriesPlaceholder: 'z. B. Handel',
-      industriesMore: '+ Branche',
-      /** The star of an industry chip says what a click does. */
+      industriesPlaceholder: 'Branche hinzufügen',
       languages: 'Sprachen',
-      language: 'Sprache',
-      languagePlaceholder: 'Sprache eingeben',
-      level: 'Niveau',
-      addLanguage: 'Sprache',
-      /** A long list folded to its first rows, and unfolded. */
-      showAll: (count: number) => `Alle anzeigen (${n(count)})`,
-      showLess: 'Weniger anzeigen',
+      languagePlaceholder: 'Sprache suchen',
+      /** The level of a language, as a screen reader names its select. */
+      levelOf: (name: string) => `Niveau in ${name}`,
       /** The chips a folded chip field hides. */
       moreChips: (count: number) => `+ ${n(count)} weitere`,
-      removeLanguage: (name: string) => `${name} entfernen`,
       degrees: 'Abschlüsse',
-      degreesPlaceholder: 'z. B. Master BWL',
-      degreesMore: '+ Abschluss',
+      degreesPlaceholder: 'Abschluss hinzufügen',
       certificates: 'Zertifikate',
-      certificatesPlaceholder: 'z. B. PMP',
-      certificatesMore: '+ Zertifikat',
+      certificatesPlaceholder: 'Zertifikat hinzufügen',
       exclusionWords: 'Ausschlusswörter',
-      exclusionWordsPlaceholder: 'z. B. Werkstudent',
-      exclusionWordsMore: '+ Wort',
+      exclusionWordsPlaceholder: 'Wort hinzufügen',
       /** Quiet hint where two values contradict each other. */
       belowMinRate: 'Der Wunschtagessatz liegt unter dem Mindesttagessatz.',
       /** A euro amount with cents: the app counts whole euros. */
@@ -1173,9 +1159,10 @@ export const de = {
       countries: 'Jobs in anderen Ländern werden ausgeschlossen, außer voll remote.',
       exclusionWords: 'Nennt eine Anzeige eines dieser Wörter, wird der Job ausgeschlossen.',
     },
-    /** The unit right of a number field. */
+    /** The unit at the right end inside a number field. */
     unit: {
-      euro: '€',
+      day: '€ am Tag',
+      year: '€ im Jahr',
       years: 'Jahre',
     },
     /** The contract types of Vertragsart. */
@@ -1522,29 +1509,6 @@ export const de = {
     backupRestored: 'Sicherung wiederhergestellt',
     /** Its undo brought the state before it back. */
     backupUndone: 'Rückgängig gemacht',
-  },
-  /** The calendar beside a day field (Verfügbar): the week starts on Monday. */
-  calendar: {
-    open: 'Kalender öffnen',
-    previous: 'Vorheriger Monat',
-    next: 'Nächster Monat',
-    months: [
-      'Januar',
-      'Februar',
-      'März',
-      'April',
-      'Mai',
-      'Juni',
-      'Juli',
-      'August',
-      'September',
-      'Oktober',
-      'November',
-      'Dezember',
-    ] as string[],
-    weekdays: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as string[],
-    /** A day as a screen reader says it. */
-    day: (day: number, month: string, year: number) => `${day}. ${month} ${year}`,
   },
   /** Short confirmations without a period (a participle like "Archiviert"); only a full
    *  sentence ends with one. */

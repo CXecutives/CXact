@@ -1397,7 +1397,6 @@ test('toasts leave on their own once the window is in front again', async ({ pag
   await expect(toasts).toHaveCount(1);
   await page.getByTestId('nav-profile').click();
   await page.getByTestId('profile-from-cv').click();
-  await page.getByTestId('cv-drop').click();
   await expect(toasts).toHaveCount(2);
   // Enter saves.
   await page.getByTestId('profile-wish-rate').fill('1.300');
