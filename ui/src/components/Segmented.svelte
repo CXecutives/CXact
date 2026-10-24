@@ -1,23 +1,20 @@
 <!--
-  The one choice of a few, one look everywhere (design round 3): two to four options on a light
-  track, the chosen one on a white thumb with a hairline ring that slides to the next choice
-  like the sidebar's pill (180 ms, emphasized; the first placement, a change of size and
-  reduced motion never slide), always exactly the option's box whatever the labels or window
-  width. Every small single choice takes it: the places above the list (Aktuell,
-  Archiv, Papierkorb, as tabs: `tabs`), Arbeitsmodell, Verfügbar, Auslastung and
-  Mindestlaufzeit.
+  The one choice of a few, one look everywhere (round 10): two to four options on the track,
+  the chosen one on a white thumb with a soft shadow that glides to the next choice like the
+  sidebar's pill (180 ms, ease-out; the first placement, a change of size and reduced motion
+  never glide), always exactly the option's box whatever the labels or window width. Every
+  small single choice takes it: the places above the list (Aktuell, Archiv, Papierkorb, as
+  tabs: `tabs`), Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit.
   The role decides the widths: a choice (a radiogroup) gives every option the room of the
   widest, so the thumb is one size whichever is chosen; the places (tabs) keep each option as
-  wide as its label, and so does a choice of many short codes and one long word (`fit`, the
-  language levels A1 to C2 and Muttersprache). When the track has less room than the options
-  want, the labels shorten
-  with an ellipsis; nothing ever overlaps.
-  The chosen label is navy (ink while the window is in the back), the others stay muted. An
-  unchosen option washes on hover and darkens while pressed.
+  wide as its label, and so does a choice of many short codes and one long word (`fit`).
+  When the track has less room than the options want, the labels shorten with an ellipsis;
+  nothing ever overlaps.
+  The chosen word is navy (ink while the window is in the back), the others muted; under the
+  pointer an unchosen word darkens to ink, nothing else washes.
   Like native radio buttons (and native tabs, `tabs`) the group is one Tab stop and the
-  arrows, Home and End choose (lib/input/input.ts). As high as a field (28 px, the thumb 2 px
-  inside it), so it lines up with the fields and buttons of its row, in the app's text in
-  medium.
+  arrows, Home and End choose (lib/input/input.ts). As high as a field (30 px, the options
+  26 inside its 2 px rim, 2 px apart), so it lines up with the fields and buttons of its row.
 -->
 <script lang="ts" module>
   export interface SegmentedOption<Id extends string = string> {
@@ -123,7 +120,6 @@
         if (!chosen || !tabs) onchange(option.id);
       }}
     >
-      <span class="pill" aria-hidden="true"></span>
       <span class="label" use:tooltip={{ text: option.label, truncated: true }}>{option.label}</span
       >
     </button>
@@ -141,6 +137,7 @@
     justify-self: start;
     min-width: 0;
     max-width: 100%;
+    gap: var(--space-2);
     height: var(--control-field);
     padding: var(--space-2);
     border-radius: var(--radius-control);
@@ -161,7 +158,7 @@
     grid-auto-columns: auto;
   }
 
-  /* The one white thumb under the chosen option, a hairline ring around it; it slides like
+  /* The one white thumb under the chosen option, lifted by its soft shadow; it glides like
      the sidebar's pill. */
   .thumb {
     position: absolute;
@@ -172,10 +169,10 @@
     width: var(--thumb-width);
     border-radius: var(--radius-inner);
     background-color: var(--thumb);
-    box-shadow: 0 0 0 var(--border-width) var(--thumb-edge);
+    box-shadow: var(--sh-thumb);
     transform: translateX(var(--thumb-x));
     /* Only the move animates (a width is layout); the width takes the option's at once. */
-    transition: transform var(--dur-slow) var(--ease-emphasized);
+    transition: transform var(--dur-slow) var(--ease-out);
   }
 
   .thumb.instant {
@@ -191,7 +188,7 @@
     align-items: center;
     justify-content: center;
     min-width: 0;
-    padding: 0 var(--space-12);
+    padding: 0 var(--button-pad);
     border-radius: var(--radius-inner);
     color: var(--text-muted);
     font: var(--type-label);
@@ -199,36 +196,13 @@
     transition: color var(--dur-base) var(--ease-standard);
   }
 
-  /* The hover wash of an unchosen option: exactly the option's own box (the chosen one
-     lies on the thumb). */
-  .pill {
-    position: absolute;
-    z-index: var(--z-below);
-    inset: 0;
-    border-radius: inherit;
-    background-color: var(--quiet-hover);
-    opacity: 0;
-    transition:
-      opacity var(--dur-fast) var(--ease-standard),
-      background-color var(--dur-fast) var(--ease-standard);
-  }
-
   .option:not([data-chosen]):hover {
     color: var(--text);
     transition-duration: var(--dur-hover);
   }
 
-  .option:not([data-chosen]):hover .pill {
-    opacity: 1;
-    transition-duration: var(--dur-hover);
-  }
-
-  :global(:where(:root:not([data-aux-press]))) .option:not([data-chosen]):active:hover .pill {
-    background-color: var(--quiet-press);
-  }
-
   .option[data-chosen] {
-    color: var(--nav-active-fg);
+    color: var(--chosen-text);
   }
 
   :global(:root[data-window='inactive']) .option[data-chosen] {

@@ -1,13 +1,17 @@
 <!--
-  Suggestions under a field that takes free text (a competence, its synonyms, tools, search
-  terms, industries): the terms of a vocabulary (the engine's words) that start with what
-  was typed, a whole term first, then a word of one, at most eight, the shorter first; none
-  once the text is a term already (the list would only cover what follows). The
-  list drops down under the field like a native menu; its one mark comes only with the
-  arrows or the pointer, so Enter without a mark keeps what was typed and nothing is ever
-  replaced by itself. A click or Enter on the mark takes the term; Esc closes the list. The
-  field owns the keys (input.ts chipKeys) and says which term is marked; this list draws
-  them.
+  The list under a field that suggests (round 10, the one look of every menu: rows 32 px,
+  6 px round in a 10 px round box with 4 px around them, the pop shadow, at most 232 px high
+  and then scrolling). It drops in under its field (150 ms, menuIn) and opens above it where
+  only there is room. Two uses:
+  - the terms of a vocabulary (the engine's words) for a field that takes free text (a
+    competence, its synonyms, tools, industries): from the first character typed, the terms
+    that start with it, a whole term first, then a word of one, at most eight, the shorter
+    first; none once the text is a term already. Its one mark comes only with the arrows or
+    the pointer, so Enter without a mark keeps what was typed;
+  - the options of a field that takes only those (the countries): the field fills it.
+  The mark is the track under ink, like the chosen row of a menu without its navy. A click or
+  Enter on the mark takes it; Esc closes the list. The field owns the keys (input.ts
+  chipKeys) and says which row is marked; this list draws them and never takes the focus.
 -->
 <script lang="ts" module>
   /** A value a field with options can take: its id, its name, other names to find it by. */
@@ -46,8 +50,8 @@
 
   /** At most this many suggestions show. */
   const MOST = 8;
-  /** Suggestions start with the second character typed. */
-  const FROM = 2;
+  /** Suggestions start with the first character typed (round 10). */
+  const FROM = 1;
 
   /** Lower case without accents (`Österreich` is found by `oster` and `öster`). */
   export function folded(text: string): string {
@@ -87,6 +91,10 @@
 </script>
 
 <script lang="ts">
+  import type { Action } from 'svelte/action';
+  import { menuIn, menuOut } from '$lib/motion/transitions';
+  import { tokenPx } from '$lib/tokens';
+
   interface Props {
     /** The listbox's id (the field's aria-controls). */
     id: string;
@@ -100,36 +108,69 @@
   }
 
   let { id, items, active, label = null, testid = null, onpick, onmark }: Props = $props();
+
+  /** The list opened above its field (there was no room below). */
+  let up = $state(false);
+
+  /** Below the field, or above it where only there is room, measured whenever the list
+   *  grows or shrinks; the marked row stays in view. */
+  const place: Action<HTMLElement, { count: number; active: number }> = (node, param) => {
+    const measure = (): void => {
+      const field = node.parentElement?.getBoundingClientRect();
+      if (field === undefined) return;
+      const gap = tokenPx('--menu-gap');
+      const edge = tokenPx('--viewport-gap');
+      const below = document.documentElement.clientHeight - edge - field.bottom - gap;
+      const above = field.top - gap - tokenPx('--titlebar-height') - edge;
+      up = node.offsetHeight > below && above > below;
+    };
+    const reveal = (index: number): void => {
+      node.querySelector(`#${CSS.escape(`${id}-${index}`)}`)?.scrollIntoView({ block: 'nearest' });
+    };
+    measure();
+    return {
+      update(next) {
+        if (next.count !== param.count) measure();
+        if (next.active !== param.active && next.active >= 0) reveal(next.active);
+        param = next;
+      },
+    };
+  };
 </script>
 
-<div
-  class="suggestions"
-  {id}
-  role="listbox"
-  aria-label={label ?? undefined}
-  hidden={items.length === 0}
-  data-testid={testid ?? undefined}
->
-  {#each items as item, index (item)}
-    <button
-      type="button"
-      class="suggestion"
-      class:active={index === active}
-      id="{id}-{index}"
-      role="option"
-      aria-selected={index === active}
-      tabindex="-1"
-      data-keep-focus
-      onpointermove={() => onmark(index)}
-      onclick={() => onpick(item)}
-    >
-      {item}
-    </button>
-  {/each}
-</div>
+{#if items.length > 0}
+  <div
+    class="suggestions"
+    class:up
+    {id}
+    role="listbox"
+    aria-label={label ?? undefined}
+    data-testid={testid ?? undefined}
+    use:place={{ count: items.length, active }}
+    in:menuIn={{ up }}
+    out:menuOut
+  >
+    {#each items as item, index (item)}
+      <button
+        type="button"
+        class="suggestion"
+        class:active={index === active}
+        id="{id}-{index}"
+        role="option"
+        aria-selected={index === active}
+        tabindex="-1"
+        data-keep-focus
+        onpointermove={() => onmark(index)}
+        onclick={() => onpick(item)}
+      >
+        {item}
+      </button>
+    {/each}
+  </div>
+{/if}
 
 <style>
-  /* Under the field, over what follows, like a native menu. */
+  /* Under the field, over what follows, like a menu. */
   .suggestions {
     position: absolute;
     z-index: var(--z-overlay);
@@ -138,29 +179,31 @@
     left: 0;
     display: flex;
     flex-direction: column;
-    max-height: calc(6 * var(--control-sm) + 2 * var(--space-4));
-    padding: var(--space-4);
+    max-height: var(--menu-max-height);
+    padding: var(--menu-pad);
     overflow-y: auto;
+    overscroll-behavior: contain;
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-control);
+    border-radius: var(--menu-radius);
     background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
   }
 
-  .suggestions[hidden] {
-    display: none;
+  .suggestions.up {
+    top: auto;
+    bottom: calc(100% + var(--menu-gap));
   }
 
   .suggestion {
     display: block;
     flex: none;
-    height: var(--control-sm);
-    padding: 0 var(--space-8);
+    height: var(--menu-row);
+    padding: 0 var(--menu-row-pad);
     overflow: hidden;
-    border-radius: var(--radius-xs);
+    border-radius: var(--menu-row-radius);
     color: var(--text);
     font: var(--type-md);
-    line-height: var(--control-sm);
+    line-height: var(--menu-row);
     text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -168,7 +211,6 @@
 
   /* One mark: the pointer moves it as the arrows do, never a second wash of its own. */
   .suggestion.active {
-    background-color: var(--active-surface);
-    color: var(--active-text);
+    background-color: var(--surface-track);
   }
 </style>

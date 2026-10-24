@@ -4,9 +4,15 @@
   the window). It opens at the pointer (a right click) or below its button, above it where
   only there is room, and never covers its button, the title bar or the window's edge: a
   menu taller than the room takes the roomier side and scrolls inside itself (the wheel over
-  it scrolls only the menu). Rows are the one control height (--menu-row) with the text of a
-  field and a fixed icon column (the check of a choice or a switch sits there too); no entry names
-  a key. A group may carry a small muted heading, which the keys pass over.
+  it scrolls only the menu). The one look of every menu, a select's list and a field's
+  suggestions (round 10): rows 32 px with their words 12 px in, 6 px round in a 10 px round
+  box with 4 px around them, the pop shadow; it drops in by 4 px (menuIn). The chosen option
+  of a choice is a track row with navy words, no tick; only a switch of its own (`toggle`,
+  the filter) carries the tick. An icon column stands before the words only where an entry
+  has an icon or a tick. No entry names a key. A group may carry a small muted heading,
+  which the keys pass over.
+  A select's list (`listbox`) is a listbox at least as wide as its button and at most 232 px
+  high; the focus stays on the button, and a press on an option never takes it.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row at once (the highlight follows the pointer without a
   fade, like the OS's menus), a left click chooses it. An entry that is off is faded as a
@@ -16,7 +22,14 @@
   import { px, setVars } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
   import { menuIn, menuOut } from '$lib/motion/transitions';
-  import { chooseEntry, isItem, menuState, type MenuAnchor } from '$lib/state/menu.svelte';
+  import {
+    chooseEntry,
+    isItem,
+    menuId,
+    menuItemId,
+    menuState,
+    type MenuSpec,
+  } from '$lib/state/menu.svelte';
   import { tokenPx } from '$lib/tokens';
   import type { Action } from 'svelte/action';
   import Icon from './Icon.svelte';
@@ -30,7 +43,7 @@
    * button) nor the title bar: a menu taller than both sides takes the roomier one and
    * scrolls inside it.
    */
-  const place: Action<HTMLElement, MenuAnchor> = (node, anchor) => {
+  const place: Action<HTMLElement, MenuSpec> = (node, { anchor, listbox = false }) => {
     const edge = tokenPx('--viewport-gap');
     const gap = tokenPx('--menu-gap');
     const width = document.documentElement.clientWidth;
@@ -41,7 +54,10 @@
       anchor.kind === 'point'
         ? [anchor.y, anchor.y]
         : [anchor.rect.top - gap, anchor.rect.bottom + gap];
-    setVars(node, { 'menu-height': px(bottom - top) });
+    setVars(node, {
+      'menu-height': px(bottom - top),
+      'menu-least': anchor.kind === 'below' && listbox ? px(anchor.rect.width) : 'auto',
+    });
     const w = node.offsetWidth;
     let h = node.offsetHeight;
     const roomBelow = bottom - below;
@@ -61,23 +77,33 @@
     x = Math.max(edge, Math.min(x, width - edge - w));
     const y = up ? above - h : below;
     setVars(node, { 'menu-x': px(x), 'menu-y': px(y) });
-    // The menu takes the keys (the entries are no tab stops; the active one is announced).
-    node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });
+    // The menu takes the keys (the entries are no tab stops; the active one is announced). A
+    // select's button keeps the focus: it announces the active option itself.
+    if (!listbox) node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });
+    node.querySelector('[data-active]')?.scrollIntoView({ block: 'nearest' });
   };
 
-  const itemId = (menu: number, index: number): string => `menu-${menu}-${index}`;
+  /** The icon column stands only where an entry has an icon or a tick. */
+  const leads = (spec: MenuSpec): boolean =>
+    spec.entries.some((entry) => isItem(entry) && (Boolean(entry.icon) || entry.toggle === true));
 </script>
 
 {#if menuState.open}
   {@const open = menuState.open}
   {#key open.id}
-    <div class="layer" data-menu-layer use:place={open.anchor}>
+    {@const listbox = open.listbox === true}
+    {@const lead = leads(open)}
+    <div class="layer" data-menu-layer use:place={open}>
       <div
         class="menu"
-        role="menu"
+        class:listbox
+        id={menuId(open.id)}
+        role={listbox ? 'listbox' : 'menu'}
         tabindex="-1"
         aria-label={open.label}
-        aria-activedescendant={menuState.active >= 0 ? itemId(open.id, menuState.active) : null}
+        aria-activedescendant={!listbox && menuState.active >= 0
+          ? menuItemId(open.id, menuState.active)
+          : null}
         data-testid="menu"
         in:menuIn={{ up }}
         out:menuOut
@@ -86,33 +112,41 @@
         {#each open.entries as entry, index (index)}
           {#if isItem(entry)}
             {@const choice = entry.checked !== undefined && entry.checked !== null}
-            {@const role = entry.toggle
-              ? 'menuitemcheckbox'
-              : choice
-                ? 'menuitemradio'
-                : 'menuitem'}
+            {@const role = listbox
+              ? 'option'
+              : entry.toggle
+                ? 'menuitemcheckbox'
+                : choice
+                  ? 'menuitemradio'
+                  : 'menuitem'}
             <button
               type="button"
               class="item"
               class:active={menuState.active === index}
+              class:chosen={entry.toggle !== true && entry.checked === true}
               class:danger={entry.danger === true}
-              id={itemId(open.id, index)}
+              id={menuItemId(open.id, index)}
               {role}
-              aria-checked={role === 'menuitem' ? undefined : entry.checked === true}
+              aria-checked={role === 'menuitem' || listbox ? undefined : entry.checked === true}
+              aria-selected={listbox ? entry.checked === true : undefined}
               aria-disabled={entry.disabled === true ? 'true' : undefined}
               tabindex="-1"
+              data-active={menuState.active === index ? '' : undefined}
+              data-keep-focus={listbox ? '' : undefined}
               data-testid="menu-item-{entry.id}"
               use:tooltip={entry.disabled === true && entry.reason ? entry.reason : ''}
               onpointerenter={() => (menuState.active = index)}
               onclick={() => chooseEntry(index)}
             >
-              <span class="lead">
-                {#if entry.checked === true}
-                  <Icon name="check" size="sm" />
-                {:else if entry.icon}
-                  <Icon name={entry.icon} size="sm" />
-                {/if}
-              </span>
+              {#if lead}
+                <span class="lead">
+                  {#if entry.toggle === true && entry.checked === true}
+                    <span class="tick"><Icon name="check" size="sm" /></span>
+                  {:else if entry.icon}
+                    <Icon name={entry.icon} size="sm" />
+                  {/if}
+                </span>
+              {/if}
               <span class="label">{entry.label}</span>
             </button>
           {:else if entry.kind === 'heading'}
@@ -149,8 +183,14 @@
     border: var(--border-width) solid var(--border);
     border-radius: var(--menu-radius);
     background-color: var(--surface-raised);
-    box-shadow: var(--sh-menu);
+    box-shadow: var(--sh-pop);
     outline: none;
+  }
+
+  /* A select's list: at least as wide as its button, at most seven rows high. */
+  .menu.listbox {
+    min-width: var(--menu-least);
+    max-height: min(var(--menu-height), var(--menu-max-height));
   }
 
   .item {
@@ -159,7 +199,7 @@
     align-items: center;
     gap: var(--space-8);
     height: var(--menu-row);
-    padding: 0 var(--menu-inset);
+    padding: 0 var(--menu-row-pad);
     border: none;
     border-radius: var(--menu-row-radius);
     background-color: transparent;
@@ -177,6 +217,14 @@
 
   :global(:where(:root:not([data-aux-press]))) .item:not([aria-disabled='true']):active:hover {
     background-color: var(--quiet-press);
+  }
+
+  /* The chosen option of a choice: the track with navy words, under the pointer too. */
+  .item.chosen,
+  .item.chosen.active:not([aria-disabled='true']) {
+    background-color: var(--chosen-surface);
+    color: var(--chosen-text);
+    font-weight: var(--weight-medium);
   }
 
   /* Deleting (Löschen, Endgültig löschen): red at rest like its button, on a red wash when
@@ -202,6 +250,11 @@
     color: var(--text-muted);
   }
 
+  .tick {
+    display: inline-flex;
+    color: var(--chosen-text);
+  }
+
   .item.danger:not([aria-disabled='true']) .lead {
     color: inherit;
   }
@@ -220,7 +273,7 @@
     flex: none;
     align-items: flex-end;
     height: var(--menu-heading);
-    padding: 0 var(--menu-inset) var(--space-4);
+    padding: 0 var(--menu-row-pad) var(--space-4);
     color: var(--text-muted);
     font: var(--type-xs);
   }
@@ -228,7 +281,7 @@
   .separator {
     flex: none;
     height: var(--border-width);
-    margin: var(--space-4) var(--menu-inset);
+    margin: var(--space-4) var(--menu-row-pad);
     background-color: var(--border);
   }
 </style>

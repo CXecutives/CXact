@@ -3,18 +3,20 @@
   autocorrect and autocapitalize are off. Use inside Field for label, hint and error.
   Like the native ones: the show and clear buttons are not in the Tab order and leave the
   caret in the field; a search clears on Esc, and a click on its magnifier lands in it.
-  The edge is `--field-edge` (`--field-edge-hover` under the pointer): a required field that
-  is still empty takes the coral of its cell (`[data-missing]`, tokens.css). Focus turns the
-  edge navy (100 ms) whatever it was, one calm edge and no ring around it; the magnifier
-  turns navy. The clear button pops in with the first character and leaves at once. A wrong
+  30 px high, its text 10 px in (round 10). The edge is `--field-edge` (`--field-edge-hover`
+  under the pointer): a required field that is still empty takes the red of its cell
+  (`[data-missing]`, tokens.css). Focus turns the edge navy (100 ms) whatever it was, one calm
+  edge and no ring around it; the magnifier stays quiet. The placeholder and the glyphs are
+  the subtle grey of icons. The clear button pops in with the first character and leaves at once. A wrong
   value (a password Gmail refused) shows as the red edge (`invalid`) and the one sentence of
   its Field; nothing shakes, `bringIntoView()` only scrolls it into view.
   With `options` (the languages of the profile) it suggests while typing, like the countries
-  field: the options whose names start with the text drop down under it, the arrows move the
-  one mark, Enter or a click takes the marked one, Esc closes the list; any other text stays
-  as typed (the field takes free text). With `suggestions` (the engine's words, a
-  competence) it suggests terms the same way (Suggestions.svelte), but nothing is marked
-  until the arrows or the pointer mark one: Enter without a mark goes on to the form.
+  field: the options whose names start with the text drop down under it (Suggestions.svelte,
+  the one look of a menu), the arrows move the one mark, Enter or a click takes the marked
+  one, Esc closes the list; any other text stays as typed (the field takes free text). With
+  `suggestions` (the engine's words, a competence) it suggests terms the same way, but
+  nothing is marked until the arrows or the pointer mark one: Enter without a mark goes on to
+  the form.
   `trailing` puts a small control inside the field at its right end, like the picker button
   of a native date field (the calendar of Verfügbar, a button `inField`). `suffix` is a quiet
   unit at the field's right end (`€`, `Jahre`), read with the value.
@@ -27,9 +29,14 @@
   import { describedBy } from '$lib/state/described';
   import { pop } from '$lib/motion/transitions';
   import Button from './Button.svelte';
-  import { suggested, type ChipOption } from './Suggestions.svelte';
   import Icon from './Icon.svelte';
-  import Suggestions, { folded, suggest, type Vocabulary } from './Suggestions.svelte';
+  import Suggestions, {
+    folded,
+    suggest,
+    suggested,
+    type ChipOption,
+    type Vocabulary,
+  } from './Suggestions.svelte';
 
   interface Props {
     value: string;
@@ -209,9 +216,9 @@
     role={options !== null || suggesting ? 'combobox' : undefined}
     aria-autocomplete={options !== null || suggesting ? 'list' : undefined}
     aria-expanded={options !== null ? listed : suggesting ? hints.length > 0 : undefined}
-    aria-controls={options !== null ? `${own}-options` : suggesting ? `${own}-hints` : undefined}
+    aria-controls={listed ? `${own}-options` : hints.length > 0 ? `${own}-hints` : undefined}
     aria-activedescendant={listed
-      ? `${own}-option-${active}`
+      ? `${own}-options-${active}`
       : hints[hint] !== undefined
         ? `${own}-hints-${hint}`
         : undefined}
@@ -230,31 +237,18 @@
     }}
   />
   {#if options !== null}
-    <div
-      class="options"
+    <Suggestions
       id="{own}-options"
-      role="listbox"
-      aria-label={label ?? placeholder ?? undefined}
-      hidden={!listed}
-      data-testid={testid ? `${testid}-options` : undefined}
-    >
-      {#each listed ? found : [] as option, index (option.id)}
-        <button
-          type="button"
-          class="option"
-          class:active={index === active}
-          id="{own}-option-{index}"
-          role="option"
-          aria-selected={index === active}
-          tabindex="-1"
-          data-keep-focus
-          onpointermove={() => (active = index)}
-          onclick={() => take(option)}
-        >
-          {option.label}
-        </button>
-      {/each}
-    </div>
+      items={listed ? found.map((option) => option.label) : []}
+      {active}
+      label={label ?? placeholder}
+      testid={testid ? `${testid}-options` : null}
+      onpick={(name) => {
+        const option = found.find((each) => each.label === name);
+        if (option) take(option);
+      }}
+      onmark={(index) => (active = index)}
+    />
   {/if}
   {#if suggesting}
     <Suggestions
@@ -339,7 +333,7 @@
     flex: 1;
     min-width: 0;
     height: 100%;
-    padding: 0 var(--space-8);
+    padding: 0 var(--field-inset);
     border: 0;
     background-color: transparent;
     color: var(--text);
@@ -353,28 +347,23 @@
   }
 
   .input::placeholder {
-    color: var(--text-subtle);
+    color: var(--icon-subtle);
   }
 
   /* The magnifier lies over the input, so a click on it lands in the field. */
   .search .input {
-    padding-left: calc(var(--space-8) + var(--icon-sm) + var(--space-6));
+    padding-left: calc(var(--field-inset) + var(--icon-sm) + var(--field-glyph-gap));
   }
 
   .lead {
     position: absolute;
     top: 0;
     bottom: 0;
-    left: var(--space-8);
+    left: var(--field-inset);
     display: inline-flex;
     align-items: center;
-    color: var(--text-subtle);
+    color: var(--icon-subtle);
     pointer-events: none;
-    transition: color var(--dur-fast) var(--ease-standard);
-  }
-
-  .field:focus-within .lead {
-    color: var(--icon-accent);
   }
 
   .trail {
@@ -385,49 +374,9 @@
   /* The unit reads with the value, quieter, the field's right padding after it. */
   .suffix {
     flex: none;
-    padding-right: var(--space-8);
-    color: var(--text-muted);
+    padding-right: var(--field-inset);
+    color: var(--text-subtle);
     font: var(--type-md);
     pointer-events: none;
-  }
-
-  /* The suggestions drop down under the field, over what follows, like the countries'. */
-  .options {
-    position: absolute;
-    z-index: var(--z-overlay);
-    top: calc(100% + var(--menu-gap));
-    right: 0;
-    left: 0;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(6 * var(--menu-row) + 2 * var(--space-4));
-    padding: var(--space-4);
-    overflow-y: auto;
-    border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-control);
-    background-color: var(--surface);
-    box-shadow: var(--sh-pop);
-  }
-
-  .options[hidden] {
-    display: none;
-  }
-
-  .option {
-    display: flex;
-    flex: none;
-    align-items: center;
-    height: var(--menu-row);
-    padding: 0 var(--space-8);
-    border-radius: var(--radius-xs);
-    color: var(--text);
-    font: var(--type-md);
-    text-align: left;
-    white-space: nowrap;
-  }
-
-  .option.active {
-    background-color: var(--active-surface);
-    color: var(--active-text);
   }
 </style>

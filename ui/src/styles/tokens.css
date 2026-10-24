@@ -761,6 +761,12 @@
   --type-suggest: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --suggest-pad-start: 7px;
   --suggest-pad-end: 9px;
+  /* The one look of a menu, a select's list and a field's suggestions: rows 32 high (--menu-row)
+     with their words 12 px in. */
+  --menu-row-pad: 12px;
+  /* A text field: its text 10 px in, a glyph before it (the search's magnifier) 7 px away. */
+  --field-inset: 10px;
+  --field-glyph-gap: 7px;
 
   /* ------------------------------------------- round 10: surfaces */
   /* (surfaces tokens below) */

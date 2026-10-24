@@ -1,5 +1,6 @@
 // The app's own menus: one menu at a time, drawn by components/Menu.svelte in the app layer.
-// A right click (lib/input/input.ts) or a menu button (the list's funnel) opens it;
+// A right click (lib/input/input.ts), a menu button (the list's funnel) or a select's list
+// (components/Select.svelte, `listbox`) opens it;
 // the OS never draws a menu of ours (a native popup could hang the window, and it looked
 // different on every OS). Keys, the press outside, the window's blur, resizing and scrolling
 // are handled in input.ts, which closes the menu through `closeMenu`.
@@ -21,9 +22,10 @@ export interface MenuItem {
   id: string;
   label: string;
   icon?: IconMeaning | null;
-  /** A choice of a group (the sort): a check mark before the chosen one (a radio item). */
+  /** A choice of a group (the sort, a select's options): the chosen one is a track row with
+   *  navy words, no tick (a radio item, an option). */
   checked?: boolean | null;
-  /** A switch of its own (Nur neue): a checkbox item, the check mark while `checked`. */
+  /** A switch of its own (Nur neue): a checkbox item, the tick while `checked`. */
   toggle?: boolean;
   disabled?: boolean;
   /** Why a disabled entry cannot be chosen (its tooltip). */
@@ -52,6 +54,11 @@ export interface MenuSpec {
   onclose?: () => void;
   /** The entries anew after a choice that keeps the menu open (`stays`) ran. */
   refresh?: () => readonly MenuEntry[];
+  /** The list of a select: a listbox of options at least as wide as its button, at most
+   *  --menu-max-height high, and the focus stays on the button (its aria-activedescendant). */
+  listbox?: boolean;
+  /** The entry active when it opens (a select's chosen option). */
+  active?: number;
 }
 
 interface MenuState {
@@ -75,10 +82,15 @@ export function openMenu(spec: MenuSpec): void {
     previous?.returnFocus ??
     (focused instanceof HTMLElement && focused !== document.body ? focused : null);
   previous?.onclose?.();
-  const first = spec.fromKeyboard === true ? firstEnabled(spec.entries, 0, 1) : -1;
+  const first = spec.active ?? (spec.fromKeyboard === true ? firstEnabled(spec.entries, 0, 1) : -1);
   menuState.open = { ...spec, id: nextId++, returnFocus };
   menuState.active = first;
 }
+
+/** The element ids of a menu and of its entries (a select's aria-controls and
+ *  aria-activedescendant). */
+export const menuId = (menu: number): string => `menu-${menu}`;
+export const menuItemId = (menu: number, index: number): string => `menu-${menu}-${index}`;
 
 /** Close the open menu; `restore` gives the focus back to where it was before. */
 export function closeMenu(restore = true): void {
