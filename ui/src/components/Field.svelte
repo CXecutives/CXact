@@ -1,21 +1,33 @@
 <!--
-  One field, one layout (design round 6): the label (the app's text in medium, ink) above the
-  control, 6 apart (--label-gap), then the hint (or the error in its place) and the hint's
-  way on under the control on the same left edge; the way on stays while an error shows: it
-  is what helps most then. The way on is a navy link (it underlines on hover) whose text
-  lines up with the edges of the field, and it always ends the helper line: the message
-  beside it shrinks and wraps. The message's id is shared with the control inside (its
+  One field, one layout (the round 10 draft): the label (13/540 ink, --field-label: red while
+  the field is required and still empty, `[data-missing]` in tokens.css) 6 above the control,
+  then the hint (13 muted) or the error in its place (the deep red of words) under the
+  control on the same left edge. The message's id is shared with the control inside (its
   `aria-describedby`) only while a message shows.
-  Beside the label an info symbol (`info`, InfoTip: only where docs/PLAN.md places one, and
-  never with a hint). Without `for` the field holds a group of controls (rows, choices) that
-  its label names. The control keeps its own width: a list fills the field, a number or a
-  day is --number-width, a choice of a few as wide as its options.
+  The label's row holds what belongs to the field: the info symbol beside the label (`info`,
+  InfoTip: only where docs/PLAN.md places one, and never with a hint) and at its right end
+  the field's links (`links`, 13/500 navy with the external glyph, 14 apart: "App-Passwort
+  erstellen"); a link underlines under the pointer. `action` is one such link (the old
+  callers' way on). Without `for` the field holds a group of controls (rows, choices) that its
+  label names. The control keeps its own width: a list fills the field, a number or a day is
+  as wide as its token, a choice of a few as wide as its options.
 -->
+<script lang="ts" module>
+  import type { IconName } from './Icon.svelte';
+
+  /** A link of a field at the right end of its label's row (it opens a page). */
+  export interface FieldLink {
+    label: string;
+    icon?: IconName;
+    testid?: string;
+    onclick: () => void;
+  }
+</script>
+
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
-  import Button from './Button.svelte';
-  import Icon, { type IconName } from './Icon.svelte';
+  import Icon from './Icon.svelte';
   import InfoTip from './InfoTip.svelte';
   import { t } from '$lib/i18n/t';
 
@@ -26,8 +38,10 @@
     hint?: string | null;
     /** The one sentence of the info symbol beside the label (never with a hint). */
     info?: string | null;
-    /** A way on that belongs to the hint (opens a page), at the end of the helper line. */
-    action?: { label: string; icon?: IconName; testid?: string; onclick: () => void } | null;
+    /** The field's links at the right end of the label's row. */
+    links?: readonly FieldLink[];
+    /** One link (as `links`). */
+    action?: FieldLink | null;
     error?: string | null;
     children: Snippet;
   }
@@ -37,6 +51,7 @@
     for: target = null,
     hint = null,
     info = null,
+    links = [],
     action = null,
     error = null,
     children,
@@ -44,6 +59,7 @@
 
   const own = $props.id();
   const control = $derived(target ?? own);
+  const ways = $derived(action === null ? links : [action, ...links]);
   describe(() => (error || hint ? `${control}-message` : null));
 </script>
 
@@ -59,35 +75,34 @@
       <label class="label" for={target}>{label}</label>
     {/if}
     {#if info && !hint}<InfoTip text={info} label={t.common.infoAbout(label)} />{/if}
+    {#if ways.length > 0}
+      <span class="links">
+        {#each ways as link (link.label)}
+          <button
+            type="button"
+            class="link"
+            data-testid={link.testid ?? undefined}
+            onclick={() => link.onclick()}
+          >
+            <Icon name={link.icon ?? 'external'} size="xs" />{link.label}
+          </button>
+        {/each}
+      </span>
+    {/if}
   </div>
   <div class="control">{@render children()}</div>
-  {#if error || hint || action}
-    <div class="help" class:acts={action !== null}>
-      {#if error}
-        <p class="error" id="{control}-message" role="alert">
-          <Icon name="warning" size="sm" />
-          <span>{error}</span>
-        </p>
-      {:else if hint}
-        <p class="hint" id="{control}-message">{hint}</p>
-      {/if}
-      {#if action}
-        <span class="action">
-          <Button
-            variant="link"
-            icon={action.icon ?? null}
-            label={action.label}
-            testid={action.testid ?? null}
-            onclick={action.onclick}
-          />
-        </span>
-      {/if}
-    </div>
+  {#if error}
+    <p class="error" id="{control}-message" role="alert">
+      <Icon name="warning" size="xs" />
+      <span>{error}</span>
+    </p>
+  {:else if hint}
+    <p class="hint" id="{control}-message">{hint}</p>
   {/if}
 </div>
 
 <style>
-  /* The label, the control and the help one under the other on one left edge. */
+  /* The label, the control and the message one under the other on one left edge. */
   .field {
     display: flex;
     flex-direction: column;
@@ -98,7 +113,7 @@
   .top {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-6);
     min-width: 0;
   }
 
@@ -113,10 +128,41 @@
   /* As wide as its text: a click beside the label is a click beside the field, and that ends
      the field's focus (a click on the words still leads into the field). */
   .label {
-    align-self: flex-start;
-    color: var(--text);
-    font: var(--type-label);
+    color: var(--field-label);
+    font: var(--type-field-label);
     cursor: default;
+  }
+
+  .links {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2) var(--field-link-gap);
+    margin-left: auto;
+  }
+
+  /* The glyph stands on the words' baseline. */
+  .link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--link);
+    font: var(--field-link);
+    white-space: nowrap;
+    transition: color var(--dur-base) var(--ease-out);
+  }
+
+  .link:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+    transition-duration: var(--dur-hover);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .link:active:hover {
+    opacity: var(--opacity-press);
   }
 
   .hint,
@@ -128,43 +174,15 @@
     color: var(--text-muted);
   }
 
-  .help {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4) var(--space-12);
-    min-height: var(--control-sm);
-  }
-
-  /* With a way on, the message shrinks and the way on ends its first line. */
-  .acts {
-    flex-wrap: nowrap;
-    align-items: flex-start;
-  }
-
-  .acts > .hint,
-  .acts > .error {
-    flex: 1 1 auto;
-    min-width: 0;
-    padding-block: calc((var(--control-sm) - var(--leading-sm)) / 2);
-  }
-
-  .action {
-    display: inline-flex;
-    flex: none;
-    margin-left: auto;
-  }
-
-  /* The icon sits on the first line when a message wraps. */
+  /* The sign sits on the first line when a message wraps. */
   .error {
     display: flex;
     align-items: flex-start;
     gap: var(--space-6);
-    color: var(--danger-strong);
+    color: var(--error-text);
   }
 
   .error > :global(:first-child) {
-    flex: none;
-    margin-top: calc((var(--leading-sm) - var(--icon-sm)) / 2);
+    margin-top: calc((var(--leading-sm) - var(--icon-xs)) / 2);
   }
 </style>

@@ -1,6 +1,7 @@
 <!--
-  The match of a job as a ring: sm 30 (list rows), md 44 (the job view). Hollow at both
-  sizes: the solid track, the arc and the number, nothing tinted behind them.
+  The match of a job as a ring (the round 10 draft): sm 30 with a 3 px stroke and 10.5/650
+  digits (list rows), md 56 with a 5 px stroke and 17/650 digits (the job view). Hollow at both
+  sizes: the solid track (--score-track), the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
   (360 ms, ease-out) only when that means something: when a score arrives while the ring is
   on screen (live scoring during a run; the number counts along), or the first time a job is
@@ -9,13 +10,14 @@
   at the same time, the others are placed at once.
   A scored ring takes the colour of its decile (ten steps, red through orange and yellow to
   green; `d0` ... `d9`) with ink digits; a score from a teaser only looks the same (the reader
-  says once that the ad is only a preview). An excluded job shows the ban instead (`ban` in
-  the list, the reader's own box), never a ring of its kept fit.
+  says once that the ad is only a preview). An excluded job shows the red ban on the light
+  red track instead (`ban`: 14 in the list's ring, 22 in the job view's), never a ring of
+  its kept fit.
   The tooltip names the band and the percentage; a ring with a number adds under it the one
   sentence of what the match means (`score.info`, as the info symbol of the reader says it).
   Every ring without a score is one state and one look (not scored yet, being scored, not
-  scorable, and off without a usable profile): the empty track with a dash. A score of 100 sets
-  its digits smaller in the list ring.
+  scorable, and off without a usable profile): the empty track with a subtle dash. Three
+  digits fit the list's ring at its size.
 -->
 <script lang="ts" module>
   import type { Band, DetailState, JobMatch } from '$lib/ipc/types';
@@ -164,7 +166,6 @@
 <span
   class="ring {size} {ring.status} {step}"
   class:ban
-  class:full={valued && score === 100}
   role="img"
   aria-label={label}
   data-testid={testid ?? undefined}
@@ -189,7 +190,7 @@
   </svg>
   <span class="center">
     {#if ban}
-      <span class="ban"><Icon name="excluded" size={size === 'md' ? 'md' : 'sm'} /></span>
+      <span class="ban"><Icon name="excluded" size={size === 'md' ? 'lg' : 'xs'} /></span>
     {:else if valued}
       {Math.round(number.current)}
     {:else}
@@ -253,7 +254,6 @@
     justify-content: center;
     font: var(--ring-type);
     font-variant-numeric: var(--numeric);
-    letter-spacing: var(--tracking-tight);
   }
 
   /* The digits of a score are ink. */
@@ -306,18 +306,13 @@
     --ring-size: var(--ring-sm);
     --ring-stroke: var(--ring-sm-stroke);
     --ring-scale: var(--ring-sm-scale);
-    --ring-type: var(--weight-semibold) var(--font-sm) / var(--leading-sm) var(--font-sans);
+    --ring-type: var(--ring-sm-type);
   }
 
   .md {
     --ring-size: var(--ring-md);
     --ring-stroke: var(--ring-md-stroke);
     --ring-scale: var(--ring-md-scale);
-    --ring-type: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
-  }
-
-  /* Three digits would touch the stroke of the 30 px ring. */
-  .sm.full {
-    --ring-type: var(--weight-semibold) var(--font-xs) / var(--leading-xs) var(--font-sans);
+    --ring-type: var(--ring-md-type);
   }
 </style>

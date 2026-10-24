@@ -1,8 +1,12 @@
 <!--
   Modal question with at most two actions: confirm | danger, plus an optional third one
-  (`altLabel`, a secondary button, as "Verwerfen" in "Änderungen speichern?"). A plain scrim
-  (no blur: a blurred backdrop over the whole window drops frames in the web view); the
-  dialog rises in 180 ms (ease-out) and leaves in 100 ms. It holds the focus like a native
+  (`altLabel`, a secondary button, as "Verwerfen" in "Änderungen speichern?"). The round 10
+  draft: white, no edge, 14 round, 22 inside, the dialog's deep shadow, at most 400 wide (16
+  from the window's sides in a narrow one); its heading 16/650 ink, the sentence 14 muted 6
+  under it, the buttons 8 apart 22 under the text, each pair at least --button-pair-min wide
+  so a short "Löschen" does not look thin beside "Abbrechen". A warm plain scrim (no blur: a
+  blurred backdrop over the whole window drops frames in the web view); the dialog rises in
+  180 ms (ease-out, nothing scales) and leaves in 100 ms. It holds the focus like a native
   one (input.ts): Tab and Shift+Tab cycle through its buttons, Esc cancels wherever the focus
   is, Enter presses the focused button or, on the dialog itself, its default button (cancel
   for danger, confirm otherwise). The focus starts on that default button (no focus ring,
@@ -152,9 +156,11 @@
       >
         <h2 class="heading" id="{id}-heading">{heading}</h2>
         {#if text}<p class="text" id="{id}-text">{text}</p>{/if}
-        {@render children?.()}
+        {#if children}<div class="content">{@render children()}</div>{/if}
         {#if error}
-          <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
+          <div class="error">
+            <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
+          </div>
         {/if}
         <div class="actions">
           {#snippet dismiss()}
@@ -220,36 +226,48 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
     width: var(--dialog-width);
     max-width: 100%;
     max-height: 100%;
     overflow-y: auto;
-    padding: var(--space-24);
-    border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-dialog);
+    padding: var(--dialog-pad);
+    border-radius: var(--radius-card);
     background-color: var(--surface-raised);
-    box-shadow: var(--sh-pop);
+    box-shadow: var(--sh-dialog);
   }
 
   .heading {
     color: var(--text-heading);
-    font: var(--type-xl);
+    font: var(--type-heading);
     letter-spacing: var(--tracking-tight);
   }
 
   .text {
+    margin-top: var(--dialog-text-gap);
     color: var(--text-muted);
-    font: var(--type-body);
-    text-wrap: balance;
+    font: var(--type-md);
+    text-wrap: pretty;
   }
 
+  .content {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--space-16);
+  }
+
+  .error {
+    margin-top: var(--space-12);
+  }
+
+  /* The buttons of a pair share one least width. */
   .actions {
+    --btn-min: var(--button-pair-min);
+
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-12);
-    margin-top: var(--space-12);
+    gap: var(--space-8);
+    margin-top: var(--dialog-actions-gap);
   }
 
   /* On macOS the third action stands apart on the left. */

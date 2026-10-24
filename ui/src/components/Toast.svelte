@@ -1,26 +1,25 @@
 <!--
-  The toast stack, bottom right (mounted once in App), the only place that
-  draws a toast: short confirmations that rise in (150 ms) and slide out sideways (100 ms),
-  at most three, the stack moving up as one leaves. Each kind's glyph and each toast's time
-  come from the tables of lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain
-  toast stays 4 s, one with a button 10 s. Its time stops while it is hovered, and every
-  toast waits while the window is in the back or a modal dialog is open. The stack lies
-  below a dialog's scrim: dimmed, and its undo cannot act behind the dialog.
-  Every toast is one width (--toast-width); its sentence wraps to at most two lines and ends
-  in an ellipsis beyond them.
-  The check of a success draws itself once as the toast appears. Closable; an undo of what
-  the user just did sits before the close button; a toast about something that happened in
-  another view (a fetch that finished) may carry the way to it instead ("Zeigen"). A merged
-  toast (two rows archived one after the other) cross-fades its sentence (100 ms) and starts
-  its time again.
+  The toast stack, bottom right (mounted once in App), the only place that draws a toast
+  (the round 10 draft): short confirmations, 18 from the window's corner, that come up 12 px
+  as they fade in and go down as they fade out, at most three, the stack moving up as one
+  leaves. Each kind's sign and each toast's time come from the tables of
+  lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain toast stays 4 s, one with a
+  button 10 s. A toast is white with a hairline, 14 round and as wide as its words between
+  --toast-min and --toast-max: its sign (18, in the kind's colour; none for a plain one), its
+  sentence (500; two lines at most, then an ellipsis) and its one button (an undo of what the
+  user just did, or the way to what happened in another view: "Zeigen"). No close button
+  (decision 8, 2026-10-24): a toast goes on its own, and its time stops while the pointer is
+  on it. Every toast also waits while the window is in the back or a modal dialog is open.
+  The stack lies below a dialog's scrim: dimmed, and its undo cannot act behind the dialog.
+  The check of a success draws itself once as the toast appears. A merged toast (two rows
+  archived one after the other) cross-fades its sentence (100 ms) and starts its time again.
   A press on a toast never takes the focus (like a notification of the OS); a toast the
-  keyboard reached gives the focus back to where it came from when it goes by its buttons.
-  The stack rises above a bar that sticks to the window's bottom edge (the Profil's FloatBar,
-  the setup's foot on its long steps: `toasts.lift`, lib/actions/liftToasts.ts).
+  keyboard reached gives the focus back to where it came from when it goes by its button.
+  The stack rises above a bar that sticks to the window's bottom edge (BottomBar, the
+  setup's foot on its long steps: `toasts.lift`, lib/actions/liftToasts.ts).
 -->
 <script lang="ts">
   import { cssVars, px } from '$lib/actions/cssVars';
-  import { t } from '$lib/i18n/t';
   import { onWindowFocus } from '$lib/ipc/api';
   import { fade, flip, toastIn, toastOut } from '$lib/motion/transitions';
   import { TOAST_KINDS, toasts } from '$lib/state/toasts.svelte';
@@ -31,6 +30,8 @@
   let stack = $state<HTMLElement | null>(null);
   /** Where the focus was before the keyboard brought it into the stack. */
   let cameFrom: HTMLElement | null = null;
+  /** The hold of the pointer on a toast: the time stops while it is there. */
+  let pointer: (() => void) | null = null;
 
   function focusIn(event: FocusEvent): void {
     const from = event.relatedTarget;
@@ -49,6 +50,20 @@
     });
   }
 
+  function enter(): void {
+    pointer ??= toasts.hold();
+  }
+
+  function leave(): void {
+    pointer?.();
+    pointer = null;
+  }
+
+  // The last toast under the pointer went: its hold goes with it.
+  $effect(() => {
+    if (toasts.items.length === 0) leave();
+  });
+
   // The window in the back: every toast waits until it is in front again.
   $effect(() => {
     let release: (() => void) | null = null;
@@ -63,6 +78,7 @@
     return () => {
       stop();
       release?.();
+      leave();
     };
   });
 </script>
@@ -85,30 +101,24 @@
       role="group"
       data-testid="toast"
       data-kind={toast.kind}
+      onpointerenter={enter}
+      onpointerleave={leave}
       animate:flip
       in:toastIn
       out:toastOut
     >
-      <span class="icon"><Icon name={look.icon} size="sm" /></span>
+      {#if look.icon !== null}<span class="icon"><Icon name={look.icon} size="nav" /></span>{/if}
       {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span>{/key}
       {#if toast.action}
-        {@const action = toast.action}
         <span class="action">
           <Button
             variant="ghost"
-            label={action.label}
+            label={toast.action.label}
             testid="toast-action"
             onclick={() => act(() => toasts.act(toast.id))}
           />
         </span>
       {/if}
-      <Button
-        variant="ghost"
-        icon="close"
-        iconOnly
-        label={t.common.hide}
-        onclick={() => act(() => toasts.dismiss(toast.id))}
-      />
     </div>
   {/each}
 </div>
@@ -118,8 +128,8 @@
      at the window's bottom edge it glides up and back. */
   .stack {
     position: fixed;
-    right: var(--space-24);
-    bottom: var(--space-24);
+    right: var(--toast-inset);
+    bottom: var(--toast-inset);
     z-index: var(--z-toast);
     display: flex;
     flex-direction: column;
@@ -130,20 +140,23 @@
     transition: transform var(--dur-base) var(--ease-out);
   }
 
+  /* As wide as its words, between the two widths (and never wider than the window). */
   .toast {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
-    /* Every toast is as wide as the others (user decision 2026-09-27). */
-    width: min(var(--toast-width), calc(100vw - 2 * var(--space-24)));
+    gap: var(--space-10);
+    width: max-content;
+    min-width: min(var(--toast-min), calc(100vw - 2 * var(--toast-inset)));
+    max-width: min(var(--toast-max), calc(100vw - 2 * var(--toast-inset)));
+    min-height: calc(var(--control-icon) + 2 * var(--toast-pad-y));
     overflow: hidden;
-    padding: var(--space-6) var(--space-6) var(--space-6) var(--space-16);
+    padding: var(--toast-pad-y) var(--toast-pad-y) var(--toast-pad-y) var(--toast-pad-start);
     border: var(--border-width) solid var(--border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
     color: var(--text);
-    font: var(--type-md);
+    font: var(--type-control);
     pointer-events: auto;
   }
 
@@ -172,14 +185,13 @@
     animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
   }
 
-  /* One or two lines with room above and below (10 px to the edge with the padding); a
-     longer sentence ends in an ellipsis. */
+  /* One or two lines, at least as high as its button; a longer sentence ends in an
+     ellipsis. */
   .text {
     display: -webkit-box;
     flex: 1;
     min-width: 0;
     overflow: hidden;
-    margin-block: var(--space-4);
     text-wrap: pretty;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;

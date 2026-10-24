@@ -7,10 +7,9 @@
 // below (TOAST_KINDS, TOAST_LIFE); components/Toast.svelte draws them and is the only
 // reader of `items` (core/tests/ui_contract.rs).
 // At most three at once; a fourth stands only while the other three carry an action (a
-// plain one never pushes an undo out, and a new one never pushes itself out). A toast goes
-// after its time even under the pointer (user, 2026-10-10); every toast waits while the window
-// is in the back or a modal dialog is open (`hold`): its time only runs while the user can
-// see it. Results of
+// plain one never pushes an undo out, and a new one never pushes itself out). Every toast
+// waits while the pointer is on one (decision 8, 2026-10-24), the window is in the back or a
+// modal dialog is open (`hold`): its time only runs while the user can see it. Results of
 // the same kind in quick succession merge into one toast with one undo (`undoable`); a toast
 // that says what one already up says (a fetch refused twice) takes its place and starts its
 // time again, never a second one. An
@@ -23,16 +22,20 @@ import { errorText } from '../i18n/texts';
 import { tokenMs } from '../tokens';
 import type { IconMeaning } from '../icons';
 
-/** What a toast says: a success of the user's own action, a note, or a warning (an undo
- *  that failed). */
-export type ToastKind = 'success' | 'info' | 'warning';
+/** What a toast says: a success of the user's own action, a note, a warning (an undo that
+ *  failed), or a plain word without a sign (the profile saved while fields are still
+ *  missing: no green check). */
+export type ToastKind = 'success' | 'info' | 'warning' | 'plain';
 
-/** How each kind looks: its glyph (the success's check draws itself once as it appears);
- *  the colour is the kind's status colour (Toast.svelte, by class). */
-export const TOAST_KINDS: Readonly<Record<ToastKind, { icon: IconMeaning; draws: boolean }>> = {
+/** How each kind looks: its glyph, none for a plain one (the success's check draws itself
+ *  once as it appears); the colour is the kind's status colour (Toast.svelte, by class). */
+export const TOAST_KINDS: Readonly<
+  Record<ToastKind, { icon: IconMeaning | null; draws: boolean }>
+> = {
   success: { icon: 'success', draws: true },
   info: { icon: 'info', draws: false },
   warning: { icon: 'warning', draws: false },
+  plain: { icon: null, draws: false },
 };
 
 /** What the toast's button does: nothing (no button), an undo (Rückgängig), or the way to

@@ -106,6 +106,7 @@ import snapshot from './demo/snapshot.json';
 import VOCABULARY from './demo/vocabulary.json';
 import type { Snapshot } from './snapshot';
 import { installPreviewMenu, preview } from './preview';
+import { installSheet } from './sheets';
 
 interface Harness {
   calls: [string, unknown][];
@@ -2283,6 +2284,7 @@ const harness: Harness = {
 window.__harness = harness;
 initial();
 installPreviewMenu();
+installSheet();
 if (TAURI !== null) {
   for (const name of DROP_EVENTS) {
     void listenTauri(TAURI, name, (event) => harness.fire(name, event.payload));

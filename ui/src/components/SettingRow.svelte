@@ -1,40 +1,46 @@
 <!--
   The one row of a list in a page's box (Einstellungen: a portal, the mailbox, the profile's
-  folder, the reset; the setup's Alert-Mails): its tile (`lead`, 10 from its text), its label
-  and one line under it, then its buttons (`children`: outlined, each with its glyph, 8
-  apart) and what always ends the row (`end`: a portal's icon link and its switch, the switch
-  last). Every row is 12 above and below its line, which is as high as a label and its line
-  (--row-line): the tile, the buttons and the switch are centred on it, so a list keeps one
-  rhythm whether a row has its line or not, and lines that unfold under the text (`notes`: a
-  portal's problem) move nothing beside it. The row runs edge to edge in its box and pads its
-  content by the box's --row-inset, so its hairline (between rows only) and its text share the
-  box's grid.
-  The line under the label is quiet; a value to copy (a path, in the line's font) selects like
-  text (`copy`; it breaks only after a separator), and so does a label that is such a value (`copyLabel`, the
-  address of the mailbox). A dot before it says a state (`dot`: Verbunden green, a failure
-  red). Its test id is the row's with `-hint`.
+  folder, the reset; the setup's Alert-Mails; the round 10 draft): 10 20 inside and at least 54
+  high, its tile (`lead`, 32) 12 from its name (14/540 ink) and the one line under it (13
+  subtle), then its buttons (`children`: outlined, each with its glyph, 8 apart) and what
+  always ends the row (`end`: a portal's icon link and its switch, the switch last). The
+  tile, the buttons and the switch are centred on the name and its line, and lines that
+  unfold under the text (`notes`: a portal's problem) move nothing beside it. Between rows a
+  hairline that starts at the text (64 in), the only lines of a box. No wash under the
+  pointer: a row is not a control (CLAUDE.md).
+  The line under the name is quiet; a value to copy (a path, in the line's font) selects like
+  text (`copy`; it breaks only after a separator), and so does a name that is such a value
+  (`copyLabel`, the address of the mailbox). A state is a status word (`status`, StatusText:
+  a dot and the word in its colour; `dot` names the tone of the old callers' line). Its test
+  id is the row's with `-hint`. A row that cannot be used now (`disabled`: an alert portal
+  without a mailbox) dims its tile and its name.
   With `for` (the id of its switch) the row works like a row of the system settings of
-  Windows 11 and macOS: only the switch switches (user decision). The label names the switch
+  Windows 11 and macOS: only the switch switches (user decision). The name names the switch
   and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
-  Toggle), but neither is a click target, and the row never reacts to the pointer.
-  In a narrow box (the minimum window) the buttons go to a line of their own at the row's end;
-  the text keeps its room and `end` stays at the right.
+  Toggle), but neither is a click target.
+  In a narrow box (the smallest window) the buttons go to a line of their own at the row's
+  end; the text keeps its room and `end` stays at the right.
 -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
+  import StatusText, { type StatusTone } from './StatusText.svelte';
 
   interface Props {
     label: string;
     hint?: string | null;
     /** The tile before the text. */
     lead: Snippet;
-    /** A dot before the hint that says a state (connected, or a failure). */
+    /** The line is a state: a dot and the word in the state's colour. */
+    status?: StatusTone | null;
+    /** The tone of the line's state (as `status`, the connected or failed mailbox). */
     dot?: 'success' | 'danger' | null;
     /** The hint is a value a user would copy (a folder path). */
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
     copyLabel?: boolean;
+    /** The row cannot be used now: its tile and name are dimmed. */
+    disabled?: boolean;
     /** The id of the switch this row labels (Toggle `id`). */
     for?: string | null;
     /** Lines under the text that come and go (a portal's problem). */
@@ -50,15 +56,19 @@
     label,
     hint = null,
     lead,
+    status = null,
     dot = null,
     copy = false,
     copyLabel = false,
+    disabled = false,
     for: control = null,
     notes = null,
     end = null,
     testid = null,
     children,
   }: Props = $props();
+
+  const tone = $derived(status ?? dot);
 
   describe(() => (control !== null && hint ? `${control}-hint` : null));
 
@@ -67,7 +77,13 @@
   const parts = (path: string): string[] => path.match(/[^/\\]*[/\\]|[^/\\]+$/g) ?? [path];
 </script>
 
-<div class="row" data-setting-row data-testid={testid ?? undefined}>
+<div
+  class="row"
+  class:lined={hint !== null}
+  class:disabled
+  data-setting-row
+  data-testid={testid ?? undefined}
+>
   <span class="lead">{@render lead()}</span>
   <div class="text">
     <span
@@ -79,13 +95,14 @@
     {#if hint}<p
         class="hint"
         class:path={copy}
-        class:status={dot !== null}
         id={control !== null ? `${control}-hint` : undefined}
         data-copy={copy ? '' : undefined}
         data-testid={testid ? `${testid}-hint` : undefined}
       >
-        {#if dot}<span class="dot {dot}" aria-hidden="true"
-          ></span>{/if}{#if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr
+        {#if tone}<StatusText
+            {tone}
+            text={hint}
+          />{:else if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr
               />{/if}<span class="part">{part}</span>{/each}{:else}{hint}{/if}
       </p>{/if}
     {#if notes}{@render notes()}{/if}
@@ -95,37 +112,52 @@
 </div>
 
 <style>
+  /* The tile, the buttons and the switch stand on a line as high as the name and its line
+     (or the row's least height without a line), so lines unfolding under the text move
+     nothing beside it. */
   .row {
+    --line-box: calc(var(--setting-row-min) - 2 * var(--setting-row-pad-y));
+
+    position: relative;
     display: flex;
     align-items: flex-start;
-    gap: var(--space-8) var(--space-16);
-    margin-inline: calc(-1 * var(--row-inset));
-    padding: var(--row-pad) var(--row-inset);
-    border-bottom: var(--border-width) solid var(--border);
+    gap: var(--space-8) var(--setting-row-gap);
+    min-height: var(--setting-row-min);
+    padding: var(--setting-row-pad-y) var(--card-pad-x);
   }
 
-  .row:last-child {
-    border-bottom: 0;
+  .lined {
+    --line-box: max(
+      calc(var(--setting-row-min) - 2 * var(--setting-row-pad-y)),
+      calc(var(--leading-md) + var(--leading-sm))
+    );
   }
 
-  /* The tile stands 10 from the text (the row's other parts keep their 16). */
+  /* The hairline between rows starts at the text. */
+  :global([data-setting-row]) + .row::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--setting-rule-start);
+    height: var(--border-width);
+    background-color: var(--border);
+    content: '';
+  }
+
   .lead {
     display: flex;
     flex: none;
     align-items: center;
-    height: var(--row-line);
-    margin-inline-end: calc(var(--space-10) - var(--space-16));
+    height: var(--line-box);
   }
 
-  /* Label and line 2 apart, centred on the row's line. */
   .text {
     display: flex;
     flex: 1;
     flex-direction: column;
     justify-content: center;
-    gap: var(--space-2);
     min-width: 0;
-    min-height: var(--row-line);
+    min-height: var(--line-box);
   }
 
   .label {
@@ -134,29 +166,13 @@
   }
 
   .hint {
-    color: var(--text-muted);
+    color: var(--text-subtle);
     font: var(--type-sm);
   }
 
-  .hint.status {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-  }
-
-  .dot {
-    flex: none;
-    width: var(--dot-unread);
-    height: var(--dot-unread);
-    border-radius: var(--radius-full);
-  }
-
-  .dot.success {
-    background-color: var(--success);
-  }
-
-  .dot.danger {
-    background-color: var(--danger);
+  .disabled .lead,
+  .disabled .label {
+    opacity: var(--opacity-disabled);
   }
 
   .path {
@@ -176,7 +192,7 @@
     flex: none;
     align-items: center;
     gap: var(--space-8);
-    height: var(--row-line);
+    height: var(--line-box);
   }
 
   /* A row whose buttons are all away (a portal without calls) keeps no room for them: no gap
@@ -187,7 +203,7 @@
 
   /* In a narrow box the buttons take a line of their own at the row's end (they wrap within
      its width rather than run past its edge); the text keeps its room, `end` its place. */
-  @container (width < 520px) {
+  @container (width < 480px) {
     .row {
       flex-wrap: wrap;
     }

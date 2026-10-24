@@ -617,7 +617,6 @@ export const de = {
     remove: 'Entfernen',
     change: 'Ändern',
     open: 'Öffnen',
-    hide: 'Ausblenden',
     back: 'Zurück',
     retry: 'Erneut versuchen',
     undo: 'Rückgängig',

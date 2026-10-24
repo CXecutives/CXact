@@ -98,7 +98,12 @@ function walk(dir, out = []) {
 }
 
 const GENERATED = 'ui/src/lib/ipc/types/';
-const files = [...walk('ui/src'), ...walk('tools/ui-harness/specs'), ...harnessRoot()];
+const files = [
+  ...walk('ui/src'),
+  ...walk('tools/ui-harness/specs'),
+  ...walk('tools/ui-harness/sheets'),
+  ...harnessRoot(),
+];
 const known = new Set(files);
 
 function harnessRoot() {

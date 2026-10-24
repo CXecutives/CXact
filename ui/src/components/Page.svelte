@@ -1,21 +1,23 @@
 <!--
-  The frame of a page (Profil, Einstellungen, every step of the setup): the
-  white page (--layout-page) at least as high as the view, its column (--page-width) centred in it, its first
-  heading's line on the window's first row (--page-top) and the room of the page's end under
-  the column (--page-end). The column is the container its rows ask for their width (a
-  narrow window puts a row's buttons on a line of their own). A head above the column (`head`:
-  the page's title, design round 7) takes the first row instead; a bar at the page's foot
-  (`foot`: the Profil's floating bar) takes the page's end. While a file the page would take
-  is over it (`over`: a CV on the Profil) a dashed edge stands inside the view.
+  The frame of a page (Profil, Einstellungen, the setup's steps; the round 10 draft): the
+  page's warm white ground (--page; the setup's cream with `ground="bg"`) at least as high as
+  the view, its column (--page-max with --page-side, 16 in a narrow page) centred in it, 8
+  under the top bar and with room at its end for the bar at the foot. A head (`head`: the
+  page's title, PageHeader) opens the column, 22 above the first section's title. A bar at
+  the page's foot (`foot`: BottomBar) stays docked at the view's bottom edge. The column is
+  the container its parts ask for their width. While a file the page would take is over it
+  (`over`: a CV on the Profil) a dashed edge stands inside the view.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
   interface Props {
     testid?: string | null;
-    /** A head above the column, in the first row. */
+    /** The ground: the page's warm white, or the cream of the setup. */
+    ground?: 'page' | 'bg';
+    /** A head at the top of the column (the page's title). */
     head?: Snippet | null;
-    /** A bar at the page's foot, after the column. */
+    /** A bar at the page's foot, after the column (BottomBar). */
     foot?: Snippet | null;
     /** A file the page would take is over it. */
     over?: boolean;
@@ -26,6 +28,7 @@
 
   let {
     testid = null,
+    ground = 'page',
     head = null,
     foot = null,
     over = false,
@@ -36,43 +39,54 @@
 
 <div
   class="page"
+  class:cream={ground === 'bg'}
   class:over
-  class:headed={head !== null}
-  class:footed={foot !== null}
   data-testid={testid ?? undefined}
   bind:this={element}
 >
-  {#if head}{@render head()}{/if}
-  <div class="column">{@render children()}</div>
+  <div class="column">
+    {#if head}{@render head()}{/if}
+    <div class="content">{@render children()}</div>
+  </div>
   {#if foot}{@render foot()}{/if}
 </div>
 
 <style>
   /* At least as high as the view, so a bar at the foot stands there under a short page. */
   .page {
+    container: page / inline-size;
     display: flex;
     flex-direction: column;
     min-height: 100%;
-    background-color: var(--layout-page);
+    background-color: var(--page);
+  }
+
+  .cream {
+    background-color: var(--bg);
   }
 
   .column {
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--page-head-gap);
     width: 100%;
-    max-width: calc(var(--page-width) + 2 * var(--pane-padding));
+    max-width: var(--page-max);
     margin: 0 auto;
-    padding: var(--page-top) var(--pane-padding) var(--page-end);
+    padding: var(--page-top-pad) var(--page-side) var(--page-bottom);
   }
 
-  .headed .column {
-    padding-top: var(--space-8);
+  .content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
+    min-width: 0;
   }
 
-  .footed .column {
-    padding-bottom: 0;
+  @container page (width < 560px) {
+    .column {
+      padding-inline: var(--page-side-narrow);
+    }
   }
 
   .over {
