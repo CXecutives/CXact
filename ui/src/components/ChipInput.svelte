@@ -456,7 +456,7 @@
   }
 
   .bare .input {
-    padding-inline: 0;
+    padding-inline: var(--field-inset);
   }
 
   .chip {

@@ -276,11 +276,16 @@ export async function chooseWay(page: Page, way: 'empty' | 'cv'): Promise<void> 
 }
 
 /** Fills what a usable profile needs into the form (Deutschland is there already): a wished
- *  role, a competence, a language. */
+ *  role, a competence (the add row of its list) and a language (picked from the search list
+ *  of its add row). */
 export async function fillRequired(page: Page): Promise<void> {
   const roles = page.getByTestId('profile-roles').locator('input');
   await roles.fill('Interim CFO');
   await roles.press('Enter');
-  await page.getByTestId('competence-name').first().fill('Controlling');
-  await page.getByTestId('language-pick-Deutsch').click();
+  const competence = page.getByTestId('competence-add').locator('input');
+  await competence.fill('Controlling');
+  await competence.press('Enter');
+  const language = page.getByTestId('language-add').locator('input');
+  await language.fill('Deutsch');
+  await page.getByTestId('language-add-options').getByRole('option', { name: 'Deutsch' }).click();
 }

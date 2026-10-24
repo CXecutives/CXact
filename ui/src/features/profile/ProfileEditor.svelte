@@ -326,14 +326,16 @@
     </Field>
   {:else if c.kind === 'months'}
     <Field label={words.minMonths} for="{id}-minMonths" error={errorOf('minMonths')}>
-      <Select
-        id="{id}-minMonths"
-        options={MONTHS}
-        value={String(form.minMonths)}
-        label={words.minMonths}
-        testid="profile-min-months"
-        onchange={(months) => (form.minMonths = Number(months) as ProfileForm['minMonths'])}
-      />
+      <div>
+        <Select
+          id="{id}-minMonths"
+          options={MONTHS}
+          value={String(form.minMonths)}
+          label={words.minMonths}
+          testid="profile-min-months"
+          onchange={(months) => (form.minMonths = Number(months) as ProfileForm['minMonths'])}
+        />
+      </div>
     </Field>
   {:else if c.kind === 'countries'}
     {@const error = errorOf('countries')}

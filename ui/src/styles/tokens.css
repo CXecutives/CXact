@@ -570,8 +570,9 @@
   --grip-rest: var(--border-strong);
   --grip-drag: var(--text-subtle);
   --form-width: 500px;
-  /* The input after the chips of a chip field: room for its whole "+ Zertifikat". */
-  --chip-entry-min: 96px;
+  /* The input after the chips of a tag field: room for its whole placeholder (the longest,
+     "Abschluss hinzufügen", is 145 wide), else it takes a line of its own. */
+  --chip-entry-min: 160px;
   /* A field of a page: its label above its control, this far apart (Field). */
   --label-gap: 6px;
   /* The pages Profil and Einstellungen ("Luftige Gruppen", design round 6): white rounded
@@ -728,10 +729,6 @@
   /* The fade under the top bar where a view scrolls beneath it; it comes in over the first
      scroll of this height (lib/actions/scrollFade.ts), so at rest it lies over nothing. */
   --fade-height: 24px;
-  /* The floating bar at the foot of a page (the Profil's unsaved changes): this far above
-     the window's bottom edge, at most this wide. */
-  --float-gap: var(--space-16);
-  --float-max: 560px;
   /* One step of the sliding nav pill: an item plus the 2 px gap. */
   --nav-step: calc(var(--nav-row) + var(--space-2));
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */

@@ -38,7 +38,6 @@
 
   const same = (a: string, b: string): boolean => keyOf(a) === keyOf(b);
 
-
   /** What the add row took: each name not there yet becomes a row. */
   let typed = $state<string[]>([]);
   function take(names: string[]): void {
