@@ -51,9 +51,8 @@ icon (docs/CHANGING.md).
 Small stages are hinted (see `layout`): up to 256 px the stroke is a whole number of pixels
 with its straight edges on whole pixels (rounded symmetrically) and the lens's ring a whole
 number of pixels across; up to 40 px the gap ends the strokes flat on whole pixels, at least
-a pixel from the lens. Below 32 px the handle's legs inside the body are left out: there they
-turn the body into a grid of thin lines (16, 20) or crowd it (24, 30). The handle above the body
-stays.
+a pixel from the lens. Every size draws the same glyph, the legs inside the body included
+(owner, 2026-10-24: one icon, not a simpler one for small sizes).
 
     python tools/icon.py                        writes every output, then checks icon.ico
                                                 (needs Pillow)
@@ -143,10 +142,6 @@ MIN_GAP = 1.0
 # Up to FLAT_CUT px the gap ends the strokes flat on whole pixels: an arc through a stroke of
 # one or two pixels is only a soft pixel next to the lens.
 FLAT_CUT = 40
-# Below INNER_LEGS px the handle's legs inside the body are left out: at 16 and 20 they turn
-# the body into a grid of one pixel lines, and at 24 (the taskbar at 100 %) and 30 they crowd
-# the body with 2 px strokes (owner review 2026-10-24: the plain briefcase reads cleaner).
-INNER_LEGS = 32
 # AND mask of the ICO stages: a pixel counts as transparent below half coverage (as icotool's
 # default threshold), so a reader that ignores alpha sees the plate in its right size.
 MASK_ALPHA = 128
@@ -375,9 +370,7 @@ def handle(g):
 
 def legs(g):
     """The handle's legs inside the body, from its inner top edge down to its inner bottom
-    edge; the right one ends at the lens's gap. None at the stages that leave them out."""
-    if not g['inner_legs']:
-        return []
+    edge; the right one ends at the lens's gap."""
     h = g['w'] / 2
     lx, rx = g['legs']
     _, y0, _, y1 = g['body']
@@ -504,7 +497,6 @@ def layout(s, mac=False):
         handle_y=ty,
         # The bends stay within the legs' straight run above the body.
         handle_r=min(HANDLE_R * k, y0 - h - ty, (rx - lx) / 2),
-        inner_legs=s >= INNER_LEGS,
         lens=(lens_x, lens_y, lens_out, lens_in),
         lens_tip=tip,
         gap=gap,
