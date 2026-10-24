@@ -94,12 +94,14 @@
 </Page>
 
 <style>
-  /* 2 in, like the titles of the groups under it. */
+  /* 2 in, like the titles of the groups under it; lower than a page's head and further from
+     the form (the page's own spacing comes on top). */
   .head {
     display: flex;
     flex-direction: column;
     gap: var(--setup-page-lead-gap);
-    padding-inline: var(--space-2);
+    padding: calc(var(--setup-page-top) - var(--page-top-pad)) var(--space-2)
+      calc(var(--setup-page-body-gap) - var(--page-head-gap));
   }
 
   .title {

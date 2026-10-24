@@ -916,8 +916,11 @@
   --setup-badge-type: var(--weight-control) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --setup-badge-pad: var(--space-2) var(--space-8);
   --setup-badge-gap: var(--space-10);
-  /* The page of "Dein Profil": its lead 6 under the title. */
+  /* The page of "Dein Profil": its title 22 under the bar, its lead 6 under the title, and
+     its first group 50 under the lead (the draft's "5 selbst"). */
+  --setup-page-top: 22px;
   --setup-page-lead-gap: var(--space-6);
+  --setup-page-body-gap: 50px;
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
