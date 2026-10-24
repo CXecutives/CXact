@@ -2,9 +2,11 @@
   The three caption buttons of the Windows window, drawn by the app like the ones of Windows 11
   (the top bar is the app's own, features/shell/TitleBar.svelte): Minimieren, Maximieren
   (Verkleinern while the window is maximized, its glyph two squares) and Schließen, each 46 px
-  wide over the bar's whole height with a 10 px glyph of thin lines, not in the tab order,
-  like the native ones. In the design's colours, never the system's: under the pointer its
-  quiet wash, pressed a deeper one; Schließen turns the app's danger red with a white glyph.
+  wide over the bar's whole height, not in the tab order, like the native ones. Their glyphs
+  (minus, square, two squares, x) are drawn in the app's 24-unit grid with its one stroke
+  (--icon-stroke), 14 px, so they weigh like every other glyph. In the design's colours,
+  never the system's: the muted ink, under the pointer the design's warm grey wash, pressed a
+  deeper one; Schließen turns the app's danger red with a white glyph.
   While the window is in the back the glyphs fade. Each names itself in a tooltip in the
   words of Windows.
   In the app a window of the OS lies over the bar and takes the pointer there
@@ -95,18 +97,16 @@
       use:tooltip={label(id)}
       onclick={() => press(id)}
     >
-      <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true">
+      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
         {#if id === 'minimize'}
-          <path d="M0 5.5H10" />
+          <path d="M5 12h14" />
         {:else if id === 'close'}
-          <path d="M0.5 0.5L9.5 9.5M9.5 0.5L0.5 9.5" />
+          <path d="M18 6 6 18M6 6l12 12" />
         {:else if maximized}
-          <rect x="0.5" y="2.5" width="7" height="7" rx="1" />
-          <path
-            d="M2.5 2.5V1.5A1 1 0 0 1 3.5 0.5H8.5A1 1 0 0 1 9.5 1.5V6.5A1 1 0 0 1 8.5 7.5H7.5"
-          />
+          <rect x="3" y="7" width="14" height="14" rx="2" />
+          <path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2" />
         {:else}
-          <rect x="0.5" y="0.5" width="9" height="9" rx="1" />
+          <rect x="3" y="3" width="18" height="18" rx="2" />
         {/if}
       </svg>
     </button>
@@ -126,18 +126,20 @@
     justify-content: center;
     width: var(--titlebar-button-width);
     height: 100%;
-    color: var(--titlebar-fg);
+    color: var(--text-muted);
     transition:
       background-color var(--dur-base) var(--ease-standard),
       color var(--dur-base) var(--ease-standard);
   }
 
   .glyph {
-    width: var(--titlebar-glyph);
-    height: var(--titlebar-glyph);
+    width: var(--caption-glyph);
+    height: var(--caption-glyph);
     fill: none;
     stroke: currentcolor;
-    stroke-width: var(--titlebar-glyph-stroke);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: var(--icon-stroke);
   }
 
   /* The window in the back (`data-window` on the root, lib/platform.ts): the glyphs fade. */
@@ -147,14 +149,13 @@
 
   .caption:hover,
   .caption.hover {
-    background-color: var(--titlebar-button-hover);
-    color: var(--titlebar-fg-hover);
+    background-color: var(--caption-hover);
     transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .caption:active:hover,
   .caption.pressed {
-    background-color: var(--titlebar-button-press);
+    background-color: var(--caption-press);
   }
 
   .close:hover,

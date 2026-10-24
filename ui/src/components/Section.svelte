@@ -1,12 +1,10 @@
 <!--
-  A group of a page (Profil, Einstellungen; "Luftige Gruppen", design round 6): its heading
-  in navy (--type-heading) flush with the left edge of its box, 8 above it
-  (--layout-heading-gap), then its content: one white box (Group), or several, each under its
-  own caption and 16 apart (Jobportale). The heading's line holds only the heading, and the
-  page's action where the page puts one there (Profil's "Aus Lebenslauf ausfüllen" on its
-  first group): it hangs out of the line above and below, so every heading's line is as high
-  as its text and the gap to the box stays 8. Groups are --layout-section-gap apart (the
-  page's list of them).
+  A group of a page (Profil, Einstellungen; the round 10 draft): its title 16/650 ink, 2 in
+  from its box's edge, on a line at least as high as a quiet button, 10 above its content: one
+  white box (Group), or several, each under its own caption and 14 below the box before it
+  (Jobportale). The title's line holds only the title, and the page's action where the page
+  puts one there (it hangs out of the line evenly, so every line keeps its height). Sections
+  stand --group-section-gap (30) apart: the page's list of them sets it.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -45,14 +43,16 @@
   .section {
     display: flex;
     flex-direction: column;
-    gap: var(--layout-heading-gap);
+    gap: var(--group-heading-gap);
     min-width: 0;
   }
 
   .head {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-6);
+    min-height: var(--section-head-min);
+    margin-inline: var(--section-inset);
   }
 
   .heading {
@@ -61,11 +61,12 @@
     letter-spacing: var(--tracking-tight);
   }
 
-  /* A control is higher than the heading's text: it hangs out evenly above and below. */
+  /* A control higher than the line hangs out of it evenly above and below. */
   .actions {
     display: flex;
     align-items: center;
-    height: var(--leading-heading);
+    gap: var(--space-8);
+    height: var(--section-head-min);
     margin-left: auto;
   }
 
@@ -73,7 +74,7 @@
   .groups {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--group-caption-top);
     min-width: 0;
   }
 </style>

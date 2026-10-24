@@ -1,5 +1,4 @@
-// Shows a control hovered, pressed or focused without a pointer or a key, for the states
-// pages: every rule of the page's style sheets whose selector holds `:hover`, `:active:hover`,
+// Shows a control hovered, pressed or focused without a pointer or a key, for the sheets: every rule of the page's style sheets whose selector holds `:hover`, `:active:hover`,
 // `:focus-within` or `:focus-visible` is copied once with that pseudo-class replaced by an
 // attribute (`[data-force~="hover"]`, `press`, `focus`), so the components keep their own CSS
 // and know nothing of this. `use:force={{ state: 'hover', target: 'button' }}` on a cell

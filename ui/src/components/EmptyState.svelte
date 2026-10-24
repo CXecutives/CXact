@@ -1,7 +1,9 @@
 <!--
-  An empty screen or section never looks dead: a centred column with a meaningful icon, one
-  quiet sentence and one clear action (plus at most one secondary). No heading: every empty
-  state looks alike.
+  An empty screen or section never looks dead (the round 10 draft): a raised white tile of 48
+  with a muted glyph (a failure's in the soft red), 14 under it the title (16/650) and one quiet sentence (13 muted, at
+  most 300 wide), centred; at most one clear action under it (plus at most one secondary).
+  Every empty state looks alike. In a list (`placement="list"`) it stands at the top of the
+  full width, 56 from the top; in the job view (`center`) in the middle of its view.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -15,13 +17,18 @@
 
 <script lang="ts">
   import Button from './Button.svelte';
-  import IconTile, { type TileTone } from './IconTile.svelte';
+  import IconTile from './IconTile.svelte';
 
   interface Props {
     icon: IconName;
-    tone?: TileTone;
+    /** A failure (the load of the list or a job): the tile in the soft red. */
+    tone?: 'neutral' | 'danger';
+    /** The title. */
+    heading?: string | null;
     /** One sentence. */
     text?: string | null;
+    /** Where it stands: at the top of a list, or in the middle of its view. */
+    placement?: 'list' | 'center';
     /** The one primary action of the state. */
     action?: EmptyAction | null;
     secondary?: EmptyAction | null;
@@ -31,16 +38,19 @@
   let {
     icon,
     tone = 'neutral',
+    heading = null,
     text = null,
+    placement = 'center',
     action = null,
     secondary = null,
     testid = null,
   }: Props = $props();
 </script>
 
-<div class="empty" data-testid={testid ?? undefined}>
-  <IconTile {icon} {tone} size="lg" />
-  {#if text}<p class="text">{text}</p>{/if}
+<div class="empty {placement}" data-testid={testid ?? undefined}>
+  <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'raised'} size="lg" />
+  {#if heading}<h3 class="title">{heading}</h3>{/if}
+  {#if text}<p class="text" class:alone={!heading}>{text}</p>{/if}
   {#if action || secondary}
     <div class="actions">
       {#if action}
@@ -68,22 +78,45 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-16);
-    max-width: var(--form-width);
     text-align: center;
+  }
+
+  /* At the top of a list, across its full width. */
+  .list {
+    width: 100%;
+    padding: var(--empty-top) var(--empty-side) 0;
+  }
+
+  .center {
+    max-width: var(--form-width);
+  }
+
+  .title {
+    margin-top: var(--empty-tile-gap);
+    color: var(--text-heading);
+    font: var(--type-heading);
+    letter-spacing: var(--tracking-tight);
   }
 
   /* A centred sentence breaks into lines of a like length. */
   .text {
+    max-width: var(--empty-text-max);
+    margin-top: var(--empty-text-gap);
     color: var(--text-muted);
-    font: var(--type-body);
+    font: var(--type-sm);
     text-wrap: balance;
+  }
+
+  /* Without a title the sentence stands where the title would. */
+  .alone {
+    margin-top: var(--empty-tile-gap);
   }
 
   .actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: var(--space-12);
+    gap: var(--space-8);
+    margin-top: var(--empty-actions-gap);
   }
 </style>

@@ -5,12 +5,17 @@
 // by its button (a narrow window folds it by itself; its button then floats it over the
 // view), and the job view beside the list shown or hidden. Both choices are kept per user
 // (in this web view: a store that cannot be read or written keeps them for the session).
+// The ground of the view below the top bar is decided here too: the bar wears it.
 
 import { app } from './app.svelte';
+import { navigation } from './navigation.svelte';
 import { viewport } from './viewport.svelte';
 
 const SIDEBAR = 'sidebar-open';
 const READER = 'reader-open';
+
+/** The colour a view stands on: the setup's cream, the warm page or the list's white. */
+export type Ground = 'side' | 'page' | 'list';
 
 function kept(key: string): boolean {
   try {
@@ -78,12 +83,28 @@ class Shell {
     keep(READER, open);
   }
 
-  /** The setup shows its picture beside the step (the top bar follows its two colours). */
+  /** The setup shows its picture beside the step. */
   setupPicture = $state(false);
 
   /** The setup stands in place of the views ("Zu den Jobs" ends it). */
   get firstRun(): boolean {
     return app.state?.firstRun ?? false;
+  }
+
+  /** The ground of the view, which the top bar continues above it: the setup's cream
+   *  (`side`); the warm page (`page`) of Profil, Einstellungen, a start that loads or failed,
+   *  and of a job standing in place of the list (one column); else the list's white (`list`),
+   *  with the job view's page right of `listSeam` while it stands beside the list. */
+  get ground(): Ground {
+    if (this.firstRun) return 'side';
+    if (app.state === null || navigation.current !== 'jobs' || this.listHidden) return 'page';
+    return 'list';
+  }
+
+  /** The ground at the view's right edge: the job view's page while it stands beside the
+   *  list. */
+  get groundEnd(): Ground {
+    return this.ground === 'list' && this.listSeam !== null ? 'page' : this.ground;
   }
 }
 

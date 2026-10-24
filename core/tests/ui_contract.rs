@@ -1711,7 +1711,7 @@ fn tooltips_only_where_something_is_missing() {
 /// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    const ROLES: [(&str, &[&str]); 8] = [
+    const ROLES: [(&str, &[&str]); 11] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // A switch that is on, the check of a chosen row, and a chosen checkbox (the
@@ -1735,6 +1735,11 @@ fn coral_only_in_its_roles() {
         ("var(--nav-active-icon", &["components/SideNav.svelte"]),
         // The setup's current step among its dots (design round 7).
         ("var(--step-current", &["components/StepDots.svelte"]),
+        // The way the setup recommends, the arc of its large spinner while it reads a CV, and
+        // the pulse of a run (round 10).
+        ("var(--recommended", &["components/Tile.svelte"]),
+        ("var(--spinner-accent", &["components/Spinner.svelte"]),
+        ("var(--pulse", &["components/ProgressStrip.svelte"]),
         // A required field that is still empty (design round 6): its coral edge is confined to
         // the `[data-missing]` block of tokens.css, which hands it to the fields' own edge
         // tokens; no component draws it.

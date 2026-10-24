@@ -1,13 +1,13 @@
 <!--
   The white box of a page's group (Section; Profil, Einstellungen, the setup's mailbox form
-  and its portals' rows): white with a 1 px edge,
-  12 round, 16 inside all round, like the settings of macOS and Windows, on the white page (--layout-page).
-  Fields stand 16 apart in it without a line between them (ProfileEditor). A list of rows
-  (SettingRow, PortalRow) brings its own padding: the rows run edge to edge (they bleed out
-  by the box's inset, --row-inset, and pad back in by it) with a hairline between them, the
-  only hairlines of a box. A box of a group of several has its caption above it (the
-  Jobportale's "Suche und Alert-Mails"): the app's text in medium, muted, flush with the box,
-  6 above it.
+  and its portals' rows; the round 10 draft): white with a hairline edge and the card's soft
+  shadow, 14 round. A box of fields is 18 20 20 inside with its fields 18 apart, no lines
+  between them. A box of rows (SettingRow, PortalRow) has no padding: its rows pad themselves
+  (10 20) and draw the hairline between them, the only hairlines of a box. The box is the
+  container its rows ask for their width (a narrow box puts a row's buttons on a line of their
+  own). A box of a group of several has its caption above it (Jobportale's "Suche und
+  Alert-Mails"): 13/500 muted, 2 in like the section's title, 6 above the box, 14 below the box
+  before it (8 under the section's title).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -38,28 +38,38 @@
   .captioned {
     display: flex;
     flex-direction: column;
-    gap: var(--label-gap);
+    gap: var(--group-caption-gap);
+    min-width: 0;
+  }
+
+  /* After the section's title the caption stands 8 below it (its 10 less 2); after a box 14
+     (the section's gap between its boxes). */
+  .captioned:first-child {
+    margin-top: calc(-1 * var(--space-2));
   }
 
   .caption {
+    margin-inline: var(--section-inset);
     color: var(--text-muted);
-    font: var(--type-label);
+    font: var(--group-caption);
   }
 
   .box {
-    --row-inset: var(--layout-group-pad);
-
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
+    gap: var(--group-field-gap);
     min-width: 0;
-    padding: var(--layout-group-pad);
-    border-radius: var(--layout-group-radius);
-    background-color: var(--layout-group);
-    box-shadow: inset 0 0 0 var(--border-width) var(--layout-group-edge);
+    padding: var(--card-pad-y) var(--card-pad-x) var(--group-pad-end);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-card);
+    background-color: var(--surface);
+    box-shadow: var(--sh-card);
   }
 
-  /* Rows bring their own padding above and below. */
+  /* A box of rows: the rows bring their own padding and lines. */
   .box:has(> :global([data-setting-row])) {
-    padding-block: 0;
+    gap: 0;
+    padding: 0;
   }
 </style>

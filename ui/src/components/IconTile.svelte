@@ -1,9 +1,14 @@
-<!-- A soft tile holding an icon, a portal monogram (in / fd / fm) or a portal's own mark
+<!-- A tile holding a glyph, a portal monogram (in / fd / fm, 12/650) or a portal's own mark
      (`logo`, an image of the app: a full square the tile's corners round, with a hairline so a
-     light mark keeps its edge). Neutral everywhere (design round 7), red for a failure. -->
+     light mark keeps its edge). Four sizes, 32, 36, 48 and 56 (sm, md, lg, xl), the glyph half
+     the tile (16, 18, 24, 28); 8 round up to 36 and 14 from 48 (`round`: a disc). Tones:
+     neutral (the track with a muted glyph: the rows of Einstellungen), raised (white with an
+     edge and a lifted shadow: an empty state), accent (the track with a navy glyph: a step of
+     the setup), success (the soft green with the green glyph: the setup done) and danger (the
+     soft red with the red glyph: a failure). No tinted portal tiles (round 10). -->
 <script lang="ts" module>
-  export type TileTone = 'danger' | 'neutral';
-  export type TileSize = 'sm' | 'md' | 'lg';
+  export type TileTone = 'neutral' | 'raised' | 'accent' | 'success' | 'danger';
+  export type TileSize = 'sm' | 'md' | 'lg' | 'xl';
 </script>
 
 <script lang="ts">
@@ -12,6 +17,8 @@
   interface Props {
     tone?: TileTone;
     size?: TileSize;
+    /** A disc instead of a rounded square. */
+    round?: boolean;
     icon?: IconName | null;
     monogram?: string | null;
     logo?: string | null;
@@ -20,15 +27,17 @@
   let {
     tone = 'neutral',
     size = 'md',
+    round = false,
     icon = null,
     monogram = null,
     logo = null,
   }: Props = $props();
 
-  const ICON_SIZE: Record<TileSize, IconSize> = { sm: 'sm', md: 'md', lg: 'lg' };
+  /** A glyph in a tile is half the tile. */
+  const ICON_SIZE: Record<TileSize, IconSize> = { sm: 'sm', md: 'nav', lg: 'xl', xl: 'xxl' };
 </script>
 
-<span class="tile {tone} {size}" class:mark={logo !== null} aria-hidden="true">
+<span class="tile {tone} {size}" class:round class:mark={logo !== null} aria-hidden="true">
   {#if logo}
     <img class="logo" src={logo} alt="" draggable="false" />
   {:else if icon}
@@ -49,6 +58,10 @@
     border-radius: var(--tile-radius);
     background-color: var(--tile-bg);
     color: var(--tile-fg);
+  }
+
+  .round {
+    border-radius: var(--radius-full);
   }
 
   /* A portal's own mark fills the tile; a hairline over it keeps a white one apart. */
@@ -72,37 +85,54 @@
   }
 
   .monogram {
-    font: var(--tile-type);
-    font-weight: var(--weight-medium);
-    letter-spacing: var(--tracking-tight);
+    font: var(--tile-monogram);
   }
 
-  .danger {
-    --tile-bg: var(--danger-soft);
-    --tile-fg: var(--danger-strong);
-  }
-
-  /* The track tone reads on white cards and on the cream page alike. */
   .neutral {
     --tile-bg: var(--surface-track);
     --tile-fg: var(--text-muted);
   }
 
+  .raised {
+    --tile-bg: var(--surface);
+    --tile-fg: var(--text-muted);
+
+    border: var(--border-width) solid var(--border);
+    box-shadow: var(--sh-raised);
+  }
+
+  .accent {
+    --tile-bg: var(--surface-track);
+    --tile-fg: var(--tile-accent);
+  }
+
+  .success {
+    --tile-bg: var(--success-soft);
+    --tile-fg: var(--success);
+  }
+
+  .danger {
+    --tile-bg: var(--danger-tint);
+    --tile-fg: var(--status-danger);
+  }
+
   .sm {
     --tile-size: var(--tile-sm);
-    --tile-radius: var(--radius-md);
-    --tile-type: var(--type-xs);
+    --tile-radius: var(--tile-radius-sm);
   }
 
   .md {
     --tile-size: var(--tile-md);
-    --tile-radius: var(--radius-md);
-    --tile-type: var(--type-sm);
+    --tile-radius: var(--tile-radius-sm);
   }
 
   .lg {
     --tile-size: var(--tile-lg);
-    --tile-radius: var(--radius-lg);
-    --tile-type: var(--type-lg);
+    --tile-radius: var(--tile-radius-lg);
+  }
+
+  .xl {
+    --tile-size: var(--tile-xl);
+    --tile-radius: var(--tile-radius-lg);
   }
 </style>

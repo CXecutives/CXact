@@ -776,38 +776,157 @@ test('the failed start keeps the top bar', async ({ page }) => {
     await expect(page.getByTestId('view-error')).toBeVisible();
     await expect(page.getByTestId('title-bar')).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-platform', osOf(os));
-    // No job view there: its button is dimmed.
-    await expect(page.getByTestId('toggle-reader')).toBeDisabled();
+    // No job view there: its button is not there either.
+    await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
   }
 });
 
-test('the job view button is dimmed without a tooltip where there is no job view', async ({
-  page,
-}) => {
+test('the job view button stands only where it does something', async ({ page }) => {
   const toggle = page.getByTestId('toggle-reader');
-  const quiet = async (): Promise<void> => {
-    await expect(toggle).toBeDisabled();
-    await expect(toggle).toHaveAccessibleName(/.+/);
-    await toggle.hover();
-    await page.waitForTimeout(700);
-    await expect(tooltip(page)).toHaveCount(0);
-    await page.mouse.move(0, 0);
-  };
   await open(page, `${WIN}&scenario=load-failed`);
   await expect(page.getByTestId('view-error')).toBeVisible();
-  await quiet();
+  await expect(toggle).toHaveCount(0);
   await open(page, WIN);
   for (const view of ['profile', 'settings']) {
     await page.getByTestId(`nav-${view}`).click();
     await expect(page.getByTestId(`view-${view}`)).toBeVisible();
-    await quiet();
+    await expect(toggle).toHaveCount(0);
   }
   // In Jobs it names what it does.
   await page.getByTestId('nav-jobs').click();
   await expect(toggle).toBeEnabled();
   await toggle.hover();
   await expect(tooltip(page)).toHaveText(await text(page, 'nav.readerHide'));
+  // A list without a job to choose has no job view beside it.
+  await page.getByTestId('search').fill('zzqxv');
+  await expect(page.locator('[data-testid^="job-row-"]')).toHaveCount(0);
+  await expect(toggle).toHaveCount(0);
+  await page.getByTestId('search').fill('');
+  await expect(toggle).toBeVisible();
+  // One column: only while a job stands in place of the list.
+  await page.setViewportSize({ width: 683, height: 700 });
+  await expect(toggle).toHaveCount(0);
+  await page.locator('[data-testid^="job-row-"]').first().click();
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveCount(0);
+  await expect(page.locator('[data-testid^="job-row-"]').first()).toBeVisible();
 });
+
+// The bar continues the columns below it: at every point it wears the ground under it (the
+// sidebar's, the view's), and the seams of the sidebar and of the list run up through it.
+// Over the job view it wears the job view's page (--page).
+const GROUND = (): string[] => {
+  const wrong: string[] = [];
+  const probe = document.body.appendChild(document.createElement('div'));
+  probe.style.backgroundColor = 'var(--page)';
+  const page = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  const bar = document.querySelector('[data-testid="title-bar"]')!.getBoundingClientRect();
+  const colour = (node: Element | null): string => {
+    for (let at = node; at !== null; at = at.parentElement) {
+      const paint = getComputedStyle(at).backgroundColor;
+      if (paint !== 'rgba(0, 0, 0, 0)' && paint !== 'transparent') return paint;
+    }
+    return 'none';
+  };
+  const ground = document.querySelector('[data-testid="title-bar-ground"]')!;
+  const parts = [ground, ...ground.querySelectorAll('*')];
+  const above = (x: number): string => {
+    let paint = getComputedStyle(
+      document.querySelector('[data-testid="title-bar"]')!,
+    ).backgroundColor;
+    for (const part of parts) {
+      const box = part.getBoundingClientRect();
+      const style = getComputedStyle(part);
+      const inner = box.left + parseFloat(style.borderLeftWidth);
+      if (x >= inner && x < box.right) paint = style.backgroundColor;
+      else if (x >= box.left && x < inner) paint = `seam ${style.borderLeftColor}`;
+    }
+    return paint;
+  };
+  const width = document.documentElement.clientWidth;
+  for (let x = 2; x < width - 200; x += 7) {
+    const below = document.elementFromPoint(x, bar.bottom + 3);
+    // The handles' strips lie over a border.
+    if (below?.closest('[role="separator"]')) continue;
+    const view = below?.closest('[data-testid^="view-"]') ?? null;
+    const under = below?.closest('[data-testid="reader-pane"]') ? page : colour(view ?? below);
+    const over = above(x);
+    if (over.startsWith('seam')) continue;
+    if (over !== under) wrong.push(`${x}: bar ${over}, view ${under}`);
+  }
+  return wrong;
+};
+
+for (const [name, size, go] of [
+  ['jobs', { width: 1360, height: 860 }, async () => undefined],
+  ['jobs folded', { width: 1099, height: 860 }, async () => undefined],
+  [
+    'one column, a job',
+    { width: 683, height: 700 },
+    (p: Page) => p.locator('[data-testid^="job-row-"]').first().click(),
+  ],
+  ['profile', { width: 1360, height: 860 }, (p: Page) => p.getByTestId('nav-profile').click()],
+  ['settings', { width: 1360, height: 860 }, (p: Page) => p.getByTestId('nav-settings').click()],
+] as const) {
+  test(`the top bar continues the columns below it: ${name}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await open(page, WIN);
+    await go(page);
+    await settle(page);
+    await motionSettled(page);
+    expect(await page.evaluate(GROUND)).toEqual([]);
+  });
+}
+
+test('the top bar continues the setup below it', async ({ page }) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await settle(page);
+  const [bar, view] = await Promise.all([
+    page.getByTestId('title-bar-ground').evaluate((n) => getComputedStyle(n).backgroundColor),
+    page.getByTestId('view-first-run').evaluate((n) => getComputedStyle(n).backgroundColor),
+  ]);
+  expect(bar).toBe(view);
+});
+
+// The sidebar's button docks and folds it without animating a width: the sidebar fades in,
+// the view and the bar's part over it slide by a transform; a window that folds it by its
+// width just shows the new frame.
+test('the sidebar docks and folds by a slide, never by its width', async ({ page }) => {
+  await open(page, WIN);
+  await settle(page);
+  const moves = (): Promise<string[]> =>
+    page.evaluate(() =>
+      document.getAnimations().flatMap((motion) => {
+        const effect = motion.effect as KeyframeEffect | null;
+        const target = effect?.target as HTMLElement | null;
+        const keys = Object.keys(effect?.getKeyframes()[0] ?? {}).filter(
+          (key) => !['offset', 'easing', 'composite', 'computedOffset'].includes(key),
+        );
+        return keys.map((key) => `${target?.dataset.testid ?? target?.tagName}:${key}`);
+      }),
+    );
+  const toggle = page.getByTestId('toggle-sidebar');
+  await toggle.click();
+  const folded = await moves();
+  expect(folded).toContain('title-bar-ground:transform');
+  expect(folded).toContain('MAIN:transform');
+  const LAYOUT = /:(width|minWidth|maxWidth|flexBasis|left|marginLeft)$/;
+  expect(folded.filter((move) => LAYOUT.test(move))).toEqual([]);
+  await motionSettled(page);
+  await toggle.click();
+  const docked = await moves();
+  expect(docked).toContain('MAIN:transform');
+  expect(docked).toContain('sidebar:opacity');
+  expect(docked.filter((move) => LAYOUT.test(move))).toEqual([]);
+  await motionSettled(page);
+  // The window folds it by its width: no slide.
+  await page.setViewportSize({ width: 1000, height: 860 });
+  await expect(page.getByTestId('sidebar')).toHaveCount(0);
+  expect(await moves()).not.toContain('MAIN:transform');
+});
+
 /* ------------------------------ Lists, panes, the run status, closing, shared components */
 
 // Wave 1, track "shell": the keys of lists, panes and radio groups, the closing note per
@@ -1144,11 +1263,9 @@ test('under reduced motion nothing scales or pops', async ({ page }) => {
   await open(page, `${WIN}&view=profile`);
   const tokens = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
-    return ['--scale-enter', '--move-xs', '--dur-hover'].map((name) =>
-      parseFloat(style.getPropertyValue(name)),
-    );
+    return ['--move-xs', '--dur-hover'].map((name) => parseFloat(style.getPropertyValue(name)));
   });
-  expect(tokens).toEqual([1, 0, 0]);
+  expect(tokens).toEqual([0, 0]);
   // Clicked without the pointer over it (no tooltip comes).
   await page.evaluate(() =>
     document.querySelector<HTMLElement>('[data-testid="contract-temporary"]')!.click(),
@@ -1272,7 +1389,7 @@ for (const [width, fold] of [
   });
 }
 
-test('toasts leave on their own, even under the pointer', async ({ page }) => {
+test('toasts leave on their own once the window is in front again', async ({ page }) => {
   // Ten seconds of it are the toasts' own life: a busy machine needs more than the usual 30 s.
   test.slow();
   await open(page, `${WIN}&view=settings`);
@@ -1290,9 +1407,8 @@ test('toasts leave on their own, even under the pointer', async ({ page }) => {
   await page.getByTestId('profile-wish-rate').fill('1.300');
   await page.getByTestId('profile-wish-rate').press('Enter');
   await expect(toasts).toHaveCount(3);
-  // Under the pointer they do not wait (user, 2026-10-10): their time runs once the window
-  // is in front again.
-  await toasts.first().hover();
+  // Their time runs once the window is in front again (the pointer on a toast stops it:
+  // toasts.spec.ts).
   await page.evaluate(() => window.__harness.fire('tauri://focus', null));
   await expect(toasts).toHaveCount(0, { timeout: 7000 });
 });

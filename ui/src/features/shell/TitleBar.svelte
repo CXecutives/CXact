@@ -1,20 +1,28 @@
 <!--
   The window's top bar like the Claude app's (user, 2026-09-27): one row of --titlebar-height
-  across the window, no line under it, no icon, no name. Its left part wears the sidebar's
-  colour as far as the docked sidebar reaches, with a fine seam at its edge; the rest wears
-  the view's. With the sidebar folded the bar is one colour. At the left Zurück, Vor and the
-  sidebar's button (macOS: right of the traffic lights; the arrows first, user 2026-10-10); at the right the job view's button,
-  always there, dimmed where there is nothing to show or hide (hiding the job view closes its
-  job; in one column it closes the job that stands in place of the list), before the caption
-  buttons
-  on Windows (WindowButtons). The empty bar moves the window, a double click maximizes it
-  (Windows: the window of the OS over the bar answers like a native caption and leaves the
-  buttons' zones, --titlebar-tools-start and --titlebar-tools-end, to the page;
-  src-tauri/src/platform.rs. macOS and the gaps between the buttons: Tauri's drag script). A
-  press on a button here never takes the focus, like on a native title bar. Both side buttons
-  are plain switches. In the setup the bar holds none of its buttons (only the caption
-  buttons on Windows), has no seam and follows the setup's columns (white over the step, the
-  picture's cream over the picture); all of it moves the window.
+  across the window, no line under it, no icon, no name. It continues the columns below it
+  (shell.ground): the sidebar's cream as far as the docked sidebar reaches, with its seam at
+  the edge; over the list the list's white, over the job view beside it the job view's page
+  with the list's border running up through the bar; the page over a job standing alone in
+  one column, over Profil, Einstellungen and a start that loads or failed; the cream over the
+  setup. At the left Zurück, Vor and the sidebar's button (macOS: right of the traffic
+  lights), quiet 28 px buttons at --titlebar-tools-inset (6 px: three buttons then end at
+  --titlebar-tools-start, the zone the Windows caption leaves to the page, a deliberate
+  departure from the draft's 12 px, decision 29). At the right the job view's button, only in
+  Jobs where it does something (a place with jobs beside its job view, or a job standing in
+  place of the list in one column) and hidden, not dimmed, everywhere else; hiding the job
+  view closes its job (in one column the job that stands in place of the list). Then the
+  caption buttons on Windows (WindowButtons). Every button is a plain switch: its glyph never
+  changes under the pointer.
+  The empty bar moves the window, a double click maximizes it (Windows: the window of the OS
+  over the bar answers like a native caption and leaves the buttons' zones,
+  --titlebar-tools-start and --titlebar-tools-end, to the page; src-tauri/src/platform.rs.
+  macOS and the gaps between the buttons: Tauri's drag script). A press on a button here
+  never takes the focus, like on a native title bar. In the setup the bar holds none of its
+  buttons (only the caption buttons on Windows) and all of it moves the window.
+  The part over the view (`ground`) slides with the view when the sidebar docks or folds
+  (App, data-dock-slide); a strip of its end colour beyond its right edge fills the bar
+  while it is drawn in from the left.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -31,14 +39,18 @@
   import { tokenPx } from '$lib/tokens';
 
   const drawn = drawsWindowButtons();
-  /** The job view's button stands in every view, like the bar's other buttons (user,
-   *  2026-09-29): dimmed where there is no job view to show or hide (Profil, Einstellungen,
-   *  a start whose data did not load, one column without a job), and then
-   *  without a tooltip: it names no action it cannot do (its accessible name stays). */
-  const readerIdle = $derived(
-    app.state === null ||
-      navigation.current !== 'jobs' ||
-      (viewport.narrow && jobs.selected === null),
+  /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
+   *  list that did not load): the job view beside it has nothing to show (JobsView). */
+  const listEmpty = $derived(
+    jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
+  );
+  /** The job view's button stands only where it does something (decision 29): in Jobs beside
+   *  a list with jobs, or in one column while a job stands in place of the list. */
+  const readerToggle = $derived(
+    app.state !== null &&
+      !shell.firstRun &&
+      navigation.current === 'jobs' &&
+      (viewport.narrow ? shell.listHidden : !listEmpty),
   );
   /** A click hides the job view: it stands beside the list, or in one column a job stands in
    *  the list's place. */
@@ -56,15 +68,14 @@
     shell.setReader(!shell.readerOpen);
   }
 
-  /** How far the sidebar's colour reaches (the sidebar's width while it is docked), and where
-   *  the border between the list and the job view stands (continued up through the bar). */
+  /** Where the view starts (the docked sidebar's width) and where the border between the
+   *  list and the job view stands in it (continued up through the bar). */
   const lines = $derived.by(() => {
-    const border = tokenPx('--border-width');
-    const sidebar = shell.sidebarWidth ?? tokenPx('--sidebar-width');
-    const start = shell.docked ? sidebar + border : 0;
     const vars: Record<string, string> = {};
-    if (shell.docked) vars['bar-side'] = `${sidebar}px`;
-    if (shell.listSeam !== null) vars['bar-list'] = `${start + shell.listSeam - border}px`;
+    if (shell.docked) vars['bar-side'] = `${shell.sidebarWidth ?? tokenPx('--sidebar-width')}px`;
+    if (shell.ground === 'list' && shell.listSeam !== null) {
+      vars['bar-list'] = `${shell.listSeam - tokenPx('--border-width')}px`;
+    }
     return vars;
   });
 </script>
@@ -72,18 +83,21 @@
 <div
   class="bar"
   class:drawn
-  class:docked={shell.docked}
-  class:page={shell.firstRun || navigation.current !== 'jobs'}
-  class:pictured={shell.firstRun && shell.setupPicture}
   data-testid="title-bar"
   data-tauri-drag-region
   data-press-only
   use:cssVars={lines}
 >
-  <span class="side" data-tauri-drag-region></span>
-  {#if shell.listSeam !== null}
-    <span class="list-seam" data-testid="title-bar-seam"></span>
-  {/if}
+  <span
+    class="ground {shell.ground} end-{shell.groundEnd}"
+    class:docked={shell.docked}
+    data-testid="title-bar-ground"
+    data-dock-slide
+  >
+    {#if shell.ground === 'list' && shell.listSeam !== null}
+      <span class="reader" data-testid="title-bar-seam"></span>
+    {/if}
+  </span>
   {#if !drawn}
     <span class="lights" data-testid="traffic-lights" data-tauri-drag-region></span>
   {/if}
@@ -94,15 +108,12 @@
   </span>
   <span class="fill" data-tauri-drag-region></span>
   <span class="tools end" data-tauri-drag-region>
-    {#if !shell.firstRun}
+    {#if readerToggle}
       <Button
         variant="ghost"
         iconOnly
         icon="readerPane"
-        hoverIcon={readerShown ? 'readerHide' : 'readerShow'}
         label={readerShown ? t.nav.readerHide : t.nav.readerShow}
-        disabled={readerIdle}
-        plain={readerIdle}
         testid="toggle-reader"
         onclick={toggleReader}
       />
@@ -136,7 +147,6 @@
     variant="ghost"
     iconOnly
     icon="sidebar"
-    hoverIcon={sidebarOut ? 'sidebarHide' : 'sidebarShow'}
     label={sidebarOut ? t.nav.sidebarHide : t.nav.sidebarShow}
     testid="toggle-sidebar"
     onclick={() => shell.toggleSidebar()}
@@ -144,56 +154,71 @@
 {/snippet}
 
 <style>
+  /* The cream of the sidebar and the setup; the view's part lies over it (`ground`). */
   .bar {
     position: relative;
     display: flex;
     flex: none;
     align-items: center;
     height: var(--titlebar-height);
-    background-color: var(--surface);
+    background-color: var(--bg);
+    isolation: isolate;
   }
 
-  /* Profil, Einstellungen and the setup: the ground of their page (--layout-page). */
-  .bar.page {
-    background-color: var(--layout-page);
-  }
-
-  /* The setup with its picture: the page's white over the step, the picture's cream over the
-     picture, split in the middle like the two columns below (no seam). */
-  .bar.pictured {
-    background: linear-gradient(to right, var(--layout-page) 50%, var(--setup-picture) 50%);
-  }
-
-  /* The sidebar's colour as far as the docked sidebar reaches, its seam at the edge. */
-  .side {
+  /* Over the view: from the docked sidebar's edge (its seam, where the view's border lies
+     below) to the right edge, in the view's ground. Beyond its right edge a strip of the end
+     colour, out of sight at rest, fills the bar while the part slides in from the left. It
+     lies under everything else in the bar. */
+  .ground {
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 0;
+    z-index: var(--z-below);
+    inset: 0;
+    pointer-events: none;
+    box-shadow: var(--sidebar-max) 0 0 0 var(--ground-end);
   }
 
-  /* The seam lies where the view's border lies below: just right of the sidebar. */
-  .docked .side {
-    width: calc(var(--bar-side, var(--sidebar-width)) + var(--border-width));
-    border-right: var(--border-width) solid var(--border);
+  .ground.docked {
+    left: var(--bar-side, var(--sidebar-width));
+    border-left: var(--border-width) solid var(--border);
+  }
+
+  .ground.side {
     background-color: var(--bg);
   }
 
-  /* The border between the list and the job view, continued through the bar. */
-  .list-seam {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: var(--bar-list);
-    width: var(--border-width);
-    background-color: var(--border);
-    pointer-events: none;
+  .ground.page {
+    background-color: var(--page);
   }
 
-  /* The buttons lie in the zones the Windows caption leaves to the page; they are the one
-     button height (--titlebar-tool, which core's window.rs counts with), their glyphs the
-     content's small ones. */
+  .ground.list {
+    background-color: var(--surface);
+  }
+
+  .end-side {
+    --ground-end: var(--bg);
+  }
+
+  .end-page {
+    --ground-end: var(--page);
+  }
+
+  .end-list {
+    --ground-end: var(--surface);
+  }
+
+  /* The job view's page beside the list, its left edge the list's border. */
+  .reader {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: var(--bar-list);
+    border-left: var(--border-width) solid var(--border);
+    background-color: var(--page);
+  }
+
+  /* The buttons lie in the zones the Windows caption leaves to the page; they are the quiet
+     icon-button height (--titlebar-tool, which core's window.rs counts with). */
   .tools {
     position: relative;
     display: flex;

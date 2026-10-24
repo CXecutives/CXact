@@ -1,4 +1,4 @@
-// The core controls on their states sheet (`?states=controls`, tools/ui-harness/pages/): one
+// The core controls on their states sheet (`?sheet=controls`, tools/ui-harness/sheets/): one
 // height per kind, one width while a button swaps (`sizeTo`) and for a pair (`--btn-min`), the
 // select's keys with the focus kept on its button, a closed chip list that opens on focus,
 // and a chip that rises in only when it is added.
@@ -7,7 +7,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
 import { T, WIN } from './helpers';
 
-const STATES = `${WIN}&states=controls`;
+const STATES = `${WIN}&sheet=controls`;
 
 async function sheet(page: Page): Promise<Locator> {
   await open(page, STATES);

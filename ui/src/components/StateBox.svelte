@@ -1,0 +1,180 @@
+<!--
+  The state of something in a box (the round 10 draft): a job in the job view (not loaded yet,
+  loading, being scored, excluded, a preview, gone, closed), the list without a profile, a
+  failure of the Profil's CV. The cream ground with a hairline, 10 round, 12 12 12 16 inside
+  and at least 56 high: its title (14/540 ink), one quiet sentence under it (13 muted), and
+  its one button at the right end (`action`, a secondary button with its glyph, or a button of
+  its own in that place: `end`). No sign: the state's mark is elsewhere (the ring) or none;
+  only while something is being done an 18 px spinner stands before the words (`busy`). An
+  excluded job's box is the soft red (`tone="ban"`). A box that appears in a view already on
+  screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its view
+  is simply there. In a narrow box the button goes under the words.
+  `mark` is what the old Notice of an excluded job put before its words (the ban, until the
+  job view's ring shows it); it goes with Notice.
+-->
+<script lang="ts" module>
+  import type { IconName } from './Icon.svelte';
+
+  /** The one button of a state box. */
+  export interface StateAction {
+    label: string;
+    icon?: IconName | null;
+    testid?: string | null;
+    disabled?: boolean;
+    disabledReason?: string | null;
+    onclick: () => void;
+  }
+</script>
+
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+  import { fade, rise } from '$lib/motion/transitions';
+  import Button from './Button.svelte';
+  import Spinner from './Spinner.svelte';
+
+  interface Props {
+    /** An excluded job: the soft red. */
+    tone?: 'neutral' | 'ban';
+    /** Something is being done: the spinner before the words. */
+    busy?: boolean;
+    /** The title. */
+    heading?: string | null;
+    /** The sentence under the title. */
+    text?: string | null;
+    action?: StateAction | null;
+    /** A button of its own in the action's place (one that waits or loads). */
+    end?: Snippet | null;
+    /** The sentence when it holds more than words (links). */
+    children?: Snippet | undefined;
+    /** It says something went wrong (announced at once). */
+    alert?: boolean;
+    /** The old Notice's sign before the words (see above). */
+    mark?: Snippet | null;
+    testid?: string | null;
+    headingTestid?: string | null;
+    textTestid?: string | null;
+  }
+
+  let {
+    tone = 'neutral',
+    busy = false,
+    heading = null,
+    text = null,
+    action = null,
+    end = null,
+    children,
+    alert = false,
+    mark = null,
+    testid = null,
+    headingTestid = null,
+    textTestid = null,
+  }: Props = $props();
+</script>
+
+<div
+  class="box {tone}"
+  role={alert ? 'alert' : 'status'}
+  data-testid={testid ?? undefined}
+  in:rise={{ distance: 'sm' }}
+  out:fade
+>
+  <div class="row">
+    {#if busy}
+      <Spinner size="md" label={null} />
+    {:else if mark}
+      <span class="mark">{@render mark()}</span>
+    {/if}
+    <div class="words">
+      {#if heading}<p class="title" data-testid={headingTestid ?? undefined}>{heading}</p>{/if}
+      {#if children}
+        <p class="text" data-testid={textTestid ?? undefined}>{@render children()}</p>
+      {:else if text}
+        <p class="text" data-testid={textTestid ?? undefined}>{text}</p>
+      {/if}
+    </div>
+    {#if end}
+      <span class="action">{@render end()}</span>
+    {:else if action}
+      <span class="action">
+        <Button
+          variant="secondary"
+          label={action.label}
+          icon={action.icon ?? null}
+          disabled={action.disabled ?? false}
+          disabledReason={action.disabledReason ?? null}
+          testid={action.testid ?? null}
+          onclick={action.onclick}
+        />
+      </span>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .box {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: var(--state-min);
+    padding: var(--state-pad-y) var(--state-pad-y) var(--state-pad-y) var(--state-pad-start);
+    border: var(--border-width) solid var(--state-edge);
+    border-radius: var(--radius-lg);
+    background-color: var(--state-surface);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: var(--state-gap);
+  }
+
+  .ban {
+    --state-surface: var(--state-ban-surface);
+    --state-edge: var(--state-ban-edge);
+  }
+
+  .mark {
+    display: inline-flex;
+    flex: none;
+  }
+
+  .words {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .title {
+    color: var(--text);
+    font: var(--type-label);
+  }
+
+  .text {
+    color: var(--text-muted);
+    font: var(--type-sm);
+  }
+
+  .action {
+    display: flex;
+    flex: none;
+    align-items: center;
+  }
+
+  /* A narrow box: the button under the words, at the right. */
+  @container (width < 360px) {
+    .row {
+      flex-wrap: wrap;
+      row-gap: var(--space-8);
+    }
+
+    .words {
+      flex-basis: 100%;
+    }
+
+    .action {
+      margin-left: auto;
+    }
+  }
+</style>

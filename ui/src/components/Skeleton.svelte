@@ -1,9 +1,9 @@
 <!--
-  Loading placeholder: line | circle, with a shimmer sweeping on ::after. It fades in
-  (--dur-fast) as it is placed: the state that places it has waited --delay-placeholder
-  already (a list or a job that takes that long to load), so a quicker load never shows one,
-  and one that shows is visible at once. `late` waits that long itself, for a placeholder
-  that is placed at once (the end of a list that can load more).
+  Loading placeholder (the round 10 draft): a flat line or circle in the track's colour, no
+  shimmer. It fades in (--dur-fast) as it is placed: the state that places it has waited
+  --delay-placeholder already (a list or a job that takes that long to load), so a quicker
+  load never shows one, and one that shows is visible at once. `late` waits that long itself,
+  for a placeholder that is placed at once (the end of a list that can load more).
 -->
 <script lang="ts">
   import { cssVars } from '$lib/actions/cssVars';
@@ -31,11 +31,8 @@
 <style>
   /* The fade-in and its delay are timing, not movement: they stay under reduced motion. */
   .skeleton {
-    position: relative;
     display: block;
-    overflow: hidden;
-    background-color: var(--surface-muted);
-    isolation: isolate;
+    background-color: var(--skeleton);
     animation: appear var(--dur-fast) var(--ease-standard) both;
   }
 
@@ -43,19 +40,9 @@
     animation-delay: var(--delay-placeholder);
   }
 
-  .skeleton::after {
-    position: absolute;
-    inset: 0;
-    background: var(--grad-shimmer);
-    content: '';
-    transform: translateX(-100%);
-    animation: shimmer var(--dur-loop) linear infinite;
-    animation-play-state: var(--loop-state);
-  }
-
   .line {
     width: var(--skeleton-width);
-    height: var(--space-12);
+    height: var(--skeleton-line);
     border-radius: var(--radius-full);
   }
 

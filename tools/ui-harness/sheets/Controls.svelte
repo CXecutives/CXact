@@ -1,5 +1,5 @@
 <!--
-  The states sheet of the core controls (`?states=controls`, harness build only): every control
+  The states sheet of the core controls (`?sheet=controls`, harness build only): every control
   of components/ in rest, under the pointer, pressed, off, busy and wrong, beside each other,
   to compare with the approved draft (.preview/drafts/konzept.html). Hover and pressed are
   forced (force.ts); the open list of a select and a tooltip show when pointed at, as in the

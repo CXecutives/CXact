@@ -2,12 +2,14 @@
   The head of a view, one for the job list, the job view, Profil and Einstellungen. It scrolls
   with its view (design round 4: no sticky heads; the view's content goes under the top bar's
   fade). Its first row lies on the first row of the window (the sidebar's first entry is
-  centred on it): the view's title (17/24, navy; a job's title may take two lines and is text
-  to copy) or what leads instead of it (the list's place tabs), and at its end the view's
-  actions, centred on the first line. Below it the head may hold more (`children`: the list's
-  search, its filter's chips and the run's line). Its content takes the view's column
-  (`column`: the pages' or the job view's), centred in the full width. The list's head stands
-  above its own scroller and draws a hairline under it once the list scrolled (`line`).
+  centred on it): the view's title (20/650 ink, on a row at least 30 high; a job's title may
+  take two lines and is text to copy) or what leads instead of it (the list's place tabs), and
+  at its end the view's actions, centred on the first line. Below it the head may hold more
+  (`children`: the list's search, its filter's chips and the run's line). The head of a page
+  (`column="page"`: Profil, Einstellungen) stands in the page's column (Page `head`), 2 in like
+  the sections' titles, 22 above the first of them; the job view's takes its column, centred
+  in the full width. The list's head stands above its own scroller and draws a hairline under
+  it once the list scrolled (`line`).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -43,7 +45,7 @@
   }: Props = $props();
 </script>
 
-<header class="head" class:line data-testid={testid ?? undefined}>
+<header class="head" class:paged={column === 'page'} class:line data-testid={testid ?? undefined}>
   <div class="inner {column ?? ''}">
     <div class="row">
       {#if heading !== null}
@@ -71,6 +73,12 @@
     transition: border-color var(--dur-fast) var(--ease-standard);
   }
 
+  /* A page's head: in the page's column (Page), 2 in like the sections' titles. */
+  .paged {
+    padding: 0 var(--section-inset);
+    border-bottom: 0;
+  }
+
   .line {
     border-bottom-color: var(--border);
   }
@@ -83,7 +91,7 @@
   }
 
   .inner.page {
-    max-width: var(--page-width);
+    width: 100%;
   }
 
   .inner.reader {
