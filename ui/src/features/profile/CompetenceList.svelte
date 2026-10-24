@@ -66,7 +66,6 @@
     bind:values={typed}
     placeholder={words.competencePlaceholder}
     suggestions={vocabulary.skills}
-    bare
     testid="competence-add"
     onchange={take}
   />

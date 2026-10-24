@@ -42,7 +42,7 @@ test('no portal anywhere in the rows', async ({ page }) => {
   }
 });
 
-test('one line: the ring and the title, 48 high, nothing else', async ({ page }) => {
+test('one line: the ring and the title, 54 high, nothing else', async ({ page }) => {
   await open(page, WIN);
   for (const id of ['row-company', 'row-place', 'row-pay', 'row-date', 'row-facts']) {
     await expect(list(page).getByTestId(id), id).toHaveCount(0);
@@ -53,11 +53,11 @@ test('one line: the ring and the title, 48 high, nothing else', async ({ page })
   const heights = await rows(page).evaluateAll((items) =>
     items.slice(0, 6).map((item) => Math.round(item.getBoundingClientRect().height)),
   );
-  expect(new Set(heights)).toEqual(new Set([48]));
-  // The ring 30, the title 14/540 (a new one 650).
+  expect(new Set(heights)).toEqual(new Set([54]));
+  // The ring 34, the title 15/540 (a new one 650).
   const ring = (await first.locator('.ring').boundingBox())!;
-  expect(Math.round(ring.width)).toBe(30);
-  await expect(first.locator('.title')).toHaveCSS('font-size', '14px');
+  expect(Math.round(ring.width)).toBe(34);
+  await expect(first.locator('.title')).toHaveCSS('font-size', '15px');
 });
 
 test('a new title in 650; the Papierkorb and a closed ad muted in 450, an excluded job not', async ({
@@ -99,10 +99,10 @@ test('the hairline above a row starts at the title; none next to the open row', 
       const style = getComputedStyle(node, '::before');
       return { left: style.left, opacity: style.opacity, shown: style.content !== 'none' };
     });
-  // The first row of a day has none; the next one from 52 on.
+  // The first row of a day has none; the next one from 56 on.
   expect((await rule(first!)).shown).toBe(false);
   const next = await rule(second!);
-  expect(next).toMatchObject({ left: '52px', opacity: '1', shown: true });
+  expect(next).toMatchObject({ left: '56px', opacity: '1', shown: true });
   // Opened: no line at its top or under it (the highlight stands there).
   await openJob(page, second!);
   await page.mouse.move(0, 0);

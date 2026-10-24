@@ -72,7 +72,6 @@
     options={OPTIONS.filter((option) => !chosen(option.id))}
     noMatch={words.languageNone}
     placeholder={words.languagePlaceholder}
-    bare
     testid="language-add"
     onchange={take}
   />

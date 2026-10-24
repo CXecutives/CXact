@@ -287,6 +287,12 @@
     text-align: end;
   }
 
+  /* In a quiet list's row (ItemList) the edge shows only while the row is under the pointer
+     or holds the focus, so the values read like text at rest. */
+  .inline {
+    --field-edge: var(--inline-edge, var(--border-strong));
+  }
+
   .invalid {
     --field-edge: var(--danger-strong);
     --field-edge-hover: var(--danger-strong);
