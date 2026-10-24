@@ -770,7 +770,7 @@
   --state-ban-surface: var(--danger-tint);
   --state-ban-edge: var(--danger-edge);
   --state-pad-y: var(--space-12);
-  --state-pad-start: var(--space-16);
+  --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
   --state-gap: 14px;
   /* A toast: 18 from the window's corner, 7 7 7 14 inside, its parts 10 apart, the words at
