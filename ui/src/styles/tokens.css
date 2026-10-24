@@ -654,12 +654,13 @@
   /* The sidebar a narrow window floats out: its corners, with the entries' pills concentric
      inside it at --peek-inset. */
   --peek-radius: var(--radius-xl);
-  /* The caption buttons (Windows): 14 px glyphs in the muted ink, under the pointer the
-     draft's warm grey wash (30 10% 50% at .1 is a film of the ink at .05), a step deeper
-     pressed. */
+  /* The caption buttons (Windows): Windows 11's own glyphs, 10 px of 1 px lines in the muted
+     ink (owner, 2026-10-24), under the pointer the draft's warm grey wash (30 10% 50% at .1 is
+     a film of the ink at .05), a step deeper pressed. */
   --caption-hover: hsl(var(--p-ink) / 0.05);
   --caption-press: hsl(var(--p-ink) / 0.08);
-  --caption-glyph: var(--icon-xs);
+  --caption-glyph: 10px;
+  --caption-glyph-stroke: 1px;
   /* The column handle: a 2 px line (--border-strong) over the border, on hover and while
      dragged. */
   --splitter-line: 2px;

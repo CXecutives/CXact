@@ -3,8 +3,9 @@
   (the top bar is the app's own, features/shell/TitleBar.svelte): Minimieren, Maximieren
   (Verkleinern while the window is maximized, its glyph two squares) and Schließen, each 46 px
   wide over the bar's whole height, not in the tab order, like the native ones. Their glyphs
-  (minus, square, two squares, x) are drawn in the app's 24-unit grid with its one stroke
-  (--icon-stroke), 14 px, so they weigh like every other glyph. In the design's colours,
+  are Windows 11's own (owner, 2026-10-24): minus, square, two squares and x, 10 px of 1 px
+  lines with the square's corners a pixel round, like Segoe Fluent Icons in the native
+  buttons, so the window's own controls read as the system's. In the design's colours,
   never the system's: the muted ink, under the pointer the design's warm grey wash, pressed a
   deeper one; Schließen turns the app's danger red with a white glyph.
   While the window is in the back the glyphs fade. Each names itself in a tooltip in the
@@ -97,16 +98,16 @@
       use:tooltip={label(id)}
       onclick={() => press(id)}
     >
-      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">
+      <svg class="glyph" viewBox="0 0 10 10" aria-hidden="true">
         {#if id === 'minimize'}
-          <path d="M5 12h14" />
+          <path d="M0 5.5h10" />
         {:else if id === 'close'}
-          <path d="M18 6 6 18M6 6l12 12" />
+          <path d="M.5.5l9 9M9.5.5l-9 9" />
         {:else if maximized}
-          <rect x="3" y="7" width="14" height="14" rx="2" />
-          <path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2" />
+          <rect x=".5" y="2.5" width="7" height="7" rx="1" />
+          <path d="M2.5 2.5v-1a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1" />
         {:else}
-          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <rect x=".5" y=".5" width="9" height="9" rx="1" />
         {/if}
       </svg>
     </button>
@@ -137,9 +138,7 @@
     height: var(--caption-glyph);
     fill: none;
     stroke: currentcolor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: var(--icon-stroke);
+    stroke-width: var(--caption-glyph-stroke);
   }
 
   /* The window in the back (`data-window` on the root, lib/platform.ts): the glyphs fade. */
