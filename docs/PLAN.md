@@ -235,9 +235,11 @@ build.
     prettier; then `DEMO_FORM` can become `DEMO.profile.form`.
   - Backend and UI together, what the new interface never uses: `setup_url` and `OpenTarget::PortalSetup`
     (it is the home page anyway), `TWO_STEP_URL` and `OpenTarget::TwoStepPage`, the `activity` of the
-    `closing` event, `ui/src/assets/app-icon.svg` in `tools/icon.py` and `core/tests/icon.rs`, the run's
-    `status` events, `ProfileInfo.understood`, `MatchDetail.highlights` and a few count fields; the
-    "Arbeitsordner" comments in `core/src/settings.rs`.
+    `closing` event, the run's `status` events, `ProfileInfo.understood`, `MatchDetail.highlights` and a
+    few count fields; the "Arbeitsordner" comments in `core/src/settings.rs`.
+  - `ui/src/assets/app-icon.svg` stays (no longer dropped): a new `AppMark` component draws the app's mark
+    from it, the new icon (briefcase with lens, branch `icon-d`); the brand comments in `tokens.css` still
+    say folder.
   - Then the full gates and harness, version 4.0.0, `tools/portable.cmd` and the installer (the user starts
     them).
 
