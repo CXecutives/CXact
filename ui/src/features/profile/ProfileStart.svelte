@@ -59,7 +59,9 @@
     gap: var(--space-16);
   }
 
+  /* 2 in like the page's title above it. */
   .text {
+    margin-inline: var(--section-inset);
     color: var(--text-muted);
     font: var(--type-md);
   }
