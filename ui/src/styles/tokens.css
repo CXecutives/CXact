@@ -520,9 +520,9 @@
   --menu-radius: var(--radius-lg);
   --menu-row-radius: var(--radius-inner);
   --form-width: 500px;
-  /* The input after the chips of a tag field: room for its whole placeholder (the longest,
-     "Abschluss hinzufügen", is 145 wide), else it takes a line of its own. */
-  --chip-entry-min: 160px;
+  /* The input after the chips of a tag field: at least its placeholder's width (ChipInput
+     measures it), and this much room to type where it has none. */
+  --chip-entry-min: 96px;
   /* A field of a page: its label above its control, this far apart (Field). */
   --label-gap: 6px;
   /* An alert mail read in the app: its text scrolls beyond this height. */

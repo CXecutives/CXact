@@ -360,31 +360,37 @@
       </span>
     {/if}
     {#if entry}
-      <input
-        bind:value={draft}
-        class="input"
+      <!-- As wide as its placeholder at least (sizer): it stays beside the chips while its
+           words fit there. -->
+      <span
+        class="sizer"
         class:folded={visible.length < values.length}
-        type="text"
-        id={id ?? undefined}
-        role={suggesting ? 'combobox' : undefined}
-        aria-autocomplete={suggesting ? 'list' : undefined}
-        aria-expanded={suggesting ? rows.length > 0 : undefined}
-        aria-controls={rows.length > 0 ? `${own}-list` : undefined}
-        aria-activedescendant={rows.length > 0 && mark >= 0 ? `${own}-list-${mark}` : undefined}
-        aria-label={label ?? undefined}
-        aria-invalid={invalid ? 'true' : undefined}
-        aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
-          .filter((part) => part !== null)
-          .join(' ') || undefined}
-        placeholder={placeholder ?? undefined}
-        spellcheck={FIELD_ATTRIBUTES.spellcheck}
-        autocorrect={FIELD_ATTRIBUTES.autocorrect}
-        autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
-        autocomplete={FIELD_ATTRIBUTES.autocomplete}
-        use:chipKeys={keys}
-        onpaste={paste}
-        onblur={settle}
-      />
+        data-placeholder={placeholder ?? ''}
+        ><input
+          bind:value={draft}
+          class="input"
+          type="text"
+          id={id ?? undefined}
+          role={suggesting ? 'combobox' : undefined}
+          aria-autocomplete={suggesting ? 'list' : undefined}
+          aria-expanded={suggesting ? rows.length > 0 : undefined}
+          aria-controls={rows.length > 0 ? `${own}-list` : undefined}
+          aria-activedescendant={rows.length > 0 && mark >= 0 ? `${own}-list-${mark}` : undefined}
+          aria-label={label ?? undefined}
+          aria-invalid={invalid ? 'true' : undefined}
+          aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
+            .filter((part) => part !== null)
+            .join(' ') || undefined}
+          placeholder={placeholder ?? undefined}
+          spellcheck={FIELD_ATTRIBUTES.spellcheck}
+          autocorrect={FIELD_ATTRIBUTES.autocorrect}
+          autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
+          autocomplete={FIELD_ATTRIBUTES.autocomplete}
+          use:chipKeys={keys}
+          onpaste={paste}
+          onblur={settle}
+        /></span
+      >
     {/if}
   </div>
   {#if suggesting}
@@ -455,7 +461,8 @@
     background-color: transparent;
   }
 
-  .bare .input {
+  .bare .input,
+  .bare .sizer::after {
     padding-inline: var(--field-inset);
   }
 
@@ -507,9 +514,28 @@
     transition-duration: var(--dur-hover);
   }
 
-  .input {
+  /* The input after the chips takes the rest of the line, and at least its placeholder's
+     width (its hidden copy) or the least room to type: else a line of its own. */
+  .sizer {
+    display: inline-grid;
     flex: 1 1 0;
+  }
+
+  .sizer::after {
+    grid-area: 1 / 1;
     min-width: var(--chip-entry-min);
+    height: 0;
+    padding: 0 var(--space-6);
+    font: var(--type-md);
+    white-space: pre;
+    visibility: hidden;
+    content: attr(data-placeholder);
+  }
+
+  .input {
+    grid-area: 1 / 1;
+    width: 100%;
+    min-width: 0;
     height: calc(var(--chip-height) - 2 * var(--border-width));
     padding: 0 var(--space-6);
     border: 0;
@@ -529,9 +555,16 @@
   }
 
   /* Folded: the input keeps its place in the Tab order without taking a line. */
-  .input.folded {
+  .sizer.folded {
     flex: 0 0 0;
     min-width: 0;
+  }
+
+  .sizer.folded::after {
+    content: none;
+  }
+
+  .folded .input {
     padding: 0;
   }
 
