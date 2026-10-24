@@ -83,7 +83,8 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
     entries: [
       { label: 'Mit Postfach', query: 'scenario=default&view=settings' },
       { label: 'Ohne Postfach', query: 'scenario=no-mailbox&view=settings' },
-      { label: 'Gmail nicht erreichbar', query: 'scenario=offline&view=settings' },
+      { label: 'Postfach nicht erreichbar', query: 'scenario=offline&view=settings' },
+      { label: 'Anmeldung abgelaufen', query: 'scenario=sign-in-expired&view=settings' },
       { label: 'App-Passwort abgelehnt', query: 'scenario=mailbox-refused&view=settings' },
       { label: 'Portal pausiert', query: 'scenario=paused&view=settings' },
       { label: 'Alert-Mail bleibt aus', query: 'scenario=quiet-alert&view=settings' },

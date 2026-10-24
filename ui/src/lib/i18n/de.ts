@@ -56,6 +56,19 @@ const count = (value: number, one: string, many: string): string =>
 /** The portals by their web address, everywhere (a sentence never starts with one); the
  *  names come from the portal registry, no catalog translates them. */
 const portalName = PORTAL_LABEL;
+/** The portals by their brand name (Einstellungen > Jobportale, the setup's Postfach step). */
+const BRAND = {
+  linkedin: 'LinkedIn',
+  freelance: 'freelance.de',
+  freelancermap: 'freelancermap',
+  hays: 'Hays',
+  michaelpage: 'Michael Page',
+  solcom: 'SOLCOM',
+  gulp: 'GULP',
+  amadeusfire: 'Amadeus Fire',
+  interimx: 'interim-x',
+  fratch: 'FRATCH',
+} satisfies Record<Portal, string>;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 
@@ -1402,18 +1415,7 @@ export const de = {
 
   /** The portals by their brand name (Einstellungen > Jobportale; settings.spec checks that
    *  every portal has one). */
-  portalName: {
-    linkedin: 'LinkedIn',
-    freelance: 'freelance.de',
-    freelancermap: 'freelancermap',
-    hays: 'Hays',
-    michaelpage: 'Michael Page',
-    solcom: 'SOLCOM',
-    gulp: 'GULP',
-    amadeusfire: 'Amadeus Fire',
-    interimx: 'interim-x',
-    fratch: 'FRATCH',
-  } satisfies Record<Portal, string>,
+  portalName: BRAND,
 
   /** The setup (features/first-run/steps.ts): each step's heading and lead, and its words. */
   firstRun: {
@@ -1450,7 +1452,7 @@ export const de = {
     mailbox: 'Postfach verbinden',
     optional: 'Optional',
     mailboxText: (portals: readonly Portal[]) =>
-      `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => portalName[p]))}.`,
+      `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => BRAND[p]))}.`,
     skip: 'Überspringen',
     connect: 'Verbinden',
     /** Fertig: everything with a mailbox, else the profile. */
