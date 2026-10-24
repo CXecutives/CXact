@@ -897,7 +897,7 @@ export const de = {
       duration: 'Laufzeit',
       workload: 'Auslastung',
       experience: 'Erfahrung',
-      deadline: 'Bewerbungsfrist',
+      deadline: 'Bewerben bis',
       contact: 'Kontakt',
       portal: 'Gefunden',
     },

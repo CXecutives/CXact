@@ -47,7 +47,7 @@ const ROWS = [
   'Laufzeit',
   'Auslastung',
   'Erfahrung',
-  'Bewerbungsfrist',
+  'Bewerben bis',
   'Kontakt',
   'Gefunden',
 ];
@@ -614,7 +614,7 @@ test.describe('Jobdetails', () => {
     );
   });
 
-  test('Bewerbungsfrist and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
+  test('Bewerben bis and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');

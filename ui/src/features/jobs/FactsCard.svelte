@@ -5,7 +5,7 @@
   column for the verdict, an icon in the colours of the rings; a value without a verdict takes
   that column too. The contact (its name, e-mail and phone one under the other) spans both
   columns; its e-mail writes a new mail to it, the job's title its subject. A hairline under
-  each fact starts at its label; the last line's is cut by the card. "Gefunden" stays quiet.
+  each fact starts at its label. "Gefunden" stays quiet.
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
 -->
 <script lang="ts">
@@ -27,7 +27,7 @@
 </script>
 
 <Card heading={t.reader.details} testid="terms">
-  <div class="clip">
+  <div class="room">
     <ul class="facts" aria-label={t.reader.details} data-testid="criteria">
       {#each rows as row (row.key)}
         <li
@@ -77,18 +77,16 @@
 </Card>
 
 <style>
-  /* Cuts the hairline under the last line of facts. */
-  .clip {
+  /* The facts 8 under the title; the card's width decides their columns. */
+  .room {
     container-type: inline-size;
     margin-top: var(--facts-top);
-    overflow: hidden;
   }
 
   .facts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: var(--space-20);
-    margin-bottom: calc(-1 * var(--border-width));
   }
 
   /* Label, value and the verdict's column; every part on the fact's first line. */

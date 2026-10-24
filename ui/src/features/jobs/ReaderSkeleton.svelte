@@ -3,7 +3,7 @@
   job view's shape in flat placeholders, so the pane never stands blank and nothing jumps when
   the job comes. The hero (the 56 ring, a line for the title and one for the band, the pills
   of the buttons), the Jobdetails in their two columns and lines of the ad's text, in the
-  cards and the spacing of the job view (Reader.svelte).
+  cards and the spacing of the job view (Reader.svelte), in the column of JobsView's stage.
 -->
 <script lang="ts" module>
   /** The widths (percent of their cell) of the facts' values, two columns a row. */
@@ -18,55 +18,45 @@
   import Skeleton from '$components/Skeleton.svelte';
 </script>
 
-<div class="reader" data-testid="reader-skeleton">
-  <div class="column">
-    <Card hero>
-      <div class="top">
-        <Skeleton shape="circle" size="md" />
-        <div class="heads">
-          <span class="title" data-testid="skeleton-title"><Skeleton width={70} /></span>
-          <span class="band"><Skeleton width={30} /></span>
+<div class="cards" data-testid="reader-skeleton">
+  <Card hero>
+    <div class="top">
+      <Skeleton shape="circle" size="md" />
+      <div class="heads">
+        <span class="title" data-testid="skeleton-title"><Skeleton width={70} /></span>
+        <span class="band"><Skeleton width={30} /></span>
+      </div>
+    </div>
+    <div class="actions">
+      {#each ACTIONS as action (action)}<span class="action"><Skeleton /></span>{/each}
+    </div>
+  </Card>
+  <Card>
+    <span class="heading"><Skeleton width={100} /></span>
+    <div class="facts">
+      {#each FACTS as width, index (index)}
+        <div class="fact" data-testid="skeleton-row">
+          <Skeleton width={70} /><Skeleton {width} />
         </div>
-      </div>
-      <div class="actions">
-        {#each ACTIONS as action (action)}<span class="action"><Skeleton /></span>{/each}
-      </div>
-    </Card>
-    <Card>
-      <span class="heading"><Skeleton width={100} /></span>
-      <div class="facts">
-        {#each FACTS as width, index (index)}
-          <div class="fact" data-testid="skeleton-row">
-            <Skeleton width={70} /><Skeleton {width} />
-          </div>
-        {/each}
-      </div>
-    </Card>
-    <Card>
-      <span class="heading"><Skeleton width={100} /></span>
-      <div class="text">
-        {#each LINES as width, index (index)}
-          <span class="line" data-testid="skeleton-line"><Skeleton {width} /></span>
-        {/each}
-      </div>
-    </Card>
-  </div>
+      {/each}
+    </div>
+  </Card>
+  <Card>
+    <span class="heading"><Skeleton width={100} /></span>
+    <div class="text">
+      {#each LINES as width, index (index)}
+        <span class="line" data-testid="skeleton-line"><Skeleton {width} /></span>
+      {/each}
+    </div>
+  </Card>
 </div>
 
 <style>
-  /* The job view's ground and column (Reader.svelte). */
-  .reader {
-    min-height: 100%;
-    background-color: var(--page);
-  }
-
-  .column {
+  /* The cards 12 apart, in the job view's column (JobsView's stage sets it). */
+  .cards {
     display: flex;
     flex-direction: column;
     gap: var(--card-gap);
-    max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
-    margin: 0 auto;
-    padding: var(--head-pad) var(--reader-pad-x) var(--reader-pad-end);
   }
 
   /* The ring beside the title's line and the band's (ReaderHero). */
