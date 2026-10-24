@@ -45,7 +45,6 @@
   --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
   --p-coral-variant: 13 62% 52%;
   --p-coral-press: 13 62% 46%;
-  --p-muted: 30 20% 97%;
   --p-muted-fg: 30 5% 37%;
   --p-line: 32 16% 89%;
   --p-danger: 355.8 71.8% 47.3%;
@@ -69,8 +68,6 @@
   --p-wash: 28 30% 24%;
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
-  --p-danger-700: 350.4 84.3% 34.9%;
-  --p-danger-750: 348.8 89.8% 26.9%;
   --p-titlebar-close-glyph: 0 0% 100%;
   --p-titlebar-close: 358 75% 59%;
   --p-titlebar-close-press: 358 66% 52%;
@@ -107,7 +104,6 @@
   --p-shade-primary: 13 45% 30%;
   /* The tooltip (like Claude's): a dark bubble with a light edge. */
   --p-emphasis: 213 40% 18%;
-  --p-tooltip-edge: 213 25% 36%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
@@ -116,7 +112,6 @@
   --surface-raised: hsl(var(--p-raised));
   /* The ground of the job view, Profil and Einstellungen (round 10). */
   --page: hsl(var(--p-page));
-  --surface-muted: hsl(var(--p-muted));
   /* Under the pointer and pressed: the warm wash, never grey (every quiet surface). */
   --surface-hover: hsl(var(--p-wash) / 0.035);
   /* A quiet control without a box (a title-bar tool, a row tool): a step more. */
@@ -125,8 +120,6 @@
   /* The selected list row: a very light warm wash; one step deeper under the pointer and one
      more while pressed; grey while the window is inactive (like Mail, Explorer). */
   --surface-selected: hsl(var(--p-coral-25));
-  --surface-selected-hover: hsl(var(--p-coral-50));
-  --surface-selected-press: hsl(var(--p-coral-70));
   --surface-selected-inactive: hsl(var(--p-ink) / 0.06);
   /* Track of a choice of a few (the place tabs and every segmented choice, one look). */
   --surface-track: hsl(var(--p-track));
@@ -178,7 +171,6 @@
   --toggle-on-press: hsl(var(--p-coral-press));
   --toggle-knob: hsl(var(--p-knob));
   /* The unread dot of a list row. */
-  --unread: hsl(var(--p-coral));
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's
      wash). */
   --selection-bar: hsl(var(--p-coral));
@@ -197,10 +189,7 @@
      disclosure chevron, the icon of a neutral stat tile). */
   --icon-accent: hsl(var(--p-navy));
   /* A filter that is on: the active stat tile and a pressed secondary chip. */
-  --active-surface: hsl(var(--p-navy-50));
-  --active-text: hsl(var(--p-navy-deep));
   /* Under the pointer inside a navy chip. */
-  --active-hover: hsl(var(--p-navy-150));
   /* A chip in a field: neutral, the app's ink on the track (design round 7, professional). */
   --chip-surface: hsl(var(--p-track));
   --chip-text: var(--text);
@@ -370,7 +359,7 @@
      Focus draws no ring (user decision 2026-10-04). */
   --quiet-hover: var(--surface-hover);
   --quiet-press: var(--surface-press);
-  --control-hover: var(--surface-muted);
+  --control-hover: var(--surface-hover);
   --control-hover-edge: var(--border-input);
   --control-press: hsl(var(--p-track));
   --control-press-edge: hsl(var(--p-border-press));
@@ -464,18 +453,12 @@
   --icon-stroke: 2.1;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
-  --row-place-max: 160px;
   /* The vertical padding of a row: a list row's two lines (title and company), and a row of
      a page's group (a setting, a portal) with its control, roomy. */
   --list-row-pad: 9px;
-  --row-pad: 12px;
   /* A row of a page's group: its label and its one line under it, the line its tile, buttons
      and switch are centred on (every row this high, so a list keeps one rhythm). */
-  --row-line: calc(var(--leading-md) + var(--space-2) + var(--leading-sm));
   /* Mail-style rows: the title line and the company line beside the ring. */
-  --row-height: calc(
-    2 * var(--list-row-pad) + var(--leading-title) + var(--space-2) + var(--leading-sm)
-  );
   /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
      row across the whole window above the sidebar and the sheet (its hairline under it),
      empty but for the window buttons; below it the app is the same. Windows: 36 px (the
@@ -503,7 +486,6 @@
   --list-toolbar: var(--control-field);
   /* The one action at the end of the tabs' row (Jobs suchen, Abbrechen, Papierkorb leeren) is
      at least this wide, so a swap between them moves nothing. */
-  --place-action: 136px;
   /* The list column beside the reader: the handle keeps it at least this wide, and the
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps
@@ -553,7 +535,6 @@
      edge inside their container. A container that insets its content sets --row-inset to
      that inset; its rows bleed out by it and pad their content in by it, so wash, divider
      and text share one grid (a card of rows: 14). Unset, rows sit at the content edge. */
-  --row-inset: 0px;
   /* The padding of a button's content at its sides (Button). */
   --button-pad: 11px;
   /* How far a ghost button hangs out of its column so its text or icon starts (or ends) on
@@ -585,7 +566,6 @@
   --tile-xl: 56px;
   /* The unread dot of a list row sits on the ring axis in the pane padding; the dot of a
      state (Verbunden) beside its words. */
-  --dot-unread: 6px;
   /* Round 10 (2026-10-24), the approved draft: */
   /* the dot of a status word (Verbunden) and the pulse of a run */
   --dot-status: 7px;
@@ -971,8 +951,6 @@
   --font-lead: 15px;
   --leading-lead: 22px;
   /* The digits of a large ring, the letters of a large tile (semibold). */
-  --font-lg: 16px;
-  --leading-lg: 22px;
   /* The heading of a group of a view (the groups of Profil and Einstellungen, the job view's
      Jobdetails, an empty state's). */
   --font-heading: 16px;
@@ -1058,15 +1036,12 @@
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   /* Everything that slides or settles: indicators, thumbs, chevrons, the release after a
      press, rolling counts. */
-  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
   --move-xs: 1px;
   --move-sm: 2px;
   /* A chip that the user adds rises by this. */
   --move-chip: 3px;
-  --move-md: 4px;
   --move-lg: 8px;
   /* A toast coming up from below (design round 7). */
-  --move-xl: 12px;
   /* The one icon that moves on hover: the arrow of a back or next button nudges by --move-sm
      (Button). */
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
@@ -1118,8 +1093,6 @@
   --move-xs: 0px;
   --move-sm: 0px;
   --move-chip: 0px;
-  --move-md: 0px;
   --move-lg: 0px;
-  --move-xl: 0px;
   --loop-state: paused;
 }

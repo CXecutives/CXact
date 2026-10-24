@@ -45,18 +45,11 @@ const WIDTH = 100;
 const CONTRAST = [
   {
     text: ['text', 'text-muted', 'text-subtle', 'text-heading', 'text-label', 'link'],
-    on: ['bg', 'surface', 'surface-muted', 'surface-selected', 'surface-hover/surface'],
+    on: ['bg', 'surface', 'surface-selected', 'surface-hover/surface'],
   },
   {
     text: ['text'],
-    on: [
-      'surface-selected-hover',
-      'surface-selected-press',
-      'surface-selected-inactive/surface',
-      'surface-press/surface',
-      'active-surface',
-      'nav-active-bg',
-    ],
+    on: ['surface-selected-inactive/surface', 'surface-press/surface', 'nav-active-bg'],
   },
   {
     text: ['text-on-accent'],
@@ -65,7 +58,6 @@ const CONTRAST = [
   { text: ['text-on-danger'], on: ['danger-fill', 'danger-fill-hover', 'danger-fill-active'] },
   { text: ['text-inverse', 'text-inverse-muted'], on: ['surface-inverse'] },
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },
-  { text: ['active-text'], on: ['active-surface', 'active-hover'] },
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info'], on: ['surface'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },

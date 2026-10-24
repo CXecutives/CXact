@@ -63,6 +63,8 @@ export const PREVIEW_MENU: readonly { heading: string; entries: readonly Entry[]
       { label: 'Mit Beispieldaten', query: 'scenario=default' },
       { label: 'Leere Liste', query: 'scenario=fresh' },
       { label: 'Suche läuft', query: 'scenario=searching' },
+      { label: 'Suche wartet auf Anmeldung', query: 'scenario=sign-in-waiting' },
+      { label: 'Jobs werden neu bewertet', query: 'scenario=rescoring' },
       { label: 'Keine Treffer', query: 'scenario=empty' },
       { label: 'Bewerteter Job', query: 'scenario=default&open=freelancermap:2801' },
       { label: 'Unbewerteter Job', query: 'scenario=default&open=linkedin:4100200302' },
