@@ -952,16 +952,62 @@
   --list-strip-gap: var(--space-10);
 
   /* ------------------------------------------- round 10: job view */
-  /* (job view tokens below) */
+  /* The hero: the band 3 under the title, the state box and the action row 14 under the top,
+     and room at the top's right for the three quiet tools (3 x 28, their gaps and air). */
+  --hero-band-gap: 3px;
+  --hero-gap: 14px;
+  --hero-tools-room: 96px;
+  /* Jobdetails: the verdict's column at a fact's end; the facts 8 under the card's title, the
+     requirements 12, the ad's text 10. */
+  --facts-mark: 18px;
+  --facts-top: var(--space-8);
+  --reqs-top: var(--space-12);
+  --ad-top: var(--space-10);
+  /* The ad's lists, this far in. */
+  --ad-indent: 18px;
 
   /* ------------------------------------------- round 10: profile */
   /* (profile tokens below) */
 
   /* ------------------------------------------- round 10: settings */
   /* (settings tokens below) */
+  /* The mailbox form that unfolds under its row: 4 below the row, 18 at its end, the row's 20
+     at the right and the text's 64 at the left; its parts 14 apart. */
+  --mail-form-pad: var(--space-4) var(--card-pad-x) 18px var(--setting-rule-start);
+  --mail-form-gap: 14px;
 
   /* ------------------------------------------- round 10: setup */
-  /* (setup tokens below) */
+  /* The card of a step (--setup-card wide at most, --radius-sheet round): 34 36 20 inside, 24
+     20 16 in a narrow window, centred a little above the middle of the window. Its head: the
+     app's mark, the green disc or the spinner 20 above the title, a 48 tile 18; the lead 8
+     under the title, at most 420 wide; the body 22 under the lead; the foot 28 under the
+     body with a hairline and 18 inside, Zurück pulled 8 out so its words align. */
+  --setup-pad-top: 34px;
+  --setup-pad-x: 36px;
+  --setup-pad-bottom: var(--space-20);
+  --setup-pad-top-narrow: var(--space-24);
+  --setup-pad-x-narrow: var(--space-20);
+  --setup-pad-bottom-narrow: var(--space-16);
+  --setup-frame-bottom: 36px;
+  --setup-top-gap: var(--space-20);
+  --setup-tile-gap: 18px;
+  --setup-lead-gap: var(--space-8);
+  --setup-lead-max: 420px;
+  --setup-body-gap: 22px;
+  --setup-foot-gap: 28px;
+  --setup-foot-pad: 18px;
+  --setup-back-pull: calc(-1 * var(--space-8));
+  /* The three steps of Willkommen: 16 apart, the 36 tile 14 before its words. */
+  --setup-intro-gap: var(--space-16);
+  --setup-intro-inner: 14px;
+  /* The line about the AI under the drop zone. */
+  --setup-ai-gap: 14px;
+  /* The badge beside a heading ("Optional"): 12/500 muted on the track, 6 round. */
+  --setup-badge-type: var(--weight-control) var(--font-xs) / var(--leading-xs) var(--font-sans);
+  --setup-badge-pad: var(--space-2) var(--space-8);
+  --setup-badge-gap: var(--space-10);
+  /* The page of "Dein Profil": its lead 6 under the title. */
+  --setup-page-lead-gap: var(--space-6);
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;

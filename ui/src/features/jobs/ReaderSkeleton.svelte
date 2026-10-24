@@ -1,86 +1,97 @@
 <!--
-  The reader while a job's details load (JobsView shows it once loading takes a while): the
-  reader's shape in placeholders, so the pane never stands blank and nothing jumps when the
-  job comes. The title, the ring beside its band, the row of actions, a few rows of the
-  Jobdetails (name and value in their columns) and lines of text under the section "Anzeige",
-  in the reader's own spacing.
+  The job view while a job's details load (JobsView shows it once loading takes 300 ms): the
+  job view's shape in flat placeholders, so the pane never stands blank and nothing jumps when
+  the job comes. The hero (the 56 ring, a line for the title and one for the band, the pills
+  of the buttons), the Jobdetails in their two columns and lines of the ad's text, in the
+  cards and the spacing of the job view (Reader.svelte), in the column of JobsView's stage.
 -->
 <script lang="ts" module>
-  /** The widths (percent of their column) of the placeholders: Jobdetails rows as name and
-   *  value, then the lines of the ad's text. */
-  const ROWS = [
-    [60, 70],
-    [45, 40],
-    [70, 55],
-    [55, 35],
-    [50, 60],
-  ] as const;
+  /** The widths (percent of their cell) of the facts' values, two columns a row. */
+  const FACTS = [70, 55, 45, 60, 50, 40, 65, 35] as const;
   const LINES = [96, 88, 92, 60, 84, 72] as const;
-  /** The four buttons of the action row. */
-  const ACTIONS = [1, 2, 3, 4] as const;
+  /** The pills of the hero's buttons. */
+  const ACTIONS = [1, 2, 3] as const;
 </script>
 
 <script lang="ts">
+  import Card from '$components/Card.svelte';
   import Skeleton from '$components/Skeleton.svelte';
 </script>
 
-<div class="reader" data-testid="reader-skeleton">
-  <div class="title" data-testid="skeleton-title"><Skeleton width={70} /></div>
-  <div class="match">
-    <Skeleton shape="circle" size="md" />
-    <span class="band"><Skeleton width={100} /></span>
-  </div>
-  <div class="actions">
-    {#each ACTIONS as action (action)}<span class="action"><Skeleton /></span>{/each}
-  </div>
-  <div class="block">
+<div class="cards" data-testid="reader-skeleton">
+  <Card hero>
+    <div class="top">
+      <Skeleton shape="circle" size="md" />
+      <div class="heads">
+        <span class="title" data-testid="skeleton-title"><Skeleton width={70} /></span>
+        <span class="band"><Skeleton width={30} /></span>
+      </div>
+    </div>
+    <div class="actions">
+      {#each ACTIONS as action (action)}<span class="action"><Skeleton /></span>{/each}
+    </div>
+  </Card>
+  <Card>
     <span class="heading"><Skeleton width={100} /></span>
-    <div class="rows">
-      {#each ROWS as [name, value], index (index)}
-        <div class="row" data-testid="skeleton-row">
-          <Skeleton width={name} /><Skeleton width={value} />
+    <div class="facts">
+      {#each FACTS as width, index (index)}
+        <div class="fact" data-testid="skeleton-row">
+          <Skeleton width={70} /><Skeleton {width} />
         </div>
       {/each}
     </div>
-  </div>
-  <div class="block">
+  </Card>
+  <Card>
     <span class="heading"><Skeleton width={100} /></span>
     <div class="text">
       {#each LINES as width, index (index)}
         <span class="line" data-testid="skeleton-line"><Skeleton {width} /></span>
       {/each}
     </div>
-  </div>
+  </Card>
 </div>
 
 <style>
-  /* The reader's column and spacing (Reader.svelte). */
-  .reader {
+  /* The cards 12 apart, in the job view's column (JobsView's stage sets it). */
+  .cards {
     display: flex;
     flex-direction: column;
-    gap: var(--space-20);
+    gap: var(--card-gap);
   }
 
-  /* Where the job's title will stand: on the first row of its head. */
+  /* The ring beside the title's line and the band's (ReaderHero). */
+  .top {
+    display: flex;
+    align-items: center;
+    gap: var(--hero-gap);
+    padding-right: var(--hero-tools-room);
+  }
+
+  .heads {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--hero-band-gap);
+  }
+
   .title {
     display: flex;
     align-items: center;
-    height: var(--first-row);
-  }
-
-  .match {
-    display: flex;
-    align-items: center;
-    gap: var(--space-16);
+    height: var(--leading-xl);
   }
 
   .band {
-    width: calc(var(--ring-md) * 3);
+    display: flex;
+    align-items: center;
+    height: var(--leading-sm);
   }
 
   .actions {
     display: flex;
     gap: var(--space-8);
+    margin-top: var(--hero-gap);
+    padding-top: var(--hero-gap);
+    border-top: var(--border-width) solid var(--border);
   }
 
   .action {
@@ -90,14 +101,6 @@
     height: var(--control-field);
   }
 
-  .block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-    padding-top: var(--space-20);
-    border-top: var(--border-width) solid var(--border);
-  }
-
   .heading {
     display: flex;
     align-items: center;
@@ -105,25 +108,26 @@
     height: var(--leading-heading);
   }
 
-  .rows {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
-  /* Name and value in the Jobdetails' two columns. */
-  .row {
+  /* The facts' two columns: a label and its value. */
+  .facts {
     display: grid;
-    grid-template-columns: 1fr 2fr;
-    align-items: center;
-    gap: var(--space-24);
-    height: var(--leading-md);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-20);
+    margin-top: var(--facts-top);
   }
 
-  /* The ad's text: a line per line of the text. */
+  .fact {
+    display: grid;
+    grid-template-columns: var(--facts-label) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-6);
+    height: calc(var(--leading-md) + 2 * var(--space-8));
+  }
+
   .text {
     display: flex;
     flex-direction: column;
+    margin-top: var(--ad-top);
   }
 
   .line {

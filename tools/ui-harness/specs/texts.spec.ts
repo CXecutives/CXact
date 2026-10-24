@@ -57,5 +57,5 @@ test('an ad the app cannot reach says so in the reader, its row carries no badge
   // The row carries no badge; the reader says it.
   await expect(row.locator('.badge')).toHaveCount(0);
   await row.click();
-  await expect(page.getByTestId('detail-note')).toHaveText(T.reader.adNote.unfetchable);
+  await expect(page.getByTestId('detail-note')).toHaveText(T.reader.state.unfetchable.heading);
 });

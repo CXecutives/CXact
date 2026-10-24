@@ -460,7 +460,7 @@ test('controls react to the left button only', async ({ page }) => {
   // Over a scroll area the middle click started the autoscroll of the engine (Windows
   // behaviour): the next click (on the source's name, which switches nothing) only ends it.
   // Then the left button works.
-  await page.getByTestId('portal-freelance').getByText(T.portal.freelance).click();
+  await page.getByTestId('portal-freelance').getByText(T.portalName.freelance).click();
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
 });
@@ -793,7 +793,7 @@ test('the ad text, title and facts select and copy; the rest does not select', a
   };
   await page.getByTestId('stage').evaluate((node) => node.scrollTo({ top: 0 }));
   expect((await drag('reader-title')).length).toBeGreaterThan(5);
-  for (const id of ['band', 'reasons-met']) {
+  for (const id of ['band', 'reasons']) {
     expect(await drag(id), id).toBe('');
   }
 });
@@ -893,7 +893,7 @@ test('behind a modal dialog nothing scrolls', async ({ page }) => {
 test('a right click where nothing offers a menu does nothing', async ({ page }) => {
   await open(page, `${WIN}&view=settings`);
   // A source's name on Suche: plain text, no field, nothing to copy.
-  const name = page.getByTestId('portal-hays').getByText(T.portal.hays);
+  const name = page.getByTestId('portal-hays').getByText(T.portalName.hays);
   await name.click({ button: 'right' });
   await page.waitForTimeout(150);
   await expect(page.getByTestId('menu')).toHaveCount(0);

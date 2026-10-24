@@ -1,11 +1,12 @@
 // The walk through the setup (steps.ts): the step shown, the way to the profile, the CV's
 // evaluation and its failure. The first step follows from what is stored: no usable profile
-// leads to Willkommen with the two ways, a usable one to the Postfach, a connected mailbox to
-// Fertig (the preview and the harness may name a step in the address, `?step=upload`). Once a
-// profile exists the steps edit exactly that one (the backend merges a second CV into it).
-// Zurück never lands on the evaluation and keeps what was typed; a failed evaluation goes back
-// to the upload, which says why. Reaching Fertig saves that the setup is done
-// (`finish_onboarding`), so the next start opens the Jobs view.
+// leads to Willkommen, a usable one to the Postfach, a connected mailbox to Fertig (the
+// preview and the harness may name a step in the address, `?step=upload`, and the way,
+// `&way=self`). Once a profile exists the steps edit exactly that one (the backend merges a
+// second CV into it). Zurück never lands on the evaluation and keeps what was typed; a failed
+// evaluation goes back to the upload, which says why; "Abbrechen" stops the evaluation in the
+// backend (`cancel_run`, which answers the import with nothing). Reaching Fertig saves that
+// the setup is done (`finish_onboarding`), so the next start opens the Jobs view.
 
 import { errorText } from '$lib/i18n/texts';
 import { CvError, fillFromCv, invoke, reportUiError, type CvFailure } from '$lib/ipc/api';
@@ -17,7 +18,7 @@ import { fromCv, retryable } from '../shared/fromCv.svelte';
 import { isStep, stepOf, type StepId, type Walk, type Way } from './steps';
 
 class Onboarding {
-  step = $state<StepId>('way');
+  step = $state<StepId>('welcome');
   way = $state<Way>('cv');
   /** Why the last evaluation failed (the upload says it above the drop zone). */
   failure = $state<CvFailure | null>(null);
@@ -48,14 +49,15 @@ class Onboarding {
   begin(): void {
     if (this.#begun) return;
     this.#begun = true;
-    const asked = new URLSearchParams(location.search).get('step');
+    const address = new URLSearchParams(location.search);
+    const asked = address.get('step');
     if (isStep(asked)) {
-      if (asked === 'self') this.way = 'self';
+      if (address.get('way') === 'self') this.way = 'self';
       if (asked === 'reading') void this.read(false);
       else this.go(asked);
       return;
     }
-    this.go(!app.hasProfile ? 'way' : !app.hasMailbox ? 'alerts' : 'done');
+    this.go(!app.hasProfile ? 'welcome' : !app.hasMailbox ? 'alerts' : 'done');
   }
 
   go(step: StepId): void {
@@ -77,8 +79,8 @@ class Onboarding {
   }
 
   /** The CV (the files dropped on the window, else the file dialog) evaluated: the profile
-   *  it filled is stored and reviewed next; a closed dialog or a failure goes back to the
-   *  upload. */
+   *  it filled is stored and shown next; a closed dialog, a cancel or a failure goes back to
+   *  the upload. */
   async read(dropped: boolean): Promise<void> {
     const mine = ++this.#attempt;
     this.failure = null;
@@ -97,7 +99,7 @@ class Onboarding {
       // The form shows the CV's profile, never a draft typed before on "Selbst ausfüllen".
       editor.typed.clear();
       if (info.form) editor.edit(info.form);
-      this.step = 'review';
+      this.step = 'profile';
     } catch (failure) {
       if (mine !== this.#attempt) return;
       if (failure instanceof CvError) {
@@ -109,25 +111,27 @@ class Onboarding {
     }
   }
 
-  /** "Abbrechen" while it evaluates: back to the upload (a late answer is dropped). */
+  /** "Abbrechen" while it evaluates: the backend stops it, the setup goes back to the upload
+   *  at once (a late answer is dropped). */
   cancelReading(): void {
     this.#attempt += 1;
     this.failure = null;
     this.error = null;
     this.step = 'upload';
+    invoke('cancel_run').catch((failure: unknown) => (this.error = errorText(failure)));
   }
 
-  /** "Selbst ausfüllen" (its tile, or when no evaluation can run): the form, empty or as
-   *  stored. */
+  /** "Selbst ausfüllen" (its tile, or when no evaluation can run): the form as it was left,
+   *  else empty or as stored. */
   byHand(): void {
     this.#attempt += 1;
     this.way = 'self';
     this.failure = null;
     this.error = null;
-    this.go('self');
+    this.go('profile');
   }
 
-  /** "Aus Lebenslauf ausfüllen": the upload. */
+  /** "Aus Lebenslauf": the upload. */
   byCv(): void {
     this.way = 'cv';
     this.go('upload');

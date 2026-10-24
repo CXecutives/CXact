@@ -1729,8 +1729,6 @@ fn coral_only_in_its_roles() {
         ("var(--surface-selected", &["features/jobs/RowBar.svelte"]),
         ("var(--selection-", &["features/jobs/RowBar.svelte"]),
         ("var(--nav-active-icon", &["components/SideNav.svelte"]),
-        // The setup's current step among its dots (design round 7).
-        ("var(--step-current", &["components/StepDots.svelte"]),
         // The way the setup recommends, the arc of its large spinner while it reads a CV, and
         // the pulse of a run (round 10).
         ("var(--recommended", &["components/Tile.svelte"]),

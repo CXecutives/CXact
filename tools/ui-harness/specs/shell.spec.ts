@@ -182,7 +182,7 @@ test('no view has more than one primary button', async ({ page }) => {
   await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('new-profile-ways')).toBeVisible();
   expect(await visibleCount(page, '.btn.primary'), 'profile start').toBeLessThanOrEqual(1);
-  for (const step of ['way', 'upload', 'reading', 'review', 'alerts', 'done']) {
+  for (const step of ['welcome', 'way', 'upload', 'reading', 'profile', 'alerts', 'done']) {
     await open(page, `?platform=windows&scenario=first-run&step=${step}`);
     expect(await visibleCount(page, '.btn.primary'), `setup ${step}`).toBeLessThanOrEqual(1);
   }
@@ -1133,7 +1133,7 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
   // A click on a text that takes no focus (a source's name on Suche, the tab it opens on).
-  await page.getByTestId('portal-hays').getByText(T.portal.hays).click();
+  await page.getByTestId('portal-hays').getByText(T.portalName.hays).click();
   await page.keyboard.press('End');
   // Once the glide has ended (a key during it would add to where it is going).
   await expect
@@ -1412,7 +1412,7 @@ for (const [width, height] of [
   [480, 360],
   [780, 560],
 ] as const) {
-  for (const step of ['way', 'upload', 'reading', 'review', 'alerts', 'done']) {
+  for (const step of ['welcome', 'way', 'upload', 'reading', 'profile', 'alerts', 'done']) {
     test(`nothing clipped or scrolling sideways at ${width}x${height}: setup ${step}`, async ({
       page,
     }) => {
@@ -1436,7 +1436,7 @@ for (const [width, height] of [
       // under the content, reached by scrolling.
       const bar = page.getByTestId('first-bar');
       if ((await bar.count()) === 0) return;
-      if (step !== 'review') await bar.scrollIntoViewIfNeeded();
+      if (step !== 'profile') await bar.scrollIntoViewIfNeeded();
       await expect(bar).toBeInViewport();
     });
   }

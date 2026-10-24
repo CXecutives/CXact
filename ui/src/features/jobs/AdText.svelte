@@ -1,9 +1,9 @@
 <!--
-  The ad as text in its own structure (JobDetail.layout, what the engine reads): the lines
-  that head a section ("Ihre Aufgaben", "Ihr Profil", "Wünschenswert", "Rahmen",
-  "Responsibilities") are small bold headings, the lines a bullet leads are a clean indented
-  list (the bullet drawn by the list, not the ad's glyph), everything else stays text with its
-  line breaks. The text is cut at the ends of every word of the list's search, each piece a
+  The ad as text in its own structure (JobDetail.layout, what the engine reads), muted 14/23
+  with its blocks 10 apart (the round 10 draft): the lines that head a section ("Ihre
+  Aufgaben", "Ihr Profil", "Wünschenswert", "Rahmen", "Responsibilities") stand in ink and
+  bold, the lines a bullet leads are a clean list 18 in (the bullet drawn by the list, not the
+  ad's glyph), everything else stays text with its line breaks. The text is cut at the ends of every word of the list's search, each piece a
   text node or a <mark>: a word of the search stands on the search's mark colour
   (--mark-search) while the search is on. Nothing else is marked (hovering the reader's rows
   tints nothing here, user decision 2026-09-27). No underline, no tooltip, no HTML from the
@@ -137,11 +137,12 @@
 </div>
 
 <style>
+  /* Muted running text (14/23), its blocks 10 apart (the round 10 draft). */
   .text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
-    color: var(--text);
+    gap: var(--space-10);
+    color: var(--text-muted);
     font: var(--type-body);
     overflow-wrap: anywhere;
   }
@@ -150,31 +151,24 @@
     white-space: pre-line;
   }
 
-  /* A section's heading: small and bold, close above what it heads. */
+  /* A section's heading: its line in ink and bold, like the ad's own bold words. */
   .heading {
-    margin-bottom: calc(var(--space-4) - var(--space-12));
     color: var(--text-heading);
     font-weight: var(--weight-semibold);
   }
 
-  /* The ad's bullets as a list: indented, the bullets quiet. */
+  /* The ad's bullets as a list, 18 in; the bullets drawn by the list. */
   .list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding-inline-start: var(--space-20);
+    padding-inline-start: var(--ad-indent);
     list-style: disc outside;
   }
 
-  .item::marker {
-    color: var(--text-subtle);
-  }
-
-  /* Untinted, a passage is the text around it. */
   /* A word of the list's search, while the search is on. */
   .hit {
     border-radius: var(--radius-xs);
     background-color: var(--mark-search);
-    color: inherit;
+    color: var(--text);
   }
 </style>
