@@ -8,9 +8,12 @@
 
 import { tokenMs, tokenNumber, tokenPx, token } from '../tokens';
 
-export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'slow' | 'reveal' | 'loop';
+export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'fade' | 'slow' | 'reveal' | 'loop';
 export type Easing = 'standard' | 'out' | 'in' | 'emphasized';
-export type Move = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+/** `chip`: the 3 px a chip rises when it is added. */
+export type Move = 'xs' | 'sm' | 'chip' | 'md' | 'lg' | 'xl';
+/** The step of a stagger: the rows of a list, the cards of a job, the groups of a page. */
+export type Stagger = 'row' | 'card' | 'group';
 export type EasingFn = (t: number) => number;
 
 interface Values {
@@ -18,9 +21,11 @@ interface Values {
   crossfade: number;
   easings: Record<Easing, EasingFn>;
   moves: Record<Move, number>;
+  staggers: Record<Stagger, number>;
   staggerMax: number;
-  enterScale: number;
+  staggerSpan: number;
   tooltipDelay: number;
+  browseGap: number;
 }
 
 const DURATIONS: readonly Duration[] = [
@@ -28,12 +33,14 @@ const DURATIONS: readonly Duration[] = [
   'hover',
   'fast',
   'base',
+  'fade',
   'slow',
   'reveal',
   'loop',
 ];
 const EASINGS: readonly Easing[] = ['standard', 'out', 'in', 'emphasized'];
-const MOVES: readonly Move[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+const MOVES: readonly Move[] = ['xs', 'sm', 'chip', 'md', 'lg', 'xl'];
+const STAGGERS: readonly Stagger[] = ['row', 'card', 'group'];
 
 let values: Values | null = null;
 let reduced = false;
@@ -94,9 +101,14 @@ function read(): Values {
       Move,
       number
     >,
+    staggers: Object.fromEntries(STAGGERS.map((s) => [s, tokenMs(`--stagger-${s}`)])) as Record<
+      Stagger,
+      number
+    >,
     staggerMax: tokenNumber('--stagger-max'),
-    enterScale: tokenNumber('--scale-enter'),
+    staggerSpan: tokenMs('--stagger-span'),
     tooltipDelay: tokenMs('--delay-tooltip'),
+    browseGap: tokenMs('--delay-browse'),
   };
 }
 
@@ -143,17 +155,28 @@ export function move(name: Move): number {
   return reduced ? 0 : current().moves[name];
 }
 
-export function enterScale(): number {
-  return reduced ? 1 : current().enterScale;
-}
-
 /** How many items of a list may animate at the same time; the others are simply there. */
 export function staggerLimit(): number {
   return current().staggerMax;
 }
 
+/** The step between two items of a stagger in ms; 0 under reduced motion. */
+export function stagger(name: Stagger): number {
+  return reduced ? 0 : current().staggers[name];
+}
+
+/** The longest a whole stagger may take, its last piece included (ms). */
+export function staggerSpan(): number {
+  return current().staggerSpan;
+}
+
 export function tooltipDelay(): number {
   return current().tooltipDelay;
+}
+
+/** Two opens closer than this (ms) are fast browsing: the later one does not animate. */
+export function browseGap(): number {
+  return current().browseGap;
 }
 
 export interface PlayOptions {
@@ -162,13 +185,16 @@ export interface PlayOptions {
   delay?: number;
   /** Kept at --dur-crossfade under reduced motion (opacity-only animations). */
   crossfade?: boolean;
+  /** `add`: the keyframes add to the element's own style (a glide by a delta). */
+  composite?: CompositeOperation;
 }
 
 /**
  * The only use of the Web Animations API in the UI. Keyframes may animate transform,
- * opacity and stroke-dashoffset only, and the height of the job list's selection bar (a
- * 3 px element out of the flow, `barSlide`). Under reduced motion the animation jumps to
- * its end state unless it is a cross-fade.
+ * opacity and stroke-dashoffset only, and the size of an element out of the flow that
+ * glides to another box (`glide`, the job list's selection bar `barSlide`): its own box is
+ * laid out, nothing around it. Under reduced motion the animation jumps to its end state
+ * unless it is a cross-fade.
  */
 export function play(
   element: Element,
@@ -180,6 +206,7 @@ export function play(
     duration: ms,
     delay: reduced ? 0 : (options.delay ?? 0),
     fill: 'both',
+    composite: options.composite ?? 'replace',
   };
   if (ms === 0 && timing.delay === 0) return null;
   // WAAPI takes the CSS easing string of the token as it is.

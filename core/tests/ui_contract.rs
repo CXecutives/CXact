@@ -14,10 +14,13 @@ const EXTENSIONS: [&str; 3] = ["svelte", "ts", "css"];
 const MIN_FILES: usize = 55;
 const MIN_SVELTE: usize = 35;
 
+/// A path of the checkout that runs the test. Cargo sets CARGO_MANIFEST_DIR at run time too, and
+/// that one wins: worktrees sharing a target dir share this test's binary (cargo leaves the
+/// path out of a workspace member's hash), so the compile-time value can name another checkout.
 fn repo(relative: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join(relative)
+    let crate_dir =
+        std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into());
+    Path::new(&crate_dir).join("..").join(relative)
 }
 
 struct Source {
@@ -946,8 +949,9 @@ fn the_top_bar_measures_the_same_everywhere() {
 }
 
 /// Motion stays snappy and calm (user test of the installed app): colour changes, entries,
-/// view switches and dialogs within 180 ms, the fill of a ring within 400 ms, and no easing
-/// that overshoots (no bounce). Nothing blurs a large area or animates layout.
+/// view switches and dialogs within 180 ms, the fill of a ring and a whole stagger within
+/// 400 ms, and no easing that overshoots (no bounce). Nothing blurs a large area or animates
+/// layout.
 #[test]
 fn motion_stays_quick_and_calm() {
     let all = scanned(MIN_FILES);
@@ -975,11 +979,13 @@ fn motion_stays_quick_and_calm() {
         "--dur-hover",
         "--dur-fast",
         "--dur-base",
+        "--dur-fade",
         "--dur-slow",
     ] {
         assert!(ms(name) <= 180, "{name} is {} ms (at most 180)", ms(name));
     }
     assert!(ms("--dur-reveal") <= 400, "--dur-reveal above 400 ms");
+    assert!(ms("--stagger-span") <= 400, "--stagger-span above 400 ms");
     let mut problems = Vec::new();
     for (n, line) in tokens.lines() {
         let Some(at) = line.find("cubic-bezier(") else {

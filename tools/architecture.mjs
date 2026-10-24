@@ -60,9 +60,18 @@ const FEATURE_PUBLIC = {
 
 /**
  * Findings accepted for a while, each with the TODO that removes it. The check fails when an
- * entry no longer matches anything, so a fixed finding also drops its entry.
+ * entry no longer matches anything, so a fixed finding also drops its entry. A key is a file
+ * nothing imports yet, an export (`path: name`) or an import (`from -> to`).
  */
-const TEMPORARY = {};
+const TEMPORARY = {
+  // The motion layer (frontend plan, package 4) lands before the components that use it.
+  'ui/src/lib/motion/glide.ts': 'the segment thumb, the sidebar pill and the list selection',
+  'ui/src/lib/motion/count.svelte.ts': 'ScoreRing counts with Count (countUp goes)',
+  'ui/src/lib/motion/enter.ts: enterList': 'the job list staggers its rows when it opens',
+  'ui/src/lib/motion/enter.ts: enterCards': 'the job view staggers its cards on a new job',
+  'ui/src/lib/motion/enter.ts: enterGroups': 'the profile and the settings stagger their groups',
+  'ui/src/lib/motion/transitions.ts: chipIn': 'ChipInput lets an added chip rise',
+};
 const temporaryUsed = new Set();
 /** Whether `key` is accepted for now (and remember that its entry is still needed). */
 const temporary = (key) => {
@@ -319,7 +328,7 @@ const unusedExports = [];
 for (const [path, { exports, names }] of parsed) {
   if (path.startsWith(GENERATED)) continue;
   if (!isEntry(path) && importers.get(path).size === 0) {
-    orphans.push(path);
+    if (!temporary(path)) orphans.push(path);
     continue;
   }
   const used = taken.get(path);
