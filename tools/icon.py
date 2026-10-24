@@ -1,4 +1,4 @@
-"""App icon: coral plate, white folder, check cut out of the folder.
+"""App icon: coral plate, white glyph - a briefcase with a search lens at its bottom right.
 
 One geometry, every output:
   src-tauri/icons/icon.ico    Windows only: the plate fills the whole square, like the other
@@ -27,23 +27,20 @@ whenever it has no stage of the wanted size - then mixes plate colour into the e
 black: no dark fringe on any background.
 
 Geometry on the 1024 grid (Windows layout; macOS scales everything with its smaller plate):
-- The shapes are those of the icon workshop (.claude/tools/icon-werkstatt.html), which draws
-  them with the same rules (user, 2026-10-01: the icon as it looked there).
+- The plate is the icon workshop's (.claude/tools/icon-werkstatt.html), which draws it with
+  the same rules (user, 2026-10-01: the icon as it looked there).
 - Plate 0..1024 on Windows (full bleed: the desktop and the taskbar show it exactly as large
   as the other apps, measured against Claude and Roblox at 48 px) with circular corners of
   22.37 % of the plate (Mike Swanson's fit to Apple's own AppIconMask, 34 of 152). macOS keeps
   Apple's continuous corner (APPLE_CORNER, the curve UIKit draws for app icons: it leaves the
   straight edge 1.53 r before the corner), the convention of that system.
-- The glyph is drawn on the 1024 grid of the plate (GRID 0) and scales with the plate, so it
-  keeps its share of the plate and its optical centre.
-- Folder 125..899 wide (78 % of the workshop's 992); tab 176..263 (45 degree slope 410 -> 497),
-  body 263..821. One radius (81): a 90 degree corner leaves the straight edges 1.6 r before
-  the corner and bends in one cubic whose handles reach 72 % of the way to the corner; the
-  slope meets the tab's edges in one quadratic each, r tan(turn / 2) before and after the
-  corner.
-- Check: one stroke width (78), round caps and join, cut out of the folder (even-odd), so the
-  plate shows through. Optically centred in the body: the box is centred and moved
-  up by half the distance between box centre and mass centre (the heavy bottom vertex).
+- The glyph (user, 2026-10-24, "Variante D"): Lucide's briefcase with the search lens, in
+  Lucide's 24 unit grid, which spans 624 of Apple's 824 plate, centred (see LUCIDE_UNIT). It
+  scales with the plate, so it keeps its share of the plate and its optical centre.
+- White strokes 2.1 units wide (the app's icon stroke), round joins, drawn as outlines (see
+  `glyph`): the body a rounded rectangle, the handle's two legs run down through the body to
+  its bottom edge, the lens a ring with a short handle. Everything of the briefcase within 5.9
+  units of the lens's centre is cut away, so the lens sits in a clean gap.
 - One flat colour: the app's --brand token (the cxpertise coral), the glyph --brand-glyph
   (white), no gradient. No shadow on Windows; Apple's template shadow under the macOS plate.
 
@@ -51,8 +48,11 @@ Colours: the tokens of ui/src/styles/tokens.css, read from tools/palette.json, w
 tools/tokens.mjs writes. `npm run regen` runs both: a new palette in tokens.css redraws every
 icon (docs/CHANGING.md).
 
-Small stages are hinted: straight edges on whole pixels (proportional positions, rounded
-symmetrically), check vertices on half pixels, the check bolder up to 40 px.
+Small stages are hinted (see `layout`): up to 256 px the stroke is a whole number of pixels
+with its straight edges on whole pixels (rounded symmetrically) and the lens's ring a whole
+number of pixels across; up to 40 px the gap ends the strokes flat on whole pixels, at least
+a pixel from the lens. At 16 and 20 px the handle's legs inside the body are left out: there
+they turn the body into a grid of one pixel lines. The handle above the body stays.
 
     python tools/icon.py                        writes every output, then checks icon.ico
                                                 (needs Pillow)
@@ -73,7 +73,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 # One flat colour each, no gradient (user, 2026-09-25): the plate is the app's --brand token,
-# the folder with the check cut out of it --brand-glyph (tools/palette.json, generated from
+# the briefcase with the lens --brand-glyph (tools/palette.json, generated from
 # ui/src/styles/tokens.css; core/tests/icon.rs checks the outputs against the same tokens).
 _COLOURS = json.loads((Path(__file__).resolve().parent / 'palette.json')
                       .read_text(encoding='utf-8'))['colours']
@@ -86,30 +86,39 @@ BACKGROUND = tuple(_COLOURS['bg']['rgb'])
 PAPER = (255, 255, 255)
 LABEL = (0, 0, 0)
 DESKTOPS = [('dark', (32, 32, 32)), ('grey', (128, 128, 128)), ('white', PAPER)]
-# The folder's corners are the workshop's (see `folder`): the curve leaves the edges 1.6 r
-# before a 90 degree corner, its handles reach 72 % of the way to it.
-FOLDER_CUT = 1.6
-FOLDER_HANDLE = 0.72
 
-# 1024 grid. The glyph's coordinates below are drawn on a plate from GRID to 1024 - GRID (0:
-# the plate itself, as the icon workshop draws them); the Windows plate runs from PLATE (0:
-# full bleed) to 1024 - PLATE.
-GRID = 0
+# 1024 grid. The Windows plate runs from PLATE (0: full bleed) to 1024 - PLATE.
 PLATE = 0
 PLATE_R = 0.2237 * (1024 - 2 * PLATE)
-# The folder 78 % of the workshop's 992 wide, the check 78 units thick and 78 % of its arms
-# (user, 2026-10-01, set in the icon workshop, which lays them out the same way): the first
-# shape scaled about its centre, the check's arms at 45 degrees, placed like before.
-FOLDER_X0, FOLDER_X1 = 125, 899
-TAB_Y, BODY_Y0, BODY_Y1 = 176, 263, 821
-SLOPE_X0, SLOPE_X1 = 410, 497
-FOLDER_R = 81
-CHECK_POINTS = [(373, 528), (470, 625), (651, 444)]
-CHECK_W = 78
 # macOS: Apple's grid, plate 824 of 1024 (margin 100, fractional at the smaller sizes) with the
 # same corner, 22.37 % of the plate.
 MAC_PLATE = 100
 MAC_PLATE_R = 0.2237 * (1024 - 2 * MAC_PLATE)
+
+# The glyph (user, 2026-10-24, "Variante D"): Lucide 1.48's briefcase with its search lens at
+# the bottom right, white strokes in Lucide's style, in Lucide's 24 unit grid. The grid spans
+# 624 of Apple's 824 plate (26 px a unit on the macOS 1024 canvas, origin at 200, 200), centred;
+# on any plate the glyph keeps that share (LUCIDE_UNIT units of the plate's own 1024 grid).
+# Optically centred as it is: its mass centre lies 0.2 units right of the plate's centre, its
+# box 0.1 right and down (the lens's weight and the gap balance), so no nudge.
+LUCIDE = 24
+LUCIDE_UNIT = 1024 * 26 / (1024 - 2 * MAC_PLATE)
+# The app's icon stroke (2.1 of 24), round caps and joins.
+STROKE = 2.1
+# The briefcase: `rect x=2 y=6 width=20 height=14 rx=2` and the handle
+# `M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16`: two legs that run down through the body to its
+# bottom edge, joined at the top by a bar with the body's corner radius.
+BODY = (2, 6, 22, 20)
+BODY_R = 2
+LEGS = (8, 16)
+HANDLE_TOP = 2
+HANDLE_R = 2
+# The lens: a ring of radius 3.4 about (18, 18), its handle out to (22.2, 22.2) along the
+# diagonal (it starts at 20.5, 20.5, inside the ring). Everything of the briefcase within GAP of
+# the lens's centre is cut away, so the lens sits in a clean gap (1.45 units wide).
+LENS = (18, 18, 3.4)
+LENS_TIP = (22.2, 22.2)
+GAP = 5.9
 # macOS 11 to 15 draw no shadow under an app icon: it is part of the artwork. Apple's template
 # shadow, as iccir reverse-engineered it from Apple's own templates (206 plate on a 256 canvas:
 # opacity 0.3, offset 3, CIGaussianBlur radius 3), on the 1024 grid: the plate in black at
@@ -124,9 +133,18 @@ SHADOW_BLUR = 12
 # 96 128 256. An exact stage is drawn 1:1; for the rest (28, 42, 84) the shell scales the next
 # larger one. 48 comes first: Tauri takes the first entry as the window icon.
 SIZES = [48, 16, 20, 24, 30, 32, 36, 40, 60, 64, 72, 80, 96, 128, 256]
-# Check width in pixels at the small stages (bolder than the plain scale, which would be
-# 1.1 px at 16).
-MIN_CHECK_W = {16: 1.88, 20: 2.15, 24: 2.34, 30: 2.53, 32: 2.6, 36: 2.74, 40: 2.86}
+# Stages up to HINTED px are hinted: the stroke the nearest whole number of pixels, its
+# straight edges on whole pixels. Rounding makes it bolder than the plain scale at 24 and 40;
+# at 20 (1.33 px) and 36 (2.38 px) one pixel more closes the handle's opening, so it stays.
+HINTED = 256
+# At least this much plate (px) between the lens and the cut briefcase.
+MIN_GAP = 1.0
+# Up to FLAT_CUT px the gap ends the strokes flat on whole pixels: an arc through a stroke of
+# one or two pixels is only a soft pixel next to the lens.
+FLAT_CUT = 40
+# Below INNER_LEGS px the handle's legs inside the body are left out: at 16 and 20 they turn
+# the body into a grid of one pixel lines.
+INNER_LEGS = 24
 # AND mask of the ICO stages: a pixel counts as transparent below half coverage (as icotool's
 # default threshold), so a reader that ignores alpha sees the plate in its right size.
 MASK_ALPHA = 128
@@ -177,7 +195,7 @@ class Path2:
             else:
                 _, (cx, cy), r, a0, a1, _ = seg
                 # An SVG arc is given by its end points: near a half circle a rounded end point
-                # moves the implied centre a lot (0.6 px for the check's caps at 1024), so an
+                # moves the implied centre a lot (0.6 px for a round cap at 1024), so an
                 # arc is written in parts of at most a quarter circle.
                 parts = max(1, math.ceil(abs(a1 - a0) / (math.pi / 2) - 1e-9))
                 for i in range(1, parts + 1):
@@ -219,11 +237,6 @@ def add(p, *terms):
         x += k * v[0]
         y += k * v[1]
     return (x, y)
-
-
-def unit(dx, dy):
-    n = math.hypot(dx, dy)
-    return (dx / n, dy / n)
 
 
 RIGHT, DOWN, LEFT, UP = (1, 0), (0, 1), (-1, 0), (0, -1)
@@ -274,117 +287,227 @@ def plate(g, mac=False):
     return (squircle if mac else rounded_plate)(*g['plate'], g['plate_r'])
 
 
-def folder(g):
-    """Folder outline, clockwise from the tab's top left corner, as the icon workshop draws it
-    (its `roundedPath`): every corner of the six-sided outline is cut back along both edges
-    and bent - a 90 degree corner FOLDER_CUT r before it in one cubic whose handles reach
-    FOLDER_HANDLE of the way to the corner, the slope's corners r tan(turn / 2) before it in
-    one quadratic with the corner as its control point."""
-    r = g['folder_r']
-    x0, x1, tab_y, y0, y1 = g['x0'], g['x1'], g['tab_y'], g['y0'], g['y1']
-    s0, s1 = g['slope_x0'], g['slope_x1']
-    corners = [(x0, tab_y), (s0, tab_y), (s1, y0), (x1, y0), (x1, y1), (x0, y1)]
-    path = None
-    for i, v in enumerate(corners):
-        before, after = corners[i - 1], corners[(i + 1) % len(corners)]
-        e, f = unit(v[0] - before[0], v[1] - before[1]), unit(after[0] - v[0], after[1] - v[1])
-        turn = math.acos(max(-1, min(1, e[0] * f[0] + e[1] * f[1])))
-        right = abs(turn - math.pi / 2) < 0.01
-        cut = FOLDER_CUT * r if right else r * math.tan(turn / 2)
-        a, b = add(v, (-cut, e)), add(v, (cut, f))
-        if path is None:
-            path = Path2(a)
-        else:
-            path.line(a)
-        # The handles: FOLDER_HANDLE of the way to the corner; a quadratic with the corner as
-        # its control point is the cubic with handles at two thirds.
-        k = FOLDER_HANDLE if right else 2 / 3
-        to_v = lambda q: (v[0] - q[0], v[1] - q[1])
-        path.cubic(add(a, (k, to_v(a))), add(b, (k, to_v(b))), b)
+def bend(path, centre, r, a0, a1):
+    """A rounded corner from angle a0 to a1 about `centre`; with no radius left (the inside
+    of a stroke bolder than its bend) the sharp corner itself."""
+    if r > 1e-9:
+        path.arc(centre, r, a0, a1)
+    else:
+        path.line(centre)
+
+
+def body(g):
+    """The briefcase's body, the stroked rounded rectangle, cut open by the lens's gap: one
+    outline. The outer edge clockwise from the cut in the bottom edge round to the cut in the
+    right edge, along the gap, the inner edge back, along the gap again."""
+    h = g['w'] / 2
+    x0, y0, x1, y1 = g['body']
+    gx, gy, gr = g['gap']
+    ox0, oy0, ox1, oy1, ro = x0 - h, y0 - h, x1 + h, y1 + h, g['body_r'] + h
+    ix0, iy0, ix1, iy1, ri = x0 + h, y0 + h, x1 - h, y1 - h, max(0.0, g['body_r'] - h)
+
+    def cut_x(y):
+        return gx - math.sqrt(gr * gr - (y - gy) ** 2)
+
+    def cut_y(x):
+        return gy - math.sqrt(gr * gr - (x - gx) ** 2)
+
+    if g['cuts']:
+        bottom_o = bottom_i = g['cuts']['bottom']
+        right_o = right_i = g['cuts']['right']
+    else:
+        bottom_o, bottom_i, right_o, right_i = cut_x(oy1), cut_x(iy1), cut_y(ox1), cut_y(ix1)
+    assert ox0 + ro < bottom_o < ox1 - ro and ix0 + ri < bottom_i < ix1 - ri, \
+        f"{g['s']}: the gap must cut the body's bottom edge where it is straight"
+    assert oy0 + ro < right_o < oy1 - ro and iy0 + ri < right_i < iy1 - ri, \
+        f"{g['s']}: the gap must cut the body's right edge where it is straight"
+    ang = lambda x, y: math.atan2(y - gy, x - gx)
+    half = math.pi / 2
+    path = Path2((bottom_o, oy1))
+    path.line((ox0 + ro, oy1))
+    bend(path, (ox0 + ro, oy1 - ro), ro, half, math.pi)
+    path.line((ox0, oy0 + ro))
+    bend(path, (ox0 + ro, oy0 + ro), ro, math.pi, 3 * half)
+    path.line((ox1 - ro, oy0))
+    bend(path, (ox1 - ro, oy0 + ro), ro, -half, 0.0)
+    path.line((ox1, right_o))
+    if g['cuts']:
+        path.line((ix1, right_i))
+    else:
+        path.arc((gx, gy), gr, ang(ox1, right_o), ang(ix1, right_i))
+    path.line((ix1, iy0 + ri))
+    bend(path, (ix1 - ri, iy0 + ri), ri, 0.0, -half)
+    path.line((ix0 + ri, iy0))
+    bend(path, (ix0 + ri, iy0 + ri), ri, -half, -math.pi)
+    path.line((ix0, iy1 - ri))
+    bend(path, (ix0 + ri, iy1 - ri), ri, math.pi, half)
+    path.line((bottom_i, iy1))
+    if not g['cuts']:
+        path.arc((gx, gy), gr, ang(bottom_i, iy1), ang(bottom_o, oy1))
     return path
 
 
-def check(g):
-    """Outline of the check stroke (round caps, round outer join), clockwise."""
-    (ax, ay), (bx, by), (cx, cy) = g['check']
-    h = g['check_w'] / 2
-    u1, u2 = unit(bx - ax, by - ay), unit(cx - bx, cy - by)
-    # Left normals in screen coordinates (y down): rotate the direction by -90 degrees.
-    n1, n2 = (u1[1], -u1[0]), (u2[1], -u2[0])
-    a_l, b_l1 = add((ax, ay), (h, n1)), add((bx, by), (h, n1))
-    b_l2, c_l = add((bx, by), (h, n2)), add((cx, cy), (h, n2))
-    # Inner corner: the two left offset lines meet.
-    den = u1[0] * u2[1] - u1[1] * u2[0]
-    t = ((b_l2[0] - a_l[0]) * u2[1] - (b_l2[1] - a_l[1]) * u2[0]) / den
-    inner = add(a_l, (t, u1))
-    ang = lambda v: math.atan2(v[1], v[0])
-    path = Path2(a_l)
-    path.line(inner)
-    path.line(c_l)
-    # Cap at C: half circle from the left side over the tip to the right side.
-    a0 = ang(n2)
-    path.arc((cx, cy), h, a0, a0 + math.pi)
-    path.line(add((bx, by), (-h, n2)))
-    # Outer join at B: from the right side of the second arm back to that of the first.
-    a0, a1 = ang((-n2[0], -n2[1])), ang((-n1[0], -n1[1]))
-    if a1 < a0:
-        a1 += 2 * math.pi
-    path.arc((bx, by), h, a0, a1)
-    path.line(add((ax, ay), (-h, n1)))
-    a0 = ang((-n1[0], -n1[1]))
-    path.arc((ax, ay), h, a0, a0 + math.pi)
+def handle(g):
+    """The handle above the body: both legs from the body's outer top edge up, joined by the
+    bar with round bends. One outline, clockwise from the left leg's foot."""
+    h = g['w'] / 2
+    lx, rx = g['legs']
+    ty, rc = g['handle_y'], g['handle_r']
+    foot = g['body'][1] - h
+    ro, ri = rc + h, max(0.0, rc - h)
+    half = math.pi / 2
+    path = Path2((lx - h, foot))
+    path.line((lx - h, ty + rc))
+    bend(path, (lx + rc, ty + rc), ro, math.pi, 3 * half)
+    path.line((rx - rc, ty - h))
+    bend(path, (rx - rc, ty + rc), ro, -half, 0.0)
+    path.line((rx + h, foot))
+    path.line((rx - h, foot))
+    path.line((rx - h, ty + h + ri))
+    bend(path, (rx - h - ri, ty + h + ri), ri, 0.0, -half)
+    path.line((lx + h + ri, ty + h))
+    bend(path, (lx + h + ri, ty + h + ri), ri, -half, -math.pi)
+    path.line((lx + h, foot))
     return path
+
+
+def legs(g):
+    """The handle's legs inside the body, from its inner top edge down to its inner bottom
+    edge; the right one ends at the lens's gap. None at the stages that leave them out."""
+    if not g['inner_legs']:
+        return []
+    h = g['w'] / 2
+    lx, rx = g['legs']
+    _, y0, _, y1 = g['body']
+    top, bottom = y0 + h, y1 - h
+    gx, gy, gr = g['gap']
+    assert math.hypot(max(0.0, gx - lx - h), max(0.0, gy - bottom)) > gr, \
+        f"{g['s']}: the gap reaches the left leg"
+    left = Path2((lx - h, top))
+    for p in [(lx + h, top), (lx + h, bottom), (lx - h, bottom)]:
+        left.line(p)
+    if g['cuts']:
+        ends = [g['cuts']['leg']] * 2
+    else:
+        ends = [gy - math.sqrt(gr * gr - (x - gx) ** 2) for x in (rx + h, rx - h)]
+    assert all(top < e < bottom for e in ends), f"{g['s']}: the gap must end the right leg"
+    right = Path2((rx - h, top))
+    right.line((rx + h, top))
+    right.line((rx + h, ends[0]))
+    if g['cuts']:
+        right.line((rx - h, ends[1]))
+    else:
+        right.arc((gx, gy), gr, math.atan2(ends[0] - gy, rx + h - gx),
+                  math.atan2(ends[1] - gy, rx - h - gx))
+    return [left, right]
+
+
+def lens(g):
+    """The lens: the ring's outer edge with the handle as one outline (clockwise round the
+    ring from the handle's upper side, out along its lower side, round its end, back), and the
+    ring's inner edge, a hole in it."""
+    cx, cy, ro, ri = g['lens']
+    h = g['w'] / 2
+    q = math.pi / 4  # the handle's direction, down to the right
+    side = math.asin(h / ro)
+    tip = (cx + g['lens_tip'] * math.cos(q), cy + g['lens_tip'] * math.sin(q))
+    path = Path2((cx + ro * math.cos(q + side), cy + ro * math.sin(q + side)))
+    path.arc((cx, cy), ro, q + side, q - side + 2 * math.pi)
+    path.line((tip[0] + h * math.cos(q - math.pi / 2), tip[1] + h * math.sin(q - math.pi / 2)))
+    path.arc(tip, h, q - math.pi / 2, q + math.pi / 2)
+    hole = Path2((cx + ri, cy))
+    hole.arc((cx, cy), ri, 0.0, 2 * math.pi)
+    return path, hole
+
+
+def glyph(g):
+    """The glyph as outlines with their weights: the briefcase's pieces (body, handle, legs)
+    meet but never overlap, the lens lies in the gap cut out of them, its hole counts -1 - so
+    the weighted sum is the exact union, in the raster stages and (even-odd) in the SVG."""
+    ring, hole = lens(g)
+    return [(p, 1) for p in [body(g), handle(g), *legs(g), ring]] + [(hole, -1)]
 
 
 # --------------------------------------------------------------------------- layout
 
 def layout(s, mac=False):
-    """Geometry of one stage in target pixels. Straight edges are placed proportionally on
-    the plate and rounded symmetrically to whole pixels; radii and the check scale freely
-    (check vertices on half pixels at small sizes)."""
+    """Geometry of one stage in target pixels. The glyph keeps its share of the plate, centred.
+    Up to HINTED px the stroke is a whole number of pixels with its straight edges on whole
+    pixels (the left half rounded, the right half mirrored about the plate's centre) and the
+    lens's ring a whole number of pixels across; radii scale freely. Up to FLAT_CUT px the gap
+    ends the strokes flat on whole pixels, the lens's hole is a quarter pixel wider and its
+    handle ends on a pixel centre."""
     # Windows: the plate runs to the edge of every stage (like the other apps in the taskbar);
     # macOS keeps Apple's margin, fractional below 1024 (3.125 at 32): its edge is anti-aliased
     # like any other, so every entry is the same icon scaled.
     margin = (MAC_PLATE if mac else PLATE) * s / 1024
-    plate = s - 2 * margin
-    unit_ = plate / (1024 - 2 * GRID)  # one unit of the glyph's grid on this plate
+    k = (s - 2 * margin) / 1024 * LUCIDE_UNIT  # one unit of the 24 grid in px
+    origin = s / 2 - LUCIDE / 2 * k
+    hinted = s <= HINTED
+    w = max(1, round(STROKE * k)) if hinted else STROKE * k
+    h = w / 2
 
-    def pos(v):
-        return margin + (v - GRID) * unit_
+    def stroke(u):
+        """The centre line of a stroke at u units: its edges on whole pixels when hinted."""
+        v = origin + u * k
+        return round(v - h) + h if hinted else v
 
-    def snap(v):
-        return round(pos(v)) if s <= 256 else pos(v)
+    # The briefcase is mirrored about the plate's centre.
+    assert BODY[0] + BODY[2] == LEGS[0] + LEGS[1] == LUCIDE
+    x0, lx, ty = stroke(BODY[0]), stroke(LEGS[0]), stroke(HANDLE_TOP)
+    y0, y1 = stroke(BODY[1]), stroke(BODY[3])
+    x1, rx = s - x0, s - lx
 
-    side = snap(FOLDER_X0) - margin
-    g = dict(
+    # The lens; its handle runs down the diagonal through its centre.
+    assert LENS_TIP[0] - LENS[0] == LENS_TIP[1] - LENS[1] > 0
+    lens_x, lens_y = origin + LENS[0] * k, origin + LENS[1] * k
+    lens_out, lens_in = (LENS[2] + STROKE / 2) * k, (LENS[2] - STROKE / 2) * k
+    tip = (LENS_TIP[0] - LENS[0]) * math.sqrt(2) * k
+    clear = (GAP - LENS[2] - STROKE / 2) * k
+    if hinted:
+        across = round(2 * (LENS[2] * k + h))
+        lens_x = round(lens_x - across / 2) + across / 2
+        lens_y = round(lens_y - across / 2) + across / 2
+        lens_out, lens_in = across / 2, across / 2 - w
+        clear = max(clear, MIN_GAP)
+    gap = (lens_x, lens_y, lens_out + clear)
+
+    cuts = None
+    if s <= FLAT_CUT:
+        # The hole's pixels clear, not a pale blur; the handle fills one more pixel instead
+        # of tinting two (the diagonal through the lens's centre meets the pixel centres).
+        lens_in += 0.25
+        tip = (math.floor(lens_x + tip / math.sqrt(2)) + 0.5 - lens_x) * math.sqrt(2)
+
+        def end(along, band, centre):
+            """Where the gap ends a stroke that runs towards the lens: the gap's circle at the
+            stroke's centre line, rounded, and at least MIN_GAP from the lens (diagonally
+            too) over the stroke's band of whole pixels."""
+            d = max(0.0, band - h - centre, centre - band - h)
+            reach = math.sqrt(max(0.0, (lens_out + MIN_GAP) ** 2 - d * d))
+            circle = along - math.sqrt(gap[2] ** 2 - (band - centre) ** 2)
+            return min(round(circle), math.floor(along - reach + 1e-9))
+
+        cuts = dict(bottom=end(lens_x, y1, lens_y), right=end(lens_y, x1, lens_x),
+                    leg=end(lens_y, rx, lens_x))
+    assert lens_in >= 1, f'{s}: the lens has no hole'
+    return dict(
         s=s,
         plate=(margin, margin, s - margin, s - margin),
         plate_r=(MAC_PLATE_R if mac else PLATE_R) * s / 1024,
-        x0=margin + side,
-        x1=s - margin - side,
-        tab_y=snap(TAB_Y),
-        y0=snap(BODY_Y0),
-        y1=snap(BODY_Y1),
-        slope_x0=pos(SLOPE_X0),
-        folder_r=FOLDER_R * unit_,
+        w=w,
+        body=(x0, y0, x1, y1),
+        body_r=BODY_R * k,
+        legs=(lx, rx),
+        handle_y=ty,
+        # The bends stay within the legs' straight run above the body.
+        handle_r=min(HANDLE_R * k, y0 - h - ty, (rx - lx) / 2),
+        inner_legs=s >= INNER_LEGS,
+        lens=(lens_x, lens_y, lens_out, lens_in),
+        lens_tip=tip,
+        gap=gap,
+        cuts=cuts,
     )
-    g['slope_x1'] = g['slope_x0'] + (g['y0'] - g['tab_y'])  # keep the slope at 45 degrees
-
-    def point(x, y):
-        """Same place in the (snapped) folder body as on the grid."""
-        px = g['x0'] + (x - FOLDER_X0) / (FOLDER_X1 - FOLDER_X0) * (g['x1'] - g['x0'])
-        py = g['y0'] + (y - BODY_Y0) / (BODY_Y1 - BODY_Y0) * (g['y1'] - g['y0'])
-        if s <= 64:
-            px, py = round(px * 2) / 2, round(py * 2) / 2
-        return (px, py)
-
-    g['check'] = [point(x, y) for x, y in CHECK_POINTS]
-    g['check_w'] = max(CHECK_W * unit_, MIN_CHECK_W.get(s, 0))
-    # The check stays a check: its arms keep the 45 degree directions after snapping.
-    (ax, ay), (bx, by), (cx, cy) = g['check']
-    g['check'][0] = (bx - (by - ay), ay)
-    g['check'][2] = (bx + (by - cy), cy)
-    return g
 
 
 # --------------------------------------------------------------------------- raster
@@ -486,8 +609,8 @@ def shadow(s, g):
 
 def render(s, mac=False):
     """One stage as straight (not premultiplied) RGBA. Colour and coverage are rendered apart:
-    the colour is the coral, mixed with white by the glyph's exact coverage (folder minus the
-    check), everywhere on the canvas; the alpha is the plate's exact coverage. A partly
+    the colour is the coral, mixed with white by the glyph's exact coverage (`glyph`),
+    everywhere on the canvas; the alpha is the plate's exact coverage. A partly
     covered edge pixel therefore carries the plate colour, never a mix with the black of an
     empty canvas. Transparent pixels are coloured by `bleed`.
 
@@ -496,12 +619,12 @@ def render(s, mac=False):
     is the same as without the shadow; around it only black shows through."""
     g = layout(s, mac)
     covered = coverage(s, [(plate(g, mac).points(), 1)])
-    glyph = coverage(s, [(folder(g).points(), 1), (check(g).points(), -1)])
+    white = coverage(s, [(path.points(), weight) for path, weight in glyph(g)])
     if not mac:
-        data = [(*glyph_colour(w), level(c)) for c, w in zip(covered, glyph)]
+        data = [(*glyph_colour(w), level(c)) for c, w in zip(covered, white)]
     else:
         data = []
-        for c, w, below in zip(covered, glyph, shadow(s, g)):
+        for c, w, below in zip(covered, white, shadow(s, g)):
             c = min(max(c, 0.0), 1.0)
             a = c + below * (1 - c)
             rgb = glyph_colour(w)
@@ -734,15 +857,20 @@ def hex_colour(c):
     return '#' + ''.join(f'{v:02X}' for v in c)
 
 
+def glyph_svg(g):
+    """The glyph's outlines as one SVG path (even-odd: the lens's hole is a hole)."""
+    return ''.join(path.svg(svg_number) for path, _ in glyph(g))
+
+
 def build_svg(out):
     g = layout(1024)
     fmt = svg_number
     x0, y0, x1, y1 = g['plate']
     out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{fmt(x0)} {fmt(y0)} {fmt(x1 - x0)} {fmt(y1 - y0)}" width="{fmt(x1 - x0)}" height="{fmt(y1 - y0)}">
   <!-- Generated by tools/icon.py - do not edit. The app icon as a vector: the same paths as
-       icon.ico, icon.icns and icon.png; the check is cut out of the folder (even-odd). -->
+       icon.ico, icon.icns and icon.png; briefcase and lens in one path (even-odd). -->
   <path fill="{hex_colour(BRAND)}" d="{plate(g).svg(fmt)}"/>
-  <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
+  <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{glyph_svg(g)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')
 
@@ -750,8 +878,8 @@ def build_svg(out):
 def build_icon_composer(package):
     """macOS 26: an Icon Composer package (`<name>.icon`: icon.json and its Assets). The system
     draws the shape, the glass, the lighting and the shadow itself, so the package holds only
-    the background fill (the coral) and one group with one layer, the white glyph with the
-    check cut out. The glyph is laid out on the full 1024 square as on the full-bleed plate:
+    the background fill (the coral) and one group with one layer, the white glyph (briefcase
+    and lens). The glyph is laid out on the full 1024 square as on the full-bleed plate:
     the system's own mask takes the plate's place. No mask, no shadow baked in. The macOS CI
     compiles it with actool into Assets.car (see .github/workflows/ci.yml); icon.icns stays
     the icon of macOS 14 and 15. The keys follow Tauri's own example (examples/.icons)."""
@@ -760,8 +888,8 @@ def build_icon_composer(package):
     (package / 'Assets').mkdir(parents=True, exist_ok=True)
     (package / 'Assets' / 'glyph.svg').write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!-- Generated by tools/icon.py - do not edit. The glyph of the macOS 26 icon: the same path
-       as in app-icon.svg, on the full square; the check is cut out of the folder. -->
-  <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
+       as in app-icon.svg, on the full square: the briefcase with the lens. -->
+  <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{glyph_svg(g)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')
     fill = ','.join(f'{c / 255:.5f}' for c in BRAND)

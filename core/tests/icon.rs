@@ -396,8 +396,9 @@ fn mac_icons_match_generator() {
     assert_eq!(png, largest, "icon.png is the 1024 entry of the ICNS");
 }
 
-/// The brand mark in the UI is the generator's vector: same plate crop, the check cut out of
-/// the folder, one flat colour each (the app's --brand and --brand-glyph).
+/// The brand mark in the UI is the generator's vector: same plate crop, the briefcase with the
+/// lens as one path (the lens's hole even-odd), one flat colour each (the app's --brand and
+/// --brand-glyph).
 #[test]
 fn ui_brand_mark_is_the_generated_vector() {
     let svg = std::fs::read_to_string(repo("ui/src/assets/app-icon.svg")).unwrap();
@@ -411,7 +412,7 @@ fn ui_brand_mark_is_the_generated_vector() {
     );
     assert!(
         svg.contains(r#"fill-rule="evenodd""#),
-        "the check is a cut-out"
+        "the lens's hole is a cut-out"
     );
     let plate = format!(r#"<path fill="{}" d="#, palette::BRAND.hex());
     let glyph = format!(
@@ -424,11 +425,7 @@ fn ui_brand_mark_is_the_generated_vector() {
         "the glyph is --brand-glyph: npm run regen"
     );
     assert!(!svg.contains("Gradient"), "a gradient is back");
-    assert_eq!(
-        svg.matches("<path").count(),
-        2,
-        "plate and folder with check"
-    );
+    assert_eq!(svg.matches("<path").count(), 2, "plate and glyph");
 }
 
 /// The `d` attributes of an SVG's paths, in order.
@@ -485,7 +482,7 @@ fn icon_composer_package_is_the_glyph() {
     assert_eq!(
         svg_paths(&glyph),
         svg_paths(&mark)[1..],
-        "the glyph is the brand mark's folder with the check"
+        "the glyph is the brand mark's briefcase with the lens"
     );
 
     let text = std::fs::read_to_string(repo("src-tauri/tauri.macos.conf.json")).unwrap();
