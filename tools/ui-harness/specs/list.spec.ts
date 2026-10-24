@@ -14,6 +14,7 @@ import {
   calls,
   expect,
   expectShot,
+  NOW,
   open,
   runFinished,
   settle,
@@ -76,7 +77,7 @@ async function slowSearch(page: Page, ms: number): Promise<void> {
   }, `${ms}ms`);
 }
 
-/** The rows outside the fold as the stub lists them: the inbox by match unless said. */
+/** The rows outside the fold as the stub lists them: the inbox by date unless said. */
 async function inbox(page: Page, query: Partial<JobQuery> = {}): Promise<string[]> {
   return (await stubList(page, query)).active;
 }
@@ -151,17 +152,33 @@ test.describe('header', () => {
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
     await expect(funnel(page)).toBeVisible();
     await expect(page.getByTestId('place-action')).toHaveCount(0);
-    // Papierkorb: "Papierkorb leeren" in the action's place.
-    await openPlace(page, 'inbox');
-    for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
-      await viaMenu(page, 'trash', key);
-      await settleMoves(page);
-    }
+    // Papierkorb: the search, no funnel (it has no filter), no action ("Papierkorb leeren" is
+    // gone: deleting for good goes job by job, asking first).
     await openPlace(page, 'trash');
-    const empty = page.getByTestId('empty-trash');
-    await expect(empty).toHaveText(T.actions.emptyTrash);
+    await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.trash);
+    await expect(funnel(page)).toHaveCount(0);
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
+    await expect(page.getByTestId('empty-trash')).toHaveCount(0);
     // No second row, no count line.
     await expect(page.getByTestId('place-count')).toHaveCount(0);
+  });
+
+  test('Jobs suchen and Abbrechen keep one width, so the swap moves nothing', async ({ page }) => {
+    for (const platform of [WIN, MAC]) {
+      await open(page, `${platform}&tick=15`);
+      const fetch = page.getByTestId('fetch');
+      const before = (await fetch.boundingBox())!;
+      await page.evaluate(() => (window.__harness.holdAfter = 3));
+      await fetch.click();
+      const cancel = page.getByTestId('cancel-run');
+      await expect(cancel).toHaveText(T.toolbar.cancel);
+      const after = (await cancel.boundingBox())!;
+      expect(Math.round(after.width)).toBe(Math.round(before.width));
+      expect(Math.round(after.x + after.width)).toBe(Math.round(before.x + before.width));
+      await cancel.click();
+      await runFinished(page);
+      await page.evaluate(() => (window.__harness.holdAfter = null));
+    }
   });
 
   test('one fetch, Jobs suchen, with or without a mailbox; Abbrechen takes its place', async ({
@@ -189,10 +206,8 @@ test.describe('header', () => {
     await expect(page.getByTestId('fetch')).toBeEnabled();
   });
 
-  test('while a fetch goes Abbrechen stands in every place', async ({ page }) => {
+  test('while a fetch goes Abbrechen and the strip stand in every place', async ({ page }) => {
     await open(page, `${WIN}&tick=15`);
-    await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
     await page.evaluate(() => (window.__harness.holdAfter = 3));
     await page.getByTestId('fetch').click();
     const cancel = page.getByTestId('cancel-run');
@@ -200,13 +215,14 @@ test.describe('header', () => {
     for (const place of ['archive', 'trash'] as const) {
       await openPlace(page, place);
       await expect(cancel, place).toBeVisible();
+      await expect(page.getByTestId('run-line'), place).toBeVisible();
     }
-    // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
-    await expect(page.getByTestId('empty-trash')).toHaveCount(0);
     await cancel.click();
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
-    await expect(page.getByTestId('empty-trash')).toBeVisible();
+    // Jobs suchen is Aktuell's only.
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
+    await expect(page.getByTestId('run-line')).toHaveCount(0);
     await openPlace(page, 'archive');
     await expect(page.getByTestId('place-action')).toHaveCount(0);
   });
@@ -256,35 +272,57 @@ test.describe('header', () => {
     expect((await calls(page, 'list_jobs')).length).toBe(loads);
   });
 
-  test('an empty place has nothing to search, order or filter; the open inbox job closes there', async ({
+  test('an empty place takes the whole width and keeps its search; the open inbox job closes there', async ({
     page,
   }) => {
+    await open(page, `${WIN}&scenario=fresh`);
+    // Aktuell before the first search: the briefcase, a heading and one sentence, at the top
+    // of the full width; the search and the funnel stand, nothing beside the list.
+    const inbox = page.getByTestId('empty-all');
+    await expect(inbox.locator('h3')).toHaveText(T.list.empty.inbox.heading);
+    await expect(inbox.locator('p')).toHaveText(T.list.empty.inbox.text);
+    for (const id of ['search', 'filter', 'fetch']) {
+      await expect(page.getByTestId(id), id).toBeVisible();
+    }
+    await expect(page.getByTestId('reader-pane')).toHaveCount(0);
+    await expect(page.getByTestId('list-splitter')).toHaveCount(0);
+    const scroll = (await page.getByTestId('list-scroll').boundingBox())!;
+    const sheet = (await page.getByTestId('jobs').boundingBox())!;
+    expect(Math.round(scroll.x + scroll.width)).toBe(Math.round(sheet.x + sheet.width));
+    // The Archiv and the Papierkorb, each in its words; the Papierkorb without the funnel.
+    for (const place of ['archive', 'trash'] as const) {
+      await openPlace(page, place);
+      const empty = page.getByTestId(`empty-place-${place}`);
+      await expect(empty.locator('h3')).toHaveText(T.list.empty[place].heading);
+      await expect(empty.locator('p')).toHaveText(T.list.empty[place].text);
+      await expect(page.getByTestId('search')).toBeVisible();
+      await expect(funnel(page)).toHaveCount(place === 'trash' ? 0 : 1);
+      await expect(page.getByTestId('reader-pane')).toHaveCount(0);
+    }
+    // A job open in Aktuell closes in another place.
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
-    await openPlace(page, 'trash');
+    await openPlace(page, 'archive');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
-    await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
-    for (const id of ['search', 'filter', 'place-action']) {
-      await expect(page.getByTestId(id), id).toHaveCount(0);
-    }
-    // The list says it: the reader beside it adds no second empty state.
-    await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
 
-  test('a fetch into an empty Aktuell shows the search row, with the run line below it', async ({
+  test('a fetch into an empty Aktuell moves nothing: the strip comes under the search', async ({
     page,
   }) => {
     for (const platform of [WIN, MAC]) {
       await open(page, `${platform}&scenario=empty&tick=40`);
-      await expect(page.getByTestId('search')).toHaveCount(0);
+      const before = (await page.getByTestId('search').boundingBox())!;
       await page.evaluate(() => (window.__harness.holdAfter = 4));
       await page.getByTestId('fetch').click();
       const line = page.getByTestId('run-line');
       await expect(line).toBeVisible();
-      // The row under the tabs holds the search and the funnel; the run line follows it.
-      await expect(page.getByTestId('search')).toBeVisible();
+      // While it fills Aktuell the empty state says so.
+      await expect(page.getByTestId('empty-all').locator('p')).toHaveText(
+        T.list.empty.running.text,
+      );
       await expect(funnel(page)).toBeVisible();
       const search = (await page.getByTestId('search').boundingBox())!;
+      expect(search.y).toBe(before.y);
       expect((await line.boundingBox())!.y).toBeGreaterThanOrEqual(search.y + search.height);
       // The first jobs come in.
       await page.evaluate(() => (window.__harness.holdAfter = null));
@@ -388,10 +426,10 @@ test.describe('filter', () => {
   }) => {
     await open(page, WIN);
     const menu = await openFilter(page);
-    await menuItem(page, 'sort-newest').click();
+    await menuItem(page, 'sort-match').click();
     await expect(menu).toBeVisible();
-    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
-    await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
     await menuItem(page, 'portal-linkedin').click();
     await expect(menu).toBeVisible();
     await expect(menuItem(page, 'portal-linkedin')).toHaveAttribute('aria-checked', 'true');
@@ -399,7 +437,7 @@ test.describe('filter', () => {
     // Both apply at once, the list follows while the menu is open.
     await expect
       .poll(() => listed(page))
-      .toEqual(await inbox(page, { sort: 'newest', portals: ['linkedin'] }));
+      .toEqual(await inbox(page, { sort: 'match', portals: ['linkedin'] }));
     // The way back at the end turns on once a filter is on; the menu keeps its height.
     const items = menu.locator('[role^="menuitem"]');
     await expect(items.last()).toHaveText(T.toolbar.filterReset);
@@ -425,7 +463,7 @@ test.describe('filter', () => {
     // Kept: the next start has the same order and filter.
     await open(page, WIN);
     expect(await lastQuery(page)).toMatchObject({
-      sort: 'newest',
+      sort: 'match',
       portals: ['linkedin'],
       bands: ['mid'],
     });
@@ -433,7 +471,7 @@ test.describe('filter', () => {
 
   test('the order sets no chip; Filter zurücksetzen keeps it, then closes', async ({ page }) => {
     await open(page, WIN);
-    await chooseSort(page, 'newest');
+    await chooseSort(page, 'match');
     await expect(chips(page)).toHaveCount(0);
     await openFilter(page);
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
@@ -442,19 +480,17 @@ test.describe('filter', () => {
     await menuItem(page, 'filter-reset').click();
     await expect(page.getByTestId('menu')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
-    expect(await checkedSort(page)).toBe('newest');
-    await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'newest' }));
+    expect(await checkedSort(page)).toBe('match');
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'match' }));
   });
 
-  test('the same control in Aktuell, the Archiv and the Papierkorb, kept for every list', async ({
+  test('the same control in Aktuell and the Archiv, kept for every list; none in the Papierkorb', async ({
     page,
   }) => {
     await open(page, WIN);
-    await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
-    await chooseSort(page, 'newest');
+    await chooseSort(page, 'match');
     await chooseFilter(page, 'portal-freelancermap');
-    for (const place of ['inbox', 'archive', 'trash'] as const) {
+    for (const place of ['inbox', 'archive'] as const) {
       await openPlace(page, place);
       await expect(page.getByTestId('sort')).toHaveCount(0);
       await expect(chip(page, 'portal-freelancermap')).toHaveText(
@@ -462,17 +498,25 @@ test.describe('filter', () => {
       );
       expect(await lastQuery(page)).toMatchObject({
         place,
-        sort: 'newest',
+        sort: 'match',
         portals: ['freelancermap'],
       });
       const menu = await openFilter(page);
       await expect(menu.getByTestId('menu-heading')).toHaveText(
         filterMenu().flatMap((group) => (group.heading === null ? [] : [group.heading])),
       );
-      await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
+      await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
       await expect(menuItem(page, 'portal-freelancermap')).toHaveAttribute('aria-checked', 'true');
       await page.keyboard.press('Escape');
     }
+    // The Papierkorb has no funnel and no filter (decision 25): every job of it, no chip; the
+    // filter stays kept for the other places.
+    await openPlace(page, 'trash');
+    await expect(funnel(page)).toHaveCount(0);
+    await expect(chips(page)).toHaveCount(0);
+    expect(await lastQuery(page)).toMatchObject({ place: 'trash', portals: [], bands: [] });
+    await openPlace(page, 'inbox');
+    await expect(chip(page, 'portal-freelancermap')).toBeVisible();
   });
 
   test('the chips follow the menu: the groups in its order, one chip per choice', async ({
@@ -843,9 +887,9 @@ test.describe('filter', () => {
     await expect(row(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
     await chooseFilter(page, 'portal-linkedin');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
-    expect(await listed(page)).toEqual(
-      await inbox(page, { bands: ['high'], portals: ['linkedin'] }),
-    );
+    await expect
+      .poll(() => listed(page))
+      .toEqual(await inbox(page, { bands: ['high'], portals: ['linkedin'] }));
   });
 
   test('macOS: the same funnel, menu and chips', async ({ page }) => {
@@ -859,7 +903,7 @@ test.describe('filter', () => {
 /* ========================================================================= list */
 
 test.describe('one list', () => {
-  test('the inbox: the scored jobs, then the ones without a score in their open section, the dot on the unopened', async ({
+  test('the inbox: the scored jobs, then the ones without a score in their open section, the new ones in 650', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -888,12 +932,17 @@ test.describe('one list', () => {
     ]) {
       await expect(page.getByTestId(id), id).toHaveCount(0);
     }
-    const dotted = await rows(page).evaluateAll((items) =>
+    // A new job: its title in 650 and a hidden "Neu"; no dot.
+    await expect(list(page).locator('.dot')).toHaveCount(0);
+    const fresh = await rows(page).evaluateAll((items) =>
       items
-        .filter((item) => item.closest('.job')?.querySelector('.dot') != null)
+        .filter((item) => item.querySelector('.title.unread') != null)
         .map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
     );
-    expect(dotted.sort()).toEqual(
+    const unseen = rows(page).filter({ has: page.locator('.unseen') });
+    await expect(unseen.first().locator('.unseen')).toHaveText(T.job.unread);
+    expect(await unseen.count()).toBe(fresh.length);
+    expect(fresh.sort()).toEqual(
       jobs
         .filter((job) => job.unread && !excluded(job))
         .map(keyOf)
@@ -901,7 +950,7 @@ test.describe('one list', () => {
     );
   });
 
-  test('opening a job reads it once, on a real click; the row stays, its dot goes', async ({
+  test('opening a job reads it once, on a real click; the row stays, its title steps down', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -915,7 +964,8 @@ test.describe('one list', () => {
       { key: { portal: 'linkedin', id: '4100200301' } },
       { key: { portal: 'freelancermap', id: '2802' } },
     ]);
-    await expect(list(page).locator('.job', { has: first }).locator('.dot')).toHaveCount(0);
+    await expect(first.locator('.title')).not.toHaveClass(/unread/);
+    await expect(first.locator('.unseen')).toHaveCount(0);
     await expect(first).toBeVisible();
     await expect.poll(() => listed(page)).toEqual(all);
     // Back from another view the list is the same.
@@ -924,19 +974,19 @@ test.describe('one list', () => {
     await expect.poll(() => listed(page)).toEqual(all);
   });
 
-  test('new is unread and not excluded: the dot in every place', async ({ page }) => {
+  test('new is unread and not excluded: the heavier title in every place', async ({ page }) => {
     await open(page, WIN);
     const { jobs } = await stubList(page);
     const isNew = (job: JobView): boolean => job.unread && !excluded(job);
     const fresh = jobs.filter(isNew).map(keyOf).sort();
-    /** The keys of the mounted rows that carry the dot (the fold's too). */
+    /** The keys of the mounted rows that are marked new (the fold's too). */
     const dotted = async (): Promise<string[]> =>
       (
         await list(page)
           .locator('[data-testid^="job-row-"]')
           .evaluateAll((items) =>
             items
-              .filter((item) => item.closest('.job')?.querySelector('.dot') != null)
+              .filter((item) => item.querySelector('.title.unread') != null)
               .map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
           )
       ).sort();
@@ -944,7 +994,7 @@ test.describe('one list', () => {
     expect(jobs.some((job) => job.unread && excluded(job))).toBe(true);
     await unfoldExcluded(page);
     expect(await dotted()).toEqual(fresh);
-    // A new job moved to the Archiv keeps its dot there, like a mail app's unread mark.
+    // A new job moved to the Archiv stays new there, like a mail app's unread mark.
     const moved = fresh[0]!;
     await viaMenu(page, 'archive', moved);
     await settleMoves(page);
@@ -952,17 +1002,16 @@ test.describe('one list', () => {
     await expect.poll(dotted).toContain(moved);
   });
 
-  test('the excluded jobs are one folded section at the end, counted per place; kept open', async ({
+  test('the excluded jobs are one folded section at the end of each place, no count; kept open', async ({
     page,
   }) => {
     await open(page, WIN);
     const { active, excluded: out } = await stubList(page);
     expect(out.length).toBeGreaterThan(1);
     const divider = page.getByTestId('excluded-divider');
-    const count = divider.locator('.count');
-    // Its count after the label (no brackets).
-    await expect(divider).toHaveText(`${T.list.excluded}${out.length}`);
-    await expect(count).toHaveText(String(out.length));
+    // Its label only (no count), its chevron at the end.
+    await expect(divider).toHaveText(T.list.excluded);
+    await expect(divider.locator('.count')).toHaveCount(0);
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
     const last = (await rows(page).last().boundingBox())!;
@@ -984,11 +1033,11 @@ test.describe('one list', () => {
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
     await expect(row(page, 'linkedin-4100200306')).toHaveCount(0);
     expect(await listed(page)).toEqual(active);
-    // Each place counts its own excluded jobs.
+    // Each place has its own: one excluded job archived is in the Archiv's section.
     await viaMenu(page, 'archive', out[0]!);
-    await expect(count).toHaveText(String(out.length - 1));
+    await expect(excludedRows(page)).toHaveCount(out.length - 1);
     await openPlace(page, 'archive');
-    await expect(count).toHaveText('1');
+    await expect(excludedRows(page)).toHaveCount(1);
   });
 
   test('the job open when the app closed opens again, its place with it, while it lies there', async ({
@@ -1044,15 +1093,15 @@ test.describe('one list', () => {
   test('the order is kept for every list and keeps the open job', async ({ page }) => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2803');
-    await chooseSort(page, 'newest');
-    const newest = await inbox(page, { sort: 'newest' });
-    await expect.poll(() => listed(page)).toEqual(newest);
+    await chooseSort(page, 'match');
+    const byMatch = await inbox(page, { sort: 'match' });
+    await expect.poll(() => listed(page)).toEqual(byMatch);
     await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
     await expect(row(page, 'freelancermap-2803')).toBeInViewport();
     await openPlace(page, 'archive');
-    expect(await checkedSort(page)).toBe('newest');
+    expect(await checkedSort(page)).toBe('match');
     await open(page, WIN);
-    expect(await lastQuery(page)).toMatchObject({ sort: 'newest' });
+    expect(await lastQuery(page)).toMatchObject({ sort: 'match' });
   });
 
   test('paging: the next page follows on from the last and skips no job', async ({ page }) => {
@@ -1088,21 +1137,25 @@ test.describe('one list', () => {
     await expect(skeleton).toHaveCount(0);
   });
 
-  test('an empty inbox says what comes in one sentence, the header fetches', async ({ page }) => {
-    // Before the first search: one plain sentence, no heading, no duration.
+  test('an empty inbox says what comes in a heading and one sentence, the header fetches', async ({
+    page,
+  }) => {
+    const says = async (words: { heading: string; text: string }): Promise<void> => {
+      const shown = page.getByTestId('empty-all');
+      await expect(shown.locator('h3')).toHaveText(words.heading);
+      await expect(shown.locator('p')).toHaveText(words.text);
+    };
+    // Before the first search.
     await open(page, `${WIN}&scenario=fresh`);
-    await expect(page.getByTestId('empty-all')).toHaveText(T.list.emptyText);
-    expect(T.list.emptyText).toBe('Starte eine Suche mit „Jobs suchen“.');
-    await expect(page.getByTestId('empty-all').locator('h2')).toHaveCount(0);
+    await says(T.list.empty.inbox);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
     // After a search that found nothing that fits: that, and the way to the profile.
     await open(page, `${WIN}&scenario=empty`);
     const empty = page.getByTestId('empty-all');
-    await expect(empty).toBeVisible();
-    await expect(empty.locator('.text')).toHaveText(T.list.noMatch);
+    await says(T.list.empty.noMatch);
     // Its jobs all archived or deleted: no hint that the profile does not fit.
     await open(page, `${WIN}&scenario=archived`);
-    await expect(page.getByTestId('empty-all')).toHaveText(T.list.noActive);
+    await says(T.list.empty.noActive);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
     await open(page, `${WIN}&scenario=empty`);
     // One way on: the header's "Jobs suchen" stands right above it.
@@ -1118,7 +1171,7 @@ test.describe('one list', () => {
       request: { kind: 'fetch' },
     });
     // While the fetch goes the list says the jobs come, and offers no second fetch.
-    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyWhileRun);
+    await says(T.list.empty.running);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
   });
 
@@ -1127,8 +1180,9 @@ test.describe('one list', () => {
   }) => {
     await open(page, `${WIN}&scenario=no-profile`);
     const notice = page.getByTestId('no-profile');
-    await expect(notice).toHaveText(new RegExp(T.list.noProfile.replace('.', '\\.')));
-    await expect(page.getByTestId('place-reader')).toHaveText(T.place.pickJob);
+    await expect(notice).toContainText(T.list.noProfile);
+    await expect(notice).toContainText(T.list.noProfileText);
+    await expect(page.getByTestId('place-reader')).toContainText(T.place.pickJob);
     expect((await calls(page, 'list_jobs'))[0]?.[1]).toMatchObject({
       query: { sort: 'newest' },
     });
@@ -1197,6 +1251,118 @@ test.describe('one list', () => {
     await openJob(page, 'freelancermap-2801');
     expect(await visibleCount(page, primary)).toBeLessThanOrEqual(1);
   });
+});
+
+/* ========================================================================= days */
+
+test.describe('days', () => {
+  /** The days' headings of the list, in their order. */
+  const headings = (page: Page): Promise<string[]> =>
+    list(page).getByTestId('day-heading').allTextContents();
+  /** The list's head draws its hairline. */
+  const lined = (page: Page): Promise<boolean> =>
+    page
+      .getByTestId('list-header')
+      .locator('header')
+      .evaluate((node) => node.classList.contains('line'));
+
+  test('by date (the default): Heute, Gestern, then the weekday and date; none in the sections', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    expect(await checkedSort(page)).toBe('newest');
+    await expect.poll(() => listed(page)).toEqual(await inbox(page));
+    // The fixed clock stands at Thursday 24.09., 09:30 in Berlin; a job that came at 00:30
+    // local time (22:30 UTC the day before) is today's.
+    expect(await headings(page)).toEqual(['Heute', 'Gestern', 'Di 22.09.']);
+    // Within a day the open ads before the closed one, then the best match.
+    const { jobs } = await stubList(page);
+    const day = jobs.filter((job) => job.firstSeenAt.startsWith('2026-09-22'));
+    expect(day.map((job) => job.closed)).toEqual([false, true]);
+    // The sections have no days.
+    await unfoldExcluded(page);
+    for (const id of ['unscored-rows', 'excluded-rows']) {
+      await expect(page.getByTestId(id).getByTestId('day-heading'), id).toHaveCount(0);
+    }
+    // The flat orders have none.
+    await chooseSort(page, 'match');
+    await expect(list(page).getByTestId('day-heading')).toHaveCount(0);
+    await chooseSort(page, 'rate');
+    await expect(list(page).getByTestId('day-heading')).toHaveCount(0);
+  });
+
+  test('the Papierkorb heads its days by when the jobs went there', async ({ page }) => {
+    await open(page, WIN);
+    await viaMenu(page, 'trash', 'freelancermap-2805');
+    await settleMoves(page);
+    await viaMenu(page, 'trash', 'linkedin-4100200303');
+    await settleMoves(page);
+    await openPlace(page, 'trash');
+    // Two jobs went there before (today, yesterday), one now (scored, it joins today).
+    expect(await headings(page)).toEqual(['Heute', 'Gestern']);
+    const today = list(page).locator('.day').first();
+    await expect(today.getByTestId('job-row-linkedin-4100200303')).toBeVisible();
+  });
+
+  test('a day folds with its last row', async ({ page }) => {
+    await open(page, WIN);
+    await openPlace(page, 'archive');
+    expect(await headings(page)).toEqual(['Di 22.09.', 'Fr 11.09.']);
+    await viaMenu(page, 'unarchive', 'linkedin-4100200306');
+    await expect.poll(() => headings(page)).toEqual(['Fr 11.09.']);
+  });
+
+  test('the headings roll over at midnight', async ({ page }) => {
+    await open(page, WIN);
+    expect((await headings(page))[0]).toBe('Heute');
+    await page.clock.setFixedTime(new Date(NOW.getTime() + 24 * 3_600_000));
+    await page.evaluate(() => dispatchEvent(new Event('focus')));
+    await expect.poll(async () => (await headings(page))[0]).toBe('Gestern');
+    expect((await headings(page))[1]).toBe('Mi 23.09.');
+  });
+
+  test('a heading sticks while its rows pass; the head draws its line only where none sticks', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, WIN);
+    const scroller = page.getByTestId('list-scroll');
+    const top = (await scroller.boundingBox())!.y;
+    expect(await lined(page)).toBe(false);
+    // A little down: today's heading sticks at the top, the head has no line.
+    await scroller.evaluate((node) => node.scrollTo({ top: 60 }));
+    await expect
+      .poll(async () =>
+        Math.round((await list(page).getByTestId('day-heading').first().boundingBox())!.y),
+      )
+      .toBe(Math.round(top));
+    await expect.poll(() => lined(page)).toBe(false);
+    // Past the days (the sections at the top): the line.
+    await scroller.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
+    await expect.poll(() => lined(page)).toBe(true);
+    // A flat order keeps the line once the list scrolled.
+    await scroller.evaluate((node) => node.scrollTo({ top: 0 }));
+    await chooseSort(page, 'match');
+    await expect.poll(() => lined(page)).toBe(false);
+    await scroller.evaluate((node) => node.scrollTo({ top: 60 }));
+    await expect.poll(() => lined(page)).toBe(true);
+  });
+});
+
+test('a profile that lacks fields: Jobs suchen names them, the state box leads to the Profil', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=profile-incomplete`);
+  const fetch = page.getByTestId('fetch');
+  await expect(fetch).toHaveAttribute('aria-disabled', 'true');
+  await fetch.hover();
+  await expect(page.getByRole('tooltip')).toHaveText(
+    T.toolbar.needsFields([T.profile.field.roles, T.profile.field.languages]),
+  );
+  const box = page.getByTestId('no-profile');
+  await expect(box).toContainText(T.list.profileEmpty);
+  await box.getByRole('button', { name: T.list.completeProfile }).click();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
 });
 
 /* ========================================================================= rows */
@@ -1351,7 +1517,7 @@ test.describe('search', () => {
     // Named like its tab.
     await expect(button.locator('.label')).toHaveText(T.place.archive);
     // The one way on stands under the sentence of the empty state.
-    const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
+    const sentence = (await page.getByTestId('empty-search').locator('p').boundingBox())!;
     expect((await button.boundingBox())!.y).toBeGreaterThanOrEqual(sentence.y + sentence.height);
     // The reader beside a search without hits has nothing to choose from: it says nothing.
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
@@ -1428,7 +1594,9 @@ test.describe('moves and undo', () => {
     await expect(row(page, 'freelancermap-2802')).toHaveCount(1);
   });
 
-  test('the Papierkorb: restore, delete for good and empty it, asking first', async ({ page }) => {
+  test('the Papierkorb: restore, and delete for good job by job, asking first', async ({
+    page,
+  }) => {
     await open(page, WIN);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
       await viaMenu(page, 'trash', key);
@@ -1436,15 +1604,19 @@ test.describe('moves and undo', () => {
     }
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await openPlace(page, 'trash');
-    await expect(page.getByTestId('place-reader')).toHaveText(T.place.pickJob);
+    await expect(page.getByTestId('place-reader')).toContainText(T.place.pickJob);
+    // No "Papierkorb leeren": deleting for good goes job by job.
+    await expect(page.getByTestId('empty-trash')).toHaveCount(0);
     await viaMenu(page, 'restore', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
     await settleMoves(page);
-    // Endgültig löschen asks first, with its own verb on the button and no title.
+    // Endgültig löschen asks first: the job by its title, what it means, and "Löschen".
+    const title = await row(page, 'freelancermap-2803').locator('.title').innerText();
     await viaMenu(page, 'purge', 'freelancermap-2803');
     const dialog = page.getByTestId('dialog-purge');
     await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading);
+    await expect(dialog).toContainText(T.actions.purgeNamed(title));
     await dialog.getByRole('button', { name: T.actions.purgeConfirm, exact: true }).click();
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
     await expect(dialog).toHaveCount(0);
@@ -1452,66 +1624,29 @@ test.describe('moves and undo', () => {
     expect((await calls(page, 'purge_jobs')).map(([, args]) => args)).toEqual([
       { keys: [{ portal: 'freelancermap', id: '2803' }] },
     ]);
-    // The last row went: the focus is on the Papierkorb's tab, not on the window.
-    await expect(page.getByTestId('place-trash')).toBeFocused();
-    // Papierkorb leeren: two jobs there, a search that finds one: both go, and it says so.
-    await openPlace(page, 'inbox');
-    for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
-      await viaMenu(page, 'trash', key);
-      await settleMoves(page);
-    }
-    await openPlace(page, 'trash');
-    await page.getByTestId('search').fill('Treasury');
-    await expect(rows(page)).toHaveCount(1);
-    await page.getByTestId('empty-trash').click();
-    await expect(page.getByTestId('dialog-empty-trash')).toContainText(T.actions.emptyTrashText(2));
-    await page
-      .getByTestId('dialog-empty-trash')
-      .getByRole('button', { name: T.actions.emptyTrash, exact: true })
-      .click();
-    await expect(page.getByTestId('dialog-empty-trash')).toBeHidden();
-    await page.getByTestId('search').fill('');
-    await expect(page.getByTestId('empty-place-trash')).toBeVisible();
-    expect(await calls(page, 'empty_trash')).toHaveLength(1);
+    expect(await calls(page, 'empty_trash')).toHaveLength(0);
   });
 
-  test('deleting for good hands the focus on; emptying names its count until it is gone', async ({
-    page,
-  }) => {
+  test('deleting for good hands the focus on: the row below, then the tab', async ({ page }) => {
     await open(page, WIN);
-    for (const key of ['freelancermap-2802', 'freelancermap-2803', 'freelancermap-2804']) {
-      await viaMenu(page, 'trash', key);
+    await openPlace(page, 'trash');
+    const keys = await listed(page);
+    expect(keys.length).toBeGreaterThan(1);
+    // Endgültig löschen of a row: after the dialog the focus is on the row below.
+    for (const [index, key] of keys.entries()) {
+      await viaMenu(page, 'purge', key);
+      await page
+        .getByTestId('dialog-purge')
+        .getByRole('button', { name: T.actions.purgeConfirm, exact: true })
+        .click();
+      await expect(row(page, key)).toHaveCount(0);
+      const next = keys[index + 1];
+      if (next !== undefined) await expect(row(page, next)).toBeFocused();
       await settleMoves(page);
     }
-    await openPlace(page, 'trash');
-    const [first, second] = await listed(page);
-    // Endgültig löschen of a row: after the dialog the focus is on the row below.
-    await viaMenu(page, 'purge', first!);
-    await page
-      .getByTestId('dialog-purge')
-      .getByRole('button', { name: T.actions.purgeConfirm, exact: true })
-      .click();
-    await expect(row(page, first!)).toHaveCount(0);
-    await expect(row(page, second!)).toBeFocused();
-    // Papierkorb leeren: the dialog says the two it deletes until it has faded out.
-    await page.getByTestId('empty-trash').click();
-    const dialog = page.getByTestId('dialog-empty-trash');
-    await expect(dialog).toContainText(T.actions.emptyTrashText(2));
-    await page.evaluate(() => {
-      const seen: string[] = [];
-      (window as unknown as { seen: string[] }).seen = seen;
-      new MutationObserver(() => {
-        const text = document.querySelector('[data-testid="dialog-empty-trash"]')?.textContent;
-        if (text) seen.push(text);
-      }).observe(document.body, { subtree: true, childList: true, characterData: true });
-    });
-    await dialog.getByRole('button', { name: T.actions.emptyTrash, exact: true }).click();
-    await expect(dialog).toHaveCount(0);
-    const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
-    expect(seen.length).toBeGreaterThan(0);
-    for (const text of seen) expect(text).toContain(T.actions.emptyTrashText(2));
-    // Its button went with the jobs: the focus is on the Papierkorb's tab.
+    // The last one went: the focus is on the Papierkorb's tab, and the place says it is empty.
     await expect(page.getByTestId('place-trash')).toBeFocused();
+    await expect(page.getByTestId('empty-place-trash')).toBeVisible();
   });
 
   test('deleting for good waits for a run: its menu entry says why', async ({ page }) => {
@@ -1630,7 +1765,7 @@ test.describe('moves and undo', () => {
 /* ===================================================================== run line */
 
 test.describe('run line', () => {
-  test('a fetch: a slim bar and one line under the header, then a toast of what it brought', async ({
+  test('a fetch: the strip under the header, its step and its count, then a toast of what it brought', async ({
     page,
   }) => {
     await open(page, `${WIN}&tick=60`);
@@ -1642,46 +1777,39 @@ test.describe('run line', () => {
     await page.getByTestId('fetch').click();
     const line = page.getByTestId('run-line');
     await expect(line).toBeVisible();
-    await expect(line.getByTestId('run-progress')).toHaveAttribute('role', 'progressbar');
-    // Under the header's rows, in the header.
+    await expect(line.getByTestId('run-meter')).toHaveAttribute('role', 'progressbar');
+    // Under the search, in the header.
     const search = (await page.getByTestId('search').boundingBox())!;
     expect((await line.boundingBox())!.y).toBeGreaterThan(search.y + search.height);
     await expect(page.getByTestId('list-header').getByTestId('run-line')).toHaveCount(1);
-    // One line of what happens, in the catalog's words.
-    const said = new Set<string>();
-    // "Anzeigen werden geladen, 3 von 7 fertig", whatever the counts.
-    const adsCount = new RegExp(`^${T.run.line.ads(0, 0).replace(/0/g, String.raw`\d+`)}$`);
+    // The step in the catalog's words, without a count; how far it is at the right.
+    const steps = new Set<string>();
+    const counts = new Set<string>();
+    const step = page.getByTestId('run-step');
+    const count = line.locator('.count');
     await expect
       .poll(
         async () => {
-          said.add((await page.getByTestId('run-text').textContent()) ?? '');
-          return [...said].some((text) => adsCount.test(text));
+          steps.add((await step.textContent()) ?? '');
+          if ((await count.count()) > 0) counts.add((await count.textContent()) ?? '');
+          return steps.has(T.run.line.ads);
         },
         { intervals: [20], timeout: 10_000 },
       )
       .toBe(true);
-    // The count moves on in place: the same words, only the number changes (no blink).
-    const text = page.getByTestId('run-text');
-    const count = adsCount;
-    const now = async (): Promise<string> => (await text.textContent()) ?? '';
-    await expect.poll(now, { intervals: [10], timeout: 10_000 }).toMatch(count);
-    await text.evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
-    const counted = await now();
-    await expect.poll(now, { intervals: [10], timeout: 10_000 }).not.toBe(counted);
-    if (count.test(await now())) await expect(text).toHaveAttribute('data-kept', 'yes');
-    // The portals run side by side: counted, never named.
-    const words = new Set<string>([
-      T.run.line.mailbox,
-      T.run.line.portalsStart,
-      ...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((done) => T.run.line.portals(done, 8)),
-      T.run.line.adsStart,
-      T.run.line.scoring,
-    ]);
-    for (const text of said) {
-      expect(words.has(text) || adsCount.test(text), text).toBe(true);
-    }
-    // What the portals brought so far, under the line (freelancermap's job).
-    expect(T.run.line.newSoFar(1)).toBe('Bisher 1 neuer Job');
+    // The count moves on in place: the same element, only the number changes (no blink).
+    await expect(count).toHaveText(/^\d+ von \d+$/);
+    await count.evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
+    const counted = (await count.textContent()) ?? '';
+    await expect
+      .poll(async () => (await count.textContent()) ?? '', { intervals: [10], timeout: 10_000 })
+      .not.toBe(counted);
+    if ((await count.count()) > 0) await expect(count).toHaveAttribute('data-kept', 'yes');
+    // The portals run side by side: never named; no "Bisher" line (the end toast says it).
+    const words = [T.run.line.mailbox, T.run.line.portals, T.run.line.ads, T.run.line.scoring];
+    for (const text of steps) expect(words, text).toContain(text);
+    for (const text of counts) expect(text).toMatch(/^\d+ von \d+$/);
+    await expect(page.getByTestId('run-new')).toHaveCount(0);
     await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(before.length);
     await expect(list(page).locator('[data-kept="yes"]')).toHaveCount(1);
     await runFinished(page);
@@ -1718,14 +1846,37 @@ test.describe('run line', () => {
 
   test('a run that is on its way: the step and its count', async ({ page }) => {
     await open(page, `${WIN}&scenario=running`);
-    await expect(page.getByTestId('run-text')).toHaveText(T.run.line.ads(5, 7));
+    await expect(page.getByTestId('run-step')).toHaveText(T.run.line.ads);
+    await expect(page.getByTestId('run-line').locator('.count')).toHaveText(T.run.line.count(5, 7));
     // The bar: the portals' half is done, then the ads (5 of 7) fill their share.
-    await expect(page.getByTestId('run-progress')).toHaveAttribute('aria-valuenow', '79');
-
+    await expect(page.getByTestId('run-meter')).toHaveAttribute('aria-valuenow', '79');
     await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 
-  test('two runs in a row end idle; a rescore is no fetch', async ({ page }) => {
+  test('a rescore after a save: Jobs werden neu bewertet, with Abbrechen', async ({ page }) => {
+    await open(page, `${WIN}&scenario=rescoring`);
+    await expect(page.getByTestId('run-step')).toHaveText(T.run.line.rescore);
+    await expect(page.getByTestId('run-line').locator('.count')).toHaveText(T.run.line.count(3, 8));
+    await expect(page.getByTestId('cancel-run')).toBeVisible();
+    await expect(page.getByTestId('fetch')).toHaveCount(0);
+    await page.getByTestId('cancel-run').click();
+    expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  });
+
+  test('a search that waits for a sign-in says so, with Anmelden', async ({ page }) => {
+    await open(page, `${WIN}&scenario=sign-in-waiting`);
+    await expect(page.getByTestId('run-step')).toHaveText(T.run.line.waiting(T.portal.freelance));
+    const signIn = page.getByTestId('run-sign-in');
+    await expect(signIn).toHaveText(T.run.line.signIn);
+    await signIn.click();
+    await expect
+      .poll(async () => (await calls(page, 'portal_login')).at(-1)?.[1])
+      .toEqual({ portal: 'freelance' });
+  });
+
+  test('two runs in a row end idle; a rescore of the app shows its strip, no fetch', async ({
+    page,
+  }) => {
     await open(page, `${WIN}&tick=15`);
     for (const round of [1, 2]) {
       await page.getByTestId('fetch').click();
@@ -1747,7 +1898,7 @@ test.describe('run line', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await open(page, `${WIN}&tick=3000`);
     await page.getByTestId('fetch').click();
-    const bar = page.getByTestId('run-progress');
+    const bar = page.getByTestId('run-meter');
     await expect(bar).toBeVisible();
     const inside = await bar.evaluate((track) => {
       const fill = track.firstElementChild!.getBoundingClientRect();

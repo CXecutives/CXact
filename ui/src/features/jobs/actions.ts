@@ -1,8 +1,8 @@
 // What a job can do where it is, with one name, icon and order wherever it shows (the menu of
 // a right click on its row, the reader's head, the row's tools under the pointer), from the
 // tables below (ACTIONS, OF_PLACE, placeMoves, jobMenu, rowTools):
-//   inbox: archive, delete; archive: unarchive, delete; trash: restore, delete for good (asks
-//   first; the caller shows the dialog).
+//   inbox: archive, into the Papierkorb; archive: back to Aktuell, into the Papierkorb;
+//   trash: restore, delete for good (asks first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
 // next job when the open one left (its row in view, with the focus when the focus was on the
 // row that left), and says so in a short toast ("Archiviert") with Rückgängig; moves of the
@@ -43,17 +43,16 @@ const TARGET: Record<MoveId, Place> = {
   restore: 'inbox',
 };
 
-/** One icon per meaning: archiving looks like the archive, Zurückholen like taking out of
- *  it, Wiederherstellen from the Papierkorb like taking back. Löschen and Endgültig löschen
- *  take the trash; only Endgültig löschen, which cannot be taken back, is red (`deletes`:
- *  the row's tool, the reader's, the entry of the menu). Löschen only moves the job into
- *  the Papierkorb, grey like Archivieren. */
-const ACTIONS: Record<ActionId, { icon: IconName; deletes: boolean }> = {
-  archive: { icon: 'archive', deletes: false },
-  unarchive: { icon: 'unarchive', deletes: false },
-  trash: { icon: 'trash', deletes: false },
-  restore: { icon: 'undo', deletes: false },
-  purge: { icon: 'trash', deletes: true },
+/** One icon per meaning: archiving looks like the archive, Nach Aktuell verschieben like
+ *  taking out of it, Wiederherstellen from the Papierkorb like taking back. In den Papierkorb
+ *  legen and Endgültig löschen take the trash, both plain (decision 9, 2026-10-24: the red
+ *  dialog of Endgültig löschen carries the danger). */
+const ACTIONS: Record<ActionId, IconName> = {
+  archive: 'archive',
+  unarchive: 'unarchive',
+  trash: 'trash',
+  restore: 'undo',
+  purge: 'trash',
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -146,8 +145,7 @@ function placeMoves(job: JobView, context: JobMenuContext): MenuItem[] {
     return {
       id,
       label: t.actions[id],
-      icon: ACTIONS[id].icon,
-      danger: ACTIONS[id].deletes,
+      icon: ACTIONS[id],
       // Deleting for good waits for a run (the backend refuses meanwhile).
       disabled: purging && run.active,
       reason: purging ? run.busyText : null,
@@ -164,16 +162,15 @@ function placeMoves(job: JobView, context: JobMenuContext): MenuItem[] {
 
 /**
  * The row's tools under the pointer: the moves of its place, the same entries in the same
- * order as its menu (an icon each, its label the tooltip; Endgültig löschen is red).
+ * order as its menu (an icon each, its label the tooltip).
  */
 export function rowTools(job: JobView, context: JobMenuContext): RowTool[] {
   return placeMoves(job, context).map((entry) => {
     const id = entry.id as ActionId;
     return {
       id,
-      icon: ACTIONS[id].icon,
+      icon: ACTIONS[id],
       label: entry.label,
-      deletes: ACTIONS[id].deletes,
       disabled: entry.disabled === true,
       reason: entry.reason ?? null,
       run: entry.run,
@@ -452,9 +449,4 @@ function focusAfter(next: JobView | null): void {
     return;
   }
   document.querySelector<HTMLElement>(`[data-testid="place-${jobs.place}"]`)?.focus();
-}
-
-/** After the trash was emptied: no undo can reach its jobs any more. */
-export function trashEmptied(deleted: Deleted): void {
-  deletedFor(deleted);
 }

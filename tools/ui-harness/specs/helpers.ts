@@ -219,7 +219,7 @@ export interface StubList {
   counts: JobCounts;
 }
 
-/** What the stub lists for a query (the inbox by match unless it says otherwise), without a
+/** What the stub lists for a query (the inbox by date unless it says otherwise), without a
  *  recorded call: the specs read the demo data instead of copying it. */
 export async function stubList(page: Page, query: Partial<JobQuery> = {}): Promise<StubList> {
   const { jobs, counts } = await page.evaluate((query) => window.__harness.list(query), query);

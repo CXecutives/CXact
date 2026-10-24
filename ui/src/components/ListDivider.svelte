@@ -1,56 +1,35 @@
 <!--
-  The heading of a section of a list: a navy sub-label, where it is known its count after it,
-  quiet like the count of a place tab ("Ausgeschlossen 2"), then a hairline to the end. `thin` is the quiet variant for
-  sections the list only groups (a small grey label, little room above it, as over the jobs
-  of the last fetch). A section that folds (`open` set) is a button: its
-  chevron at the end turns half a turn when open (180 ms, emphasized), the label darkens
-  on hover; the list shows or hides the rows below it (`ontoggle`).
+  The heading of a section that folds at the end of the job list ("Noch nicht bewertet",
+  "Ausgeschlossen"; the round 10 draft): a hairline across the rows' width 6 below the last
+  row, under it the label 12/540 muted on the rows' inner edge (22 above, 6 below), no count,
+  and at its end the chevron 14 in the subtle glyph colour, which turns half a turn while the
+  section is open (150 ms, ease-out). Under the pointer the label and the chevron darken to
+  ink. A button: the list shows or hides the rows below it (`ontoggle`).
 -->
 <script lang="ts">
-  import { formatNumber } from '$lib/i18n/format';
   import Icon from './Icon.svelte';
 
   interface Props {
     label: string;
-    /** How many rows the section holds, where it is known (null: not said). */
-    count?: number | null;
-    /** The quiet variant of a section the list only groups. */
-    thin?: boolean;
-    /** The section folds: whether its rows show (null: it does not fold). */
-    open?: boolean | null;
+    /** Whether its rows show. */
+    open: boolean;
     ontoggle?: () => void;
     testid?: string | null;
   }
 
-  let { label, count = null, thin = false, open = null, ontoggle, testid = null }: Props = $props();
+  let { label, open, ontoggle, testid = null }: Props = $props();
 </script>
 
-{#snippet content()}
-  <span class="label"
-    >{label}{#if count !== null}<span class="count">{formatNumber(count)}</span>{/if}</span
-  >
-  <span class="rule" aria-hidden="true"></span>
-  {#if open !== null}
-    <span class="chevron" class:turned={open}><Icon name="expand" size="sm" /></span>
-  {/if}
-{/snippet}
-
-{#if open !== null}
-  <button
-    type="button"
-    class="divider toggle"
-    class:thin
-    aria-expanded={open}
-    data-testid={testid ?? undefined}
-    onclick={() => ontoggle?.()}
-  >
-    {@render content()}
-  </button>
-{:else}
-  <div class="divider" class:thin data-testid={testid ?? undefined}>
-    {@render content()}
-  </div>
-{/if}
+<button
+  type="button"
+  class="divider"
+  aria-expanded={open}
+  data-testid={testid ?? undefined}
+  onclick={() => ontoggle?.()}
+>
+  <span class="label">{label}</span>
+  <span class="chevron" class:turned={open}><Icon name="expand" size="xs" /></span>
+</button>
 
 <style>
   .divider {
@@ -58,60 +37,40 @@
     align-items: center;
     gap: var(--space-8);
     width: 100%;
-    padding: var(--space-24) var(--pane-padding) var(--space-8);
-    color: var(--text-label);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
+    margin-top: var(--divider-gap);
+    padding: var(--divider-pad);
+    border-top: var(--border-width) solid var(--border);
+    color: var(--text-muted);
+    font: var(--type-day);
     text-align: left;
-  }
-
-  .thin {
-    padding: var(--space-12) var(--pane-padding) var(--space-4);
-    color: var(--text-subtle);
-    font: var(--type-xs);
-    font-weight: var(--weight-medium);
-  }
-
-  .label {
-    flex: none;
-    font-variant-numeric: var(--numeric);
-    white-space: nowrap;
-  }
-
-  /* Quiet, like the count of a place tab. */
-  .count {
-    margin-inline-start: var(--space-6);
-    color: var(--text-subtle);
-    font-weight: var(--weight-regular);
-  }
-
-  .rule {
-    flex: 1;
-    height: var(--border-width);
-    margin-left: var(--space-4);
-    background-color: var(--border);
-  }
-
-  .toggle {
     transition: color var(--dur-base) var(--ease-standard);
   }
 
-  .toggle:hover {
+  .divider:hover {
     color: var(--label-hover);
     transition-duration: var(--dur-hover);
+  }
+
+  .label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .chevron {
     display: inline-flex;
     flex: none;
-    color: var(--text-muted);
+    color: var(--icon-subtle);
     transition:
-      transform var(--dur-slow) var(--ease-emphasized),
+      transform var(--dur-base) var(--ease-out),
       color var(--dur-base) var(--ease-standard);
   }
 
-  .toggle:hover .chevron {
-    color: var(--label-glyph-hover);
+  .divider:hover .chevron {
+    color: var(--label-hover);
+    transition-duration: var(--dur-base), var(--dur-hover);
   }
 
   .turned {

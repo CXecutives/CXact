@@ -1,14 +1,12 @@
-// The job row (user decision 2026-09-27): line 1 the title and at its end the stamp of a mail
-// list (the time today, "Gestern", "Vorgestern", then the weekday with the date; "Beendet"
-// for an ad that takes no applications); line 2 the company, the place (without the work mode
-// a portal appends) and the pay the ad states. No portal, no facts, no badges, no middle dot.
-// Under the pointer the moves of the row's place show as its tools over the date (the same
-// table as its menu). An excluded job shows the ban in the ring's place. What the row looks
-// like (sizes, colours, glyphs) is not pinned here.
+// The job row (round 10, user decision 2026-10-24): one line, the ring and the title; no
+// company, place, pay, date or dot (the reader and the day's heading have them). A new job's
+// title in 650 with a hidden "Neu"; a job in the Papierkorb and a closed ad muted in 450, an
+// excluded one not (its ban marks it). Under the pointer the moves of the row's place fade in
+// as its tools at the row's end (the same table as its menu), their slot always kept. One
+// highlight marks the open row (RowBar). Sizes are pinned only where the design names them.
 
 import type { Locator, Page } from '@playwright/test';
-import { placeOf } from '../../../ui/src/lib/place';
-import { animationsDone, calls, expect, NOW, open, test } from './fixtures';
+import { animationsDone, calls, expect, open, test } from './fixtures';
 import {
   list,
   listed,
@@ -16,6 +14,7 @@ import {
   openPlace,
   row,
   rowMenu,
+  rows,
   settleMoves,
   stage,
   stubList,
@@ -25,95 +24,118 @@ import {
   WIN,
 } from './helpers';
 
-/** The row's wrapper (the row button and its dot). */
+/** The row's wrapper (the row button and its tools). */
 const job = (page: Page, key: string): Locator =>
   list(page).locator('.job', { has: page.getByTestId(`job-row-${key}`) });
 
+/** A computed style of a row's title. */
+const titleStyle = (page: Page, key: string, name: 'color' | 'fontWeight'): Promise<string> =>
+  row(page, key)
+    .locator('.title')
+    .evaluate((node, prop) => getComputedStyle(node)[prop], name);
+
 test('no portal anywhere in the rows', async ({ page }) => {
   await open(page, WIN);
-  // No portal anywhere in the rows (the reader names it).
   await expect(list(page).locator('.portal')).toHaveCount(0);
   for (const text of await list(page).locator('.row').allTextContents()) {
     for (const portal of Object.values(T.portal)) expect(text).not.toContain(portal);
   }
 });
 
-test('the stamp of a mail list: the time today, Gestern, Vorgestern, then weekday and date', async ({
+test('one line: the ring and the title, 48 high, nothing else', async ({ page }) => {
+  await open(page, WIN);
+  for (const id of ['row-company', 'row-place', 'row-pay', 'row-date', 'row-facts']) {
+    await expect(list(page).getByTestId(id), id).toHaveCount(0);
+  }
+  await expect(list(page).locator('.dot, .stamp, .badge')).toHaveCount(0);
+  const first = rows(page).first();
+  await expect(first.locator('.ring')).toHaveCount(1);
+  const heights = await rows(page).evaluateAll((items) =>
+    items.slice(0, 6).map((item) => Math.round(item.getBoundingClientRect().height)),
+  );
+  expect(new Set(heights)).toEqual(new Set([48]));
+  // The ring 30, the title 14/540 (a new one 650).
+  const ring = (await first.locator('.ring').boundingBox())!;
+  expect(Math.round(ring.width)).toBe(30);
+  await expect(first.locator('.title')).toHaveCSS('font-size', '14px');
+});
+
+test('a new title in 650; the Papierkorb and a closed ad muted in 450, an excluded job not', async ({
   page,
 }) => {
   await open(page, WIN);
-  const stamp = (key: string): Locator => row(page, key).getByTestId('row-date');
-  // Today (the fixed clock stands at 24.09., 09:30 in Berlin): the time the job came into
-  // CXact (not its alert mail's).
-  await expect(stamp('freelancermap-2801')).toHaveText('08:24');
-  await expect(stamp('freelancermap-2803')).toHaveText('00:30');
-  // The two days before in words, capitalised like the start of a line.
-  await expect(stamp('linkedin-4100200302')).toHaveText('Gestern');
-  await expect(stamp('freelance-900413')).toHaveText('Vorgestern');
-  // Earlier days: the weekday with the date.
-  await expect(stamp('freelancermap-2805')).toHaveText('Mo 21.09.');
-});
-
-test('an ad that takes no applications says Beendet in its stamp', async ({ page }) => {
-  await open(page, WIN);
   const { jobs } = await stubList(page);
-  const closed = jobs.filter((each) => each.closed);
-  expect(closed.length).toBeGreaterThan(0);
-  for (const each of closed) {
-    const target = row(page, `${each.key.portal}-${each.key.id}`);
-    await expect(target.getByTestId('row-date')).toHaveText(T.job.closed);
+  const key = (j: (typeof jobs)[number]): string => `${j.key.portal}-${j.key.id}`;
+  const fresh = jobs.find((j) => j.unread && j.match?.status === 'scored' && !j.closed)!;
+  const read = jobs.find((j) => !j.unread && j.match?.status === 'scored' && !j.closed)!;
+  const closed = jobs.find((j) => j.closed)!;
+  expect(await titleStyle(page, key(fresh), 'fontWeight')).toBe('650');
+  expect(await titleStyle(page, key(read), 'fontWeight')).toBe('540');
+  const ink = await titleStyle(page, key(read), 'color');
+  // Closed: muted, in the text's weight.
+  expect(await titleStyle(page, key(closed), 'color')).not.toBe(ink);
+  expect(await titleStyle(page, key(closed), 'fontWeight')).toBe('450');
+  // Excluded: the ban marks it, the title stays ink.
+  await unfoldExcluded(page);
+  const out = jobs.find((j) => j.match?.status === 'excluded' && !j.closed)!;
+  expect(await titleStyle(page, key(out), 'color')).toBe(ink);
+  // The Papierkorb: every title muted in 450.
+  await openPlace(page, 'trash');
+  const trashed = await listed(page);
+  expect(trashed.length).toBeGreaterThan(0);
+  for (const each of trashed) {
+    expect(await titleStyle(page, each, 'fontWeight')).toBe('450');
+    expect(await titleStyle(page, each, 'color')).not.toBe(ink);
   }
-  // An open ad keeps its stamp.
-  await expect(row(page, 'freelancermap-2801').getByTestId('row-date')).not.toHaveText(
-    T.job.closed,
-  );
 });
 
-test('the stamp says when the job came in, never its deadline', async ({ page }) => {
+test('the hairline above a row starts at the title; none next to the open row', async ({
+  page,
+}) => {
   await open(page, WIN);
-  // 2802 closes applications on 28.09. (four days after the fixed clock): the row still says
-  // when its alert mail came (the reader's Jobdetails name the day).
-  await expect(row(page, 'freelancermap-2802').getByTestId('row-date')).toHaveText('03:30');
-  await expect(list(page)).not.toContainText('Frist');
+  const [first, second, third] = await listed(page);
+  const rule = (key: string): Promise<{ left: string; opacity: string; shown: boolean }> =>
+    page.locator(`[data-key="${key!.replace('-', ':')}"]`).evaluate((node) => {
+      const style = getComputedStyle(node, '::before');
+      return { left: style.left, opacity: style.opacity, shown: style.content !== 'none' };
+    });
+  // The first row of a day has none; the next one from 52 on.
+  expect((await rule(first!)).shown).toBe(false);
+  const next = await rule(second!);
+  expect(next).toMatchObject({ left: '52px', opacity: '1', shown: true });
+  // Opened: no line at its top or under it (the highlight stands there).
+  await openJob(page, second!);
+  await page.mouse.move(0, 0);
+  expect((await rule(second!)).opacity).toBe('0');
+  expect((await rule(third!)).opacity).toBe('0');
 });
 
-test('line 2: the company and the place, no middle dot', async ({ page }) => {
+test('the open row: one highlight, the soft coral tint and its bar', async ({ page }) => {
   await open(page, WIN);
-  const { jobs } = await stubList(page);
-  // A place with the work mode a portal appends: the row leaves it out.
-  const moded = jobs.find((each) => /\((vor ort|hybrid|remote)\)$/i.test(each.location));
-  expect(moded).toBeDefined();
-  const key = `${moded!.key.portal}-${moded!.key.id}`;
-  const target = row(page, key);
-  await expect(target.getByTestId('row-company')).toHaveText(moded!.company);
-  await expect(target.getByTestId('row-place')).toHaveText(placeOf(moded!.location));
-  expect(placeOf(moded!.location)).not.toContain('(');
-  // No dot anywhere in the list's rows, no facts, no badges.
-  for (const text of await list(page).locator('.row').allTextContents()) {
-    expect(text).not.toContain('·');
-  }
-  await expect(list(page).locator('.facts, .foot, .badge, [data-testid="row-facts"]')).toHaveCount(
-    0,
-  );
-});
-
-test('line 2 ends with the pay the ad states: the day rate or the salary', async ({ page }) => {
-  await open(page, WIN);
-  const { jobs } = await stubList(page);
-  const facts = (key: string) =>
-    jobs.find((each) => `${each.key.portal}-${each.key.id}` === key)!.match!.facts;
-  // A day rate (interim, freelance).
-  const rated = facts('freelancermap-2801');
-  const day = row(page, 'freelancermap-2801').getByTestId('row-pay');
-  await expect(day).toHaveText(T.facts.pay(rated.rate!, 'day', null));
-  // A salary (a permanent job).
-  const salaried = facts('linkedin-4100200303');
-  await expect(row(page, 'linkedin-4100200303').getByTestId('row-pay')).toHaveText(
-    T.facts.pay(salaried.salary!, 'year', null),
-  );
-  // An ad without a pay: company and place only.
-  expect(facts('freelance-900411').rate).toBeNull();
-  await expect(row(page, 'freelance-900411').getByTestId('row-pay')).toHaveCount(0);
+  const highlight = page.getByTestId('row-bar');
+  await expect(highlight).toHaveCSS('opacity', '0');
+  const [first, second] = await listed(page);
+  await openJob(page, first!);
+  await expect(highlight).toHaveCSS('opacity', '1');
+  const box = async (): Promise<{ y: number; height: number }> => {
+    const of = (await highlight.boundingBox())!;
+    return { y: Math.round(of.y), height: Math.round(of.height) };
+  };
+  const rowBox = async (key: string): Promise<{ y: number; height: number }> => {
+    const of = (await row(page, key).boundingBox())!;
+    return { y: Math.round(of.y), height: Math.round(of.height) };
+  };
+  expect(await box()).toEqual(await rowBox(first!));
+  // The row itself has no fill of its own.
+  await expect(row(page, first!)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  // It goes with the next job (gliding, then standing on its row).
+  await openJob(page, second!);
+  await animationsDone(page);
+  expect(await box()).toEqual(await rowBox(second!));
+  // Grey while the window is in the back.
+  const tint = await highlight.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await page.evaluate(() => (document.documentElement.dataset['window'] = 'inactive'));
+  await expect(highlight).not.toHaveCSS('background-color', tint);
 });
 
 /** The tools a row shows now (their ids, in their order). */
@@ -157,8 +179,11 @@ test.describe('tools', () => {
       // None at rest: only the row under the pointer has them.
       await page.mouse.move(0, 0);
       await expect(list(page).getByTestId('row-tools')).toHaveCount(0);
+      const title = (await row(page, key).locator('.title').boundingBox())!;
       await pointAt(page, key);
       await expect(job(page, key).getByTestId('row-tools')).toBeVisible();
+      // Their slot is kept: the title does not move or shrink.
+      expect((await row(page, key).locator('.title').boundingBox())!).toEqual(title);
       expect(await toolIds(page, key), place).toEqual([...tools]);
       expect(await menuMoves(page, key), place).toEqual([...tools]);
       await pointAt(page, key);
@@ -166,13 +191,36 @@ test.describe('tools', () => {
         const tool = job(page, key).getByTestId(`tool-${id}`);
         await expect(tool).toHaveAccessibleName(T.actions[id]);
         await expect(tool).toHaveAttribute('tabindex', '-1');
+        // Quiet 28 px icon buttons, 10 from the row's end.
+        const box = (await tool.boundingBox())!;
+        expect(Math.round(box.height)).toBe(28);
         await tool.hover();
         await expect(page.getByRole('tooltip')).toHaveText(T.actions[id]);
       }
+      const last = (await job(page, key).getByTestId(`tool-${tools[1]}`).boundingBox())!;
+      const end = (await row(page, key).boundingBox())!;
+      expect(Math.round(end.x + end.width - (last.x + last.width))).toBe(10);
       // The pointer leaves: the tools go.
       await page.mouse.move(0, 0);
       await expect(job(page, key).getByTestId('row-tools')).toHaveCount(0);
     }
+  });
+
+  test('Endgültig löschen is a plain tool like the others (its dialog carries the danger)', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await openPlace(page, 'trash');
+    const [key] = await listed(page);
+    await pointAt(page, key!);
+    const colour = (id: string): Promise<string> =>
+      job(page, key!)
+        .getByTestId(`tool-${id}`)
+        .evaluate((node) => getComputedStyle(node).color);
+    expect(await colour('purge')).toBe(await colour('restore'));
+    await rowMenu(page, key!);
+    await expect(page.getByTestId('menu-item-purge')).not.toHaveClass(/danger/);
+    await page.keyboard.press('Escape');
   });
 
   test('a click moves the job; the row that slides under the pointer waits for it to move', async ({
@@ -213,7 +261,7 @@ test.describe('tools', () => {
     await page.evaluate(() => (window.__harness.holdAfter = 1));
     await page.getByTestId('fetch').click();
     await openPlace(page, 'trash');
-    // (The run's line moves on: no waiting for every animation to end.)
+    // (The run's strip moves on: no waiting for every animation to end.)
     await row(page, 'freelancermap-2802').hover();
     const purge = job(page, 'freelancermap-2802').getByTestId('tool-purge');
     await expect(purge).toHaveAttribute('aria-disabled', 'true');
@@ -288,19 +336,7 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
   expect(closed.reader).toEqual(closed.menu);
 });
 
-test('stamps move on while the app stays open', async ({ page }) => {
-  await open(page, WIN);
-  const date = row(page, 'linkedin-4100200301').locator('.date');
-  const before = await date.textContent();
-  // The next day: the time of today becomes "Gestern".
-  await page.clock.setFixedTime(new Date(NOW.getTime() + 24 * 3_600_000));
-  await page.evaluate(() => dispatchEvent(new Event('focus')));
-  await expect(date).not.toHaveText(before ?? '');
-});
-
-test('an excluded row shows the ban in the ring place, without a number, no dot', async ({
-  page,
-}) => {
+test('an excluded row shows the ban in the ring place, without a number', async ({ page }) => {
   await open(page, WIN);
   const { excluded } = await stubList(page);
   expect(excluded.length).toBeGreaterThan(0);
@@ -310,7 +346,6 @@ test('an excluded row shows the ban in the ring place, without a number, no dot'
     await expect(ban).toBeVisible();
     await expect(ban).toHaveAttribute('aria-label', T.score.excluded);
     await expect(ban.locator('.value')).toHaveCount(0);
-    await expect(job(page, key).locator('.dot')).toHaveCount(0);
   }
   // A scored row keeps its ring.
   await expect(row(page, 'linkedin-4100200301').locator('.ring')).toHaveCount(1);

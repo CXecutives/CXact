@@ -1,32 +1,41 @@
 <!--
-  The job list: one list per place in the chosen order, rows in windows of 60 (a sentinel at
-  the end shows the next window), a new job of a run rises in where it lands (the rows below
-  simply make room; the rows already there never flicker). Rows move only for the user's own
-  change and for the re-sort at the end of a run: after the order, another place or a filter
-  the rows on screen glide to their new place (150 ms); rows off screen and new rows are
-  simply there. A search and live updates never move anything. A row the user moves out
-  (archive, delete, restore) folds its height away. An unopened job carries the coral dot
-  until it is opened. After the scored jobs of every place the ones without a score yet in a
-  section "Noch nicht bewertet (n)", open by default, and at the end the excluded jobs, their
-  titles muted and the red ban in the ring's place, in one section "Ausgeschlossen (n)" that
-  is folded by default (design round 7; each choice is kept; a section opens when its job is
-  opened from elsewhere). A page that fails to load while
-  scrolling says so at the end of the list, with a retry. A search looks in the list's place;
-  under its hits a button names each other place with hits like its tab ("Archiv 2", counted
-  with the same filter) and goes there with the search. A click opens a job, a double click opens
-  its ad in the browser, a right click its menu (jobMenu of actions.ts); under the pointer
-  the row shows the moves of its place as its tools (rowTools, the same table); one coral bar marks
-  the open job's row and slides from row to row (RowBar). Back in the Jobs view, the open
-  job's row is in view again. A job action that fails says so in the list header. Every
-  empty state is one pattern at one place: an icon and one short sentence, centred, at most
-  one way out (secondary: the header holds the view's primary). A filter that leaves nothing
-  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell says to start a
-  search with "Jobs suchen"; after a search that found nothing that fits "Noch keine passenden
-  Jobs gefunden." with "Profil öffnen", or "Keine aktuellen Jobs." when its jobs were all
-  archived or deleted; while a search fills it, that the jobs come one by one. Without a usable profile one says
-  that there is no match without it and leads to the Profil view (the rings stay, empty); a
-  thin profile one calm line that the match stays rough. A list that fails to load says only
-  that, with a retry (the header hides its tools).
+  The job list (the round 10 draft): one list per place in the chosen order, rows in windows
+  of 60 (a sentinel at the end shows the next window), 6 in from the column's edges. In the
+  order by date (the default, decision 1) the scored jobs stand under the headings of their
+  days (DayGroup: the local day a job came into CXact, in the Papierkorb the day it went
+  there; "Heute", "Gestern", "Mi 23.09.", rolling over at midnight with the page's clock),
+  each heading sticking to the top while its rows pass; the flat orders (Nach
+  Übereinstimmung, Nach Tagessatz) have none and keep the head's hairline once the list
+  scrolled (as does a list scrolled past its days). After the scored jobs of every place the
+  ones without a score yet in a section "Noch nicht bewertet", open by default, and at the end
+  the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
+  folded by default (ListDivider, no count; each choice is kept; a section opens when its job
+  is opened from elsewhere). Neither section has days.
+  A list that opens (entering Jobs, another place) lets its first 10 rows rise 8 px one after
+  the other (24 ms apart) while their rings fill and count up; a filter, a search, a selection
+  and fast browsing (pace.ts) open nothing. A new job of a run rises in where it lands (the
+  rows below simply make room; the rows already there never flicker). Rows move only for the
+  user's own change and for the re-sort at the end of a run: after the order, another place
+  or a filter the rows on screen glide to their new place (150 ms); rows off screen and new
+  rows are simply there. A row the user moves out folds its height away (its day with its last
+  row). One highlight marks the open job's row and glides from row to row (RowBar).
+  A page that fails to load while scrolling says so at the end of the list, with a retry. A
+  search looks in the list's place; under its hits a button names each other place with hits
+  like its tab (no count) and goes there with the search. A click opens a job, a double click
+  opens its ad in the browser, a right click its menu (jobMenu of actions.ts); under the
+  pointer the row shows the moves of its place as its tools (rowTools, the same table). Back in
+  the Jobs view, the open job's row is in view again. A job action that fails says so in the
+  list header.
+  Empty: a place without jobs takes the whole width (JobsView) and says so at the top
+  (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
+  Aktuell before the first search, while one fills it, after one that found nothing that fits
+  with "Profil öffnen", and with its jobs all moved away). A search without hits says so in one
+  quiet line, with the other places' hits under it; a filter that leaves nothing says so and
+  takes itself off ("Filter zurücksetzen"). Placeholder rows (a ring and a line) come once the
+  list takes 300 ms. Without a usable profile a state box on top says so and leads to the
+  Profil ("Profil anlegen", or "Profil ergänzen" to the first field it lacks); a thin profile
+  one box that the match stays rough. A list that fails to load says only that, with a retry
+  (the header hides its search).
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -38,33 +47,42 @@
   import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
   import Skeleton from '$components/Skeleton.svelte';
+  import StateBox, { type StateAction } from '$components/StateBox.svelte';
+  import { inView } from '$lib/actions/inView';
   import { nearEnd } from '$lib/actions/nearEnd';
+  import { dayKey, displayTitle, formatDayHeading } from '$lib/i18n/format';
   import { t } from '$lib/i18n/t';
   import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
-  import { rowCollapse, rowEnter, unfold } from '$lib/motion/transitions';
+  import { animateOpen } from '$lib/motion/pace';
+  import { rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
+  import { clock } from '$lib/state/clock.svelte';
   import { NO_FILTER } from '$lib/state/filter';
   import { isExcluded, isUnscored, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
+  import DayGroup from './DayGroup.svelte';
+  import { completeProfile } from './profileGaps';
   import RowBar from './RowBar.svelte';
 
   interface Props {
     /** "Filter zurücksetzen" of a filter that leaves nothing: the header takes the filter off
      *  and keeps the keyboard focus (the button goes with the empty state). */
     onresetfilter?: () => void;
+    /** Whether the head draws its hairline: the list scrolled beneath it and no day's
+     *  heading sticks at its top. */
+    online?: (line: boolean) => void;
   }
-  let { onresetfilter }: Props = $props();
+  let { onresetfilter, online }: Props = $props();
 
-  /** The placeholder rows while the list loads, each title and line a little shorter or
-   *  longer than the one before (percent of its room). */
+  /** The placeholder rows while the list loads, each line a little shorter or longer than
+   *  the one before (percent of its room). */
   const SKELETON_ROWS = [0, 1, 2, 3, 4, 5].map((index) => ({
     index,
-    title: 72 - (index % 3) * 14,
-    meta: 48 + (index % 2) * 12,
+    width: 72 - (index % 3) * 14,
   }));
 
   const shown = $derived(jobs.shown);
@@ -76,15 +94,35 @@
   const active = $derived(shown.filter((job) => !isExcluded(job) && !isUnscored(job)));
   const unscored = $derived(shown.filter(isUnscored));
   const excluded = $derived(shown.filter(isExcluded));
-  // How many excluded jobs the list holds: the counts of each place know it (with the search
-  // and the filter, like the list).
-  const excludedCount = $derived(
-    jobs.place === 'inbox'
-      ? jobs.counts.excluded
-      : jobs.place === 'archive'
-        ? jobs.counts.excludedArchive
-        : jobs.counts.excludedTrash,
-  );
+
+  /* ----------------------------------------------------------------------- days */
+
+  /** The order by date heads its scored rows by their days. */
+  const dayed = $derived(jobs.sort === 'newest');
+  /** The moment that dates a row: when it came, in the Papierkorb when it went there. */
+  const dated = (job: JobView): string =>
+    (job.place === 'trash' ? job.trashedAt : null) ?? job.firstSeenAt;
+  /** The days of the scored rows in the list's order (a day the backend splits stays split:
+   *  each run of rows is its own group, keyed apart), or one group without a heading. */
+  const days = $derived.by(() => {
+    if (!dayed) return [{ id: 'all', at: null as string | null, jobs: active, start: 0 }];
+    const groups: { id: string; at: string | null; jobs: JobView[]; start: number }[] = [];
+    const seen: Record<string, number> = {};
+    active.forEach((job, index) => {
+      const day = dayKey(dated(job));
+      const last = groups.at(-1);
+      if (last !== undefined && last.id.startsWith(`${day}#`)) {
+        last.jobs.push(job);
+        return;
+      }
+      const runs = (seen[day] ?? 0) + 1;
+      seen[day] = runs;
+      groups.push({ id: `${day}#${runs}`, at: dated(job), jobs: [job], start: index });
+    });
+    return groups;
+  });
+
+  /* ------------------------------------------------------------------- sections */
 
   /** A section is open (kept like the order): the excluded one folded by default, the one
    *  without a score yet open. */
@@ -120,43 +158,65 @@
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
   const more = $derived(jobs.more && !foldedEnd);
-  /**
-   * The filter leaves the list empty while the place holds jobs (the counts over every job):
-   * it says so and takes the filter off.
-   */
-  const filterEmptied = $derived(
-    jobs.filtered && (jobs.overviewCounts ?? jobs.counts)[jobs.place] > 0,
-  );
-  /** An empty Aktuell: while a search fills it, what comes; after one that found nothing
-   *  that fits, that and the way to the profile (or only that there are none, when its jobs
-   *  went to the Archiv or the Papierkorb); before any, how to start one. */
+
+  /* ---------------------------------------------------------------------- empty */
+
+  /** The jobs of every place, whatever the search and the filter. */
+  const totals = $derived(jobs.overviewCounts ?? jobs.counts);
+  /** The filter leaves the list empty while the place holds jobs: it says so and takes the
+   *  filter off. */
+  const filterEmptied = $derived(jobs.filtered && totals[jobs.place] > 0);
+  const place = $derived(jobs.place);
+  /** The glyph of each place (the sidebar's Jobs, the archive, the trash). */
+  const PLACE_ICON: Record<Place, IconName> = {
+    inbox: 'jobs',
+    archive: 'archive',
+    trash: 'trash',
+  };
+  /** An empty place: Aktuell while a search fills it, after one that found nothing that fits
+   *  (or, its jobs all moved away, that there are none), before any; the Archiv; the
+   *  Papierkorb. */
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
-  const emptyInbox = $derived.by((): { icon: IconName; text: string; profile: boolean } => {
-    if (run.searching) return { icon: 'inbox', text: t.list.emptyWhileRun, profile: false };
+  const empty = $derived.by((): { heading: string; text: string; profile: boolean } => {
+    if (place !== 'inbox') return { ...t.list.empty[place], profile: false };
+    if (run.searching) return { ...t.list.empty.running, profile: false };
     if (lastFetch?.outcome.kind === 'completed') {
-      const totals = jobs.overviewCounts ?? jobs.counts;
       return totals.archive + totals.trash === 0
-        ? { icon: 'inbox', text: t.list.noMatch, profile: true }
-        : { icon: 'inbox', text: t.list.noActive, profile: false };
+        ? { ...t.list.empty.noMatch, profile: true }
+        : { ...t.list.empty.noActive, profile: false };
     }
-    return { icon: 'search', text: t.list.emptyText, profile: false };
+    return { ...t.list.empty.inbox, profile: false };
   });
+
+  /* -------------------------------------------------------------------- profile */
+
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
-  // No profile: the fit needs one. One that is there but cannot be used is named.
-  const profileNote = $derived.by(() => {
+  /** No usable profile: none yet, one that does not read, one that lacks a field. */
+  const profileNote = $derived.by((): { heading: string; text: string; action: StateAction } => {
     const profile = app.state?.profile ?? null;
     if (profile === null) {
-      return { heading: null, text: t.list.noProfile, label: t.list.createProfile };
+      return {
+        heading: t.list.noProfile,
+        text: t.list.noProfileText,
+        action: { label: t.list.createProfile, icon: 'add', onclick: toProfile },
+      };
+    }
+    if (profile.parseError !== null) {
+      return {
+        heading: t.list.profileUnreadable,
+        text: t.list.profileBrokenText,
+        action: { label: t.list.openProfile, icon: 'profile', onclick: toProfile },
+      };
     }
     return {
-      heading: profile.parseError ? t.list.profileUnreadable : t.list.profileEmpty,
+      heading: t.list.profileEmpty,
       text: t.list.profileBrokenText,
-      label: t.list.openProfile,
+      action: { label: t.list.completeProfile, icon: 'profile', onclick: completeProfile },
     };
   });
 
-  /** Profil: without a profile its start page with the three ways (user decision
-   *  2026-10-01: the same wherever a new profile begins). */
+  /** Profil: without a profile its start page with the ways (user decision 2026-10-01: the
+   *  same wherever a new profile begins). */
   function toProfile(): void {
     navigation.go('profile');
   }
@@ -165,6 +225,8 @@
   const profileThin = $derived(app.hasProfile && app.state?.profile?.quality === 'thin');
   // Jobs without a match get one soon while a run goes or a rescore is pending.
   const pending = $derived(jobs.scoring);
+
+  /* ---------------------------------------------------------------------- rows */
 
   /** The rows the list shows (a row on the page that is not among them is leaving). */
   const listed = $derived(new Set(shown.map((job) => keyOf(job.key))));
@@ -234,28 +296,43 @@
 
   // A search looks in the list's place; the other places with hits are named under them,
   // counted with the same filter (the counts of the list cover every place).
-  const place = $derived(jobs.place);
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
-  /** The glyph of each place (the tabs' meaning: the inbox, the archive, the trash). */
-  const PLACE_ICON: Record<Place, IconName> = {
-    inbox: 'inbox',
-    archive: 'archive',
-    trash: 'trash',
-  };
   const elsewhere = $derived.by(() => {
     // Only once the hits of the typed search are there: the counts before are another
     // search's, and the links would show them and then move.
     if (!searching || jobs.search.trim() !== jobs.countedSearch) return [];
     const counts = jobs.counts;
-    return PLACES.filter((other) => other !== place)
-      .map((other) => ({ place: other, count: counts[other] }))
-      .filter((hit) => hit.count > 0);
+    return PLACES.filter((other) => other !== place && counts[other] > 0);
   });
+
+  /* ---------------------------------------------------------------------- opens */
+
+  /** The next list that is there opens (rises and counts up): the Jobs view came, another
+   *  place was chosen. */
+  let opening = true;
+  let openedPlace = untrack(() => jobs.place);
+  /** The list (its generation) that opened with motion; another one is simply there. */
+  let openedGeneration = $state(Number.NaN);
+  $effect.pre(() => {
+    const generation = jobs.generation;
+    const now = jobs.place;
+    const ready = jobs.status === 'ready';
+    untrack(() => {
+      if (now !== openedPlace) {
+        openedPlace = now;
+        opening = true;
+      }
+      if (!opening || !ready) return;
+      opening = false;
+      openedGeneration = animateOpen() ? generation : Number.NaN;
+    });
+  });
+  const opened = $derived(jobs.generation === openedGeneration);
 
   /* --------------------------------------------------------------------- glides */
 
   let list = $state<HTMLElement | null>(null);
-  /** The rows of the list (both groups and the divider), which the bar follows. */
+  /** The rows of the list (both sections and the dividers), which the highlight follows. */
   let groups = $state<HTMLElement | null>(null);
   let rowBar = $state<RowBar | null>(null);
   /** The next new rows come from the user's own change (sort, place, filter) or from the
@@ -361,8 +438,24 @@
     });
   });
 
+  /* ------------------------------------------------------------- the head's line */
+
+  /** The list scrolled away from its top; its days began and ended above the top. */
+  let scrolled = $state(false);
+  let daysBegan = $state(false);
+  let daysEnded = $state(false);
+  /** A day's heading sticks at the top while the days pass it: no hairline then. */
+  const line = $derived(scrolled && !(dayed && daysBegan && !daysEnded));
+  $effect(() => {
+    online?.(line);
+  });
+
+  /* ---------------------------------------------------------------------- purge */
+
   /** Ends with "Endgültig löschen" of a row: the dialog asks first. */
   let purging = $state<JobView | null>(null);
+  /** The title the dialog names (kept while it fades out). */
+  let purgeTitle = $state('');
   let purgeBusy = $state(false);
   let purgeError = $state<string | null>(null);
 
@@ -377,6 +470,7 @@
     return {
       purge: () => {
         purgeError = null;
+        purgeTitle = job.title ? displayTitle(job.title) : t.job.untitled;
         purging = job;
       },
       report,
@@ -397,19 +491,34 @@
   }
 </script>
 
-<!-- The way to the hits in another place, under an empty state or under the rows. -->
+<!-- The way to the hits in another place, under the line of no hits or under the rows. -->
 {#snippet alsoIn()}
   <div class="also" data-testid="also-in">
-    {#each elsewhere as hit (hit.place)}
+    {#each elsewhere as other (other)}
       <Button
         variant="secondary"
-        icon={PLACE_ICON[hit.place]}
-        label={t.place[hit.place]}
-        testid="also-{hit.place}"
-        onclick={() => jobs.setPlace(hit.place)}
+        icon={PLACE_ICON[other]}
+        label={t.place[other]}
+        testid="also-{other}"
+        onclick={() => jobs.setPlace(other)}
       />
     {/each}
   </div>
+{/snippet}
+
+{#snippet row(job: JobView, open: boolean, rises: boolean)}
+  <JobRow
+    {job}
+    ring={!profileMissing}
+    reveal={rises}
+    marks={searchWords}
+    pending={pending && job.match === null}
+    selected={open}
+    onselect={select}
+    onopen={(job) => void openAd(job).then(report)}
+    menu={() => menuOf(job)}
+    tools={() => rowTools(job, contextOf(job))}
+  />
 {/snippet}
 
 <div
@@ -419,14 +528,22 @@
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
 >
+  <RowBar
+    bind:this={rowBar}
+    rows={groups}
+    open={openKey}
+    {listed}
+    folding={moving}
+    generation={jobs.generation}
+  />
+  <span class="mark" use:inView={(at) => (scrolled = at === 'above')}></span>
+
   {#if profileMissing}
     <div class="note">
-      <Notice
-        tone="info"
-        variant="row"
+      <StateBox
         heading={profileNote.heading}
         text={profileNote.text}
-        action={{ label: profileNote.label, onclick: toProfile }}
+        action={profileNote.action}
         testid="no-profile"
       />
     </div>
@@ -434,33 +551,31 @@
 
   {#if profileThin}
     <div class="note">
-      <Notice
-        tone="info"
-        variant="row"
-        text={t.list.thinProfile}
-        action={{ label: t.list.openProfile, onclick: () => navigation.go('profile') }}
+      <StateBox
+        heading={t.list.thinProfile}
+        text={t.list.thinProfileText}
+        action={{ label: t.list.openProfile, icon: 'profile', onclick: toProfile }}
         testid="thin-profile"
       />
     </div>
   {/if}
 
   {#if jobs.status === 'error'}
-    <div class="empty">
-      <EmptyState
-        icon="warning"
-        tone="danger"
-        text={t.list.loadFailed}
-        secondary={{
-          label: t.common.retry,
-          icon: 'retry',
-          onclick: () => {
-            void jobs.load();
-            void jobs.loadOverview();
-          },
-        }}
-        testid="list-error"
-      />
-    </div>
+    <EmptyState
+      icon="warning"
+      tone="danger"
+      placement="list"
+      text={t.list.loadFailed}
+      secondary={{
+        label: t.common.retry,
+        icon: 'retry',
+        onclick: () => {
+          void jobs.load();
+          void jobs.loadOverview();
+        },
+      }}
+      testid="list-error"
+    />
   {:else if jobs.rows.length === 0 && jobs.status !== 'ready'}
     <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
          jump); they fade in once the list has taken --delay-placeholder (at once when it has
@@ -469,118 +584,92 @@
       {#each SKELETON_ROWS as line (line.index)}
         <div class="skeleton-row">
           <Skeleton shape="circle" size="sm" late={!jobs.slow} />
-          <span class="lines">
-            <span class="line title">
-              <span class="grow"><Skeleton width={line.title} late={!jobs.slow} /></span>
-              <span class="stamp"><Skeleton late={!jobs.slow} /></span>
-            </span>
-            <span class="line"><Skeleton width={line.meta} late={!jobs.slow} /></span>
-          </span>
+          <span class="bar"><Skeleton width={line.width} late={!jobs.slow} /></span>
         </div>
       {/each}
     </div>
   {:else if jobs.visible.length === 0 && jobs.status === 'ready'}
-    <div class="empty">
-      {#if searching}
-        <!-- The search's × clears it; the other places' hits are the way on. -->
-        <div class="stack">
-          <EmptyState
-            icon="search"
-            tone="neutral"
-            text={t.list.noHit(jobs.search.trim())}
-            testid="empty-search"
-          />
-          {#if elsewhere.length > 0}{@render alsoIn()}{/if}
-        </div>
-      {:else if filterEmptied}
-        <EmptyState
-          icon="filter"
-          tone="neutral"
-          text={t.list.noFilterHit}
-          secondary={{
-            label: t.toolbar.filterReset,
-            onclick: () => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER)),
-          }}
-          testid="empty-filter"
-        />
-      {:else if place !== 'inbox'}
-        <EmptyState
-          icon={place === 'trash' ? 'trash' : 'archive'}
-          tone="neutral"
-          text={t.place.empty[place]}
-          testid="empty-place-{place}"
-        />
-      {:else}
-        <!-- A search that goes, none yet, or one that found nothing that fits. -->
-        <EmptyState
-          icon={emptyInbox.icon}
-          tone="neutral"
-          text={emptyInbox.text}
-          secondary={emptyInbox.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
-          testid="empty-all"
-        />
-      {/if}
-    </div>
-  {:else}
-    {#snippet row(job: JobView, open: boolean)}
-      <!-- The open job's row is marked by the list's one bar. -->
-      <JobRow
-        {job}
-        ring={!profileMissing}
-        marks={searchWords}
-        pending={pending && job.match === null}
-        selected={open}
-        onselect={select}
-        onopen={(job) => void openAd(job).then(report)}
-        menu={() => menuOf(job)}
-        tools={() => rowTools(job, contextOf(job))}
+    {#if searching || filterEmptied}
+      <!-- The search's × clears it; the other places' hits are the way on. -->
+      <div class="none" data-testid={searching ? 'empty-search' : 'empty-filter'}>
+        <p class="none-text">
+          {searching ? t.list.noHit(jobs.search.trim()) : t.list.noFilterHit}
+        </p>
+        {#if searching && elsewhere.length > 0}
+          {@render alsoIn()}
+        {:else if !searching}
+          <div class="also">
+            <Button
+              label={t.toolbar.filterReset}
+              testid="filter-reset"
+              onclick={() => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER))}
+            />
+          </div>
+        {/if}
+      </div>
+    {:else}
+      <EmptyState
+        icon={PLACE_ICON[place]}
+        placement="list"
+        heading={empty.heading}
+        text={empty.text}
+        secondary={empty.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
+        testid={place === 'inbox' ? 'empty-all' : `empty-place-${place}`}
       />
-    {/snippet}
-    {#snippet group(items: JobView[])}
-      {#each items as job (keyOf(job.key))}
-        {@const key = keyOf(job.key)}
-        {@const open = key === openKey}
-        <div
-          class="item"
-          data-key={key}
-          data-open={open ? '' : undefined}
-          out:rowCollapse={{ on: moving.has(key) }}
-        >
-          {@render row(job, open)}
-        </div>
-      {/each}
-    {/snippet}
+    {/if}
+  {:else}
     <div class="groups" bind:this={groups}>
       <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
+        <span class="mark" use:inView={(at) => (daysBegan = at === 'above')}></span>
         <div class="rows" data-testid="job-rows">
-          {@render group(active)}
+          {#each days as day (day.id)}
+            <DayGroup
+              label={day.at === null ? null : formatDayHeading(day.at, clock.now)}
+              jobs={day.jobs}
+              start={day.start}
+              open={openKey}
+              opening={opened}
+              {row}
+            />
+          {/each}
         </div>
+        <span class="mark" use:inView={(at) => (daysEnded = at === 'above')}></span>
         {#if unscored.length > 0}
           <ListDivider
             label={t.list.unscored}
-            count={unscored.length}
             open={unscoredOpen}
             ontoggle={toggleUnscored}
             testid="unscored-divider"
           />
           {#if unscoredOpen}
             <div class="rows" data-testid="unscored-rows" transition:unfold>
-              {@render group(unscored)}
+              <DayGroup
+                jobs={unscored}
+                start={active.length}
+                open={openKey}
+                opening={opened}
+                {row}
+              />
             </div>
           {/if}
         {/if}
         {#if excluded.length > 0}
           <ListDivider
             label={t.list.excluded}
-            count={excludedCount}
             open={excludedOpen}
             ontoggle={toggleExcluded}
             testid="excluded-divider"
           />
           {#if excludedOpen}
             <div class="rows" data-testid="excluded-rows" transition:unfold>
-              {@render group(excluded)}
+              <DayGroup
+                jobs={excluded}
+                start={active.length + unscored.length}
+                open={openKey}
+                opening={opened}
+                {row}
+              />
             </div>
           {/if}
         {/if}
@@ -591,7 +680,7 @@
       <div class="page-error">
         <Notice
           tone="warning"
-          variant="row"
+          variant="inline"
           text={t.list.pageFailed}
           action={{ label: t.common.retry, icon: 'retry', onclick: () => void jobs.grow() }}
           testid="page-error"
@@ -605,22 +694,13 @@
       {/key}
     {/if}
   {/if}
-  <RowBar
-    bind:this={rowBar}
-    rows={groups}
-    open={openKey}
-    muted={markedExcluded}
-    {listed}
-    folding={moving}
-    generation={jobs.generation}
-  />
 </div>
 
 <Dialog
   open={purging !== null}
   variant="danger"
   heading={t.actions.purgeHeading}
-  text={t.actions.purgeText}
+  text={t.actions.purgeNamed(purgeTitle)}
   confirmLabel={t.actions.purgeConfirm}
   busy={purgeBusy}
   error={purgeError}
@@ -630,105 +710,84 @@
 />
 
 <style>
-  /* The containing block of the rows' one selection bar (RowBar). */
+  /* The containing block of the rows' one highlight (RowBar). */
   .list {
     position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
+    padding-bottom: var(--list-rows-end);
   }
 
-  /* A slim line at the top of the list (no mailbox, no profile). */
+  /* Watched marks: the top of the list, the start and the end of its days. */
+  .mark {
+    display: block;
+    flex: none;
+    height: 0;
+  }
+
+  /* A state box at the top of the list (no profile, a thin one): under the head, 16 in. */
   .note {
-    padding: var(--space-12) var(--pane-padding);
-    border-bottom: var(--border-width) solid var(--border);
+    padding: 0 var(--pane-padding) var(--space-8);
+  }
+
+  /* The rows 6 in from the column's edges (their wash and the highlight end there). */
+  .groups,
+  .skeletons {
+    display: block;
+    padding: 0 var(--list-rows-inset);
+  }
+
+  /* Plain block flow: a flex column adds nothing here and costs a little more each time the
+     rows are laid out again. */
+  .rows {
+    display: block;
   }
 
   /* Search hits in the other places: buttons under the hits of this one. */
   .also {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4) var(--space-16);
+    gap: var(--space-8);
     padding: var(--space-12) var(--pane-padding);
+  }
+
+  /* No hit: one quiet line, centred, and the ways on under it. */
+  .none {
+    padding: 0 var(--list-rows-inset);
+  }
+
+  .none-text {
+    padding: var(--list-none-pad);
+    color: var(--text-muted);
+    font: var(--type-md);
+    text-align: center;
+  }
+
+  .none .also {
+    justify-content: center;
+    padding: 0 var(--pane-padding);
   }
 
   .page-error {
     padding: var(--space-12) var(--pane-padding);
   }
 
-  /* Plain block flow: a flex column adds nothing here and costs a little more each time the
-     rows are laid out again. */
-  .groups,
-  .rows {
-    display: block;
-  }
-
-  .stack {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-  }
-
-  /* Under a centred empty state the links are centred too (under rows they start left), as
-     far below its sentence as the empty state's own way on. */
-  .stack > .also {
-    justify-content: center;
-    padding: var(--space-16) 0 0;
-  }
-
-  .empty {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-32) var(--pane-padding);
-  }
-
-  .skeletons {
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Laid out like a row (ListRow, JobRow): the ring and the title at its top, the next line
-     under it, so nothing moves when the rows arrive. */
+  /* Laid out like a row (ListRow): the ring and a line, so nothing moves when the rows
+     arrive. */
   .skeleton-row {
     display: flex;
     align-items: center;
-    gap: var(--space-10);
-    height: var(--row-height);
-    padding: var(--list-row-pad) var(--pane-padding);
-    border-bottom: var(--border-width) solid var(--border);
+    gap: var(--list-row-gap);
+    min-height: var(--list-row-min);
+    padding: var(--list-row-pad) var(--list-row-pad-x);
   }
 
-  .lines {
+  .bar {
     display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .line {
-    display: flex;
-    align-items: center;
-    height: var(--leading-sm);
-  }
-
-  .line.title {
-    gap: var(--space-6);
-    height: var(--leading-title);
-  }
-
-  .grow {
     flex: 1;
     min-width: 0;
-  }
-
-  /* The stamp at the end of the title line (the time of a mail). */
-  .stamp {
-    flex: none;
-    width: calc(var(--control-sm) + var(--space-8));
   }
 
   .sentinel {

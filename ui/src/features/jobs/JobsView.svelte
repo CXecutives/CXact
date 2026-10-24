@@ -1,8 +1,11 @@
 <!--
   The Jobs view on the white sheet of the shell: left the list column with its header (the
   places, "Jobs suchen", the search, the order and the filter; a hairline under it once the
-  list scrolled), the run panel and the list; a hairline; right the reader (under the top
-  bar's fade), or with nothing selected its empty state. No cards, no shadows. The handle
+  list scrolled where no day's heading sticks), the run's strip and the list; a hairline;
+  right the reader (under the top bar's fade), or with nothing selected its empty state ("Kein
+  Job gewählt"). No cards, no shadows. A place without jobs (or a list that did not load) has
+  nothing to read: the list takes the whole width, without the reader, the handle and the
+  seam (decision 24). The handle
   between the columns resizes the list (kept) within limits that follow the window and the
   sidebar and never shrink while the window grows. Below 900 px one column: the list under
   its header, as at every width, or the reader with its "×" (the mouse's back button too).
@@ -23,7 +26,6 @@
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
   import { t } from '$lib/i18n/t';
-  import { inView } from '$lib/actions/inView';
   import { scrollFade } from '$lib/actions/scrollFade';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
@@ -85,8 +87,13 @@
   const placeEmpty = $derived(
     jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
   );
-  /** The list is scrolled away from its top (the header shows its hairline). */
-  let scrolled = $state(false);
+  /** The list scrolled beneath its header where no day's heading sticks: the hairline. */
+  let line = $state(false);
+  /** A place without jobs, or a list that did not load: nothing to read beside it. */
+  const emptyPlace = $derived(
+    jobs.status === 'error' ||
+      (jobs.status === 'ready' && (jobs.overviewCounts ?? jobs.counts)[place] === 0),
+  );
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
@@ -108,7 +115,7 @@
   );
   /** The job view stands beside the list unless the user hid it (one column shows a job in
    *  place of the list). A job chosen in the list shows it again. */
-  const readerShown = $derived(shell.readerOpen || viewport.narrow);
+  const readerShown = $derived((shell.readerOpen || viewport.narrow) && !emptyPlace);
   // The top bar continues the border between the list and the job view.
   $effect(() => {
     shell.listSeam = readerShown && !viewport.narrow && listWidth !== undefined ? listWidth : null;
@@ -185,11 +192,13 @@
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
       <div class="head">
-        <ListHeader bind:this={header} {scrolled} />
+        <ListHeader bind:this={header} {line} />
       </div>
       <div class="scroll" data-testid="list-scroll">
-        <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>
-        <JobList onresetfilter={() => void header?.resetFilter()} />
+        <JobList
+          onresetfilter={() => void header?.resetFilter()}
+          online={(value) => (line = value)}
+        />
       </div>
     </aside>
     {#if readerShown}
@@ -220,8 +229,8 @@
                 <div class="place-reader">
                   {#if !placeEmpty}
                     <EmptyState
-                      icon={place === 'trash' ? 'trash' : place === 'archive' ? 'archive' : 'inbox'}
-                      tone="neutral"
+                      icon="jobs"
+                      heading={t.place.noJob}
                       text={t.place.pickJob}
                       testid="place-reader"
                     />
@@ -315,12 +324,6 @@
   .split {
     display: flex;
     flex: none;
-  }
-
-  /* Watched: once it has scrolled away, the list header draws its bottom line. */
-  .top {
-    flex: none;
-    height: 0;
   }
 
   /* The list and the reader keep their scrollbar's room whether they scroll or not, like the

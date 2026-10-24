@@ -1117,7 +1117,9 @@ test.describe('around the reader', () => {
   }) => {
     await open(page, `${WIN}&scenario=empty`);
     await page.getByTestId('place-trash').click();
-    await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
+    await expect(page.getByTestId('empty-place-trash').locator('h3')).toHaveText(
+      T.list.empty.trash.heading,
+    );
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
 });

@@ -987,12 +987,6 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await settle(page);
   await viaMenu(page, 'trash', 'freelancermap-2803');
   await page.getByTestId('place-trash').click();
-  await page.getByTestId('empty-trash').click();
-  await expect(page.getByTestId('dialog-empty-trash').getByTestId('dialog-confirm')).toHaveText(
-    T.actions.emptyTrash,
-  );
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('dialog-empty-trash')).toHaveCount(0);
   await viaMenu(page, 'purge', 'freelancermap-2803');
   await expect(page.getByTestId('dialog-purge').getByTestId('dialog-confirm')).toHaveText(
     T.actions.purgeConfirm,

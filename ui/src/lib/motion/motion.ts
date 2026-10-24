@@ -192,7 +192,7 @@ export interface PlayOptions {
 /**
  * The only use of the Web Animations API in the UI. Keyframes may animate transform,
  * opacity and stroke-dashoffset only, and the size of an element out of the flow that
- * glides to another box (`glide`, the job list's selection bar `barSlide`): its own box is
+ * glides to another box (`glide`, the job list's highlight, RowBar): its own box is
  * laid out, nothing around it. Under reduced motion the animation jumps to its end state
  * unless it is a cross-fade.
  */

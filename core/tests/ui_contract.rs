@@ -1711,7 +1711,7 @@ fn tooltips_only_where_something_is_missing() {
 /// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    const ROLES: [(&str, &[&str]); 11] = [
+    const ROLES: [(&str, &[&str]); 10] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // A switch that is on, the check of a chosen row, and a chosen checkbox (the
@@ -1724,14 +1724,10 @@ fn coral_only_in_its_roles() {
                 "components/CheckGroup.svelte",
             ],
         ),
-        // The dot of a job not opened yet (the funnel's dot went in round 10).
-        ("var(--unread", &["components/JobRow.svelte"]),
-        // Where you are: the selected row and its bar, the active view.
-        (
-            "var(--surface-selected",
-            &["components/ListRow.svelte", "components/JobRow.svelte"],
-        ),
-        ("var(--selection-bar", &["features/jobs/RowBar.svelte"]),
+        // Where you are: the list's one highlight (its tint and bar, grey in the back; round
+        // 10, the rows have no fill of their own), the active view.
+        ("var(--surface-selected", &["features/jobs/RowBar.svelte"]),
+        ("var(--selection-", &["features/jobs/RowBar.svelte"]),
         ("var(--nav-active-icon", &["components/SideNav.svelte"]),
         // The setup's current step among its dots (design round 7).
         ("var(--step-current", &["components/StepDots.svelte"]),

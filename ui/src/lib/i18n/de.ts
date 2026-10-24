@@ -638,7 +638,8 @@ export const de = {
     inbox: 'Aktuell',
     archive: 'Archiv',
     trash: 'Papierkorb',
-    /** The reader beside the inbox while no job is open. */
+    /** The job view beside the list while no job is open. */
+    noJob: 'Kein Job gewählt',
     pickJob: 'Wähle einen Job aus der Liste.',
     /** The field's placeholder names what it searches. */
     search: {
@@ -646,11 +647,6 @@ export const de = {
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** An empty Archiv or Papierkorb (an empty Aktuell says what comes, list.emptyText). */
-    empty: {
-      archive: 'Das Archiv ist leer.',
-      trash: 'Der Papierkorb ist leer.',
-    } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
   /** What a job can do where it is: one name and icon in its menu (a right click on its row)
    *  and in the reader. */
@@ -663,21 +659,17 @@ export const de = {
     include: 'Trotzdem bewerten',
     archive: 'Archivieren',
     /** Back into Aktuell from the Archiv (Wiederherstellen is the Papierkorb's). */
-    unarchive: 'Zurückholen',
-    trash: 'Löschen',
+    unarchive: 'Nach Aktuell verschieben',
+    trash: 'In den Papierkorb legen',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
-    /** The confirm button of a dialog is the verb of what asked. */
-    purgeConfirm: 'Endgültig löschen',
-    purgeHeading: 'Job endgültig löschen?',
-    /** Deleting for good, one job or the whole Papierkorb: one sentence shape. */
+    /** The dialog of Endgültig löschen: its heading, what it does with the job named, and
+     *  its red button. */
+    purgeHeading: 'Endgültig löschen?',
+    purgeNamed: (name: string) =>
+      `„${name}“ wird endgültig gelöscht. Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
     purgeText: 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.',
-    emptyTrash: 'Papierkorb leeren',
-    emptyTrashHeading: 'Papierkorb leeren?',
-    emptyTrashText: (value: number) =>
-      value === 1
-        ? 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.'
-        : `Die ${n(value)} Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.`,
+    purgeConfirm: 'Löschen',
   },
   /** The app's own menus (their accessible names). */
   menu: {
@@ -777,23 +769,24 @@ export const de = {
     filterReset: 'Filter zurücksetzen',
     /** Nothing to read: every portal is off (and no mailbox for the alert mails). */
     needsPortal: 'Schalte erst ein Portal ein.',
-    /** The search has nothing to search for without a usable profile. */
+    /** The search has nothing to search for without a profile, or names what a profile
+     *  still lacks (the fields' names as the Profil labels them). */
     needsProfile: 'Lege erst ein Profil an.',
+    needsFields: (names: string[]) => `Ergänze erst ${joined(names)} im Profil.`,
   },
   run: {
-    /** The one line under the list header while a fetch goes: what happens now. */
+    /** The strip under the list header while a run goes: its step in words (no portal
+     *  named, they run side by side), how far it is at the right, and a run that waits for
+     *  a sign-in with its button. */
     line: {
       mailbox: 'Postfach wird gelesen',
-      /** The portals' search: they run side by side, so no portal is named. */
-      portals: (done: number, total: number) =>
-        `Portale werden durchsucht, ${n(done)} von ${n(total)} fertig`,
-      portalsStart: 'Portale werden durchsucht',
-      ads: (done: number, total: number) =>
-        `Anzeigen werden geladen, ${n(done)} von ${n(total)} fertig`,
-      adsStart: 'Anzeigen werden geladen',
+      portals: 'Portale werden durchsucht',
+      ads: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
-      /** Under the line: the new jobs (not excluded) the finished portals brought so far. */
-      newSoFar: (value: number) => `Bisher ${count(value, 'neuer Job', 'neue Jobs')}`,
+      rescore: 'Jobs werden neu bewertet',
+      waiting: (portal: string) => `Wartet auf die Anmeldung bei ${portal}`,
+      count: (done: number, total: number) => `${n(done)} von ${n(total)}`,
+      signIn: 'Anmelden',
     },
     /** A failed fetch's way to the mailbox's settings. */
     checkMailbox: 'Postfach prüfen',
@@ -804,29 +797,50 @@ export const de = {
      *  counts after them): the jobs without a score yet, then the excluded ones. */
     unscored: 'Noch nicht bewertet',
     excluded: 'Ausgeschlossen',
-    /** While the first search runs, the empty list only says what comes (the rows arrive
-     *  during the search, each once its details are in). */
-    emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
-    /** Aktuell before the first search. */
-    emptyText: 'Starte eine Suche mit „Jobs suchen“.',
-    /** Aktuell after a search that found none that fits (nothing archived or deleted). */
-    noMatch: 'Noch keine passenden Jobs gefunden.',
-    /** Aktuell after a search, its jobs all archived or deleted. */
-    noActive: 'Keine aktuellen Jobs.',
-    noHit: (query: string) => `Keine Jobs zu „${query}“.`,
-    /** The filter of the inbox leaves nothing in the list. */
+    /** An empty place, its heading and one sentence: Aktuell before the first search,
+     *  while it fills, after a search that found none that fits (nothing archived or
+     *  deleted) and with its jobs all archived or deleted; the Archiv; the Papierkorb. */
+    empty: {
+      inbox: {
+        heading: 'Noch keine Jobs',
+        text: 'Mit „Jobs suchen“ durchsucht CXact die Jobportale nach Jobs, die zu deinem Profil passen.',
+      },
+      running: { heading: 'Noch keine Jobs', text: 'Die Jobs erscheinen hier nach und nach.' },
+      noMatch: {
+        heading: 'Noch keine passenden Jobs',
+        text: 'Die letzte Suche fand keine Jobs, die zu deinem Profil passen.',
+      },
+      noActive: {
+        heading: 'Keine aktuellen Jobs',
+        text: 'Neue Jobs findest du mit „Jobs suchen“.',
+      },
+      archive: {
+        heading: 'Keine archivierten Jobs',
+        text: 'Hier landen Jobs, die du archivierst.',
+      },
+      trash: {
+        heading: 'Der Papierkorb ist leer',
+        text: 'Hier landen Jobs, die du in den Papierkorb legst.',
+      },
+    },
+    /** A search or a filter that leaves nothing: one quiet line. */
+    noHit: (query: string) => `Kein Job passt zu „${query}“.`,
     noFilterHit: 'Kein Job passt zum Filter.',
     loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',
     openProfile: 'Profil öffnen',
-    /** No usable profile: said once, at the top of the list. */
-    noProfile: NO_PROFILE,
+    completeProfile: 'Profil ergänzen',
+    /** No usable profile, a state box at the top of the list: none yet, one that does not
+     *  read, one that lacks a required field. */
+    noProfile: 'Noch kein Profil',
+    noProfileText: NO_PROFILE,
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profil unvollständig',
     profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',
-    /** A profile the app understands little of: one calm line on top of the list. */
-    thinProfile: 'Wenig Inhalt im Profil, die Übereinstimmung bleibt grob.',
+    /** A profile the app understands little of. */
+    thinProfile: 'Wenig Inhalt im Profil',
+    thinProfileText: 'Die Übereinstimmung bleibt deshalb grob.',
   },
   /** The facts of a job in their one form each (the reader's Jobdetails, the list row; the
    *  order and the icons are the table of lib/facts.ts): a date "24.09.", a start "ab 01.11.",
@@ -1511,13 +1525,12 @@ export const de = {
     prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
-    unarchived: 'Zurückgeholt',
-    trashed: 'Gelöscht',
+    unarchived: 'Nach Aktuell verschoben',
+    trashed: 'In den Papierkorb gelegt',
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */
     deleted: 'Endgültig gelöscht',
     included: 'Trotzdem bewertet',
-    trashEmptied: 'Papierkorb geleert',
     /** At the end of a search: what it brought (new, not excluded), how many of them are in
      *  the high band, and without one that fits how many it excluded. */
     runDone: (value: number, high = 0, excluded = 0) =>

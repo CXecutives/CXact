@@ -926,7 +926,30 @@
   --ring-md-type: var(--weight-semibold) var(--ring-md-digits) / 1 var(--font-sans);
 
   /* ------------------------------------------- round 10: jobs list */
-  /* (jobs list tokens below) */
+  /* The list's head 8 16 10 (the head's own 8 and 2 more under its last row), the rows 6 in
+     from the column's edges and 20 above its end. A row: 9 10 inside, its ring 12 before
+     the title, at least 48 high, 8 round; the hairline above a row from the title (52) to 10
+     before the end. Its tools (two quiet 28s, 2 apart) 10 from its end, their slot always
+     kept. A day's heading and a section's divider 12/540 muted: the day 14 10 6, sticky; a
+     divider 22 10 6 under its hairline, 6 below the last row, its chevron 14. */
+  --list-head-tail: var(--space-2);
+  --list-rows-inset: var(--space-6);
+  --list-rows-end: var(--space-20);
+  --list-row-pad-x: var(--space-10);
+  --list-row-gap: var(--space-12);
+  --list-row-min: 48px;
+  --list-row-radius: var(--radius-md);
+  --list-rule-end: var(--space-10);
+  --list-tools: calc(2 * var(--control-icon) + var(--space-2));
+  --list-tools-end: var(--space-10);
+  --day-head-pad: 14px var(--space-10) var(--space-6);
+  --divider-pad: 22px var(--space-10) var(--space-6);
+  --divider-gap: var(--space-6);
+  --type-day: var(--weight-medium) var(--font-xs) / var(--leading-xs) var(--font-sans);
+  /* A search without hits: one quiet line. */
+  --list-none-pad: var(--space-24) var(--space-10);
+  /* The strip of a run under the head: 10 under the search, 16 at its sides. */
+  --list-strip-gap: var(--space-10);
 
   /* ------------------------------------------- round 10: job view */
   /* (job view tokens below) */

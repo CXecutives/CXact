@@ -60,21 +60,28 @@ function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
+/** The local day of a moment as `YYYY-MM-DD` (the same day orders as the same string), or
+ *  '' for no moment. */
+export function dayKey(iso: string | null | undefined): string {
+  const date = new Date(iso ?? '');
+  if (Number.isNaN(date.getTime())) return '';
+  const two = (value: number): string => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
+}
+
 /**
- * The stamp of a list row, like a mail list: the time today (`14:05`), then `Gestern` and
- * `Vorgestern`, then the weekday with the date (`Mi 23.09.`), with the year when it is not
- * this one (`23.09.2025`).
+ * The heading of a day of the job list: `Heute`, `Gestern`, then the weekday with the date
+ * (`Mi 23.09.`), with the year when it is not this one (`Di 23.09.2025`).
  */
-export function formatStamp(iso: string, now: Date = new Date()): string {
+export function formatDayHeading(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  const { clock, relative, dayMonth, weekday, dayMonthYear } = formats();
+  const { relative, dayMonth, weekday, dayMonthYear } = formats();
   const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY);
-  if (days === 0) return clock.format(date);
-  if (days > 0 && days <= RELATIVE_DAYS) return capitalised(relative.format(-days, 'day'));
-  // Older: the weekday with the date, so last week is found without counting.
-  if (date.getFullYear() !== now.getFullYear()) return dayMonthYear.format(date);
-  return `${weekday.format(date).replace(/\.$/, '')} ${dayMonth.format(date)}`;
+  if (days === 0 || days === 1) return capitalised(relative.format(-days, 'day'));
+  const day = weekday.format(date).replace(/\.$/, '');
+  const year = date.getFullYear() !== now.getFullYear();
+  return `${day} ${(year ? dayMonthYear : dayMonth).format(date)}`;
 }
 
 /** The text with its first letter in capitals (`gestern` becomes `Gestern`). */

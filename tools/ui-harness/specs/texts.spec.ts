@@ -12,24 +12,26 @@ test('an empty list during a fetch says the jobs come in as it goes, not at its 
   await open(page, `${WIN}&scenario=empty`);
   await page.evaluate(() => (window.__harness.holdAfter = 1));
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('empty-all')).toHaveText('Die Jobs erscheinen hier nach und nach.');
+  await expect(page.getByTestId('empty-all').locator('p')).toHaveText(
+    'Die Jobs erscheinen hier nach und nach.',
+  );
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
 });
 
-test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async ({ page }) => {
+test('the days of the list: Heute, Gestern, then the weekday and date, not "vor 2 Tagen"', async ({
+  page,
+}) => {
   // The clock stands on Thursday 24.09.2026, 09:30.
   await open(page, WIN);
-  const date = (key: string) =>
-    page.getByTestId('job-list').getByTestId(`job-row-${key}`).locator('.date');
-  // Two days back still reads as a word (capitalised like the start of a line), earlier days
-  // by weekday and date.
-  await expect(date('freelance-900413')).toHaveText('Vorgestern');
-  await expect(date('freelancermap-2805')).toHaveText('Mo 21.09.');
-  await expect(date('freelancermap-2806')).toHaveText('So 20.09.');
+  await expect(page.getByTestId('job-list').getByTestId('day-heading')).toHaveText([
+    'Heute',
+    'Gestern',
+    'Di 22.09.',
+  ]);
 });
 
-test('an archived job goes back to Aktuell with Zurückholen', async ({ page }) => {
+test('an archived job goes back with Nach Aktuell verschieben', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';

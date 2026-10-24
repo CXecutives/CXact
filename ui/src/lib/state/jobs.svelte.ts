@@ -179,13 +179,15 @@ function replaced(list: JobView[], key: JobKey, change: (job: JobView) => JobVie
 /** Where the order of the list is kept (one choice for every list, per user). */
 const SORT_KEY = 'jobs-sort';
 
-/** The kept order; a store that cannot be read keeps the default. */
+/** The kept order; a store that cannot be read keeps the default, by date (decision 1,
+ *  2026-10-24: the days' headings, the open jobs of a day before the closed ones, then the
+ *  best match). */
 function keptSort(): JobSort {
   try {
     const value = localStorage.getItem(SORT_KEY);
-    return value === 'newest' || value === 'rate' ? value : 'match';
+    return value === 'match' || value === 'rate' ? value : 'newest';
   } catch {
-    return 'match';
+    return 'newest';
   }
 }
 
@@ -315,11 +317,12 @@ class JobsStore {
   }
 
   /**
-   * The filter actually used, the same in every place: without a profile no band (there is
-   * no match to filter by), only the portals the app knows. Sent with every query of the
-   * list.
+   * The filter actually used, the same in Aktuell and the Archiv (the Papierkorb has none,
+   * decision 25): without a profile no band (there is no match to filter by), only the
+   * portals the app knows. Sent with every query of the list.
    */
   get filter(): ListFilter {
+    if (this.place === 'trash') return NO_FILTER;
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
     return {
@@ -819,14 +822,6 @@ class JobsStore {
    */
   async purge(keys: JobKey[]): Promise<Deleted | { error: string }> {
     return this.forget(() => invoke('purge_jobs', { keys }));
-  }
-
-  /**
-   * Empties the trash like Mail: every job in it is deleted for good, whatever the list
-   * shows; the result names how many and which.
-   */
-  async emptyTrash(): Promise<Deleted | { error: string }> {
-    return this.forget(() => invoke('empty_trash'));
   }
 
   private async forget(command: () => Promise<Deleted>): Promise<Deleted | { error: string }> {

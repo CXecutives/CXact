@@ -1,38 +1,35 @@
 <!--
-  The header of the list column, the same in the three places: the view's head (PageHeader)
-  above the list, with a hairline under it once the list scrolled beneath it. First row: the places as
-  tabs (Aktuell, Archiv, Papierkorb, their names only, the one segmented look of the app;
-  another place starts without the search, like a folder of a mail app) and at its right end
-  the place's one action in one slot (at least --place-action wide, its right edge fixed, so
-  a swap moves nothing): while a search goes "Abbrechen" with the hollow square, in every
-  place; else in Aktuell "Jobs suchen" with the magnifier (the alert mails, then the
-  portals), the one primary of the Jobs view, with or without a mailbox, locked while the app
-  scores the jobs anew and while its way cannot run, saying why; in the Papierkorb "Papierkorb
-  leeren" (outlined with the red of every button that deletes; asks first); in the Archiv
-  none. A narrow column puts the action under the tabs.
-  Second row: the search, whose placeholder names what it searches (its × clears it), and the
-  funnel.
-  The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
-  sets none), the one control of the order and the filter: its menu holds, under small
-  headings, "Sortierung" (Nach Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter
-  table (lib/state/filter.ts: Portal, Übereinstimmung, Neu seit, each with every value of its
-  dimension; the portals in the UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter is
-  on (so the menu never changes its height). The menu stays open while choosing (several
-  groups in one go, the check marks move with each choice) and closes on a press outside,
-  Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable profile the order and
-  the bands are off, saying why. A place that holds nothing has nothing to search, order or
-  filter: the row stays, empty; while a fetch fills Aktuell its tools stand already (no
-  empty band above the run line, nothing moves when the first jobs come). While a filter is
-  on, its parts
-  stand as small chips under the row, each with its × (the row unfolds and folds away, the
-  list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
-  what went wrong. Under the rows one sentence says when a job action of the list failed (a
-  move, its undo); it goes with the next list or the next action that works.
+  The header of the list column (the round 10 draft), the same in the three places: the
+  view's head (PageHeader) above the list, 8 16 10, with a hairline under it once the list
+  scrolled beneath it where no day's heading sticks at the top (`line`).
+  First row: the places as tabs (Aktuell, Archiv, Papierkorb, their names only, the one
+  segmented look of the app; another place starts without the search, like a folder of a
+  mail app) and at its right end the place's one action, which keeps one width whichever
+  word it shows (Button `sizeTo`): while a search or a rescore goes "Abbrechen" with the
+  hollow square, in every place; else in Aktuell "Jobs suchen" with the magnifier (the alert
+  mails, then the portals), the one primary of the Jobs view, with or without a mailbox,
+  locked while its way cannot run, saying why (without a usable profile what it lacks: "Ergänze
+  erst Länder und Sprachen im Profil."); in the Archiv and the Papierkorb none. A narrow column
+  puts the action under the tabs.
+  Second row, also in a place that holds nothing (decision 24: nothing jumps when the first
+  jobs come): the search, whose placeholder names what it searches (its × clears it), and in
+  Aktuell and the Archiv the funnel "Sortieren und filtern", a 30 px square, the one control
+  of the order and the filter: its menu holds, under small headings, "Sortierung" (Nach
+  Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter table (lib/state/filter.ts:
+  Portal, Übereinstimmung, Neu seit, each with every value of its dimension; the portals in
+  the UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter
+  is on (so the menu never changes its height). The menu stays open while choosing and closes
+  on a press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable
+  profile the order and the bands are off, saying why. The Papierkorb has no funnel and no
+  filter (decision 25). While a filter is on, its parts stand as small chips under the row,
+  each with its × (the row unfolds and folds away, the list glides). Under them the run's
+  strip (RunLine). Under it one sentence says when a job action of the list failed (a move,
+  its undo); it goes with the next list or the next action that works. A list that did not
+  load has nothing to search: the second row goes.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
   import Button from '$components/Button.svelte';
-  import Dialog from '$components/Dialog.svelte';
   import Notice from '$components/Notice.svelte';
   import PageHeader from '$components/PageHeader.svelte';
   import Segmented, { type SegmentedOption } from '$components/Segmented.svelte';
@@ -46,20 +43,17 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
-  import { toasts } from '$lib/state/toasts.svelte';
-  import { trashEmptied } from './actions';
   import { funnelEntries } from './headerMenus';
+  import { profileGaps } from './profileGaps';
   import RunLine from './RunLine.svelte';
 
   interface Props {
-    /** The list is scrolled away from its top: the header shows its hairline. */
-    scrolled?: boolean;
+    /** The list scrolled beneath it and no day's heading sticks at its top: the hairline. */
+    line?: boolean;
   }
-  let { scrolled = false }: Props = $props();
+  let { line = false }: Props = $props();
 
   const place = $derived(jobs.place);
-  /** The jobs of every place, whatever the search and the filter. */
-  const totals = $derived(jobs.overviewCounts ?? jobs.counts);
 
   const places = $derived<SegmentedOption<Place>[]>([
     { id: 'inbox', label: t.place.inbox, testid: 'place-inbox' },
@@ -72,16 +66,21 @@
     if (jobs.place !== next) jobs.setPlace(next, true);
   }
 
-  /** The search and the funnel: while the place holds jobs (or a search or a filter is on,
-   *  to be taken off, or a fetch fills Aktuell); a list that did not load has nothing to
-   *  order. */
-  const tools = $derived(
-    jobs.status !== 'error' &&
-      (totals[place] > 0 ||
-        jobs.search.trim() !== '' ||
-        jobs.filtered ||
-        (run.searching && place === 'inbox')),
+  /** A search or a rescore goes: "Abbrechen" in every place. */
+  const cancellable = $derived(run.searching || (run.active && run.kind === 'rescore'));
+  /** Why "Jobs suchen" waits: a run, a profile that lacks something (named), nothing to
+   *  read. */
+  const fetchBlocked = $derived(
+    !run.active && !app.hasProfile ? profileGaps().reason : run.fetchBlocked,
   );
+  /** The faces of the place action, each reserving the other's width. */
+  const SEARCH = { label: t.toolbar.searchNow, icon: 'search' } as const;
+  const CANCEL = { label: t.toolbar.cancel, icon: 'cancel' } as const;
+
+  /** The search (and the funnel) stand unless the list did not load. */
+  const tools = $derived(jobs.status !== 'error');
+  /** The Papierkorb has no filter. */
+  const filterable = $derived(place !== 'trash');
 
   let searchBox = $state<HTMLElement | null>(null);
 
@@ -97,7 +96,7 @@
       ),
     ).map((line) => line.portal),
   );
-  /** The chosen parts of the filter, one chip each. */
+  /** The chosen parts of the filter, one chip each (none in the Papierkorb). */
   const chips = $derived(activeFilters(jobs.filter, portals, t));
 
   let funnelBox = $state<HTMLElement | null>(null);
@@ -146,50 +145,12 @@
       onclose: () => (funnelOpen = false),
     });
   }
-
-  /* ----------------------------------------------------------------------- trash */
-
-  let confirmEmpty = $state(false);
-  let emptying = $state(false);
-  let emptyError = $state<string | null>(null);
-  /** Every job of the trash, whatever the search: emptying it deletes them all. */
-  const inTrash = $derived(totals.trash);
-  /** The Papierkorb holds jobs: "Papierkorb leeren" is its action. */
-  const emptiable = $derived(place === 'trash' && inTrash > 0);
-  /** How many the dialog names: counted when it opens, so it never says 0 while it fades. */
-  let emptyCount = $state(0);
-  let placesBox = $state<HTMLElement | null>(null);
-
-  function askEmpty(): void {
-    emptyError = null;
-    emptyCount = inTrash;
-    confirmEmpty = true;
-  }
-
-  async function emptyTrash(): Promise<void> {
-    emptying = true;
-    emptyError = null;
-    const result = await jobs.emptyTrash();
-    emptying = false;
-    if ('error' in result) {
-      emptyError = result.error;
-      return;
-    }
-    confirmEmpty = false;
-    trashEmptied(result);
-    toasts.show(t.toast.trashEmptied);
-    void jobs.loadOverview();
-    // Its button went with the jobs: the focus goes to the Papierkorb's tab, not to the top
-    // of the window.
-    await tick();
-    placesBox?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
-  }
 </script>
 
 <div class="header" data-testid="list-header" data-press-only>
-  <PageHeader line={scrolled}>
+  <PageHeader {line}>
     {#snippet lead()}
-      <span class="places" bind:this={placesBox}>
+      <span class="places">
         <Segmented
           tabs
           options={places}
@@ -201,46 +162,35 @@
       </span>
     {/snippet}
     {#snippet actions()}
-      {#if run.searching || place === 'inbox' || emptiable}
+      {#if cancellable || place === 'inbox'}
         <span class="action" data-testid="place-action">
-          {#if run.searching}
+          {#if cancellable}
             <Button
               variant="secondary"
-              icon="cancel"
-              label={t.toolbar.cancel}
+              icon={CANCEL.icon}
+              label={CANCEL.label}
+              sizeTo={[SEARCH]}
               loading={run.cancelling}
-              wide
               testid="cancel-run"
               onclick={() => void run.cancel()}
             />
-          {:else if place === 'inbox'}
-            <Button
-              variant="primary"
-              icon="search"
-              label={t.toolbar.searchNow}
-              disabled={run.fetchBlocked !== null}
-              disabledReason={run.fetchBlocked}
-              wide
-              testid="fetch"
-              onclick={() => void run.start({ kind: 'fetch' })}
-            />
           {:else}
             <Button
-              variant="secondary"
-              icon="trash"
-              label={t.actions.emptyTrash}
-              disabled={run.active}
-              disabledReason={run.busyText}
-              wide
-              testid="empty-trash"
-              onclick={askEmpty}
+              variant="primary"
+              icon={SEARCH.icon}
+              label={SEARCH.label}
+              sizeTo={[CANCEL]}
+              disabled={fetchBlocked !== null}
+              disabledReason={fetchBlocked}
+              testid="fetch"
+              onclick={() => void run.start({ kind: 'fetch' })}
             />
           {/if}
         </span>
       {/if}
     {/snippet}
-    <div class="top">
-      {#if tools}
+    {#if tools}
+      <div class="top">
         <span class="search" bind:this={searchBox}>
           <TextField
             kind="search"
@@ -251,20 +201,22 @@
             oninput={(value) => jobs.setSearch(value)}
           />
         </span>
-        <span class="funnel" bind:this={funnelBox}>
-          <Button
-            variant="secondary"
-            iconOnly
-            icon="filter"
-            label={t.toolbar.filter}
-            menu
-            expanded={funnelOpen}
-            testid="filter"
-            onclick={openFunnel}
-          />
-        </span>
-      {/if}
-    </div>
+        {#if filterable}
+          <span class="funnel" bind:this={funnelBox}>
+            <Button
+              variant="secondary"
+              iconOnly
+              icon="filter"
+              label={t.toolbar.filter}
+              menu
+              expanded={funnelOpen}
+              testid="filter"
+              onclick={openFunnel}
+            />
+          </span>
+        {/if}
+      </div>
+    {/if}
     {#if chips.length > 0}
       <div class="unfold" transition:unfold>
         <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
@@ -290,20 +242,9 @@
         </div>
       </div>
     {/if}
+    <span class="tail" aria-hidden="true"></span>
   </PageHeader>
 </div>
-
-<Dialog
-  bind:open={confirmEmpty}
-  variant="danger"
-  heading={t.actions.emptyTrashHeading}
-  text={t.actions.emptyTrashText(emptyCount)}
-  confirmLabel={t.actions.emptyTrash}
-  busy={emptying}
-  error={emptyError}
-  testid="dialog-empty-trash"
-  onconfirm={() => void emptyTrash()}
-/>
 
 <style>
   /* The rows stack without a gap: each one below the first brings its own room at its top,
@@ -319,11 +260,9 @@
     min-width: 0;
   }
 
-  /* One height whatever it holds (an empty place keeps the row, empty). A narrow column
-     puts the funnel under the search. */
+  /* The search and the funnel, 10 under the tabs, 8 apart. */
   .top {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-8);
     min-height: var(--list-toolbar);
@@ -332,7 +271,7 @@
 
   .search {
     display: flex;
-    flex: 1 1 30%;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
@@ -341,11 +280,10 @@
     flex: none;
   }
 
-  /* The place's one action: at least --place-action wide, its button filling it. */
+  /* The place's one action at the end of the tabs' row. */
   .action {
     display: flex;
     flex: none;
-    min-width: var(--place-action);
     margin-left: auto;
   }
 
@@ -368,5 +306,11 @@
 
   .note {
     padding-top: var(--space-10);
+  }
+
+  /* The head's 8 below its last row, and 2 more: 10, as under the draft's search. */
+  .tail {
+    display: block;
+    height: var(--list-head-tail);
   }
 </style>

@@ -1,38 +1,25 @@
 <!--
-  One job in the list, mail-style with fixed gutters: the unread dot (6 px, coral) centred
-  in the pane padding on the axis of the ring (so a title never moves when the job is read),
-  the ring, then two lines (user decision 2026-09-27: the row says what, where and for how
-  much, the reader everything else):
-  1. the title on one line (every row one height; a cut title shows in full in a tooltip; a
-     new job's title is drawn heavier without getting wider, so reading a job never moves it;
-     while a search is on, its words are marked in the title in a soft yellow, in any case
-     and with or without accents, as the search finds them)
-     and at the end of the line its stamp like a mail list: when the job came in (the time
-     today, "Gestern", "Vorgestern", then "Mi 23.09."; in the Papierkorb the day the job went
-     there), never its application deadline (user decision 2026-09-27: the reader's
-     Jobdetails name it). An ad that no longer takes applications says "Beendet" there, its
-     title muted (the order by match puts it after the open ones).
-  2. the job at a glance (JobMeta): the company, the place and the pay the ad states; the
-     company and the place are cut at the line's end, the pay never.
-  No portal, no facts, no badges: the reader has them. Under the pointer (and while the
-  row's menu is open) the row's tools, the moves of its place (actions.ts rowTools:
-  Archivieren and Löschen, Zurückholen and Löschen, Wiederherstellen and Endgültig
-  löschen), fade in as icons over the date, which fades out: they stand in a fixed slot at
-  the end of the title line that is always as wide as they are, so nothing moves and the
-  title keeps its room. Each names itself in its tooltip; Endgültig löschen is red.
-  They are siblings of the row's button (a click on one never opens the job, a double click
-  never its ad: that is the row button's own), out of the Tab
-  order (the row's menu is there for the keyboard), and exist only while they show. After a
-  tool took its row away, the row that slides under the pointer shows its tools only once
-  the pointer moves (input.ts `hover`). The row's menu (a right click, the app's own) and a
-  double click (the ad in the browser) act on the job too. The ring
-  stays hollow on the open row (its track is never tinted); without a usable profile it is
-  empty (a dash). An excluded job shows the red ban on a light red track in the ring's place
-  and its title muted. A new job (lib/state/filter.ts `isNew`: not opened yet and not excluded) carries
-  the dot and the heavier title in every place, like a mail app's unread mark; when it is
-  read while its row is on screen the dot shrinks away. Stamps follow the page's clock (they move on while
-  the app stays open). Layout stays inside the row (containment); like the row, its
-  hover rests while the list scrolls (`data-still`, see ListRow).
+  One job in the list, one line (the round 10 draft, user decision 2026-10-24): the ring (30)
+  and the title (14/540). Nothing else: no company, place, rate, date or dot (the reader and
+  the day's heading have them). The title stays on one line (every row one height; a cut
+  title shows in full in a tooltip; while a search is on, its words are marked in a soft
+  yellow, in any case and with or without accents, as the search finds them). A new job
+  (lib/state/filter.ts `isNew`: not opened yet and not excluded) has its title in 650 and a
+  hidden "Neu" for screen readers. A job in the Papierkorb and an ad that takes no
+  applications any more step back: the title muted in 450 (an excluded job is not muted, the
+  red ban in the ring's place marks it).
+  Under the pointer (and while the row's menu is open) the row's tools fade in at its end:
+  the moves of its place (actions.ts rowTools: Archivieren and In den Papierkorb legen, Nach
+  Aktuell verschieben and In den Papierkorb legen, Wiederherstellen and Endgültig löschen),
+  quiet icon buttons that name themselves in their tooltips. Their slot is always kept, so
+  the title never moves. They are siblings of the row's button (a click on one never opens
+  the job, a double click never its ad), out of the Tab order (the row's menu is there for
+  the keyboard), and exist only while they show. After a tool took its row away, the row that
+  slides under the pointer shows its tools only once the pointer moves (input.ts `hover`).
+  The row's menu (a right click, the app's own) and a double click (the ad in the browser)
+  act on the job too. Without a usable profile the ring is empty (a dash). `reveal`: the ring
+  fills and counts up as the row mounts (a list that opens). Layout stays inside the row
+  (containment); like the row, its hover rests while the list scrolls (`data-still`).
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -84,8 +71,6 @@
     icon: IconName;
     /** Its name: the tooltip and the accessible name of the icon. */
     label: string;
-    /** It deletes the job (Löschen, Endgültig löschen): drawn in red. */
-    deletes: boolean;
     disabled: boolean;
     /** Why a disabled tool waits (its tooltip). */
     reason: string | null;
@@ -96,12 +81,10 @@
 <script lang="ts">
   import { contextMenu, holdHover, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
-  import { displayTitle, formatStamp } from '$lib/i18n/format';
-  import { dotOut, fade } from '$lib/motion/transitions';
-  import { clock } from '$lib/state/clock.svelte';
+  import { displayTitle } from '$lib/i18n/format';
+  import { fade } from '$lib/motion/transitions';
   import { isNew } from '$lib/state/filter';
   import Button from './Button.svelte';
-  import JobMeta from './JobMeta.svelte';
   import ListRow from './ListRow.svelte';
   import ScoreRing, { ringState } from './ScoreRing.svelte';
 
@@ -112,8 +95,8 @@
     pending?: boolean;
     /** A usable profile is there (without one the ring is an empty placeholder: no match). */
     ring?: boolean;
-    /** Fixed "now" for the stamp (tests). */
-    now?: Date;
+    /** The ring fills and counts up as the row mounts (a list that opens). */
+    reveal?: boolean;
     /** The words of the search the list shows (marked in the title). */
     marks?: readonly string[];
     /** A click on the row. */
@@ -133,7 +116,7 @@
     selected = false,
     pending = false,
     ring = true,
-    now,
+    reveal = false,
     marks = [],
     onselect = null,
     onopen = null,
@@ -143,19 +126,14 @@
   }: Props = $props();
 
   const excluded = $derived(job.match?.status === 'excluded');
-  /** Not opened yet and not excluded: the dot and the heavier title, in every place. */
+  /** Not opened yet and not excluded: the title in 650 and the hidden "Neu". */
   const fresh = $derived(isNew(job));
-  /** The day the job came into CXact; in the Papierkorb the moment it went there (the date
-   *  the trash sorts by). */
-  const when = $derived((job.place === 'trash' ? job.trashedAt : null) ?? job.firstSeenAt);
-  const current = $derived(now ?? clock.now);
+  /** In the Papierkorb or closed: the title steps back. */
+  const muted = $derived(job.place === 'trash' || job.closed);
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   /** The title with the words of the search marked. */
   const titleParts = $derived(markedParts(heading, marks));
-  /** The end of the title line: "Beendet" for an ad that takes no applications, else when
-   *  the job came in. */
-  const stamp = $derived(job.closed ? t.job.closed : formatStamp(when, current));
 
   /** The pointer is on the row (after a tool took a row away: once it moved). */
   let here = $state(false);
@@ -194,18 +172,12 @@
     <ScoreRing
       ring={ring ? ringState(job.match, pending, job.detail.kind) : { status: 'off' }}
       size="sm"
+      {reveal}
     />
   {/if}
 {/snippet}
 
-<div
-  class="job"
-  class:tooled
-  class:excluded
-  data-rests=""
-  use:hover={(on) => (here = on)}
-  use:contextMenu={offer}
->
+<div class="job" class:tooled data-rests="" use:hover={(on) => (here = on)} use:contextMenu={offer}>
   <ListRow
     {leading}
     {selected}
@@ -213,20 +185,16 @@
     ondouble={onopen ? () => onopen?.(job) : null}
     testid={rowId}
   >
-    <span class="head">
-      <span
-        class="title"
-        class:unread={fresh}
-        class:closed={job.closed}
-        use:tooltip={{ text: heading, truncated: true }}
-        >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
-            >{:else}{part.text}{/if}{/each}</span
-      >
-      <span class="date" data-testid="row-date"><span class="stamp">{stamp}</span></span>
-    </span>
-    <JobMeta {job} prefix="row" />
+    <span
+      class="title"
+      class:unread={fresh}
+      class:muted
+      use:tooltip={{ text: heading, truncated: true }}
+      >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
+          >{:else}{part.text}{/if}{/each}</span
+    >{#if fresh}<span class="unseen">{t.job.unread}</span>{/if}
+    <span class="slot" aria-hidden="true"></span>
   </ListRow>
-  {#if fresh}<span class="dot" role="img" aria-label={t.job.unread} out:dotOut></span>{/if}
   {#if tooled && tools}
     <span class="tools" data-testid="row-tools" transition:fade>
       {#each tools() as tool (tool.id)}
@@ -255,27 +223,6 @@
     contain: layout;
   }
 
-  /* The unread dot: centred in the pane padding, on the axis of the ring (the row's middle). */
-  .dot {
-    position: absolute;
-    top: calc(50% - var(--dot-unread) / 2);
-    left: calc((var(--pane-padding) - var(--dot-unread)) / 2);
-    width: var(--dot-unread);
-    height: var(--dot-unread);
-    border-radius: var(--radius-full);
-    background-color: var(--unread);
-    pointer-events: none;
-  }
-
-  /* The title line: the title, the stamp at the end. */
-  .head {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
-    min-width: 0;
-    height: var(--leading-title);
-  }
-
   /* One line for every title, so every row has one height (user, 2026-09-25): a long title
      ends in an ellipsis and shows in full in a tooltip. */
   .title {
@@ -288,10 +235,24 @@
     white-space: nowrap;
   }
 
-  /* Unread: heavier strokes on the same glyph advances (a heavier weight is wider, and a
-     title near the end of its line would wrap anew when the job is read). */
   .title.unread {
-    -webkit-text-stroke: calc(var(--border-width) * 0.4) currentcolor;
+    font-weight: var(--weight-semibold);
+  }
+
+  /* In the Papierkorb and closed: muted in the text's weight, whether new or not. */
+  .title.muted {
+    color: var(--text-muted);
+    font-weight: var(--weight-regular);
+  }
+
+  /* "Neu", for screen readers only. */
+  .unseen {
+    position: absolute;
+    width: var(--border-width);
+    height: var(--border-width);
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* A word of the search: a soft mark under the ink (the title's own colour). */
@@ -301,63 +262,25 @@
     color: inherit;
   }
 
-  /* An ad that takes no applications any more, and an excluded job: its title steps back. */
-  .title.closed,
-  .excluded .title {
-    color: var(--text-muted);
-  }
-
-  /* The stamp at the end of the title line, in the tools' slot (as wide as the two tools at
-     least, so the title's room never changes); it steps up from subtle to muted on hover and
-     fades out while the tools show. */
-  .date {
+  /* The tools' slot at the end of the line, always kept: the title's room never changes. */
+  .slot {
     flex: none;
-    min-width: calc(2 * var(--control-field) + var(--space-2) + var(--space-6));
+    box-sizing: content-box;
+    width: var(--list-tools);
     margin-left: auto;
-    padding-left: var(--space-6);
-    color: var(--text-subtle);
-    text-align: end;
-    white-space: nowrap;
-    transition:
-      color var(--dur-base) var(--ease-standard),
-      opacity var(--dur-fast) var(--ease-standard);
+    padding-left: var(--list-row-gap);
   }
 
-  .tooled:where(:not([data-still])) .date {
-    opacity: 0;
-  }
-
-  .stamp {
-    font: var(--type-xs);
-    font-variant-numeric: var(--numeric);
-  }
-
-  .job:hover:where(:not([data-still])) .date {
-    color: var(--text-muted);
-    transition-duration: var(--dur-hover);
-  }
-
-  /* The row keeps its wash while the pointer is on a tool (a sibling of the row's button);
-     a pressed row keeps its own look. */
-  .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)) {
-    background-color: var(--quiet-hover);
-  }
-
-  .job:hover:where(:not([data-still])) :global(.row.selected:not(:active)) {
-    background-color: var(--surface-selected-hover);
-  }
-
-  /* The tools over the date, centred on the title line, their right edge on the date's. */
+  /* The tools in their slot, centred on the row, 10 from its end. */
   .tools {
     position: absolute;
-    top: calc(var(--list-row-pad) + (var(--leading-title) - var(--control-field)) / 2);
-    right: var(--pane-padding);
+    top: calc(50% - var(--control-icon) / 2);
+    right: var(--list-tools-end);
     display: flex;
     gap: var(--space-2);
   }
 
-  /* Shown while the row is tooled; while the list scrolls the row rests: no tools, the date
-     stays. */
+  /* Shown while the row is tooled; while the list scrolls the row rests: no tools. */
   .tool {
     display: inline-flex;
     opacity: 0;
@@ -368,9 +291,13 @@
     opacity: 1;
   }
 
-  /* On the washed row a tool's own hover is one step deeper (the red of one that deletes
-     stays its own). */
-  .tool :global(.btn.ghost:not(.deletes)) {
+  /* The row keeps its wash while the pointer is on a tool (a sibling of the row's button). */
+  .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)) {
+    background-color: var(--quiet-hover);
+  }
+
+  /* On the washed row a tool's own hover is one step deeper. */
+  .tool :global(.btn.ghost) {
     --btn-bg-hover: var(--quiet-press);
   }
 </style>

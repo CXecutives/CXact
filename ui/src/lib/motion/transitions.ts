@@ -259,49 +259,10 @@ export function unfold(node: Element, params: MotionParams = {}): TransitionConf
   };
 }
 
-/** Where the job list's selection bar stands: its top in the list and its height (px). */
+/** Where the job list's highlight stands: its top in the list and its height (px). */
 export interface BarBox {
   top: number;
   height: number;
-}
-
-/**
- * The job list's one selection bar goes to another row like the sidebar's pill (180 ms,
- * emphasized): its top and its height move together, so it keeps the inset of rows of
- * either height. `glide` follows a row that glides to its new place instead, in the row's
- * own timing (150 ms, standard). The bar's style holds `to` already; the animation starts
- * from `from` and is dropped once it ends. Null under reduced motion (it is simply there).
- */
-export function barSlide(
-  bar: HTMLElement,
-  from: BarBox,
-  to: BarBox,
-  glide = false,
-): Animation | null {
-  const at = (box: BarBox): Keyframe => ({
-    transform: `translateY(${Math.round(box.top)}px)`,
-    height: `${Math.round(box.height)}px`,
-  });
-  const motion = play(
-    bar,
-    [at(from), at(to)],
-    glide ? { duration: 'base' } : { duration: 'slow', easing: 'emphasized' },
-  );
-  motion?.addEventListener('finish', () => motion.cancel());
-  return motion;
-}
-
-/**
- * The unread dot leaves when the job is read while its row is on screen: it shrinks and
- * fades (150 ms, ease-in). Local, so filtering or unmounting a row never plays it.
- */
-export function dotOut(node: Element): TransitionConfig {
-  if (isReducedMotion()) return crossfade(node);
-  return {
-    duration: duration('base'),
-    easing: easing('in'),
-    css: (t) => `opacity: ${t}; transform: scale(${t})`,
-  };
 }
 
 /** The toast comes up from below by --move-xl while it fades in, nothing scales (180 ms,

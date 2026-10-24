@@ -1,39 +1,40 @@
 <!--
-  The job list's one selection bar: the coral bar on the left edge of the open job's row,
-  inset by the row's padding (--row-bar-inset). Opening another job slides it there like the
-  sidebar's pill (180 ms, emphasized), top and height together; far jumps (Home, End) place
-  it. It lies in the list's scroll content, so it scrolls with the rows, and it stays with
-  its row whatever moves the rows: at once when rows arrive or fold away above it or its row
-  grows, gliding along when the list re-sorts. It is simply there the first time: when the
-  list is built or comes back, and after a reload, another filter or a search. Opening a job
-  while none is open fades it in (150 ms), closing fades it out (100 ms). A job that leaves
-  the list (archive, trash) keeps it where its row was until the next job opens there: it
+  The job list's one highlight (the round 10 draft): the open job's row on a soft coral tint
+  (8 round, the row's own box, 6 in from the column's edges), a 3 px coral bar at its left
+  edge, 10 in from its top and bottom. It lies under the rows and the days' headings, and in
+  the list's scroll content, so it scrolls with the rows. Opening another job glides it there
+  by its translateY (180 ms, ease-out, like the sidebar's pill and the segment's thumb); a
+  target out of sight, fast browsing (pace.ts: the arrow keys held, opens close together) and
+  far jumps place it. It stays with its row whatever moves the rows: at once when rows arrive
+  or fold away above it, gliding along when the list re-sorts. It is simply there the first
+  time: when the list is built or comes back, and after a reload, another filter or a search.
+  Opening a job while none is open fades it in, closing fades it out. A job that leaves the
+  list (archive, Papierkorb) keeps it where its row was until the next job opens there: it
   waits there while the next row rises into that place, however long the fold takes. It
-  greys while the window is inactive, like the selected row's wash. Under reduced motion it
-  never moves.
+  greys while the window is inactive, like Mail and Explorer. Under reduced motion it never
+  moves.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
   import { px, setVars, type CssVars } from '$lib/actions/cssVars';
-  import { barSlide, type BarBox } from '$lib/motion/transitions';
-  import { tokenPx } from '$lib/tokens';
+  import { play } from '$lib/motion/motion';
+  import { browsingFast } from '$lib/motion/pace';
+  import type { BarBox } from '$lib/motion/transitions';
 
   interface Props {
-    /** The rows (elements with `data-key`); their layout moves the bar. */
+    /** The rows (elements with `data-key`); their layout moves the highlight. */
     rows: HTMLElement | null;
-    /** The row the bar marks: the open job's, while it shows as selected. */
+    /** The row it marks: the open job's, while it shows as selected. */
     open: string | null;
-    /** That row is greyed out (an excluded job). */
-    muted?: boolean;
     /** The listed rows: a row on the page that is not listed is on its way out. */
     listed: ReadonlySet<string>;
     /** Rows that fold away: their height leaves the list while they do. */
     folding: ReadonlySet<string>;
-    /** Counts the lists: another list places the bar without motion. */
+    /** Counts the lists: another list places it without motion. */
     generation: number;
   }
 
-  let { rows, open, muted = false, listed, folding, generation }: Props = $props();
+  let { rows, open, listed, folding, generation }: Props = $props();
 
   let bar = $state<HTMLElement | null>(null);
   let shown = $state(false);
@@ -60,7 +61,6 @@
   };
   /** The row found last (a lookup among thousands of rows only when it changed). */
   let found: HTMLElement | null = null;
-  let inset = 0;
 
   function find(key: string): HTMLElement | null {
     if (found?.isConnected && found.dataset['key'] === key && rows?.contains(found)) return found;
@@ -68,7 +68,8 @@
     return found;
   }
 
-  /** The bar beside a row: its top in the list and its height, inset like the row's own. */
+  /** The row's box: its top in the list (summed along the offset parents: a day's wrapper
+   *  stays unpositioned, a row's own wrapper is) and its height. */
   function boxOf(item: HTMLElement): BarBox {
     const list = bar?.parentElement ?? null;
     let top = 0;
@@ -76,8 +77,7 @@
       top += node.offsetTop;
       node = node.offsetParent;
     }
-    inset ||= tokenPx('--row-bar-inset');
-    return { top: top + inset, height: Math.max(0, item.offsetHeight - 2 * inset) };
+    return { top, height: item.offsetHeight };
   }
 
   /** Where the row will stand once the rows folding away above it are gone. */
@@ -120,12 +120,26 @@
     placed = box;
   }
 
-  /** The style holds `to`; the move starts from `from`. */
-  function slide(from: BarBox, to: BarBox, glide = false): void {
+  /**
+   * The style holds `to`; the move starts from `from`: to another row 180 ms ease-out (the
+   * one glide of a choice), along with a row that glides to its new place in the row's own
+   * timing (150 ms). Its height moves only where the two rows differ (rows are one height).
+   */
+  function slide(from: BarBox, to: BarBox, along = false): void {
     stop();
     place(to);
     if (bar === null) return;
-    const animation = barSlide(bar, from, to, glide);
+    const sized = px(from.height) !== px(to.height);
+    const at = (box: BarBox): { transform: string; height?: string } => ({
+      transform: `translateY(${Math.round(box.top)}px)`,
+      ...(sized ? { height: px(box.height) } : {}),
+    });
+    const animation = play(
+      bar,
+      [at(from), at(to)],
+      along ? { duration: 'base' } : { duration: 'slow', easing: 'out' },
+    );
+    animation?.addEventListener('finish', () => animation.cancel());
     motion = animation === null ? null : { animation, from, to };
   }
 
@@ -186,7 +200,8 @@
       const from = shown ? current() : null;
       at = open;
       ahead = to.top !== live.top;
-      if (from !== null && changed && !jump && Math.abs(to.top - from.top) < innerHeight) {
+      const near = from !== null && Math.abs(to.top - from.top) < innerHeight;
+      if (from !== null && near && changed && !jump && !browsingFast()) {
         slide(from, to);
       } else {
         stop();
@@ -277,43 +292,49 @@
 </script>
 
 <span
-  class="bar"
+  class="highlight"
   class:shown
   class:snap
-  class:muted
   aria-hidden="true"
   data-testid="row-bar"
   bind:this={bar}
 ></span>
 
 <style>
-  /* Placed by script (--bar-top, --bar-height), shown by opacity. */
-  .bar {
+  /* Placed by script (--bar-top, --bar-height), shown by opacity (140 ms). Under the rows:
+     the first child of the list, and nothing of it takes a z-index. */
+  .highlight {
     position: absolute;
-    z-index: var(--z-raised);
     top: 0;
-    left: 0;
-    width: var(--row-bar);
+    right: var(--row-highlight-inset);
+    left: var(--row-highlight-inset);
     height: var(--bar-height, 0);
-    border-radius: var(--radius-full);
-    background-color: var(--selection-bar);
+    border-radius: var(--list-row-radius);
+    background-color: var(--selection-tint);
     opacity: 0;
     pointer-events: none;
     transform: translateY(var(--bar-top, 0));
     transition:
-      opacity var(--dur-fast) var(--ease-in),
+      opacity var(--dur-fade) var(--ease-in),
       background-color var(--dur-base) var(--ease-standard);
+  }
+
+  /* The coral bar at its left edge, 10 in from its top and bottom. */
+  .highlight::before {
+    position: absolute;
+    top: var(--row-bar-inset);
+    bottom: var(--row-bar-inset);
+    left: 0;
+    width: var(--row-bar);
+    border-radius: var(--row-bar);
+    background-color: var(--selection-bar);
+    content: '';
+    transition: background-color var(--dur-base) var(--ease-standard);
   }
 
   .shown {
     opacity: 1;
-    transition-duration: var(--dur-base);
     transition-timing-function: var(--ease-out), var(--ease-standard);
-  }
-
-  /* On an excluded row it is as grey as the row. */
-  .shown.muted {
-    opacity: var(--opacity-muted);
   }
 
   .snap {
@@ -321,7 +342,11 @@
   }
 
   /* Like Mail and Explorer: the selection greys out while the window is in the back. */
-  :global(:root[data-window='inactive']) .bar {
+  :global(:root[data-window='inactive']) .highlight {
+    background-color: var(--surface-selected-inactive);
+  }
+
+  :global(:root[data-window='inactive']) .highlight::before {
     background-color: var(--text-subtle);
   }
 </style>

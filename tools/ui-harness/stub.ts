@@ -34,7 +34,9 @@
 // (a profile and a mailbox just connected) · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · mailbox-refused (Gmail refused the app password while the
 // search went on) · paused · running · slow · list-error · profile-broken ·
-// concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
+// sign-in-waiting (a search that waits for the sign-in at freelance.de) · rescoring (the jobs
+// scored anew after a save) · concept (five jobs for design reviews: high, medium, low, not
+// scored, excluded) ·
 // profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
 // two required fields open) · first-run-empty-profile (no competence, no language)
 // · session-left (freelance.de still signed in while the fetch does not use the sign-in)
@@ -373,7 +375,71 @@ const sourceOf = (key: JobKey): string => SOURCE.get(markKey(key)) ?? markKey(ke
 
 /** The demo's jobs as the engine left them. */
 function sampleJobs(): JobView[] {
-  return structuredClone(DEMO.jobs);
+  return [...structuredClone(DEMO.jobs), ...PLACED.map(placedJob)];
+}
+
+/** Jobs that lie in the Archiv and the Papierkorb from the start, as with someone who has
+ *  used the app a while: demo jobs under new ids with titles of their own (their reader is
+ *  the demo job's), read, their alert mail not to be opened (`hasMail` false). */
+const PLACED: readonly {
+  from: string;
+  key: JobKey;
+  title: string;
+  place: Exclude<Place, 'inbox'>;
+  /** When it came into CXact, and when it went to the Papierkorb (hours before NOW). */
+  seen: number;
+  trashed?: number;
+}[] = [
+  {
+    from: 'freelancermap:2803',
+    key: { portal: 'freelancermap', id: '2808' },
+    title: 'Leitung Finanzen im Projekt',
+    place: 'archive',
+    seen: 13 * 24,
+  },
+  {
+    from: 'linkedin:4100200303',
+    key: { portal: 'linkedin', id: '4100200307' },
+    title: 'Controller Werkscontrolling',
+    place: 'trash',
+    seen: 3 * 24,
+    trashed: 1.5,
+  },
+  {
+    from: 'freelancermap:2804',
+    key: { portal: 'freelancermap', id: '2809' },
+    title: 'Kaufmännische Leitung Bau',
+    place: 'trash',
+    seen: 4 * 24,
+    trashed: 26,
+  },
+];
+
+function placedJob(placed: (typeof PLACED)[number]): JobView {
+  const from = DEMO.jobs.find((j) => markKey(j.key) === placed.from)!;
+  SOURCE.set(markKey(placed.key), placed.from);
+  return {
+    ...structuredClone(from),
+    key: structuredClone(placed.key),
+    portal: placed.key.portal,
+    title: placed.title,
+    place: placed.place,
+    firstSeenAt: at(placed.seen),
+    mailDate: at(placed.seen),
+    trashedAt: placed.trashed === undefined ? null : at(placed.trashed),
+    unread: false,
+    hasMail: false,
+    alsoOn: [],
+  };
+}
+
+/** The Papierkorb of the placed jobs: when each went there, and from Aktuell. */
+function placeTrash(): void {
+  for (const placed of PLACED) {
+    if (placed.trashed === undefined) continue;
+    trashedAt.set(markKey(placed.key), at(placed.trashed));
+    trashedFrom.set(markKey(placed.key), 'inbox');
+  }
 }
 
 /** The scenario `many`: four demo jobs in turn under new ids (100000 on), their titles
@@ -930,6 +996,26 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
       ],
     };
   },
+  // A search that waits for the sign-in at freelance.de (its sign-in window is open).
+  'sign-in-waiting': () => {
+    state.running = {
+      kind: 'fetch',
+      startedAt: at(0.05),
+      replay: [
+        { type: 'progress', step: 'scan', portal: null, done: 9, total: 9 },
+        { type: 'progress', step: 'fetch', portal: null, done: 2, total: 7 },
+        { type: 'loginNeeded', portal: 'freelance', waiting: true },
+      ],
+    };
+  },
+  // The jobs are scored anew after a save of the profile.
+  rescoring: () => {
+    state.running = {
+      kind: 'rescore',
+      startedAt: at(0.01),
+      replay: [{ type: 'progress', step: 'score', portal: null, done: 3, total: 8 }],
+    };
+  },
   'quiet-alert': () => {
     // freelance.de sent its last alert mail nine days before the last fetch: its alert
     // may have run out.
@@ -939,6 +1025,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
 
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
+  if (scenario !== 'many') placeTrash();
   backups = scenario === 'first-run' || DEMO_MODE ? [] : structuredClone([...DEMO_BACKUPS]);
   // The last fetch brought a job whose page is still to come: the stub holds it before the
   // catch-up scores it (the list's jobs without a score stand first).
@@ -1228,29 +1315,36 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   }
   const words = searchWords(query.search);
   const base = jobs.filter((j) => matchesSearch(j, words) && inFilter(j, query));
-  // The filter narrows the counts like the list (store::job_page). By date: the day the job
-  // came into CXact (within a day by its alert mail's date, then by portal), in the trash the
-  // moment it went there.
-  const days = new Map(base.map((j) => [j, localDay(j.firstSeenAt)]));
-  const date = (j: JobView): string =>
-    query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (days.get(j) ?? '');
-  // store::page_order (design round 7): the scored jobs, then the ones whose ring shows no
-  // number (not scored yet and not scorable together), then the excluded ones, each its own
-  // section of the list; within one a closed ad after the open ones; then the best score
-  // (by match), else by date.
+  // The filter narrows the counts like the list (store::job_page). The day of a job: the
+  // local day it came into CXact, in the trash the day it went there; within a day by its
+  // alert mail's date (the trash by the moment it went there), then by portal.
+  const trashed = (j: JobView): string => trashedAt.get(markKey(j.key)) ?? j.firstSeenAt;
+  const days = new Map(
+    base.map((j) => [j, localDay(query.place === 'trash' ? trashed(j) : j.firstSeenAt)]),
+  );
+  const day = (j: JobView): string => days.get(j) ?? '';
+  // store::page_order (round 10, decision 1): the scored jobs, then the ones whose ring shows
+  // no number (not scored yet and not scorable together), then the excluded ones, each its
+  // own section of the list. By date (the default): the newest day first, within a day the
+  // open ads before the closed ones, then the best score, so a day's heading never repeats.
+  // By match and by rate: the open ads before the closed ones, then the best score or the
+  // highest day rate (the jobs without one last), then the newest day.
   const scoreOf = (j: JobView): number | null =>
     j.match?.status === 'scored' ? j.match.score : null;
   const section = (j: JobView): number =>
     j.match?.status === 'excluded' ? 2 : scoreOf(j) === null ? 1 : 0;
+  const byDay = (a: JobView, b: JobView): number =>
+    day(a) === day(b) ? 0 : day(a) < day(b) ? 1 : -1;
   const page = base
     .filter((j) => inQuery(j, query))
     .sort((a, b) => {
       const bySection = section(a) - section(b);
       if (bySection !== 0) return bySection;
-      const byMatch = query.sort === 'match';
+      const dated = query.sort === 'newest';
+      if (dated && byDay(a, b) !== 0) return byDay(a, b);
       const closed = Number(a.closed) - Number(b.closed);
       if (closed !== 0) return closed;
-      if (byMatch) {
+      if (query.sort !== 'rate') {
         const d = (scoreOf(b) ?? 0) - (scoreOf(a) ?? 0);
         if (d !== 0) return d;
       }
@@ -1263,10 +1357,12 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
       }
       // ISO dates order as plain strings (localeCompare on 2000 jobs took the page's main
       // thread for milliseconds; the real backend sorts in SQLite, off it).
-      const da = date(a);
-      const db = date(b);
-      if (da !== db) return da < db ? 1 : -1;
-      if (query.place !== 'trash') {
+      if (!dated && byDay(a, b) !== 0) return byDay(a, b);
+      if (query.place === 'trash') {
+        const ta = trashed(a);
+        const tb = trashed(b);
+        if (ta !== tb) return ta < tb ? 1 : -1;
+      } else {
         const ma = a.mailDate ?? '';
         const mb = b.mailDate ?? '';
         if (ma !== mb) return ma < mb ? 1 : -1;
@@ -2268,7 +2364,7 @@ const harness: Harness = {
     return structuredClone(
       listJobs({
         place: 'inbox',
-        sort: 'match',
+        sort: 'newest',
         search: null,
         portals: [],
         bands: [],
