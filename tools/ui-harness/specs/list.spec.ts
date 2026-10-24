@@ -1364,6 +1364,8 @@ test('a profile that lacks fields: Jobs suchen names them, the state box leads t
   await expect(box).toContainText(T.list.profileEmpty);
   await box.getByRole('button', { name: T.list.completeProfile }).click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
+  // The first required field still empty is in view, marked.
+  await expect(page.locator('[data-missing]').first()).toBeInViewport();
 });
 
 /* ========================================================================= rows */
@@ -1978,11 +1980,12 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   page,
 }) => {
   await open(page, WIN);
-  // The splitter's hit strip is centred on the list's border (round 10, Splitter).
+  // The splitter's hit strip starts on the list's border and never lies over its scrollbar.
   const hit = (await page.getByTestId('list-splitter').locator('.hit').boundingBox())!;
   const scroll = (await page.getByTestId('list-scroll').boundingBox())!;
-  const border = scroll.x + scroll.width + 0.5;
-  expect(Math.abs(hit.x + hit.width / 2 - border)).toBeLessThanOrEqual(1);
+  const edge = scroll.x + scroll.width;
+  expect(hit.x).toBeGreaterThanOrEqual(edge - 0.5);
+  expect(hit.x).toBeLessThanOrEqual(edge + 1.5);
   // The column (as its handle says it) never gets narrower while the window grows, across
   // the rail too.
   const listWidth = async (): Promise<number> => {

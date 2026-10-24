@@ -295,6 +295,16 @@
     return panel?.revealField(field) ?? Promise.resolve(false);
   }
 
+  /** The Profil opened for one of its fields ("Profil ergänzen" in the Jobs view sets
+   *  `navigation.section` to the first required field still empty; read once and set back,
+   *  like Einstellungen its group): that field comes into view. */
+  $effect(() => {
+    const field = navigation.section;
+    if (field === null || setup || panel === null) return;
+    navigation.section = null;
+    void tick().then(() => reveal(field));
+  });
+
   /**
    * The setup's "Weiter": what is missing is marked and the first one scrolls into view;
    * else it saves what changed (a new form always) and is `true` once nothing required is
