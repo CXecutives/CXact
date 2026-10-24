@@ -61,6 +61,7 @@ test('a button that swaps keeps one width, busy too; a pair has one least width'
 
 test('a select: the arrows open its list, the focus stays on its button; Enter, Esc', async ({
   page,
+  browserName,
 }) => {
   await sheet(page);
   const select = page.getByTestId('states-select');
@@ -92,7 +93,8 @@ test('a select: the arrows open its list, the focus stays on its button; Enter, 
   await select.click();
   await list.getByRole('option', { name: 'GMX' }).click();
   await expect(select).toHaveText('GMX');
-  await expect(select).toBeFocused();
+  // A click focuses a button on Windows, not on macOS (WebKit), as the OS does.
+  if (browserName === 'chromium') await expect(select).toBeFocused();
   // A click on the button of the open list closes it.
   await select.click();
   await expect(list).toBeVisible();
