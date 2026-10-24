@@ -7,7 +7,7 @@
   starts there) with an optional badge beside it ("Optional"), and the lead 15/22 muted. The
   body under it is left-aligned. The foot under a hairline: Zurück (ghost, with its arrow
   and words) at the left, the step's buttons at the right (`actions`, in the OS order the
-  caller gives them); a foot without Zurück centres its buttons (`centred`: the reading's
+  caller gives them; a ghost at their end hangs out like Zurück); a foot without Zurück centres its buttons (`centred`: the reading's
   Abbrechen). No step dots.
 -->
 <script lang="ts">
@@ -182,6 +182,12 @@
     display: flex;
     align-items: center;
     gap: var(--space-8);
+  }
+
+  /* A ghost at the end ("Überspringen") hangs out as far as Zurück does at the start: the
+     words of both stand the same way in from the card's sides. */
+  .actions > :global(.btn.ghost:last-child) {
+    margin-right: var(--setup-back-pull);
   }
 
   @container setup (width < 600px) {
