@@ -1,6 +1,7 @@
 <!--
-  The info symbol beside a label, only at the fixed places of docs/PLAN.md: a quiet ghost
-  glyph whose accessible name says what it explains; its one sentence shows in the one
+  The info symbol beside a label, only at the fixed places of docs/PLAN.md: a quiet 14 px
+  glyph in the subtle grey of icons (round 10), hit 24 px wide around it, whose accessible
+  name says what it explains; its one sentence shows in the one
   tooltip layer on hover, on keyboard focus and on a click (a second click hides it). A field
   has either a visible hint or an info symbol, never both (Field).
 -->
@@ -30,24 +31,28 @@
 </button>
 
 <style>
-  /* As high as the label's line: it never makes its row taller. */
+  /* As high as the label's line: it never makes its row taller; its hit area reaches past it
+     unseen. */
   .info {
+    position: relative;
     display: inline-flex;
     flex: none;
     align-items: center;
     justify-content: center;
-    width: var(--info-tip);
-    height: var(--info-tip);
-    margin-block: calc((var(--leading-sm) - var(--info-tip)) / 2);
-    border-radius: var(--radius-full);
-    color: var(--text-subtle);
-    transition:
-      background-color var(--dur-fast) var(--ease-standard),
-      color var(--dur-fast) var(--ease-standard);
+    width: var(--icon-xs);
+    height: var(--icon-xs);
+    margin-block: calc((var(--leading-sm) - var(--icon-xs)) / 2);
+    color: var(--icon-subtle);
+    transition: color var(--dur-fast) var(--ease-standard);
+  }
+
+  .info::before {
+    position: absolute;
+    inset: calc((var(--icon-xs) - var(--hit-min)) / 2);
+    content: '';
   }
 
   .info:hover {
-    background-color: var(--quiet-hover);
     color: var(--text-muted);
     transition-duration: var(--dur-hover);
   }

@@ -1,7 +1,9 @@
 <!--
   The tooltip layer: mounted once (App), fed by the `tooltip` action. Placed below its anchor
-  (above if there is no room), kept inside the window, whole-pixel positions. The deep navy bubble pops toward its anchor (100 ms)
-  and leaves with a 60 ms fade; moving on to the next anchor while it shows just moves it
+  (above it at the bottom edge of the window), kept inside the window, whole-pixel positions.
+  The deep navy bubble (round 10: 6 px round, 12 px words in 500, no edge, at most 260 wide)
+  fades in (100 ms) after --delay-tooltip and leaves with a 60 ms fade; moving on to the next
+  anchor while it shows just moves it
   (no second entrance). An anchor may add a second, smaller line in a quieter white (a key
   or a hint: "Strg+F", "Doppelklick setzt zurück"), like the tooltips of native apps. It
   goes when the window is resized or goes to the back (its anchor may have moved or be
@@ -71,18 +73,15 @@
     transform: translate(var(--tooltip-x), var(--tooltip-y));
   }
 
-  /* Small and quiet like a native tooltip: 11 px text, 4/8 padding, a faint light edge and a
-     light shadow. */
+  /* Small and quiet like a native tooltip: 12 px words in 500, 5/8 padding, no edge, a soft
+     shadow. */
   .bubble {
-    padding: var(--space-4) var(--space-8);
-    border: var(--border-width) solid var(--tooltip-edge);
-    border-radius: var(--radius-xs);
+    padding: var(--tooltip-pad);
+    border-radius: var(--tooltip-radius);
     background-color: var(--surface-inverse);
     box-shadow: var(--sh-tooltip);
     color: var(--text-inverse);
-    font: var(--type-xs);
-    font-weight: var(--weight-regular);
-    letter-spacing: var(--tracking-tooltip);
+    font: var(--type-tooltip);
     overflow-wrap: anywhere;
   }
 
@@ -91,6 +90,5 @@
     display: block;
     color: var(--text-inverse-muted);
     font: var(--type-2xs);
-    letter-spacing: var(--tracking-tooltip);
   }
 </style>

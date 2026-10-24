@@ -1,7 +1,8 @@
 <!--
-  On/off switch, the accent when on with a white knob (user decision). The thumb travels in 180 ms (emphasized, no
-  bounce) and the track changes colour in 100 ms; it darkens a step under the pointer and one
-  more while the left button is down, off and on alike (the thumb never changes shape).
+  On/off switch, coral when on with a white knob (user decision; round 10: 36 x 21, the knob
+  17 px and 15 px of travel). The knob travels in 150 ms (ease-out, no bounce) and the track
+  changes colour with it; it darkens a step under the pointer and one more while the left
+  button is down, off and on alike (the knob never changes shape).
   Disabled switches stay hoverable so the tooltip can say why (disabledReason), and Tab
   passes them like native disabled controls.
   It flips at once, like a native switch: when `onchange` returns a promise (the save),
@@ -124,7 +125,7 @@
     height: var(--toggle-height);
     border-radius: var(--radius-full);
     background-color: var(--toggle-off);
-    transition: background-color var(--dur-fast) var(--ease-standard);
+    transition: background-color var(--dur-base) var(--ease-out);
   }
 
   .thumb {
@@ -135,8 +136,8 @@
     height: var(--toggle-thumb);
     border-radius: var(--radius-full);
     background-color: var(--toggle-knob);
-    box-shadow: var(--sh-thumb);
-    transition: transform var(--dur-slow) var(--ease-emphasized);
+    box-shadow: var(--sh-knob);
+    transition: transform var(--dur-base) var(--ease-out);
   }
 
   .toggle:not([aria-disabled='true']):hover .track {

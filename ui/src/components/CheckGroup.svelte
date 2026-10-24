@@ -1,9 +1,10 @@
 <!--
   A choice of several as checkboxes in a row, each with its label (Vertragsart; user decision
-  2026-10-04): the chosen box coral with a white check, the others an empty box. Under the
-  pointer a box darkens one step and pressed one more, like a switch (Toggle). The last
-  chosen option stays (a click does nothing, its tooltip says why: `keepOne`). Each option is
-  a checkbox and its own Tab stop; Space and Enter flip it like any button.
+  2026-10-04; round 10): a 16 px box with a 1.5 px edge, the chosen one coral with a white
+  13 px tick that fades in (140 ms). Under the pointer an empty box's edge darkens a step,
+  pressed one more; a chosen one darkens like a switch (Toggle). The last chosen option stays
+  (a click does nothing, its tooltip says why: `keepOne`). Each option is a checkbox and its
+  own Tab stop; Space flips it like any button. 24 px high, 22 px between them.
 -->
 <script lang="ts" module>
   export interface CheckOption<Id extends string = string> {
@@ -47,9 +48,7 @@
         if (!last(option.id)) onchange(option.id);
       }}
     >
-      <span class="box" aria-hidden="true">
-        {#if chosen}<Icon name="check" size="xs" />{/if}
-      </span>
+      <span class="box" aria-hidden="true"><Icon name="check" size="check" /></span>
       <span class="label">{option.label}</span>
     </button>
   {/each}
@@ -59,7 +58,7 @@
   .checks {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4) var(--space-20);
+    gap: var(--space-4) var(--check-gap);
     min-width: 0;
   }
 
@@ -67,7 +66,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-8);
-    height: var(--control-field);
+    min-height: var(--hit-min);
     color: var(--text);
     font: var(--type-md);
     white-space: nowrap;
@@ -78,15 +77,25 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    border: var(--border-width) solid var(--border-strong);
+    width: var(--check-box);
+    height: var(--check-box);
+    border: var(--check-edge) solid var(--border-strong);
     border-radius: var(--radius-xs);
     background-color: var(--surface);
-    color: var(--text-inverse);
+    color: var(--text-on-accent);
     transition:
-      background-color var(--dur-fast) var(--ease-out),
-      border-color var(--dur-fast) var(--ease-out);
+      background-color var(--dur-fade) var(--ease-out),
+      border-color var(--dur-fade) var(--ease-out);
+  }
+
+  /* The tick fades in with the coral and out with it. */
+  .box :global(.icon) {
+    opacity: 0;
+    transition: opacity var(--dur-fade) var(--ease-out);
+  }
+
+  .option[data-chosen] .box :global(.icon) {
+    opacity: 1;
   }
 
   .option:hover .box {
@@ -106,7 +115,7 @@
 
   /* Pressed: one more step than on hover, 60 ms, like a switch. */
   :global(:where(:root:not([data-aux-press]))) .option:active:hover .box {
-    border-color: var(--toggle-off-press);
+    border-color: var(--control-press-edge);
     transition-duration: var(--dur-instant);
   }
 
