@@ -1,76 +1,60 @@
 <!--
-  The reader on the sheet: its head (PageHeader) and the rest scroll as one under the top
-  bar's fade, in the job view's column (640 px). Its sections and
-  their order are data (reader-sections.ts); each is rendered below by its key, and nothing
-  stands in two of them:
-  - head: the title (without gender tags) and under it the job at a glance (JobMeta: the
-    company, the place, the pay), then the moves of the place as quiet icons like the row's
-    tools (Aktuell Archivieren, Löschen; Archiv Zurückholen, Löschen; Papierkorb
-    Wiederherstellen, Endgültig löschen in red; actions.ts rowTools) and the close "×" (the
-    same at every width; user 2026-10-01: no menu, no outline). A job that just moved away
-    offers none while the next one loads.
-  - match: first the state (ReaderState, design round 7), the one box of a job that has one,
-    with its own button: excluded (why, "Trotzdem bewerten"), an ad still to come ("Anzeige
-    laden"), a preview without a sign-in ("Anmelden"), an ad gone, closed or out of reach, a
-    text too short to score; no info symbol beside it. Then, for a scored job only, the ring
-    (44, hollow; opening a job fills its arc once) beside its band, nothing else.
-  - actions (a job neither excluded nor without its text): the text buttons with their
-    glyphs, Anzeige öffnen, Alert-Mail öffnen (only for a job a mail brought), Prompt für
-    KI-Bewertung (only with a score and the ad's text); the row wraps. An excluded job and one
-    whose ad is still to come show only the button of their state (user, 2026-10-10).
-    Moving the job away from one of the
-    reader's buttons hands the focus to the same button of the next job. Every result and
-    every failure is a toast.
-  - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
-    table (lib/facts.ts): the ad's value (a row the ad says nothing about shows "–" only
-    where a verdict judges it; for an ad the app never read in full only what it knows), a
-    quiet note, and the verdict as an icon whose tooltip is the reason that decided it (none
-    for an excluded job: its head says why). "Gefunden" stays quiet and names the portal once.
-    Every row stands at its first line. The contact's e-mail is a link: a new mail to it in
-    the default mail program, the job's title its subject.
-  - requirements (not for an excluded job): "Anforderungen" in the groups of
-    reader-sections.ts, a quiet count after
-    each title, a quiet "optional" after one that is only nice to have and not met; a missing
-    must that is a term has a small "+" into its field of the profile
-    (addToProfile.ts); once it is there, a quiet check stands in place of its cross.
-  - ad: the ad's text in its structure: its headings, its lists, its paragraphs, the words of
-    the list's search marked (AdText.svelte).
-  Hovering or clicking a row or a requirement marks nothing in the ad (user decision
-  2026-09-27). Rows, requirements and the ad text that arrive later (the ad loaded, a new
-  score) fade in; requirements glide in their group.
+  The job view (the round 10 draft): on the page's warm ground, 8 under the top bar and 28 in
+  from the sides, a column of cards at most 760 wide, centred, 12 apart. Its cards and their
+  order are data (reader-sections.ts READER_CARDS); each is rendered below by its key, and
+  nothing stands in two of them:
+  - hero (ReaderHero): the ring, the title and the band, the moves and "×", the state box,
+    the buttons that show the job;
+  - details (FactsCard): "Jobdetails", the facts of terms.ts; a job whose ad is not loaded
+    yet only what its mail or search said (reader-sections.ts PENDING_FACTS); an excluded
+    job without verdicts (its state box says why);
+  - requirements (a scored job only): "Anforderungen" with "x von N erfüllt" beside the
+    title, one flat list in two columns (one in a narrow card), met first, then in part, not
+    met and unclear, a must before what is only nice to have; a quiet "optional" after one
+    that is only nice to have and not met; a missing must that is a term has a small "+" into
+    its field of the profile (addToProfile.ts), and once it is there a quiet check stands in
+    place of its cross;
+  - ad: the ad's text in its structure, the words of the list's search marked (AdText); only
+    once the text is there.
+  A new job's cards rise 8 px one after the other (60 ms apart, lib/motion enterCards), not
+  while the user browses fast (pace.ts); the same job loading again swaps at once, and what
+  arrives later (the ad, its rows, its requirements) fades in. Hovering or clicking a fact or
+  a requirement marks nothing in the ad (user decision 2026-09-27). Moving the job away from
+  one of its buttons hands the focus to the same button of the next job. Every result and
+  every failure is a toast.
 -->
 <script lang="ts" module>
-  /** A button of the reader had the focus when its job moved away: the same button of the
+  /** A button of the job view had the focus when its job moved away: the same button of the
    *  next job takes it, so the moves work job after job from the keyboard. */
   let handoff: { testid: string; from: string; until: number } | null = null;
   /** How long the next job may take to open and still take the focus. */
   const HANDOFF_MS = 3000;
-  const WEIGHT_ORDER = { must: 0, hard: 1, nice: 2, info: 3 } as const;
 </script>
 
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
+  import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import Icon from '$components/Icon.svelte';
-  import PageHeader from '$components/PageHeader.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
-  import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
+  import { ringState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
   import { displayTitle } from '$lib/i18n/format';
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { JobDetail, OpenTarget, Reason, StoredMail } from '$lib/ipc/types';
+  import type { JobDetail, OpenTarget, StoredMail } from '$lib/ipc/types';
+  import { enterCards } from '$lib/motion/enter';
+  import { animateOpen } from '$lib/motion/pace';
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
-  import JobMeta from '$components/JobMeta.svelte';
   import AdText from './AdText.svelte';
+  import FactsCard from './FactsCard.svelte';
   import MailView from './MailView.svelte';
-  import ReaderState from './ReaderState.svelte';
+  import ReaderHero from './ReaderHero.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import {
@@ -82,13 +66,13 @@
     seen,
     type MoveId,
   } from './actions';
-  import { SHOWS, showActions, type ShowId } from './shows';
+  import type { ShowId } from './shows';
   import {
-    READER_SECTIONS,
+    PENDING_FACTS,
+    READER_CARDS,
     REQUIREMENT_CODES,
-    REQUIREMENT_GROUPS,
     addable,
-    kindOf,
+    byRequirement,
     termOf,
   } from './reader-sections';
   import { rowOf, termRows } from './terms';
@@ -100,15 +84,24 @@
   }
   let { detail, onclose = null }: Props = $props();
 
+  /** The job view opens anew for each job (JobsView's stage): its cards rise unless the user
+   *  browses fast; the ring asks the same in the same frame and gets the same answer. Cards
+   *  that come later on the same job fade in instead. */
+  const opened = animateOpen();
+  let entering = $state(true);
+  $effect(() => {
+    void tick().then(() => (entering = false));
+  });
+
   const job = $derived(detail.job);
   /** The title without gender tags. */
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   const match = $derived(detail.match);
   const withRing = $derived(app.hasProfile);
-  /** The engine excludes the job (its head says why; no verdicts, no requirements). */
+  /** The engine excludes the job (its state box says why; no verdicts, no requirements). */
   const excluded = $derived((match?.status ?? job.match?.status) === 'excluded');
-  /** A match to judge the rows by (without one, or one that could not score the ad, they show
-   *  the ad's side only, as the ring says "Nicht bewertet"; an excluded job shows none). */
+  /** A match to judge the facts by (without one, or one that could not score the ad, they
+   *  show the ad's side only; an excluded job shows none). */
   const judged = $derived(withRing && match !== null && match.status !== 'unscorable' && !excluded);
   const ring = $derived(
     ringState(job.match, job.match === null && Boolean(app.state?.matchPending), job.detail.kind),
@@ -119,9 +112,8 @@
   const criteria = $derived(match?.criteria ?? []);
 
   /** Why the engine excludes the job, in one sentence: its first violation, else the note. A
-   *  violation a row of the Jobdetails judges speaks from the profile's side (its criterion's
-   *  sentence, "Zeitarbeit ist in deinem Profil nicht gewählt."); the row's tooltip says what
-   *  the ad states. */
+   *  violation a fact judges speaks from the profile's side (its criterion's sentence,
+   *  "Zeitarbeit ist in deinem Profil nicht gewählt."). */
   const exclusion = $derived.by((): string => {
     for (const reason of all) {
       if (reason.kind !== 'violation') continue;
@@ -131,27 +123,12 @@
     }
     return noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.note.hardCriterion;
   });
-  const band = $derived(ring.status === 'scored' ? ring.band : null);
-  /** The ad's text is there (a preview counts): the buttons that show the job make sense. */
-  const hasText = $derived(
-    detail.text !== null || job.detail.kind === 'ok' || job.detail.kind === 'teaser',
-  );
-  /** The ring's colour step (ScoreRing's decile), which the band's words take too. */
-  const step = $derived(
-    band !== null && 'score' in ring
-      ? `d${Math.min(9, Math.floor(Math.max(0, ring.score) / 10))}`
-      : '',
-  );
 
-  const detailKind = $derived(job.detail.kind);
-  /** Every name a row of the Jobdetails can have (the names' column is as wide as the
-   *  longest). */
-  const NAMES = $derived([
-    ...new Set([...Object.values(t.reader.term), t.reader.salaryName, t.reader.hourlyName]),
-  ]);
-  /** The rows of the Jobdetails (terms.ts); for an ad the app never read in full (none, or a
-   *  preview) only what it knows (what the ad says is not known yet, no "–" claims it says
-   *  nothing), and a "–" only where a verdict judges the row. */
+  /** The ad is not loaded yet (no text, no preview): only what the mail or search said. */
+  const pending = $derived(
+    detail.text === null && job.detail.kind !== 'ok' && job.detail.kind !== 'teaser',
+  );
+  /** The facts (terms.ts); a "–" only where a verdict judges the row. */
   const rows = $derived(
     termRows({
       job,
@@ -162,28 +139,28 @@
       now: clock.now,
     }).filter(
       (row) =>
-        !row.missing || (detail.text !== null && detailKind !== 'teaser' && row.verdict !== null),
+        (!pending || PENDING_FACTS.includes(row.key)) &&
+        (!row.missing ||
+          (detail.text !== null && job.detail.kind !== 'teaser' && row.verdict !== null)),
     ),
   );
 
-  const byWeight = (a: Reason, b: Reason): number =>
-    WEIGHT_ORDER[a.weight] - WEIGHT_ORDER[b.weight];
-  /** The requirements of the ad: no title, wish or Schwerpunkt, none a row of the Jobdetails
-   *  judges, and no exclusion (the head says it). */
+  /** The requirements of the ad in their order: no title, wish or Schwerpunkt, none a fact
+   *  judges, and no exclusion. */
   const listed = $derived(
-    all.filter(
-      (reason) =>
-        REQUIREMENT_CODES.includes(reason.code) &&
-        reason.kind !== 'violation' &&
-        rowOf(reason) === null &&
-        reasonText(reason) !== '',
-    ),
+    all
+      .filter(
+        (reason) =>
+          REQUIREMENT_CODES.includes(reason.code) &&
+          reason.kind !== 'violation' &&
+          rowOf(reason) === null &&
+          reasonText(reason) !== '',
+      )
+      .sort(byRequirement),
   );
-  const groups = $derived(
-    REQUIREMENT_GROUPS.map((group) => ({
-      ...group,
-      items: listed.filter((reason) => reason.kind === group.kind).sort(byWeight),
-    })).filter((group) => group.items.length > 0),
+  const met = $derived(listed.filter((reason) => reason.kind === 'met').length);
+  const withRequirements = $derived(
+    match !== null && match.status !== 'unscorable' && withRing && !excluded,
   );
 
   /** A failure says so in a toast, like every result. */
@@ -209,8 +186,14 @@
     }
   }
 
-  /** A move of the head's tools. The next job's reader gives the focus back to the button
-   *  that had it. */
+  const showDoes: Record<ShowId, () => void> = {
+    'open-ad': () => openTarget({ kind: 'jobUrl', key: job.key }),
+    mail: () => void openMail(),
+    prompt: () => void copyJobPrompt(job.key).then(fail),
+  };
+
+  /** A move of the hero's tools. The next job's view gives the focus back to the button that
+   *  had it. */
   function act(id: MoveId): void {
     if (guarded()) return;
     const focused = document.activeElement;
@@ -228,8 +211,8 @@
     });
   }
 
-  // The next job, opened after a move from one of this reader's buttons: the same button of
-  // this reader takes the focus, unless the user put it somewhere else meanwhile.
+  // The next job, opened after a move from one of this view's buttons: the same button of
+  // this view takes the focus, unless the user put it somewhere else meanwhile.
   $effect(() => {
     if (article === null) return;
     untrack(() => {
@@ -266,242 +249,90 @@
     if (purgeError === null) confirmPurge = false;
   }
 
-  /** A missing must into its field of the profile (its term, without the ad's lead words); a
-   *  failure is a toast. */
+  /** A missing must into its field of the profile; a failure is a toast. */
   async function add(term: ProfileTerm): Promise<void> {
     fail(await addTerm(term));
   }
 
   /** An excluded job the user has not scored by hand: its one button is "Trotzdem bewerten". */
   const includable = $derived(excluded && !job.overridden);
+  /** "Trotzdem bewerten" was pressed: the state box says the job is being scored. */
+  let including = $state(false);
 
   /** "Trotzdem bewerten": the job counts with its real match and gets the usual buttons; one
    *  pressed from the keyboard hands the focus to the first of them. */
   async function include(event: MouseEvent): Promise<void> {
     const fromKeyboard = event.detail === 0;
+    including = true;
     const error = await includeJob(job);
+    including = false;
     fail(error);
     if (error !== null || !fromKeyboard) return;
     await tick();
     actions?.querySelector<HTMLElement>('button:not([aria-disabled="true"])')?.focus();
   }
 
-  /** The job still lies in the list's place: one that just moved away keeps its reader
-   *  until the next job has loaded, its moves off meanwhile (they would be the new place's). */
+  /** The job still lies in the list's place: one that just moved away keeps its view until
+   *  the next job has loaded, its moves off meanwhile (they would be the new place's). */
   const inPlace = $derived(job.place === jobs.place);
-  /** The moves of the job's place beside the close button, as icons without a frame like it
-   *  (user decision 2026-10-01: Archivieren and Löschen in Aktuell, the place's own
-   *  elsewhere), from the one table of the job's moves (the row's tools show the same). A
-   *  move hands the focus on. */
+  /** The moves of the job's place beside "×", from the one table of the job's moves (the
+   *  row's tools show the same). A move hands the focus on. */
   const tools = $derived(rowTools(job, { move: act, purge: askPurge, report: fail }));
 
-  /** The action row (it wraps where its buttons do not fit). */
+  /** The row of the buttons that show the job. */
   let actions = $state<HTMLElement | null>(null);
-  /** The test id of each button that shows the job, and what it does. */
-  const SHOW_TESTIDS: Record<ShowId, string> = {
-    'open-ad': 'open-ad',
-    mail: 'reader-mail',
-    prompt: 'reader-prompt',
-  };
-  const showDoes: Record<ShowId, () => void> = {
-    'open-ad': () => openTarget({ kind: 'jobUrl', key: job.key }),
-    mail: () => void openMail(),
-    prompt: () => void copyJobPrompt(job.key).then(fail),
-  };
 </script>
 
-{#snippet head()}
-  <PageHeader {heading} copy headingTestid="reader-title" column="reader" testid="reader-head">
-    <JobMeta {job} prefix="reader" wrap />
-    {#snippet actions()}
-      {#each tools as tool (tool.id)}
-        <Button
-          variant="ghost"
-          iconOnly
-          icon={tool.icon}
-          label={tool.label}
-          disabled={tool.disabled || !inPlace}
-          disabledReason={tool.reason}
-          testid="reader-{tool.id}"
-          onclick={tool.run}
-        />
-      {/each}
-      {#if onclose}
-        <Button
-          variant="ghost"
-          iconOnly
-          icon="close"
-          label={t.reader.close}
-          testid="reader-close"
-          onclick={onclose}
-        />
-      {/if}
-    {/snippet}
-  </PageHeader>
-{/snippet}
-
-{#snippet score()}
-  <ReaderState
-    {detail}
-    exclusion={excluded ? exclusion : null}
-    {includable}
-    oninclude={(event) => void include(event)}
-  />
-  {#if withRing && !excluded && band !== null}
-    <div class="match" data-testid="reader-match">
-      <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
-      <p class="band {band} {step}" data-testid="band">{t.score.band[band]}</p>
-    </div>
-  {/if}
-{/snippet}
-
-{#snippet showButtons()}
-  <!-- Words, glyphs, what is off and what is not there come from the one table the row's
-       menu reads too. -->
-  {@const shows = showActions(job)}
-  {@const shown = SHOWS.filter((id) => !shows[id].hidden)}
-  {#each shown as id (id)}
-    <Button
-      variant="secondary"
-      icon={shows[id].icon}
-      label={shows[id].label}
-      disabled={shows[id].reason !== null}
-      disabledReason={shows[id].reason}
-      testid={SHOW_TESTIDS[id]}
-      onclick={() => showDoes[id]()}
-    />
-  {/each}
-{/snippet}
-
-{#snippet actionRow()}
-  {#if !excluded && hasText}
-    <div class="actions" bind:this={actions} data-testid="reader-actions">
-      {@render showButtons()}
-    </div>
-  {/if}
-{/snippet}
-
-{#snippet details()}
-  <section class="block" data-testid="terms">
-    <h2 class="section">{t.reader.details}</h2>
-    <!-- Name, the ad's value and whether it fits as an icon (the reason in its tooltip). -->
-    <ul class="terms" class:bare={!withRing} aria-label={t.reader.details} data-testid="criteria">
-      <!-- Every name a row can have, unseen and without height: the names' column keeps its
-           width whichever rows a job shows, so the values never move between jobs. -->
-      <li class="sizer" role="presentation" aria-hidden="true">
-        {#each NAMES as name (name)}<span class="sizer-name">{name}</span>{/each}
-      </li>
-      {#each rows as row (row.key)}
-        <li class="term" data-row={row.key} data-testid="term-{row.key}" in:fade>
-          <span class="term-name"><Icon name={row.icon} size="sm" />{row.name}</span>
-          <!-- The verdict in its own column between the name and the value (the names are the
-               same for every job, so it never moves); a row or a job without one leaves it
-               empty. -->
-          {#if judged && row.verdict}
-            <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
-              <ReasonItem
-                iconOnly
-                kind={row.excludes ? 'violation' : kindOf(row.verdict)}
-                label={row.excludes ? t.score.excluded : t.reader.verdict[row.verdict]}
-              />
-            </span>
-          {/if}
-          <span class="term-line">
-            {#if row.parts}
-              <!-- The contact's e-mail writes a new mail to it (the job's title its subject). -->
-              <span class="parts">
-                {#each row.parts as part, index (index)}{#if part === row.mail}<span class="mail"
-                      ><Button
-                        variant="link"
-                        label={part}
-                        testid="contact-mail"
-                        onclick={() => openTarget({ kind: 'contactMail', key: job.key })}
-                      /></span
-                    >{:else}<span class="value" data-copy>{part}</span>{/if}{/each}
-              </span>
-            {:else}
-              <span
-                class="value"
-                class:missing={row.missing}
-                class:quiet={row.key === 'portal'}
-                class:urgent={row.urgent}
-                data-copy={row.missing ? null : ''}>{row.value}</span
-              >
-            {/if}
-            {#if row.note}<span class="term-note">{row.note}</span>{/if}
-          </span>
-        </li>
-      {/each}
-    </ul>
-  </section>
-{/snippet}
-
 {#snippet requirements()}
-  {#if match && match.status !== 'unscorable' && withRing && !excluded}
-    <section class="block why" data-testid="why" in:fade>
-      <h2 class="section">{t.reader.why}</h2>
-      {#if groups.length === 0}
-        <p class="quiet">{t.reader.noReasons}</p>
-      {:else}
-        {#each groups as group (group.kind)}
-          <div class="group" data-testid="group-{group.kind}">
-            <h3 class="sub">
-              {t.reader.verdict[group.verdict]}
-              <span class="count" data-testid="group-count">{group.items.length}</span>
-            </h3>
-            <ul class="reasons" data-testid="reasons-{group.kind}">
-              {#each group.items as reason (reason.id)}
-                {@const term = addable(reason) ? termOf(reason) : null}
-                {@const added = term !== null && isAdded(term)}
-                <li
-                  class="reason-line"
-                  data-weight={reason.weight}
-                  animate:flip={{ count: group.items.length }}
-                  in:fade
-                >
-                  <!-- The group's heading says the verdict; no tooltip on its icon (user decision
-                       2026-09-27, the Jobdetails keep theirs). A missing must that went into the
-                       profile trades its cross for a quiet check until the next score (the toast
-                       says so in words). -->
-                  <ReasonItem
-                    kind={reason.kind}
-                    optional={reason.weight === 'nice' && reason.kind !== 'met'}
-                    label={reasonText(reason)}
-                    settled={added ? t.reader.added : null}
-                    testid="reason"
+  <Card
+    heading={t.reader.why}
+    count={listed.length === 0 ? null : t.reader.metOf(met, listed.length)}
+    testid="why"
+    headingTestid="why-title"
+  >
+    {#if listed.length === 0}
+      <p class="quiet">{t.reader.noReasons}</p>
+    {:else}
+      <div class="reqs">
+        <ul class="reasons" data-testid="reasons">
+          {#each listed as reason (reason.id)}
+            {@const term = addable(reason) ? termOf(reason) : null}
+            {@const added = term !== null && isAdded(term)}
+            <li
+              class="reason-line"
+              data-kind={reason.kind}
+              data-weight={reason.weight}
+              animate:flip={{ count: listed.length }}
+              in:fade
+            >
+              <!-- No tooltip on its icon (user decision 2026-09-27). A missing must that went
+                   into the profile trades its cross for a quiet check until the next score
+                   (the toast says so in words). -->
+              <ReasonItem
+                kind={reason.kind}
+                optional={reason.weight === 'nice' && reason.kind !== 'met'}
+                label={reasonText(reason)}
+                settled={added ? t.reader.added : null}
+                testid="reason"
+              />
+              {#if term !== null && !added}
+                <span class="reason-action">
+                  <Button
+                    variant="ghost"
+                    iconOnly
+                    icon="add"
+                    label={t.reader.addTo[term.field](term.term)}
+                    testid="add-to-profile"
+                    onclick={() => void add(term)}
                   />
-                  <!-- A missing must that is a term: its way into the profile. -->
-                  {#if term !== null && !added}
-                    <span class="reason-action">
-                      <Button
-                        variant="ghost"
-                        iconOnly
-                        icon="add"
-                        label={t.reader.addTo[term.field](term.term)}
-                        testid="add-to-profile"
-                        onclick={() => void add(term)}
-                      />
-                    </span>
-                  {/if}
-                </li>
-              {/each}
-            </ul>
-          </div>
-        {/each}
-      {/if}
-    </section>
-  {/if}
-{/snippet}
-
-{#snippet ad()}
-  <section class="block ad" data-testid="ad">
-    <h2 class="section">{t.reader.ad}</h2>
-    {#if detail.text}
-      <div in:fade>
-        <AdText text={detail.text} layout={detail.layout} search={jobs.search} />
+                </span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
       </div>
     {/if}
-  </section>
+  </Card>
 {/snippet}
 
 <article
@@ -513,19 +344,39 @@
     if (event.button === 0) seen(job.key);
   }}
 >
-  {@render head()}
-  <div class="body">
-    {#each READER_SECTIONS as section (section)}
-      {#if section === 'match'}
-        {@render score()}
-      {:else if section === 'actions'}
-        {@render actionRow()}
-      {:else if section === 'details'}
-        {@render details()}
-      {:else if section === 'requirements'}
-        {@render requirements()}
-      {:else}
-        {@render ad()}
+  <div class="column">
+    {#each READER_CARDS.filter((card) => card !== 'requirements' || withRequirements) as card, index (card)}
+      {#if card !== 'ad' || detail.text}
+        <div class="slot" use:enterCards={{ index, on: opened && entering }} in:fade>
+          {#if card === 'hero'}
+            <ReaderHero
+              {detail}
+              {heading}
+              {ring}
+              {withRing}
+              {excluded}
+              exclusion={excluded ? exclusion : null}
+              {includable}
+              {including}
+              oninclude={(event) => void include(event)}
+              {tools}
+              {inPlace}
+              {onclose}
+              onshow={(id) => showDoes[id]()}
+              bind:actions
+            />
+          {:else if card === 'details'}
+            <FactsCard {rows} onmail={() => openTarget({ kind: 'contactMail', key: job.key })} />
+          {:else if card === 'requirements'}
+            {@render requirements()}
+          {:else if detail.text}
+            <Card heading={t.reader.ad} testid="ad">
+              <div class="ad">
+                <AdText text={detail.text} layout={detail.layout} search={jobs.search} />
+              </div>
+            </Card>
+          {/if}
+        </div>
       {/if}
     {/each}
   </div>
@@ -536,9 +387,9 @@
 <Dialog
   bind:open={confirmPurge}
   variant="danger"
-  heading={t.actions.purgeHeading}
-  text={t.actions.purgeText}
-  confirmLabel={t.actions.purge}
+  heading={t.reader.purgeHeading}
+  text={t.reader.purgeText(heading)}
+  confirmLabel={t.reader.purgeConfirm}
   busy={purging}
   error={purgeError}
   testid="dialog-purge"
@@ -546,270 +397,66 @@
 />
 
 <style>
+  /* The page's warm ground under the whole pane. */
   .reader {
-    display: flex;
-    flex-direction: column;
     min-height: 100%;
+    background-color: var(--page);
   }
 
-  /* The job view's column under the head (the ring right under the title, as far below it
-     as the head's own padding), its sections 20 apart. */
-  .body {
+  /* The column of cards, centred, 12 apart; 8 under the top bar and 28 from the sides. */
+  .column {
     display: flex;
     flex-direction: column;
-    gap: var(--space-20);
-    width: 100%;
-    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
+    gap: var(--card-gap);
+    max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
     margin: 0 auto;
-    padding: 0 var(--pane-padding) var(--space-64);
+    padding: var(--head-pad) var(--reader-pad-x) var(--reader-pad-end);
   }
 
-  /* The ring, or the ban, beside its words; the words centre on it. */
-  .match {
-    display: flex;
-    align-items: center;
-    gap: var(--space-12);
-  }
-
-  .band {
-    color: var(--text);
-    font: var(--type-label);
-  }
-
-  /* The band in exactly the colour of its ring (the decile of the score; user, 2026-09-30:
-     not measured against AA, like the ring itself). */
-  .band.d0 {
-    color: var(--score-text-0);
-  }
-
-  .band.d1 {
-    color: var(--score-text-1);
-  }
-
-  .band.d2 {
-    color: var(--score-text-2);
-  }
-
-  .band.d3 {
-    color: var(--score-text-3);
-  }
-
-  .band.d4 {
-    color: var(--score-text-4);
-  }
-
-  .band.d5 {
-    color: var(--score-text-5);
-  }
-
-  .band.d6 {
-    color: var(--score-text-6);
-  }
-
-  .band.d7 {
-    color: var(--score-text-7);
-  }
-
-  .band.d8 {
-    color: var(--score-text-8);
-  }
-
-  .band.d9 {
-    color: var(--score-text-9);
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8);
-  }
-
-  /* A heading 12 px above its content. */
-  .block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-    padding-top: var(--space-20);
-    border-top: var(--border-width) solid var(--border);
-  }
-
-  .section {
-    color: var(--text-heading);
-    font: var(--type-heading);
-    letter-spacing: var(--tracking-tight);
-  }
-
-  /* The Jobdetails: name, verdict and value in three columns that line up row by row; the
-     verdicts stand in one column after the names, which every job shares, so they never
-     move. A job without a score keeps the verdicts' column empty, so the values start at the
-     same place for every job (two columns only without a profile, where no job is judged).
-     Each row is one box on the columns of the list. The same metrics as the requirements
-     below: their text, their icon gap. */
-  .terms {
-    display: grid;
-    grid-template-columns: max-content var(--icon-sm) minmax(0, max-content);
-    gap: var(--space-8) var(--space-16);
-    font: var(--type-md);
-    text-align: start;
-  }
-
-  /* In the names' column only, no height, and no gap of its own below it. */
-  .sizer {
-    display: flex;
-    grid-column: 1;
-    flex-direction: column;
-    height: 0;
-    margin-bottom: calc(-1 * var(--space-8));
-    overflow: hidden;
-    visibility: hidden;
-  }
-
-  /* As wide as a row's name with its icon before it. */
-  .sizer-name {
-    padding-inline-start: calc(var(--icon-sm) + var(--space-8));
-    white-space: nowrap;
-  }
-
-  .terms.bare {
-    grid-template-columns: max-content minmax(0, max-content);
-    column-gap: var(--space-24);
-  }
-
-  /* Each part stands at the row's first line (a value of several lines, the contact, goes on
-     below it). */
-  .term {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: subgrid;
-    align-items: start;
-    justify-items: start;
-  }
-
-  .term-name {
-    display: inline-flex;
-    grid-column: 1;
-    align-items: center;
-    gap: var(--space-8);
-    color: var(--text-muted);
-    white-space: nowrap;
-  }
-
-  .term-name :global(.icon) {
-    color: var(--text-subtle);
-  }
-
-  .term-line {
-    display: flex;
-    grid-column: 3;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-6);
+  .slot {
     min-width: 0;
   }
 
-  .bare .term-line {
-    grid-column: 2;
-  }
-
-  .value {
-    color: var(--text);
-  }
-
-  .value.missing,
-  .term-note {
-    color: var(--text-subtle);
-  }
-
-  /* How and when the job came: quieter than what the ad says. */
-  .value.quiet {
-    color: var(--text-muted);
-  }
-
-  /* A deadline within a week, or past. */
-  .value.urgent {
-    color: var(--danger-strong);
-  }
-
-  /* The parts of the contact, one under the other, each copied on its own. */
-  .parts {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  /* The e-mail as a link keeps its hit area but not its height: the line stays a line of
-     text, in the type of the name and the phone around it. */
-  .mail {
-    display: inline-flex;
-    margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
-  }
-
-  .mail :global(.btn.link) {
-    --btn-type: var(--type-md);
-  }
-
-  /* The icon centred on the row's first line. */
-  .verdict {
-    display: inline-flex;
-    grid-column: 2;
-    min-width: var(--icon-sm);
-    margin-top: calc((var(--leading-md) - var(--icon-sm)) / 2);
-  }
-
-  /* The groups of the requirements under their sub-labels. */
-  .why {
-    gap: var(--space-16);
-  }
-
-  .why .section {
-    margin-bottom: calc(var(--space-12) - var(--space-16));
-  }
-
-  .sub {
-    color: var(--text-label);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
-  }
-
-  /* The quiet count after a group's title. */
-  .count {
-    color: var(--text-subtle);
-    font-weight: var(--weight-regular);
-    font-variant-numeric: var(--numeric);
-  }
-
-  .group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    min-width: 0;
+  /* The requirements in two columns (one in a narrow card), 12 under the title. */
+  .reqs {
+    container-type: inline-size;
+    margin-top: var(--reqs-top);
   }
 
   .reasons {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8) var(--space-20);
   }
 
-  /* A reason and, for a missing must, its "+" into the profile right after its words. */
+  /* A requirement and, for a missing must, its "+" into the profile right after its words. */
   .reason-line {
     display: flex;
     align-items: flex-start;
     gap: var(--space-4);
+    min-width: 0;
   }
 
   /* The "+" keeps its hit area but not its height: the line stays a line of text. */
   .reason-action {
     display: inline-flex;
     flex: none;
-    margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
+    margin-block: calc((var(--leading-md) - var(--control-icon)) / 2);
   }
 
   .quiet {
+    margin-top: var(--reqs-top);
     color: var(--text-muted);
     font: var(--type-md);
+  }
+
+  .ad {
+    margin-top: var(--ad-top);
+  }
+
+  @container (width < 560px) {
+    .reasons {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 </style>

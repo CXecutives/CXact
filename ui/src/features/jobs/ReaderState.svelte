@@ -1,18 +1,21 @@
 <!--
-  The state of the open job, right under the job view's head, when it has one (design round
-  7): one tinted box (Notice `box`) with its sign, one sentence and the one button that helps,
-  on one line.
-  - excluded: the red ban, "Ausgeschlossen", why (the profile's side) and "Trotzdem bewerten";
-  - an ad still to come: "Anzeige laden" (being loaded: the spinner, no button);
-  - only a preview without a sign-in: "Anmelden" (the sign-in right here,
-    lib/state/portalSession.ts; then "Anzeige laden");
-  - an ad the app cannot reach, gone or closed: the sentence only;
-  - a text too short to score: the sentence only.
-  A failed sign-in says so in a toast, like every result of the reader.
+  The state of the open job in its hero, under the title, when it has one (the round 10
+  draft): one StateBox, its title, one quiet sentence under it and the one button that helps;
+  no sign (the ring is the job's mark), a spinner only while something is being done.
+  - being scored after "Trotzdem bewerten": the spinner, "Der Job wird bewertet.";
+  - excluded (the soft red): why (the profile's side), "Darum wurde der Job nicht bewertet.",
+    "Trotzdem bewerten";
+  - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (being
+    loaded: the spinner, "Die Anzeige wird geladen.", no button);
+  - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
+    then "Anzeige laden"), else "Anzeige laden" where the portal can load it;
+  - an ad gone, out of reach or closed ("Beendet"), a text too short to score: the two lines
+    only.
+  A failed sign-in says so in a toast, like every result of the job view.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import Notice from '$components/Notice.svelte';
+  import StateBox from '$components/StateBox.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import type { JobDetail } from '$lib/ipc/types';
@@ -27,18 +30,20 @@
     exclusion: string | null;
     /** "Trotzdem bewerten" is there (an excluded job not scored by hand). */
     includable: boolean;
+    /** "Trotzdem bewerten" was pressed and the job is being scored. */
+    including: boolean;
     oninclude: (event: MouseEvent) => void;
   }
-  let { detail, exclusion, includable, oninclude }: Props = $props();
+  let { detail, exclusion, includable, including, oninclude }: Props = $props();
 
   const job = $derived(detail.job);
   const detailKind = $derived(job.detail.kind);
   const portalState = $derived(app.state?.portals.find((p) => p.portal === job.portal) ?? null);
   /** "Anzeige laden" was pressed here: this job is in the run. */
   let requested = $state(false);
-  type AdNote = keyof typeof t.reader.adNote;
+  type AdState = 'missing' | 'loading' | 'teaser' | 'gone' | 'unfetchable' | 'closed';
   /** Why the ad's text is not all there, if it is not. */
-  const adNote = $derived.by((): AdNote | null => {
+  const adState = $derived.by((): AdState | null => {
     switch (detailKind) {
       case 'ok':
         return job.closed ? 'closed' : null;
@@ -64,12 +69,29 @@
   /** A preview or a missing ad the portal can load now (a preview only with its sign-in). */
   const canLoad = $derived(
     portalState?.enabled === true &&
-      (adNote === 'missing' || (adNote === 'teaser' && portalState.loginEnabled)),
+      (adState === 'missing' || (adState === 'teaser' && portalState.loginEnabled)),
   );
   /** The portal shows only a preview without a sign-in that is not set up. */
   const signInMissing = $derived(
-    adNote === 'teaser' && portalState !== null && !portalState.loginEnabled,
+    adState === 'teaser' && portalState !== null && !portalState.loginEnabled,
   );
+
+  /** The two lines of the ad's state. */
+  const words = $derived.by((): { heading: string; text: string | null } | null => {
+    switch (adState) {
+      case null:
+        return null;
+      case 'loading':
+        return { heading: t.reader.state.loading, text: null };
+      case 'gone':
+        return {
+          heading: t.reader.state.gone.heading,
+          text: detail.text === null ? t.reader.state.goneEarly : t.reader.state.gone.text,
+        };
+      default:
+        return t.reader.state[adState];
+    }
+  });
 
   /** "Anzeige laden": this job's ad, in a run of its own. */
   function load(): void {
@@ -128,35 +150,37 @@
   />
 {/snippet}
 
-{#if exclusion !== null}
-  <Notice
+{#if including}
+  <StateBox
+    busy
+    heading={t.reader.state.scoring}
+    testid="reader-state"
+    headingTestid="detail-note"
+  />
+{:else if exclusion !== null}
+  <StateBox
     tone="ban"
-    variant="box"
-    heading={t.score.excluded}
-    text={exclusion}
+    heading={exclusion}
+    text={t.reader.state.excluded}
     end={includable ? includeButton : null}
     testid="exclusion-box"
-    signTestid="reader-ban"
-    headingTestid="band"
-    textTestid="exclusion"
+    headingTestid="exclusion"
   />
-{:else if adNote !== null}
-  {@const warn = adNote === 'unfetchable' || adNote === 'gone' || adNote === 'closed'}
-  <Notice
-    tone={warn ? 'warning' : 'info'}
-    variant="box"
-    busy={adNote === 'loading'}
-    text={t.reader.adNote[adNote]}
+{:else if words !== null}
+  <StateBox
+    busy={adState === 'loading'}
+    heading={words.heading}
+    text={words.text}
     end={signInMissing || canLoad ? adButton : null}
     testid="reader-state"
-    textTestid="detail-note"
+    headingTestid="detail-note"
+    textTestid="detail-text"
   />
 {:else if job.short}
-  <Notice
-    tone="info"
-    variant="box"
-    text={t.reader.short}
+  <StateBox
+    heading={t.reader.state.short.heading}
+    text={t.reader.state.short.text}
     testid="reader-state"
-    textTestid="short-note"
+    headingTestid="short-note"
   />
 {/if}

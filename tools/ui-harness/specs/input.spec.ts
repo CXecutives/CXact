@@ -793,7 +793,7 @@ test('the ad text, title and facts select and copy; the rest does not select', a
   };
   await page.getByTestId('stage').evaluate((node) => node.scrollTo({ top: 0 }));
   expect((await drag('reader-title')).length).toBeGreaterThan(5);
-  for (const id of ['band', 'reasons-met']) {
+  for (const id of ['band', 'reasons']) {
     expect(await drag(id), id).toBe('');
   }
 });

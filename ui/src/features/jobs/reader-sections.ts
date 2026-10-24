@@ -1,40 +1,53 @@
-// The reader's structure as data (Reader.svelte renders each entry by its key). Moving an entry
-// moves its section or group; removing it hides it. The rows of "Jobdetails" are the table of
-// lib/facts.ts (read by terms.ts).
+// The job view's structure as data (Reader.svelte renders each card by its key). Moving an entry
+// moves its card; removing it hides it. The rows of "Jobdetails" are the table of lib/facts.ts
+// (read by terms.ts).
 
-import type { Reason, ReasonKind, TermField } from '$lib/ipc/types';
+import type { TermKey } from '$lib/facts';
+import type { Reason, ReasonKind, ReasonWeight, TermField } from '$lib/ipc/types';
 import type { ProfileTerm } from '$lib/state/terms';
 import type { Verdict } from './terms';
 
 /**
- * The sections under the reader's head (the title, the moves and the close "×"; company,
- * place and portal are rows of the Jobdetails), top to bottom:
- * - match: the ring beside its band, or the ban of an excluded job with why;
- * - actions: the buttons that show the job (its ad, its alert mail, the prompt);
+ * The cards of the job view, top to bottom (the round 10 draft):
+ * - hero: the ring, the title and the band, the quiet moves and "×" at its top right, the
+ *   state box of a job that has one, and the buttons that show the job;
  * - details: "Jobdetails";
- * - requirements: "Anforderungen", in the groups below;
- * - ad: the note on a text that is not all there, and the ad text.
+ * - requirements: "Anforderungen", one flat list in the order of byRequirement;
+ * - ad: the ad's text (only once it is there).
  */
-export const READER_SECTIONS = ['match', 'actions', 'details', 'requirements', 'ad'] as const;
+export const READER_CARDS = ['hero', 'details', 'requirements', 'ad'] as const;
 
-export interface RequirementGroup {
-  kind: Extract<ReasonKind, 'met' | 'partial' | 'open' | 'check'>;
-  /** Its verdict: the group's title, and its icon in the Jobdetails too. */
-  verdict: Exclude<Verdict, 'unset'>;
+/** The facts a job whose ad is not loaded yet shows: what its alert mail or search said. */
+export const PENDING_FACTS: readonly TermKey[] = ['company', 'place', 'portal'];
+
+/** The kinds a requirement can have, in their order: met, then in part, then not met, then
+ *  unclear. */
+const KIND_ORDER: Record<Extract<ReasonKind, 'met' | 'partial' | 'open' | 'check'>, number> = {
+  met: 0,
+  partial: 1,
+  open: 2,
+  check: 3,
+};
+/** Within a kind: a must before what is only nice to have. */
+const WEIGHT_ORDER: Record<ReasonWeight, number> = { must: 0, hard: 1, nice: 2, info: 3 };
+
+/** The order of the Anforderungen: met, in part, not met, unclear; within each a must first. */
+export function byRequirement(a: Reason, b: Reason): number {
+  const kind = (reason: Reason): number => KIND_ORDER[reason.kind as keyof typeof KIND_ORDER] ?? 4;
+  return kind(a) - kind(b) || WEIGHT_ORDER[a.weight] - WEIGHT_ORDER[b.weight];
 }
 
-/** The groups of "Anforderungen", in their order (a quiet count after each title). */
-export const REQUIREMENT_GROUPS: readonly RequirementGroup[] = [
-  { kind: 'met', verdict: 'met' },
-  { kind: 'partial', verdict: 'partial' },
-  { kind: 'open', verdict: 'violated' },
-  { kind: 'check', verdict: 'unknown' },
-];
+/** The reason kind whose icon draws a verdict of the Jobdetails (a row whose verdict excludes
+ *  the job draws the ban of a violation instead). */
+const VERDICT_KIND: Record<Exclude<Verdict, 'unset'>, ReasonKind> = {
+  met: 'met',
+  partial: 'partial',
+  violated: 'open',
+  unknown: 'check',
+};
 
-/** The reason kind whose icon draws a verdict (the Jobdetails and the groups alike; a row
- *  whose verdict excludes the job draws the ban of a violation instead). */
 export function kindOf(verdict: Exclude<Verdict, 'unset'>): ReasonKind {
-  return REQUIREMENT_GROUPS.find((group) => group.verdict === verdict)?.kind ?? 'check';
+  return VERDICT_KIND[verdict];
 }
 
 /** What the Anforderungen list: the ad's requirements (a skill, a term, a formal degree or

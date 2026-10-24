@@ -940,21 +940,54 @@ export const de = {
     /** Loads the whole ad (a preview, a missing one). */
     fetchDetails: 'Anzeige laden',
     why: 'Anforderungen',
+    /** Beside "Anforderungen": how many of them the profile meets. */
+    metOf: (met: number, all: number) => `${n(met)} von ${n(all)} erfüllt`,
     noReasons: 'Die Anzeige nennt keine klaren Anforderungen.',
     ad: 'Anzeige',
-    /** The note of the ad section where its text is not all there, one short sentence under
-     *  the heading "Anzeige": a preview, an ad still to come or being loaded, one the app
-     *  cannot reach, gone or closed. */
-    adNote: {
-      teaser: 'Nur eine Vorschau.',
-      missing: 'Noch nicht geladen.',
-      loading: 'Wird geladen.',
-      unfetchable: 'Nicht erreichbar.',
-      gone: 'Nicht mehr online.',
-      closed: 'Keine Bewerbung mehr möglich.',
+    /** The band under the title of a job without a score (a job without a profile says
+     *  score.none). */
+    unscored: 'Noch nicht bewertet',
+    unscorable: 'Nicht bewertbar',
+    /** The state box under the job's title: its title and one sentence under it. */
+    state: {
+      missing: {
+        heading: 'Die Anzeige ist noch nicht geladen.',
+        text: 'Danach wird der Job bewertet.',
+      },
+      loading: 'Die Anzeige wird geladen.',
+      /** After "Trotzdem bewerten", until the job has its match. */
+      scoring: 'Der Job wird bewertet.',
+      /** Under the sentence that says why the job is excluded. */
+      excluded: 'Darum wurde der Job nicht bewertet.',
+      teaser: {
+        heading: 'Die Anzeige ist nur eine Vorschau.',
+        text: 'Mit der ganzen Anzeige wird die Bewertung genauer.',
+      },
+      gone: {
+        heading: 'Die Anzeige ist nicht mehr online.',
+        text: 'Du siehst die zuletzt geladene Fassung.',
+      },
+      /** Gone before its text came. */
+      goneEarly: 'Ihr Text wurde nicht mehr geladen.',
+      unfetchable: {
+        heading: 'Die Anzeige lässt sich nicht laden.',
+        text: 'Das Portal gibt sie nicht heraus.',
+      },
+      closed: {
+        heading: 'Die Anzeige ist beendet.',
+        text: 'Bewerbungen sind nicht mehr möglich.',
+      },
+      short: { heading: SHORT_TEXT, text: 'Für eine Bewertung reicht sie nicht.' },
     },
-    short: SHORT_TEXT,
+    /** The job view while no job is open. */
+    noJob: 'Kein Job gewählt',
+    pickJob: 'Wähle einen Job aus der Liste.',
     loadFailed: 'Der Job ließ sich nicht laden.',
+    /** Deleting a job of the Papierkorb for good, from its job view. */
+    purgeHeading: 'Endgültig löschen?',
+    purgeText: (name: string) =>
+      `„${name}“ wird endgültig gelöscht. Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
+    purgeConfirm: 'Löschen',
   },
   health: {
     /** A portal problem in one sentence that says whether to act (its row in the settings). */
