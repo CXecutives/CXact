@@ -452,58 +452,14 @@ export interface ChipKeyHandlers {
 
 const CHIPS = '[data-chip-keys]';
 const chipFields = new WeakMap<Element, ChipKeyHandlers>();
-/** A chip of a chip field whose chips can be edited, with its index (`data-chip`). */
+/** A chip of a chip field, with its index (`data-chip`). */
 const CHIP = '[data-chip]';
-const EDITABLE_CHIPS = '[data-chip-edit]';
-const chipEdits = new WeakMap<Element, (index: number) => void>();
-
-/**
- * A chip field whose chips a double click takes back into its text for editing
- * (components/ChipInput.svelte): the chip carries its index in `data-chip`. `null`: its
- * chips are not edited (a double click selects a word of the value, like any copyable text).
- */
-export const chipEdit: Action<HTMLElement, ((index: number) => void) | null> = (node, edit) => {
-  const apply = (next: ((index: number) => void) | null): void => {
-    if (next === null) {
-      chipEdits.delete(node);
-      delete node.dataset.chipEdit;
-    } else {
-      chipEdits.set(node, next);
-      node.dataset.chipEdit = '';
-    }
-  };
-  apply(edit);
-  return {
-    update: apply,
-    destroy() {
-      apply(null);
-    },
-  };
-};
-
-/** The second press of a double click on a chip that edits: no word gets selected first
- *  (the chip's value is copyable text, and the edit puts it into the field). */
-function pressesEditableChip(event: MouseEvent): boolean {
-  const chip = closest(event.target, CHIP);
-  return event.detail >= 2 && chip !== null && chip.closest(EDITABLE_CHIPS) !== null;
-}
-
-/** A double click with the left button on an editable chip edits it; `true` if it did. */
-function editChip(event: MouseEvent): boolean {
-  if (event.button !== LEFT) return false;
-  const chip = closest(event.target, CHIP);
-  const field = chip === null ? null : chip.closest(EDITABLE_CHIPS);
-  const edit = field === null ? undefined : chipEdits.get(field);
-  const index = Number(chip instanceof HTMLElement ? chip.dataset.chip : NaN);
-  if (edit === undefined || !Number.isInteger(index)) return false;
-  edit(index);
-  return true;
-}
 
 /**
  * The keys of a chip field (components/ChipInput.svelte): Enter adds, Backspace in the empty
  * field removes the last chip, Esc drops the typed text. What a chip field does not use
- * goes on to the form (Enter on an empty chip field saves it).
+ * goes on to the form (Enter on an empty chip field saves it). A field with a list under it
+ * wraps its handlers in `withList`.
  */
 export const chipKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) => {
   chipFields.set(node, handlers);
@@ -518,6 +474,56 @@ export const chipKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) =
     },
   };
 };
+
+/**
+ * A list under a field (its suggestions or its options, components/Suggestions.svelte) with
+ * one mark, read live (getters): the arrows move the mark through the rows, wrapping, and
+ * with `none` past the ends to no mark (the typed text stays what Enter takes); Enter takes
+ * the marked row, Esc closes the list. While no row shows, the keys go on to `field`.
+ */
+export interface MarkedList {
+  /** The rows shown (0: no list). */
+  readonly count: number;
+  /** The marked row, -1 for none. */
+  readonly mark: number;
+  /** The arrows may leave every row unmarked. */
+  readonly none: boolean;
+  setMark: (index: number) => void;
+  take: (index: number) => void;
+  close: () => void;
+}
+
+/** The mark after an arrow: the next row, wrapping (with `none` through no mark). */
+function nextMark(mark: number, by: -1 | 1, count: number, none: boolean): number {
+  if (none) {
+    const next = mark + by;
+    return next < -1 ? count - 1 : next >= count ? -1 : next;
+  }
+  if (mark < 0) return by > 0 ? 0 : count - 1;
+  return (mark + by + count) % count;
+}
+
+/** The keys of a field with a list under it, the field's own `field` while no row shows. */
+export function withList(list: MarkedList, field: ChipKeyHandlers): ChipKeyHandlers {
+  return {
+    commit: () => {
+      if (list.count === 0 || list.mark < 0) return field.commit();
+      list.take(list.mark);
+      return true;
+    },
+    removeLast: () => field.removeLast(),
+    clear: () => {
+      if (list.count === 0) return field.clear();
+      list.close();
+      return true;
+    },
+    step: (by) => {
+      if (list.count === 0) return field.step?.(by) ?? false;
+      list.setMark(nextMark(list.mark, by, list.count, list.none));
+      return true;
+    },
+  };
+}
 
 function dispatchChipKey(event: KeyboardEvent): boolean {
   if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return false;
@@ -1472,7 +1478,7 @@ export function installInput(): void {
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
         // A button inside a field (show password, clear) leaves the caret in the field.
-        if (closest(event.target, KEEP_FOCUS) !== null || pressesEditableChip(event)) {
+        if (closest(event.target, KEEP_FOCUS) !== null) {
           event.preventDefault();
         } else {
           leaveField(event);
@@ -1558,7 +1564,7 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (editChip(event) || runDouble(event) || !selectable(event.target)) {
+      if (runDouble(event) || !selectable(event.target)) {
         event.preventDefault();
       }
     },

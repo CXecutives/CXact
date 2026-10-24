@@ -276,7 +276,6 @@
         bind:values={form[c.key]}
         split={c.lines ? 'lines' : 'list'}
         placeholder={words[c.placeholder]}
-        more={words[c.more]}
         invalid={error !== null}
         suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
         fold={c.key === 'tools'}
@@ -327,7 +326,6 @@
         id="{id}-industries"
         bind:values={form.industries}
         placeholder={words.industriesPlaceholder}
-        more={words.industriesMore}
         invalid={error !== null}
         suggestions={vocabulary.industries}
         fold

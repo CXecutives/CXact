@@ -24,7 +24,13 @@
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
   import type { Action } from 'svelte/action';
-  import { chipKeys, FIELD_ATTRIBUTES, formKeys, type ChipKeyHandlers } from '$lib/input/input';
+  import {
+    chipKeys,
+    FIELD_ATTRIBUTES,
+    formKeys,
+    withList,
+    type ChipKeyHandlers,
+  } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
   import { describedBy } from '$lib/state/described';
   import { pop } from '$lib/motion/transitions';
@@ -99,62 +105,50 @@
   let focused = $state(false);
   /** Esc or a choice closed the list: it stays closed until the next character. */
   let closed = $state(false);
-  let active = $state(0);
   const found = $derived(options === null ? [] : suggested(options, value));
   /** The text is an option's name as it would be taken: nothing to suggest. */
   const taken = $derived(found.some((option) => folded(option.label) === folded(value)));
   const listed = $derived(focused && !closed && !taken && found.length > 0);
-
-  function take(option: ChipOption): void {
-    update(option.label);
-    closed = true;
-  }
-
-  /** The suggested terms (none while the list is closed) and the marked one (-1: none). */
-  let hint = $state(-1);
+  /** The suggested terms (none while the list is closed). */
   const hints = $derived(suggestions && focused && !closed ? suggest(suggestions, value) : []);
-  const suggesting = $derived(suggestions !== undefined);
+  const suggesting = $derived(options !== null || suggestions !== undefined);
+  /** The rows under the field: its options (the first marked) or its terms (none marked). */
+  const rows = $derived(
+    hints.length > 0 ? hints : listed ? found.map((option) => option.label) : [],
+  );
+  let mark = $state(-1);
+  const listId = $derived(hints.length > 0 ? `${own}-hints` : `${own}-options`);
 
-  function takeHint(term: string): void {
-    update(term);
+  /** A row goes in as the text; the list closes until the next character. */
+  function take(index: number): void {
+    const text = rows[index];
+    if (text === undefined) return;
+    update(text);
     closed = true;
-    hint = -1;
   }
 
-  /** Enter takes the marked option, Esc closes the list, the arrows move the mark; with
-   *  no list every key goes on to the field and the form. */
-  const suggestKeys: ChipKeyHandlers = {
-    commit: () => {
-      const term = hints[hint];
-      if (term !== undefined) {
-        takeHint(term);
-        return true;
-      }
-      const option = listed ? (found[active] ?? found[0]) : undefined;
-      if (option === undefined) return false;
-      take(option);
-      return true;
+  /** Enter takes the marked row, Esc closes the list, the arrows move the mark; with no list
+   *  every key goes on to the field and the form. */
+  const suggestKeys: ChipKeyHandlers = withList(
+    {
+      get count() {
+        return rows.length;
+      },
+      get mark() {
+        return mark;
+      },
+      get none() {
+        return hints.length > 0;
+      },
+      setMark: (index) => (mark = index),
+      take,
+      close: () => (closed = true),
     },
-    removeLast: () => false,
-    clear: () => {
-      if (!listed && hints.length === 0) return false;
-      closed = true;
-      return true;
-    },
-    step: (by) => {
-      if (hints.length > 0) {
-        // Through the terms and back to none (the typed text).
-        hint = hint + by < -1 ? hints.length - 1 : hint + by >= hints.length ? -1 : hint + by;
-        return true;
-      }
-      if (!listed) return false;
-      active = (active + by + found.length) % found.length;
-      return true;
-    },
-  };
+    { commit: () => false, removeLast: () => false, clear: () => false },
+  );
   /** The keys of the list only for a field that suggests. */
   const listKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) =>
-    options === null && suggestions === undefined ? undefined : chipKeys(node, handlers);
+    suggesting ? chipKeys(node, handlers) : undefined;
 
   function clear(): void {
     update('');
@@ -213,15 +207,11 @@
     placeholder={placeholder ?? undefined}
     {disabled}
     data-testid={testid ?? undefined}
-    role={options !== null || suggesting ? 'combobox' : undefined}
-    aria-autocomplete={options !== null || suggesting ? 'list' : undefined}
-    aria-expanded={options !== null ? listed : suggesting ? hints.length > 0 : undefined}
-    aria-controls={listed ? `${own}-options` : hints.length > 0 ? `${own}-hints` : undefined}
-    aria-activedescendant={listed
-      ? `${own}-options-${active}`
-      : hints[hint] !== undefined
-        ? `${own}-hints-${hint}`
-        : undefined}
+    role={suggesting ? 'combobox' : undefined}
+    aria-autocomplete={suggesting ? 'list' : undefined}
+    aria-expanded={suggesting ? rows.length > 0 : undefined}
+    aria-controls={rows.length > 0 ? listId : undefined}
+    aria-activedescendant={rows.length > 0 && mark >= 0 ? `${listId}-${mark}` : undefined}
     spellcheck={FIELD_ATTRIBUTES.spellcheck}
     autocorrect={FIELD_ATTRIBUTES.autocorrect}
     autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
@@ -231,34 +221,19 @@
     onblur={() => (focused = false)}
     oninput={(event) => {
       closed = false;
-      active = 0;
-      hint = -1;
       update(event.currentTarget.value);
+      mark = hints.length > 0 || !listed ? -1 : 0;
     }}
   />
-  {#if options !== null}
-    <Suggestions
-      id="{own}-options"
-      items={listed ? found.map((option) => option.label) : []}
-      {active}
-      label={label ?? placeholder}
-      testid={testid ? `${testid}-options` : null}
-      onpick={(name) => {
-        const option = found.find((each) => each.label === name);
-        if (option) take(option);
-      }}
-      onmark={(index) => (active = index)}
-    />
-  {/if}
   {#if suggesting}
     <Suggestions
-      id="{own}-hints"
-      items={hints}
-      active={hint}
+      id={listId}
+      items={rows}
+      active={mark}
       label={label ?? placeholder}
-      testid={testid ? `${testid}-suggestions` : null}
-      onpick={takeHint}
-      onmark={(index) => (hint = index)}
+      testid={testid ? `${testid}-${hints.length > 0 ? 'suggestions' : 'options'}` : null}
+      onpick={(text) => take(rows.indexOf(text))}
+      onmark={(index) => (mark = index)}
     />
   {/if}
   {#if kind === 'password'}

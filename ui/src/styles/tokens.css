@@ -767,6 +767,12 @@
   /* A text field: its text 10 px in, a glyph before it (the search's magnifier) 7 px away. */
   --field-inset: 10px;
   --field-glyph-gap: 7px;
+  /* A chip in a field: 13 px words in 540, 3 px after its x. */
+  --type-chip: var(--weight-medium) var(--font-sm) / var(--leading-sm) var(--font-sans);
+  --chip-pad-end: 3px;
+  /* The least a glyph is hit by the pointer (the chip's x, the info symbol): 24 px, larger
+     than the glyph, unseen. */
+  --hit-min: 24px;
 
   /* ------------------------------------------- round 10: surfaces */
   /* (surfaces tokens below) */

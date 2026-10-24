@@ -329,17 +329,24 @@ test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit choose one optio
     minMonths: 12,
   });
 });
-test('Länder: no dropdown, Schweiz as a quick pick; typing finds any other', async ({ page }) => {
+test('Länder: the focus lists the others, Schweiz as a quick pick; typing narrows', async ({
+  page,
+}) => {
   await profile(page);
   await countryInput(page).focus();
-  // Nothing lists before a letter is typed; the DACH countries not chosen are quick picks.
+  // The focus lists every country not chosen yet (a closed list, round 10); the DACH
+  // countries not chosen are quick picks.
   const listed = options(page).getByRole('option');
-  await expect(listed).toHaveCount(0);
+  await expect(listed.first()).toBeVisible();
+  expect(await listed.allTextContents()).not.toContain('Deutschland');
   await expect(page.getByTestId('country-pick').getByRole('button')).toHaveText(['Schweiz']);
   // By either name, Enter takes the first match.
   await countryInput(page).fill('Belg');
   await expect(listed).toHaveText(['Belgien']);
   await countryInput(page).fill('');
+  // Esc closes the list that lay over the quick picks.
+  await page.keyboard.press('Escape');
+  await expect(listed).toHaveCount(0);
   await page.getByTestId('country-pick-CH').click();
   await expect(chips(countries(page))).toHaveText(['Deutschland', 'Österreich', 'Schweiz']);
   await expect(page.getByTestId('country-pick')).toHaveCount(0);
@@ -395,7 +402,9 @@ test('Sprachen: no dropdowns, the levels A1 to C2, + Sprache with quick picks an
   const level = (index: number) => page.getByTestId('language-level').nth(index);
   await expect(level(0).getByRole('radio')).toHaveText(Object.values(T.profile.level));
   await page.getByTestId('language-add').click();
-  // The common languages not chosen yet as quick picks; a new one starts at B2.
+  // The common languages not chosen yet as quick picks (Esc closes the list the focus
+  // opened over them); a new one starts at B2.
+  await page.keyboard.press('Escape');
   const picks = page.getByTestId('language-pick');
   await expect(picks.getByRole('button')).not.toContainText(['Deutsch']);
   await page.getByTestId('language-pick-Französisch').click();

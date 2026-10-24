@@ -54,7 +54,6 @@
   options={COUNTRIES}
   noMatch={words.countryNone}
   placeholder={words.countriesPlaceholder}
-  more={words.countriesMore}
   {invalid}
   testid="profile-countries"
 />

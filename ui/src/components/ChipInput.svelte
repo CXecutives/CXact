@@ -1,44 +1,40 @@
 <!--
-  A list of short values as chips in a field: type and press Enter (or leave the field) to
-  add, x removes, Backspace in the empty field removes the last one, Esc drops what was
-  typed, a double click on a chip takes it back into the text to edit it. Removing puts no
+  A list of short values as chips in a field (round 10): type and press Enter (or leave the
+  field) to add, the x ("Entfernen") removes, Backspace in the empty field removes the last
+  one, Esc closes the list under the field and then drops what was typed. Removing puts no
   caret anywhere, from the keyboard the next x takes the focus (input.ts removeBy). A chip's
-  value is copyable text (a drag selects it, Ctrl/Cmd+C copies); its x names what it removes
-  for a screen reader only (the chip beside it says what it is, so no tooltip repeats it, like
-  the plain x of a row). A list of terms (`split` list) also splits at commas and semicolons,
-  typed or pasted; a list of sentences or names that hold commas (`split` lines) only at line
-  breaks. A value that is already there (in any case) is not added twice. Without `entry` the
-  field only shows and removes (chips chosen elsewhere). Keys and the double click come from
-  input.ts (chipKeys, chipEdit).
-  With `options` the field takes only those (the countries of the profile): nothing lists
-  them before a letter is typed (no dropdown, user 2026-10-04); typing shows the
-  options whose name or other names start with it (any word of them, in any case, with or
-  without accents) in a list under the field, Enter or a click takes the marked one (the
-  first), leaving the field takes a single match. The list has one mark, like a native
-  menu: the pointer moves it as the arrows do. A chip shows its option's name; a value that
-  is no option (from a file) stays and shows as it is. Text that matches no option stays in
-  the field and says so (`noMatch`); text that matches only chosen ones says nothing.
+  value is copyable text (a drag selects it, Ctrl/Cmd+C copies; a double click selects a
+  word, it never edits the chip). A list of terms (`split` list) also splits at commas and
+  semicolons, typed or pasted; a list of sentences or names that hold commas (`split` lines)
+  only at line breaks. A value that is already there (in any case) is not added twice.
+  Without `entry` the field only shows and removes (chips chosen elsewhere). Its keys come
+  from input.ts (chipKeys, withList).
+  With `options` the field takes only those (the countries, a closed list): the focus opens
+  the list of every option not chosen yet, typing narrows it to the options whose name or
+  other names (the English one of a country) start with the text (any word of them, in any
+  case, with or without accents), with the first marked; Enter or a click takes the marked
+  one, leaving the field takes a single match, a chosen option leaves the list. Text that
+  matches no option stays in the field and says so (`noMatch`); text that matches only
+  chosen ones says nothing. A chip shows its option's name; a value that is no option (from a
+  file) stays and shows as it is.
+  With `suggestions` (the engine's words) a field without options suggests terms from the
+  first character (Suggestions.svelte): nothing is marked until the arrows or the pointer
+  mark one, Enter or a click takes the marked term as a chip; Enter without a mark and
+  leaving the field take the typed text as always.
   Typed text that is no chip yet is a change of the form around the field (`typedText`).
-  With `suggestions` (the engine's words) a field without options suggests terms while
-  typing (Suggestions.svelte): nothing is marked until the arrows or the pointer mark one,
-  Enter or a click takes the marked term as a chip, Esc closes the list; Enter without a
-  mark and leaving the field take the typed text as always.
-  As tall as a text field (28 px) with one line of chips, each neutral on the track; with
-  chips its input says "+ Rolle" (`more`).
-  Its edge is the text field's (`--field-edge`, coral in a required cell that is still
-  empty, red while `invalid`); focus turns it navy only.
+  30 px high with one line of chips, each 24 px on the track in 13 px words; a chip rises in
+  only when it is added, never when the field is drawn again or folds open. Its edge is the
+  text field's (`--field-edge`, red in a required cell that is still empty, red while
+  `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
   focus; a click on it, or the focus, shows them all.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
-  import {
-    chipEdit,
-    chipKeys,
-    FIELD_ATTRIBUTES,
-    removeBy,
-    type ChipKeyHandlers,
-  } from '$lib/input/input';
+  import { chipKeys, FIELD_ATTRIBUTES, removeBy, withList } from '$lib/input/input';
+  import { rise } from '$lib/motion/transitions';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
   import { ChipFold } from '$lib/state/chipFold.svelte';
@@ -57,8 +53,6 @@
     /** Accessible name when the field is not wrapped in a Field with a label. */
     label?: string | null;
     placeholder?: string | null;
-    /** The placeholder once it holds chips ("+ Rolle"). */
-    more?: string | null;
     /** id of the text input, for the label of a Field. */
     id?: string | null;
     /** Default: the message of its Field, while it shows one. */
@@ -69,7 +63,7 @@
     /** Where text splits into chips: at commas, semicolons and line breaks (terms), or only
      *  at line breaks (sentences, degrees, certificate names). */
     split?: 'list' | 'lines';
-    /** The only values the field takes, suggested while typing. */
+    /** The only values the field takes, listed on focus and narrowed while typing. */
     options?: readonly ChipOption[] | null;
     /** Said under the field while the typed text matches no option. */
     noMatch?: string | null;
@@ -85,7 +79,6 @@
     values = $bindable(),
     label = null,
     placeholder = null,
-    more = null,
     id = null,
     describedby = null,
     invalid = false,
@@ -105,7 +98,6 @@
   const described = describedBy();
 
   let draft = $state('');
-  let input = $state<HTMLInputElement | null>(null);
 
   // The form around the field counts typed text as a change.
   const typed = typedText();
@@ -114,14 +106,17 @@
     typed?.set(own, holds ? () => (draft = '') : null);
   });
   $effect(() => () => typed?.set(own, null));
-  /** The focus is in the field (the list of options shows only then). */
+  /** The focus is in the field (its list shows only then). */
   let focused = $state(false);
-  /** The marked option of the list (Enter takes it). */
-  let active = $state(0);
 
   /** The name a chip shows: its option's, else the value itself. */
   const labelOf = (value: string): string =>
     options?.find((option) => option.id === value)?.label ?? value;
+  const names = (option: ChipOption): string[] => [
+    option.label,
+    option.id,
+    ...(option.terms ?? []),
+  ];
 
   let box = $state<HTMLElement | null>(null);
 
@@ -137,12 +132,43 @@
   const known = (list: string[], text: string): boolean =>
     list.some((value) => value.toLowerCase() === text.toLowerCase());
 
+  // ------------------------------------------------------------ the chip that came in
+  /** The values added since the last change: only their chips rise in (never one drawn
+   *  again, unfolded or there from the start). */
+  let added: string[] = [];
+  let seen: readonly string[] | null = null;
+  $effect.pre(() => {
+    const before = seen;
+    if (before !== null) added = [...added, ...values.filter((value) => !before.includes(value))];
+    seen = [...values];
+    void tick().then(() => requestAnimationFrame(() => (added = [])));
+  });
+  /** Rises in once, for a value just added (its first drawing). */
+  function chipIn(node: Element, value: string): ReturnType<typeof rise> {
+    if (!added.includes(value)) return {};
+    added = added.filter((each) => each !== value);
+    return rise(node, { distance: 'sm' });
+  }
+
+  // ------------------------------------------------------------ the list under the field
   /** Options whose names start with the typed text (a whole name first), chosen or not;
    *  every option, in its order, while nothing is typed. */
-  const found = $derived(options === null || folded(draft) === '' ? [] : suggested(options, draft));
+  const found = $derived(
+    options === null ? [] : folded(draft) === '' ? options : suggested(options, draft),
+  );
   /** The options found that are not chosen yet: the list under the field. */
   const matches = $derived(found.filter((option) => !values.includes(option.id)));
-  const listed = $derived(focused && matches.length > 0);
+  /** Esc closed the list until the next character. */
+  let closed = $state(false);
+  const hints = $derived(
+    suggestions && focused && !closed ? suggest(suggestions, draft, values) : [],
+  );
+  /** The rows under the field: the options not chosen yet, or the suggested terms. */
+  const rows = $derived(
+    !focused || closed ? [] : options !== null ? matches.map((option) => option.label) : hints,
+  );
+  /** The marked row (-1: none; typing marks the first option, never a term). */
+  let mark = $state(-1);
   /** The typed text names an option that is a chip already: taking it only clears the text. */
   const chosen = $derived(
     options !== null &&
@@ -150,35 +176,18 @@
       options.some(
         (option) =>
           values.includes(option.id) &&
-          [option.label, option.id, ...(option.terms ?? [])].some(
-            (name) => folded(name) === folded(draft),
-          ),
+          names(option).some((name) => folded(name) === folded(draft)),
       ),
   );
   /** The typed text names no option at all (one that is chosen already is no news). */
   const nothing = $derived(options !== null && folded(draft) !== '' && found.length === 0);
-
-  /** The marked suggestion (-1: none, Enter takes the typed text), and whether Esc closed
-   *  the list until the next character. */
-  let hint = $state(-1);
-  let hintsClosed = $state(false);
-  const hints = $derived(
-    suggestions && focused && !hintsClosed ? suggest(suggestions, draft, values) : [],
-  );
-  const suggesting = $derived(suggestions !== undefined);
+  const suggesting = $derived(options !== null || suggestions !== undefined);
 
   $effect(() => {
-    void draft;
-    active = 0;
-    hint = -1;
-    hintsClosed = false;
+    const text = draft.trim() !== '';
+    mark = options !== null && text ? 0 : -1;
+    closed = false;
   });
-
-  /** A suggested term goes in as a chip; the typed text is done. */
-  function takeHint(term: string): void {
-    if (!known(values, term)) update([...values, term]);
-    draft = '';
-  }
 
   function update(next: string[]): void {
     values = next;
@@ -200,25 +209,61 @@
     return true;
   }
 
-  /** An option goes in as a chip; the typed text is done. */
-  function choose(option: ChipOption): void {
-    if (!values.includes(option.id)) update([...values, option.id]);
+  /** A row of the list goes in as a chip; the typed text is done. */
+  function take(index: number): void {
+    if (options !== null) {
+      const option = matches[index];
+      if (option && !values.includes(option.id)) update([...values, option.id]);
+    } else {
+      const term = hints[index];
+      if (term !== undefined && !known(values, term)) update([...values, term]);
+    }
     draft = '';
   }
 
-  /** Enter: the marked option (with options), else the typed text; `true` if there was text. */
+  /** Enter without a marked row: the typed text (with options it only clears a name that is
+   *  chosen already); `true` if there was text. */
   function commit(): boolean {
-    if (options !== null) {
-      if (draft.trim() === '') return false;
-      const option = matches[active] ?? matches[0];
-      if (option) choose(option);
-      else if (chosen) draft = '';
-      return true;
+    if (options === null) {
+      const done = add(draft);
+      draft = '';
+      return done;
     }
-    const added = add(draft);
-    draft = '';
-    return added;
+    if (draft.trim() === '') return false;
+    if (chosen) draft = '';
+    return true;
   }
+
+  /** The keys of input.ts: the list's first, then the field's own. */
+  const keys = withList(
+    {
+      get count() {
+        return rows.length;
+      },
+      get mark() {
+        return mark;
+      },
+      get none() {
+        return options === null;
+      },
+      setMark: (index) => (mark = index),
+      take,
+      close: () => (closed = true),
+    },
+    {
+      commit,
+      removeLast: () => {
+        if (draft !== '' || values.length === 0) return false;
+        remove(values.length - 1);
+        return true;
+      },
+      clear: () => {
+        if (draft === '') return false;
+        draft = '';
+        return true;
+      },
+    },
+  );
 
   /** The focus left the field and its chips (not for one of its x). */
   function leave(event: FocusEvent & { currentTarget: HTMLElement }): void {
@@ -232,13 +277,12 @@
       commit();
       return;
     }
+    if (draft.trim() === '') return;
     const exact = matches.filter((option) =>
-      [option.label, option.id, ...(option.terms ?? [])].some(
-        (name) => folded(name) === folded(draft),
-      ),
+      names(option).some((name) => folded(name) === folded(draft)),
     );
     const only = exact.length === 1 ? exact[0] : matches.length === 1 ? matches[0] : undefined;
-    if (only) choose(only);
+    if (only) take(matches.indexOf(only));
     else if (chosen) draft = '';
   }
 
@@ -246,40 +290,6 @@
     const button = box?.querySelectorAll('[data-remove]').item(index) ?? null;
     removeBy(button, () => update(values.filter((_, at) => at !== index)));
   }
-
-  /** The keys of input.ts; the arrows move the mark in the list of options. */
-  const keys: ChipKeyHandlers & { step: (by: -1 | 1) => boolean } = {
-    commit: (): boolean => {
-      const term = hints[hint];
-      if (term === undefined) return commit();
-      takeHint(term);
-      return true;
-    },
-    removeLast: (): boolean => {
-      if (draft !== '' || values.length === 0) return false;
-      remove(values.length - 1);
-      return true;
-    },
-    clear: (): boolean => {
-      if (hints.length > 0) {
-        hintsClosed = true;
-        return true;
-      }
-      if (draft === '') return false;
-      draft = '';
-      return true;
-    },
-    step: (by: -1 | 1): boolean => {
-      if (hints.length > 0) {
-        // Through the terms and back to none (the typed text).
-        hint = hint + by < -1 ? hints.length - 1 : hint + by >= hints.length ? -1 : hint + by;
-        return true;
-      }
-      if (!listed) return false;
-      active = (active + by + matches.length) % matches.length;
-      return true;
-    },
-  };
 
   /** A pasted list becomes chips at once; a single value is pasted as text. With options
    *  a paste is text to search. */
@@ -292,29 +302,17 @@
     draft = '';
   }
 
-  /** A double click on a chip: what was typed becomes a chip, the chip's text goes back
-   *  into the field with the caret at its end. */
-  function edit(index: number): void {
-    const value = values[index];
-    if (!entry || options !== null || value === undefined) return;
-    commit();
-    update(values.filter((other) => other !== value));
-    draft = value;
-    input?.focus();
-    queueMicrotask(() => input?.setSelectionRange(value.length, value.length));
-  }
-
   /** A press on the free area of the field puts the caret into its input. */
-  function focusInput(event: PointerEvent): void {
+  function focusInput(event: PointerEvent & { currentTarget: HTMLElement }): void {
     if (!entry || event.button !== 0 || event.target !== event.currentTarget) return;
     event.preventDefault();
-    input?.focus();
+    event.currentTarget.querySelector('input')?.focus();
   }
 </script>
 
 <div
   class="chip-input"
-  class:suggests={options !== null || suggesting}
+  class:suggests={suggesting}
   onfocusin={() => (focused = true)}
   onfocusout={leave}
 >
@@ -328,10 +326,9 @@
     data-testid={testid ?? undefined}
     data-removes
     onpointerdown={focusInput}
-    use:chipEdit={entry && options === null ? edit : null}
   >
     {#each visible as value, index (value)}
-      <span class="chip" data-chip={index} data-value={value}>
+      <span class="chip" data-chip={index} data-value={value} in:chipIn={value}>
         <span class="text" data-copy>{labelOf(value)}</span>
         <button
           type="button"
@@ -340,9 +337,10 @@
           data-keep-focus
           data-remove
           aria-label={t.chips.remove(labelOf(value))}
+          use:tooltip={t.common.remove}
           onclick={() => remove(index)}
         >
-          <Icon name="close" size="xs" />
+          <Icon name="close" size="xxs" />
         </button>
       </span>
     {/each}
@@ -358,31 +356,22 @@
     {/if}
     {#if entry}
       <input
-        bind:this={input}
         bind:value={draft}
         class="input"
         class:folded={visible.length < values.length}
         type="text"
         id={id ?? undefined}
-        role={options !== null || suggesting ? 'combobox' : undefined}
-        aria-autocomplete={options !== null || suggesting ? 'list' : undefined}
-        aria-expanded={options !== null ? listed : suggesting ? hints.length > 0 : undefined}
-        aria-controls={options !== null
-          ? `${own}-options`
-          : suggesting
-            ? `${own}-hints`
-            : undefined}
-        aria-activedescendant={listed
-          ? `${own}-options-${active}`
-          : hints[hint] !== undefined
-            ? `${own}-hints-${hint}`
-            : undefined}
+        role={suggesting ? 'combobox' : undefined}
+        aria-autocomplete={suggesting ? 'list' : undefined}
+        aria-expanded={suggesting ? rows.length > 0 : undefined}
+        aria-controls={rows.length > 0 ? `${own}-list` : undefined}
+        aria-activedescendant={rows.length > 0 && mark >= 0 ? `${own}-list-${mark}` : undefined}
         aria-label={label ?? undefined}
         aria-invalid={invalid ? 'true' : undefined}
         aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
           .filter((part) => part !== null)
           .join(' ') || undefined}
-        placeholder={(values.length === 0 ? placeholder : more) ?? undefined}
+        placeholder={placeholder ?? undefined}
         spellcheck={FIELD_ATTRIBUTES.spellcheck}
         autocorrect={FIELD_ATTRIBUTES.autocorrect}
         autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
@@ -395,41 +384,24 @@
   </div>
   {#if suggesting}
     <Suggestions
-      id="{own}-hints"
-      items={hints}
-      active={hint}
+      id="{own}-list"
+      items={rows}
+      active={mark}
       label={label ?? placeholder}
-      testid={testid ? `${testid}-suggestions` : null}
-      onpick={takeHint}
-      onmark={(index) => (hint = index)}
+      testid={testid ? `${testid}-${options !== null ? 'options' : 'suggestions'}` : null}
+      onpick={(name) => take(rows.indexOf(name))}
+      onmark={(index) => (mark = index)}
     />
   {/if}
-  {#if options !== null}
-    <Suggestions
-      id="{own}-options"
-      items={listed ? matches.map((option) => option.label) : []}
-      {active}
-      label={label ?? placeholder}
-      testid={testid ? `${testid}-options` : null}
-      onpick={(name) => {
-        const option = matches.find((each) => each.label === name);
-        if (option) choose(option);
-      }}
-      onmark={(index) => (active = index)}
-    />
-    {#if nothing && noMatch}
-      <p class="none" id="{own}-none" data-testid={testid ? `${testid}-none` : undefined}>
-        {noMatch}
-      </p>
-    {/if}
+  {#if nothing && noMatch}
+    <p class="none" id="{own}-none" data-testid={testid ? `${testid}-none` : undefined}>
+      {noMatch}
+    </p>
   {/if}
 </div>
 
 <style>
-  /* One line of chips in a field: its height minus 2 x 2 padding and 2 x 1 edge. */
   .chip-input {
-    --chip-line: calc(var(--control-field) - 2 * var(--space-2) - 2 * var(--border-width));
-
     position: relative;
     display: flex;
     flex-direction: column;
@@ -447,6 +419,7 @@
     min-width: 0;
   }
 
+  /* 30 px with one line of chips: 2 px around the 24 px chips inside the 1 px edge. */
   .entry {
     min-height: var(--control-field);
     padding: var(--space-2);
@@ -476,13 +449,12 @@
     align-items: center;
     gap: var(--space-2);
     max-width: 100%;
-    min-height: var(--chip-line);
-    padding: 0 var(--space-2) 0 var(--space-8);
+    min-height: var(--chip-height);
+    padding: 0 var(--chip-pad-end) 0 var(--space-8);
     border-radius: var(--radius-inner);
     background-color: var(--chip-surface);
     color: var(--chip-text);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
+    font: var(--type-chip);
     cursor: default;
   }
 
@@ -492,18 +464,26 @@
     overflow-wrap: break-word;
   }
 
+  /* The x: a 12 px glyph on a 16 px wash, hit 24 px wide (the room around it is its own). */
   .remove {
+    position: relative;
     display: inline-flex;
     flex: none;
     align-items: center;
     justify-content: center;
-    width: calc(var(--chip-line) - 2 * var(--space-2));
-    height: calc(var(--chip-line) - 2 * var(--space-2));
+    width: var(--chip-x);
+    height: var(--chip-x);
     border-radius: var(--radius-xs);
-    color: var(--chip-remove);
+    color: var(--icon-subtle);
     transition:
       background-color var(--dur-fast) var(--ease-standard),
       color var(--dur-fast) var(--ease-standard);
+  }
+
+  .remove::before {
+    position: absolute;
+    inset: calc((var(--chip-x) - var(--hit-min)) / 2);
+    content: '';
   }
 
   .remove:hover {
@@ -514,8 +494,8 @@
 
   .input {
     flex: 1 1 0;
-    min-width: var(--space-48);
-    height: var(--chip-line);
+    min-width: var(--chip-entry-min);
+    height: calc(var(--chip-height) - 2 * var(--border-width));
     padding: 0 var(--space-6);
     border: 0;
     background-color: transparent;
@@ -524,13 +504,8 @@
     outline: none;
   }
 
-  /* Next to chips the input keeps room for its "+ Rolle". */
-  .filled .input {
-    min-width: var(--chip-entry-min);
-  }
-
   .input::placeholder {
-    color: var(--text-subtle);
+    color: var(--icon-subtle);
   }
 
   .none {

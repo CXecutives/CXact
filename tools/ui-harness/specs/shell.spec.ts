@@ -1057,7 +1057,7 @@ test('after a click into the reader the arrows scroll it', async ({ page }) => {
   await expect(title).toHaveText(opened);
 });
 
-test('a chip value copies; a double click still edits it; its x has no tooltip', async ({
+test('a chip value copies, a double click only selects a word; its x says Entfernen', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -1067,6 +1067,7 @@ test('a chip value copies; a double click still edits it; its x has no tooltip',
   const text = chip.locator('.text');
   await text.scrollIntoViewIfNeeded();
   const value = await text.innerText();
+  const count = await keywords.locator('[data-chip]').count();
   // A drag over the value selects it.
   const box = (await text.boundingBox())!;
   await page.mouse.move(box.x + 1, box.y + box.height / 2);
@@ -1076,16 +1077,18 @@ test('a chip value copies; a double click still edits it; its x has no tooltip',
   const selected = await page.evaluate(() => getSelection()?.toString() ?? '');
   expect(value.startsWith(selected.trim())).toBe(true);
   expect(selected.trim().length).toBeGreaterThan(1);
-  // The x names what it removes for a screen reader; no tooltip repeats the chip's word.
+  // The x names what it removes for a screen reader, its tooltip the action; it is hit 24 px
+  // wide around its 16 px.
   const remove = chip.locator('.remove');
   await expect(remove).toHaveAccessibleName(`${value} entfernen`);
-  await remove.hover();
-  await page.waitForTimeout(700);
-  await expect(page.getByRole('tooltip')).toHaveCount(0);
-  // A double click takes the value back into the field, with no word selected.
+  const x = (await remove.boundingBox())!;
+  await page.mouse.move(x.x + x.width + 3, x.y + x.height / 2);
+  await expect(page.getByRole('tooltip')).toHaveText(T.common.remove);
+  // A double click selects a word of the value and leaves the chip where it is.
   await text.dblclick();
-  await expect(keywords.locator('input')).toHaveValue(value);
-  expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
+  await expect(keywords.locator('input')).toHaveValue('');
+  await expect(keywords.locator('[data-chip]')).toHaveCount(count);
+  expect(value).toContain((await page.evaluate(() => getSelection()?.toString() ?? '')).trim());
 });
 
 test('the dry-run note shows in Einstellungen', async ({ page }) => {
