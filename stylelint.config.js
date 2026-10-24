@@ -16,17 +16,9 @@ const ANIMATABLE = [
   'border-color',
   'stroke-dashoffset',
 ];
-const KEYFRAMES = [
-  'shimmer',
-  'spin',
-  'pulse',
-  'breathe',
-  'sweep',
-  'shake',
-  'draw',
-  'appear',
-  'drain',
-];
+/** The keyframes of styles/motion.css, the only names an `animation` may use. `shimmer` goes
+ *  with the light of Skeleton. */
+const KEYFRAMES = ['shimmer', 'spin', 'pulse', 'sweep', 'draw', 'appear'];
 
 /** `transition` shorthand: every comma-separated item starts with an allowed property. */
 const transitionShorthand = (properties) => {

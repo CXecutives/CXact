@@ -359,6 +359,8 @@ export function tooltipOut(_node: Element): TransitionConfig {
 /**
  * A number that counts up (score rings, stat tiles). Rounds to whole numbers; under
  * reduced motion it jumps to the target.
+ * Replaced by `Count` (count.svelte.ts), which moves the ring's arc in step: deleted once
+ * ScoreRing uses it.
  */
 export function countUp(initial = 0, length: Duration = 'reveal'): Tween<number> {
   return new Tween(initial, {
