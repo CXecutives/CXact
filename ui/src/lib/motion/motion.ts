@@ -10,7 +10,10 @@ import { tokenMs, tokenNumber, tokenPx, token } from '../tokens';
 
 export type Duration = 'instant' | 'hover' | 'fast' | 'base' | 'fade' | 'slow' | 'reveal' | 'loop';
 export type Easing = 'standard' | 'out' | 'in' | 'emphasized';
-export type Move = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+/** `chip`: the 3 px a chip rises when it is added. */
+export type Move = 'xs' | 'sm' | 'chip' | 'md' | 'lg' | 'xl';
+/** The step of a stagger: the rows of a list, the cards of a job, the groups of a page. */
+export type Stagger = 'row' | 'card' | 'group';
 export type EasingFn = (t: number) => number;
 
 interface Values {
@@ -18,7 +21,9 @@ interface Values {
   crossfade: number;
   easings: Record<Easing, EasingFn>;
   moves: Record<Move, number>;
+  staggers: Record<Stagger, number>;
   staggerMax: number;
+  staggerSpan: number;
   tooltipDelay: number;
 }
 
@@ -33,7 +38,8 @@ const DURATIONS: readonly Duration[] = [
   'loop',
 ];
 const EASINGS: readonly Easing[] = ['standard', 'out', 'in', 'emphasized'];
-const MOVES: readonly Move[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+const MOVES: readonly Move[] = ['xs', 'sm', 'chip', 'md', 'lg', 'xl'];
+const STAGGERS: readonly Stagger[] = ['row', 'card', 'group'];
 
 let values: Values | null = null;
 let reduced = false;
@@ -94,7 +100,12 @@ function read(): Values {
       Move,
       number
     >,
+    staggers: Object.fromEntries(STAGGERS.map((s) => [s, tokenMs(`--stagger-${s}`)])) as Record<
+      Stagger,
+      number
+    >,
     staggerMax: tokenNumber('--stagger-max'),
+    staggerSpan: tokenMs('--stagger-span'),
     tooltipDelay: tokenMs('--delay-tooltip'),
   };
 }
@@ -145,6 +156,16 @@ export function move(name: Move): number {
 /** How many items of a list may animate at the same time; the others are simply there. */
 export function staggerLimit(): number {
   return current().staggerMax;
+}
+
+/** The step between two items of a stagger in ms; 0 under reduced motion. */
+export function stagger(name: Stagger): number {
+  return reduced ? 0 : current().staggers[name];
+}
+
+/** The longest a whole stagger may take, its last piece included (ms). */
+export function staggerSpan(): number {
+  return current().staggerSpan;
 }
 
 export function tooltipDelay(): number {

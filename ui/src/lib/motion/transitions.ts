@@ -1,16 +1,24 @@
 // Token-bound wrappers of svelte/transition, svelte/animate and svelte/motion.
 // This folder is the only place allowed to import them (eslint + ui_contract.rs).
 //
-// Rules: only transform and opacity move (and the height of a folding row, of a line that
-// unfolds under the list header and of the job list's selection bar, each one small box); end
-// values are whole pixels; at most
-// --stagger-max list rows animate at once, and only rows that arrive while the list is on
-// screen. Nothing staggers, nothing bounces. Under reduced motion every movement is dropped
-// and what remains is a cross-fade of --dur-crossfade.
+// The rules of all motion in the UI (lib/motion is their one home):
+//   - Only transform and opacity move, plus colour and stroke-dashoffset. The exceptions are
+//     single small boxes: the height of a row or line that folds or unfolds, and the size of
+//     an element out of the flow that glides to another box (glide.ts, barSlide). End values
+//     are whole pixels.
+//   - At most 180 ms per piece (--dur-slow), the ring and its count 400 ms (--dur-reveal), a
+//     whole stagger at most 400 ms (--stagger-span). Ease-out in, ease-in out. Nothing
+//     overshoots, bounces, scales or deforms, not even on press.
+//   - Entries play only when a view opens, a list opens or a new job opens, never on a
+//     re-render: the staggers of enter.ts are called explicitly, capped (--stagger-max items
+//     step, the later ones come with the last), and skipped while the user browses fast
+//     (pace.ts). A glide jumps when its target is out of sight (glide.ts).
+//   - Under reduced motion every movement is dropped: an entry or a glide is simply there,
+//     and what remains of a transition is a cross-fade of --dur-crossfade.
 //
 // No replay by construction: Svelte plays a local transition only when its own block has
-// run before, so an entry never plays when a view, a list or the app mounts (main.ts also
-// mounts with `intro: false`).
+// run before, so a transition never plays when a view, a list or the app mounts (main.ts
+// also mounts with `intro: false`).
 //
 // fade and rise never read the element's style: svelte/transition's versions call
 // getComputedStyle for the element's own opacity and transform, which forces a style and
@@ -116,6 +124,24 @@ export function pop(node: Element, params: MotionParams = {}): TransitionConfig 
     easing(params.easing ?? 'out'),
     params.delay ?? 0,
   );
+}
+
+/**
+ * A chip that the user adds rises by --move-chip (3 px) while it fades in (150 ms, ease-out).
+ * `in:chipIn` on the chip inside a `{#each}` keyed by the chip's value (a reload of the same
+ * chips then creates nothing): Svelte plays a local intro only in a block that ran before,
+ * so the chips a field mounts with are simply there, and only an added chip rises.
+ */
+export function chipIn(node: Element, params: MotionParams = {}): TransitionConfig {
+  if (params.on === false) return {};
+  if (isReducedMotion()) return crossfade(node);
+  const y = move('chip');
+  return {
+    duration: duration(params.duration ?? 'base'),
+    easing: easing(params.easing ?? 'out'),
+    delay: params.delay ?? 0,
+    css: (t, u) => `opacity: ${t}; transform: translateY(${u * y}px)`,
+  };
 }
 
 /** Maximum rows that may FLIP; above this a list cross-fades. */

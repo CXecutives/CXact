@@ -681,8 +681,9 @@
      settles in 150 ms. Colour changes 100 ms, entries 150 to 180 ms, every glide (list
      selection, nav pill, segment and toggle thumbs, chevrons) 180 ms with ease-out, the ring
      fill and its count 400 ms. Only transform and opacity move (and colour and
-     stroke-dashoffset); nothing overshoots, nothing staggers (lib/motion/transitions.ts states
-     the rules). */
+     stroke-dashoffset); nothing overshoots. Entries stagger only when a view, a list or a new
+     job opens, never on a re-render, and a whole stagger ends within --stagger-span
+     (lib/motion/transitions.ts states the rules). */
   --dur-instant: 60ms;
   --dur-hover: 80ms;
   --dur-fast: 100ms;
@@ -699,8 +700,15 @@
   --dur-toast: 4000ms;
   --dur-toast-action: 10000ms;
   --dur-crossfade: 100ms;
-  /* At most this many list rows animate at the same time; the others are simply there. */
+  /* Staggered entries (lib/motion/enter.ts): one step per item, rows of a list that opens,
+     the cards of a new job, the groups of a page that opens. At most --stagger-max items
+     step; the later ones come with the last of them, and the whole stagger (the last delay
+     plus its piece) ends within --stagger-span; so 10 rows, 4 cards, 8 groups. */
+  --stagger-row: 24ms;
+  --stagger-card: 60ms;
+  --stagger-group: 30ms;
   --stagger-max: 10;
+  --stagger-span: 400ms;
   --delay-tooltip: 350ms;
   /* A loading placeholder shows only once a load has taken this long (a quicker load
      never flashes one). */
@@ -715,6 +723,8 @@
   --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
   --move-xs: 1px;
   --move-sm: 2px;
+  /* A chip that the user adds rises by this. */
+  --move-chip: 3px;
   --move-md: 4px;
   --move-lg: 8px;
   /* A toast coming up from below (design round 7). */
@@ -762,8 +772,13 @@
   --dur-fade: 0ms;
   --dur-slow: 0ms;
   --dur-reveal: 0ms;
+  --stagger-row: 0ms;
+  --stagger-card: 0ms;
+  --stagger-group: 0ms;
+  --stagger-span: 0ms;
   --move-xs: 0px;
   --move-sm: 0px;
+  --move-chip: 0px;
   --move-md: 0px;
   --move-lg: 0px;
   --move-xl: 0px;
