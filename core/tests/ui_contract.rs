@@ -1718,12 +1718,8 @@ fn coral_only_in_its_roles() {
                 "components/CheckGroup.svelte",
             ],
         ),
-        // The dot of a job not opened yet and the dot of a filter that is on (the approved
-        // design, 2026-09-26).
-        (
-            "var(--unread",
-            &["components/JobRow.svelte", "components/Button.svelte"],
-        ),
+        // The dot of a job not opened yet (the funnel's dot went in round 10).
+        ("var(--unread", &["components/JobRow.svelte"]),
         // Where you are: the selected row and its bar, the active view.
         (
             "var(--surface-selected",

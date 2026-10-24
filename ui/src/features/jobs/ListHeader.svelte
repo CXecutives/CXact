@@ -257,7 +257,6 @@
             iconOnly
             icon="filter"
             label={t.toolbar.filter}
-            dot={jobs.filtered}
             menu
             expanded={funnelOpen}
             testid="filter"

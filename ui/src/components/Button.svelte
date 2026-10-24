@@ -1,46 +1,46 @@
 <!--
-  The button of the app: primary | secondary | ghost | danger | link | suggest. Native
-  in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
-  icon stays still and behaves alike (no nudges, user 2026-09-25), a press only darkens it
-  (no shrink, user 2026-10-03); no stretch, lift, glow or bounce.
-  - One height for every button, 28 px (design round 7, core/tests/ui_contract.rs): in rows,
-    tools, the top bar, dialogs and empty states alike; the app's text in medium (a primary
-    stands out by its colour only), every glyph 16 px. Only a button in a field (`inField`) and a suggestion are
-    a notch lower. A text button carries the glyph of its meaning (lib/icons.ts).
-  - At most one primary per view (checked by core/tests/ui_contract.rs).
+  The button of the app: primary | secondary | ghost | danger | link | suggest (round 10).
+  Calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, a press only
+  darkens it; nothing scales, lifts, glows or bounces. Only the arrows of Zurück and Weiter
+  (`back`, `next`) nudge 2 px outward under the pointer.
+  - One height, 30 px, for every button with words or a box (core/tests/ui_contract.rs);
+    the quiet icon-only button (ghost) takes 28 by itself, a button in a field (`inField`)
+    24, a suggestion 26. Words in 500 14 px (a primary stands out by its colour only), every
+    glyph 16 px, a suggestion's + 12. A text button carries the glyph of its meaning.
+  - At most one primary per view (checked by core/tests/ui_contract.rs). The red fill
+    (`danger`) only confirms in a dialog.
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
-    (the x that removes a row) goes without the tooltip (`plain`). A button with its words
-    never repeats them in a tooltip (core/tests/ui_contract.rs), it only says why it waits.
+    goes without the tooltip (`plain`). A button with its words never repeats them in a
+    tooltip (core/tests/ui_contract.rs), it only says why it waits.
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
     not react otherwise. Tab passes them like native disabled buttons, except one that says
-    why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
-    (one that is disabled while focused keeps the focus).
-  - Loading keeps the width: the content fades out under the spinner.
-  - radio: an option of a radiogroup, like a secondary toggle, chosen while `checked`, only
-    the group's Tab stop (`stop`) in the Tab order, the arrows move (input.ts). turned: the
-    glyph stands half a turn (180 ms).
-  - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
-    filter narrows it; the chips say what). link: navy text that underlines on hover.
-    suggest: a white chip with its + under a Profil field ("Häufig verlangt", the quick picks).
-  - inText: a link inside a sentence (the missing line's names), in the sentence's type.
+    why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus.
+  - One width while it swaps: `loading` keeps it (the content fades out under the spinner),
+    and `sizeTo` names the words (and glyphs) that take its place (Jobs suchen and
+    Abbrechen, Speichern and its busy state): hidden copies of them share its content's
+    grid cell, so it is as wide as the widest, without a number. A container gives a pair
+    one least width through `--btn-min` (`var(--button-pair-min)`).
+  - link: navy text that underlines on hover. suggest: a white chip with its + under a
+    Profil field ("Häufig verlangt", the quick picks).
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
-  - deletes: a quiet icon button that deletes for good (a job's Endgültig löschen, in its row
-    and its reader): its glyph red at rest, on a red wash under the pointer.
-  - count: a quiet number after the label (a suggestion chip, the hits in another place).
   - hoverIcon: the glyph that says what a click does, in the place of the glyph at rest under
     the pointer and the keyboard focus (the top bar's panels: panel-left, and its -close).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
+  import type { IconName } from './Icon.svelte';
+
   export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link' | 'suggest';
+
+  /** What may stand in a button's place: other words, with or without a glyph. */
+  export type ButtonFace = string | { label: string; icon?: IconName | null };
 </script>
 
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
-  import { formatNumber } from '$lib/i18n/format';
   import { fade } from '$lib/motion/transitions';
-  import Icon, { type IconName } from './Icon.svelte';
+  import Icon from './Icon.svelte';
   import Spinner from './Spinner.svelte';
 
   interface Props {
@@ -55,18 +55,10 @@
     type?: 'button' | 'submit';
     /** Toggle buttons. */
     pressed?: boolean | null;
-    /** An option of a radiogroup: whether it is chosen and whether it is the group's Tab stop. */
-    radio?: { checked: boolean; stop: boolean } | null;
-    /** The glyph stands half a turn. */
-    turned?: boolean;
-    /** A small dot at the glyph's corner: something of it is on (an active filter). */
-    dot?: boolean;
     /** Fill the width of the container. */
     wide?: boolean;
     /** Sits inside a text field: skipped by Tab, a click keeps the focus in the field. */
     inField?: boolean;
-    /** A link inside a sentence: the sentence's type and line. */
-    inText?: boolean;
     /** A glyph after the label (the chevron of a menu button). */
     trailing?: IconName | null;
     /** It opens a menu (announced as such). */
@@ -75,13 +67,12 @@
     expanded?: boolean;
     /** The default of a dialog (Enter presses it); Dialog gives it the focus. */
     isDefault?: boolean;
-    /** Deletes for good (a job's tool): red at rest, on a red wash under the pointer (ghost). */
-    deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
-    count?: number | null;
     /** The glyph under the pointer and the keyboard focus: what a click does. */
     hoverIcon?: IconName | null;
+    /** The faces that take this button's place: it keeps the width of the widest. */
+    sizeTo?: readonly ButtonFace[] | null;
     testid?: string | null;
     onclick?: (event: MouseEvent) => void;
   }
@@ -96,20 +87,15 @@
     disabledReason = null,
     type = 'button',
     pressed = null,
-    radio = null,
-    turned = false,
-    dot = false,
     wide = false,
     inField = false,
-    inText = false,
     trailing = null,
     menu = false,
     expanded = false,
     isDefault = false,
-    deletes = false,
     plain = false,
-    count = null,
     hoverIcon = null,
+    sizeTo = null,
     testid = null,
     onclick,
   }: Props = $props();
@@ -118,6 +104,13 @@
   const tip = $derived(
     disabled && disabledReason ? disabledReason : iconOnly && !plain ? label : null,
   );
+  /** The hidden faces that reserve the width of the others. */
+  const others = $derived(
+    iconOnly || sizeTo === null
+      ? []
+      : sizeTo.map((face) => (typeof face === 'string' ? { label: face, icon } : face)),
+  );
+  const glyphSize = $derived(variant === 'suggest' ? 'xxs' : 'sm');
 
   function handle(event: MouseEvent): void {
     if (inactive) {
@@ -133,48 +126,44 @@
   class="btn {variant}"
   class:icon-only={iconOnly}
   class:in-field={inField}
-  class:in-text={inText}
   class:wide={wide && !iconOnly}
   class:loading
-  class:turned
   class:default={isDefault}
-  class:deletes
   class:swaps={hoverIcon !== null}
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
-  role={radio ? 'radio' : undefined}
-  aria-checked={radio ? radio.checked : undefined}
-  aria-pressed={pressed === null || radio ? undefined : pressed}
+  aria-pressed={pressed === null ? undefined : pressed}
   aria-haspopup={menu ? 'menu' : undefined}
   aria-expanded={menu ? expanded : undefined}
-  tabindex={inField || (disabled && !disabledReason) || (radio && !radio.stop)
-    ? -1
-    : radio
-      ? 0
-      : undefined}
+  tabindex={inField || (disabled && !disabledReason) ? -1 : undefined}
   data-keep-focus={inField ? '' : undefined}
   data-testid={testid ?? undefined}
   use:tooltip={tip}
   onclick={handle}
 >
   <span class="content">
-    {#if icon}
-      <span class="glyph" data-icon={icon}>
-        <Icon name={icon} size={variant === 'suggest' ? 'xs' : 'sm'} filled={pressed === true} />
-        {#if hoverIcon}<span class="swap" data-hover-icon={hoverIcon}
-            ><Icon name={hoverIcon} size="sm" /></span
-          >{/if}
-        {#if dot}<span class="dot" aria-hidden="true" data-testid="button-dot"></span>{/if}
+    <span class="face">
+      {#if icon}
+        <span class="glyph" data-icon={icon}>
+          <Icon name={icon} size={glyphSize} filled={pressed === true} />
+          {#if hoverIcon}<span class="swap" data-hover-icon={hoverIcon}
+              ><Icon name={hoverIcon} size="sm" /></span
+            >{/if}
+        </span>
+      {/if}
+      {#if !iconOnly}<span class="label">{label}</span>{/if}
+      {#if trailing}
+        <span class="trailing" aria-hidden="true"><Icon name={trailing} size="sm" /></span>
+      {/if}
+    </span>
+    {#each others as other, index (index)}
+      <span class="face sizer" aria-hidden="true" data-sizer>
+        {#if other.icon}<span class="glyph"><Icon name={other.icon} size={glyphSize} /></span>{/if}
+        <span class="label">{other.label}</span>
+        {#if trailing}<span class="trailing"><Icon name={trailing} size="sm" /></span>{/if}
       </span>
-    {/if}
-    {#if !iconOnly}
-      <span class="label">{label}</span>
-      {#if count !== null}<span class="count">{formatNumber(count)}</span>{/if}
-    {/if}
-    {#if trailing}
-      <span class="trailing" aria-hidden="true"><Icon name={trailing} size="sm" /></span>
-    {/if}
+    {/each}
   </span>
   {#if loading}
     <span class="busy" in:fade><Spinner size="sm" label={null} /></span>
@@ -188,10 +177,11 @@
     flex: none;
     align-items: center;
     justify-content: center;
+    min-width: var(--btn-min, 0);
     height: var(--btn-height);
     padding: 0 var(--btn-pad);
     border: var(--border-width) solid var(--btn-border);
-    border-radius: var(--radius-control);
+    border-radius: var(--btn-radius);
     background-color: var(--btn-bg);
     box-shadow: var(--btn-shadow);
     color: var(--btn-fg);
@@ -199,7 +189,8 @@
     white-space: nowrap;
     --btn-pad: var(--button-pad);
     --btn-gap: var(--space-6);
-    --btn-type: var(--type-label);
+    --btn-type: var(--type-control);
+    --btn-radius: var(--radius-control);
 
     transition:
       background-color var(--dur-base) var(--ease-standard),
@@ -207,11 +198,22 @@
       color var(--dur-base) var(--ease-standard);
   }
 
+  /* The faces share one grid cell: the button is as wide as the widest of them. */
   .content {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--btn-gap);
+    display: inline-grid;
     transition: opacity var(--dur-fast) var(--ease-standard);
+  }
+
+  .face {
+    display: inline-flex;
+    grid-area: 1 / 1;
+    align-items: center;
+    justify-content: center;
+    gap: var(--btn-gap);
+  }
+
+  .sizer {
+    visibility: hidden;
   }
 
   .trailing {
@@ -219,16 +221,19 @@
     margin-right: calc(-1 * var(--space-4));
   }
 
-  /* Quiet: how many there are. */
-  .count {
-    color: var(--text-subtle);
-    font-variant-numeric: var(--numeric);
-  }
-
   .glyph {
     position: relative;
     display: inline-flex;
-    transition: transform var(--dur-base) var(--ease-emphasized);
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  /* The arrows of Zurück and Weiter lean 2 px the way they point (the draft). */
+  .btn:not([aria-disabled='true'], .loading):hover .glyph[data-icon='back'] {
+    transform: translateX(calc(-1 * var(--move-sm)));
+  }
+
+  .btn:not([aria-disabled='true'], .loading):hover .glyph[data-icon='next'] {
+    transform: translateX(var(--move-sm));
   }
 
   /* What a click does stands in for the glyph at rest under the pointer and the keyboard
@@ -246,16 +251,6 @@
 
   .swaps:not([aria-disabled='true'], .loading):is(:hover, :focus-visible) .glyph > :global(.icon) {
     visibility: hidden;
-  }
-
-  /* Something of it is on: a coral dot on the glyph's corner (approved design, 2026-09-26). */
-  .dot {
-    position: absolute;
-    inset: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) auto auto;
-    width: var(--dot-unread);
-    height: var(--dot-unread);
-    border-radius: var(--radius-full);
-    background-color: var(--unread);
   }
 
   .busy {
@@ -293,12 +288,6 @@
     transition-duration: var(--dur-instant);
   }
 
-  /* A state, not a nudge: half a turn in 180 ms (the angle stays under reduced motion). */
-  .turned .glyph {
-    transform: rotate(var(--turn-half));
-    transition-duration: var(--dur-slow);
-  }
-
   .btn[aria-disabled='true'] {
     opacity: var(--opacity-disabled);
   }
@@ -309,6 +298,7 @@
   }
 
   /* ------------------------------------------------------------ variants */
+  /* Coral with a faint shadow under it; one step deeper under the pointer, one more pressed. */
   .primary {
     --btn-bg: var(--primary);
     --btn-bg-hover: var(--primary-hover);
@@ -321,52 +311,45 @@
     --btn-shadow: var(--sh-primary);
   }
 
-  /* The control kind (tokens.css): a muted fill and a darker edge under the pointer, one
-     opaque step darker while pressed. */
+  /* White with its edge, no shadow: the warm wash and a darker edge under the pointer, a
+     deeper wash pressed. */
   .secondary {
     --btn-bg: var(--surface);
-    --btn-bg-hover: var(--control-hover);
-    --btn-bg-active: var(--control-press);
+    --btn-bg-hover: var(--button-hover);
+    --btn-bg-active: var(--button-press);
     --btn-border: var(--border-strong);
     --btn-border-hover: var(--control-hover-edge);
-    --btn-border-active: var(--control-press-edge);
+    --btn-border-active: var(--control-hover-edge);
     --btn-fg: var(--text);
-    --btn-fg-hover: var(--text);
-    --btn-shadow: var(--sh-xs);
-  }
-
-  /* A secondary toggle that is on or a chosen option of a radiogroup: the navy trio. */
-  .secondary[aria-pressed='true'],
-  .secondary[aria-checked='true'] {
-    --btn-bg: var(--active-surface);
-    --btn-bg-hover: var(--active-surface);
-    --btn-bg-active: var(--active-surface);
-    --btn-border: var(--active-edge);
-    --btn-border-hover: var(--active-edge);
-    --btn-border-active: var(--active-edge);
-    --btn-fg: var(--active-text);
-    --btn-fg-hover: var(--active-text);
-  }
-
-  /* The quiet kind (tokens.css): a wash under the pointer, a deeper one pressed. */
-  .ghost {
-    --btn-bg: transparent;
-    --btn-bg-hover: var(--quiet-hover);
-    --btn-bg-active: var(--quiet-press);
-    --btn-border: transparent;
-    --btn-border-hover: transparent;
-    --btn-border-active: transparent;
-    --btn-fg: var(--text-muted);
     --btn-fg-hover: var(--text);
     --btn-shadow: none;
   }
 
-  /* Deleting (a row's tool): red at rest like every delete, on a red wash under the pointer. */
-  .ghost.deletes {
-    --btn-fg: var(--danger-strong);
-    --btn-fg-hover: var(--danger-strong);
-    --btn-bg-hover: var(--danger-soft);
-    --btn-bg-active: var(--danger-soft);
+  /* A secondary toggle that is on: the track with navy words, like a chosen option. */
+  .secondary[aria-pressed='true'] {
+    --btn-bg: var(--chosen-surface);
+    --btn-bg-hover: var(--chosen-surface);
+    --btn-bg-active: var(--chosen-surface);
+    --btn-fg: var(--chosen-text);
+    --btn-fg-hover: var(--chosen-text);
+  }
+
+  /* The quiet kind: no box, a wash under the pointer, a deeper one pressed. Words in ink; a
+     lone glyph in the top bar's grey until pointed at. */
+  .ghost {
+    --btn-bg: transparent;
+    --btn-bg-hover: var(--surface-hover-quiet);
+    --btn-bg-active: var(--quiet-press);
+    --btn-border: transparent;
+    --btn-border-hover: transparent;
+    --btn-border-active: transparent;
+    --btn-fg: var(--text);
+    --btn-fg-hover: var(--text);
+    --btn-shadow: none;
+  }
+
+  .ghost.icon-only {
+    --btn-fg: var(--titlebar-fg);
   }
 
   .ghost[aria-pressed='true'] {
@@ -386,24 +369,24 @@
     --btn-shadow: var(--sh-primary);
   }
 
-  /* A suggestion: white with a hairline and its +, so it never reads as a chip already in
-     the field (those sit on the track); small words, ink and a darker edge under the
-     pointer (design round 7). */
+  /* A suggestion: white with its edge and its +, so it never reads as a chip already in the
+     field (those sit on the track); 13 px muted words, ink and a darker edge under the
+     pointer. */
   .suggest {
     --btn-bg: var(--surface);
     --btn-bg-hover: var(--surface);
-    --btn-bg-active: var(--control-press);
-    --btn-border: var(--border);
-    --btn-border-hover: var(--border-strong);
-    --btn-border-active: var(--border-strong);
+    --btn-bg-active: var(--button-press);
+    --btn-border: var(--border-strong);
+    --btn-border-hover: var(--control-hover-edge);
+    --btn-border-active: var(--control-hover-edge);
     --btn-fg: var(--text-muted);
     --btn-fg-hover: var(--text);
     --btn-shadow: none;
-    --btn-pad: var(--space-8);
     --btn-gap: var(--space-4);
-    --btn-type: var(--type-sm);
+    --btn-type: var(--type-suggest);
+    --btn-radius: var(--radius-inner);
 
-    font-weight: var(--weight-medium);
+    padding: 0 var(--suggest-pad-end) 0 var(--suggest-pad-start);
   }
 
   /* Navy text, no box; it underlines on hover and dims while pressed (it is text). */
@@ -450,27 +433,27 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* One height, one type: 28 px; in a field (and a suggestion) a notch lower. */
+  /* One height, 30 px; the quiet glyph 28, a suggestion 26, in a field (and a link) 24. */
   .btn {
     --btn-height: var(--control-field);
   }
 
-  .in-field,
-  .link,
-  .suggest {
-    --btn-height: var(--control-sm);
+  .ghost.icon-only {
+    --btn-height: var(--control-icon);
   }
 
-  /* A link in a sentence takes the sentence's type and line, and no room of its own. */
-  .in-text {
-    --btn-height: auto;
-    --btn-type: inherit;
+  .suggest {
+    --btn-height: var(--control-inline);
+  }
 
-    border-width: 0;
+  .btn.in-field,
+  .btn.link {
+    --btn-height: var(--control-sm);
   }
 
   .icon-only {
     width: var(--btn-height);
+    min-width: 0;
     padding: 0;
   }
 

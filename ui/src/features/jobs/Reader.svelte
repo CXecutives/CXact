@@ -320,7 +320,6 @@
           iconOnly
           icon={tool.icon}
           label={tool.label}
-          deletes={tool.deletes}
           disabled={tool.disabled || !inPlace}
           disabledReason={tool.reason}
           testid="reader-{tool.id}"

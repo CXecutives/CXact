@@ -236,7 +236,6 @@
             iconOnly
             icon={tool.icon}
             label={tool.label}
-            deletes={tool.deletes}
             disabled={tool.disabled}
             disabledReason={tool.reason}
             testid="tool-{tool.id}"

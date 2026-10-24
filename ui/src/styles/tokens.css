@@ -753,7 +753,14 @@
   /* (shell tokens below) */
 
   /* ------------------------------------------- round 10: controls */
-  /* (controls tokens below) */
+  /* A button with a box (secondary, a suggestion) under the pointer and pressed: the warm
+     wash over its white (its edge then --control-hover-edge), a deeper wash pressed. */
+  --button-hover: var(--surface-hover);
+  --button-press: var(--surface-press);
+  /* A suggestion chip under a field: 13 px words in 500, its + 7 px in, 9 px after them. */
+  --type-suggest: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
+  --suggest-pad-start: 7px;
+  --suggest-pad-end: 9px;
 
   /* ------------------------------------------- round 10: surfaces */
   /* (surfaces tokens below) */

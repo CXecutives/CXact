@@ -405,7 +405,6 @@
         variant="secondary"
         icon={PLACE_ICON[hit.place]}
         label={t.place[hit.place]}
-        count={hit.count}
         testid="also-{hit.place}"
         onclick={() => jobs.setPlace(hit.place)}
       />

@@ -25,7 +25,6 @@
       fields.length,
     )}<Button
       variant="link"
-      inText
       label={name}
       testid="missing-{field}"
       onclick={() => onjump(field)}

@@ -431,22 +431,17 @@ test.describe('filter', () => {
     });
   });
 
-  test('the order sets no dot and no chip; Filter zurücksetzen keeps it, then closes', async ({
-    page,
-  }) => {
+  test('the order sets no chip; Filter zurücksetzen keeps it, then closes', async ({ page }) => {
     await open(page, WIN);
     await chooseSort(page, 'newest');
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
     await openFilter(page);
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'received-days30').click();
-    await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
     await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'filter-reset').click();
     await expect(page.getByTestId('menu')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     expect(await checkedSort(page)).toBe('newest');
     await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'newest' }));
   });
@@ -462,7 +457,6 @@ test.describe('filter', () => {
     for (const place of ['inbox', 'archive', 'trash'] as const) {
       await openPlace(page, place);
       await expect(page.getByTestId('sort')).toHaveCount(0);
-      await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
       await expect(chip(page, 'portal-freelancermap')).toHaveText(
         filterLabel('portal-freelancermap'),
       );
@@ -599,13 +593,11 @@ test.describe('filter', () => {
   }) => {
     await open(page, WIN);
     const { jobs, active: all } = await stubList(page);
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     await chooseFilter(page, 'portal-linkedin');
     const linkedin = await inbox(page, { portals: ['linkedin'] });
     expect(linkedin.every((key) => key.startsWith('linkedin-'))).toBe(true);
     await expect.poll(() => listed(page)).toEqual(linkedin);
     expect(await lastQuery(page)).toMatchObject({ portals: ['linkedin'], bands: [] });
-    await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
     // A second source adds its jobs (user decision 2026-10-01: several at once).
     await chooseFilter(page, 'portal-freelance');
     const two = await inbox(page, { portals: ['linkedin', 'freelance'] });
@@ -654,7 +646,6 @@ test.describe('filter', () => {
     await expect(chips(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
     await expect(funnel(page)).toBeFocused();
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
   test('Gefunden: the jobs of today, of the last 7 or 30 days, one choice at a time', async ({
@@ -746,7 +737,6 @@ test.describe('filter', () => {
     // Kept for the next start; the order sets no dot.
     await open(page, WIN);
     expect(await checkedSort(page)).toBe('rate');
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
   test('the filter is the same in every place and kept; Filter zurücksetzen takes it off', async ({
@@ -790,7 +780,6 @@ test.describe('filter', () => {
       localStorage.setItem('jobs-filter', JSON.stringify({ bands: ['high'] })),
     );
     await open(page, `${WIN}&scenario=no-profile`);
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     expect(await lastQuery(page)).toMatchObject({ sort: 'newest', bands: [] });
     await openFilter(page);
     // By date only: the order is off and says why.
@@ -863,7 +852,6 @@ test.describe('filter', () => {
     await open(page, MAC);
     await chooseFilter(page, 'portal-linkedin');
     await expect(rows(page)).toHaveCount((await inbox(page, { portals: ['linkedin'] })).length);
-    await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
     await expect(chip(page, 'portal-linkedin')).toHaveText(filterLabel('portal-linkedin'));
   });
 });
@@ -1362,7 +1350,6 @@ test.describe('search', () => {
     const button = page.getByTestId('also-archive');
     // Named like its tab.
     await expect(button.locator('.label')).toHaveText(T.place.archive);
-    await expect(button.locator('.count')).toHaveText('1');
     // The one way on stands under the sentence of the empty state.
     const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
     expect((await button.boundingBox())!.y).toBeGreaterThanOrEqual(sentence.y + sentence.height);
@@ -1373,9 +1360,7 @@ test.describe('search', () => {
     await expect(rows(page)).toHaveCount(1);
   });
 
-  test('the hits elsewhere count with the filter, as the other place lists them', async ({
-    page,
-  }) => {
+  test('the hits elsewhere follow the filter, as the other place lists them', async ({ page }) => {
     await open(page, WIN);
     // The archived job is a linkedin one: another portal's filter hides it there too.
     await chooseFilter(page, 'portal-freelance');
@@ -1383,7 +1368,7 @@ test.describe('search', () => {
     await expect(page.getByTestId('empty-search')).toBeVisible();
     await expect(page.getByTestId('also-archive')).toHaveCount(0);
     await chooseFilter(page, 'portal-linkedin');
-    await expect(page.getByTestId('also-archive').locator('.count')).toHaveText('1');
+    await expect(page.getByTestId('also-archive')).toBeVisible();
     await page.getByTestId('also-archive').click();
     await expect(row(page, 'linkedin-4100200306')).toBeVisible();
   });
