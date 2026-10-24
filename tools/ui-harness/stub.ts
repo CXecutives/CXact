@@ -106,6 +106,8 @@ import snapshot from './demo/snapshot.json';
 import VOCABULARY from './demo/vocabulary.json';
 import type { Snapshot } from './snapshot';
 import { installPreviewMenu, preview } from './preview';
+// The states pages (`?states=controls`): a sheet of the controls in each of their states.
+import './states';
 
 interface Harness {
   calls: [string, unknown][];
