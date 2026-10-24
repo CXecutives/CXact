@@ -3,8 +3,8 @@
   provider of a mailbox, a language's level): a button that shows the chosen option and a
   chevron, the list in the app's one menu layer (components/Menu.svelte, `listbox`), never
   the OS's popup. 30 px high and at least 150 wide (`wide`: the width of its cell), its words
-  10 px in, the chevron 16 px in the subtle grey of icons; the `inline` one is 26 px for the
-  rows of a list. Its edge is a field's: darker under the pointer, navy while its list is
+  10 px in, the chevron 16 px in the subtle grey of icons; the `inline` one is 26 px and as
+  wide as its words for the rows of a list. Its edge is a field's: darker under the pointer, navy while its list is
   open, the chevron then half turned (150 ms). The list opens below it, above where only
   there is room, at least as wide as the button; the chosen option is the track with navy
   words, no tick.
@@ -147,8 +147,13 @@
     transition: border-color var(--dur-base) var(--ease-standard);
   }
 
+  /* In a list's row: 26 high and as wide as its words, which read like the row's quiet
+     value. */
   .inline {
+    gap: var(--space-6);
+    min-width: 0;
     height: var(--control-inline);
+    padding-left: var(--space-6);
     border-radius: var(--radius-inner);
   }
 

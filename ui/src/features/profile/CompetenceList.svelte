@@ -1,31 +1,35 @@
 <!--
-  The core competences, all counting the same: an item list (ItemList; the round 10 draft),
-  one row each with the competence's name (plain text to copy, decision 14: never edited in
-  place), its years in a small field (44, 26 high) with "Jahre" after it, and the × that
-  removes it. The last row adds one: a field without an edge that suggests the engine's words
-  from the first character (vocabulary.svelte.ts); Enter or leaving the field takes what was
-  typed (a pasted list splits at commas), a name that is there already is not added twice.
-  A new row rises in, a removed one folds away. A value that is too large (the years) or
-  that the backend refused marks its row's field and is said under the list.
+  Kompetenzen, all counting the same: a box of entries (ItemList; the owner's redesign of
+  2026-10-24), one row each with the competence's name (plain text to copy, decision 14:
+  never edited in place), its years as quiet text at the right ("12 Jahre", a field 74 wide
+  whose edge shows under the pointer or with the focus) and the × that removes it. The last
+  row is "+ Kompetenz hinzufügen": a click turns it into a tag field that suggests the
+  engine's words from the first character (vocabulary.svelte.ts); Enter takes what was typed
+  as a new row (a pasted list splits at commas) and the field stays ready for the next, a
+  name that is there already is not added twice. A new row rises in, a removed one folds
+  away. A value that is too large (the years) or that the backend refused marks its row's
+  field and is said under the add row; "Häufig verlangt" is the box's last line (not in the
+  setup).
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
   import ItemList from '$components/ItemList.svelte';
   import { t } from '$lib/i18n/t';
   import { type Competence } from '$lib/state/profile.svelte';
+  import AskedTerms from './AskedTerms.svelte';
   import NumberField from './NumberField.svelte';
   import { keyOf, named } from './rows';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
     rows: Competence[];
-    /** The id of the add row's field, for the label of its Field. */
-    id: string;
     /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
+    /** "Häufig verlangt" under the add row (not in the setup). */
+    asked?: boolean;
   }
 
-  let { rows = $bindable(), id, error = null }: Props = $props();
+  let { rows = $bindable(), error = null, asked = false }: Props = $props();
 
   const words = $derived(t.profile.field);
   vocabulary.load();
@@ -52,17 +56,17 @@
     <NumberField
       bind:value={row.years}
       label={words.yearsOf(row.name)}
+      unit={words.years}
       inline
       invalid={row === refused}
       testid="competence-years"
     />
   </span>
-  {words.years}
 {/snippet}
 
 {#snippet add()}
   <ChipInput
-    {id}
+    label={words.competencePlaceholder}
     bind:values={typed}
     placeholder={words.competencePlaceholder}
     suggestions={vocabulary.skills}
@@ -71,18 +75,24 @@
   />
 {/snippet}
 
+{#snippet foot()}
+  {#if error}
+    <p class="error" role="alert" data-testid="competence-error">{error.text}</p>
+  {/if}
+  {#if asked}<AskedTerms field="competence" home="competences-add" line />{/if}
+{/snippet}
+
 <ItemList
   items={named(rows, (row) => row.name)}
   key={(row) => keyOf(row.name)}
   name={(row) => row.name}
   value={years}
+  addLabel={words.competencePlaceholder}
   {add}
+  {foot}
   testid="competences"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />
-{#if error}
-  <p class="error" role="alert" data-testid="competence-error">{error.text}</p>
-{/if}
 
 <style>
   .years {
@@ -90,7 +100,9 @@
     width: var(--profile-row-years);
   }
 
+  /* Under the add row, on the rows' sides. */
   .error {
+    padding: 0 var(--card-pad-x) var(--suggest-line-pad-y);
     color: var(--error-text);
     font: var(--type-sm);
   }

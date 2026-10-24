@@ -1,24 +1,26 @@
 <!--
-  The profile as one page of fields (the round 10 draft): the four groups of `sections.ts` in
-  their order (Wunschjob, Einsatz, Qualifikation, Ausschlüsse), each a Section with its fields
-  in one white box (Group), 18 apart and without lines between them; a pair of short fields
-  side by side once the box is 560 wide, else one under the other. The same page in the
-  setup. Each field as the table describes it, its label above it (and, only where
-  docs/PLAN.md places one, an info symbol beside the label): a tag field or a list fills the
-  box's width, a number is as wide as its unit needs (170 for euros, 130 for years), a
-  choice of a few as wide as its options, Mindestlaufzeit a select. The groups rise in one
-  after the other when the page opens (not in the setup, whose step slides in). Mindestgehalt
-  unfolds while Festanstellung or Zeitarbeit is chosen. A number is formatted when its field
-  is left.
-  A required field that is still empty carries `data-missing` on its cell (`missing`, from
-  ProfileView: on the Profil always, in the setup once Weiter asked): its edge and its label
-  turn red (tokens.css). A value that is too large, a 0 where at least 1 counts, a day that
-  does not read and a value the backend refused are said at their field in their own
-  sentence, stay with their error until they change, and only they hold the save (the first
-  of them is revealed when a save is tried; `wrongField` names it for Speichern's reason). A
-  wished rate under the minimum says so quietly under it. Enter in a field saves (the setup:
-  goes on), as in every form (in a tag field or an item list's add row it takes what was
-  typed); an untouched new form goes back to the ways in with Esc (not in the setup).
+  The profile as one page of rows (the owner's redesign of 2026-10-24): the groups of
+  `sections.ts` in their order (Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen,
+  Ausschlüsse), each a Section with one white box of rows (Group `rows`), like the rows of
+  Einstellungen. The same page in the setup. A field is a row (Field `row`): its label in a
+  column beside its control (and, only where docs/PLAN.md places one, an info symbol after
+  the label), 12 20 inside, at least 56 high, a hairline between rows; in a box under 560
+  wide the label stands above the control. A tag field fills the control's column, a number
+  is as wide as its unit needs (170 for euros, 130 for years), a choice of a few as wide as
+  its options, Mindestlaufzeit a select. Kompetenzen and Sprachen are boxes whose rows are
+  their entries (CompetenceList, LanguageList). The groups rise in one after the other when
+  the page opens (not in the setup, whose step slides in). Mindestgehalt unfolds while
+  Festanstellung or Zeitarbeit is chosen. A number is formatted when its field is left.
+  A required field that is still empty carries `data-missing` on its row, a required list
+  on its group (`missing`, from ProfileView: on the Profil always, in the setup once Weiter
+  asked): the field's edge and label turn red, a list's group title (tokens.css). A value
+  that is too large, a 0 where at least 1 counts, a day that does not read and a value the
+  backend refused are said at their field in their own sentence, stay with their error until
+  they change, and only they hold the save (the first of them is revealed when a save is
+  tried; `wrongField` names it for Speichern's reason). A wished rate under the minimum says
+  so quietly under it. Enter in a field saves (the setup: goes on), as in every form (in a
+  tag field or a list's add field it takes what was typed); an untouched new form goes back
+  to the ways in with Esc (not in the setup).
   The setup shows no "Häufig verlangt" (the countries' "Vorschlag" stays).
 -->
 <script lang="ts" module>
@@ -56,12 +58,10 @@
   import {
     LABEL_OF,
     SECTIONS,
-    controlsOf,
     fieldOf,
     type ChoiceKey,
     type Control,
     type NumberKey,
-    type Row,
   } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
@@ -147,12 +147,10 @@
 
   const infoOf = (control: Control): string | null =>
     'info' in control && control.info ? t.profile.info[control.info] : null;
-  const isMissing = (control: Control): boolean => missing.includes(fieldOf(control));
-  /** A row shows while its first field has something to do (Mindestgehalt). */
-  const shown = (row: Row): boolean => {
-    const first = controlsOf(row)[0];
-    return first?.kind !== 'number' || (first.shown?.(form) ?? true);
-  };
+  const isMissing = (field: string): boolean => missing.includes(field);
+  /** A row shows while its field has something to do (Mindestgehalt). */
+  const shown = (control: Control): boolean =>
+    control.kind !== 'number' || (control.shown?.(form) ?? true);
   /** The wished rate under the minimum: a quiet line under the wish. */
   const below = $derived(
     form.dayRateWish !== null && form.dayRateMin !== null && form.dayRateWish < form.dayRateMin,
@@ -236,34 +234,51 @@
   data-testid="profile-form"
 >
   {#each SECTIONS as section, index (section.id)}
-    <div class="group" use:enterGroups={{ index, on: !setup }}>
+    {@const list = 'list' in section ? section.list : null}
+    <div
+      class="group"
+      data-field={list ?? undefined}
+      data-missing={list !== null && isMissing(list) ? '' : undefined}
+      use:enterGroups={{ index, on: !setup }}
+    >
       <Section
         id="profile-section-{section.id}"
         name={section.id}
         heading={t.profile.section[section.id]}
         testid="section-{section.id}"
       >
-        <Group>
-          <div class="rows">
-            {#each section.rows as row, at (at)}
-              {#if shown(row)}
-                <div class="row" class:pair={'pair' in row} transition:unfold>
-                  {#each controlsOf(row) as c (fieldOf(c))}{@render cell(c)}{/each}
+        <Group rows>
+          {#if list === 'competences'}
+            <CompetenceList
+              bind:rows={form.competences}
+              error={listError('competences')}
+              asked={!setup}
+            />
+          {:else if list === 'languages'}
+            <LanguageList
+              bind:rows={form.languages}
+              error={listError('languages')}
+              asked={!setup}
+            />
+          {:else if 'rows' in section}
+            {#each section.rows as c (fieldOf(c))}
+              {#if shown(c)}
+                <div
+                  class="cell"
+                  data-field={fieldOf(c)}
+                  data-missing={isMissing(fieldOf(c)) ? '' : undefined}
+                  transition:unfold
+                >
+                  <div class="row">{@render control(c)}</div>
                 </div>
               {/if}
             {/each}
-          </div>
+          {/if}
         </Group>
       </Section>
     </div>
   {/each}
 </div>
-
-{#snippet cell(c: Control)}
-  <div class="cell" data-field={fieldOf(c)} data-missing={isMissing(c) ? '' : undefined}>
-    {@render control(c)}
-  </div>
-{/snippet}
 
 {#snippet control(c: Control)}
   {#if c.kind === 'number'}
@@ -274,6 +289,7 @@
       info={infoOf(c)}
       hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
       {error}
+      row
     >
       <span class="number {c.unit}">
         <NumberField
@@ -288,7 +304,7 @@
     </Field>
   {:else if c.kind === 'chips'}
     {@const error = errorOf(c.key)}
-    <Field label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} {error}>
+    <Field label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} {error} row>
       <div class="stack">
         <ChipInput
           id="{id}-{c.key}"
@@ -304,7 +320,7 @@
       </div>
     </Field>
   {:else if c.kind === 'contracts'}
-    <Field label={words.contracts} info={infoOf(c)}>
+    <Field label={words.contracts} info={infoOf(c)} row>
       <CheckGroup
         options={CONTRACTS}
         values={contracts}
@@ -315,7 +331,7 @@
       />
     </Field>
   {:else if c.kind === 'choice'}
-    <Field label={words[c.label]} error={errorOf(c.key)}>
+    <Field label={words[c.label]} error={errorOf(c.key)} row>
       <Segmented
         options={CHOICES[c.key]}
         value={form[c.key]}
@@ -325,7 +341,7 @@
       />
     </Field>
   {:else if c.kind === 'months'}
-    <Field label={words.minMonths} for="{id}-minMonths" error={errorOf('minMonths')}>
+    <Field label={words.minMonths} for="{id}-minMonths" error={errorOf('minMonths')} row>
       <div>
         <Select
           id="{id}-minMonths"
@@ -339,53 +355,15 @@
     </Field>
   {:else if c.kind === 'countries'}
     {@const error = errorOf('countries')}
-    <Field label={words.countries} for="{id}-countries" info={infoOf(c)} {error}>
+    <Field label={words.countries} for="{id}-countries" info={infoOf(c)} {error} row>
       <div class="stack">
         <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
       </div>
     </Field>
   {:else if c.kind === 'available'}
     {@const error = errorOf('available')}
-    <Field label={words.available} {error}>
+    <Field label={words.available} {error} row>
       <AvailableField invalid={error !== null} />
-    </Field>
-  {:else if c.kind === 'competences'}
-    <Field label={words.competences} for="{id}-competences">
-      <div class="stack">
-        <CompetenceList
-          id="{id}-competences"
-          bind:rows={form.competences}
-          error={listError('competences')}
-        />
-        {#if !setup}<AskedTerms field="competence" home="competence-add" />{/if}
-      </div>
-    </Field>
-  {:else if c.kind === 'industries'}
-    {@const error = errorOf('industries')}
-    <Field label={words.industries} for="{id}-industries" {error}>
-      <div class="stack">
-        <ChipInput
-          id="{id}-industries"
-          bind:values={form.industries}
-          placeholder={words.industriesPlaceholder}
-          invalid={error !== null}
-          suggestions={vocabulary.industries}
-          fold
-          testid="profile-industries"
-        />
-        {#if !setup}<AskedTerms field="industry" home="profile-industries" />{/if}
-      </div>
-    </Field>
-  {:else if c.kind === 'languages'}
-    <Field label={words.languages} for="{id}-languages">
-      <div class="stack">
-        <LanguageList
-          id="{id}-languages"
-          bind:rows={form.languages}
-          error={listError('languages')}
-        />
-        {#if !setup}<AskedTerms field="language" home="language-add" />{/if}
-      </div>
     </Field>
   {/if}
 {/snippet}
@@ -402,33 +380,17 @@
     min-width: 0;
   }
 
-  /* The rows of a box, 18 apart: the space is the row's own top, so a row that unfolds
-     (Mindestgehalt) brings it along instead of making the rows below jump. */
-  .rows {
-    display: flex;
-    flex-direction: column;
+  /* The rows of a box, a hairline between them; a row that unfolds (Mindestgehalt) brings
+     its line along. */
+  .cell + .cell {
+    border-top: var(--border-width) solid var(--border);
   }
 
-  .row + .row {
-    padding-top: var(--group-field-gap);
-  }
-
-  /* A pair: one under the other in a narrow box, side by side (20 apart) once the box is
-     560 wide; a pair with one field keeps it in its half. */
-  .row.pair {
+  .row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--group-field-gap) var(--layout-column-gap);
-  }
-
-  @container (min-width: 560px) {
-    .row.pair {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .cell {
-    min-width: 0;
+    align-content: center;
+    min-height: var(--form-row-min);
+    padding: var(--form-row-pad-y) var(--form-row-pad-x);
   }
 
   /* A field and the suggestion row under it, 8 apart. */

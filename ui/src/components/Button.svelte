@@ -1,5 +1,5 @@
 <!--
-  The button of the app: primary | secondary | ghost | danger | link | suggest (round 10).
+  The button of the app: primary | secondary | ghost | danger | link | suggest | add (round 10).
   Calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, a press only
   darkens it; nothing scales, lifts, glows or bounces. Only the arrows of Zurück and Weiter
   (`back`, `next`) nudge 2 px outward under the pointer.
@@ -21,8 +21,10 @@
     Abbrechen, Speichern and its busy state): hidden copies of them share its content's
     grid cell, so it is as wide as the widest, without a number. A container gives a pair
     one least width through `--btn-min` (`var(--button-pair-min)`).
-  - link: navy text that underlines on hover. suggest: a white chip with its + under a
-    Profil field ("Häufig verlangt", the quick picks).
+  - link: navy text that underlines on hover. suggest: a chip with a dashed edge and its +
+    under a Profil field ("Häufig verlangt", the quick picks), a solid edge under the pointer.
+    add: the quiet button with navy words and its + that ends a box of entries ("Kompetenz
+    hinzufügen"), 10 in so its glyph aligns with the text above it.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
@@ -30,7 +32,8 @@
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
 
-  export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link' | 'suggest';
+  export type ButtonVariant =
+    'primary' | 'secondary' | 'ghost' | 'danger' | 'link' | 'suggest' | 'add';
 
   /** What may stand in a button's place: other words, with or without a glyph. */
   export type ButtonFace = string | { label: string; icon?: IconName | null };
@@ -355,9 +358,9 @@
     --btn-shadow: var(--sh-primary);
   }
 
-  /* A suggestion: white with its edge and its +, so it never reads as a chip already in the
-     field (those sit on the track); 13 px muted words, ink and a darker edge under the
-     pointer. */
+  /* A suggestion: white with a dashed edge and its +, so it reads as something to add, never
+     as a chip already in the field (those sit on the track) or a button; 13 px muted words,
+     ink and a solid darker edge under the pointer. */
   .suggest {
     --btn-bg: var(--surface);
     --btn-bg-hover: var(--surface);
@@ -373,6 +376,26 @@
     --btn-radius: var(--radius-inner);
 
     padding: 0 var(--suggest-pad-end) 0 var(--suggest-pad-start);
+    border-style: dashed;
+  }
+
+  .suggest:not([aria-disabled='true'], .loading):hover {
+    border-style: solid;
+  }
+
+  /* The quiet kind in navy: no box, a wash under the pointer, a deeper one pressed. */
+  .add {
+    --btn-bg: transparent;
+    --btn-bg-hover: var(--surface-hover-quiet);
+    --btn-bg-active: var(--quiet-press);
+    --btn-border: transparent;
+    --btn-border-hover: transparent;
+    --btn-border-active: transparent;
+    --btn-fg: var(--link);
+    --btn-fg-hover: var(--link-hover);
+    --btn-shadow: none;
+    --btn-gap: var(--space-8);
+    --btn-pad: var(--space-10);
   }
 
   /* Navy text, no box; it underlines on hover and dims while pressed (it is text). */

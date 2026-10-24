@@ -134,6 +134,6 @@
     "strip-text":             { "css": "hsl(212 50% 36%)", "rgb": [46, 89, 138] },
     "pulse":                  { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
     "skeleton":               { "css": "hsl(30 12% 94.6%)", "rgb": [243, 241, 240] },
-    "item-list-edge":         { "css": "hsl(30 10% 90%)", "rgb": [232, 230, 227] }
+    "section-heading":        { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] }
   }
 }

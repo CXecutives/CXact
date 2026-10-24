@@ -9,8 +9,9 @@
 // („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): CXact (the app names
 // itself, never "die App"), Job, Portal, Übereinstimmung (Hohe, Mittlere, Geringe),
 // Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar), Profil with
-// its groups Wunschjob, Einsatz, Qualifikation and Ausschlüsse, Postfach, Alert-Mail, Jobs
-// suchen (the button: the mails, then the portals' search; what it does is the Suche),
+// its groups Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen and Ausschlüsse, Postfach,
+// Alert-Mail, Jobs suchen (the button: the mails, then the portals' search; what it does is
+// the Suche),
 // Anzeige laden, Profil-Ordner, Ausgeschlossen, Trotzdem bewerten, Neu, Aktuell (the place of
 // the active jobs, user 2026-10-01), Archiv (Zurückholen: back from there), Papierkorb,
 // Löschen (into the Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the
@@ -218,6 +219,9 @@ const PROFILE_UNREADABLE = 'Profil nicht lesbar';
 const NO_PROFILE = 'Ohne Profil keine Übereinstimmung.';
 /** The choice of the profile that wishes nothing. */
 const ANY = 'Egal';
+/** Two lists of the profile, each a group of its own named like its field. */
+const COMPETENCES = 'Kompetenzen';
+const LANGUAGES = 'Sprachen';
 
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
 const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
@@ -1085,11 +1089,13 @@ export const de = {
     asked: 'Häufig verlangt',
     /** Under Länder: the common countries not chosen yet. */
     suggested: 'Vorschlag',
-    /** The four groups of the page. */
+    /** The groups of the page. */
     section: {
       job: 'Wunschjob',
       work: 'Einsatz',
-      skills: 'Qualifikation',
+      experience: 'Erfahrung',
+      competences: COMPETENCES,
+      languages: LANGUAGES,
       exclusions: 'Ausschlüsse',
     },
     field: {
@@ -1104,7 +1110,7 @@ export const de = {
       minSalary: 'Mindestgehalt',
       workMode: 'Arbeitsmodell',
       countries: 'Länder',
-      countriesPlaceholder: 'Land suchen',
+      countriesPlaceholder: 'Land hinzufügen',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
       languageNone: 'Keine Sprache mit diesem Namen.',
@@ -1118,7 +1124,7 @@ export const de = {
       dateImpossible: 'Diesen Tag gibt es nicht.',
       workload: 'Auslastung',
       minMonths: 'Mindestlaufzeit',
-      competences: 'Kompetenzen',
+      competences: COMPETENCES,
       competencePlaceholder: 'Kompetenz hinzufügen',
       years: 'Jahre',
       /** The years of a competence, as a screen reader names the field. */
@@ -1128,8 +1134,8 @@ export const de = {
       totalYears: 'Berufserfahrung',
       industries: 'Branchen',
       industriesPlaceholder: 'Branche hinzufügen',
-      languages: 'Sprachen',
-      languagePlaceholder: 'Sprache suchen',
+      languages: LANGUAGES,
+      languagePlaceholder: 'Sprache hinzufügen',
       /** The level of a language, as a screen reader names its select. */
       levelOf: (name: string) => `Niveau in ${name}`,
       /** The chips a folded chip field hides. */

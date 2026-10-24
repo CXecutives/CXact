@@ -56,9 +56,11 @@
     field: TermField;
     /** The test id of the field's own control, which takes the focus after the last term. */
     home: string;
+    /** The last line of a box of entries (Kompetenzen, Sprachen). */
+    line?: boolean;
   }
 
-  let { field, home }: Props = $props();
+  let { field, home, line = false }: Props = $props();
 
   /** A term for comparing, as core compares them: lower case, its words without the
    *  punctuation between them ("Power-BI" is "power bi"; `+` and `#` belong to a word). */
@@ -96,6 +98,7 @@
     label={t.profile.asked}
     picks={shown.map((term) => ({ id: key(term.term), label: term.term }))}
     {home}
+    {line}
     testid="asked"
     onpick={add}
   />

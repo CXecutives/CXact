@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { calls, expect, open, settle, test } from './fixtures';
-import { failNext, reveal, T } from './helpers';
+import { adder, failNext, reveal, T } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -1098,7 +1098,10 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   };
   const beside: [string, () => Promise<void>][] = [
     ['the empty part of the label line', () => at(label, (box) => box.width + 8)],
-    ['the heading', () => page.getByTestId('section-skills').getByRole('heading').first().click()],
+    [
+      'the heading',
+      () => page.getByTestId('section-experience').getByRole('heading').first().click(),
+    ],
     ['the empty area to the right', () => at(field.locator('xpath=..'), (box) => box.width + 24)],
   ];
   for (const [where, click] of beside) {
@@ -1460,7 +1463,8 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, a sugg
   await input.fill('');
   await end();
   // A suggestion of the engine's words takes nothing.
-  const name = (await reveal(page, page.getByTestId('competence-add'))).locator('input');
+  await reveal(page, page.getByTestId('competences-add'));
+  const name = await adder(page, 'competence');
   await name.fill('Contr');
   const hints = page.getByTestId('competence-add-suggestions');
   await expect(hints.getByRole('option').first()).toBeVisible();

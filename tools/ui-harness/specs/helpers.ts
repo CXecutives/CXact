@@ -275,17 +275,26 @@ export async function chooseWay(page: Page, way: 'empty' | 'cv'): Promise<void> 
   await ways.getByTestId(way === 'cv' ? 'way-cv' : 'way-self').click();
 }
 
+/** The add field of a box of entries of the profile (Kompetenzen, Sprachen): the add row's
+ *  button ("Kompetenz hinzufügen") opens it where it is not open yet. */
+export async function adder(page: Page, list: 'competence' | 'language'): Promise<Locator> {
+  const input = page.getByTestId(`${list}-add`).locator('input');
+  if (!(await input.isVisible())) await page.getByTestId(`${list}s-add`).click();
+  await expect(input).toBeFocused();
+  return input;
+}
+
 /** Fills what a usable profile needs into the form (Deutschland is there already): a wished
- *  role, a competence (the add row of its list) and a language (picked from the search list
- *  of its add row). */
+ *  role, a competence (the add field of its box) and a language (picked from the search list
+ *  of its add field). */
 export async function fillRequired(page: Page): Promise<void> {
   const roles = page.getByTestId('profile-roles').locator('input');
   await roles.fill('Interim CFO');
   await roles.press('Enter');
-  const competence = page.getByTestId('competence-add').locator('input');
+  const competence = await adder(page, 'competence');
   await competence.fill('Controlling');
   await competence.press('Enter');
-  const language = page.getByTestId('language-add').locator('input');
+  const language = await adder(page, 'language');
   await language.fill('Deutsch');
   await page.getByTestId('language-add-options').getByRole('option', { name: 'Deutsch' }).click();
 }

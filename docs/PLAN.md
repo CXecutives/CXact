@@ -94,14 +94,14 @@ pre-assessment to any AI chat for a deeper check.
     line. Once Speichern was pressed, the required fields still empty get a coral edge (focus stays
     navy) and the save bar names them ("Es fehlen noch …", core's `ProfileInfo.missing`), each a link
     that puts the caret into its field; no save toast beside it.
-  - Four groups on one page (`sections.ts`; "Luftige Gruppen", design round 6), each field with its label
-    above it:
+  - Six groups on one page (`sections.ts`; the owner's redesign of 2026-10-24), each field a row of its
+    group's box with its label beside it (like Einstellungen):
     - Wunschjob: Wunschrollen, Vertragsart (check boxes, one stays), Wunschtagessatz, Mindesttagessatz,
       Mindestgehalt (with Festanstellung or Zeitarbeit).
-    - Einsatz: Arbeitsmodell, Länder (DE, AT, CH first) and Regionen, Verfügbar, Auslastung and
-      Mindestlaufzeit.
-    - Qualifikation: Kompetenzen with years and up to five stars, Tools und Methoden, Berufserfahrung,
-      Branchen with a star for the preferred ones, Sprachen with their level, Abschlüsse and Zertifikate.
+    - Einsatz: Länder (DE, AT, CH first), Regionen, Arbeitsmodell, Auslastung, Verfügbar, Mindestlaufzeit.
+    - Erfahrung: Berufserfahrung, Tools und Methoden, Branchen, Abschlüsse, Zertifikate.
+    - Kompetenzen and Sprachen: a box each whose rows are the entries (the years, the level), the last row
+      "+ … hinzufügen".
     - Ausschlüsse: Ausschlusswörter.
   - A new profile looks for projects only: Festanstellung and Zeitarbeit are off, so Mindestgehalt is hidden
     (`EMPTY_FORM`, core's `ProfileForm::default`).
@@ -206,7 +206,7 @@ One word per thing, checked for the catalog (`ui_contract.rs`) and the Rust text
 - Jobdetails, Gefunden
 - Anzeige (öffnen), Prompt kopieren
 - Postfach, Alert-Mail, Alert anlegen
-- Profil and its groups Wunschjob, Einsatz, Qualifikation, Ausschlüsse
+- Profil and its groups Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen, Ausschlüsse
 - Kompetenz, Schwerpunkt, Tools und Methoden
 - Wunschrolle
 - Tagessatz, Stundensatz, Gehalt (in the job); Wunschtagessatz, Mindesttagessatz, Mindestgehalt (in the

@@ -287,6 +287,11 @@
     text-align: end;
   }
 
+  /* Its unit 6 after the digits and 6 from its edge ("12 Jahre"). */
+  .inline .suffix {
+    padding-right: var(--space-6);
+  }
+
   /* In a quiet list's row (ItemList) the edge shows only while the row is under the pointer
      or holds the focus, so the values read like text at rest. */
   .inline {

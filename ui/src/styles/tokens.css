@@ -576,8 +576,6 @@
   /* a chip in a field and its remove button */
   --chip-height: 24px;
   --chip-x: 16px;
-  /* a row of an item list (Kompetenzen, Sprachen) */
-  --list-item: 38px;
   /* the list: the hairline between rows starts at the title; the highlight is inset this far */
   --row-rule-start: 56px;
   --row-highlight-inset: 6px;
@@ -805,13 +803,6 @@
   --strip-pad-x: var(--space-12);
   --strip-text: hsl(var(--p-navy));
   --pulse: hsl(var(--p-coral));
-  /* An item list (Kompetenzen, Sprachen): rows of 38, 10 in at the left, a remove button of
-     24 at the right. */
-  --item-pad-y: 7px;
-  --item-pad-start: var(--space-10);
-  --item-pad-end: var(--space-4);
-  --item-gap: var(--space-10);
-  --item-remove: var(--control-sm);
   /* The app's mark (the setup's welcome) and its shadow, which follows the plate's shape. */
   --app-mark: var(--tile-xl);
   --app-mark-shadow: drop-shadow(0 6px 8px hsl(var(--p-shade-dialog) / 0.24));
@@ -864,19 +855,34 @@
   --ad-indent: 18px;
 
   /* ------------------------------------------- round 10: profile */
-  /* The Profil's number fields with their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170,
-     the years of experience 130, the day of "Ab Datum" 122; a competence's years 44 (26
-     high) with "Jahre" after it. */
+  /* A field of the Profil is a row of its group's box, like a row of Einstellungen: its label
+     (14/540) in a column of 188, 24 before the control, 12 20 inside and at least 56 high,
+     a hairline between rows; in a box under 560 wide the label stands 8 above its control.
+     The number fields carry their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170, the years
+     of experience 130, the day of "Ab Datum" 122. */
+  --profile-label-width: 188px;
+  --profile-label-gap: var(--space-24);
+  --profile-label-gap-narrow: var(--space-8);
+  --form-row-min: 56px;
+  --form-row-pad-y: 12px;
+  --form-row-pad-x: 20px;
   --profile-money-width: 170px;
   --profile-years-width: 130px;
   --profile-date-width: 122px;
-  --profile-row-years: 44px;
-  /* The edge of an item list (Kompetenzen, Sprachen): a hairline, red in a required cell that
-     is still empty ([data-missing] below). */
-  --item-list-edge: var(--border);
+  /* A box whose rows are its entries (Kompetenzen, Sprachen): rows of 48, 20 at the sides,
+     the value 12 before the remove slot of 24; a competence's years field 74 wide (26 high,
+     "Jahre" inside). The last row adds one: the navy quiet button, 9 above and below. */
+  --item-row-min: 48px;
+  --item-row-gap: var(--space-12);
+  --item-remove: var(--control-sm);
+  --item-add-pad-y: 9px;
+  --profile-row-years: 74px;
   /* A suggestion row under a field ("Häufig verlangt", "Vorschlag"): its label 12 subtle, 8
-     under the field, the chips 6 apart. */
+     under the field, the chips 6 apart; as the last line of a box of entries 11 20 inside. */
   --suggest-row-gap: var(--space-8);
+  --suggest-line-pad-y: 11px;
+  /* A group's title: ink, red while one of its lists is required and still empty. */
+  --section-heading: var(--text-heading);
 
   /* ------------------------------------------- round 10: settings */
   /* The mailbox form that unfolds under its row: 4 below the row, 18 at its end, the row's 20
@@ -1067,14 +1073,15 @@
   --opacity-press: 0.7;
 }
 
-/* A required field that is still empty (its cell in the profile carries `data-missing`,
-   ProfileEditor): every field in it draws the coral edge at rest and under the pointer; the
-   coral stays confined to this block. Focus still turns the edge navy only. */
+/* A required field that is still empty (its row in the profile carries `data-missing`,
+   ProfileEditor; a required list its group): every field in it draws the coral edge at rest
+   and under the pointer, its label and a list's group title turn red; the coral stays
+   confined to this block. Focus still turns the edge navy only. */
 [data-missing] {
   --field-edge: var(--missing-edge);
   --field-edge-hover: var(--missing-edge);
   --field-label: var(--field-label-missing);
-  --item-list-edge: var(--missing-edge);
+  --section-heading: var(--field-label-missing);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

@@ -1,8 +1,8 @@
 // The Profil view against the stub, in one spec: the head (the title and the CV button, which
 // opens the file dialog at once), the bar at the foot (Verwerfen and Speichern only while
 // something changed), the red marks of required fields that are still empty, the form as the
-// table of sections.ts lays it out (four groups on one page, each field with its label above,
-// the info symbols at their places), the item lists, the two ways in, the
+// table of sections.ts lays it out (six groups on one page, each field a row with its label
+// beside it, the info symbols at their places), the boxes of entries, the two ways in, the
 // CV and its failures, saving (answered by a toast), discarding,
 // leaving and closing with unsaved changes, values that hold the save, refused values, a
 // quiet hint where values contradict each other, and "Häufig verlangt". The stub's demo
@@ -13,7 +13,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import { chooseWay, failNext, fillRequired, reveal as show, T, WIN } from './helpers';
+import { adder, chooseWay, failNext, fillRequired, reveal as show, T, WIN } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -57,9 +57,6 @@ async function pickCv(page: Page): Promise<void> {
 /** The names of an item list's rows (`competences`, `languages`). */
 const names = (page: Page, list: 'competences' | 'languages'): Locator =>
   page.getByTestId(list).locator('[data-copy]');
-/** The add row of an item list: its field. */
-const adder = (page: Page, list: 'competence' | 'language'): Locator =>
-  page.getByTestId(`${list}-add`).locator('input');
 
 /** The toast that answers a save (with what its rescore changed, when it did). */
 const savedToast = (page: Page): Locator =>
@@ -126,12 +123,12 @@ test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; the bar com
   await expect(bar(page).getByRole('button')).toHaveText([T.profile.save, T.profile.discard]);
   await expect(head.getByRole('button')).toHaveCount(1);
 });
-test('four groups on one page in their order, no info symbol at their headings', async ({
+test('six groups on one page in their order, no info symbol at their headings', async ({
   page,
 }) => {
   await profile(page);
-  const ids = ['job', 'work', 'skills', 'exclusions'] as const;
-  await expect(page.locator('[data-section]')).toHaveCount(4);
+  const ids = ['job', 'work', 'experience', 'competences', 'languages', 'exclusions'] as const;
+  await expect(page.locator('[data-section]')).toHaveCount(ids.length);
   for (const [index, id] of ids.entries()) {
     const section = page.locator('[data-section]').nth(index);
     await expect(section).toHaveAttribute('data-section', id);
@@ -139,7 +136,7 @@ test('four groups on one page in their order, no info symbol at their headings',
     await expect(section.locator('.head').getByTestId('info-tip')).toHaveCount(0);
   }
 });
-test('each field stands in its group with its label', async ({ page }) => {
+test('each field is a row of its group with its label beside it', async ({ page }) => {
   await profile(page);
   const words = T.profile.field;
   const layout: Record<string, [string, string][]> = {
@@ -158,12 +155,10 @@ test('each field stands in its group with its label', async ({ page }) => {
       ['available', words.available],
       ['minMonths', words.minMonths],
     ],
-    skills: [
+    experience: [
       ['years', words.totalYears],
-      ['competences', words.competences],
       ['tools', words.tools],
       ['industries', words.industries],
-      ['languages', words.languages],
       ['degrees', words.degrees],
       ['certificates', words.certificates],
     ],
@@ -181,38 +176,55 @@ test('each field stands in its group with its label', async ({ page }) => {
       await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
     }
   }
+  // Kompetenzen and Sprachen: a group each, whose rows are the entries.
+  for (const list of ['competences', 'languages'] as const) {
+    await expect(field(page, list).getByTestId(`section-${list}`)).toBeVisible();
+    await expect(field(page, list).getByTestId(list)).toBeVisible();
+  }
   // A number carries its unit inside, as wide as it needs.
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.unit.day);
   await expect(field(page, 'minSalary')).toContainText(T.profile.unit.year);
   await expect(field(page, 'years')).toContainText(T.profile.unit.years);
-  const width = (id: string): Promise<number> =>
-    page
-      .getByTestId(id)
-      .evaluate((input) => input.closest('.field')!.getBoundingClientRect().width);
-  expect(await width('profile-wish-rate')).toBe(170);
-  expect(await width('profile-years')).toBe(130);
-  // Pairs side by side in a wide box: the two rates on one line.
-  const top = (name: string): Promise<number> =>
-    field(page, name).evaluate((cell) => Math.round(cell.getBoundingClientRect().top));
-  expect(await top('dayRateMin')).toBe(await top('dayRateWish'));
-  expect(await top('certificates')).toBe(await top('degrees'));
-  // The placeholders say what to do.
+  const box = (id: string): Promise<DOMRect> =>
+    page.getByTestId(id).evaluate((input) => input.closest('.field')!.getBoundingClientRect());
+  expect((await box('profile-wish-rate')).width).toBe(170);
+  expect((await box('profile-years')).width).toBe(130);
+  // The label in its column of 188, 24 before the control, centred on a single line.
+  const name = await label(field(page, 'dayRateWish')).evaluate((node) =>
+    node.getBoundingClientRect(),
+  );
+  const control = await box('profile-wish-rate');
+  expect(Math.round(control.left - name.left)).toBe(188 + 24);
+  expect(
+    Math.abs(name.top + name.height / 2 - (control.top + control.height / 2)),
+  ).toBeLessThanOrEqual(1);
+  // The placeholders and the add buttons say what to do.
   await expect(roles(page).locator('input')).toHaveAttribute('placeholder', words.rolesPlaceholder);
   await expect(countryInput(page)).toHaveAttribute('placeholder', words.countriesPlaceholder);
-  await expect(adder(page, 'competence')).toHaveAttribute(
+  await expect(page.getByTestId('competences-add')).toHaveText(words.competencePlaceholder);
+  await expect(page.getByTestId('languages-add')).toHaveText(words.languagePlaceholder);
+  await expect(await adder(page, 'competence')).toHaveAttribute(
     'placeholder',
     words.competencePlaceholder,
   );
-  await expect(adder(page, 'language')).toHaveAttribute('placeholder', words.languagePlaceholder);
+  await expect(await adder(page, 'language')).toHaveAttribute(
+    'placeholder',
+    words.languagePlaceholder,
+  );
 });
 
-test('in a narrow window the pairs stand one under the other', async ({ page }) => {
+test('in a narrow window the label stands above its control', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  const top = (name: string): Promise<number> =>
-    field(page, name).evaluate((cell) => cell.getBoundingClientRect().top);
-  expect(await top('dayRateMin')).toBeGreaterThan(await top('dayRateWish'));
+  const words = await label(field(page, 'dayRateWish')).evaluate((node) =>
+    node.getBoundingClientRect(),
+  );
+  const control = await page
+    .getByTestId('profile-wish-rate')
+    .evaluate((input) => input.closest('.field')!.getBoundingClientRect());
+  expect(control.top).toBeGreaterThanOrEqual(words.bottom);
+  expect(Math.round(control.left)).toBe(Math.round(words.left));
   // Nothing wider than the window.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -447,16 +459,22 @@ test('Sprachen: an item list, the level a select of A1 to C2, the add row a sear
   await profile(page);
   const level = (index: number) => page.getByTestId('language-level').nth(index);
   // The focus opens the list of every language not chosen yet.
-  await adder(page, 'language').focus();
+  await (await adder(page, 'language')).focus();
   const listed = page.getByTestId('language-add-options').getByRole('option');
   await expect(listed.first()).toBeVisible();
   expect(await listed.allTextContents()).not.toContain('Deutsch');
   // Typing narrows it; Enter takes the first, which starts at B2.
-  await adder(page, 'language').fill('Franz');
+  await (await adder(page, 'language')).fill('Franz');
   await page.keyboard.press('Enter');
   await expect(names(page, 'languages')).toHaveText(['Deutsch', 'Englisch', 'Französisch']);
-  await expect(adder(page, 'language')).toHaveValue('');
+  await expect(await adder(page, 'language')).toHaveValue('');
   await expect(level(2)).toHaveText(T.profile.level.B2);
+  // Esc closes the list of the field, a second Esc the field: its button is back.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('language-add-options')).toBeHidden();
+  await expect(page.getByTestId('language-add').locator('input')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('languages-add')).toBeFocused();
   // The level: a select of the levels.
   await level(2).click();
   await expect(page.getByRole('listbox').getByRole('option')).toHaveText(
@@ -465,10 +483,12 @@ test('Sprachen: an item list, the level a select of A1 to C2, the add row a sear
   await page.getByRole('listbox').getByRole('option', { name: T.profile.level.A2 }).click();
   await expect(level(2)).toHaveText(T.profile.level.A2);
   // Nothing outside the list: it says so.
-  await adder(page, 'language').fill('Klingonisch');
+  await (await adder(page, 'language')).fill('Klingonisch');
   await expect(page.getByTestId('language-add-none')).toHaveText(T.profile.field.languageNone);
-  await adder(page, 'language').fill('Schwed');
+  await (await adder(page, 'language')).fill('Schwed');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
   // The x of a row removes it ("Entfernen").
   await page.getByTestId('languages-remove').first().click();
   await save(page).click();
@@ -507,7 +527,7 @@ test('a required field stays red while it is empty; Speichern saves anyway, with
   await roles(page).locator('input').fill('Interim CFO');
   await roles(page).locator('input').press('Enter');
   await expect.poll(() => marked(page)).toEqual(['languages']);
-  await adder(page, 'language').fill('Deutsch');
+  await (await adder(page, 'language')).fill('Deutsch');
   await page.keyboard.press('Enter');
   await expect.poll(() => marked(page)).toEqual([]);
   // Complete, the save's toast has its success sign.
@@ -915,8 +935,8 @@ test('Enter in a field saves the form; lists and chips keep their Enter', async 
   await tools.fill('Miro');
   await tools.press('Enter');
   await expect(chips(page.getByTestId('profile-tools')).last()).toHaveText('Miro');
-  await adder(page, 'competence').fill('Treasury');
-  await adder(page, 'competence').press('Enter');
+  await (await adder(page, 'competence')).fill('Treasury');
+  await (await adder(page, 'competence')).press('Enter');
   await expect(names(page, 'competences').last()).toHaveText('Treasury');
   expect(await saves(page)).toBe(3);
 });
@@ -928,18 +948,18 @@ test('Kompetenzen: an item list; the add row suggests, a name comes once, the x 
   const list = names(page, 'competences');
   await expect(list).toHaveCount(6);
   // Typed and Enter: a new row at the end with no years yet, the add row empty again.
-  await adder(page, 'competence').fill('Konzernabschluss');
-  await adder(page, 'competence').press('Enter');
+  await (await adder(page, 'competence')).fill('Konzernabschluss');
+  await (await adder(page, 'competence')).press('Enter');
   await expect(list).toHaveCount(7);
   await expect(list.last()).toHaveText('Konzernabschluss');
-  await expect(adder(page, 'competence')).toHaveValue('');
+  await expect(await adder(page, 'competence')).toHaveValue('');
   await expect(page.getByTestId('competence-years').last()).toHaveValue('');
   // A name that is there already (in any case) comes once.
-  await adder(page, 'competence').fill('controlling');
-  await adder(page, 'competence').press('Enter');
+  await (await adder(page, 'competence')).fill('controlling');
+  await (await adder(page, 'competence')).press('Enter');
   await expect(list).toHaveCount(7);
   // The engine's words from the first character; a click takes one.
-  await adder(page, 'competence').fill('T');
+  await (await adder(page, 'competence')).fill('T');
   const hints = page.getByTestId('competence-add-suggestions').getByRole('option');
   await expect(hints.first()).toBeVisible();
   const term = (await hints.first().textContent())!.trim();

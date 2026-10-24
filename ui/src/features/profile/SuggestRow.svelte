@@ -2,8 +2,9 @@
   A row of suggestions under a field of the profile, one look for both kinds (the round 10
   draft): "Häufig verlangt" (the terms the jobs ask for, AskedTerms) and "Vorschlag" (the
   common countries not chosen yet, CountriesField). Its label 12 subtle, then the chips
-  (Button `suggest`: white, 26 high, 6 round, "+" and the value), wrapping where the field is
-  narrow; no count, no tooltip. A click takes the value; its chip goes and the others close
+  (Button `suggest`: a dashed edge, 26 high, 6 round, "+" and the value), wrapping where the
+  field is narrow; no count, no tooltip. As the last line of a box of entries (`line`:
+  Kompetenzen, Sprachen) it stands under a hairline, padded like the box's rows. A click takes the value; its chip goes and the others close
   the gap. The row shows only while it has a chip, unfolds when one comes and folds away with
   its last (a row that comes with its view is simply there). A focused chip that goes hands
   the focus to the chip now in its place, else the one before, else to its field (`home`).
@@ -25,10 +26,12 @@
     /** The test id of the field's own control, which takes the focus after the last chip. */
     home: string;
     testid: string;
+    /** The last line of a box of entries: a hairline above, the rows' sides. */
+    line?: boolean;
     onpick: (id: string) => void;
   }
 
-  let { label, picks, home, testid, onpick }: Props = $props();
+  let { label, picks, home, testid, line = false, onpick }: Props = $props();
 
   const id = $props.id();
   const motion = settled();
@@ -52,27 +55,29 @@
 </script>
 
 {#if picks.length > 0}
-  <div class="row" data-testid={testid} transition:unfold={{ on: motion.ready }}>
-    <span class="label" id="{id}-label">{label}</span>
-    <ul class="picks" aria-labelledby="{id}-label" bind:this={list}>
-      {#each picks as each (each.id)}
-        <li
-          data-testid="{testid}-term"
-          data-id={each.id}
-          data-term={each.label}
-          animate:flip
-          out:fade={{ on: motion.ready }}
-        >
-          <Button
-            variant="suggest"
-            icon="add"
-            label={each.label}
-            testid="{testid}-add"
-            onclick={(event) => void pick(each, event)}
-          />
-        </li>
-      {/each}
-    </ul>
+  <div class="frame" class:line data-testid={testid} transition:unfold={{ on: motion.ready }}>
+    <div class="row">
+      <span class="label" id="{id}-label">{label}</span>
+      <ul class="picks" aria-labelledby="{id}-label" bind:this={list}>
+        {#each picks as each (each.id)}
+          <li
+            data-testid="{testid}-term"
+            data-id={each.id}
+            data-term={each.label}
+            animate:flip
+            out:fade={{ on: motion.ready }}
+          >
+            <Button
+              variant="suggest"
+              icon="add"
+              label={each.label}
+              testid="{testid}-add"
+              onclick={(event) => void pick(each, event)}
+            />
+          </li>
+        {/each}
+      </ul>
+    </div>
   </div>
 {/if}
 
@@ -84,6 +89,14 @@
     align-items: center;
     gap: var(--space-6);
     min-width: 0;
+  }
+
+  .line {
+    border-top: var(--border-width) solid var(--border);
+  }
+
+  .line .row {
+    padding: var(--suggest-line-pad-y) var(--card-pad-x);
   }
 
   .label {

@@ -1,15 +1,15 @@
-// The Profil form as data: the fields of the page in four groups (Wunschjob, Einsatz,
-// Qualifikation, Ausschlüsse; the round 10 draft), the same page in the setup.
-// ProfileEditor renders these tables and nothing else, so adding, moving or removing a field
-// is one entry here (docs/CHANGING.md "Change the Profil form"). A field names the value of
-// the form it edits, its control, its words by their key in the catalog (`t.profile.field`)
-// and, at the few places docs/PLAN.md names, its info symbol (`t.profile.info`). Controls with
-// more to them than a field (the competences, the industries, the languages, the countries,
-// the day) are components the table names by their kind. A row holds one field, or a pair of
-// two short ones side by side where the group is wide enough (`pair`; the second may stay
-// empty, so a short field keeps its half). One kind of control per kind of value: free
-// values a tag field, several of a few checkboxes, one of a few modes segments, a value on a
-// scale a select, an amount a number with its unit, entries with a value an item list.
+// The Profil form as data: its groups in their order (Wunschjob, Einsatz, Erfahrung,
+// Kompetenzen, Sprachen, Ausschlüsse; the owner's redesign of 2026-10-24), the same page in the
+// setup. ProfileEditor renders these tables and nothing else, so adding, moving or removing a
+// field is one entry here (docs/CHANGING.md "Change the Profil form"). A group is a box of
+// rows, one field each with its label beside it, or a box whose rows are the entries of one
+// list (`list`: the competences, the languages). A field names the value of the form it
+// edits, its control, its words by their key in the catalog (`t.profile.field`) and, at the
+// few places docs/PLAN.md names, its info symbol (`t.profile.info`). Controls with more to
+// them than a field (the countries, the day) are components the table names by their kind.
+// One kind of control per kind of value: free values a tag field, several of a few
+// checkboxes, one of a few modes segments, a value on a scale a select, an amount a number
+// with its unit, entries with a value a box of entries.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, TermField } from '$lib/ipc/types';
@@ -25,14 +25,15 @@ export type Info = keyof Catalog['profile']['info'];
 /** A number of the form. */
 export type NumberKey = 'dayRateWish' | 'dayRateMin' | 'minSalary' | 'years';
 /** A list of words of the form. */
-export type ListKey = 'roles' | 'regions' | 'tools' | 'degrees' | 'certificates' | 'exclusionWords';
+export type ListKey =
+  'roles' | 'regions' | 'tools' | 'industries' | 'degrees' | 'certificates' | 'exclusionWords';
 /** The words a tag field suggests while typing (vocabulary.svelte.ts). */
 export type Suggest = 'roles' | 'skills' | 'industries' | 'regions';
 /** A choice of a few modes, one segmented control each. */
 export type ChoiceKey = 'workMode' | 'workload';
 
-/** A field of the form. `shown` keeps its row out of the form while the values it depends on
- *  say it has nothing to do. */
+/** A field of the form, a row of its group's box. `shown` keeps its row out of the form while
+ *  the values it depends on say it has nothing to do. */
 export type Control =
   | {
       kind: 'number';
@@ -62,22 +63,20 @@ export type Control =
   /** Mindestlaufzeit, a value on a scale. */
   | { kind: 'months' }
   | { kind: 'countries'; info: Info }
-  | { kind: 'available' }
-  | { kind: 'competences' }
-  | { kind: 'industries' }
-  | { kind: 'languages' };
+  | { kind: 'available' };
 
-/** A row of a group: one field, or two short ones side by side (null: the second half stays
- *  empty). */
-export type Row = Control | { pair: readonly [Control, Control | null] };
+/** A list of entries with a value, a group of its own whose rows are its entries. */
+export type EntryList = 'competences' | 'languages';
 
 export type SectionId = keyof Catalog['profile']['section'];
 
-export interface Section {
-  id: SectionId;
-  /** Its rows, one under the other. */
-  rows: readonly Row[];
-}
+export type Section =
+  | {
+      id: SectionId;
+      /** Its fields, one row each. */
+      rows: readonly Control[];
+    }
+  | { id: SectionId; list: EntryList };
 
 const chips = (
   key: ListKey,
@@ -92,42 +91,36 @@ const chips = (
   ...more,
 });
 
-const pair = (first: Control, second: Control | null = null): Row => ({
-  pair: [first, second],
-});
-
 export const SECTIONS: readonly Section[] = [
   {
     id: 'job',
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
-      pair(
-        {
-          kind: 'number',
-          key: 'dayRateWish',
-          label: 'dayRateWish',
-          unit: 'day',
-          testid: 'profile-wish-rate',
-        },
-        {
-          kind: 'number',
-          key: 'dayRateMin',
-          label: 'dayRateMin',
-          unit: 'day',
-          info: 'dayRate',
-          testid: 'profile-min-rate',
-        },
-      ),
+      {
+        kind: 'number',
+        key: 'dayRateWish',
+        label: 'dayRateWish',
+        unit: 'day',
+        testid: 'profile-wish-rate',
+      },
+      {
+        kind: 'number',
+        key: 'dayRateMin',
+        label: 'dayRateMin',
+        unit: 'day',
+        info: 'dayRate',
+        testid: 'profile-min-rate',
+      },
       // The salary counts for Festanstellung and Zeitarbeit only.
-      pair({
+      {
         kind: 'number',
         key: 'minSalary',
         label: 'minSalary',
         unit: 'year',
         shown: (form) => form.permanent || form.temporary,
         testid: 'profile-min-salary',
-      }),
+      },
     ],
   },
   {
@@ -135,42 +128,35 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       { kind: 'countries', info: 'countries' },
       chips('regions', 'profile-regions', { suggest: 'regions' }),
-      pair(
-        { kind: 'choice', key: 'workMode', label: 'workMode', testid: 'profile-work-mode' },
-        { kind: 'choice', key: 'workload', label: 'workload', testid: 'profile-workload' },
-      ),
-      pair({ kind: 'available' }, { kind: 'months' }),
+      { kind: 'choice', key: 'workMode', label: 'workMode', testid: 'profile-work-mode' },
+      { kind: 'choice', key: 'workload', label: 'workload', testid: 'profile-workload' },
+      { kind: 'available' },
+      { kind: 'months' },
     ],
   },
   {
-    id: 'skills',
+    id: 'experience',
     rows: [
-      pair({
+      {
         kind: 'number',
         key: 'years',
         label: 'totalYears',
         unit: 'years',
         testid: 'profile-years',
-      }),
-      { kind: 'competences' },
+      },
       chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
-      { kind: 'industries' },
-      { kind: 'languages' },
-      pair(
-        chips('degrees', 'profile-degrees', { lines: true, asked: 'degree' }),
-        chips('certificates', 'profile-certificates', { lines: true, asked: 'certificate' }),
-      ),
+      chips('industries', 'profile-industries', { suggest: 'industries', asked: 'industry' }),
+      chips('degrees', 'profile-degrees', { lines: true, asked: 'degree' }),
+      chips('certificates', 'profile-certificates', { lines: true, asked: 'certificate' }),
     ],
   },
+  { id: 'competences', list: 'competences' },
+  { id: 'languages', list: 'languages' },
   {
     id: 'exclusions',
     rows: [chips('exclusionWords', 'profile-exclusion-words', { info: 'exclusionWords' })],
   },
 ];
-
-/** The fields of a row, in their order. */
-export const controlsOf = (row: Row): Control[] =>
-  'pair' in row ? row.pair.filter((control) => control !== null) : [row];
 
 /** The value of the form a control edits (the fields `ProfileInfo.missing` names). */
 export function fieldOf(control: Control): keyof ProfileForm {
@@ -190,7 +176,7 @@ export function fieldOf(control: Control): keyof ProfileForm {
 
 /** Every value of the form in the order of the page (the first marked one is revealed). */
 export const FIELD_ORDER: readonly (keyof ProfileForm)[] = SECTIONS.flatMap((section) =>
-  section.rows.flatMap(controlsOf).map(fieldOf),
+  'list' in section ? [section.list] : section.rows.map(fieldOf),
 );
 
 /** The label of a field (`t.profile.field`) where its key is not the value's name. */

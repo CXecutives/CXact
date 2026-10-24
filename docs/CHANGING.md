@@ -243,9 +243,10 @@ the section's switches, anything else a control kind of `sections.ts` with its c
 
 ## Change the Profil form
 
-Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the four
-groups in their order (Wunschjob, Einsatz, Qualifikation, Ausschlüsse) and each one's fields,
-one under the other, each with its label above it (`components/Field.svelte`, one layout).
+Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the groups in
+their order (Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen, Ausschlüsse) and each one's
+fields, one row each with its label beside it (`components/Field.svelte` `row`), or the list
+whose entries are the group's rows (`list`, `components/ItemList.svelte`).
 Moving, adding or removing a field is one entry there (a new group also needs its heading in
 `profile.section`); a field that shows only with another is its `shown`, an info symbol its
 `info` (a sentence of `profile.info`). Which fields are required is core's
