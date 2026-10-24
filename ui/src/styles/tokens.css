@@ -41,7 +41,7 @@
   --p-ink: 30 10% 12%;
   --p-coral: 13 72% 60%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
-  --p-brand-glyph: 0 0% 100%; /* the icon's folder */
+  --p-brand-glyph: 0 0% 100%; /* the icon's briefcase and lens */
   --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
   --p-coral-variant: 13 62% 52%;
   --p-coral-press: 13 62% 46%;
@@ -304,9 +304,10 @@
   --verdict-unmet: var(--score-ring-0);
 
   /* ------------------------------------------------------------------- brand */
-  /* The app icon (assets/app-icon.svg): its plate and the folder with the check cut out of
-     it. tools/icon.py draws every icon file in these two (through tools/palette.json): the
-     CXact orange plate and a white folder, fixed, so the icon never changes with a design. */
+  /* The app icon (assets/app-icon.svg, drawn in the app by components/AppMark): its plate and
+     the Lucide briefcase with the search lens. tools/icon.py draws every icon file in these two
+     (through tools/palette.json): the CXact orange plate and a white glyph, fixed, so the icon
+     never changes with a design. */
   --brand: hsl(var(--p-brand));
   --brand-glyph: hsl(var(--p-brand-glyph));
 
@@ -854,26 +855,42 @@
   /* Snappy and calm (user test of the installed app), quiet at rest and rich on contact
      (user, 2026-09-24): every control answers without waiting for an animation. Hover-in
      takes 80 ms (--dur-hover on the :hover rule), hover-out relaxes in 150 ms (--dur-base on
-     the base rule), a press darkens in 60 ms (nothing scales or moves), the release settles in
-     150 ms. Colour changes 100 ms, entries 150 ms, every slide (nav pill,
-     segmented and toggle thumbs, chevrons, dialog) 180 ms, the ring fill 360 ms. Only
-     transform and opacity move; nothing overshoots; the only pop is a keyframed 1, 1.18, 1;
-     no lift, glow, stagger, blur or replay. */
+     the base rule), a press darkens in 60 ms (nothing scales, moves or deforms), the release
+     settles in 150 ms. Colour changes 100 ms, entries 150 to 180 ms, every glide (list
+     selection, nav pill, segment and toggle thumbs, chevrons) 180 ms with ease-out, the ring
+     fill and its count 400 ms. Only transform and opacity move (and colour and
+     stroke-dashoffset); nothing overshoots. Entries stagger only when a view, a list or a new
+     job opens, never on a re-render, and a whole stagger ends within --stagger-span
+     (lib/motion/transitions.ts states the rules). */
   --dur-instant: 60ms;
   --dur-hover: 80ms;
   --dur-fast: 100ms;
   --dur-base: 150ms;
+  /* A fade beside a move: a glide's highlight appearing or hiding, a checkbox's fill, a toast
+     leaving. */
+  --dur-fade: 140ms;
   --dur-slow: 180ms;
-  --dur-reveal: 360ms;
+  /* The ring's fill and its count. */
+  --dur-reveal: 400ms;
   --dur-loop: 1400ms;
   /* How long a toast stays (paused while hovered, the window is in the back or a dialog is
      open); one with an undo stays long enough to read it and reach the button. */
   --dur-toast: 4000ms;
   --dur-toast-action: 10000ms;
   --dur-crossfade: 100ms;
-  /* At most this many list rows animate at the same time; the others are simply there. */
+  /* Staggered entries (lib/motion/enter.ts): one step per item, rows of a list that opens,
+     the cards of a new job, the groups of a page that opens. At most --stagger-max items
+     step; the later ones come with the last of them, and the whole stagger (the last delay
+     plus its piece) ends within --stagger-span; so 10 rows, 4 cards, 8 groups. */
+  --stagger-row: 24ms;
+  --stagger-card: 60ms;
+  --stagger-group: 30ms;
   --stagger-max: 10;
-  --delay-tooltip: 400ms;
+  --stagger-span: 400ms;
+  --delay-tooltip: 350ms;
+  /* Two opens (a job, a list) closer than this are fast browsing, a held arrow key too: the
+     later one is simply there, no stagger, no ring refill, no glide (lib/motion/pace.ts). */
+  --delay-browse: 250ms;
   /* A loading placeholder shows only once a load has taken this long (a quicker load
      never flashes one). */
   --delay-placeholder: 300ms;
@@ -887,12 +904,15 @@
   --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
   --move-xs: 1px;
   --move-sm: 2px;
+  /* A chip that the user adds rises by this. */
+  --move-chip: 3px;
   --move-md: 4px;
   --move-lg: 8px;
   /* A toast coming up from below (design round 7). */
   --move-xl: 12px;
   --scale-enter: 0.98;
-  /* No icon moves on hover (user, 2026-09-25). */
+  /* The one icon that moves on hover: the arrow of a back or next button nudges by --move-sm
+     (Button). */
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
      motion. */
   --turn-half: 180deg;
@@ -931,10 +951,16 @@
   --dur-hover: 0ms;
   --dur-fast: 0ms;
   --dur-base: 0ms;
+  --dur-fade: 0ms;
   --dur-slow: 0ms;
   --dur-reveal: 0ms;
+  --stagger-row: 0ms;
+  --stagger-card: 0ms;
+  --stagger-group: 0ms;
+  --stagger-span: 0ms;
   --move-xs: 0px;
   --move-sm: 0px;
+  --move-chip: 0px;
   --move-md: 0px;
   --move-lg: 0px;
   --move-xl: 0px;
