@@ -177,7 +177,7 @@
         <Button
           variant="ghost"
           iconOnly
-          icon="back"
+          icon="monthBack"
           label={t.calendar.previous}
           testid={testid ? `${testid}-previous` : null}
           onclick={() => turn(-1)}
@@ -188,7 +188,7 @@
         <Button
           variant="ghost"
           iconOnly
-          icon="forward"
+          icon="monthForward"
           label={t.calendar.next}
           testid={testid ? `${testid}-next` : null}
           onclick={() => turn(1)}

@@ -462,6 +462,12 @@
   --control-lg: 30px;
   /* The glyphs in a list row's second line. */
   --icon-xs: 14px;
+  /* Round 10: a chip's × and a suggestion's +, a checkbox's tick, the sidebar and a toast's
+     sign, and the glyph of a 56 px tile (a glyph in a tile is half the tile). */
+  --icon-2xs: 12px;
+  --icon-check: 13px;
+  --icon-nav: 18px;
+  --icon-2xl: 28px;
   /* The round hit area of an info symbol beside a label: a little more than its glyph. */
   --info-tip: 18px;
   /* Every glyph of a control: buttons, menus, fields, the sidebar (design round 7). */
@@ -469,7 +475,7 @@
   /* The sign before a failure's sentence. */
   --icon-md: 16px;
   /* The glyph on top of a choice tile (the setup's two ways). */
-  --icon-lg: 20px;
+  --icon-lg: 22px;
   /* The glyph of a drop zone. */
   --icon-xl: 24px;
   /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a

@@ -51,6 +51,7 @@
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import Funnel from '@lucide/svelte/icons/funnel';
+  import Gauge from '@lucide/svelte/icons/gauge';
   import Globe from '@lucide/svelte/icons/globe';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import Hourglass from '@lucide/svelte/icons/hourglass';
@@ -69,6 +70,7 @@
   import PanelRightOpen from '@lucide/svelte/icons/panel-right-open';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
@@ -78,6 +80,7 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import Undo2 from '@lucide/svelte/icons/undo-2';
+  import Upload from '@lucide/svelte/icons/upload';
   import UserRound from '@lucide/svelte/icons/user-round';
   import X from '@lucide/svelte/icons/x';
 
@@ -122,6 +125,7 @@
     'file-up': FileUp,
     'folder-open': FolderOpen,
     funnel: Funnel,
+    gauge: Gauge,
     globe: Globe,
     'file-pen-line': FilePenLine,
     hourglass: Hourglass,
@@ -140,6 +144,7 @@
     'panel-right-open': PanelRightOpen,
     pencil: Pencil,
     plus: Plus,
+    'rotate-ccw': RotateCcw,
     'rotate-cw': RotateCw,
     scissors: Scissors,
     search: Search,
@@ -149,13 +154,14 @@
     'trash-2': Trash2,
     'triangle-alert': TriangleAlert,
     'undo-2': Undo2,
+    upload: Upload,
     'user-round': UserRound,
     x: X,
   };
 
   /** What an icon says (lib/icons.ts): the name every component and view passes. */
   export type IconName = IconMeaning;
-  export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  export type IconSize = 'xxs' | 'check' | 'xs' | 'sm' | 'md' | 'nav' | 'lg' | 'xl' | 'xxl';
   /** The drawing of each glyph used so far (the SVG its Lucide component renders). */
   const drawn: Partial<Record<Glyph, SVGSVGElement>> = {};
 
@@ -224,6 +230,14 @@
     fill: currentcolor;
   }
 
+  .xxs {
+    --icon-size: var(--icon-2xs);
+  }
+
+  .check {
+    --icon-size: var(--icon-check);
+  }
+
   .xs {
     --icon-size: var(--icon-xs);
   }
@@ -240,7 +254,15 @@
     --icon-size: var(--icon-lg);
   }
 
+  .nav {
+    --icon-size: var(--icon-nav);
+  }
+
   .xl {
     --icon-size: var(--icon-xl);
+  }
+
+  .xxl {
+    --icon-size: var(--icon-2xl);
   }
 </style>

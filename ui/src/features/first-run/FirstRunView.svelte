@@ -278,7 +278,7 @@
             <Button
               variant="secondary"
               iconOnly
-              icon="historyBack"
+              icon="back"
               label={t.common.back}
               testid="first-back"
               onclick={goBack}

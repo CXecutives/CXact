@@ -36,6 +36,12 @@ export const ICONS = {
   // Runs.
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',
+  /** Alles zurücksetzen (the Daten tile). */
+  reset: 'rotate-ccw',
+  /** A file dropped or chosen to upload (the setup's drop zone). */
+  upload: 'upload',
+  /** The score a job gets (the setup's welcome). */
+  gauge: 'gauge',
   /** Stop a run (Abbrechen): the hollow square (design round 6). */
   cancel: 'square',
 
@@ -66,17 +72,18 @@ export const ICONS = {
   conceal: 'eye-off',
   /** Fold open or shut (a disclosure, a divider, a menu button). */
   expand: 'chevron-down',
-  /** Back (Zurück); in the calendar the month before. */
-  back: 'chevron-left',
-  /** In the calendar the month after. */
-  forward: 'chevron-right',
+  /** Zurück everywhere: the top bar, the setup, the one-column job view (one glyph per
+   *  meaning, round 10). */
+  back: 'arrow-left',
+  /** Vor in the top bar, Weiter, Loslegen and Zu den Jobs. */
+  next: 'arrow-right',
+  /** The calendar's month before and after (the calendar goes in round 10). */
+  monthBack: 'chevron-left',
+  monthForward: 'chevron-right',
   /** Opens the calendar beside a day field. */
   pickDay: 'calendar-days',
-  /** Zurück and Vor in the top bar: through the views, places and jobs seen. */
-  historyForward: 'arrow-right',
   /** What comes of something (the setup's picture: an alert mail, then its jobs). */
   arrowDown: 'arrow-down',
-  historyBack: 'arrow-left',
   /** The top bar's sidebar button at rest; under the pointer it says what a click does. */
   sidebar: 'panel-left',
   sidebarHide: 'panel-left-close',

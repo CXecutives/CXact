@@ -117,7 +117,7 @@
   <Button
     variant="ghost"
     iconOnly
-    icon="historyBack"
+    icon="back"
     label={t.nav.back}
     disabled={!history.canBack}
     testid="history-back"
@@ -126,7 +126,7 @@
   <Button
     variant="ghost"
     iconOnly
-    icon="historyForward"
+    icon="next"
     label={t.nav.forward}
     disabled={!history.canForward}
     testid="history-forward"
