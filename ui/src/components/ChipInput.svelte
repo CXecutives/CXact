@@ -27,8 +27,7 @@
   text field's (`--field-edge`, red in a required cell that is still empty, red while
   `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
-  focus; a click on it, or the focus, shows them all. `bare` draws no edge and no fill (the
-  add row of an ItemList, which is its frame).
+  focus; a click on it, or the focus, shows them all.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -72,8 +71,7 @@
     suggestions?: Vocabulary | null | undefined;
     /** Two lines of chips and "+ n weitere" while the field has no focus. */
     fold?: boolean;
-    /** No edge, no fill (inside a frame of its own: an ItemList's add row). */
-    bare?: boolean;
+
     testid?: string | null;
     onchange?: (values: string[]) => void;
   }
@@ -91,7 +89,6 @@
     noMatch = null,
     suggestions = undefined,
     fold = false,
-    bare = false,
     testid = null,
     onchange,
   }: Props = $props();
@@ -325,7 +322,6 @@
     class="field"
     class:invalid
     class:entry
-    class:bare
     class:filled={values.length > 0}
     role="presentation"
     data-testid={testid ?? undefined}
@@ -447,16 +443,6 @@
   /* Focus last: only the navy edge, whatever the field showed (hover never takes it back). */
   .entry:focus-within {
     border-color: var(--border-focus);
-  }
-
-  .bare.entry {
-    padding-inline: 0;
-    border-color: transparent;
-    background-color: transparent;
-  }
-
-  .bare .input {
-    padding-inline: var(--field-inset);
   }
 
   .chip {

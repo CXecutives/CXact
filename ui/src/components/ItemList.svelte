@@ -1,12 +1,13 @@
 <!--
   A list of items that carry a value (Kompetenzen with their years, Sprachen with their
-  level; the round 10 draft): one bordered box, 10 round (its edge red in a required cell that
-  is still empty, `[data-missing]`), a hairline between its rows. A row
-  is 38 high: the item's name (text a user would copy), its value (`value`: the control the
-  caller puts there, a years field or a level's select, 26 high) and the remove button at
-  the end (24, the × with the tooltip "Entfernen"). The last row adds an item: a 16 px plus
-  and the caller's quiet field (`add`: a search list or a tag field without its edge). A new
-  row rises in, a removed one folds away while the rows below close the gap; a list that
+  level): a quiet list like the rows of Einstellungen (owner, 2026-10-24), no box, a hairline
+  above, between and below its rows. A row is 40 high: the item's name (text a user would
+  copy), its value (`value`: the control the caller puts there, a years field or a level's
+  select, 26 high, whose edge shows only while the row is under the pointer or holds the
+  focus) and the remove button at the end (24, the × with the tooltip "Entfernen"), which
+  comes in with the pointer or the focus. Under the list the field that adds an item (`add`:
+  the caller's search list or tag field, a normal field like every other one of the page). A
+  new row rises in, a removed one folds away while the rows below close the gap; a list that
   comes with its view is simply there.
 -->
 <script lang="ts" generics="T">
@@ -42,7 +43,7 @@
   };
 </script>
 
-<div class="list" data-testid={testid ?? undefined}>
+<div class="list" class:empty={items.length === 0} data-testid={testid ?? undefined}>
   {#each items as item, index (key(item))}
     <div
       class="item"
@@ -64,39 +65,36 @@
       </button>
     </div>
   {/each}
-  {#if add}
-    <div class="add">
-      <span class="plus"><Icon name="add" size="sm" /></span>
-      <span class="field">{@render add()}</span>
-    </div>
-  {/if}
 </div>
+{#if add}<div class="add">{@render add()}</div>{/if}
 
 <style>
   .list {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    border: var(--border-width) solid var(--item-list-edge);
-    border-radius: var(--radius-lg);
-    background-color: var(--surface);
   }
 
-  .item,
-  .add {
+  .list:not(.empty) {
+    border-block: var(--border-width) solid var(--item-list-edge);
+  }
+
+  .item {
+    --inline-edge: transparent;
     display: flex;
     align-items: center;
     gap: var(--item-gap);
     min-height: var(--list-item);
+    padding-block: var(--item-pad-y);
   }
 
-  .item {
-    padding: var(--item-pad-y) var(--item-pad-end) var(--item-pad-y) var(--item-pad-start);
-  }
-
-  .item + .item,
-  .item + .add {
+  .item + .item {
     border-top: var(--border-width) solid var(--border);
+  }
+
+  .item:hover,
+  .item:focus-within {
+    --inline-edge: var(--border-strong);
   }
 
   .name {
@@ -116,7 +114,8 @@
     font: var(--type-md);
   }
 
-  /* The quiet × of a row: the subtle glyph, a wash and ink under the pointer. */
+  /* The quiet × of a row: it comes in with the pointer or the focus, the subtle glyph, a wash
+     and ink under the pointer. */
   .remove {
     display: inline-flex;
     flex: none;
@@ -124,14 +123,23 @@
     justify-content: center;
     width: var(--item-remove);
     height: var(--item-remove);
+    margin-inline-end: calc(-1 * var(--space-4));
     padding: 0;
     border: 0;
     border-radius: var(--radius-inner);
     background-color: transparent;
     color: var(--icon-subtle);
+    opacity: 0;
     transition:
+      opacity var(--dur-base) var(--ease-out),
       background-color var(--dur-base) var(--ease-out),
       color var(--dur-base) var(--ease-out);
+  }
+
+  .item:hover .remove,
+  .item:focus-within .remove {
+    opacity: 1;
+    transition-duration: var(--dur-hover);
   }
 
   .remove:hover {
@@ -145,22 +153,18 @@
     transition-duration: var(--dur-instant);
   }
 
-  /* The add row: the plus where the names start, the caller's field beside it. */
+  /* The field that adds an item, under the list like every field of the page. */
   .add {
-    gap: var(--space-8);
-    padding-inline: var(--item-pad-start) var(--item-pad-end);
-  }
-
-  .plus {
-    display: inline-flex;
-    flex: none;
-    color: var(--icon-subtle);
-  }
-
-  .field {
     display: flex;
+    margin-top: var(--space-8);
+  }
+
+  .list.empty + .add {
+    margin-top: 0;
+  }
+
+  .add > :global(*) {
     flex: 1;
-    align-items: center;
     min-width: 0;
   }
 </style>
