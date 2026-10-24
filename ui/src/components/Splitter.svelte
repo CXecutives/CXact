@@ -183,7 +183,8 @@
 </div>
 
 <style>
-  /* No room of its own: the strip lies centred on the border between the columns. */
+  /* No room of its own: the strip starts on the border between the columns and lies over the
+     next column's padding, never over the list's scrollbar (a drag there would steal it). */
   .splitter {
     position: relative;
     z-index: var(--z-raised);
@@ -195,19 +196,19 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(-1 * var(--splitter-hit) / 2);
+    left: calc(-1 * var(--border-width));
     width: var(--splitter-hit);
     cursor: col-resize;
     touch-action: none;
   }
 
-  /* The line: 2 px over the 1 px border in the middle of the strip, the whole height. */
+  /* The line: 2 px over the 1 px border at the start of the strip, the whole height. */
   .hit::after {
     content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(var(--splitter-hit) / 2 - var(--border-width));
+    left: 0;
     width: var(--splitter-line);
     background-color: var(--border-strong);
     opacity: 0;

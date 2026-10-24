@@ -146,11 +146,12 @@ test('at its narrowest the list header still shows every control in the column',
   expect(problems).toEqual([]);
 });
 
-// The strip that takes the pointer is centred on the border and starts below the top bar
+// The strip that takes the pointer starts on the border (over the next column, never over
+// the list's scrollbar) and below the top bar
 // (the bar keeps moving the window); it draws nothing at rest and a line over the border
 // under the pointer, no grip.
 for (const id of ['list-splitter', 'sidebar-splitter']) {
-  test(`${id}: centred on the border below the bar, a line only under the pointer`, async ({
+  test(`${id}: starts on the border below the bar, a line only under the pointer`, async ({
     page,
   }) => {
     await open(page, WIN);
@@ -166,7 +167,8 @@ for (const id of ['list-splitter', 'sidebar-splitter']) {
       const rect = edge.getBoundingClientRect();
       return which === 'list-splitter' ? rect.right - 0.5 : rect.left + 0.5;
     }, id);
-    expect(Math.abs(box.x + box.width / 2 - border)).toBeLessThanOrEqual(1);
+    // It starts on the border and lies over the next column, never over the list's scrollbar.
+    expect(Math.abs(box.x - (border - 0.5))).toBeLessThanOrEqual(1.5);
     await expect(page.getByTestId(id).locator('.grip')).toHaveCount(0);
     const line = (): Promise<string> =>
       hit.evaluate((node) => getComputedStyle(node, '::after').opacity);
