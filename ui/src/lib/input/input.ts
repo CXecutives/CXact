@@ -63,6 +63,7 @@
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
 import { clipboardText, onMenuUndo, reportUiError } from '../ipc/api';
+import { noteKey } from '../motion/pace';
 import { glideBy, glideTo } from '../motion/scroll';
 import {
   fieldMenuUndoDelete,
@@ -648,6 +649,8 @@ function onFocusIn(event: FocusEvent): void {
 
 function onKeyDown(event: KeyboardEvent): void {
   keyboardFocus = true;
+  // A held key is fast browsing: an open meanwhile plays no motion (lib/motion/pace).
+  noteKey(event.repeat);
   if (menuState.open !== null) {
     dispatchMenuKey(event);
     return;

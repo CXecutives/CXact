@@ -25,9 +25,8 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
-  import { cssVars, px } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
-  import { settled } from '$lib/motion/settled.svelte';
+  import { glide } from '$lib/motion/glide';
 
   interface Props {
     options: readonly SegmentedOption<Id>[];
@@ -57,37 +56,13 @@
   /** One Tab stop: the chosen option (the arrows move between them, lib/input/input.ts). */
   const stop = $derived(options.some((option) => option.id === value) ? value : options[0]?.id);
 
-  // The thumb's box: the chosen option's, measured in the track. A choice slides it; a
-  // resize moves it at once (`instant`).
-  const motion = settled();
+  // The thumb stands on the chosen option and glides to the next one (lib/motion/glide).
   let track: HTMLDivElement | undefined = $state();
-  let thumb = $state<{ x: number; width: number } | null>(null);
-  let instant = $state(true);
-  /** Until when a choice slides: a size change meanwhile follows without cutting it short. */
-  let slidingUntil = 0;
-
-  function measure(): void {
-    const chosen = track?.querySelector<HTMLElement>('[data-chosen]') ?? null;
-    thumb = chosen ? { x: chosen.offsetLeft, width: chosen.offsetWidth } : null;
-  }
-
+  let chosen = $state<HTMLElement | null>(null);
   $effect(() => {
     void value;
     void options;
-    instant = !motion.ready;
-    slidingUntil = performance.now() + 300;
-    measure();
-  });
-
-  $effect(() => {
-    if (!track) return;
-    const observer = new ResizeObserver(() => {
-      instant = performance.now() > slidingUntil;
-      measure();
-    });
-    observer.observe(track);
-    for (const option of track.children) observer.observe(option);
-    return () => observer.disconnect();
+    chosen = track?.querySelector<HTMLElement>('[data-chosen]') ?? null;
   });
 </script>
 
@@ -99,12 +74,7 @@
   data-testid={testid ?? undefined}
   bind:this={track}
 >
-  {#if thumb}<span
-      class="thumb"
-      class:instant
-      aria-hidden="true"
-      use:cssVars={{ 'thumb-x': px(thumb.x), 'thumb-width': px(thumb.width) }}
-    ></span>{/if}
+  <span class="thumb" aria-hidden="true" use:glide={{ to: chosen }}></span>
   {#each options as option (option.id)}
     {@const chosen = isChosen(option.id)}
     <button
@@ -159,24 +129,19 @@
   }
 
   /* The one white thumb under the chosen option, lifted by its soft shadow; it glides like
-     the sidebar's pill. */
+     the sidebar's pill (lib/motion/glide places it). */
   .thumb {
     position: absolute;
     z-index: var(--z-below);
-    top: var(--space-2);
-    bottom: var(--space-2);
+    top: 0;
     left: 0;
-    width: var(--thumb-width);
+    width: var(--glide-width);
+    height: var(--glide-height);
     border-radius: var(--radius-inner);
     background-color: var(--thumb);
     box-shadow: var(--sh-thumb);
-    transform: translateX(var(--thumb-x));
-    /* Only the move animates (a width is layout); the width takes the option's at once. */
-    transition: transform var(--dur-slow) var(--ease-out);
-  }
-
-  .thumb.instant {
-    transition: none;
+    opacity: var(--glide-opacity, 0);
+    transform: translate(var(--glide-x), var(--glide-y));
   }
 
   /* As wide as its content (or its column); it gives way (the label shortens) when the

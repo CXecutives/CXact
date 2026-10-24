@@ -34,7 +34,7 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { chipKeys, FIELD_ATTRIBUTES, removeBy, withList } from '$lib/input/input';
-  import { rise } from '$lib/motion/transitions';
+  import { chipIn } from '$lib/motion/transitions';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
   import { ChipFold } from '$lib/state/chipFold.svelte';
@@ -144,10 +144,10 @@
     void tick().then(() => requestAnimationFrame(() => (added = [])));
   });
   /** Rises in once, for a value just added (its first drawing). */
-  function chipIn(node: Element, value: string): ReturnType<typeof rise> {
-    if (!added.includes(value)) return {};
-    added = added.filter((each) => each !== value);
-    return rise(node, { distance: 'sm' });
+  function riseIn(node: Element, value: string): ReturnType<typeof chipIn> {
+    const on = added.includes(value);
+    if (on) added = added.filter((each) => each !== value);
+    return chipIn(node, { on });
   }
 
   // ------------------------------------------------------------ the list under the field
@@ -328,7 +328,7 @@
     onpointerdown={focusInput}
   >
     {#each visible as value, index (value)}
-      <span class="chip" data-chip={index} data-value={value} in:chipIn={value}>
+      <span class="chip" data-chip={index} data-value={value} in:riseIn={value}>
         <span class="text" data-copy>{labelOf(value)}</span>
         <button
           type="button"
