@@ -217,7 +217,7 @@
           <div class="stage" data-testid="stage" use:scrollFade>
             <div
               class="column"
-              class:idle={stage.what === NO_JOB}
+              class:idle={stage.what === NO_JOB || stage.what === ERROR}
               class:job={stage.what !== NO_JOB &&
                 stage.what !== ERROR &&
                 stage.what !== WAITING &&
@@ -230,8 +230,8 @@
                   {#if !placeEmpty}
                     <EmptyState
                       icon="jobs"
-                      heading={t.place.noJob}
-                      text={t.place.pickJob}
+                      heading={t.reader.noJob}
+                      text={t.reader.pickJob}
                       testid="place-reader"
                     />
                   {/if}
@@ -250,17 +250,20 @@
                   </div>
                 {/if}
                 {#if stage.what === ERROR}
-                  <EmptyState
-                    icon="warning"
-                    tone="danger"
-                    text={jobs.detailError ?? t.reader.loadFailed}
-                    secondary={{
-                      label: t.common.retry,
-                      icon: 'retry',
-                      onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
-                    }}
-                    testid="reader-error"
-                  />
+                  <div class="place-reader">
+                    <EmptyState
+                      icon="warning"
+                      tone="danger"
+                      heading={t.reader.loadFailed}
+                      text={jobs.detailError}
+                      secondary={{
+                        label: t.common.retry,
+                        icon: 'retry',
+                        onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
+                      }}
+                      testid="reader-error"
+                    />
+                  </div>
                 {:else if stage.what === WAITING}
                   <ReaderSkeleton />
                 {:else if stage.what === OPENING}
@@ -350,7 +353,7 @@
     flex: none;
     height: var(--fade-height);
     margin-bottom: calc(-1 * var(--fade-height));
-    background: var(--grad-fade);
+    background: var(--grad-fade-page);
     opacity: var(--fade-shown, 0);
     pointer-events: none;
   }
@@ -370,7 +373,7 @@
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
-    background-color: var(--surface);
+    background-color: var(--page);
   }
 
   /* Centred on a whole pixel (rounded down to the step of a hairline): an odd pane width
@@ -379,17 +382,17 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
-    max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
+    max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
     margin: 0 auto 0
       max(
         0%,
         round(
           down,
-          calc((100% - var(--reader-width) - 2 * var(--pane-padding)) / 2),
+          calc((100% - var(--reader-max) - 2 * var(--reader-pad-x)) / 2),
           var(--border-width)
         )
       );
-    padding: var(--head-pad) var(--pane-padding) var(--space-64);
+    padding: var(--head-pad) var(--reader-pad-x) var(--reader-pad-end);
   }
 
   /* A job: the reader takes the whole pane (its head's hairline runs from edge to edge) and

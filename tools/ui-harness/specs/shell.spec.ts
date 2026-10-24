@@ -989,7 +989,7 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await page.getByTestId('place-trash').click();
   await viaMenu(page, 'purge', 'freelancermap-2803');
   await expect(page.getByTestId('dialog-purge').getByTestId('dialog-confirm')).toHaveText(
-    T.actions.purgeConfirm,
+    T.reader.purgeConfirm,
   );
 });
 
@@ -1296,7 +1296,8 @@ test('hover rests while a list scrolls', async ({ page }) => {
     );
   expect(await still()).toEqual([]);
   // Scroll and look right after the scroll event: the row under the pointer rests (its hover
-  // waits for `:not([data-still])`), the row button and the row around it; nothing else in
+  // waits for `:not([data-still])`), the row button, the row around it and its place in the
+  // list; nothing else in
   // the list changes. The mark lasts --scroll-idle.
   const during = await page.getByTestId('list-scroll').evaluate(
     (node) =>
@@ -1318,9 +1319,10 @@ test('hover rests while a list scrolls', async ({ page }) => {
         node.scrollBy(0, 200);
       }),
   );
-  expect(during.rows).toHaveLength(2);
+  // The row's place in the list (its hairlines), the row around the button and the button.
+  expect(during.rows).toHaveLength(3);
   expect(during.rows[0]).toMatch(/^job-row-/);
-  expect(during.rows[1]).toBe(during.rows[0]);
+  expect(new Set(during.rows).size).toBe(1);
   expect(during.hovered).toBe(true);
   await expect.poll(still, { timeout: 1000 }).toEqual([]);
 });

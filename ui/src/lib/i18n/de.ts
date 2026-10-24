@@ -651,9 +651,6 @@ export const de = {
     inbox: 'Aktuell',
     archive: 'Archiv',
     trash: 'Papierkorb',
-    /** The job view beside the list while no job is open. */
-    noJob: 'Kein Job gewählt',
-    pickJob: 'Wähle einen Job aus der Liste.',
     /** The field's placeholder names what it searches. */
     search: {
       inbox: 'Aktuelle Jobs durchsuchen',
@@ -675,14 +672,9 @@ export const de = {
     unarchive: 'Nach Aktuell verschieben',
     trash: 'In den Papierkorb legen',
     restore: 'Wiederherstellen',
+    /** Its dialog: reader.purgeHeading, purgeText, purgeConfirm (one for the row and the
+     *  job view). */
     purge: 'Endgültig löschen',
-    /** The dialog of Endgültig löschen: its heading, what it does with the job named, and
-     *  its red button. */
-    purgeHeading: 'Endgültig löschen?',
-    purgeNamed: (name: string) =>
-      `„${name}“ wird endgültig gelöscht. Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
-    purgeText: 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.',
-    purgeConfirm: 'Löschen',
   },
   /** The app's own menus (their accessible names). */
   menu: {

@@ -38,8 +38,8 @@ test('the search matches every word in any field and the portal name', async ({ 
   await expect(rows(page)).toHaveCount(0);
   // The portal's name narrows to its jobs, and the count of the archive follows.
   await search.fill('linkedin bremen');
-  // Named like its tab, its count after it.
-  await expect(page.getByTestId('also-archive')).toHaveText(`${T.place.archive} 1`);
+  // Named like its tab, no count.
+  await expect(page.getByTestId('also-archive')).toHaveText(T.place.archive);
   const keys = await rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''));
   expect(keys.length).toBeGreaterThan(0);
   expect(keys.every((key) => key.startsWith('job-row-linkedin-'))).toBe(true);

@@ -245,12 +245,11 @@
     font-weight: var(--weight-regular);
   }
 
-  /* "Neu", for screen readers only. */
+  /* "Neu", for screen readers only (clipped away, nothing overflows to scroll). */
   .unseen {
     position: absolute;
     width: var(--border-width);
     height: var(--border-width);
-    overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
   }

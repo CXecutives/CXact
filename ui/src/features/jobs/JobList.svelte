@@ -440,12 +440,37 @@
 
   /* ------------------------------------------------------------- the head's line */
 
-  /** The list scrolled away from its top; its days began and ended above the top. */
+  /** The list scrolled away from its top. */
   let scrolled = $state(false);
-  let daysBegan = $state(false);
-  let daysEnded = $state(false);
-  /** A day's heading sticks at the top while the days pass it: no hairline then. */
-  const line = $derived(scrolled && !(dayed && daysBegan && !daysEnded));
+  /** The top edge of the list's scroll area lies in the days: a day's heading sticks there. */
+  let dayAtTop = $state(false);
+  /** No hairline while a day's heading sticks at the top. */
+  const line = $derived(scrolled && !(dayed && dayAtTop));
+
+  /**
+   * `use:topLine` on the days: whether they reach over the top edge of the list's scroll area
+   * (an IntersectionObserver whose root is that edge alone; no scroll listener, no layout
+   * reads while scrolling). It starts once the frame that shows them has been drawn.
+   */
+  function topLine(node: HTMLElement): { destroy: () => void } {
+    let observer: IntersectionObserver | null = null;
+    const frame = requestAnimationFrame(() => {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries.at(-1);
+          if (entry !== undefined) dayAtTop = entry.isIntersecting;
+        },
+        { root: list?.parentElement ?? null, rootMargin: '0% 0% -100% 0%' },
+      );
+      observer.observe(node);
+    });
+    return {
+      destroy() {
+        cancelAnimationFrame(frame);
+        observer?.disconnect();
+      },
+    };
+  }
   $effect(() => {
     online?.(line);
   });
@@ -621,8 +646,7 @@
     <div class="groups" bind:this={groups}>
       <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
-        <span class="mark" use:inView={(at) => (daysBegan = at === 'above')}></span>
-        <div class="rows" data-testid="job-rows">
+        <div class="rows" data-testid="job-rows" use:topLine>
           {#each days as day (day.id)}
             <DayGroup
               label={day.at === null ? null : formatDayHeading(day.at, clock.now)}
@@ -634,7 +658,6 @@
             />
           {/each}
         </div>
-        <span class="mark" use:inView={(at) => (daysEnded = at === 'above')}></span>
         {#if unscored.length > 0}
           <ListDivider
             label={t.list.unscored}
@@ -699,9 +722,9 @@
 <Dialog
   open={purging !== null}
   variant="danger"
-  heading={t.actions.purgeHeading}
-  text={t.actions.purgeNamed(purgeTitle)}
-  confirmLabel={t.actions.purgeConfirm}
+  heading={t.reader.purgeHeading}
+  text={t.reader.purgeText(purgeTitle)}
+  confirmLabel={t.reader.purgeConfirm}
   busy={purgeBusy}
   error={purgeError}
   testid="dialog-purge"
@@ -720,7 +743,7 @@
     padding-bottom: var(--list-rows-end);
   }
 
-  /* Watched marks: the top of the list, the start and the end of its days. */
+  /* Watched: once it has scrolled away, the head may draw its line. */
   .mark {
     display: block;
     flex: none;

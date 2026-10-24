@@ -179,6 +179,7 @@ test.describe('tools', () => {
       // None at rest: only the row under the pointer has them.
       await page.mouse.move(0, 0);
       await expect(list(page).getByTestId('row-tools')).toHaveCount(0);
+      await animationsDone(page);
       const title = (await row(page, key).locator('.title').boundingBox())!;
       await pointAt(page, key);
       await expect(job(page, key).getByTestId('row-tools')).toBeVisible();

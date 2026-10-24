@@ -138,7 +138,7 @@ test.describe('header', () => {
     await open(page, WIN);
     // Aktuell: the fetch at the end of the tabs' row, the search before the funnel under it;
     // no sort button (the order is the funnel's first group).
-    await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.searchNow);
+    await expect(page.getByTestId('fetch')).toHaveAccessibleName(T.toolbar.searchNow);
     expect(await leftOf(page, 'places', 'fetch')).toBe(true);
     expect(await leftOf(page, 'search', 'filter')).toBe(true);
     await expect(page.getByTestId('sort')).toHaveCount(0);
@@ -171,7 +171,7 @@ test.describe('header', () => {
       await page.evaluate(() => (window.__harness.holdAfter = 3));
       await fetch.click();
       const cancel = page.getByTestId('cancel-run');
-      await expect(cancel).toHaveText(T.toolbar.cancel);
+      await expect(cancel).toHaveAccessibleName(T.toolbar.cancel);
       const after = (await cancel.boundingBox())!;
       expect(Math.round(after.width)).toBe(Math.round(before.width));
       expect(Math.round(after.x + after.width)).toBe(Math.round(before.x + before.width));
@@ -186,7 +186,7 @@ test.describe('header', () => {
   }) => {
     await open(page, `${WIN}&tick=15`);
     const fetch = page.getByTestId('fetch');
-    await expect(fetch).toHaveText(T.toolbar.searchNow);
+    await expect(fetch).toHaveAccessibleName(T.toolbar.searchNow);
     expect(T.toolbar.searchNow).toBe('Jobs suchen');
     // No menu of ways beside it.
     await expect(page.getByTestId('fetch-ways')).toHaveCount(0);
@@ -406,8 +406,8 @@ test.describe('filter', () => {
     expect(portals).toEqual(PORTALS.map((portal) => `menu-item-portal-${portal}`));
     expect(portals).toContain('menu-item-portal-hays');
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
-    await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
-    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'false');
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     // The whole menu opens below the funnel and stays inside the window; with every group
     // (and more sources with jobs) it scrolls where the window is too low (2026-10-01).
@@ -1182,7 +1182,7 @@ test.describe('one list', () => {
     const notice = page.getByTestId('no-profile');
     await expect(notice).toContainText(T.list.noProfile);
     await expect(notice).toContainText(T.list.noProfileText);
-    await expect(page.getByTestId('place-reader')).toContainText(T.place.pickJob);
+    await expect(page.getByTestId('place-reader')).toContainText(T.reader.pickJob);
     expect((await calls(page, 'list_jobs'))[0]?.[1]).toMatchObject({
       query: { sort: 'newest' },
     });
@@ -1324,7 +1324,8 @@ test.describe('days', () => {
   test('a heading sticks while its rows pass; the head draws its line only where none sticks', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 520 });
+    await page.setViewportSize({ width: 1360, height: 420 });
+    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
     await open(page, WIN);
     const scroller = page.getByTestId('list-scroll');
     const top = (await scroller.boundingBox())!.y;
@@ -1604,7 +1605,7 @@ test.describe('moves and undo', () => {
     }
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await openPlace(page, 'trash');
-    await expect(page.getByTestId('place-reader')).toContainText(T.place.pickJob);
+    await expect(page.getByTestId('place-reader')).toContainText(T.reader.pickJob);
     // No "Papierkorb leeren": deleting for good goes job by job.
     await expect(page.getByTestId('empty-trash')).toHaveCount(0);
     await viaMenu(page, 'restore', 'freelancermap-2802');
@@ -1615,9 +1616,9 @@ test.describe('moves and undo', () => {
     const title = await row(page, 'freelancermap-2803').locator('.title').innerText();
     await viaMenu(page, 'purge', 'freelancermap-2803');
     const dialog = page.getByTestId('dialog-purge');
-    await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading);
-    await expect(dialog).toContainText(T.actions.purgeNamed(title));
-    await dialog.getByRole('button', { name: T.actions.purgeConfirm, exact: true }).click();
+    await expect(dialog.getByRole('heading')).toHaveText(T.reader.purgeHeading);
+    await expect(dialog).toContainText(T.reader.purgeText(title));
+    await dialog.getByRole('button', { name: T.reader.purgeConfirm, exact: true }).click();
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
     await expect(dialog).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.deleted);
@@ -1637,7 +1638,7 @@ test.describe('moves and undo', () => {
       await viaMenu(page, 'purge', key);
       await page
         .getByTestId('dialog-purge')
-        .getByRole('button', { name: T.actions.purgeConfirm, exact: true })
+        .getByRole('button', { name: T.reader.purgeConfirm, exact: true })
         .click();
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
@@ -1977,10 +1978,11 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   page,
 }) => {
   await open(page, WIN);
-  // The splitter's hit strip lies beside the list, never over its scrollbar.
+  // The splitter's hit strip is centred on the list's border (round 10, Splitter).
   const hit = (await page.getByTestId('list-splitter').locator('.hit').boundingBox())!;
   const scroll = (await page.getByTestId('list-scroll').boundingBox())!;
-  expect(hit.x).toBeGreaterThanOrEqual(scroll.x + scroll.width);
+  const border = scroll.x + scroll.width + 0.5;
+  expect(Math.abs(hit.x + hit.width / 2 - border)).toBeLessThanOrEqual(1);
   // The column (as its handle says it) never gets narrower while the window grows, across
   // the rail too.
   const listWidth = async (): Promise<number> => {

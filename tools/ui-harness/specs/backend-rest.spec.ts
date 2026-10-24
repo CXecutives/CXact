@@ -4,6 +4,7 @@
 import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
 import { expect, open, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -67,14 +68,16 @@ for (const [place, tab] of [
   ['archive', 'place-archive'],
   ['trash', 'place-trash'],
 ] as const) {
-  test(`the excluded jobs of the ${place} say their number before every page is there`, async ({
+  test(`the excluded jobs of the ${place} have their folded section before every page is there`, async ({
     page,
   }) => {
     await movedAtStart(page, excludedAndTen(), place);
     await open(page, `${WIN}&scenario=many`);
     await page.getByTestId(tab).click();
     const divider = page.getByTestId('excluded-divider');
-    await expect(divider.locator('.count')).toHaveText('500');
+    await expect(divider).toHaveText(T.list.excluded);
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await divider.click();
+    await expect(page.getByTestId('excluded-rows')).toBeVisible();
   });
 }

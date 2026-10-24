@@ -1711,7 +1711,7 @@ fn tooltips_only_where_something_is_missing() {
 /// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    const ROLES: [(&str, &[&str]); 10] = [
+    const ROLES: [(&str, &[&str]); 9] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // A switch that is on, the check of a chosen row, and a chosen checkbox (the

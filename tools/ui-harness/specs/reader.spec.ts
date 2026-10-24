@@ -300,7 +300,7 @@ test.describe('the actions', () => {
     // The moves of Aktuell beside the x; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
-    expect(tools.labels).toEqual(['Archivieren', 'Löschen']);
+    expect(tools.labels).toEqual([T.actions.archive, T.actions.trash]);
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
     const close = stage(page).getByTestId('reader-close');
     for (const id of ['reader-archive', 'reader-trash']) {
@@ -443,7 +443,9 @@ test.describe('the actions', () => {
     }
     await openPlace(page, 'trash');
     await openJob(page, 'freelancermap-2803');
-    const next = await row(page, 'freelancermap-2804').locator('.title').innerText();
+    const keys = await listed(page);
+    const below = keys[keys.indexOf('freelancermap-2803') + 1]!;
+    const next = await row(page, below).locator('.title').innerText();
     await slowDetails(page, 1500);
     await choose(page, 'restore');
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);

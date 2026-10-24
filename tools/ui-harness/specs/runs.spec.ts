@@ -21,7 +21,7 @@ async function emit(page: Page, ...events: unknown[]): Promise<void> {
   }, events);
 }
 
-test('a rescore the app starts shows as a rescore: no run line, the fetch waits', async ({
+test('a rescore the app starts shows as a rescore: its strip and Abbrechen, no fetch', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=15`);
@@ -33,16 +33,15 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
     window.__harness.holdAfter = 2;
     window.__harness.appRun('rescore');
   });
+  // Decision 21: the strip says the jobs are scored anew, Abbrechen in the fetch's place.
   const fetch = page.getByTestId('fetch');
-  await expect(fetch).toHaveAttribute('aria-disabled', 'true');
-  await expect(page.getByTestId('cancel-run')).toHaveCount(0);
-  await expect(page.getByTestId('run-line')).toHaveCount(0);
-  await page.mouse.move(0, 0);
-  await fetch.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Die Jobs werden gerade neu bewertet.');
+  await expect(page.getByTestId('run-step')).toHaveText(T.run.line.rescore);
+  await expect(page.getByTestId('cancel-run')).toBeVisible();
+  await expect(fetch).toHaveCount(0);
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-  // Afterwards nothing speaks of it, and Alert-Mails lesen is back.
+  // Afterwards nothing speaks of it, and Jobs suchen is back.
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   expect(await calls(page, 'start_run')).toHaveLength(1);
 });
@@ -254,21 +253,18 @@ test('a page that fails while scrolling says so and loads on retry', async ({ pa
     .toBeGreaterThan(mounted);
 });
 
-test('the excluded section names its count, every excluded row of the list', async ({ page }) => {
+test('the excluded section holds every excluded row of the list, its label without a count', async ({
+  page,
+}) => {
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
-  await expect(page.getByTestId('excluded-divider')).toHaveText(/^Ausgeschlossen\s*\d+\s*$/);
-  // The list arrives from the backend and builds a few rows per frame: then the divider
-  // names every excluded row of it.
-  const divider = page.getByTestId('excluded-divider');
+  await expect(page.getByTestId('excluded-divider')).toHaveText(T.list.excluded);
+  // The list arrives from the backend and builds a few rows per frame: then the section
+  // holds every excluded row of it.
   const excluded = page.getByTestId('excluded-rows').locator('[data-testid^="job-row-"]');
-  const named = async (): Promise<boolean> => {
-    const count = await excluded.count();
-    const text = (await divider.locator('.count').innerText()).trim();
-    return count > 0 && text === String(count);
-  };
-  await expect.poll(named).toBe(true);
+  const { excluded: out } = await stubList(page);
+  await expect(excluded).toHaveCount(out.length);
 });
 
 test('Einstellungen shows the portals in the order of the UI', async ({ page }) => {
