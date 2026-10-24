@@ -43,7 +43,7 @@
     height: var(--icon-xs);
     margin-block: calc((var(--leading-sm) - var(--icon-xs)) / 2);
     color: var(--icon-subtle);
-    transition: color var(--dur-fast) var(--ease-standard);
+    transition: color var(--dur-base) var(--ease-standard);
   }
 
   .info::before {

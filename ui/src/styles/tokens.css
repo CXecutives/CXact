@@ -1006,8 +1006,7 @@
   --dur-hover: 80ms;
   --dur-fast: 100ms;
   --dur-base: 150ms;
-  /* A fade beside a move: a glide's highlight appearing or hiding, a checkbox's fill, a toast
-     leaving. */
+  /* A fade beside a move: a glide's highlight appearing or hiding, a checkbox's fill. */
   --dur-fade: 140ms;
   --dur-slow: 180ms;
   /* The ring's fill and its count. */

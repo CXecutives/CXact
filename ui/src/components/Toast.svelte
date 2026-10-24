@@ -137,7 +137,7 @@
     gap: var(--space-8);
     pointer-events: none;
     transform: translateY(calc(-1 * var(--toast-lift)));
-    transition: transform var(--dur-base) var(--ease-out);
+    transition: transform var(--dur-slow) var(--ease-out);
   }
 
   /* As wide as its words, between the two widths (and never wider than the window). */

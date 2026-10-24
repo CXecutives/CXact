@@ -428,11 +428,13 @@
     border-radius: var(--radius-control);
     background-color: var(--surface);
     cursor: text;
-    transition: border-color var(--dur-fast) var(--ease-standard);
+    transition: border-color var(--dur-base) var(--ease-standard);
   }
 
+  /* Like every field: hover-in 80 ms, hover-out 150 ms, focus 100 ms (TextField). */
   .entry:hover {
     border-color: var(--field-edge-hover);
+    transition-duration: var(--dur-hover);
   }
 
   .invalid {
@@ -443,6 +445,7 @@
   /* Focus last: only the navy edge, whatever the field showed (hover never takes it back). */
   .entry:focus-within {
     border-color: var(--border-focus);
+    transition-duration: var(--dur-fast);
   }
 
   .chip {

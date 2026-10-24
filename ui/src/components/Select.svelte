@@ -195,7 +195,7 @@
     display: inline-flex;
     flex: none;
     color: var(--icon-subtle);
-    transition: transform var(--dur-base) var(--ease-out);
+    transition: transform var(--dur-slow) var(--ease-out);
   }
 
   /* A state, not a nudge: the half turn keeps its angle under reduced motion. */

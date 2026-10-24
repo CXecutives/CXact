@@ -64,13 +64,13 @@
     flex: none;
     color: var(--icon-subtle);
     transition:
-      transform var(--dur-base) var(--ease-out),
+      transform var(--dur-slow) var(--ease-out),
       color var(--dur-base) var(--ease-standard);
   }
 
   .divider:hover .chevron {
     color: var(--label-hover);
-    transition-duration: var(--dur-base), var(--dur-hover);
+    transition-duration: var(--dur-slow), var(--dur-hover);
   }
 
   .turned {
