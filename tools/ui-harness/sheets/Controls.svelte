@@ -465,6 +465,7 @@
 
 <style>
   .states {
+    container-type: inline-size;
     position: fixed;
     z-index: var(--z-overlay);
     inset: 0;
@@ -530,5 +531,29 @@
 
   .info {
     font: var(--type-field-label);
+  }
+
+  /* Too narrow for six states side by side (a suggestion chip is 170 wide): each control's
+     name on a line of its own, its states wrap under it in their order, without the empty
+     cells and the column heads. */
+  @container (width < 1240px) {
+    .sheet {
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+      align-items: start;
+    }
+
+    .sheet > :empty,
+    .head {
+      display: none;
+    }
+
+    .name {
+      grid-column: 1 / -1;
+      margin-top: var(--space-8);
+    }
+
+    .wide-cell {
+      grid-column: 1 / -1;
+    }
   }
 </style>
