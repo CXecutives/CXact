@@ -452,4 +452,11 @@
       padding-bottom: var(--space-32);
     }
   }
+
+  /* A narrow window: the sides of the pages (Page). */
+  @media (width < 560px) {
+    .column {
+      padding-inline: var(--page-side-narrow);
+    }
+  }
 </style>
