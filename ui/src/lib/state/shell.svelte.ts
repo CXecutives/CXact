@@ -83,9 +83,6 @@ class Shell {
     keep(READER, open);
   }
 
-  /** The setup shows its picture beside the step. */
-  setupPicture = $state(false);
-
   /** The setup stands in place of the views ("Zu den Jobs" ends it). */
   get firstRun(): boolean {
     return app.state?.firstRun ?? false;

@@ -1384,78 +1384,49 @@ export const de = {
     dryRun: 'Probelauf, es werden keine Daten verändert.',
   },
 
-  /** The setup (features/first-run/steps.ts): each step's heading, its one sentence where it
-   *  has one, and its buttons. The Postfach's heading is the dialog's (settings.connectHeading). */
+  /** The setup (features/first-run/steps.ts): each step's heading and lead, and its words. */
   firstRun: {
-    /** The first step, Willkommen with the two ways to the profile. */
+    /** Willkommen: what CXact does, in three steps. */
     welcome: 'Willkommen bei CXact',
     welcomeText:
-      'CXact sucht Projekt- und Interim-Jobs für dich und bewertet jeden nach deinem Profil.',
-    next: 'Weiter',
+      'CXact findet Projekt- und Interim-Jobs für dich und zeigt dir, wie gut jeder zu dir passt.',
+    intro: [
+      { title: 'Du legst dein Profil an', text: 'Aus deinem Lebenslauf oder selbst.' },
+      { title: 'CXact sucht Jobs', text: 'Auf den Jobportalen und in deinen Alert-Mails.' },
+      {
+        title: 'Jeder Job bekommt eine Bewertung',
+        text: 'Von 0 bis 100, so siehst du sofort, was passt.',
+      },
+    ],
+    start: 'Loslegen',
+    /** The two ways to the profile (NewProfileWays). */
+    way: 'Profil anlegen',
+    wayText: 'CXact vergleicht jeden Job mit deinem Profil. Wie möchtest du es anlegen?',
+    /** The CV's upload: the drop zone, the formats it reads and who reads it. */
     upload: 'Lebenslauf hochladen',
+    uploadText: 'CXact füllt dein Profil daraus aus. Du prüfst es danach.',
+    drop: 'Datei hierher ziehen oder auswählen',
+    formats: 'PDF, Word oder Foto',
+    ai: 'Wird von einer KI ausgewertet.',
     reading: 'Lebenslauf wird ausgewertet',
-    /** The whole profile: filled by the AI to check, or empty to fill in. */
-    review: 'Profil prüfen',
-    self: 'Profil ausfüllen',
-    later: 'Du kannst alles später im Profil ändern.',
-    /** Under "Profil prüfen" after the CV: what only the user knows. */
-    reviewText:
-      'Prüfe die Angaben aus deinem Lebenslauf und ergänze Vertragsart, Tagessatz und Länder.',
-    /** The dots of the foot, in words. */
-    position: (at: number, of: number) => `Schritt ${at} von ${of}`,
-    /** What a mailbox brings: the portals of alert mails by name, in the app's order. */
-    alertsText: (portals: readonly Portal[]) =>
-      `CXact liest die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} aus deinem Postfach.`,
-    /** Connected: the address the portals' alerts must go to, and their rows. */
-    connected: 'Postfach verbunden',
-    alertsDone: 'Leg bei jedem Portal einen Alert für diese Adresse an.',
+    readingText: 'Gleich siehst du dein Profil.',
+    /** The whole profile: as the CV filled it, or empty to fill in. */
+    profile: 'Dein Profil',
+    profileCv: 'Aus deinem Lebenslauf ausgefüllt. Prüfe es und ergänze, was nur du weißt.',
+    profileSelf: 'Trag ein, was du suchst und was du mitbringst.',
+    next: 'Weiter',
+    /** The Postfach, optional: what it brings, the portals of alert mails by name. */
+    mailbox: 'Postfach verbinden',
+    optional: 'Optional',
+    mailboxText: (portals: readonly Portal[]) =>
+      `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => portalName[p]))}.`,
     skip: 'Überspringen',
+    connect: 'Verbinden',
     /** Fertig: everything with a mailbox, else the profile. */
     done: 'Alles eingerichtet',
-    /** The summary of Fertig: what is set up, honestly. */
-    summaryProfile: 'Profil eingerichtet',
-    summaryMailbox: 'Postfach verbunden',
-    summaryMailboxLater: 'Postfach später in den Einstellungen verbinden',
+    doneProfile: 'Profil eingerichtet',
+    doneText: 'Mit „Jobs suchen“ findest du jederzeit neue Jobs.',
     toJobs: 'Zu den Jobs',
-    /** The picture of the app beside the steps (StepPicture): example jobs, a profile as the
-     *  CV fills it, an alert mail and what it brings. Shown, never read (aria-hidden). */
-    picture: {
-      jobs: [
-        {
-          title: 'Interim CFO',
-          company: 'Hanseatic Holding GmbH',
-          place: 'Hamburg',
-          pay: '1.300 €/Tag',
-        },
-        {
-          title: 'Head of Controlling',
-          company: 'Nordlicht Energie AG',
-          place: 'Bremen',
-          pay: '1.150 €/Tag',
-        },
-        {
-          title: 'Projektleitung Konsolidierung',
-          company: 'Datenwerk Süd GmbH',
-          place: 'München',
-          pay: '',
-        },
-        { title: 'Kaufmännische Leitung', company: 'Werft 7 GmbH', place: 'Kiel', pay: '' },
-      ],
-      roles: ['Interim CFO', 'Head of Finance'],
-      competences: ['Controlling', 'IFRS', 'Konsolidierung', 'Restrukturierung', 'SAP S/4HANA'],
-      languages: ['Deutsch Muttersprache', 'Englisch C1'],
-      mailSubject: '3 neue Projekte für dich',
-      mailFrom: 'freelancermap',
-      mailJobs: [
-        {
-          title: 'Interim Finance Director',
-          company: 'Pharmawerk AG',
-          place: 'Frankfurt',
-          pay: '',
-        },
-        { title: 'Controller IFRS', company: 'Nordbank AG', place: 'Hamburg', pay: '1.000 €/Tag' },
-      ],
-    },
   },
 
   shell: {

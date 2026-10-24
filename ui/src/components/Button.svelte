@@ -149,7 +149,9 @@
       {/if}
       {#if !iconOnly}<span class="label">{label}</span>{/if}
       {#if trailing}
-        <span class="trailing" aria-hidden="true"><Icon name={trailing} size="sm" /></span>
+        <span class="trailing" data-icon={trailing} aria-hidden="true"
+          ><Icon name={trailing} size="sm" /></span
+        >
       {/if}
     </span>
     {#each others as other, index (index)}
@@ -218,7 +220,8 @@
     margin-right: calc(-1 * var(--space-4));
   }
 
-  .glyph {
+  .glyph,
+  .trailing {
     position: relative;
     display: inline-flex;
     transition: transform var(--dur-base) var(--ease-out);
@@ -229,7 +232,7 @@
     transform: translateX(calc(-1 * var(--move-sm)));
   }
 
-  .btn:not([aria-disabled='true'], .loading):hover .glyph[data-icon='next'] {
+  .btn:not([aria-disabled='true'], .loading):hover :is(.glyph, .trailing)[data-icon='next'] {
     transform: translateX(var(--move-sm));
   }
 

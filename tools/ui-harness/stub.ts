@@ -346,6 +346,8 @@ const CV_FAILURE: Readonly<Record<string, CvFailure>> = {
 };
 /** The day the CV import works again while its tries are used up. */
 const CV_UNTIL = '2026-09-25';
+/** Stops the CV evaluation under way (`cancel_run`). */
+let cvReading: (() => void) | null = null;
 /** What a drop of files on the window left for the CV import (the window keeps it). */
 let droppedFiles: string[] | null = null;
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
@@ -780,7 +782,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.lastRun = null;
   },
   // The setup right after the CV: the profile it filled (no wished role, no country, no
-  // language), the step "Fast fertig".
+  // language), the step "Dein Profil".
   'setup-cv': () => {
     jobs = [];
     state.firstRun = true;
@@ -1915,6 +1917,7 @@ const handlers: Handlers = {
   },
   cancel_run: () => {
     mailboxCheck?.stop();
+    cvReading?.();
     cancelRun();
     return null;
   },
@@ -2015,8 +2018,16 @@ const handlers: Handlers = {
     droppedFiles = null;
     if (dropped && (files === null || files.length === 0)) throw fail('notFound', { what: 'file' });
     const cv = params.get('cv');
-    await new Promise((resolve) => setTimeout(resolve, cv === 'slow' ? 20_000 : CV_WAIT));
-    if (cv === 'none') return null;
+    // `cancel_run` stops it: the import answers with nothing, like core.
+    const cancelled = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), cv === 'slow' ? 20_000 : CV_WAIT);
+      cvReading = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+    });
+    cvReading = null;
+    if (cancelled || cv === 'none') return null;
     const failure = cv === null || cv === 'slow' ? null : (CV_FAILURE[cv] ?? null);
     if (failure === 'offline') throw fail('offline');
     if (failure === 'limit') state.cvUntil = CV_UNTIL;
