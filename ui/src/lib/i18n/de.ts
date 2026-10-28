@@ -1432,7 +1432,6 @@ export const de = {
       `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
-    openPortal: 'Im Browser öffnen',
     /** A portal that is on sent no alert mail for a week or longer (its alert may have run
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,

@@ -1,6 +1,5 @@
 <!--
-  The mailbox's row in Einstellungen > Postfach (the round 10 draft): the mail on its tile,
-  the connected address (text to copy) with its state under it, "Ändern" and "Entfernen"
+  The mailbox's row in Einstellungen > Postfach (the round 10 draft): the connected address (text to copy) with its state under it, "Ändern" and "Entfernen"
   (plain outlined buttons; the dialog of Entfernen carries the danger), or without a mailbox
   "Kein Postfach verbunden", what one brings, and "Verbinden". Ändern and Verbinden unfold
   the form under the row (no dialog) and hide the row's buttons meanwhile: the provider and
@@ -21,7 +20,6 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import { t } from '$lib/i18n/t';
@@ -117,8 +115,6 @@
   }
 </script>
 
-{#snippet tile()}<IconTile icon="alertMail" size="sm" />{/snippet}
-
 {#snippet opener(testid: string, icon: 'edit' | 'add', label: string)}
   <span class="opener" bind:this={opening}>
     <Button
@@ -151,7 +147,6 @@
   <SettingRow
     label={cfg.mailbox.user}
     copyLabel
-    lead={tile}
     hint={mailFailure === null
       ? t.settings.connected
       : mailFailure.kind === 'mailAuth'
@@ -177,12 +172,7 @@
     {/if}
   </SettingRow>
 {:else}
-  <SettingRow
-    label={t.settings.notConnected}
-    hint={t.settings.notConnectedHint}
-    lead={tile}
-    testid="mailbox"
-  >
+  <SettingRow label={t.settings.notConnected} hint={t.settings.notConnectedHint} testid="mailbox">
     {#if !editing}{@render opener('mailbox-connect', 'add', t.settings.connect)}{/if}
   </SettingRow>
 {/if}

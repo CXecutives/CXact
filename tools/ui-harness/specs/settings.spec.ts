@@ -307,10 +307,10 @@ test('portals: two groups in the order of the UI, each portal with its state and
     else await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
     await expect(row).not.toContainText('Aufrufen');
-    // The browser's glyph only where "Alert anlegen" does not open the portal already.
-    await expect(row.getByTestId(`open-portal-${portal}`)).toHaveCount(
-      ALERT_PORTALS.includes(portal) ? 0 : 1,
-    );
+    // No tile and no glyph that only repeats the name: the name, its line, its calls, the
+    // switch.
+    await expect(row.locator('.tile')).toHaveCount(0);
+    if (!ALERT_PORTALS.includes(portal)) await expect(row.getByRole('button')).toHaveCount(0);
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portalName[portal]);
   }
   // Only freelance.de offers a sign-in; no "Details holen".
@@ -328,8 +328,6 @@ test('portals: two groups in the order of the UI, each portal with its state and
   }
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  await page.getByTestId('open-portal-hays').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'hays' } });
 });
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);

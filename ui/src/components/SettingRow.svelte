@@ -1,19 +1,19 @@
 <!--
   The one row of a list in a page's box (Einstellungen: a portal, the mailbox, the profile's
-  folder, the reset; the setup's Alert-Mails; the round 10 draft): 10 20 inside and at least 54
-  high, its tile (`lead`, 32) 12 from its name (14/540 ink) and the one line under it (13
-  subtle), then its buttons (`children`: outlined, each with its glyph, 8 apart) and what
-  always ends the row (`end`: a portal's icon link and its switch, the switch last). The
-  tile, the buttons and the switch are centred on the name and its line, and lines that
-  unfold under the text (`notes`: a portal's problem) move nothing beside it. Between rows a
-  hairline that starts at the text (64 in), the only lines of a box. No wash under the
-  pointer: a row is not a control (CLAUDE.md).
+  folder, the reset; the round 10 draft): 12 20 inside and 62 high whether or not a line
+  stands under its name (12 + 20 + 18 + 12, so a list keeps one rhythm), its name (14/540
+  ink) and the one line under it (13 subtle), then its buttons (`children`: outlined, each with
+  its glyph, 8 apart) and what always ends the row (`end`: a portal's switch). No tile: the
+  name says it. The buttons and the switch are centred on the name and its line, and lines
+  that unfold under the text (`notes`: a portal's problem) move nothing beside it. Between
+  rows a hairline that starts at the text (20 in, like the Profil's), the only lines of a box.
+  No wash under the pointer: a row is not a control (CLAUDE.md).
   The line under the name is quiet; a value to copy (a path, in the line's font) selects like
   text (`copy`; it breaks only after a separator), and so does a name that is such a value
   (`copyLabel`, the address of the mailbox). A state is a status word (`status`, StatusText:
   a dot and the word in its colour; `dot` names the tone of the old callers' line). Its test
   id is the row's with `-hint`. A row that cannot be used now (`disabled`: an alert portal
-  without a mailbox) dims its tile and its name.
+  without a mailbox) dims its name.
   With `for` (the id of its switch) the row works like a row of the system settings of
   Windows 11 and macOS: only the switch switches (user decision). The name names the switch
   and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
@@ -29,8 +29,6 @@
   interface Props {
     label: string;
     hint?: string | null;
-    /** The tile before the text. */
-    lead: Snippet;
     /** The line is a state: a dot and the word in the state's colour. */
     status?: StatusTone | null;
     /** The tone of the line's state (as `status`, the connected or failed mailbox). */
@@ -39,13 +37,13 @@
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
     copyLabel?: boolean;
-    /** The row cannot be used now: its tile and name are dimmed. */
+    /** The row cannot be used now: its name is dimmed. */
     disabled?: boolean;
     /** The id of the switch this row labels (Toggle `id`). */
     for?: string | null;
     /** Lines under the text that come and go (a portal's problem). */
     notes?: Snippet | null;
-    /** What ends the row whatever the width (an icon link, the switch). */
+    /** What ends the row whatever the width (the switch). */
     end?: Snippet | null;
     testid?: string | null;
     /** The row's buttons. */
@@ -55,7 +53,6 @@
   let {
     label,
     hint = null,
-    lead,
     status = null,
     dot = null,
     copy = false,
@@ -77,14 +74,7 @@
   const parts = (path: string): string[] => path.match(/[^/\\]*[/\\]|[^/\\]+$/g) ?? [path];
 </script>
 
-<div
-  class="row"
-  class:lined={hint !== null}
-  class:disabled
-  data-setting-row
-  data-testid={testid ?? undefined}
->
-  <span class="lead">{@render lead()}</span>
+<div class="row" class:disabled data-setting-row data-testid={testid ?? undefined}>
   <div class="text">
     <span
       class="label"
@@ -112,9 +102,8 @@
 </div>
 
 <style>
-  /* The tile, the buttons and the switch stand on a line as high as the name and its line
-     (or the row's least height without a line), so lines unfolding under the text move
-     nothing beside it. */
+  /* The buttons and the switch stand on a line as high as the name and its line, so lines
+     unfolding under the text move nothing beside it. */
   .row {
     --line-box: calc(var(--setting-row-min) - 2 * var(--setting-row-pad-y));
 
@@ -126,13 +115,6 @@
     padding: var(--setting-row-pad-y) var(--card-pad-x);
   }
 
-  .lined {
-    --line-box: max(
-      calc(var(--setting-row-min) - 2 * var(--setting-row-pad-y)),
-      calc(var(--leading-md) + var(--leading-sm))
-    );
-  }
-
   /* The hairline between rows starts at the text. */
   :global([data-setting-row]) + .row::before {
     position: absolute;
@@ -142,13 +124,6 @@
     height: var(--border-width);
     background-color: var(--border);
     content: '';
-  }
-
-  .lead {
-    display: flex;
-    flex: none;
-    align-items: center;
-    height: var(--line-box);
   }
 
   .text {
@@ -170,7 +145,6 @@
     font: var(--type-sm);
   }
 
-  .disabled .lead,
   .disabled .label {
     opacity: var(--opacity-disabled);
   }

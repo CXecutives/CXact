@@ -1,8 +1,8 @@
 <!--
   One portal in Einstellungen > Jobportale (round 10 draft), a SettingRow like every row: its
-  tile (its two capitals on the track), its brand name (`portalName`), under it one line of its
-  state, then its calls and at the right its switch, always last (the name names the switch
-  but, like every text next to a switch, does not switch it).
+  brand name (`portalName`), under it one line of its state, then its calls and at the right
+  its switch, always last (the name names the switch but, like every text next to a switch,
+  does not switch it).
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
@@ -14,8 +14,7 @@
   in its own width (its face follows the portal's state, never the pointer): "Alert-Mail
   öffnen" when alert mails came without jobs, "Alert prüfen" when its
   alert went quiet, else "Alert anlegen" for a portal of alert mails (its page in the
-  browser); for the portals the app searches the portal in the browser (a quiet icon before
-  the switch). In a narrow box the calls go to a line of their own at the row's end.
+  browser). In a narrow box the calls go to a line of their own at the row's end.
   A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
   Postfach", has no calls, and its switch stands off and waits with its reason (the stored
   value stays; decision 26).
@@ -34,7 +33,6 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import type { IconName } from '$components/Icon.svelte';
-  import IconTile from '$components/IconTile.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import type { StatusTone } from '$components/StatusText.svelte';
   import Toggle from '$components/Toggle.svelte';
@@ -42,7 +40,6 @@
   import { errorText, healthAdvice } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
-  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import {
@@ -224,10 +221,6 @@
   }
 </script>
 
-{#snippet tile()}
-  <IconTile monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
-{/snippet}
-
 {#snippet notes()}
   {#if problem}
     <div class="fold" transition:unfold>
@@ -249,16 +242,6 @@
 {/snippet}
 
 {#snippet end()}
-  {#if portal.way !== 'alert'}
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="external"
-      label={t.settings.openPortal}
-      testid="open-portal-{portal.portal}"
-      onclick={() => open('home')}
-    />
-  {/if}
   <span class="switch">
     <Toggle
       {id}
@@ -278,7 +261,6 @@
   status={flag?.tone ?? null}
   disabled={idle}
   for={id}
-  lead={tile}
   {notes}
   {end}
   testid="portal-{portal.portal}"

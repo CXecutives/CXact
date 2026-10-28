@@ -19,7 +19,6 @@
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import IconTile from '$components/IconTile.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import StateBox from '$components/StateBox.svelte';
@@ -153,12 +152,10 @@
 
 {#snippet row(section: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    {#snippet tile()}<IconTile icon={item.tile} size="sm" />{/snippet}
     <SettingRow
       label={item.label(t, cfg)}
       hint={item.path?.(t, cfg) ?? item.hint?.(t, cfg) ?? null}
       copy={item.path !== undefined}
-      lead={tile}
       testid={item.id}
     >
       {#each item.actions as id (id)}

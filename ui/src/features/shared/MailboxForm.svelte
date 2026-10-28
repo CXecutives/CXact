@@ -203,9 +203,9 @@
     gap: var(--mail-form-gap) var(--space-20);
   }
 
-  /* Side by side once each half has room for the provider's list (Einstellungen, the setup's
-     card); one under the other in a narrow window. */
-  @container (width >= 400px) {
+  /* Side by side once each half has room for the provider's list and an address (210 each:
+     Einstellungen, the setup's card); one under the other in a narrow window. */
+  @container (width >= 440px) {
     .pair {
       grid-template-columns: 1fr 1fr;
     }
