@@ -2,8 +2,8 @@
   A state in a word (the line of a row in Einstellungen: Verbunden, Pausiert bis morgen, Abgelehnt):
   a 7 px dot in the state's exact colour, then the word in the same hue one step darker, so a
   yellow or a green word reads on white (decision 4, 2026-10-24). Three tones: success (green),
-  warning (yellow) and danger (red). The dot is the only dot of a page besides the run's
-  pulse; it says nothing a screen reader needs (the word says it).
+  warning (yellow) and danger (red). The dot is the only dot of a page; it says nothing a
+  screen reader needs (the word says it).
 -->
 <script lang="ts" module>
   export type StatusTone = 'success' | 'warning' | 'danger';

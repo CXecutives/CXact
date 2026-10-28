@@ -571,9 +571,8 @@
   /* The unread dot of a list row sits on the ring axis in the pane padding; the dot of a
      state (Verbunden) beside its words. */
   /* Round 10 (2026-10-24), the approved draft: */
-  /* the dot of a status word (Verbunden) and the pulse of a run */
+  /* the dot of a status word (Verbunden) */
   --dot-status: 7px;
-  --pulse-dot: 8px;
   /* a checkbox and its edge */
   --check-box: 16px;
   --check-edge: 1.5px;
@@ -805,14 +804,12 @@
   --spinner-line: 2px;
   /* A meter on the cream (the progress strip): a white track. */
   --meter-track-on-bg: hsl(var(--p-white) / 0.85);
-  /* The progress strip of a run: the cream ground with a hairline, 10 12 inside, the coral
-     pulse 8 apart from the step's words in navy, the meter 8 under them. */
+  /* The progress strip of a run: the cream ground without an edge, 10 12 inside, the step's
+     words in navy, the meter 8 under them. */
   --strip-surface: var(--bg);
-  --strip-edge: var(--border);
   --strip-pad-y: var(--space-10);
   --strip-pad-x: var(--space-12);
   --strip-text: hsl(var(--p-navy));
-  --pulse: hsl(var(--p-coral));
   /* The app's mark (the setup's welcome) and its shadow, which follows the plate's shape. */
   --app-mark: var(--tile-xl);
   --app-mark-shadow: drop-shadow(0 6px 8px hsl(var(--p-shade-dialog) / 0.24));
