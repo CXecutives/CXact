@@ -210,6 +210,13 @@ test('a failed evaluation comes back to the upload and says why above it', async
     await expect(page.getByTestId('upload-ai')).toHaveCount(0);
     await expect(page.getByTestId('cv-error').getByTestId('cv-self')).toHaveText(T.profile.byHand);
     await expect(back(page)).toBeVisible();
+    // In the card's narrow box the button stands under the words, so the title keeps its line.
+    const [title, button] = await Promise.all([
+      page.getByTestId('cv-error').locator('.title').boundingBox(),
+      page.getByTestId('cv-self').boundingBox(),
+    ]);
+    expect(title!.height).toBeLessThan(24);
+    expect(button!.y).toBeGreaterThan(title!.y + title!.height);
   }
   await page.getByTestId('cv-self').click();
   await expectStep(page, T.firstRun.profile);

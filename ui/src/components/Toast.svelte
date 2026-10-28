@@ -4,12 +4,13 @@
   as they fade in and go down as they fade out, at most three, the stack moving up as one
   leaves. Each kind's sign and each toast's time come from the tables of
   lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain toast stays 4 s, one with a
-  button 10 s. A toast is white with a hairline, 14 round and as wide as its words between
-  --toast-min and --toast-max: its sign (18, in the kind's colour; none for a plain one), its
-  sentence (500; two lines at most, then an ellipsis) and its one button (an undo of what the
-  user just did, or the way to what happened in another view: "Zeigen"). No close button
-  (decision 8, 2026-10-24): a toast goes on its own, and its time stops while the pointer is
-  on it. Every toast also waits while the window is in the back or a modal dialog is open.
+  button 10 s. A toast is white with a hairline, 14 round, one height with or without its
+  link (46) and as wide as its words between --toast-min and --toast-max: its sign (16 like
+  every control's glyph, in the kind's colour; none for a plain one), its sentence (500; two
+  lines at most, then an ellipsis) and its one link in navy like the app's other inline
+  actions (an undo of what the user just did, or the way to what happened in another view:
+  "Zeigen"). No close button (decision 8, 2026-10-24): a toast goes on its own, and its time
+  stops while the pointer is on it or the keyboard's focus is in it. Every toast also waits while the window is in the back or a modal dialog is open.
   The stack lies below a dialog's scrim: dimmed, and its undo cannot act behind the dialog.
   The check of a success draws itself once as the toast appears. A merged toast (two rows
   archived one after the other) cross-fades its sentence (100 ms) and starts its time again.
@@ -32,10 +33,24 @@
   let cameFrom: HTMLElement | null = null;
   /** The hold of the pointer on a toast: the time stops while it is there. */
   let pointer: (() => void) | null = null;
+  /** The hold of the keyboard's focus in the stack: the time stops while it is there. */
+  let focused: (() => void) | null = null;
 
   function focusIn(event: FocusEvent): void {
     const from = event.relatedTarget;
     if (from instanceof HTMLElement && stack !== null && !stack.contains(from)) cameFrom = from;
+    focused ??= toasts.hold();
+  }
+
+  function focusOut(event: FocusEvent): void {
+    const to = event.relatedTarget;
+    if (to instanceof Node && stack?.contains(to)) return;
+    unfocus();
+  }
+
+  function unfocus(): void {
+    focused?.();
+    focused = null;
   }
 
   /** Run what a toast's button does; a focus inside the stack goes back where it came from. */
@@ -59,9 +74,14 @@
     pointer = null;
   }
 
-  // The last toast under the pointer went: its hold goes with it.
+  // The last toast under the pointer went: its hold goes with it. A toast that held the focus
+  // and went (its link pressed) lets the time of the others run again.
   $effect(() => {
     if (toasts.items.length === 0) leave();
+    void toasts.items.length;
+    void tick().then(() => {
+      if (focused !== null && !(stack?.contains(document.activeElement) ?? false)) unfocus();
+    });
   });
 
   // The window in the back: every toast waits until it is in front again.
@@ -79,6 +99,7 @@
       stop();
       release?.();
       leave();
+      unfocus();
     };
   });
 </script>
@@ -92,6 +113,7 @@
   use:cssVars={{ 'toast-lift': px(toasts.lift) }}
   bind:this={stack}
   onfocusin={focusIn}
+  onfocusout={focusOut}
 >
   {#each toasts.items as toast (toast.id)}
     {@const look = TOAST_KINDS[toast.kind]}
@@ -107,12 +129,12 @@
       in:toastIn
       out:toastOut
     >
-      {#if look.icon !== null}<span class="icon"><Icon name={look.icon} size="nav" /></span>{/if}
+      {#if look.icon !== null}<span class="icon"><Icon name={look.icon} size="sm" /></span>{/if}
       {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span>{/key}
       {#if toast.action}
         <span class="action">
           <Button
-            variant="ghost"
+            variant="link"
             label={toast.action.label}
             testid="toast-action"
             onclick={() => act(() => toasts.act(toast.id))}
@@ -148,7 +170,7 @@
     width: max-content;
     min-width: min(var(--toast-min), calc(100vw - 2 * var(--toast-inset)));
     max-width: min(var(--toast-max), calc(100vw - 2 * var(--toast-inset)));
-    min-height: calc(var(--control-icon) + 2 * var(--toast-pad-y));
+    min-height: calc(var(--control-field) + 2 * (var(--toast-pad-y) + var(--border-width)));
     overflow: hidden;
     padding: var(--toast-pad-y) var(--toast-pad-y) var(--toast-pad-y) var(--toast-pad-start);
     border: var(--border-width) solid var(--border);
@@ -164,6 +186,11 @@
   .action {
     display: inline-flex;
     flex: none;
+  }
+
+  /* The link's words end as far in as the sign starts. */
+  .action {
+    margin-right: calc(var(--toast-pad-start) - var(--toast-pad-y));
   }
 
   /* Each kind in its status colour (the glyph comes from TOAST_KINDS). */

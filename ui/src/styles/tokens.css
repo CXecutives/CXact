@@ -767,7 +767,7 @@
   --empty-text-gap: var(--space-4);
   --empty-text-max: 300px;
   --empty-actions-gap: var(--space-16);
-  /* The state box (StateBox): the cream ground with a hairline, 12 12 12 16 inside, at least
+  /* The state box (StateBox): the cream ground with a hairline, 12 12 12 20 inside, at least
      56 high, its parts 14 apart; an excluded job's on the soft red. */
   --state-surface: var(--bg);
   --state-edge: var(--border);
@@ -777,8 +777,8 @@
   --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
   --state-gap: 14px;
-  /* A toast: 18 from the window's corner, 7 7 7 14 inside, its parts 10 apart, the words at
-     least as high as a quiet button. */
+  /* A toast: 18 from the window's corner, 7 7 7 14 inside (its link's words 14 from its end),
+     its parts 10 apart, as high with or without its link as with a button (46). */
   --toast-inset: 18px;
   --toast-pad-y: 7px;
   --toast-pad-start: 14px;
