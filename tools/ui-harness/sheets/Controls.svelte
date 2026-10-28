@@ -204,28 +204,21 @@
     <span class="wide-cell row" data-testid="states-size-to">
       {#if running}
         <Button
-          icon="cancel"
           label="Abbrechen"
-          sizeTo={[{ label: 'Jobs suchen', icon: 'search' }]}
+          sizeTo={['Jobs suchen']}
           testid="states-cancel"
           onclick={() => (running = false)}
         />
       {:else}
         <Button
           variant="primary"
-          icon="search"
           label="Jobs suchen"
-          sizeTo={[{ label: 'Abbrechen', icon: 'cancel' }]}
+          sizeTo={['Abbrechen']}
           testid="states-search"
           onclick={() => (running = true)}
         />
       {/if}
-      <Button
-        icon="cancel"
-        label="Abbrechen"
-        sizeTo={[{ label: 'Jobs suchen', icon: 'search' }]}
-        testid="states-cancel-still"
-      />
+      <Button label="Abbrechen" sizeTo={['Jobs suchen']} testid="states-cancel-still" />
       <Button
         variant="primary"
         label="Speichern"

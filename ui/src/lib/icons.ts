@@ -42,8 +42,6 @@ export const ICONS = {
   upload: 'upload',
   /** The score a job gets (the setup's welcome, Trotzdem bewerten). */
   gauge: 'gauge',
-  /** Stop a run (Abbrechen): the hollow square (design round 6). */
-  cancel: 'square',
 
   // Files and folders.
   /** A document the app reads: the profile file. */

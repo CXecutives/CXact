@@ -5,7 +5,9 @@
   right the reader (under the top bar's fade), or with nothing selected its empty state ("Kein
   Job gewählt"). No cards, no shadows. A place without jobs (or a list that did not load) has
   nothing to read: the list takes the whole width, without the reader, the handle and the
-  seam (decision 24). The handle
+  seam (decision 24). With no job anywhere, nothing searched or filtered and no run
+  (jobs.bare) the list has no head either: its empty state alone, in the middle, offers
+  "Jobs suchen"; a run brings the head back with its strip and Abbrechen. The handle
   between the columns resizes the list (kept) within limits that follow the window and the
   sidebar and never shrink while the window grows. Below 900 px one column: the list under
   its header, as at every width, or the reader, which the top bar's job view button and
@@ -80,7 +82,6 @@
       shell.listHidden = false;
     };
   });
-  const place = $derived(jobs.place);
   /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
    *  list that did not load): the list says why, the reader adds no second tile. */
   const placeEmpty = $derived(
@@ -88,11 +89,6 @@
   );
   /** The list scrolled beneath its header where no day's heading sticks: the hairline. */
   let line = $state(false);
-  /** A place without jobs, or a list that did not load: nothing to read beside it. */
-  const emptyPlace = $derived(
-    jobs.status === 'error' ||
-      (jobs.status === 'ready' && (jobs.overviewCounts ?? jobs.counts)[place] === 0),
-  );
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
@@ -110,7 +106,7 @@
   );
   /** The job view stands beside the list unless the user hid it (one column shows a job in
    *  place of the list). A job chosen in the list shows it again. */
-  const readerShown = $derived((shell.readerOpen || viewport.narrow) && !emptyPlace);
+  const readerShown = $derived((shell.readerOpen || viewport.narrow) && !jobs.emptyPlace);
   // The top bar continues the border between the list and the job view.
   $effect(() => {
     shell.listSeam = readerShown && !viewport.narrow && listWidth !== undefined ? listWidth : null;
@@ -186,9 +182,11 @@
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      <div class="head">
-        <ListHeader bind:this={header} {line} />
-      </div>
+      {#if !jobs.bare}
+        <div class="head">
+          <ListHeader bind:this={header} {line} />
+        </div>
+      {/if}
       <div class="scroll" data-testid="list-scroll">
         <JobList
           onresetfilter={() => void header?.resetFilter()}

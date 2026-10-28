@@ -337,6 +337,30 @@ class JobsStore {
     return isFiltered(this.filter);
   }
 
+  /** The list's place holds no job, or the list did not load: nothing to read beside it (no
+   *  job view, no button for it in the top bar). */
+  get emptyPlace(): boolean {
+    return (
+      this.status === 'error' ||
+      (this.status === 'ready' && (this.overviewCounts ?? this.counts)[this.place] === 0)
+    );
+  }
+
+  /** Aktuell, no job in any place, nothing searched or filtered and no run: the list has
+   *  nothing to head (JobsView hides its head, the empty state offers "Jobs suchen"). */
+  get bare(): boolean {
+    const counts = this.overviewCounts;
+    return (
+      counts !== null &&
+      this.status !== 'error' &&
+      this.place === 'inbox' &&
+      counts.inbox + counts.archive + counts.trash === 0 &&
+      this.search.trim() === '' &&
+      !this.filtered &&
+      !run.active
+    );
+  }
+
   /** A job passes the filter (the backend's rule, store::filter_condition). */
   readonly #passes = (job: JobView): boolean => passesFilter(job, this.filter);
 

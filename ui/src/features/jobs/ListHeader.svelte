@@ -5,14 +5,15 @@
   First row: the places as tabs (Aktuell, Archiv, Papierkorb, their names only, the one
   segmented look of the app; another place starts without the search, like a folder of a
   mail app) and at its right end the place's one action, which keeps one width whichever
-  word it shows (Button `sizeTo`): while a search or a rescore goes "Abbrechen" with the
-  hollow square, in every place; else in Aktuell "Jobs suchen" with the magnifier (the alert
-  mails, then the portals), the one primary of the Jobs view, with or without a mailbox,
+  word it shows (Button `sizeTo`), words only (owner, 2026-10-28: the search's magnifier
+  stands right under it): while a search or a rescore goes "Abbrechen", in every place; else
+  in Aktuell "Jobs suchen" (the alert mails, then the portals), the one primary of the Jobs
+  view, with or without a mailbox,
   locked while its way cannot run, saying why (without a usable profile what it lacks: "Ergänze
   erst Länder und Sprachen im Profil."); in the Archiv and the Papierkorb none. A narrow column
   puts the action under the tabs.
   Second row, also in a place that holds nothing (decision 24: nothing jumps when the first
-  jobs come): the search, whose placeholder names what it searches (its × clears it), and in
+  jobs come; with no job anywhere and no run JobsView shows no head at all): the search, whose placeholder names what it searches (its × clears it), and in
   Aktuell and the Archiv the funnel "Sortieren und filtern", a 30 px square, the one control
   of the order and the filter: its menu holds, under small headings, "Sortierung" (Nach
   Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter table (lib/state/filter.ts:
@@ -22,7 +23,7 @@
   on a press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable
   profile the order and the bands are off, saying why. The Papierkorb has no funnel and no
   filter (decision 25). While a filter is on, its parts stand as small chips under the row,
-  each with its × (the row unfolds and folds away, the list glides). Under them the run's
+  each with its × 10 under the search (the row unfolds and folds away, the list glides). Under them the run's
   strip (RunLine). Under it one sentence says when a job action of the list failed (a move,
   its undo); it goes with the next list or the next action that works. A list that did not
   load has nothing to search: the second row goes.
@@ -44,7 +45,7 @@
   import { menuState, openMenu } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
   import { funnelEntries } from './headerMenus';
-  import { profileGaps } from './profileGaps';
+  import { fetchBlocked } from './profileGaps';
   import RunLine from './RunLine.svelte';
 
   interface Props {
@@ -68,14 +69,12 @@
 
   /** A search or a rescore goes: "Abbrechen" in every place. */
   const cancellable = $derived(run.searching || (run.active && run.kind === 'rescore'));
-  /** Why "Jobs suchen" waits: a run, a profile that lacks something (named), nothing to
-   *  read. */
-  const fetchBlocked = $derived(
-    !run.active && !app.hasProfile ? profileGaps().reason : run.fetchBlocked,
-  );
-  /** The faces of the place action, each reserving the other's width. */
-  const SEARCH = { label: t.toolbar.searchNow, icon: 'search' } as const;
-  const CANCEL = { label: t.toolbar.cancel, icon: 'cancel' } as const;
+  /** Why "Jobs suchen" waits. */
+  const blocked = $derived(fetchBlocked());
+  /** The faces of the place action, each reserving the other's width; words only (the
+   *  search's magnifier stands right under it). */
+  const SEARCH = { label: t.toolbar.searchNow } as const;
+  const CANCEL = { label: t.toolbar.cancel } as const;
 
   /** The search (and the funnel) stand unless the list did not load. */
   const tools = $derived(jobs.status !== 'error');
@@ -167,7 +166,6 @@
           {#if cancellable}
             <Button
               variant="secondary"
-              icon={CANCEL.icon}
               label={CANCEL.label}
               sizeTo={[SEARCH]}
               loading={run.cancelling}
@@ -177,11 +175,10 @@
           {:else}
             <Button
               variant="primary"
-              icon={SEARCH.icon}
               label={SEARCH.label}
               sizeTo={[CANCEL]}
-              disabled={fetchBlocked !== null}
-              disabledReason={fetchBlocked}
+              disabled={blocked !== null}
+              disabledReason={blocked}
               testid="fetch"
               onclick={() => void run.start({ kind: 'fetch' })}
             />
@@ -293,11 +290,12 @@
   }
 
   /* The chosen parts of the filter, each a small button with its ×. */
+  /* 10 under the search, as the search under the tabs. */
   .chips {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-6);
-    padding-top: var(--space-8);
+    padding-top: var(--space-10);
   }
 
   .chip {
