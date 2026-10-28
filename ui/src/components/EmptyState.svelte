@@ -48,7 +48,7 @@
 </script>
 
 <div class="empty {placement}" data-testid={testid ?? undefined}>
-  <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'raised'} size="lg" />
+  <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'raised'} />
   {#if heading}<h3 class="title">{heading}</h3>{/if}
   {#if text}<p class="text" class:alone={!heading}>{text}</p>{/if}
   {#if action || secondary}

@@ -567,7 +567,6 @@
   --ring-md-stroke: 5px;
   --ring-md-digits: 17px;
   --border-width: 1px;
-  --tile-sm: 32px;
   --tile-md: 36px;
   --tile-lg: 48px;
   --tile-xl: 56px;
@@ -743,10 +742,10 @@
   --status-danger: hsl(var(--p-score-red));
   --status-danger-text: hsl(var(--p-word-red));
   --status: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
-  /* Tiles (IconTile): 8 round up to 36, 14 from 48; a monogram 12/650. */
+  /* Tiles: a glyph tile of 36 (Tile's way) 8 round, the 48 of IconTile and the drop zone's
+     disc 14; 56 is the setup head's slot. */
   --tile-radius-sm: var(--radius-md);
   --tile-radius-lg: var(--radius-card);
-  --tile-monogram: var(--weight-semibold) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --tile-accent: hsl(var(--p-navy));
   /* A way of the setup (Tile): 16 inside, its glyph tile 36 white with an edge, the title
      16/650 12 below it. The recommended way is coral: its fill, edge and glyph. */
@@ -927,9 +926,9 @@
   --setup-foot-pad: 18px;
   --setup-foot-end: var(--setup-pad-bottom);
   --setup-back-pull: calc(-1 * var(--ghost-inset));
-  /* The three steps of Willkommen: 16 apart, the 36 tile 14 before its words. */
-  --setup-intro-gap: var(--space-16);
-  --setup-intro-inner: 14px;
+  /* The job of Willkommen: its box 12 16 inside, its sentence 12 under it. */
+  --setup-example-pad: var(--space-12) var(--space-16);
+  --setup-example-gap: var(--space-12);
   /* The line about the AI under the drop zone. */
   --setup-ai-gap: 14px;
   /* The page of "Dein Profil": its title 22 under the bar, its lead 6 under the title, and

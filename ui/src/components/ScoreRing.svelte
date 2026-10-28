@@ -20,6 +20,9 @@
   Every ring without a score is one state and one look (not scored yet, being scored, not
   scorable, and off without a usable profile): the empty track with a subtle dash. Three
   digits fit the list's ring at its size.
+  `done` is the setup's Fertig: the whole ring (a score of 100) filling as it mounts, a check
+  in its colour drawing itself in the middle instead of the digits; it says nothing to a
+  screen reader and has no tooltip (the heading beside it says it).
 -->
 <script lang="ts" module>
   import type { Band, DetailState, JobMatch } from '$lib/ipc/types';
@@ -73,6 +76,8 @@
     /** An excluded job in the list: a light red track with the red ban in the middle, no
      *  number, as large as every other row's ring (design round 3). */
     ban?: boolean;
+    /** The setup's Fertig: a check instead of the digits, silent, no tooltip. */
+    done?: boolean;
     testid?: string | null;
   }
 
@@ -82,6 +87,7 @@
     animate = null,
     reveal = false,
     ban = false,
+    done = false,
     testid = null,
   }: Props = $props();
 
@@ -140,10 +146,11 @@
 <span
   class="ring {size} {ring.status} {step}"
   class:ban
-  role="img"
-  aria-label={label}
+  role={done ? undefined : 'img'}
+  aria-label={done ? undefined : label}
+  aria-hidden={done ? 'true' : undefined}
   data-testid={testid ?? undefined}
-  use:tooltip={{ text: label, hint }}
+  use:tooltip={done ? null : { text: label, hint }}
 >
   {@render face()}
 </span>
@@ -164,6 +171,8 @@
   <span class="center">
     {#if ban}
       <span class="ban"><Icon name="excluded" size={size === 'md' ? 'lg' : 'xs'} /></span>
+    {:else if done}
+      <span class="check"><Icon name="check" size="xl" /></span>
     {:else if valued}
       {count.value}
     {:else}
@@ -211,6 +220,17 @@
     stroke-linecap: round;
     transform: rotate(-90deg);
     transform-origin: center;
+  }
+
+  /* Fertig's check in the ring's colour, drawing itself once. */
+  .check {
+    display: inline-flex;
+    color: var(--ring-color);
+  }
+
+  .check :global(path) {
+    stroke-dasharray: var(--draw-length);
+    animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
   }
 
   /* The ban of an excluded row: red, in the light red track's middle. */

@@ -2,27 +2,29 @@
   The setup, a mode of the shell of its own (App.svelte: no sidebar, the top bar holds only
   the window buttons; every switch of the view is refused while it stands). One step at a
   time from the table of steps.ts (the round 10 draft): a card centred on the window's cream
-  (SetupCard), its head (the app's mark, a tile, the spinner or the green disc; the heading
+  (SetupCard), its head (the app's mark, a tile, the spinner or the full ring; the heading
   and the lead), the step's body and its foot (Zurück at the left, the step's buttons at the
   right); the profile is a whole page with its bar at the foot instead (ProfileStep). A step
   comes in sliding 8 px from the side it was reached from. Every step starts at its top with
   the focus on its heading. Enter is the primary while the step can go on; the mouse's back
   button is Zurück (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360.
 
-  The steps (docs/PLAN.md, Setup): Willkommen (what CXact does in three steps, Loslegen);
+  The steps (docs/PLAN.md, Setup): Willkommen (what CXact does, one job with its ring,
+  Loslegen);
   Profil anlegen (the two ways as tiles, a click goes on); Lebenslauf hochladen (the whole
   drop zone is one button and takes a dropped file, Upload.svelte; a failed evaluation comes
   back here and says why); Lebenslauf wird ausgewertet (the spinner and Abbrechen, which stops
   it); Dein Profil (the whole Profil form, Weiter); Postfach verbinden, optional (the mailbox
   form, Überspringen and Verbinden in the OS order; Zurück and Überspringen stop a Verbinden
-  that goes); Fertig ("Alles eingerichtet", or "Profil eingerichtet" without a mailbox, and
-  "Zu den Jobs", no search).
+  that goes); Fertig (the full ring, "Alles eingerichtet", or "Profil eingerichtet" without a
+  mailbox, and "Zu den Jobs", no search).
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import AppMark from '$components/AppMark.svelte';
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
+  import ScoreRing from '$components/ScoreRing.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
@@ -124,12 +126,12 @@
   {#if head?.kind === 'mark'}
     <AppMark />
   {:else if head?.kind === 'tile'}
-    <IconTile tone="accent" size="lg" icon={head.icon} />
+    <IconTile tone="accent" icon={head.icon} />
   {:else if head?.kind === 'spinner'}
     <span class="mark" data-testid="cv-reading"><Spinner size="xl" label={null} /></span>
   {:else if head?.kind === 'success'}
     <span class="mark" data-testid="first-success">
-      <IconTile tone="success" size="xl" round draws icon="check" />
+      <ScoreRing ring={{ status: 'scored', score: 100, band: 'high' }} size="md" reveal done />
     </span>
   {/if}
 {/snippet}

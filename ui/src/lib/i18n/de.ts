@@ -1467,18 +1467,13 @@ export const de = {
 
   /** The setup (features/first-run/steps.ts): each step's heading and lead, and its words. */
   firstRun: {
-    /** Willkommen: what CXact does, in three steps. */
+    /** Willkommen: what CXact does, one job as it shows it (its title; its band is the
+     *  ring's) and what its number means. */
     welcome: 'Willkommen bei CXact',
     welcomeText:
       'CXact findet Projekt- und Interim-Jobs für dich und zeigt dir, wie gut jeder zu dir passt.',
-    intro: [
-      { title: 'Du legst dein Profil an', text: 'Aus deinem Lebenslauf oder selbst.' },
-      { title: 'CXact sucht Jobs', text: 'Auf den Jobportalen und in deinen Alert-Mails.' },
-      {
-        title: 'Jeder Job bekommt eine Bewertung',
-        text: 'Von 0 bis 100, so siehst du sofort, was passt.',
-      },
-    ],
+    example: 'Interim CFO für Familienunternehmen',
+    exampleText: 'CXact misst jeden Job an deinem Profil, von 0 bis 100.',
     start: 'Loslegen',
     /** The two ways to the profile (NewProfileWays). */
     way: 'Profil anlegen',
