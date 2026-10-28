@@ -1217,10 +1217,14 @@ test.describe('the cards', () => {
     // A narrow window: one column.
     await page.setViewportSize({ width: 480, height: 360 });
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
-    const one = (await term(page, 'company').boundingBox())!;
-    const two = (await term(page, 'place').boundingBox())!;
-    expect(two.y).toBeGreaterThan(one.y + one.height - 1);
-    expect(Math.abs(two.x - one.x)).toBeLessThan(1);
+    // Once the window has settled (the sidebar folds away as it narrows).
+    await expect
+      .poll(async () => {
+        const one = (await term(page, 'company').boundingBox())!;
+        const two = (await term(page, 'place').boundingBox())!;
+        return two.y > one.y + one.height - 1 && Math.abs(two.x - one.x) < 1;
+      })
+      .toBe(true);
     const reqs = await why(page)
       .locator('li')
       .evaluateAll((all) => all.slice(0, 2).map((li) => li.getBoundingClientRect().left));
