@@ -54,19 +54,23 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
   }
 });
 
-test('Willkommen: the app mark, three steps and Loslegen; no dots on any step', async ({
+test('Willkommen: the app mark, one job with its ring and Loslegen; no dots on any step', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=first-run`);
   const step = page.getByTestId('first-step');
   await expect(step.locator('img')).toHaveCount(1);
   await expect(page.getByTestId('first-lead')).toHaveText(T.firstRun.welcomeText);
-  const rows = page.getByTestId('first-intro').locator('li');
-  await expect(rows).toHaveCount(3);
-  for (const [index, row] of T.firstRun.intro.entries()) {
-    await expect(rows.nth(index)).toContainText(row.title);
-    await expect(rows.nth(index)).toContainText(row.text);
-  }
+  // One job as CXact shows it: its ring with the match, its title and its band; under it
+  // what the number means. A picture: no control in it.
+  const job = page.getByTestId('first-example');
+  await expect(job.getByRole('img')).toHaveAccessibleName(
+    new RegExp(`^${T.score.value(T.score.band.high, '87')}`),
+  );
+  await expect(job).toContainText(T.firstRun.example);
+  await expect(job).toContainText(T.score.band.high);
+  await expect(page.getByTestId('first-intro')).toContainText(T.firstRun.exampleText);
+  await expect(page.getByTestId('first-intro').getByRole('button')).toHaveCount(0);
   await expect(back(page)).toHaveCount(0);
   await expect(next(page)).toHaveText(T.firstRun.start);
   // Enter is the primary.
@@ -210,6 +214,13 @@ test('a failed evaluation comes back to the upload and says why above it', async
     await expect(page.getByTestId('upload-ai')).toHaveCount(0);
     await expect(page.getByTestId('cv-error').getByTestId('cv-self')).toHaveText(T.profile.byHand);
     await expect(back(page)).toBeVisible();
+    // In the card's narrow box the button stands under the words, so the title keeps its line.
+    const [title, button] = await Promise.all([
+      page.getByTestId('cv-error').locator('.title').boundingBox(),
+      page.getByTestId('cv-self').boundingBox(),
+    ]);
+    expect(title!.height).toBeLessThan(24);
+    expect(button!.y).toBeGreaterThan(title!.y + title!.height);
   }
   await page.getByTestId('cv-self').click();
   await expectStep(page, T.firstRun.profile);
@@ -272,7 +283,6 @@ test('Postfach: optional, its pair in the OS order; skipped, Fertig opens the jo
   // A usable profile and no mailbox: the setup resumes at the Postfach.
   await open(page, `${WIN}&scenario=setup-profile`);
   await expectStep(page, T.firstRun.mailbox);
-  await expect(page.getByTestId('first-badge')).toHaveText(T.firstRun.optional);
   await expect(page.getByTestId('first-lead')).toHaveText(
     T.firstRun.mailboxText(['linkedin', 'freelance']),
   );
@@ -327,8 +337,23 @@ test('the smallest window keeps every step usable', async ({ page }) => {
   await expect(next(page)).toBeInViewport();
   await expect(back(page)).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(480);
+  // A card longer than the window keeps its foot at the window's bottom edge.
   await open(page, `${WIN}&scenario=setup-profile`);
-  await next(page).scrollIntoViewIfNeeded();
   await expect(next(page)).toBeInViewport();
   await expect(back(page)).toBeInViewport();
+});
+
+test('the step heading stands at one height on every step of a card', async ({ page }) => {
+  const top = async (): Promise<number> => (await heading(page).boundingBox())!.y;
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  const reading = await top();
+  for (const query of [
+    'scenario=first-run',
+    'scenario=first-run&step=upload',
+    'scenario=setup-profile',
+    'scenario=setup-mailbox',
+  ]) {
+    await open(page, `${WIN}&${query}`);
+    expect(await top(), query).toBeCloseTo(reading, 0);
+  }
 });

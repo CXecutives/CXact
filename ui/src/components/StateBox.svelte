@@ -8,7 +8,8 @@
   only while something is being done an 18 px spinner stands before the words (`busy`). An
   excluded job's box is the soft red (`tone="ban"`). A box that appears in a view already on
   screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its view
-  is simply there. In a narrow box the button goes under the words.
+  is simply there. In a box under 480 wide (like a row of Einstellungen) the button goes under
+  the words, at the right, so a title keeps its one line.
   `mark` is what the old Notice of an excluded job put before its words (the ban, until the
   job view's ring shows it); it goes with Notice.
 -->
@@ -162,19 +163,17 @@
     align-items: center;
   }
 
-  /* A narrow box: the button under the words, at the right. */
-  @container (width < 360px) {
+  /* A narrow box: the button on a line of its own under the words, at the right; a spinner
+     or a mark stays beside the words. */
+  @container (width < 480px) {
     .row {
       flex-wrap: wrap;
       row-gap: var(--space-8);
     }
 
-    .words {
-      flex-basis: 100%;
-    }
-
     .action {
-      margin-left: auto;
+      flex-basis: 100%;
+      justify-content: flex-end;
     }
   }
 </style>

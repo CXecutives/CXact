@@ -1,6 +1,6 @@
 // The setup as data: its seven steps in their order (the round 10 draft), each with what
 // stands at the top of its card (the app's mark, a tile with the step's glyph, the reading
-// spinner or the green disc of Fertig), its heading and lead, where Zurück leads and the
+// spinner or the full ring of Fertig), its heading and lead, where Zurück leads and the
 // words of its one primary button. The profile is a whole page instead of a card.
 // FirstRunView.svelte renders this table (each step's body is its snippet of the same id),
 // onboarding.svelte.ts walks it. Adding, moving or removing a step is one entry here and its
@@ -23,7 +23,7 @@ export interface Walk {
 }
 
 /** What stands at the top of a step's card: the app's mark, a tile with a glyph, the
- *  spinner while the CV is read, or the green disc with its check. */
+ *  spinner while the CV is read, or the full ring with its check. */
 export type StepTop =
   { kind: 'mark' } | { kind: 'tile'; icon: IconName } | { kind: 'spinner' } | { kind: 'success' };
 
@@ -33,8 +33,6 @@ export interface StepSpec {
   top?: StepTop;
   heading: (t: Catalog, walk: Walk) => string;
   lead: (t: Catalog, walk: Walk) => string;
-  /** A small badge beside the heading ("Optional"). */
-  badge?: (t: Catalog) => string;
   /** Where Zurück leads (null: no Zurück; the evaluation is never a step to go back to). */
   back: (walk: Walk) => StepId | null;
   /** The words of its primary button (null: the step's own control goes on). */
@@ -94,7 +92,6 @@ export const STEPS: readonly StepSpec[] = [
     id: 'alerts',
     top: { kind: 'tile', icon: 'alertMail' },
     heading: (t) => t.firstRun.mailbox,
-    badge: (t) => t.firstRun.optional,
     lead: (t, walk) => t.firstRun.mailboxText(walk.alerts),
     back: () => 'profile',
     next: (t) => t.firstRun.connect,

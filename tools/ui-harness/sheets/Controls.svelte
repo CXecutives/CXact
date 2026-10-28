@@ -131,21 +131,21 @@
     <span class="name">Weiter, Zurück</span>
     <span class="row">
       <Button variant="ghost" icon="back" label="Zurück" />
-      <Button variant="primary" icon="next" label="Weiter" />
+      <Button variant="primary" trailing="next" label="Weiter" />
     </span>
     <span class="row" use:force={{ state: 'hover', target: 'button' }}>
       <Button variant="ghost" icon="back" label="Zurück" />
-      <Button variant="primary" icon="next" label="Weiter" />
+      <Button variant="primary" trailing="next" label="Weiter" />
     </span>
     <span class="row" use:force={{ state: 'hover press', target: 'button' }}>
       <Button variant="ghost" icon="back" label="Zurück" />
-      <Button variant="primary" icon="next" label="Weiter" />
+      <Button variant="primary" trailing="next" label="Weiter" />
     </span>
     <span class="row">
       <Button variant="ghost" icon="back" label="Zurück" disabled />
-      <Button variant="primary" icon="next" label="Weiter" disabled />
+      <Button variant="primary" trailing="next" label="Weiter" disabled />
     </span>
-    <span class="row"><Button variant="primary" icon="next" label="Weiter" loading /></span>
+    <span class="row"><Button variant="primary" trailing="next" label="Weiter" loading /></span>
     <span></span>
 
     <span class="name">Ruhige Symbole</span>

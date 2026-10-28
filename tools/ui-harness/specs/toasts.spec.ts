@@ -38,3 +38,27 @@ test('the pointer on a toast stops its time; it goes once the pointer leaves', a
   await page.mouse.move(10, 10);
   await expect(plain).toHaveCount(0, { timeout: 6000 });
 });
+
+test('a toast is one height with or without its link; its sign is 16', async ({ page }) => {
+  await open(page, '?sheet=surfaces&toasts');
+  const plain = page.locator('[data-testid="toast"][data-kind="plain"]');
+  const undo = page.locator('[data-testid="toast"][data-kind="success"]');
+  await expect(undo.getByTestId('toast-action')).toBeVisible();
+  const [without, withLink] = await Promise.all([plain.boundingBox(), undo.boundingBox()]);
+  expect(without!.height).toBe(withLink!.height);
+  const sign = await undo.locator('svg').first().boundingBox();
+  expect(sign!.width).toBe(16);
+});
+
+test('the keyboard in a toast stops its time; it goes once the focus leaves', async ({ page }) => {
+  await sheet(page);
+  await page.getByRole('button', { name: 'Toasts zeigen' }).click();
+  const undo = page.locator('[data-testid="toast"][data-kind="success"]');
+  await undo.getByTestId('toast-action').focus();
+  // Every toast waits, the plain one too, past its 4 s.
+  const plain = page.locator('[data-testid="toast"][data-kind="plain"]');
+  await page.waitForTimeout(4500);
+  await expect(plain).toBeVisible();
+  await page.getByRole('button', { name: 'Toasts zeigen' }).focus();
+  await expect(plain).toHaveCount(0, { timeout: 6000 });
+});

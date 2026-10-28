@@ -1,23 +1,25 @@
 <!--
   One portal in Einstellungen > Jobportale (round 10 draft), a SettingRow like every row: its
-  tile (its two capitals on the track), its brand name (`portalName`), under it one line of its
-  state, then its calls and at the right its switch, always last (the name names the switch
-  but, like every text next to a switch, does not switch it).
+  brand name (`portalName`), under it one line of its state, then its calls and at the right
+  its switch, always last (the name names the switch but, like every text next to a switch,
+  does not switch it).
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
   ("Alert-Mails ohne Jobs", "Alert-Mail bleibt aus"; "Fehlgeschlagen" in red after a failed
   call); else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen").
-  The calls, outlined with the glyph of their meaning: "Anmelden" or "Abmelden" where the
-  portal offers a sign-in (one width), then the one call about its alert, in one place, each
-  in its own width (its face follows the portal's state, never the pointer): "Alert-Mail
-  öffnen" when alert mails came without jobs, "Alert prüfen" when its
-  alert went quiet, else "Alert anlegen" for a portal of alert mails (its page in the
-  browser); for the portals the app searches the portal in the browser (a quiet icon before
-  the switch). In a narrow box the calls go to a line of their own at the row's end.
-  A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
-  Postfach", has no calls, and its switch stands off and waits with its reason (the stored
+  The calls, outlined with the glyph of their meaning: "Anmelden…" or "Abmelden" where the
+  portal offers a sign-in (one width), then the one call about its alert, in one place and
+  one width whatever its face (it follows the portal's state, never the pointer), so
+  Anmelden never moves: "Alert-Mail öffnen" when alert mails came without jobs, "Alert
+  prüfen…" when its alert went quiet, else "Alert anlegen…" for a portal of alert mails (its
+  page in the browser). A call that opens a window or a page to act on ends in an ellipsis.
+  A portal that is off offers no call about its alert. In a narrow box the calls go to a
+  line of their own at the row's end.
+  A portal of alert mails without a mailbox cannot work: its name dims, its line is the navy
+  link "Postfach verbinden" (`onconnect`: Einstellungen glides to the Postfach and unfolds its
+  form), it has no calls, and its switch stands off and waits with its reason (the stored
   value stays; decision 26).
   A problem of the portal is its sentence in one quiet line under the word (whether the user
   has to act, the time and the reason where it has them); it unfolds and folds away, so the
@@ -32,9 +34,8 @@
   and says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
+  import Button, { type ButtonFace } from '$components/Button.svelte';
   import type { IconName } from '$components/Icon.svelte';
-  import IconTile from '$components/IconTile.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import type { StatusTone } from '$components/StatusText.svelte';
   import Toggle from '$components/Toggle.svelte';
@@ -42,7 +43,6 @@
   import { errorText, healthAdvice } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
-  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import {
@@ -55,8 +55,10 @@
 
   interface Props {
     portal: PortalState;
+    /** The way to a mailbox, for a portal of alert mails without one. */
+    onconnect?: (() => void) | null;
   }
-  let { portal }: Props = $props();
+  let { portal, onconnect = null }: Props = $props();
 
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
@@ -106,12 +108,12 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** Its quiet state: a portal of alert mails without a mailbox, how many alert mails came
-   *  in 30 days, or what the last search brought from it ("noch keine Suche" before the
-   *  first, nothing when it was not asked). */
+  /** Its quiet state: how many alert mails came in 30 days (a portal of alert mails without a
+   *  mailbox has the link to one instead), or what the last search brought from it ("noch
+   *  keine Suche" before the first, nothing when it was not asked). */
   const standing = $derived.by((): string | null => {
     if (portal.way === 'alert') {
-      if (idle) return t.settings.needsMailbox;
+      if (idle) return null;
       // Before the first fetch: what "Verbinden" counted in the mailbox.
       const mails =
         portal.alertMails ??
@@ -159,10 +161,11 @@
   const loginLocked = $derived(signInLocked());
 
   /** The one call about its alert, in one place: the mail that came without jobs, the alert
-   *  that went quiet, or a new alert (a portal of alert mails). */
+   *  that went quiet, or a new alert (a portal of alert mails); none while the portal is
+   *  off. */
   const alert = $derived.by(
     (): { id: string; label: string; icon: IconName; onclick: () => void } | null => {
-      if (idle) return null;
+      if (idle || !portal.enabled) return null;
       if (alertMail !== null) {
         const gmailId = alertMail;
         return {
@@ -189,6 +192,12 @@
     icon: 'alertAdd' as IconName,
     onclick: () => open('setup'),
   });
+  /** Every face of the alert's call: it keeps the width of the widest. */
+  const ALERT_FACES: readonly ButtonFace[] = [
+    { label: t.settings.setUpAlert, icon: 'alertAdd' },
+    { label: t.reader.mail, icon: 'alertMail' },
+    { label: t.settings.checkAlert, icon: 'external' },
+  ];
 
   async function change(patch: PortalSwitches): Promise<void> {
     error = null;
@@ -224,10 +233,6 @@
   }
 </script>
 
-{#snippet tile()}
-  <IconTile monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
-{/snippet}
-
 {#snippet notes()}
   {#if problem}
     <div class="fold" transition:unfold>
@@ -249,16 +254,6 @@
 {/snippet}
 
 {#snippet end()}
-  {#if portal.way !== 'alert'}
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="external"
-      label={t.settings.openPortal}
-      testid="open-portal-{portal.portal}"
-      onclick={() => open('home')}
-    />
-  {/if}
   <span class="switch">
     <Toggle
       {id}
@@ -275,10 +270,12 @@
 <SettingRow
   label={t.portalName[portal.portal]}
   hint={flag?.text ?? standing}
+  link={idle && onconnect !== null
+    ? { label: t.settings.connectMailbox, testid: `connect-${portal.portal}`, onclick: onconnect }
+    : null}
   status={flag?.tone ?? null}
   disabled={idle}
   for={id}
-  lead={tile}
   {notes}
   {end}
   testid="portal-{portal.portal}"
@@ -290,7 +287,7 @@
           variant="secondary"
           icon="signOut"
           label={t.settings.signOut}
-          sizeTo={[{ label: t.settings.signIn, icon: 'signIn' }]}
+          sizeTo={[{ label: t.settings.signInOpens, icon: 'signIn' }]}
           loading={busy}
           disabled={loginLocked !== null}
           disabledReason={loginLocked}
@@ -301,7 +298,7 @@
         <Button
           variant="secondary"
           icon="signIn"
-          label={t.settings.signIn}
+          label={t.settings.signInOpens}
           sizeTo={[{ label: t.settings.signOut, icon: 'signOut' }]}
           loading={busy}
           disabled={loginLocked !== null}
@@ -317,6 +314,7 @@
       variant="secondary"
       icon={alert.icon}
       label={alert.label}
+      sizeTo={ALERT_FACES}
       testid="{alert.id}-{portal.portal}"
       onclick={alert.onclick}
     />

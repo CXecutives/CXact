@@ -3,8 +3,9 @@
   (`altLabel`, a secondary button, as "Verwerfen" in "Änderungen speichern?"). The round 10
   draft: white, no edge, 14 round, 22 inside, the dialog's deep shadow, at most 400 wide (16
   from the window's sides in a narrow one); its heading 16/650 ink, the sentence 14 muted 6
-  under it, the buttons 8 apart 22 under the text, each pair at least --button-pair-min wide
-  so a short "Löschen" does not look thin beside "Abbrechen". A warm plain scrim (no blur: a
+  under it, the buttons 8 apart 22 under the text, in columns of one width (the widest
+  label's, at least --button-pair-min) so a short "Löschen" does not look thin beside
+  "Abbrechen". A warm plain scrim (no blur: a
   blurred backdrop over the whole window drops frames in the web view); the dialog rises in
   180 ms (ease-out, nothing scales) and leaves in 100 ms. It holds the focus like a native
   one (input.ts): Tab and Shift+Tab cycle through its buttons, Esc cancels wherever the focus
@@ -174,28 +175,34 @@
             />
           {/snippet}
           {#snippet alt()}
-            {#if altLabel}
-              <span class:apart={!actionFirst}>
-                <Button
-                  variant="secondary"
-                  label={altLabel}
-                  disabled={busy}
-                  testid="dialog-alt"
-                  onclick={() => onalt?.()}
-                />
-              </span>
-            {/if}
+            <Button
+              variant="secondary"
+              label={altLabel ?? ''}
+              disabled={busy}
+              testid="dialog-alt"
+              onclick={() => onalt?.()}
+            />
           {/snippet}
-          {#if !actionFirst && !single}{@render alt()}{@render dismiss()}{/if}
-          <Button
-            variant={variant === 'danger' ? 'danger' : 'primary'}
-            label={confirmLabel}
-            loading={busy}
-            isDefault={variant !== 'danger'}
-            testid="dialog-confirm"
-            onclick={confirm}
-          />
-          {#if actionFirst && !single}{@render alt()}{@render dismiss()}{/if}
+          {#snippet act()}
+            <Button
+              variant={variant === 'danger' ? 'danger' : 'primary'}
+              label={confirmLabel}
+              loading={busy}
+              isDefault={variant !== 'danger'}
+              testid="dialog-confirm"
+              onclick={confirm}
+            />
+          {/snippet}
+          {#if !actionFirst && !single && altLabel}<span class="apart">{@render alt()}</span>{/if}
+          <div class="pair">
+            {#if actionFirst}
+              {@render act()}
+              {#if !single}{#if altLabel}{@render alt()}{/if}{@render dismiss()}{/if}
+            {:else}
+              {#if !single}{@render dismiss()}{/if}
+              {@render act()}
+            {/if}
+          </div>
         </div>
       </div>
     </div>
@@ -259,7 +266,6 @@
     margin-top: var(--space-12);
   }
 
-  /* The buttons of a pair share one least width. */
   .actions {
     --btn-min: var(--button-pair-min);
 
@@ -270,8 +276,17 @@
     margin-top: var(--dialog-actions-gap);
   }
 
+  /* The buttons in columns of one width, each as wide as the widest. */
+  .pair {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: var(--space-8);
+  }
+
   /* On macOS the third action stands apart on the left. */
   .apart {
+    display: flex;
     margin-right: auto;
   }
 </style>

@@ -162,7 +162,7 @@
   }
 
   .drop .note {
-    color: var(--text-subtle);
+    color: var(--text-muted);
     font: var(--type-sm);
     text-wrap: pretty;
   }

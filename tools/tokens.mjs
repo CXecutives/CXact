@@ -40,7 +40,8 @@ const WIDTH = 100;
 /**
  * The text roles and the backgrounds each one stands on, as the components use them. A
  * background `a/b` is `a` (a wash with an alpha) laid over `b`; a text with an alpha is laid
- * over its background. Every pair keeps WCAG AA for body text (4.5:1).
+ * over its background. Every pair keeps WCAG AA for body text (4.5:1), a control's own part
+ * (`min`) the 3:1 of WCAG 1.4.11.
  */
 const CONTRAST = [
   {
@@ -80,6 +81,10 @@ const CONTRAST = [
   { text: ['chosen-text'], on: ['chosen-surface'] },
   { text: ['field-label-missing'], on: ['surface', 'page'] },
   { text: ['text'], on: ['selection-tint', 'danger-tint'] },
+  // A placeholder and the empty value of a field ("Keins") in the grey of the glyphs.
+  { text: ['icon-subtle'], on: ['surface'] },
+  // A switch off and on, and the edge of an empty checkbox (the switch's grey), on white.
+  { text: ['toggle-off', 'toggle-on'], on: ['surface'], min: 3 },
 ];
 /** WCAG AA for body text. */
 const AA = 4.5;
@@ -312,7 +317,7 @@ function paint(tokens, name) {
 /** Every text of CONTRAST below AA on one of its backgrounds. */
 function contrastProblems(tokens) {
   const problems = [];
-  for (const { text, on } of CONTRAST) {
+  for (const { text, on, min = AA } of CONTRAST) {
     for (const background of on) {
       const [top, ...under] = background.split('/');
       let ground = paint(tokens, top);
@@ -323,7 +328,7 @@ function contrastProblems(tokens) {
         const [light, dark] = [luminance(ink), luminance(ground.rgb)].sort((a, b) => b - a);
         const ratio = (light + 0.05) / (dark + 0.05);
         const pair = `--${name} on --${background}`;
-        if (ratio < AA && !EXCEPTIONS.has(pair)) problems.push(`${pair} ${ratio.toFixed(2)}:1`);
+        if (ratio < min && !EXCEPTIONS.has(pair)) problems.push(`${pair} ${ratio.toFixed(2)}:1`);
       }
     }
   }

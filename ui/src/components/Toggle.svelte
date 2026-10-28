@@ -1,6 +1,7 @@
 <!--
-  On/off switch, coral when on with a white knob (user decision; round 10: 36 x 21, the knob
-  17 px and 15 px of travel). The knob travels in 150 ms (ease-out, no bounce) and the track
+  On/off switch, navy when on with a white knob (a state, like what is chosen; the harmony
+  audit 2026-10-28), grey when off at 3:1 on white (round 10: 36 x 21, the knob 17 px and 15
+  px of travel). The knob travels in 150 ms (ease-out, no bounce) and the track
   changes colour with it; it darkens a step under the pointer and one more while the left
   button is down, off and on alike (the knob never changes shape).
   Disabled switches stay hoverable so the tooltip can say why (disabledReason), and Tab

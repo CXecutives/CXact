@@ -30,8 +30,9 @@
      white content, the cxpertise orange that acts (#E67A5C like the icon and cxpertise.de, its
      hover the site's variant; the primary, the unread dot) and the saturated
      cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
-     progress and the tooltip. What is on, new or here (a switch, the unread dot, the open
-     job's edge, the chosen entry's icon) is coral like what acts. */
+     progress and the tooltip. What is new or here (the unread dot, the open job's edge, the
+     chosen entry's icon) is coral like what acts; a switch or a checkbox that is on is navy,
+     a state like what is chosen (harmony audit, 2026-10-28). */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   /* The track of a choice of a few (the place tabs, Arbeitsmodell): a warm light grey. */
@@ -56,12 +57,13 @@
      2026-10-01). */
   --p-navy: 212 50% 36%;
   --p-navy-deep: 213 54% 27%;
+  --p-navy-press: 213 58% 20%;
   --p-navy-50: 212 50% 96.5%;
   --p-navy-150: 212 42% 89%;
   --p-fg-subtle: 30 4% 41%;
-  /* Glyphs beside text (search, chevron, info, a chip's ×, placeholders): lighter than the
-     subtle text, 3:1 is enough for a glyph (round 10 review). */
-  --p-icon-subtle: 30 4% 50%;
+  /* Glyphs beside text (search, chevron, info, a chip's ×) and placeholders: lighter than the
+     subtle text, yet 4.5:1 on white, so a placeholder ("Keins") reads like text. */
+  --p-icon-subtle: 30 4% 45%;
   --p-border-strong: 30 8% 82%;
   --p-border-input: 30 10% 68%;
   --p-border-press: 30 10% 62%;
@@ -90,9 +92,13 @@
   --p-red-50: 358 70% 96.5%;
   --p-red-100: 358 60% 90%;
   --p-green-50: 142 45% 95%;
-  /* The empty part of a ring and of a switch that is off. */
+  /* The empty part of a ring. */
   --p-ring-track: 30 8% 92%;
-  --p-toggle-off: 30 10% 82%;
+  /* What is off: the track of a switch and the edge of an empty checkbox, 3:1 on white (a
+     control's part, WCAG 1.4.11), a step darker under the pointer and one more pressed. */
+  --p-toggle-off: 30 6% 56%;
+  --p-toggle-off-hover: 30 6% 50%;
+  --p-toggle-off-press: 30 6% 44%;
   /* The ground of the job view and the pages (round 10): a warm white between the cream and
      white, so the white cards on it read as cards. */
   --p-page: 30 12% 98.5%;
@@ -161,15 +167,6 @@
   --primary: hsl(var(--p-coral));
   --primary-hover: hsl(var(--p-coral-variant));
   --primary-active: hsl(var(--p-coral-press));
-  /* Switches are the accent when on, grey when off, the knob white; each state darkens a
-     step under the pointer and one more while the left button is down. */
-  --toggle-off: hsl(var(--p-toggle-off));
-  --toggle-off-hover: hsl(var(--p-border-input));
-  --toggle-off-press: hsl(var(--p-border-press));
-  --toggle-on: hsl(var(--p-coral));
-  --toggle-on-hover: hsl(var(--p-coral-variant));
-  --toggle-on-press: hsl(var(--p-coral-press));
-  --toggle-knob: hsl(var(--p-knob));
   /* The unread dot of a list row. */
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's
      wash). */
@@ -185,6 +182,16 @@
   --nav-active-icon: hsl(var(--p-coral));
 
   /* ------------------------------------------ navy: the data and the quiet structure */
+  /* Switches and checkboxes are navy when on (a state, like what is chosen), grey when off
+     (the same grey is the edge of an empty checkbox), the knob white; each state darkens a
+     step under the pointer and one more while the left button is down. */
+  --toggle-off: hsl(var(--p-toggle-off));
+  --toggle-off-hover: hsl(var(--p-toggle-off-hover));
+  --toggle-off-press: hsl(var(--p-toggle-off-press));
+  --toggle-on: hsl(var(--p-navy));
+  --toggle-on-hover: hsl(var(--p-navy-deep));
+  --toggle-on-press: hsl(var(--p-navy-press));
+  --toggle-knob: hsl(var(--p-knob));
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
      disclosure chevron, the icon of a neutral stat tile). */
   --icon-accent: hsl(var(--p-navy));
@@ -390,7 +397,7 @@
   --radius-lg: 10px;
   --radius-xl: 14px;
   --radius-full: 9999px;
-  /* Buttons, fields and the track of a choice (28 px high, --control-field; 8 round). */
+  /* Buttons, fields and the track of a choice (30 px high, --control-field; 8 round). */
   --radius-control: 8px;
   /* What lies inside a control's track (the thumb of a choice): the track's radius less its
      2 px inset, so the two curves stay parallel. */
@@ -415,9 +422,9 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  /* Design round 7 (user, 2026-10-10): one control height for the whole app, 28 px
-     (--control-field): every button, field, choice of a few, toolbar control and menu row;
-     the sidebar's entries one step taller (--nav-row). Only a control inside a field (a
+  /* Design round 7 (user, 2026-10-10): one control height for the whole app, 30 px since
+     round 10 (--control-field): every button, field, choice of a few and toolbar control;
+     the sidebar's entries and a menu's rows one step taller (--nav-row, --menu-row). Only a control inside a field (a
      chip, a link or a button in a field, a day of the calendar, a suggestion row) and a
      suggestion chip under a field (Button `suggest`) are a notch lower (--control-sm). */
   --control-sm: 24px;
@@ -560,7 +567,6 @@
   --ring-md-stroke: 5px;
   --ring-md-digits: 17px;
   --border-width: 1px;
-  --tile-sm: 32px;
   --tile-md: 36px;
   --tile-lg: 48px;
   --tile-xl: 56px;
@@ -579,14 +585,15 @@
   /* the list: the hairline between rows starts at the title; the highlight is inset this far */
   --row-rule-start: 56px;
   --row-highlight-inset: 6px;
-  /* a row of Einstellungen: its least height and where its hairline starts */
   /* One row measure for Profil and Einstellungen (owner, 2026-10-24): a row of a page's card,
-     at least 56 high, 12 above and below, 20 at the sides. */
+     at least 56 high, 12 above and below, 20 at the sides. A row of Einstellungen is as high
+     with or without its line under the name (12 + 20 + 18 + 12), its hairline from the text
+     (20, like the Profil's). */
   --form-row-min: 56px;
   --form-row-pad-y: 12px;
   --form-row-pad-x: 20px;
-  --setting-row-min: var(--form-row-min);
-  --setting-rule-start: 64px;
+  --setting-row-min: calc(2 * var(--form-row-pad-y) + var(--leading-md) + var(--leading-sm));
+  --setting-rule-start: var(--form-row-pad-x);
   /* the label column of Jobdetails */
   --facts-label: 96px;
   /* cards and groups on the page */
@@ -723,8 +730,8 @@
   --field-link: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --field-link-gap: 14px;
   --error-text: hsl(var(--p-word-red));
-  /* A row of Einstellungen: 10 above and below, 20 at the sides, its tile 12 from its words;
-     the name 14/540, the line 13 subtle. */
+  /* A row of Einstellungen: 12 above and below, 20 at the sides, its buttons 12 from its
+     words; the name 14/540, the line 13 muted like every second line. */
   --setting-row-pad-y: var(--form-row-pad-y);
   --setting-row-gap: var(--space-12);
   /* A status word (StatusText): the dot in the exact colour, the word one step darker. */
@@ -735,10 +742,10 @@
   --status-danger: hsl(var(--p-score-red));
   --status-danger-text: hsl(var(--p-word-red));
   --status: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
-  /* Tiles (IconTile): 8 round up to 36, 14 from 48; a monogram 12/650. */
+  /* Tiles: a glyph tile of 36 (Tile's way) 8 round, the 48 of IconTile and the drop zone's
+     disc 14; 56 is the setup head's slot. */
   --tile-radius-sm: var(--radius-md);
   --tile-radius-lg: var(--radius-card);
-  --tile-monogram: var(--weight-semibold) var(--font-xs) / var(--leading-xs) var(--font-sans);
   --tile-accent: hsl(var(--p-navy));
   /* A way of the setup (Tile): 16 inside, its glyph tile 36 white with an edge, the title
      16/650 12 below it. The recommended way is coral: its fill, edge and glyph. */
@@ -766,7 +773,7 @@
   --empty-text-gap: var(--space-4);
   --empty-text-max: 300px;
   --empty-actions-gap: var(--space-16);
-  /* The state box (StateBox): the cream ground with a hairline, 12 12 12 16 inside, at least
+  /* The state box (StateBox): the cream ground with a hairline, 12 12 12 20 inside, at least
      56 high, its parts 14 apart; an excluded job's on the soft red. */
   --state-surface: var(--bg);
   --state-edge: var(--border);
@@ -776,8 +783,8 @@
   --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
   --state-gap: 14px;
-  /* A toast: 18 from the window's corner, 7 7 7 14 inside, its parts 10 apart, the words at
-     least as high as a quiet button. */
+  /* A toast: 18 from the window's corner, 7 7 7 14 inside (its link's words 14 from its end),
+     its parts 10 apart, as high with or without its link as with a button (46). */
   --toast-inset: 18px;
   --toast-pad-y: 7px;
   --toast-pad-start: 14px;
@@ -789,14 +796,15 @@
   --bar-surface: var(--surface);
   --bar-min: 50px;
   --bar-pad-y: var(--space-10);
-  /* Spinners: a navy arc on the ring's track; the setup's large one (60) in coral. */
+  /* Spinners: a navy arc on the ring's track; the setup's large one (56, its head's slot) in
+     coral. */
   --spinner-track: hsl(var(--p-ring-track));
   --spinner-arc: hsl(var(--p-navy));
   --spinner-accent: hsl(var(--p-coral));
   --spinner-sm: var(--icon-sm);
   --spinner-md: var(--icon-nav);
   --spinner-lg: var(--icon-xl);
-  --spinner-xl: 60px;
+  --spinner-xl: var(--tile-xl);
   --spinner-line: 2px;
   /* A meter on the cream (the progress strip): a white track. */
   --meter-track-on-bg: hsl(var(--p-white) / 0.85);
@@ -890,16 +898,18 @@
 
   /* ------------------------------------------- round 10: settings */
   /* The mailbox form that unfolds under its row: 4 below the row, 18 at its end, the row's 20
-     at the right and the text's 64 at the left; its parts 14 apart. */
+     at the right and the text's 20 at the left; its parts 14 apart. */
   --mail-form-pad: var(--space-4) var(--card-pad-x) 18px var(--setting-rule-start);
   --mail-form-gap: 14px;
 
   /* ------------------------------------------- round 10: setup */
   /* The card of a step (--setup-card wide at most, --radius-sheet round): 34 36 20 inside, 24
-     20 16 in a narrow window, centred a little above the middle of the window. Its head: the
-     app's mark, the green disc or the spinner 20 above the title, a 48 tile 18; the lead 8
+     20 16 in a narrow window (the bottom one the foot's, which sticks), centred a little above
+     the middle of the window. Its head: one slot of 56 for the app's mark, a 48 tile, the
+     spinner or the full ring, centred in it, the title 20 under it on every step; the lead 8
      under the title, at most 420 wide; the body 22 under the lead; the foot 28 under the
-     body with a hairline and 18 inside, Zurück pulled 8 out so its words align. */
+     body with a hairline and 18 inside, Zurück and a ghost at the end pulled out by the ghost
+     button's inset, so their words stand on the content's edges. */
   --setup-pad-top: 34px;
   --setup-pad-x: 36px;
   --setup-pad-bottom: var(--space-20);
@@ -909,23 +919,20 @@
   --setup-frame-bottom: 36px;
   /* The card's top: where a 560 px card would stand a little above the middle, at least 16. */
   --setup-frame-top: max(var(--space-16), calc(50vh - 316px));
+  --setup-top: var(--tile-xl);
   --setup-top-gap: var(--space-20);
-  --setup-tile-gap: 18px;
   --setup-lead-gap: var(--space-8);
   --setup-lead-max: 420px;
   --setup-body-gap: 22px;
   --setup-foot-gap: 28px;
   --setup-foot-pad: 18px;
-  --setup-back-pull: calc(-1 * var(--space-8));
-  /* The three steps of Willkommen: 16 apart, the 36 tile 14 before its words. */
-  --setup-intro-gap: var(--space-16);
-  --setup-intro-inner: 14px;
+  --setup-foot-end: var(--setup-pad-bottom);
+  --setup-back-pull: calc(-1 * var(--ghost-inset));
+  /* The job of Willkommen: its box 12 16 inside, its sentence 12 under it. */
+  --setup-example-pad: var(--space-12) var(--space-16);
+  --setup-example-gap: var(--space-12);
   /* The line about the AI under the drop zone. */
   --setup-ai-gap: 14px;
-  /* The badge beside a heading ("Optional"): 12/500 muted on the track, 6 round. */
-  --setup-badge-type: var(--weight-control) var(--font-xs) / var(--leading-xs) var(--font-sans);
-  --setup-badge-pad: var(--space-2) var(--space-8);
-  --setup-badge-gap: var(--space-10);
   /* The page of "Dein Profil": its title 22 under the bar, its lead 6 under the title, and
      its first group 50 under the lead (the draft's "5 selbst"). */
   --setup-page-top: 22px;

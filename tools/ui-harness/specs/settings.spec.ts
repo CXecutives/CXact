@@ -46,6 +46,11 @@ async function reason(page: Page, testid: string): Promise<string | null> {
   return page.getByRole('tooltip').textContent();
 }
 
+/** The widths of the buttons of these test ids. */
+async function widths(page: Page, ...testids: string[]): Promise<number[]> {
+  return Promise.all(testids.map(async (id) => (await page.getByTestId(id).boundingBox())!.width));
+}
+
 /** The test ids of the children of a container that carry one, in order. */
 function ids(page: Page, testid: string, selector: string): Promise<(string | null)[]> {
   return page
@@ -184,10 +189,10 @@ test('mailbox form: provider and address side by side, the buttons in the order 
     await (await reveal(page, page.getByTestId('mailbox-change'))).click();
     const buttons = page.getByTestId('mailbox-buttons').getByRole('button');
     await expect(buttons).toHaveText([...words]);
-    // A pair keeps one least width, so a short word does not look thin.
-    for (const button of await buttons.all()) {
-      expect((await button.boundingBox())!.width).toBeGreaterThanOrEqual(88);
-    }
+    // A pair is one width, the wider label's, so a short word does not look thin.
+    const [first, second] = await widths(page, 'mailbox-save', 'mailbox-cancel');
+    expect(first).toBeGreaterThanOrEqual(88);
+    expect(first).toBeCloseTo(second!, 0);
   }
   const [provider, address] = await Promise.all([
     page.getByTestId('mailbox-provider').boundingBox(),
@@ -243,12 +248,19 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach verbund
 }) => {
   await settings(page);
   await reveal(page, page.getByTestId('mailbox-remove'));
-  // Entfernen is a plain button; its dialog carries the danger.
+  // Entfernen… is a plain button that opens a dialog, which carries the danger; Ändern
+  // beside it is as wide.
   await expect(page.getByTestId('mailbox-remove')).toHaveClass(/secondary/);
+  await expect(page.getByTestId('mailbox-remove')).toHaveText(T.settings.removeOpens);
+  const [change, remove] = await widths(page, 'mailbox-change', 'mailbox-remove');
+  expect(change).toBeCloseTo(remove!, 0);
   await page.getByTestId('mailbox-remove').click();
   const dialog = page.getByTestId('dialog-remove-mailbox');
   await expect(dialog).toContainText(T.settings.removeMailboxText(true));
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.common.remove);
+  // The dialog's pair is one width too.
+  const [confirm, cancel] = await widths(page, 'dialog-confirm', 'dialog-cancel');
+  expect(confirm).toBeCloseTo(cancel!, 0);
   await failNext(page, 'remove_mailbox');
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog.getByTestId('dialog-error')).toHaveText('Die Datenbank meldet einen Fehler.');
@@ -307,10 +319,10 @@ test('portals: two groups in the order of the UI, each portal with its state and
     else await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
     await expect(row).not.toContainText('Aufrufen');
-    // The browser's glyph only where "Alert anlegen" does not open the portal already.
-    await expect(row.getByTestId(`open-portal-${portal}`)).toHaveCount(
-      ALERT_PORTALS.includes(portal) ? 0 : 1,
-    );
+    // No tile and no glyph that only repeats the name: the name, its line, its calls, the
+    // switch.
+    await expect(row.locator('.tile')).toHaveCount(0);
+    if (!ALERT_PORTALS.includes(portal)) await expect(row.getByRole('button')).toHaveCount(0);
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portalName[portal]);
   }
   // Only freelance.de offers a sign-in; no "Details holen".
@@ -328,8 +340,6 @@ test('portals: two groups in the order of the UI, each portal with its state and
   }
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  await page.getByTestId('open-portal-hays').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'hays' } });
 });
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);
@@ -344,6 +354,8 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
   expect(await saved(page)).toEqual([
     { portals: [{ portal: 'linkedin', enabled: false, loginEnabled: null }] },
   ]);
+  // Off, it offers no alert to set up.
+  await expect(page.getByTestId('setup-linkedin')).toHaveCount(0);
   // No label element anywhere on the page: no text is a click target of a switch.
   await expect(page.getByTestId('settings').locator('label')).toHaveCount(0);
   // Every reference of a name or a description names a text that is there.
@@ -457,6 +469,8 @@ test('another provider than Gmail: the alert calls wait for the place of the mai
 }) => {
   await settings(page, `${WIN}&scenario=quiet-alert`);
   await expect(page.getByTestId('check-alert-freelance')).toHaveCount(1);
+  const [before] = await widths(page, 'check-alert-freelance');
+  const signIn = (await page.getByTestId('sign-in-freelance').boundingBox())!.x;
   await (await reveal(page, page.getByTestId('mailbox-change'))).click();
   await page.getByTestId('mailbox-provider').click();
   await page
@@ -471,25 +485,33 @@ test('another provider than Gmail: the alert calls wait for the place of the mai
   await expect(page.getByTestId('alert-quiet-freelance')).toBeVisible();
   await expect(page.getByTestId('check-alert-freelance')).toHaveCount(0);
   await expect(page.getByTestId('setup-freelance')).toBeVisible();
+  // The call keeps its width whatever its face, so Anmelden does not move.
+  const [after] = await widths(page, 'setup-freelance');
+  expect(after).toBeCloseTo(before!, 0);
+  expect((await page.getByTestId('sign-in-freelance').boundingBox())!.x).toBeCloseTo(signIn, 0);
 });
 
-test('without a mailbox the portals of alert mails say they need one; one Verbinden', async ({
+test('without a mailbox the portals of alert mails lead to one; one Verbinden', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=no-mailbox`);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   for (const portal of ALERT_PORTALS) {
-    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
-    // The row cannot work: no calls, its switch off and waiting with its reason, while the
-    // stored value stays on.
+    // The row cannot work: no calls, only the way to a mailbox in its line; its switch off
+    // and waiting with its reason, while the stored value stays on.
     const row = page.getByTestId(`portal-${portal}`);
-    await expect(row.getByRole('button')).toHaveCount(0);
+    await expect(row.getByRole('button')).toHaveText([T.settings.connectMailbox]);
     expect(await reason(page, `toggle-enabled-${portal}`)).toBe(T.settings.needsMailboxReason);
     await expect(row.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   }
   await page.getByTestId('toggle-enabled-linkedin').click({ force: true });
   expect(await saved(page)).toEqual([]);
   await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
+  // "Postfach verbinden" brings the Postfach into view with its form open, the caret in it.
+  await (await reveal(page, page.getByTestId('connect-freelance'))).click();
+  await expect(page.getByTestId('mailbox-form')).toBeInViewport();
+  await expect(page.getByTestId('mailbox-user')).toBeFocused();
+  await expect(page.getByTestId('mailbox-connect')).toHaveCount(0);
 });
 
 test('portals: a sign-in that ran out says so in red and offers Anmelden', async ({ page }) => {
@@ -524,11 +546,16 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   await expect(folder.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\CXact');
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.reset);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
-  await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
+  await expect(page.getByTestId('reset')).toHaveText(T.settings.resetOpens);
+  await expect(page.getByTestId('folder-change')).toHaveText(T.settings.folderChange);
   for (const gone of ['backup-restore', 'logs-open']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
-  await (await reveal(page, page.getByTestId('folder-open'))).click();
+  await reveal(page, page.getByTestId('folder-open'));
+  // Öffnen and Ändern… are one width.
+  const [opens, changes] = await widths(page, 'folder-open', 'folder-change');
+  expect(opens).toBeCloseTo(changes!, 0);
+  await page.getByTestId('folder-open').click();
   // Öffnen opens the folder shown.
   expect(await lastOpened(page)).toEqual({ target: { kind: 'workspace' } });
   // A folder that does not open says so at the end of its section.

@@ -1383,10 +1383,10 @@ export const de = {
       search: 'Suche und Alert-Mails',
       alert: 'Nur Alert-Mails',
     } satisfies Record<Way, string>,
-    /** A portal's state, its row's second line: one of alert mails without a mailbox, how
-     *  many alert mails of it came in the last 30 days, resting until a moment, what the last
-     *  search brought. */
-    needsMailbox: 'Braucht ein Postfach',
+    /** A portal's state, its row's second line: the way to a mailbox for one of alert mails
+     *  without one, how many alert mails of it came in the last 30 days, resting until a
+     *  moment, what the last search brought. */
+    connectMailbox: 'Postfach verbinden',
     /** Why the switch of a portal of alert mails waits without a mailbox. */
     needsMailboxReason: 'Verbinde erst ein Postfach.',
     alertMails: (value: number) =>
@@ -1456,20 +1456,26 @@ export const de = {
       `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
-    openPortal: 'Im Browser öffnen',
+    /** A row's buttons that open a window, the browser or a dialog end in an ellipsis: a
+     *  portal's sign-in window, its alert page, the folder dialog, the dialogs of the reset
+     *  and of removing the mailbox (their confirm buttons keep none). */
+    signInOpens: 'Anmelden…',
+    folderChange: 'Ändern…',
+    resetOpens: 'Zurücksetzen…',
+    removeOpens: 'Entfernen…',
     /** A portal that is on sent no alert mail for a week or longer (its alert may have run
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
-    checkAlert: 'Alert prüfen',
+    checkAlert: 'Alert prüfen…',
     /** A source of alert mails: its page where the user sets up an alert. */
-    setUpAlert: 'Alert anlegen',
+    setUpAlert: 'Alert anlegen…',
     /** The row of the profile's folder (its path under it), and what a change did. */
     folder: 'Profil-Ordner',
     folderMoved: 'Profil kopiert',
     folderFiles: 'Ordner geändert',
     folderOwnProfile: 'Profil aus dem neuen Ordner übernommen',
-    /** The row of the reset in Daten: its label, its one sentence, its button (also the
-     *  dialog's) and its dialog. */
+    /** The row of the reset in Daten: its label, its one sentence, the dialog's button (the
+     *  row's is `resetOpens`) and its dialog. */
     reset: 'Alles zurücksetzen',
     resetHint: 'Löscht alles, was CXact gespeichert hat.',
     resetAction: 'Zurücksetzen',
@@ -1485,18 +1491,13 @@ export const de = {
 
   /** The setup (features/first-run/steps.ts): each step's heading and lead, and its words. */
   firstRun: {
-    /** Willkommen: what CXact does, in three steps. */
+    /** Willkommen: what CXact does, one job as it shows it (its title; its band is the
+     *  ring's) and what its number means. */
     welcome: 'Willkommen bei CXact',
     welcomeText:
       'CXact findet Projekt- und Interim-Jobs für dich und zeigt dir, wie gut jeder zu dir passt.',
-    intro: [
-      { title: 'Du legst dein Profil an', text: 'Aus deinem Lebenslauf oder selbst.' },
-      { title: 'CXact sucht Jobs', text: 'Auf den Jobportalen und in deinen Alert-Mails.' },
-      {
-        title: 'Jeder Job bekommt eine Bewertung',
-        text: 'Von 0 bis 100, so siehst du sofort, was passt.',
-      },
-    ],
+    example: 'Interim CFO für Familienunternehmen',
+    exampleText: 'CXact misst jeden Job an deinem Profil, von 0 bis 100.',
     start: 'Loslegen',
     /** The two ways to the profile (NewProfileWays). */
     way: 'Profil anlegen',
@@ -1516,7 +1517,6 @@ export const de = {
     next: 'Weiter',
     /** The Postfach, optional: what it brings, the portals of alert mails by name. */
     mailbox: 'Postfach verbinden',
-    optional: 'Optional',
     mailboxText: (portals: readonly Portal[]) =>
       `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => BRAND[p]))}.`,
     skip: 'Überspringen',

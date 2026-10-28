@@ -1,42 +1,46 @@
 <!--
-  The body of Willkommen: what CXact does in three steps, one row each (the round 10 draft):
-  a 36 tile on the track with its navy glyph (the profile, the search, the score), its title
-  14/540 and one muted line.
+  The body of Willkommen (the harmony audit, 2026-10-28): one job as CXact shows it, calm and
+  centred in the card. Its ring (the app's ScoreRing, 87, filling once as the step appears),
+  its title 14/540 and under it the band 13/540 in the word colour of its ring, in a quiet box
+  on the page's ground; under the box one sentence what the number means. A picture of a job,
+  not a control: nothing in it reacts but the ring's tooltip.
 -->
 <script lang="ts">
-  import type { IconName } from '$components/Icon.svelte';
-  import IconTile from '$components/IconTile.svelte';
+  import ScoreRing from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
 
-  /** The glyph of each step, in the order of the catalog's rows. */
-  const ICONS: readonly IconName[] = ['profile', 'search', 'gauge'];
+  /** The example's match: high, in the ring's step of 80 to 89. */
+  const SCORE = 87;
 </script>
 
-<ol class="intro" data-testid="first-intro">
-  {#each t.firstRun.intro as row, index (row.title)}
-    <li class="row">
-      <IconTile tone="accent" size="md" icon={ICONS[index] ?? 'profile'} />
-      <span class="words">
-        <span class="title">{row.title}</span>
-        <span class="text">{row.text}</span>
-      </span>
-    </li>
-  {/each}
-</ol>
+<div class="welcome" data-testid="first-intro">
+  <div class="job" data-testid="first-example">
+    <ScoreRing ring={{ status: 'scored', score: SCORE, band: 'high' }} reveal />
+    <span class="words">
+      <span class="title">{t.firstRun.example}</span>
+      <span class="band">{t.score.band.high}</span>
+    </span>
+  </div>
+  <p class="text">{t.firstRun.exampleText}</p>
+</div>
 
 <style>
-  .intro {
-    display: grid;
-    gap: var(--setup-intro-gap);
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  .welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--setup-example-gap);
   }
 
-  .row {
+  .job {
     display: flex;
     align-items: center;
-    gap: var(--setup-intro-inner);
+    gap: var(--list-row-gap);
+    max-width: 100%;
+    padding: var(--setup-example-pad);
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--page);
   }
 
   .words {
@@ -50,8 +54,16 @@
     font: var(--type-label);
   }
 
+  /* The word colour of the ring's step (80 to 89). */
+  .band {
+    color: var(--score-text-8);
+    font: var(--type-field-label);
+  }
+
   .text {
     color: var(--text-muted);
     font: var(--type-sm);
+    text-align: center;
+    text-wrap: pretty;
   }
 </style>

@@ -2,8 +2,8 @@
   The body of the CV's upload: one drop zone with a dashed edge that is one button as a whole
   (Tile `drop`): a click (or Enter and Space) opens the backend's file dialog with the CV
   formats, and a CV dropped on the window (Tauri's drag and drop, `onFileDrag`; the window
-  keeps the file, the page never sends a path) is taken at once. Under it one quiet line says
-  who reads it (an AI). While a file is dragged over the window the zone looks as under the
+  keeps the file, the page never sends a path) is taken at once. Under it one quiet line,
+  centred, says who reads it (an AI). While a file is dragged over the window the zone looks as under the
   pointer. Why the last evaluation filled nothing stands above it in a state box, in the two
   lines of the Profil's (CvProblem: "Der Lebenslauf wurde nicht ausgewertet." and the
   reason); where no new try can work (the tries used up, paused, an app too old) the box
@@ -70,9 +70,11 @@
     gap: var(--space-12);
   }
 
+  /* Centred under the zone in its second line's size and grey. */
   .ai {
     margin-top: calc(var(--setup-ai-gap) - var(--space-12));
-    color: var(--text-subtle);
-    font: var(--type-xs);
+    color: var(--text-muted);
+    font: var(--type-sm);
+    text-align: center;
   }
 </style>

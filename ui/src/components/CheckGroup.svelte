@@ -1,8 +1,9 @@
 <!--
   A choice of several as checkboxes in a row, each with its label (Vertragsart; user decision
-  2026-10-04; round 10): a 16 px box with a 1.5 px edge, the chosen one coral with a white
-  13 px tick that fades in (140 ms). Under the pointer an empty box's edge darkens a step,
-  pressed one more; a chosen one darkens like a switch (Toggle). The last chosen option stays
+  2026-10-04; round 10): a 16 px box with a 1.5 px edge in the grey of a switch that is off
+  (3:1 on white), the chosen one navy like a switch that is on, with a white 13 px tick that
+  fades in (140 ms). Under the pointer an empty box's edge darkens a step, pressed one more,
+  like a switch's track; a chosen one darkens like a switch (Toggle). The last chosen option stays
   (a click does nothing, its tooltip says why: `keepOne`). Each option is a checkbox and its
   own Tab stop; Space flips it like any button. 24 px high, 22 px between them.
 -->
@@ -79,7 +80,7 @@
     justify-content: center;
     width: var(--check-box);
     height: var(--check-box);
-    border: var(--check-edge) solid var(--border-strong);
+    border: var(--check-edge) solid var(--toggle-off);
     border-radius: var(--radius-xs);
     background-color: var(--surface);
     color: var(--text-on-accent);
@@ -88,7 +89,7 @@
       border-color var(--dur-fade) var(--ease-out);
   }
 
-  /* The tick fades in with the coral and out with it. */
+  /* The tick fades in with the navy and out with it. */
   .box :global(.icon) {
     opacity: 0;
     transition: opacity var(--dur-fade) var(--ease-out);
@@ -99,7 +100,7 @@
   }
 
   .option:hover .box {
-    border-color: var(--control-hover-edge);
+    border-color: var(--toggle-off-hover);
     transition-duration: var(--dur-hover);
   }
 
@@ -115,7 +116,7 @@
 
   /* Pressed: one more step than on hover, 60 ms, like a switch. */
   :global(:where(:root:not([data-aux-press]))) .option:active:hover .box {
-    border-color: var(--control-press-edge);
+    border-color: var(--toggle-off-press);
     transition-duration: var(--dur-instant);
   }
 

@@ -15,11 +15,11 @@
   whose action fails stays open and says why inside. The dry run changes nothing and says so
   in a state box above the groups; a run holds the mailbox and the reset, locked with the
   reason of that run instead of failing. Opened for one of its groups (`navigation.section`:
-  "Postfach prüfen" of a failed fetch) the page glides to that group.
+  "Postfach prüfen" of a failed fetch) the page glides to that group. "Postfach verbinden" of
+  a portal that needs a mailbox glides to the Postfach the same way and unfolds its form.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import IconTile from '$components/IconTile.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import StateBox from '$components/StateBox.svelte';
@@ -139,6 +139,14 @@
   /** Einstellungen opened for one of its groups (`navigation.section`, read once and set
    *  back): the group glides into view. */
   let root = $state<HTMLElement | null>(null);
+  let mailboxCard = $state<MailboxCard | null>(null);
+
+  /** "Postfach verbinden" of a portal: the Postfach glides into view, its form unfolds. */
+  function connectMailbox(): void {
+    navigation.section = 'mailbox';
+    mailboxCard?.openForm();
+  }
+
   $effect(() => {
     const section = navigation.section;
     if (section === null || root === null || cfg === null) return;
@@ -153,12 +161,11 @@
 
 {#snippet row(section: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    {#snippet tile()}<IconTile icon={item.tile} size="sm" />{/snippet}
     <SettingRow
       label={item.label(t, cfg)}
       hint={item.path?.(t, cfg) ?? item.hint?.(t, cfg) ?? null}
       copy={item.path !== undefined}
-      lead={tile}
+      pair={item.actions.length > 1}
       testid={item.id}
     >
       {#each item.actions as id (id)}
@@ -227,14 +234,14 @@
               {#each WAYS as way (way)}
                 <Group caption={t.settings.way[way]} captionTestid="portals-{way}">
                   {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
-                    <PortalRow {portal} />
+                    <PortalRow {portal} onconnect={connectMailbox} />
                   {/each}
                 </Group>
               {/each}
             {:else}
               <Group>
                 {#if section.block === 'mailbox'}
-                  <MailboxCard {cfg} locked={mailboxLocked} />
+                  <MailboxCard bind:this={mailboxCard} {cfg} locked={mailboxLocked} />
                 {/if}
                 {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
                 {#if feedback}{@render noteOf(section.id, feedback)}{/if}

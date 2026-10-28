@@ -616,10 +616,11 @@ test('a click on the tab that is open reloads nothing, like Jobs', async ({ page
 test('a tooltip shows on keyboard focus after the delay and goes on blur, resize and window blur', async ({
   page,
 }) => {
-  await open(page, `${WIN}&view=settings`);
-  const words = await text(page, 'settings.openPortal');
+  // While a run holds the mailbox, its buttons wait and say why.
+  await open(page, `${WIN}&view=settings&scenario=running`);
+  const words = T.error.text('busy', { activity: 'fetch' });
   await byKeys(page);
-  const first = page.getByTestId('open-portal-hays');
+  const first = page.getByTestId('mailbox-change');
   await first.focus();
   // Not at once: after the same delay as hovering (checked right away, not after a fixed
   // wait, which a busy machine can stretch past the delay).
@@ -627,13 +628,13 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
   await expect(tooltip(page)).toHaveText(words);
   // Blur: the focus moves back to the switch of the row before, which has none.
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByTestId('toggle-enabled-gulp')).toBeFocused();
+  await expect(page.getByTestId('toggle-enabled-freelance')).toBeFocused();
   await expect(tooltip(page)).toHaveCount(0);
   await first.focus();
   await expect(tooltip(page)).toHaveText(words);
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await expect(tooltip(page)).toHaveCount(0);
-  await page.getByTestId('open-portal-solcom').focus();
+  await page.getByTestId('mailbox-remove').focus();
   await expect(tooltip(page)).toHaveText(words);
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect(tooltip(page)).toHaveCount(0);

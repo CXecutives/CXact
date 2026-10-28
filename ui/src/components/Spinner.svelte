@@ -1,7 +1,7 @@
 <!--
   Indeterminate activity (the round 10 draft): a navy arc turning on the ring's track. Sizes 16
-  (sm, beside words or in a button), 18 (md, the state box), 24 (lg, the app's start) and 60
-  (xl, the setup reading a CV: its arc in coral, round at its ends). Inside a filled control
+  (sm, beside words or in a button), 18 (md, the state box), 24 (lg, the app's start) and 56
+  (xl, the setup reading a CV, in its head's slot: its arc in coral, round at its ends). Inside a filled control
   the arc takes the colour of its words (`tone="current"`, on no track). It stands still
   under reduced motion.
 -->

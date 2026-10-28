@@ -1711,19 +1711,11 @@ fn tooltips_only_where_something_is_missing() {
 /// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    const ROLES: [(&str, &[&str]); 9] = [
+    // A switch or a checkbox that is on is navy (a state, harmony audit 2026-10-28), no coral
+    // role.
+    const ROLES: [(&str, &[&str]); 8] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
-        // A switch that is on, the check of a chosen row, and a chosen checkbox (the
-        // Vertragsart, 2026-10-04).
-        (
-            "var(--toggle-on",
-            &[
-                "components/Toggle.svelte",
-                "components/JobRow.svelte",
-                "components/CheckGroup.svelte",
-            ],
-        ),
         // Where you are: the list's one highlight (its tint and bar, grey in the back; round
         // 10, the rows have no fill of their own), the active view.
         ("var(--surface-selected", &["features/jobs/RowBar.svelte"]),

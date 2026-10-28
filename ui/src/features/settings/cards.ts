@@ -7,9 +7,10 @@
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
 // answer; every text button of a row is the same outlined button with the glyph of its
 // meaning, whether it opens something or runs a command, grey even when it loses something
-// (only the dialog's confirm is red, design round 7); a locked button says why (`locked`).
-// A row's tile never repeats a glyph of its buttons (round 10: the folder's tile is the
-// document, the reset's the turning arrow).
+// (only the dialog's confirm is red, design round 7); a button that opens a window or a
+// dialog ends its words in an ellipsis; a pair of buttons is one width; a locked button says
+// why (`locked`).
+// A row has no tile: its name says it.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
@@ -45,7 +46,7 @@ export const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
 export const ACTIONS = {
   // Another folder for the profile (the folder dialog; the profile comes along).
   folderChange: {
-    label: (t) => t.common.change,
+    label: (t) => t.settings.folderChange,
     icon: 'edit',
     locked: ownOnly,
   },
@@ -58,7 +59,7 @@ export const ACTIONS = {
   // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
   // deleting a job for good).
   reset: {
-    label: (t) => t.settings.resetAction,
+    label: (t) => t.settings.resetOpens,
     icon: 'trash',
     locked: ownOnly,
   },
@@ -68,11 +69,9 @@ export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
 export type CommandId = 'folderChange' | 'reset';
 
-/** A row: its tile, its label, under it its one sentence or a path to copy, its buttons at
- *  the end. */
+/** A row: its label, under it its one sentence or a path to copy, its buttons at the end. */
 export interface Row {
   id: string;
-  tile: IconName;
   label: Text;
   hint?: Text;
   /** A path under the label, to copy. */
@@ -109,7 +108,6 @@ export const SECTIONS: readonly SectionSpec[] = [
     rows: [
       {
         id: 'folder',
-        tile: 'document',
         label: (t) => t.settings.folder,
         path: (_t, state) => state.settings.workspace,
         actions: ['folderOpen', 'folderChange'],
@@ -117,7 +115,6 @@ export const SECTIONS: readonly SectionSpec[] = [
       // The one action that deletes for good, last; its dialog says what comes after.
       {
         id: 'reset-all',
-        tile: 'reset',
         label: (t) => t.settings.reset,
         hint: (t) => t.settings.resetHint,
         actions: ['reset'],

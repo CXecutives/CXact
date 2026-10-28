@@ -63,7 +63,7 @@
   let adding = $state('');
   let switchOn = $state(true);
 
-  const TONES: readonly TileTone[] = ['neutral', 'raised', 'accent', 'success', 'danger'];
+  const TONES: readonly TileTone[] = ['accent', 'raised', 'danger'];
   const noop = (): void => undefined;
 </script>
 
@@ -162,9 +162,7 @@
           <div class="sections">
             <Section id="sheet-portals" name="portals" heading="Jobportale">
               <Group caption="Suche und Alert-Mails">
-                {#snippet fm()}<IconTile monogram="FM" size="sm" />{/snippet}
-                {#snippet ha()}<IconTile monogram="HA" size="sm" />{/snippet}
-                <SettingRow label="freelancermap" hint="Zuletzt 4 neue Jobs" lead={fm}>
+                <SettingRow label="freelancermap" hint="Zuletzt 4 neue Jobs">
                   {#snippet end()}
                     <Toggle
                       checked={switchOn}
@@ -173,63 +171,79 @@
                     />
                   {/snippet}
                 </SettingRow>
-                <SettingRow label="Hays" hint="Pausiert bis morgen" status="warning" lead={ha}>
+                <SettingRow label="Hays" hint="Pausiert bis morgen" status="warning">
                   {#snippet end()}
                     <Toggle checked label="Hays" onchange={noop} />
                   {/snippet}
                 </SettingRow>
               </Group>
               <Group caption="Nur Alert-Mails">
-                {#snippet tile()}<IconTile monogram="LI" size="sm" />{/snippet}
-                <SettingRow label="LinkedIn" hint="Braucht ein Postfach" disabled lead={tile}>
+                <SettingRow
+                  label="LinkedIn"
+                  link={{ label: 'Postfach verbinden', onclick: noop }}
+                  disabled
+                >
                   {#snippet end()}
                     <Toggle checked={false} disabled label="LinkedIn" onchange={noop} />
+                  {/snippet}
+                </SettingRow>
+                <SettingRow label="freelance.de" hint="11 Alert-Mails in 30 Tagen">
+                  <Button
+                    icon="signIn"
+                    label="Anmelden…"
+                    sizeTo={[{ label: 'Abmelden', icon: 'signOut' }]}
+                    onclick={noop}
+                  />
+                  <Button
+                    icon="alertAdd"
+                    label="Alert anlegen…"
+                    sizeTo={[
+                      { label: 'Alert-Mail öffnen', icon: 'alertMail' },
+                      { label: 'Alert prüfen…', icon: 'external' },
+                    ]}
+                    onclick={noop}
+                  />
+                  {#snippet end()}
+                    <Toggle checked label="freelance.de" onchange={noop} />
                   {/snippet}
                 </SettingRow>
               </Group>
             </Section>
             <Section id="sheet-mailbox" name="mailbox" heading="Postfach">
               <Group>
-                {#snippet mail()}<IconTile icon="alertMail" size="sm" />{/snippet}
                 <SettingRow
                   label="alerts.demo@gmail.com"
                   copyLabel
                   hint="Verbunden"
                   status="success"
-                  lead={mail}
+                  pair
                 >
                   <Button icon="edit" label="Ändern" onclick={noop} />
-                  <Button icon="trash" label="Entfernen" onclick={noop} />
+                  <Button icon="trash" label="Entfernen…" onclick={noop} />
                 </SettingRow>
                 <SettingRow
                   label="alerts.demo@gmail.com"
                   copyLabel
                   hint="App-Passwort abgelehnt"
                   status="danger"
-                  lead={mail}
+                  pair
                 >
                   <Button icon="edit" label="Ändern" onclick={noop} />
+                  <Button icon="trash" label="Entfernen…" onclick={noop} />
                 </SettingRow>
               </Group>
             </Section>
             <Section id="sheet-data" name="data" heading="Daten">
               <Group>
-                {#snippet doc()}<IconTile icon="document" size="sm" />{/snippet}
-                {#snippet reset()}<IconTile icon="reset" size="sm" />{/snippet}
-                <SettingRow
-                  label="Profil-Ordner"
-                  hint="C:\Users\demo\Documents\CXact"
-                  copy
-                  lead={doc}
-                >
+                <SettingRow label="Profil-Ordner" hint="C:\Users\demo\Documents\CXact" copy pair>
                   <Button icon="folder" label="Öffnen" onclick={noop} />
+                  <Button icon="edit" label="Ändern…" onclick={noop} />
                 </SettingRow>
                 <SettingRow
                   label="Alles zurücksetzen"
                   hint="Löscht alles, was CXact gespeichert hat."
-                  lead={reset}
                 >
-                  <Button icon="trash" label="Zurücksetzen" onclick={noop} />
+                  <Button icon="trash" label="Zurücksetzen…" onclick={noop} />
                 </SettingRow>
               </Group>
             </Section>
@@ -300,13 +314,8 @@
       <h2 class="name">Schmale Zeile</h2>
       <div class="narrow">
         <Group>
-          {#snippet reset()}<IconTile icon="reset" size="sm" />{/snippet}
-          <SettingRow
-            label="Alles zurücksetzen"
-            hint="Löscht alles, was CXact gespeichert hat."
-            lead={reset}
-          >
-            <Button icon="trash" label="Zurücksetzen" onclick={noop} />
+          <SettingRow label="Alles zurücksetzen" hint="Löscht alles, was CXact gespeichert hat.">
+            <Button icon="trash" label="Zurücksetzen…" onclick={noop} />
           </SettingRow>
         </Group>
       </div>
@@ -320,21 +329,15 @@
 
     <!-- Tiles -->
     <section class="cell">
-      <h2 class="name">Kacheln 32, 36, 48, 56</h2>
+      <h2 class="name">Kacheln 48, der Kopf der Einrichtung 56</h2>
       <div class="tiles">
-        {#each TONES as tone (tone)}
-          <div class="row-of">
-            <IconTile icon="jobs" {tone} size="sm" />
-            <IconTile icon="jobs" {tone} size="md" />
-            <IconTile icon="jobs" {tone} size="lg" />
-            <IconTile icon="jobs" {tone} size="xl" />
-            <IconTile icon="check" {tone} size="xl" round />
-          </div>
-        {/each}
         <div class="row-of">
-          <IconTile monogram="FM" size="sm" />
-          <IconTile monogram="LI" size="sm" />
+          {#each TONES as tone (tone)}<IconTile icon="jobs" {tone} />{/each}
+        </div>
+        <div class="row-of">
           <AppMark />
+          <Spinner size="xl" />
+          <ScoreRing ring={{ status: 'scored', score: 100, band: 'high' }} size="md" done />
         </div>
       </div>
     </section>
@@ -388,7 +391,12 @@
         />
         <ProgressStrip step="Jobs werden neu bewertet" value={null} label="Fortschritt" />
         <ProgressStrip step="Wartet auf freelance.de" value={5 / 8} label="Fortschritt">
-          {#snippet action()}<Button icon="signIn" label="Anmelden" onclick={noop} />{/snippet}
+          {#snippet action()}<Button
+              variant="link"
+              icon="signIn"
+              label="Anmelden"
+              onclick={noop}
+            />{/snippet}
         </ProgressStrip>
         <Meter value={0.6} label="Fortschritt" />
         <Meter value={null} label="Fortschritt" />
