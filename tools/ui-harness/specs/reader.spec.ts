@@ -1322,7 +1322,7 @@ test.describe('around the reader', () => {
   test('an empty trash shows one empty state in the list, the reader nothing beside it', async ({
     page,
   }) => {
-    await open(page, `${WIN}&scenario=empty`);
+    await open(page, `${WIN}&scenario=concept`);
     await page.getByTestId('place-trash').click();
     await expect(page.getByTestId('empty-place-trash').locator('h3')).toHaveText(
       T.list.empty.trash.heading,

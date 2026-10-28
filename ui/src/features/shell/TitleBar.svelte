@@ -9,8 +9,9 @@
   lights), quiet 28 px buttons at --titlebar-tools-inset (6 px: three buttons then end at
   --titlebar-tools-start, the zone the Windows caption leaves to the page, a deliberate
   departure from the draft's 12 px, decision 29). At the right the job view's button, only in
-  Jobs where it does something (a place with jobs beside its job view, or a job standing in
-  place of the list in one column) and hidden, not dimmed, everywhere else; hiding the job
+  Jobs where it does something (a place with jobs beside its job view, whatever the search or
+  the filter leaves of its list, or a job standing in place of the list in one column) and
+  hidden, not dimmed, everywhere else; hiding the job
   view closes its job (in one column the job that stands in place of the list). Then the
   caption buttons on Windows (WindowButtons). Every button is a plain switch: its glyph never
   changes under the pointer.
@@ -39,18 +40,14 @@
   import { tokenPx } from '$lib/tokens';
 
   const drawn = drawsWindowButtons();
-  /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
-   *  list that did not load): the job view beside it has nothing to show (JobsView). */
-  const listEmpty = $derived(
-    jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
-  );
-  /** The job view's button stands only where it does something (decision 29): in Jobs beside
-   *  a list with jobs, or in one column while a job stands in place of the list. */
+  /** The job view's button stands only where it does something (decision 29): in Jobs while
+   *  the job view can stand beside the list (its place holds jobs, JobsView; a search without
+   *  hits keeps it), or in one column while a job stands in place of the list. */
   const readerToggle = $derived(
     app.state !== null &&
       !shell.firstRun &&
       navigation.current === 'jobs' &&
-      (viewport.narrow ? shell.listHidden : !listEmpty),
+      (viewport.narrow ? shell.listHidden : !jobs.emptyPlace),
   );
   /** A click hides the job view: it stands beside the list, or in one column a job stands in
    *  the list's place. */

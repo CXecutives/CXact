@@ -69,8 +69,10 @@
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-titlebar-close-glyph: 0 0% 100%;
-  --p-titlebar-close: 358 75% 59%;
-  --p-titlebar-close-press: 358 66% 52%;
+  /* Schließen under the pointer: Windows 11's own red (#C42B1C), pressed a touch lighter
+     (its 90 %, as Windows draws it). */
+  --p-titlebar-close: 5.4 75% 43.9%;
+  --p-titlebar-close-press: 5.6 60% 49.4%;
   --p-on-accent: 0 0% 100%;
   --p-score-red: 358 70% 55%;
   --p-score-orange: 24 87% 54%;
@@ -379,8 +381,8 @@
   /* The window's top bar in the design's colours, never the system's (user, 2026-09-27):
      the sidebar's colour over the sidebar, the view's beside it, no line under it (TitleBar
      draws them); the caption buttons (Windows) take the
-     design's quiet wash under the pointer and a deeper one pressed, the close button the
-     app's own danger red of the delete actions with a white glyph and a darker red pressed;
+     design's quiet wash under the pointer and a deeper one pressed, the close button Windows
+     11's red with a white glyph (owner, 2026-10-28) and a touch lighter pressed;
      the glyphs fade while the window is in the back. */
   --titlebar-fg: hsl(var(--p-titlebar-fg));
   --titlebar-fg-inactive: var(--text-subtle);

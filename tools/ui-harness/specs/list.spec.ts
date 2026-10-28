@@ -371,6 +371,12 @@ test.describe('filter', () => {
     await expect(menu.getByTestId('menu-heading')).toHaveText(
       table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
     );
+    // The headings in the weight of the list's day headings.
+    const weight = (node: Element): string => getComputedStyle(node).fontWeight;
+    await expect(menu.getByTestId('menu-heading').first()).toHaveCSS(
+      'font-weight',
+      await list(page).getByTestId('day-heading').first().evaluate(weight),
+    );
     // Every entry of the table, then the way back (off while no filter is on).
     await expect(menu.locator('[role^="menuitem"]')).toHaveText([
       ...table.flatMap((group) => group.entries),
