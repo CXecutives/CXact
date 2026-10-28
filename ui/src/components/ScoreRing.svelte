@@ -172,7 +172,7 @@
     {#if ban}
       <span class="ban"><Icon name="excluded" size={size === 'md' ? 'lg' : 'xs'} /></span>
     {:else if done}
-      <span class="check"><Icon name="check" size="xl" /></span>
+      <span class="check"><Icon name="check" size="xxl" /></span>
     {:else if valued}
       {count.value}
     {:else}

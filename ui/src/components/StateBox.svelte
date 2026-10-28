@@ -163,19 +163,17 @@
     align-items: center;
   }
 
-  /* A narrow box: the button under the words, at the right. */
+  /* A narrow box: the button on a line of its own under the words, at the right; a spinner
+     or a mark stays beside the words. */
   @container (width < 480px) {
     .row {
       flex-wrap: wrap;
       row-gap: var(--space-8);
     }
 
-    .words {
-      flex-basis: 100%;
-    }
-
     .action {
-      margin-left: auto;
+      flex-basis: 100%;
+      justify-content: flex-end;
     }
   }
 </style>
