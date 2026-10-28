@@ -1,11 +1,12 @@
 <!--
   "Jobdetails" (the round 10 draft): the facts of the job in two columns (one where the card is
   narrower than 560 px), in the order of the facts table (lib/facts.ts, read by terms.ts). A
-  fact is its label (96, muted, no icon), its value (14, copyable) and, at its end, an 18 px
-  column for the verdict, an icon in the colours of the rings; a value without a verdict takes
-  that column too. The contact (its name, e-mail and phone one under the other) spans both
-  columns and comes last, so the rows above it pair up; its e-mail writes a new mail to it, the job's title its subject. A hairline under
-  each fact starts at its label. "Gefunden" stays quiet.
+  fact is its label (96, muted, no icon) and its value (14, copyable, ink). A fact that fits
+  the profile carries no mark; one that does not fully fit (in part, not, unclear) carries its
+  verdict's icon in the colours of the rings 6 after its value's last word (owner, 2026-10-28:
+  the eye goes to what does not fit). The contact (its name, e-mail and phone one under the
+  other) spans both columns and comes last, so the rows above it pair up; its e-mail writes a
+  new mail to it, the job's title its subject. A hairline under each fact starts at its label.
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
 -->
 <script lang="ts">
@@ -34,11 +35,12 @@
           class="fact"
           class:wide={row.key === 'contact'}
           data-row={row.key}
+          data-verdict={row.verdict ?? undefined}
           data-testid="term-{row.key}"
           in:fade
         >
           <span class="term-name">{row.name}</span>
-          <span class="term-line" class:spans={row.verdict === null}>
+          <span class="term-line">
             {#if row.parts}
               <span class="parts">
                 {#each row.parts as part, index (index)}{#if part === row.mail}<span class="mail"
@@ -54,22 +56,21 @@
               <span
                 class="value"
                 class:missing={row.missing}
-                class:quiet={row.key === 'portal'}
                 class:urgent={row.urgent}
                 data-copy={row.missing ? null : ''}>{row.value}</span
               >
-            {/if}
-            {#if row.note}<span class="term-note">{row.note}</span>{/if}
+            {/if}{#if row.note}<span class="term-note">{row.note}</span
+              >{/if}{#if row.verdict !== null && row.verdict !== 'met'}<span
+                class="verdict"
+                data-testid="verdict"
+                data-verdict={row.verdict}
+                ><ReasonItem
+                  iconOnly
+                  kind={row.excludes ? 'violation' : kindOf(row.verdict)}
+                  label={row.excludes ? t.score.excluded : t.reader.verdict[row.verdict]}
+                /></span
+              >{/if}
           </span>
-          {#if row.verdict}
-            <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
-              <ReasonItem
-                iconOnly
-                kind={row.excludes ? 'violation' : kindOf(row.verdict)}
-                label={row.excludes ? t.score.excluded : t.reader.verdict[row.verdict]}
-              />
-            </span>
-          {/if}
         </li>
       {/each}
     </ul>
@@ -89,10 +90,10 @@
     column-gap: var(--space-20);
   }
 
-  /* Label, value and the verdict's column; every part on the fact's first line. */
+  /* The label and the value with its mark; both on the fact's first line. */
   .fact {
     display: grid;
-    grid-template-columns: var(--facts-label) minmax(0, 1fr) var(--facts-mark);
+    grid-template-columns: var(--facts-label) minmax(0, 1fr);
     align-items: start;
     gap: var(--space-6);
     padding: var(--space-8) 0;
@@ -108,18 +109,11 @@
     color: var(--text-muted);
   }
 
+  /* The value, its quiet note and its mark in the flow of its words: the mark follows the
+     last word when the value wraps. */
   .term-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-6);
     min-width: 0;
     overflow-wrap: anywhere;
-  }
-
-  /* No verdict: the value takes its column. */
-  .term-line.spans {
-    grid-column: 2 / -1;
   }
 
   .value {
@@ -131,9 +125,8 @@
     color: var(--text-subtle);
   }
 
-  /* How and when the job came: quieter than what the ad says. */
-  .value.quiet {
-    color: var(--text-muted);
+  .term-note {
+    margin-inline-start: var(--space-6);
   }
 
   .value.urgent {
@@ -159,11 +152,12 @@
     --btn-type: var(--type-md);
   }
 
-  /* The icon centred on the fact's first line. */
+  /* The mark 6 after the words, centred on their line without making it taller. */
   .verdict {
     display: inline-flex;
-    justify-content: center;
-    margin-top: calc((var(--leading-md) - var(--icon-sm)) / 2);
+    margin-block: calc((var(--leading-md) - var(--icon-sm)) / 2);
+    margin-inline-start: var(--space-6);
+    vertical-align: top;
   }
 
   @container (width < 560px) {

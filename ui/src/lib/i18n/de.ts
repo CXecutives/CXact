@@ -725,7 +725,6 @@ export const de = {
   },
   job: {
     unread: 'Neu',
-    alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
     /** An ad that takes no applications any more (the end of its row's first line). */
     closed: 'Beendet',
@@ -952,10 +951,9 @@ export const de = {
     } satisfies Record<Exclude<TermVerdict, 'unset'>, string>,
     criterion: criteria,
     note,
-    /** How the job came, in the row "Gefunden" of the Jobdetails. */
-    foundSearch: (portal: string) => `Suche bei ${portal}`,
-    foundMail: (portal: string) => `Alert-Mail von ${portal}`,
-    foundBoth: (portal: string) => `Alert-Mail und Suche bei ${portal}`,
+    /** Where the job came from, in the row "Gefunden" of the Jobdetails: its portals
+     *  ("freelancermap.de und linkedin.com"). */
+    found: (portals: string[]) => joined(portals),
     close: 'Schließen',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',

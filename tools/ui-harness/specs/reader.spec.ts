@@ -60,14 +60,14 @@ async function openAt(page: Page, key: string, query = WIN): Promise<void> {
 
 const words = (text: string | null): string => (text ?? '').replace(/\s+/g, ' ').trim();
 
-/** The value of a row of the Jobdetails and its verdict ('' without one). */
+/** The value of a row of the Jobdetails and its verdict ('' without one); a row that fits
+ *  carries no mark, one that does not fully fit its verdict's. */
 async function cell(page: Page, key: string): Promise<[string, string]> {
   const target = term(page, key);
-  const verdict = target.getByTestId('verdict');
-  return [
-    words(await target.locator('.term-line').textContent()),
-    (await verdict.count()) === 0 ? '' : ((await verdict.getAttribute('data-verdict')) ?? ''),
-  ];
+  const verdict = (await target.getAttribute('data-verdict')) ?? '';
+  const mark = target.getByTestId('verdict');
+  await expect(mark).toHaveCount(verdict === '' || verdict === 'met' ? 0 : 1);
+  return [words(await target.locator('.term-line').textContent()), verdict];
 }
 
 /** The tooltip of a node under the pointer: its title, and its second line (a key). */
@@ -170,11 +170,14 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('band')).toHaveClass(/\bd[89]\b/);
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
-    // How and when it came: the moment it came into CXact ends the row.
-    expect(await cell(page, 'portal')).toEqual([
-      `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
-      '',
-    ]);
+    // Where and when it came: its portals, then the moment it came into CXact, in ink.
+    expect(await cell(page, 'portal')).toEqual(['freelancermap.de und linkedin.com, 08:24', '']);
+    await expect(term(page, 'portal').locator('.value')).toHaveCSS(
+      'color',
+      await term(page, 'company')
+        .locator('.value')
+        .evaluate((node) => getComputedStyle(node).color),
+    );
     // Nothing is joined by a dot, no info symbol beside the band, no count line.
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text).not.toContain('·');
@@ -590,21 +593,18 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'start')).toEqual(['ab sofort', 'met']);
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     await expect(term(page, 'workload')).toHaveCount(0);
-    // How and when it came: the moment it came into CXact ends the row, quietly.
-    expect(await cell(page, 'portal')).toEqual([
-      `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
-      '',
-    ]);
+    // Where and when it came: its portals, then the moment it came into CXact.
+    expect(await cell(page, 'portal')).toEqual(['freelancermap.de und linkedin.com, 08:24', '']);
     // No row "Eingegangen" (user, 2026-10-01): the moment stands in "Gefunden".
     await expect(term(page, 'received')).toHaveCount(0);
-    // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
-    // wish met), else why its criterion is met.
+    // Verdicts are icons (no words) named by their verdict, and only where a fact does not
+    // fully fit.
     await expect(terms(page)).not.toContainText('passt');
     await expect(terms(page)).not.toContainText('Minimum');
-    await expect(term(page, 'rate').getByTestId('verdict').locator('.reason')).toHaveAttribute(
-      'aria-label',
-      'Erfüllt',
-    );
+    await expect(term(page, 'rate').getByTestId('verdict')).toHaveCount(0);
+    await expect(
+      term(page, 'experience').getByTestId('verdict').locator('.reason'),
+    ).toHaveAttribute('aria-label', T.reader.verdict.partial);
   });
 
   test('Bewerben bis and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
@@ -714,7 +714,7 @@ test.describe('Jobdetails', () => {
       await openJob(page, key);
       const icons = stage(page).locator('[data-testid="verdict"] .reason');
       const count = await icons.count();
-      expect(count, key).toBeGreaterThan(1);
+      expect(count, key).toBeGreaterThan(0);
       // The Anforderungen: the group's heading says the verdict, no tooltip on the icon.
       const requirement = stage(page).locator('[data-testid="why"] [data-testid="reason"]').first();
       if ((await requirement.count()) > 0) {
@@ -812,9 +812,9 @@ test.describe('Jobdetails', () => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names).toEqual(['Unternehmen', 'Ort', 'Gefunden']);
-    // Its way and its source: the alert mail of LinkedIn.
+    // Its portal, LinkedIn, and when it came.
     const [found] = await cell(page, 'portal');
-    expect(found).toMatch(/^Alert-Mail von linkedin\.com, \S/);
+    expect(found).toMatch(/^linkedin\.com, \S/);
     await expect(terms(page)).not.toContainText('/');
     // A preview: no "/" claims the ad says nothing.
     await openJob(page, 'freelance-900411');
@@ -1207,9 +1207,13 @@ test.describe('the cards', () => {
     // The contact spans both columns.
     const contact = (await term(page, 'contact').boundingBox())!;
     expect(Math.round(contact.width)).toBe(Math.round(place.x + place.width - company.x));
-    // The verdict in its own column at the fact's end.
-    const verdict = (await term(page, 'place').getByTestId('verdict').boundingBox())!;
-    expect(Math.round(place.x + place.width - (verdict.x + verdict.width))).toBeLessThanOrEqual(1);
+    // A fact that fits has no mark; one that fits in part its mark 6 after its value, centred
+    // on its line.
+    await expect(term(page, 'place').getByTestId('verdict')).toHaveCount(0);
+    const value = (await term(page, 'experience').locator('.value').boundingBox())!;
+    const mark = (await term(page, 'experience').getByTestId('verdict').boundingBox())!;
+    expect(Math.round(mark.x - (value.x + value.width))).toBe(6);
+    expect(Math.abs(mark.y + mark.height / 2 - (value.y + value.height / 2))).toBeLessThan(1.5);
     // A narrow window: one column.
     await page.setViewportSize({ width: 480, height: 360 });
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
