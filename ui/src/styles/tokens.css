@@ -838,9 +838,19 @@
   --list-row-min: 48px;
   --list-row-radius: var(--radius-md);
   --list-rule-end: var(--space-10);
+  /* The row's tools lie over the end of its line (JobRow): the title gone under them and
+     fading out over the stretch before them. */
   --list-tools: calc(2 * var(--control-icon) + var(--space-2));
   --list-tools-end: var(--space-10);
+  --list-tools-fade: var(--space-24);
+  --list-tools-mask: linear-gradient(
+    to left,
+    transparent var(--list-tools),
+    hsl(var(--p-ink)) calc(var(--list-tools) + var(--list-tools-fade))
+  );
   --day-head-pad: 14px var(--space-10) var(--space-6);
+  /* The fade under a day's heading while it sticks (the rows go out under it). */
+  --day-head-fade: var(--space-12);
   --divider-pad: 22px var(--space-10) var(--space-6);
   --divider-gap: var(--space-6);
   --type-day: var(--weight-medium) var(--font-xs) / var(--leading-xs) var(--font-sans);

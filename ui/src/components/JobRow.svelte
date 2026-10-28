@@ -11,8 +11,10 @@
   Under the pointer (and while the row's menu is open) the row's tools fade in at its end:
   the moves of its place (actions.ts rowTools: Archivieren and In den Papierkorb legen, Nach
   Aktuell verschieben and In den Papierkorb legen, Wiederherstellen and Endgültig löschen),
-  quiet icon buttons that name themselves in their tooltips. Their slot is always kept, so
-  the title never moves. They are siblings of the row's button (a click on one never opens
+  quiet icon buttons that name themselves in their tooltips. No room is kept for them (owner,
+  2026-10-28): the title uses the whole row, and while they show they lie over its end on the
+  row's own ground, the title fading out under them over a short stretch; the title never
+  moves. They are siblings of the row's button (a click on one never opens
   the job, a double click never its ad), out of the Tab order (the row's menu is there for
   the keyboard), and exist only while they show. After a tool took its row away, the row that
   slides under the pointer shows its tools only once the pointer moves (input.ts `hover`).
@@ -185,15 +187,16 @@
     ondouble={onopen ? () => onopen?.(job) : null}
     testid={rowId}
   >
-    <span
-      class="title"
-      class:unread={fresh}
-      class:muted
-      use:tooltip={{ text: heading, truncated: true }}
-      >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
-          >{:else}{part.text}{/if}{/each}</span
-    >{#if fresh}<span class="unseen">{t.job.unread}</span>{/if}
-    <span class="slot" aria-hidden="true"></span>
+    <span class="line">
+      <span
+        class="title"
+        class:unread={fresh}
+        class:muted
+        use:tooltip={{ text: heading, truncated: true }}
+        >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
+            >{:else}{part.text}{/if}{/each}</span
+      >{#if fresh}<span class="unseen">{t.job.unread}</span>{/if}
+    </span>
   </ListRow>
   {#if tooled && tools}
     <span class="tools" data-testid="row-tools" transition:fade>
@@ -221,6 +224,19 @@
     /* Layout containment only: paint containment gave every row a clip of its own, and the
        compositor's work each frame grows with such nodes (a long list, long frames). */
     contain: layout;
+  }
+
+  /* The row's whole line: the title takes all of it. */
+  .line {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* While the tools show, the line fades out under them (their ground is the row's own:
+     its wash, its highlight); while the list scrolls the row rests, the title whole. */
+  .tooled:where(:not([data-still])) .line {
+    mask-image: var(--list-tools-mask);
   }
 
   /* One line for every title, so every row has one height (user, 2026-09-25): a long title
@@ -261,16 +277,7 @@
     color: inherit;
   }
 
-  /* The tools' slot at the end of the line, always kept: the title's room never changes. */
-  .slot {
-    flex: none;
-    box-sizing: content-box;
-    width: var(--list-tools);
-    margin-left: auto;
-    padding-left: var(--list-row-gap);
-  }
-
-  /* The tools in their slot, centred on the row, 10 from its end. */
+  /* The tools over the end of the line, centred on the row, 10 from its end. */
   .tools {
     position: absolute;
     top: calc(50% - var(--control-icon) / 2);

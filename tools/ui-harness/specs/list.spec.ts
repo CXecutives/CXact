@@ -1341,13 +1341,23 @@ test.describe('days', () => {
     const scroller = page.getByTestId('list-scroll');
     const top = (await scroller.boundingBox())!.y;
     expect(await lined(page)).toBe(false);
-    // A little down: today's heading sticks at the top, the head has no line.
+    /** The opacity of the fade under the first day's heading. */
+    const fade = () =>
+      list(page)
+        .getByTestId('day-heading')
+        .first()
+        .evaluate((node) => getComputedStyle(node, '::after').opacity);
+    // In its place it has no fade (it would lie over its first row).
+    expect(await fade()).toBe('0');
+    // A little down: today's heading sticks at the top, the rows fade out under it, the head
+    // has no line.
     await scroller.evaluate((node) => node.scrollTo({ top: 60 }));
     await expect
       .poll(async () =>
         Math.round((await list(page).getByTestId('day-heading').first().boundingBox())!.y),
       )
       .toBe(Math.round(top));
+    await expect.poll(fade).toBe('1');
     await expect.poll(() => lined(page)).toBe(false);
     // Past the days (the sections at the top): the line.
     await scroller.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
