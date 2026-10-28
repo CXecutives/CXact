@@ -4,7 +4,7 @@
   no sign (the ring is the job's mark), a spinner only while something is being done.
   - being scored after "Trotzdem bewerten": the spinner, "Der Job wird bewertet.";
   - excluded: why (the profile's side), "Darum wurde der Job nicht bewertet.", "Trotzdem
-    bewerten" with the gauge of a score; the box neutral like the others (the ring and its word
+    bewerten" with the plus; the box neutral like the others (the ring and its word
     are the job's one red);
   - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (being
     loaded: the spinner, "Die Anzeige wird geladen.", no button);
@@ -144,7 +144,7 @@
 {#snippet includeButton()}
   <Button
     variant="secondary"
-    icon="gauge"
+    icon="add"
     label={t.actions.include}
     testid="reader-include"
     onclick={oninclude}

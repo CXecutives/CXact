@@ -73,8 +73,8 @@
   const blocked = $derived(fetchBlocked());
   /** The faces of the place action, each reserving the other's width; words only (the
    *  search's magnifier stands right under it). */
-  const SEARCH = { label: t.toolbar.searchNow } as const;
-  const CANCEL = { label: t.toolbar.cancel } as const;
+  const SEARCH = { label: t.toolbar.searchNow, icon: 'search' } as const;
+  const CANCEL = { label: t.toolbar.cancel, icon: 'cancel' } as const;
 
   /** The search (and the funnel) stand unless the list did not load. */
   const tools = $derived(jobs.status !== 'error');
@@ -167,6 +167,7 @@
             <Button
               variant="secondary"
               label={CANCEL.label}
+              icon={CANCEL.icon}
               sizeTo={[SEARCH]}
               loading={run.cancelling}
               testid="cancel-run"
@@ -176,6 +177,7 @@
             <Button
               variant="primary"
               label={SEARCH.label}
+              icon={SEARCH.icon}
               sizeTo={[CANCEL]}
               disabled={blocked !== null}
               disabledReason={blocked}

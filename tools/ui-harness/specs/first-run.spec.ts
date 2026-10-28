@@ -69,7 +69,6 @@ test('Willkommen: the app mark, one job with its ring and Loslegen; no dots on a
   );
   await expect(job).toContainText(T.firstRun.example);
   await expect(job).toContainText(T.score.band.high);
-  await expect(page.getByTestId('first-intro')).toContainText(T.firstRun.exampleText);
   await expect(page.getByTestId('first-intro').getByRole('button')).toHaveCount(0);
   await expect(back(page)).toHaveCount(0);
   await expect(next(page)).toHaveText(T.firstRun.start);

@@ -268,17 +268,18 @@
   --score-ring-7: hsl(var(--p-score-lime));
   --score-ring-8: hsl(var(--p-score-green));
   --score-ring-9: hsl(var(--p-score-green));
-  /* The band's words beside a ring: exactly the ring's colour (user, 2026-09-30). */
-  --score-text-0: hsl(var(--p-word-red));
-  --score-text-1: hsl(var(--p-word-red));
-  --score-text-2: hsl(var(--p-word-orange));
-  --score-text-3: hsl(var(--p-word-orange));
-  --score-text-4: hsl(var(--p-word-yellow));
-  --score-text-5: hsl(var(--p-word-yellow));
-  --score-text-6: hsl(var(--p-word-lime));
-  --score-text-7: hsl(var(--p-word-lime));
-  --score-text-8: hsl(var(--p-word-green));
-  --score-text-9: hsl(var(--p-word-green));
+  /* The band's words beside a ring: exactly the ring's colour (owner, 2026-09-30 and again
+     2026-10-28: never a darker shade). */
+  --score-text-0: var(--score-ring-0);
+  --score-text-1: var(--score-ring-1);
+  --score-text-2: var(--score-ring-2);
+  --score-text-3: var(--score-ring-3);
+  --score-text-4: var(--score-ring-4);
+  --score-text-5: var(--score-ring-5);
+  --score-text-6: var(--score-ring-6);
+  --score-text-7: var(--score-ring-7);
+  --score-text-8: var(--score-ring-8);
+  --score-text-9: var(--score-ring-9);
   --score-digits: hsl(var(--p-ink));
   --score-track: hsl(var(--p-ring-track));
   /* An excluded job: the red ban (in the list on a light red track as large as a ring, in
@@ -569,9 +570,9 @@
   --ring-sm: 34px;
   --ring-sm-stroke: 3px;
   --ring-sm-digits: 11.5px;
-  --ring-md: 56px;
+  --ring-md: 60px;
   --ring-md-stroke: 5px;
-  --ring-md-digits: 17px;
+  --ring-md-digits: 20px;
   --border-width: 1px;
   --tile-md: 36px;
   --tile-lg: 48px;
@@ -590,14 +591,13 @@
   /* the list: the hairline between rows starts at the title; the highlight is inset this far */
   --row-rule-start: 56px;
   --row-highlight-inset: 6px;
-  /* One row measure for Profil and Einstellungen (owner, 2026-10-24): a row of a page's card,
-     at least 56 high, 12 above and below, 20 at the sides. A row of Einstellungen is as high
-     with or without its line under the name (12 + 20 + 18 + 12), its hairline from the text
-     (20, like the Profil's). */
-  --form-row-min: 56px;
+  /* One row measure for Profil and Einstellungen (owner, 2026-10-24 and 2026-10-28): every row
+     of a page's card is as high as a row with a line under its name (12 + 20 + 18 + 12),
+     12 above and below, 20 at the sides, its hairline from the text (20). */
   --form-row-pad-y: 12px;
   --form-row-pad-x: 20px;
-  --setting-row-min: calc(2 * var(--form-row-pad-y) + var(--leading-md) + var(--leading-sm));
+  --form-row-min: calc(2 * var(--form-row-pad-y) + var(--leading-md) + var(--leading-sm));
+  --setting-row-min: var(--form-row-min);
   --setting-rule-start: var(--form-row-pad-x);
   /* the label column of Jobdetails */
   --facts-label: 96px;
@@ -655,9 +655,9 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/30 and 36/44. */
+     scaled into viewBox units: 36/34 and 36/60. */
   --ring-sm-scale: 1.0588;
-  --ring-md-scale: 0.643;
+  --ring-md-scale: 0.6;
 
   /* ------------------------------------------- round 10: shell */
   /* The sidebar: 12 px at its sides and 14 below (nothing stands at its foot); an entry 10 px
@@ -884,16 +884,14 @@
   /* A field of the Profil is a row of its group's box, like a row of Einstellungen: its label
      (14/540) in a column of 188, 24 before the control, 12 20 inside and at least 56 high,
      a hairline between rows; in a box under 560 wide the label stands 8 above its control.
-     The number fields carry their unit inside and are as wide as their digits; the day of
-     "Ab Datum" 122. A closed group's row (round 11) reads 10 above and below, at least 48
-     high, its pencil 8 from the box's edge. */
+     The number fields carry their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170, the years
+     of experience 130, the day of "Ab Datum" 122. */
   --profile-label-width: 188px;
   --profile-label-gap: var(--space-24);
   --profile-label-gap-narrow: var(--space-8);
+  --profile-money-width: 170px;
+  --profile-years-width: 130px;
   --profile-date-width: 122px;
-  --profile-read-min: 48px;
-  --profile-read-pad-y: var(--space-10);
-  --profile-read-pad-end: var(--space-8);
   /* A box whose rows are its entries (Kompetenzen, Sprachen): rows of 48, 20 at the sides,
      the value 12 before the remove slot of 24; a competence's years field 74 wide (26 high,
      "Jahre" inside). The last row adds one: the navy quiet button, 9 above and below. */

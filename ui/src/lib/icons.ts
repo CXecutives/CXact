@@ -80,7 +80,9 @@ export const ICONS = {
   /** The top bar's job view button, the same way. */
   readerPane: 'panel-right',
   search: 'search',
-  filter: 'funnel',
+  /** Stops a run (Abbrechen beside Jobs suchen). */
+  cancel: 'square',
+  filter: 'list-filter',
   signIn: 'log-in',
   signOut: 'log-out',
 
@@ -105,8 +107,6 @@ export const ICONS = {
   duration: 'hourglass',
   workload: 'clock',
   remote: 'house',
-  /** A day rate (the Profil's head). */
-  rate: 'banknote',
   /** The company of a job (its row, its reader). */
   company: 'building-2',
   place: 'map-pin',

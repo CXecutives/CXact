@@ -3,8 +3,9 @@
   `sections.ts` in their order (Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen,
   Ausschlüsse), each a Section with one white box of rows (Group `rows`), like the rows of
   Einstellungen.
-  On the Profil a group reads like a profile while it is closed (ReadGroup); "Bearbeiten" at
-  its title, a click on one of its values or a fact of the head opens it at that field. One
+  On the Profil a group reads like a profile while it is closed (ReadGroup); only
+  "Bearbeiten" at its title opens it (one way to edit, owner 2026-10-28), the caret in its
+  first field. One
   group is open at a time: its box has the navy edge, its rows are the fields
   (ProfileControl; a hairline between rows), and its foot holds Fertig and Abbrechen in the
   order of the OS, one width. Fertig (and Enter in a field) saves at once (`onsave`) and
@@ -100,13 +101,7 @@
     }
     await tick();
     if (field !== null) await focusField(field);
-    else root?.querySelector<HTMLElement>(`[data-group="${section}"] :is(input, button)`)?.focus();
-  }
-
-  /** Opens the group of a field at that field (the facts of the head). */
-  export function openAt(field: string): void {
-    const section = sectionOf(field);
-    if (section !== null) void openGroup(section, field);
+    else firstControl(root?.querySelector<HTMLElement>(`[data-group="${section}"]`))?.focus();
   }
 
   /** Fertig: saves the open group and closes it once it is saved. */
@@ -188,6 +183,16 @@
 
   let root = $state<HTMLElement | null>(null);
 
+  /** The control of a field (or a group) that takes the caret: its text input before any
+   *  button, so the focus never lands on a chip's ×. */
+  function firstControl(scope: HTMLElement | null | undefined): HTMLElement | null {
+    return (
+      scope?.querySelector<HTMLElement>('input, textarea') ??
+      scope?.querySelector<HTMLElement>('button:not([data-testid="info-tip"])') ??
+      null
+    );
+  }
+
   /** Ready to save: a value that holds the save is said at its field, which comes into view
    *  (a day that does not read gets the caret). */
   export function ready(): boolean {
@@ -209,8 +214,7 @@
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-edit~="${field}"]`);
     const target =
-      scope?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
-      scope?.querySelector<HTMLElement>('input, textarea, button:not([data-testid="info-tip"])');
+      scope?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? firstControl(scope);
     target?.focus({ preventScroll: true });
     (target ?? scope)?.scrollIntoView({ block: 'center' });
     return target !== null && target !== undefined;
@@ -268,7 +272,7 @@
       >
         <Group rows active={editing && !allOpen}>
           {#if !editing}
-            <ReadGroup {section} {missing} onopen={(field) => void openGroup(section.id, field)} />
+            <ReadGroup {section} {missing} />
           {:else}
             <div
               data-edit={list ?? undefined}

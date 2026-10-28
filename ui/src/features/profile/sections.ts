@@ -60,8 +60,6 @@ export type Control =
     }
   /** The contract types (`profile.contract`), a choice of several. */
   | { kind: 'contracts'; info: Info }
-  /** The wished and the minimum day rate in one row ("Tagessatz": Wunsch, Mindestens). */
-  | { kind: 'rates'; info: Info }
   | { kind: 'choice'; key: ChoiceKey; label: Word; testid: string }
   /** Mindestlaufzeit, a value on a scale. */
   | { kind: 'months' }
@@ -100,7 +98,21 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
-      { kind: 'rates', info: 'dayRate' },
+      {
+        kind: 'number',
+        key: 'dayRateWish',
+        label: 'dayRateWish',
+        unit: 'day',
+        testid: 'profile-wish-rate',
+      },
+      {
+        kind: 'number',
+        key: 'dayRateMin',
+        label: 'dayRateMin',
+        unit: 'day',
+        info: 'dayRate',
+        testid: 'profile-min-rate',
+      },
       // The salary counts for Festanstellung and Zeitarbeit only.
       {
         kind: 'number',
@@ -157,8 +169,6 @@ export function fieldOf(control: Control): keyof ProfileForm {
       return control.key;
     case 'contracts':
       return 'project';
-    case 'rates':
-      return 'dayRateWish';
     case 'months':
       return 'minMonths';
     default:
@@ -166,9 +176,8 @@ export function fieldOf(control: Control): keyof ProfileForm {
   }
 }
 
-/** Every value a control edits (the day rates' row edits two). */
+/** Every value a control edits (Vertragsart edits three). */
 export function fieldsOf(control: Control): (keyof ProfileForm)[] {
-  if (control.kind === 'rates') return ['dayRateWish', 'dayRateMin'];
   if (control.kind === 'contracts') return ['project', 'permanent', 'temporary'];
   return [fieldOf(control)];
 }

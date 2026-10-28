@@ -2,7 +2,7 @@
   The body of Willkommen (the harmony audit, 2026-10-28): one job as CXact shows it, calm and
   centred in the card. Its ring (the app's ScoreRing, 87, filling once as the step appears),
   its title 14/540 and under it the band 13/540 in the word colour of its ring, in a quiet box
-  on the page's ground; under the box one sentence what the number means. A picture of a job,
+  on the page's ground; the lead above says what it means. A picture of a job,
   not a control: nothing in it reacts but the ring's tooltip.
 -->
 <script lang="ts">
@@ -21,7 +21,6 @@
       <span class="band">{t.score.band.high}</span>
     </span>
   </div>
-  <p class="text">{t.firstRun.exampleText}</p>
 </div>
 
 <style>
@@ -58,12 +57,5 @@
   .band {
     color: var(--score-text-8);
     font: var(--type-field-label);
-  }
-
-  .text {
-    color: var(--text-muted);
-    font: var(--type-sm);
-    text-align: center;
-    text-wrap: pretty;
   }
 </style>

@@ -389,24 +389,18 @@ test('Länder: the focus lists the others, Schweiz as a suggestion; typing narro
 }) => {
   await profile(page);
   await countryInput(page).focus();
-  // The focus lists every country not chosen yet (a closed list, round 10); the DACH
-  // countries not chosen are the suggestion under it ("Vorschlag").
+  // Like every tag field the focus opens no list and there are no suggestions (owner,
+  // 2026-10-28); typing lists the countries not chosen yet.
   const listed = options(page).getByRole('option');
-  await expect(listed.first()).toBeVisible();
-  expect(await listed.allTextContents()).not.toContain('Deutschland');
-  const suggestion = page.getByTestId('country-pick');
-  await expect(suggestion).toContainText(T.profile.suggested);
-  await expect(suggestion.getByRole('button')).toHaveText(['Schweiz']);
+  await expect(listed).toHaveCount(0);
+  await expect(page.getByTestId('country-pick')).toHaveCount(0);
   // By either name, Enter takes the first match.
   await countryInput(page).fill('Belg');
   await expect(listed).toHaveText(['Belgien']);
-  await countryInput(page).fill('');
-  // Esc closes the list that lay over the suggestion.
-  await page.keyboard.press('Escape');
-  await expect(listed).toHaveCount(0);
-  await suggestion.getByRole('button', { name: 'Schweiz' }).click();
+  await countryInput(page).fill('Schw');
+  await countryInput(page).press('Enter');
   await expect(chips(countries(page))).toHaveText(['Deutschland', 'Österreich', 'Schweiz']);
-  await expect(page.getByTestId('country-pick')).toHaveCount(0);
+  await expect(listed).toHaveCount(0);
   await countryInput(page).fill('Atlantis');
   await expect(page.getByTestId('profile-countries-none')).toHaveText(T.profile.field.countryNone);
   await countryInput(page).fill('');

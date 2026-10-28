@@ -1,8 +1,7 @@
 <!--
   One field of an open group of the Profil (ProfileEditor), a row of its box (Field `row`: the
   label beside the control, only where docs/PLAN.md places one an info symbol after it). A
-  tag field fills the control's column, a number is as wide as its digits and its unit, the
-  day rates stand side by side under one label ("Tagessatz": Wunsch, Mindestens), Vertragsart
+  tag field fills the control's column, a number is as wide as its unit needs, Vertragsart
   is a choice of several, Arbeitsmodell, Auslastung and Mindestlaufzeit are selects, Länder
   and Verfügbar their own fields. A wished rate under the minimum says so quietly under it;
   an error is said by its Field.
@@ -70,11 +69,17 @@
 
 {#if c.kind === 'number'}
   {@const error = errorOf(c.key)}
-  <Field label={words[c.label]} for="{id}-{c.key}" {info} {error} row>
-    <span class="number">
+  <Field
+    label={words[c.label]}
+    for="{id}-{c.key}"
+    {info}
+    hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
+    {error}
+    row
+  >
+    <span class="number {c.unit}">
       <NumberField
         id="{id}-{c.key}"
-        fit
         money={c.unit !== 'years'}
         unit={t.profile.unit[c.unit]}
         placeholder={c.placeholder ? words[c.placeholder] : null}
@@ -82,44 +87,6 @@
         invalid={error !== null}
         testid={c.testid}
       />
-    </span>
-  </Field>
-{:else if c.kind === 'rates'}
-  {@const error = errorOf('dayRateWish') ?? errorOf('dayRateMin')}
-  <Field
-    label={words.dayRate}
-    for="{id}-dayRateWish"
-    {info}
-    hint={below && error === null ? words.belowMinRate : null}
-    {error}
-    row
-  >
-    <span class="rates">
-      <span class="rate">
-        <span class="short" aria-hidden="true">{words.rateWish}</span>
-        <NumberField
-          id="{id}-dayRateWish"
-          fit
-          money
-          label={words.dayRateWish}
-          unit={t.profile.unit.day}
-          bind:value={form.dayRateWish}
-          invalid={errorOf('dayRateWish') !== null}
-          testid="profile-wish-rate"
-        />
-      </span>
-      <span class="rate">
-        <span class="short" aria-hidden="true">{words.rateMin}</span>
-        <NumberField
-          fit
-          money
-          label={words.dayRateMin}
-          unit={t.profile.unit.day}
-          bind:value={form.dayRateMin}
-          invalid={errorOf('dayRateMin') !== null}
-          testid="profile-min-rate"
-        />
-      </span>
     </span>
   </Field>
 {:else if c.kind === 'chips'}
@@ -196,29 +163,20 @@
     min-width: 0;
   }
 
-  /* A number is as wide as its digits and its unit; the note under it keeps its own line. */
+  /* A number is as wide as its unit needs (euros 170, years 130); the note under it keeps
+     its own line. */
   .number {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     min-width: 0;
   }
 
-  /* The day rates side by side, each its short label before it; under each other where the
-     row is narrow. */
-  .rates {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-8) var(--space-24);
+  .number > :global(:first-child) {
+    width: var(--profile-money-width);
+    max-width: 100%;
   }
 
-  .rate {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-10);
-  }
-
-  .short {
-    font: var(--type-md);
+  .number.years > :global(:first-child) {
+    width: var(--profile-years-width);
   }
 </style>

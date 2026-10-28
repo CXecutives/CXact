@@ -18,7 +18,6 @@
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
-  import Banknote from '@lucide/svelte/icons/banknote';
   import BellPlus from '@lucide/svelte/icons/bell-plus';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
@@ -44,7 +43,7 @@
   import FileText from '@lucide/svelte/icons/file-text';
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
-  import Funnel from '@lucide/svelte/icons/funnel';
+  import ListFilter from '@lucide/svelte/icons/list-filter';
   import Gauge from '@lucide/svelte/icons/gauge';
   import Globe from '@lucide/svelte/icons/globe';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
@@ -64,6 +63,7 @@
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
+  import Square from '@lucide/svelte/icons/square';
   import Settings from '@lucide/svelte/icons/settings';
   import TextSelect from '@lucide/svelte/icons/text-select';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -81,7 +81,6 @@
     'arrow-right': ArrowRight,
     award: Award,
     ban: Ban,
-    banknote: Banknote,
     'bell-plus': BellPlus,
     briefcase: Briefcase,
     'building-2': Building2,
@@ -107,7 +106,7 @@
     'file-text': FileText,
     'file-up': FileUp,
     'folder-open': FolderOpen,
-    funnel: Funnel,
+    'list-filter': ListFilter,
     gauge: Gauge,
     globe: Globe,
     'file-pen-line': FilePenLine,
@@ -127,6 +126,7 @@
     'rotate-cw': RotateCw,
     scissors: Scissors,
     search: Search,
+    square: Square,
     settings: Settings,
     'text-select': TextSelect,
     'trash-2': Trash2,

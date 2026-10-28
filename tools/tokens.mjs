@@ -64,20 +64,11 @@ const CONTRAST = [
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
   // A suggestion chip (Button `suggest`): its words and its count on the track's fill.
   { text: ['text', 'text-muted', 'text-subtle'], on: ['surface-track'] },
-  // Round 10: the warm page of the job view and the pages, the darker words in a ring's
-  // colour, the chosen word of a menu, the red label of a missing field.
+  // Round 10: the warm page of the job view and the pages, the chosen word of a menu, the red
+  // label of a missing field. The band words beside a ring are not here: they take exactly
+  // the ring's colour (owner, 2026-10-28), like the ring itself.
   { text: ['text', 'text-muted', 'text-subtle', 'link'], on: ['page'] },
-  {
-    text: [
-      'score-text-0',
-      'score-text-2',
-      'score-text-4',
-      'score-text-6',
-      'score-text-8',
-      'warning-text',
-    ],
-    on: ['surface', 'page'],
-  },
+  { text: ['warning-text'], on: ['surface', 'page'] },
   { text: ['chosen-text'], on: ['chosen-surface'] },
   { text: ['field-label-missing'], on: ['surface', 'page'] },
   { text: ['text'], on: ['selection-tint', 'danger-tint'] },

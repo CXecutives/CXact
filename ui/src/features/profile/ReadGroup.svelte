@@ -1,15 +1,14 @@
 <!--
-  A closed group of the Profil as it reads (round 11, "wie Malt"): each row its name (14
-  muted) in the label's column and its value as text, a tag field's values as chips (text to
-  copy); the day rates in one row ("1.200 € am Tag, mindestens 1.100"); an empty value that
-  is not required stays away, a required one that is empty is a red row with the field's
-  "… hinzufügen". Kompetenzen and Sprachen read as their entries, name and value. Under the
-  pointer a row shows a wash and its pencil; a click on it (not a drag that selected its
-  text) or its pencil opens the group at that field (`onopen`). A group with nothing to read
-  shows its first field's "… hinzufügen" in navy.
+  A closed group of the Profil as it reads (round 11, "wie Malt"), in the rows of Einstellungen
+  (one measure: at least 62 high, 12 20 inside, a hairline between rows): each row its name
+  (14/540 ink, like a setting's name) in the label's column and its value as text (14), a tag
+  field's values as chips (text to copy). An empty value that is not required stays away; a
+  required one that is empty says "Noch keine Angabe" in the red of a missing field; a group
+  with nothing to read says it once, quietly. Kompetenzen and Sprachen read as their entries,
+  name and value. Nothing here reacts: only the group's "Bearbeiten" opens it (owner,
+  2026-10-28: one way to edit).
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
   import type { ProfileForm } from '$lib/ipc/types';
   import { editor } from '$lib/state/profile.svelte';
@@ -20,35 +19,34 @@
     section: Section;
     /** The required fields still empty that are marked. */
     missing: readonly string[];
-    /** Opens the group at a field. */
-    onopen: (field: string) => void;
   }
 
-  let { section, missing, onopen }: Props = $props();
+  let { section, missing }: Props = $props();
 
   const words = $derived(t.profile.field);
   const form = $derived(editor.after);
   const isMissing = (field: string): boolean => missing.includes(field);
 
-  /** What a row says: text, chips, a red row for a required value still empty, or nothing. */
-  type Read = { text: string } | { chips: string[] } | { missing: string } | null;
+  /** What a row says: text, chips, a required value still empty, or nothing. */
+  type Read = { text: string } | { chips: string[] } | { missing: true } | null;
 
   function readOf(c: Control): Read {
-    const amount = (value: number | null, unit: string): Read =>
-      value === null ? null : { text: t.profile.read.amount(value, unit) };
     switch (c.kind) {
-      case 'number':
+      case 'number': {
         if (!(c.shown?.(form) ?? true)) return null;
-        if (c.unit !== 'years') return amount(form[c.key], t.profile.unit[c.unit]);
-        return form[c.key] === null ? null : { text: t.profile.read.years(form[c.key] ?? 0) };
-      case 'rates':
-        return form.dayRateWish === null && form.dayRateMin === null
-          ? null
-          : { text: t.profile.read.rates(form.dayRateWish, form.dayRateMin) };
+        const value = form[c.key];
+        if (value === null) return null;
+        return {
+          text:
+            c.unit === 'years'
+              ? t.profile.read.years(value)
+              : t.profile.read.amount(value, t.profile.unit[c.unit]),
+        };
+      }
       case 'chips': {
         const values = form[c.key].filter((value) => value.trim() !== '');
         if (values.length > 0) return { chips: values };
-        return isMissing(c.key) ? { missing: words[c.placeholder] } : null;
+        return isMissing(c.key) ? { missing: true } : null;
       }
       case 'contracts':
         return {
@@ -70,7 +68,7 @@
         if (form.countries.length > 0) {
           return { chips: form.countries.map((code) => t.profile.country[code] ?? code) };
         }
-        return isMissing('countries') ? { missing: words.countriesPlaceholder } : null;
+        return isMissing('countries') ? { missing: true } : null;
       case 'available':
         return {
           text:
@@ -82,13 +80,12 @@
   }
 
   /** The label a row reads under. */
-  function labelOf(c: Control): string {
-    if (c.kind === 'rates') return words.dayRate;
+  const labelOf = (c: Control): string => {
     const field = fieldOf(c);
     return String(
       (words as Record<string, unknown>)[LABEL_OF[field as keyof ProfileForm] ?? field],
     );
-  }
+  };
 
   /** The entries of a list as they read: name and value. */
   const entries = $derived.by((): { name: string; value: string }[] => {
@@ -109,114 +106,64 @@
       ? section.rows.map((c) => ({ c, read: readOf(c) })).filter((each) => each.read !== null)
       : [],
   );
-
-  /** A click on a row opens it there; a drag that selected its text does not. */
-  function click(event: PointerEvent, field: string): void {
-    if (event.button !== 0) return;
-    if ((window.getSelection()?.toString() ?? '') !== '') return;
-    onopen(field);
-  }
 </script>
 
 {#if 'list' in section}
   {#each entries as entry (entry.name)}
-    <div class="read item" role="presentation" onpointerup={(event) => click(event, section.list)}>
-      <span class="name" data-copy>{entry.name}</span>
+    <div class="read item">
+      <span class="value" data-copy>{entry.name}</span>
       <span class="side" data-copy>{entry.value}</span>
     </div>
   {/each}
   {#if entries.length === 0}
-    {@render add(
-      section.list,
-      section.list === 'competences' ? words.competencePlaceholder : words.languagePlaceholder,
-      isMissing(section.list),
-    )}
+    <div class="read item" data-missing={isMissing(section.list) ? '' : undefined}>
+      <span class="none" class:required={isMissing(section.list)}>{t.profile.read.none}</span>
+    </div>
   {/if}
 {:else}
   {#each rows as { c, read } (fieldOf(c))}
-    {@const field = fieldOf(c)}
-    {#if read !== null && 'missing' in read}
-      {@render add(field, read.missing, true)}
-    {:else if read !== null}
-      <div
-        class="read"
-        data-field={fieldsOf(c).join(' ')}
-        role="presentation"
-        onpointerup={(event) => click(event, field)}
-      >
-        <span class="label">{labelOf(c)}</span>
-        {#if 'chips' in read}
-          <span class="chips">
-            {#each read.chips as chip (chip)}<span class="chip" data-copy>{chip}</span>{/each}
-          </span>
-        {:else}
-          <span class="value" data-copy>{read.text}</span>
-        {/if}
-        <span class="pen">
-          <Button
-            variant="ghost"
-            iconOnly
-            icon="edit"
-            label={t.profile.editField(labelOf(c))}
-            onclick={() => onopen(field)}
-          />
+    <div
+      class="read"
+      data-field={fieldsOf(c).join(' ')}
+      data-missing={read !== null && 'missing' in read ? '' : undefined}
+    >
+      <span class="label">{labelOf(c)}</span>
+      {#if read !== null && 'missing' in read}
+        <span class="none required">{t.profile.read.none}</span>
+      {:else if read !== null && 'chips' in read}
+        <span class="chips">
+          {#each read.chips as chip (chip)}<span class="chip" data-copy>{chip}</span>{/each}
         </span>
-      </div>
-    {/if}
+      {:else if read !== null}
+        <span class="value" data-copy>{read.text}</span>
+      {/if}
+    </div>
   {/each}
-  {#if rows.length === 0 && section.rows[0]}
-    {@const first = section.rows[0]}
-    {@render add(
-      fieldOf(first),
-      first.kind === 'chips' ? words[first.placeholder] : labelOf(first),
-      false,
-    )}
+  {#if rows.length === 0}
+    <div class="read item"><span class="none">{t.profile.read.none}</span></div>
   {/if}
 {/if}
 
-<!-- A value still to give: a row that opens the group there, red where it is required. -->
-{#snippet add(field: string, text: string, required: boolean)}
-  <div class="read add" class:required data-field={field} data-missing={required ? '' : undefined}>
-    <Button
-      variant="add"
-      icon="add"
-      label={text}
-      testid="add-{field}"
-      onclick={() => onopen(field)}
-    />
-  </div>
-{/snippet}
-
 <style>
-  /* A row: its name in the label's column, its value as text, its pencil at the end (shown
-     under the pointer and with the focus); a hairline between rows. */
+  /* A row of Einstellungen: its name in the label's column, its value beside it. */
   .read {
     display: grid;
-    grid-template-columns: var(--profile-label-width) minmax(0, 1fr) var(--control-icon);
+    grid-template-columns: var(--profile-label-width) minmax(0, 1fr);
     align-items: center;
     gap: var(--space-8) var(--profile-label-gap);
-    min-height: var(--profile-read-min);
-    padding: var(--profile-read-pad-y) var(--profile-read-pad-end) var(--profile-read-pad-y)
-      var(--form-row-pad-x);
-    transition: background-color var(--dur-base) var(--ease-standard);
+    min-height: var(--form-row-min);
+    padding: var(--form-row-pad-y) var(--form-row-pad-x);
   }
 
   .read + .read {
     border-top: var(--border-width) solid var(--border);
   }
 
-  .read:not(.add):hover {
-    background-color: var(--quiet-hover);
-    transition-duration: var(--dur-hover);
-  }
-
   .label {
-    color: var(--text-muted);
-    font: var(--type-md);
+    font: var(--type-label);
   }
 
-  .value,
-  .name {
+  .value {
     min-width: 0;
     font: var(--type-md);
     overflow-wrap: anywhere;
@@ -240,22 +187,9 @@
     font: var(--type-chip);
   }
 
-  .pen {
-    display: inline-flex;
-    opacity: 0;
-    transition: opacity var(--dur-base) var(--ease-standard);
-  }
-
-  .read:hover .pen,
-  .pen:focus-within {
-    opacity: 1;
-    transition-duration: var(--dur-hover);
-  }
-
   /* A list's entry: its name, its value at the right. */
   .item {
     grid-template-columns: minmax(0, 1fr) auto;
-    padding-right: var(--form-row-pad-x);
   }
 
   .side {
@@ -264,13 +198,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* A value still to give: the navy add, red where it is required. */
-  .add {
-    grid-template-columns: minmax(0, 1fr);
+  .none {
+    color: var(--text-muted);
+    font: var(--type-md);
   }
 
   .required {
-    --link: var(--field-label-missing);
-    --link-hover: var(--field-label-missing);
+    color: var(--field-label-missing);
   }
 </style>

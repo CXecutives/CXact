@@ -20,8 +20,7 @@
   `trailing` puts a small control inside the field at its right end, like the picker button
   of a native date field (a button `inField`). `suffix` is a quiet unit at the field's right
   end (`€ am Tag`, `Jahre`), read with the value. `inline` is the 26 px field of a list's row
-  (a competence's years): 6 round, its digits at the right. `size` makes the field as wide as
-  that many characters and its unit, so a number reads like text (`1.200 € am Tag`).
+  (a competence's years): 6 round, its digits at the right.
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
@@ -69,8 +68,6 @@
     suffix?: string | null;
     /** 26 px, its text at the right: a short number in a list's row. */
     inline?: boolean;
-    /** As wide as this many characters and its unit (null: the width of its place). */
-    size?: number | null;
     oninput?: (value: string) => void;
   }
 
@@ -89,7 +86,6 @@
     trailing = null,
     suffix = null,
     inline = false,
-    size = null,
     oninput,
   }: Props = $props();
 
@@ -192,7 +188,6 @@
   class:disabled
   class:trailed={trailing !== null}
   class:inline
-  class:sized={size !== null}
   use:formKeys={keys}
 >
   {#if kind === 'search'}
@@ -203,7 +198,6 @@
     class="input"
     {type}
     {value}
-    size={size ?? undefined}
     id={id ?? undefined}
     aria-label={label ?? undefined}
     aria-invalid={invalid ? 'true' : undefined}
@@ -302,18 +296,6 @@
      or holds the focus, so the values read like text at rest. */
   .inline {
     --field-edge: var(--inline-edge, var(--border-strong));
-  }
-
-  /* As wide as its characters and its unit: the unit follows the digits like a word. */
-  .sized {
-    width: auto;
-    max-width: 100%;
-  }
-
-  .sized .input {
-    flex: none;
-    width: auto;
-    padding-right: var(--space-2);
   }
 
   .invalid {

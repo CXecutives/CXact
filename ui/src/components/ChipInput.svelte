@@ -9,9 +9,9 @@
   only at line breaks. A value that is already there (in any case) is not added twice.
   Without `entry` the field only shows and removes (chips chosen elsewhere). Its keys come
   from input.ts (chipKeys, withList).
-  With `options` the field takes only those (the countries, a closed list): the focus opens
-  the list of every option not chosen yet, typing narrows it to the options whose name or
-  other names (the English one of a country) start with the text (any word of them, in any
+  With `options` the field takes only those (the countries, a closed list): like every tag
+  field it opens no list on focus (owner, 2026-10-28); typing lists the options not chosen
+  yet whose name or other names (the English one of a country) start with the text (any word of them, in any
   case, with or without accents), with the first marked; Enter or a click takes the marked
   one, leaving the field takes a single match, a chosen option leaves the list. Text that
   matches no option stays in the field and says so (`noMatch`); text that matches only
@@ -166,7 +166,13 @@
   );
   /** The rows under the field: the options not chosen yet, or the suggested terms. */
   const rows = $derived(
-    !focused || closed ? [] : options !== null ? matches.map((option) => option.label) : hints,
+    !focused || closed
+      ? []
+      : options !== null
+        ? folded(draft) === ''
+          ? []
+          : matches.map((option) => option.label)
+        : hints,
   );
   /** The marked row (-1: none; typing marks the first option, never a term). */
   let mark = $state(-1);

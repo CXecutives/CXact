@@ -18,9 +18,9 @@
   scrim and wait while it is open.
   Pressing inside and releasing on the scrim keeps it open; only the left button counts.
   The buttons follow the OS: the action first on Windows (then the third action, then
-  cancel), last (right) on macOS with the third action on the far left. The scrim starts
-  below the window's top bar, which keeps moving the window and its buttons keep working (a
-  sheet leaves the title bar free).
+  cancel), last (right) on macOS with the third action on the far left. The scrim covers
+  the whole window, the page-drawn title bar included (owner, 2026-10-28: it is part of the
+  app); the window still moves by its caption (platform.rs).
   A dialog may hold content of its own (`children`: the list of the backups, the mailbox
   form). The sentence under the heading is left out where the heading says it all. An action
   that can be stopped while it runs (the check of "Verbinden") keeps cancel and Esc live
@@ -214,7 +214,7 @@
   .layer {
     position: fixed;
     z-index: var(--z-overlay);
-    inset: var(--titlebar-height) 0 0;
+    inset: 0;
     display: flex;
     flex-direction: column;
   }

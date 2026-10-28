@@ -649,6 +649,7 @@
           text={empty.text}
           action={{
             label: t.toolbar.searchNow,
+            icon: 'search',
             reason: fetchBlocked(),
             testid: 'fetch',
             onclick: () => void run.start({ kind: 'fetch' }),

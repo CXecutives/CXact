@@ -238,41 +238,6 @@
     return done;
   }
 
-  /** The facts under the wished roles in the head: day rate, work mode, availability,
-   *  countries (a value not given stays away). */
-  const facts = $derived.by(() => {
-    if (editor.origin !== 'stored') return [];
-    const form = editor.after;
-    const shown: { icon: 'rate' | 'remote' | 'start' | 'place'; text: string; field: string }[] =
-      [];
-    if (form.dayRateWish !== null || form.dayRateMin !== null) {
-      shown.push({
-        icon: 'rate',
-        text: t.profile.fact.rate(form.dayRateWish, form.dayRateMin),
-        field: form.dayRateWish !== null ? 'dayRateWish' : 'dayRateMin',
-      });
-    }
-    if (form.workMode !== 'any') {
-      shown.push({ icon: 'remote', text: t.profile.workMode[form.workMode], field: 'workMode' });
-    }
-    shown.push({
-      icon: 'start',
-      text:
-        form.available.kind === 'from'
-          ? t.profile.read.from(form.available.date)
-          : t.profile.fact.now,
-      field: 'available',
-    });
-    if (form.countries.length > 0) {
-      shown.push({
-        icon: 'place',
-        text: form.countries.map((code) => t.profile.country[code] ?? code).join(', '),
-        field: 'countries',
-      });
-    }
-    return shown;
-  });
-
   /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
    *  focus of the gone form. */
   function discard(): void {
@@ -408,11 +373,6 @@
       dirty={editor.dirty}
       oncv={() => void fillFromCv()}
       onfolder={editor.origin === null && profile?.parseError ? openFolder : null}
-      roles={editor.origin === 'stored'
-        ? editor.after.roles.filter((role) => role.trim() !== '')
-        : []}
-      {facts}
-      onfact={(field) => panel?.openAt(field)}
     />
   {/snippet}
   {#snippet bar()}
