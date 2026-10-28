@@ -9,8 +9,8 @@
   box with 4 px around them, the pop shadow; it drops in by 4 px (menuIn). The chosen option
   of a choice is a track row with navy words, no tick; only a switch of its own (`toggle`,
   the filter) carries the tick. An icon column stands before the words only where an entry
-  has an icon or a tick. No entry names a key. A group may carry a small muted heading,
-  which the keys pass over.
+  has an icon or a tick. No entry names a key. A group may carry a small muted heading (12/540
+  like the list's day and section headings), which the keys pass over.
   A select's list (`listbox`) is a listbox at least as wide as its button and at most 232 px
   high; the focus stays on the button, and a press on an option never takes it.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
@@ -267,7 +267,8 @@
     white-space: nowrap;
   }
 
-  /* A group's name: small and muted, above its entries. */
+  /* A group's name: small and muted, above its entries, in the weight of the list's day
+     headings. */
   .heading {
     display: flex;
     flex: none;
@@ -275,7 +276,7 @@
     height: var(--menu-heading);
     padding: 0 var(--menu-row-pad) var(--space-4);
     color: var(--text-muted);
-    font: var(--type-xs);
+    font: var(--type-day);
   }
 
   .separator {

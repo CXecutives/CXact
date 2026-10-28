@@ -2,8 +2,7 @@
   A card of the job view (the round 10 draft): white, a hairline edge and the card's soft
   shadow, 14 round, 18 20 inside; cards that follow each other stand 12 apart. Its title is
   16/650 ink, a count beside it on the same baseline in the small subtle text (Anforderungen
-  "4 von 6"). The `hero` card (the job's head) stands a step higher (--sh-raised), and its
-  quiet tools sit 14 in from its top right corner (`tools`), out of the text's way.
+  "4 von 6"). The `hero` card (the job's head) stands a step higher (--sh-raised).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -15,8 +14,6 @@
     count?: string | null;
     /** The job's head: a step higher than the cards under it. */
     hero?: boolean;
-    /** Quiet tools in the top right corner. */
-    tools?: Snippet | null;
     testid?: string | null;
     headingTestid?: string | null;
     children: Snippet;
@@ -26,7 +23,6 @@
     heading = null,
     count = null,
     hero = false,
-    tools = null,
     testid = null,
     headingTestid = null,
     children,
@@ -40,7 +36,6 @@
     </h2>
   {/if}
   {@render children()}
-  {#if tools}<div class="tools">{@render tools()}</div>{/if}
 </section>
 
 <style>
@@ -76,13 +71,5 @@
     font: var(--type-sm);
     font-variant-numeric: var(--numeric);
     letter-spacing: 0;
-  }
-
-  .tools {
-    position: absolute;
-    top: var(--card-tools-inset);
-    right: var(--card-tools-inset);
-    display: flex;
-    gap: var(--space-2);
   }
 </style>

@@ -272,24 +272,33 @@ test.describe('header', () => {
     expect((await calls(page, 'list_jobs')).length).toBe(loads);
   });
 
-  test('an empty place takes the whole width and keeps its search; the open inbox job closes there', async ({
+  test('no job anywhere: no head, the empty state in the middle with Jobs suchen; an empty place keeps its search', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=fresh`);
-    // Aktuell before the first search: the briefcase, a heading and one sentence, at the top
-    // of the full width; the search and the funnel stand, nothing beside the list.
+    // Aktuell before the first search: no head (no places, search, funnel or button above),
+    // the briefcase, a heading and one sentence in the middle of the full width, and under
+    // them its one primary, Jobs suchen; nothing beside the list.
     const inbox = page.getByTestId('empty-all');
     await expect(inbox.locator('h3')).toHaveText(T.list.empty.inbox.heading);
     await expect(inbox.locator('p')).toHaveText(T.list.empty.inbox.text);
-    for (const id of ['search', 'filter', 'fetch']) {
-      await expect(page.getByTestId(id), id).toBeVisible();
+    for (const id of ['list-header', 'places', 'search', 'filter']) {
+      await expect(page.getByTestId(id), id).toHaveCount(0);
     }
+    const fetch = inbox.getByTestId('fetch');
+    await expect(fetch).toHaveText(T.toolbar.searchNow);
+    await expect(fetch).toHaveClass(/primary/);
     await expect(page.getByTestId('reader-pane')).toHaveCount(0);
     await expect(page.getByTestId('list-splitter')).toHaveCount(0);
     const scroll = (await page.getByTestId('list-scroll').boundingBox())!;
     const sheet = (await page.getByTestId('jobs').boundingBox())!;
     expect(Math.round(scroll.x + scroll.width)).toBe(Math.round(sheet.x + sheet.width));
+    const shown = (await inbox.boundingBox())!;
+    const middle = shown.y + shown.height / 2;
+    expect(Math.abs(middle - (scroll.y + scroll.height / 2))).toBeLessThan(24);
+    expect(Math.abs(shown.x + shown.width / 2 - (scroll.x + scroll.width / 2))).toBeLessThan(12);
     // The Archiv and the Papierkorb, each in its words; the Papierkorb without the funnel.
+    await open(page, `${WIN}&scenario=concept`);
     for (const place of ['archive', 'trash'] as const) {
       await openPlace(page, place);
       const empty = page.getByTestId(`empty-place-${place}`);
@@ -306,23 +315,23 @@ test.describe('header', () => {
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
   });
 
-  test('a fetch into an empty Aktuell moves nothing: the strip comes under the search', async ({
+  test('a fetch into an empty Aktuell brings the head back: the strip under the search, Abbrechen', async ({
     page,
   }) => {
     for (const platform of [WIN, MAC]) {
       await open(page, `${platform}&scenario=empty&tick=40`);
-      const before = (await page.getByTestId('search').boundingBox())!;
+      await expect(page.getByTestId('search')).toHaveCount(0);
       await page.evaluate(() => (window.__harness.holdAfter = 4));
-      await page.getByTestId('fetch').click();
+      await page.getByTestId('empty-all').getByTestId('fetch').click();
       const line = page.getByTestId('run-line');
       await expect(line).toBeVisible();
-      // While it fills Aktuell the empty state says so.
+      await expect(page.getByTestId('cancel-run')).toBeVisible();
+      // While it fills Aktuell the empty state says so, at the top under the head.
       await expect(page.getByTestId('empty-all').locator('p')).toHaveText(
         T.list.empty.running.text,
       );
       await expect(funnel(page)).toBeVisible();
       const search = (await page.getByTestId('search').boundingBox())!;
-      expect(search.y).toBe(before.y);
       expect((await line.boundingBox())!.y).toBeGreaterThanOrEqual(search.y + search.height);
       // The first jobs come in.
       await page.evaluate(() => (window.__harness.holdAfter = null));
@@ -361,6 +370,12 @@ test.describe('filter', () => {
     ]);
     await expect(menu.getByTestId('menu-heading')).toHaveText(
       table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
+    );
+    // The headings in the weight of the list's day headings.
+    const weight = (node: Element): string => getComputedStyle(node).fontWeight;
+    await expect(menu.getByTestId('menu-heading').first()).toHaveCSS(
+      'font-weight',
+      await list(page).getByTestId('day-heading').first().evaluate(weight),
     );
     // Every entry of the table, then the way back (off while no filter is on).
     await expect(menu.locator('[role^="menuitem"]')).toHaveText([
@@ -1137,7 +1152,7 @@ test.describe('one list', () => {
     await expect(skeleton).toHaveCount(0);
   });
 
-  test('an empty inbox says what comes in a heading and one sentence, the header fetches', async ({
+  test('an empty inbox says what comes in a heading and one sentence, and fetches', async ({
     page,
   }) => {
     const says = async (words: { heading: string; text: string }): Promise<void> => {
@@ -1145,10 +1160,12 @@ test.describe('one list', () => {
       await expect(shown.locator('h3')).toHaveText(words.heading);
       await expect(shown.locator('p')).toHaveText(words.text);
     };
-    // Before the first search.
+    // Before the first search: Jobs suchen under it, its one button.
     await open(page, `${WIN}&scenario=fresh`);
     await says(T.list.empty.inbox);
-    await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
+    await expect(page.getByTestId('empty-all').getByRole('button')).toHaveText([
+      T.toolbar.searchNow,
+    ]);
     // After a search that found nothing that fits: that, and the way to the profile.
     await open(page, `${WIN}&scenario=empty`);
     const empty = page.getByTestId('empty-all');
@@ -1158,9 +1175,9 @@ test.describe('one list', () => {
     await says(T.list.empty.noActive);
     await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
     await open(page, `${WIN}&scenario=empty`);
-    // One way on: the header's "Jobs suchen" stands right above it.
-    await expect(empty.getByRole('button')).toHaveText([T.list.openProfile]);
-    await expect(page.getByTestId('fetch')).toBeVisible();
+    // No job anywhere: no head, Jobs suchen and the way to the profile under it.
+    await expect(empty.getByRole('button')).toHaveText([T.toolbar.searchNow, T.list.openProfile]);
+    await expect(page.getByTestId('list-header')).toHaveCount(0);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
     for (const gone of ['alert-linkedin', 'read-older']) {
@@ -1330,13 +1347,23 @@ test.describe('days', () => {
     const scroller = page.getByTestId('list-scroll');
     const top = (await scroller.boundingBox())!.y;
     expect(await lined(page)).toBe(false);
-    // A little down: today's heading sticks at the top, the head has no line.
+    /** The opacity of the fade under the first day's heading. */
+    const fade = () =>
+      list(page)
+        .getByTestId('day-heading')
+        .first()
+        .evaluate((node) => getComputedStyle(node, '::after').opacity);
+    // In its place it has no fade (it would lie over its first row).
+    expect(await fade()).toBe('0');
+    // A little down: today's heading sticks at the top, the rows fade out under it, the head
+    // has no line.
     await scroller.evaluate((node) => node.scrollTo({ top: 60 }));
     await expect
       .poll(async () =>
         Math.round((await list(page).getByTestId('day-heading').first().boundingBox())!.y),
       )
       .toBe(Math.round(top));
+    await expect.poll(fade).toBe('1');
     await expect.poll(() => lined(page)).toBe(false);
     // Past the days (the sections at the top): the line.
     await scroller.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));

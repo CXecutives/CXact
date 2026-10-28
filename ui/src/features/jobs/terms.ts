@@ -268,29 +268,18 @@ const TERMS: Record<TermKey, Term> = {
         : { value: parts.join(', '), parts, mail: text(facts?.contactEmail) };
     },
   },
-  // How and when the job came (user decision 2026-10-01: "Gefunden"): the search of its
-  // portal, its alert mail, or both in one phrase that names the portal once, then the
-  // portals it is also on and the moment it came into CXact. An ad that is no longer online
-  // says so in the ad's note, not here.
+  // Where and when the job came (user decision 2026-10-01: "Gefunden"; owner, 2026-10-28:
+  // the portals only, not the ways): its portal and the others it is also on, then the moment
+  // it came into CXact. An ad that is no longer online says so in the ad's note, not here.
   portal: {
     ...NONE,
     read: ({ job, now }) => {
-      const own = t.portal[job.portal];
-      const both = job.origins.includes('search') && job.origins.includes('mail');
-      const ways = both
-        ? [t.reader.foundBoth(own)]
-        : job.origins.map((origin) =>
-            origin === 'search' ? t.reader.foundSearch(own) : t.reader.foundMail(own),
-          );
-      const also = job.alsoOn
-        .filter((portal) => portal !== job.portal)
-        .map((portal) => t.portal[portal]);
+      const portals = [job.portal, ...job.alsoOn.filter((portal) => portal !== job.portal)];
       // When it came into CXact ("16:49", "gestern 08:12"), at the end.
       const when = formatMoment(job.firstSeenAt, now);
       return {
         value: [
-          ...(ways.length > 0 ? ways : [own]),
-          ...(also.length > 0 ? [t.job.alsoOn(also.join(', '))] : []),
+          t.reader.found(portals.map((portal) => t.portal[portal])),
           ...(when === '' ? [] : [when]),
         ].join(', '),
       };

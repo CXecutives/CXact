@@ -30,9 +30,14 @@ test('DS-3: add two terms, undo the first, then the second; each undo takes out 
   const adds = page.getByTestId('reader').getByTestId('add-to-profile');
   await expect(adds.nth(1)).toBeVisible();
   const saves = async (): Promise<number> => (await calls(page, 'save_profile')).length;
-  /** The term the last save added (the terms now, less the ones before). */
-  const added = async (before: string[]): Promise<string> =>
-    (await terms(page)).find((word) => !before.includes(word)) ?? '';
+  /** The term the last save added (the terms now, less the ones before), once the stored
+   *  profile has it (the save is counted when it is asked, the profile stored after). */
+  const added = async (before: string[]): Promise<string> => {
+    const now = async (): Promise<string> =>
+      (await terms(page)).find((word) => !before.includes(word)) ?? '';
+    await expect.poll(now).not.toBe('');
+    return now();
+  };
   const sorted = (list: string[]): string[] => [...list].sort();
 
   await adds.nth(0).click();

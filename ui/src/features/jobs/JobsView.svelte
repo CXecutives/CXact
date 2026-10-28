@@ -5,19 +5,20 @@
   right the reader (under the top bar's fade), or with nothing selected its empty state ("Kein
   Job gewählt"). No cards, no shadows. A place without jobs (or a list that did not load) has
   nothing to read: the list takes the whole width, without the reader, the handle and the
-  seam (decision 24). The handle
+  seam (decision 24). With no job anywhere, nothing searched or filtered and no run
+  (jobs.bare) the list has no head either: its empty state alone, in the middle, offers
+  "Jobs suchen"; a run brings the head back with its strip and Abbrechen. The handle
   between the columns resizes the list (kept) within limits that follow the window and the
   sidebar and never shrink while the window grows. Below 900 px one column: the list under
-  its header, as at every width, or the reader with its "×" (the mouse's back button too).
-  The run's line is part of the header. Closing a job from the reader focuses its row.
+  its header, as at every width, or the reader, which the top bar's job view button and
+  Zurück (the mouse's back button too) close. The run's line is part of the header.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps the previous job; the empty state goes at once (the pane
   stays empty, a placeholder once the load takes a while). Then the new stage takes the old
   one's place at once, nothing fades, so nothing flashes between them; the new job starts at
-  the top. The close "×" in the reader
-  head (at every width) and a search that no longer finds the job close it (the place's empty
-  state). Esc closes only menus and dialogs: the app has no keys of its own.
+  the top. The top bar's job view button and a search that no longer finds the job close it
+  (the place's empty state). Esc closes only menus and dialogs: the app has no keys of its own.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -81,7 +82,6 @@
       shell.listHidden = false;
     };
   });
-  const place = $derived(jobs.place);
   /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
    *  list that did not load): the list says why, the reader adds no second tile. */
   const placeEmpty = $derived(
@@ -89,11 +89,6 @@
   );
   /** The list scrolled beneath its header where no day's heading sticks: the hairline. */
   let line = $state(false);
-  /** A place without jobs, or a list that did not load: nothing to read beside it. */
-  const emptyPlace = $derived(
-    jobs.status === 'error' ||
-      (jobs.status === 'ready' && (jobs.overviewCounts ?? jobs.counts)[place] === 0),
-  );
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
   /** The docked sidebar's width (the user's, or the first one). */
@@ -111,7 +106,7 @@
   );
   /** The job view stands beside the list unless the user hid it (one column shows a job in
    *  place of the list). A job chosen in the list shows it again. */
-  const readerShown = $derived((shell.readerOpen || viewport.narrow) && !emptyPlace);
+  const readerShown = $derived((shell.readerOpen || viewport.narrow) && !jobs.emptyPlace);
   // The top bar continues the border between the list and the job view.
   $effect(() => {
     shell.listSeam = readerShown && !viewport.narrow && listWidth !== undefined ? listWidth : null;
@@ -138,8 +133,8 @@
   let right = $state<HTMLElement | null>(null);
 
   /**
-   * Close the job. A focus inside the reader (its close button) goes to the row of the job
-   * that was open, like Mail: the list keeps its place and Tab goes on from there.
+   * Close the job. A focus inside the pane (its Zurück) goes to the row of the job that was
+   * open, like Mail: the list keeps its place and Tab goes on from there.
    */
   function close(): void {
     const open = jobs.selected;
@@ -187,9 +182,11 @@
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      <div class="head">
-        <ListHeader bind:this={header} {line} />
-      </div>
+      {#if !jobs.bare}
+        <div class="head">
+          <ListHeader bind:this={header} {line} />
+        </div>
+      {/if}
       <div class="scroll" data-testid="list-scroll">
         <JobList
           onresetfilter={() => void header?.resetFilter()}
@@ -233,7 +230,7 @@
                   {/if}
                 </div>
               {:else}
-                <!-- One column: the way back while no job stands (the reader has its "×"). -->
+                <!-- One column: the way back while no job stands. -->
                 {#if stage.what === ERROR || stage.what === WAITING}
                   <div class="back">
                     <Button
@@ -265,7 +262,7 @@
                 {:else if stage.what === OPENING}
                   <!-- Blank until the chosen job is there. -->
                 {:else if jobs.detail}
-                  <Reader detail={jobs.detail} onclose={close} />
+                  <Reader detail={jobs.detail} />
                 {/if}
               {/if}
             </div>

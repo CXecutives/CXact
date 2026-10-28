@@ -71,8 +71,10 @@
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-titlebar-close-glyph: 0 0% 100%;
-  --p-titlebar-close: 358 75% 59%;
-  --p-titlebar-close-press: 358 66% 52%;
+  /* Schließen under the pointer: Windows 11's own red (#C42B1C), pressed a touch lighter
+     (its 90 %, as Windows draws it). */
+  --p-titlebar-close: 5.4 75% 43.9%;
+  --p-titlebar-close-press: 5.6 60% 49.4%;
   --p-on-accent: 0 0% 100%;
   --p-score-red: 358 70% 55%;
   --p-score-orange: 24 87% 54%;
@@ -89,6 +91,9 @@
   --p-word-yellow: 36 80% 34%;
   --p-word-lime: 84 62% 28%;
   --p-word-green: 142 52% 30%;
+  /* The mark of a requirement met in part: the yellow a step darker, so the glyph holds 3:1
+     on white (a ring keeps the exact yellow). */
+  --p-mark-yellow: 38 92% 40%;
   --p-red-50: 358 70% 96.5%;
   --p-red-100: 358 60% 90%;
   --p-green-50: 142 45% 95%;
@@ -281,9 +286,10 @@
   --ban: var(--danger-strong);
   --ban-track: hsl(var(--p-red-100));
   /* The verdict icons (Jobdetails, Anforderungen) take the rings'
-     colours: met the top step, met in part the middle one, not met the lowest. */
+     colours: met the top step, met in part the middle one (a step darker, 3:1 on white), not
+     met the lowest. */
   --verdict-met: var(--score-ring-9);
-  --verdict-partial: var(--score-ring-5);
+  --verdict-partial: hsl(var(--p-mark-yellow));
   --verdict-unmet: var(--score-ring-0);
 
   /* ------------------------------------------------------------------- brand */
@@ -382,8 +388,8 @@
   /* The window's top bar in the design's colours, never the system's (user, 2026-09-27):
      the sidebar's colour over the sidebar, the view's beside it, no line under it (TitleBar
      draws them); the caption buttons (Windows) take the
-     design's quiet wash under the pointer and a deeper one pressed, the close button the
-     app's own danger red of the delete actions with a white glyph and a darker red pressed;
+     design's quiet wash under the pointer and a deeper one pressed, the close button Windows
+     11's red with a white glyph (owner, 2026-10-28) and a touch lighter pressed;
      the glyphs fade while the window is in the back. */
   --titlebar-fg: hsl(var(--p-titlebar-fg));
   --titlebar-fg-inactive: var(--text-subtle);
@@ -573,9 +579,8 @@
   /* The unread dot of a list row sits on the ring axis in the pane padding; the dot of a
      state (Verbunden) beside its words. */
   /* Round 10 (2026-10-24), the approved draft: */
-  /* the dot of a status word (Verbunden) and the pulse of a run */
+  /* the dot of a status word (Verbunden) */
   --dot-status: 7px;
-  --pulse-dot: 8px;
   /* a checkbox and its edge */
   --check-box: 16px;
   --check-edge: 1.5px;
@@ -715,6 +720,7 @@
      the page's title 22 above the first section's. The page's column: --page-max with
      --page-side (16 in a narrow page), 8 under the top bar, room for the bar at its end. */
   --card-gap: var(--space-12);
+  /* The hero's quiet tools: 14 in from the card's edge, so their glyphs end on its content's. */
   --card-tools-inset: 14px;
   --group-pad-end: var(--space-20);
   --group-caption: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
@@ -808,14 +814,12 @@
   --spinner-line: 2px;
   /* A meter on the cream (the progress strip): a white track. */
   --meter-track-on-bg: hsl(var(--p-white) / 0.85);
-  /* The progress strip of a run: the cream ground with a hairline, 10 12 inside, the coral
-     pulse 8 apart from the step's words in navy, the meter 8 under them. */
+  /* The progress strip of a run: the cream ground without an edge, 10 12 inside, the step's
+     words in navy, the meter 8 under them. */
   --strip-surface: var(--bg);
-  --strip-edge: var(--border);
   --strip-pad-y: var(--space-10);
   --strip-pad-x: var(--space-12);
   --strip-text: hsl(var(--p-navy));
-  --pulse: hsl(var(--p-coral));
   /* The app's mark (the setup's welcome) and its shadow, which follows the plate's shape. */
   --app-mark: var(--tile-xl);
   --app-mark-shadow: drop-shadow(0 6px 8px hsl(var(--p-shade-dialog) / 0.24));
@@ -841,9 +845,19 @@
   --list-row-min: 48px;
   --list-row-radius: var(--radius-md);
   --list-rule-end: var(--space-10);
+  /* The row's tools lie over the end of its line (JobRow): the title gone under them and
+     fading out over the stretch before them. */
   --list-tools: calc(2 * var(--control-icon) + var(--space-2));
   --list-tools-end: var(--space-10);
+  --list-tools-fade: var(--space-24);
+  --list-tools-mask: linear-gradient(
+    to left,
+    transparent var(--list-tools),
+    hsl(var(--p-ink)) calc(var(--list-tools) + var(--list-tools-fade))
+  );
   --day-head-pad: 14px var(--space-10) var(--space-6);
+  /* The fade under a day's heading while it sticks (the rows go out under it). */
+  --day-head-fade: var(--space-12);
   --divider-pad: 22px var(--space-10) var(--space-6);
   --divider-gap: var(--space-6);
   --type-day: var(--weight-medium) var(--font-xs) / var(--leading-xs) var(--font-sans);
@@ -854,13 +868,12 @@
 
   /* ------------------------------------------- round 10: job view */
   /* The hero: the band 3 under the title, the state box and the action row 14 under the top,
-     and room at the top's right for the three quiet tools (3 x 28, their gaps and air). */
+     and room at the end of the title's first line for its two quiet tools (2 x 28 and their
+     gap). */
   --hero-band-gap: 3px;
   --hero-gap: 14px;
-  --hero-tools-room: 96px;
-  /* Jobdetails: the verdict's column at a fact's end; the facts 8 under the card's title, the
-     requirements 12, the ad's text 10. */
-  --facts-mark: 18px;
+  --hero-tools-room: calc(2 * var(--control-icon) + var(--space-2));
+  /* Jobdetails: the facts 8 under the card's title, the requirements 12, the ad's text 10. */
   --facts-top: var(--space-8);
   --reqs-top: var(--space-12);
   --ad-top: var(--space-10);

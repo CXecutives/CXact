@@ -8,6 +8,7 @@
 import { t } from '$lib/i18n/t';
 import { app } from '$lib/state/app.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
+import { run } from '$lib/state/run.svelte';
 
 export interface ProfileGaps {
   /** Why "Jobs suchen" waits for the profile (null: it does not). */
@@ -33,6 +34,12 @@ export function profileGaps(): ProfileGaps {
     reason: t.toolbar.needsFields(profile.missing.map(fieldName)),
     first: profile.missing[0] ?? null,
   };
+}
+
+/** Why "Jobs suchen" waits (the list's head, the empty list): a run, a profile that lacks
+ *  something (named), nothing to read; null when it can start. */
+export function fetchBlocked(): string | null {
+  return !run.active && !app.hasProfile ? profileGaps().reason : run.fetchBlocked;
 }
 
 /** The Profil, with its first required field that is still empty in view. */

@@ -29,7 +29,9 @@
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
-  with "Profil öffnen", and with its jobs all moved away). A search without hits says so in one
+  with "Profil öffnen", and with its jobs all moved away). With no job anywhere, nothing
+  searched or filtered and no run (jobs.bare) the list has no head: its empty state stands in
+  the middle, like the job view's, with "Jobs suchen" as its one primary under its sentence. A search without hits says so in one
   quiet line, with the other places' hits under it; a filter that leaves nothing says so and
   takes itself off ("Filter zurücksetzen"). Placeholder rows (a ring and a line) come once the
   list takes 300 ms. Without a usable profile a state box on top says so and leads to the
@@ -65,7 +67,7 @@
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
   import DayGroup from './DayGroup.svelte';
-  import { completeProfile } from './profileGaps';
+  import { completeProfile, fetchBlocked } from './profileGaps';
   import RowBar from './RowBar.svelte';
 
   interface Props {
@@ -639,6 +641,22 @@
           </div>
         {/if}
       </div>
+    {:else if jobs.bare}
+      <div class="bare">
+        <EmptyState
+          icon={PLACE_ICON[place]}
+          heading={empty.heading}
+          text={empty.text}
+          action={{
+            label: t.toolbar.searchNow,
+            reason: fetchBlocked(),
+            testid: 'fetch',
+            onclick: () => void run.start({ kind: 'fetch' }),
+          }}
+          secondary={empty.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
+          testid="empty-all"
+        />
+      </div>
     {:else}
       <EmptyState
         icon={PLACE_ICON[place]}
@@ -781,6 +799,16 @@
     flex-wrap: wrap;
     gap: var(--space-8);
     padding: var(--space-12) var(--pane-padding);
+  }
+
+  /* No job anywhere and no head: the empty state in the middle of the column, like the job
+     view's. */
+  .bare {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: var(--pane-padding);
   }
 
   /* No hit: one quiet line, centred, and the ways on under it. */

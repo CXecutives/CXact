@@ -130,7 +130,7 @@ function changesOf(job: JobView, context: JobMenuContext): MenuEntry[] {
     change.push({
       id: 'include',
       label: t.actions.include,
-      icon: 'add',
+      icon: 'gauge',
       run: () => void include(job).then(report),
     });
   }

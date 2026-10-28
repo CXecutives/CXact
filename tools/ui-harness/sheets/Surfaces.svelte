@@ -74,16 +74,6 @@
       <h2 class="name">Karten</h2>
       <div class="cards">
         <Card hero testid="sheet-hero">
-          {#snippet tools()}
-            <Button variant="ghost" iconOnly icon="archive" label="Archivieren" onclick={noop} />
-            <Button
-              variant="ghost"
-              iconOnly
-              icon="trash"
-              label="In den Papierkorb"
-              onclick={noop}
-            />
-          {/snippet}
           <div class="hero">
             <ScoreRing ring={{ status: 'scored', score: 89, band: 'high' }} size="md" />
             <div>

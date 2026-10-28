@@ -3,7 +3,8 @@
   with a muted glyph (a failure's in the soft red), 14 under it the title (16/650) and one quiet sentence (13 muted, at
   most 300 wide), centred; at most one clear action under it (plus at most one secondary).
   Every empty state looks alike. In a list (`placement="list"`) it stands at the top of the
-  full width, 56 from the top; in the job view (`center`) in the middle of its view.
+  full width, 56 from the top; in the job view and an empty list without its head (`center`)
+  in the middle of its view (its parent centres it).
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -12,6 +13,9 @@
     label: string;
     icon?: IconName;
     onclick: () => void;
+    /** Why it cannot be done now (its tooltip; null or absent: it can). */
+    reason?: string | null;
+    testid?: string | null;
   }
 </script>
 
@@ -58,6 +62,9 @@
           variant="primary"
           label={action.label}
           icon={action.icon ?? null}
+          disabled={(action.reason ?? null) !== null}
+          disabledReason={action.reason ?? null}
+          testid={action.testid ?? null}
           onclick={action.onclick}
         />
       {/if}
@@ -66,6 +73,9 @@
           variant="secondary"
           label={secondary.label}
           icon={secondary.icon ?? null}
+          disabled={(secondary.reason ?? null) !== null}
+          disabledReason={secondary.reason ?? null}
+          testid={secondary.testid ?? null}
           onclick={secondary.onclick}
         />
       {/if}

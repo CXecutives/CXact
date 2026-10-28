@@ -65,7 +65,6 @@
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
-  import Square from '@lucide/svelte/icons/square';
   import TextSelect from '@lucide/svelte/icons/text-select';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
@@ -129,7 +128,6 @@
     scissors: Scissors,
     search: Search,
     settings: Settings,
-    square: Square,
     'text-select': TextSelect,
     'trash-2': Trash2,
     'triangle-alert': TriangleAlert,

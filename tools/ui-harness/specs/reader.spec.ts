@@ -1,6 +1,6 @@
 // The job view, its cards top to bottom (ui/src/features/jobs/reader-sections.ts): the hero
 // (the ring or the ban of an excluded job beside the title and its band, the moves of the
-// place and "×" in its corner, the state box, the buttons that show the job), the Jobdetails
+// place at the end of the title's first line, the state box, the buttons that show the job), the Jobdetails
 // (the order of lib/facts.ts, the value and the verdict only, two columns), the Anforderungen
 // (only requirements, "x von N erfüllt", one flat list, "+" for a missing term), the ad as
 // plain text (nothing in it marked by the facts above), and the switch between two jobs. At
@@ -60,14 +60,14 @@ async function openAt(page: Page, key: string, query = WIN): Promise<void> {
 
 const words = (text: string | null): string => (text ?? '').replace(/\s+/g, ' ').trim();
 
-/** The value of a row of the Jobdetails and its verdict ('' without one). */
+/** The value of a row of the Jobdetails and its verdict ('' without one); a row that fits
+ *  carries no mark, one that does not fully fit its verdict's. */
 async function cell(page: Page, key: string): Promise<[string, string]> {
   const target = term(page, key);
-  const verdict = target.getByTestId('verdict');
-  return [
-    words(await target.locator('.term-line').textContent()),
-    (await verdict.count()) === 0 ? '' : ((await verdict.getAttribute('data-verdict')) ?? ''),
-  ];
+  const verdict = (await target.getAttribute('data-verdict')) ?? '';
+  const mark = target.getByTestId('verdict');
+  await expect(mark).toHaveCount(verdict === '' || verdict === 'met' ? 0 : 1);
+  return [words(await target.locator('.term-line').textContent()), verdict];
 }
 
 /** The tooltip of a node under the pointer: its title, and its second line (a key). */
@@ -88,11 +88,9 @@ async function tooltipOf(page: Page, target: Locator): Promise<[string, string]>
 const tip = async (page: Page, target: Locator): Promise<string> =>
   (await tooltipOf(page, target))[0];
 
-/** The moves beside the head's x (their ids, their names), the x not among them. */
+/** The moves of the head (their ids, their names). */
 async function headTools(page: Page): Promise<{ ids: string[]; labels: string[] }> {
-  const tools = stage(page)
-    .locator('[data-testid="reader-head"] .tools .btn')
-    .and(page.locator(':not([data-testid="reader-close"])'));
+  const tools = stage(page).getByTestId('reader-tools').locator('.btn');
   await expect(tools.first()).toBeVisible();
   const ids = await tools.evaluateAll((all) =>
     all.map((tool) => (tool.getAttribute('data-testid') ?? '').replace('reader-', '')),
@@ -130,9 +128,7 @@ async function toolsOf(page: Page, key: string): Promise<string[]> {
 
 /** The moves of a job that just left the list are off (they would be the new place's). */
 async function movesOff(page: Page): Promise<void> {
-  const tools = stage(page)
-    .locator('[data-testid="reader-head"] .tools .btn')
-    .and(page.locator(':not([data-testid="reader-close"])'));
+  const tools = stage(page).getByTestId('reader-tools').locator('.btn');
   for (const tool of await tools.all()) {
     await expect(tool).toHaveAttribute('aria-disabled', 'true');
   }
@@ -174,11 +170,14 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('band')).toHaveClass(/\bd[89]\b/);
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
-    // How and when it came: the moment it came into CXact ends the row.
-    expect(await cell(page, 'portal')).toEqual([
-      `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
-      '',
-    ]);
+    // Where and when it came: its portals, then the moment it came into CXact, in ink.
+    expect(await cell(page, 'portal')).toEqual(['freelancermap.de und linkedin.com, 08:24', '']);
+    await expect(term(page, 'portal').locator('.value')).toHaveCSS(
+      'color',
+      await term(page, 'company')
+        .locator('.value')
+        .evaluate((node) => getComputedStyle(node).color),
+    );
     // Nothing is joined by a dot, no info symbol beside the band, no count line.
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text).not.toContain('·');
@@ -190,24 +189,31 @@ test.describe('the head and the match', () => {
     expect((await cell(page, 'place'))[0]).toBe('München');
   });
 
-  test('the hero tools: quiet 28 px buttons in its top right corner, the title kept clear', async ({
+  test("the hero tools: quiet 28 px buttons centred on the title's first line, the title kept clear; no ×", async ({
     page,
   }) => {
-    await openAt(page, 'freelancermap-2801');
-    const hero = (await stage(page).getByTestId('reader-head').boundingBox())!;
-    const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
-    const tools = stage(page).locator('[data-testid="reader-head"] .tools .btn');
-    await expect(tools).toHaveCount(3);
-    for (const tool of await tools.all()) {
-      const at = (await tool.boundingBox())!;
-      expect(Math.round(at.width)).toBe(28);
-      expect(Math.round(at.height)).toBe(28);
-      // 14 inside its edge.
-      expect(Math.round(at.y - hero.y)).toBe(15);
-      expect(at.x).toBeGreaterThan(title.x + title.width);
+    for (const key of ['freelancermap-2801', 'freelance-900412']) {
+      await openAt(page, key);
+      const hero = (await stage(page).getByTestId('reader-head').boundingBox())!;
+      const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
+      const line = await stage(page)
+        .getByTestId('reader-title')
+        .evaluate((node) => parseFloat(getComputedStyle(node).lineHeight));
+      const tools = stage(page).getByTestId('reader-tools').locator('.btn');
+      await expect(tools).toHaveCount(2);
+      for (const tool of await tools.all()) {
+        const at = (await tool.boundingBox())!;
+        expect(Math.round(at.width)).toBe(28);
+        expect(Math.round(at.height)).toBe(28);
+        // Centred on the title's first line, wherever the ring puts it.
+        expect(Math.abs(at.y + at.height / 2 - (title.y + line / 2)), key).toBeLessThan(1);
+        expect(at.x).toBeGreaterThan(title.x + title.width);
+      }
+      // 14 inside the card's edge.
+      const last = (await tools.last().boundingBox())!;
+      expect(Math.round(hero.x + hero.width - (last.x + last.width))).toBe(15);
+      await expect(stage(page).getByTestId('reader-close')).toHaveCount(0);
     }
-    const close = (await stage(page).getByTestId('reader-close').boundingBox())!;
-    expect(Math.round(hero.x + hero.width - (close.x + close.width))).toBe(15);
   });
 
   test('the ring shows the score of the open job', async ({ page }) => {
@@ -216,11 +222,11 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('reader-ring')).toContainText(BEST);
   });
 
-  test('a job without a score: the dash ring, its state box with its own button, no other buttons', async ({
+  test('a job without a score: the dash ring, its state box with its own button, then what its menu offers', async ({
     page,
   }) => {
     // An ad still to come: the dash, "Noch nicht bewertet", the box with "Anzeige laden" in the
-    // hero, no buttons that show it, no ad card.
+    // hero, under it the buttons its menu offers too (the ad, no prompt), no ad card.
     await openAt(page, 'linkedin-4100200302');
     await expect(stage(page).getByTestId('reader-ring')).toHaveText('–');
     await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
@@ -229,7 +235,8 @@ test.describe('the head and the match', () => {
     await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
     await expect(box.getByTestId('detail-text')).toHaveText(T.reader.state.missing.text);
     await expect(box.getByTestId('load-ad')).toBeVisible();
-    await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
+    await expect(stage(page).getByTestId('open-ad')).toBeVisible();
+    await expect(stage(page).getByTestId('reader-prompt')).toHaveCount(0);
     await expect(stage(page).getByTestId('ad')).toHaveCount(0);
     // One too short to score: "Nicht bewertbar", the short note as its box, the buttons of
     // its text.
@@ -255,23 +262,16 @@ test.describe('the head and the match', () => {
     await expect(page.getByTestId('menu')).toHaveCount(0);
   });
 
-  test('the "×" closes the job at every width; in one column it and Zurück lead back', async ({
+  test("in one column the top bar's job view button and Zurück lead back to the list", async ({
     page,
   }) => {
-    // Wide: the job view stays and asks for a job (user, 2026-09-29).
-    await openAt(page, 'freelancermap-2801');
-    const close = stage(page).getByTestId('reader-close');
-    await expect(close).toBeVisible();
-    await expect(close).toHaveAccessibleName('Schließen');
-    await close.click();
-    await expect(page.getByTestId('place-reader')).toBeVisible();
-    await expect(page.locator('[data-open]')).toHaveCount(0);
-    // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
-    // button, which closes the job there too, and hides it without one (decision 29).
+    // The top bar keeps the job view's button while a job stands in place of the list; it
+    // closes the job and goes without one (decision 29).
     await page.setViewportSize({ width: 683, height: 700 });
     await openAt(page, 'freelancermap-2801');
+    await expect(stage(page).getByTestId('reader-close')).toHaveCount(0);
     await expect(page.getByTestId('toggle-reader')).toBeEnabled();
-    await stage(page).getByTestId('reader-close').click();
+    await page.getByTestId('toggle-reader').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
     await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
     await row(page, 'freelancermap-2801').click();
@@ -284,7 +284,7 @@ test.describe('the head and the match', () => {
 });
 
 test.describe('the actions', () => {
-  test('three buttons in one order, the moves of the place beside the x', async ({ page }) => {
+  test('three buttons in one order, the moves of the place in the head', async ({ page }) => {
     // A wide window: every button with its words.
     await page.setViewportSize({ width: 1800, height: 900 });
     await openAt(page, 'freelancermap-2801');
@@ -297,19 +297,11 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
     expect(T.actions.prompt).toBe('Prompt für KI-Bewertung');
-    // The moves of Aktuell beside the x; no "…" menu.
+    // The moves of Aktuell; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
     expect(tools.labels).toEqual([T.actions.archive, T.actions.trash]);
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
-    const close = stage(page).getByTestId('reader-close');
-    for (const id of ['reader-archive', 'reader-trash']) {
-      const [box, x] = [
-        (await stage(page).getByTestId(id).boundingBox())!,
-        (await close.boundingBox())!,
-      ];
-      expect(box.x).toBeLessThan(x.x);
-    }
     // The alert mail and the ad open outside.
     await actions.getByTestId('reader-mail').click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
@@ -516,14 +508,15 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    // The ban in the ring's place, "Ausgeschlossen" in the ban red; one soft red box with why,
-    // why it is not scored and Trotzdem bewerten at its end.
+    // The ban in the ring's place, "Ausgeschlossen" in the ban red, the job's one red; a
+    // neutral box with why, why it is not scored and Trotzdem bewerten at its end.
     await expect(stage(page).getByTestId('reader-ban')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
     await expect(stage(page).getByTestId('band')).toHaveClass(/ban/);
     const box = stage(page).getByTestId('exclusion-box');
     await expect(box).toContainText(T.reader.state.excluded);
     await expect(box.getByTestId('reader-include')).toBeVisible();
+    await expect(box).not.toHaveClass(/(^|\s)ban(\s|$)/);
     // Its first violation, once, from the profile's side; no way into the ad.
     await expect(stage(page).getByTestId('exclusion')).toHaveText(T.reader.criterion.noAnue);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
@@ -532,11 +525,12 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // Trotzdem bewerten: its real match and a toast that takes it back. No other button while
-    // it is excluded (user, 2026-10-10); the head has the moves of its place.
+    // Trotzdem bewerten (the gauge of a score): its real match and a toast that takes it back.
+    // Under the box what its menu offers; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
-    await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
+    await expect(include.locator('[data-icon="gauge"]')).toHaveCount(1);
+    await expect(stage(page).getByTestId('reader-actions').getByTestId('open-ad')).toBeVisible();
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();
@@ -599,21 +593,18 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'start')).toEqual(['ab sofort', 'met']);
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     await expect(term(page, 'workload')).toHaveCount(0);
-    // How and when it came: the moment it came into CXact ends the row, quietly.
-    expect(await cell(page, 'portal')).toEqual([
-      `${T.reader.foundBoth('freelancermap.de')}, auch auf linkedin.com, 08:24`,
-      '',
-    ]);
+    // Where and when it came: its portals, then the moment it came into CXact.
+    expect(await cell(page, 'portal')).toEqual(['freelancermap.de und linkedin.com, 08:24', '']);
     // No row "Eingegangen" (user, 2026-10-01): the moment stands in "Gefunden".
     await expect(term(page, 'received')).toHaveCount(0);
-    // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
-    // wish met), else why its criterion is met.
+    // Verdicts are icons (no words) named by their verdict, and only where a fact does not
+    // fully fit.
     await expect(terms(page)).not.toContainText('passt');
     await expect(terms(page)).not.toContainText('Minimum');
-    await expect(term(page, 'rate').getByTestId('verdict').locator('.reason')).toHaveAttribute(
-      'aria-label',
-      'Erfüllt',
-    );
+    await expect(term(page, 'rate').getByTestId('verdict')).toHaveCount(0);
+    await expect(
+      term(page, 'experience').getByTestId('verdict').locator('.reason'),
+    ).toHaveAttribute('aria-label', T.reader.verdict.partial);
   });
 
   test('Bewerben bis and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
@@ -723,7 +714,7 @@ test.describe('Jobdetails', () => {
       await openJob(page, key);
       const icons = stage(page).locator('[data-testid="verdict"] .reason');
       const count = await icons.count();
-      expect(count, key).toBeGreaterThan(1);
+      expect(count, key).toBeGreaterThan(0);
       // The Anforderungen: the group's heading says the verdict, no tooltip on the icon.
       const requirement = stage(page).locator('[data-testid="why"] [data-testid="reason"]').first();
       if ((await requirement.count()) > 0) {
@@ -821,9 +812,9 @@ test.describe('Jobdetails', () => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names).toEqual(['Unternehmen', 'Ort', 'Gefunden']);
-    // Its way and its source: the alert mail of LinkedIn.
+    // Its portal, LinkedIn, and when it came.
     const [found] = await cell(page, 'portal');
-    expect(found).toMatch(/^Alert-Mail von linkedin\.com, \S/);
+    expect(found).toMatch(/^linkedin\.com, \S/);
     await expect(terms(page)).not.toContainText('/');
     // A preview: no "/" claims the ad says nothing.
     await openJob(page, 'freelance-900411');
@@ -1127,10 +1118,11 @@ test.describe('the ad', () => {
     });
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.closed.heading);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
-    // Gone before its text came: only the sentence, no button (nothing of it to show).
+    // Gone before its text came: the sentence, and its portal's page still opens, as from its
+    // menu.
     await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
     await openJob(page, 'linkedin-4100200302');
-    await expect(stage(page).getByTestId('open-ad')).toHaveCount(0);
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.actions.openAd);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.gone.heading);
     await expect(stage(page).getByTestId('detail-text')).toHaveText(T.reader.state.goneEarly);
@@ -1215,16 +1207,24 @@ test.describe('the cards', () => {
     // The contact spans both columns.
     const contact = (await term(page, 'contact').boundingBox())!;
     expect(Math.round(contact.width)).toBe(Math.round(place.x + place.width - company.x));
-    // The verdict in its own column at the fact's end.
-    const verdict = (await term(page, 'place').getByTestId('verdict').boundingBox())!;
-    expect(Math.round(place.x + place.width - (verdict.x + verdict.width))).toBeLessThanOrEqual(1);
+    // A fact that fits has no mark; one that fits in part its mark 6 after its value, centred
+    // on its line.
+    await expect(term(page, 'place').getByTestId('verdict')).toHaveCount(0);
+    const value = (await term(page, 'experience').locator('.value').boundingBox())!;
+    const mark = (await term(page, 'experience').getByTestId('verdict').boundingBox())!;
+    expect(Math.round(mark.x - (value.x + value.width))).toBe(6);
+    expect(Math.abs(mark.y + mark.height / 2 - (value.y + value.height / 2))).toBeLessThan(1.5);
     // A narrow window: one column.
     await page.setViewportSize({ width: 480, height: 360 });
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
-    const one = (await term(page, 'company').boundingBox())!;
-    const two = (await term(page, 'place').boundingBox())!;
-    expect(two.y).toBeGreaterThan(one.y + one.height - 1);
-    expect(Math.abs(two.x - one.x)).toBeLessThan(1);
+    // Once the window has settled (the sidebar folds away as it narrows).
+    await expect
+      .poll(async () => {
+        const one = (await term(page, 'company').boundingBox())!;
+        const two = (await term(page, 'place').boundingBox())!;
+        return two.y > one.y + one.height - 1 && Math.abs(two.x - one.x) < 1;
+      })
+      .toBe(true);
     const reqs = await why(page)
       .locator('li')
       .evaluateAll((all) => all.slice(0, 2).map((li) => li.getBoundingClientRect().left));
@@ -1326,7 +1326,7 @@ test.describe('around the reader', () => {
   test('an empty trash shows one empty state in the list, the reader nothing beside it', async ({
     page,
   }) => {
-    await open(page, `${WIN}&scenario=empty`);
+    await open(page, `${WIN}&scenario=concept`);
     await page.getByTestId('place-trash').click();
     await expect(page.getByTestId('empty-place-trash').locator('h3')).toHaveText(
       T.list.empty.trash.heading,

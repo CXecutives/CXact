@@ -7,7 +7,7 @@
   lines with the square's corners a pixel round, like Segoe Fluent Icons in the native
   buttons, so the window's own controls read as the system's. In the design's colours,
   never the system's: the muted ink, under the pointer the design's warm grey wash, pressed a
-  deeper one; Schließen turns the app's danger red with a white glyph.
+  deeper one; Schließen turns Windows 11's red (#C42B1C) with a white glyph.
   While the window is in the back the glyphs fade. Each names itself in a tooltip in the
   words of Windows.
   In the app a window of the OS lies over the bar and takes the pointer there

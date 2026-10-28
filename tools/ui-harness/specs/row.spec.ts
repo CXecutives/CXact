@@ -2,7 +2,7 @@
 // company, place, pay, date or dot (the reader and the day's heading have them). A new job's
 // title in 650 with a hidden "Neu"; a job in the Papierkorb and a closed ad muted in 450, an
 // excluded one not (its ban marks it). Under the pointer the moves of the row's place fade in
-// as its tools at the row's end (the same table as its menu), their slot always kept. One
+// as its tools over the row's end (the same table as its menu), no room kept for them. One
 // highlight marks the open row (RowBar). Sizes are pinned only where the design names them.
 
 import type { Locator, Page } from '@playwright/test';
@@ -156,7 +156,7 @@ async function menuMoves(page: Page, key: string): Promise<string[]> {
   return ids.filter((id) => !shows.includes(id));
 }
 
-/** The pointer onto a row (its middle, away from its tools' slot). */
+/** The pointer onto a row (its middle, away from its tools). */
 async function pointAt(page: Page, key: string): Promise<void> {
   await row(page, key).hover();
   await animationsDone(page);
@@ -181,10 +181,17 @@ test.describe('tools', () => {
       await expect(list(page).getByTestId('row-tools')).toHaveCount(0);
       await animationsDone(page);
       const title = (await row(page, key).locator('.title').boundingBox())!;
+      // No room kept for them: the title's line runs to the row's end (10 in), whole.
+      const line = (await row(page, key).locator('.line').boundingBox())!;
+      const whole = (await row(page, key).boundingBox())!;
+      expect(Math.round(whole.x + whole.width - (line.x + line.width))).toBe(10);
+      await expect(row(page, key).locator('.line')).toHaveCSS('mask-image', 'none');
       await pointAt(page, key);
       await expect(job(page, key).getByTestId('row-tools')).toBeVisible();
-      // Their slot is kept: the title does not move or shrink.
+      // They lie over the line: the title does not move or shrink, its end fades out under
+      // them.
       expect((await row(page, key).locator('.title').boundingBox())!).toEqual(title);
+      await expect(row(page, key).locator('.line')).not.toHaveCSS('mask-image', 'none');
       expect(await toolIds(page, key), place).toEqual([...tools]);
       expect(await menuMoves(page, key), place).toEqual([...tools]);
       await pointAt(page, key);
@@ -233,7 +240,7 @@ test.describe('tools', () => {
     await job(page, first!).getByTestId('tool-archive').click();
     await expect(row(page, first!)).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.archived);
-    // The next row stands under the pointer now, its tools' slot under the tool: none until
+    // The next row stands under the pointer now, its tools' place under the tool: none until
     // the pointer moves.
     await animationsDone(page);
     await page.waitForTimeout(200);
@@ -289,7 +296,7 @@ test.describe('tools', () => {
   });
 });
 
-test('the row menu and the reader offer the same: no alert mail, no ad text, an ad gone offline', async ({
+test('the row menu and the reader offer the same: no alert mail, no ad text, an ad gone offline, an excluded job', async ({
   page,
 }) => {
   // A wide window: the reader's buttons show their words.
@@ -322,11 +329,11 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     return { menu, reader };
   };
   // A job without an alert mail offers none (user, 2026-10-01: no button at all), and one
-  // without a score no prompt; the reader of a job not scored yet shows only its state box
-  // (design round 7), its menu still opens the ad.
+  // without a score no prompt; the reader of a job not scored yet shows its state box and,
+  // under it, what its menu offers (the ad).
   const failed = await offered('freelancermap-2805');
   expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, 'none']);
-  expect(failed.reader).toEqual(['none', 'none', 'none']);
+  expect(failed.reader).toEqual(failed.menu);
   await expect(stage(page).getByTestId('detail-note')).toBeVisible();
   const closed = await offered('linkedin-4100200304');
   expect(closed.menu).toEqual([
@@ -335,6 +342,12 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     `${T.actions.prompt} on`,
   ]);
   expect(closed.reader).toEqual(closed.menu);
+  // An excluded job: its state box with Trotzdem bewerten, and what its menu offers.
+  const { excluded } = await stubList(page);
+  await unfoldExcluded(page);
+  const out = await offered(excluded[0]!);
+  expect(out.menu).toContain(`${T.actions.openAd} on`);
+  expect(out.reader).toEqual(out.menu);
 });
 
 test('an excluded row shows the ban in the ring place, without a number', async ({ page }) => {

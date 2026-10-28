@@ -19,7 +19,7 @@ import {
   text,
   visibleCount,
 } from './fixtures';
-import { failNext, SEARCHED, reveal, T, viaMenu } from './helpers';
+import { failNext, openPlace, SEARCHED, reveal, T, viaMenu } from './helpers';
 
 // Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
 // direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
@@ -305,6 +305,8 @@ test('windows: the caption buttons show what the window over the bar reports', a
   const close = page.getByTestId('window-close');
   await page.evaluate(() => window.__harness.fire('caption', { hover: 'close', pressed: null }));
   await expect(tooltip(page)).toHaveText(await text(page, 'window.close'));
+  // Windows 11's own red under the pointer.
+  await expect(close).toHaveCSS('background-color', 'rgb(196, 43, 28)');
   await page.evaluate(() => window.__harness.fire('caption', { hover: 'close', pressed: 'close' }));
   await expect(tooltip(page)).toHaveCount(0);
   await page.evaluate(() => window.__harness.fire('caption', { hover: null, pressed: null }));
@@ -798,11 +800,19 @@ test('the job view button stands only where it does something', async ({ page })
   await expect(toggle).toBeEnabled();
   await toggle.hover();
   await expect(tooltip(page)).toHaveText(await text(page, 'nav.readerHide'));
-  // A list without a job to choose has no job view beside it.
+  // A search without hits keeps the job view beside the list, and so its button.
   await page.getByTestId('search').fill('zzqxv');
   await expect(page.locator('[data-testid^="job-row-"]')).toHaveCount(0);
-  await expect(toggle).toHaveCount(0);
+  await expect(page.getByTestId('reader-pane')).toBeVisible();
+  await expect(toggle).toBeVisible();
   await page.getByTestId('search').fill('');
+  await expect(toggle).toBeVisible();
+  // A place without jobs has no job view beside it, and no button for it.
+  await open(page, `${WIN}&scenario=concept`);
+  await openPlace(page, 'trash');
+  await expect(page.getByTestId('reader-pane')).toHaveCount(0);
+  await expect(toggle).toHaveCount(0);
+  await openPlace(page, 'inbox');
   await expect(toggle).toBeVisible();
   // One column: only while a job stands in place of the list.
   await page.setViewportSize({ width: 683, height: 700 });

@@ -1,17 +1,18 @@
 <!--
   The head of the job view, its hero card (the round 10 draft): the ring (56) and beside it
-  the title (20/650, copyable) with the band under it in the word colour of its ring; the quiet
-  tools in the card's top right corner, the moves of the job's place (actions.ts rowTools: the
-  same as its row's) and "×" Schließen; under the top the job's state box (ReaderState), and
+  the title (20/650, copyable) with the band under it in the word colour of its ring; at the
+  end of the title's first line, centred on it, the quiet tools, the moves of the job's place
+  (actions.ts rowTools: the same as its row's), 14 in from the card's edge; no "×" (the top
+  bar's job view button closes the job); under the top the job's state box (ReaderState), and
   the buttons that show the job in a row of their own under a hairline (shows.ts).
   - The ring: scored, it fills and counts up each time a job opens (not while the user browses
     fast, ScoreRing and lib/motion/pace.ts); not scored yet a dash with "Noch nicht bewertet";
     not scorable "Nicht bewertbar"; without a profile "Nicht bewertet"; an excluded job the
     red ban on the light red track with "Ausgeschlossen" in the ban red.
-  - The buttons (a job neither excluded nor without its text): Anzeige öffnen, Alert-Mail
-    öffnen (only for a job a mail brought), Prompt für KI-Bewertung (only with a score and the
-    ad's text); the row wraps. An excluded job and one whose ad is still to come show only the
-    button of their state box.
+  - The buttons, the same commands as the row's menu (shows.ts showActions): Anzeige öffnen,
+    Alert-Mail öffnen (only for a job a mail brought), Prompt für KI-Bewertung (only with a
+    score and the ad's text); the row wraps. An excluded job and one whose ad is still to come
+    show them too, under the button of their state box.
   A job that just moved away keeps its tools off while the next one loads (`inPlace`).
 -->
 <script lang="ts">
@@ -42,7 +43,6 @@
     tools: ReturnType<typeof rowTools>;
     /** The job still lies in the list's place (its moves are its place's). */
     inPlace: boolean;
-    onclose: (() => void) | null;
     /** What each button that shows the job does. */
     onshow: (id: ShowId) => void;
     /** The row of those buttons (the focus goes to its first one after "Trotzdem bewerten"). */
@@ -61,7 +61,6 @@
     oninclude,
     tools,
     inPlace,
-    onclose,
     onshow,
     actions = $bindable(null),
   }: Props = $props();
@@ -86,10 +85,11 @@
         return { words: t.reader.unscored, tone: 'quiet' };
     }
   });
-  /** The ad's text is there (a preview counts): the buttons that show the job make sense. */
-  const hasText = $derived(
-    detail.text !== null || job.detail.kind === 'ok' || job.detail.kind === 'teaser',
-  );
+  /** The buttons that show the job, in their one order: what its menu offers. */
+  const offered = $derived.by(() => {
+    const shows = showActions(job);
+    return SHOWS.map((id) => shows[id]).filter((show) => !show.hidden);
+  });
   /** The test id of each button that shows the job. */
   const SHOW_TESTIDS: Record<ShowId, string> = {
     'open-ad': 'open-ad',
@@ -98,32 +98,7 @@
   };
 </script>
 
-{#snippet heroTools()}
-  {#each tools as tool (tool.id)}
-    <Button
-      variant="ghost"
-      iconOnly
-      icon={tool.icon}
-      label={tool.label}
-      disabled={tool.disabled || !inPlace}
-      disabledReason={tool.reason}
-      testid="reader-{tool.id}"
-      onclick={tool.run}
-    />
-  {/each}
-  {#if onclose}
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="close"
-      label={t.reader.close}
-      testid="reader-close"
-      onclick={onclose}
-    />
-  {/if}
-{/snippet}
-
-<Card hero tools={heroTools} testid="reader-head">
+<Card hero testid="reader-head">
   <div class="body">
     <div class="top" data-testid="reader-match">
       {#if excluded}
@@ -132,25 +107,40 @@
         <ScoreRing ring={shown} size="md" animate={keyOf(job.key)} testid="reader-ring" />
       {/if}
       <div class="heads">
-        <h1 class="title" data-copy data-testid="reader-title">{heading}</h1>
+        <div class="line">
+          <h1 class="title" data-copy data-testid="reader-title">{heading}</h1>
+          <span class="tools" data-testid="reader-tools">
+            {#each tools as tool (tool.id)}
+              <Button
+                variant="ghost"
+                iconOnly
+                icon={tool.icon}
+                label={tool.label}
+                disabled={tool.disabled || !inPlace}
+                disabledReason={tool.reason}
+                testid="reader-{tool.id}"
+                onclick={tool.run}
+              />
+            {/each}
+          </span>
+        </div>
         <p class="band {band.tone}" data-testid="band">{band.words}</p>
       </div>
     </div>
     <ReaderState {detail} {exclusion} {includable} {including} {oninclude} />
-    {#if !excluded && hasText}
-      <!-- Words, glyphs, what is off and what is not there come from the one table the row's
+    <!-- Words, glyphs, what is off and what is not there come from the one table the row's
          menu reads too. -->
-      {@const shows = showActions(job)}
+    {#if offered.length > 0}
       <div class="actions" bind:this={actions} data-testid="reader-actions">
-        {#each SHOWS.filter((id) => !shows[id].hidden) as id (id)}
+        {#each offered as show (show.id)}
           <Button
             variant="secondary"
-            icon={shows[id].icon}
-            label={shows[id].label}
-            disabled={shows[id].reason !== null}
-            disabledReason={shows[id].reason}
-            testid={SHOW_TESTIDS[id]}
-            onclick={() => onshow(id)}
+            icon={show.icon}
+            label={show.label}
+            disabled={show.reason !== null}
+            disabledReason={show.reason}
+            testid={SHOW_TESTIDS[show.id]}
+            onclick={() => onshow(show.id)}
           />
         {/each}
       </div>
@@ -166,19 +156,39 @@
     gap: var(--hero-gap);
   }
 
-  /* The ring beside the title and its band; the room at the right keeps the tools free. */
+  /* The ring beside the title and its band. */
   .top {
     display: flex;
     align-items: center;
     gap: var(--hero-gap);
-    padding-right: var(--hero-tools-room);
   }
 
   .heads {
+    flex: 1;
     min-width: 0;
   }
 
+  /* The title and, at the end of its first line, the tools. */
+  .line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-8);
+  }
+
+  /* Centred on the title's first line without making it taller; their glyphs end on the
+     content's edge (the buttons 14 in from the card's). */
+  .tools {
+    display: flex;
+    flex: none;
+    gap: var(--space-2);
+    margin-block: calc((var(--leading-xl) - var(--control-icon)) / 2);
+    margin-inline-end: calc(var(--card-tools-inset) - var(--card-pad-x));
+    margin-inline-start: auto;
+  }
+
   .title {
+    flex: 0 1 auto;
+    min-width: 0;
     color: var(--text-heading);
     font: var(--type-xl);
     letter-spacing: var(--tracking-tight);

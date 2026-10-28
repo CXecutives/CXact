@@ -3,8 +3,9 @@
   draft): one StateBox, its title, one quiet sentence under it and the one button that helps;
   no sign (the ring is the job's mark), a spinner only while something is being done.
   - being scored after "Trotzdem bewerten": the spinner, "Der Job wird bewertet.";
-  - excluded (the soft red): why (the profile's side), "Darum wurde der Job nicht bewertet.",
-    "Trotzdem bewerten";
+  - excluded: why (the profile's side), "Darum wurde der Job nicht bewertet.", "Trotzdem
+    bewerten" with the gauge of a score; the box neutral like the others (the ring and its word
+    are the job's one red);
   - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (being
     loaded: the spinner, "Die Anzeige wird geladen.", no button);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
@@ -143,7 +144,7 @@
 {#snippet includeButton()}
   <Button
     variant="secondary"
-    icon="add"
+    icon="gauge"
     label={t.actions.include}
     testid="reader-include"
     onclick={oninclude}
@@ -159,7 +160,6 @@
   />
 {:else if exclusion !== null}
   <StateBox
-    tone="ban"
     heading={exclusion}
     text={t.reader.state.excluded}
     end={includable ? includeButton : null}
