@@ -9,8 +9,8 @@ import type { Verdict } from './terms';
 
 /**
  * The cards of the job view, top to bottom (the round 10 draft):
- * - hero: the ring, the title and the band, the quiet moves and "×" at its top right, the
- *   state box of a job that has one, and the buttons that show the job;
+ * - hero: the ring, the title and the band, the quiet moves at the end of the title's first
+ *   line, the state box of a job that has one, and the buttons that show the job;
  * - details: "Jobdetails";
  * - requirements: "Anforderungen", one flat list in the order of byRequirement;
  * - ad: the ad's text (only once it is there).

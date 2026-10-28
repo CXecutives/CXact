@@ -3,8 +3,8 @@
   from the sides, a column of cards at most 760 wide, centred, 12 apart. Its cards and their
   order are data (reader-sections.ts READER_CARDS); each is rendered below by its key, and
   nothing stands in two of them:
-  - hero (ReaderHero): the ring, the title and the band, the moves and "×", the state box,
-    the buttons that show the job;
+  - hero (ReaderHero): the ring, the title and the band, the moves, the state box, the
+    buttons that show the job;
   - details (FactsCard): "Jobdetails", the facts of terms.ts; a job whose ad is not loaded
     yet only what its mail or search said (reader-sections.ts PENDING_FACTS); an excluded
     job without verdicts (its state box says why);
@@ -78,10 +78,8 @@
 
   interface Props {
     detail: JobDetail;
-    /** Close the job. */
-    onclose?: (() => void) | null;
   }
-  let { detail, onclose = null }: Props = $props();
+  let { detail }: Props = $props();
 
   // The job view opens anew for each job (JobsView's stage): the open counts for the pace of
   // browsing (its ring, if any, asks in the same frame and gets the same answer).
@@ -269,8 +267,8 @@
   /** The job still lies in the list's place: one that just moved away keeps its view until
    *  the next job has loaded, its moves off meanwhile (they would be the new place's). */
   const inPlace = $derived(job.place === jobs.place);
-  /** The moves of the job's place beside "×", from the one table of the job's moves (the
-   *  row's tools show the same). A move hands the focus on. */
+  /** The moves of the job's place, from the one table of the job's moves (the row's tools
+   *  show the same). A move hands the focus on. */
   const tools = $derived(rowTools(job, { move: act, purge: askPurge, report: fail }));
 
   /** The row of the buttons that show the job. */
@@ -358,7 +356,6 @@
               oninclude={(event) => void include(event)}
               {tools}
               {inPlace}
-              {onclose}
               onshow={(id) => showDoes[id]()}
               bind:actions
             />

@@ -8,16 +8,15 @@
   seam (decision 24). The handle
   between the columns resizes the list (kept) within limits that follow the window and the
   sidebar and never shrink while the window grows. Below 900 px one column: the list under
-  its header, as at every width, or the reader with its "×" (the mouse's back button too).
-  The run's line is part of the header. Closing a job from the reader focuses its row.
+  its header, as at every width, or the reader, which the top bar's job view button and
+  Zurück (the mouse's back button too) close. The run's line is part of the header.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps the previous job; the empty state goes at once (the pane
   stays empty, a placeholder once the load takes a while). Then the new stage takes the old
   one's place at once, nothing fades, so nothing flashes between them; the new job starts at
-  the top. The close "×" in the reader
-  head (at every width) and a search that no longer finds the job close it (the place's empty
-  state). Esc closes only menus and dialogs: the app has no keys of its own.
+  the top. The top bar's job view button and a search that no longer finds the job close it
+  (the place's empty state). Esc closes only menus and dialogs: the app has no keys of its own.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -138,8 +137,8 @@
   let right = $state<HTMLElement | null>(null);
 
   /**
-   * Close the job. A focus inside the reader (its close button) goes to the row of the job
-   * that was open, like Mail: the list keeps its place and Tab goes on from there.
+   * Close the job. A focus inside the pane (its Zurück) goes to the row of the job that was
+   * open, like Mail: the list keeps its place and Tab goes on from there.
    */
   function close(): void {
     const open = jobs.selected;
@@ -233,7 +232,7 @@
                   {/if}
                 </div>
               {:else}
-                <!-- One column: the way back while no job stands (the reader has its "×"). -->
+                <!-- One column: the way back while no job stands. -->
                 {#if stage.what === ERROR || stage.what === WAITING}
                   <div class="back">
                     <Button
@@ -265,7 +264,7 @@
                 {:else if stage.what === OPENING}
                   <!-- Blank until the chosen job is there. -->
                 {:else if jobs.detail}
-                  <Reader detail={jobs.detail} onclose={close} />
+                  <Reader detail={jobs.detail} />
                 {/if}
               {/if}
             </div>

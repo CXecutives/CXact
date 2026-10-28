@@ -708,6 +708,7 @@
      the page's title 22 above the first section's. The page's column: --page-max with
      --page-side (16 in a narrow page), 8 under the top bar, room for the bar at its end. */
   --card-gap: var(--space-12);
+  /* The hero's quiet tools: 14 in from the card's edge, so their glyphs end on its content's. */
   --card-tools-inset: 14px;
   --group-pad-end: var(--space-20);
   --group-caption: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
@@ -846,10 +847,11 @@
 
   /* ------------------------------------------- round 10: job view */
   /* The hero: the band 3 under the title, the state box and the action row 14 under the top,
-     and room at the top's right for the three quiet tools (3 x 28, their gaps and air). */
+     and room at the end of the title's first line for its two quiet tools (2 x 28 and their
+     gap). */
   --hero-band-gap: 3px;
   --hero-gap: 14px;
-  --hero-tools-room: 96px;
+  --hero-tools-room: calc(2 * var(--control-icon) + var(--space-2));
   /* Jobdetails: the verdict's column at a fact's end; the facts 8 under the card's title, the
      requirements 12, the ad's text 10. */
   --facts-mark: 18px;

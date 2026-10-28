@@ -59,7 +59,8 @@
     gap: var(--card-gap);
   }
 
-  /* The ring beside the title's line and the band's (ReaderHero). */
+  /* The ring beside the title's line and the band's, the room of the hero's tools kept
+     (ReaderHero). */
   .top {
     display: flex;
     align-items: center;

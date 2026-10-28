@@ -1392,7 +1392,7 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   }
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  // The reader's tools beside its x (the ring opens on hover: reader.spec.ts).
+  // The reader's tools (the ring opens on hover: reader.spec.ts).
   await rows(page).first().click();
   for (const id of ['reader-archive', 'reader-trash']) {
     await page.getByTestId(id).click({ button: 'right' });
@@ -1422,7 +1422,7 @@ test("a middle click activates nothing: tabs, the fetch, the funnel, a row tool,
   await endAutoscroll(page);
   expect(await calls(page, 'move_jobs')).toHaveLength(0);
   await expect(page.getByTestId('reader')).toHaveCount(0);
-  // The reader's tools beside its x (the ring opens on hover: reader.spec.ts).
+  // The reader's tools (the ring opens on hover: reader.spec.ts).
   await rows(page).first().click();
   for (const id of ['reader-archive', 'reader-trash']) {
     await page.getByTestId(id).click({ button: 'middle' });

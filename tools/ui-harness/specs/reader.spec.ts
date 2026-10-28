@@ -1,6 +1,6 @@
 // The job view, its cards top to bottom (ui/src/features/jobs/reader-sections.ts): the hero
 // (the ring or the ban of an excluded job beside the title and its band, the moves of the
-// place and "×" in its corner, the state box, the buttons that show the job), the Jobdetails
+// place at the end of the title's first line, the state box, the buttons that show the job), the Jobdetails
 // (the order of lib/facts.ts, the value and the verdict only, two columns), the Anforderungen
 // (only requirements, "x von N erfüllt", one flat list, "+" for a missing term), the ad as
 // plain text (nothing in it marked by the facts above), and the switch between two jobs. At
@@ -88,11 +88,9 @@ async function tooltipOf(page: Page, target: Locator): Promise<[string, string]>
 const tip = async (page: Page, target: Locator): Promise<string> =>
   (await tooltipOf(page, target))[0];
 
-/** The moves beside the head's x (their ids, their names), the x not among them. */
+/** The moves of the head (their ids, their names). */
 async function headTools(page: Page): Promise<{ ids: string[]; labels: string[] }> {
-  const tools = stage(page)
-    .locator('[data-testid="reader-head"] .tools .btn')
-    .and(page.locator(':not([data-testid="reader-close"])'));
+  const tools = stage(page).getByTestId('reader-tools').locator('.btn');
   await expect(tools.first()).toBeVisible();
   const ids = await tools.evaluateAll((all) =>
     all.map((tool) => (tool.getAttribute('data-testid') ?? '').replace('reader-', '')),
@@ -130,9 +128,7 @@ async function toolsOf(page: Page, key: string): Promise<string[]> {
 
 /** The moves of a job that just left the list are off (they would be the new place's). */
 async function movesOff(page: Page): Promise<void> {
-  const tools = stage(page)
-    .locator('[data-testid="reader-head"] .tools .btn')
-    .and(page.locator(':not([data-testid="reader-close"])'));
+  const tools = stage(page).getByTestId('reader-tools').locator('.btn');
   for (const tool of await tools.all()) {
     await expect(tool).toHaveAttribute('aria-disabled', 'true');
   }
@@ -190,24 +186,31 @@ test.describe('the head and the match', () => {
     expect((await cell(page, 'place'))[0]).toBe('München');
   });
 
-  test('the hero tools: quiet 28 px buttons in its top right corner, the title kept clear', async ({
+  test("the hero tools: quiet 28 px buttons centred on the title's first line, the title kept clear; no ×", async ({
     page,
   }) => {
-    await openAt(page, 'freelancermap-2801');
-    const hero = (await stage(page).getByTestId('reader-head').boundingBox())!;
-    const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
-    const tools = stage(page).locator('[data-testid="reader-head"] .tools .btn');
-    await expect(tools).toHaveCount(3);
-    for (const tool of await tools.all()) {
-      const at = (await tool.boundingBox())!;
-      expect(Math.round(at.width)).toBe(28);
-      expect(Math.round(at.height)).toBe(28);
-      // 14 inside its edge.
-      expect(Math.round(at.y - hero.y)).toBe(15);
-      expect(at.x).toBeGreaterThan(title.x + title.width);
+    for (const key of ['freelancermap-2801', 'freelance-900412']) {
+      await openAt(page, key);
+      const hero = (await stage(page).getByTestId('reader-head').boundingBox())!;
+      const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
+      const line = await stage(page)
+        .getByTestId('reader-title')
+        .evaluate((node) => parseFloat(getComputedStyle(node).lineHeight));
+      const tools = stage(page).getByTestId('reader-tools').locator('.btn');
+      await expect(tools).toHaveCount(2);
+      for (const tool of await tools.all()) {
+        const at = (await tool.boundingBox())!;
+        expect(Math.round(at.width)).toBe(28);
+        expect(Math.round(at.height)).toBe(28);
+        // Centred on the title's first line, wherever the ring puts it.
+        expect(Math.abs(at.y + at.height / 2 - (title.y + line / 2)), key).toBeLessThan(1);
+        expect(at.x).toBeGreaterThan(title.x + title.width);
+      }
+      // 14 inside the card's edge.
+      const last = (await tools.last().boundingBox())!;
+      expect(Math.round(hero.x + hero.width - (last.x + last.width))).toBe(15);
+      await expect(stage(page).getByTestId('reader-close')).toHaveCount(0);
     }
-    const close = (await stage(page).getByTestId('reader-close').boundingBox())!;
-    expect(Math.round(hero.x + hero.width - (close.x + close.width))).toBe(15);
   });
 
   test('the ring shows the score of the open job', async ({ page }) => {
@@ -255,23 +258,16 @@ test.describe('the head and the match', () => {
     await expect(page.getByTestId('menu')).toHaveCount(0);
   });
 
-  test('the "×" closes the job at every width; in one column it and Zurück lead back', async ({
+  test("in one column the top bar's job view button and Zurück lead back to the list", async ({
     page,
   }) => {
-    // Wide: the job view stays and asks for a job (user, 2026-09-29).
-    await openAt(page, 'freelancermap-2801');
-    const close = stage(page).getByTestId('reader-close');
-    await expect(close).toBeVisible();
-    await expect(close).toHaveAccessibleName('Schließen');
-    await close.click();
-    await expect(page.getByTestId('place-reader')).toBeVisible();
-    await expect(page.locator('[data-open]')).toHaveCount(0);
-    // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
-    // button, which closes the job there too, and hides it without one (decision 29).
+    // The top bar keeps the job view's button while a job stands in place of the list; it
+    // closes the job and goes without one (decision 29).
     await page.setViewportSize({ width: 683, height: 700 });
     await openAt(page, 'freelancermap-2801');
+    await expect(stage(page).getByTestId('reader-close')).toHaveCount(0);
     await expect(page.getByTestId('toggle-reader')).toBeEnabled();
-    await stage(page).getByTestId('reader-close').click();
+    await page.getByTestId('toggle-reader').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
     await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
     await row(page, 'freelancermap-2801').click();
@@ -284,7 +280,7 @@ test.describe('the head and the match', () => {
 });
 
 test.describe('the actions', () => {
-  test('three buttons in one order, the moves of the place beside the x', async ({ page }) => {
+  test('three buttons in one order, the moves of the place in the head', async ({ page }) => {
     // A wide window: every button with its words.
     await page.setViewportSize({ width: 1800, height: 900 });
     await openAt(page, 'freelancermap-2801');
@@ -297,19 +293,11 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
     expect(T.actions.prompt).toBe('Prompt für KI-Bewertung');
-    // The moves of Aktuell beside the x; no "…" menu.
+    // The moves of Aktuell; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
     expect(tools.labels).toEqual([T.actions.archive, T.actions.trash]);
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
-    const close = stage(page).getByTestId('reader-close');
-    for (const id of ['reader-archive', 'reader-trash']) {
-      const [box, x] = [
-        (await stage(page).getByTestId(id).boundingBox())!,
-        (await close.boundingBox())!,
-      ];
-      expect(box.x).toBeLessThan(x.x);
-    }
     // The alert mail and the ad open outside.
     await actions.getByTestId('reader-mail').click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
