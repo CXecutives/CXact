@@ -9,12 +9,14 @@
   ("Alert-Mails ohne Jobs", "Alert-Mail bleibt aus"; "Fehlgeschlagen" in red after a failed
   call); else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen").
-  The calls, outlined with the glyph of their meaning: "Anmelden" or "Abmelden" where the
-  portal offers a sign-in (one width), then the one call about its alert, in one place, each
-  in its own width (its face follows the portal's state, never the pointer): "Alert-Mail
-  öffnen" when alert mails came without jobs, "Alert prüfen" when its
-  alert went quiet, else "Alert anlegen" for a portal of alert mails (its page in the
-  browser). In a narrow box the calls go to a line of their own at the row's end.
+  The calls, outlined with the glyph of their meaning: "Anmelden…" or "Abmelden" where the
+  portal offers a sign-in (one width), then the one call about its alert, in one place and
+  one width whatever its face (it follows the portal's state, never the pointer), so
+  Anmelden never moves: "Alert-Mail öffnen" when alert mails came without jobs, "Alert
+  prüfen…" when its alert went quiet, else "Alert anlegen…" for a portal of alert mails (its
+  page in the browser). A call that opens a window or a page to act on ends in an ellipsis.
+  A portal that is off offers no call about its alert. In a narrow box the calls go to a
+  line of their own at the row's end.
   A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
   Postfach", has no calls, and its switch stands off and waits with its reason (the stored
   value stays; decision 26).
@@ -31,7 +33,7 @@
   and says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
+  import Button, { type ButtonFace } from '$components/Button.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import type { StatusTone } from '$components/StatusText.svelte';
@@ -156,10 +158,11 @@
   const loginLocked = $derived(signInLocked());
 
   /** The one call about its alert, in one place: the mail that came without jobs, the alert
-   *  that went quiet, or a new alert (a portal of alert mails). */
+   *  that went quiet, or a new alert (a portal of alert mails); none while the portal is
+   *  off. */
   const alert = $derived.by(
     (): { id: string; label: string; icon: IconName; onclick: () => void } | null => {
-      if (idle) return null;
+      if (idle || !portal.enabled) return null;
       if (alertMail !== null) {
         const gmailId = alertMail;
         return {
@@ -186,6 +189,12 @@
     icon: 'alertAdd' as IconName,
     onclick: () => open('setup'),
   });
+  /** Every face of the alert's call: it keeps the width of the widest. */
+  const ALERT_FACES: readonly ButtonFace[] = [
+    { label: t.settings.setUpAlert, icon: 'alertAdd' },
+    { label: t.reader.mail, icon: 'alertMail' },
+    { label: t.settings.checkAlert, icon: 'external' },
+  ];
 
   async function change(patch: PortalSwitches): Promise<void> {
     error = null;
@@ -272,7 +281,7 @@
           variant="secondary"
           icon="signOut"
           label={t.settings.signOut}
-          sizeTo={[{ label: t.settings.signIn, icon: 'signIn' }]}
+          sizeTo={[{ label: t.settings.signInOpens, icon: 'signIn' }]}
           loading={busy}
           disabled={loginLocked !== null}
           disabledReason={loginLocked}
@@ -283,7 +292,7 @@
         <Button
           variant="secondary"
           icon="signIn"
-          label={t.settings.signIn}
+          label={t.settings.signInOpens}
           sizeTo={[{ label: t.settings.signOut, icon: 'signOut' }]}
           loading={busy}
           disabled={loginLocked !== null}
@@ -299,6 +308,7 @@
       variant="secondary"
       icon={alert.icon}
       label={alert.label}
+      sizeTo={ALERT_FACES}
       testid="{alert.id}-{portal.portal}"
       onclick={alert.onclick}
     />

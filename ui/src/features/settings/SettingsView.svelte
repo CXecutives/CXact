@@ -156,6 +156,7 @@
       label={item.label(t, cfg)}
       hint={item.path?.(t, cfg) ?? item.hint?.(t, cfg) ?? null}
       copy={item.path !== undefined}
+      pair={item.actions.length > 1}
       testid={item.id}
     >
       {#each item.actions as id (id)}

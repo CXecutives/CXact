@@ -3,7 +3,8 @@
   folder, the reset; the round 10 draft): 12 20 inside and 62 high whether or not a line
   stands under its name (12 + 20 + 18 + 12, so a list keeps one rhythm), its name (14/540
   ink) and the one line under it (13 subtle), then its buttons (`children`: outlined, each with
-  its glyph, 8 apart) and what always ends the row (`end`: a portal's switch). No tile: the
+  its glyph, 8 apart; a pair, `pair`, in two columns of one width, the wider label's) and what
+  always ends the row (`end`: a portal's switch). No tile: the
   name says it. The buttons and the switch are centred on the name and its line, and lines
   that unfold under the text (`notes`: a portal's problem) move nothing beside it. Between
   rows a hairline that starts at the text (20 in, like the Profil's), the only lines of a box.
@@ -46,6 +47,8 @@
     /** What ends the row whatever the width (the switch). */
     end?: Snippet | null;
     testid?: string | null;
+    /** The row's buttons are a pair: both as wide as the wider. */
+    pair?: boolean;
     /** The row's buttons. */
     children?: Snippet;
   }
@@ -62,6 +65,7 @@
     notes = null,
     end = null,
     testid = null,
+    pair = false,
     children,
   }: Props = $props();
 
@@ -97,7 +101,11 @@
       </p>{/if}
     {#if notes}{@render notes()}{/if}
   </div>
-  {#if children}<div class="actions">{@render children()}</div>{/if}
+  {#if children}
+    <div class="actions">
+      {#if pair}<div class="pair">{@render children()}</div>{:else}{@render children()}{/if}
+    </div>
+  {/if}
   {#if end}<div class="end">{@render end()}</div>{/if}
 </div>
 
@@ -167,6 +175,15 @@
     align-items: center;
     gap: var(--space-8);
     height: var(--line-box);
+  }
+
+  /* A pair: columns of one width, each as wide as the wider button. */
+  .pair {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: var(--space-8);
+    width: max-content;
   }
 
   /* A row whose buttons are all away (a portal without calls) keeps no room for them: no gap

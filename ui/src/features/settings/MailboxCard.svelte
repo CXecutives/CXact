@@ -1,10 +1,12 @@
 <!--
-  The mailbox's row in Einstellungen > Postfach (the round 10 draft): the connected address (text to copy) with its state under it, "Ändern" and "Entfernen"
-  (plain outlined buttons; the dialog of Entfernen carries the danger), or without a mailbox
+  The mailbox's row in Einstellungen > Postfach (the round 10 draft): the connected address
+  (text to copy) with its state under it, "Ändern" and "Entfernen…" (plain outlined buttons
+  of one width; the dialog of Entfernen carries the danger, so its words end in an
+  ellipsis), or without a mailbox
   "Kein Postfach verbunden", what one brings, and "Verbinden". Ändern and Verbinden unfold
   the form under the row (no dialog) and hide the row's buttons meanwhile: the provider and
   the address as a pair, the password, then "Abbrechen" and the primary "Verbinden" at the
-  right in the order of the OS (decision 19), each at least the pair's width. Enter
+  right in the order of the OS (decision 19), both as wide as the wider. Enter
   connects, Esc and Abbrechen fold it away and give the focus back to the row's button.
   Unfolded, the form glides into view as far as needed.
   While Verbinden signs in and counts it spins in its own width; Abbrechen and Esc stay live
@@ -153,6 +155,7 @@
         ? t.settings.refused(appPassword)
         : t.settings.unreachable}
     status={mailFailure === null ? 'success' : 'danger'}
+    pair
     testid="mailbox"
   >
     {#if !editing}
@@ -160,7 +163,7 @@
       <Button
         variant="secondary"
         icon="trash"
-        label={t.common.remove}
+        label={t.settings.removeOpens}
         disabled={locked !== null}
         disabledReason={locked}
         testid="mailbox-remove"
@@ -230,12 +233,16 @@
     padding: var(--mail-form-pad);
   }
 
+  /* The pair at the right, in columns of one width (the wider label's). */
   .buttons {
     --btn-min: var(--button-pair-min);
 
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    align-self: flex-end;
     gap: var(--space-8);
+    width: max-content;
   }
 
   .note {
