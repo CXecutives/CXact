@@ -397,7 +397,7 @@
   --radius-lg: 10px;
   --radius-xl: 14px;
   --radius-full: 9999px;
-  /* Buttons, fields and the track of a choice (28 px high, --control-field; 8 round). */
+  /* Buttons, fields and the track of a choice (30 px high, --control-field; 8 round). */
   --radius-control: 8px;
   /* What lies inside a control's track (the thumb of a choice): the track's radius less its
      2 px inset, so the two curves stay parallel. */
@@ -422,9 +422,9 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  /* Design round 7 (user, 2026-10-10): one control height for the whole app, 28 px
-     (--control-field): every button, field, choice of a few, toolbar control and menu row;
-     the sidebar's entries one step taller (--nav-row). Only a control inside a field (a
+  /* Design round 7 (user, 2026-10-10): one control height for the whole app, 30 px since
+     round 10 (--control-field): every button, field, choice of a few and toolbar control;
+     the sidebar's entries and a menu's rows one step taller (--nav-row, --menu-row). Only a control inside a field (a
      chip, a link or a button in a field, a day of the calendar, a suggestion row) and a
      suggestion chip under a field (Button `suggest`) are a notch lower (--control-sm). */
   --control-sm: 24px;
