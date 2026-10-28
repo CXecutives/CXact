@@ -30,8 +30,9 @@
      white content, the cxpertise orange that acts (#E67A5C like the icon and cxpertise.de, its
      hover the site's variant; the primary, the unread dot) and the saturated
      cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
-     progress and the tooltip. What is on, new or here (a switch, the unread dot, the open
-     job's edge, the chosen entry's icon) is coral like what acts. */
+     progress and the tooltip. What is new or here (the unread dot, the open job's edge, the
+     chosen entry's icon) is coral like what acts; a switch or a checkbox that is on is navy,
+     a state like what is chosen (harmony audit, 2026-10-28). */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   /* The track of a choice of a few (the place tabs, Arbeitsmodell): a warm light grey. */
@@ -56,12 +57,13 @@
      2026-10-01). */
   --p-navy: 212 50% 36%;
   --p-navy-deep: 213 54% 27%;
+  --p-navy-press: 213 58% 20%;
   --p-navy-50: 212 50% 96.5%;
   --p-navy-150: 212 42% 89%;
   --p-fg-subtle: 30 4% 41%;
-  /* Glyphs beside text (search, chevron, info, a chip's ×, placeholders): lighter than the
-     subtle text, 3:1 is enough for a glyph (round 10 review). */
-  --p-icon-subtle: 30 4% 50%;
+  /* Glyphs beside text (search, chevron, info, a chip's ×) and placeholders: lighter than the
+     subtle text, yet 4.5:1 on white, so a placeholder ("Keins") reads like text. */
+  --p-icon-subtle: 30 4% 45%;
   --p-border-strong: 30 8% 82%;
   --p-border-input: 30 10% 68%;
   --p-border-press: 30 10% 62%;
@@ -90,9 +92,13 @@
   --p-red-50: 358 70% 96.5%;
   --p-red-100: 358 60% 90%;
   --p-green-50: 142 45% 95%;
-  /* The empty part of a ring and of a switch that is off. */
+  /* The empty part of a ring. */
   --p-ring-track: 30 8% 92%;
-  --p-toggle-off: 30 10% 82%;
+  /* What is off: the track of a switch and the edge of an empty checkbox, 3:1 on white (a
+     control's part, WCAG 1.4.11), a step darker under the pointer and one more pressed. */
+  --p-toggle-off: 30 6% 56%;
+  --p-toggle-off-hover: 30 6% 50%;
+  --p-toggle-off-press: 30 6% 44%;
   /* The ground of the job view and the pages (round 10): a warm white between the cream and
      white, so the white cards on it read as cards. */
   --p-page: 30 12% 98.5%;
@@ -161,15 +167,6 @@
   --primary: hsl(var(--p-coral));
   --primary-hover: hsl(var(--p-coral-variant));
   --primary-active: hsl(var(--p-coral-press));
-  /* Switches are the accent when on, grey when off, the knob white; each state darkens a
-     step under the pointer and one more while the left button is down. */
-  --toggle-off: hsl(var(--p-toggle-off));
-  --toggle-off-hover: hsl(var(--p-border-input));
-  --toggle-off-press: hsl(var(--p-border-press));
-  --toggle-on: hsl(var(--p-coral));
-  --toggle-on-hover: hsl(var(--p-coral-variant));
-  --toggle-on-press: hsl(var(--p-coral-press));
-  --toggle-knob: hsl(var(--p-knob));
   /* The unread dot of a list row. */
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's
      wash). */
@@ -185,6 +182,16 @@
   --nav-active-icon: hsl(var(--p-coral));
 
   /* ------------------------------------------ navy: the data and the quiet structure */
+  /* Switches and checkboxes are navy when on (a state, like what is chosen), grey when off
+     (the same grey is the edge of an empty checkbox), the knob white; each state darkens a
+     step under the pointer and one more while the left button is down. */
+  --toggle-off: hsl(var(--p-toggle-off));
+  --toggle-off-hover: hsl(var(--p-toggle-off-hover));
+  --toggle-off-press: hsl(var(--p-toggle-off-press));
+  --toggle-on: hsl(var(--p-navy));
+  --toggle-on-hover: hsl(var(--p-navy-deep));
+  --toggle-on-press: hsl(var(--p-navy-press));
+  --toggle-knob: hsl(var(--p-knob));
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
      disclosure chevron, the icon of a neutral stat tile). */
   --icon-accent: hsl(var(--p-navy));
@@ -725,7 +732,7 @@
   --field-link-gap: 14px;
   --error-text: hsl(var(--p-word-red));
   /* A row of Einstellungen: 12 above and below, 20 at the sides, its buttons 12 from its
-     words; the name 14/540, the line 13 subtle. */
+     words; the name 14/540, the line 13 muted like every second line. */
   --setting-row-pad-y: var(--form-row-pad-y);
   --setting-row-gap: var(--space-12);
   /* A status word (StatusText): the dot in the exact colour, the word one step darker. */

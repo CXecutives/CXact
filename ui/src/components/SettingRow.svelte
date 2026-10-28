@@ -2,7 +2,7 @@
   The one row of a list in a page's box (Einstellungen: a portal, the mailbox, the profile's
   folder, the reset; the round 10 draft): 12 20 inside and 62 high whether or not a line
   stands under its name (12 + 20 + 18 + 12, so a list keeps one rhythm), its name (14/540
-  ink) and the one line under it (13 subtle), then its buttons (`children`: outlined, each with
+  ink) and the one line under it (13 muted), then its buttons (`children`: outlined, each with
   its glyph, 8 apart; a pair, `pair`, in two columns of one width, the wider label's) and what
   always ends the row (`end`: a portal's switch). No tile: the
   name says it. The buttons and the switch are centred on the name and its line, and lines
@@ -171,7 +171,7 @@
   }
 
   .hint {
-    color: var(--text-subtle);
+    color: var(--text-muted);
     font: var(--type-sm);
   }
 
