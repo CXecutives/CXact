@@ -226,14 +226,52 @@
     }
   }
 
-  /** "Speichern" (and Enter in a field): a value that holds the save is said first; with
-   *  gaps the profile is saved anyway and the first red field comes into view. */
-  async function trySave(): Promise<void> {
-    if (!editor.dirty || busy) return;
-    if (!panel?.ready()) return;
+  /** Fertig and Speichern (and Enter in a field): a value that holds the save is said
+   *  first; with gaps the profile is saved anyway and the first red field comes into view.
+   *  `true` once the profile is saved, or when there was nothing to save. */
+  async function trySave(): Promise<boolean> {
+    if (busy) return false;
+    if (!editor.dirty) return true;
+    if (!panel?.ready()) return false;
     const done = await save();
     if (done && missing.length > 0) void reveal(missing[0]!);
+    return done;
   }
+
+  /** The facts under the wished roles in the head: day rate, work mode, availability,
+   *  countries (a value not given stays away). */
+  const facts = $derived.by(() => {
+    if (editor.origin !== 'stored') return [];
+    const form = editor.after;
+    const shown: { icon: 'rate' | 'remote' | 'start' | 'place'; text: string; field: string }[] =
+      [];
+    if (form.dayRateWish !== null || form.dayRateMin !== null) {
+      shown.push({
+        icon: 'rate',
+        text: t.profile.fact.rate(form.dayRateWish, form.dayRateMin),
+        field: form.dayRateWish !== null ? 'dayRateWish' : 'dayRateMin',
+      });
+    }
+    if (form.workMode !== 'any') {
+      shown.push({ icon: 'remote', text: t.profile.workMode[form.workMode], field: 'workMode' });
+    }
+    shown.push({
+      icon: 'start',
+      text:
+        form.available.kind === 'from'
+          ? t.profile.read.from(form.available.date)
+          : t.profile.fact.now,
+      field: 'available',
+    });
+    if (form.countries.length > 0) {
+      shown.push({
+        icon: 'place',
+        text: form.countries.map((code) => t.profile.country[code] ?? code).join(', '),
+        field: 'countries',
+      });
+    }
+    return shown;
+  });
 
   /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
    *  focus of the gone form. */
@@ -330,13 +368,17 @@
     return true;
   }
 
-  /** The bar at the foot: a change or a failed save. */
-  const barShown = $derived(editor.dirty || saveNote !== null);
+  /** The bar at the foot, for a form that was never stored (a stored profile saves group by
+   *  group with Fertig): a change or a failed save. */
+  const barShown = $derived(editor.origin === 'new' && (editor.dirty || saveNote !== null));
 </script>
 
 {#snippet notes()}
   {#if !setup}<CvProblem />{/if}
   {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
+  {#if !setup && !barShown && saveNote}
+    <StateBox heading={saveNote()} alert testid="profile-save-error" />
+  {/if}
 {/snippet}
 
 {#if app.state === null}
@@ -366,6 +408,11 @@
       dirty={editor.dirty}
       oncv={() => void fillFromCv()}
       onfolder={editor.origin === null && profile?.parseError ? openFolder : null}
+      roles={editor.origin === 'stored'
+        ? editor.after.roles.filter((role) => role.trim() !== '')
+        : []}
+      {facts}
+      onfact={(field) => panel?.openAt(field)}
     />
   {/snippet}
   {#snippet bar()}
@@ -394,7 +441,8 @@
         bind:this={panel}
         {fieldError}
         missing={marked}
-        onsave={() => void trySave()}
+        {busy}
+        onsave={trySave}
         ondiscard={discard}
       />
     {/if}

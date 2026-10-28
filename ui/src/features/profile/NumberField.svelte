@@ -29,6 +29,8 @@
     disabled?: boolean;
     /** A row of a list: 26 high, no note. */
     inline?: boolean;
+    /** As wide as its digits (or its placeholder) and its unit, so it reads like text. */
+    fit?: boolean;
     describedby?: string | null;
     testid?: string | null;
   }
@@ -43,6 +45,7 @@
     invalid = false,
     disabled = false,
     inline = false,
+    fit = false,
     describedby = null,
     testid = null,
   }: Props = $props();
@@ -67,6 +70,8 @@
     number === null ? '' : money ? formatNumber(number) : String(number);
 
   let text = $state(shown(value));
+  /** The characters a fitted field makes room for: its text, or its placeholder while empty. */
+  const chars = $derived(Math.max(text.length, text === '' ? (placeholder?.length ?? 0) : 0, 1));
   /** The last input had a decimal part: said once the field is left, until the next input. */
   let cut = false;
   let rounded = $state(false);
@@ -98,6 +103,7 @@
       {invalid}
       {disabled}
       {inline}
+      size={fit ? chars : null}
       describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
       suffix={unit}
       {testid}

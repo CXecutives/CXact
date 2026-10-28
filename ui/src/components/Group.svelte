@@ -22,6 +22,8 @@
     testid?: string | null;
     /** A box of rows that pad themselves (the Profil's). */
     rows?: boolean;
+    /** Open to be edited (a group of the Profil): a navy edge of 2 around it. */
+    active?: boolean;
     children: Snippet;
   }
 
@@ -30,6 +32,7 @@
     captionTestid = null,
     testid = null,
     rows = false,
+    active = false,
     children,
   }: Props = $props();
 </script>
@@ -37,10 +40,14 @@
 {#if caption !== null}
   <div class="captioned">
     <h3 class="caption" data-testid={captionTestid ?? undefined}>{caption}</h3>
-    <div class="box" class:rows data-testid={testid ?? undefined}>{@render children()}</div>
+    <div class="box" class:rows class:active data-testid={testid ?? undefined}>
+      {@render children()}
+    </div>
   </div>
 {:else}
-  <div class="box" class:rows data-testid={testid ?? undefined}>{@render children()}</div>
+  <div class="box" class:rows class:active data-testid={testid ?? undefined}>
+    {@render children()}
+  </div>
 {/if}
 
 <style>
@@ -74,6 +81,14 @@
     border-radius: var(--radius-card);
     background-color: var(--surface);
     box-shadow: var(--sh-card);
+  }
+
+  /* Open to be edited: the navy of focus around the box, its edge under it. */
+  .active {
+    border-color: var(--border-focus);
+    box-shadow:
+      0 0 0 var(--border-width) var(--border-focus),
+      var(--sh-card);
   }
 
   /* A box of rows: the rows bring their own padding and lines. */

@@ -5,15 +5,14 @@
 // beside it, the info symbols at their places), the boxes of entries, the two ways in, the
 // CV and its failures, saving (answered by a toast), discarding,
 // leaving and closing with unsaved changes, values that hold the save, refused values, a
-// quiet hint where values contradict each other, and "Häufig verlangt". The stub's demo
+// quiet hint where values contradict each other. The stub's demo
 // profile looks for Interim CFO roles in Germany and Austria (projects and permanent roles),
 // from 1 September 2026, and is complete.
 
 import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
-import { DEMO } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import { adder, chooseWay, failNext, fillRequired, reveal as show, T, WIN } from './helpers';
+import { adder, chooseWay, fillRequired, T, WIN } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -1026,119 +1025,6 @@ test('the day exists only for "Ab Datum", gets the caret and is judged when left
   await expect(day.getByRole('button')).toHaveCount(0);
   await save(page).click();
   expect((await lastSave(page)).after.available).toEqual({ kind: 'from', date: '20.11.2026' });
-});
-
-// ------------------------------------------------------------------ the terms the jobs ask for
-
-const asked = (page: Page): Locator => page.getByTestId('asked');
-/** The terms of the rows "Häufig verlangt", in their order. */
-const askedWords = (page: Page): Promise<string[]> =>
-  page
-    .getByTestId('asked-term')
-    .evaluateAll((all) => all.map((term) => term.getAttribute('data-term') ?? ''));
-/** The button of a term. */
-const askedRow = (page: Page, term: string): Locator =>
-  page.locator(`[data-testid="asked-term"][data-term="${term}"]`);
-
-/** The demo jobs whose reader names `term` as the term of an open requirement. */
-const askingJobs = (term: string): number =>
-  Object.values(DEMO.details).filter((detail) =>
-    detail.match?.reasons.some((reason) => reason.kind === 'open' && reason.params.term === term),
-  ).length;
-
-test('"Häufig verlangt" under its field: the terms the jobs ask for, each where it goes', async ({
-  page,
-}) => {
-  await profile(page);
-  await show(page, asked(page).first());
-  expect(await calls(page, 'asked_terms')).toHaveLength(1);
-  const tools = field(page, 'tools');
-  const block = tools.locator('[data-for="tool"]').getByTestId('asked');
-  await expect(block).toContainText(T.profile.asked);
-  const words = await askedWords(page);
-  expect(words.length).toBeGreaterThan(0);
-  expect(words.length).toBeLessThanOrEqual(8);
-  expect(new Set(words).size).toBe(words.length);
-  for (const [term, kind, key] of [
-    ['Energie', 'industry', 'industries'],
-    ['SAP Analytics Cloud', 'tool', 'tools'],
-    ['Anaplan', 'tool', 'tools'],
-  ] as const) {
-    const row = askedRow(page, term);
-    await expect(row).toHaveCount(1);
-    await expect(page.locator(`[data-field~="${key}"] [data-for="${kind}"]`)).toContainText(term);
-    // Only the term with its +: no count (design round 7).
-    await expect(row.getByTestId('asked-add').locator('.count')).toHaveCount(0);
-    expect(askingJobs(term)).toBeGreaterThanOrEqual(2);
-  }
-  const stored = (await page.evaluate(() => window.__harness.form()))!;
-  const names = [
-    ...stored.competences.map((c) => c.name),
-    ...stored.tools,
-    ...stored.industries,
-  ].map((name) => name.toLowerCase());
-  for (const term of words) expect(names).not.toContain(term.toLowerCase());
-});
-
-test('"Hinzufügen" puts the term into its field, an unsaved change like any other', async ({
-  page,
-}) => {
-  await profile(page);
-  const tools = chips(page.getByTestId('profile-tools'));
-  const industries = chips(page.getByTestId('profile-industries'));
-  await askedRow(page, 'Anaplan').getByTestId('asked-add').click();
-  await expect(tools.last()).toHaveText('Anaplan');
-  await expect(askedRow(page, 'Anaplan')).toHaveCount(0);
-  await expect(save(page)).toBeVisible();
-  await discard(page).click();
-  await expect(askedRow(page, 'Anaplan')).toHaveCount(1);
-  await askedRow(page, 'Energie').getByTestId('asked-add').click();
-  await expect(industries.last()).toHaveText('Energie');
-  await askedRow(page, 'Anaplan').getByTestId('asked-add').click();
-  await save(page).click();
-  await expect(savedToast(page)).toBeVisible();
-  const sent = await lastSave(page);
-  expect(sent.after.tools).toContain('Anaplan');
-  expect(sent.after.industries).toContain('Energie');
-  expect(sent.before.tools).not.toContain('Anaplan');
-});
-
-test('a row goes with its last term; a focused term hands the focus on, then to its field', async ({
-  page,
-}) => {
-  await profile(page);
-  const block = field(page, 'tools').getByTestId('asked');
-  const words = await block
-    .getByTestId('asked-term')
-    .evaluateAll((all) => all.map((term) => term.getAttribute('data-term') ?? ''));
-  expect(words.length).toBeGreaterThan(1);
-  const add = block.getByTestId('asked-add');
-  for (let left = words.length; left > 1; left -= 1) {
-    await add.first().focus();
-    await page.keyboard.press('Enter');
-    await expect(add).toHaveCount(left - 1);
-    await expect(add.first()).toBeFocused();
-  }
-  await add.first().focus();
-  await page.keyboard.press('Enter');
-  await expect(block).toHaveCount(0);
-  await expect(page.getByTestId('profile-tools').locator('input')).toBeFocused();
-});
-
-test('the rows ask again after a fetch; without an answer they stay away', async ({ page }) => {
-  await profile(page);
-  await expect(asked(page).first()).toBeVisible();
-  const before = (await calls(page, 'asked_terms')).length;
-  await page.evaluate(() => window.__harness.appRun('fetch'));
-  await runFinished(page);
-  await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(before);
-  read.delete(page);
-  await open(page, WIN);
-  await failNext(page, 'asked_terms');
-  await page.getByTestId('nav-profile').click();
-  await expect(page.getByTestId('profile-form')).toBeVisible();
-  await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(0);
-  await expect(asked(page)).toHaveCount(0);
 });
 
 // ------------------------------------------------------------------ baselines

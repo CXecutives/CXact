@@ -1084,9 +1084,29 @@ export const de = {
     leaveHeading: 'Änderungen speichern?',
     /** Why Speichern waits while a value is wrong: the field by its label. */
     fixFirst: (label: string) => `Korrigiere erst „${label}“.`,
-    /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
-     *  does not name (a click puts one into that field). */
-    asked: 'Häufig verlangt',
+    /** The Profil reads like a profile (round 11): a group opens with Bearbeiten (or a click
+     *  on one of its values) and closes with Fertig, which saves at once. */
+    edit: 'Bearbeiten',
+    editField: (label: string) => `${label} bearbeiten`,
+    done: 'Fertig',
+    /** The values as the Profil reads them. */
+    read: {
+      amount: (value: number, unit: string) => `${n(value)} ${unit}`,
+      rates: (wish: number | null, min: number | null) =>
+        wish !== null && min !== null
+          ? `${n(wish)} € am Tag, mindestens ${n(min)}`
+          : wish !== null
+            ? `${n(wish)} € am Tag`
+            : `mindestens ${n(min ?? 0)} € am Tag`,
+      from: (date: string) => `Ab ${date}`,
+      years: (years: number) => (years === 1 ? '1 Jahr' : `${years} Jahre`),
+    },
+    /** The facts under the wished roles in the Profil's head. */
+    fact: {
+      rate: (wish: number | null, min: number | null) =>
+        wish !== null ? `${n(wish)} € am Tag` : `ab ${n(min ?? 0)} € am Tag`,
+      now: 'Sofort verfügbar',
+    },
     /** Under Länder: the common countries not chosen yet. */
     suggested: 'Vorschlag',
     /** The groups of the page. */
@@ -1107,6 +1127,10 @@ export const de = {
       /** The day rate's two fields. */
       dayRateWish: 'Wunschtagessatz',
       dayRateMin: 'Mindesttagessatz',
+      /** The day rates in one row: its label and the two fields' short labels. */
+      dayRate: 'Tagessatz',
+      rateWish: 'Wunsch',
+      rateMin: 'Mindestens',
       minSalary: 'Mindestgehalt',
       /** An empty minimum salary: none is asked. */
       minSalaryPlaceholder: 'Keins',

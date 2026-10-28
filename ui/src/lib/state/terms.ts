@@ -1,8 +1,7 @@
 // A term the ads ask for and the field of the profile it goes into (core
 // `matching::core_term`: "Kenntnisse in Anaplan" is the tool "Anaplan", "Branchenerfahrung
 // Energie" the industry "Energie"), and how a term goes into a form and out of it again: the
-// Profil's "Häufig verlangt" puts one into the form as an unsaved change, the reader's "+"
-// into the stored profile (`addToProfile` in profile.svelte.ts).
+// reader's "+" puts one into the stored profile (`addToProfile` in profile.svelte.ts).
 
 import type { LanguageLevel, ProfileForm, TermField } from '../ipc/types';
 
@@ -28,20 +27,6 @@ function namesIn(form: ProfileForm, field: TermField): string[] {
   if (field === 'competence') return form.competences.map((row) => row.name);
   if (field === 'language') return form.languages.map((row) => row.language);
   return form[LISTS[field]];
-}
-
-/** Every term the form names, in any field: a term of the ads it names is none the profile
- *  lacks (core `view::named_terms`). */
-export function termsOf(form: ProfileForm): string[] {
-  const fields: TermField[] = [
-    'competence',
-    'language',
-    'tool',
-    'industry',
-    'certificate',
-    'degree',
-  ];
-  return fields.flatMap((field) => namesIn(form, field));
 }
 
 /** The level of a language without one of its own (core matching's assumed level). */

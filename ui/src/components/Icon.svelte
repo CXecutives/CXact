@@ -18,6 +18,7 @@
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
+  import Banknote from '@lucide/svelte/icons/banknote';
   import BellPlus from '@lucide/svelte/icons/bell-plus';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
@@ -81,6 +82,7 @@
     'arrow-right': ArrowRight,
     award: Award,
     ban: Ban,
+    banknote: Banknote,
     'bell-plus': BellPlus,
     briefcase: Briefcase,
     'building-2': Building2,

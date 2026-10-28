@@ -1,27 +1,26 @@
 <!--
-  The profile as one page of rows (the owner's redesign of 2026-10-24): the groups of
+  The profile as groups of rows (round 11, the owner's choice "wie Malt"): the groups of
   `sections.ts` in their order (Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen,
   Ausschlüsse), each a Section with one white box of rows (Group `rows`), like the rows of
-  Einstellungen. The same page in the setup. A field is a row (Field `row`): its label in a
-  column beside its control (and, only where docs/PLAN.md places one, an info symbol after
-  the label), 12 20 inside, at least 56 high, a hairline between rows; in a box under 560
-  wide the label stands above the control. A tag field fills the control's column, a number
-  is as wide as its unit needs (170 for euros, 130 for years), a choice of a few as wide as
-  its options, Mindestlaufzeit a select. Kompetenzen and Sprachen are boxes whose rows are
-  their entries (CompetenceList, LanguageList). The page is there at once when it opens (a
-  view switch brings nothing new to show off). Mindestgehalt unfolds while Festanstellung or
-  Zeitarbeit is chosen. A number is formatted when its field is left.
+  Einstellungen.
+  On the Profil a group reads like a profile while it is closed (ReadGroup); "Bearbeiten" at
+  its title, a click on one of its values or a fact of the head opens it at that field. One
+  group is open at a time: its box has the navy edge, its rows are the fields
+  (ProfileControl; a hairline between rows), and its foot holds Fertig and Abbrechen in the
+  order of the OS, one width. Fertig (and Enter in a field) saves at once (`onsave`) and
+  closes the group; Abbrechen (and Esc) puts the stored values back; opening another group
+  saves the open one first. A new form and the setup show every group open, without a foot
+  (the view's bar or the setup's Weiter save). Mindestgehalt unfolds while Festanstellung or
+  Zeitarbeit is chosen.
   A required field that is still empty carries `data-missing` on its row, a required list
   on its group (`missing`, from ProfileView: on the Profil always, in the setup once Weiter
-  asked): the field's edge and label turn red, a list's group title (tokens.css). A value
-  that is too large, a 0 where at least 1 counts, a day that does not read and a value the
-  backend refused are said at their field in their own sentence, stay with their error until
-  they change, and only they hold the save (the first of them is revealed when a save is
-  tried; `wrongField` names it for Speichern's reason). A wished rate under the minimum says
-  so quietly under it. Enter in a field saves (the setup: goes on), as in every form (in a
-  tag field or a list's add field it takes what was typed); an untouched new form goes back
-  to the ways in with Esc (not in the setup).
-  The setup shows no "Häufig verlangt" (the countries' "Vorschlag" stays).
+  asked): the field's edge and label turn red, a list's group title (tokens.css); a closed
+  group shows it as a red row. A value that is too large, a 0 where at least 1 counts, a day
+  that does not read and a value the backend refused are said at their field in their own
+  sentence, stay with their error until they change, and only they hold the save (the first
+  of them is revealed, its group opened, when a save is tried; `wrongField` names it).
+  Enter in a tag field or a list's add field takes what was typed; an untouched new form
+  goes back to the ways in with Esc (not in the setup).
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -33,34 +32,30 @@
 </script>
 
 <script lang="ts">
-  import ChipInput from '$components/ChipInput.svelte';
-  import CheckGroup from '$components/CheckGroup.svelte';
-  import Field from '$components/Field.svelte';
+  import Button from '$components/Button.svelte';
   import Group from '$components/Group.svelte';
   import Section from '$components/Section.svelte';
-  import Segmented from '$components/Segmented.svelte';
-  import Select from '$components/Select.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import type { ContractKey } from '$lib/ipc/api';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
   import { unfold } from '$lib/motion/transitions';
+  import { primaryFirst } from '$lib/platform';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
-  import AskedTerms from './AskedTerms.svelte';
-  import AvailableField from './AvailableField.svelte';
   import CompetenceList from './CompetenceList.svelte';
-  import CountriesField from './CountriesField.svelte';
   import LanguageList from './LanguageList.svelte';
-  import NumberField from './NumberField.svelte';
+  import ProfileControl from './ProfileControl.svelte';
+  import ReadGroup from './ReadGroup.svelte';
   import {
     LABEL_OF,
     SECTIONS,
     fieldOf,
-    type ChoiceKey,
+    fieldsOf,
+    sectionOf,
     type Control,
     type NumberKey,
+    type SectionId,
   } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
@@ -69,13 +64,16 @@
     fieldError: FieldError | null;
     /** The required fields still empty that are marked. */
     missing: readonly string[];
-    /** The setup's page: no "Häufig verlangt", Esc does nothing. */
+    /** The setup's page: every group open, Esc does nothing. */
     setup?: boolean;
-    onsave: () => void;
+    /** A save is under way (Fertig waits). */
+    busy?: boolean;
+    /** Saves the form; `true` once it is saved (or there was nothing to save). */
+    onsave: () => Promise<boolean> | void;
     ondiscard: () => void;
   }
 
-  let { fieldError, missing, setup = false, onsave, ondiscard }: Props = $props();
+  let { fieldError, missing, setup = false, busy = false, onsave, ondiscard }: Props = $props();
 
   // Text typed into a tag field of the form counts as a change.
   editor.typed.share();
@@ -84,6 +82,43 @@
   const id = $props.id();
   const form = $derived(editor.after);
   vocabulary.load();
+
+  // ------------------------------------------------------------ open and closed groups
+
+  /** Every group open: the setup and a form that was never stored. */
+  const allOpen = $derived(setup || editor.origin === 'new');
+  /** The one group open on the Profil (null: every group reads). */
+  let open = $state<SectionId | null>(null);
+  const isOpen = (section: SectionId): boolean => allOpen || open === section;
+  const actionFirst = primaryFirst();
+
+  /** Opens a group at one of its fields (or its first), saving the group open before. */
+  async function openGroup(section: SectionId, field: string | null): Promise<void> {
+    if (!allOpen && open !== section) {
+      if (open !== null && editor.dirty && !(await onsave())) return;
+      open = section;
+    }
+    await tick();
+    if (field !== null) await focusField(field);
+    else root?.querySelector<HTMLElement>(`[data-group="${section}"] :is(input, button)`)?.focus();
+  }
+
+  /** Opens the group of a field at that field (the facts of the head). */
+  export function openAt(field: string): void {
+    const section = sectionOf(field);
+    if (section !== null) void openGroup(section, field);
+  }
+
+  /** Fertig: saves the open group and closes it once it is saved. */
+  async function done(): Promise<void> {
+    if (editor.dirty && !(await onsave())) return;
+    open = null;
+  }
+
+  function cancel(): void {
+    ondiscard();
+    open = null;
+  }
 
   // ------------------------------------------------------------ values that hold the save
 
@@ -103,8 +138,8 @@
       }
     }
     // A competence's years, counted among the rows with a name (as the backend does).
-    const named = form.competences.filter((row) => row.name.trim() !== '');
-    const row = named.findIndex((each) => each.years !== null && each.years > MAX_YEARS);
+    const rows = form.competences.filter((row) => row.name.trim() !== '');
+    const row = rows.findIndex((each) => each.years !== null && each.years > MAX_YEARS);
     if (row >= 0) found.push({ field: 'competences', row, text: words.atMost(MAX_YEARS) });
     return found;
   });
@@ -144,44 +179,10 @@
     return wrong ? { row: wrong.row, text: wrong.text } : null;
   }
 
-  const infoOf = (control: Control): string | null =>
-    'info' in control && control.info ? t.profile.info[control.info] : null;
   const isMissing = (field: string): boolean => missing.includes(field);
   /** A row shows while its field has something to do (Mindestgehalt). */
   const shown = (control: Control): boolean =>
     control.kind !== 'number' || (control.shown?.(form) ?? true);
-  /** The wished rate under the minimum: a quiet line under the wish. */
-  const below = $derived(
-    form.dayRateWish !== null && form.dayRateMin !== null && form.dayRateWish < form.dayRateMin,
-  );
-
-  // ------------------------------------------------------------ the choices
-
-  const CHOICES = $derived<Record<ChoiceKey, { id: string; label: string }[]>>({
-    workMode: Object.entries(t.profile.workMode).map(([mode, label]) => ({ id: mode, label })),
-    workload: Object.entries(t.profile.workload).map(([load, label]) => ({ id: load, label })),
-  });
-  const MONTHS = $derived(
-    Object.entries(t.profile.minMonths).map(([months, label]) => ({ id: months, label })),
-  );
-  /** Vertragsart: the contract types chosen. */
-  const CONTRACT_KEYS: readonly ContractKey[] = ['project', 'permanent', 'temporary'];
-  const CONTRACTS = $derived(
-    CONTRACT_KEYS.map((key) => ({
-      id: key,
-      label: t.profile.contract[key],
-      testid: `contract-${key}`,
-    })),
-  );
-  const contracts = $derived(CONTRACT_KEYS.filter((key) => form[key]));
-  function toggleContract(key: ContractKey): void {
-    form[key] = !form[key];
-  }
-
-  function choose(key: ChoiceKey, value: string): void {
-    if (key === 'workload') form.workload = value as ProfileForm['workload'];
-    else form.workMode = value as ProfileForm['workMode'];
-  }
 
   // ------------------------------------------------------------ saving
 
@@ -201,10 +202,12 @@
   }
 
   /** The caret into a field of the form (its marked control first), in the middle of the
-   *  view; `false` when the field is not on the page. */
+   *  view, its group opened first; `false` when the field is not on the page. */
   export async function focusField(field: string): Promise<boolean> {
+    const section = sectionOf(field);
+    if (section !== null && !isOpen(section)) await openGroup(section, null);
     await tick();
-    const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
+    const scope = root?.querySelector<HTMLElement>(`[data-edit~="${field}"]`);
     const target =
       scope?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
       scope?.querySelector<HTMLElement>('input, textarea, button:not([data-testid="info-tip"])');
@@ -214,8 +217,12 @@
   }
 
   /** A field of the form in the middle of the view, without the caret (Speichern and Weiter
-   *  only show what is missing or wrong; the user clicks where they want to type). */
+   *  only show what is missing or wrong). A wrong value opens its group; a missing one shows
+   *  as its red row in a closed group. */
   export async function revealField(field: string): Promise<boolean> {
+    const section = sectionOf(field);
+    const wrong = invalid.some((each) => each.field === field) || fieldError?.field === field;
+    if (section !== null && wrong && !isOpen(section)) open = section;
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     scope?.scrollIntoView({ block: 'center' });
@@ -224,18 +231,31 @@
 
   /** A new form nothing was typed into: Esc goes back to the ways in. */
   const untouched = $derived(editor.origin === 'new' && !editor.dirty);
+  const save = (): void => void onsave();
+  const rootKeys = $derived(untouched && !setup ? { save, cancel: ondiscard } : { save });
 </script>
 
 <div
   class="editor"
   bind:this={root}
-  use:formKeys={untouched && !setup ? { save: onsave, cancel: ondiscard } : { save: onsave }}
+  use:formKeys={allOpen ? rootKeys : {}}
   data-testid="profile-form"
 >
   {#each SECTIONS as section (section.id)}
     {@const list = 'list' in section ? section.list : null}
+    {@const editing = isOpen(section.id)}
+    {#snippet edit()}
+      <Button
+        variant="ghost"
+        icon="edit"
+        label={t.profile.edit}
+        testid="edit-{section.id}"
+        onclick={() => void openGroup(section.id, null)}
+      />
+    {/snippet}
     <div
       class="group"
+      data-group={section.id}
       data-field={list ?? undefined}
       data-missing={list !== null && isMissing(list) ? '' : undefined}
     >
@@ -243,129 +263,63 @@
         id="profile-section-{section.id}"
         name={section.id}
         heading={t.profile.section[section.id]}
+        actions={editing ? null : edit}
         testid="section-{section.id}"
       >
-        <Group rows>
-          {#if list === 'competences'}
-            <CompetenceList
-              bind:rows={form.competences}
-              error={listError('competences')}
-              asked={!setup}
-            />
-          {:else if list === 'languages'}
-            <LanguageList
-              bind:rows={form.languages}
-              error={listError('languages')}
-              asked={!setup}
-            />
-          {:else if 'rows' in section}
-            {#each section.rows as c (fieldOf(c))}
-              {#if shown(c)}
-                <div
-                  class="cell"
-                  data-field={fieldOf(c)}
-                  data-missing={isMissing(fieldOf(c)) ? '' : undefined}
-                  transition:unfold
-                >
-                  <div class="row">{@render control(c)}</div>
-                </div>
+        <Group rows active={editing && !allOpen}>
+          {#if !editing}
+            <ReadGroup {section} {missing} onopen={(field) => void openGroup(section.id, field)} />
+          {:else}
+            <div
+              data-edit={list ?? undefined}
+              use:formKeys={allOpen ? {} : { save: () => void done(), cancel }}
+            >
+              {#if list === 'competences'}
+                <CompetenceList bind:rows={form.competences} error={listError('competences')} />
+              {:else if list === 'languages'}
+                <LanguageList bind:rows={form.languages} error={listError('languages')} />
+              {:else if 'rows' in section}
+                {#each section.rows as c (fieldOf(c))}
+                  {#if shown(c)}
+                    <div
+                      class="cell"
+                      data-field={fieldsOf(c).join(' ')}
+                      data-edit={fieldsOf(c).join(' ')}
+                      data-missing={isMissing(fieldOf(c)) ? '' : undefined}
+                      transition:unfold
+                    >
+                      <div class="row"><ProfileControl {c} {id} {errorOf} /></div>
+                    </div>
+                  {/if}
+                {/each}
               {/if}
-            {/each}
+            </div>
+            {#if !allOpen}
+              <div class="foot">
+                <div class="pair" class:first={actionFirst}>
+                  <Button
+                    variant="primary"
+                    label={t.profile.done}
+                    loading={busy}
+                    testid="done-{section.id}"
+                    onclick={() => void done()}
+                  />
+                  <Button
+                    variant="secondary"
+                    label={t.common.cancel}
+                    disabled={busy}
+                    testid="cancel-{section.id}"
+                    onclick={cancel}
+                  />
+                </div>
+              </div>
+            {/if}
           {/if}
         </Group>
       </Section>
     </div>
   {/each}
 </div>
-
-{#snippet control(c: Control)}
-  {#if c.kind === 'number'}
-    {@const error = errorOf(c.key)}
-    <Field
-      label={words[c.label]}
-      for="{id}-{c.key}"
-      info={infoOf(c)}
-      hint={c.key === 'dayRateWish' && below && error === null ? words.belowMinRate : null}
-      {error}
-      row
-    >
-      <span class="number {c.unit}">
-        <NumberField
-          id="{id}-{c.key}"
-          money={c.unit !== 'years'}
-          unit={t.profile.unit[c.unit]}
-          placeholder={c.placeholder ? words[c.placeholder] : null}
-          bind:value={form[c.key]}
-          invalid={error !== null}
-          testid={c.testid}
-        />
-      </span>
-    </Field>
-  {:else if c.kind === 'chips'}
-    {@const error = errorOf(c.key)}
-    <Field label={words[c.label]} for="{id}-{c.key}" info={infoOf(c)} {error} row>
-      <div class="stack">
-        <ChipInput
-          id="{id}-{c.key}"
-          bind:values={form[c.key]}
-          split={c.lines ? 'lines' : 'list'}
-          placeholder={words[c.placeholder]}
-          invalid={error !== null}
-          suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
-          fold
-          testid={c.testid}
-        />
-        {#if c.asked && !setup}<AskedTerms field={c.asked} home={c.testid} />{/if}
-      </div>
-    </Field>
-  {:else if c.kind === 'contracts'}
-    <Field label={words.contracts} info={infoOf(c)} row>
-      <CheckGroup
-        options={CONTRACTS}
-        values={contracts}
-        keepOne={words.keepOneContract}
-        label={words.contracts}
-        testid="profile-contracts"
-        onchange={toggleContract}
-      />
-    </Field>
-  {:else if c.kind === 'choice'}
-    <Field label={words[c.label]} error={errorOf(c.key)} row>
-      <Segmented
-        options={CHOICES[c.key]}
-        value={form[c.key]}
-        label={words[c.label]}
-        testid={c.testid}
-        onchange={(value) => choose(c.key, value)}
-      />
-    </Field>
-  {:else if c.kind === 'months'}
-    <Field label={words.minMonths} for="{id}-minMonths" error={errorOf('minMonths')} row>
-      <div>
-        <Select
-          id="{id}-minMonths"
-          options={MONTHS}
-          value={String(form.minMonths)}
-          label={words.minMonths}
-          testid="profile-min-months"
-          onchange={(months) => (form.minMonths = Number(months) as ProfileForm['minMonths'])}
-        />
-      </div>
-    </Field>
-  {:else if c.kind === 'countries'}
-    {@const error = errorOf('countries')}
-    <Field label={words.countries} for="{id}-countries" info={infoOf(c)} {error} row>
-      <div class="stack">
-        <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
-      </div>
-    </Field>
-  {:else if c.kind === 'available'}
-    {@const error = errorOf('available')}
-    <Field label={words.available} {error} row>
-      <AvailableField invalid={error !== null} />
-    </Field>
-  {/if}
-{/snippet}
 
 <style>
   /* The groups, 30 apart (Section). */
@@ -392,28 +346,23 @@
     padding: var(--form-row-pad-y) var(--form-row-pad-x);
   }
 
-  /* A field and the suggestion row under it, 8 apart. */
-  .stack {
+  /* The open group's foot: Fertig and Abbrechen, one width, in the order of the OS. */
+  .foot {
     display: flex;
-    flex-direction: column;
-    gap: var(--suggest-row-gap);
-    min-width: 0;
+    justify-content: flex-end;
+    padding: var(--form-row-pad-y) var(--form-row-pad-x);
+    border-top: var(--border-width) solid var(--border);
   }
 
-  /* A number is as wide as its unit needs; the note under it keeps its own line. */
-  .number {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
+  .pair {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: var(--space-8);
   }
 
-  .number > :global(:first-child) {
-    width: var(--profile-money-width);
-    max-width: 100%;
-  }
-
-  .number.years > :global(:first-child) {
-    width: var(--profile-years-width);
+  .pair:not(.first) > :global(:first-child) {
+    order: 2;
   }
 
   /* Tab and focus scrolling keep a field clear of the top bar's fade and of the bar at the

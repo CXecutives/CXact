@@ -107,6 +107,8 @@ export const ICONS = {
   duration: 'hourglass',
   workload: 'clock',
   remote: 'house',
+  /** A day rate (the Profil's head). */
+  rate: 'banknote',
   /** The company of a job (its row, its reader). */
   company: 'building-2',
   place: 'map-pin',

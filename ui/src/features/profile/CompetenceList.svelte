@@ -8,15 +8,13 @@
   as a new row (a pasted list splits at commas) and the field stays ready for the next, a
   name that is there already is not added twice. A new row rises in, a removed one folds
   away. A value that is too large (the years) or that the backend refused marks its row's
-  field and is said under the add row; "Häufig verlangt" is the box's last line (not in the
-  setup).
+  field and is said under the add row.
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
   import ItemList from '$components/ItemList.svelte';
   import { t } from '$lib/i18n/t';
   import { type Competence } from '$lib/state/profile.svelte';
-  import AskedTerms from './AskedTerms.svelte';
   import NumberField from './NumberField.svelte';
   import { keyOf, named } from './rows';
   import { vocabulary } from './vocabulary.svelte';
@@ -25,11 +23,9 @@
     rows: Competence[];
     /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
-    /** "Häufig verlangt" under the add row (not in the setup). */
-    asked?: boolean;
   }
 
-  let { rows = $bindable(), error = null, asked = false }: Props = $props();
+  let { rows = $bindable(), error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   vocabulary.load();
@@ -79,7 +75,6 @@
   {#if error}
     <p class="error" role="alert" data-testid="competence-error">{error.text}</p>
   {/if}
-  {#if asked}<AskedTerms field="competence" home="competences-add" line />{/if}
 {/snippet}
 
 <ItemList

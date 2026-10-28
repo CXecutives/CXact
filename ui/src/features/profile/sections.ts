@@ -8,11 +8,12 @@
 // few places docs/PLAN.md names, its info symbol (`t.profile.info`). Controls with more to
 // them than a field (the countries, the day) are components the table names by their kind.
 // One kind of control per kind of value: free values a tag field, several of a few
-// checkboxes, one of a few modes segments, a value on a scale a select, an amount a number
-// with its unit, entries with a value a box of entries.
+// checkboxes, one of a few and a value on a scale a select, an amount a number with its unit,
+// entries with a value a box of entries. The Profil reads the same table as text while a
+// group is closed (ProfileEditor).
 
 import type { Catalog } from '$lib/i18n/de';
-import type { ProfileForm, TermField } from '$lib/ipc/types';
+import type { ProfileForm } from '$lib/ipc/types';
 
 type Words = Catalog['profile']['field'];
 /** A text of the form in the catalog (`t.profile.field`), by its key. */
@@ -55,12 +56,12 @@ export type Control =
       /** Entries are names that may hold commas: only a line break splits a pasted list. */
       lines?: true;
       suggest?: Suggest;
-      /** The terms of this field the jobs ask for, under it ("Häufig verlangt"). */
-      asked?: TermField;
       testid: string;
     }
   /** The contract types (`profile.contract`), a choice of several. */
   | { kind: 'contracts'; info: Info }
+  /** The wished and the minimum day rate in one row ("Tagessatz": Wunsch, Mindestens). */
+  | { kind: 'rates'; info: Info }
   | { kind: 'choice'; key: ChoiceKey; label: Word; testid: string }
   /** Mindestlaufzeit, a value on a scale. */
   | { kind: 'months' }
@@ -99,21 +100,7 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
-      {
-        kind: 'number',
-        key: 'dayRateWish',
-        label: 'dayRateWish',
-        unit: 'day',
-        testid: 'profile-wish-rate',
-      },
-      {
-        kind: 'number',
-        key: 'dayRateMin',
-        label: 'dayRateMin',
-        unit: 'day',
-        info: 'dayRate',
-        testid: 'profile-min-rate',
-      },
+      { kind: 'rates', info: 'dayRate' },
       // The salary counts for Festanstellung and Zeitarbeit only.
       {
         kind: 'number',
@@ -147,10 +134,10 @@ export const SECTIONS: readonly Section[] = [
         unit: 'years',
         testid: 'profile-years',
       },
-      chips('tools', 'profile-tools', { suggest: 'skills', asked: 'tool' }),
-      chips('industries', 'profile-industries', { suggest: 'industries', asked: 'industry' }),
-      chips('degrees', 'profile-degrees', { lines: true, asked: 'degree' }),
-      chips('certificates', 'profile-certificates', { lines: true, asked: 'certificate' }),
+      chips('tools', 'profile-tools', { suggest: 'skills' }),
+      chips('industries', 'profile-industries', { suggest: 'industries' }),
+      chips('degrees', 'profile-degrees', { lines: true }),
+      chips('certificates', 'profile-certificates', { lines: true }),
     ],
   },
   { id: 'competences', list: 'competences' },
@@ -170,11 +157,33 @@ export function fieldOf(control: Control): keyof ProfileForm {
       return control.key;
     case 'contracts':
       return 'project';
+    case 'rates':
+      return 'dayRateWish';
     case 'months':
       return 'minMonths';
     default:
       return control.kind;
   }
+}
+
+/** Every value a control edits (the day rates' row edits two). */
+export function fieldsOf(control: Control): (keyof ProfileForm)[] {
+  if (control.kind === 'rates') return ['dayRateWish', 'dayRateMin'];
+  if (control.kind === 'contracts') return ['project', 'permanent', 'temporary'];
+  return [fieldOf(control)];
+}
+
+/** The group a value of the form belongs to. */
+export function sectionOf(field: string): SectionId | null {
+  for (const section of SECTIONS) {
+    if (
+      'list' in section
+        ? section.list === field
+        : section.rows.some((c) => fieldsOf(c).includes(field as keyof ProfileForm))
+    )
+      return section.id;
+  }
+  return null;
 }
 
 /** Every value of the form in the order of the page (the first marked one is revealed). */

@@ -863,14 +863,16 @@
   /* A field of the Profil is a row of its group's box, like a row of Einstellungen: its label
      (14/540) in a column of 188, 24 before the control, 12 20 inside and at least 56 high,
      a hairline between rows; in a box under 560 wide the label stands 8 above its control.
-     The number fields carry their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170, the years
-     of experience 130, the day of "Ab Datum" 122. */
+     The number fields carry their unit inside and are as wide as their digits; the day of
+     "Ab Datum" 122. A closed group's row (round 11) reads 10 above and below, at least 48
+     high, its pencil 8 from the box's edge. */
   --profile-label-width: 188px;
   --profile-label-gap: var(--space-24);
   --profile-label-gap-narrow: var(--space-8);
-  --profile-money-width: 170px;
-  --profile-years-width: 130px;
   --profile-date-width: 122px;
+  --profile-read-min: 48px;
+  --profile-read-pad-y: var(--space-10);
+  --profile-read-pad-end: var(--space-8);
   /* A box whose rows are its entries (Kompetenzen, Sprachen): rows of 48, 20 at the sides,
      the value 12 before the remove slot of 24; a competence's years field 74 wide (26 high,
      "Jahre" inside). The last row adds one: the navy quiet button, 9 above and below. */

@@ -5,8 +5,7 @@
   The last row is "+ Sprache hinzufügen": a click turns it into a search list (ChipInput with
   options) that lists every language the app knows and is not chosen yet, narrows while
   typing and takes nothing else ("Keine Sprache mit diesem Namen."); a new language starts at
-  B2, the level the engine assumes. A value the backend refused is said under the add row;
-  "Häufig verlangt" is the box's last line (not in the setup).
+  B2, the level the engine assumes. A value the backend refused is said under the add row.
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
@@ -15,18 +14,15 @@
   import { de } from '$lib/i18n/de';
   import { t } from '$lib/i18n/t';
   import type { Language, LanguageLevel } from '$lib/state/profile.svelte';
-  import AskedTerms from './AskedTerms.svelte';
   import { keyOf, named } from './rows';
 
   interface Props {
     rows: Language[];
     /** A value the backend refused and why. */
     error?: { row: number | null; text: string } | null;
-    /** "Häufig verlangt" under the add row (not in the setup). */
-    asked?: boolean;
   }
 
-  let { rows = $bindable(), error = null, asked = false }: Props = $props();
+  let { rows = $bindable(), error = null }: Props = $props();
 
   const words = $derived(t.profile.field);
   /** The level a new language starts at (the one the engine assumes without one). */
@@ -83,7 +79,6 @@
   {#if error}
     <p class="error" role="alert" data-testid="language-error">{error.text}</p>
   {/if}
-  {#if asked}<AskedTerms field="language" home="languages-add" line />{/if}
 {/snippet}
 
 <ItemList
