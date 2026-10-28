@@ -491,23 +491,27 @@ test('another provider than Gmail: the alert calls wait for the place of the mai
   expect((await page.getByTestId('sign-in-freelance').boundingBox())!.x).toBeCloseTo(signIn, 0);
 });
 
-test('without a mailbox the portals of alert mails say they need one; one Verbinden', async ({
+test('without a mailbox the portals of alert mails lead to one; one Verbinden', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=no-mailbox`);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   for (const portal of ALERT_PORTALS) {
-    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
-    // The row cannot work: no calls, its switch off and waiting with its reason, while the
-    // stored value stays on.
+    // The row cannot work: no calls, only the way to a mailbox in its line; its switch off
+    // and waiting with its reason, while the stored value stays on.
     const row = page.getByTestId(`portal-${portal}`);
-    await expect(row.getByRole('button')).toHaveCount(0);
+    await expect(row.getByRole('button')).toHaveText([T.settings.connectMailbox]);
     expect(await reason(page, `toggle-enabled-${portal}`)).toBe(T.settings.needsMailboxReason);
     await expect(row.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   }
   await page.getByTestId('toggle-enabled-linkedin').click({ force: true });
   expect(await saved(page)).toEqual([]);
   await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
+  // "Postfach verbinden" brings the Postfach into view with its form open, the caret in it.
+  await (await reveal(page, page.getByTestId('connect-freelance'))).click();
+  await expect(page.getByTestId('mailbox-form')).toBeInViewport();
+  await expect(page.getByTestId('mailbox-user')).toBeFocused();
+  await expect(page.getByTestId('mailbox-connect')).toHaveCount(0);
 });
 
 test('portals: a sign-in that ran out says so in red and offers Anmelden', async ({ page }) => {

@@ -101,6 +101,12 @@
     if (await form?.save()) await close();
   }
 
+  /** Unfold the form to connect a mailbox (the link of a portal that needs one), unless the
+   *  mailbox is locked or one is connected. */
+  export function openForm(): void {
+    if (locked === null && !cfg.mailbox.user) editing = true;
+  }
+
   /** The dialog closes only once the mailbox is gone; a failure stays inside it. */
   async function remove(): Promise<void> {
     removing = true;

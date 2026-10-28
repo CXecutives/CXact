@@ -17,8 +17,9 @@
   page in the browser). A call that opens a window or a page to act on ends in an ellipsis.
   A portal that is off offers no call about its alert. In a narrow box the calls go to a
   line of their own at the row's end.
-  A portal of alert mails without a mailbox cannot work: its row dims, says "Braucht ein
-  Postfach", has no calls, and its switch stands off and waits with its reason (the stored
+  A portal of alert mails without a mailbox cannot work: its name dims, its line is the navy
+  link "Postfach verbinden" (`onconnect`: Einstellungen glides to the Postfach and unfolds its
+  form), it has no calls, and its switch stands off and waits with its reason (the stored
   value stays; decision 26).
   A problem of the portal is its sentence in one quiet line under the word (whether the user
   has to act, the time and the reason where it has them); it unfolds and folds away, so the
@@ -54,8 +55,10 @@
 
   interface Props {
     portal: PortalState;
+    /** The way to a mailbox, for a portal of alert mails without one. */
+    onconnect?: (() => void) | null;
   }
-  let { portal }: Props = $props();
+  let { portal, onconnect = null }: Props = $props();
 
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
@@ -105,12 +108,12 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** Its quiet state: a portal of alert mails without a mailbox, how many alert mails came
-   *  in 30 days, or what the last search brought from it ("noch keine Suche" before the
-   *  first, nothing when it was not asked). */
+  /** Its quiet state: how many alert mails came in 30 days (a portal of alert mails without a
+   *  mailbox has the link to one instead), or what the last search brought from it ("noch
+   *  keine Suche" before the first, nothing when it was not asked). */
   const standing = $derived.by((): string | null => {
     if (portal.way === 'alert') {
-      if (idle) return t.settings.needsMailbox;
+      if (idle) return null;
       // Before the first fetch: what "Verbinden" counted in the mailbox.
       const mails =
         portal.alertMails ??
@@ -267,6 +270,9 @@
 <SettingRow
   label={t.portalName[portal.portal]}
   hint={flag?.text ?? standing}
+  link={idle && onconnect !== null
+    ? { label: t.settings.connectMailbox, testid: `connect-${portal.portal}`, onclick: onconnect }
+    : null}
   status={flag?.tone ?? null}
   disabled={idle}
   for={id}

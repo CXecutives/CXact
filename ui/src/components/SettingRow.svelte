@@ -13,8 +13,9 @@
   text (`copy`; it breaks only after a separator), and so does a name that is such a value
   (`copyLabel`, the address of the mailbox). A state is a status word (`status`, StatusText:
   a dot and the word in its colour; `dot` names the tone of the old callers' line). Its test
-  id is the row's with `-hint`. A row that cannot be used now (`disabled`: an alert portal
-  without a mailbox) dims its name.
+  id is the row's with `-hint`. The line may instead be the way to what the row needs
+  (`link`: navy words 13/500 that underline under the pointer, "Postfach verbinden"). A row
+  that cannot be used now (`disabled`: an alert portal without a mailbox) dims its name.
   With `for` (the id of its switch) the row works like a row of the system settings of
   Windows 11 and macOS: only the switch switches (user decision). The name names the switch
   and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
@@ -22,6 +23,15 @@
   In a narrow box (the smallest window) the buttons go to a line of their own at the row's
   end; the text keeps its room and `end` stays at the right.
 -->
+<script lang="ts" module>
+  /** The way to what a row needs, in the place of its line. */
+  export interface RowLink {
+    label: string;
+    testid?: string | null;
+    onclick: () => void;
+  }
+</script>
+
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
@@ -30,6 +40,8 @@
   interface Props {
     label: string;
     hint?: string | null;
+    /** The line is a link to what the row needs (instead of `hint`). */
+    link?: RowLink | null;
     /** The line is a state: a dot and the word in the state's colour. */
     status?: StatusTone | null;
     /** The tone of the line's state (as `status`, the connected or failed mailbox). */
@@ -56,6 +68,7 @@
   let {
     label,
     hint = null,
+    link = null,
     status = null,
     dot = null,
     copy = false,
@@ -86,7 +99,16 @@
       id={control !== null ? `${control}-label` : undefined}
       data-copy={copyLabel ? '' : undefined}>{label}</span
     >
-    {#if hint}<p
+    {#if link}
+      <p class="hint">
+        <button
+          type="button"
+          class="link"
+          data-testid={link.testid ?? undefined}
+          onclick={() => link?.onclick()}>{link.label}</button
+        >
+      </p>
+    {:else if hint}<p
         class="hint"
         class:path={copy}
         id={control !== null ? `${control}-hint` : undefined}
@@ -151,6 +173,26 @@
   .hint {
     color: var(--text-subtle);
     font: var(--type-sm);
+  }
+
+  /* The line as a link: navy words that underline under the pointer, like a field's links. */
+  .link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--link);
+    font: var(--field-link);
+    transition: color var(--dur-base) var(--ease-out);
+  }
+
+  .link:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+    transition-duration: var(--dur-hover);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .link:active:hover {
+    opacity: var(--opacity-press);
   }
 
   .disabled .label {

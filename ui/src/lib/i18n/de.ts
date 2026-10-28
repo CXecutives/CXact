@@ -1359,10 +1359,10 @@ export const de = {
       search: 'Suche und Alert-Mails',
       alert: 'Nur Alert-Mails',
     } satisfies Record<Way, string>,
-    /** A portal's state, its row's second line: one of alert mails without a mailbox, how
-     *  many alert mails of it came in the last 30 days, resting until a moment, what the last
-     *  search brought. */
-    needsMailbox: 'Braucht ein Postfach',
+    /** A portal's state, its row's second line: the way to a mailbox for one of alert mails
+     *  without one, how many alert mails of it came in the last 30 days, resting until a
+     *  moment, what the last search brought. */
+    connectMailbox: 'Postfach verbinden',
     /** Why the switch of a portal of alert mails waits without a mailbox. */
     needsMailboxReason: 'Verbinde erst ein Postfach.',
     alertMails: (value: number) =>
