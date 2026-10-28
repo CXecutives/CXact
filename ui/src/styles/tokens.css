@@ -789,14 +789,15 @@
   --bar-surface: var(--surface);
   --bar-min: 50px;
   --bar-pad-y: var(--space-10);
-  /* Spinners: a navy arc on the ring's track; the setup's large one (60) in coral. */
+  /* Spinners: a navy arc on the ring's track; the setup's large one (56, its head's slot) in
+     coral. */
   --spinner-track: hsl(var(--p-ring-track));
   --spinner-arc: hsl(var(--p-navy));
   --spinner-accent: hsl(var(--p-coral));
   --spinner-sm: var(--icon-sm);
   --spinner-md: var(--icon-nav);
   --spinner-lg: var(--icon-xl);
-  --spinner-xl: 60px;
+  --spinner-xl: var(--tile-xl);
   --spinner-line: 2px;
   /* A meter on the cream (the progress strip): a white track. */
   --meter-track-on-bg: hsl(var(--p-white) / 0.85);
@@ -894,10 +895,12 @@
 
   /* ------------------------------------------- round 10: setup */
   /* The card of a step (--setup-card wide at most, --radius-sheet round): 34 36 20 inside, 24
-     20 16 in a narrow window, centred a little above the middle of the window. Its head: the
-     app's mark, the green disc or the spinner 20 above the title, a 48 tile 18; the lead 8
+     20 16 in a narrow window (the bottom one the foot's, which sticks), centred a little above
+     the middle of the window. Its head: one slot of 56 for the app's mark, a 48 tile, the
+     spinner or the full ring, centred in it, the title 20 under it on every step; the lead 8
      under the title, at most 420 wide; the body 22 under the lead; the foot 28 under the
-     body with a hairline and 18 inside, Zurück pulled 8 out so its words align. */
+     body with a hairline and 18 inside, Zurück and a ghost at the end pulled out by the ghost
+     button's inset, so their words stand on the content's edges. */
   --setup-pad-top: 34px;
   --setup-pad-x: 36px;
   --setup-pad-bottom: var(--space-20);
@@ -907,23 +910,20 @@
   --setup-frame-bottom: 36px;
   /* The card's top: where a 560 px card would stand a little above the middle, at least 16. */
   --setup-frame-top: max(var(--space-16), calc(50vh - 316px));
+  --setup-top: var(--tile-xl);
   --setup-top-gap: var(--space-20);
-  --setup-tile-gap: 18px;
   --setup-lead-gap: var(--space-8);
   --setup-lead-max: 420px;
   --setup-body-gap: 22px;
   --setup-foot-gap: 28px;
   --setup-foot-pad: 18px;
-  --setup-back-pull: calc(-1 * var(--space-8));
+  --setup-foot-end: var(--setup-pad-bottom);
+  --setup-back-pull: calc(-1 * var(--ghost-inset));
   /* The three steps of Willkommen: 16 apart, the 36 tile 14 before its words. */
   --setup-intro-gap: var(--space-16);
   --setup-intro-inner: 14px;
   /* The line about the AI under the drop zone. */
   --setup-ai-gap: 14px;
-  /* The badge beside a heading ("Optional"): 12/500 muted on the track, 6 round. */
-  --setup-badge-type: var(--weight-control) var(--font-xs) / var(--leading-xs) var(--font-sans);
-  --setup-badge-pad: var(--space-2) var(--space-8);
-  --setup-badge-gap: var(--space-10);
   /* The page of "Dein Profil": its title 22 under the bar, its lead 6 under the title, and
      its first group 50 under the lead (the draft's "5 selbst"). */
   --setup-page-top: 22px;

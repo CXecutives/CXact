@@ -3,12 +3,14 @@
   round, at most --setup-card wide and 16 in from the window's sides, centred a little above
   the middle of the window (the view scrolls when the window is lower than the card). Its
   head is centred: what stands at its top (`top`: the app's mark, a tile, the spinner, the
-  green disc), the heading 26/650 (it takes the focus on every step, so a screen reader
-  starts there) with an optional badge beside it ("Optional"), and the lead 15/22 muted. The
-  body under it is left-aligned. The foot under a hairline: Zurück (ghost, with its arrow
-  and words) at the left, the step's buttons at the right (`actions`, in the OS order the
-  caller gives them; a ghost at their end hangs out like Zurück); a foot without Zurück centres its buttons (`centred`: the reading's
-  Abbrechen). No step dots.
+  full ring) centred in one slot of 56 on every step, so the heading 26/650 stands 20 below
+  it wherever the step is (it takes the focus on every step, so a screen reader starts
+  there), and the lead 15/22 muted. The body under it is left-aligned. The foot under a
+  hairline: Zurück (ghost, with its arrow and words) at the left, the step's buttons at the
+  right (`actions`, in the OS order the caller gives them; a ghost at their end hangs out like
+  Zurück, so the words of both stand on the content's edges); a foot without Zurück centres
+  its buttons (`centred`: the reading's Abbrechen). On a step longer than the window the foot
+  sticks to the window's bottom edge, so its buttons stay in reach. No step dots.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -19,7 +21,6 @@
   interface Props {
     heading: string;
     lead: string;
-    badge?: string | null;
     /** Zurück (null: none). */
     onback?: (() => void) | null;
     /** The foot's buttons stand in its middle (no Zurück). */
@@ -38,7 +39,6 @@
   let {
     heading,
     lead,
-    badge = null,
     onback = null,
     centred = false,
     headingElement = $bindable(null),
@@ -53,7 +53,7 @@
   <div class="card">
     <div class="content" use:enterStep={{ forward }}>
       <header class="head">
-        {@render top()}
+        <span class="top">{@render top()}</span>
         <h1
           class="title"
           id="first-step-heading"
@@ -62,7 +62,6 @@
           data-testid="first-heading"
         >
           <span data-heading>{heading}</span>
-          {#if badge}<span class="badge" data-testid="first-badge">{badge}</span>{/if}
         </h1>
         <p class="lead" data-testid="first-lead">{lead}</p>
       </header>
@@ -108,7 +107,7 @@
     flex-direction: column;
     width: 100%;
     max-width: var(--setup-card);
-    padding: var(--setup-pad-top) var(--setup-pad-x) var(--setup-pad-bottom);
+    padding: var(--setup-pad-top) var(--setup-pad-x) 0;
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-sheet);
     background-color: var(--surface);
@@ -122,25 +121,20 @@
     text-align: center;
   }
 
-  .title {
+  /* One slot for every step's mark, so the heading never moves from step to step. */
+  .top {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: var(--setup-badge-gap);
+    height: var(--setup-top);
+    margin-bottom: var(--setup-top-gap);
+  }
+
+  .title {
     color: var(--text-heading);
     font: var(--type-display);
     letter-spacing: var(--tracking-display);
     outline: none;
-  }
-
-  .badge {
-    padding: var(--setup-badge-pad);
-    border-radius: var(--radius-inner);
-    background-color: var(--surface-track);
-    color: var(--text-muted);
-    font: var(--setup-badge-type);
-    letter-spacing: normal;
   }
 
   .lead {
@@ -156,15 +150,20 @@
     margin-top: var(--setup-body-gap);
   }
 
+  /* The card's bottom padding is the foot's, so the foot keeps it while it sticks to the
+     window's bottom edge (a step longer than the window); the content goes under it. */
   .foot {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-sticky);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-12);
-    min-height: calc(var(--setup-foot-pad) + var(--control-field) + var(--border-width));
     margin-top: var(--setup-foot-gap);
-    padding-top: var(--setup-foot-pad);
+    padding: var(--setup-foot-pad) 0 var(--setup-foot-end);
     border-top: var(--border-width) solid var(--border);
+    background-color: var(--surface);
   }
 
   .foot.centred {
@@ -192,7 +191,11 @@
 
   @container setup (width < 600px) {
     .card {
-      padding: var(--setup-pad-top-narrow) var(--setup-pad-x-narrow) var(--setup-pad-bottom-narrow);
+      padding: var(--setup-pad-top-narrow) var(--setup-pad-x-narrow) 0;
+    }
+
+    .foot {
+      --setup-foot-end: var(--setup-pad-bottom-narrow);
     }
   }
 </style>

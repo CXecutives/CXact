@@ -122,11 +122,11 @@
 {#snippet top()}
   {@const head = spec.top}
   {#if head?.kind === 'mark'}
-    <span class="mark"><AppMark /></span>
+    <AppMark />
   {:else if head?.kind === 'tile'}
-    <span class="tile"><IconTile tone="accent" size="lg" icon={head.icon} /></span>
+    <IconTile tone="accent" size="lg" icon={head.icon} />
   {:else if head?.kind === 'spinner'}
-    <span class="spinner" data-testid="cv-reading"><Spinner size="xl" label={null} /></span>
+    <span class="mark" data-testid="cv-reading"><Spinner size="xl" label={null} /></span>
   {:else if head?.kind === 'success'}
     <span class="mark" data-testid="first-success">
       <IconTile tone="success" size="xl" round draws icon="check" />
@@ -209,7 +209,6 @@
           bind:headingElement={heading}
           heading={spec.heading(t, walk)}
           lead={spec.lead(t, walk)}
-          badge={spec.badge?.(t) ?? null}
           onback={back !== null ? goBack : null}
           centred={step === 'reading'}
           {top}
@@ -238,16 +237,5 @@
 
   .mark {
     display: inline-flex;
-    margin-bottom: var(--setup-top-gap);
-  }
-
-  .tile {
-    display: inline-flex;
-    margin-bottom: var(--setup-tile-gap);
-  }
-
-  .spinner {
-    display: inline-flex;
-    margin: var(--space-4) 0 var(--setup-top-gap);
   }
 </style>

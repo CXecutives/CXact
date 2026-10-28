@@ -33,8 +33,6 @@ export interface StepSpec {
   top?: StepTop;
   heading: (t: Catalog, walk: Walk) => string;
   lead: (t: Catalog, walk: Walk) => string;
-  /** A small badge beside the heading ("Optional"). */
-  badge?: (t: Catalog) => string;
   /** Where Zurück leads (null: no Zurück; the evaluation is never a step to go back to). */
   back: (walk: Walk) => StepId | null;
   /** The words of its primary button (null: the step's own control goes on). */
@@ -94,7 +92,6 @@ export const STEPS: readonly StepSpec[] = [
     id: 'alerts',
     top: { kind: 'tile', icon: 'alertMail' },
     heading: (t) => t.firstRun.mailbox,
-    badge: (t) => t.firstRun.optional,
     lead: (t, walk) => t.firstRun.mailboxText(walk.alerts),
     back: () => 'profile',
     next: (t) => t.firstRun.connect,

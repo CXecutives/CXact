@@ -272,7 +272,6 @@ test('Postfach: optional, its pair in the OS order; skipped, Fertig opens the jo
   // A usable profile and no mailbox: the setup resumes at the Postfach.
   await open(page, `${WIN}&scenario=setup-profile`);
   await expectStep(page, T.firstRun.mailbox);
-  await expect(page.getByTestId('first-badge')).toHaveText(T.firstRun.optional);
   await expect(page.getByTestId('first-lead')).toHaveText(
     T.firstRun.mailboxText(['linkedin', 'freelance']),
   );
@@ -327,8 +326,23 @@ test('the smallest window keeps every step usable', async ({ page }) => {
   await expect(next(page)).toBeInViewport();
   await expect(back(page)).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(480);
+  // A card longer than the window keeps its foot at the window's bottom edge.
   await open(page, `${WIN}&scenario=setup-profile`);
-  await next(page).scrollIntoViewIfNeeded();
   await expect(next(page)).toBeInViewport();
   await expect(back(page)).toBeInViewport();
+});
+
+test('the step heading stands at one height on every step of a card', async ({ page }) => {
+  const top = async (): Promise<number> => (await heading(page).boundingBox())!.y;
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  const reading = await top();
+  for (const query of [
+    'scenario=first-run',
+    'scenario=first-run&step=upload',
+    'scenario=setup-profile',
+    'scenario=setup-mailbox',
+  ]) {
+    await open(page, `${WIN}&${query}`);
+    expect(await top(), query).toBeCloseTo(reading, 0);
+  }
 });

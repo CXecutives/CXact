@@ -1492,7 +1492,6 @@ export const de = {
     next: 'Weiter',
     /** The Postfach, optional: what it brings, the portals of alert mails by name. */
     mailbox: 'Postfach verbinden',
-    optional: 'Optional',
     mailboxText: (portals: readonly Portal[]) =>
       `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => BRAND[p]))}.`,
     skip: 'Überspringen',
