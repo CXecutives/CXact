@@ -289,7 +289,7 @@ test.describe('tools', () => {
   });
 });
 
-test('the row menu and the reader offer the same: no alert mail, no ad text, an ad gone offline', async ({
+test('the row menu and the reader offer the same: no alert mail, no ad text, an ad gone offline, an excluded job', async ({
   page,
 }) => {
   // A wide window: the reader's buttons show their words.
@@ -322,11 +322,11 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     return { menu, reader };
   };
   // A job without an alert mail offers none (user, 2026-10-01: no button at all), and one
-  // without a score no prompt; the reader of a job not scored yet shows only its state box
-  // (design round 7), its menu still opens the ad.
+  // without a score no prompt; the reader of a job not scored yet shows its state box and,
+  // under it, what its menu offers (the ad).
   const failed = await offered('freelancermap-2805');
   expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, 'none']);
-  expect(failed.reader).toEqual(['none', 'none', 'none']);
+  expect(failed.reader).toEqual(failed.menu);
   await expect(stage(page).getByTestId('detail-note')).toBeVisible();
   const closed = await offered('linkedin-4100200304');
   expect(closed.menu).toEqual([
@@ -335,6 +335,12 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     `${T.actions.prompt} on`,
   ]);
   expect(closed.reader).toEqual(closed.menu);
+  // An excluded job: its state box with Trotzdem bewerten, and what its menu offers.
+  const { excluded } = await stubList(page);
+  await unfoldExcluded(page);
+  const out = await offered(excluded[0]!);
+  expect(out.menu).toContain(`${T.actions.openAd} on`);
+  expect(out.reader).toEqual(out.menu);
 });
 
 test('an excluded row shows the ban in the ring place, without a number', async ({ page }) => {

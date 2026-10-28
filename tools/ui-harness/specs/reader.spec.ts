@@ -219,11 +219,11 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('reader-ring')).toContainText(BEST);
   });
 
-  test('a job without a score: the dash ring, its state box with its own button, no other buttons', async ({
+  test('a job without a score: the dash ring, its state box with its own button, then what its menu offers', async ({
     page,
   }) => {
     // An ad still to come: the dash, "Noch nicht bewertet", the box with "Anzeige laden" in the
-    // hero, no buttons that show it, no ad card.
+    // hero, under it the buttons its menu offers too (the ad, no prompt), no ad card.
     await openAt(page, 'linkedin-4100200302');
     await expect(stage(page).getByTestId('reader-ring')).toHaveText('–');
     await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
@@ -232,7 +232,8 @@ test.describe('the head and the match', () => {
     await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
     await expect(box.getByTestId('detail-text')).toHaveText(T.reader.state.missing.text);
     await expect(box.getByTestId('load-ad')).toBeVisible();
-    await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
+    await expect(stage(page).getByTestId('open-ad')).toBeVisible();
+    await expect(stage(page).getByTestId('reader-prompt')).toHaveCount(0);
     await expect(stage(page).getByTestId('ad')).toHaveCount(0);
     // One too short to score: "Nicht bewertbar", the short note as its box, the buttons of
     // its text.
@@ -504,14 +505,15 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    // The ban in the ring's place, "Ausgeschlossen" in the ban red; one soft red box with why,
-    // why it is not scored and Trotzdem bewerten at its end.
+    // The ban in the ring's place, "Ausgeschlossen" in the ban red, the job's one red; a
+    // neutral box with why, why it is not scored and Trotzdem bewerten at its end.
     await expect(stage(page).getByTestId('reader-ban')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
     await expect(stage(page).getByTestId('band')).toHaveClass(/ban/);
     const box = stage(page).getByTestId('exclusion-box');
     await expect(box).toContainText(T.reader.state.excluded);
     await expect(box.getByTestId('reader-include')).toBeVisible();
+    await expect(box).not.toHaveClass(/(^|\s)ban(\s|$)/);
     // Its first violation, once, from the profile's side; no way into the ad.
     await expect(stage(page).getByTestId('exclusion')).toHaveText(T.reader.criterion.noAnue);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
@@ -520,11 +522,12 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // Trotzdem bewerten: its real match and a toast that takes it back. No other button while
-    // it is excluded (user, 2026-10-10); the head has the moves of its place.
+    // Trotzdem bewerten (the gauge of a score): its real match and a toast that takes it back.
+    // Under the box what its menu offers; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
-    await expect(stage(page).getByTestId('reader-actions')).toHaveCount(0);
+    await expect(include.locator('[data-icon="gauge"]')).toHaveCount(1);
+    await expect(stage(page).getByTestId('reader-actions').getByTestId('open-ad')).toBeVisible();
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();
@@ -1115,10 +1118,11 @@ test.describe('the ad', () => {
     });
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.closed.heading);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
-    // Gone before its text came: only the sentence, no button (nothing of it to show).
+    // Gone before its text came: the sentence, and its portal's page still opens, as from its
+    // menu.
     await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
     await openJob(page, 'linkedin-4100200302');
-    await expect(stage(page).getByTestId('open-ad')).toHaveCount(0);
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.actions.openAd);
     await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.gone.heading);
     await expect(stage(page).getByTestId('detail-text')).toHaveText(T.reader.state.goneEarly);

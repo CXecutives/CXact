@@ -9,10 +9,10 @@
     fast, ScoreRing and lib/motion/pace.ts); not scored yet a dash with "Noch nicht bewertet";
     not scorable "Nicht bewertbar"; without a profile "Nicht bewertet"; an excluded job the
     red ban on the light red track with "Ausgeschlossen" in the ban red.
-  - The buttons (a job neither excluded nor without its text): Anzeige öffnen, Alert-Mail
-    öffnen (only for a job a mail brought), Prompt für KI-Bewertung (only with a score and the
-    ad's text); the row wraps. An excluded job and one whose ad is still to come show only the
-    button of their state box.
+  - The buttons, the same commands as the row's menu (shows.ts showActions): Anzeige öffnen,
+    Alert-Mail öffnen (only for a job a mail brought), Prompt für KI-Bewertung (only with a
+    score and the ad's text); the row wraps. An excluded job and one whose ad is still to come
+    show them too, under the button of their state box.
   A job that just moved away keeps its tools off while the next one loads (`inPlace`).
 -->
 <script lang="ts">
@@ -85,10 +85,11 @@
         return { words: t.reader.unscored, tone: 'quiet' };
     }
   });
-  /** The ad's text is there (a preview counts): the buttons that show the job make sense. */
-  const hasText = $derived(
-    detail.text !== null || job.detail.kind === 'ok' || job.detail.kind === 'teaser',
-  );
+  /** The buttons that show the job, in their one order: what its menu offers. */
+  const offered = $derived.by(() => {
+    const shows = showActions(job);
+    return SHOWS.map((id) => shows[id]).filter((show) => !show.hidden);
+  });
   /** The test id of each button that shows the job. */
   const SHOW_TESTIDS: Record<ShowId, string> = {
     'open-ad': 'open-ad',
@@ -127,20 +128,19 @@
       </div>
     </div>
     <ReaderState {detail} {exclusion} {includable} {including} {oninclude} />
-    {#if !excluded && hasText}
-      <!-- Words, glyphs, what is off and what is not there come from the one table the row's
+    <!-- Words, glyphs, what is off and what is not there come from the one table the row's
          menu reads too. -->
-      {@const shows = showActions(job)}
+    {#if offered.length > 0}
       <div class="actions" bind:this={actions} data-testid="reader-actions">
-        {#each SHOWS.filter((id) => !shows[id].hidden) as id (id)}
+        {#each offered as show (show.id)}
           <Button
             variant="secondary"
-            icon={shows[id].icon}
-            label={shows[id].label}
-            disabled={shows[id].reason !== null}
-            disabledReason={shows[id].reason}
-            testid={SHOW_TESTIDS[id]}
-            onclick={() => onshow(id)}
+            icon={show.icon}
+            label={show.label}
+            disabled={show.reason !== null}
+            disabledReason={show.reason}
+            testid={SHOW_TESTIDS[show.id]}
+            onclick={() => onshow(show.id)}
           />
         {/each}
       </div>

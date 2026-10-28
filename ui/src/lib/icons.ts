@@ -40,7 +40,7 @@ export const ICONS = {
   reset: 'rotate-ccw',
   /** A file dropped or chosen to upload (the setup's drop zone). */
   upload: 'upload',
-  /** The score a job gets (the setup's welcome). */
+  /** The score a job gets (the setup's welcome, Trotzdem bewerten). */
   gauge: 'gauge',
   /** Stop a run (Abbrechen): the hollow square (design round 6). */
   cancel: 'square',
