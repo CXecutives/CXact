@@ -969,17 +969,13 @@ export const de = {
      *  score.none). */
     unscored: 'Noch nicht bewertet',
     unscorable: 'Nicht bewertbar',
-    /** The state box under the job's title: its title and one sentence under it. */
+    /** The state box under the job's title: its title and one sentence under it where that
+     *  adds to the band under the title (never "nicht bewertet" again). */
     state: {
-      missing: {
-        heading: 'Die Anzeige ist noch nicht geladen.',
-        text: 'Danach wird der Job bewertet.',
-      },
+      missing: 'Die Anzeige ist noch nicht geladen.',
       loading: 'Die Anzeige wird geladen.',
       /** After "Trotzdem bewerten", until the job has its match. */
       scoring: 'Der Job wird bewertet.',
-      /** Under the sentence that says why the job is excluded. */
-      excluded: 'Darum wurde der Job nicht bewertet.',
       teaser: {
         heading: 'Die Anzeige ist nur eine Vorschau.',
         text: 'Mit der ganzen Anzeige wird die Bewertung genauer.',

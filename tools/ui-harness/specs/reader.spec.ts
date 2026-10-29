@@ -232,8 +232,9 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
     await expect(stage(page).getByTestId('band')).toHaveClass(/quiet/);
     const box = stage(page).getByTestId('reader-head').getByTestId('reader-state');
-    await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
-    await expect(box.getByTestId('detail-text')).toHaveText(T.reader.state.missing.text);
+    await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing);
+    // No second line that says again what the band says.
+    await expect(box.getByTestId('detail-text')).toHaveCount(0);
     await expect(box.getByTestId('load-ad')).toBeVisible();
     await expect(stage(page).getByTestId('open-ad')).toBeVisible();
     await expect(stage(page).getByTestId('reader-prompt')).toHaveCount(0);
@@ -509,12 +510,13 @@ test.describe('an excluded job', () => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
     // The ban in the ring's place, "Ausgeschlossen" in the ban red, the job's one red; a
-    // neutral box with why, why it is not scored and Trotzdem bewerten at its end.
+    // neutral box with why and Trotzdem bewerten at its end, no line that says again it is
+    // not scored.
     await expect(stage(page).getByTestId('reader-ban')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
     await expect(stage(page).getByTestId('band')).toHaveClass(/ban/);
     const box = stage(page).getByTestId('exclusion-box');
-    await expect(box).toContainText(T.reader.state.excluded);
+    await expect(box.locator('.text')).toHaveCount(0);
     await expect(box.getByTestId('reader-include')).toBeVisible();
     await expect(box).not.toHaveClass(/(^|\s)ban(\s|$)/);
     // Its first violation, once, from the profile's side; no way into the ad.
@@ -1068,7 +1070,7 @@ test.describe('the ad', () => {
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
     const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText(T.reader.state.missing.heading);
+    await expect(note).toHaveText(T.reader.state.missing);
     const load = stage(page).getByTestId('load-ad');
     await expect(load).toHaveText('Anzeige laden');
     await load.click();
@@ -1086,7 +1088,7 @@ test.describe('the ad', () => {
     await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
     // An ad that could not be fetched is not being loaded while nothing loads it.
     await openJob(page, 'freelancermap-2805');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing);
     await expect(stage(page).getByTestId('load-ad')).toBeVisible();
   });
 
