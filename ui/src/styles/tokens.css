@@ -81,8 +81,8 @@
   --p-score-yellow: 40 88% 52%;
   --p-score-lime: 84 56% 42%;
   --p-score-green: 142 50% 38%;
-  /* The deep red of the filled danger button, of a missing field's label and of an error,
-     a step darker under the pointer and one more pressed. */
+  /* The deep red of the filled danger button, a step darker under the pointer and one more
+     pressed. */
   --p-word-red: 358 62% 46%;
   --p-word-red-hover: 358 62% 40%;
   --p-word-red-press: 358 62% 34%;
@@ -220,11 +220,12 @@
      yellow in the app): their signs and dots in it, their words in ink. */
   --success: var(--score-ring-9);
   --warning: var(--score-ring-5);
-  /* A required field that is still empty: only a coral edge, no halo (user, design round
-     6); the [data-missing] block below gives it to the fields of its cell. */
-  --missing-edge: hsl(var(--p-score-red));
-  /* The label of a required field that is still empty (round 10): red words. */
-  --field-label-missing: hsl(var(--p-word-red));
+  /* A required field that is still empty: only a red edge, no halo (user, design round 6),
+     and red words in its label (round 10), in the one red of what is missing or wrong (the
+     uniformity audit, 2026-10-29); the [data-missing] block below gives them to the fields
+     of its cell. */
+  --missing-edge: var(--danger-strong);
+  --field-label-missing: var(--danger-strong);
   /* A chosen option in a menu or a select: the track with navy words, no tick. */
   --chosen-surface: hsl(var(--p-track));
   --chosen-text: hsl(var(--p-navy));
@@ -726,10 +727,10 @@
   --page-top-pad: var(--space-8);
   --page-bottom: 110px;
   /* A field: its links at the right of the label row (13/500 navy, an external glyph), an
-     error under the control in the deep red of words. */
+     error under the control in the one red of what is missing or wrong. */
   --field-link: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --field-link-gap: 14px;
-  --error-text: hsl(var(--p-word-red));
+  --error-text: var(--danger-strong);
   /* A row of Einstellungen: 12 above and below, 20 at the sides, its buttons 12 from its
      words; the name 14/540, the line 13 muted like every second line. */
   --setting-row-pad-y: var(--form-row-pad-y);
@@ -1089,8 +1090,8 @@
 }
 
 /* A required field that is still empty (its row in the profile carries `data-missing`,
-   ProfileEditor; a required list its group): every field in it draws the coral edge at rest
-   and under the pointer, its label and a list's group title turn red; the coral stays
+   ProfileEditor; a required list its group): every field in it draws the red edge at rest
+   and under the pointer, its label and a list's group title turn red; the edge stays
    confined to this block. Focus still turns the edge navy only. */
 [data-missing] {
   --field-edge: var(--missing-edge);
