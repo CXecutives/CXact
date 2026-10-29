@@ -1383,12 +1383,14 @@ export const de = {
     /** A portal's sign-in ran out, or its sign-in window waits for the user. */
     signInExpired: 'Anmeldung abgelaufen',
     signInWaiting: 'Wartet auf die Anmeldung',
-    /** A portal's problem as the word of its line; its sentence is the quiet line under it. */
+    /** A portal's problem as the word of its line; its sentence is the quiet line under it.
+     *  A portal that is on and sent no alert mail for a week or longer (its alert may have
+     *  run out) says it in the word alone. */
     problem: {
       paused: 'Pausiert',
       emptyMails: 'Alert-Mails ohne Jobs',
       pages: 'Seiten verändert',
-      quiet: 'Alert-Mail bleibt aus',
+      quiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail`,
       failed: 'Fehlgeschlagen',
     },
     connected: 'Verbunden',
@@ -1444,9 +1446,7 @@ export const de = {
     folderChange: 'Ändern…',
     resetOpens: 'Zurücksetzen…',
     removeOpens: 'Entfernen…',
-    /** A portal that is on sent no alert mail for a week or longer (its alert may have run
-     *  out), and the way to its page. */
-    alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
+    /** The way to the page of a portal whose alert went quiet. */
     checkAlert: 'Alert prüfen…',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen…',

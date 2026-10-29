@@ -6,8 +6,9 @@
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
-  ("Alert-Mails ohne Jobs", "Alert-Mail bleibt aus"; "Fehlgeschlagen" in red after a failed
-  call); else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
+  ("Alert-Mails ohne Jobs"; "Fehlgeschlagen" in red after a failed call), "Seit 9 Tagen keine
+  Alert-Mail" (warning) when a portal that is on sent no alert mail for a week before the
+  last fetch; else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen").
   The calls, outlined with the glyph of their meaning: "Anmelden…" or "Abmelden" where the
   portal offers a sign-in (one width), then the one call about its alert, in one place and
@@ -23,9 +24,8 @@
   value stays; decision 26).
   A problem of the portal is its sentence in one quiet line under the word (whether the user
   has to act, the time and the reason where it has them); it unfolds and folds away, so the
-  rows below glide. A portal that is on and sent no alert mail for a week before the last
-  fetch says so in one line ("Seit 9 Tagen keine Alert-Mail."). "Alert-Mail öffnen" and "Alert prüfen" need
-  the mail's place in Gmail, so they wait for the other providers (decision 32).
+  rows below glide. "Alert-Mail öffnen" and "Alert prüfen" need the mail's place in Gmail, so
+  they wait for the other providers (decision 32).
   Signing in lets the fetch use the sign-in, signing out ends that (lib/state/portalSession.ts,
   also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
   while the portal is on, and "Anmelden" then only lets the fetch use it (no sign-in window);
@@ -147,7 +147,7 @@
           : t.settings.problem.paused;
       return { tone: 'warning', text: word };
     }
-    if (quietDays !== null) return { tone: 'warning', text: t.settings.problem.quiet };
+    if (quietDays !== null) return { tone: 'warning', text: t.settings.problem.quiet(quietDays) };
     return null;
   });
   /** A sign-in is stored (in the session window's profile). */
@@ -237,13 +237,6 @@
   {#if problem}
     <div class="fold" transition:unfold>
       <p class="line" data-testid="health-{portal.portal}">{problem}</p>
-    </div>
-  {/if}
-  {#if quietDays !== null}
-    <div class="fold" transition:unfold>
-      <p class="line" data-testid="alert-quiet-{portal.portal}">
-        {t.settings.alertQuiet(quietDays)}
-      </p>
     </div>
   {/if}
   {#if error}
