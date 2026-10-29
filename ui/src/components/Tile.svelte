@@ -6,17 +6,17 @@
     the title 16/650 12 under it and one small muted line. Under the pointer a stronger edge
     and a soft shadow. The way the app recommends (`recommended`: from the CV) is coral: a
     coral-tinted fill, a coral edge and a coral glyph.
-  - `drop`: a dashed edge on the page's ground, 14 round, the content centred: a round track
-    disc of 48 with the navy glyph, the words and a quiet line (the CV's upload, in the setup
-    and the Profil): a click opens the file dialog. Under the pointer, and while a file is
-    dragged over the window (`over`), the edge turns navy, the ground the track and the disc
-    white.
+  - `drop`: a dashed edge on the page's ground, 14 round, the words and a quiet line centred,
+    no glyph (the step's tile above says it; the uniformity audit, 2026-10-29): the CV's
+    upload, a click opens the file dialog. Under the pointer, and while a file is dragged
+    over the window (`over`), the edge turns navy and the ground the track.
 -->
 <script lang="ts">
   import Icon, { type IconName } from './Icon.svelte';
 
   interface Props {
-    icon: IconName;
+    /** The glyph of a way (a drop zone has none). */
+    icon?: IconName | null;
     label: string;
     /** The one small line under the label. */
     note?: string | null;
@@ -31,7 +31,7 @@
   }
 
   let {
-    icon,
+    icon = null,
     label,
     note = null,
     recommended = false,
@@ -52,7 +52,7 @@
   data-testid={testid ?? undefined}
   onclick={() => onclick()}
 >
-  <span class="glyph"><Icon name={icon} size={drop ? 'xl' : 'nav'} /></span>
+  {#if icon && !drop}<span class="glyph"><Icon name={icon} size="nav" /></span>{/if}
   <span class="label">{label}</span>
   {#if note}<span class="note">{note}</span>{/if}
 </button>
@@ -143,19 +143,6 @@
     text-align: center;
   }
 
-  .drop .glyph {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--tile-lg);
-    height: var(--tile-lg);
-    margin-bottom: var(--drop-disc-gap);
-    border-radius: var(--radius-full);
-    background-color: var(--surface-track);
-    color: var(--icon-accent);
-    transition: background-color var(--dur-base) var(--ease-out);
-  }
-
   .drop .label {
     color: var(--text);
     font: var(--type-label);
@@ -171,12 +158,6 @@
   .drop.over {
     border-color: var(--drop-edge-hover);
     background-color: var(--surface-track);
-    transition-duration: var(--dur-hover);
-  }
-
-  .drop:hover .glyph,
-  .drop.over .glyph {
-    background-color: var(--surface);
     transition-duration: var(--dur-hover);
   }
 

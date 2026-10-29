@@ -38,8 +38,6 @@ export const ICONS = {
   retry: 'rotate-cw',
   /** Zurücksetzen: everything (Alles zurücksetzen in Daten), the list's filter. */
   reset: 'rotate-ccw',
-  /** A file dropped or chosen to upload (the setup's drop zone). */
-  upload: 'upload',
 
   // Files and folders.
   /** A document the app reads: the profile file. */

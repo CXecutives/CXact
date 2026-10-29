@@ -68,7 +68,6 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import Undo2 from '@lucide/svelte/icons/undo-2';
-  import Upload from '@lucide/svelte/icons/upload';
   import UserRound from '@lucide/svelte/icons/user-round';
   import X from '@lucide/svelte/icons/x';
 
@@ -130,7 +129,6 @@
     'trash-2': Trash2,
     'triangle-alert': TriangleAlert,
     'undo-2': Undo2,
-    upload: Upload,
     'user-round': UserRound,
     x: X,
   };

@@ -121,6 +121,8 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   const zone = page.getByTestId('upload-zone');
   await expect(zone).toContainText(T.firstRun.drop);
   await expect(zone).toContainText(T.firstRun.formats);
+  // One upload glyph on the card, the step's tile: the zone has none.
+  await expect(zone.locator('.icon')).toHaveCount(0);
   await expect(page.getByTestId('upload-ai')).toHaveText(T.firstRun.ai);
   // The whole zone is one button: no primary, Zurück at the left.
   await expect(next(page)).toHaveCount(0);
