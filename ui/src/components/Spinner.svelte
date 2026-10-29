@@ -1,22 +1,22 @@
 <!--
   Indeterminate activity (the round 10 draft): a navy arc turning on the ring's track. Sizes 16
-  (sm, beside words or in a button), 18 (md, the state box), 24 (lg, the app's start) and 48
-  (xl, the setup reading a CV, as large as every step's mark: its arc round at its ends). Inside a filled control
-  the arc takes the colour of its words (`tone="current"`, on no track). It stands still
-  under reduced motion.
+  (sm, beside words, in a button or the state box, like every glyph), 24 (lg, the app's start)
+  and 48 (xl, the setup reading a CV, as large as every step's mark: its arc round at its
+  ends). Inside a filled control the arc takes the colour of its words (`tone="current"`, on
+  no track). It stands still under reduced motion.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
 
   interface Props {
-    size?: 'sm' | 'md' | 'lg' | 'xl';
+    size?: 'sm' | 'lg' | 'xl';
     /** The arc's colour: navy on the track, or the words' own (a filled button). */
     tone?: 'navy' | 'current';
     /** Announced to screen readers; omit when the surrounding control says it already. */
     label?: string | null;
   }
 
-  let { size = 'md', tone = 'navy', label }: Props = $props();
+  let { size = 'sm', tone = 'navy', label }: Props = $props();
   // Without a label the spinner says "loading" (null says nothing).
   const spoken = $derived(label === undefined ? t.common.loading : label);
 </script>
@@ -64,10 +64,6 @@
 
   .sm {
     --spinner-size: var(--spinner-sm);
-  }
-
-  .md {
-    --spinner-size: var(--spinner-md);
   }
 
   .lg {

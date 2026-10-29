@@ -803,7 +803,6 @@
   --spinner-track: hsl(var(--p-ring-track));
   --spinner-arc: hsl(var(--p-navy));
   --spinner-sm: var(--icon-sm);
-  --spinner-md: var(--icon-nav);
   --spinner-lg: var(--icon-xl);
   --spinner-xl: var(--setup-mark);
   --spinner-line: 2px;

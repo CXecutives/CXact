@@ -5,7 +5,7 @@
   (its words start where a card's labels do) and at least 56 high: its title (14/540 ink), one quiet sentence under it (13 muted), and
   its one button at the right end (`action`, a secondary button with its glyph, or a button of
   its own in that place: `end`). No sign: the state's mark is elsewhere (the ring) or none;
-  only while something is being done an 18 px spinner stands before the words (`busy`). An
+  only while something is being done a 16 px spinner stands before the words (`busy`). An
   excluded job's box is the soft red (`tone="ban"`). A box that appears in a view already on
   screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its view
   is simply there. In a box under 480 wide (like a row of Einstellungen) the button goes under
@@ -81,7 +81,7 @@
 >
   <div class="row">
     {#if busy}
-      <Spinner size="md" label={null} />
+      <Spinner size="sm" label={null} />
     {:else if mark}
       <span class="mark">{@render mark()}</span>
     {/if}
