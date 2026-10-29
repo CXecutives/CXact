@@ -1,16 +1,16 @@
 <!--
   The body of Willkommen (the harmony audit, 2026-10-28): one job as CXact shows it, calm and
-  centred in the card. Its ring (the app's ScoreRing, 87, filling once as the step appears),
-  its title 14/540 and under it the band 13/540 in the word colour of its ring, in a quiet box
-  on the page's ground; the lead above says what it means. A picture of a job,
-  not a control: nothing in it reacts but the ring's tooltip.
+  centred in the card. Its ring (the app's ScoreRing, 89 like that job in the demo's list,
+  filling once as the step appears), its title 14/540 and under it the band 13/540 in the
+  word colour of its ring, in a quiet box on the page's ground; the lead above says what it
+  means. A picture of a job, not a control: nothing in it reacts but the ring's tooltip.
 -->
 <script lang="ts">
   import ScoreRing from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
 
-  /** The example's match: high, in the ring's step of 80 to 89. */
-  const SCORE = 87;
+  /** The example's match: high, the number the list shows for that job. */
+  const SCORE = 89;
 </script>
 
 <div class="welcome" data-testid="first-intro">

@@ -65,7 +65,7 @@ test('Willkommen: the app mark, one job with its ring and Loslegen; no dots on a
   // what the number means. A picture: no control in it.
   const job = page.getByTestId('first-example');
   await expect(job.getByRole('img')).toHaveAccessibleName(
-    new RegExp(`^${T.score.value(T.score.band.high, '87')}`),
+    new RegExp(`^${T.score.value(T.score.band.high, '89')}`),
   );
   await expect(job).toContainText(T.firstRun.example);
   await expect(job).toContainText(T.score.band.high);
