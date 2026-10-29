@@ -1,7 +1,8 @@
 <!--
   Indeterminate activity (the round 10 draft): a navy arc turning on the ring's track. Sizes 16
-  (sm, beside words or in a button), 18 (md, the state box), 24 (lg, the app's start) and 56
-  (xl, the setup reading a CV, in its head's slot: its arc in coral, round at its ends). Inside a filled control
+  (sm, beside words or in a button), 18 (md, the state box), 24 (lg, the app's start) and 48
+  (xl, the setup reading a CV, as large as every step's mark: its arc in coral, round at its
+  ends). Inside a filled control
   the arc takes the colour of its words (`tone="current"`, on no track). It stands still
   under reduced motion.
 -->
@@ -24,13 +25,13 @@
 {#if size === 'xl'}
   <svg
     class="spinner large"
-    viewBox="0 0 64 64"
+    viewBox="0 0 48 48"
     role={spoken ? 'status' : undefined}
     aria-label={spoken ?? undefined}
     aria-hidden={spoken ? undefined : 'true'}
   >
-    <circle class="track" cx="32" cy="32" r="26" stroke-width="6" />
-    <circle class="arc" cx="32" cy="32" r="26" stroke-width="6" />
+    <circle class="track" cx="24" cy="24" r="22" stroke-width="4" />
+    <circle class="arc" cx="24" cy="24" r="22" stroke-width="4" />
   </svg>
 {:else}
   <span
@@ -94,7 +95,7 @@
 
   .arc {
     stroke: var(--spinner-accent);
-    stroke-dasharray: 60 200;
+    stroke-dasharray: 46 200;
     stroke-linecap: round;
   }
 </style>

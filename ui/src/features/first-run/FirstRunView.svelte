@@ -131,7 +131,7 @@
     <span class="mark" data-testid="cv-reading"><Spinner size="xl" label={null} /></span>
   {:else if head?.kind === 'success'}
     <span class="mark" data-testid="first-success">
-      <ScoreRing ring={{ status: 'scored', score: 100, band: 'high' }} size="md" reveal done />
+      <ScoreRing ring={{ status: 'scored', score: 100, band: 'high' }} size="setup" reveal done />
     </span>
   {/if}
 {/snippet}

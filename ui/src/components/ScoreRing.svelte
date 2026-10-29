@@ -1,7 +1,7 @@
 <!--
-  The match of a job as a ring (the round 10 draft): sm 30 with a 3 px stroke and 10.5/650
-  digits (list rows), md 56 with a 5 px stroke and 17/650 digits (the job view). Hollow at both
-  sizes: the solid track (--score-track), the arc and the number, nothing tinted behind them.
+  The match of a job as a ring (the round 10 draft): sm 34 with a 3 px stroke and 11.5
+  digits (list rows), md 60 with a 5 px stroke and 20 digits (the job view), setup 48 with a
+  4 px stroke (the setup's Fertig, as large as every step's mark). Hollow at every size: the solid track (--score-track), the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
   and its number counts up along with the arc (400 ms, ease-out; lib/motion's Count) only
   when that means something: each time a job is opened in the job view (`animate` names the
@@ -21,7 +21,7 @@
   scorable, and off without a usable profile): the empty track with a subtle dash. Three
   digits fit the list's ring at its size.
   `done` is the setup's Fertig: the whole ring (a score of 100) filling as it mounts, a check
-  in its colour drawing itself in the middle instead of the digits; it says nothing to a
+  of 22 in its colour drawing itself in the middle instead of the digits; it says nothing to a
   screen reader and has no tooltip (the heading beside it says it).
 -->
 <script lang="ts" module>
@@ -68,7 +68,7 @@
 
   interface Props {
     ring: RingState;
-    size?: 'sm' | 'md';
+    size?: 'sm' | 'md' | 'setup';
     /** The job it shows in the job view (its key): another one is an open, which fills. */
     animate?: string | null;
     /** Fill and count up as it mounts (a list that opens, for the rows it lets count). */
@@ -172,7 +172,7 @@
     {#if ban}
       <span class="ban"><Icon name="excluded" size={size === 'md' ? 'lg' : 'xs'} /></span>
     {:else if done}
-      <span class="check"><Icon name="check" size="xxl" /></span>
+      <span class="check"><Icon name="check" size="lg" /></span>
     {:else if valued}
       {count.value}
     {:else}
@@ -307,5 +307,11 @@
     --ring-stroke: var(--ring-md-stroke);
     --ring-scale: var(--ring-md-scale);
     --ring-type: var(--ring-md-type);
+  }
+
+  .setup {
+    --ring-size: var(--ring-setup);
+    --ring-stroke: var(--ring-setup-stroke);
+    --ring-scale: var(--ring-setup-scale);
   }
 </style>

@@ -568,6 +568,9 @@
   --ring-md: 60px;
   --ring-md-stroke: 5px;
   --ring-md-digits: 20px;
+  /* The setup's Fertig: the full ring as large as every other step's mark, its check 22. */
+  --ring-setup: var(--setup-mark);
+  --ring-setup-stroke: 4px;
   --border-width: 1px;
   --tile-md: 36px;
   --tile-lg: 48px;
@@ -650,9 +653,10 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/34 and 36/60. */
+     scaled into viewBox units: 36/34, 36/60 and 36/48. */
   --ring-sm-scale: 1.0588;
   --ring-md-scale: 0.6;
+  --ring-setup-scale: 0.75;
 
   /* ------------------------------------------- round 10: shell */
   /* The sidebar: 12 px at its sides and 14 below (nothing stands at its foot); an entry 10 px
@@ -794,7 +798,7 @@
   --bar-surface: var(--surface);
   --bar-min: 50px;
   --bar-pad-y: var(--space-10);
-  /* Spinners: a navy arc on the ring's track; the setup's large one (56, its head's slot) in
+  /* Spinners: a navy arc on the ring's track; the setup's large one (its head's mark, 48) in
      coral. */
   --spinner-track: hsl(var(--p-ring-track));
   --spinner-arc: hsl(var(--p-navy));
@@ -802,7 +806,7 @@
   --spinner-sm: var(--icon-sm);
   --spinner-md: var(--icon-nav);
   --spinner-lg: var(--icon-xl);
-  --spinner-xl: var(--tile-xl);
+  --spinner-xl: var(--setup-mark);
   --spinner-line: 2px;
   /* A meter on the cream (the progress strip): a white track. */
   --meter-track-on-bg: hsl(var(--p-white) / 0.85);
@@ -908,11 +912,12 @@
   /* ------------------------------------------- round 10: setup */
   /* The card of a step (--setup-card wide at most, --radius-sheet round): 34 36 20 inside, 24
      20 16 in a narrow window (the bottom one the foot's, which sticks), centred a little above
-     the middle of the window. Its head: one slot of 56 for the app's mark, a 48 tile, the
-     spinner or the full ring, centred in it, the title 20 under it on every step; the lead 8
-     under the title, at most 420 wide; the body 22 under the lead; the foot 28 under the
-     body with a hairline and 18 inside, Zurück and a ghost at the end pulled out by the ghost
-     button's inset, so their words stand on the content's edges. */
+     the middle of the window. Its head: one slot of 56, the app's mark filling it and every
+     other step's mark 48 (a tile, the spinner, the full ring) centred in it, so the title
+     stands 20 under it at one height on every step; the lead 8 under the title, at most 420
+     wide; the body 22 under the lead; the foot 28 under the body with a hairline and 18
+     inside, Zurück and a ghost at the end pulled out by the ghost button's inset, so their
+     words stand on the content's edges. */
   --setup-pad-top: 34px;
   --setup-pad-x: 36px;
   --setup-pad-bottom: var(--space-20);
@@ -923,6 +928,7 @@
   /* The card's top: where a 560 px card would stand a little above the middle, at least 16. */
   --setup-frame-top: max(var(--space-16), calc(50vh - 316px));
   --setup-top: var(--tile-xl);
+  --setup-mark: var(--tile-lg);
   --setup-top-gap: var(--space-20);
   --setup-lead-gap: var(--space-8);
   --setup-lead-max: 420px;
