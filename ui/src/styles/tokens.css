@@ -81,16 +81,11 @@
   --p-score-yellow: 40 88% 52%;
   --p-score-lime: 84 56% 42%;
   --p-score-green: 142 50% 38%;
-  /* The words in a ring's colour (band, status, verdicts): the same hue one step darker, so
-     yellow, orange and lime words read on white (decision 4, 2026-10-24); rings and dots keep
-     the exact colour. */
+  /* The deep red of the filled danger button, of a missing field's label and of an error,
+     a step darker under the pointer and one more pressed. */
   --p-word-red: 358 62% 46%;
   --p-word-red-hover: 358 62% 40%;
   --p-word-red-press: 358 62% 34%;
-  --p-word-orange: 24 80% 38%;
-  --p-word-yellow: 36 80% 34%;
-  --p-word-lime: 84 62% 28%;
-  --p-word-green: 142 52% 30%;
   /* The mark of a requirement met in part: the yellow a step darker, so the glyph holds 3:1
      on white (a ring keeps the exact yellow). */
   --p-mark-yellow: 38 92% 40%;
@@ -237,7 +232,6 @@
   --danger-tint: hsl(var(--p-red-50));
   --danger-edge: hsl(var(--p-red-100));
   --success-soft: hsl(var(--p-green-50));
-  --warning-text: hsl(var(--p-word-yellow));
   --danger: hsl(var(--p-danger));
   --danger-strong: hsl(var(--p-danger-strong));
   --danger-soft: hsl(var(--p-danger-soft));
@@ -740,13 +734,10 @@
      words; the name 14/540, the line 13 muted like every second line. */
   --setting-row-pad-y: var(--form-row-pad-y);
   --setting-row-gap: var(--space-12);
-  /* A status word (StatusText): the dot in the exact colour, the word one step darker. */
+  /* A status word (StatusText): its dot and its word in one colour. */
   --status-success: var(--success);
-  --status-success-text: hsl(var(--p-word-green));
   --status-warning: var(--warning);
-  --status-warning-text: var(--warning-text);
   --status-danger: hsl(var(--p-score-red));
-  --status-danger-text: hsl(var(--p-word-red));
   --status: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   /* Tiles: a glyph tile of 36 (Tile's way) 8 round, the 48 of IconTile and the drop zone's
      disc 14; 56 is the setup head's slot. */

@@ -1,9 +1,8 @@
 <!--
   A state in a word (the line of a row in Einstellungen: Verbunden, Pausiert bis morgen, Abgelehnt):
-  a 7 px dot in the state's exact colour, then the word in the same hue one step darker, so a
-  yellow or a green word reads on white (decision 4, 2026-10-24). Three tones: success (green),
-  warning (yellow) and danger (red). The dot is the only dot of a page; it says nothing a
-  screen reader needs (the word says it).
+  a 7 px dot, then the word, both in the state's one colour (the uniformity audit, 2026-10-29).
+  Three tones: success (green), warning (yellow) and danger (red). The dot is the only dot of a
+  page; it says nothing a screen reader needs (the word says it).
 -->
 <script lang="ts" module>
   export type StatusTone = 'success' | 'warning' | 'danger';
@@ -28,7 +27,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-6);
-    color: var(--status-text);
+    color: var(--status-color);
     font: var(--status);
   }
 
@@ -37,21 +36,18 @@
     width: var(--dot-status);
     height: var(--dot-status);
     border-radius: var(--radius-full);
-    background-color: var(--status-dot);
+    background-color: var(--status-color);
   }
 
   .success {
-    --status-dot: var(--status-success);
-    --status-text: var(--status-success-text);
+    --status-color: var(--status-success);
   }
 
   .warning {
-    --status-dot: var(--status-warning);
-    --status-text: var(--status-warning-text);
+    --status-color: var(--status-warning);
   }
 
   .danger {
-    --status-dot: var(--status-danger);
-    --status-text: var(--status-danger-text);
+    --status-color: var(--status-danger);
   }
 </style>
