@@ -1,8 +1,8 @@
 <!--
   The button of the app: primary | secondary | ghost | danger | link | suggest | add (round 10).
   Calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, a press only
-  darkens it; nothing scales, lifts, glows or bounces. Only the arrows of Zurück and Weiter
-  (`back`, `next`) nudge 2 px outward under the pointer.
+  darkens it; nothing scales, lifts, glows, bounces or moves, the arrows of Zurück and
+  Weiter included (owner, 2026-10-29).
   - One height, 30 px, for every button with words or a box (core/tests/ui_contract.rs);
     the quiet icon-only button (ghost) takes 28 by itself, a button in a field (`inField`)
     24, a suggestion 26. Words in 500 14 px (a primary stands out by its colour only), every
@@ -227,19 +227,6 @@
   .trailing {
     position: relative;
     display: inline-flex;
-    transition: transform var(--dur-base) var(--ease-out);
-  }
-
-  /* The arrows of Zurück and Weiter lean 2 px the way they point (the draft); only on buttons
-     with words: the top bar's quiet icon buttons answer alike, with their wash only (owner,
-     2026-10-24: no motion on two of the bar's three tools). */
-  .btn:not([aria-disabled='true'], .loading, .icon-only):hover .glyph[data-icon='back'] {
-    transform: translateX(calc(-1 * var(--move-nudge)));
-  }
-
-  .btn:not([aria-disabled='true'], .loading, .icon-only):hover
-    :is(.glyph, .trailing)[data-icon='next'] {
-    transform: translateX(var(--move-nudge));
   }
 
   .busy {

@@ -1074,9 +1074,6 @@
      step) 8 px. */
   --move-sm: 4px;
   --move-lg: 8px;
-  /* The one icon that moves on hover, not a travel: the arrow of a button with words leans
-     the way it points (Button). */
-  --move-nudge: 2px;
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
      motion. */
   --turn-half: 180deg;
@@ -1124,6 +1121,5 @@
   --stagger-span: 0ms;
   --move-sm: 0px;
   --move-lg: 0px;
-  --move-nudge: 0px;
   --loop-state: paused;
 }

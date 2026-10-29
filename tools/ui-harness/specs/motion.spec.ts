@@ -90,7 +90,6 @@ test('reduced motion zeroes the steps, the fades and the travel of the motion to
     '--dur-reveal',
     '--move-sm',
     '--move-lg',
-    '--move-nudge',
   ];
   const read = (): Promise<number[]> =>
     page.evaluate((names) => {
