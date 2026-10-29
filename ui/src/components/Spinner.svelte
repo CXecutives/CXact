@@ -1,8 +1,7 @@
 <!--
   Indeterminate activity (the round 10 draft): a navy arc turning on the ring's track. Sizes 16
   (sm, beside words or in a button), 18 (md, the state box), 24 (lg, the app's start) and 48
-  (xl, the setup reading a CV, as large as every step's mark: its arc in coral, round at its
-  ends). Inside a filled control
+  (xl, the setup reading a CV, as large as every step's mark: its arc round at its ends). Inside a filled control
   the arc takes the colour of its words (`tone="current"`, on no track). It stands still
   under reduced motion.
 -->
@@ -75,7 +74,7 @@
     --spinner-size: var(--spinner-lg);
   }
 
-  /* The setup's: a coral arc of a third, round at its ends, a little slower. */
+  /* The setup's: an arc of a third, round at its ends, a little slower. */
   .large {
     --spinner-size: var(--spinner-xl);
 
@@ -94,7 +93,7 @@
   }
 
   .arc {
-    stroke: var(--spinner-accent);
+    stroke: var(--spinner-arc);
     stroke-dasharray: 46 200;
     stroke-linecap: round;
   }

@@ -124,7 +124,6 @@
     "bar-surface":            { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "spinner-track":          { "css": "hsl(30 8% 92%)", "rgb": [236, 235, 233] },
     "spinner-arc":            { "css": "hsl(212 50% 36%)", "rgb": [46, 89, 138] },
-    "spinner-accent":         { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
     "strip-surface":          { "css": "hsl(30 16% 96.4%)", "rgb": [247, 246, 244] },
     "strip-text":             { "css": "hsl(212 50% 36%)", "rgb": [46, 89, 138] },
     "skeleton":               { "css": "hsl(30 12% 94.6%)", "rgb": [243, 241, 240] },

@@ -798,11 +798,10 @@
   --bar-surface: var(--surface);
   --bar-min: 50px;
   --bar-pad-y: var(--space-10);
-  /* Spinners: a navy arc on the ring's track; the setup's large one (its head's mark, 48) in
-     coral. */
+  /* Spinners: a navy arc on the ring's track, like the run's meter; the setup's large one is
+     its head's mark (48). */
   --spinner-track: hsl(var(--p-ring-track));
   --spinner-arc: hsl(var(--p-navy));
-  --spinner-accent: hsl(var(--p-coral));
   --spinner-sm: var(--icon-sm);
   --spinner-md: var(--icon-nav);
   --spinner-lg: var(--icon-xl);
