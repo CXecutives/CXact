@@ -44,7 +44,6 @@
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import ListFilter from '@lucide/svelte/icons/list-filter';
-  import Gauge from '@lucide/svelte/icons/gauge';
   import Globe from '@lucide/svelte/icons/globe';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import Hourglass from '@lucide/svelte/icons/hourglass';
@@ -107,7 +106,6 @@
     'file-up': FileUp,
     'folder-open': FolderOpen,
     'list-filter': ListFilter,
-    gauge: Gauge,
     globe: Globe,
     'file-pen-line': FilePenLine,
     hourglass: Hourglass,

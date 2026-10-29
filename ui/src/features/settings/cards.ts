@@ -60,7 +60,7 @@ export const ACTIONS = {
   // deleting a job for good).
   reset: {
     label: (t) => t.settings.resetOpens,
-    icon: 'trash',
+    icon: 'reset',
     locked: ownOnly,
   },
 } satisfies Record<string, Action>;

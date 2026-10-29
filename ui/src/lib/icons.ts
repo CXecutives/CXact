@@ -36,12 +36,10 @@ export const ICONS = {
   // Runs.
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',
-  /** Alles zurücksetzen (the Daten tile). */
+  /** Zurücksetzen: everything (Alles zurücksetzen in Daten), the list's filter. */
   reset: 'rotate-ccw',
   /** A file dropped or chosen to upload (the setup's drop zone). */
   upload: 'upload',
-  /** The score a job gets (the setup's welcome, Trotzdem bewerten). */
-  gauge: 'gauge',
 
   // Files and folders.
   /** A document the app reads: the profile file. */
