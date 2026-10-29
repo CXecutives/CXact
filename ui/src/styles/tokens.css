@@ -226,7 +226,7 @@
      of its cell. */
   --missing-edge: var(--danger-strong);
   --field-label-missing: var(--danger-strong);
-  /* A chosen option in a menu or a select: the track with navy words, no tick. */
+  /* A chosen option in a select's list: the track with navy words, no tick (a menu ticks it). */
   --chosen-surface: hsl(var(--p-track));
   --chosen-text: hsl(var(--p-navy));
   /* Soft grounds of a state: the ban (excluded) and success. */
