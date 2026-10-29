@@ -155,8 +155,8 @@ test.describe('the head and the match', () => {
     const band = await box('band');
     const actions = await box('reader-actions');
     const facts = await box('terms');
-    // The ring 56 at the left, the title beside it, the band under the title.
-    expect(Math.round(ring.width)).toBe(56);
+    // The ring 60 at the left, the title beside it, the band under the title.
+    expect(Math.round(ring.width)).toBe(60);
     expect(title.x).toBeGreaterThan(ring.x + ring.width);
     expect(band.y).toBeGreaterThan(title.y);
     expect(Math.abs(band.x - title.x)).toBeLessThan(1);
@@ -525,11 +525,11 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // Trotzdem bewerten (the gauge of a score): its real match and a toast that takes it back.
+    // Trotzdem bewerten (the plus): its real match and a toast that takes it back.
     // Under the box what its menu offers; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
-    await expect(include.locator('[data-icon="gauge"]')).toHaveCount(1);
+    await expect(include.locator('[data-icon="add"]')).toHaveCount(1);
     await expect(stage(page).getByTestId('reader-actions').getByTestId('open-ad')).toBeVisible();
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
@@ -1049,7 +1049,7 @@ test.describe('the ad', () => {
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
     const signIn = stage(page).getByTestId('reader-sign-in');
-    await expect(signIn).toHaveText(T.settings.signIn);
+    await expect(signIn).toHaveText(T.settings.signInOpens);
     // A sign-in that fails says so; the job stays.
     await failNext(page, 'portal_login');
     await signIn.click();

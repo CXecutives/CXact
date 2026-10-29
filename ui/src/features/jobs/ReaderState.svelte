@@ -100,7 +100,7 @@
     void run.start({ kind: 'details', keys: [job.key] });
   }
 
-  /** "Anmelden": the portal's sign-in, right here. */
+  /** "Anmelden…": the portal's sign-in window, right here (the words of Einstellungen). */
   let signingIn = $state(false);
   const signInLock = $derived(signInLocked());
   async function signIn(): Promise<void> {
@@ -121,7 +121,7 @@
     <Button
       variant="secondary"
       icon="signIn"
-      label={t.settings.signIn}
+      label={t.settings.signInOpens}
       loading={signingIn}
       disabled={signInLock !== null}
       disabledReason={signInLock}

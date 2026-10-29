@@ -1437,10 +1437,9 @@ export const de = {
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: (appPassword: boolean) =>
       `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
-    signIn: 'Anmelden',
     signOut: 'Abmelden',
     /** A row's buttons that open a window, the browser or a dialog end in an ellipsis: a
-     *  portal's sign-in window, its alert page, the folder dialog, the dialogs of the reset
+     *  portal's sign-in window (also the job view's), its alert page, the folder dialog, the dialogs of the reset
      *  and of removing the mailbox (their confirm buttons keep none). */
     signInOpens: 'Anmelden…',
     folderChange: 'Ändern…',
