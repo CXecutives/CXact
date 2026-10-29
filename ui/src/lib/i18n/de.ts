@@ -1086,6 +1086,16 @@ export const de = {
      *  with Fertig, which saves at once. */
     edit: 'Bearbeiten',
     done: 'Fertig',
+    /** The card under the head while required values are empty: how many, which, the way. */
+    missing: {
+      heading: (count: number) =>
+        count === 1 ? 'Noch 1 Angabe für passende Jobs' : `Noch ${count} Angaben für passende Jobs`,
+      fields: (labels: readonly string[]) =>
+        labels.length < 2
+          ? labels.join('')
+          : `${labels.slice(0, -1).join(', ')} und ${labels.at(-1)}`,
+      action: 'Ergänzen',
+    },
     /** The values as the Profil reads them. */
     read: {
       amount: (value: number, unit: string) => `${n(value)} ${unit}`,

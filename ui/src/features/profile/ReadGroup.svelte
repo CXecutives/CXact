@@ -3,9 +3,9 @@
   (one measure: at least 62 high, 12 20 inside, a hairline between rows): each row its name
   (14/540 ink, like a setting's name) in the label's column and its value as text (14), a tag
   field's values as chips (text to copy). An empty value that is not required stays away; a
-  required one that is empty says "Noch keine Angabe" in the red of a missing field; a group
-  with nothing to read says it once, quietly. Kompetenzen and Sprachen read as their entries,
-  name and value. Nothing here reacts: only the group's "Bearbeiten" opens it (owner,
+  required one that is empty says "Noch keine Angabe", calm grey (the card under the head says
+  what is missing, owner 2026-10-29); a group with nothing to read says it once. Kompetenzen
+  and Sprachen read as rows too: the entry's name as the label, its value beside it. Nothing here reacts: only the group's "Bearbeiten" opens it (owner,
   2026-10-28: one way to edit).
 -->
 <script lang="ts">
@@ -110,14 +110,14 @@
 
 {#if 'list' in section}
   {#each entries as entry (entry.name)}
-    <div class="read item">
-      <span class="value" data-copy>{entry.name}</span>
-      <span class="side" data-copy>{entry.value}</span>
+    <div class="read">
+      <span class="label" data-copy>{entry.name}</span>
+      <span class="value" data-copy>{entry.value}</span>
     </div>
   {/each}
   {#if entries.length === 0}
     <div class="read item" data-missing={isMissing(section.list) ? '' : undefined}>
-      <span class="none" class:required={isMissing(section.list)}>{t.profile.read.none}</span>
+      <span class="none">{t.profile.read.none}</span>
     </div>
   {/if}
 {:else}
@@ -129,7 +129,7 @@
     >
       <span class="label">{labelOf(c)}</span>
       {#if read !== null && 'missing' in read}
-        <span class="none required">{t.profile.read.none}</span>
+        <span class="none">{t.profile.read.none}</span>
       {:else if read !== null && 'chips' in read}
         <span class="chips">
           {#each read.chips as chip (chip)}<span class="chip" data-copy>{chip}</span>{/each}
@@ -192,18 +192,8 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .side {
-    color: var(--text-muted);
-    font: var(--type-md);
-    font-variant-numeric: tabular-nums;
-  }
-
   .none {
     color: var(--text-muted);
     font: var(--type-md);
-  }
-
-  .required {
-    color: var(--field-label-missing);
   }
 </style>

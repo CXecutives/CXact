@@ -1,11 +1,10 @@
 <!--
-  Kompetenzen, all counting the same: a box of entries (ItemList; the owner's redesign of
-  2026-10-24), one row each with the competence's name (plain text to copy, decision 14:
-  never edited in place), its years as quiet text at the right ("12 Jahre", a field 74 wide
-  whose edge shows under the pointer or with the focus) and the × that removes it. The last
-  row is "+ Kompetenz hinzufügen": a click turns it into a tag field that suggests the
-  engine's words from the first character (vocabulary.svelte.ts); Enter takes what was typed
-  as a new row (a pasted list splits at commas) and the field stays ready for the next, a
+  Kompetenzen, all counting the same: rows like every field (ItemList; owner, 2026-10-29), one
+  each with the competence's name as its label (plain text to copy, decision 14: never edited
+  in place), its years in the field of Berufserfahrung ("12 Jahre", 130 wide) and the × that
+  removes it. The last row is the tag field "Kompetenz hinzufügen" that suggests the engine's
+  words from the first character (vocabulary.svelte.ts); Enter takes what was typed as a new
+  row (a pasted list splits at commas) and the field stays ready for the next, a
   name that is there already is not added twice. A new row rises in, a removed one folds
   away. A value that is too large (the years) or that the backend refused marks its row's
   field and is said under the add row.
@@ -53,7 +52,6 @@
       bind:value={row.years}
       label={words.yearsOf(row.name)}
       unit={words.years}
-      inline
       invalid={row === refused}
       testid="competence-years"
     />
@@ -82,7 +80,6 @@
   key={(row) => keyOf(row.name)}
   name={(row) => row.name}
   value={years}
-  addLabel={words.competencePlaceholder}
   {add}
   {foot}
   testid="competences"
@@ -92,7 +89,7 @@
 <style>
   .years {
     display: flex;
-    width: var(--profile-row-years);
+    width: var(--profile-years-width);
   }
 
   /* Under the add row, on the rows' sides. */

@@ -1,29 +1,25 @@
 <!--
-  A box of entries that carry a value (Kompetenzen with their years, Sprachen with their
-  level; the Profil): its rows ARE the entries, inside a group's box of rows (Group `rows`),
-  48 high, 20 at the sides, a hairline between them. A row holds the entry's name (text a user
-  would copy), its value (`value`: the control the caller puts there, a years field or a
-  level's select, 26 high, read like quiet text: its edge shows only while the row is under
-  the pointer or holds the focus) and the remove slot at the end (24, the × with the tooltip
-  "Entfernen"), whose × comes in with the pointer or the focus.
-  The last row adds an entry: the navy quiet button with its + (`addLabel`). A click puts the
-  caller's field (`add`, a tag field or a search list) in its place with the caret; what it
-  takes becomes a row and it stays ready for the next. Esc (once the field has no list to
-  close and nothing typed: input.ts, the add row's own form keys), or leaving it empty, puts
-  the button back. Under it the box's last lines (`foot`: what was wrong, "Häufig verlangt").
-  A new row rises in, a removed one folds away while the rows below close the gap; a list
-  that comes with its view is simply there.
+  The entries of a list that carry a value (Kompetenzen with their years, Sprachen with their
+  level; the Profil), as rows like every field of a group (owner, 2026-10-29, "A Zeilen"):
+  inside a group's box of rows (Group `rows`), at least as high as a field's row, 12 20 inside,
+  a hairline between them. A row holds the entry's name in the label's column (14/540, text a
+  user would copy), its value in the control's column (`value`: the caller's field, a years
+  field or a level's select, as wide as the same kind of field elsewhere) and at the end the
+  quiet × ("Entfernen", 28).
+  The last row adds an entry: the caller's field (`add`, a tag field or a closed list that
+  opens nothing on focus) in the control's column, always there like every tag field; what it
+  takes becomes a row and it stays ready for the next. Under it the box's last lines (`foot`:
+  what was wrong). A new row rises in, a removed one folds away while the rows below close
+  the gap; a list that comes with its view is simply there.
 -->
 <script lang="ts" generics="T">
   import type { Snippet } from 'svelte';
-  import { tick } from 'svelte';
   import type { Action } from 'svelte/action';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
-  import { formKeys, removeBy } from '$lib/input/input';
+  import { removeBy } from '$lib/input/input';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { settled } from '$lib/motion/settled.svelte';
-  import Button from './Button.svelte';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -32,11 +28,9 @@
     key: (item: T) => string;
     /** The item's name. */
     name: (item: T) => string;
-    /** The item's value: a control of the row (26 high). */
+    /** The item's value: a field of the row. */
     value?: Snippet<[T, number]> | null;
-    /** The words of the button that adds an entry ("Kompetenz hinzufügen"). */
-    addLabel: string;
-    /** The field that adds an entry, in the button's place once it is pressed. */
+    /** The field that adds an entry, in the last row. */
     add: Snippet;
     /** The box's last lines, under the add row. */
     foot?: Snippet | null;
@@ -49,7 +43,6 @@
     key,
     name,
     value = null,
-    addLabel,
     add,
     foot = null,
     onremove,
@@ -62,35 +55,6 @@
   const arrive: Action<HTMLElement> = (node) => {
     if (motion.ready) rowEnter(node);
   };
-
-  let row = $state<HTMLElement | null>(null);
-  /** The add row holds the field (else the button). */
-  let adding = $state(false);
-
-  /** The button's place: the field, with the caret. */
-  async function open(): Promise<void> {
-    adding = true;
-    await tick();
-    row?.querySelector('input')?.focus();
-  }
-
-  /** The button again; from the keyboard it takes the focus. */
-  async function close(focus: boolean): Promise<void> {
-    adding = false;
-    if (!focus) return;
-    await tick();
-    row?.querySelector('button')?.focus();
-  }
-
-  /** Leaving the field: once what was typed is taken and the field is empty, the button. */
-  async function focusout(event: FocusEvent & { currentTarget: HTMLElement }): Promise<void> {
-    const next = event.relatedTarget;
-    if (next instanceof Node && event.currentTarget.contains(next)) return;
-    await tick();
-    // The button that opened the field went (its focus with it); the field has it now.
-    if (row?.contains(document.activeElement)) return;
-    if (adding && (row?.querySelector('input')?.value ?? '') === '') adding = false;
-  }
 </script>
 
 <div class="items" data-removes>
@@ -104,7 +68,9 @@
       >
         <div class="line">
           <span class="name" data-copy>{name(item)}</span>
-          {#if value}<span class="value">{@render value(item, index)}</span>{/if}
+          <span class="value"
+            >{#if value}{@render value(item, index)}{/if}</span
+          >
           <button
             type="button"
             class="remove"
@@ -114,32 +80,16 @@
             use:tooltip={t.common.remove}
             onclick={(event) => removeBy(event.currentTarget, () => onremove(item, index))}
           >
-            <Icon name="close" size="xs" />
+            <Icon name="close" size="sm" />
           </button>
         </div>
       </div>
     {/each}
   </div>
-  <div
-    class="add"
-    class:adding
-    role="presentation"
-    bind:this={row}
-    data-remove-fallback
-    use:formKeys={{ cancel: () => void close(true) }}
-    onfocusout={(event) => void focusout(event)}
-  >
-    {#if adding}
-      {@render add()}
-    {:else}
-      <Button
-        variant="add"
-        icon="add"
-        label={addLabel}
-        testid={testid ? `${testid}-add` : null}
-        onclick={() => void open()}
-      />
-    {/if}
+  <div class="line add" data-remove-fallback data-testid={testid ? `${testid}-add` : undefined}>
+    <span></span>
+    <span class="field">{@render add()}</span>
+    <span></span>
   </div>
   {#if foot}{@render foot()}{/if}
 </div>
@@ -157,11 +107,6 @@
     min-width: 0;
   }
 
-  /* The row folds away as one: its height lives in its line. */
-  .item {
-    --inline-edge: transparent;
-  }
-
   .item + .item,
   .add {
     border-top: var(--border-width) solid var(--border);
@@ -171,59 +116,50 @@
     border-top: 0;
   }
 
-  .item:hover,
-  .item:focus-within {
-    --inline-edge: var(--border-strong);
-  }
-
+  /* A field's row: the name in the label's column, the value, the × at the end. */
   .line {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto var(--item-remove);
+    grid-template-columns: var(--profile-label-width) minmax(0, 1fr) var(--control-icon);
     align-items: center;
-    gap: var(--item-row-gap);
-    min-height: var(--item-row-min);
-    padding: 0 var(--card-pad-x);
+    gap: var(--space-8) var(--profile-label-gap);
+    min-height: var(--form-row-min);
+    padding: var(--form-row-pad-y) var(--form-row-pad-x);
   }
 
   .name {
     min-width: 0;
     overflow-wrap: anywhere;
-    color: var(--text);
-    font: var(--type-md);
+    font: var(--type-label);
   }
 
   .value {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    justify-content: flex-end;
-    color: var(--text-muted);
-    font: var(--type-md);
+    min-width: 0;
   }
 
-  /* The quiet × of a row: it comes in with the pointer or the focus, the subtle glyph, a wash
-     and ink under the pointer. */
+  /* The add field fills the control's column like every tag field. */
+  .field {
+    display: block;
+    min-width: 0;
+  }
+
+  /* The quiet × of a row, like every quiet icon button: the subtle glyph, a wash and ink
+     under the pointer. */
   .remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: var(--item-remove);
-    height: var(--item-remove);
+    width: var(--control-icon);
+    height: var(--control-icon);
     padding: 0;
     border: 0;
-    border-radius: var(--radius-inner);
+    border-radius: var(--radius-control);
     background-color: transparent;
     color: var(--icon-subtle);
-    opacity: 0;
     transition:
-      opacity var(--dur-base) var(--ease-out),
       background-color var(--dur-base) var(--ease-out),
       color var(--dur-base) var(--ease-out);
-  }
-
-  .item:hover .remove,
-  .item:focus-within .remove {
-    opacity: 1;
-    transition-duration: var(--dur-hover);
   }
 
   .remove:hover {
@@ -237,21 +173,20 @@
     transition-duration: var(--dur-instant);
   }
 
-  /* The add row: the button 10 in so its + stands on the names' edge, or the field across the
-     row. */
-  .add {
-    display: flex;
-    align-items: center;
-    min-height: var(--item-row-min);
-    padding: var(--item-add-pad-y) var(--card-pad-x);
-  }
+  /* A narrow box: the name above its value, like a field's label. */
+  @container (width < 560px) {
+    .line {
+      grid-template-columns: minmax(0, 1fr) var(--control-icon);
+    }
 
-  .add:not(.adding) {
-    padding-left: calc(var(--card-pad-x) - var(--space-10));
-  }
+    .value,
+    .field {
+      grid-column: 1;
+    }
 
-  .add > :global(:not(.btn)) {
-    flex: 1;
-    min-width: 0;
+    .add > :first-child,
+    .add > :last-child {
+      display: none;
+    }
   }
 </style>

@@ -1,10 +1,9 @@
 <!--
-  Sprachen: a box of entries (ItemList; the owner's redesign of 2026-10-24), one row each with
-  the language's name, its level as a quiet select at the right (Select `inline`: A1 to C2
-  and Muttersprache, as ads and CVs name them; stored as shown) and the × that removes it.
-  The last row is "+ Sprache hinzufügen": a click turns it into a search list (ChipInput with
-  options) that lists every language the app knows and is not chosen yet, narrows while
-  typing and takes nothing else ("Keine Sprache mit diesem Namen."); a new language starts at
+  Sprachen: rows like every field (ItemList; owner, 2026-10-29), one each with the language's
+  name as its label, its level in a select like Arbeitsmodell's (A1 to C2 and Muttersprache,
+  as ads and CVs name them; stored as shown) and the × that removes it. The last row is the
+  field "Sprache hinzufügen" (ChipInput with options): it opens nothing on focus, typing lists
+  the languages the app knows and not chosen yet, and it takes nothing else ("Keine Sprache mit diesem Namen."); a new language starts at
   B2, the level the engine assumes. A value the backend refused is said under the add row.
 -->
 <script lang="ts">
@@ -57,7 +56,6 @@
     options={LEVELS}
     value={row.level}
     label={words.levelOf(row.language)}
-    inline
     testid="language-level"
     onchange={(next) => (row.level = next)}
   />
@@ -86,7 +84,6 @@
   key={(row) => keyOf(row.language)}
   name={(row) => row.language}
   value={level}
-  addLabel={words.languagePlaceholder}
   {add}
   {foot}
   testid="languages"

@@ -892,14 +892,6 @@
   --profile-money-width: 170px;
   --profile-years-width: 130px;
   --profile-date-width: 122px;
-  /* A box whose rows are its entries (Kompetenzen, Sprachen): rows of 48, 20 at the sides,
-     the value 12 before the remove slot of 24; a competence's years field 74 wide (26 high,
-     "Jahre" inside). The last row adds one: the navy quiet button, 9 above and below. */
-  --item-row-min: 48px;
-  --item-row-gap: var(--space-12);
-  --item-remove: var(--control-sm);
-  --item-add-pad-y: 9px;
-  --profile-row-years: 74px;
   /* A suggestion row under a field ("Häufig verlangt", "Vorschlag"): its label 12 subtle, 8
      under the field, the chips 6 apart; as the last line of a box of entries 11 20 inside. */
   --suggest-row-gap: var(--space-8);

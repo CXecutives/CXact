@@ -6,7 +6,8 @@
   On the Profil a group reads like a profile while it is closed (ReadGroup); only
   "Bearbeiten" at its title opens it (one way to edit, owner 2026-10-28), the caret in its
   first field. One
-  group is open at a time: its box has the navy edge, its rows are the fields
+  group is open at a time (no frame of its own, like an unfolded row of Einstellungen): its
+  rows are the fields
   (ProfileControl; a hairline between rows), and its foot holds Fertig and Abbrechen in the
   order of the OS, one width. Fertig (and Enter in a field) saves at once (`onsave`) and
   closes the group; Abbrechen (and Esc) puts the stored values back; opening another group
@@ -270,7 +271,7 @@
         actions={editing ? null : edit}
         testid="section-{section.id}"
       >
-        <Group rows active={editing && !allOpen}>
+        <Group rows>
           {#if !editing}
             <ReadGroup {section} {missing} />
           {:else}

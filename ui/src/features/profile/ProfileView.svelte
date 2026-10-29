@@ -44,7 +44,7 @@
   import ProfileStart from './ProfileStart.svelte';
   import SaveBar from './SaveBar.svelte';
   import { refused, watchSave } from './saveEffect';
-  import { FIELD_ORDER, blank } from './sections';
+  import { FIELD_ORDER, LABEL_OF, blank } from './sections';
 
   interface Props {
     /** The setup's page: the form alone, its "Weiter" saves (`next`). */
@@ -273,6 +273,12 @@
 
   // ------------------------------------------------------------ what is still missing
 
+  /** A required field's label as the page shows it (the card of what is missing). */
+  const labelOf = (field: string): string => {
+    const key = LABEL_OF[field as keyof ProfileForm] ?? field;
+    return String((t.profile.field as Record<string, unknown>)[key] ?? field);
+  };
+
   /** What core says a new or changed form still lacks. */
   const draft = draftMissing();
 
@@ -340,6 +346,18 @@
 
 {#snippet notes()}
   {#if !setup}<CvProblem />{/if}
+  {#if !setup && editor.origin === 'stored' && missing.length > 0}
+    <StateBox
+      heading={t.profile.missing.heading(missing.length)}
+      text={t.profile.missing.fields(missing.map(labelOf))}
+      action={{
+        label: t.profile.missing.action,
+        testid: 'profile-missing-go',
+        onclick: () => void panel?.focusField(missing[0]!),
+      }}
+      testid="profile-missing"
+    />
+  {/if}
   {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
   {#if !setup && !barShown && saveNote}
     <StateBox heading={saveNote()} alert testid="profile-save-error" />
