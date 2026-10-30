@@ -37,7 +37,7 @@
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
     copyLabel?: boolean;
-    /** The row cannot be used now: its name is dimmed. */
+    /** The row cannot be used now: its name stands in the muted grey. */
     disabled?: boolean;
     /** The id of the switch this row labels (Toggle `id`). */
     for?: string | null;
@@ -152,8 +152,9 @@
     font: var(--type-sm);
   }
 
+  /* A row out of use: the name steps back to its line's grey, the line stays the second. */
   .disabled .label {
-    opacity: var(--opacity-disabled);
+    color: var(--text-muted);
   }
 
   .path {

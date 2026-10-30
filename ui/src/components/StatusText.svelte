@@ -23,9 +23,11 @@
 >
 
 <style>
+  /* On top of its line: the line stays as high as a plain one, and so does its row. */
   .status {
     display: inline-flex;
     align-items: center;
+    vertical-align: top;
     gap: var(--space-6);
     color: var(--status-color);
     font: var(--status);

@@ -1,7 +1,7 @@
 <!--
   The body of Willkommen (the harmony audit, 2026-10-28): one job as CXact shows it, calm and
   centred in the card. Its ring (the app's ScoreRing, 89 like that job in the demo's list,
-  filling once as the step appears), its title 14/540 and under it the band 13/540 in the
+  filling once as the step appears), its title as in the list (15/540) and under it the band 13/540 in the
   word colour of its ring, in a quiet box on the page's ground; the lead above says what it
   means. A picture of a job, not a control: nothing in it reacts but the ring's tooltip.
 -->
@@ -50,7 +50,7 @@
 
   .title {
     color: var(--text);
-    font: var(--type-label);
+    font: var(--type-title);
   }
 
   /* The word colour of the ring's step (80 to 89). */

@@ -123,7 +123,7 @@
   }
 
   .item:not([aria-current='page']):hover {
-    background-color: var(--surface-hover-quiet);
+    background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }
 

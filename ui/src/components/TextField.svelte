@@ -321,6 +321,7 @@
     background-color: transparent;
     color: var(--text);
     font: var(--type-md);
+    text-overflow: ellipsis;
     outline: none;
   }
 
@@ -358,7 +359,7 @@
   .suffix {
     flex: none;
     padding-right: var(--field-inset);
-    color: var(--text-subtle);
+    color: var(--icon-subtle);
     font: var(--type-md);
     pointer-events: none;
   }

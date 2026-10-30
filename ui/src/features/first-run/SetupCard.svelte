@@ -142,6 +142,7 @@
     margin-top: var(--setup-lead-gap);
     color: var(--text-muted);
     font: var(--type-lead);
+    text-wrap: balance;
   }
 
   .body {

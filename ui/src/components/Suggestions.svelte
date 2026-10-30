@@ -9,7 +9,8 @@
     first; none once the text is a term already. Its one mark comes only with the arrows or
     the pointer, so Enter without a mark keeps what was typed;
   - the options of a field that takes only those (the countries): the field fills it.
-  The mark is the track under ink, like the chosen row of a menu without its navy. A click or
+  The mark is the light wash of a menu's marked row. As wide as its field at least, and as
+  wide as its longest word up to a menu's most, so no word is cut beside free room. A click or
   Enter on the mark takes it; Esc closes the list. The field owns the keys (input.ts
   chipKeys) and says which row is marked; this list draws them and never takes the focus.
 -->
@@ -140,58 +141,72 @@
 
 {#if items.length > 0}
   <div
-    class="suggestions"
+    class="frame"
     class:up
-    {id}
-    role="listbox"
-    aria-label={label ?? undefined}
-    data-testid={testid ?? undefined}
     use:place={{ count: items.length, active }}
     in:menuIn={{ up }}
     out:menuOut
   >
-    {#each items as item, index (item)}
-      <button
-        type="button"
-        class="suggestion"
-        class:active={index === active}
-        id="{id}-{index}"
-        role="option"
-        aria-selected={index === active}
-        tabindex="-1"
-        data-keep-focus
-        onpointermove={() => onmark(index)}
-        onclick={() => onpick(item)}
-      >
-        {item}
-      </button>
-    {/each}
+    <div
+      class="suggestions"
+      {id}
+      role="listbox"
+      aria-label={label ?? undefined}
+      data-testid={testid ?? undefined}
+    >
+      {#each items as item, index (item)}
+        <button
+          type="button"
+          class="suggestion"
+          class:active={index === active}
+          id="{id}-{index}"
+          role="option"
+          aria-selected={index === active}
+          tabindex="-1"
+          data-keep-focus
+          onpointermove={() => onmark(index)}
+          onclick={() => onpick(item)}
+        >
+          {item}
+        </button>
+      {/each}
+    </div>
   </div>
 {/if}
 
 <style>
-  /* Under the field, over what follows, like a menu. */
-  .suggestions {
+  /* Under the field, over what follows, like a menu: the box, 4 around the rows. */
+  .frame {
     position: absolute;
     z-index: var(--z-overlay);
     top: calc(100% + var(--menu-gap));
-    right: 0;
     left: 0;
     display: flex;
     flex-direction: column;
+    width: max-content;
+    min-width: 100%;
+    max-width: var(--menu-max);
     max-height: var(--menu-max-height);
     padding: var(--menu-pad);
-    overflow-y: auto;
-    overscroll-behavior: contain;
     border: var(--border-width) solid var(--border);
     border-radius: var(--menu-radius);
     background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
   }
 
-  .suggestions.up {
+  .frame.up {
     top: auto;
     bottom: calc(100% + var(--menu-gap));
+  }
+
+  /* The rows on a plate of their own, inside the corners (Menu.svelte says why). */
+  .suggestions {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background-color: var(--surface-raised);
   }
 
   .suggestion {
@@ -211,6 +226,6 @@
 
   /* One mark: the pointer moves it as the arrows do, never a second wash of its own. */
   .suggestion.active {
-    background-color: var(--surface-track);
+    background-color: var(--quiet-hover);
   }
 </style>

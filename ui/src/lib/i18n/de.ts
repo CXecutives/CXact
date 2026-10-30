@@ -629,7 +629,7 @@ export const de = {
     loading: 'Wird geladen',
     cancel: 'Abbrechen',
     remove: 'Entfernen',
-    edit: 'Bearbeiten',
+    edit: 'Ändern',
     open: 'Öffnen',
     back: 'Zurück',
     retry: 'Erneut versuchen',
@@ -653,7 +653,7 @@ export const de = {
     trash: 'Papierkorb',
     /** The field's placeholder names what it searches. */
     search: {
-      inbox: 'Aktuelle Jobs durchsuchen',
+      inbox: 'Aktuell durchsuchen',
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
@@ -807,16 +807,16 @@ export const de = {
     empty: {
       inbox: {
         heading: 'Noch keine Jobs',
-        text: 'Mit „Jobs suchen“ durchsucht CXact die Jobportale nach Jobs, die zu deinem Profil passen.',
+        text: 'CXact durchsucht die Jobportale nach Jobs, die zu deinem Profil passen.',
       },
       running: { heading: 'Noch keine Jobs', text: 'Die Jobs erscheinen hier nach und nach.' },
       noMatch: {
         heading: 'Noch keine passenden Jobs',
-        text: 'Die letzte Suche fand keine Jobs, die zu deinem Profil passen.',
+        text: 'Prüfe dein Profil oder suche später noch einmal.',
       },
       noActive: {
         heading: 'Keine aktuellen Jobs',
-        text: 'Neue Jobs findest du mit „Jobs suchen“.',
+        text: 'Neue Jobs kommen mit der nächsten Suche.',
       },
       archive: {
         heading: 'Keine archivierten Jobs',
@@ -998,8 +998,7 @@ export const de = {
     loadFailed: 'Der Job ließ sich nicht laden.',
     /** Deleting a job of the Papierkorb for good, from its job view. */
     purgeHeading: 'Endgültig löschen?',
-    purgeText: (name: string) =>
-      `„${name}“ wird endgültig gelöscht. Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
+    purgeText: (name: string) => `„${name}“ kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
     purgeConfirm: 'Löschen',
   },
   health: {
@@ -1424,7 +1423,6 @@ export const de = {
     signOut: 'Abmelden',
     /** A portal's sign-in window (also the job view's), and the folder dialog. */
     signIn: 'Anmelden',
-    folderChange: 'Ändern',
     /** The way to the page of a portal whose alert went quiet. */
     checkAlert: 'Alert prüfen',
     /** A source of alert mails: its page where the user sets up an alert. */

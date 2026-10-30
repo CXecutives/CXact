@@ -134,4 +134,14 @@
     min-height: var(--first-row);
     margin-left: auto;
   }
+
+  /* Actions that are all away (Archiv, Papierkorb) keep no room: the row runs to its edge. */
+  .actions:not(:has(*)) {
+    display: none;
+  }
+
+  /* On a page the button's edge is the box's under it; only a title stands 2 in. */
+  .paged .actions {
+    margin-right: calc(-1 * var(--section-inset));
+  }
 </style>

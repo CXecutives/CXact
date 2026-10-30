@@ -1,5 +1,5 @@
 <!--
-  The match of a job as a ring (the round 10 draft): sm 34 with a 3 px stroke and 11.5
+  The match of a job as a ring (the round 10 draft): sm 34 with a 3 px stroke and 12
   digits (list rows), md 60 with a 5 px stroke and 20 digits (the job view), setup 48 with a
   4 px stroke (the setup's Fertig, as large as every step's mark). Hollow at every size: the solid track (--score-track), the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills

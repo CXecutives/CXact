@@ -46,7 +46,7 @@ export const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
 export const ACTIONS = {
   // Another folder for the profile (the folder dialog; the profile comes along).
   folderChange: {
-    label: (t) => t.settings.folderChange,
+    label: (t) => t.common.edit,
     icon: 'edit',
     locked: ownOnly,
   },

@@ -38,10 +38,15 @@ export function criterionKey(value: unknown): CriterionKey | null {
 }
 
 /** The words of a reason: the ad's quote for requirements, a catalog sentence otherwise. */
+/** The ad's words as a line of their own: they may be cut from the middle of a sentence. A
+ *  word with a capital inside (iOS, eBay) stays as it is. */
+const capitalised = (words: string): string =>
+  /^\p{Ll}\p{Lu}/u.test(words) ? words : words.charAt(0).toUpperCase() + words.slice(1);
+
 export function reasonText(reason: Reason): string {
   const code = reason.code;
   if (!has(t.reason.code, code) || code === 'requirement' || code === 'term') {
-    return reason.label;
+    return capitalised(reason.label);
   }
   return textOf(t.reason.code[code as ReasonCode], reason.params) || reason.label;
 }

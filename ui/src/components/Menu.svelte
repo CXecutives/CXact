@@ -102,68 +102,73 @@
     {@const lead = leads(open, listbox)}
     <div class="layer" data-menu-layer use:place={open}>
       <div
-        class="menu"
+        class="frame"
         class:listbox
-        id={menuId(open.id)}
-        role={listbox ? 'listbox' : 'menu'}
-        tabindex="-1"
-        aria-label={open.label}
-        aria-activedescendant={!listbox && menuState.active >= 0
-          ? menuItemId(open.id, menuState.active)
-          : null}
-        data-testid="menu"
+        role="presentation"
         in:menuIn|global={{ up }}
         out:menuOut
         onpointerleave={() => (menuState.active = -1)}
       >
-        {#each open.entries as entry, index (index)}
-          {#if isItem(entry)}
-            {@const choice = entry.checked !== undefined && entry.checked !== null}
-            {@const role = listbox
-              ? 'option'
-              : entry.toggle
-                ? 'menuitemcheckbox'
-                : choice
-                  ? 'menuitemradio'
-                  : 'menuitem'}
-            <button
-              type="button"
-              class="item"
-              class:active={menuState.active === index}
-              class:chosen={listbox && entry.checked === true}
-              class:danger={entry.danger === true}
-              id={menuItemId(open.id, index)}
-              {role}
-              aria-checked={role === 'menuitem' || listbox ? undefined : entry.checked === true}
-              aria-selected={listbox ? entry.checked === true : undefined}
-              aria-disabled={entry.disabled === true ? 'true' : undefined}
-              tabindex="-1"
-              data-active={menuState.active === index ? '' : undefined}
-              data-keep-focus={listbox ? '' : undefined}
-              data-testid="menu-item-{entry.id}"
-              use:tooltip={entry.disabled === true && entry.reason ? entry.reason : ''}
-              onpointerenter={() => (menuState.active = index)}
-              onclick={() => chooseEntry(index)}
-            >
-              {#if lead}
-                <span class="lead">
-                  {#if !listbox && entry.checked === true}
-                    <span class="tick"><Icon name="check" size="sm" /></span>
-                  {:else if entry.icon}
-                    <Icon name={entry.icon} size="sm" />
-                  {/if}
-                </span>
-              {/if}
-              <span class="label">{entry.label}</span>
-            </button>
-          {:else if entry.kind === 'heading'}
-            <div class="heading" role="presentation" data-testid="menu-heading">
-              {entry.label}
-            </div>
-          {:else}
-            <div class="separator" role="separator"></div>
-          {/if}
-        {/each}
+        <div
+          class="menu"
+          id={menuId(open.id)}
+          role={listbox ? 'listbox' : 'menu'}
+          tabindex="-1"
+          aria-label={open.label}
+          aria-activedescendant={!listbox && menuState.active >= 0
+            ? menuItemId(open.id, menuState.active)
+            : null}
+          data-testid="menu"
+        >
+          {#each open.entries as entry, index (index)}
+            {#if isItem(entry)}
+              {@const choice = entry.checked !== undefined && entry.checked !== null}
+              {@const role = listbox
+                ? 'option'
+                : entry.toggle
+                  ? 'menuitemcheckbox'
+                  : choice
+                    ? 'menuitemradio'
+                    : 'menuitem'}
+              <button
+                type="button"
+                class="item"
+                class:active={menuState.active === index}
+                class:chosen={listbox && entry.checked === true}
+                class:danger={entry.danger === true}
+                id={menuItemId(open.id, index)}
+                {role}
+                aria-checked={role === 'menuitem' || listbox ? undefined : entry.checked === true}
+                aria-selected={listbox ? entry.checked === true : undefined}
+                aria-disabled={entry.disabled === true ? 'true' : undefined}
+                tabindex="-1"
+                data-active={menuState.active === index ? '' : undefined}
+                data-keep-focus={listbox ? '' : undefined}
+                data-testid="menu-item-{entry.id}"
+                use:tooltip={entry.disabled === true && entry.reason ? entry.reason : ''}
+                onpointerenter={() => (menuState.active = index)}
+                onclick={() => chooseEntry(index)}
+              >
+                {#if lead}
+                  <span class="lead">
+                    {#if !listbox && entry.checked === true}
+                      <span class="tick"><Icon name="check" size="sm" /></span>
+                    {:else if entry.icon}
+                      <Icon name={entry.icon} size="sm" />
+                    {/if}
+                  </span>
+                {/if}
+                <span class="label">{entry.label}</span>
+              </button>
+            {:else if entry.kind === 'heading'}
+              <div class="heading" role="presentation" data-testid="menu-heading">
+                {entry.label}
+              </div>
+            {:else}
+              <div class="separator" role="separator"></div>
+            {/if}
+          {/each}
+        </div>
       </div>
     </div>
   {/key}
@@ -178,24 +183,34 @@
     transform: translate(var(--menu-x), var(--menu-y));
   }
 
-  .menu {
+  /* The box: its corners, edge and shadow, 4 around the rows. */
+  .frame {
     display: flex;
     flex-direction: column;
     min-width: var(--menu-min);
     max-width: var(--menu-max);
     max-height: var(--menu-height);
     padding: var(--menu-pad);
-    overflow-y: auto;
-    overscroll-behavior: contain;
     border: var(--border-width) solid var(--border);
     border-radius: var(--menu-radius);
     background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
+  }
+
+  /* The rows on a plate of their own, inside the corners: only so the words on a rounded box
+     draw as crisply as the page's (LCD antialiasing needs an opaque ground). */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background-color: var(--surface-raised);
     outline: none;
   }
 
   /* A select's list: at least as wide as its button, at most seven rows high. */
-  .menu.listbox {
+  .frame.listbox {
     min-width: var(--menu-least);
     max-height: min(var(--menu-height), var(--menu-max-height));
   }
@@ -254,7 +269,6 @@
     align-items: center;
     justify-content: center;
     width: var(--menu-icon);
-    color: var(--text-muted);
   }
 
   .tick {

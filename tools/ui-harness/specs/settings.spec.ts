@@ -547,7 +547,7 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.reset);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
-  await expect(page.getByTestId('folder-change')).toHaveText(T.settings.folderChange);
+  await expect(page.getByTestId('folder-change')).toHaveText(T.common.edit);
   for (const gone of ['backup-restore', 'logs-open']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }

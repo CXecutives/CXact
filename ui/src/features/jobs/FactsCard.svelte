@@ -6,7 +6,8 @@
   verdict's icon in the colours of the rings 6 after its value's last word (owner, 2026-10-28:
   the eye goes to what does not fit). The contact (its name, e-mail and phone one under the
   other) spans both columns and comes last, so the rows above it pair up; its e-mail writes a
-  new mail to it, the job's title its subject. A hairline under each fact starts at its label.
+  new mail to it, the job's title its subject. A hairline between the rows, none after the
+  last, like every box of rows.
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
 -->
 <script lang="ts">
@@ -78,10 +79,12 @@
 </Card>
 
 <style>
-  /* The facts 8 under the title; the card's width decides their columns. */
+  /* The first fact 12 under the title and the last 18 above the card's end, like the other
+     cards (the facts bring 8 each); the card's width decides their columns. */
   .room {
     container-type: inline-size;
     margin-top: var(--facts-top);
+    margin-bottom: calc(-1 * var(--space-8));
   }
 
   .facts {
@@ -97,8 +100,12 @@
     align-items: start;
     gap: var(--space-6);
     padding: var(--space-8) 0;
-    border-bottom: var(--border-width) solid var(--border);
     font: var(--type-md);
+  }
+
+  /* Lines only between rows. */
+  .fact:nth-child(n + 3) {
+    border-top: var(--border-width) solid var(--border);
   }
 
   .fact.wide {
@@ -163,6 +170,10 @@
   @container (width < 560px) {
     .facts {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .fact + .fact {
+      border-top: var(--border-width) solid var(--border);
     }
   }
 </style>

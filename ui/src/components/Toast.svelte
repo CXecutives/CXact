@@ -129,18 +129,21 @@
       in:toastIn
       out:toastOut
     >
-      {#if look.icon !== null}<span class="icon"><Icon name={look.icon} size="sm" /></span>{/if}
-      {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span>{/key}
-      {#if toast.action}
-        <span class="action">
-          <Button
-            variant="link"
-            label={toast.action.label}
-            testid="toast-action"
-            onclick={() => act(() => toasts.act(toast.id))}
-          />
-        </span>
-      {/if}
+      <div class="plate">
+        {#if look.icon !== null}<span class="icon"><Icon name={look.icon} size="sm" /></span>{/if}
+        {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span
+          >{/key}
+        {#if toast.action}
+          <span class="action">
+            <Button
+              variant="link"
+              label={toast.action.label}
+              testid="toast-action"
+              onclick={() => act(() => toasts.act(toast.id))}
+            />
+          </span>
+        {/if}
+      </div>
     </div>
   {/each}
 </div>
@@ -165,14 +168,11 @@
   /* As wide as its words, between the two widths (and never wider than the window). */
   .toast {
     display: flex;
-    align-items: center;
-    gap: var(--space-10);
     width: max-content;
     min-width: min(var(--toast-min), calc(100vw - 2 * var(--toast-inset)));
     max-width: min(var(--toast-max), calc(100vw - 2 * var(--toast-inset)));
     min-height: calc(var(--control-field) + 2 * (var(--toast-pad-y) + var(--border-width)));
-    overflow: hidden;
-    padding: var(--toast-pad-y) var(--toast-pad-y) var(--toast-pad-y) var(--toast-pad-start);
+    padding: var(--toast-pad-y);
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-card);
     background-color: var(--surface-raised);
@@ -180,6 +180,18 @@
     color: var(--text);
     font: var(--type-control);
     pointer-events: auto;
+  }
+
+  /* The sign, the words and the link on a plate of their own, inside the corners (Menu.svelte
+     says why). */
+  .plate {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--space-10);
+    min-width: 0;
+    padding-inline-start: calc(var(--toast-pad-start) - var(--toast-pad-y));
+    background-color: var(--surface-raised);
   }
 
   .icon,

@@ -2,14 +2,14 @@
   A large button that is one choice or one place to drop a file (the round 10 draft); focus
   draws no ring, Enter and Space press it like any button, nothing moves or shrinks.
   - a way (the setup's two ways to the profile, side by side; a click goes on at once): white
-    with a hairline, 14 round, 16 inside; its glyph in a white 36 tile with an edge (navy),
+    with a hairline, 14 round, 16 inside; its glyph in a 36 tile on the track like the step's own,
     the title 16/650 12 under it and one small muted line. Under the pointer a stronger edge
     and a soft shadow. The way the app recommends (`recommended`: from the CV) is coral: a
     coral-tinted fill, a coral edge and a coral glyph.
   - `drop`: a dashed edge on the page's ground, 14 round, the words and a quiet line centred,
     no glyph (the step's tile above says it; the uniformity audit, 2026-10-29): the CV's
     upload, a click opens the file dialog. Under the pointer, and while a file is dragged
-    over the window (`over`), the edge turns navy and the ground the track.
+    over the window (`over`), a darker edge and the light wash.
 -->
 <script lang="ts">
   import Icon, { type IconName } from './Icon.svelte';
@@ -94,11 +94,9 @@
     justify-content: center;
     width: var(--tile-md);
     height: var(--tile-md);
-    border: var(--border-width) solid var(--border);
     border-radius: var(--tile-radius-sm);
-    background-color: var(--surface);
+    background-color: var(--surface-track);
     color: var(--icon-accent);
-    transition: border-color var(--dur-base) var(--ease-out);
   }
 
   .way .label {
@@ -130,7 +128,7 @@
   }
 
   .recommended .glyph {
-    border-color: var(--recommended-edge);
+    background-color: var(--recommended-press);
     color: var(--recommended-glyph);
   }
 
@@ -157,12 +155,12 @@
   .drop:hover,
   .drop.over {
     border-color: var(--drop-edge-hover);
-    background-color: var(--surface-track);
+    background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .drop:active:hover {
-    border-color: var(--link-hover);
+    border-color: var(--control-press-edge);
     transition-duration: var(--dur-instant);
   }
 </style>

@@ -154,53 +154,55 @@
         use:formKeys={{ cancel, save: variant === 'danger' ? cancel : confirm }}
         use:focusFirst={variant}
       >
-        <h2 class="heading" id="{id}-heading">{heading}</h2>
-        {#if text}<p class="text" id="{id}-text">{text}</p>{/if}
-        {#if children}<div class="content">{@render children()}</div>{/if}
-        {#if error}
-          <div class="error">
-            <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
-          </div>
-        {/if}
-        <div class="actions">
-          {#snippet dismiss()}
-            <Button
-              variant="secondary"
-              label={cancelLabel ?? t.common.cancel}
-              disabled={busy && !stoppable}
-              isDefault={variant === 'danger'}
-              testid="dialog-cancel"
-              onclick={cancel}
-            />
-          {/snippet}
-          {#snippet alt()}
-            <Button
-              variant="secondary"
-              label={altLabel ?? ''}
-              disabled={busy}
-              testid="dialog-alt"
-              onclick={() => onalt?.()}
-            />
-          {/snippet}
-          {#snippet act()}
-            <Button
-              variant={variant === 'danger' ? 'danger' : 'primary'}
-              label={confirmLabel}
-              loading={busy}
-              isDefault={variant !== 'danger'}
-              testid="dialog-confirm"
-              onclick={confirm}
-            />
-          {/snippet}
-          {#if !actionFirst && !single && altLabel}<span class="apart">{@render alt()}</span>{/if}
-          <div class="pair">
-            {#if actionFirst}
-              {@render act()}
-              {#if !single}{#if altLabel}{@render alt()}{/if}{@render dismiss()}{/if}
-            {:else}
-              {#if !single}{@render dismiss()}{/if}
-              {@render act()}
-            {/if}
+        <div class="plate">
+          <h2 class="heading" id="{id}-heading">{heading}</h2>
+          {#if text}<p class="text" id="{id}-text">{text}</p>{/if}
+          {#if children}<div class="content">{@render children()}</div>{/if}
+          {#if error}
+            <div class="error">
+              <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
+            </div>
+          {/if}
+          <div class="actions">
+            {#snippet dismiss()}
+              <Button
+                variant="secondary"
+                label={cancelLabel ?? t.common.cancel}
+                disabled={busy && !stoppable}
+                isDefault={variant === 'danger'}
+                testid="dialog-cancel"
+                onclick={cancel}
+              />
+            {/snippet}
+            {#snippet alt()}
+              <Button
+                variant="secondary"
+                label={altLabel ?? ''}
+                disabled={busy}
+                testid="dialog-alt"
+                onclick={() => onalt?.()}
+              />
+            {/snippet}
+            {#snippet act()}
+              <Button
+                variant={variant === 'danger' ? 'danger' : 'primary'}
+                label={confirmLabel}
+                loading={busy}
+                isDefault={variant !== 'danger'}
+                testid="dialog-confirm"
+                onclick={confirm}
+              />
+            {/snippet}
+            {#if !actionFirst && !single && altLabel}<span class="apart">{@render alt()}</span>{/if}
+            <div class="pair">
+              {#if actionFirst}
+                {@render act()}
+                {#if !single}{#if altLabel}{@render alt()}{/if}{@render dismiss()}{/if}
+              {:else}
+                {#if !single}{@render dismiss()}{/if}
+                {@render act()}
+              {/if}
+            </div>
           </div>
         </div>
       </div>
@@ -235,11 +237,21 @@
     width: var(--dialog-width);
     max-width: 100%;
     max-height: 100%;
-    overflow-y: auto;
-    padding: var(--dialog-pad);
+    padding: var(--space-8);
     border-radius: var(--radius-card);
     background-color: var(--surface-raised);
     box-shadow: var(--sh-dialog);
+  }
+
+  /* The words on a plate of their own, inside the corners (Menu.svelte says why), 22 from the
+     dialog's edge with the room around it. */
+  .plate {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    padding: calc(var(--dialog-pad) - var(--space-8));
+    background-color: var(--surface-raised);
   }
 
   .heading {

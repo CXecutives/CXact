@@ -1,11 +1,11 @@
 <!--
-  The ad as text in its own structure (JobDetail.layout, what the engine reads), muted 14/23
-  with its blocks 10 apart (the round 10 draft): the lines that head a section ("Ihre
+  The ad as text in its own structure (JobDetail.layout, what the engine reads), ink 14/23
+  with its blocks 10 apart, a heading 14 under what ends and 4 above what it leads: the lines that head a section ("Ihre
   Aufgaben", "Ihr Profil", "Wünschenswert", "Rahmen", "Responsibilities") stand in ink and
   bold, the lines a bullet leads are a clean list 18 in (the bullet drawn by the list, not the
   ad's glyph), everything else stays text with its line breaks. The text is cut at the ends of every word of the list's search, each piece a
   text node or a <mark>: a word of the search stands on the search's mark colour
-  (--mark-search) while the search is on. Nothing else is marked (hovering the reader's rows
+  (--mark) while the search is on. Nothing else is marked (hovering the reader's rows
   tints nothing here, user decision 2026-09-27). No underline, no tooltip, no HTML from the
   page (text nodes and marks only). Offsets are UTF-16, as the browser counts. The text selects
   and copies like a document (`data-copy`).
@@ -158,6 +158,17 @@
     font-weight: var(--weight-semibold);
   }
 
+  /* A heading leads what follows it: nearer to that than to what ends above it. */
+  .paragraph + .heading,
+  .list + .heading {
+    margin-top: var(--space-4);
+  }
+
+  .heading + .paragraph,
+  .heading + .list {
+    margin-top: calc(-1 * var(--space-6));
+  }
+
   /* The ad's bullets as a list, 18 in; the bullets drawn by the list. */
   .list {
     display: flex;
@@ -169,7 +180,7 @@
   /* A word of the list's search, while the search is on. */
   .hit {
     border-radius: var(--radius-xs);
-    background-color: var(--mark-search);
+    background-color: var(--mark);
     color: var(--text);
   }
 </style>

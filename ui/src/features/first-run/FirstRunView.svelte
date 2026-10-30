@@ -148,6 +148,7 @@
   {:else if step === 'upload'}
     <Upload
       {problem}
+      failed={onboarding.failure !== null}
       blocked={onboarding.blocked}
       onfile={(dropped) => void onboarding.read(dropped)}
       onself={() => onboarding.byHand()}
@@ -166,6 +167,7 @@
   {#if step === 'reading'}
     <Button
       variant="secondary"
+      icon="cancel"
       label={t.common.cancel}
       testid="cv-cancel"
       onclick={() => onboarding.cancelReading()}

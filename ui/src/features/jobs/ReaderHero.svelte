@@ -108,7 +108,6 @@
       {/if}
       <div class="heads">
         <div class="line">
-          <h1 class="title" data-copy data-testid="reader-title">{heading}</h1>
           <span class="tools" data-testid="reader-tools">
             {#each tools as tool (tool.id)}
               <Button
@@ -123,6 +122,7 @@
               />
             {/each}
           </span>
+          <h1 class="title" data-copy data-testid="reader-title">{heading}</h1>
         </div>
         <p class="band {band.tone}" data-testid="band">{band.words}</p>
       </div>
@@ -168,27 +168,28 @@
     min-width: 0;
   }
 
-  /* The title and, at the end of its first line, the tools. */
+  /* The title and, at the end of its first line, the tools: they float, so they shorten only
+     that line and the lines below keep the whole width. */
   .line {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-8);
+    display: block;
   }
 
-  /* Centred on the title's first line without making it taller; their glyphs end on the
-     content's edge (the buttons 14 in from the card's). */
+  /* Centred on the title's first line without making it taller, on a whole pixel; their glyphs
+     end on the content's edge (the buttons 14 in from the card's). */
   .tools {
     display: flex;
-    flex: none;
+    float: right;
     gap: var(--space-2);
-    margin-block: calc((var(--leading-xl) - var(--control-icon)) / 2);
+    margin-block: round(
+      down,
+      calc((var(--leading-xl) - var(--control-icon)) / 2),
+      var(--border-width)
+    );
     margin-inline-end: calc(var(--card-tools-inset) - var(--card-pad-x));
-    margin-inline-start: auto;
+    margin-inline-start: var(--space-8);
   }
 
   .title {
-    flex: 0 1 auto;
-    min-width: 0;
     color: var(--text-heading);
     font: var(--type-xl);
     letter-spacing: var(--tracking-tight);

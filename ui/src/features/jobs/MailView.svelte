@@ -2,7 +2,7 @@
   An alert mail read in the app (design round 7): a mailbox other than Gmail has no web link
   to the mail, so "Alert-Mail öffnen" shows the mail CXact kept (view::alert_mail): its
   subject as the heading, sender and date in one quiet line, the text to read and copy in the
-  look of the ad's text (muted 14/23). One button closes it, Esc too.
+  look of the ad's text (ink 14/23). One button closes it, Esc too.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -44,7 +44,7 @@
   .text {
     max-height: var(--mail-view-height);
     overflow: auto;
-    color: var(--text-muted);
+    color: var(--text);
     font: var(--type-body);
     white-space: pre-wrap;
   }

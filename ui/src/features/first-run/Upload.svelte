@@ -6,8 +6,8 @@
   centred, says who reads it (an AI). While a file is dragged over the window the zone looks as under the
   pointer. Why the last evaluation filled nothing stands above it in a state box, in the two
   lines of the Profil's (CvProblem: "Der Lebenslauf wurde nicht ausgewertet." and the
-  reason); where no new try can work (the tries used up, paused, an app too old) the box
-  offers "Selbst ausfüllen" and the zone and its line go.
+  reason); before any try only the reason stands; where no new try can work (the tries used
+  up, paused, an app too old) the box offers "Selbst ausfüllen" and the zone and its line go.
 -->
 <script lang="ts">
   import StateBox from '$components/StateBox.svelte';
@@ -18,6 +18,8 @@
   interface Props {
     /** Why the CV filled nothing (null: nothing to say). */
     problem: string | null;
+    /** An evaluation was tried and failed (else `problem` says why none can start). */
+    failed: boolean;
     /** No evaluation can run now. */
     blocked: boolean;
     /** A file was dropped on the window (true), or the file dialog is to ask (false). */
@@ -25,7 +27,7 @@
     /** "Selbst ausfüllen" where no evaluation can run. */
     onself: () => void;
   }
-  let { problem, blocked, onfile, onself }: Props = $props();
+  let { problem, failed, blocked, onfile, onself }: Props = $props();
 
   let over = $state(false);
   $effect(() =>
@@ -40,8 +42,9 @@
   {#if problem !== null}
     <StateBox
       alert
-      heading={t.profile.cvFailed}
-      text={problem}
+      heading={failed ? t.profile.cvFailed : problem}
+      text={failed ? problem : null}
+      headingTestid={failed ? null : 'cv-error-text'}
       action={blocked
         ? { label: t.profile.byHand, icon: 'edit', testid: 'cv-self', onclick: onself }
         : null}
