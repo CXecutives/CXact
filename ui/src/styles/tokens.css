@@ -464,6 +464,7 @@
   /* A sparse glyph (an arrow, a plus, a ×: 14 of the 24 units) grows to a dense one's box
      (16 of them), its line kept: an arrow beside a panel reads as large. */
   --icon-sparse-scale: 1.14;
+  --icon-seam: 0.5px;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
   /* The vertical padding of a row: a list row's two lines (title and company), and a row of

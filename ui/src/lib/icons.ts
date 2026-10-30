@@ -134,3 +134,7 @@ export const SPARSE_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([
   'plus',
   'x',
 ]);
+
+/** The glyphs whose middle line runs through their centre, on the seam between two pixel rows at
+ *  an even size: Icon.svelte moves them half a pixel, so that line draws crisp at 100 %. */
+export const SEAM_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([...SPARSE_GLYPHS, 'list-filter']);

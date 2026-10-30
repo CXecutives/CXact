@@ -12,7 +12,7 @@
 <script lang="ts" module>
   import { mount, unmount, type Component } from 'svelte';
   import type { Action } from 'svelte/action';
-  import { ICONS, SPARSE_GLYPHS, type Glyph, type IconMeaning } from '$lib/icons';
+  import { ICONS, SEAM_GLYPHS, SPARSE_GLYPHS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
@@ -186,6 +186,7 @@
   class="icon {size}"
   class:filled
   class:sparse={SPARSE_GLYPHS.has(ICONS[name])}
+  class:seam={SEAM_GLYPHS.has(ICONS[name])}
   aria-hidden="true"
   use:draw={name}
 ></span>
@@ -205,6 +206,13 @@
     width: 100%;
     height: 100%;
     stroke-width: calc(var(--icon-stroke) + var(--icon-stroke-more, 0));
+  }
+
+  /* A middle line on the seam of two pixel rows would draw as two grey ones (at 100 % only). */
+  @media (resolution: 1dppx) {
+    .seam :global(svg) {
+      translate: var(--icon-seam) var(--icon-seam);
+    }
   }
 
   .sparse :global(svg) {
