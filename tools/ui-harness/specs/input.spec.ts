@@ -1563,6 +1563,45 @@ test('a text selection goes with a press beside it, like in a native text view',
   expect(await selection(page)).not.toBe('');
 });
 
+test('the sentence of a failure selects and copies, wherever it is said', async ({ page }) => {
+  /** A double click on the sentence selects a word of it (a line that is a block wider than
+   *  its words: on its first words, not on the room after them). */
+  const selects = async (sentence: Locator, atStart = false): Promise<void> => {
+    await page.evaluate(() => getSelection()?.removeAllRanges());
+    await sentence.dblclick(atStart ? { position: { x: 12, y: 8 } } : {});
+    expect(await selection(page)).not.toBe('');
+  };
+  // A job that did not load (the empty state of a failure, in the reader).
+  await failNext(page, 'job_detail');
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  await expect(page.getByTestId('reader-error')).toBeVisible();
+  await selects(page.getByTestId('reader-error').locator('.text'));
+  // A move that failed (the notice under the list's header) and an undo that failed (a toast).
+  await failNext(page, 'move_jobs');
+  await page.getByTestId('job-row-freelancermap-2802').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
+  await selects(page.getByTestId('header-error').locator('.text'));
+  await page.waitForTimeout(550);
+  await page.getByTestId('job-row-freelancermap-2803').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
+  await failNext(page, 'move_back');
+  await page.getByTestId('toast-action').click();
+  await selects(
+    page
+      .getByTestId('toast')
+      .filter({ hasText: T.error.text('db', {}) })
+      .locator('.text'),
+  );
+  // A field's message and a portal's failed switch, in Einstellungen.
+  await page.getByTestId('nav-settings').click();
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await page.getByTestId('mailbox-save').click();
+  await selects(page.getByTestId('mailbox-form').locator('[role="alert"] [data-copy]'));
+  await failNext(page, 'save_settings');
+  await (await reveal(page, page.getByTestId('toggle-enabled-hays'))).click();
+  await selects(page.getByTestId('portal-error'), true);
+});
+
 test('a press on the app menu keeps the selection its Copy needs', async ({ page }) => {
   await page.getByTestId('job-row-freelancermap-2801').click();
   const title = page.getByTestId('reader-title');

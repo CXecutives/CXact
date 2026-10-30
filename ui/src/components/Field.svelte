@@ -107,7 +107,7 @@
     {#if error}
       <p class="error" id="{control}-message" role="alert">
         <Icon name="warning" size="xs" />
-        <span>{error}</span>
+        <span data-copy>{error}</span>
       </p>
     {:else if hint}
       <p class="hint" id="{control}-message">{hint}</p>

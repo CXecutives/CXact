@@ -236,12 +236,12 @@
 {#snippet notes()}
   {#if problem}
     <div class="fold" transition:unfold>
-      <p class="line" data-testid="health-{portal.portal}">{problem}</p>
+      <p class="line" data-copy data-testid="health-{portal.portal}">{problem}</p>
     </div>
   {/if}
   {#if error}
     <div class="fold" transition:unfold>
-      <p class="line" data-testid="portal-error">{error()}</p>
+      <p class="line" data-copy data-testid="portal-error">{error()}</p>
     </div>
   {/if}
 {/snippet}

@@ -14,6 +14,7 @@
   The stack lies below a dialog's scrim: dimmed, and its undo cannot act behind the dialog.
   The check of a success draws itself once as the toast appears. A merged toast (two rows
   archived one after the other) cross-fades its sentence (100 ms) and starts its time again.
+  The sentence of a warning copies (`data-copy`).
   A press on a toast never takes the focus (like a notification of the OS); a toast the
   keyboard reached gives the focus back to where it came from when it goes by its button.
   The stack rises above a bar that sticks to the window's bottom edge (BottomBar, the
@@ -130,7 +131,12 @@
       out:toastOut
     >
       {#if look.icon !== null}<span class="icon"><Icon name={look.icon} size="sm" /></span>{/if}
-      {#key toast.text}<span class="text" data-testid="toast-text" in:fade>{toast.text}</span>{/key}
+      {#key toast.text}<span
+          class="text"
+          data-copy={toast.kind === 'warning' ? '' : undefined}
+          data-testid="toast-text"
+          in:fade>{toast.text}</span
+        >{/key}
       {#if toast.action}
         <span class="action">
           <Button
