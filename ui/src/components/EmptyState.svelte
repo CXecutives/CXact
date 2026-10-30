@@ -1,6 +1,6 @@
 <!--
-  An empty screen or section never looks dead (the round 10 draft): a raised white tile of 48
-  with a muted glyph (a failure's in the soft red), 14 under it the title (16/650) and one quiet sentence (13 muted, at
+  An empty screen or section never looks dead (the round 10 draft): the setup's tile of 48
+  (one look for a tile above a title; a failure's in the soft red), 14 under it the title (16/650) and one quiet sentence (13 muted, at
   most 300 wide), centred; at most one clear action under it (plus at most one secondary).
   Every empty state looks alike. In a list (`placement="list"`) it stands at the top of the
   full width, 56 from the top; in the job view and an empty list without its head (`center`)
@@ -52,7 +52,7 @@
 </script>
 
 <div class="empty {placement}" data-testid={testid ?? undefined}>
-  <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'raised'} />
+  <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'accent'} />
   {#if heading}<h3 class="title">{heading}</h3>{/if}
   {#if text}<p class="text" class:alone={!heading}>{text}</p>{/if}
   {#if action || secondary}

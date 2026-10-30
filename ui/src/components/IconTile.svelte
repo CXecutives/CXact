@@ -1,8 +1,7 @@
 <!-- A 48 tile holding a glyph of 24 (half the tile), 14 round. Tones: accent (the track with a
-     navy glyph: a step of the setup), raised (white with an edge and a lifted shadow: an empty
-     state) and danger (the soft red with the red glyph: a failure). -->
+     navy glyph: a step of the setup, an empty state) and danger (the soft red with the red glyph: a failure). -->
 <script lang="ts" module>
-  export type TileTone = 'accent' | 'raised' | 'danger';
+  export type TileTone = 'accent' | 'danger';
 </script>
 
 <script lang="ts">
@@ -31,14 +30,6 @@
     border-radius: var(--tile-radius-lg);
     background-color: var(--tile-bg);
     color: var(--tile-fg);
-  }
-
-  .raised {
-    --tile-bg: var(--surface);
-    --tile-fg: var(--text-muted);
-
-    border: var(--border-width) solid var(--border);
-    box-shadow: var(--sh-raised);
   }
 
   .accent {

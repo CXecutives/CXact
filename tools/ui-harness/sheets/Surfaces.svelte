@@ -63,7 +63,7 @@
   let adding = $state('');
   let switchOn = $state(true);
 
-  const TONES: readonly TileTone[] = ['accent', 'raised', 'danger'];
+  const TONES: readonly TileTone[] = ['accent', 'danger'];
   const noop = (): void => undefined;
 </script>
 
