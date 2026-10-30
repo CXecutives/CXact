@@ -1,7 +1,7 @@
 <!--
   A choice of several as checkboxes in a row, each with its label (Vertragsart; user decision
   2026-10-04; round 10): a 16 px box with a 1.5 px edge in the grey of a switch that is off
-  (3:1 on white), the chosen one navy like a switch that is on, with a white 13 px tick that
+  (3:1 on white), the chosen one coral like a switch that is on, with a white 13 px tick that
   fades in (140 ms). Under the pointer an empty box's edge darkens a step, pressed one more,
   like a switch's track; a chosen one darkens like a switch (Toggle). The last chosen option stays
   (a click does nothing, its tooltip says why: `keepOne`). Each option is a checkbox and its
@@ -89,7 +89,7 @@
       border-color var(--dur-fade) var(--ease-out);
   }
 
-  /* The tick fades in with the navy and out with it. */
+  /* The tick fades in with the coral and out with it. */
   .box :global(.icon) {
     opacity: 0;
     transition: opacity var(--dur-fade) var(--ease-out);

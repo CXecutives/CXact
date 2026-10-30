@@ -31,8 +31,8 @@
      hover the site's variant; the primary, the unread dot) and the saturated
      cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
      progress and the tooltip. What is new or here (the unread dot, the open job's edge, the
-     chosen entry's icon) is coral like what acts; a switch or a checkbox that is on is navy,
-     a state like what is chosen (harmony audit, 2026-10-28). */
+     chosen entry's icon) and a switch or a checkbox that is on are coral like what acts: the
+     orange leads, navy stays small (owner, 2026-10-30). */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   /* The track of a choice of a few (the place tabs, Arbeitsmodell): a warm light grey. */
@@ -42,7 +42,7 @@
   --p-ink: 30 10% 12%;
   --p-coral: 13 73% 63%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
-  --p-brand-glyph: 0 0% 100%; /* the icon's briefcase and lens */
+  --p-brand-glyph: 0 0% 100%; /* the icon's glyph */
   --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
   --p-coral-variant: 13 64% 56%;
   --p-coral-press: 13 62% 47%;
@@ -182,15 +182,15 @@
   --nav-active-icon: hsl(var(--p-coral));
 
   /* ------------------------------------------ navy: the data and the quiet structure */
-  /* Switches and checkboxes are navy when on (a state, like what is chosen), grey when off
-     (the same grey is the edge of an empty checkbox), the knob white; each state darkens a
-     step under the pointer and one more while the left button is down. */
+  /* Switches and checkboxes are coral when on (the steps of the primary; owner, 2026-10-30),
+     grey when off (the same grey is the edge of an empty checkbox), the knob white; each state
+     darkens a step under the pointer and one more while the left button is down. */
   --toggle-off: hsl(var(--p-toggle-off));
   --toggle-off-hover: hsl(var(--p-toggle-off-hover));
   --toggle-off-press: hsl(var(--p-toggle-off-press));
-  --toggle-on: hsl(var(--p-navy));
-  --toggle-on-hover: hsl(var(--p-navy-deep));
-  --toggle-on-press: hsl(var(--p-navy-press));
+  --toggle-on: hsl(var(--p-coral));
+  --toggle-on-hover: hsl(var(--p-coral-variant));
+  --toggle-on-press: hsl(var(--p-coral-press));
   --toggle-knob: hsl(var(--p-knob));
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
      disclosure chevron, the icon of a neutral stat tile). */
@@ -290,7 +290,7 @@
 
   /* ------------------------------------------------------------------- brand */
   /* The app icon (assets/app-icon.svg, drawn in the app by components/AppMark): its plate and
-     the Lucide briefcase with the search lens. tools/icon.py draws every icon file in these two
+     a plain ring, a placeholder until the real icon exists. tools/icon.py draws every icon file in these two
      (through tools/palette.json): the CXact orange plate and a white glyph, fixed, so the icon
      never changes with a design. */
   --brand: hsl(var(--p-brand));

@@ -80,10 +80,13 @@ const CONTRAST = [
 const AA = 4.5;
 /** Pairs below AA by a documented decision of the user (docs/PLAN.md): the primary in the
  *  cxpertise orange of the icon and cxpertise.de (--p-brand, user 2026-09-30) with its white
- *  label, as the site sets it (2.9:1 at rest, 3.6:1 under the pointer; pressed it is AA). */
+ *  label, as the site sets it (2.9:1 at rest, 3.6:1 under the pointer; pressed it is AA), and a
+ *  switch or checkbox that is on in the same orange (2.9:1 on white; user 2026-10-30; the knob's
+ *  place and the tick say the state as well). */
 const EXCEPTIONS = new Set([
   '--text-on-accent on --primary',
   '--text-on-accent on --primary-hover',
+  '--toggle-on on --surface',
 ]);
 
 /* ------------------------------------------------------------------ tokens */

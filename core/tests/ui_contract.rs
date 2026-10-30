@@ -1706,15 +1706,14 @@ fn tooltips_only_where_something_is_missing() {
     );
 }
 
-/// Coral means act, new, where you are and a required field still empty (tokens.css): each
+/// Coral means act, new, where you are, on and a required field still empty (tokens.css): each
 /// coral role is drawn only by the components of that role, so coral cannot creep into a
 /// heading, a link or a hover.
 #[test]
 fn coral_only_in_its_roles() {
-    // A switch or a checkbox that is on is navy (a state, harmony audit 2026-10-28), the run
-    // strip has no pulse and every spinner is navy (uniformity audit 2026-10-29): no coral
-    // role for any of them.
-    const ROLES: [(&str, &[&str]); 6] = [
+    // The run strip has no pulse and every spinner is navy (uniformity audit 2026-10-29): no
+    // coral role for either.
+    const ROLES: [(&str, &[&str]); 7] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // Where you are: the list's one highlight (its tint and bar, grey in the back; round
@@ -1722,6 +1721,11 @@ fn coral_only_in_its_roles() {
         ("var(--surface-selected", &["features/jobs/RowBar.svelte"]),
         ("var(--selection-", &["features/jobs/RowBar.svelte"]),
         ("var(--nav-active-icon", &["components/SideNav.svelte"]),
+        // A switch or a checkbox that is on (owner, 2026-10-30).
+        (
+            "var(--toggle-on",
+            &["components/Toggle.svelte", "components/CheckGroup.svelte"],
+        ),
         // The way the setup recommends.
         ("var(--recommended", &["components/Tile.svelte"]),
         // A required field that is still empty (design round 6): its coral edge is confined to
