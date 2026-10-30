@@ -1,8 +1,8 @@
 <!--
   One field, one layout (the round 10 draft): the label (13/540 ink, --field-label: red while
   the field is required and still empty, `[data-missing]` in tokens.css) 6 above the control,
-  then the hint (13 muted) or the error in its place (the deep red of words) under the
-  control on the same left edge. The message's id is shared with the control inside (its
+  then the hint (13 muted) or the error in its place (Notice: the sign and the red of what
+  is wrong, the one look of every refused value) under the control on the same left edge. The message's id is shared with the control inside (its
   `aria-describedby`) only while a message shows.
   The label's row holds what belongs to the field: the info symbol beside the label (`info`,
   InfoTip: only where docs/PLAN.md places one, and never with a hint) and at its right end
@@ -34,6 +34,7 @@
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
   import InfoTip from './InfoTip.svelte';
+  import Notice from './Notice.svelte';
   import { t } from '$lib/i18n/t';
 
   interface Props {
@@ -102,10 +103,7 @@
   <div class="body">
     <div class="control">{@render children()}</div>
     {#if error}
-      <p class="error" id="{control}-message" role="alert">
-        <Icon name="warning" size="xs" />
-        <span>{error}</span>
-      </p>
+      <div id="{control}-message"><Notice tone="danger" text={error} /></div>
     {:else if hint}
       <p class="hint" id="{control}-message">{hint}</p>
     {/if}
@@ -181,8 +179,8 @@
     opacity: var(--opacity-press);
   }
 
-  .hint,
-  .error {
+  .hint {
+    color: var(--text-muted);
     font: var(--type-sm);
   }
 
@@ -228,21 +226,5 @@
     .row .control {
       min-height: 0;
     }
-  }
-
-  .hint {
-    color: var(--text-muted);
-  }
-
-  /* The sign sits on the first line when a message wraps. */
-  .error {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-6);
-    color: var(--error-text);
-  }
-
-  .error > :global(:first-child) {
-    margin-top: calc((var(--leading-sm) - var(--icon-xs)) / 2);
   }
 </style>

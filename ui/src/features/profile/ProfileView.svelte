@@ -13,10 +13,10 @@
   next; a save that failed says so under the head and is tried again with the next change.
   A value that is wrong holds the save, said at its field; leaving with one asks once whether
   to drop it.
-  What is missing (decisions 2 and 3 of round 10): a required field that is still empty
-  (Wunschrollen, Länder, Kompetenzen, Sprachen) is red on the Profil page for as long as it
-  is empty; it never holds the save. The card under the head names them, its "Ergänzen" brings
-  the first into view (no caret). A new or changed form asks core what it still lacks
+  What is missing (owner, 2026-10-29): a required field that is still empty (Wunschrollen,
+  Länder, Kompetenzen, Sprachen) never holds the save and stays calm on the Profil page. The
+  card under the head names them, its "Ergänzen" brings the first up under the top bar (no
+  caret). A new or changed form asks core what it still lacks
   (`profileMissing`, a moment after the last edit), the stored profile names its own
   (`missing`).
   In the setup (`setup`) the same form without the CV and the card; its "Weiter" (`next`)
@@ -346,14 +346,14 @@
     ),
   );
   /** The setup's Weiter asked for them: from then on they are marked until they are filled
-   *  (the Profil page marks them always). */
+   *  (on the Profil page the card says it, the rows stay calm). */
   let flagged = $state(false);
   $effect(() => {
     if (flagged && missing.length === 0) flagged = false;
   });
-  const marked = $derived(!setup || flagged ? missing : []);
+  const marked = $derived(setup && flagged ? missing : []);
 
-  /** A field of the form in the middle of the view, no caret (Weiter, Ergänzen). */
+  /** A field of the form comes into view, no caret (Weiter, Ergänzen). */
   function reveal(field: string): Promise<boolean> {
     return panel?.revealField(field) ?? Promise.resolve(false);
   }
@@ -402,6 +402,7 @@
       text={t.profile.missing.fields(missing.map(labelOf))}
       action={{
         label: t.profile.missing.action,
+        icon: 'edit',
         testid: 'profile-missing-go',
         onclick: () => void reveal(missing[0]!),
       }}
@@ -480,6 +481,6 @@
   .setup {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--group-section-gap);
   }
 </style>

@@ -10,9 +10,11 @@
   no field standing open). Pressed, its row becomes the new entry's: the caller's field for the
   name (`draft`) in the names' column and the × that closes it again. No caret goes there by
   itself (owner, 2026-10-30), a press on the field does it. What the field takes becomes a row
-  above it and it stays ready for the next; left empty it turns back into the button. Under it
-  the box's last lines (`foot`: what was wrong). A new row rises in, a removed one folds away
-  while the rows below close the gap; a list that comes with its view is simply there.
+  above it and it stays ready for the next; left empty it turns back into the button. What is
+  wrong with a row (`failure`) stands under its value, without a row under the add row, in the
+  look of every refused value. A control stands 16 under the line, so a message only grows its
+  row downward. A new row rises in, a removed one folds away while the rows below close the
+  gap; a list that comes with its view is simply there.
 -->
 <script lang="ts" generics="T">
   import { tick, type Snippet } from 'svelte';
@@ -24,6 +26,7 @@
   import { settled } from '$lib/motion/settled.svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
+  import Notice from './Notice.svelte';
 
   interface Props {
     items: readonly T[];
@@ -37,8 +40,8 @@
     addLabel: string;
     /** The field for a new entry's name. */
     draft: Snippet;
-    /** The box's last lines, under the add row. */
-    foot?: Snippet | null;
+    /** What is wrong: under this item's value, or under the add row (`item` null). */
+    failure?: { item: T | null; text: string } | null;
     onremove: (item: T, index: number) => void;
     testid?: string | null;
   }
@@ -50,7 +53,7 @@
     value = null,
     addLabel,
     draft,
-    foot = null,
+    failure = null,
     onremove,
     testid = null,
   }: Props = $props();
@@ -98,9 +101,16 @@
       >
         <div class="line">
           <span class="name" data-copy>{name(item)}</span>
-          <span class="value"
-            >{#if value}{@render value(item, index)}{/if}</span
-          >
+          <span class="value">
+            {#if value}{@render value(item, index)}{/if}
+            {#if failure !== null && failure.item === item}
+              <Notice
+                tone="danger"
+                text={failure.text}
+                testid={testid ? `${testid}-error` : null}
+              />
+            {/if}
+          </span>
           <button
             type="button"
             class="remove"
@@ -150,7 +160,11 @@
       </span>
     {/if}
   </div>
-  {#if foot}{@render foot()}{/if}
+  {#if failure !== null && failure.item === null}
+    <div class="foot">
+      <Notice tone="danger" text={failure.text} testid={testid ? `${testid}-error` : null} />
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -166,35 +180,59 @@
     min-width: 0;
   }
 
-  .item + .item,
+  /* A hairline from the text between the rows, like the rows of Einstellungen. */
+  .item,
   .add {
-    border-top: var(--border-width) solid var(--border);
+    position: relative;
   }
 
-  .list:not(:has(.item)) + .add {
-    border-top: 0;
+  .item + .item::before,
+  .add::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--setting-rule-start);
+    height: var(--border-width);
+    background-color: var(--border);
+    content: '';
   }
 
-  /* A field's row: the name in the label's column, the value, the × at the end. */
+  .list:not(:has(.item)) + .add::before {
+    content: none;
+  }
+
+  /* A field's row: the name in the label's column, the value, the × at the end, all on the
+     height of a field, so a message under the value moves nothing beside it. */
   .line {
     display: grid;
     grid-template-columns: var(--profile-label-width) minmax(0, 1fr) var(--control-icon);
-    align-items: center;
+    align-items: start;
     gap: var(--space-8) var(--profile-label-gap);
     min-height: var(--form-row-min);
-    padding: var(--form-row-pad-y) var(--form-row-pad-x);
+    padding: var(--form-row-control-y) var(--form-row-pad-x);
   }
 
   .name {
+    display: flex;
+    align-items: center;
     min-width: 0;
+    min-height: var(--control-field);
     overflow-wrap: anywhere;
     font: var(--type-label);
   }
 
   .value {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--label-gap);
     min-width: 0;
+    min-height: var(--control-field);
+  }
+
+  /* Under the add row, on the rows' sides. */
+  .foot {
+    padding: 0 var(--form-row-pad-x) var(--form-row-pad-y);
   }
 
   /* The new entry's name field in the names' column, its × at the end. */
@@ -215,13 +253,15 @@
   }
 
   /* The quiet × of a row, like every quiet icon button: the subtle glyph, a wash and ink
-     under the pointer. */
+     under the pointer. Centred on the field's height, its glyph ends on the content's edge. */
   .remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: var(--control-icon);
     height: var(--control-icon);
+    margin-block: calc((var(--control-field) - var(--control-icon)) / 2);
+    margin-inline-end: calc(-1 * var(--tool-hang));
     padding: 0;
     border: 0;
     border-radius: var(--radius-control);

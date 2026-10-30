@@ -7,7 +7,7 @@
   typed as a new row (a pasted list splits at commas) and the field stays ready for the next,
   a name that is there already is not added twice. A new row rises in, a removed one folds
   away. A value that is too large (the years) or that the backend refused marks its row's
-  field and is said under the add row.
+  field and is said under it.
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
@@ -69,12 +69,6 @@
   />
 {/snippet}
 
-{#snippet foot()}
-  {#if error}
-    <p class="error" role="alert" data-testid="competence-error">{error.text}</p>
-  {/if}
-{/snippet}
-
 <ItemList
   items={named(rows, (row) => row.name)}
   key={(row) => keyOf(row.name)}
@@ -82,7 +76,7 @@
   value={years}
   addLabel={words.competenceAdd}
   {draft}
-  {foot}
+  failure={error === null ? null : { item: refused, text: error.text }}
   testid="competences"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />
@@ -91,12 +85,5 @@
   .years {
     display: flex;
     width: var(--profile-control-width);
-  }
-
-  /* Under the add row, on the rows' sides. */
-  .error {
-    padding: 0 var(--form-row-pad-x) var(--form-row-pad-y);
-    color: var(--error-text);
-    font: var(--type-sm);
   }
 </style>

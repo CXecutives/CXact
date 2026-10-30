@@ -98,11 +98,13 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
+      // The day rates count for Projekt und Interim only, the salary for the other two.
       {
         kind: 'number',
         key: 'dayRateWish',
         label: 'dayRateWish',
         unit: 'day',
+        shown: (form) => form.project,
         testid: 'profile-wish-rate',
       },
       {
@@ -111,9 +113,9 @@ export const SECTIONS: readonly Section[] = [
         label: 'dayRateMin',
         unit: 'day',
         info: 'dayRate',
+        shown: (form) => form.project,
         testid: 'profile-min-rate',
       },
-      // The salary counts for Festanstellung and Zeitarbeit only.
       {
         kind: 'number',
         key: 'minSalary',

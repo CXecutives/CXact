@@ -1,8 +1,8 @@
 <!--
   Verfügbar: one choice of a select ("Sofort", "Ab Datum"). The day of "Ab Datum" exists
-  only while it is chosen: it slides in beside the choice (122
-  wide, TT.MM.JJJJ, no calendar: typing is the way to write it), and the choice keeps its
-  width and place. It is judged when its field is left with text in it or on saving
+  only while it is chosen: it slides in beside the choice (one short control's width,
+  TT.MM.JJJJ, no calendar: typing is the way to write it), and the choice keeps its width and
+  place. It is judged when its field is left with text in it or on saving
   (`editor.judged`), never while it is typed, and a day that does not read is said by its
   Field and holds the save.
 -->
@@ -89,6 +89,6 @@
      short. */
   .date {
     display: flex;
-    width: var(--profile-date-width);
+    width: var(--profile-control-width);
   }
 </style>

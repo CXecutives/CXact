@@ -77,12 +77,6 @@
   />
 {/snippet}
 
-{#snippet foot()}
-  {#if error}
-    <p class="error" role="alert" data-testid="language-error">{error.text}</p>
-  {/if}
-{/snippet}
-
 <ItemList
   items={named(rows, (row) => row.language)}
   key={(row) => keyOf(row.language)}
@@ -90,7 +84,7 @@
   value={level}
   addLabel={words.languageAdd}
   {draft}
-  {foot}
+  failure={error === null ? null : { item: null, text: error.text }}
   testid="languages"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />
@@ -99,12 +93,5 @@
   .level {
     display: flex;
     width: var(--profile-control-width);
-  }
-
-  /* Under the add row, on the rows' sides. */
-  .error {
-    padding: 0 var(--form-row-pad-x) var(--form-row-pad-y);
-    color: var(--error-text);
-    font: var(--type-sm);
   }
 </style>

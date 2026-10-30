@@ -48,7 +48,6 @@
   --p-coral-press: 13 62% 47%;
   --p-muted-fg: 30 5% 37%;
   --p-line: 30 10% 90%;
-  --p-danger: 355.8 71.8% 47.3%;
   --p-coral-25: 13 70% 97.2%;
   --p-coral-50: 13 64% 95%;
   --p-coral-100: 13 60% 90%;
@@ -60,7 +59,6 @@
   --p-navy-press: 213 58% 20%;
   --p-navy-50: 212 50% 96.5%;
   --p-navy-150: 212 42% 89%;
-  --p-fg-subtle: 30 4% 41%;
   /* Glyphs beside text (search, chevron, info, a chip's ×) and placeholders: lighter than the
      subtle text, yet 4.5:1 on white, so a placeholder ("Keins") reads like text. */
   --p-icon-subtle: 30 4% 45%;
@@ -68,7 +66,6 @@
   --p-border-input: 30 10% 68%;
   --p-border-press: 30 10% 62%;
   --p-wash: 28 30% 24%;
-  --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-titlebar-close-glyph: 0 0% 100%;
   /* Schließen under the pointer: Windows 11's own red (#C42B1C), pressed a touch lighter
@@ -135,7 +132,7 @@
   /* -------------------------------------------------------------------- text */
   --text: hsl(var(--p-ink));
   --text-muted: hsl(var(--p-muted-fg));
-  --text-subtle: hsl(var(--p-fg-subtle));
+  --text-subtle: var(--text-muted);
   /* Headings in the brand's navy itself, not a near-black one (the page's structure reads at
      a glance; user, 2026-10-01). A label of a field or a row is ink (--text): navy text
      alone over a form reads as a link. */
@@ -230,20 +227,18 @@
   --danger-tint: hsl(var(--p-red-50));
   --danger-edge: hsl(var(--p-red-100));
   --success-soft: hsl(var(--p-green-50));
-  --danger: hsl(var(--p-danger));
-  --danger-strong: hsl(var(--p-danger-strong));
+  --danger-strong: var(--score-ring-0);
   --danger-soft: hsl(var(--p-danger-soft));
   /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
   --danger-fill: hsl(var(--p-word-red));
   --danger-fill-hover: hsl(var(--p-word-red-hover));
   --danger-fill-active: hsl(var(--p-word-red-press));
-  /* The words of a search in the list's titles: a soft yellow under the ink, translucent, so
+  /* The words of a search in the list's titles and the ad's text: a soft yellow under the
+     ink, translucent, so
      it reads on a plain, a hovered and a selected row alike. */
   --mark: hsl(var(--p-score-yellow) / 0.4);
   /* One blue in the app: info is the navy. */
   --info: hsl(var(--p-navy));
-  /* The words of the list's search where they stand (the list, the ad's text). */
-  --mark-search: hsl(var(--p-score-yellow) / 0.45);
 
   /* ------------------------------------------------------------------- score */
   /* The ring of a scored job: five colours from red to green, one per 20 points (user
@@ -573,7 +568,7 @@
   --page-top: calc(var(--head-pad) + (var(--first-row) - var(--leading-heading)) / 2);
   --ring-sm: 34px;
   --ring-sm-stroke: 3px;
-  --ring-sm-digits: 11.5px;
+  --ring-sm-digits: var(--font-xs);
   --ring-md: 60px;
   --ring-md-stroke: 5px;
   --ring-md-digits: 20px;
@@ -606,6 +601,8 @@
   --form-row-pad-y: 12px;
   --form-row-pad-x: 20px;
   --form-row-min: calc(2 * var(--form-row-pad-y) + var(--leading-md) + var(--leading-sm));
+  /* A row with a control: the control 16 under the line, so a message only grows downward. */
+  --form-row-control-y: calc((var(--form-row-min) - var(--control-field)) / 2);
   --setting-row-min: var(--form-row-min);
   --setting-rule-start: var(--form-row-pad-x);
   /* the label column of Jobdetails */
@@ -726,8 +723,10 @@
      the page's title 22 above the first section's. The page's column: --page-max with
      --page-side (16 in a narrow page), 8 under the top bar, room for the bar at its end. */
   --card-gap: var(--space-12);
-  /* The hero's quiet tools: 14 in from the card's edge, so their glyphs end on its content's. */
-  --card-tools-inset: 14px;
+  /* A quiet tool at a row's end: its glyph ends on the content's edge, the room around the
+     glyph hangs over it (the hero's tools, a list row's, the × of Kompetenzen and Sprachen). */
+  --tool-hang: calc((var(--control-icon) - var(--icon-sm)) / 2);
+  --card-tools-inset: calc(var(--card-pad-x) - var(--tool-hang));
   --group-pad-end: var(--space-20);
   --group-caption: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --group-caption-gap: var(--space-6);
@@ -736,7 +735,7 @@
   --section-head-min: var(--control-icon);
   --page-head-gap: 22px;
   --page-top-pad: var(--space-8);
-  --page-bottom: 110px;
+  --page-bottom: var(--reader-pad-end);
   /* A field: its links at the right of the label row (13/500 navy, an external glyph), an
      error under the control in the one red of what is missing or wrong. */
   --field-link: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
@@ -749,7 +748,7 @@
   /* A status word (StatusText): its dot and its word in one colour. */
   --status-success: var(--success);
   --status-warning: var(--warning);
-  --status-danger: hsl(var(--p-score-red));
+  --status-danger: var(--danger-strong);
   --status: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   /* Tiles: a glyph tile of 36 (Tile's way) 8 round, the 48 of IconTile 14; 56 is the setup
      head's slot. */
@@ -771,7 +770,7 @@
      glyph; under the pointer a navy edge and the track as its ground. */
   --drop-pad-y: 34px;
   --drop-pad-x: var(--space-20);
-  --drop-edge-hover: hsl(var(--p-navy));
+  --drop-edge-hover: var(--border-input);
   /* An empty state: its tile 14 above the title, the sentence 4 under it and at most 300
      wide; in a list 56 from the top and 28 at the sides. */
   --empty-top: 56px;
@@ -838,7 +837,7 @@
      divider 22 10 6 under its hairline, 6 below the last row, its chevron 14. */
   --list-head-tail: var(--space-2);
   --list-rows-inset: var(--space-6);
-  --list-rows-end: var(--space-20);
+  --list-rows-end: var(--reader-pad-end);
   --list-row-pad-x: var(--space-10);
   --list-row-gap: var(--space-12);
   --list-row-min: 48px;
@@ -847,7 +846,7 @@
   /* The row's tools lie over the end of its line (JobRow): the title gone under them and
      fading out over the stretch before them. */
   --list-tools: calc(2 * var(--control-icon) + var(--space-2));
-  --list-tools-end: var(--space-10);
+  --list-tools-end: calc(var(--list-rule-end) - var(--tool-hang));
   --list-tools-fade: var(--space-24);
   --list-tools-mask: linear-gradient(
     to left,
@@ -872,8 +871,9 @@
   --hero-band-gap: 3px;
   --hero-gap: 14px;
   --hero-tools-room: calc(2 * var(--control-icon) + var(--space-2));
-  /* Jobdetails: the facts 8 under the card's title, the requirements 12, the ad's text 10. */
-  --facts-top: var(--space-8);
+  /* Jobdetails: the facts 4 under the card's title (with a fact's own 8 that is 12), the
+     requirements 12, the ad's text 10. */
+  --facts-top: var(--space-4);
   --reqs-top: var(--space-12);
   --ad-top: var(--space-10);
   /* The ad's lists, this far in. */
@@ -890,7 +890,6 @@
   --profile-label-gap-narrow: var(--space-8);
   /* Every short control of the Profil one width: an amount, years, a select. */
   --profile-control-width: 170px;
-  --profile-date-width: 122px;
   /* A changed control saves this long after the last change. */
   --save-delay: 300ms;
   /* A group's title: ink, red while one of its lists is required and still empty. */

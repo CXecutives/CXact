@@ -8,8 +8,8 @@
   takes the caret by itself (owner, 2026-10-30). Mindestgehalt unfolds while Festanstellung or
   Zeitarbeit is chosen.
   A required field that is still empty carries `data-missing` on its row, a required list
-  on its group (`missing`, from ProfileView: on the Profil always, in the setup once Weiter
-  asked): the field's edge and label turn red, a list's group title (tokens.css). A value that
+  on its group (`missing`, from ProfileView: only in the setup, once Weiter asked): the field's
+  edge and label turn red, a list's group title (tokens.css). A value that
   is too large, a 0 where at least 1 counts, a day that does not read and a value the backend
   refused are said at their field in their own sentence, stay with their error until they
   change, and only they hold the save (`wrongField` names the first).
@@ -60,12 +60,19 @@
   // Text typed into a tag field of the form counts as a change.
   editor.typed.share();
 
+  const NUMBERS = SECTIONS.flatMap((section) => ('rows' in section ? section.rows : [])).filter(
+    (control) => control.kind === 'number',
+  );
   const words = $derived(t.profile.field);
   const id = $props.id();
   const form = $derived(editor.after);
   vocabulary.load();
 
   // ------------------------------------------------------------ values that hold the save
+
+  /** The number field of a value shows on the page now. */
+  const showing = (key: NumberKey): boolean =>
+    NUMBERS.find((control) => control.key === key)?.shown?.(form) ?? true;
 
   /** Day rates where 0 is nothing a job could meet: a typed 0 is said and holds the save. */
   const AT_LEAST_ONE: readonly NumberKey[] = ['dayRateWish', 'dayRateMin'];
@@ -75,6 +82,8 @@
   const invalid = $derived.by((): { field: string; row: number | null; text: string }[] => {
     const found: { field: string; row: number | null; text: string }[] = [];
     for (const [key, max] of Object.entries(NUMBER_LIMITS) as [NumberKey, number][]) {
+      // A value out of sight (the day rates without Projekt und Interim) holds nothing.
+      if (!showing(key)) continue;
       const value = form[key];
       if (value !== null && value > max) {
         found.push({ field: key, row: null, text: words.atMost(max) });
@@ -151,12 +160,12 @@
     return field === null;
   }
 
-  /** A field of the form in the middle of the view, without the caret; `false` when the field
-   *  is not on the page. */
+  /** A field of the form comes up under the top bar, so the press always moves it, without
+   *  the caret; `false` when the field is not on the page. */
   export async function revealField(field: string): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
-    scope?.scrollIntoView({ block: 'center' });
+    scope?.scrollIntoView({ block: 'start' });
     return scope !== null && scope !== undefined;
   }
 
@@ -231,17 +240,32 @@
     min-width: 0;
   }
 
-  /* The rows of a box, a hairline between them; a row that unfolds (Mindestgehalt) brings
-     its line along. */
-  .cell + .cell {
-    border-top: var(--border-width) solid var(--border);
+  /* The rows of a box, a hairline from the text between them like the rows of Einstellungen;
+     a row that unfolds (Mindestgehalt) brings its line along. */
+  .cell {
+    position: relative;
   }
 
+  .cell + .cell::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--setting-rule-start);
+    height: var(--border-width);
+    background-color: var(--border);
+    content: '';
+  }
+
+  /* The control 16 under the line: a message under it only grows the row downward. */
   .row {
     display: grid;
-    align-content: center;
     min-height: var(--form-row-min);
-    padding: var(--form-row-pad-y) var(--form-row-pad-x);
+    padding: var(--form-row-control-y) var(--form-row-pad-x);
+  }
+
+  /* A row brought into view (Ergänzen, Weiter) stands clear of the top bar's fade. */
+  .editor :global([data-field]) {
+    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
   }
 
   /* Tab and focus scrolling keep a field clear of the top bar's fade and of the bar at the

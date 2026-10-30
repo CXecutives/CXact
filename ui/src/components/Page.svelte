@@ -79,7 +79,7 @@
   .content {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--group-section-gap);
     min-width: 0;
   }
 
@@ -91,7 +91,7 @@
 
   .over {
     border-radius: var(--radius-lg);
-    outline: var(--drop-edge) dashed var(--border-strong);
+    outline: var(--drop-edge) dashed var(--drop-edge-hover);
     outline-offset: calc(-1 * var(--space-8));
   }
 </style>

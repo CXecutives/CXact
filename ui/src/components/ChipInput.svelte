@@ -14,7 +14,8 @@
   yet whose name or other names (the English one of a country) start with the text (any word of them, in any
   case, with or without accents), with the first marked; Enter or a click takes the marked
   one, leaving the field takes a single match, a chosen option leaves the list. Text that
-  matches no option stays in the field and says so (`noMatch`); text that matches only
+  matches no option stays in the field and says so (`noMatch`, the look of a refused value); text
+  that matches only
   chosen ones says nothing. A chip shows its option's name; a value that is no option (from a
   file) stays and shows as it is.
   With `suggestions` (the engine's words) a field without options suggests terms from the
@@ -40,6 +41,7 @@
   import { ChipFold } from '$lib/state/chipFold.svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
+  import Notice from './Notice.svelte';
   import Suggestions, {
     folded,
     suggest,
@@ -407,9 +409,9 @@
     />
   {/if}
   {#if nothing && noMatch}
-    <p class="none" id="{own}-none" data-testid={testid ? `${testid}-none` : undefined}>
-      {noMatch}
-    </p>
+    <div class="none" id="{own}-none">
+      <Notice tone="danger" text={noMatch} textTestid={testid ? `${testid}-none` : null} />
+    </div>
   {/if}
 </div>
 
@@ -519,7 +521,7 @@
     grid-area: 1 / 1;
     min-width: var(--chip-entry-min);
     height: 0;
-    padding: 0 var(--space-6);
+    padding: 0 var(--space-8);
     font: var(--type-md);
     white-space: pre;
     visibility: hidden;
@@ -531,7 +533,7 @@
     width: 100%;
     min-width: 0;
     height: calc(var(--chip-height) - 2 * var(--border-width));
-    padding: 0 var(--space-6);
+    padding: 0 var(--space-8);
     border: 0;
     background-color: transparent;
     color: var(--text);
@@ -543,9 +545,10 @@
     color: var(--icon-subtle);
   }
 
+  /* One line whatever the field's width: a list's name field is narrower than its words. */
   .none {
-    color: var(--text-muted);
-    font: var(--type-sm);
+    width: max-content;
+    max-width: 100cqw;
   }
 
   /* Folded: the input keeps its place in the Tab order without taking a line. */
