@@ -346,15 +346,14 @@ class JobsStore {
     );
   }
 
-  /** Aktuell, no job in any place, nothing searched or filtered and no run: the list has
-   *  nothing to head (JobsView hides its head, the empty state offers "Jobs suchen"). */
+  /** No job in this place, nothing searched or filtered and no run: the list has nothing to
+   *  head (JobsView hides its head; Aktuell's empty state offers "Jobs suchen"). */
   get bare(): boolean {
     const counts = this.overviewCounts;
     return (
       counts !== null &&
       this.status !== 'error' &&
-      this.place === 'inbox' &&
-      counts.inbox + counts.archive + counts.trash === 0 &&
+      counts[this.place] === 0 &&
       this.search.trim() === '' &&
       !this.filtered &&
       !run.active

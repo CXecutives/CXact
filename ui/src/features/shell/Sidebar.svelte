@@ -4,8 +4,9 @@
   count) and nothing at its foot. Its first entry is centred in the first row of every view,
   so its middle lies on one line with the list's tabs and the pages' first heading (y = 59 on
   Windows; the entry's top at 43, a pixel above --head-pad, because the entry is 2 px taller
-  than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) are tabs above the
-  list. The setup shows no sidebar. A press here never takes the focus (the list keeps its
+  than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) stand under Jobs, always,
+  like a mailbox's folders (owner, 2026-10-30); "Jobs" itself leads to Aktuell. The setup shows
+  no sidebar. A press here never takes the focus (the list keeps its
   keys).
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the
   user's, shell.sidebarWidth) or folded away; folded it floats over the view (`floating`,
@@ -16,7 +17,9 @@
   import SideNav, { type SideNavItem } from '$components/SideNav.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
+  import type { Place } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { VIEWS } from '$lib/views';
@@ -30,19 +33,37 @@
 
   let { floating = false, onchoose }: Props = $props();
 
-  /** The views of lib/views.ts (name, icon). */
-  const items = $derived<SideNavItem<ViewId>[]>(
+  const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
+  const isPlace = (id: ViewId | Place): id is Place => (PLACES as readonly string[]).includes(id);
+
+  /** The views of lib/views.ts (name, icon), the places under Jobs. */
+  const items = $derived<SideNavItem<ViewId | Place>[]>(
     VIEWS.map((view) => ({
       id: view.id,
       label: t.nav[view.label],
       icon: view.icon,
       testid: `nav-${view.id}`,
+      ...(view.id === 'jobs'
+        ? {
+            children: PLACES.map((place) => ({
+              id: place,
+              label: t.place[place],
+              testid: `place-${place}`,
+            })),
+          }
+        : {}),
     })),
   );
 
-  /** The view (an unsaved Profil may keep it and ask). */
-  function choose(id: ViewId): void {
-    navigation.go(id);
+  /** The entry that is current: in the Jobs view its place. */
+  const active = $derived(navigation.current === 'jobs' ? jobs.place : navigation.current);
+
+  /** A view or a place (an unsaved Profil may keep it and ask); a chosen place opens without
+   *  the search, like a folder of a mail app. */
+  function choose(id: ViewId | Place): void {
+    if (isPlace(id)) navigation.go('jobs', false, () => jobs.setPlace(id, true));
+    else if (id === 'jobs') navigation.go('jobs', false, () => jobs.setPlace('inbox'));
+    else navigation.go(id);
     onchoose?.();
   }
 
@@ -64,7 +85,7 @@
        as they are, instead of changing their colours in front of the user. -->
   {#if app.state !== null}
     <div class="nav">
-      <SideNav {items} active={navigation.current} label={t.nav.label} onselect={choose} />
+      <SideNav {items} {active} label={t.nav.label} onselect={choose} />
     </div>
   {/if}
 </aside>

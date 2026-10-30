@@ -648,13 +648,15 @@
           icon={PLACE_ICON[place]}
           heading={empty.heading}
           text={empty.text}
-          action={{
-            label: t.toolbar.searchNow,
-            icon: 'search',
-            reason: fetchBlocked(),
-            testid: 'fetch',
-            onclick: () => void run.start({ kind: 'fetch' }),
-          }}
+          action={place === 'inbox'
+            ? {
+                label: t.toolbar.searchNow,
+                icon: 'search',
+                reason: fetchBlocked(),
+                testid: 'fetch',
+                onclick: () => void run.start({ kind: 'fetch' }),
+              }
+            : null}
           secondary={empty.profile
             ? { label: t.list.openProfile, icon: 'profile', onclick: toProfile }
             : null}

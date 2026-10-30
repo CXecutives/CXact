@@ -8,6 +8,9 @@
   reduced motion). An idle entry takes the quiet wash under
   the pointer and keeps its glyph. While the window is in the back the active label and
   glyph turn ink, like Mail and Explorer.
+  An entry may hold entries of its own (`children`: the places under Jobs), always shown, like
+  a mailbox's folders: as high, no glyph, their words on the words of the entries above. The
+  pill stands on the one that is current; the entry above it keeps its plain look.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -17,6 +20,8 @@
     label: string;
     icon: IconName;
     testid?: string;
+    /** Its entries, under it (one level). */
+    children?: readonly { id: Id; label: string; testid?: string }[];
   }
 </script>
 
@@ -45,7 +50,11 @@
       bind:this={entries[item.id]}
       type="button"
       class="item"
-      aria-current={item.id === active ? 'page' : undefined}
+      aria-current={item.id === active
+        ? 'page'
+        : item.children?.some((child) => child.id === active)
+          ? 'true'
+          : undefined}
       data-testid={item.testid}
       onclick={() => onselect(item.id)}
     >
@@ -54,6 +63,18 @@
       </span>
       <span class="label">{item.label}</span>
     </button>
+    {#each item.children ?? [] as child (child.id)}
+      <button
+        bind:this={entries[child.id]}
+        type="button"
+        class="item child"
+        aria-current={child.id === active ? 'page' : undefined}
+        data-testid={child.testid}
+        onclick={() => onselect(child.id)}
+      >
+        <span class="label">{child.label}</span>
+      </button>
+    {/each}
   {/each}
 </nav>
 
@@ -93,6 +114,11 @@
     transition:
       background-color var(--dur-base) var(--ease-standard),
       color var(--dur-base) var(--ease-standard);
+  }
+
+  /* Its words on the words of the entries with a glyph. */
+  .child {
+    padding-left: calc(var(--nav-pad) + var(--icon-nav) + var(--nav-gap));
   }
 
   .item:not([aria-current='page']):hover {

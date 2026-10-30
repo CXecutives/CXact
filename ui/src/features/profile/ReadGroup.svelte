@@ -2,7 +2,7 @@
   A closed group of the Profil as it reads (round 11, "wie Malt"), in the rows of Einstellungen
   (one measure: at least 62 high, 12 20 inside, a hairline between rows): each row its name
   (14/540 ink, like a setting's name) in the label's column and its value as text (14), a tag
-  field's values as chips (text to copy). An empty value that is not required stays away; a
+  field's values joined by commas (text to copy; chips only while editing, owner 2026-10-30). An empty value that is not required stays away; a
   required one that is empty says "Noch keine Angabe", calm grey (the card under the head says
   what is missing, owner 2026-10-29); a group with nothing to read says it once. Kompetenzen
   and Sprachen read as rows too: the entry's name as the label, its value beside it. Nothing here reacts: only the group's "Bearbeiten" opens it (owner,
@@ -27,8 +27,8 @@
   const form = $derived(editor.after);
   const isMissing = (field: string): boolean => missing.includes(field);
 
-  /** What a row says: text, chips, a required value still empty, or nothing. */
-  type Read = { text: string } | { chips: string[] } | { missing: true } | null;
+  /** What a row says: text, a required value still empty, or nothing. */
+  type Read = { text: string } | { missing: true } | null;
 
   function readOf(c: Control): Read {
     switch (c.kind) {
@@ -45,7 +45,7 @@
       }
       case 'chips': {
         const values = form[c.key].filter((value) => value.trim() !== '');
-        if (values.length > 0) return { chips: values };
+        if (values.length > 0) return { text: values.join(', ') };
         return isMissing(c.key) ? { missing: true } : null;
       }
       case 'contracts':
@@ -66,7 +66,9 @@
         return { text: t.profile.minMonths[form.minMonths] };
       case 'countries':
         if (form.countries.length > 0) {
-          return { chips: form.countries.map((code) => t.profile.country[code] ?? code) };
+          return {
+            text: form.countries.map((code) => t.profile.country[code] ?? code).join(', '),
+          };
         }
         return isMissing('countries') ? { missing: true } : null;
       case 'available':
@@ -130,10 +132,6 @@
       <span class="label">{labelOf(c)}</span>
       {#if read !== null && 'missing' in read}
         <span class="none">{t.profile.read.none}</span>
-      {:else if read !== null && 'chips' in read}
-        <span class="chips">
-          {#each read.chips as chip (chip)}<span class="chip" data-copy>{chip}</span>{/each}
-        </span>
       {:else if read !== null}
         <span class="value" data-copy>{read.text}</span>
       {/if}
@@ -167,24 +165,6 @@
     min-width: 0;
     font: var(--type-md);
     overflow-wrap: anywhere;
-  }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-6);
-    min-width: 0;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--chip-height);
-    padding: 0 var(--space-8);
-    border-radius: var(--radius-inner);
-    background-color: var(--chip-surface);
-    color: var(--chip-text);
-    font: var(--type-chip);
   }
 
   /* A list's entry: its name, its value at the right. */

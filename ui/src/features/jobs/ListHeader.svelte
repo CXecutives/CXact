@@ -1,42 +1,35 @@
 <!--
-  The header of the list column (the round 10 draft), the same in the three places: the
-  view's head (PageHeader) above the list, 8 16 10, with a hairline under it once the list
-  scrolled beneath it where no day's heading sticks at the top (`line`).
-  First row: the places as tabs (Aktuell, Archiv, Papierkorb, their names only, the one
-  segmented look of the app; another place starts without the search, like a folder of a
-  mail app) and at its right end the place's one action, which keeps one width whichever
-  word it shows (Button `sizeTo`), words only (owner, 2026-10-28: the search's magnifier
-  stands right under it): while a search or a rescore goes "Abbrechen", in every place; else
-  in Aktuell "Jobs suchen" (the alert mails, then the portals), the one primary of the Jobs
-  view, with or without a mailbox,
-  locked while its way cannot run, saying why (without a usable profile what it lacks: "Ergänze
-  erst Länder und Sprachen im Profil."); in the Archiv and the Papierkorb none. A narrow column
-  puts the action under the tabs.
-  Second row, also in a place that holds nothing (decision 24: nothing jumps when the first
-  jobs come; with no job anywhere and no run JobsView shows no head at all): the search, whose placeholder names what it searches (its × clears it), and in
-  Aktuell and the Archiv the funnel "Sortieren und filtern", a 30 px square, the one control
-  of the order and the filter: its menu holds, under small headings, "Sortierung" (Nach
+  The header of the list column, the same in the three places (their names stand in the
+  sidebar, under Jobs): the view's head (PageHeader) above the list, 8 16 10, with a hairline
+  under it once the list scrolled beneath it where no day's heading sticks at the top (`line`).
+  One row: the search, whose placeholder names what it searches (its × clears it); in Aktuell
+  and the Archiv the filter "Sortieren und filtern", a 30 px square, the one control of the
+  order and the filter: its menu holds, under small headings, "Sortierung" (Nach
   Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter table (lib/state/filter.ts:
   Portal, Übereinstimmung, Neu seit, each with every value of its dimension; the portals in
   the UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter
   is on (so the menu never changes its height). The menu stays open while choosing and closes
-  on a press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable
-  profile the order and the bands are off, saying why. The Papierkorb has no funnel and no
-  filter (decision 25). While a filter is on, its parts stand as small chips under the row,
-  each with its × 10 under the search (the row unfolds and folds away, the list glides). Under them the run's
-  strip (RunLine). Under it one sentence says when a job action of the list failed (a move,
-  its undo); it goes with the next list or the next action that works. A list that did not
-  load has nothing to search: the second row goes.
+  on a press outside, Esc or the button; "Filter zurücksetzen" closes it. Without a usable
+  profile the order and the bands are off, saying why. The Papierkorb has no filter (decision
+  25). At the row's end the place's one action, which keeps one width whichever word it shows
+  (Button `sizeTo`): while a search or a rescore goes "Abbrechen", in every place; else in
+  Aktuell "Jobs suchen" (the alert mails, then the portals), the one primary of the Jobs view,
+  locked while its way cannot run, saying why (without a usable profile what it lacks:
+  "Ergänze erst Länder und Sprachen im Profil."); in the Archiv and the Papierkorb none.
+  While a filter is on, its parts stand as small chips under the row, each with its × 10 under
+  the search (the row unfolds and folds away, the list glides). Under them the run's strip
+  (RunLine). Under it one sentence says when a job action of the list failed (a move, its
+  undo); it goes with the next list or the next action that works. A list that did not load
+  has nothing to search: the row holds only the action. A place with no job and nothing
+  searched or filtered has no head at all (`jobs.bare`).
 -->
 <script lang="ts">
   import { tick } from 'svelte';
   import Button from '$components/Button.svelte';
   import Notice from '$components/Notice.svelte';
   import PageHeader from '$components/PageHeader.svelte';
-  import Segmented, { type SegmentedOption } from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
-  import type { Place } from '$lib/ipc/types';
   import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { inPortalOrder } from '$lib/portals';
@@ -55,17 +48,6 @@
   let { line = false }: Props = $props();
 
   const place = $derived(jobs.place);
-
-  const places = $derived<SegmentedOption<Place>[]>([
-    { id: 'inbox', label: t.place.inbox, testid: 'place-inbox' },
-    { id: 'archive', label: t.place.archive, testid: 'place-archive' },
-    { id: 'trash', label: t.place.trash, testid: 'place-trash' },
-  ]);
-
-  /** Another place starts without the search. */
-  function choosePlace(next: Place): void {
-    if (jobs.place !== next) jobs.setPlace(next, true);
-  }
 
   /** A search or a rescore goes: "Abbrechen" in every place. */
   const cancellable = $derived(run.searching || (run.active && run.kind === 'rescore'));
@@ -149,16 +131,34 @@
 <div class="header" data-testid="list-header" data-press-only>
   <PageHeader {line}>
     {#snippet lead()}
-      <span class="places">
-        <Segmented
-          tabs
-          options={places}
-          value={place}
-          label={t.place.tabs}
-          testid="places"
-          onchange={choosePlace}
-        />
-      </span>
+      {#if tools}
+        <div class="top">
+          <span class="search" bind:this={searchBox}>
+            <TextField
+              kind="search"
+              value={jobs.search}
+              label={t.place.search[place]}
+              placeholder={t.place.search[place]}
+              testid="search"
+              oninput={(value) => jobs.setSearch(value)}
+            />
+          </span>
+          {#if filterable}
+            <span class="funnel" bind:this={funnelBox}>
+              <Button
+                variant="secondary"
+                iconOnly
+                icon="filter"
+                label={t.toolbar.filter}
+                menu
+                expanded={funnelOpen}
+                testid="filter"
+                onclick={openFunnel}
+              />
+            </span>
+          {/if}
+        </div>
+      {/if}
     {/snippet}
     {#snippet actions()}
       {#if cancellable || place === 'inbox'}
@@ -188,34 +188,6 @@
         </span>
       {/if}
     {/snippet}
-    {#if tools}
-      <div class="top">
-        <span class="search" bind:this={searchBox}>
-          <TextField
-            kind="search"
-            value={jobs.search}
-            label={t.place.search[place]}
-            placeholder={t.place.search[place]}
-            testid="search"
-            oninput={(value) => jobs.setSearch(value)}
-          />
-        </span>
-        {#if filterable}
-          <span class="funnel" bind:this={funnelBox}>
-            <Button
-              variant="secondary"
-              iconOnly
-              icon="filter"
-              label={t.toolbar.filter}
-              menu
-              expanded={funnelOpen}
-              testid="filter"
-              onclick={openFunnel}
-            />
-          </span>
-        {/if}
-      </div>
-    {/if}
     {#if chips.length > 0}
       <div class="unfold" transition:unfold>
         <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
@@ -254,18 +226,14 @@
     flex-direction: column;
   }
 
-  .places {
-    display: flex;
-    min-width: 0;
-  }
-
-  /* The search and the funnel, 10 under the tabs, 8 apart. */
+  /* The search and the filter, 8 apart, filling the row before the action. */
   .top {
     display: flex;
+    flex: 1 1 0;
     align-items: center;
     gap: var(--space-8);
+    min-width: 0;
     min-height: var(--list-toolbar);
-    margin-top: var(--space-10);
   }
 
   .search {
@@ -279,11 +247,10 @@
     flex: none;
   }
 
-  /* The place's one action at the end of the tabs' row. */
+  /* The place's one action at the end of the row. */
   .action {
     display: flex;
     flex: none;
-    margin-left: auto;
   }
 
   .unfold {
@@ -292,7 +259,7 @@
   }
 
   /* The chosen parts of the filter, each a small button with its ×. */
-  /* 10 under the search, as the search under the tabs. */
+  /* 10 under the search. */
   .chips {
     display: flex;
     flex-wrap: wrap;

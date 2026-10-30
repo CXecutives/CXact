@@ -137,12 +137,13 @@
 </div>
 
 <style>
-  /* Muted running text (14/23), its blocks 10 apart (the round 10 draft). */
+  /* Running text in ink like the facts above it, the page's main reading (owner, 2026-10-30),
+     14/23, its blocks 10 apart. */
   .text {
     display: flex;
     flex-direction: column;
     gap: var(--space-10);
-    color: var(--text-muted);
+    color: var(--text);
     font: var(--type-body);
     overflow-wrap: anywhere;
   }

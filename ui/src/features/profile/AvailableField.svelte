@@ -83,7 +83,7 @@
     gap: var(--space-8);
   }
 
-  /* The choice keeps its width (Segmented); the day beside it, or under it where the row is
+  /* The choice keeps its width; the day beside it, or under it where the row is
      short. */
   .date {
     display: flex;

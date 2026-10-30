@@ -11,7 +11,6 @@
   import ChipInput from '$components/ChipInput.svelte';
   import InfoTip from '$components/InfoTip.svelte';
   import RadioList from '$components/RadioList.svelte';
-  import Segmented from '$components/Segmented.svelte';
   import Select from '$components/Select.svelte';
   import Suggestions from '$components/Suggestions.svelte';
   import TextField from '$components/TextField.svelte';
@@ -34,16 +33,6 @@
     { id: 'webde', label: 'WEB.DE' },
   ];
   const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((id) => ({ id, label: id }));
-  const MODES = [
-    { id: 'remote', label: 'Remote' },
-    { id: 'hybrid', label: 'Hybrid' },
-    { id: 'site', label: 'Vor Ort' },
-  ];
-  const PLACES = [
-    { id: 'inbox', label: 'Aktuell' },
-    { id: 'archive', label: 'Archiv' },
-    { id: 'trash', label: 'Papierkorb' },
-  ];
   const CONTRACTS = [
     { id: 'freelance', label: 'Freiberuflich' },
     { id: 'employed', label: 'Festanstellung' },
@@ -56,8 +45,6 @@
   ];
   const TOOLS = ['SAP S/4HANA', 'SAP FI/CO', 'SAP Analytics Cloud', 'LucaNet'];
 
-  let mode = $state('hybrid');
-  let place = $state('inbox');
   let provider = $state('gmail');
   let level = $state('B2');
   let contracts = $state(['freelance']);
@@ -232,30 +219,6 @@
       <Button variant="danger" label="Löschen" />
     </span>
     <span></span><span></span>
-
-    <span class="name">Segmente</span>
-    <span class="wide-cell"
-      ><Segmented
-        options={MODES}
-        value={mode}
-        label="Arbeitsmodell"
-        onchange={(id) => (mode = id)}
-      /></span
-    >
-    <span
-      class="wide-cell"
-      use:force={{ state: 'hover', target: '[role="radio"]:not([data-chosen])' }}
-      ><Segmented options={MODES} value="hybrid" label="Arbeitsmodell" onchange={noop} /></span
-    >
-    <span class="wide-cell"
-      ><Segmented
-        tabs
-        options={PLACES}
-        value={place}
-        label="Orte"
-        onchange={(id) => (place = id)}
-      /></span
-    >
 
     <span class="name">Textfeld</span>
     <span class="field"

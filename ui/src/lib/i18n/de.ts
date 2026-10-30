@@ -648,7 +648,6 @@ export const de = {
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
     /** The tabs above the job list (their accessible name, and each place). */
-    tabs: 'Ablage',
     inbox: 'Aktuell',
     archive: 'Archiv',
     trash: 'Papierkorb',
