@@ -91,7 +91,10 @@
             type="button"
             class="link"
             data-testid={link.testid ?? undefined}
-            onclick={() => link.onclick()}
+            onclick={(event) => {
+              // A double click opens the page once.
+              if (event.detail < 2) link.onclick();
+            }}
           >
             <Icon name={link.icon ?? 'external'} size="xs" />{link.label}
           </button>

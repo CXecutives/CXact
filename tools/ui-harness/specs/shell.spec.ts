@@ -1560,6 +1560,22 @@ test('Zurück skips a step whose job was deleted for good', async ({ page }) => 
   await expect(page.getByText(T.reader.loadFailed)).toHaveCount(0);
 });
 
+test('Zurück and Vor take both clicks of a double click, a step each', async ({ page }) => {
+  await open(page, WIN);
+  await openJob(page, 'linkedin-4100200301');
+  await openJob(page, 'freelancermap-2802');
+  await openJob(page, 'linkedin-4100200303');
+  const title = (key: string): Promise<string> => row(page, key).locator('.title').innerText();
+  await page.getByTestId('history-back').dblclick();
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(
+    await title('linkedin-4100200301'),
+  );
+  await page.getByTestId('history-forward').dblclick();
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(
+    await title('linkedin-4100200303'),
+  );
+});
+
 test('a start with a job kept open has no step to go back to', async ({ page }) => {
   await open(page, `${WIN}&open=freelancermap:2802`);
   await expect(stage(page).getByTestId('reader-title')).toBeVisible();

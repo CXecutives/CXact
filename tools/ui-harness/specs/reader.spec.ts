@@ -1396,6 +1396,46 @@ test.describe('the job view keeps true', () => {
     );
   });
 
+  test('the contact e-mail copies like the name: a drag selects it, a click writes the mail', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const mail = term(page, 'contact').getByTestId('contact-mail');
+    await mail.scrollIntoViewIfNeeded();
+    const box = (await mail.boundingBox())!;
+    const selected = (): Promise<string> =>
+      page.evaluate(() => getSelection()?.toString().trim() ?? '');
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    expect(await selected()).toBe('julia.brandt@hanseatic.example');
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+    // The app's own menu offers Copy on it, like on the name.
+    await mail.click({ button: 'right' });
+    await expect(page.getByTestId('menu-item-copy')).toBeVisible();
+    await page.keyboard.press('Escape');
+    // A click without a selection writes the mail.
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
+    });
+  });
+
+  test('a double click on a text button acts once', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    await stage(page).getByTestId('open-ad').dblclick();
+    await term(page, 'contact').getByTestId('contact-mail').dblclick();
+    await stage(page).getByTestId('reader-prompt').dblclick();
+    await expect.poll(async () => (await calls(page, 'ai_prompt')).length).toBe(1);
+    await page.waitForTimeout(300);
+    const kinds = (await calls(page, 'open_target')).map(
+      ([, args]) => (args as { target: { kind: string } }).target.kind,
+    );
+    expect(kinds).toEqual(['jobUrl', 'contactMail']);
+    expect(await calls(page, 'ai_prompt')).toHaveLength(1);
+  });
+
   test('the verdict mark beside a fact names itself under the pointer', async ({ page }) => {
     await openAt(page, 'freelancermap-2801');
     const mark = term(page, 'experience').getByTestId('verdict');

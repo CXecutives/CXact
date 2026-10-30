@@ -369,3 +369,20 @@ test('the step heading stands at one height on every step of a card', async ({ p
     expect(box.height).toBeCloseTo(tile.height, 0);
   }
 });
+
+test('a double click goes one step: the tile under the pointer after it is not pressed', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  // Loslegen: the two ways come, neither is chosen by the second click.
+  await next(page).dblclick();
+  await expectStep(page, T.firstRun.way);
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.way);
+  // The CV: the upload comes, its zone is not pressed (no file dialog, no reading).
+  await page.getByTestId('way-cv').dblclick();
+  await expectStep(page, T.firstRun.upload);
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.upload);
+  expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
+});

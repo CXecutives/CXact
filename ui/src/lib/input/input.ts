@@ -131,8 +131,9 @@ const EDITING_KEYS = new Set([
 const CONTROL_EDIT_KEYS = new Set(['a', 'e', 'b', 'f', 'n', 'p', 'd', 'h', 'k']);
 const LEFT = 0;
 const MIDDLE = 1;
-/** How far a held middle press may move and still leave the autoscroll on (a click). */
-const AUTOSCROLL_SLOP = 4;
+/** How far a held press may move and still be a click: a middle press that leaves the
+ *  autoscroll on, a left one that is no drag over the text of a control. */
+const CLICK_SLOP = 4;
 /** Back and forward (buttons 3 and 4). */
 const BACK = 3;
 const FORWARD = 4;
@@ -747,6 +748,18 @@ function onKeyDown(event: KeyboardEvent): void {
 let lastPane: HTMLElement | null = null;
 /** The copyable block the user pressed last (null: the last press was elsewhere). */
 let lastCopy: Element | null = null;
+/** Where the last left press went down. */
+let pressedAt: { x: number; y: number } | null = null;
+
+/**
+ * The click that ends a drag: the pointer moved from its press to its release (a drag over
+ * the text of a control, the contact's e-mail, selects the text and is no click on the
+ * control). A keyboard's click has no press.
+ */
+export function wasDragged(event: MouseEvent): boolean {
+  if (event.detail === 0 || pressedAt === null) return false;
+  return Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > CLICK_SLOP;
+}
 
 /**
  * Ctrl/Cmd+A beside a field selects the copyable block pressed last (the ad's text, an alert
@@ -1543,6 +1556,7 @@ export function installInput(): void {
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
         lastCopy = closest(event.target, COPY);
+        pressedAt = { x: event.clientX, y: event.clientY };
         // A press beside the selected text ends the selection, like in a native text view
         // (copyable text starts a new one; the app's menu with its Copy needs it, and a press
         // on a scrollbar is no press on the text's view).
@@ -1589,7 +1603,7 @@ export function installInput(): void {
       // Dragged with the middle button held: it scrolled while held, no mode is left.
       if (event.button === MIDDLE && autoscroll) {
         const moved = Math.hypot(event.clientX - middleAt.x, event.clientY - middleAt.y);
-        if (moved > AUTOSCROLL_SLOP) autoscroll = false;
+        if (moved > CLICK_SLOP) autoscroll = false;
       }
       // Chromium ends its autoscroll with the next press and keeps that press to itself: only
       // the release arrives, and nothing is left to end.
