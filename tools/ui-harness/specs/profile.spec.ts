@@ -1,11 +1,10 @@
 // The Profil view against the stub, in one spec: the head (the title and the CV button, which
-// opens the file dialog at once), the bar at the foot (Verwerfen and Speichern only while
-// something changed), the red marks of required fields that are still empty, the form as the
-// table of sections.ts lays it out (six groups on one page, each field a row with its label
-// beside it, the info symbols at their places), the boxes of entries, the two ways in, the
-// CV and its failures, saving (answered by a toast), discarding,
-// leaving and closing with unsaved changes, values that hold the save, refused values, a
-// quiet hint where values contradict each other. The stub's demo
+// opens the file dialog at once), the red marks of required fields that are still empty, the
+// form as the table of sections.ts lays it out (six groups on one page, each field a row with
+// its label beside it, the info symbols at their places), the rows of entries with their add
+// button, the two ways in, the CV and its failures, saving by itself, leaving and closing,
+// values that hold the save, refused values, a quiet hint where values contradict each other,
+// and that no field takes the caret by itself. The stub's demo
 // profile looks for Interim CFO roles in Germany and Austria (projects and permanent roles),
 // from 1 September 2026, and is complete.
 
@@ -31,8 +30,6 @@ async function create(page: Page, scenario = 'no-profile'): Promise<void> {
 
 /** A moment longer than a changed control waits before it saves (--save-delay). */
 const T_SAVE = 400;
-const save = (page: Page): Locator => page.getByTestId('profile-save');
-const discard = (page: Page): Locator => page.getByTestId('profile-discard');
 const chips = (field: Locator): Locator => field.locator('.chip .text');
 const field = (page: Page, name: string): Locator => page.locator(`[data-field~="${name}"]`);
 const label = (scope: Locator): Locator => scope.locator('.top .label').first();
@@ -44,8 +41,26 @@ const saves = async (page: Page): Promise<number> => (await calls(page, 'save_pr
 /** A contract type of Vertragsart (a checkbox of the choice of several). */
 const contract = (page: Page, id: 'project' | 'permanent' | 'temporary'): Locator =>
   page.getByTestId(`contract-${id}`);
-/** The bar of unsaved changes at the foot. */
-const bar = (page: Page): Locator => page.getByTestId('profile-save-bar');
+/** Chooses an option of a select of the form. */
+async function choose(page: Page, testid: string, option: string): Promise<void> {
+  await page.getByTestId(testid).click();
+  await page.getByRole('listbox').getByRole('option', { name: option, exact: true }).click();
+}
+/** Takes the caret out of the field that holds it: what it holds saves now. */
+const leaveField = (page: Page): Promise<void> =>
+  page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+/** Waits until the last save sent holds these values (the form saves by itself, often more
+ *  than once on the way). */
+async function savedWith(page: Page, values: Partial<ProfileSave['after']>): Promise<void> {
+  await expect
+    .poll(async () => {
+      const last = (await calls(page, 'save_profile')).at(-1);
+      return last ? (last[1] as { save: ProfileSave }).save.after : null;
+    })
+    .toMatchObject(values);
+}
 /** The fields marked red as required and still empty. */
 const marked = (page: Page): Promise<string[]> =>
   page
@@ -105,7 +120,7 @@ async function tooltipOf(page: Page, target: Locator): Promise<string> {
 
 // ------------------------------------------------------------------ the head
 
-test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; the bar comes only with a change', async ({
+test('the title Profil with "Aus Lebenslauf ausfüllen" on its line, nothing more with a change', async ({
   page,
 }) => {
   await profile(page);
@@ -115,11 +130,9 @@ test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; the bar com
   const cv = page.getByTestId('profile-from-cv');
   await expect(cv).toHaveText(T.profile.fromCv);
   await expect(head.getByRole('button')).toHaveCount(1);
-  // A complete profile: nothing red, no bar.
+  // A complete profile: nothing red.
   expect(await marked(page)).toEqual([]);
-  await expect(bar(page)).toHaveCount(0);
   await page.getByTestId('profile-wish-rate').fill('1.250');
-  await expect(bar(page)).toHaveCount(0);
   await expect(head.getByRole('button')).toHaveCount(1);
 });
 test('six groups on one page in their order, no info symbol at their headings', async ({
@@ -141,7 +154,7 @@ test('each field is a row of its group with its label beside it', async ({ page 
   const layout: Record<string, [string, string][]> = {
     job: [
       ['roles', words.roles],
-      ['project', words.contracts],
+      ['project permanent temporary', words.contracts],
       ['dayRateWish', words.dayRateWish],
       ['dayRateMin', words.dayRateMin],
       ['minSalary', words.minSalary],
@@ -172,7 +185,7 @@ test('each field is a row of its group with its label beside it', async ({ page 
       fields.map(([name]) => name),
     );
     for (const [name, text] of fields) {
-      await expect(label(scope.locator(`[data-field~="${name}"]`)), name).toHaveText(text);
+      await expect(label(scope.locator(`[data-field="${name}"]`)), name).toHaveText(text);
     }
   }
   // Kompetenzen and Sprachen: a group each, whose rows are the entries.
@@ -180,14 +193,16 @@ test('each field is a row of its group with its label beside it', async ({ page 
     await expect(field(page, list).getByTestId(`section-${list}`)).toBeVisible();
     await expect(field(page, list).getByTestId(list)).toBeVisible();
   }
-  // A number carries its unit inside, as wide as it needs.
+  // A number carries its unit inside; every short control has one width.
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.unit.day);
   await expect(field(page, 'minSalary')).toContainText(T.profile.unit.year);
   await expect(field(page, 'years')).toContainText(T.profile.unit.years);
   const box = (id: string): Promise<DOMRect> =>
     page.getByTestId(id).evaluate((input) => input.closest('.field')!.getBoundingClientRect());
   expect((await box('profile-wish-rate')).width).toBe(170);
-  expect((await box('profile-years')).width).toBe(130);
+  expect((await box('profile-years')).width).toBe(170);
+  const workMode = await page.getByTestId('profile-work-mode').boundingBox();
+  expect(workMode?.width).toBe(170);
   // The label in its column of 188, 24 before the control, centred on a single line.
   const name = await label(field(page, 'dayRateWish')).evaluate((node) =>
     node.getBoundingClientRect(),
@@ -232,15 +247,11 @@ test('the stored profile fills every field', async ({ page }) => {
   await expect(page.getByTestId('profile-wish-rate')).toHaveValue('1.200');
   await expect(page.getByTestId('profile-min-rate')).toHaveValue('1.100');
   await expect(page.getByTestId('profile-min-salary')).toHaveValue('');
-  await expect(
-    page.getByTestId('profile-work-mode').getByRole('radio', { checked: true }),
-  ).toHaveText(T.profile.workMode.remote);
+  await expect(page.getByTestId('profile-work-mode')).toHaveText(T.profile.workMode.remote);
   await expect(chips(countries(page))).toHaveText(['Deutschland', 'Österreich']);
   await expect(chips(page.getByTestId('profile-regions'))).toHaveText(['Hamburg']);
   await expect(page.getByTestId('profile-date')).toHaveValue('01.09.2026');
-  await expect(
-    page.getByTestId('profile-workload').getByRole('radio', { checked: true }),
-  ).toHaveText(T.profile.workload.any);
+  await expect(page.getByTestId('profile-workload')).toHaveText(T.profile.workload.any);
   await expect(page.getByTestId('profile-min-months')).toHaveText(T.profile.minMonths[6]);
   await expect(names(page, 'competences')).toHaveCount(6);
   await expect(page.getByTestId('competence-years').first()).toHaveValue('12');
@@ -264,7 +275,6 @@ test('the stored profile fills every field', async ({ page }) => {
     'Werkstudent',
     'Praktikum',
   ]);
-  await expect(save(page)).toHaveCount(0);
 });
 
 test('info symbols only at their places, their sentence on hover, keyboard focus and click', async ({
@@ -322,9 +332,8 @@ test('Vertragsart is a choice of several, one stays; the salary comes with Festa
   await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'true');
   await expect(salary).toBeVisible();
   await salary.fill('90000');
-  await save(page).click();
-  const sent = await lastSave(page);
-  expect(sent.after).toMatchObject({ permanent: false, temporary: true, minSalary: 90000 });
+  await leaveField(page);
+  await savedWith(page, { permanent: false, temporary: true, minSalary: 90000 });
   // The save's rescore says so above the groups for a moment; once it ends nothing moves
   // under the pointer.
   await runFinished(page);
@@ -333,52 +342,39 @@ test('Vertragsart is a choice of several, one stays; the salary comes with Festa
   await contract(page, 'project').click();
   await expect(contract(page, 'project')).toHaveAttribute('aria-checked', 'true');
   expect(await tooltipOf(page, contract(page, 'project'))).toBe(T.profile.field.keepOneContract);
-  await save(page).click();
-  expect((await lastSave(page)).after).toMatchObject({
-    project: true,
-    temporary: false,
-    minSalary: null,
-  });
+  await savedWith(page, { project: true, temporary: false, minSalary: null });
 });
 test('the rates; a wish under the minimum says so quietly under the wish', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-wish-rate').fill('900');
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.field.belowMinRate);
   await expect(field(page, 'dayRateMin').getByTestId('info-tip')).toHaveCount(1);
-  await expect(save(page)).not.toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('profile-wish-rate').fill('1.300');
   await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.belowMinRate);
 });
 
-test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit choose one option each', async ({
-  page,
-}) => {
+test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit are selects', async ({ page }) => {
   await profile(page);
-  const modes = page.getByTestId('profile-work-mode').getByRole('radio');
-  await expect(modes).toHaveText(Object.values(T.profile.workMode));
-  await modes.filter({ hasText: T.profile.workMode.hybrid }).click();
-  await page
-    .getByTestId('profile-available')
-    .getByRole('radio', { name: T.profile.availability.now })
-    .click();
-  const loads = page.getByTestId('profile-workload').getByRole('radio');
-  await expect(loads).toHaveText(Object.values(T.profile.workload));
-  await loads.filter({ hasText: T.profile.workload.fulltime }).click();
-  // Mindestlaufzeit, a value on a scale: a select.
+  const listed = page.getByRole('listbox').getByRole('option');
+  await page.getByTestId('profile-work-mode').click();
+  await expect(listed).toHaveText(Object.values(T.profile.workMode));
+  await listed.filter({ hasText: T.profile.workMode.hybrid }).click();
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await page.getByTestId('profile-workload').click();
+  await expect(listed).toHaveText(Object.values(T.profile.workload));
+  await listed.filter({ hasText: T.profile.workload.fulltime }).click();
   await page.getByTestId('profile-min-months').click();
-  const months = page.getByRole('listbox').getByRole('option');
-  await expect(months).toHaveText(Object.values(T.profile.minMonths));
-  await months.filter({ hasText: T.profile.minMonths[12] }).click();
+  await expect(listed).toHaveText(Object.values(T.profile.minMonths));
+  await listed.filter({ hasText: T.profile.minMonths[12] }).click();
   await expect(page.getByTestId('profile-min-months')).toHaveText(T.profile.minMonths[12]);
-  await save(page).click();
-  expect((await lastSave(page)).after).toMatchObject({
+  await savedWith(page, {
     workMode: 'hybrid',
     available: { kind: 'now' },
     workload: 'fulltime',
     minMonths: 12,
   });
 });
-test('Länder: the focus lists the others, Schweiz as a suggestion; typing narrows', async ({
+test('Länder: the focus opens no list, typing narrows, a new profile starts with Deutschland', async ({
   page,
 }) => {
   await profile(page);
@@ -391,24 +387,18 @@ test('Länder: the focus lists the others, Schweiz as a suggestion; typing narro
   // By either name, Enter takes the first match.
   await countryInput(page).fill('Belg');
   await expect(listed).toHaveText(['Belgien']);
-  await countryInput(page).fill('Schw');
+  await countryInput(page).fill('Schweiz');
   await countryInput(page).press('Enter');
   await expect(chips(countries(page))).toHaveText(['Deutschland', 'Österreich', 'Schweiz']);
   await expect(listed).toHaveCount(0);
   await countryInput(page).fill('Atlantis');
   await expect(page.getByTestId('profile-countries-none')).toHaveText(T.profile.field.countryNone);
   await countryInput(page).fill('');
-  await save(page).click();
-  expect((await lastSave(page)).after.countries).toEqual(['DE', 'AT', 'CH']);
+  await leaveField(page);
+  await savedWith(page, { countries: ['DE', 'AT', 'CH'] });
   // A new profile starts with Deutschland.
   await create(page);
   await expect(chips(countries(page))).toHaveText(['Deutschland']);
-  await countries(page).getByRole('button', { name: 'Deutschland entfernen' }).click();
-  await expect(page.getByTestId('country-pick').getByRole('button')).toHaveText([
-    'Deutschland',
-    'Österreich',
-    'Schweiz',
-  ]);
 });
 
 test('Regionen suggest the regions of Germany, Austria and Switzerland; typed text stays', async ({
@@ -436,32 +426,29 @@ test('Branchen: plain names, no star', async ({ page }) => {
   await industries.locator('input').fill('Energie');
   await industries.locator('input').press('Enter');
   await industries.getByRole('button', { name: 'Automotive entfernen' }).click();
-  await save(page).click();
-  expect((await lastSave(page)).after.industries).toEqual(['Maschinenbau', 'Chemie', 'Energie']);
+  await savedWith(page, { industries: ['Maschinenbau', 'Chemie', 'Energie'] });
 });
 
-test('Sprachen: an item list, the level a select of A1 to C2, the add row a search list', async ({
+test('Sprachen: rows, the level a select of A1 to C2, the button brings a closed list', async ({
   page,
 }) => {
   await profile(page);
   const level = (index: number) => page.getByTestId('language-level').nth(index);
-  // The focus opens the list of every language not chosen yet.
-  await (await adder(page, 'language')).focus();
+  // The field opens no list on focus; typing lists the languages not chosen yet.
+  const input = await adder(page, 'language');
   const listed = page.getByTestId('language-add-options').getByRole('option');
-  await expect(listed.first()).toBeVisible();
-  expect(await listed.allTextContents()).not.toContain('Deutsch');
-  // Typing narrows it; Enter takes the first, which starts at B2.
-  await (await adder(page, 'language')).fill('Franz');
+  await expect(listed).toHaveCount(0);
+  await input.fill('Franz');
+  await expect(listed).toHaveText(['Französisch']);
+  // Enter takes the first, which starts at B2, and the field stays ready.
   await page.keyboard.press('Enter');
   await expect(names(page, 'languages')).toHaveText(['Deutsch', 'Englisch', 'Französisch']);
-  await expect(await adder(page, 'language')).toHaveValue('');
+  await expect(input).toHaveValue('');
+  await expect(input).toBeFocused();
   await expect(level(2)).toHaveText(T.profile.level.B2);
-  // Esc closes the list of the field, a second Esc the field: its button is back.
+  // Esc on the empty field: its button is back.
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('language-add-options')).toBeHidden();
-  await expect(page.getByTestId('language-add').locator('input')).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('languages-add')).toBeFocused();
+  await expect(page.getByTestId('languages-add-button')).toBeVisible();
   // The level: a select of the levels.
   await level(2).click();
   await expect(page.getByRole('listbox').getByRole('option')).toHaveText(
@@ -475,20 +462,20 @@ test('Sprachen: an item list, the level a select of A1 to C2, the add row a sear
   await (await adder(page, 'language')).fill('Schwed');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
   // The x of a row removes it ("Entfernen").
   await page.getByTestId('languages-remove').first().click();
-  await save(page).click();
-  expect((await lastSave(page)).after.languages).toEqual([
-    { language: 'Englisch', level: 'B2' },
-    { language: 'Französisch', level: 'A2' },
-    { language: 'Schwedisch', level: 'B2' },
-  ]);
+  await savedWith(page, {
+    languages: [
+      { language: 'Englisch', level: 'B2' },
+      { language: 'Französisch', level: 'A2' },
+      { language: 'Schwedisch', level: 'B2' },
+    ],
+  });
 });
 
 // ------------------------------------------------------------------ what is still open
 
-test('a required field stays red while it is empty; Speichern saves anyway, without a success sign', async ({
+test('a required field stays red while it is empty and never holds a save; the card names it', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-incomplete');
@@ -497,19 +484,16 @@ test('a required field stays red while it is empty; Speichern saves anyway, with
   const red = await label(field(page, 'roles')).evaluate((node) => getComputedStyle(node).color);
   const ink = await label(field(page, 'tools')).evaluate((node) => getComputedStyle(node).color);
   expect(red).not.toBe(ink);
-  // A gap never holds the save.
+  // A gap never holds the save, and a save moves nothing on the page.
   await contract(page, 'temporary').click();
-  await expect(save(page)).not.toHaveAttribute('aria-disabled', 'true');
-  // Speichern: saved, a plain toast, the first red field in view, no caret in it.
-  await page.getByTestId('profile-years').focus();
-  await page.getByTestId('profile-years').evaluate((node) => node.scrollIntoView());
-  await save(page).click();
   await lastSave(page);
-  await expect(savedToast(page)).toHaveAttribute('data-kind', 'plain');
-  await expect(roles(page).locator('input')).not.toBeFocused();
-  await expect(roles(page).locator('input')).toBeInViewport();
-  await expect(save(page)).toHaveCount(0);
   expect(await marked(page)).toEqual(['roles', 'languages']);
+  // The card names them; its button brings the first into view, no caret in it.
+  const card = page.getByTestId('profile-missing');
+  await expect(card).toContainText(T.profile.missing.heading(2));
+  await page.getByTestId('profile-missing-go').click();
+  await expect(roles(page).locator('input')).toBeInViewport();
+  await expect(roles(page).locator('input')).not.toBeFocused();
   // Filled, a field is no longer red, at once.
   await roles(page).locator('input').fill('Interim CFO');
   await roles(page).locator('input').press('Enter');
@@ -517,10 +501,7 @@ test('a required field stays red while it is empty; Speichern saves anyway, with
   await (await adder(page, 'language')).fill('Deutsch');
   await page.keyboard.press('Enter');
   await expect.poll(() => marked(page)).toEqual([]);
-  // Complete, the save's toast has its success sign.
-  await save(page).click();
-  await lastSave(page);
-  await expect(savedToast(page).last()).toHaveAttribute('data-kind', 'success');
+  await expect(card).toHaveCount(0);
 });
 // ------------------------------------------------------------------ the CV
 
@@ -553,7 +534,6 @@ test('"Aus Lebenslauf ausfüllen" opens the file dialog at once; the AI works in
   await expect(names(page, 'competences').first()).toHaveText('Controlling');
   await expect(names(page, 'languages')).toHaveText(['Deutsch', 'Englisch']);
   expect(await marked(page)).toEqual([]);
-  await expect(save(page)).toHaveCount(0);
 });
 test('"Aus Lebenslauf ausfüllen" waits while a value is wrong', async ({ page }) => {
   await profile(page);
@@ -621,12 +601,14 @@ test('a CV dropped anywhere on the profile page fills it like the button', async
   );
   await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: true });
-  // While the form holds changes the drop waits like the button.
-  await page.getByTestId('profile-wish-rate').fill('1.250');
+  // While a value is wrong the drop waits like the button, and says why.
+  await page.getByTestId('profile-wish-rate').fill('0');
   await page.evaluate(() =>
     window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
   );
-  await page.waitForTimeout(100);
+  await expect(page.getByTestId('profile-save-error')).toHaveText(
+    T.profile.fixFirst(T.profile.field.dayRateWish),
+  );
   expect(await calls(page, 'profile_from_cv')).toHaveLength(1);
   // On the start page too.
   await profile(page, '&scenario=no-profile');
@@ -694,29 +676,23 @@ test('no profile: one sentence and the two ways as tiles, a click goes its way',
   await chooseWay(page, 'cv');
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
-  await expect(save(page)).toHaveCount(0);
 });
-test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once complete', async ({
+test('Selbst ausfüllen: the empty form without a caret, Esc back while untouched; a change stores it', async ({
   page,
 }) => {
   await create(page);
-  await expect(roles(page).locator('input')).toBeFocused();
+  await expect(roles(page).locator('input')).not.toBeFocused();
   // Core is asked what the new form still lacks: those fields are red at once.
   await expect.poll(async () => (await calls(page, 'profile_missing')).length).toBeGreaterThan(0);
   await expect.poll(() => marked(page)).toEqual(['roles', 'competences', 'languages']);
   await expect(names(page, 'competences')).toHaveCount(0);
   await expect(names(page, 'languages')).toHaveCount(0);
-  await expect(save(page)).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
   await chooseWay(page, 'empty');
   await fillRequired(page);
-  await expect(save(page)).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('profile-form')).toBeVisible();
-  await save(page).click();
-  const sent = await lastSave(page);
-  expect(sent.after).toMatchObject({
+  await leaveField(page);
+  await savedWith(page, {
     roles: ['Interim CFO'],
     project: true,
     permanent: false,
@@ -725,6 +701,9 @@ test('Selbst ausfüllen: the empty form, Esc back while untouched; saved once co
     competences: [{ name: 'Controlling', years: null }],
     languages: [{ language: 'Deutsch', level: 'B2' }],
   });
+  // Stored now: Esc stays.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('profile-form')).toBeVisible();
   expect(await marked(page)).toEqual([]);
 });
 
@@ -748,47 +727,66 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
 
 // ------------------------------------------------------------------ saving
 
-test('edit and discard: the form goes back to what is stored, the bar leaves', async ({ page }) => {
+test('a change saves by itself: a control a moment after it changed, a text field when it is left', async ({
+  page,
+}) => {
   await profile(page);
-  await expect(save(page)).toHaveCount(0);
-  await roles(page).locator('input').fill('Interim CTO');
-  await roles(page).locator('input').press('Enter');
-  await expect(save(page)).toBeVisible();
-  await contract(page, 'temporary').click();
-  await discard(page).click();
-  await expect(chips(roles(page))).toHaveText(['Interim CFO']);
-  await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'false');
-  await expect(save(page)).toHaveCount(0);
   expect(await saves(page)).toBe(0);
-});
-
-test('edit and save: both forms go to the backend, the toast answers', async ({ page }) => {
-  await profile(page);
-  await page.getByTestId('profile-min-rate').fill('1.250');
-  const tools = page.getByTestId('profile-tools').locator('input');
-  await tools.fill('Bilanzierung');
-  await tools.press('Enter');
-  await page
-    .getByTestId('profile-available')
-    .getByRole('radio', { name: T.profile.availability.from, exact: true })
-    .click();
-  await page.getByTestId('profile-date').fill('1.11.2026');
-  const words = page.getByTestId('profile-exclusion-words');
-  await words.getByRole('button', { name: 'Praktikum entfernen' }).click();
-  await words.locator('input').fill('Trainee');
-  await words.locator('input').press('Enter');
-  // No word about what is unsaved: Verwerfen and Speichern in the head say it.
-  await expect(discard(page)).toBeVisible();
-  await save(page).click();
-  await expect(savedToast(page)).toBeVisible();
+  // A control: nothing to press.
+  await contract(page, 'temporary').click();
+  expect((await lastSave(page)).after.temporary).toBe(true);
+  await choose(page, 'profile-work-mode', T.profile.workMode.hybrid);
+  expect((await lastSave(page)).after.workMode).toBe('hybrid');
+  // A text field: not while it is typed in, once it is left.
+  const rate = page.getByTestId('profile-min-rate');
+  await rate.fill('1.250');
+  const before = await saves(page);
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(before);
+  await leaveField(page);
   const sent = await lastSave(page);
   expect(sent.before.dayRateMin).toBe(1100);
   expect(sent.after.dayRateMin).toBe(1250);
-  expect(sent.after.tools.at(-1)).toBe('Bilanzierung');
-  expect(sent.after.available).toEqual({ kind: 'from', date: '01.11.2026' });
-  expect(sent.after.exclusionWords).toEqual(['Werkstudent', 'Trainee']);
-  await expect(save(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-date')).toHaveValue('01.11.2026');
+  // A tag field, and the day, written as the backend keeps it.
+  const tools = page.getByTestId('profile-tools').locator('input');
+  await tools.fill('Bilanzierung');
+  await tools.press('Enter');
+  await leaveField(page);
+  expect((await lastSave(page)).after.tools.at(-1)).toBe('Bilanzierung');
+  const date = page.getByTestId('profile-date');
+  await date.fill('1.11.2026');
+  await leaveField(page);
+  expect((await lastSave(page)).after.available).toEqual({ kind: 'from', date: '01.11.2026' });
+  await expect(date).toHaveValue('01.11.2026');
+  // Nothing asks and nothing is said.
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+});
+
+test('what changes while a save is under way stays and goes next', async ({ page }) => {
+  await profile(page);
+  const rate = page.getByTestId('profile-min-rate');
+  await rate.fill('1.250');
+  await leaveField(page);
+  await lastSave(page);
+  // At once, while the state is loaded again after that save.
+  const years = page.getByTestId('profile-years');
+  await years.fill('21');
+  await leaveField(page);
+  await savedWith(page, { dayRateMin: 1250, years: 21 });
+  await expect(rate).toHaveValue('1.250');
+  await expect(years).toHaveValue('21');
+});
+
+test('no field takes the caret by itself', async ({ page }) => {
+  await profile(page);
+  await expect(page.locator('input:focus, textarea:focus')).toHaveCount(0);
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await choose(page, 'profile-available', T.profile.availability.from);
+  await expect(page.getByTestId('profile-date')).toBeVisible();
+  await expect(page.locator('input:focus, textarea:focus')).toHaveCount(0);
+  await page.getByTestId('competences-add-button').click();
+  await expect(page.getByTestId('competence-add').locator('input')).toBeVisible();
+  await expect(page.locator('input:focus, textarea:focus')).toHaveCount(0);
 });
 
 test('a save says nothing unless its rescore moved jobs, and then only the parts that did', async ({
@@ -798,24 +796,21 @@ test('a save says nothing unless its rescore moved jobs, and then only the parts
   await profile(page);
   const rate = page.getByTestId('profile-wish-rate');
   await rate.fill('1.250');
-  await rate.blur();
+  await leaveField(page);
   await lastSave(page);
+  await runFinished(page);
   await page.waitForTimeout(2 * T_SAVE);
   await expect(savedToast(page)).toHaveCount(0);
-  // A first profile scores the jobs of Aktuell: the ones now high and the excluded ones.
+  // A first profile scores the jobs of Aktuell: the toast says what moved.
   await create(page);
   await fillRequired(page);
-  await save(page).click();
-  await lastSave(page);
-  const { counts } = await page.evaluate(() => window.__harness.list({ place: 'inbox' }));
-  const high = (
-    await page.evaluate(() => window.__harness.list({ place: 'inbox', bands: ['high'] }))
-  ).counts.inbox;
-  expect(high).toBeGreaterThan(0);
-  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(
-    T.profile.savedEffect(high, counts.excluded),
-  );
+  await leaveField(page);
+  await expect(savedToast(page).first()).toBeVisible();
+  await expect(savedToast(page).first().getByTestId('toast-text')).toContainText('Job');
   expect(T.profile.savedEffect(0, 1)).toBe('1 Job ausgeschlossen');
+  expect(T.profile.savedEffect(2, 1)).toBe(
+    '2 Jobs jetzt mit hoher Übereinstimmung, 1 ausgeschlossen',
+  );
 });
 
 test('a value too large is said at its field and holds the save', async ({ page }) => {
@@ -824,61 +819,67 @@ test('a value too large is said at its field and holds the save', async ({ page 
   await rate.fill('200000');
   await expect(field(page, 'dayRateMin')).toContainText(T.profile.field.atMost(100000));
   await expect(rate).toHaveAttribute('aria-invalid', 'true');
-  await expect(save(page)).toHaveAttribute('aria-disabled', 'true');
-  // The reason names the field.
-  expect(await tooltipOf(page, save(page))).toBe(T.profile.fixFirst(T.profile.field.dayRateMin));
   await rate.press('Enter');
+  await leaveField(page);
+  await page.waitForTimeout(2 * T_SAVE);
   expect(await saves(page)).toBe(0);
   // A 0 is no rate a job could meet.
   await rate.fill('0');
   await expect(field(page, 'dayRateMin')).toContainText(T.profile.field.atLeast(1));
   await rate.fill('1.300');
-  await expect(save(page)).not.toHaveAttribute('aria-disabled', 'true');
-  await save(page).click();
+  await leaveField(page);
   await expect.poll(() => saves(page)).toBe(1);
 });
 
-test('a value the backend refuses is said at its field, which gets the caret', async ({ page }) => {
+test('a value the backend refuses is said at its field, no caret, not tried again by itself', async ({
+  page,
+}) => {
   await profile(page);
-  await page.getByTestId('profile-years').fill('25');
+  const years = page.getByTestId('profile-years');
+  await years.fill('25');
   await refuseNext(page, { field: 'years', row: null, max: 70 });
-  await save(page).click();
+  await leaveField(page);
   await expect(field(page, 'years')).toContainText(T.profile.field.atMost(70));
-  await expect(page.getByTestId('profile-years')).toBeFocused();
-  await expect(save(page)).toHaveAttribute('aria-disabled', 'true');
-  // Changed, the error goes.
-  await page.getByTestId('profile-years').fill('24');
+  await expect(years).not.toBeFocused();
+  const before = await saves(page);
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(before);
+  // Changed, the error goes and it saves.
+  await years.fill('24');
+  await leaveField(page);
   await expect(field(page, 'years')).not.toContainText(T.profile.field.atMost(70));
-  await expect(save(page)).not.toHaveAttribute('aria-disabled', 'true');
+  await savedWith(page, { years: 24 });
 });
 
-test('leaving with unsaved changes asks once; cancel stays, discard leaves, save saves', async ({
+test('leaving saves first; a value that is wrong asks once, Abbrechen stays, Verwerfen leaves', async ({
   page,
 }) => {
   await profile(page);
   const wish = page.getByTestId('profile-wish-rate');
+  // A change in a field: saved on the way out, nothing asked.
   await wish.fill('1.300');
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  expect((await lastSave(page)).after.dayRateWish).toBe(1300);
+  await page.getByTestId('nav-profile').click();
+  await expect(wish).toHaveValue('1.300');
+  // A value that is wrong cannot be saved: it asks.
+  await wish.fill('0');
   await page.getByTestId('nav-jobs').click();
   const dialog = page.getByTestId('dialog-leave-profile');
   await expect(dialog).toContainText(T.profile.leaveHeading);
-  await expect(dialog.locator('p')).toHaveCount(0);
-  await expect(dialog.getByRole('button')).toHaveText(['Speichern', 'Verwerfen', 'Abbrechen']);
-  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(dialog).toContainText(T.profile.leaveWrong(T.profile.field.dayRateWish));
+  await dialog.getByRole('button', { name: T.common.cancel }).click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  await expect(wish).toHaveValue('1.300');
+  await expect(wish).toHaveValue('0');
   await page.getByTestId('nav-settings').click();
-  await dialog.getByRole('button', { name: 'Verwerfen' }).click();
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await page.getByTestId('nav-profile').click();
-  await expect(wish).toHaveValue('1.200');
-  await wish.fill('1.400');
-  await page.getByTestId('nav-settings').click();
-  await dialog.getByRole('button', { name: 'Speichern' }).click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-  expect((await lastSave(page)).after.dayRateWish).toBe(1400);
+  await expect(wish).toHaveValue('1.300');
 });
 
-test('closing the window with unsaved changes asks; without any it closes at once', async ({
+test('closing the window saves first; a value that is wrong asks; without any it closes at once', async ({
   page,
 }) => {
   await profile(page);
@@ -886,23 +887,30 @@ test('closing the window with unsaved changes asks; without any it closes at onc
   const requestClose = (): Promise<void> => page.evaluate(() => window.__harness.requestClose());
   await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(false);
   await requestClose();
-  expect(await closed()).toBe(true);
+  await expect.poll(closed).toBe(true);
   await page.evaluate(() => (window.__harness.closed = false));
-  await page.getByTestId('profile-wish-rate').fill('1.300');
-  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
+  // A value that is wrong: it asks.
+  const wish = page.getByTestId('profile-wish-rate');
+  await wish.fill('0');
   await requestClose();
   const dialog = page.getByTestId('dialog-leave-profile');
-  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
+  await dialog.getByRole('button', { name: T.common.cancel }).click();
   expect(await closed()).toBe(false);
   await requestClose();
-  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect.poll(closed).toBe(true);
+  // A change in a field: saved, then closed.
+  await profile(page);
+  await wish.fill('1.300');
+  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
+  await requestClose();
   await expect.poll(closed).toBe(true);
   expect((await lastSave(page)).after.dayRateWish).toBe(1300);
 });
 
 // ------------------------------------------------------------------ keys
 
-test('Enter in a field saves the form; lists and chips keep their Enter', async ({ page }) => {
+test('Enter in a field saves at once; lists and chips keep their Enter', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-min-rate').press('Enter');
   expect(await saves(page)).toBe(0);
@@ -913,64 +921,85 @@ test('Enter in a field saves the form; lists and chips keep their Enter', async 
     const before = await saves(page);
     await page.getByTestId(id).fill(value);
     await page.getByTestId(id).press('Enter');
-    await expect.poll(() => saves(page), id).toBe(before + 1);
-    await expect(save(page)).toHaveCount(0);
+    await expect.poll(() => saves(page), id).toBeGreaterThan(before);
   }
   // The day: Enter judges it while it does not read.
   const date = page.getByTestId('profile-date');
   await date.fill('31.02.2026');
   await date.press('Enter');
   await expect(field(page, 'available')).toContainText(T.profile.field.dateImpossible);
-  expect(await saves(page)).toBe(2);
   await date.fill('01.12.2026');
   await date.press('Enter');
-  await expect.poll(() => saves(page)).toBe(3);
-  // A tag field and an item list's add row take what was typed.
+  await savedWith(page, { available: { kind: 'from', date: '01.12.2026' } });
+  // A tag field and a list's name field take what was typed.
   const tools = page.getByTestId('profile-tools').locator('input');
   await tools.fill('Miro');
   await tools.press('Enter');
   await expect(chips(page.getByTestId('profile-tools')).last()).toHaveText('Miro');
-  await (await adder(page, 'competence')).fill('Treasury');
-  await (await adder(page, 'competence')).press('Enter');
+  const name = await adder(page, 'competence');
+  await name.fill('Treasury');
+  await name.press('Enter');
   await expect(names(page, 'competences').last()).toHaveText('Treasury');
-  expect(await saves(page)).toBe(3);
 });
 
-test('Kompetenzen: an item list; the add row suggests, a name comes once, the x removes', async ({
+test('Kompetenzen: rows; the button brings a name field that suggests, a name comes once, the x removes', async ({
   page,
 }) => {
   await profile(page);
   const list = names(page, 'competences');
   await expect(list).toHaveCount(6);
-  // Typed and Enter: a new row at the end with no years yet, the add row empty again.
+  // The button, no field standing open; pressed, its row is the field, the x takes it back.
+  const button = page.getByTestId('competences-add-button');
+  const input = page.getByTestId('competence-add').locator('input');
+  await expect(button).toHaveText(T.profile.field.competenceAdd);
+  await expect(input).toHaveCount(0);
+  await button.click();
+  await expect(button).toHaveCount(0);
+  await expect(input).toHaveAttribute('placeholder', T.profile.field.competence);
+  await page.getByTestId('competences-draft-close').click();
+  await expect(input).toHaveCount(0);
+  await expect(button).toBeVisible();
+  // Typed and Enter: a new row at the end with no years yet, the field empty again.
   await (await adder(page, 'competence')).fill('Konzernabschluss');
-  await (await adder(page, 'competence')).press('Enter');
+  await input.press('Enter');
   await expect(list).toHaveCount(7);
   await expect(list.last()).toHaveText('Konzernabschluss');
-  await expect(await adder(page, 'competence')).toHaveValue('');
+  await expect(input).toHaveValue('');
   await expect(page.getByTestId('competence-years').last()).toHaveValue('');
   // A name that is there already (in any case) comes once.
-  await (await adder(page, 'competence')).fill('controlling');
-  await (await adder(page, 'competence')).press('Enter');
+  await input.fill('controlling');
+  await input.press('Enter');
   await expect(list).toHaveCount(7);
   // The engine's words from the first character; a click takes one.
-  await (await adder(page, 'competence')).fill('T');
+  await input.fill('T');
   const hints = page.getByTestId('competence-add-suggestions').getByRole('option');
   await expect(hints.first()).toBeVisible();
   const term = (await hints.first().textContent())!.trim();
   await hints.first().click();
   await expect(list.last()).toHaveText(term);
+  // Left empty, the field turns back into the button.
+  await leaveField(page);
+  await expect(input).toHaveCount(0);
+  await expect(button).toBeVisible();
   // The years of a row, and its x ("Entfernen").
   await page.getByTestId('competence-years').nth(6).fill('4');
   const remove = page.getByTestId('competences-remove').first();
   expect(await tooltipOf(page, remove)).toBe(T.common.remove);
   await remove.click();
   await expect(list.first()).toHaveText('Controlling');
-  await save(page).click();
+  await expect
+    .poll(async () => {
+      const last = (await calls(page, 'save_profile')).at(-1);
+      return (last?.[1] as { save: ProfileSave } | undefined)?.save.after.competences;
+    })
+    .toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Konzernabschluss', years: 4 }),
+        expect.objectContaining({ name: term }),
+      ]),
+    );
   const sent = (await lastSave(page)).after.competences;
   expect(sent.map((row) => row.name)).not.toContain('Interim Management');
-  expect(sent.find((row) => row.name === 'Konzernabschluss')?.years).toBe(4);
-  expect(sent.at(-1)?.name).toBe(term);
 });
 
 // ------------------------------------------------------------------ numbers and the day
@@ -987,35 +1016,33 @@ test('money is grouped like everywhere; cents count whole, and say so', async ({
   await page.getByTestId('profile-years').focus();
   await expect(rate).toHaveValue('950');
   await expect(page.getByTestId('profile-min-rate-rounded')).toHaveText(T.profile.field.rounded);
-  await save(page).click();
-  expect((await lastSave(page)).after.dayRateMin).toBe(950);
+  await leaveField(page);
+  await savedWith(page, { dayRateMin: 950 });
 });
 
-test('the day exists only for "Ab Datum", gets the caret and is judged when left or saved', async ({
+test('the day exists only for "Ab Datum", takes no caret and is judged when left', async ({
   page,
 }) => {
   await profile(page);
-  const choices = page.getByTestId('profile-available');
   const date = page.getByTestId('profile-date');
   const day = field(page, 'available');
-  await choices.getByRole('radio', { name: T.profile.availability.now }).click();
+  await choose(page, 'profile-available', T.profile.availability.now);
   await expect(date).toHaveCount(0);
-  await choices.getByRole('radio', { name: T.profile.availability.from, exact: true }).click();
-  await expect(date).toBeFocused();
+  await choose(page, 'profile-available', T.profile.availability.from);
+  await expect(date).toBeVisible();
+  await expect(date).not.toBeFocused();
   await date.fill('1.11.202');
   await expect(day).not.toContainText(T.profile.field.dateInvalid);
   await page.getByTestId('profile-years').focus();
   await expect(day).toContainText(T.profile.field.dateInvalid);
   await expect(date).toHaveAttribute('aria-invalid', 'true');
-  await expect(save(page)).toHaveAttribute('aria-disabled', 'true');
   await date.fill('20.11.2026');
   await page.getByTestId('profile-years').focus();
   await expect(day).not.toContainText(T.profile.field.dateInvalid);
   // Typed only: no calendar beside it.
   await expect(date).toHaveAttribute('placeholder', T.profile.field.datePlaceholder);
-  await expect(day.getByRole('button')).toHaveCount(0);
-  await save(page).click();
-  expect((await lastSave(page)).after.available).toEqual({ kind: 'from', date: '20.11.2026' });
+  await leaveField(page);
+  await savedWith(page, { available: { kind: 'from', date: '20.11.2026' } });
 });
 
 // ------------------------------------------------------------------ baselines

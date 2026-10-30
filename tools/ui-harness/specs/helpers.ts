@@ -279,8 +279,9 @@ export async function chooseWay(page: Page, way: 'empty' | 'cv'): Promise<void> 
  *  button ("Kompetenz hinzufügen") opens it where it is not open yet. */
 export async function adder(page: Page, list: 'competence' | 'language'): Promise<Locator> {
   const input = page.getByTestId(`${list}-add`).locator('input');
-  if (!(await input.isVisible())) await page.getByTestId(`${list}s-add`).click();
-  await expect(input).toBeFocused();
+  if (!(await input.isVisible())) await page.getByTestId(`${list}s-add-button`).click();
+  // No caret goes there by itself: a press on the field does it.
+  await input.click();
   return input;
 }
 
