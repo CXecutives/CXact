@@ -30,8 +30,10 @@
   also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
   while the portal is on, and "Anmelden" then only lets the fetch use it (no sign-in window);
   while the portal is off the row keeps "Abmelden" until the sign-in is gone. A run holds the
-  sign-in (both buttons wait with its reason). A switch moves at once; a failure puts it back
-  and says why in the row. The switch itself is the answer: no toast.
+  sign-in (both buttons wait with its reason), except while it waits for this portal's own
+  sign-in: the button is the way to give it. A switch moves at once, and the calls that go
+  with a portal switched off fade out together, none jumping into the room of another; a
+  failure puts it back and says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
   import Button, { type ButtonFace } from '$components/Button.svelte';
@@ -156,7 +158,7 @@
   /** Where the portal offers a sign-in, also for a stored sign-in of a portal that is off
    *  (its Abmelden stays until it is gone). */
   const loginShown = $derived(portal.login === 'optional' && !idle && (portal.enabled || stored));
-  const loginLocked = $derived(signInLocked());
+  const loginLocked = $derived(signInLocked(portal.portal));
 
   /** The one call about its alert, in one place: the mail that came without jobs, the alert
    *  that went quiet, or a new alert (a portal of alert mails); none while the portal is
@@ -234,12 +236,12 @@
 {#snippet notes()}
   {#if problem}
     <div class="fold" transition:unfold>
-      <p class="line" data-testid="health-{portal.portal}">{problem}</p>
+      <p class="line" data-copy data-testid="health-{portal.portal}">{problem}</p>
     </div>
   {/if}
   {#if error}
     <div class="fold" transition:unfold>
-      <p class="line" data-testid="portal-error">{error()}</p>
+      <p class="line" data-copy data-testid="portal-error">{error()}</p>
     </div>
   {/if}
 {/snippet}
@@ -298,14 +300,16 @@
     </span>
   {/if}
   {#if alert}
-    <Button
-      variant="secondary"
-      icon={alert.icon}
-      label={alert.label}
-      sizeTo={ALERT_FACES}
-      testid="{alert.id}-{portal.portal}"
-      onclick={alert.onclick}
-    />
+    <span class="call" transition:fade>
+      <Button
+        variant="secondary"
+        icon={alert.icon}
+        label={alert.label}
+        sizeTo={ALERT_FACES}
+        testid="{alert.id}-{portal.portal}"
+        onclick={alert.onclick}
+      />
+    </span>
   {/if}
 </SettingRow>
 
@@ -326,8 +330,10 @@
     font: var(--type-sm);
   }
 
-  /* The sign-in fades in and out on its own, before "Alert anlegen". */
-  .sign {
+  /* The sign-in and the alert's call fade in and out together, each in its place: the one that
+     stays never jumps over the room of the one that goes while it fades. */
+  .sign,
+  .call {
     display: flex;
   }
 </style>

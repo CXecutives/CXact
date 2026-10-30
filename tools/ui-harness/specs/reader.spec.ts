@@ -707,7 +707,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, '']);
   });
 
-  test('no verdict icon has a tooltip, in the Jobdetails and among the Anforderungen', async ({
+  test('the Anforderungen have no tooltip on their icons; the marks of the Jobdetails name their verdict', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 900 });
@@ -725,12 +725,14 @@ test.describe('Jobdetails', () => {
         await page.waitForTimeout(700);
         await expect(page.getByRole('tooltip')).toHaveCount(0);
       }
-      // The Jobdetails' icons neither (user, 2026-09-28): their place says enough.
+      // The Jobdetails' marks show a glyph and no words: under the pointer each says its verdict,
+      // in the word the requirements are grouped by (their place says nothing of it).
       const icon = icons.first();
       await icon.scrollIntoViewIfNeeded();
       await icon.hover();
-      await page.waitForTimeout(700);
-      await expect(page.getByRole('tooltip')).toHaveCount(0);
+      await expect(page.getByRole('tooltip')).toHaveText(
+        (await icon.getAttribute('aria-label')) ?? '',
+      );
       await page.mouse.move(0, 0);
     }
   });
@@ -1334,5 +1336,126 @@ test.describe('around the reader', () => {
       T.list.empty.trash.heading,
     );
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
+  });
+});
+
+/* ============================================================== what the audit found */
+
+test.describe('the job view keeps true', () => {
+  /** The title a row shows. */
+  const titleOf = (page: Page, key: string): Promise<string> =>
+    row(page, key).locator('.title').innerText();
+
+  test('a preview that is being loaded says so, like a missing ad', async ({ page }) => {
+    await openAt(page, 'freelance-900411', `${WIN}&tick=400`);
+    // Signed in, the preview can be loaded.
+    await stage(page).getByTestId('reader-sign-in').click();
+    const load = stage(page).getByTestId('load-ad');
+    await load.click();
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.state.loading);
+    await expect(load).toHaveCount(0);
+    await runFinished(page);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+  });
+
+  test('another job waiting for its page is not loaded by a details run of its own', async ({
+    page,
+  }) => {
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.state.missing);
+    // Ads load for some other job: this one is not in that run.
+    await page.evaluate(() => {
+      window.__harness.holdAfter = 2;
+      window.__harness.appRun('details');
+    });
+    await page.waitForTimeout(300);
+    await expect(note).toHaveText(T.reader.state.missing);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+    // A search loads what is still to come: this job is waiting for it.
+    await page.evaluate(() => {
+      window.__harness.holdAfter = 2;
+      window.__harness.appRun('fetch');
+    });
+    await expect(note).toHaveText(T.reader.state.loading);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+  });
+
+  test('a job that loads slowly shows the placeholder, not the job before with its tools', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    await slowDetails(page, 1500);
+    await row(page, 'linkedin-4100200301').click();
+    await expect(stage(page).getByTestId('reader-skeleton')).toBeVisible();
+    await expect(stage(page).getByTestId('reader-title')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await titleOf(page, 'linkedin-4100200301'),
+      { timeout: 5000 },
+    );
+  });
+
+  test('the contact e-mail copies like the name: a drag selects it, a click writes the mail', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const mail = term(page, 'contact').getByTestId('contact-mail');
+    await mail.scrollIntoViewIfNeeded();
+    const box = (await mail.boundingBox())!;
+    const selected = (): Promise<string> =>
+      page.evaluate(() => getSelection()?.toString().trim() ?? '');
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    expect(await selected()).toBe('julia.brandt@hanseatic.example');
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+    // The app's own menu offers Copy on it, like on the name.
+    await mail.click({ button: 'right' });
+    await expect(page.getByTestId('menu-item-copy')).toBeVisible();
+    await page.keyboard.press('Escape');
+    // A click without a selection writes the mail.
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
+    });
+  });
+
+  test('a double click on a text button acts once', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    await stage(page).getByTestId('open-ad').dblclick();
+    await term(page, 'contact').getByTestId('contact-mail').dblclick();
+    await stage(page).getByTestId('reader-prompt').dblclick();
+    await expect.poll(async () => (await calls(page, 'ai_prompt')).length).toBe(1);
+    await page.waitForTimeout(300);
+    const kinds = (await calls(page, 'open_target')).map(
+      ([, args]) => (args as { target: { kind: string } }).target.kind,
+    );
+    expect(kinds).toEqual(['jobUrl', 'contactMail']);
+    expect(await calls(page, 'ai_prompt')).toHaveLength(1);
+  });
+
+  test('the verdict mark beside a fact names itself under the pointer', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    const mark = term(page, 'experience').getByTestId('verdict');
+    expect(await tip(page, mark)).toBe(T.reader.verdict.partial);
+  });
+
+  test('a retry shows no job before the one it loads', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    await failNext(page, 'job_detail');
+    await row(page, 'linkedin-4100200301').click();
+    const failed = stage(page).getByTestId('reader-error');
+    await expect(failed).toBeVisible();
+    await slowDetails(page, 1000);
+    await failed.getByRole('button', { name: T.common.retry }).click();
+    await expect(stage(page).getByTestId('reader-title')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await titleOf(page, 'linkedin-4100200301'),
+      { timeout: 5000 },
+    );
   });
 });

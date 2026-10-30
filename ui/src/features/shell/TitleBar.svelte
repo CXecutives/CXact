@@ -128,6 +128,7 @@
     icon="back"
     label={t.nav.back}
     disabled={!history.canBack}
+    repeats
     testid="history-back"
     onclick={() => history.back()}
   />
@@ -137,6 +138,7 @@
     icon="next"
     label={t.nav.forward}
     disabled={!history.canForward}
+    repeats
     testid="history-forward"
     onclick={() => history.forward()}
   />

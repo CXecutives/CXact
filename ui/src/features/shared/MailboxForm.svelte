@@ -59,6 +59,16 @@
   let formError = $state<Words | null>(null);
   let passwordField = $state<TextField | null>(null);
 
+  /** An error goes with what it spoke of: typing in its field takes its sentence and the
+   *  provider's refusal of the pair away (the pair is another one now); another provider
+   *  takes them all, none of them was said of it. */
+  function changed(field: 'user' | 'password' | 'provider'): void {
+    if (field === 'user' || field === 'provider') userError = null;
+    if (field === 'password' || field === 'provider') passwordError = null;
+    refused = false;
+    formError = null;
+  }
+
   /** Signs in and saves; `true` once the mailbox is saved. */
   export async function save(): Promise<boolean> {
     if (busy) return false;
@@ -126,7 +136,10 @@
         label={t.settings.providerLabel}
         wide
         testid="mailbox-provider"
-        onchange={(next) => (provider = next)}
+        onchange={(next) => {
+          provider = next;
+          changed('provider');
+        }}
       />
     </Field>
     <Field label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
@@ -137,6 +150,7 @@
         invalid={userError !== null || refused}
         describedby="{id}-user-message"
         testid="mailbox-user"
+        oninput={() => changed('user')}
       />
     </Field>
   </div>
@@ -164,6 +178,7 @@
       invalid={passwordError !== null || refused}
       describedby="{id}-password-message"
       testid="mailbox-password"
+      oninput={() => changed('password')}
     />
   </Field>
   {#if formError}

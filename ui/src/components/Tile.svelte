@@ -1,6 +1,8 @@
 <!--
   A large button that is one choice or one place to drop a file (the round 10 draft); focus
-  draws no ring, Enter and Space press it like any button, nothing moves or shrinks.
+  draws no ring, Enter and Space press it like any button, nothing moves or shrinks. The
+  second click of a double click does nothing: it is the one of the button before it, whose
+  step brought this tile under the pointer.
   - a way (the setup's two ways to the profile, side by side; a click goes on at once): white
     with a hairline, 14 round, 16 inside; its glyph in a 36 tile on the track like the step's own,
     the title 16/650 12 under it and one small muted line. Under the pointer a stronger edge
@@ -50,7 +52,10 @@
   class:drop
   class:over
   data-testid={testid ?? undefined}
-  onclick={() => onclick()}
+  onclick={(event) => {
+    // A double click on the button before it (Loslegen, a way) lands its second click here.
+    if (event.detail < 2) onclick();
+  }}
 >
   {#if icon && !drop}<span class="glyph"><Icon name={icon} size="nav" /></span>{/if}
   <span class="label">{label}</span>

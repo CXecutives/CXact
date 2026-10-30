@@ -24,6 +24,9 @@
   - link: navy text that underlines on hover.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
+  - A double click acts once: its second click does nothing (a text button opened its page
+    twice, the next step's control under the pointer took it). `repeats` (Zurück and Vor)
+    takes both clicks, a step each.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
@@ -65,6 +68,9 @@
     expanded?: boolean;
     /** The default of a dialog (Enter presses it); Dialog gives it the focus. */
     isDefault?: boolean;
+    /** Each click of a double click acts (Zurück and Vor step twice); else the second does
+     *  nothing. */
+    repeats?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
     /** The glyph under the pointer and the keyboard focus: what a click does. */
@@ -90,6 +96,7 @@
     menu = false,
     expanded = false,
     isDefault = false,
+    repeats = false,
     plain = false,
     sizeTo = null,
     testid = null,
@@ -110,7 +117,8 @@
   const filled = $derived(variant === 'primary' || variant === 'danger');
 
   function handle(event: MouseEvent): void {
-    if (inactive) {
+    // The second click of a double click (the keyboard's click has no count).
+    if (inactive || (event.detail > 1 && !repeats)) {
       event.preventDefault();
       return;
     }

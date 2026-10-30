@@ -21,7 +21,7 @@
   import ScoreRing, { type RingState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
   import type { JobDetail } from '$lib/ipc/types';
-  import { keyOf } from '$lib/state/jobs.svelte';
+  import { keyOf } from '$lib/state/jobRows';
   import type { rowTools } from './actions';
   import ReaderState from './ReaderState.svelte';
   import { SHOWS, showActions, type ShowId } from './shows';

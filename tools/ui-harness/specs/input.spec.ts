@@ -1529,3 +1529,171 @@ test('the wheel over a date field, a level and the filter menu changes nothing',
   expect(await menu.locator('[aria-checked="true"]').allTextContents()).toEqual(checked);
   expect(await calls(page, 'list_jobs')).toHaveLength(queries);
 });
+
+/* ============================================================== what the audit found */
+
+const selection = (page: Page): Promise<string> =>
+  page.evaluate(() => getSelection()?.toString().trim() ?? '');
+
+test('a text selection goes with a press beside it, like in a native text view', async ({
+  page,
+}) => {
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  const title = page.getByTestId('reader-title');
+  await expect(title).toBeVisible();
+  const stage = (await page.getByTestId('stage').boundingBox())!;
+  // Each press on something that is no text of its own: the sidebar, the top bar, the
+  // reader's margin, a button, a label of the job's facts.
+  const presses: [string, () => Promise<void>][] = [
+    ['sidebar', () => page.mouse.click(60, 600)],
+    ['top bar', () => page.mouse.click(700, 10)],
+    ['reader margin', () => page.mouse.click(stage.x + 16, stage.y + 300)],
+    ['button', () => page.getByTestId('toggle-sidebar').click()],
+    ['label', () => page.getByTestId('term-company').locator('.term-name').click()],
+  ];
+  for (const [what, press] of presses) {
+    await title.dblclick();
+    expect(await selection(page), `${what}: a word was selected`).not.toBe('');
+    await press();
+    expect(await selection(page), what).toBe('');
+  }
+  // A press on copyable text starts a selection of its own, it does not just clear one.
+  await title.dblclick();
+  await page.getByTestId('term-company').locator('.value').dblclick();
+  expect(await selection(page)).not.toBe('');
+});
+
+test('the sentence of a failure selects and copies, wherever it is said', async ({ page }) => {
+  /** A double click on the sentence selects a word of it (a line that is a block wider than
+   *  its words: on its first words, not on the room after them). */
+  const selects = async (sentence: Locator, atStart = false): Promise<void> => {
+    await page.evaluate(() => getSelection()?.removeAllRanges());
+    await sentence.dblclick(atStart ? { position: { x: 12, y: 8 } } : {});
+    expect(await selection(page)).not.toBe('');
+  };
+  // A job that did not load (the empty state of a failure, in the reader).
+  await failNext(page, 'job_detail');
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  await expect(page.getByTestId('reader-error')).toBeVisible();
+  await selects(page.getByTestId('reader-error').locator('.text'));
+  // A move that failed (the notice under the list's header) and an undo that failed (a toast).
+  await failNext(page, 'move_jobs');
+  await page.getByTestId('job-row-freelancermap-2802').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
+  await selects(page.getByTestId('header-error').locator('.text'));
+  await page.waitForTimeout(550);
+  await page.getByTestId('job-row-freelancermap-2803').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
+  await failNext(page, 'move_back');
+  await page.getByTestId('toast-action').click();
+  await selects(
+    page
+      .getByTestId('toast')
+      .filter({ hasText: T.error.text('db', {}) })
+      .locator('.text'),
+  );
+  // A field's message and a portal's failed switch, in Einstellungen.
+  await page.getByTestId('nav-settings').click();
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await page.getByTestId('mailbox-save').click();
+  await selects(page.getByTestId('mailbox-form').locator('[role="alert"] [data-copy]'));
+  await failNext(page, 'save_settings');
+  await (await reveal(page, page.getByTestId('toggle-enabled-hays'))).click();
+  await selects(page.getByTestId('portal-error'), true);
+});
+
+test('a press on the app menu keeps the selection its Copy needs', async ({ page }) => {
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  const title = page.getByTestId('reader-title');
+  await title.dblclick();
+  const word = await selection(page);
+  await title.click({ button: 'right' });
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByTestId('menu-item-copy').click();
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  expect((await page.evaluate(() => navigator.clipboard.readText())).trim()).toBe(word);
+});
+
+test('Ctrl+A selects the copyable block pressed last, never the page', async ({ page }) => {
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  const ad = page.getByTestId('ad-text');
+  await expect(ad).toBeVisible();
+  await ad.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+  const box = (await ad.boundingBox())!;
+  await page.mouse.click(box.x + 6, box.y + 6);
+  await page.keyboard.press('Control+a');
+  const words = (text: string): string => text.replace(/\s+/g, ' ').trim();
+  expect(words(await selection(page))).toBe(words(await ad.innerText()));
+  // After a press elsewhere there is nothing to select: the key does nothing.
+  await page.mouse.click(60, 600);
+  expect(await selection(page)).toBe('');
+  await page.keyboard.press('Control+a');
+  expect(await selection(page)).toBe('');
+  // The alert mail CXact kept, read in its dialog (a mailbox without a Gmail link): its text
+  // selects whole too, with the dialog's own button holding the focus.
+  await page.evaluate(() => {
+    window.__harness.editDetail = (detail) => ({
+      ...detail,
+      mail: { ...detail.mail, gmailUrl: null },
+    });
+  });
+  await page.getByTestId('job-row-freelancermap-2802').click();
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  await page.getByTestId('reader-mail').click();
+  const mail = page.getByTestId('mail-text');
+  await expect(mail).toBeVisible();
+  await mail.click();
+  await page.keyboard.press('Control+a');
+  expect(words(await selection(page))).toBe(words(await mail.innerText()));
+});
+
+test('the mouse buttons go back and forward like Zurück and Vor', async ({ page }) => {
+  const press = (button: number): Promise<void> =>
+    page.evaluate((button) => {
+      const init = { bubbles: true, cancelable: true, button };
+      document.body.dispatchEvent(new MouseEvent('mousedown', init));
+      document.body.dispatchEvent(new MouseEvent('mouseup', init));
+    }, button);
+  await rows(page).first().click();
+  await expect(page.getByTestId('reader')).toBeVisible();
+  await press(3);
+  await expect(page.getByTestId('reader')).toHaveCount(0);
+  await press(4);
+  await expect(page.getByTestId('reader')).toBeVisible();
+  // Nothing ahead any more: forward does nothing.
+  await press(4);
+  await page.waitForTimeout(200);
+  await expect(page.getByTestId('reader')).toBeVisible();
+});
+
+test('Tab goes round: from the last control to the first, Shift+Tab the other way', async ({
+  page,
+}) => {
+  const where = (): Promise<number> =>
+    page.evaluate(() => {
+      const seen = ((window as unknown as { tabbed?: Element[] }).tabbed ??= []);
+      const node = document.activeElement;
+      if (node === null || node === document.body) return -1;
+      if (!seen.includes(node)) seen.push(node);
+      return seen.indexOf(node);
+    });
+  // Forward from the first control until the first comes again: the page itself never has the
+  // focus on the way.
+  await page.keyboard.press('Tab');
+  expect(await where()).toBe(0);
+  let steps = 0;
+  for (; steps < 400; steps += 1) {
+    await page.keyboard.press('Tab');
+    const at = await where();
+    expect(at, `after ${steps + 1} tabs`).not.toBe(-1);
+    if (at === 0) break;
+  }
+  expect(steps).toBeLessThan(400);
+  // Back from the first control: the last one, not the page.
+  await page.keyboard.press('Shift+Tab');
+  const last = await where();
+  expect(last).toBeGreaterThan(0);
+  await page.keyboard.press('Tab');
+  expect(await where()).toBe(0);
+});

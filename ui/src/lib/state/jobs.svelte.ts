@@ -33,7 +33,7 @@
 
 import { SvelteSet } from 'svelte/reactivity';
 import { errorText } from '../i18n/texts';
-import { invoke } from '../ipc/api';
+import { invoke, IpcError } from '../ipc/api';
 import type {
   Deleted,
   JobCounts,
@@ -55,6 +55,7 @@ import {
   toQuery,
   type ListFilter,
 } from './filter';
+import { isExcluded, isUnscored, keyOf, moved, replaced, reused, sameKey, ZERO } from './jobRows';
 import { keepOpen, keptOpen, type KeptOpen } from './openJob';
 import { run } from './run.svelte';
 import { viewport } from './viewport.svelte';
@@ -71,67 +72,9 @@ const COUNTS_EVERY = 400;
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
-const ZERO: JobCounts = {
-  inbox: 0,
-  archive: 0,
-  trash: 0,
-  excluded: 0,
-  excludedArchive: 0,
-  excludedTrash: 0,
-};
-
-export function keyOf(key: JobKey): string {
-  return `${key.portal}:${key.id}`;
-}
-
-export function sameKey(a: JobKey | null, b: JobKey | null): boolean {
-  return a !== null && b !== null && a.portal === b.portal && a.id === b.id;
-}
-
-export const isExcluded = (job: JobView): boolean => job.match?.status === 'excluded';
-
-/** A job without a score yet (its ad not loaded or too short to score), not excluded: its
- *  own section after the scored jobs (design round 7). */
-export const isUnscored = (job: JobView): boolean =>
-  job.match === null || job.match.status === 'unscorable';
-
-/** Every job passes (the counts over every job). */
-const everyJob = (): boolean => true;
-
-/**
- * What one job adds to the counts (the backend's definitions, store::job_page): each place
- * counts its jobs and its excluded ones; a job the filter of the counts (`passes`) leaves out
- * adds nothing (a change can take a job out of it or bring it in).
- */
-function add(
-  counts: JobCounts,
-  job: JobView | null,
-  sign: 1 | -1,
-  passes: (job: JobView) => boolean = everyJob,
-): JobCounts {
-  if (job === null || !passes(job)) return counts;
-  const at = (place: Place): number => (job.place === place ? sign : 0);
-  const out = isExcluded(job);
-  return {
-    inbox: counts.inbox + at('inbox'),
-    archive: counts.archive + at('archive'),
-    trash: counts.trash + at('trash'),
-    excluded: counts.excluded + (out ? at('inbox') : 0),
-    excludedArchive: counts.excludedArchive + (out ? at('archive') : 0),
-    excludedTrash: counts.excludedTrash + (out ? at('trash') : 0),
-  };
-}
-
-/** `counts` after `before` became `after` (the same job); `passes`: the filter of the
- *  counts. */
-function moved(
-  counts: JobCounts,
-  before: JobView,
-  after: JobView,
-  passes: (job: JobView) => boolean = everyJob,
-): JobCounts {
-  return add(add(counts, before, -1, passes), after, 1, passes);
-}
+/** How the load of a job's reader ended: shown, the job is gone (deleted for good since),
+ *  failed otherwise, or another job was asked for meanwhile. */
+type DetailResult = 'ready' | 'gone' | 'error' | 'stale';
 
 /** A job a move took away, to bring back (`moveBack`): as it was, where it went, its
  *  index in the list then (-1: the list did not hold it) and the rows that stood below and
@@ -143,37 +86,6 @@ export interface Unmove {
   at: number;
   below: string | null;
   above: string | null;
-}
-
-/** The text of a row as it came from the backend, kept per object (each is read once). */
-const texts = new WeakMap<JobView, string>();
-
-function textOf(job: JobView): string {
-  let text = texts.get(job);
-  if (text === undefined) {
-    text = JSON.stringify(job);
-    texts.set(job, text);
-  }
-  return text;
-}
-
-/**
- * `next` with every row that equals the one held keeping the held object: a reload of the
- * same list (a sort, an undo, the end of a run) renders only the rows that changed, not all
- * of them again.
- */
-function reused(held: readonly JobView[], next: JobView[]): JobView[] {
-  const byKey = new Map(held.map((job) => [keyOf(job.key), job]));
-  return next.map((job) => {
-    const old = byKey.get(keyOf(job.key));
-    return old !== undefined && textOf(old) === textOf(job) ? old : job;
-  });
-}
-
-/** `list` with the row of `key` replaced by `change(row)` (the same array if absent). */
-function replaced(list: JobView[], key: JobKey, change: (job: JobView) => JobView): JobView[] {
-  const index = list.findIndex((job) => sameKey(job.key, key));
-  return index < 0 ? list : list.with(index, change(list[index]!));
 }
 
 /** Where the order of the list is kept (one choice for every list, per user). */
@@ -257,6 +169,9 @@ class JobsStore {
    *  search still waits (they never mix another query's rows into it). */
   #listed: JobQuery | null = null;
   status = $state<Status>('idle');
+  /** The first load is over and the job kept from the last run is open again, if it was
+   *  (`start`): the history records from here, before the list was still on its way. */
+  started = $state(false);
   /** The list has taken --delay-placeholder to load: its placeholder rows show (at once). */
   slow = $state(false);
   error = $state<string | null>(null);
@@ -304,6 +219,8 @@ class JobsStore {
   #searchTimer: ReturnType<typeof setTimeout> | null = null;
   #countsTimer: ReturnType<typeof setTimeout> | null = null;
   #installed = false;
+  /** The filter on screen is not the user's own: "Zeigen" borrowed it (`borrowFilter`). */
+  #borrowed = false;
 
   /** The search whose answer the list holds ('' for none): a typed one comes --dur-base
    *  later, until then the list is another search's. */
@@ -338,12 +255,16 @@ class JobsStore {
   }
 
   /** The list's place holds no job, or the list did not load: nothing to read beside it (no
-   *  job view, no button for it in the top bar). */
+   *  job view, no button for it in the top bar). A list still on its way counts by the numbers
+   *  the page knows before it (the app state's), so a place without a job never shows the two
+   *  columns for the time its call takes. */
   get emptyPlace(): boolean {
-    return (
-      this.status === 'error' ||
-      (this.status === 'ready' && (this.overviewCounts ?? this.counts)[this.place] === 0)
-    );
+    if (this.status === 'error') return true;
+    const known =
+      this.status === 'ready'
+        ? (this.overviewCounts ?? this.counts)
+        : (this.overviewCounts ?? app.state?.counts ?? null);
+    return known !== null && known[this.place] === 0;
   }
 
   /** No job in this place, nothing searched or filtered and no run: the list has nothing to
@@ -370,16 +291,40 @@ class JobsStore {
   }
 
   /**
-   * Another filter (a part of it, or `NO_FILTER` to reset it), kept like the order unless
-   * `keep` is false (the "Zeigen" of a fetch's toast: its filter lasts until the user changes
-   * it). The list loads again from the top; the open job stays open when the filter still
-   * lists it (its row comes into view), else it closes like a job the search no longer finds.
+   * Another filter (a part of it, or `NO_FILTER` to reset it), the user's own: kept like the
+   * order. While "Zeigen" has borrowed the list's filter (`borrowFilter`) nothing is kept,
+   * neither what it set nor what the user takes off it chip by chip: the user's own kept
+   * filter waits in the store untouched, and with the last chip gone the list is the user's
+   * again.
    */
-  setFilter(change: Partial<ListFilter>, keep = true): void {
+  setFilter(change: Partial<ListFilter>): void {
     const next = { ...this.filterChoice, ...change };
-    if (JSON.stringify(next) === JSON.stringify(this.filterChoice)) return;
+    if (!this.#show(next)) return;
+    if (this.#borrowed) this.#borrowed = isFiltered(next);
+    else keepFilter(next);
+  }
+
+  /** The filter "Zeigen" of a fetch's toast sets is borrowed: it lasts until the user takes
+   *  it off or the next search starts, and is never kept. */
+  borrowFilter(filter: ListFilter): void {
+    this.#borrowed = true;
+    this.#show(filter);
+  }
+
+  /** The user's own kept filter again, in the place of the borrowed one. */
+  returnFilter(): void {
+    this.#borrowed = false;
+    this.#show(keptFilter());
+  }
+
+  /**
+   * Shows the list with another filter. The list loads again from the top; the open job
+   * stays open when the filter still lists it (its row comes into view), else it closes like
+   * a job the search no longer finds. False when it is the filter shown already.
+   */
+  #show(next: ListFilter): boolean {
+    if (JSON.stringify(next) === JSON.stringify(this.filterChoice)) return false;
     this.filterChoice = next;
-    if (keep) keepFilter(next);
     this.quiet();
     const open = this.selected;
     const job = open === null ? null : this.held(open);
@@ -390,6 +335,7 @@ class JobsStore {
         void this.reach(open, false);
       }
     });
+    return true;
   }
 
   /** Scores are on their way (a run goes or a rescore is due): a job without one waits. */
@@ -456,6 +402,7 @@ class JobsStore {
       this.loadOverview(),
     ]);
     if (kept !== null) await this.reopen(kept, detail);
+    this.started = true;
   }
 
   /**
@@ -747,16 +694,34 @@ class JobsStore {
     await this.loadDetail(job.key);
   }
 
-  /** Open the job of `key` again (Zurück and Vor): like a click, but it stays as read as it
-   *  was. A job the list does not hold (yet) opens by its key. */
-  openKey(key: JobKey): void {
-    const job = this.held(key);
-    if (job !== null) {
-      void this.select(job, false);
-      return;
-    }
+  /**
+   * Opens the job of `key` again (Zurück and Vor): like a click, but it stays as read as it
+   * was. The job lies where it lies now (archived or put in the Papierkorb since): the list
+   * follows it there and brings its row into view. Resolves with false when the job is gone
+   * (deleted for good since): nothing is open then.
+   */
+  async openKey(key: JobKey): Promise<boolean> {
+    const row = this.rows.find((job) => sameKey(job.key, key));
     this.selected = key;
-    void this.loadDetail(key);
+    if (row !== undefined) keepOpen(row);
+    const result = await this.loadDetail(key);
+    if (result === 'gone') {
+      if (sameKey(this.selected, key)) this.clearSelection();
+      return false;
+    }
+    const detail = this.detail;
+    if (result !== 'ready' || detail === null || !sameKey(this.selected, key)) return true;
+    keepOpen(detail.job);
+    if (detail.job.place !== this.place) {
+      this.place = detail.job.place;
+      this.quiet();
+      await this.load();
+    }
+    if (!sameKey(this.selected, key)) return true;
+    // Its row comes into view (once the list that is on its way has it).
+    if (this.status === 'ready') void this.reach(key, false);
+    else this.reveal = { key: keyOf(key), focus: false };
+    return true;
   }
 
   clearSelection(): void {
@@ -782,7 +747,7 @@ class JobsStore {
     }
   }
 
-  async loadDetail(key: JobKey): Promise<void> {
+  async loadDetail(key: JobKey): Promise<DetailResult> {
     const request = ++this.#detailRequest;
     // The previous job stays until the next one is there (no blank flash between two jobs).
     this.detailStatus = 'loading';
@@ -792,13 +757,18 @@ class JobsStore {
     }, tokenMs('--delay-placeholder'));
     try {
       const detail = await invoke('job_detail', { key });
-      if (request !== this.#detailRequest) return;
+      if (request !== this.#detailRequest) return 'stale';
       this.detail = detail;
       this.detailStatus = 'ready';
+      return 'ready';
     } catch (error) {
-      if (request !== this.#detailRequest) return;
+      if (request !== this.#detailRequest) return 'stale';
+      // The failure stands in the reader's place: the job it showed before is not the one
+      // asked for (a retry would show it again while the load goes).
+      this.detail = null;
       this.detailStatus = 'error';
       this.detailError = errorText(error);
+      return error instanceof IpcError && error.kind === 'notFound' ? 'gone' : 'error';
     } finally {
       clearTimeout(timer);
       if (request === this.#detailRequest) this.detailSlow = false;
@@ -924,6 +894,9 @@ class JobsStore {
       if (!done.has(keyOf(job.key))) continue;
       if (this.rows.some((row) => sameKey(row.key, job.key)) || !same || at < 0) {
         this.patch(job.key, { place: job.place });
+        // A list that holds the job in the place it went to (the Archiv, after another place
+        // was chosen) loses its row: it lies in another place again.
+        this.dropStray(job.key);
         missing ||= !this.rows.some((row) => sameKey(row.key, job.key)) && this.lists(job);
         continue;
       }
@@ -1007,10 +980,9 @@ class JobsStore {
   }
 
   private onRun(event: RunEvent): void {
-    // Another search: "Aus der letzten Suche" would speak of the one before.
-    if (event.type === 'started' && event.kind === 'fetch' && this.filterChoice.run !== null) {
-      this.setFilter({ run: null }, false);
-    }
+    // Another search: "Aus der letzten Suche" would speak of the one before, and what
+    // "Zeigen" set goes with it: the list is the user's own filter again.
+    if (event.type === 'started' && event.kind === 'fetch' && this.#borrowed) this.returnFilter();
     if (event.type === 'jobUpdated') this.upsert(event.job, event.fresh);
     else if (event.type === 'finished') void this.afterRun();
     else if (event.type === 'progress' && event.step === 'scan' && event.done === 0) {

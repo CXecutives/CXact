@@ -3,7 +3,8 @@
 // which signs in right there). A switch moves at once (the state is patched before the
 // save). Signing in opens the sign-in window (unless a sign-in is stored), and once signed in
 // the fetch uses it; signing out ends both. The dry run touches no portal and a run holds the
-// sign-in (`signInLocked`); the backend refuses them the same way.
+// sign-in (`signInLocked`), except the one a search is waiting for; the backend refuses the
+// others the same way.
 
 import { t } from '../i18n/t';
 import { invoke } from '../ipc/api';
@@ -47,8 +48,10 @@ export async function portalSession(portal: PortalState, on: boolean): Promise<v
   await app.load();
 }
 
-/** Why a sign-in or a sign-out waits now, or null. */
-export function signInLocked(): string | null {
+/** Why a sign-in or a sign-out of `portal` waits now, or null. A search that waits for this
+ *  portal's sign-in is the very sign-in being asked for: it is not held up by that run. */
+export function signInLocked(portal: Portal): string | null {
   if (app.state?.dryRun) return t.error.text('dryRun', {});
+  if (run.loginNeeded === portal) return null;
   return run.active ? run.busyText : null;
 }

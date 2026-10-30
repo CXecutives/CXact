@@ -9,6 +9,11 @@ import type { Action } from 'svelte/action';
 
 const places = new Map<string, number>();
 
+/** The place kept for `key` is dropped: the next time it starts at the top. */
+export function forgetScroll(key: string): void {
+  places.delete(key);
+}
+
 /** How long a returning view waits for its content to grow tall enough. */
 const WAIT_FRAMES = 60;
 

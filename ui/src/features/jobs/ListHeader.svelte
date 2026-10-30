@@ -30,6 +30,7 @@
   import PageHeader from '$components/PageHeader.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
+  import { removeBy } from '$lib/input/input';
   import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { inPortalOrder } from '$lib/portals';
@@ -89,19 +90,26 @@
 
   /**
    * Takes the whole filter off ("Filter zurücksetzen" of a filter that leaves nothing). The
-   * button goes with what it stood in: the keyboard focus goes to the funnel, not to the top
-   * of the window.
+   * button goes with what it stood in: pressed from the keyboard, the focus goes to the
+   * funnel, not to the top of the window; after a click nothing takes it (a button the code
+   * focused would show a tooltip nobody asked for).
    */
-  export async function resetFilter(): Promise<void> {
+  export async function resetFilter(fromKeyboard: boolean): Promise<void> {
     jobs.setFilter(NO_FILTER);
-    await focusFunnel();
+    if (fromKeyboard) await focusFunnel();
   }
 
-  /** A chip's ×: that choice of the filter goes; the last one hands the focus to the funnel. */
-  function dropChip(chip: ActiveFilter): void {
+  /**
+   * A chip's ×: that choice of the filter goes. From the keyboard (Enter, Space, Delete) the
+   * next chip's × takes the focus (input.ts `removeBy`) and the last one hands it to the
+   * funnel; a click moves it nowhere.
+   */
+  function dropChip(chip: ActiveFilter, event: MouseEvent): void {
     const last = chips.length === 1;
-    jobs.setFilter(dropFrom(jobs.filterChoice, chip.key, chip.value));
-    if (last) void focusFunnel();
+    removeBy(event.currentTarget, () =>
+      jobs.setFilter(dropFrom(jobs.filterChoice, chip.key, chip.value)),
+    );
+    if (last && event.detail === 0) void focusFunnel();
   }
 
   /**
@@ -185,15 +193,21 @@
     {/snippet}
     {#if chips.length > 0}
       <div class="unfold" transition:unfold>
-        <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
+        <div
+          class="chips"
+          role="group"
+          aria-label={t.toolbar.chips}
+          data-removes
+          data-testid="filter-chips"
+        >
           {#each chips as chip (chip.id)}
-            <span class="chip" transition:fade>
+            <span class="chip" data-chip data-remove transition:fade>
               <Button
                 variant="secondary"
                 label={chip.label}
                 trailing="close"
                 testid="chip-{chip.id}"
-                onclick={() => dropChip(chip)}
+                onclick={(event) => dropChip(chip, event)}
               />
             </span>
           {/each}

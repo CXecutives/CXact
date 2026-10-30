@@ -2,7 +2,8 @@
   One job in the list, one line (the round 10 draft, user decision 2026-10-24): the ring (30)
   and the title (14/540). Nothing else: no company, place, rate, date or dot (the reader and
   the day's heading have them). The title stays on one line (every row one height; a cut
-  title shows in full in a tooltip; while a search is on, its words are marked in a soft
+  title, and one that fits but ends under the row's tools, shows in full in a tooltip; while
+  a search is on, its words are marked in a soft
   yellow, in any case and with or without accents, as the search finds them). A new job
   (lib/state/filter.ts `isNew`: not opened yet and not excluded) has its title in 650 and a
   hidden "Neu" for screen readers. A job in the Papierkorb and an ad that takes no
@@ -81,11 +82,13 @@
 </script>
 
 <script lang="ts">
-  import { contextMenu, holdHover, hover, type ContextMenu } from '$lib/input/input';
+  import { holdHover } from '$lib/input/hold';
+  import { contextMenu, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { displayTitle } from '$lib/i18n/format';
   import { fade } from '$lib/motion/transitions';
   import { isNew } from '$lib/state/filter';
+  import { tokenPx } from '$lib/tokens';
   import Button from './Button.svelte';
   import ListRow from './ListRow.svelte';
   import ScoreRing, { ringState } from './ScoreRing.svelte';
@@ -136,6 +139,23 @@
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   /** The title with the words of the search marked. */
   const titleParts = $derived(markedParts(heading, marks));
+
+  /** The title, and the row's tools while they show (what the title's end lies under). */
+  let titleBox = $state<HTMLElement | null>(null);
+  let toolsBox = $state<HTMLElement | null>(null);
+
+  /** The tools lie over the end of the line and the title fades out under them, over the
+   *  stretch before them: a title that reaches into it is cut as far as the eye goes, however
+   *  well it fits (its tooltip says it whole). */
+  function covered(): boolean {
+    if (titleBox === null || toolsBox === null) return false;
+    const text = document.createRange();
+    text.selectNodeContents(titleBox);
+    return (
+      text.getBoundingClientRect().right >
+      toolsBox.getBoundingClientRect().left - tokenPx('--list-tools-fade')
+    );
+  }
 
   /** The pointer is on the row (after a tool took a row away: once it moved). */
   let here = $state(false);
@@ -192,14 +212,15 @@
         class="title"
         class:unread={fresh}
         class:muted
-        use:tooltip={{ text: heading, truncated: true }}
+        bind:this={titleBox}
+        use:tooltip={{ text: heading, truncated: true, covered }}
         >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
             >{:else}{part.text}{/if}{/each}</span
       >{#if fresh}<span class="unseen">{t.job.unread}</span>{/if}
     </span>
   </ListRow>
   {#if tooled && tools}
-    <span class="tools" data-testid="row-tools" transition:fade>
+    <span class="tools" data-testid="row-tools" bind:this={toolsBox} transition:fade>
       {#each tools() as tool (tool.id)}
         <span class="tool" use:untabbed>
           <Button

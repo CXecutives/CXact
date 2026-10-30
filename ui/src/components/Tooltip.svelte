@@ -7,11 +7,14 @@
   (no second entrance). An anchor may add a second, smaller line in a quieter white (a key
   or a hint: "Strg+F", "Doppelklick setzt zurück"), like the tooltips of native apps. It
   goes when the window is resized or goes to the back (its anchor may have moved or be
-  covered then).
+  covered then), on a scroll of any pane (its anchor moved on), on a press anywhere and on Esc
+  (the last two also drop the tooltips still waiting for their delay; a press on the anchor
+  itself is its own handler's, an info symbol toggles on it): input.ts `onDismiss`.
 -->
 <script lang="ts">
   import { px, setVars } from '$lib/actions/cssVars';
   import { TOOLTIP_HINT } from '$lib/actions/tooltip';
+  import { onDismiss } from '$lib/input/input';
   import { tooltipIn, tooltipOut } from '$lib/motion/transitions';
   import { TOOLTIP_ID, tooltipState } from '$lib/state/tooltip.svelte';
   import { tokenPx } from '$lib/tokens';
@@ -49,6 +52,19 @@
   function hintOf(anchor: HTMLElement, _text: string): string | null {
     return anchor.dataset[TOOLTIP_HINT] ?? null;
   }
+
+  // A scroll takes the bubble away (its anchor moved on); a press or Esc also the tooltips
+  // that still wait. A press on the anchor is its own (an info symbol toggles on it).
+  $effect(() =>
+    onDismiss((cause, target) => {
+      const anchor = tooltipState.anchor;
+      if (cause === 'scroll') tooltipState.hide();
+      else if (cause === 'escape') tooltipState.dismiss();
+      else if (!(anchor !== null && target instanceof Node && anchor.contains(target))) {
+        tooltipState.dismiss();
+      }
+    }),
+  );
 </script>
 
 <svelte:window onresize={() => tooltipState.hide()} onblur={() => tooltipState.hide()} />

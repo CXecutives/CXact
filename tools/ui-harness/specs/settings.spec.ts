@@ -565,7 +565,7 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   // Ändern: the folder dialog; the profile comes along and the toast says so.
   await page.getByTestId('folder-change').click();
   await expect(page.getByTestId('toast-text')).toHaveText(T.settings.folderMoved);
-  await expect(data.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
+  await expect(data.getByTestId('folder-hint')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
@@ -610,6 +610,37 @@ test('the dry run keeps to its own data and says so', async ({ page }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
   await expect(page.getByTestId('settings')).toContainText('probelauf@example.org');
   expect(await reason(page, 'mailbox-remove')).toBe('Im Probelauf geht das nicht.');
+});
+
+/* ============================================================ what the audit found */
+
+test('a search that waits for the sign-in leaves Anmelden of that portal on', async ({ page }) => {
+  await settings(page, `${WIN}&scenario=sign-in-waiting`);
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.signInWaiting);
+  // The sign-in window is the one the search waits for: its button is the way to give it. The
+  // other portals' calls wait for the run.
+  const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
+  await expect(signIn).not.toHaveAttribute('aria-disabled', 'true');
+  await signIn.click();
+  await expect
+    .poll(async () => (await calls(page, 'portal_login')).at(-1)?.[1])
+    .toEqual({ portal: 'freelance' });
+});
+
+test('switching a portal off lets its calls fade out together: Anmelden does not jump', async ({
+  page,
+}) => {
+  await settings(page);
+  const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
+  const before = (await signIn.boundingBox())!.x;
+  await page.getByTestId('toggle-enabled-freelance').click();
+  // Right after the switch, while both fade, Anmelden stands where it stood.
+  const during = await page.evaluate(
+    () => document.querySelector('[data-testid="sign-in-freelance"]')?.getBoundingClientRect().x,
+  );
+  expect(during).toBeCloseTo(before, 0);
+  await expect(page.getByTestId('sign-in-freelance')).toHaveCount(0);
+  await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
 });
 
 /* ---------------------------------------------------------------- baselines */

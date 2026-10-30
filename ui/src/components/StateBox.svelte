@@ -11,7 +11,8 @@
   is simply there. In a box under 480 wide (like a row of Einstellungen) the button goes under
   the words, at the right, so a title keeps its one line.
   `mark` is what the old Notice of an excluded job put before its words (the ban, until the
-  job view's ring shows it); it goes with Notice.
+  job view's ring shows it); it goes with Notice. The words of a box that says something went
+  wrong (`alert`) copy.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -86,11 +87,21 @@
       <span class="mark">{@render mark()}</span>
     {/if}
     <div class="words">
-      {#if heading}<p class="title" data-testid={headingTestid ?? undefined}>{heading}</p>{/if}
+      {#if heading}<p
+          class="title"
+          data-copy={alert ? '' : undefined}
+          data-testid={headingTestid ?? undefined}
+        >
+          {heading}
+        </p>{/if}
       {#if children}
-        <p class="text" data-testid={textTestid ?? undefined}>{@render children()}</p>
+        <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
+          {@render children()}
+        </p>
       {:else if text}
-        <p class="text" data-testid={textTestid ?? undefined}>{text}</p>
+        <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
+          {text}
+        </p>
       {/if}
     </div>
     {#if end}

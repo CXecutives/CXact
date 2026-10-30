@@ -1967,11 +1967,14 @@ function apply(event: RunEvent): void {
 }
 
 function cancelRun(): void {
-  if (!running) return;
+  // A run the scenario replays (`state.running`, the page found it running at its start) has no
+  // script of its own: Abbrechen ends it the same way.
+  const replayed = !running && state.running !== null;
+  if (!running && !replayed) return;
   running = false;
   const summary: RunSummary = {
     ...lastRun({ kind: 'cancelled' }),
-    kind: runningKind,
+    kind: replayed ? state.running!.kind : runningKind,
     perPortal: [],
     emptyAlerts: [],
   };

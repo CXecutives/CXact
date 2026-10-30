@@ -8,11 +8,14 @@
 // row that left), and says so in a short toast ("Archiviert") with Rückgängig; moves of the
 // same kind right after each other merge into it, its one undo takes them all back. The undo
 // brings every job back to where it was, its row too, and opens the job again that was open
-// when it left. A click within GUARD_MS after the list or the pane changed is ignored, so a
-// double click never moves the job that slid under the pointer. The job the app opens by
-// itself counts as read only once it has been looked at (DWELL_MS on screen in the Jobs view,
-// or a click in the reader). A job that is already where it goes is no move. A move or its
-// undo that fails says so where it was asked (the list header, `jobs.actionError`).
+// when it left; in another list than the one the move left (the Archiv, once another place
+// was chosen) its rows leave and, when the open job is one of them, the next one opens. A
+// click within GUARD_MS after the list or the pane changed is ignored, so a double click
+// never moves the job that slid under the pointer, nor opens the one that did. The job the app
+// opens by itself counts as read only once it has been looked at (DWELL_MS on screen in the
+// Jobs view, or a click in the reader). A job that is already where it goes is no move. A move
+// that fails says so where it was asked (the list header, `jobs.actionError`), an undo that
+// fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
@@ -22,10 +25,12 @@ import { errorText } from '$lib/i18n/texts';
 import { invoke } from '$lib/ipc/api';
 import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
-import { isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
+import { isExcluded, keyOf, sameKey } from '$lib/state/jobRows';
+import { jobs, type Unmove } from '$lib/state/jobs.svelte';
 import type { MenuEntry, MenuItem } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { run } from '$lib/state/run.svelte';
+import { sections } from '$lib/state/sections.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 import { copyJobPrompt } from './prompt';
 import { SHOWS, showActions, type ShowId } from './shows';
@@ -120,13 +125,17 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   return [...show, { kind: 'separator' }, ...changesOf(job, context)];
 }
 
+/** "Trotzdem bewerten" is for an excluded job the user has not scored by hand, and not for one
+ *  in the Papierkorb: a job put there is out of sight, Wiederherstellen comes first. */
+export const mayInclude = (job: JobView): boolean => !job.overridden && job.place !== 'trash';
+
 /** The second group of the job's menu: what changes the job where it is. */
 function changesOf(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
   const change: MenuEntry[] = [];
   // A job counted anyway stays so (user, 2026-09-29: no way to exclude it again); the toast's
   // undo takes it back.
-  if (isExcluded(job) && !job.overridden) {
+  if (isExcluded(job) && mayInclude(job)) {
     change.push({
       id: 'include',
       label: t.actions.include,
@@ -240,20 +249,17 @@ const SAID: Record<MoveId, () => string> = {
 };
 
 /** The job to open when `gone` leave the list: the next one below, else the one above; none
- *  when the list did not hold them (the open job no longer listed after a search). */
+ *  when the list did not hold them (the open job no longer listed after a search). A row
+ *  behind a closed fold is not on screen and no next job. */
 function nextAfter(gone: readonly JobView[]): JobView | null {
   const rows = jobs.shown;
   const out = new Set(gone.map((job) => keyOf(job.key)));
   const last = Math.max(...gone.map((job) => rows.findIndex((row) => sameKey(row.key, job.key))));
   if (last < 0) return null;
-  const below = rows.slice(last + 1).find((row) => !out.has(keyOf(row.key)));
+  const next = (row: JobView): boolean => !out.has(keyOf(row.key)) && !sections.folded(row);
+  const below = rows.slice(last + 1).find(next);
   if (below) return below;
-  return (
-    rows
-      .slice(0, Math.max(0, last))
-      .reverse()
-      .find((row) => !out.has(keyOf(row.key))) ?? null
-  );
+  return rows.slice(0, Math.max(0, last)).reverse().find(next) ?? null;
 }
 
 /** The list changed under the pointer: clicks on it wait a moment. */
@@ -319,24 +325,42 @@ export function seen(key: JobKey | null = jobs.selected): void {
 
 /**
  * Takes one move back (the jobs to where they were, their rows too), then opens the job
- * again that was open when the move took it away, if it is listed again.
+ * again that was open when the move took it away, if it is listed again. Rows of this list
+ * that go back to another place leave it (the Archiv holding a job the undo takes back to
+ * Aktuell), and the next job opens when the open one was among them, like after a move.
+ * Resolves with the sentence of a failure, which the toast says and offers to try again.
  */
 async function undo(
   back: readonly Unmove[],
   generation: number,
   reopen: JobKey | null,
-): Promise<void> {
+): Promise<string | null> {
+  const open = jobs.selected;
+  const leaving = back.flatMap(({ job }) => {
+    const row = jobs.rows.find((held) => sameKey(held.key, job.key));
+    return row !== undefined && !jobs.lists({ ...row, place: job.place }) ? [row] : [];
+  });
+  const next = leaving.length > 0 ? nextAfter(leaving) : null;
+  const focus = inRow();
   const result = await jobs.moveBack(back, generation);
   jobs.actionError = 'error' in result ? result.error : null;
   void jobs.loadOverview();
+  if ('error' in result) return result.error;
   // Only a job that really came back opens again (one already back is left as it is).
-  if ('error' in result || reopen === null) return;
-  if (!result.moved.some((key) => sameKey(key, reopen))) return;
+  const came = new Set(result.moved.map(keyOf));
+  openNext(
+    leaving.filter((job) => came.has(keyOf(job.key))),
+    next,
+    focus,
+    open,
+  );
+  if (reopen === null || !came.has(keyOf(reopen))) return null;
   const row = jobs.rows.find((job) => sameKey(job.key, reopen));
   if (row) {
     await jobs.select(row, false);
     jobs.reveal = { key: keyOf(row.key), focus: false };
   }
+  return null;
 }
 
 /** Jobs deleted for good: their undo toasts can do nothing any more (the others stay). */

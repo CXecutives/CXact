@@ -214,7 +214,7 @@ class RunStore {
     const high = (summary.newJobs?.high ?? 0) > 0;
     this.show(() => {
       jobs.setPlace('inbox', true);
-      jobs.setFilter({ ...NO_FILTER, run: summary.run, bands: high ? ['high'] : [] }, false);
+      jobs.borrowFilter({ ...NO_FILTER, run: summary.run, bands: high ? ['high'] : [] });
     });
   }
 

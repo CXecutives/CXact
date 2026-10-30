@@ -4,7 +4,8 @@
   most 300 wide), centred; at most one clear action under it (plus at most one secondary).
   Every empty state looks alike. In a list (`placement="list"`) it stands at the top of the
   full width, 56 from the top; in the job view and an empty list without its head (`center`)
-  in the middle of its view (its parent centres it).
+  in the middle of its view (its parent centres it). The words of a failure (`tone="danger"`)
+  copy.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -53,8 +54,10 @@
 
 <div class="empty {placement}" data-testid={testid ?? undefined}>
   <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'accent'} />
-  {#if heading}<h3 class="title">{heading}</h3>{/if}
-  {#if text}<p class="text" class:alone={!heading}>{text}</p>{/if}
+  {#if heading}<h3 class="title" data-copy={tone === 'danger' ? '' : undefined}>{heading}</h3>{/if}
+  {#if text}<p class="text" class:alone={!heading} data-copy={tone === 'danger' ? '' : undefined}>
+      {text}
+    </p>{/if}
   {#if action || secondary}
     <div class="actions">
       {#if action}

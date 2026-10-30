@@ -1045,6 +1045,31 @@ test('the day exists only for "Ab Datum", takes no caret and is judged when left
   await savedWith(page, { available: { kind: 'from', date: '20.11.2026' } });
 });
 
+test('a number field shows no letter: after the digits, over a selection, in the middle', async ({
+  page,
+}) => {
+  await profile(page);
+  await page.getByTestId('edit-job').click();
+  const wish = page.getByTestId('profile-wish-rate');
+  await wish.click();
+  await wish.press('Control+A');
+  await page.keyboard.type('12a');
+  await expect(wish).toHaveValue('12');
+  await wish.press('Control+A');
+  await page.keyboard.type('abc');
+  await expect(wish).toHaveValue('');
+  // A letter among the digits goes, the caret stays where it was.
+  await page.keyboard.type('12');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.type('x');
+  await expect(wish).toHaveValue('12');
+  await page.keyboard.type('5');
+  await expect(wish).toHaveValue('152');
+  // Leaving the field keeps the digits.
+  await page.getByTestId('profile-min-rate').click();
+  await expect(wish).toHaveValue('152');
+});
+
 // ------------------------------------------------------------------ baselines
 
 test('baseline: profile', async ({ page }) => {

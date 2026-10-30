@@ -6,8 +6,8 @@
   verdict's icon in the colours of the rings 6 after its value's last word (owner, 2026-10-28:
   the eye goes to what does not fit). The contact (its name, e-mail and phone one under the
   other) spans both columns and comes last, so the rows above it pair up; its e-mail writes a
-  new mail to it, the job's title its subject. A hairline between the rows, none after the
-  last, like every box of rows.
+  new mail to it, the job's title its subject, on a click; a drag over it selects it to copy,
+  like the name. A hairline between the rows, none after the last, like every box of rows.
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
 -->
 <script lang="ts">
@@ -15,6 +15,7 @@
   import Card from '$components/Card.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import { t } from '$lib/i18n/t';
+  import { wasDragged } from '$lib/input/input';
   import { fade } from '$lib/motion/transitions';
   import { kindOf } from './reader-sections';
   import type { TermRow } from './terms';
@@ -26,6 +27,12 @@
   }
 
   let { rows, onmail }: Props = $props();
+
+  /** A click on the address writes the mail; a drag over it selected it (to copy), and the
+   *  click that follows its release writes nothing. */
+  function writeMail(event: MouseEvent): void {
+    if (!wasDragged(event)) onmail();
+  }
 </script>
 
 <Card heading={t.reader.details} testid="terms">
@@ -44,12 +51,14 @@
           <span class="term-line">
             {#if row.parts}
               <span class="parts">
-                {#each row.parts as part, index (index)}{#if part === row.mail}<span class="mail"
+                {#each row.parts as part, index (index)}{#if part === row.mail}<span
+                      class="mail"
+                      data-copy
                       ><Button
                         variant="link"
                         label={part}
                         testid="contact-mail"
-                        onclick={onmail}
+                        onclick={writeMail}
                       /></span
                     >{:else}<span class="value" data-copy>{part}</span>{/if}{/each}
               </span>

@@ -696,7 +696,7 @@ test.describe('filter', () => {
     await expect(chips(page).getByRole('button')).toHaveText(
       chipWordsOf('portal-linkedin', 'band-mid', 'band-low'),
     );
-    // A chip's × takes its choice off; the last one hands the focus to the funnel.
+    // A chip's × takes its choice off; a click sets no focus anywhere, not even after the last.
     await chip(page, 'band-mid').click();
     await expect
       .poll(() => listed(page))
@@ -707,6 +707,18 @@ test.describe('filter', () => {
     await chip(page, 'portal-linkedin').click();
     await expect(chips(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
+    await expect(funnel(page)).not.toBeFocused();
+    // From the keyboard the last one hands the focus to the funnel; before it the next chip's ×
+    // takes it, and Delete takes a chip off like Enter.
+    await chooseFilter(page, 'portal-linkedin');
+    await chooseFilter(page, 'band-mid');
+    await page.keyboard.press('Tab');
+    await chip(page, 'portal-linkedin').focus();
+    await page.keyboard.press('Enter');
+    await expect(chip(page, 'portal-linkedin')).toHaveCount(0);
+    await expect(chip(page, 'band-mid')).toBeFocused();
+    await page.keyboard.press('Delete');
+    await expect(chips(page)).toHaveCount(0);
     await expect(funnel(page)).toBeFocused();
   });
 
@@ -888,9 +900,20 @@ test.describe('filter', () => {
     await expect(state).toContainText(T.list.noFilterHit);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(funnel(page)).toBeVisible();
-    await state.getByRole('button', { name: T.toolbar.filterReset }).click();
+    const reset = state.getByRole('button', { name: T.toolbar.filterReset });
+    // A click takes the filter off and sets no focus (a button the code focused would show a
+    // tooltip nobody asked for); from the keyboard the funnel takes it, not the top of the window.
+    await reset.click();
     await expect(state).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
+    await expect(funnel(page)).not.toBeFocused();
+    await chooseFilter(page, empty!);
+    await chooseFilter(page, 'band-high');
+    await expect(state).toBeVisible();
+    await page.keyboard.press('Tab');
+    await reset.focus();
+    await page.keyboard.press('Enter');
+    await expect(state).toHaveCount(0);
     await expect(funnel(page)).toBeFocused();
   });
 
@@ -2043,6 +2066,198 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   await expect(page.getByTestId('list-scroll')).toBeHidden();
   await page.getByTestId('history-back').click();
   await expect(page.getByTestId('list-scroll')).toBeVisible();
+});
+
+/* ============================================================== what the audit found */
+
+// Logic of the list found by the audit of 2026-10-30: each test says in its name what a user
+// must be able to rely on.
+
+test.describe('the list keeps true', () => {
+  /** The key of the open row, as `portal-id` (null: none is marked). */
+  const openKeyOf = (page: Page): Promise<string | null> =>
+    list(page).evaluate(
+      (node) =>
+        node.querySelector<HTMLElement>('[data-open]')?.dataset['key']?.replace(':', '-') ?? null,
+    );
+
+  test('an undo of another place takes its row out of that list and opens the next job', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await viaMenu(page, 'archive', 'freelancermap-2803');
+    await openPlace(page, 'archive');
+    await openJob(page, 'freelancermap-2803');
+    const { active } = await stubList(page, { place: 'archive' });
+    const at = active.indexOf('freelancermap-2803');
+    const next = active[at + 1]!;
+    expect(next).toBeDefined();
+    // Rückgängig of the toast of the archive, pressed in the Archiv itself.
+    await page.getByTestId('toast-action').click();
+    await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
+    // The open job left with it: the next row of the list opens, which is marked.
+    await expect.poll(() => openKeyOf(page)).toBe(next);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await row(page, next).locator('.title').innerText(),
+    );
+    await openPlace(page, 'inbox');
+    await expect(row(page, 'freelancermap-2803')).toBeVisible();
+  });
+
+  test('an undo that fails keeps its toast as a warning that offers to try again', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await viaMenu(page, 'archive', 'freelancermap-2803');
+    await failNext(page, 'move_back');
+    await page.getByTestId('toast-action').click();
+    const warning = page.getByTestId('toast').filter({ hasText: T.error.text('db', {}) });
+    await expect(warning).toHaveCount(1);
+    await expect(warning.getByTestId('toast-action')).toHaveText(T.common.retry);
+    await warning.getByTestId('toast-action').click();
+    await expect(row(page, 'freelancermap-2803')).toBeVisible();
+    await expect(page.getByTestId('toast')).toHaveCount(0);
+  });
+
+  test('a second click, a slow double click, on the row that slid under a row tool opens nothing', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    // The first row of the first day: the next row slides under the pointer.
+    const first = (await listed(page))[0]!;
+    await row(page, first).hover();
+    const box = (await page.getByTestId('tool-trash').boundingBox())!;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.click(at.x, at.y);
+    await page.waitForTimeout(300);
+    await page.mouse.click(at.x, at.y);
+    await page.waitForTimeout(300);
+    await expect(row(page, first)).toHaveCount(0);
+    expect(await calls(page, 'job_detail')).toHaveLength(0);
+    expect(await calls(page, 'mark_read')).toHaveLength(0);
+    await expect(page.getByTestId('reader')).toHaveCount(0);
+  });
+
+  test('archiving the last row of Noch nicht bewertet opens the row above, not the folded Ausgeschlossen', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const { active, excluded: out } = await stubList(page);
+    expect(out.length).toBeGreaterThan(0);
+    const last = active.at(-1)!;
+    const above = active.at(-2)!;
+    await openJob(page, last);
+    await page.getByTestId('reader-archive').click();
+    await expect.poll(() => openKeyOf(page)).toBe(above);
+    await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('folding the section of the open job takes the highlight away; unfolding brings it back', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const { active } = await stubList(page);
+    await openJob(page, active.at(-1)!);
+    const bar = page.getByTestId('row-bar');
+    await expect(bar).toHaveClass(/\bshown\b/);
+    const divider = page.getByTestId('unscored-divider');
+    await divider.click();
+    await expect(page.getByTestId('unscored-rows')).toHaveCount(0);
+    await expect(bar).not.toHaveClass(/\bshown\b/);
+    await divider.click();
+    await expect(bar).toHaveClass(/\bshown\b/);
+  });
+
+  for (const scenario of ['fresh', 'empty', 'archived']) {
+    test(`a place without a job never shows the two columns while its list loads (${scenario})`, async ({
+      page,
+    }) => {
+      // Every frame that is drawn, until the list has answered.
+      await page.addInitScript(() => {
+        const seen: string[] = [];
+        (window as unknown as { flash: string[] }).flash = seen;
+        const frame = (): void => {
+          for (const id of ['reader-pane', 'place-reader', 'list-skeleton', 'list-splitter']) {
+            if (document.querySelector(`[data-testid="${id}"]`) && !seen.includes(id)) {
+              seen.push(id);
+            }
+          }
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      });
+      await open(page, `${WIN}&scenario=${scenario}`);
+      await expect(page.getByTestId('empty-all')).toBeVisible();
+      await settle(page);
+      expect(await page.evaluate(() => (window as unknown as { flash: string[] }).flash)).toEqual(
+        [],
+      );
+    });
+  }
+
+  test('a long search without a space breaks inside the list', async ({ page }) => {
+    await open(page, WIN);
+    await page.getByTestId('search').fill('x'.repeat(300));
+    const none = page.getByTestId('empty-search');
+    await expect(none).toBeVisible();
+    const scroll = page.getByTestId('list-scroll');
+    const [text, column] = [(await none.boundingBox())!, (await scroll.boundingBox())!];
+    expect(text.x + text.width).toBeLessThanOrEqual(column.x + column.width);
+    expect(await scroll.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  });
+
+  test('the list and the open job keep their scroll place while another view is shown', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 420 });
+    await open(page, WIN);
+    await openJob(page, 'linkedin-4100200301');
+    const scroller = page.getByTestId('list-scroll');
+    await scroller.evaluate((node) => node.scrollTo({ top: 120 }));
+    await stage(page).evaluate((node) => node.scrollTo({ top: 200 }));
+    await expect.poll(() => scroller.evaluate((node) => node.scrollTop)).toBe(120);
+    await page.getByTestId('nav-settings').click();
+    await expect(page.getByTestId('view-settings')).toBeVisible();
+    await page.getByTestId('nav-jobs').click();
+    await expect.poll(() => scroller.evaluate((node) => node.scrollTop)).toBe(120);
+    await expect.poll(() => stage(page).evaluate((node) => node.scrollTop)).toBe(200);
+    // Another job, and the first again by a click, start at the top.
+    await openJob(page, 'freelancermap-2802');
+    expect(await stage(page).evaluate((node) => node.scrollTop)).toBe(0);
+    await stage(page).evaluate((node) => node.scrollTo({ top: 150 }));
+    await openJob(page, 'linkedin-4100200301');
+    expect(await stage(page).evaluate((node) => node.scrollTop)).toBe(0);
+  });
+
+  test('Jobs and Aktuell lead to one place: both open it without the search', async ({ page }) => {
+    await open(page, WIN);
+    const search = page.getByTestId('search');
+    for (const entry of ['nav-jobs', 'place-inbox']) {
+      await search.fill('Kreditoren');
+      await expect.poll(async () => (await lastQuery(page))?.search).toBe('Kreditoren');
+      await page.getByTestId(entry).click();
+      await expect(search, entry).toHaveValue('');
+    }
+  });
+
+  test('Trotzdem bewerten is not offered in the Papierkorb, neither in the menu nor in the job view', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
+    await open(page, WIN);
+    const key = 'linkedin-4100200305';
+    await openJob(page, key);
+    await expect(page.getByTestId('reader-include')).toBeVisible();
+    await viaMenu(page, 'trash', key);
+    await settleMoves(page);
+    await openPlace(page, 'trash');
+    await openJob(page, key);
+    await expect(stage(page).getByTestId('exclusion')).toBeVisible();
+    await expect(page.getByTestId('reader-include')).toHaveCount(0);
+    await rowMenu(page, key);
+    await expect(menuItem(page, 'restore')).toBeVisible();
+    await expect(menuItem(page, 'include')).toHaveCount(0);
+  });
 });
 
 /* ==================================================================== baselines */

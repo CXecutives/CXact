@@ -5,7 +5,17 @@
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
-import { ALL_PORTALS, chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
+import {
+  ALL_PORTALS,
+  chip,
+  chips,
+  chipWordsOf,
+  chooseFilter,
+  lastQuery,
+  stubList,
+  listed,
+  T,
+} from './helpers';
 
 const WIN = '?platform=windows';
 /** The end toast of the demo's fetch: two new jobs (the third is excluded), one of the high
@@ -111,11 +121,34 @@ test('from another view Zeigen opens Aktuell without its search, filtered to the
   const run = (await lastQuery(page))?.run;
   expect(await lastQuery(page)).toMatchObject({ search: null, bands: ['high'] });
   expect(run).toEqual(expect.any(Number));
-  // The next search takes "Aus der letzten Suche" off (it would speak of the one before).
+  // The next search takes "Aus der letzten Suche" off (it would speak of the one before), and
+  // the band that Zeigen set with it: the list is the user's own filter again.
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(chip(page, 'run')).toHaveCount(0);
-  expect(await lastQuery(page)).toMatchObject({ run: null, bands: ['high'] });
+  await expect(page.getByTestId('filter-chips')).toHaveCount(0);
+  expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
+});
+
+test('what Zeigen set is never the user filter: its chips taken off keep nothing, the own one stays', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&tick=15`);
+  // The user's own filter, kept: one portal.
+  await chooseFilter(page, 'portal-linkedin');
+  const kept = await page.evaluate(() => localStorage.getItem('jobs-filter'));
+  expect(kept).not.toBeNull();
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  // Taking off Zeigen's chips, each on its own, writes nothing: the stored filter is the user's.
+  await chip(page, 'run').click();
+  await expect(chip(page, 'run')).toHaveCount(0);
+  await chip(page, 'band-high').click();
+  expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBe(kept);
+  await open(page, `${WIN}&tick=15`);
+  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
 });
 
 test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
@@ -129,6 +162,20 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
 });
+
+// The preview's runs that are under way when the page starts (the scenarios `running`,
+// `sign-in-waiting` and `rescoring`) end with Abbrechen like a run the page started.
+for (const scenario of ['running', 'sign-in-waiting', 'rescoring']) {
+  test(`Abbrechen ends the run the page finds under way (${scenario})`, async ({ page }) => {
+    await open(page, `${WIN}&scenario=${scenario}`);
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    await cancel.click();
+    await expect(cancel).toHaveCount(0);
+    await expect(page.getByTestId('run-line')).toHaveCount(0);
+    await expect(page.getByTestId('fetch')).toBeVisible();
+  });
+}
 
 test('loading ads is no search: no run line, no Abbrechen, no fetch toast', async ({ page }) => {
   await open(page, `${WIN}&tick=40`);

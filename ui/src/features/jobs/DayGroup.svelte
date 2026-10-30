@@ -16,7 +16,7 @@
   import { enterList } from '$lib/motion/enter';
   import { staggerLimit } from '$lib/motion/motion';
   import { rowCollapse } from '$lib/motion/transitions';
-  import { keyOf } from '$lib/state/jobs.svelte';
+  import { keyOf } from '$lib/state/jobRows';
   import { moving } from './actions';
 
   interface Props {

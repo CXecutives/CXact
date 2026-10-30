@@ -19,9 +19,9 @@
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
-//   focus its default moves comes back unseen, `keepFocus`). The back
-//   button of the mouse goes back only where a view offers a way back (`onBack`: the
-//   reader in one column); forward does nothing, and neither ever navigates the web view.
+//   focus its default moves comes back unseen, `keepFocus`). The back and forward
+//   buttons of the mouse go back and forward only where a view offers a way (`onBack`,
+//   `onForward`: Zurück and Vor), and neither ever navigates the web view.
 // - the wheel only scrolls, the area under the pointer: no field, switch or choice takes it.
 //   Over an open menu only the menu scrolls; behind a modal dialog nothing scrolls. The one
 //   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
@@ -58,7 +58,9 @@
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
 // - a row that slides under a pointer that did not move is not hovered by it: after a row's
 //   tool took its row away, the next row shows its tools only once the pointer moves
-//   (`hover`, `holdHover`)
+//   (`hover`, `holdHover` of hold.ts); a press on a tooltip's anchor holds the same way, so
+//   the button that takes the place of the one pressed shows no tooltip until the pointer moves
+// - a tooltip's bubble goes on a press anywhere, a scroll of any pane and Esc (`onDismiss`)
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -82,6 +84,7 @@ import {
 } from '../state/menu.svelte';
 import { shell } from '../state/shell.svelte';
 import { tokenMs, tokenPx } from '../tokens';
+import { pointerMoved } from './hold';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
 /** Text a user would copy (selectable, Ctrl/Cmd+C). */
@@ -129,10 +132,12 @@ const EDITING_KEYS = new Set([
 const CONTROL_EDIT_KEYS = new Set(['a', 'e', 'b', 'f', 'n', 'p', 'd', 'h', 'k']);
 const LEFT = 0;
 const MIDDLE = 1;
-/** How far a held middle press may move and still leave the autoscroll on (a click). */
-const AUTOSCROLL_SLOP = 4;
+/** How far a held press may move and still be a click: a middle press that leaves the
+ *  autoscroll on, a left one that is no drag over the text of a control. */
+const CLICK_SLOP = 4;
 /** Back and forward (buttons 3 and 4). */
 const BACK = 3;
+const FORWARD = 4;
 /** The Cmd shortcuts of the macOS menu (Quit, Close, Minimize, Hide, Settings). WKWebView
  *  hands a key equivalent to the menu only if the page lets it through. Matched by the
  *  character, like macOS matches key equivalents (Cmd+Q stays Q on AZERTY). */
@@ -152,6 +157,27 @@ const selectable = (target: EventTarget | null): boolean =>
 /** Ctrl, Alt or Cmd (Shift alone makes no shortcut). */
 const hasModifier = (event: KeyboardEvent): boolean =>
   event.ctrlKey || event.altKey || event.metaKey;
+
+/** What dismisses a bubble that stands over the page: a press, a scroll, Esc. */
+export type Dismissal = 'press' | 'scroll' | 'escape';
+
+const dismissals = new Set<(cause: Dismissal, target: EventTarget | null) => void>();
+
+/**
+ * `onDismiss(handler)`: the tooltip's bubble (components/Tooltip.svelte) goes on a press
+ * anywhere (with what was pressed), a scroll of any pane and Esc, like the tooltips of a native
+ * app. Returns the unsubscribe function.
+ */
+export function onDismiss(
+  handler: (cause: Dismissal, target: EventTarget | null) => void,
+): () => void {
+  dismissals.add(handler);
+  return () => dismissals.delete(handler);
+}
+
+function dismiss(cause: Dismissal, target: EventTarget | null = null): void {
+  for (const handler of dismissals) handler(cause, target);
+}
 
 /** Ctrl/Cmd+C over a selection of copyable text. */
 function isCopy(event: KeyboardEvent): boolean {
@@ -409,11 +435,38 @@ function topModal(): HTMLElement | null {
   return open.item(open.length - 1);
 }
 
-/** Tab and Shift+Tab cycle through the controls of the modal and never leave it. */
-function cycleFocus(modal: HTMLElement, back: boolean): void {
-  const items = [...modal.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+/** Cancels every modal dialog that stands open, as Esc would (a question that something more
+ *  urgent overrules: the window's close). A dialog that is busy keeps standing. */
+export function cancelDialogs(): void {
+  for (const modal of document.querySelectorAll<HTMLElement>(MODAL)) {
+    forms.get(modal)?.cancel?.();
+  }
+}
+
+/** The controls Tab visits inside `root`, in order: a disabled one and one out of sight are
+ *  passed. */
+function tabbables(root: ParentNode): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
     (node) => !node.matches(':disabled') && node.getClientRects().length > 0,
   );
+}
+
+/**
+ * Tab on the last control goes to the first and Shift+Tab on the first to the last, like the
+ * controls of a native window: the focus never leaves for the page itself, where it would
+ * rest on nothing for one press. `true` if it wrapped (the key is then taken).
+ */
+function wrapFocus(back: boolean): boolean {
+  const items = tabbables(document);
+  const active = document.activeElement;
+  if (items.length === 0 || active !== items[back ? 0 : items.length - 1]) return false;
+  items[back ? items.length - 1 : 0]?.focus();
+  return true;
+}
+
+/** Tab and Shift+Tab cycle through the controls of the modal and never leave it. */
+function cycleFocus(modal: HTMLElement, back: boolean): void {
+  const items = tabbables(modal);
   if (items.length === 0) {
     modal.focus();
     return;
@@ -587,12 +640,14 @@ export function removeBy(button: EventTarget | null, remove: () => void): void {
 }
 
 /** Backspace or Delete on the focused × of a chip presses it (it removes the chip, like
- *  Backspace in its field removes the last one); `true` if it did. */
+ *  Backspace in its field removes the last one); `true` if it did. The × is the chip's
+ *  remove button, or the button inside the slot that holds it (a filter chip). */
 function removesByKey(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey) return false;
   if (event.key !== 'Backspace' && event.key !== 'Delete') return false;
   const target = event.target;
-  if (!(target instanceof HTMLElement) || !target.matches(`${CHIP} button${REMOVE}`)) return false;
+  if (!(target instanceof HTMLButtonElement)) return false;
+  if (target.closest(REMOVE) === null || target.closest(CHIP) === null) return false;
   event.preventDefault();
   target.click();
   return true;
@@ -637,6 +692,7 @@ function onKeyDown(event: KeyboardEvent): void {
   keyboardFocus = true;
   // A held key is fast browsing: an open meanwhile plays no motion (lib/motion/pace).
   noteKey(event.repeat);
+  if (event.key === 'Escape') dismiss('escape');
   if (menuState.open !== null) {
     dispatchMenuKey(event);
     return;
@@ -662,6 +718,10 @@ function onKeyDown(event: KeyboardEvent): void {
       return;
     }
   }
+  if (modal === null && isFocusMove(event) && wrapFocus(event.shiftKey)) {
+    event.preventDefault();
+    return;
+  }
   if (isCopy(event)) return;
   // Shift+F10 and the Menu key (Windows) open the app's menu at the field, the selected
   // copyable text or the focused element; the page opens it, not the engine.
@@ -683,6 +743,7 @@ function onKeyDown(event: KeyboardEvent): void {
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
   if (dispatchSelectKey(event)) return;
   if (removesByKey(event)) return;
+  if (selectsAll(event)) return;
   // Everything else is the app's or nothing: never a shortcut of the web view (reload,
   // find, print, zoom, history).
   event.preventDefault();
@@ -694,6 +755,33 @@ function onKeyDown(event: KeyboardEvent): void {
 /** The scroll area the user clicked in last (the page keys scroll it while the focus is
  *  nowhere, e.g. after a click on the ad's text). */
 let lastPane: HTMLElement | null = null;
+/** The copyable block the user pressed last (null: the last press was elsewhere). */
+let lastCopy: Element | null = null;
+/** Where the last left press went down. */
+let pressedAt: { x: number; y: number } | null = null;
+
+/**
+ * The click that ends a drag: the pointer moved from its press to its release (a drag over
+ * the text of a control, the contact's e-mail, selects the text and is no click on the
+ * control). A keyboard's click has no press.
+ */
+export function wasDragged(event: MouseEvent): boolean {
+  if (event.detail === 0 || pressedAt === null) return false;
+  return Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > CLICK_SLOP;
+}
+
+/**
+ * Ctrl/Cmd+A beside a field selects the copyable block pressed last (the ad's text, an alert
+ * mail) whole, like Select All in a document; with none pressed it does nothing, the page is
+ * never selected. `true` if the key was for it.
+ */
+function selectsAll(event: KeyboardEvent): boolean {
+  if (event.altKey || event.shiftKey || !event[keyConventions().command]) return false;
+  if (event.key.toLowerCase() !== 'a') return false;
+  event.preventDefault();
+  if (lastCopy?.isConnected) getSelection()?.selectAllChildren(lastCopy);
+  return true;
+}
 /** A page is this much of the pane (a line of the last page stays in view). */
 const PAGE_SHARE = 0.9;
 
@@ -728,26 +816,33 @@ function undoFromMenu(): void {
   if (inField(document.activeElement)) document.execCommand('undo');
 }
 
-/** The ways back of the views (the reader in one column: its "Zurück"); the newest first. */
+/** The ways back and forward of the views (Zurück and Vor); the newest first. */
 const backs: (() => boolean)[] = [];
+const forwards: (() => boolean)[] = [];
+
+function subscribe(ways: (() => boolean)[], handler: () => boolean): () => void {
+  ways.push(handler);
+  return () => {
+    const at = ways.indexOf(handler);
+    if (at !== -1) ways.splice(at, 1);
+  };
+}
 
 /**
  * `onBack(handler)`: the mouse's back button runs the newest handler that has a way back (it
  * returns `true` when it went back), like the Zurück of the view. Without one it does
  * nothing; it never navigates the web view. Returns the unsubscribe function.
  */
-export function onBack(handler: () => boolean): () => void {
-  backs.push(handler);
-  return () => {
-    const at = backs.indexOf(handler);
-    if (at !== -1) backs.splice(at, 1);
-  };
-}
+export const onBack = (handler: () => boolean): (() => void) => subscribe(backs, handler);
 
-/** Go back where a view offers it (never behind a menu or a dialog); `true` if it did. */
-function goBack(): boolean {
+/** `onForward(handler)`: the same for the mouse's forward button, like the Vor of the top bar. */
+export const onForward = (handler: () => boolean): (() => void) => subscribe(forwards, handler);
+
+/** Go back or forward where a view offers it (never behind a menu or a dialog); `true` if it
+ *  did. */
+function go(ways: readonly (() => boolean)[]): boolean {
   if (menuState.open !== null || topModal() !== null) return false;
-  return [...backs].reverse().some((back) => back());
+  return [...ways].reverse().some((way) => way());
 }
 
 const prevent = (event: Event): void => event.preventDefault();
@@ -970,35 +1065,11 @@ function runDouble(event: MouseEvent): boolean {
   return true;
 }
 
-/** Where the pointer stood when a row's tool took its row away (null: no hold). */
-let heldAt: { x: number; y: number } | null = null;
-
-/**
- * A row's tool took its row away (the row folds, the next one slides under the pointer):
- * until the pointer moves, no element counts as hovered by it (`hover`), so the next row
- * shows no tools under a pointer that did not move.
- */
-export function holdHover(event: MouseEvent): void {
-  heldAt = { x: event.clientX, y: event.clientY };
-}
-
-/** The pointer moved since the hold (which then ends); the engines send `pointerenter` and
- *  `pointermove` at the old place when content slides under a pointer that rests. Less than
- *  a pixel is no move: a click reports whole pixels, a pointer event the fraction too. */
-function pointerMoved(event: PointerEvent): boolean {
-  if (heldAt === null) return true;
-  if (Math.abs(event.clientX - heldAt.x) < 1 && Math.abs(event.clientY - heldAt.y) < 1) {
-    return false;
-  }
-  heldAt = null;
-  return true;
-}
-
 /**
  * `use:hover={(here) => ...}`: says when the mouse comes onto the element (`here` true) and
  * when it leaves it again (false); moves between its own children do not count. After
- * `holdHover` an element the pointer did not move onto waits for the pointer to move. Touch
- * never hovers.
+ * `holdHover` (hold.ts) an element the pointer did not move onto waits for the pointer to
+ * move. Touch never hovers.
  */
 export const hover: Action<HTMLElement, (here: boolean) => void> = (node, callback) => {
   let current = callback;
@@ -1334,6 +1405,7 @@ function scrollOver(): void {
 }
 
 function onScroll(): void {
+  dismiss('scroll');
   scrollIdleMs ??= tokenMs('--scroll-idle');
   if (!scrolling) {
     scrolling = true;
@@ -1452,6 +1524,7 @@ export function installInput(): void {
     'mousedown',
     (event) => {
       keyboardFocus = false;
+      dismiss('press', event.target);
       if (pressOutsideMenu(event)) {
         swallow = true;
         return;
@@ -1467,6 +1540,18 @@ export function installInput(): void {
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
+        lastCopy = closest(event.target, COPY);
+        pressedAt = { x: event.clientX, y: event.clientY };
+        // A press beside the selected text ends the selection, like in a native text view
+        // (copyable text starts a new one; the app's menu with its Copy needs it, and a press
+        // on a scrollbar is no press on the text's view).
+        if (
+          !selectable(event.target) &&
+          closest(event.target, MENU_LAYER) === null &&
+          !onScrollbar(event)
+        ) {
+          getSelection()?.removeAllRanges();
+        }
         // A button inside a field (show password, clear) leaves the caret in the field.
         if (closest(event.target, KEEP_FOCUS) !== null) {
           event.preventDefault();
@@ -1497,12 +1582,13 @@ export function installInput(): void {
     (event) => {
       if (event.button >= BACK) {
         event.preventDefault();
-        if (event.button === BACK) goBack();
+        if (event.button === BACK) go(backs);
+        else if (event.button === FORWARD) go(forwards);
       }
       // Dragged with the middle button held: it scrolled while held, no mode is left.
       if (event.button === MIDDLE && autoscroll) {
         const moved = Math.hypot(event.clientX - middleAt.x, event.clientY - middleAt.y);
-        if (moved > AUTOSCROLL_SLOP) autoscroll = false;
+        if (moved > CLICK_SLOP) autoscroll = false;
       }
       // Chromium ends its autoscroll with the next press and keeps that press to itself: only
       // the release arrives, and nothing is left to end.
@@ -1521,6 +1607,9 @@ export function installInput(): void {
   document.addEventListener(
     'pointermove',
     (event) => {
+      // A move anywhere ends the hold on hover (hold.ts), so a pointer that left and comes
+      // back to the very pixel it pressed finds the rows and the tooltips awake.
+      pointerMoved(event);
       if (!otherButtonsDown(event) && !swallow) auxPress(false);
     },
     { capture: true, passive: true },
