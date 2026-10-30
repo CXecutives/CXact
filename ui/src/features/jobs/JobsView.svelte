@@ -15,9 +15,12 @@
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps the previous job; the empty state goes at once (the pane
-  stays empty, a placeholder once the load takes a while). Then the new stage takes the old
+  stays empty, a placeholder once the load takes a while, also over a job shown before: its
+  tools would act on a job no longer chosen). Then the new stage takes the old
   one's place at once, nothing fades, so nothing flashes between them; the new job starts at
-  the top. The top bar's job view button and a search that no longer finds the job close it
+  the top. The list and the open job's stage keep their scroll place while another view is
+  shown, like Profil and Einstellungen. The top bar's job view button and a search that no
+  longer finds the job close it
   (the place's empty state). Esc closes only menus and dialogs: the app has no keys of its own.
 -->
 <script lang="ts">
@@ -27,10 +30,12 @@
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
   import { t } from '$lib/i18n/t';
+  import { forgetScroll, keepScroll } from '$lib/actions/keepScroll';
   import { scrollFade } from '$lib/actions/scrollFade';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
-  import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
+  import { keyOf, sameKey } from '$lib/state/jobRows';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { FOLD_BELOW, viewport } from '$lib/state/viewport.svelte';
   import JobList from './JobList.svelte';
@@ -59,15 +64,22 @@
   let shown = NO_JOB;
   /** Counts the changes: each one is a new stage, which starts at the top. */
   let turns = 0;
+  /** Where a stage of the job view keeps its scroll place while another view is shown. */
+  const readerScroll = (what: string): string => `reader:${what}`;
   const stage = $derived.by((): { what: string; turn: number } => {
     const selected = jobs.selected !== null;
+    // The job the pane holds is the one chosen (a reload of it, as a run brings, keeps it).
+    const loaded = jobs.detail !== null && sameKey(jobs.detail.job.key, jobs.selected);
     let next = shown;
     if (selected && jobs.detailStatus === 'error') next = ERROR;
+    else if (selected && jobs.detailSlow && !loaded) next = WAITING;
     else if (jobs.detail !== null) next = keyOf(jobs.detail.job.key);
-    else if (selected && jobs.detailSlow) next = WAITING;
     else if (selected && shown === NO_JOB) next = OPENING;
     else if (!selected) next = NO_JOB;
     if (next !== shown) {
+      // Another job starts at the top, also one that was open before; the place of this one
+      // is kept only while the view is left and comes back.
+      forgetScroll(readerScroll(shown));
       shown = next;
       turns += 1;
     }
@@ -187,7 +199,7 @@
           <ListHeader bind:this={header} {line} />
         </div>
       {/if}
-      <div class="scroll" data-testid="list-scroll">
+      <div class="scroll" data-testid="list-scroll" use:keepScroll={'jobs-list'}>
         <JobList
           onresetfilter={() => void header?.resetFilter()}
           online={(value) => (line = value)}
@@ -207,7 +219,12 @@
       >
       <section class="right" data-testid="reader-pane" bind:this={right}>
         {#key stage.turn}
-          <div class="stage" data-testid="stage" use:scrollFade>
+          <div
+            class="stage"
+            data-testid="stage"
+            use:scrollFade
+            use:keepScroll={readerScroll(stage.what)}
+          >
             <div
               class="column"
               class:idle={stage.what === NO_JOB || stage.what === ERROR}

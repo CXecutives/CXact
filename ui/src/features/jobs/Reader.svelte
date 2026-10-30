@@ -47,7 +47,8 @@
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
-  import { jobs, keyOf } from '$lib/state/jobs.svelte';
+  import { keyOf } from '$lib/state/jobRows';
+  import { jobs } from '$lib/state/jobs.svelte';
   import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
   import AdText from './AdText.svelte';
@@ -59,6 +60,7 @@
   import {
     guarded,
     include as includeJob,
+    mayInclude,
     move,
     purge,
     rowTools,
@@ -246,8 +248,9 @@
     fail(await addTerm(term));
   }
 
-  /** An excluded job the user has not scored by hand: its one button is "Trotzdem bewerten". */
-  const includable = $derived(excluded && !job.overridden);
+  /** An excluded job the user has not scored by hand, not in the Papierkorb: its one button is
+   *  "Trotzdem bewerten". */
+  const includable = $derived(excluded && mayInclude(job));
   /** "Trotzdem bewerten" was pressed: the state box says the job is being scored. */
   let including = $state(false);
 

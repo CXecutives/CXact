@@ -24,8 +24,8 @@
   like its tab (no count) and goes there with the search. A click opens a job, a double click
   opens its ad in the browser, a right click its menu (jobMenu of actions.ts); under the
   pointer the row shows the moves of its place as its tools (rowTools, the same table). Back in
-  the Jobs view, the open job's row is in view again. A job action that fails says so in the
-  list header.
+  the Jobs view, the list stands where it was scrolled to. A job action that fails says so in
+  the list header.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
@@ -61,11 +61,22 @@
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { NO_FILTER } from '$lib/state/filter';
-  import { isExcluded, isUnscored, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
+  import { isExcluded, isUnscored, keyOf, sameKey } from '$lib/state/jobRows';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
+  import { sections } from '$lib/state/sections.svelte';
   import type { ContextMenu } from '$lib/input/input';
-  import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
+  import {
+    disarm,
+    guarded,
+    jobMenu,
+    moving,
+    openAd,
+    purge,
+    rowTools,
+    type JobMenuContext,
+  } from './actions';
   import DayGroup from './DayGroup.svelte';
   import { completeProfile, fetchBlocked } from './profileGaps';
   import RowBar from './RowBar.svelte';
@@ -126,36 +137,10 @@
 
   /* ------------------------------------------------------------------- sections */
 
-  /** A section is open (kept like the order): the excluded one folded by default, the one
-   *  without a score yet open. */
-  const EXCLUDED_KEY = 'jobs-excluded-open';
-  const UNSCORED_KEY = 'jobs-unscored-open';
-  function keptOpen(key: string, open: boolean): boolean {
-    try {
-      const kept = localStorage.getItem(key);
-      return kept === null ? open : kept === '1';
-    } catch {
-      return open;
-    }
-  }
-  function keep(key: string, open: boolean): void {
-    try {
-      localStorage.setItem(key, open ? '1' : '0');
-    } catch {
-      // Without a store the choice lasts for this session only.
-      return;
-    }
-  }
-  let excludedOpen = $state(keptOpen(EXCLUDED_KEY, false));
-  let unscoredOpen = $state(keptOpen(UNSCORED_KEY, true));
-  function toggleExcluded(): void {
-    excludedOpen = !excludedOpen;
-    keep(EXCLUDED_KEY, excludedOpen);
-  }
-  function toggleUnscored(): void {
-    unscoredOpen = !unscoredOpen;
-    keep(UNSCORED_KEY, unscoredOpen);
-  }
+  /** A section is open (lib/state/sections.svelte.ts, kept like the order): the excluded one
+   *  folded by default, the one without a score yet open. */
+  const excludedOpen = $derived(sections.excludedOpen);
+  const unscoredOpen = $derived(sections.unscoredOpen);
   /** The folded section ends the list: every other row is loaded (the backend lists the
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
@@ -239,6 +224,11 @@
   const markedUnscored = $derived(
     openKey !== null && unscored.some((job) => keyOf(job.key) === openKey),
   );
+  /** The highlight's row: none while the open job's section is folded (its rows leave after
+   *  the fold without a change of size the highlight would hear of). */
+  const barOpen = $derived(
+    (markedExcluded && !excludedOpen) || (markedUnscored && !unscoredOpen) ? null : openKey,
+  );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
   // is folded away: its section opens (for now; the kept choice stays). A job is settled
@@ -250,21 +240,16 @@
     const out = markedExcluded;
     const waiting = markedUnscored;
     untrack(() => {
-      if (key !== lastMarked && out && !excludedOpen) excludedOpen = true;
-      if (key !== lastMarked && waiting && !unscoredOpen) unscoredOpen = true;
+      if (key !== lastMarked && out && !sections.excludedOpen) sections.excludedOpen = true;
+      if (key !== lastMarked && waiting && !sections.unscoredOpen) sections.unscoredOpen = true;
       if (key === null || listed.has(key)) lastMarked = key;
     });
   });
 
   // Back in the Jobs view (the list is built anew): what the header said about an action in
-  // another list goes, and the open job's row comes into view.
-  onMount(() => {
-    jobs.quiet();
-    const open = jobs.selected;
-    if (open !== null && jobs.visible.some((job) => sameKey(job.key, open))) {
-      void jobs.reach(open, false);
-    }
-  });
+  // another list goes. The list stands where it was scrolled to (JobsView keeps its place), so
+  // the open job's row is where the user left it.
+  onMount(() => jobs.quiet());
 
   // The open job after a move or a re-sort: once its row is mounted it scrolls into view (and
   // takes the focus when the focus was on the row that left). A row in a section that is
@@ -286,8 +271,10 @@
     });
   });
 
-  /** A click opens the job (the open one stays open). */
+  /** A click opens the job (the open one stays open); right after a move it is the second
+   *  click of a double click on the row that slid under the pointer, and does nothing. */
   function select(job: JobView): void {
+    if (guarded()) return;
     if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
   }
 
@@ -565,7 +552,7 @@
   <RowBar
     bind:this={rowBar}
     rows={groups}
-    open={openKey}
+    open={barOpen}
     {listed}
     folding={moving}
     generation={jobs.generation}
@@ -610,10 +597,11 @@
       }}
       testid="list-error"
     />
-  {:else if jobs.rows.length === 0 && jobs.status !== 'ready'}
+  {:else if jobs.rows.length === 0 && jobs.status !== 'ready' && !jobs.emptyPlace}
     <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
          jump); they fade in once the list has taken --delay-placeholder (at once when it has
-         already, jobs.slow), so a quick list never shows them. -->
+         already, jobs.slow), so a quick list never shows them. None for a place the counts
+         say is empty: it shows that at once. -->
     <div class="skeletons" data-testid="list-skeleton">
       {#each SKELETON_ROWS as line (line.index)}
         <div class="skeleton-row">
@@ -622,7 +610,7 @@
         </div>
       {/each}
     </div>
-  {:else if jobs.visible.length === 0 && jobs.status === 'ready'}
+  {:else if jobs.visible.length === 0 && (jobs.status === 'ready' || jobs.emptyPlace)}
     {#if searching || filterEmptied}
       <!-- The search's × clears it; the other places' hits are the way on. -->
       <div class="none" data-testid={searching ? 'empty-search' : 'empty-filter'}>
@@ -695,7 +683,7 @@
           <ListDivider
             label={t.list.unscored}
             open={unscoredOpen}
-            ontoggle={toggleUnscored}
+            ontoggle={() => sections.toggleUnscored()}
             testid="unscored-divider"
           />
           {#if unscoredOpen}
@@ -714,7 +702,7 @@
           <ListDivider
             label={t.list.excluded}
             open={excludedOpen}
-            ontoggle={toggleExcluded}
+            ontoggle={() => sections.toggleExcluded()}
             testid="excluded-divider"
           />
           {#if excludedOpen}
@@ -824,10 +812,12 @@
     padding: 0 var(--list-rows-inset);
   }
 
+  /* A long search with no space in it breaks inside the column instead of running out of it. */
   .none-text {
     padding: var(--list-none-pad);
     color: var(--text-muted);
     font: var(--type-md);
+    overflow-wrap: anywhere;
     text-align: center;
   }
 

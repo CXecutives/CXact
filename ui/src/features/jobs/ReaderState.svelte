@@ -4,12 +4,14 @@
   under the title (never "nicht bewertet" again) and the one button that helps; no sign (the
   ring is the job's mark), a spinner only while something is being done.
   - being scored after "Trotzdem bewerten": the spinner, "Der Job wird bewertet.";
-  - excluded: why (the profile's side) and "Trotzdem bewerten" with the plus; the box
-    neutral like the others (the ring and its word are the job's one red);
+  - excluded: why (the profile's side) and "Trotzdem bewerten" with the plus (not in the
+    Papierkorb); the box neutral like the others (the ring and its word are the job's one red);
   - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (being
-    loaded: the spinner, "Die Anzeige wird geladen.", no button);
+    loaded, by the run pressed for here or by the search: the spinner, "Die Anzeige wird
+    geladen.", no button; another job's details run does not load this one);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
-    then "Anzeige laden"), else "Anzeige laden" where the portal can load it;
+    then "Anzeige laden"), else "Anzeige laden" where the portal can load it (pressed, it says
+    it is being loaded like a missing ad);
   - an ad gone, out of reach or closed ("Beendet"), a text too short to score: the two lines
     only.
   A failed sign-in says so in a toast, like every result of the job view.
@@ -42,6 +44,12 @@
   const portalState = $derived(app.state?.portals.find((p) => p.portal === job.portal) ?? null);
   /** "Anzeige laden" was pressed here: this job is in the run. */
   let requested = $state(false);
+  /** This job's ad is being loaded: by the run asked for here (a details run holds no other
+   *  job), or by the search, which loads what is still to come. */
+  const loading = $derived(
+    portalState?.enabled === true &&
+      ((requested && run.fetching) || (detailKind === 'pending' && run.searching)),
+  );
   type AdState = 'missing' | 'loading' | 'teaser' | 'gone' | 'unfetchable' | 'closed';
   /** Why the ad's text is not all there, if it is not. */
   const adState = $derived.by((): AdState | null => {
@@ -49,19 +57,15 @@
       case 'ok':
         return job.closed ? 'closed' : null;
       case 'teaser':
+        return loading ? 'loading' : 'teaser';
       case 'gone':
       case 'unfetchable':
         return detailKind;
       default:
         // The text came before the job's state: it is there.
         if (detail.text !== null) return job.closed ? 'closed' : null;
-        // Still to come, failed or on request: loaded while this job is in a run of its
-        // portal (the one asked for here, or a fetch that loads what is still to come).
-        return run.fetching &&
-          portalState?.enabled === true &&
-          (requested || detailKind === 'pending')
-          ? 'loading'
-          : 'missing';
+        // Still to come, failed or on request.
+        return loading ? 'loading' : 'missing';
     }
   });
   $effect(() => {

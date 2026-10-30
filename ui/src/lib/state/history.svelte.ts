@@ -1,12 +1,17 @@
 // Zurück and Vor of the top bar, like a browser's: through the views, the places of the jobs
 // and the jobs opened, in the order they were shown. A step back shows the one before as it
 // was (its view, its place, its job); a new step after a way back drops the ones ahead.
-// Showing or hiding the job view is no step. The mouse's back button goes back too (App).
-// In one column a job without a step before it goes back to the list.
+// Showing or hiding the job view is no step. The mouse's back and forward buttons go the same
+// way (App). In one column a job without a step before it goes back to the list.
+// A job lies where it lies now: a step whose job was archived or put in the Papierkorb since
+// shows it there, and one whose job was deleted for good is dropped (the next step in that
+// direction shows). The first step is what the start ended in (the job kept from the last
+// run open again): the start's way there is no step.
 
 import { tick, untrack } from 'svelte';
 import type { JobKey, Place } from '../ipc/types';
-import { jobs, sameKey } from './jobs.svelte';
+import { sameKey } from './jobRows';
+import { jobs } from './jobs.svelte';
 import { navigation, type ViewId } from './navigation.svelte';
 import { shell } from './shell.svelte';
 
@@ -46,6 +51,9 @@ class History {
           place: jobs.place,
           job: jobs.selected,
         };
+        // The Jobs view starts its list, and opens the job kept from the last run, before it
+        // is looked at: the states on the way there were never shown.
+        if (step.view === 'jobs' && !jobs.started) return;
         untrack(() => this.#record(step));
       });
     });
@@ -65,24 +73,49 @@ class History {
       jobs.clearSelection();
       return true;
     }
-    return this.#show(this.#at - 1);
+    return this.#show(this.#at - 1, -1);
   }
 
   forward(): boolean {
-    return this.#show(this.#at + 1);
+    return this.#show(this.#at + 1, 1);
   }
 
-  /** Shows step `to` (an unsaved Profil may keep its view and ask first). */
-  #show(to: number): boolean {
+  /** What is shown is settled: the next change is a step again. */
+  #settle(): void {
+    void tick().then(() => (this.#showing = false));
+  }
+
+  /**
+   * Shows step `to` (an unsaved Profil may keep its view and ask first), reached by going `by`
+   * steps back or forward. The job of the step is opened where it lies now, which the step
+   * then names. One that is gone is dropped, and the next step in that direction shows
+   * instead, the step shown before when none is left.
+   */
+  #show(to: number, by: -1 | 1, from = this.#steps[this.#at]): boolean {
     const step = this.#steps[to];
     if (step === undefined) return false;
     const apply = (): void => {
       this.#showing = true;
       this.#at = to;
       if (step.place !== jobs.place) jobs.setPlace(step.place);
-      if (step.job === null) jobs.clearSelection();
-      else if (!sameKey(jobs.selected, step.job)) jobs.openKey(step.job);
-      void tick().then(() => (this.#showing = false));
+      if (step.job === null) {
+        jobs.clearSelection();
+        this.#settle();
+      } else if (sameKey(jobs.selected, step.job)) {
+        this.#settle();
+      } else {
+        void jobs.openKey(step.job).then((found) => {
+          if (found) {
+            this.#steps[to] = { ...step, place: jobs.place };
+            this.#settle();
+            return;
+          }
+          this.#steps = this.#steps.filter((_, index) => index !== to);
+          const next = by < 0 ? to - 1 : to;
+          if (this.#steps[next] !== undefined) this.#show(next, by, from);
+          else this.#back(from);
+        });
+      }
     };
     if (step.view === navigation.current) {
       apply();
@@ -91,6 +124,16 @@ class History {
     this.#showing = true;
     if (!navigation.go(step.view, false, apply)) this.#showing = false;
     return true;
+  }
+
+  /** No step is left that shows: the step shown before shows again. */
+  #back(from: Step | undefined): void {
+    const at = from === undefined ? -1 : this.#steps.findIndex((step) => step === from);
+    if (at < 0) {
+      this.#settle();
+      return;
+    }
+    this.#show(at, 1);
   }
 }
 

@@ -19,7 +19,7 @@ import {
   text,
   visibleCount,
 } from './fixtures';
-import { failNext, openPlace, SEARCHED, reveal, T, viaMenu } from './helpers';
+import { failNext, list, openJob, openPlace, SEARCHED, reveal, stage, T, viaMenu } from './helpers';
 
 // Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
 // direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
@@ -1514,4 +1514,60 @@ test('a held sidebar entry that the pointer leaves looks at rest', async ({ page
   const entry = page.getByTestId('nav-settings');
   await pressAndLeave(page, entry);
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+});
+
+/* ------------------------------------------------------------------ Zurück and Vor */
+
+test('Zurück to a job that was archived since shows it where it lies, its row marked', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await openJob(page, 'linkedin-4100200301');
+  await page.getByTestId('reader-archive').click();
+  await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
+  await page.getByTestId('history-back').click();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+  await expect(row(page, 'linkedin-4100200301')).toBeVisible();
+  await expect(list(page).locator('[data-open][data-key="linkedin:4100200301"]')).toHaveCount(1);
+  // It lies in the list's place, so its tools work.
+  await expect(page.getByTestId('reader-unarchive')).not.toHaveAttribute('aria-disabled', 'true');
+  // Vor goes on to the job that opened after it, back in Aktuell.
+  await page.getByTestId('history-forward').click();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
+  await expect(list(page).locator('[data-open]')).toHaveCount(1);
+});
+
+test('Zurück skips a step whose job was deleted for good', async ({ page }) => {
+  await open(page, WIN);
+  await openPlace(page, 'trash');
+  await openJob(page, 'linkedin-4100200307');
+  await page.getByTestId('reader-purge').click();
+  await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
+  await expect(row(page, 'linkedin-4100200307')).toHaveCount(0);
+  // The delete closed the job (a step), the next one opened by itself (another): two steps
+  // back, the second to the job that is gone.
+  await page.getByTestId('history-back').click();
+  await expect(page.getByTestId('place-reader')).toBeVisible();
+  const asked = (await calls(page, 'job_detail')).length;
+  await page.getByTestId('history-back').click();
+  await expect.poll(async () => (await calls(page, 'job_detail')).length).toBeGreaterThan(asked);
+  await settle(page);
+  // The step before it shows: the Papierkorb with no job open, not a failed load.
+  await expect(page.getByTestId('place-reader')).toBeVisible();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.trash);
+  await expect(stage(page).getByTestId('reader-title')).toHaveCount(0);
+  await expect(page.getByTestId('reader-error')).toHaveCount(0);
+  await expect(page.getByText(T.reader.loadFailed)).toHaveCount(0);
+});
+
+test('a start with a job kept open has no step to go back to', async ({ page }) => {
+  await open(page, `${WIN}&open=freelancermap:2802`);
+  await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+  const title = await stage(page).getByTestId('reader-title').innerText();
+  await expect(page.getByTestId('history-back')).toHaveAttribute('aria-disabled', 'true');
+  await openJob(page, 'linkedin-4100200301');
+  await expect(page.getByTestId('history-back')).not.toHaveAttribute('aria-disabled', 'true');
+  await page.getByTestId('history-back').click();
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
+  await expect(page.getByTestId('history-back')).toHaveAttribute('aria-disabled', 'true');
 });

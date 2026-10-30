@@ -59,10 +59,10 @@
   const active = $derived(navigation.current === 'jobs' ? jobs.place : navigation.current);
 
   /** A view or a place (an unsaved Profil may keep it and ask); a chosen place opens without
-   *  the search, like a folder of a mail app. */
+   *  the search, like a folder of a mail app, and so does Jobs, which leads to Aktuell. */
   function choose(id: ViewId | Place): void {
     if (isPlace(id)) navigation.go('jobs', false, () => jobs.setPlace(id, true));
-    else if (id === 'jobs') navigation.go('jobs', false, () => jobs.setPlace('inbox'));
+    else if (id === 'jobs') navigation.go('jobs', false, () => jobs.setPlace('inbox', true));
     else navigation.go(id);
     onchoose?.();
   }

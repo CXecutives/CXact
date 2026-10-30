@@ -1336,3 +1336,78 @@ test.describe('around the reader', () => {
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
 });
+
+/* ============================================================== what the audit found */
+
+test.describe('the job view keeps true', () => {
+  /** The title a row shows. */
+  const titleOf = (page: Page, key: string): Promise<string> =>
+    row(page, key).locator('.title').innerText();
+
+  test('a preview that is being loaded says so, like a missing ad', async ({ page }) => {
+    await openAt(page, 'freelance-900411', `${WIN}&tick=400`);
+    // Signed in, the preview can be loaded.
+    await stage(page).getByTestId('reader-sign-in').click();
+    const load = stage(page).getByTestId('load-ad');
+    await load.click();
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.state.loading);
+    await expect(load).toHaveCount(0);
+    await runFinished(page);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+  });
+
+  test('another job waiting for its page is not loaded by a details run of its own', async ({
+    page,
+  }) => {
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.state.missing);
+    // Ads load for some other job: this one is not in that run.
+    await page.evaluate(() => {
+      window.__harness.holdAfter = 2;
+      window.__harness.appRun('details');
+    });
+    await page.waitForTimeout(300);
+    await expect(note).toHaveText(T.reader.state.missing);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+    // A search loads what is still to come: this job is waiting for it.
+    await page.evaluate(() => {
+      window.__harness.holdAfter = 2;
+      window.__harness.appRun('fetch');
+    });
+    await expect(note).toHaveText(T.reader.state.loading);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+  });
+
+  test('a job that loads slowly shows the placeholder, not the job before with its tools', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    await slowDetails(page, 1500);
+    await row(page, 'linkedin-4100200301').click();
+    await expect(stage(page).getByTestId('reader-skeleton')).toBeVisible();
+    await expect(stage(page).getByTestId('reader-title')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await titleOf(page, 'linkedin-4100200301'),
+      { timeout: 5000 },
+    );
+  });
+
+  test('a retry shows no job before the one it loads', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    await failNext(page, 'job_detail');
+    await row(page, 'linkedin-4100200301').click();
+    const failed = stage(page).getByTestId('reader-error');
+    await expect(failed).toBeVisible();
+    await slowDetails(page, 1000);
+    await failed.getByRole('button', { name: T.common.retry }).click();
+    await expect(stage(page).getByTestId('reader-title')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await titleOf(page, 'linkedin-4100200301'),
+      { timeout: 5000 },
+    );
+  });
+});
