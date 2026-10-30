@@ -1630,6 +1630,22 @@ test('Ctrl+A selects the copyable block pressed last, never the page', async ({ 
   expect(await selection(page)).toBe('');
   await page.keyboard.press('Control+a');
   expect(await selection(page)).toBe('');
+  // The alert mail CXact kept, read in its dialog (a mailbox without a Gmail link): its text
+  // selects whole too, with the dialog's own button holding the focus.
+  await page.evaluate(() => {
+    window.__harness.editDetail = (detail) => ({
+      ...detail,
+      mail: { ...detail.mail, gmailUrl: null },
+    });
+  });
+  await page.getByTestId('job-row-freelancermap-2802').click();
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  await page.getByTestId('reader-mail').click();
+  const mail = page.getByTestId('mail-text');
+  await expect(mail).toBeVisible();
+  await mail.click();
+  await page.keyboard.press('Control+a');
+  expect(words(await selection(page))).toBe(words(await mail.innerText()));
 });
 
 test('the mouse buttons go back and forward like Zurück and Vor', async ({ page }) => {
