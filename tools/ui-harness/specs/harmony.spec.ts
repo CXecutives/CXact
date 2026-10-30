@@ -16,14 +16,15 @@ const HEIGHTS = [24, 26, 28, 30, 32, 36];
 /** The radius ladder; a pill or a circle (radius at least half the shorter side) is always fine,
  *  and the selection bar is 3. */
 const RADII = [0, 3, 4, 6, 8, 10, 14, 20];
-const STROKE = 2.1;
+/** The line of an icon in px, whatever its size: tokens.css sets it per size for the eye. */
+const LINE = { min: 1.2, max: 3.2 };
 
 interface Rules {
   sizes: number[];
   weights: number[];
   heights: number[];
   radii: number[];
-  stroke: number;
+  line: { min: number; max: number };
 }
 
 /** What breaks the scale on the page as it is now, one line per element and rule. */
@@ -71,8 +72,9 @@ function audit(rules: Rules): string[] {
 
   for (const svg of document.querySelectorAll('svg.lucide')) {
     if (!shown(svg)) continue;
-    const stroke = parseFloat(getComputedStyle(svg).strokeWidth);
-    if (Math.abs(stroke - rules.stroke) > 0.01) out.add(`${id(svg)}: stroke ${stroke}`);
+    const line =
+      (parseFloat(getComputedStyle(svg).strokeWidth) * svg.getBoundingClientRect().width) / 24;
+    if (line < rules.line.min || line > rules.line.max) out.add(`${id(svg)}: line ${line}`);
   }
 
   for (const el of document.querySelectorAll('body *')) {
@@ -115,7 +117,7 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
       weights: WEIGHTS,
       heights: HEIGHTS,
       radii: RADII,
-      stroke: STROKE,
+      line: LINE,
     });
     expect(problems, 'values off the round 10 scale').toEqual([]);
   });

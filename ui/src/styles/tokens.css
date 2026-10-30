@@ -457,9 +457,22 @@
   --icon-lg: 22px;
   /* The glyph of a 48 tile (half the tile). */
   --icon-xl: 24px;
-  /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
-     large one as strong as a small one for its size (user, 2026-10-01 and 2026-10-10). */
-  --icon-stroke: 2.1;
+  /* The line of an icon per size, in Lucide's 24 units, set by eye at 100 % scale so every
+     size reads as thick as the words beside it (user, 2026-10-30): 1.25 px at 12, 1.4 at 14,
+     1.53 at 16, 1.69 at 18, 2.29 at 22, 2.4 at 24, 2.8 at 28, and the checkbox's tick 1.63. */
+  --icon-stroke-2xs: 2.5;
+  --icon-stroke-check: 3;
+  --icon-stroke-xs: 2.4;
+  --icon-stroke-sm: 2.3;
+  --icon-stroke-nav: 2.25;
+  --icon-stroke-lg: 2.5;
+  --icon-stroke-xl: 2.4;
+  --icon-stroke-2xl: 2.4;
+  /* White on a filled button reads thinner than ink on paper: that much more line. */
+  --icon-stroke-on-fill: 0.4;
+  /* A sparse glyph (an arrow, a plus, a ×: 14 of the 24 units) grows to a dense one's box
+     (16 of them), its line kept: an arrow beside a panel reads as large. */
+  --icon-sparse-scale: 1.14;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
   /* The vertical padding of a row: a list row's two lines (title and company), and a row of
@@ -571,6 +584,8 @@
   /* The setup's Fertig: the full ring as large as every other step's mark, its check 22. */
   --ring-setup: var(--setup-mark);
   --ring-setup-stroke: 4px;
+  /* Its check's line (Lucide units, 2.93 px at 22), answering the ring's 4 px. */
+  --ring-setup-check: 3.2;
   --border-width: 1px;
   --tile-md: 36px;
   --tile-lg: 48px;

@@ -125,3 +125,12 @@ export type IconMeaning = keyof typeof ICONS;
 
 /** The Lucide glyphs of the app (Icon.svelte imports exactly these). */
 export type Glyph = (typeof ICONS)[IconMeaning];
+
+/** The glyphs that fill 14 of the 24 units where the others fill 18: Icon.svelte grows them to
+ *  the others' box. */
+export const SPARSE_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([
+  'arrow-left',
+  'arrow-right',
+  'plus',
+  'x',
+]);

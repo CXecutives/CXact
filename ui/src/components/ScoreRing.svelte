@@ -228,6 +228,10 @@
     color: var(--ring-color);
   }
 
+  .check :global(.icon svg) {
+    stroke-width: var(--ring-setup-check);
+  }
+
   .check :global(path) {
     stroke-dasharray: var(--draw-length);
     animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;

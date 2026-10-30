@@ -1,9 +1,10 @@
 <!--
   The only importer of @lucide/svelte. It draws an icon by its meaning: lib/icons.ts maps
   each meaning to one Lucide glyph, and this file imports exactly those glyphs (one import
-  per glyph keeps the bundle small; a glyph without its import is a type error). Size from
-  the tokens, the line Lucide's (2 of its 24 units, so it grows with the icon), colour
-  inherited from the text. Each glyph is drawn once by its Lucide
+  per glyph keeps the bundle small; a glyph without its import is a type error). Size and
+  line from the tokens, the line set per size for the eye, a sparse glyph grown to a dense
+  one's box (its line kept), colour inherited from the text. A filled button asks for more
+  line (`--icon-stroke-more`). Each glyph is drawn once by its Lucide
   component; every Icon shows a copy of that drawing. A Lucide component per icon (props,
   derived attributes, an element per path) made icons the most expensive part of a list row
   and of the reader.
@@ -11,7 +12,7 @@
 <script lang="ts" module>
   import { mount, unmount, type Component } from 'svelte';
   import type { Action } from 'svelte/action';
-  import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
+  import { ICONS, SPARSE_GLYPHS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
@@ -181,7 +182,13 @@
   let { name, size = 'md', filled = false }: Props = $props();
 </script>
 
-<span class="icon {size}" class:filled aria-hidden="true" use:draw={name}></span>
+<span
+  class="icon {size}"
+  class:filled
+  class:sparse={SPARSE_GLYPHS.has(ICONS[name])}
+  aria-hidden="true"
+  use:draw={name}
+></span>
 
 <style>
   .icon {
@@ -197,7 +204,14 @@
   .icon :global(svg) {
     width: 100%;
     height: 100%;
-    stroke-width: var(--icon-stroke);
+    stroke-width: calc(var(--icon-stroke) + var(--icon-stroke-more, 0));
+  }
+
+  .sparse :global(svg) {
+    stroke-width: calc(
+      (var(--icon-stroke) + var(--icon-stroke-more, 0)) / var(--icon-sparse-scale)
+    );
+    transform: scale(var(--icon-sparse-scale));
   }
 
   .filled :global(svg) {
@@ -206,37 +220,46 @@
 
   .xxs {
     --icon-size: var(--icon-2xs);
+    --icon-stroke: var(--icon-stroke-2xs);
   }
 
   .check {
     --icon-size: var(--icon-check);
+    --icon-stroke: var(--icon-stroke-check);
   }
 
   .xs {
     --icon-size: var(--icon-xs);
+    --icon-stroke: var(--icon-stroke-xs);
   }
 
   .sm {
     --icon-size: var(--icon-sm);
+    --icon-stroke: var(--icon-stroke-sm);
   }
 
   .md {
     --icon-size: var(--icon-md);
+    --icon-stroke: var(--icon-stroke-sm);
   }
 
   .lg {
     --icon-size: var(--icon-lg);
+    --icon-stroke: var(--icon-stroke-lg);
   }
 
   .nav {
     --icon-size: var(--icon-nav);
+    --icon-stroke: var(--icon-stroke-nav);
   }
 
   .xl {
     --icon-size: var(--icon-xl);
+    --icon-stroke: var(--icon-stroke-xl);
   }
 
   .xxl {
     --icon-size: var(--icon-2xl);
+    --icon-stroke: var(--icon-stroke-2xl);
   }
 </style>

@@ -285,6 +285,7 @@
     --btn-fg: var(--text-on-accent);
     --btn-fg-hover: var(--text-on-accent);
     --btn-shadow: var(--sh-primary);
+    --icon-stroke-more: var(--icon-stroke-on-fill);
   }
 
   /* White with its edge, no shadow: the warm wash and a darker edge under the pointer, a
@@ -343,6 +344,7 @@
     --btn-fg: var(--text-on-danger);
     --btn-fg-hover: var(--text-on-danger);
     --btn-shadow: var(--sh-primary);
+    --icon-stroke-more: var(--icon-stroke-on-fill);
   }
 
   /* A suggestion: white with a dashed edge and its +, so it reads as something to add, never

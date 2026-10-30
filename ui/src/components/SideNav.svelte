@@ -10,7 +10,8 @@
   glyph turn ink, like Mail and Explorer.
   An entry may hold entries of its own (`children`: the places under Jobs), always shown, like
   a mailbox's folders: as high, no glyph, their words on the words of the entries above. The
-  pill stands on the one that is current; the entry above it keeps its plain look.
+  pill stands on the one that is current; the entry above it keeps its plain words and takes
+  the coral glyph, so every view's glyph says where the window is.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -133,12 +134,18 @@
 
   .item[aria-current='page'] {
     color: var(--nav-active-fg);
+  }
+
+  .item[aria-current] {
     --nav-glyph: var(--nav-active-icon);
   }
 
   /* Like Mail and Explorer: the choice turns ink while the window is in the back. */
   :global(:root[data-window='inactive']) .item[aria-current='page'] {
     color: var(--text);
+  }
+
+  :global(:root[data-window='inactive']) .item[aria-current] {
     --nav-glyph: var(--text);
   }
 
