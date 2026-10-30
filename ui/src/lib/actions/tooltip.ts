@@ -137,10 +137,12 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     waiting = false;
     tooltipState.hide(node);
   };
-  /** A press hides the bubble, except on an anchor a click shows and hides. */
+  /** A press hides the bubble, except on an anchor a click shows and hides. A click (the left
+   *  button: it acts, and what it brings may slide a button under the pointer) holds the hover
+   *  where it was pressed; a right or middle press only opens a menu or scrolls. */
   const press = (event: PointerEvent): void => {
     if (options?.toggle) return;
-    holdHover(event);
+    if (event.button === 0) holdHover(event);
     leave();
   };
   const click = (): void => {
