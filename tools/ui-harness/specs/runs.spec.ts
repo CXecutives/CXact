@@ -163,6 +163,20 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
 });
 
+// The preview's runs that are under way when the page starts (the scenarios `running`,
+// `sign-in-waiting` and `rescoring`) end with Abbrechen like a run the page started.
+for (const scenario of ['running', 'sign-in-waiting', 'rescoring']) {
+  test(`Abbrechen ends the run the page finds under way (${scenario})`, async ({ page }) => {
+    await open(page, `${WIN}&scenario=${scenario}`);
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    await cancel.click();
+    await expect(cancel).toHaveCount(0);
+    await expect(page.getByTestId('run-line')).toHaveCount(0);
+    await expect(page.getByTestId('fetch')).toBeVisible();
+  });
+}
+
 test('loading ads is no search: no run line, no Abbrechen, no fetch toast', async ({ page }) => {
   await open(page, `${WIN}&tick=40`);
   await page.evaluate(() => {
