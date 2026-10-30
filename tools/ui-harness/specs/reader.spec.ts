@@ -155,8 +155,8 @@ test.describe('the head and the match', () => {
     const band = await box('band');
     const actions = await box('reader-actions');
     const facts = await box('terms');
-    // The ring 56 at the left, the title beside it, the band under the title.
-    expect(Math.round(ring.width)).toBe(56);
+    // The ring 60 at the left, the title beside it, the band under the title.
+    expect(Math.round(ring.width)).toBe(60);
     expect(title.x).toBeGreaterThan(ring.x + ring.width);
     expect(band.y).toBeGreaterThan(title.y);
     expect(Math.abs(band.x - title.x)).toBeLessThan(1);
@@ -232,8 +232,9 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('band')).toHaveText(T.reader.unscored);
     await expect(stage(page).getByTestId('band')).toHaveClass(/quiet/);
     const box = stage(page).getByTestId('reader-head').getByTestId('reader-state');
-    await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
-    await expect(box.getByTestId('detail-text')).toHaveText(T.reader.state.missing.text);
+    await expect(box.getByTestId('detail-note')).toHaveText(T.reader.state.missing);
+    // No second line that says again what the band says.
+    await expect(box.getByTestId('detail-text')).toHaveCount(0);
     await expect(box.getByTestId('load-ad')).toBeVisible();
     await expect(stage(page).getByTestId('open-ad')).toBeVisible();
     await expect(stage(page).getByTestId('reader-prompt')).toHaveCount(0);
@@ -509,12 +510,13 @@ test.describe('an excluded job', () => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
     // The ban in the ring's place, "Ausgeschlossen" in the ban red, the job's one red; a
-    // neutral box with why, why it is not scored and Trotzdem bewerten at its end.
+    // neutral box with why and Trotzdem bewerten at its end, no line that says again it is
+    // not scored.
     await expect(stage(page).getByTestId('reader-ban')).toBeVisible();
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
     await expect(stage(page).getByTestId('band')).toHaveClass(/ban/);
     const box = stage(page).getByTestId('exclusion-box');
-    await expect(box).toContainText(T.reader.state.excluded);
+    await expect(box.locator('.text')).toHaveCount(0);
     await expect(box.getByTestId('reader-include')).toBeVisible();
     await expect(box).not.toHaveClass(/(^|\s)ban(\s|$)/);
     // Its first violation, once, from the profile's side; no way into the ad.
@@ -525,11 +527,11 @@ test.describe('an excluded job', () => {
     await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).toHaveCount(0);
-    // Trotzdem bewerten (the gauge of a score): its real match and a toast that takes it back.
+    // Trotzdem bewerten (the plus): its real match and a toast that takes it back.
     // Under the box what its menu offers; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
-    await expect(include.locator('[data-icon="gauge"]')).toHaveCount(1);
+    await expect(include.locator('[data-icon="add"]')).toHaveCount(1);
     await expect(stage(page).getByTestId('reader-actions').getByTestId('open-ad')).toBeVisible();
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
@@ -1049,7 +1051,7 @@ test.describe('the ad', () => {
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
     const signIn = stage(page).getByTestId('reader-sign-in');
-    await expect(signIn).toHaveText(T.settings.signIn);
+    await expect(signIn).toHaveText(T.settings.signInOpens);
     // A sign-in that fails says so; the job stays.
     await failNext(page, 'portal_login');
     await signIn.click();
@@ -1068,7 +1070,7 @@ test.describe('the ad', () => {
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
     const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText(T.reader.state.missing.heading);
+    await expect(note).toHaveText(T.reader.state.missing);
     const load = stage(page).getByTestId('load-ad');
     await expect(load).toHaveText('Anzeige laden');
     await load.click();
@@ -1086,7 +1088,7 @@ test.describe('the ad', () => {
     await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
     // An ad that could not be fetched is not being loaded while nothing loads it.
     await openJob(page, 'freelancermap-2805');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing.heading);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing);
     await expect(stage(page).getByTestId('load-ad')).toBeVisible();
   });
 

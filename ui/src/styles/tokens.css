@@ -81,16 +81,11 @@
   --p-score-yellow: 40 88% 52%;
   --p-score-lime: 84 56% 42%;
   --p-score-green: 142 50% 38%;
-  /* The words in a ring's colour (band, status, verdicts): the same hue one step darker, so
-     yellow, orange and lime words read on white (decision 4, 2026-10-24); rings and dots keep
-     the exact colour. */
+  /* The deep red of the filled danger button, a step darker under the pointer and one more
+     pressed. */
   --p-word-red: 358 62% 46%;
   --p-word-red-hover: 358 62% 40%;
   --p-word-red-press: 358 62% 34%;
-  --p-word-orange: 24 80% 38%;
-  --p-word-yellow: 36 80% 34%;
-  --p-word-lime: 84 62% 28%;
-  --p-word-green: 142 52% 30%;
   /* The mark of a requirement met in part: the yellow a step darker, so the glyph holds 3:1
      on white (a ring keeps the exact yellow). */
   --p-mark-yellow: 38 92% 40%;
@@ -225,19 +220,19 @@
      yellow in the app): their signs and dots in it, their words in ink. */
   --success: var(--score-ring-9);
   --warning: var(--score-ring-5);
-  /* A required field that is still empty: only a coral edge, no halo (user, design round
-     6); the [data-missing] block below gives it to the fields of its cell. */
-  --missing-edge: hsl(var(--p-score-red));
-  /* The label of a required field that is still empty (round 10): red words. */
-  --field-label-missing: hsl(var(--p-word-red));
-  /* A chosen option in a menu or a select: the track with navy words, no tick. */
+  /* A required field that is still empty: only a red edge, no halo (user, design round 6),
+     and red words in its label (round 10), in the one red of what is missing or wrong (the
+     uniformity audit, 2026-10-29); the [data-missing] block below gives them to the fields
+     of its cell. */
+  --missing-edge: var(--danger-strong);
+  --field-label-missing: var(--danger-strong);
+  /* A chosen option in a select's list: the track with navy words, no tick (a menu ticks it). */
   --chosen-surface: hsl(var(--p-track));
   --chosen-text: hsl(var(--p-navy));
   /* Soft grounds of a state: the ban (excluded) and success. */
   --danger-tint: hsl(var(--p-red-50));
   --danger-edge: hsl(var(--p-red-100));
   --success-soft: hsl(var(--p-green-50));
-  --warning-text: hsl(var(--p-word-yellow));
   --danger: hsl(var(--p-danger));
   --danger-strong: hsl(var(--p-danger-strong));
   --danger-soft: hsl(var(--p-danger-soft));
@@ -460,7 +455,7 @@
   --icon-md: 16px;
   /* The glyph on top of a choice tile (the setup's two ways). */
   --icon-lg: 22px;
-  /* The glyph of a drop zone. */
+  /* The glyph of a 48 tile (half the tile). */
   --icon-xl: 24px;
   /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
      large one as strong as a small one for its size (user, 2026-10-01 and 2026-10-10). */
@@ -573,6 +568,9 @@
   --ring-md: 60px;
   --ring-md-stroke: 5px;
   --ring-md-digits: 20px;
+  /* The setup's Fertig: the full ring as large as every other step's mark, its check 22. */
+  --ring-setup: var(--setup-mark);
+  --ring-setup-stroke: 4px;
   --border-width: 1px;
   --tile-md: 36px;
   --tile-lg: 48px;
@@ -655,9 +653,10 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/34 and 36/60. */
+     scaled into viewBox units: 36/34, 36/60 and 36/48. */
   --ring-sm-scale: 1.0588;
   --ring-md-scale: 0.6;
+  --ring-setup-scale: 0.75;
 
   /* ------------------------------------------- round 10: shell */
   /* The sidebar: 12 px at its sides and 14 below (nothing stands at its foot); an entry 10 px
@@ -732,24 +731,21 @@
   --page-top-pad: var(--space-8);
   --page-bottom: 110px;
   /* A field: its links at the right of the label row (13/500 navy, an external glyph), an
-     error under the control in the deep red of words. */
+     error under the control in the one red of what is missing or wrong. */
   --field-link: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --field-link-gap: 14px;
-  --error-text: hsl(var(--p-word-red));
+  --error-text: var(--danger-strong);
   /* A row of Einstellungen: 12 above and below, 20 at the sides, its buttons 12 from its
      words; the name 14/540, the line 13 muted like every second line. */
   --setting-row-pad-y: var(--form-row-pad-y);
   --setting-row-gap: var(--space-12);
-  /* A status word (StatusText): the dot in the exact colour, the word one step darker. */
+  /* A status word (StatusText): its dot and its word in one colour. */
   --status-success: var(--success);
-  --status-success-text: hsl(var(--p-word-green));
   --status-warning: var(--warning);
-  --status-warning-text: var(--warning-text);
   --status-danger: hsl(var(--p-score-red));
-  --status-danger-text: hsl(var(--p-word-red));
   --status: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
-  /* Tiles: a glyph tile of 36 (Tile's way) 8 round, the 48 of IconTile and the drop zone's
-     disc 14; 56 is the setup head's slot. */
+  /* Tiles: a glyph tile of 36 (Tile's way) 8 round, the 48 of IconTile 14; 56 is the setup
+     head's slot. */
   --tile-radius-sm: var(--radius-md);
   --tile-radius-lg: var(--radius-card);
   --tile-accent: hsl(var(--p-navy));
@@ -764,13 +760,11 @@
   --recommended-press: hsl(var(--p-coral-50));
   --recommended-glyph: hsl(var(--p-coral));
   --sh-tile-hover: 0 6px 18px -8px hsl(var(--p-shade-pop) / 0.18);
-  /* The drop zone: 34 20 inside on the page's ground, a dashed edge, a round track disc of
-     48 with a navy glyph 12 above the words; under the pointer a navy edge, the track as its
-     ground and a white disc. */
+  /* The drop zone: 34 20 inside on the page's ground, a dashed edge, its words without a
+     glyph; under the pointer a navy edge and the track as its ground. */
   --drop-pad-y: 34px;
   --drop-pad-x: var(--space-20);
   --drop-edge-hover: hsl(var(--p-navy));
-  --drop-disc-gap: var(--space-12);
   /* An empty state: its tile 14 above the title, the sentence 4 under it and at most 300
      wide; in a list 56 from the top and 28 at the sides. */
   --empty-top: 56px;
@@ -802,15 +796,13 @@
   --bar-surface: var(--surface);
   --bar-min: 50px;
   --bar-pad-y: var(--space-10);
-  /* Spinners: a navy arc on the ring's track; the setup's large one (56, its head's slot) in
-     coral. */
+  /* Spinners: a navy arc on the ring's track, like the run's meter; the setup's large one is
+     its head's mark (48). */
   --spinner-track: hsl(var(--p-ring-track));
   --spinner-arc: hsl(var(--p-navy));
-  --spinner-accent: hsl(var(--p-coral));
   --spinner-sm: var(--icon-sm);
-  --spinner-md: var(--icon-nav);
   --spinner-lg: var(--icon-xl);
-  --spinner-xl: var(--tile-xl);
+  --spinner-xl: var(--setup-mark);
   --spinner-line: 2px;
   /* A meter on the cream (the progress strip): a white track. */
   --meter-track-on-bg: hsl(var(--p-white) / 0.85);
@@ -908,11 +900,12 @@
   /* ------------------------------------------- round 10: setup */
   /* The card of a step (--setup-card wide at most, --radius-sheet round): 34 36 20 inside, 24
      20 16 in a narrow window (the bottom one the foot's, which sticks), centred a little above
-     the middle of the window. Its head: one slot of 56 for the app's mark, a 48 tile, the
-     spinner or the full ring, centred in it, the title 20 under it on every step; the lead 8
-     under the title, at most 420 wide; the body 22 under the lead; the foot 28 under the
-     body with a hairline and 18 inside, Zurück and a ghost at the end pulled out by the ghost
-     button's inset, so their words stand on the content's edges. */
+     the middle of the window. Its head: one slot of 56, the app's mark filling it and every
+     other step's mark 48 (a tile, the spinner, the full ring) centred in it, so the title
+     stands 20 under it at one height on every step; the lead 8 under the title, at most 420
+     wide; the body 22 under the lead; the foot 28 under the body with a hairline and 18
+     inside, Zurück and a ghost at the end pulled out by the ghost button's inset, so their
+     words stand on the content's edges. */
   --setup-pad-top: 34px;
   --setup-pad-x: 36px;
   --setup-pad-bottom: var(--space-20);
@@ -923,6 +916,7 @@
   /* The card's top: where a 560 px card would stand a little above the middle, at least 16. */
   --setup-frame-top: max(var(--space-16), calc(50vh - 316px));
   --setup-top: var(--tile-xl);
+  --setup-mark: var(--tile-lg);
   --setup-top-gap: var(--space-20);
   --setup-lead-gap: var(--space-8);
   --setup-lead-max: 420px;
@@ -1087,8 +1081,8 @@
 }
 
 /* A required field that is still empty (its row in the profile carries `data-missing`,
-   ProfileEditor; a required list its group): every field in it draws the coral edge at rest
-   and under the pointer, its label and a list's group title turn red; the coral stays
+   ProfileEditor; a required list its group): every field in it draws the red edge at rest
+   and under the pointer, its label and a list's group title turn red; the edge stays
    confined to this block. Focus still turns the edge navy only. */
 [data-missing] {
   --field-edge: var(--missing-edge);

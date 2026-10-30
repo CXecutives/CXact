@@ -65,7 +65,7 @@ test('Willkommen: the app mark, one job with its ring and Loslegen; no dots on a
   // what the number means. A picture: no control in it.
   const job = page.getByTestId('first-example');
   await expect(job.getByRole('img')).toHaveAccessibleName(
-    new RegExp(`^${T.score.value(T.score.band.high, '87')}`),
+    new RegExp(`^${T.score.value(T.score.band.high, '89')}`),
   );
   await expect(job).toContainText(T.firstRun.example);
   await expect(job).toContainText(T.score.band.high);
@@ -121,6 +121,8 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   const zone = page.getByTestId('upload-zone');
   await expect(zone).toContainText(T.firstRun.drop);
   await expect(zone).toContainText(T.firstRun.formats);
+  // One upload glyph on the card, the step's tile: the zone has none.
+  await expect(zone.locator('.icon')).toHaveCount(0);
   await expect(page.getByTestId('upload-ai')).toHaveText(T.firstRun.ai);
   // The whole zone is one button: no primary, Zurück at the left.
   await expect(next(page)).toHaveCount(0);
@@ -346,13 +348,24 @@ test('the step heading stands at one height on every step of a card', async ({ p
   const top = async (): Promise<number> => (await heading(page).boundingBox())!.y;
   await open(page, `${WIN}&scenario=first-run&step=reading`);
   const reading = await top();
+  // The spinner and Fertig's ring are as large as a step's tile.
+  const mark = (await page.getByTestId('cv-reading').boundingBox())!;
   for (const query of [
     'scenario=first-run',
     'scenario=first-run&step=upload',
+    'scenario=first-run&step=done',
     'scenario=setup-profile',
     'scenario=setup-mailbox',
   ]) {
     await open(page, `${WIN}&${query}`);
     expect(await top(), query).toBeCloseTo(reading, 0);
+  }
+  await open(page, `${WIN}&scenario=first-run&step=done`);
+  const ring = (await page.getByTestId('first-success').boundingBox())!;
+  await open(page, `${WIN}&scenario=first-run&step=upload`);
+  const tile = (await page.getByTestId('first-step').locator('.top > *').boundingBox())!;
+  for (const box of [mark, ring]) {
+    expect(box.width).toBeCloseTo(tile.width, 0);
+    expect(box.height).toBeCloseTo(tile.height, 0);
   }
 });

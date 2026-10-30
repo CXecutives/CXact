@@ -969,17 +969,13 @@ export const de = {
      *  score.none). */
     unscored: 'Noch nicht bewertet',
     unscorable: 'Nicht bewertbar',
-    /** The state box under the job's title: its title and one sentence under it. */
+    /** The state box under the job's title: its title and one sentence under it where that
+     *  adds to the band under the title (never "nicht bewertet" again). */
     state: {
-      missing: {
-        heading: 'Die Anzeige ist noch nicht geladen.',
-        text: 'Danach wird der Job bewertet.',
-      },
+      missing: 'Die Anzeige ist noch nicht geladen.',
       loading: 'Die Anzeige wird geladen.',
       /** After "Trotzdem bewerten", until the job has its match. */
       scoring: 'Der Job wird bewertet.',
-      /** Under the sentence that says why the job is excluded. */
-      excluded: 'Darum wurde der Job nicht bewertet.',
       teaser: {
         heading: 'Die Anzeige ist nur eine Vorschau.',
         text: 'Mit der ganzen Anzeige wird die Bewertung genauer.',
@@ -1374,10 +1370,10 @@ export const de = {
       search: 'Suche und Alert-Mails',
       alert: 'Nur Alert-Mails',
     } satisfies Record<Way, string>,
-    /** A portal's state, its row's second line: the way to a mailbox for one of alert mails
-     *  without one, how many alert mails of it came in the last 30 days, resting until a
+    /** A portal's state, its row's second line: a portal of alert mails without a mailbox
+     *  needs one, how many alert mails of it came in the last 30 days, resting until a
      *  moment, what the last search brought. */
-    connectMailbox: 'Postfach verbinden',
+    needsMailbox: 'Braucht ein Postfach',
     /** Why the switch of a portal of alert mails waits without a mailbox. */
     needsMailboxReason: 'Verbinde erst ein Postfach.',
     alertMails: (value: number) =>
@@ -1393,12 +1389,14 @@ export const de = {
     /** A portal's sign-in ran out, or its sign-in window waits for the user. */
     signInExpired: 'Anmeldung abgelaufen',
     signInWaiting: 'Wartet auf die Anmeldung',
-    /** A portal's problem as the word of its line; its sentence is the quiet line under it. */
+    /** A portal's problem as the word of its line; its sentence is the quiet line under it.
+     *  A portal that is on and sent no alert mail for a week or longer (its alert may have
+     *  run out) says it in the word alone. */
     problem: {
       paused: 'Pausiert',
       emptyMails: 'Alert-Mails ohne Jobs',
       pages: 'Seiten verändert',
-      quiet: 'Alert-Mail bleibt aus',
+      quiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail`,
       failed: 'Fehlgeschlagen',
     },
     connected: 'Verbunden',
@@ -1445,18 +1443,15 @@ export const de = {
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: (appPassword: boolean) =>
       `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
-    signIn: 'Anmelden',
     signOut: 'Abmelden',
     /** A row's buttons that open a window, the browser or a dialog end in an ellipsis: a
-     *  portal's sign-in window, its alert page, the folder dialog, the dialogs of the reset
+     *  portal's sign-in window (also the job view's), its alert page, the folder dialog, the dialogs of the reset
      *  and of removing the mailbox (their confirm buttons keep none). */
     signInOpens: 'Anmelden…',
     folderChange: 'Ändern…',
     resetOpens: 'Zurücksetzen…',
     removeOpens: 'Entfernen…',
-    /** A portal that is on sent no alert mail for a week or longer (its alert may have run
-     *  out), and the way to its page. */
-    alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
+    /** The way to the page of a portal whose alert went quiet. */
     checkAlert: 'Alert prüfen…',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen…',

@@ -1,11 +1,11 @@
 <!--
   The state of the open job in its hero, under the title, when it has one (the round 10
-  draft): one StateBox, its title, one quiet sentence under it and the one button that helps;
-  no sign (the ring is the job's mark), a spinner only while something is being done.
+  draft): one StateBox, its title, one quiet sentence under it where that adds to the band
+  under the title (never "nicht bewertet" again) and the one button that helps; no sign (the
+  ring is the job's mark), a spinner only while something is being done.
   - being scored after "Trotzdem bewerten": the spinner, "Der Job wird bewertet.";
-  - excluded: why (the profile's side), "Darum wurde der Job nicht bewertet.", "Trotzdem
-    bewerten" with the plus; the box neutral like the others (the ring and its word
-    are the job's one red);
+  - excluded: why (the profile's side) and "Trotzdem bewerten" with the plus; the box
+    neutral like the others (the ring and its word are the job's one red);
   - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (being
     loaded: the spinner, "Die Anzeige wird geladen.", no button);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
@@ -82,6 +82,8 @@
     switch (adState) {
       case null:
         return null;
+      case 'missing':
+        return { heading: t.reader.state.missing, text: null };
       case 'loading':
         return { heading: t.reader.state.loading, text: null };
       case 'gone':
@@ -100,7 +102,7 @@
     void run.start({ kind: 'details', keys: [job.key] });
   }
 
-  /** "Anmelden": the portal's sign-in, right here. */
+  /** "Anmelden…": the portal's sign-in window, right here (the words of Einstellungen). */
   let signingIn = $state(false);
   const signInLock = $derived(signInLocked());
   async function signIn(): Promise<void> {
@@ -121,7 +123,7 @@
     <Button
       variant="secondary"
       icon="signIn"
-      label={t.settings.signIn}
+      label={t.settings.signInOpens}
       loading={signingIn}
       disabled={signInLock !== null}
       disabledReason={signInLock}
@@ -161,7 +163,6 @@
 {:else if exclusion !== null}
   <StateBox
     heading={exclusion}
-    text={t.reader.state.excluded}
     end={includable ? includeButton : null}
     testid="exclusion-box"
     headingTestid="exclusion"

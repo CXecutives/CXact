@@ -423,6 +423,9 @@ test.describe('filter', () => {
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'false');
+    // One sign for what is chosen in a menu: the tick, for the order as for a filter.
+    await expect(menuItem(page, 'sort-newest').locator('.tick')).toHaveCount(1);
+    await expect(menuItem(page, 'sort-match').locator('.tick')).toHaveCount(0);
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     // The whole menu opens below the funnel and stays inside the window; with every group
     // (and more sources with jobs) it scrolls where the window is too low (2026-10-01).

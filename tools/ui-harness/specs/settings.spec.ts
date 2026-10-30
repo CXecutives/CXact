@@ -439,18 +439,17 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await page.getByTestId('toggle-enabled-freelance').click();
   await expect(page.getByTestId('health-freelance')).toHaveCount(0);
 });
-test('portals: a week without an alert mail is one quiet line with Alert prüfen', async ({
+test('portals: a week without an alert mail is the status word, with Alert prüfen', async ({
   page,
 }) => {
-  // The demo's portals all sent alert mails lately: no line.
+  // The demo's portals all sent alert mails lately: no word.
   await settings(page);
-  await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(0);
-  // freelance.de sent its last one nine days before the last fetch.
+  await expect(page.getByText(T.settings.problem.quiet(9))).toHaveCount(0);
+  // freelance.de sent its last one nine days before the last fetch: the word says it, once.
   await settings(page, `${WIN}&scenario=quiet-alert`);
-  const quiet = await reveal(page, page.getByTestId('alert-quiet-freelance'));
-  await expect(quiet).toHaveText(T.settings.alertQuiet(9));
-  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.quiet);
-  await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
+  const quiet = await reveal(page, page.getByTestId('portal-freelance-hint'));
+  await expect(quiet).toHaveText(T.settings.problem.quiet(9));
+  await expect(page.getByTestId('portal-freelance').locator('.line')).toHaveCount(0);
   await expect(page.getByTestId('check-alert-freelance')).toHaveAccessibleName(
     T.settings.checkAlert,
   );
@@ -458,10 +457,10 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'freelance' } });
   // A portal that is off says nothing about its alert mails.
   await page.getByTestId('toggle-enabled-freelance').click();
-  await expect(quiet).toHaveCount(0);
+  await expect(quiet).not.toHaveText(T.settings.problem.quiet(9));
   // The Jobs view shows nothing of it.
   await page.getByTestId('nav-jobs').click();
-  await expect(page.getByText(T.settings.alertQuiet(9))).toHaveCount(0);
+  await expect(page.getByText(T.settings.problem.quiet(9))).toHaveCount(0);
 });
 
 test('another provider than Gmail: the alert calls wait for the place of the mail', async ({
@@ -481,8 +480,8 @@ test('another provider than Gmail: the alert calls wait for the place of the mai
   await page.getByTestId('mailbox-password').fill('geheim');
   await page.getByTestId('mailbox-save').click();
   await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
-  // The line stays; its call waits, "Alert anlegen" keeps its place.
-  await expect(page.getByTestId('alert-quiet-freelance')).toBeVisible();
+  // The word stays; its call waits, "Alert anlegen" keeps its place.
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.quiet(9));
   await expect(page.getByTestId('check-alert-freelance')).toHaveCount(0);
   await expect(page.getByTestId('setup-freelance')).toBeVisible();
   // The call keeps its width whatever its face, so Anmelden does not move.
@@ -491,26 +490,27 @@ test('another provider than Gmail: the alert calls wait for the place of the mai
   expect((await page.getByTestId('sign-in-freelance').boundingBox())!.x).toBeCloseTo(signIn, 0);
 });
 
-test('without a mailbox the portals of alert mails lead to one; one Verbinden', async ({
+test('without a mailbox the portals of alert mails say they need one; one Verbinden', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=no-mailbox`);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   for (const portal of ALERT_PORTALS) {
-    // The row cannot work: no calls, only the way to a mailbox in its line; its switch off
-    // and waiting with its reason, while the stored value stays on.
+    // The row cannot work: no calls and no link, its line says it needs a mailbox; its switch
+    // off and waiting with its reason, while the stored value stays on.
     const row = page.getByTestId(`portal-${portal}`);
-    await expect(row.getByRole('button')).toHaveText([T.settings.connectMailbox]);
+    await expect(row.getByRole('button')).toHaveCount(0);
+    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.needsMailbox);
     expect(await reason(page, `toggle-enabled-${portal}`)).toBe(T.settings.needsMailboxReason);
     await expect(row.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   }
   await page.getByTestId('toggle-enabled-linkedin').click({ force: true });
   expect(await saved(page)).toEqual([]);
-  await expect(page.getByTestId('view-settings').getByTestId('mailbox-connect')).toHaveCount(1);
-  // "Postfach verbinden" brings the Postfach into view with its form open, the caret in it.
-  await (await reveal(page, page.getByTestId('connect-freelance'))).click();
+  // The Postfach is the one way to connect: its Verbinden unfolds the form.
+  const connect = page.getByTestId('view-settings').getByTestId('mailbox-connect');
+  await expect(connect).toHaveCount(1);
+  await (await reveal(page, connect)).click();
   await expect(page.getByTestId('mailbox-form')).toBeInViewport();
-  await expect(page.getByTestId('mailbox-user')).toBeFocused();
   await expect(page.getByTestId('mailbox-connect')).toHaveCount(0);
 });
 

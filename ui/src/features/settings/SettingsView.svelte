@@ -15,8 +15,7 @@
   whose action fails stays open and says why inside. The dry run changes nothing and says so
   in a state box above the groups; a run holds the mailbox and the reset, locked with the
   reason of that run instead of failing. Opened for one of its groups (`navigation.section`:
-  "Postfach prüfen" of a failed fetch) the page glides to that group. "Postfach verbinden" of
-  a portal that needs a mailbox glides to the Postfach the same way and unfolds its form.
+  "Postfach prüfen" of a failed fetch) the page glides to that group.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -139,13 +138,6 @@
   /** Einstellungen opened for one of its groups (`navigation.section`, read once and set
    *  back): the group glides into view. */
   let root = $state<HTMLElement | null>(null);
-  let mailboxCard = $state<MailboxCard | null>(null);
-
-  /** "Postfach verbinden" of a portal: the Postfach glides into view, its form unfolds. */
-  function connectMailbox(): void {
-    navigation.section = 'mailbox';
-    mailboxCard?.openForm();
-  }
 
   $effect(() => {
     const section = navigation.section;
@@ -234,14 +226,14 @@
               {#each WAYS as way (way)}
                 <Group caption={t.settings.way[way]} captionTestid="portals-{way}">
                   {#each portals.filter((p) => p.way === way) as portal (portal.portal)}
-                    <PortalRow {portal} onconnect={connectMailbox} />
+                    <PortalRow {portal} />
                   {/each}
                 </Group>
               {/each}
             {:else}
               <Group>
                 {#if section.block === 'mailbox'}
-                  <MailboxCard bind:this={mailboxCard} {cfg} locked={mailboxLocked} />
+                  <MailboxCard {cfg} locked={mailboxLocked} />
                 {/if}
                 {#each section.rows as item (item.id)}{@render row(section.id, item)}{/each}
                 {#if feedback}{@render noteOf(section.id, feedback)}{/if}

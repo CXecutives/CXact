@@ -44,7 +44,6 @@
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import ListFilter from '@lucide/svelte/icons/list-filter';
-  import Gauge from '@lucide/svelte/icons/gauge';
   import Globe from '@lucide/svelte/icons/globe';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import Hourglass from '@lucide/svelte/icons/hourglass';
@@ -69,7 +68,6 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
   import Undo2 from '@lucide/svelte/icons/undo-2';
-  import Upload from '@lucide/svelte/icons/upload';
   import UserRound from '@lucide/svelte/icons/user-round';
   import X from '@lucide/svelte/icons/x';
 
@@ -107,7 +105,6 @@
     'file-up': FileUp,
     'folder-open': FolderOpen,
     'list-filter': ListFilter,
-    gauge: Gauge,
     globe: Globe,
     'file-pen-line': FilePenLine,
     hourglass: Hourglass,
@@ -132,7 +129,6 @@
     'trash-2': Trash2,
     'triangle-alert': TriangleAlert,
     'undo-2': Undo2,
-    upload: Upload,
     'user-round': UserRound,
     x: X,
   };

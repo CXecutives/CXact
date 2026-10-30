@@ -53,7 +53,6 @@
     <Tile
       drop
       {over}
-      icon="upload"
       label={t.firstRun.drop}
       note={t.firstRun.formats}
       testid="upload-zone"

@@ -6,8 +6,9 @@
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
-  ("Alert-Mails ohne Jobs", "Alert-Mail bleibt aus"; "Fehlgeschlagen" in red after a failed
-  call); else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
+  ("Alert-Mails ohne Jobs"; "Fehlgeschlagen" in red after a failed call), "Seit 9 Tagen keine
+  Alert-Mail" (warning) when a portal that is on sent no alert mail for a week before the
+  last fetch; else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen").
   The calls, outlined with the glyph of their meaning: "Anmelden…" or "Abmelden" where the
   portal offers a sign-in (one width), then the one call about its alert, in one place and
@@ -17,15 +18,14 @@
   page in the browser). A call that opens a window or a page to act on ends in an ellipsis.
   A portal that is off offers no call about its alert. In a narrow box the calls go to a
   line of their own at the row's end.
-  A portal of alert mails without a mailbox cannot work: its name dims, its line is the navy
-  link "Postfach verbinden" (`onconnect`: Einstellungen glides to the Postfach and unfolds its
-  form), it has no calls, and its switch stands off and waits with its reason (the stored
-  value stays; decision 26).
+  A portal of alert mails without a mailbox cannot work: its name dims, its line says so
+  quietly ("Braucht ein Postfach"; the Postfach card is the one way to connect one), it has
+  no calls, and its switch stands off and waits with its reason (the stored value stays;
+  decision 26).
   A problem of the portal is its sentence in one quiet line under the word (whether the user
   has to act, the time and the reason where it has them); it unfolds and folds away, so the
-  rows below glide. A portal that is on and sent no alert mail for a week before the last
-  fetch says so in one line ("Seit 9 Tagen keine Alert-Mail."). "Alert-Mail öffnen" and "Alert prüfen" need
-  the mail's place in Gmail, so they wait for the other providers (decision 32).
+  rows below glide. "Alert-Mail öffnen" and "Alert prüfen" need the mail's place in Gmail, so
+  they wait for the other providers (decision 32).
   Signing in lets the fetch use the sign-in, signing out ends that (lib/state/portalSession.ts,
   also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
   while the portal is on, and "Anmelden" then only lets the fetch use it (no sign-in window);
@@ -55,10 +55,8 @@
 
   interface Props {
     portal: PortalState;
-    /** The way to a mailbox, for a portal of alert mails without one. */
-    onconnect?: (() => void) | null;
   }
-  let { portal, onconnect = null }: Props = $props();
+  let { portal }: Props = $props();
 
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
@@ -109,11 +107,11 @@
     return Math.floor((Date.now() - last) / DAY_MS);
   });
   /** Its quiet state: how many alert mails came in 30 days (a portal of alert mails without a
-   *  mailbox has the link to one instead), or what the last search brought from it ("noch
-   *  keine Suche" before the first, nothing when it was not asked). */
+   *  mailbox says it needs one), or what the last search brought from it ("noch keine Suche"
+   *  before the first, nothing when it was not asked). */
   const standing = $derived.by((): string | null => {
     if (portal.way === 'alert') {
-      if (idle) return null;
+      if (idle) return t.settings.needsMailbox;
       // Before the first fetch: what "Verbinden" counted in the mailbox.
       const mails =
         portal.alertMails ??
@@ -147,7 +145,7 @@
           : t.settings.problem.paused;
       return { tone: 'warning', text: word };
     }
-    if (quietDays !== null) return { tone: 'warning', text: t.settings.problem.quiet };
+    if (quietDays !== null) return { tone: 'warning', text: t.settings.problem.quiet(quietDays) };
     return null;
   });
   /** A sign-in is stored (in the session window's profile). */
@@ -239,13 +237,6 @@
       <p class="line" data-testid="health-{portal.portal}">{problem}</p>
     </div>
   {/if}
-  {#if quietDays !== null}
-    <div class="fold" transition:unfold>
-      <p class="line" data-testid="alert-quiet-{portal.portal}">
-        {t.settings.alertQuiet(quietDays)}
-      </p>
-    </div>
-  {/if}
   {#if error}
     <div class="fold" transition:unfold>
       <p class="line" data-testid="portal-error">{error()}</p>
@@ -270,9 +261,6 @@
 <SettingRow
   label={t.portalName[portal.portal]}
   hint={flag?.text ?? standing}
-  link={idle && onconnect !== null
-    ? { label: t.settings.connectMailbox, testid: `connect-${portal.portal}`, onclick: onconnect }
-    : null}
   status={flag?.tone ?? null}
   disabled={idle}
   for={id}

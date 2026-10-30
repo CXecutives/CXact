@@ -634,6 +634,7 @@
         {:else if !searching}
           <div class="also">
             <Button
+              icon="reset"
               label={t.toolbar.filterReset}
               testid="filter-reset"
               onclick={() => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER))}
@@ -654,7 +655,9 @@
             testid: 'fetch',
             onclick: () => void run.start({ kind: 'fetch' }),
           }}
-          secondary={empty.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
+          secondary={empty.profile
+            ? { label: t.list.openProfile, icon: 'profile', onclick: toProfile }
+            : null}
           testid="empty-all"
         />
       </div>
@@ -664,7 +667,9 @@
         placement="list"
         heading={empty.heading}
         text={empty.text}
-        secondary={empty.profile ? { label: t.list.openProfile, onclick: toProfile } : null}
+        secondary={empty.profile
+          ? { label: t.list.openProfile, icon: 'profile', onclick: toProfile }
+          : null}
         testid={place === 'inbox' ? 'empty-all' : `empty-place-${place}`}
       />
     {/if}
