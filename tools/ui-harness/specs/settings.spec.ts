@@ -612,6 +612,37 @@ test('the dry run keeps to its own data and says so', async ({ page }) => {
   expect(await reason(page, 'mailbox-remove')).toBe('Im Probelauf geht das nicht.');
 });
 
+/* ============================================================ what the audit found */
+
+test('a search that waits for the sign-in leaves Anmelden of that portal on', async ({ page }) => {
+  await settings(page, `${WIN}&scenario=sign-in-waiting`);
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.signInWaiting);
+  // The sign-in window is the one the search waits for: its button is the way to give it. The
+  // other portals' calls wait for the run.
+  const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
+  await expect(signIn).not.toHaveAttribute('aria-disabled', 'true');
+  await signIn.click();
+  await expect
+    .poll(async () => (await calls(page, 'portal_login')).at(-1)?.[1])
+    .toEqual({ portal: 'freelance' });
+});
+
+test('switching a portal off lets its calls fade out together: Anmelden does not jump', async ({
+  page,
+}) => {
+  await settings(page);
+  const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
+  const before = (await signIn.boundingBox())!.x;
+  await page.getByTestId('toggle-enabled-freelance').click();
+  // Right after the switch, while both fade, Anmelden stands where it stood.
+  const during = await page.evaluate(
+    () => document.querySelector('[data-testid="sign-in-freelance"]')?.getBoundingClientRect().x,
+  );
+  expect(during).toBeCloseTo(before, 0);
+  await expect(page.getByTestId('sign-in-freelance')).toHaveCount(0);
+  await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
+});
+
 /* ---------------------------------------------------------------- baselines */
 
 test('baseline: first run', async ({ page }) => {

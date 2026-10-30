@@ -19,7 +19,18 @@ import {
   text,
   visibleCount,
 } from './fixtures';
-import { failNext, list, openJob, openPlace, SEARCHED, reveal, stage, T, viaMenu } from './helpers';
+import {
+  failNext,
+  list,
+  openJob,
+  openPlace,
+  SEARCHED,
+  reveal,
+  settleMoves,
+  stage,
+  T,
+  viaMenu,
+} from './helpers';
 
 // Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
 // direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
@@ -1066,6 +1077,34 @@ test('closing during a fetch asks first: Weitersuchen keeps both, Schließen sto
   await expect.poll(() => windowClosed(page)).toBe(true);
   expect(await closeAnswers(page)).toEqual([{ close: false }, { close: true }]);
   expect(await calls(page, 'close_window')).toHaveLength(0);
+});
+
+test('the close question stands alone: another question that is open is cancelled first', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&tick=40`);
+  // Deleting for good asks (its dialog is open) when a search the app started is under way and
+  // the window is asked to close.
+  await viaMenu(page, 'trash', 'freelancermap-2803');
+  await settleMoves(page);
+  await openPlace(page, 'trash');
+  await viaMenu(page, 'purge', 'freelancermap-2803');
+  const purge = page.getByTestId('dialog-purge');
+  await expect(purge).toBeVisible();
+  await page.evaluate(() => {
+    window.__harness.holdAfter = 2;
+    window.__harness.appRun('fetch');
+  });
+  await expect.poll(() => page.evaluate(() => window.__harness.runs())).toBe(true);
+  await requestClose(page);
+  const dialog = page.getByTestId('dialog-close-running');
+  await expect(dialog).toBeVisible();
+  await expect(purge).toHaveCount(0);
+  await expect(page.locator('[aria-modal="true"]')).toHaveCount(1);
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toHaveCount(0);
+  await page.evaluate(() => (window.__harness.holdAfter = null));
+  await runFinished(page);
 });
 
 test('the close question never traps the window and goes when the fetch ends', async ({ page }) => {

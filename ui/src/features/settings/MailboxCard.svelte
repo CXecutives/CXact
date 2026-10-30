@@ -7,7 +7,9 @@
   the form under the row (no dialog) and hide the row's buttons meanwhile: the provider and
   the address as a pair, the password, then "Abbrechen" and the primary "Verbinden" at the
   right in the order of the OS (decision 19), both as wide as the wider. Enter
-  connects, Esc and Abbrechen fold it away and give the focus back to the row's button.
+  connects, Esc and Abbrechen fold it away and give the focus back to the row's button; while
+  it is open and no field has the focus (the row's button went with the opening) the form's
+  box holds it, so both keys work there too. After "Entfernen" the focus goes to Verbinden.
   Unfolded, the form glides into view as far as needed.
   While Verbinden signs in and counts it spins in its own width; Abbrechen and Esc stay live
   and stop the check (`cancel_run`).
@@ -82,6 +84,14 @@
     return error;
   });
 
+  /** Ändern and Verbinden unfold the form. The button that opened it goes with it, so the focus
+   *  rests on the form's box (no caret, no ring): Enter and Esc reach the form from there. */
+  async function openForm(): Promise<void> {
+    editing = true;
+    await tick();
+    editor?.focus({ preventScroll: true });
+  }
+
   /** The form folds away; the focus, if it was in the form, goes back to the row's button. */
   async function close(): Promise<void> {
     const inside = editor?.contains(document.activeElement) ?? false;
@@ -109,6 +119,10 @@
       await invoke('remove_mailbox');
       await app.load();
       confirmRemove = false;
+      // The button that opened the dialog went with the mailbox: Verbinden takes its place and
+      // the focus.
+      await tick();
+      opening?.querySelector('button')?.focus();
     } catch (error) {
       removeError = () => errorText(error);
     } finally {
@@ -126,7 +140,7 @@
       disabled={locked !== null}
       disabledReason={locked}
       {testid}
-      onclick={() => (editing = true)}
+      onclick={() => void openForm()}
     />
   </span>
 {/snippet}
@@ -182,7 +196,12 @@
 {#if editing}
   <!-- Unfolded, the form comes into view whole (it may open below the window's edge). -->
   <div class="fold" transition:unfold onintroend={() => editor && glideIntoView(editor)}>
-    <div class="edit" bind:this={editor} use:formKeys={{ save: () => void connect(), cancel }}>
+    <div
+      class="edit"
+      bind:this={editor}
+      tabindex="-1"
+      use:formKeys={{ save: () => void connect(), cancel }}
+    >
       <MailboxForm bind:this={form} bind:busy={checking} />
       <div class="buttons" data-testid="mailbox-buttons">
         {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}

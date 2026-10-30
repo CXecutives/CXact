@@ -157,3 +157,66 @@ test('a provider of its own: GMX takes the password, its page says how to allow 
     T.settings.removeMailboxText(false),
   );
 });
+
+/* ============================================================ what the audit found */
+
+test('an open form answers Esc and Enter with no field focused', async ({ page }) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-settings').click();
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  // The button went with the opening: the focus rests on the form's box, not in a field.
+  await expect(form(page)).toBeVisible();
+  const box = page.getByTestId('mailbox-form').locator('xpath=..');
+  await expect(box).toBeFocused();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('DIV');
+  // Enter connects (no password: it says so), Esc folds the form away.
+  await page.keyboard.press('Enter');
+  await expect(form(page)).toContainText(T.settings.passwordMissing(true));
+  await page.keyboard.press('Escape');
+  await expect(form(page)).toHaveCount(0);
+  await expect(page.getByTestId('mailbox-change')).toBeFocused();
+});
+
+test('the errors of the form go with what they spoke of', async ({ page }) => {
+  await changeMailbox(page);
+  const password = page.getByTestId('mailbox-password');
+  const user = page.getByTestId('mailbox-user');
+  const refuse = async (): Promise<void> => {
+    await password.fill('falschfalschfals');
+    await save(page).click();
+    await expect(page.getByTestId('mailbox-error')).toBeVisible();
+    await expect(password).toHaveAttribute('aria-invalid', 'true');
+    await expect(user).toHaveAttribute('aria-invalid', 'true');
+  };
+  // Retyping the password takes the refusal away, both edges and the sentence.
+  await refuse();
+  await password.pressSequentially('x');
+  await expect(page.getByTestId('mailbox-error')).toHaveCount(0);
+  await expect(password).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(user).not.toHaveAttribute('aria-invalid', 'true');
+  // So does retyping the address.
+  await refuse();
+  await user.pressSequentially('x');
+  await expect(page.getByTestId('mailbox-error')).toHaveCount(0);
+  await expect(password).not.toHaveAttribute('aria-invalid', 'true');
+  // And another provider: nothing was said of it.
+  await user.fill('alerts.demo@gmail.com');
+  await refuse();
+  await choose(page, 'iCloud');
+  await expect(page.getByTestId('mailbox-error')).toHaveCount(0);
+  await expect(password).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(user).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+test('removing the mailbox from the keyboard leaves the focus on Verbinden', async ({ page }) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-settings').click();
+  await page.keyboard.press('Tab');
+  await (await reveal(page, page.getByTestId('mailbox-remove'))).focus();
+  await page.keyboard.press('Enter');
+  const dialog = page.getByTestId('dialog-remove-mailbox');
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId('dialog-confirm').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('mailbox-connect')).toBeFocused();
+});

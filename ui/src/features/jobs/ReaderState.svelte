@@ -108,7 +108,7 @@
 
   /** "Anmelden…": the portal's sign-in window, right here (the words of Einstellungen). */
   let signingIn = $state(false);
-  const signInLock = $derived(signInLocked());
+  const signInLock = $derived(signInLocked(job.portal));
   async function signIn(): Promise<void> {
     if (portalState === null) return;
     signingIn = true;

@@ -6,11 +6,13 @@
   says so meanwhile); Weitersuchen keeps the window and the fetch. A fetch that ends while the
   question is open ends the question too: the next close goes through without one. Only a
   fetch the page has seen running ends it: a close asked right as a fetch starts (the backend
-  knows before the page does) keeps its question.
+  knows before the page does) keeps its question. It stands alone: another question that is
+  open when it comes (deleting for good) is cancelled first, never two scrims.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
   import { t } from '$lib/i18n/t';
+  import { cancelDialogs } from '$lib/input/input';
   import { invoke, onCloseRunning } from '$lib/ipc/api';
   import { run } from '$lib/state/run.svelte';
 
@@ -20,6 +22,8 @@
 
   $effect(() =>
     onCloseRunning(() => {
+      // One question at a time: another one that stands open (deleting for good) is cancelled.
+      if (!open) cancelDialogs();
       seen = run.active;
       open = true;
     }),

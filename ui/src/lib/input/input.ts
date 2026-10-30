@@ -434,6 +434,14 @@ function topModal(): HTMLElement | null {
   return open.item(open.length - 1);
 }
 
+/** Cancels every modal dialog that stands open, as Esc would (a question that something more
+ *  urgent overrules: the window's close). A dialog that is busy keeps standing. */
+export function cancelDialogs(): void {
+  for (const modal of document.querySelectorAll<HTMLElement>(MODAL)) {
+    forms.get(modal)?.cancel?.();
+  }
+}
+
 /** The controls Tab visits inside `root`, in order: a disabled one and one out of sight are
  *  passed. */
 function tabbables(root: ParentNode): HTMLElement[] {
