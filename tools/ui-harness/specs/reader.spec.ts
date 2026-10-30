@@ -1396,6 +1396,12 @@ test.describe('the job view keeps true', () => {
     );
   });
 
+  test('the verdict mark beside a fact names itself under the pointer', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    const mark = term(page, 'experience').getByTestId('verdict');
+    expect(await tip(page, mark)).toBe(T.reader.verdict.partial);
+  });
+
   test('a retry shows no job before the one it loads', async ({ page }) => {
     await openAt(page, 'freelancermap-2801');
     await failNext(page, 'job_detail');

@@ -201,7 +201,7 @@
       {/if}
       <div class="scroll" data-testid="list-scroll" use:keepScroll={'jobs-list'}>
         <JobList
-          onresetfilter={() => void header?.resetFilter()}
+          onresetfilter={(fromKeyboard) => void header?.resetFilter(fromKeyboard)}
           online={(value) => (line = value)}
         />
       </div>

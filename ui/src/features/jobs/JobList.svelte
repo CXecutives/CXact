@@ -83,8 +83,9 @@
 
   interface Props {
     /** "Filter zurücksetzen" of a filter that leaves nothing: the header takes the filter off
-     *  and keeps the keyboard focus (the button goes with the empty state). */
-    onresetfilter?: () => void;
+     *  and keeps the keyboard focus (the button goes with the empty state; `true` when the
+     *  keyboard pressed it). */
+    onresetfilter?: (fromKeyboard: boolean) => void;
     /** Whether the head draws its hairline: the list scrolled beneath it and no day's
      *  heading sticks at its top. */
     online?: (line: boolean) => void;
@@ -625,7 +626,8 @@
               icon="reset"
               label={t.toolbar.filterReset}
               testid="filter-reset"
-              onclick={() => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER))}
+              onclick={(event) =>
+                onresetfilter ? onresetfilter(event.detail === 0) : jobs.setFilter(NO_FILTER)}
             />
           </div>
         {/if}

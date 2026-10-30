@@ -5,8 +5,9 @@
   question mark; a violation that excludes the job is the ban, red like a cross. Then its
   words, and after them the quiet word "optional" for an optional one (like "geschätzt" in
   the Jobdetails, no pill).
-  iconOnly (a verdict of the reader's Jobdetails): the icon alone, named by `label`, with the
-  reason that decided it in its tooltip (`hint`).
+  iconOnly (a verdict of the reader's Jobdetails): the icon alone, named by `label`, which is
+  its tooltip too (a glyph without words says nothing under the pointer otherwise: the verdict's
+  word, the one the requirements are grouped by); `hint` says more where there is more.
   settled (a missing term the user just added to the profile): a quiet check in place of its
   icon, named by these words, until the next score judges it anew.
   after: what follows the words in their line (the reader's "+" into the profile), right after
@@ -67,7 +68,7 @@
     aria-label={label}
     data-kind={kind}
     data-testid={testid ?? undefined}
-    use:tooltip={hint}><span class="icon"><Icon name={ICON[kind]} size="sm" /></span></span
+    use:tooltip={hint ?? label}><span class="icon"><Icon name={ICON[kind]} size="sm" /></span></span
   >
 {:else}
   <span class="reason {kind}" data-kind={kind} data-testid={testid ?? undefined} use:tooltip={hint}>

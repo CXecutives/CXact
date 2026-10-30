@@ -10,9 +10,21 @@ class TooltipState {
   anchor = $state<HTMLElement | null>(null);
   text = $state('');
   #hiddenAt = 0;
+  #dismissed = 0;
 
   get warm(): boolean {
     return this.anchor !== null || performance.now() - this.#hiddenAt < WARM_MS;
+  }
+
+  /** Counts the dismissals: a tooltip that waited for its delay while one came is never shown. */
+  get dismissals(): number {
+    return this.#dismissed;
+  }
+
+  /** A press or Esc: the bubble goes and every tooltip still waiting for its delay with it. */
+  dismiss(): void {
+    this.#dismissed += 1;
+    this.hide();
   }
 
   show(anchor: HTMLElement, text: string): void {

@@ -58,7 +58,9 @@
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
 // - a row that slides under a pointer that did not move is not hovered by it: after a row's
 //   tool took its row away, the next row shows its tools only once the pointer moves
-//   (`hover`, `holdHover`)
+//   (`hover`, `holdHover`); a press on a tooltip's anchor holds the same way, so the button
+//   that takes the place of the one pressed shows no tooltip until the pointer moves
+// - a tooltip's bubble goes on a press anywhere, a scroll of any pane and Esc (`onDismiss`)
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -152,6 +154,27 @@ const selectable = (target: EventTarget | null): boolean =>
 /** Ctrl, Alt or Cmd (Shift alone makes no shortcut). */
 const hasModifier = (event: KeyboardEvent): boolean =>
   event.ctrlKey || event.altKey || event.metaKey;
+
+/** What dismisses a bubble that stands over the page: a press, a scroll, Esc. */
+export type Dismissal = 'press' | 'scroll' | 'escape';
+
+const dismissals = new Set<(cause: Dismissal, target: EventTarget | null) => void>();
+
+/**
+ * `onDismiss(handler)`: the tooltip's bubble (components/Tooltip.svelte) goes on a press
+ * anywhere (with what was pressed), a scroll of any pane and Esc, like the tooltips of a native
+ * app. Returns the unsubscribe function.
+ */
+export function onDismiss(
+  handler: (cause: Dismissal, target: EventTarget | null) => void,
+): () => void {
+  dismissals.add(handler);
+  return () => dismissals.delete(handler);
+}
+
+function dismiss(cause: Dismissal, target: EventTarget | null = null): void {
+  for (const handler of dismissals) handler(cause, target);
+}
 
 /** Ctrl/Cmd+C over a selection of copyable text. */
 function isCopy(event: KeyboardEvent): boolean {
@@ -587,12 +610,14 @@ export function removeBy(button: EventTarget | null, remove: () => void): void {
 }
 
 /** Backspace or Delete on the focused × of a chip presses it (it removes the chip, like
- *  Backspace in its field removes the last one); `true` if it did. */
+ *  Backspace in its field removes the last one); `true` if it did. The × is the chip's
+ *  remove button, or the button inside the slot that holds it (a filter chip). */
 function removesByKey(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey) return false;
   if (event.key !== 'Backspace' && event.key !== 'Delete') return false;
   const target = event.target;
-  if (!(target instanceof HTMLElement) || !target.matches(`${CHIP} button${REMOVE}`)) return false;
+  if (!(target instanceof HTMLButtonElement)) return false;
+  if (target.closest(REMOVE) === null || target.closest(CHIP) === null) return false;
   event.preventDefault();
   target.click();
   return true;
@@ -637,6 +662,7 @@ function onKeyDown(event: KeyboardEvent): void {
   keyboardFocus = true;
   // A held key is fast browsing: an open meanwhile plays no motion (lib/motion/pace).
   noteKey(event.repeat);
+  if (event.key === 'Escape') dismiss('escape');
   if (menuState.open !== null) {
     dispatchMenuKey(event);
     return;
@@ -985,7 +1011,7 @@ export function holdHover(event: MouseEvent): void {
 /** The pointer moved since the hold (which then ends); the engines send `pointerenter` and
  *  `pointermove` at the old place when content slides under a pointer that rests. Less than
  *  a pixel is no move: a click reports whole pixels, a pointer event the fraction too. */
-function pointerMoved(event: PointerEvent): boolean {
+export function pointerMoved(event: PointerEvent): boolean {
   if (heldAt === null) return true;
   if (Math.abs(event.clientX - heldAt.x) < 1 && Math.abs(event.clientY - heldAt.y) < 1) {
     return false;
@@ -1334,6 +1360,7 @@ function scrollOver(): void {
 }
 
 function onScroll(): void {
+  dismiss('scroll');
   scrollIdleMs ??= tokenMs('--scroll-idle');
   if (!scrolling) {
     scrolling = true;
@@ -1452,6 +1479,7 @@ export function installInput(): void {
     'mousedown',
     (event) => {
       keyboardFocus = false;
+      dismiss('press', event.target);
       if (pressOutsideMenu(event)) {
         swallow = true;
         return;
