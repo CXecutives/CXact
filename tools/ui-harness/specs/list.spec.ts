@@ -696,7 +696,7 @@ test.describe('filter', () => {
     await expect(chips(page).getByRole('button')).toHaveText(
       chipWordsOf('portal-linkedin', 'band-mid', 'band-low'),
     );
-    // A chip's × takes its choice off; the last one hands the focus to the funnel.
+    // A chip's × takes its choice off; a click sets no focus anywhere, not even after the last.
     await chip(page, 'band-mid').click();
     await expect
       .poll(() => listed(page))
@@ -707,6 +707,18 @@ test.describe('filter', () => {
     await chip(page, 'portal-linkedin').click();
     await expect(chips(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
+    await expect(funnel(page)).not.toBeFocused();
+    // From the keyboard the last one hands the focus to the funnel; before it the next chip's ×
+    // takes it, and Delete takes a chip off like Enter.
+    await chooseFilter(page, 'portal-linkedin');
+    await chooseFilter(page, 'band-mid');
+    await page.keyboard.press('Tab');
+    await chip(page, 'portal-linkedin').focus();
+    await page.keyboard.press('Enter');
+    await expect(chip(page, 'portal-linkedin')).toHaveCount(0);
+    await expect(chip(page, 'band-mid')).toBeFocused();
+    await page.keyboard.press('Delete');
+    await expect(chips(page)).toHaveCount(0);
     await expect(funnel(page)).toBeFocused();
   });
 
@@ -888,9 +900,20 @@ test.describe('filter', () => {
     await expect(state).toContainText(T.list.noFilterHit);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(funnel(page)).toBeVisible();
-    await state.getByRole('button', { name: T.toolbar.filterReset }).click();
+    const reset = state.getByRole('button', { name: T.toolbar.filterReset });
+    // A click takes the filter off and sets no focus (a button the code focused would show a
+    // tooltip nobody asked for); from the keyboard the funnel takes it, not the top of the window.
+    await reset.click();
     await expect(state).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
+    await expect(funnel(page)).not.toBeFocused();
+    await chooseFilter(page, empty!);
+    await chooseFilter(page, 'band-high');
+    await expect(state).toBeVisible();
+    await page.keyboard.press('Tab');
+    await reset.focus();
+    await page.keyboard.press('Enter');
+    await expect(state).toHaveCount(0);
     await expect(funnel(page)).toBeFocused();
   });
 

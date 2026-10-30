@@ -565,7 +565,7 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   // Ändern: the folder dialog; the profile comes along and the toast says so.
   await page.getByTestId('folder-change').click();
   await expect(page.getByTestId('toast-text')).toHaveText(T.settings.folderMoved);
-  await expect(data.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
+  await expect(data.getByTestId('folder-hint')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {

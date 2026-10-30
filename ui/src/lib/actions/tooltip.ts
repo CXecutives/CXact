@@ -3,7 +3,7 @@
 // leave, press and blur (the layer also hides it on a press anywhere, a scroll and Esc, and
 // when the window resizes or goes to the back); moving on to the next anchor with the
 // pointer shows it at once. A button that takes the place of the one pressed under a pointer
-// that rests shows none until the pointer moves (input.ts `pointerMoved`).
+// that rests shows none until the pointer moves (input/hold.ts `pointerMoved`).
 // `{ text, truncated: true }` shows it only while the text of the node is cut off (a long
 // row title, one line or clamped to two; `measure` names the element inside that holds the
 // text): measured once when the pointer enters, never per frame, and again when the tooltip
@@ -16,7 +16,7 @@
 // bubble at once and a second click hides it; a press does not hide it.
 
 import type { Action } from 'svelte/action';
-import { holdHover, pointerMoved } from '../input/input';
+import { holdHover, pointerMoved } from '../input/hold';
 import { tooltipDelay } from '../motion/motion';
 import { tooltipState } from '../state/tooltip.svelte';
 

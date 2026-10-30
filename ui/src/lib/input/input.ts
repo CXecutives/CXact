@@ -58,8 +58,8 @@
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
 // - a row that slides under a pointer that did not move is not hovered by it: after a row's
 //   tool took its row away, the next row shows its tools only once the pointer moves
-//   (`hover`, `holdHover`); a press on a tooltip's anchor holds the same way, so the button
-//   that takes the place of the one pressed shows no tooltip until the pointer moves
+//   (`hover`, `holdHover` of hold.ts); a press on a tooltip's anchor holds the same way, so
+//   the button that takes the place of the one pressed shows no tooltip until the pointer moves
 // - a tooltip's bubble goes on a press anywhere, a scroll of any pane and Esc (`onDismiss`)
 
 import type { Action } from 'svelte/action';
@@ -84,6 +84,7 @@ import {
 } from '../state/menu.svelte';
 import { shell } from '../state/shell.svelte';
 import { tokenMs, tokenPx } from '../tokens';
+import { pointerMoved } from './hold';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
 /** Text a user would copy (selectable, Ctrl/Cmd+C). */
@@ -1064,35 +1065,11 @@ function runDouble(event: MouseEvent): boolean {
   return true;
 }
 
-/** Where the pointer stood when a row's tool took its row away (null: no hold). */
-let heldAt: { x: number; y: number } | null = null;
-
-/**
- * A row's tool took its row away (the row folds, the next one slides under the pointer):
- * until the pointer moves, no element counts as hovered by it (`hover`), so the next row
- * shows no tools under a pointer that did not move.
- */
-export function holdHover(event: MouseEvent): void {
-  heldAt = { x: event.clientX, y: event.clientY };
-}
-
-/** The pointer moved since the hold (which then ends); the engines send `pointerenter` and
- *  `pointermove` at the old place when content slides under a pointer that rests. Less than
- *  a pixel is no move: a click reports whole pixels, a pointer event the fraction too. */
-export function pointerMoved(event: PointerEvent): boolean {
-  if (heldAt === null) return true;
-  if (Math.abs(event.clientX - heldAt.x) < 1 && Math.abs(event.clientY - heldAt.y) < 1) {
-    return false;
-  }
-  heldAt = null;
-  return true;
-}
-
 /**
  * `use:hover={(here) => ...}`: says when the mouse comes onto the element (`here` true) and
  * when it leaves it again (false); moves between its own children do not count. After
- * `holdHover` an element the pointer did not move onto waits for the pointer to move. Touch
- * never hovers.
+ * `holdHover` (hold.ts) an element the pointer did not move onto waits for the pointer to
+ * move. Touch never hovers.
  */
 export const hover: Action<HTMLElement, (here: boolean) => void> = (node, callback) => {
   let current = callback;
@@ -1630,6 +1607,9 @@ export function installInput(): void {
   document.addEventListener(
     'pointermove',
     (event) => {
+      // A move anywhere ends the hold on hover (hold.ts), so a pointer that left and comes
+      // back to the very pixel it pressed finds the rows and the tooltips awake.
+      pointerMoved(event);
       if (!otherButtonsDown(event) && !swallow) auxPress(false);
     },
     { capture: true, passive: true },

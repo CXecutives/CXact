@@ -707,7 +707,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, '']);
   });
 
-  test('no verdict icon has a tooltip, in the Jobdetails and among the Anforderungen', async ({
+  test('the Anforderungen have no tooltip on their icons; the marks of the Jobdetails name their verdict', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 900 });
@@ -725,12 +725,14 @@ test.describe('Jobdetails', () => {
         await page.waitForTimeout(700);
         await expect(page.getByRole('tooltip')).toHaveCount(0);
       }
-      // The Jobdetails' icons neither (user, 2026-09-28): their place says enough.
+      // The Jobdetails' marks show a glyph and no words: under the pointer each says its verdict,
+      // in the word the requirements are grouped by (their place says nothing of it).
       const icon = icons.first();
       await icon.scrollIntoViewIfNeeded();
       await icon.hover();
-      await page.waitForTimeout(700);
-      await expect(page.getByRole('tooltip')).toHaveCount(0);
+      await expect(page.getByRole('tooltip')).toHaveText(
+        (await icon.getAttribute('aria-label')) ?? '',
+      );
       await page.mouse.move(0, 0);
     }
   });

@@ -82,7 +82,8 @@
 </script>
 
 <script lang="ts">
-  import { contextMenu, holdHover, hover, type ContextMenu } from '$lib/input/input';
+  import { holdHover } from '$lib/input/hold';
+  import { contextMenu, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { displayTitle } from '$lib/i18n/format';
   import { fade } from '$lib/motion/transitions';
