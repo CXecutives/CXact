@@ -11,6 +11,10 @@
 //! The plate's geometry is pinned by a reference written down here, independent of the
 //! generator: Apple's continuous corner, the radius as a share of the plate and an exact
 //! area-coverage rasterizer. Every stage's alpha must match it within one level.
+//!
+//! The glyph is a placeholder until the real icon exists, one plain white ring. What it must be
+//! is read back from the pixels of every stage: centred and symmetric, with an empty hole and
+//! nothing else on the plate.
 
 // Pixel coordinates and levels: small non-negative numbers (at most 1024 and 255).
 #![allow(
@@ -396,9 +400,8 @@ fn mac_icons_match_generator() {
     assert_eq!(png, largest, "icon.png is the 1024 entry of the ICNS");
 }
 
-/// The brand mark in the UI is the generator's vector: same plate crop, the briefcase with the
-/// lens as one path (the lens's hole even-odd), one flat colour each (the app's --brand and
-/// --brand-glyph).
+/// The brand mark in the UI is the generator's vector: same plate crop, the placeholder ring as
+/// one path (its hole even-odd), one flat colour each (the app's --brand and --brand-glyph).
 #[test]
 fn ui_brand_mark_is_the_generated_vector() {
     let svg = std::fs::read_to_string(repo("ui/src/assets/app-icon.svg")).unwrap();
@@ -412,7 +415,7 @@ fn ui_brand_mark_is_the_generated_vector() {
     );
     assert!(
         svg.contains(r#"fill-rule="evenodd""#),
-        "the lens's hole is a cut-out"
+        "the ring's hole is a cut-out"
     );
     let plate = format!(r#"<path fill="{}" d="#, palette::BRAND.hex());
     let glyph = format!(
@@ -426,6 +429,21 @@ fn ui_brand_mark_is_the_generated_vector() {
     );
     assert!(!svg.contains("Gradient"), "a gradient is back");
     assert_eq!(svg.matches("<path").count(), 2, "plate and glyph");
+
+    // One plain ring, no gap and no other shape: two outlines, the outer circle and its hole,
+    // drawn with arcs only.
+    let ring = svg_paths(&svg)[1];
+    assert_eq!(
+        ring.matches('M').count(),
+        2,
+        "the glyph is two circles, the ring's outer edge and its hole"
+    );
+    assert!(
+        ring.chars()
+            .filter(char::is_ascii_alphabetic)
+            .all(|command| "MAZ".contains(command)),
+        "the glyph is arcs only: a line or a curve is another shape"
+    );
 }
 
 /// The `d` attributes of an SVG's paths, in order.
@@ -482,7 +500,7 @@ fn icon_composer_package_is_the_glyph() {
     assert_eq!(
         svg_paths(&glyph),
         svg_paths(&mark)[1..],
-        "the glyph is the brand mark's briefcase with the lens"
+        "the glyph is the brand mark's ring"
     );
 
     let text = std::fs::read_to_string(repo("src-tauri/tauri.macos.conf.json")).unwrap();
@@ -496,6 +514,116 @@ fn icon_composer_package_is_the_glyph() {
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("icon")))),
         "tauri build crashes on a .icon in bundle.icon: {icons:?}"
     );
+}
+
+/// Asserts that a stage shows the glyph as the placeholder it is: one plain white ring on the
+/// centre of the plate. `pixels` are RGBA, top row first, of a `size` x `size` image whose plate
+/// is `plate` px wide. The generator mixes the plate's colour with the glyph's by the glyph's
+/// exact coverage in every pixel, so the glyph reads back from the colour, in the channel where
+/// the two differ most. Only the middle of the plate is looked at (2 px in from its edge), so
+/// the plate's alpha and the macOS shadow cannot get in the way.
+fn assert_plain_ring(label: &str, pixels: &[[u8; 4]], size: usize, plate: f64) {
+    let glyph = palette::BRAND_GLYPH.rgb;
+    let channel = (0..3)
+        .max_by_key(|&index| BRAND[index].abs_diff(glyph[index]))
+        .expect("three channels");
+    let span = f64::from(glyph[channel]) - f64::from(BRAND[channel]);
+    let share = |x: usize, y: usize| {
+        (f64::from(pixels[y * size + x][channel]) - f64::from(BRAND[channel])) / span
+    };
+
+    // Along the middle row, from the centre to the right: the pixels at least half covered are
+    // the ring's band; `inner` and `outer` count the pixels from the centre to its two edges.
+    let row: Vec<f64> = (size / 2..size).map(|x| share(x, size / 2)).collect();
+    let inner = row.iter().position(|&value| value >= 0.5);
+    let outer = row
+        .iter()
+        .rposition(|&value| value >= 0.5)
+        .map(|last| last + 1);
+    let (Some(inner), Some(outer)) = (inner, outer) else {
+        panic!("{label}: no ring on the plate's centre");
+    };
+
+    // Over the middle of the plate: how far the mirror images across both middle lines and the
+    // diagonal differ (a ring on the centre of the plate, round, has none), and the first pixel
+    // that is not the plate's full colour though it lies more than a pixel and a half beyond
+    // the ring's edges, outside it or in its hole.
+    let centre = size as f64 / 2.0;
+    let reach = plate / 2.0 - 2.0;
+    let mut asymmetry = 0;
+    let mut stray = None;
+    for y in 0..size {
+        for x in 0..size {
+            let distance = (x as f64 + 0.5 - centre).hypot(y as f64 + 0.5 - centre);
+            if distance >= reach {
+                continue;
+            }
+            let pixel = pixels[y * size + x];
+            let beyond = distance > outer as f64 + 1.5 || distance < inner as f64 - 1.5;
+            if beyond && pixel[..3] != BRAND {
+                stray = stray.or(Some((x, y, pixel)));
+            }
+            for (mirror_x, mirror_y) in [(size - 1 - x, y), (x, size - 1 - y), (y, x)] {
+                let other = pixels[mirror_y * size + mirror_x][channel];
+                asymmetry = asymmetry.max(pixel[channel].abs_diff(other));
+            }
+        }
+    }
+
+    // The verdicts, the most basic first.
+    assert!(
+        asymmetry <= 1,
+        "{label}: the ring is not centred and round, mirror images differ by {asymmetry} levels"
+    );
+    assert!(
+        row[inner..outer].iter().all(|&value| value >= 0.5),
+        "{label}: the ring has a gap"
+    );
+    assert!(
+        row.iter().any(|&value| value >= 0.9),
+        "{label}: the ring does not reach --brand-glyph"
+    );
+    // Lucide's circle (radius 7.5, stroke 2.1, on a 24 unit grid that spans 624 of the plate's
+    // 824) is 0.54 of the plate across; whole pixels move it between 0.50 and 0.58.
+    let across = 2.0 * outer as f64 / plate;
+    assert!(
+        (0.45..=0.62).contains(&across),
+        "{label}: the ring is {across:.2} of the plate across, Lucide's circle is 0.54"
+    );
+    assert!(
+        stray.is_none(),
+        "{label}: something besides the ring, first at x, y, rgba: {stray:?}"
+    );
+}
+
+/// The placeholder glyph, one plain white ring on the centre of the plate, is the same in every
+/// ICO stage and every ICNS entry (icon.png is the ICNS 1024 entry, checked above).
+#[test]
+fn glyph_is_a_plain_ring_on_the_plate_centre() {
+    let ico = std::fs::read(repo("src-tauri/icons/icon.ico")).unwrap();
+    for stage in read_ico(&ico) {
+        let size = stage.width as usize;
+        // The Windows plate fills its square.
+        assert_plain_ring(&format!("ICO {size}"), &stage.pixels, size, size as f64);
+    }
+    let icns = std::fs::read(repo("src-tauri/icons/icon.icns")).unwrap();
+    let mut seen = Vec::new();
+    for (ostype, png) in icns_entries(&icns) {
+        let size = png_size(png).0 as usize;
+        if seen.contains(&size) {
+            continue;
+        }
+        seen.push(size);
+        // Apple's grid: the plate's edges are 100 of 1024 in from the canvas.
+        let plate = size as f64 * (1.0 - 200.0 / 1024.0);
+        assert_plain_ring(
+            &format!("ICNS {ostype} {size}"),
+            &decode_png(png),
+            size,
+            plate,
+        );
+    }
+    assert_eq!(seen, [32, 64, 128, 256, 512, 1024]);
 }
 
 // ------------------------------------------------------------------- reference geometry

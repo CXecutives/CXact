@@ -238,8 +238,8 @@ build.
     `closing` event, the run's `status` events, `ProfileInfo.understood`, `MatchDetail.highlights` and a
     few count fields; the "Arbeitsordner" comments in `core/src/settings.rs`.
   - `ui/src/assets/app-icon.svg` stays (no longer dropped): a new `AppMark` component draws the app's mark
-    from it, the new icon (briefcase with lens, branch `icon-d`); the brand comments in `tokens.css` still
-    say folder.
+    from it, today a plain ring on the coral plate, a placeholder until the real icon exists
+    (`tools/icon.py`); the brand comments in `tokens.css` still say folder.
   - Then the full gates and harness, version 4.0.0, `tools/portable.cmd` and the installer (the user starts
     them).
 

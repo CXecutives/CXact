@@ -1,4 +1,4 @@
-"""App icon: coral plate, white glyph - a briefcase with a search lens at its bottom right.
+"""App icon: coral plate, white glyph - a plain ring, a placeholder until the real icon exists.
 
 One geometry, every output:
   src-tauri/icons/icon.ico    Windows only: the plate fills the whole square, like the other
@@ -34,13 +34,12 @@ Geometry on the 1024 grid (Windows layout; macOS scales everything with its smal
   22.37 % of the plate (Mike Swanson's fit to Apple's own AppIconMask, 34 of 152). macOS keeps
   Apple's continuous corner (APPLE_CORNER, the curve UIKit draws for app icons: it leaves the
   straight edge 1.53 r before the corner), the convention of that system.
-- The glyph (user, 2026-10-24, "Variante D"): Lucide's briefcase with the search lens, in
-  Lucide's 24 unit grid, which spans 624 of Apple's 824 plate, centred (see LUCIDE_UNIT). It
-  scales with the plate, so it keeps its share of the plate and its optical centre.
-- White strokes 2.1 units wide (the app's icon stroke), round joins, drawn as outlines (see
-  `glyph`): the body a rounded rectangle, the handle's two legs run down through the body to
-  its bottom edge, the lens a ring with a short handle. Everything of the briefcase within 5.9
-  units of the lens's centre is cut away, so the lens sits in a clean gap.
+- The glyph is a placeholder until the real icon exists: one plain white ring, like Lucide's
+  `circle` (centre 12 12, radius 7.5) in Lucide's 24 unit grid, which spans 624 of Apple's 824
+  plate, centred (see LUCIDE_UNIT). It scales with the plate, so it keeps its share of the
+  plate. No gap, no other shape.
+- The white stroke is 2.1 units wide (the app's icon stroke), drawn as outlines (see `glyph`):
+  the ring's outer circle and its hole.
 - One flat colour: the app's --brand token (the cxpertise coral), the glyph --brand-glyph
   (white), no gradient. No shadow on Windows; Apple's template shadow under the macOS plate.
 
@@ -49,10 +48,8 @@ tools/tokens.mjs writes. `npm run regen` runs both: a new palette in tokens.css 
 icon (docs/CHANGING.md).
 
 Small stages are hinted (see `layout`): up to 256 px the stroke is a whole number of pixels
-with its straight edges on whole pixels (rounded symmetrically) and the lens's ring a whole
-number of pixels across; up to 40 px the gap ends the strokes flat on whole pixels, at least
-a pixel from the lens. Every size draws the same glyph, the legs inside the body included
-(owner, 2026-10-24: one icon, not a simpler one for small sizes).
+and so are the ring's radii, so every edge of the ring lies on whole pixels and the ring stays
+centred and symmetric. Every size draws the same ring.
 
     python tools/icon.py                        writes every output, then checks icon.ico
                                                 (needs Pillow)
@@ -73,8 +70,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 # One flat colour each, no gradient (user, 2026-09-25): the plate is the app's --brand token,
-# the briefcase with the lens --brand-glyph (tools/palette.json, generated from
-# ui/src/styles/tokens.css; core/tests/icon.rs checks the outputs against the same tokens).
+# the ring --brand-glyph (tools/palette.json, generated from ui/src/styles/tokens.css;
+# core/tests/icon.rs checks the outputs against the same tokens).
 _COLOURS = json.loads((Path(__file__).resolve().parent / 'palette.json')
                       .read_text(encoding='utf-8'))['colours']
 BRAND = tuple(_COLOURS['brand']['rgb'])
@@ -95,30 +92,16 @@ PLATE_R = 0.2237 * (1024 - 2 * PLATE)
 MAC_PLATE = 100
 MAC_PLATE_R = 0.2237 * (1024 - 2 * MAC_PLATE)
 
-# The glyph (user, 2026-10-24, "Variante D"): Lucide 1.48's briefcase with its search lens at
-# the bottom right, white strokes in Lucide's style, in Lucide's 24 unit grid. The grid spans
-# 624 of Apple's 824 plate (26 px a unit on the macOS 1024 canvas, origin at 200, 200), centred;
-# on any plate the glyph keeps that share (LUCIDE_UNIT units of the plate's own 1024 grid).
-# Optically centred as it is: its mass centre lies 0.2 units right of the plate's centre, its
-# box 0.1 right and down (the lens's weight and the gap balance), so no nudge.
-LUCIDE = 24
+# The glyph is a PLACEHOLDER until the real icon exists: one plain white ring, like Lucide's
+# `circle` (centre 12 12, radius 7.5) in Lucide's 24 unit grid, with no gap and no other shape.
+# The grid spans 624 of Apple's 824 plate (26 px a unit on the macOS 1024 canvas), centred; on
+# any plate the ring keeps that share (LUCIDE_UNIT units of the plate's own 1024 grid). The
+# grid's centre is the plate's centre, so the ring is centred without a nudge.
 LUCIDE_UNIT = 1024 * 26 / (1024 - 2 * MAC_PLATE)
-# The app's icon stroke (2.1 of 24), round caps and joins.
+# The app's icon stroke (2.1 of 24).
 STROKE = 2.1
-# The briefcase: `rect x=2 y=6 width=20 height=14 rx=2` and the handle
-# `M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16`: two legs that run down through the body to its
-# bottom edge, joined at the top by a bar with the body's corner radius.
-BODY = (2, 6, 22, 20)
-BODY_R = 2
-LEGS = (8, 16)
-HANDLE_TOP = 2
-HANDLE_R = 2
-# The lens: a ring of radius 3.4 about (18, 18), its handle out to (22.2, 22.2) along the
-# diagonal (it starts at 20.5, 20.5, inside the ring). Everything of the briefcase within GAP of
-# the lens's centre is cut away, so the lens sits in a clean gap (1.45 units wide).
-LENS = (18, 18, 3.4)
-LENS_TIP = (22.2, 22.2)
-GAP = 5.9
+# The ring's radius, to the middle of its stroke.
+RING = 7.5
 # macOS 11 to 15 draw no shadow under an app icon: it is part of the artwork. Apple's template
 # shadow, as iccir reverse-engineered it from Apple's own templates (206 plate on a 256 canvas:
 # opacity 0.3, offset 3, CIGaussianBlur radius 3), on the 1024 grid: the plate in black at
@@ -133,15 +116,10 @@ SHADOW_BLUR = 12
 # 96 128 256. An exact stage is drawn 1:1; for the rest (28, 42, 84) the shell scales the next
 # larger one. 48 comes first: Tauri takes the first entry as the window icon.
 SIZES = [48, 16, 20, 24, 30, 32, 36, 40, 60, 64, 72, 80, 96, 128, 256]
-# Stages up to HINTED px are hinted: the stroke the nearest whole number of pixels, its
-# straight edges on whole pixels. Rounding makes it bolder than the plain scale at 24 and 40;
-# at 20 (1.33 px) and 36 (2.38 px) one pixel more closes the handle's opening, so it stays.
+# Stages up to HINTED px are hinted: the stroke is the nearest whole number of pixels (at
+# least one) and the ring's radii are whole numbers of pixels, so every edge of the ring lies
+# on whole pixels.
 HINTED = 256
-# At least this much plate (px) between the lens and the cut briefcase.
-MIN_GAP = 1.0
-# Up to FLAT_CUT px the gap ends the strokes flat on whole pixels: an arc through a stroke of
-# one or two pixels is only a soft pixel next to the lens.
-FLAT_CUT = 40
 # AND mask of the ICO stages: a pixel counts as transparent below half coverage (as icotool's
 # default threshold), so a reader that ignores alpha sees the plate in its right size.
 MASK_ALPHA = 128
@@ -284,223 +262,48 @@ def plate(g, mac=False):
     return (squircle if mac else rounded_plate)(*g['plate'], g['plate_r'])
 
 
-def bend(path, centre, r, a0, a1):
-    """A rounded corner from angle a0 to a1 about `centre`; with no radius left (the inside
-    of a stroke bolder than its bend) the sharp corner itself."""
-    if r > 1e-9:
-        path.arc(centre, r, a0, a1)
-    else:
-        path.line(centre)
-
-
-def body(g):
-    """The briefcase's body, the stroked rounded rectangle, cut open by the lens's gap: one
-    outline. The outer edge clockwise from the cut in the bottom edge round to the cut in the
-    right edge, along the gap, the inner edge back, along the gap again."""
-    h = g['w'] / 2
-    x0, y0, x1, y1 = g['body']
-    gx, gy, gr = g['gap']
-    ox0, oy0, ox1, oy1, ro = x0 - h, y0 - h, x1 + h, y1 + h, g['body_r'] + h
-    ix0, iy0, ix1, iy1, ri = x0 + h, y0 + h, x1 - h, y1 - h, max(0.0, g['body_r'] - h)
-
-    def cut_x(y):
-        return gx - math.sqrt(gr * gr - (y - gy) ** 2)
-
-    def cut_y(x):
-        return gy - math.sqrt(gr * gr - (x - gx) ** 2)
-
-    if g['cuts']:
-        bottom_o = bottom_i = g['cuts']['bottom']
-        right_o = right_i = g['cuts']['right']
-    else:
-        bottom_o, bottom_i, right_o, right_i = cut_x(oy1), cut_x(iy1), cut_y(ox1), cut_y(ix1)
-    assert ox0 + ro < bottom_o < ox1 - ro and ix0 + ri < bottom_i < ix1 - ri, \
-        f"{g['s']}: the gap must cut the body's bottom edge where it is straight"
-    assert oy0 + ro < right_o < oy1 - ro and iy0 + ri < right_i < iy1 - ri, \
-        f"{g['s']}: the gap must cut the body's right edge where it is straight"
-    ang = lambda x, y: math.atan2(y - gy, x - gx)
-    half = math.pi / 2
-    path = Path2((bottom_o, oy1))
-    path.line((ox0 + ro, oy1))
-    bend(path, (ox0 + ro, oy1 - ro), ro, half, math.pi)
-    path.line((ox0, oy0 + ro))
-    bend(path, (ox0 + ro, oy0 + ro), ro, math.pi, 3 * half)
-    path.line((ox1 - ro, oy0))
-    bend(path, (ox1 - ro, oy0 + ro), ro, -half, 0.0)
-    path.line((ox1, right_o))
-    if g['cuts']:
-        path.line((ix1, right_i))
-    else:
-        path.arc((gx, gy), gr, ang(ox1, right_o), ang(ix1, right_i))
-    path.line((ix1, iy0 + ri))
-    bend(path, (ix1 - ri, iy0 + ri), ri, 0.0, -half)
-    path.line((ix0 + ri, iy0))
-    bend(path, (ix0 + ri, iy0 + ri), ri, -half, -math.pi)
-    path.line((ix0, iy1 - ri))
-    bend(path, (ix0 + ri, iy1 - ri), ri, math.pi, half)
-    path.line((bottom_i, iy1))
-    if not g['cuts']:
-        path.arc((gx, gy), gr, ang(bottom_i, iy1), ang(bottom_o, oy1))
-    return path
-
-
-def handle(g):
-    """The handle above the body: both legs from the body's outer top edge up, joined by the
-    bar with round bends. One outline, clockwise from the left leg's foot."""
-    h = g['w'] / 2
-    lx, rx = g['legs']
-    ty, rc = g['handle_y'], g['handle_r']
-    foot = g['body'][1] - h
-    ro, ri = rc + h, max(0.0, rc - h)
-    half = math.pi / 2
-    path = Path2((lx - h, foot))
-    path.line((lx - h, ty + rc))
-    bend(path, (lx + rc, ty + rc), ro, math.pi, 3 * half)
-    path.line((rx - rc, ty - h))
-    bend(path, (rx - rc, ty + rc), ro, -half, 0.0)
-    path.line((rx + h, foot))
-    path.line((rx - h, foot))
-    path.line((rx - h, ty + h + ri))
-    bend(path, (rx - h - ri, ty + h + ri), ri, 0.0, -half)
-    path.line((lx + h + ri, ty + h))
-    bend(path, (lx + h + ri, ty + h + ri), ri, -half, -math.pi)
-    path.line((lx + h, foot))
-    return path
-
-
-def legs(g):
-    """The handle's legs inside the body, from its inner top edge down to its inner bottom
-    edge; the right one ends at the lens's gap."""
-    h = g['w'] / 2
-    lx, rx = g['legs']
-    _, y0, _, y1 = g['body']
-    top, bottom = y0 + h, y1 - h
-    gx, gy, gr = g['gap']
-    assert math.hypot(max(0.0, gx - lx - h), max(0.0, gy - bottom)) > gr, \
-        f"{g['s']}: the gap reaches the left leg"
-    left = Path2((lx - h, top))
-    for p in [(lx + h, top), (lx + h, bottom), (lx - h, bottom)]:
-        left.line(p)
-    if g['cuts']:
-        ends = [g['cuts']['leg']] * 2
-    else:
-        ends = [gy - math.sqrt(gr * gr - (x - gx) ** 2) for x in (rx + h, rx - h)]
-    assert all(top < e < bottom for e in ends), f"{g['s']}: the gap must end the right leg"
-    right = Path2((rx - h, top))
-    right.line((rx + h, top))
-    right.line((rx + h, ends[0]))
-    if g['cuts']:
-        right.line((rx - h, ends[1]))
-    else:
-        right.arc((gx, gy), gr, math.atan2(ends[0] - gy, rx + h - gx),
-                  math.atan2(ends[1] - gy, rx - h - gx))
-    return [left, right]
-
-
-def lens(g):
-    """The lens: the ring's outer edge with the handle as one outline (clockwise round the
-    ring from the handle's upper side, out along its lower side, round its end, back), and the
-    ring's inner edge, a hole in it."""
-    cx, cy, ro, ri = g['lens']
-    h = g['w'] / 2
-    q = math.pi / 4  # the handle's direction, down to the right
-    side = math.asin(h / ro)
-    tip = (cx + g['lens_tip'] * math.cos(q), cy + g['lens_tip'] * math.sin(q))
-    path = Path2((cx + ro * math.cos(q + side), cy + ro * math.sin(q + side)))
-    path.arc((cx, cy), ro, q + side, q - side + 2 * math.pi)
-    path.line((tip[0] + h * math.cos(q - math.pi / 2), tip[1] + h * math.sin(q - math.pi / 2)))
-    path.arc(tip, h, q - math.pi / 2, q + math.pi / 2)
-    hole = Path2((cx + ri, cy))
-    hole.arc((cx, cy), ri, 0.0, 2 * math.pi)
-    return path, hole
+def ring(g):
+    """The ring: its outer circle and its inner circle, the hole. Both run clockwise from the
+    angle 0 once round the ring's centre."""
+    cx, cy, outer_r, hole_r = g['ring']
+    outer = Path2((cx + outer_r, cy))
+    outer.arc((cx, cy), outer_r, 0.0, 2 * math.pi)
+    hole = Path2((cx + hole_r, cy))
+    hole.arc((cx, cy), hole_r, 0.0, 2 * math.pi)
+    return outer, hole
 
 
 def glyph(g):
-    """The glyph as outlines with their weights: the briefcase's pieces (body, handle, legs)
-    meet but never overlap, the lens lies in the gap cut out of them, its hole counts -1 - so
-    the weighted sum is the exact union, in the raster stages and (even-odd) in the SVG."""
-    ring, hole = lens(g)
-    return [(p, 1) for p in [body(g), handle(g), *legs(g), ring]] + [(hole, -1)]
+    """The glyph as outlines with their weights: the ring's outer circle counts 1 and its hole
+    -1, so the weighted sum is the exact ring in the raster stages and (even-odd) in the SVG."""
+    outer, hole = ring(g)
+    return [(outer, 1), (hole, -1)]
 
 
 # --------------------------------------------------------------------------- layout
 
 def layout(s, mac=False):
-    """Geometry of one stage in target pixels. The glyph keeps its share of the plate, centred.
-    Up to HINTED px the stroke is a whole number of pixels with its straight edges on whole
-    pixels (the left half rounded, the right half mirrored about the plate's centre) and the
-    lens's ring a whole number of pixels across; radii scale freely. Up to FLAT_CUT px the gap
-    ends the strokes flat on whole pixels, the lens's hole is a quarter pixel wider and its
-    handle ends on a pixel centre."""
+    """Geometry of one stage in target pixels. The ring keeps its share of the plate, centred
+    on it. Up to HINTED px the stroke is a whole number of pixels and so are the ring's radii
+    (a stage is an even number of pixels wide, so the plate's centre is a pixel corner): the
+    ring's edges lie on whole pixels and it stays symmetric. Above, everything scales freely."""
     # Windows: the plate runs to the edge of every stage (like the other apps in the taskbar);
     # macOS keeps Apple's margin, fractional below 1024 (3.125 at 32): its edge is anti-aliased
     # like any other, so every entry is the same icon scaled.
     margin = (MAC_PLATE if mac else PLATE) * s / 1024
     k = (s - 2 * margin) / 1024 * LUCIDE_UNIT  # one unit of the 24 grid in px
-    origin = s / 2 - LUCIDE / 2 * k
     hinted = s <= HINTED
     w = max(1, round(STROKE * k)) if hinted else STROKE * k
-    h = w / 2
-
-    def stroke(u):
-        """The centre line of a stroke at u units: its edges on whole pixels when hinted."""
-        v = origin + u * k
-        return round(v - h) + h if hinted else v
-
-    # The briefcase is mirrored about the plate's centre.
-    assert BODY[0] + BODY[2] == LEGS[0] + LEGS[1] == LUCIDE
-    x0, lx, ty = stroke(BODY[0]), stroke(LEGS[0]), stroke(HANDLE_TOP)
-    y0, y1 = stroke(BODY[1]), stroke(BODY[3])
-    x1, rx = s - x0, s - lx
-
-    # The lens; its handle runs down the diagonal through its centre.
-    assert LENS_TIP[0] - LENS[0] == LENS_TIP[1] - LENS[1] > 0
-    lens_x, lens_y = origin + LENS[0] * k, origin + LENS[1] * k
-    lens_out, lens_in = (LENS[2] + STROKE / 2) * k, (LENS[2] - STROKE / 2) * k
-    tip = (LENS_TIP[0] - LENS[0]) * math.sqrt(2) * k
-    clear = (GAP - LENS[2] - STROKE / 2) * k
+    ring_out, ring_in = (RING + STROKE / 2) * k, (RING - STROKE / 2) * k
     if hinted:
-        across = round(2 * (LENS[2] * k + h))
-        lens_x = round(lens_x - across / 2) + across / 2
-        lens_y = round(lens_y - across / 2) + across / 2
-        lens_out, lens_in = across / 2, across / 2 - w
-        clear = max(clear, MIN_GAP)
-    gap = (lens_x, lens_y, lens_out + clear)
-
-    cuts = None
-    if s <= FLAT_CUT:
-        # The hole's pixels clear, not a pale blur; the handle fills one more pixel instead
-        # of tinting two (the diagonal through the lens's centre meets the pixel centres).
-        lens_in += 0.25
-        tip = (math.floor(lens_x + tip / math.sqrt(2)) + 0.5 - lens_x) * math.sqrt(2)
-
-        def end(along, band, centre):
-            """Where the gap ends a stroke that runs towards the lens: the gap's circle at the
-            stroke's centre line, rounded, and at least MIN_GAP from the lens (diagonally
-            too) over the stroke's band of whole pixels."""
-            d = max(0.0, band - h - centre, centre - band - h)
-            reach = math.sqrt(max(0.0, (lens_out + MIN_GAP) ** 2 - d * d))
-            circle = along - math.sqrt(gap[2] ** 2 - (band - centre) ** 2)
-            return min(round(circle), math.floor(along - reach + 1e-9))
-
-        cuts = dict(bottom=end(lens_x, y1, lens_y), right=end(lens_y, x1, lens_x),
-                    leg=end(lens_y, rx, lens_x))
-    assert lens_in >= 1, f'{s}: the lens has no hole'
+        ring_out = round(RING * k + w / 2)
+        ring_in = ring_out - w
+    assert s % 2 == 0, f'{s}: a stage is an even number of pixels wide (the ring is centred)'
+    assert ring_in >= 1, f'{s}: the ring has no hole'
     return dict(
-        s=s,
         plate=(margin, margin, s - margin, s - margin),
         plate_r=(MAC_PLATE_R if mac else PLATE_R) * s / 1024,
-        w=w,
-        body=(x0, y0, x1, y1),
-        body_r=BODY_R * k,
-        legs=(lx, rx),
-        handle_y=ty,
-        # The bends stay within the legs' straight run above the body.
-        handle_r=min(HANDLE_R * k, y0 - h - ty, (rx - lx) / 2),
-        lens=(lens_x, lens_y, lens_out, lens_in),
-        lens_tip=tip,
-        gap=gap,
-        cuts=cuts,
+        ring=(s / 2, s / 2, ring_out, ring_in),
     )
 
 
@@ -852,7 +655,7 @@ def hex_colour(c):
 
 
 def glyph_svg(g):
-    """The glyph's outlines as one SVG path (even-odd: the lens's hole is a hole)."""
+    """The glyph's outlines as one SVG path (even-odd: the ring's hole is a hole)."""
     return ''.join(path.svg(svg_number) for path, _ in glyph(g))
 
 
@@ -862,7 +665,7 @@ def build_svg(out):
     x0, y0, x1, y1 = g['plate']
     out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{fmt(x0)} {fmt(y0)} {fmt(x1 - x0)} {fmt(y1 - y0)}" width="{fmt(x1 - x0)}" height="{fmt(y1 - y0)}">
   <!-- Generated by tools/icon.py - do not edit. The app icon as a vector: the same paths as
-       icon.ico, icon.icns and icon.png; briefcase and lens in one path (even-odd). -->
+       icon.ico, icon.icns and icon.png; the placeholder ring in one path (even-odd). -->
   <path fill="{hex_colour(BRAND)}" d="{plate(g).svg(fmt)}"/>
   <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{glyph_svg(g)}"/>
 </svg>
@@ -872,8 +675,8 @@ def build_svg(out):
 def build_icon_composer(package):
     """macOS 26: an Icon Composer package (`<name>.icon`: icon.json and its Assets). The system
     draws the shape, the glass, the lighting and the shadow itself, so the package holds only
-    the background fill (the coral) and one group with one layer, the white glyph (briefcase
-    and lens). The glyph is laid out on the full 1024 square as on the full-bleed plate:
+    the background fill (the coral) and one group with one layer, the white glyph (the ring).
+    The glyph is laid out on the full 1024 square as on the full-bleed plate:
     the system's own mask takes the plate's place. No mask, no shadow baked in. The macOS CI
     compiles it with actool into Assets.car (see .github/workflows/ci.yml); icon.icns stays
     the icon of macOS 14 and 15. The keys follow Tauri's own example (examples/.icons)."""
@@ -882,7 +685,7 @@ def build_icon_composer(package):
     (package / 'Assets').mkdir(parents=True, exist_ok=True)
     (package / 'Assets' / 'glyph.svg').write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!-- Generated by tools/icon.py - do not edit. The glyph of the macOS 26 icon: the same path
-       as in app-icon.svg, on the full square: the briefcase with the lens. -->
+       as in app-icon.svg, on the full square: the placeholder ring. -->
   <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{glyph_svg(g)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')

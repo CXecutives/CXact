@@ -29,7 +29,7 @@ Components use roles only; so do the consumers outside the page:
 | Consumer | Roles | Read through |
 |---|---|---|
 | Window background, both OS (before the page paints; the top bar is the page's, `--titlebar-*`) | `bg` | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json` |
-| App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the briefcase with the lens) | `tools/palette.json` (`tools/icon.py`) |
+| App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the ring, a placeholder until the real icon exists) | `tools/palette.json` (`tools/icon.py`) |
 
 Only opaque colour roles leave the page: a role with an alpha (`--selection`), gradients and
 shadows stay in it. `palette.rs` holds only the roles a Rust consumer reads (`OUTSIDE` in
