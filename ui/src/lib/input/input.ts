@@ -19,9 +19,9 @@
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
-//   focus its default moves comes back unseen, `keepFocus`). The back
-//   button of the mouse goes back only where a view offers a way back (`onBack`: the
-//   reader in one column); forward does nothing, and neither ever navigates the web view.
+//   focus its default moves comes back unseen, `keepFocus`). The back and forward
+//   buttons of the mouse go back and forward only where a view offers a way (`onBack`,
+//   `onForward`: Zurück and Vor), and neither ever navigates the web view.
 // - the wheel only scrolls, the area under the pointer: no field, switch or choice takes it.
 //   Over an open menu only the menu scrolls; behind a modal dialog nothing scrolls. The one
 //   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
@@ -135,6 +135,7 @@ const MIDDLE = 1;
 const AUTOSCROLL_SLOP = 4;
 /** Back and forward (buttons 3 and 4). */
 const BACK = 3;
+const FORWARD = 4;
 /** The Cmd shortcuts of the macOS menu (Quit, Close, Minimize, Hide, Settings). WKWebView
  *  hands a key equivalent to the menu only if the page lets it through. Matched by the
  *  character, like macOS matches key equivalents (Cmd+Q stays Q on AZERTY). */
@@ -432,11 +433,30 @@ function topModal(): HTMLElement | null {
   return open.item(open.length - 1);
 }
 
-/** Tab and Shift+Tab cycle through the controls of the modal and never leave it. */
-function cycleFocus(modal: HTMLElement, back: boolean): void {
-  const items = [...modal.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+/** The controls Tab visits inside `root`, in order: a disabled one and one out of sight are
+ *  passed. */
+function tabbables(root: ParentNode): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
     (node) => !node.matches(':disabled') && node.getClientRects().length > 0,
   );
+}
+
+/**
+ * Tab on the last control goes to the first and Shift+Tab on the first to the last, like the
+ * controls of a native window: the focus never leaves for the page itself, where it would
+ * rest on nothing for one press. `true` if it wrapped (the key is then taken).
+ */
+function wrapFocus(back: boolean): boolean {
+  const items = tabbables(document);
+  const active = document.activeElement;
+  if (items.length === 0 || active !== items[back ? 0 : items.length - 1]) return false;
+  items[back ? items.length - 1 : 0]?.focus();
+  return true;
+}
+
+/** Tab and Shift+Tab cycle through the controls of the modal and never leave it. */
+function cycleFocus(modal: HTMLElement, back: boolean): void {
+  const items = tabbables(modal);
   if (items.length === 0) {
     modal.focus();
     return;
@@ -688,6 +708,10 @@ function onKeyDown(event: KeyboardEvent): void {
       return;
     }
   }
+  if (modal === null && isFocusMove(event) && wrapFocus(event.shiftKey)) {
+    event.preventDefault();
+    return;
+  }
   if (isCopy(event)) return;
   // Shift+F10 and the Menu key (Windows) open the app's menu at the field, the selected
   // copyable text or the focused element; the page opens it, not the engine.
@@ -709,6 +733,7 @@ function onKeyDown(event: KeyboardEvent): void {
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
   if (dispatchSelectKey(event)) return;
   if (removesByKey(event)) return;
+  if (selectsAll(event)) return;
   // Everything else is the app's or nothing: never a shortcut of the web view (reload,
   // find, print, zoom, history).
   event.preventDefault();
@@ -720,6 +745,21 @@ function onKeyDown(event: KeyboardEvent): void {
 /** The scroll area the user clicked in last (the page keys scroll it while the focus is
  *  nowhere, e.g. after a click on the ad's text). */
 let lastPane: HTMLElement | null = null;
+/** The copyable block the user pressed last (null: the last press was elsewhere). */
+let lastCopy: Element | null = null;
+
+/**
+ * Ctrl/Cmd+A beside a field selects the copyable block pressed last (the ad's text, an alert
+ * mail) whole, like Select All in a document; with none pressed it does nothing, the page is
+ * never selected. `true` if the key was for it.
+ */
+function selectsAll(event: KeyboardEvent): boolean {
+  if (event.altKey || event.shiftKey || !event[keyConventions().command]) return false;
+  if (event.key.toLowerCase() !== 'a') return false;
+  event.preventDefault();
+  if (lastCopy?.isConnected) getSelection()?.selectAllChildren(lastCopy);
+  return true;
+}
 /** A page is this much of the pane (a line of the last page stays in view). */
 const PAGE_SHARE = 0.9;
 
@@ -754,26 +794,33 @@ function undoFromMenu(): void {
   if (inField(document.activeElement)) document.execCommand('undo');
 }
 
-/** The ways back of the views (the reader in one column: its "Zurück"); the newest first. */
+/** The ways back and forward of the views (Zurück and Vor); the newest first. */
 const backs: (() => boolean)[] = [];
+const forwards: (() => boolean)[] = [];
+
+function subscribe(ways: (() => boolean)[], handler: () => boolean): () => void {
+  ways.push(handler);
+  return () => {
+    const at = ways.indexOf(handler);
+    if (at !== -1) ways.splice(at, 1);
+  };
+}
 
 /**
  * `onBack(handler)`: the mouse's back button runs the newest handler that has a way back (it
  * returns `true` when it went back), like the Zurück of the view. Without one it does
  * nothing; it never navigates the web view. Returns the unsubscribe function.
  */
-export function onBack(handler: () => boolean): () => void {
-  backs.push(handler);
-  return () => {
-    const at = backs.indexOf(handler);
-    if (at !== -1) backs.splice(at, 1);
-  };
-}
+export const onBack = (handler: () => boolean): (() => void) => subscribe(backs, handler);
 
-/** Go back where a view offers it (never behind a menu or a dialog); `true` if it did. */
-function goBack(): boolean {
+/** `onForward(handler)`: the same for the mouse's forward button, like the Vor of the top bar. */
+export const onForward = (handler: () => boolean): (() => void) => subscribe(forwards, handler);
+
+/** Go back or forward where a view offers it (never behind a menu or a dialog); `true` if it
+ *  did. */
+function go(ways: readonly (() => boolean)[]): boolean {
   if (menuState.open !== null || topModal() !== null) return false;
-  return [...backs].reverse().some((back) => back());
+  return [...ways].reverse().some((way) => way());
 }
 
 const prevent = (event: Event): void => event.preventDefault();
@@ -1495,6 +1542,17 @@ export function installInput(): void {
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
+        lastCopy = closest(event.target, COPY);
+        // A press beside the selected text ends the selection, like in a native text view
+        // (copyable text starts a new one; the app's menu with its Copy needs it, and a press
+        // on a scrollbar is no press on the text's view).
+        if (
+          !selectable(event.target) &&
+          closest(event.target, MENU_LAYER) === null &&
+          !onScrollbar(event)
+        ) {
+          getSelection()?.removeAllRanges();
+        }
         // A button inside a field (show password, clear) leaves the caret in the field.
         if (closest(event.target, KEEP_FOCUS) !== null) {
           event.preventDefault();
@@ -1525,7 +1583,8 @@ export function installInput(): void {
     (event) => {
       if (event.button >= BACK) {
         event.preventDefault();
-        if (event.button === BACK) goBack();
+        if (event.button === BACK) go(backs);
+        else if (event.button === FORWARD) go(forwards);
       }
       // Dragged with the middle button held: it scrolled while held, no mode is left.
       if (event.button === MIDDLE && autoscroll) {

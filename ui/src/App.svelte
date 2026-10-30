@@ -32,7 +32,7 @@
   import { scrollFade } from '$lib/actions/scrollFade';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
-  import { onBack } from '$lib/input/input';
+  import { onBack, onForward } from '$lib/input/input';
   import { untrack } from 'svelte';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
@@ -67,8 +67,10 @@
   /** Closing while the app is busy: the window waits until it has stopped. */
   let closing = $state(false);
   $effect(() => onClosing(() => (closing = true)));
-  // The mouse's back button goes back like Zurück in the top bar (in the setup its Zurück).
+  // The mouse's back button goes back like Zurück in the top bar (in the setup its Zurück), the
+  // forward button on like Vor (the setup has none).
   $effect(() => onBack(() => (shell.firstRun ? onboarding.back() : history.back())));
+  $effect(() => onForward(() => !shell.firstRun && history.forward()));
 
   // A docked sidebar never floats as well.
   $effect(() => {
