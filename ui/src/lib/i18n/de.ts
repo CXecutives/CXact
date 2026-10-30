@@ -205,11 +205,6 @@ const pause: Record<PauseReason, string> = {
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
 const OPEN_MAIL = 'Alert-Mail öffnen';
 
-/** Alert mails in which CXact found no jobs (a portal's row in the settings says it, next
- *  to the button that opens the mail to look). */
-const emptyMails = (mails: number): string =>
-  `${mails === 1 ? 'In einer Alert-Mail' : `In ${n(mails)} Alert-Mails`} fand CXact keine Jobs.`;
-
 /** A profile file the app cannot read (the list and the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
 /** No usable profile, no match: one wording for the ring, the filter and the list. */
@@ -829,6 +824,7 @@ export const de = {
     },
     /** A search or a filter that leaves nothing: one quiet line. */
     noHit: (query: string) => `Kein Job passt zu „${query}“.`,
+    noHitFiltered: (query: string) => `Kein Job passt zu „${query}“ und zum Filter.`,
     noFilterHit: 'Kein Job passt zum Filter.',
     loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
@@ -967,6 +963,8 @@ export const de = {
     unscorable: 'Nicht bewertbar',
     /** The state box under the job's title: its title and one sentence under it where that
      *  adds to the band under the title (never "nicht bewertet" again). */
+    /** An ad still to come whose portal is off: why nothing loads it. */
+    portalOff: (name: string) => `${name} ist ausgeschaltet.`,
     state: {
       missing: 'Die Anzeige ist noch nicht geladen.',
       loading: 'Die Anzeige wird geladen.',
@@ -1012,7 +1010,6 @@ export const de = {
       },
       quota: (iso: string) =>
         `Das Limit ist erreicht, die Suche macht ab ${formatMoment(iso)} von selbst weiter.`,
-      emptyMails,
       pages:
         'Die Seiten des Portals sehen anders aus, die nächste Suche versucht es von selbst wieder.',
       login: 'Die Anmeldung ist abgelaufen, melde dich neu an.',
@@ -1373,7 +1370,9 @@ export const de = {
      *  run out) says it in the word alone. */
     problem: {
       paused: 'Pausiert',
-      emptyMails: 'Alert-Mails ohne Jobs',
+      /** Alert mails in which CXact found no jobs, next to the button that opens one. */
+      emptyMails: (mails: number) =>
+        `${mails === 1 ? 'In einer Alert-Mail' : `In ${n(mails)} Alert-Mails`} keine Jobs`,
       pages: 'Seiten verändert',
       quiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail`,
       failed: 'Fehlgeschlagen',

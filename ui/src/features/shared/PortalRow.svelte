@@ -6,7 +6,7 @@
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
   (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
-  ("Alert-Mails ohne Jobs"; "Fehlgeschlagen" in red after a failed call), "Seit 9 Tagen keine
+  ("In 2 Alert-Mails keine Jobs"; "Fehlgeschlagen" in red after a failed call), "Seit 9 Tagen keine
   Alert-Mail" (warning) when a portal that is on sent no alert mail for a week before the
   last fetch; else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen").
@@ -129,7 +129,11 @@
   /** Its problem in one sentence, where the status word does not say it already (the
    *  sentence says whether she has to act). */
   const problem = $derived(
-    portal.enabled && !idle && status === null && portal.health.kind !== 'loginRequired'
+    portal.enabled &&
+      !idle &&
+      status === null &&
+      emptyMails === 0 &&
+      portal.health.kind !== 'loginRequired'
       ? healthAdvice(portal.health)
       : null,
   );
@@ -137,13 +141,13 @@
   const flag = $derived.by((): { tone: StatusTone; text: string } | null => {
     if (error) return { tone: 'danger', text: t.settings.problem.failed };
     if (status) return status;
+    if (emptyMails > 0 && portal.enabled && !idle) {
+      return { tone: 'warning', text: t.settings.problem.emptyMails(emptyMails) };
+    }
     if (problem) {
-      const now = portal.health;
       const word =
-        now.kind === 'layoutSuspect'
-          ? now.emptyMails > 0
-            ? t.settings.problem.emptyMails
-            : t.settings.problem.pages
+        portal.health.kind === 'layoutSuspect'
+          ? t.settings.problem.pages
           : t.settings.problem.paused;
       return { tone: 'warning', text: word };
     }

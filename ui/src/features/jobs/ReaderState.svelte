@@ -6,8 +6,8 @@
   - being scored after "Trotzdem bewerten": the spinner, "Der Job wird bewertet.";
   - excluded: why (the profile's side) and "Trotzdem bewerten" with the plus (not in the
     Papierkorb); the box neutral like the others (the ring and its word are the job's one red);
-  - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (being
-    loaded, by the run pressed for here or by the search: the spinner, "Die Anzeige wird
+  - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (its portal
+    off: why there is no button; being loaded, by the run pressed for here or by the search: the spinner, "Die Anzeige wird
     geladen.", no button; another job's details run does not load this one);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
     then "Anzeige laden"), else "Anzeige laden" where the portal can load it (pressed, it says
@@ -87,7 +87,11 @@
       case null:
         return null;
       case 'missing':
-        return { heading: t.reader.state.missing, text: null };
+        // A portal that is off loads nothing: the box says why it has no button.
+        return {
+          heading: t.reader.state.missing,
+          text: portalState?.enabled === false ? t.reader.portalOff(t.portal[job.portal]) : null,
+        };
       case 'loading':
         return { heading: t.reader.state.loading, text: null };
       case 'gone':

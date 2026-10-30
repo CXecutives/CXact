@@ -10,7 +10,8 @@
   ones without a score yet in a section "Noch nicht bewertet", open by default, and at the end
   the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
   folded by default (ListDivider, no count; each choice is kept; a section opens when its job
-  is opened from elsewhere). Neither section has days.
+  is opened from elsewhere, and both stand open while a search is on, so a hit is never hidden
+  behind a fold). Neither section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
@@ -33,11 +34,12 @@
   searched or filtered and no run (jobs.bare) the list has no head: its empty state stands in
   the middle, like the job view's, with "Jobs suchen" as its one primary under its sentence. A search without hits says so in one
   quiet line, with the other places' hits under it; a filter that leaves nothing says so and
-  takes itself off ("Filter zurücksetzen"). Placeholder rows (a ring and a line) come once the
-  list takes 300 ms. Without a usable profile a state box on top says so and leads to the
-  Profil ("Profil anlegen", or "Profil ergänzen" to the first field it lacks); a thin profile
-  one box that the match stays rough. A list that fails to load says only that, with a retry
-  (the header hides its search).
+  takes itself off ("Filter zurücksetzen"), also when it leaves a search without hits.
+  Placeholder rows (a ring and a line) come once the list takes 300 ms. Without a usable
+  profile a state box on top says so and leads to the Profil ("Profil anlegen", or "Profil
+  ergänzen" to the first field it lacks); a thin profile one box with the engine's reason and
+  "Profil ergänzen". A list that fails to load says only that, in the middle with its retry,
+  and has no head while no run goes (JobsView).
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -54,6 +56,7 @@
   import { nearEnd } from '$lib/actions/nearEnd';
   import { dayKey, displayTitle, formatDayHeading } from '$lib/i18n/format';
   import { t } from '$lib/i18n/t';
+  import { warningText } from '$lib/i18n/texts';
   import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
@@ -139,9 +142,9 @@
   /* ------------------------------------------------------------------- sections */
 
   /** A section is open (lib/state/sections.svelte.ts, kept like the order): the excluded one
-   *  folded by default, the one without a score yet open. */
-  const excludedOpen = $derived(sections.excludedOpen);
-  const unscoredOpen = $derived(sections.unscoredOpen);
+   *  folded by default, the one without a score yet open; a search opens both for now. */
+  const excludedOpen = $derived(sections.excludedOpen || searching);
+  const unscoredOpen = $derived(sections.unscoredOpen || searching);
   /** The folded section ends the list: every other row is loaded (the backend lists the
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
@@ -209,8 +212,12 @@
     navigation.go('profile');
   }
 
-  /** A profile the app understands little of: the fit is rough, said once on top. */
+  /** A profile the app understands little of: the fit is rough, said once on top with what
+   *  the engine found thin. */
   const profileThin = $derived(app.hasProfile && app.state?.profile?.quality === 'thin');
+  const thinWhy = $derived(
+    warningText(app.state?.profile?.understood?.warnings[0] ?? null) ?? t.list.thinProfileText,
+  );
   // Jobs without a match get one soon while a run goes or a rescore is pending.
   const pending = $derived(jobs.scoring);
 
@@ -575,29 +582,30 @@
     <div class="note">
       <StateBox
         heading={t.list.thinProfile}
-        text={t.list.thinProfileText}
-        action={{ label: t.list.openProfile, icon: 'profile', onclick: toProfile }}
+        text={thinWhy}
+        action={{ label: t.list.completeProfile, icon: 'profile', onclick: completeProfile }}
         testid="thin-profile"
       />
     </div>
   {/if}
 
   {#if jobs.status === 'error'}
-    <EmptyState
-      icon="warning"
-      tone="danger"
-      placement="list"
-      heading={t.list.loadFailed}
-      secondary={{
-        label: t.common.retry,
-        icon: 'retry',
-        onclick: () => {
-          void jobs.load();
-          void jobs.loadOverview();
-        },
-      }}
-      testid="list-error"
-    />
+    <div class="bare">
+      <EmptyState
+        icon="warning"
+        tone="danger"
+        heading={t.list.loadFailed}
+        action={{
+          label: t.common.retry,
+          icon: 'retry',
+          onclick: () => {
+            void jobs.load();
+            void jobs.loadOverview();
+          },
+        }}
+        testid="list-error"
+      />
+    </div>
   {:else if jobs.rows.length === 0 && jobs.status !== 'ready' && !jobs.emptyPlace}
     <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
          jump); they fade in once the list has taken --delay-placeholder (at once when it has
@@ -616,11 +624,14 @@
       <!-- The search's × clears it; the other places' hits are the way on. -->
       <div class="none" data-testid={searching ? 'empty-search' : 'empty-filter'}>
         <p class="none-text">
-          {searching ? t.list.noHit(jobs.search.trim()) : t.list.noFilterHit}
+          {#if !searching}{t.list.noFilterHit}{:else if jobs.filtered}{t.list.noHitFiltered(
+              jobs.search.trim(),
+            )}{:else}{t.list.noHit(jobs.search.trim())}{/if}
         </p>
         {#if searching && elsewhere.length > 0}
           {@render alsoIn()}
-        {:else if !searching}
+        {/if}
+        {#if jobs.filtered}
           <div class="also">
             <Button
               icon="reset"
@@ -685,7 +696,9 @@
           <ListDivider
             label={t.list.unscored}
             open={unscoredOpen}
-            ontoggle={() => sections.toggleUnscored()}
+            ontoggle={() => {
+              if (!searching) sections.toggleUnscored();
+            }}
             testid="unscored-divider"
           />
           {#if unscoredOpen}
@@ -704,7 +717,9 @@
           <ListDivider
             label={t.list.excluded}
             open={excludedOpen}
-            ontoggle={() => sections.toggleExcluded()}
+            ontoggle={() => {
+              if (!searching) sections.toggleExcluded();
+            }}
             testid="excluded-divider"
           />
           {#if excludedOpen}
@@ -760,9 +775,8 @@
   .list {
     position: relative;
     display: flex;
-    flex: 1;
+    flex: 1 0 auto;
     flex-direction: column;
-    min-height: 0;
     padding-bottom: var(--list-rows-end);
   }
 

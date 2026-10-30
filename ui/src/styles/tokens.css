@@ -899,7 +899,6 @@
   /* ------------------------------------------- round 10: settings */
   /* The mailbox form that unfolds under its row: 4 below the row, 18 at its end, the row's 20
      at the right and the text's 20 at the left; its parts 14 apart. */
-  --mail-form-pad: var(--space-4) var(--card-pad-x) 18px var(--setting-rule-start);
   --mail-form-gap: 14px;
 
   /* ------------------------------------------- round 10: setup */

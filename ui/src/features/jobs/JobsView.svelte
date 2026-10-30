@@ -36,6 +36,7 @@
   import { app } from '$lib/state/app.svelte';
   import { keyOf, sameKey } from '$lib/state/jobRows';
   import { jobs } from '$lib/state/jobs.svelte';
+  import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { FOLD_BELOW, viewport } from '$lib/state/viewport.svelte';
   import JobList from './JobList.svelte';
@@ -194,7 +195,8 @@
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      {#if !jobs.bare}
+      <!-- A list that failed says only that, unless a run goes on above it. -->
+      {#if !jobs.bare && (jobs.status !== 'error' || run.active)}
         <div class="head">
           <ListHeader bind:this={header} {line} />
         </div>

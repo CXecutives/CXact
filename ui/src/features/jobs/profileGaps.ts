@@ -42,8 +42,9 @@ export function fetchBlocked(): string | null {
   return !run.active && !app.hasProfile ? profileGaps().reason : run.fetchBlocked;
 }
 
-/** The Profil, with its first required field that is still empty in view. */
+/** The Profil, with its first required field that is still empty in view (a thin profile lacks
+ *  none: its competences). */
 export function completeProfile(): void {
-  const first = profileGaps().first;
+  const first = profileGaps().first ?? 'competences';
   navigation.go('profile', false, () => (navigation.section = first));
 }

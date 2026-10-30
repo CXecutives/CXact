@@ -14,7 +14,8 @@
   As a row (`row`, the Profil: a row of its group's box, like a row of Einstellungen) the
   label (14/540) stands in a column of 188 beside the control, 24 before it, on the height of
   a field (30): a single-line control is centred on it, a tag field or a list starts there,
-  so the label stays on its first line; the message stands under the control. In a box under
+  so the label stays on its first line; the links and the message stand under the control. In
+  a box under
   560 wide the label stands 8 above its control instead.
 -->
 <script lang="ts" module>
@@ -72,6 +73,24 @@
   describe(() => (error || hint ? `${control}-message` : null));
 </script>
 
+{#snippet wayLinks()}
+  <span class="links">
+    {#each ways as link (link.label)}
+      <button
+        type="button"
+        class="link"
+        data-testid={link.testid ?? undefined}
+        onclick={(event) => {
+          // A double click opens the page once.
+          if (event.detail < 2) link.onclick();
+        }}
+      >
+        <Icon name={link.icon ?? 'external'} size="xs" />{link.label}
+      </button>
+    {/each}
+  </span>
+{/snippet}
+
 <div
   class="field"
   class:row
@@ -85,26 +104,11 @@
       <label class="label" for={target}>{label}</label>
     {/if}
     {#if info && !hint}<InfoTip text={info} label={t.common.infoAbout(label)} />{/if}
-    {#if ways.length > 0}
-      <span class="links">
-        {#each ways as link (link.label)}
-          <button
-            type="button"
-            class="link"
-            data-testid={link.testid ?? undefined}
-            onclick={(event) => {
-              // A double click opens the page once.
-              if (event.detail < 2) link.onclick();
-            }}
-          >
-            <Icon name={link.icon ?? 'external'} size="xs" />{link.label}
-          </button>
-        {/each}
-      </span>
-    {/if}
+    {#if ways.length > 0 && !row}{@render wayLinks()}{/if}
   </div>
   <div class="body">
     <div class="control">{@render children()}</div>
+    {#if ways.length > 0 && row}{@render wayLinks()}{/if}
     {#if error}
       <div id="{control}-message"><Notice tone="danger" text={error} /></div>
     {:else if hint}
@@ -198,6 +202,12 @@
 
   .row .top {
     min-height: var(--control-field);
+  }
+
+  /* Under the control, on its left edge. */
+  .row .links {
+    justify-content: flex-start;
+    margin-left: 0;
   }
 
   .row .label {

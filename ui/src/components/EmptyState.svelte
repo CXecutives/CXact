@@ -55,9 +55,7 @@
 <div class="empty {placement}" data-testid={testid ?? undefined}>
   <IconTile {icon} tone={tone === 'danger' ? 'danger' : 'accent'} />
   {#if heading}<h3 class="title" data-copy={tone === 'danger' ? '' : undefined}>{heading}</h3>{/if}
-  {#if text}<p class="text" class:alone={!heading} data-copy={tone === 'danger' ? '' : undefined}>
-      {text}
-    </p>{/if}
+  {#if text}<p class="text" data-copy={tone === 'danger' ? '' : undefined}>{text}</p>{/if}
   {#if action || secondary}
     <div class="actions">
       {#if action}
@@ -118,11 +116,6 @@
     color: var(--text-muted);
     font: var(--type-sm);
     text-wrap: balance;
-  }
-
-  /* Without a title the sentence stands where the title would. */
-  .alone {
-    margin-top: var(--empty-tile-gap);
   }
 
   /* A pair is one width, whatever its words. */

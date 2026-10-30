@@ -7,9 +7,8 @@
   order and the filter: its menu holds, under small headings, "Sortierung" (Nach
   Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter table (lib/state/filter.ts:
   Portal, Übereinstimmung, Neu seit, each with every value of its dimension; the portals in
-  the UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter
-  is on (so the menu never changes its height). The menu stays open while choosing and closes
-  on a press outside, Esc or the button; "Filter zurücksetzen" closes it. Without a usable
+  the UI's order, lib/portals.ts). The menu stays open while choosing and closes on a press
+  outside, Esc or the button. A filter goes with its chip's ×. Without a usable
   profile the order and the bands are off, saying why. The Papierkorb has no filter (decision
   25). At the row's end the place's one action, which keeps one width whichever word it shows
   (Button `sizeTo`): while a search or a rescore goes "Abbrechen", in every place; else in

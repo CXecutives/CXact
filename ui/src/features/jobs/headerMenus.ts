@@ -5,14 +5,7 @@
 import { t } from '$lib/i18n/t';
 import type { Portal } from '$lib/ipc/types';
 import { app } from '$lib/state/app.svelte';
-import {
-  chooseIn,
-  chosenOf,
-  FILTER_GROUPS,
-  NO_FILTER,
-  SORTS,
-  sortEntryId,
-} from '$lib/state/filter';
+import { chooseIn, chosenOf, FILTER_GROUPS, SORTS, sortEntryId } from '$lib/state/filter';
 import { jobs } from '$lib/state/jobs.svelte';
 import type { MenuEntry } from '$lib/state/menu.svelte';
 
@@ -22,8 +15,9 @@ import type { MenuEntry } from '$lib/state/menu.svelte';
  * heading where it has one: the chosen entries checked, a second click turns one off (the
  * choices of Portal and Übereinstimmung are check items, several at once; those of another
  * group radio items; a group of one is a switch, and switches follow each other on one
- * line); a group without entries (no portal) is left out; every choice keeps the menu open. The way back at the end, off while no filter is on (the order does not
- * count). `portals`: the portals the menu offers, in the UI's order.
+ * line); a group without entries (no portal) is left out; every choice keeps the menu open, and
+ * its height stays (a filter goes with its chip's ×). `portals`: the portals the menu offers, in
+ * the UI's order.
  */
 export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
   const filter = jobs.filter;
@@ -64,17 +58,6 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
         run: () => jobs.setFilter(chooseIn(jobs.filterChoice, group, entry.value)),
       });
     }
-  }
-  // Only while there is a filter to take back.
-  if (jobs.filtered) {
-    entries.push(
-      { kind: 'separator' },
-      {
-        id: 'filter-reset',
-        label: t.toolbar.filterReset,
-        run: () => jobs.setFilter(NO_FILTER),
-      },
-    );
   }
   return entries;
 }

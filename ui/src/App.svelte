@@ -181,7 +181,7 @@
             <EmptyState
               icon="warning"
               tone="danger"
-              text={t.shell.loadFailed}
+              heading={t.shell.loadFailed}
               action={{
                 label: t.common.retry,
                 icon: 'retry',

@@ -425,10 +425,11 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   // A status word: the warning's dot and colour.
   await expect(status.locator('.status')).toHaveClass(/warning/);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
-  const mails = page.getByTestId('health-freelance');
-  // The word in its line, the sentence quiet under it.
-  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.problem.emptyMails);
-  await expect(mails).toHaveText('In 2 Alert-Mails fand CXact keine Jobs.');
+  // The word with its count says it all, in the row's one line.
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(
+    T.settings.problem.emptyMails(2),
+  );
+  await expect(page.getByTestId('health-freelance')).toHaveCount(0);
   // Its way out takes the place of "Alert anlegen", in its width.
   await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
   await page.getByTestId('alert-mail-freelance').click();

@@ -4,9 +4,9 @@
   of one width; the dialog of Entfernen carries the danger, so its words end in an
   ellipsis), or without a mailbox
   "Kein Postfach verbunden", what one brings, and "Verbinden". Ändern and Verbinden unfold
-  the form under the row (no dialog) and hide the row's buttons meanwhile: the provider and
-  the address as a pair, the password, then "Abbrechen" and the primary "Verbinden" at the
-  right in the order of the OS (decision 19), both as wide as the wider. Enter
+  the form under the row (no dialog) and hide the row's buttons meanwhile: rows like the
+  Profil's for the provider, the address and the password, then "Abbrechen" and the primary
+  "Verbinden" at the right in the order of the OS (decision 19), both as wide as the wider. Enter
   connects, Esc and Abbrechen fold it away and give the focus back to the row's button; while
   it is open and no field has the focus (the row's button went with the opening) the form's
   box holds it, so both keys work there too. After "Entfernen" the focus goes to Verbinden.
@@ -202,9 +202,11 @@
       tabindex="-1"
       use:formKeys={{ save: () => void connect(), cancel }}
     >
-      <MailboxForm bind:this={form} bind:busy={checking} />
-      <div class="buttons" data-testid="mailbox-buttons">
-        {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}
+      <MailboxForm boxed bind:this={form} bind:busy={checking} />
+      <div class="foot">
+        <div class="buttons" data-testid="mailbox-buttons">
+          {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}
+        </div>
       </div>
     </div>
   </div>
@@ -248,18 +250,33 @@
   .edit {
     display: flex;
     flex-direction: column;
-    gap: var(--mail-form-gap);
-    padding: var(--mail-form-pad);
   }
 
-  /* The pair at the right, in columns of one width (the wider label's). */
+  /* The last row of the form: its hairline, the pair at the right. */
+  .foot {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--form-row-control-y) var(--form-row-pad-x);
+  }
+
+  .foot::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--setting-rule-start);
+    height: var(--border-width);
+    background-color: var(--border);
+    content: '';
+  }
+
+  /* In columns of one width (the wider label's). */
   .buttons {
     --btn-min: var(--button-pair-min);
 
     display: grid;
     grid-auto-columns: 1fr;
     grid-auto-flow: column;
-    align-self: flex-end;
     gap: var(--space-8);
     width: max-content;
   }

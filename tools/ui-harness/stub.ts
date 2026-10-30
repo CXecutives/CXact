@@ -528,7 +528,7 @@ function understoodOf(form: ProfileForm): ProfileUnderstanding {
     competenceCount: terms.length,
     competences: terms,
     sources: [],
-    warnings: [],
+    warnings: terms.length < 5 ? [{ code: 'fewCompetences', params: {} }] : [],
     packs: packsOf(form),
     years: form.years,
     degrees: form.degrees,
@@ -764,6 +764,20 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
         skipped: 0,
         stopped: null,
       },
+      // The other portals the search asked: nothing new from them.
+      ...(
+        ['gulp', 'hays', 'solcom', 'michaelpage', 'amadeusfire', 'interimx', 'fratch'] as const
+      ).map((portal) => ({
+        portal,
+        new: 0,
+        known: 0,
+        dup: 0,
+        fetched: 0,
+        failed: 0,
+        gone: 0,
+        skipped: 0,
+        stopped: null,
+      })),
     ],
     // Seven new, one of them excluded; two of the others fit well.
     newJobs: { count: 6, high: 2, excluded: 1 },

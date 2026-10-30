@@ -1,12 +1,13 @@
 <!--
-  Connect a mailbox (the round 10 draft): its provider (Gmail, iCloud, GMX, WEB.DE; a Select
-  that fills its cell) beside the address (its example `name@` the provider's domain), under
-  them the password. Gmail and iCloud take an app password: the label says so, an info
+  Connect a mailbox: rows like the Profil's (Field `row`), the label beside its control and,
+  in a box under 560 wide, above it: its provider (Gmail, iCloud, GMX, WEB.DE; a Select of the
+  short controls' width), the address (its example `name@` the provider's domain) and the
+  password. In a box of rows (`boxed`, Einstellungen) each row has the Profil's measure and its
+  hairline. Gmail and iCloud take an app password: the label says so, an info
   symbol says what it is in the provider's words, the field shows "16 Buchstaben", and
-  "App-Passwort erstellen" at the label's right opens the provider's page; GMX and WEB.DE
+  "App-Passwort erstellen" under the field opens the provider's page; GMX and WEB.DE
   take the password, with "IMAP-Abruf erlauben" as the way to their help, and a refused
-  sign-in there says to allow it. The pair stands side by side once the form is 400 wide
-  (Einstellungen, the setup's card), one under the other below. Errors land at the field
+  sign-in there says to allow it. Errors land at the field
   they belong to, in the same words for every provider (empty fields are said before
   anything is sent); when the provider refuses the pair, both fields are marked, the
   password comes into view and the one sentence stands under the fields. The password never
@@ -32,8 +33,10 @@
   interface Props {
     /** A check is on its way (the button that called `save` turns meanwhile). */
     busy?: boolean;
+    /** The form's rows stand in a box of rows (Einstellungen). */
+    boxed?: boolean;
   }
-  let { busy = $bindable(false) }: Props = $props();
+  let { busy = $bindable(false), boxed = false }: Props = $props();
 
   const id = $props.id();
   let provider = $state<MailProvider>(app.state?.mailbox.provider ?? 'gmail');
@@ -126,23 +129,27 @@
 </script>
 
 <!-- The keys of Einstellungen or the setup around it answer Enter and Esc. -->
-<div class="form" data-testid="mailbox-form">
-  <div class="pair">
-    <Field label={t.settings.providerLabel} for="{id}-provider">
-      <Select
-        id="{id}-provider"
-        options={PROVIDERS}
-        value={provider}
-        label={t.settings.providerLabel}
-        wide
-        testid="mailbox-provider"
-        onchange={(next) => {
-          provider = next;
-          changed('provider');
-        }}
-      />
+<div class="form" class:boxed data-testid="mailbox-form">
+  <div class="cell">
+    <Field row label={t.settings.providerLabel} for="{id}-provider">
+      <span class="short">
+        <Select
+          id="{id}-provider"
+          options={PROVIDERS}
+          value={provider}
+          label={t.settings.providerLabel}
+          wide
+          testid="mailbox-provider"
+          onchange={(next) => {
+            provider = next;
+            changed('provider');
+          }}
+        />
+      </span>
     </Field>
-    <Field label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
+  </div>
+  <div class="cell">
+    <Field row label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
       <TextField
         id="{id}-user"
         bind:value={user}
@@ -155,34 +162,39 @@
     </Field>
   </div>
   <!-- The provider's page of the app passwords, or its help on allowing IMAP. -->
-  <Field
-    label={appPassword ? t.settings.password : t.settings.plainPassword}
-    for="{id}-password"
-    info={passwordInfo}
-    links={[
-      {
-        label: appPassword ? t.settings.createPassword : t.settings.allowImap,
-        icon: 'external',
-        testid: 'create-password',
-        onclick: openPage,
-      },
-    ]}
-    error={passwordError?.() ?? null}
-  >
-    <TextField
-      bind:this={passwordField}
-      id="{id}-password"
-      kind="password"
-      bind:value={password}
-      placeholder={appPassword ? t.settings.passwordExample : null}
-      invalid={passwordError !== null || refused}
-      describedby="{id}-password-message"
-      testid="mailbox-password"
-      oninput={() => changed('password')}
-    />
-  </Field>
+  <div class="cell">
+    <Field
+      row
+      label={appPassword ? t.settings.password : t.settings.plainPassword}
+      for="{id}-password"
+      info={passwordInfo}
+      links={[
+        {
+          label: appPassword ? t.settings.createPassword : t.settings.allowImap,
+          icon: 'external',
+          testid: 'create-password',
+          onclick: openPage,
+        },
+      ]}
+      error={passwordError?.() ?? null}
+    >
+      <TextField
+        bind:this={passwordField}
+        id="{id}-password"
+        kind="password"
+        bind:value={password}
+        placeholder={appPassword ? t.settings.passwordExample : null}
+        invalid={passwordError !== null || refused}
+        describedby="{id}-password-message"
+        testid="mailbox-password"
+        oninput={() => changed('password')}
+      />
+    </Field>
+  </div>
   {#if formError}
-    <Notice tone="danger" variant="inline" text={formError()} testid="mailbox-error" />
+    <div class="cell">
+      <Notice tone="danger" variant="inline" text={formError()} testid="mailbox-error" />
+    </div>
   {/if}
 </div>
 
@@ -194,16 +206,29 @@
     container-type: inline-size;
   }
 
-  .pair {
-    display: grid;
-    gap: var(--mail-form-gap) var(--space-20);
+  .short {
+    display: flex;
+    width: var(--profile-control-width);
   }
 
-  /* Side by side once each half has room for the provider's list and an address (210 each:
-     Einstellungen, the setup's card); one under the other in a narrow window. */
-  @container (width >= 440px) {
-    .pair {
-      grid-template-columns: 1fr 1fr;
-    }
+  /* In a box of rows: the Profil's measure, a hairline from the text above each. */
+  .boxed {
+    gap: 0;
+  }
+
+  .boxed .cell {
+    position: relative;
+    min-height: var(--form-row-min);
+    padding: var(--form-row-control-y) var(--form-row-pad-x);
+  }
+
+  .boxed .cell::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--setting-rule-start);
+    height: var(--border-width);
+    background-color: var(--border);
+    content: '';
   }
 </style>

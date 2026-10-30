@@ -51,6 +51,13 @@ export function reasonText(reason: Reason): string {
   return textOf(t.reason.code[code as ReasonCode], reason.params) || reason.label;
 }
 
+/** A warning of the engine about the profile, in the catalog's words (null: none, or one the
+ *  catalog does not know). */
+export function warningText(warning: Notice | null): string | null {
+  if (warning === null || !has(t.profile.warning, warning.code)) return null;
+  return textOf(t.profile.warning[warning.code], warning.params);
+}
+
 /**
  * Why a job is excluded or not scored (the note of its match), if there is one. The engine
  * names the first violation by its reason code (`dayRate`, `country`, `anue` ...) with that
@@ -87,9 +94,7 @@ export function healthAdvice(health: PortalHealth): string | null {
     case 'quotaReached':
       return t.health.advice.quota(health.until);
     case 'layoutSuspect':
-      return health.emptyMails > 0
-        ? t.health.advice.emptyMails(health.emptyMails)
-        : t.health.advice.pages;
+      return t.health.advice.pages;
     case 'loginRequired':
       return t.health.advice.login;
   }

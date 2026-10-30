@@ -165,7 +165,11 @@ class RunStore {
     } else if (this.step === 'fetch') {
       now = SHARE.search + SHARE.fetch * part('fetch');
     } else if (this.step === 'score') {
-      now = SHARE.search + SHARE.fetch + (1 - SHARE.search - SHARE.fetch) * part('score');
+      // A rescore is this step alone: the shares are a fetch's.
+      now =
+        this.kind === 'rescore'
+          ? part('score')
+          : SHARE.search + SHARE.fetch + (1 - SHARE.search - SHARE.fetch) * part('score');
     }
     if (now !== null) this.fraction = Math.max(this.fraction ?? 0, now);
   }
