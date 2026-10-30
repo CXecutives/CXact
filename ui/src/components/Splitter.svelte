@@ -2,8 +2,8 @@
   The handle between two columns (the sidebar and the view, the job list and the job view):
   it takes no room of its own, an invisible 8 px strip centred on the columns' border catches
   the pointer below the top bar (the bar keeps moving the window). Under the pointer and
-  while it is dragged a 2 px line shows over the border, the whole height; the col-resize
-  cursor says that it moves. No grip and no tooltip (tooltips only where needed, user
+  while it is dragged a 2 px line shows over the border, the whole height of the window,
+  through the top bar; the col-resize cursor says that it moves. No grip and no tooltip (tooltips only where needed, user
   2026-09-29); no keyboard: the columns are not a document to navigate.
   Drag it with the left button to resize the column before it between `min` and `max`; a
   double click sets the width back to the first width. For the list the limits follow the
@@ -180,6 +180,7 @@
     onpointercancel={end}
     onclick={reset}
   ></button>
+  <span class="line"></span>
 </div>
 
 <style>
@@ -202,21 +203,22 @@
     touch-action: none;
   }
 
-  /* The line: 2 px over the 1 px border at the start of the strip, the whole height. */
-  .hit::after {
-    content: '';
-    position: absolute;
+  /* The line: 2 px over the 1 px border at the start of the strip, from the window's top to
+     its bottom (fixed; no `left`: it stands where the columns' border stands). */
+  .line {
+    position: fixed;
     top: 0;
     bottom: 0;
-    left: 0;
     width: var(--splitter-line);
+    margin-left: calc(-1 * var(--border-width));
     background-color: var(--border-strong);
     opacity: 0;
+    pointer-events: none;
     transition: opacity var(--dur-base) var(--ease-standard);
   }
 
-  .hit:hover::after,
-  .dragging .hit::after {
+  .hit:hover + .line,
+  .dragging .line {
     opacity: 1;
     transition-duration: var(--dur-hover);
   }

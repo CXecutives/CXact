@@ -92,7 +92,6 @@
 
 <style>
   .sidebar {
-    position: relative;
     display: flex;
     flex: none;
     flex-direction: column;
