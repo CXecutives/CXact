@@ -145,9 +145,7 @@
 {:else if c.kind === 'countries'}
   {@const error = errorOf('countries')}
   <Field label={words.countries} for="{id}-countries" {info} {error} row>
-    <div class="stack">
-      <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
-    </div>
+    <CountriesField id="{id}-countries" bind:values={form.countries} invalid={error !== null} />
   </Field>
 {:else if c.kind === 'available'}
   {@const error = errorOf('available')}
@@ -157,14 +155,6 @@
 {/if}
 
 <style>
-  /* A field and the suggestion row under it, 8 apart. */
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: var(--suggest-row-gap);
-    min-width: 0;
-  }
-
   /* Every short control one width; a number's note under it keeps its own line. */
   .number {
     display: flex;

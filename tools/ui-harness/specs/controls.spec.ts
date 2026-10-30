@@ -32,7 +32,6 @@ test('one height per kind: 30, the quiet glyph 28, a suggestion 26, a select inl
   const quiet = states.locator('.btn.ghost.icon-only').first();
   expect(await height(quiet)).toBe(28);
   expect(await width(quiet)).toBe(28);
-  expect(await height(states.locator('.btn.suggest').first())).toBe(26);
   expect(await height(page.getByTestId('states-select'))).toBe(30);
   expect(await height(page.getByTestId('states-level'))).toBe(26);
   expect(await width(page.getByTestId('states-select'))).toBeGreaterThanOrEqual(150);

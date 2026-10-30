@@ -177,16 +177,6 @@
     <span class="row"><Button variant="danger" label="Löschen" loading /></span>
     <span></span>
 
-    <span class="name">Vorschlag</span>
-    <span><Button variant="suggest" icon="add" label="SAP Analytics Cloud" /></span>
-    <span use:force={{ state: 'hover', target: 'button' }}
-      ><Button variant="suggest" icon="add" label="SAP Analytics Cloud" /></span
-    >
-    <span use:force={{ state: 'hover press', target: 'button' }}
-      ><Button variant="suggest" icon="add" label="SAP Analytics Cloud" /></span
-    >
-    <span></span><span></span><span></span>
-
     <span class="name">Gleiche Breite</span>
     <span class="wide-cell row" data-testid="states-size-to">
       {#if running}

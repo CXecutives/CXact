@@ -103,7 +103,7 @@
 
   /* Under the add row, on the rows' sides. */
   .error {
-    padding: 0 var(--card-pad-x) var(--suggest-line-pad-y);
+    padding: 0 var(--form-row-pad-x) var(--form-row-pad-y);
     color: var(--error-text);
     font: var(--type-sm);
   }

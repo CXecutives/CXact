@@ -1,12 +1,12 @@
 <!--
-  The button of the app: primary | secondary | ghost | danger | link | suggest | add (round 10).
+  The button of the app: primary | secondary | ghost | danger | link (round 10).
   Calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, a press only
   darkens it; nothing scales, lifts, glows, bounces or moves, the arrows of Zurück and
   Weiter included (owner, 2026-10-29).
   - One height, 30 px, for every button with words or a box (core/tests/ui_contract.rs);
     the quiet icon-only button (ghost) takes 28 by itself, a button in a field (`inField`)
-    24, a suggestion 26. Words in 500 14 px (a primary stands out by its colour only), every
-    glyph 16 px, a suggestion's + 12. A text button carries the glyph of its meaning.
+    24. Words in 500 14 px (a primary stands out by its colour only), every glyph 16 px. A text
+    button carries the glyph of its meaning.
   - At most one primary per view (checked by core/tests/ui_contract.rs). The red fill
     (`danger`) only confirms in a dialog.
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
@@ -21,10 +21,7 @@
     Abbrechen, Speichern and its busy state): hidden copies of them share its content's
     grid cell, so it is as wide as the widest, without a number. A container gives a pair
     one least width through `--btn-min` (`var(--button-pair-min)`).
-  - link: navy text that underlines on hover. suggest: a chip with a dashed edge and its +
-    under a Profil field ("Häufig verlangt", the quick picks), a solid edge under the pointer.
-    add: the quiet button with navy words and its + that ends a box of entries ("Kompetenz
-    hinzufügen"), 10 in so its glyph aligns with the text above it.
+  - link: navy text that underlines on hover.
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
@@ -32,8 +29,7 @@
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
 
-  export type ButtonVariant =
-    'primary' | 'secondary' | 'ghost' | 'danger' | 'link' | 'suggest' | 'add';
+  export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
 
   /** What may stand in a button's place: other words, with or without a glyph. */
   export type ButtonFace = string | { label: string; icon?: IconName | null };
@@ -110,7 +106,6 @@
       ? []
       : sizeTo.map((face) => (typeof face === 'string' ? { label: face, icon } : face)),
   );
-  const glyphSize = $derived(variant === 'suggest' ? 'xxs' : 'sm');
   /** A filled button: its spinner takes the colour of its words, not navy on coral. */
   const filled = $derived(variant === 'primary' || variant === 'danger');
 
@@ -147,7 +142,7 @@
     <span class="face">
       {#if icon}
         <span class="glyph" data-icon={icon}>
-          <Icon name={icon} size={glyphSize} filled={pressed === true} />
+          <Icon name={icon} size="sm" filled={pressed === true} />
         </span>
       {/if}
       {#if !iconOnly}<span class="label">{label}</span>{/if}
@@ -159,7 +154,7 @@
     </span>
     {#each others as other, index (index)}
       <span class="face sizer" aria-hidden="true" data-sizer>
-        {#if other.icon}<span class="glyph"><Icon name={other.icon} size={glyphSize} /></span>{/if}
+        {#if other.icon}<span class="glyph"><Icon name={other.icon} size="sm" /></span>{/if}
         <span class="label">{other.label}</span>
         {#if trailing}<span class="trailing"><Icon name={trailing} size="sm" /></span>{/if}
       </span>
@@ -347,46 +342,6 @@
     --icon-stroke-more: var(--icon-stroke-on-fill);
   }
 
-  /* A suggestion: white with a dashed edge and its +, so it reads as something to add, never
-     as a chip already in the field (those sit on the track) or a button; 13 px muted words,
-     ink and a solid darker edge under the pointer. */
-  .suggest {
-    --btn-bg: var(--surface);
-    --btn-bg-hover: var(--surface);
-    --btn-bg-active: var(--button-press);
-    --btn-border: var(--border-strong);
-    --btn-border-hover: var(--control-hover-edge);
-    --btn-border-active: var(--control-hover-edge);
-    --btn-fg: var(--text-muted);
-    --btn-fg-hover: var(--text);
-    --btn-shadow: none;
-    --btn-gap: var(--space-4);
-    --btn-type: var(--type-suggest);
-    --btn-radius: var(--radius-inner);
-
-    padding: 0 var(--suggest-pad-end) 0 var(--suggest-pad-start);
-    border-style: dashed;
-  }
-
-  .suggest:not([aria-disabled='true'], .loading):hover {
-    border-style: solid;
-  }
-
-  /* The quiet kind in navy: no box, a wash under the pointer, a deeper one pressed. */
-  .add {
-    --btn-bg: transparent;
-    --btn-bg-hover: var(--surface-hover-quiet);
-    --btn-bg-active: var(--quiet-press);
-    --btn-border: transparent;
-    --btn-border-hover: transparent;
-    --btn-border-active: transparent;
-    --btn-fg: var(--link);
-    --btn-fg-hover: var(--link-hover);
-    --btn-shadow: none;
-    --btn-gap: var(--space-8);
-    --btn-pad: var(--space-10);
-  }
-
   /* Navy text, no box; it underlines on hover and dims while pressed (it is text). */
   .btn.link {
     --btn-bg: transparent;
@@ -431,17 +386,13 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* One height, 30 px; the quiet glyph 28, a suggestion 26, in a field (and a link) 24. */
+  /* One height, 30 px; the quiet glyph 28, in a field (and a link) 24. */
   .btn {
     --btn-height: var(--control-field);
   }
 
   .ghost.icon-only {
     --btn-height: var(--control-icon);
-  }
-
-  .suggest {
-    --btn-height: var(--control-inline);
   }
 
   .btn.in-field,

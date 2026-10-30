@@ -133,7 +133,7 @@
     display: contents;
   }
 
-  /* The control and what belongs under it ("Häufig verlangt"), one under the other. */
+  /* The control and what belongs under it, one under the other. */
   .control {
     display: flex;
     flex-direction: column;

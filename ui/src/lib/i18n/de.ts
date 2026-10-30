@@ -1031,10 +1031,6 @@ export const de = {
     cvBusy: 'Wird von einer KI ausgewertet',
     /** A CV that filled nothing: the state box under the head (its sentence is `cvError`). */
     cvFailed: 'Der Lebenslauf wurde nicht ausgewertet.',
-    /** The drop zone of the CV (the setup's upload): what it takes and the formats it
-     *  reads. */
-    cvDrop: 'Datei hierher ziehen oder auswählen',
-    cvFormats: 'PDF, Word oder Foto',
     /** The two ways to the profile as tiles (the setup, the Profil without a profile); the
      *  CV's says the AI. */
     wayCv: 'Aus Lebenslauf',
@@ -1422,8 +1418,6 @@ export const de = {
     passwordMissing: (appPassword: boolean) =>
       appPassword ? 'Das App-Passwort fehlt.' : 'Das Passwort fehlt.',
     connect: 'Verbinden',
-    /** The setup's step of the mailbox (its heading). */
-    connectHeading: 'Postfach verbinden',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: (appPassword: boolean) =>
       `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,

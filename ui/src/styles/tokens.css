@@ -423,13 +423,13 @@
   /* Design round 7 (user, 2026-10-10): one control height for the whole app, 30 px since
      round 10 (--control-field): every button, field, choice of a few and toolbar control;
      the sidebar's entries and a menu's rows one step taller (--nav-row, --menu-row). Only a control inside a field (a
-     chip, a link or a button in a field, a day of the calendar, a suggestion row) and a
-     suggestion chip under a field (Button `suggest`) are a notch lower (--control-sm). */
+     chip, a link or a button in a field, a day of the calendar, a suggestion row) are a notch
+     lower (--control-sm). */
   --control-sm: 24px;
   --control-field: 30px;
   /* A quiet icon-only button (title bar, row tools, hero tools): 28 (round 10). */
   --control-icon: 28px;
-  /* A control inside a list row (years, language level) and a suggestion chip. */
+  /* A control inside a list row. */
   --control-inline: 26px;
   --nav-row: 32px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
@@ -437,7 +437,7 @@
   --control-lg: 30px;
   /* The glyphs in a list row's second line. */
   --icon-xs: 14px;
-  /* Round 10: a chip's × and a suggestion's +, a checkbox's tick, the sidebar and a toast's
+  /* Round 10: a chip's ×, a checkbox's tick, the sidebar and a toast's
      sign, and the glyph of a 56 px tile (a glyph in a tile is half the tile). */
   --icon-2xs: 12px;
   --icon-check: 13px;
@@ -691,14 +691,10 @@
   --splitter-line: 2px;
 
   /* ------------------------------------------- round 10: controls */
-  /* A button with a box (secondary, a suggestion) under the pointer and pressed: the warm
+  /* A button with a box (secondary) under the pointer and pressed: the warm
      wash over its white (its edge then --control-hover-edge), a deeper wash pressed. */
   --button-hover: var(--surface-hover);
   --button-press: var(--surface-press);
-  /* A suggestion chip under a field: 13 px words in 500, its + 7 px in, 9 px after them. */
-  --type-suggest: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
-  --suggest-pad-start: 7px;
-  --suggest-pad-end: 9px;
   /* The one look of a menu, a select's list and a field's suggestions: rows 32 high (--menu-row)
      with their words 12 px in. */
   --menu-row-pad: 12px;
@@ -897,10 +893,6 @@
   --profile-date-width: 122px;
   /* A changed control saves this long after the last change. */
   --save-delay: 300ms;
-  /* A suggestion row under a field ("Häufig verlangt", "Vorschlag"): its label 12 subtle, 8
-     under the field, the chips 6 apart; as the last line of a box of entries 11 20 inside. */
-  --suggest-row-gap: var(--space-8);
-  --suggest-line-pad-y: 11px;
   /* A group's title: ink, red while one of its lists is required and still empty. */
   --section-heading: var(--text-heading);
 
