@@ -70,6 +70,23 @@
   /** The last input had a decimal part: said once the field is left, until the next input. */
   let cut = false;
   let rounded = $state(false);
+  let box = $state<HTMLElement | null>(null);
+
+  /**
+   * What was typed without its letters. Svelte writes the field only when `text` is not what it
+   * wrote last, and a letter typed after the digits ends where it began, so the field itself
+   * is cleaned, the caret left where it was among the digits.
+   */
+  function withoutLetters(next: string): string {
+    const clean = next.replace(/[^\d.,]/g, '');
+    const input = box?.querySelector('input');
+    if (clean !== next && input) {
+      const caret = next.slice(0, input.selectionStart ?? next.length).replace(/[^\d.,]/g, '');
+      input.value = clean;
+      input.setSelectionRange(caret.length, caret.length);
+    }
+    return clean;
+  }
 
   // A value set from outside (discard, a new draft) shows in the field.
   $effect(() => {
@@ -89,7 +106,7 @@
     rounded = cut;
   }}
 >
-  <span class="box">
+  <span class="box" bind:this={box}>
     <TextField
       bind:value={text}
       {id}
@@ -102,7 +119,7 @@
       suffix={unit}
       {testid}
       oninput={(next) => {
-        const clean = next.replace(/[^\d.,]/g, '');
+        const clean = withoutLetters(next);
         if (clean !== next) text = clean;
         const typed = read(clean);
         cut = typed.cut;
