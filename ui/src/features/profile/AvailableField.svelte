@@ -1,6 +1,6 @@
 <!--
   Verfügbar: one choice of a select ("Sofort", "Ab Datum"). The day of "Ab Datum" exists
-  only while it is chosen and gets the caret when it is: it slides in beside the choice (122
+  only while it is chosen: it slides in beside the choice (122
   wide, TT.MM.JJJJ, no calendar: typing is the way to write it), and the choice keeps its
   width and place. It is judged when its field is left with text in it or on saving
   (`editor.judged`), never while it is typed, and a day that does not read is said by its
@@ -12,7 +12,6 @@
   import { t } from '$lib/i18n/t';
   import { slideIn } from '$lib/motion/transitions';
   import { editor, keptDate } from '$lib/state/profile.svelte';
-  import { tick } from 'svelte';
 
   interface Props {
     /** The day is said to be wrong (its Field says why). */
@@ -23,7 +22,6 @@
 
   const words = $derived(t.profile.field);
   const form = $derived(editor.after);
-  let date = $state<HTMLElement | null>(null);
 
   type Choice = 'now' | 'from';
   const CHOICES = $derived<{ id: Choice; label: string }[]>([
@@ -31,13 +29,10 @@
     { id: 'from', label: t.profile.availability.from },
   ]);
 
-  /** "Ab Datum" puts the caret into its day, which is judged anew when it is left. */
-  async function choose(kind: Choice): Promise<void> {
+  /** "Ab Datum" brings its day, which is judged anew when it is left. */
+  function choose(kind: Choice): void {
     form.available = kind === 'from' ? { kind, date: keptDate(editor.dateText) } : { kind };
     editor.judged = false;
-    if (kind !== 'from') return;
-    await tick();
-    date?.querySelector('input')?.focus();
   }
 
   function type(text: string): void {
@@ -53,14 +48,13 @@
     value={form.available.kind}
     label={words.available}
     testid="profile-available"
-    onchange={(kind) => void choose(kind)}
+    onchange={choose}
   />
   {#if form.available.kind === 'from'}
     <span
       class="date"
       role="presentation"
       in:slideIn
-      bind:this={date}
       onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
     >
       <TextField

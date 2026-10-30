@@ -63,8 +63,6 @@
   /** The Papierkorb has no filter. */
   const filterable = $derived(place !== 'trash');
 
-  let searchBox = $state<HTMLElement | null>(null);
-
   /* ---------------------------------------------------------------------- filter */
 
   /** The sources of the menu: every one switched on, jobs or not yet (user 2026-10-01), in
@@ -83,13 +81,10 @@
   let funnelBox = $state<HTMLElement | null>(null);
   let funnelOpen = $state(false);
 
-  /** The funnel's button (the keyboard focus lands there when what held it goes), else the
-   *  search. */
+  /** The funnel's button (the keyboard focus lands there when what held it goes). */
   async function focusFunnel(): Promise<void> {
     await tick();
-    const target =
-      funnelBox?.querySelector<HTMLElement>('button') ?? searchBox?.querySelector('input');
-    target?.focus();
+    funnelBox?.querySelector<HTMLElement>('button')?.focus();
   }
 
   /**
@@ -133,7 +128,7 @@
     {#snippet lead()}
       {#if tools}
         <div class="top">
-          <span class="search" bind:this={searchBox}>
+          <span class="search">
             <TextField
               kind="search"
               value={jobs.search}

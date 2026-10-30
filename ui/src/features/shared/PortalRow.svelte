@@ -275,7 +275,7 @@
           variant="secondary"
           icon="signOut"
           label={t.settings.signOut}
-          sizeTo={[{ label: t.settings.signInOpens, icon: 'signIn' }]}
+          sizeTo={[{ label: t.settings.signIn, icon: 'signIn' }]}
           loading={busy}
           disabled={loginLocked !== null}
           disabledReason={loginLocked}
@@ -286,7 +286,7 @@
         <Button
           variant="secondary"
           icon="signIn"
-          label={t.settings.signInOpens}
+          label={t.settings.signIn}
           sizeTo={[{ label: t.settings.signOut, icon: 'signOut' }]}
           loading={busy}
           disabled={loginLocked !== null}

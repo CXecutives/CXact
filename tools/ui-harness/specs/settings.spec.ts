@@ -251,7 +251,7 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach verbund
   // Entfernen… is a plain button that opens a dialog, which carries the danger; Ändern
   // beside it is as wide.
   await expect(page.getByTestId('mailbox-remove')).toHaveClass(/secondary/);
-  await expect(page.getByTestId('mailbox-remove')).toHaveText(T.settings.removeOpens);
+  await expect(page.getByTestId('mailbox-remove')).toHaveText(T.common.remove);
   const [change, remove] = await widths(page, 'mailbox-change', 'mailbox-remove');
   expect(change).toBeCloseTo(remove!, 0);
   await page.getByTestId('mailbox-remove').click();
@@ -546,7 +546,7 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   await expect(folder.locator('[data-copy]')).toHaveText('C:\\Users\\demo\\Documents\\CXact');
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.reset);
   await expect(page.getByTestId('reset-all')).toContainText(T.settings.resetHint);
-  await expect(page.getByTestId('reset')).toHaveText(T.settings.resetOpens);
+  await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
   await expect(page.getByTestId('folder-change')).toHaveText(T.settings.folderChange);
   for (const gone of ['backup-restore', 'logs-open']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);

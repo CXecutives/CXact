@@ -1051,7 +1051,7 @@ test.describe('the ad', () => {
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
     const signIn = stage(page).getByTestId('reader-sign-in');
-    await expect(signIn).toHaveText(T.settings.signInOpens);
+    await expect(signIn).toHaveText(T.settings.signIn);
     // A sign-in that fails says so; the job stays.
     await failNext(page, 'portal_login');
     await signIn.click();

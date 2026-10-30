@@ -114,8 +114,7 @@
   // While the dialog is open the toasts behind its scrim wait (an undo keeps its time).
   $effect(() => (open ? untrack(() => toasts.hold()) : undefined));
 
-  // On close the focus goes back where it was, unless the action moved it on purpose (a
-  // failed save puts the caret into the field it names).
+  // On close the focus goes back where it was, unless the action moved it on purpose.
   $effect(() => {
     if (open || opener === null) return;
     const back = opener;

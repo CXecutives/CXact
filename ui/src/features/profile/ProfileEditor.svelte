@@ -4,8 +4,8 @@
   Ausschlüsse), each a Section with one white box of rows (Group `rows`), like the rows of
   Einstellungen.
   On the Profil a group reads like a profile while it is closed (ReadGroup); only
-  "Bearbeiten" at its title opens it (one way to edit, owner 2026-10-28), the caret in its
-  first field. One
+  "Bearbeiten" at its title opens it (one way to edit, owner 2026-10-28), and no field takes
+  the caret by itself (owner 2026-10-30). One
   group is open at a time (no frame of its own, like an unfolded row of Einstellungen): its
   rows are the fields
   (ProfileControl; a hairline between rows), and its foot holds Fertig and Abbrechen in the
@@ -94,15 +94,11 @@
   const isOpen = (section: SectionId): boolean => allOpen || open === section;
   const actionFirst = primaryFirst();
 
-  /** Opens a group at one of its fields (or its first), saving the group open before. */
-  async function openGroup(section: SectionId, field: string | null): Promise<void> {
-    if (!allOpen && open !== section) {
-      if (open !== null && editor.dirty && !(await onsave())) return;
-      open = section;
-    }
-    await tick();
-    if (field !== null) await focusField(field);
-    else firstControl(root?.querySelector<HTMLElement>(`[data-group="${section}"]`))?.focus();
+  /** Opens a group, saving the group open before. */
+  async function openGroup(section: SectionId): Promise<void> {
+    if (allOpen || open === section) return;
+    if (open !== null && editor.dirty && !(await onsave())) return;
+    open = section;
   }
 
   /** Fertig: saves the open group and closes it once it is saved. */
@@ -184,22 +180,12 @@
 
   let root = $state<HTMLElement | null>(null);
 
-  /** The control of a field (or a group) that takes the caret: its text input before any
-   *  button, so the focus never lands on a chip's ×. */
-  function firstControl(scope: HTMLElement | null | undefined): HTMLElement | null {
-    return (
-      scope?.querySelector<HTMLElement>('input, textarea') ??
-      scope?.querySelector<HTMLElement>('button:not([data-testid="info-tip"])') ??
-      null
-    );
-  }
-
-  /** Ready to save: a value that holds the save is said at its field, which comes into view
-   *  (a day that does not read gets the caret). */
+  /** Ready to save: a value that holds the save is said at its field, which comes into
+   *  view. */
   export function ready(): boolean {
     editor.judged = true;
     if (editor.dateInvalid) {
-      void focusField('available');
+      void openField('available');
       return false;
     }
     const wrong = invalid[0] ?? null;
@@ -207,18 +193,15 @@
     return wrong === null && fieldError === null;
   }
 
-  /** The caret into a field of the form (its marked control first), in the middle of the
-   *  view, its group opened first; `false` when the field is not on the page. */
-  export async function focusField(field: string): Promise<boolean> {
+  /** A field of the form in the middle of the view, its group opened first, without the
+   *  caret; `false` when the field is not on the page. */
+  export async function openField(field: string): Promise<boolean> {
     const section = sectionOf(field);
-    if (section !== null && !isOpen(section)) await openGroup(section, null);
+    if (section !== null) await openGroup(section);
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-edit~="${field}"]`);
-    const target =
-      scope?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? firstControl(scope);
-    target?.focus({ preventScroll: true });
-    (target ?? scope)?.scrollIntoView({ block: 'center' });
-    return target !== null && target !== undefined;
+    scope?.scrollIntoView({ block: 'center' });
+    return scope !== null && scope !== undefined;
   }
 
   /** A field of the form in the middle of the view, without the caret (Speichern and Weiter
@@ -256,7 +239,7 @@
           icon="edit"
           label={t.common.edit}
           testid="edit-{section.id}"
-          onclick={() => void openGroup(section.id, null)}
+          onclick={() => void openGroup(section.id)}
         />
       </span>
     {/snippet}

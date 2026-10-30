@@ -28,16 +28,12 @@
   import { invoke, IpcError } from '$lib/ipc/api';
   import type { MailProvider } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
-  import { onMount } from 'svelte';
 
   interface Props {
-    /** The caret starts in the first empty field once the form appears: the address, or the
-     *  password next to an address that is there (Ändern in Einstellungen). */
-    autofocus?: boolean;
     /** A check is on its way (the button that called `save` turns meanwhile). */
     busy?: boolean;
   }
-  let { autofocus = false, busy = $bindable(false) }: Props = $props();
+  let { busy = $bindable(false) }: Props = $props();
 
   const id = $props.id();
   let provider = $state<MailProvider>(app.state?.mailbox.provider ?? 'gmail');
@@ -63,18 +59,6 @@
   let formError = $state<Words | null>(null);
   let passwordField = $state<TextField | null>(null);
 
-  const focus = (field: 'user' | 'password', preventScroll = false): void =>
-    document.getElementById(`${id}-${field}`)?.focus({ preventScroll });
-
-  // Once the form is laid out (a field focused before that is scrolled to by WebKit anyway).
-  onMount(() => {
-    if (!autofocus) return;
-    const frame = requestAnimationFrame(() =>
-      focus(user.trim() === '' ? 'user' : 'password', true),
-    );
-    return () => cancelAnimationFrame(frame);
-  });
-
   /** Signs in and saves; `true` once the mailbox is saved. */
   export async function save(): Promise<boolean> {
     if (busy) return false;
@@ -83,10 +67,7 @@
     // Empty fields are said at once, both of them, without asking the provider.
     if (user.trim() === '') userError = () => t.settings.addressMissing;
     if (password.trim() === '') passwordError = () => t.settings.passwordMissing(appPassword);
-    if (userError !== null || passwordError !== null) {
-      focus(userError !== null ? 'user' : 'password');
-      return false;
-    }
+    if (userError !== null || passwordError !== null) return false;
     busy = true;
     try {
       await invoke('save_mailbox', { provider, user: user.trim(), password });

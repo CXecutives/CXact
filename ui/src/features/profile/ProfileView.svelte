@@ -148,11 +148,10 @@
     );
   }
 
-  /** "Selbst ausfüllen": the new form, the caret in the wished roles. */
-  async function create(): Promise<void> {
+  /** "Selbst ausfüllen": the new form. */
+  function create(): void {
     fromCv.clear();
     editor.create();
-    await caretTo('profile-roles');
   }
 
   /** The CV filled the profile: the form shows it as stored. */
@@ -175,12 +174,10 @@
     if (drag.kind === 'drop' && drag.paths.length > 0 && takesDrop()) void fillFromCv(true);
   }
 
-  /** The caret into a field that has just appeared (the input of a chip field). */
-  async function caretTo(testid: string): Promise<void> {
+  /** Back at the ways in, the keyboard focus on the first of them (a button: no caret). */
+  async function focusFirstWay(): Promise<void> {
     await tick();
-    const node = document.querySelector<HTMLElement>(`[data-testid="${testid}"]`);
-    const target = node?.matches('input, textarea, button') ? node : node?.querySelector('input');
-    target?.focus();
+    document.querySelector<HTMLElement>('[data-testid="way-cv"]')?.focus();
   }
 
   let panel = $state<ProfileEditor | null>(null);
@@ -218,7 +215,7 @@
           row: at.row,
           text: () => (at.max !== null ? t.profile.field.atMost(at.max) : t.profile.field.refused),
         };
-        if (!(await panel?.focusField(at.field))) saveNote = () => errorText(error);
+        if (!(await panel?.openField(at.field))) saveNote = () => errorText(error);
       }
       return false;
     } finally {
@@ -245,7 +242,7 @@
     fieldError = null;
     flagged = false;
     editor.discard(stored);
-    if (editor.origin === null) void caretTo('way-cv');
+    if (editor.origin === null) void focusFirstWay();
   }
 
   /** Leaving without saving. */
@@ -353,7 +350,7 @@
       action={{
         label: t.profile.missing.action,
         testid: 'profile-missing-go',
-        onclick: () => void panel?.focusField(missing[0]!),
+        onclick: () => void panel?.openField(missing[0]!),
       }}
       testid="profile-missing"
     />
@@ -411,7 +408,7 @@
           : t.profile.noneText}
         note={note?.() ?? null}
         onfilled={(info) => filled(info.form)}
-        onempty={() => void create()}
+        onempty={create}
       />
     {:else}
       {@render notes()}

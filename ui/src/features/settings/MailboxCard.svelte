@@ -163,7 +163,7 @@
       <Button
         variant="secondary"
         icon="trash"
-        label={t.settings.removeOpens}
+        label={t.common.remove}
         disabled={locked !== null}
         disabledReason={locked}
         testid="mailbox-remove"
@@ -183,7 +183,7 @@
   <!-- Unfolded, the form comes into view whole (it may open below the window's edge). -->
   <div class="fold" transition:unfold onintroend={() => editor && glideIntoView(editor)}>
     <div class="edit" bind:this={editor} use:formKeys={{ save: () => void connect(), cancel }}>
-      <MailboxForm bind:this={form} bind:busy={checking} autofocus />
+      <MailboxForm bind:this={form} bind:busy={checking} />
       <div class="buttons" data-testid="mailbox-buttons">
         {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}
       </div>

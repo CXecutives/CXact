@@ -1439,24 +1439,20 @@ export const de = {
     removeMailboxText: (appPassword: boolean) =>
       `Das ${appPassword ? 'App-Passwort' : 'Passwort'} wird gelöscht, die Jobs bleiben.`,
     signOut: 'Abmelden',
-    /** A row's buttons that open a window, the browser or a dialog end in an ellipsis: a
-     *  portal's sign-in window (also the job view's), its alert page, the folder dialog, the dialogs of the reset
-     *  and of removing the mailbox (their confirm buttons keep none). */
-    signInOpens: 'Anmelden…',
-    folderChange: 'Ändern…',
-    resetOpens: 'Zurücksetzen…',
-    removeOpens: 'Entfernen…',
+    /** A portal's sign-in window (also the job view's), and the folder dialog. */
+    signIn: 'Anmelden',
+    folderChange: 'Ändern',
     /** The way to the page of a portal whose alert went quiet. */
-    checkAlert: 'Alert prüfen…',
+    checkAlert: 'Alert prüfen',
     /** A source of alert mails: its page where the user sets up an alert. */
-    setUpAlert: 'Alert anlegen…',
+    setUpAlert: 'Alert anlegen',
     /** The row of the profile's folder (its path under it), and what a change did. */
     folder: 'Profil-Ordner',
     folderMoved: 'Profil kopiert',
     folderFiles: 'Ordner geändert',
     folderOwnProfile: 'Profil aus dem neuen Ordner übernommen',
-    /** The row of the reset in Daten: its label, its one sentence, the dialog's button (the
-     *  row's is `resetOpens`) and its dialog. */
+    /** The row of the reset in Daten: its label, its one sentence, its button (the dialog's
+     *  too) and its dialog. */
     reset: 'Alles zurücksetzen',
     resetHint: 'Löscht alles, was CXact gespeichert hat.',
     resetAction: 'Zurücksetzen',

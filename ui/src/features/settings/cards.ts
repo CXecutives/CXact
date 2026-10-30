@@ -59,7 +59,7 @@ export const ACTIONS = {
   // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
   // deleting a job for good).
   reset: {
-    label: (t) => t.settings.resetOpens,
+    label: (t) => t.settings.resetAction,
     icon: 'reset',
     locked: ownOnly,
   },

@@ -123,7 +123,7 @@
     <Button
       variant="secondary"
       icon="signIn"
-      label={t.settings.signInOpens}
+      label={t.settings.signIn}
       loading={signingIn}
       disabled={signInLock !== null}
       disabledReason={signInLock}

@@ -152,17 +152,16 @@
 
   function clear(): void {
     update('');
-    input?.focus();
   }
 
-  /** Show or hide the password; the caret and selection stay where they were. */
+  /** Show or hide the password; a caret and selection in the field stay where they were. */
   async function reveal(): Promise<void> {
+    const held = input !== null && document.activeElement === input;
     const start = input?.selectionStart ?? null;
     const end = input?.selectionEnd ?? null;
     revealed = !revealed;
     await tick();
-    if (input === null) return;
-    input.focus();
+    if (input === null || !held) return;
     // Chromium rebuilds the editor of an input whose type changed at the next style
     // update and puts the caret at the start; update now, then restore.
     void input.offsetWidth;
