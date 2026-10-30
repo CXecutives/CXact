@@ -1,6 +1,6 @@
 <!--
   One portal in Einstellungen > Jobportale (round 10 draft), a SettingRow like every row: its
-  brand name (`portalName`), under it one line of its state, then its calls and at the right
+  brand name (`t.portal`), under it one line of its state, then its calls and at the right
   its switch, always last (the name names the switch but, like every text next to a switch,
   does not switch it).
   The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
@@ -251,7 +251,7 @@
       checked={portal.enabled && !idle}
       disabled={idle}
       disabledReason={idle ? t.settings.needsMailboxReason : null}
-      label={t.portalName[portal.portal]}
+      label={t.portal[portal.portal]}
       testid="toggle-enabled-{portal.portal}"
       onchange={(on) => change({ enabled: on })}
     />
@@ -259,7 +259,7 @@
 {/snippet}
 
 <SettingRow
-  label={t.portalName[portal.portal]}
+  label={t.portal[portal.portal]}
   hint={flag?.text ?? standing}
   status={flag?.tone ?? null}
   disabled={idle}

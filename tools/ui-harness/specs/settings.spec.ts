@@ -298,8 +298,8 @@ test('portals: two groups in the order of the UI, each portal with its state and
   await expect(page.getByTestId('portals-search')).toHaveText(T.settings.way.search);
   await expect(page.getByTestId('portals-alert')).toHaveText(T.settings.way.alert);
   // Every portal has its brand name (LinkedIn, not linkedin.com).
-  for (const portal of PORTALS) expect(T.portalName[portal], portal).toMatch(/\S/);
-  expect(T.portalName.linkedin).toBe('LinkedIn');
+  for (const portal of PORTALS) expect(T.portal[portal], portal).toMatch(/\S/);
+  expect(T.portal.linkedin).toBe('LinkedIn');
   for (const [portal, state] of [
     ['freelancermap', T.settings.lastNew(3)],
     ['hays', null],
@@ -323,7 +323,7 @@ test('portals: two groups in the order of the UI, each portal with its state and
     // switch.
     await expect(row.locator('.tile')).toHaveCount(0);
     if (!ALERT_PORTALS.includes(portal)) await expect(row.getByRole('button')).toHaveCount(0);
-    await expect(row.getByRole('switch')).toHaveAccessibleName(T.portalName[portal]);
+    await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);
   }
   // Only freelance.de offers a sign-in; no "Details holen".
   await expect(page.locator('[data-testid^="note-"]')).toHaveCount(0);
@@ -344,7 +344,7 @@ test('portals: two groups in the order of the UI, each portal with its state and
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);
   const toggle = await reveal(page, page.getByTestId('toggle-enabled-linkedin'));
-  await page.getByTestId('portal-linkedin').getByText(T.portalName.linkedin).click();
+  await page.getByTestId('portal-linkedin').getByText(T.portal.linkedin).click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');

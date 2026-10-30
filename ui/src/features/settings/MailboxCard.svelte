@@ -159,7 +159,7 @@
     testid="mailbox"
   >
     {#if !editing}
-      {@render opener('mailbox-change', 'edit', t.common.change)}
+      {@render opener('mailbox-change', 'edit', t.common.edit)}
       <Button
         variant="secondary"
         icon="trash"

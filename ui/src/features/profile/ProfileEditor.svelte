@@ -250,13 +250,15 @@
     {@const list = 'list' in section ? section.list : null}
     {@const editing = isOpen(section.id)}
     {#snippet edit()}
-      <Button
-        variant="ghost"
-        icon="edit"
-        label={t.profile.edit}
-        testid="edit-{section.id}"
-        onclick={() => void openGroup(section.id, null)}
-      />
+      <span class="edit">
+        <Button
+          variant="ghost"
+          icon="edit"
+          label={t.common.edit}
+          testid="edit-{section.id}"
+          onclick={() => void openGroup(section.id, null)}
+        />
+      </span>
     {/snippet}
     <div
       class="group"
@@ -336,6 +338,12 @@
 
   .group {
     min-width: 0;
+  }
+
+  /* Its word ends on the page's right edge, under the head's button. */
+  .edit {
+    display: inline-flex;
+    margin-right: calc(-1 * var(--ghost-inset));
   }
 
   /* The rows of a box, a hairline between them; a row that unfolds (Mindestgehalt) brings

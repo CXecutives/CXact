@@ -40,7 +40,6 @@ import type {
   MailProvider,
 } from '../ipc/types';
 import type { ContractKey, CvFailure } from '../ipc/api';
-import { PORTAL_LABEL } from '../ipc/types/portals';
 import { formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
 type Params = Record<string, string | number | boolean | null>;
@@ -54,10 +53,8 @@ const n = (value: number): string => formatNumber(value);
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
 
-/** The portals by their web address, everywhere (a sentence never starts with one); the
- *  names come from the portal registry, no catalog translates them. */
-const portalName = PORTAL_LABEL;
-/** The portals by their brand name (Einstellungen > Jobportale, the setup's Postfach step). */
+/** The portals by their brand name, everywhere: one name per portal (owner's rule of one
+ *  name per thing, 2026-10-30). */
 const BRAND = {
   linkedin: 'LinkedIn',
   freelance: 'freelance.de',
@@ -71,7 +68,7 @@ const BRAND = {
   fratch: 'FRATCH',
 } satisfies Record<Portal, string>;
 const portalOf = (value: unknown): string =>
-  typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
+  typeof value === 'string' && value in BRAND ? BRAND[value as Portal] : str(value);
 
 const INTERNAL = 'Ein interner Fehler ist aufgetreten.';
 
@@ -632,7 +629,7 @@ export const de = {
     loading: 'Wird geladen',
     cancel: 'Abbrechen',
     remove: 'Entfernen',
-    change: 'Ändern',
+    edit: 'Bearbeiten',
     open: 'Öffnen',
     back: 'Zurück',
     retry: 'Erneut versuchen',
@@ -641,7 +638,7 @@ export const de = {
     /** The accessible name of an info symbol beside a label. */
     infoAbout: (label: string) => `Mehr zu ${label}`,
   },
-  portal: portalName,
+  portal: BRAND,
   chips: {
     remove: (value: string) => `${value} entfernen`,
   },
@@ -1080,7 +1077,6 @@ export const de = {
     fixFirst: (label: string) => `Korrigiere erst „${label}“.`,
     /** The Profil reads like a profile (round 11): a group opens with Bearbeiten and closes
      *  with Fertig, which saves at once. */
-    edit: 'Bearbeiten',
     done: 'Fertig',
     /** The card under the head while required values are empty: how many, which, the way. */
     missing: {
@@ -1473,7 +1469,6 @@ export const de = {
 
   /** The portals by their brand name (Einstellungen > Jobportale; settings.spec checks that
    *  every portal has one). */
-  portalName: BRAND,
 
   /** The setup (features/first-run/steps.ts): each step's heading and lead, and its words. */
   firstRun: {

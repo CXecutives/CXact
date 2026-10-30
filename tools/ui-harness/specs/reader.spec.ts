@@ -171,7 +171,7 @@ test.describe('the head and the match', () => {
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     // Where and when it came: its portals, then the moment it came into CXact, in ink.
-    expect(await cell(page, 'portal')).toEqual(['freelancermap.de und linkedin.com, 08:24', '']);
+    expect(await cell(page, 'portal')).toEqual(['freelancermap und LinkedIn, 08:24', '']);
     await expect(term(page, 'portal').locator('.value')).toHaveCSS(
       'color',
       await term(page, 'company')
@@ -596,7 +596,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     await expect(term(page, 'workload')).toHaveCount(0);
     // Where and when it came: its portals, then the moment it came into CXact.
-    expect(await cell(page, 'portal')).toEqual(['freelancermap.de und linkedin.com, 08:24', '']);
+    expect(await cell(page, 'portal')).toEqual(['freelancermap und LinkedIn, 08:24', '']);
     // No row "Eingegangen" (user, 2026-10-01): the moment stands in "Gefunden".
     await expect(term(page, 'received')).toHaveCount(0);
     // Verdicts are icons (no words) named by their verdict, and only where a fact does not

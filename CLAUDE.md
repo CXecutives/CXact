@@ -8,6 +8,9 @@ work and tick its boxes. How to work with the user is in `MEMORY.md` (imported a
 The old app `CXecutives/projektscraper` is a read-only reference.
 
 ## Hard rules
+- UI work follows the `apple-design` skill: load it (`.claude/skills/apple-design`, local and git-ignored, its Apple pages stay out of this public repo) before changing or judging
+  how the app looks or works, and check the result through its five lenses. The owner's decisions win where they differ from it: the light score colours with band words in exactly the
+  ring's colour, white on the coral primary, no dark mode, no zoom, no menu bar or shortcuts.
 - Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/CXact` (formerly `Project`), fast-forward only; never bypass
   `.githooks/pre-push`; never force-push. The repo holds CXact only: no old code, branches or history.
 - Secrets: never ask for, read, log, print or commit passwords. The Gmail app password lives only in the OS keychain.
@@ -28,7 +31,7 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   folds by itself below 1100 px, where its button floats it out; kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
   and jobs shown (`lib/state/history.svelte.ts`); hiding the job view closes its job. Windows: no native title bar (`decorations: false`, the
   shadow, rounded corners and resize borders stay); the page draws Minimieren, Maximieren and Schließen
-  (`components/WindowButtons.svelte`, 46 px, the design's washes, Schließen in the app's danger red) and `caption` in
+  (`components/WindowButtons.svelte`, 46 px, the design's washes, Schließen in Windows 11's red) and `caption` in
   `platform.rs` answers `WM_NCHITTEST` for the bar like a native caption and leaves the buttons' zones to the page
   (`TOOLS_START`, `TOOLS_END` in `core/src/window.rs` = `--titlebar-tools-*`) (`HTMAXBUTTON` opens the snap layouts; right
   click and Alt+Space the system menu). macOS: the native traffic lights 16 px in and centred in the bar (Overlay,
