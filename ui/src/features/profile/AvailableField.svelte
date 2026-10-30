@@ -43,13 +43,16 @@
 </script>
 
 <div class="choice">
-  <Select
-    options={CHOICES}
-    value={form.available.kind}
-    label={words.available}
-    testid="profile-available"
-    onchange={choose}
-  />
+  <span class="short">
+    <Select
+      options={CHOICES}
+      value={form.available.kind}
+      label={words.available}
+      wide
+      testid="profile-available"
+      onchange={choose}
+    />
+  </span>
   {#if form.available.kind === 'from'}
     <span
       class="date"
@@ -75,6 +78,11 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-8);
+  }
+
+  .short {
+    display: flex;
+    width: var(--profile-control-width);
   }
 
   /* The choice keeps its width; the day beside it, or under it where the row is

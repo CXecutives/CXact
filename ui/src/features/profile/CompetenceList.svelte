@@ -1,11 +1,11 @@
 <!--
   Kompetenzen, all counting the same: rows like every field (ItemList; owner, 2026-10-29), one
   each with the competence's name as its label (plain text to copy, decision 14: never edited
-  in place), its years in the field of Berufserfahrung ("12 Jahre", 130 wide) and the × that
-  removes it. The last row is the tag field "Kompetenz hinzufügen" that suggests the engine's
-  words from the first character (vocabulary.svelte.ts); Enter takes what was typed as a new
-  row (a pasted list splits at commas) and the field stays ready for the next, a
-  name that is there already is not added twice. A new row rises in, a removed one folds
+  in place), its years in the field of Berufserfahrung ("12 Jahre") and the × that removes it.
+  The last row is the button "Kompetenz hinzufügen", which brings a name field that suggests
+  the engine's words from the first character (vocabulary.svelte.ts); Enter takes what was
+  typed as a new row (a pasted list splits at commas) and the field stays ready for the next,
+  a name that is there already is not added twice. A new row rises in, a removed one folds
   away. A value that is too large (the years) or that the backend refused marks its row's
   field and is said under the add row.
 -->
@@ -58,11 +58,11 @@
   </span>
 {/snippet}
 
-{#snippet add()}
+{#snippet draft()}
   <ChipInput
-    label={words.competencePlaceholder}
+    label={words.competence}
     bind:values={typed}
-    placeholder={words.competencePlaceholder}
+    placeholder={words.competence}
     suggestions={vocabulary.skills}
     testid="competence-add"
     onchange={take}
@@ -80,7 +80,8 @@
   key={(row) => keyOf(row.name)}
   name={(row) => row.name}
   value={years}
-  {add}
+  addLabel={words.competenceAdd}
+  {draft}
   {foot}
   testid="competences"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
@@ -89,7 +90,7 @@
 <style>
   .years {
     display: flex;
-    width: var(--profile-years-width);
+    width: var(--profile-control-width);
   }
 
   /* Under the add row, on the rows' sides. */

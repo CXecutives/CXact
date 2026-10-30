@@ -1,8 +1,8 @@
 // The profile editor (Profil view): the one profile of the app, the form as it was handed out
 // (`before`), the form as the user has it (`after`) and where it came from. Saving sends both;
-// the backend writes only what differs. A new form ("Selbst ausfüllen") is unsaved until it
-// is saved; the stored profile only once something differs. Leaving the view or closing the
-// window with unsaved changes asks first (ProfileView holds the guard and the dialog).
+// the backend writes only what differs. ProfileView saves a change by itself and before the
+// view is left or the window closes (it holds the guard, and the dialog for a change that
+// cannot be saved); the setup saves with its Weiter.
 //
 // The limits and the form of a new profile come from core (`types/profile.ts`, written from
 // `core/src/profile/form.rs`); which fields a usable profile still needs too
@@ -182,10 +182,18 @@ class ProfileEditor {
   /** Text typed into a chip field that is no chip yet: a change like any other. */
   readonly typed = new TypedText();
 
-  /** Unsaved: a change of the form. */
+  /** What was last sent to be saved, as the form had it. */
+  #sent: ProfileForm = emptyForm();
+
+  /** Unsaved: a change of the form, or text typed into a tag field. */
   get dirty(): boolean {
     if (this.origin === null) return false;
-    return this.typed.any || !sameForm(this.before, this.after);
+    return this.typed.any || this.changed;
+  }
+
+  /** The form differs from what is stored. */
+  get changed(): boolean {
+    return this.origin !== null && !sameForm(this.before, this.after);
   }
 
   #start(origin: DraftOrigin, before: ProfileForm, after: ProfileForm): void {
@@ -227,8 +235,20 @@ class ProfileEditor {
   /** Writes the form; the caller reloads the app state (and with it the stored form). */
   save(): Promise<ProfileInfo> {
     const before = copy(this.before);
+    this.#sent = copy(this.after);
     const after = normalized(copy(this.after));
     return serial(() => send(before, after));
+  }
+
+  /** A save is done and `form` is what the file holds now: the form shows it, and what was
+   *  changed while the save was under way stays a change. */
+  settle(form: ProfileForm): void {
+    if (sameForm(this.after, this.#sent)) {
+      this.edit(form);
+    } else {
+      this.origin = 'stored';
+      this.before = copy(form);
+    }
   }
 }
 
@@ -265,7 +285,7 @@ function saveStored(change: (form: ProfileForm) => void): Promise<boolean> {
  * The reader's "+": a term the ads ask for goes into its field of the stored profile (the
  * tool "Anaplan" into the tools), saved at once. Returns its undo, which takes out this term
  * only (a term added meanwhile stays); null when the field names it already or there is no
- * profile. Refused while the form holds unsaved changes (they come first).
+ * profile. Refused while the form holds a change that is not saved yet (it comes first).
  */
 export async function addToProfile(term: ProfileTerm): Promise<(() => Promise<void>) | null> {
   if (editor.dirty) return null;

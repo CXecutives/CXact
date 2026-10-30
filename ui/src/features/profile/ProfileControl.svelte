@@ -1,10 +1,10 @@
 <!--
-  One field of an open group of the Profil (ProfileEditor), a row of its box (Field `row`: the
-  label beside the control, only where docs/PLAN.md places one an info symbol after it). A
-  tag field fills the control's column, a number is as wide as its unit needs, Vertragsart
-  is a choice of several, Arbeitsmodell, Auslastung and Mindestlaufzeit are selects, Länder
-  and Verfügbar their own fields. A wished rate under the minimum says so quietly under it;
-  an error is said by its Field.
+  One field of the Profil (ProfileEditor), a row of its box (Field `row`: the label beside the
+  control, only where docs/PLAN.md places one an info symbol after it). A tag field fills the
+  control's column, every short control has one width (a number, a select), Vertragsart is a
+  choice of several, Arbeitsmodell, Auslastung and Mindestlaufzeit are selects, Länder and
+  Verfügbar their own fields. A wished rate under the minimum says so quietly under it; an
+  error is said by its Field.
 -->
 <script lang="ts">
   import CheckGroup from '$components/CheckGroup.svelte';
@@ -77,7 +77,7 @@
     {error}
     row
   >
-    <span class="number {c.unit}">
+    <span class="number">
       <NumberField
         id="{id}-{c.key}"
         money={c.unit !== 'years'}
@@ -116,12 +116,13 @@
   </Field>
 {:else if c.kind === 'choice'}
   <Field label={words[c.label]} for="{id}-{c.key}" error={errorOf(c.key)} row>
-    <div>
+    <div class="short">
       <Select
         id="{id}-{c.key}"
         options={CHOICES[c.key]}
         value={form[c.key]}
         label={words[c.label]}
+        wide
         testid={c.testid}
         onchange={(value) => choose(c.key, value)}
       />
@@ -129,12 +130,13 @@
   </Field>
 {:else if c.kind === 'months'}
   <Field label={words.minMonths} for="{id}-minMonths" error={errorOf('minMonths')} row>
-    <div>
+    <div class="short">
       <Select
         id="{id}-minMonths"
         options={MONTHS}
         value={String(form.minMonths)}
         label={words.minMonths}
+        wide
         testid="profile-min-months"
         onchange={(months) => (form.minMonths = Number(months) as ProfileForm['minMonths'])}
       />
@@ -163,20 +165,16 @@
     min-width: 0;
   }
 
-  /* A number is as wide as its unit needs (euros 170, years 130); the note under it keeps
-     its own line. */
+  /* Every short control one width; a number's note under it keeps its own line. */
   .number {
     display: flex;
     flex-direction: column;
     min-width: 0;
   }
 
-  .number > :global(:first-child) {
-    width: var(--profile-money-width);
+  .number > :global(:first-child),
+  .short {
+    width: var(--profile-control-width);
     max-width: 100%;
-  }
-
-  .number.years > :global(:first-child) {
-    width: var(--profile-years-width);
   }
 </style>

@@ -1,6 +1,5 @@
 <!--
-  The bar at the foot of a view (the Profil's unsaved changes, the setup's "Dein Profil"; the
-  round 10 draft): solid white with a hairline on top (no blur), docked at the view's bottom
+  The bar at the foot of a view (the setup's "Dein Profil"; the round 10 draft): solid white with a hairline on top (no blur), docked at the view's bottom
   edge and as wide as the view; its content in the page's column (--page-max, 10 32 inside,
   16 at the sides in a narrow page), at least 50 high. At its left what it says or the way
   back (`children`: the muted sentence, or "Zurück"), at its right its buttons (`actions`, 8

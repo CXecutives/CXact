@@ -122,10 +122,11 @@
     margin-top: var(--empty-tile-gap);
   }
 
+  /* A pair is one width, whatever its words. */
   .actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
     gap: var(--space-8);
     margin-top: var(--empty-actions-gap);
   }

@@ -2,9 +2,10 @@
   Sprachen: rows like every field (ItemList; owner, 2026-10-29), one each with the language's
   name as its label, its level in a select like Arbeitsmodell's (A1 to C2 and Muttersprache,
   as ads and CVs name them; stored as shown) and the × that removes it. The last row is the
-  field "Sprache hinzufügen" (ChipInput with options): it opens nothing on focus, typing lists
-  the languages the app knows and not chosen yet, and it takes nothing else ("Keine Sprache mit diesem Namen."); a new language starts at
-  B2, the level the engine assumes. A value the backend refused is said under the add row.
+  button "Sprache hinzufügen", which brings a name field (ChipInput with options): it opens
+  nothing on focus, typing lists the languages the app knows and not chosen yet, and it takes
+  nothing else ("Keine Sprache mit diesem Namen."); a new language starts at B2, the level the
+  engine assumes. A value the backend refused is said under the add row.
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
@@ -52,22 +53,25 @@
 </script>
 
 {#snippet level(row: Language)}
-  <Select
-    options={LEVELS}
-    value={row.level}
-    label={words.levelOf(row.language)}
-    testid="language-level"
-    onchange={(next) => (row.level = next)}
-  />
+  <span class="level">
+    <Select
+      options={LEVELS}
+      value={row.level}
+      label={words.levelOf(row.language)}
+      wide
+      testid="language-level"
+      onchange={(next) => (row.level = next)}
+    />
+  </span>
 {/snippet}
 
-{#snippet add()}
+{#snippet draft()}
   <ChipInput
-    label={words.languagePlaceholder}
+    label={words.language}
     bind:values={typed}
     options={OPTIONS.filter((option) => !chosen(option.id))}
     noMatch={words.languageNone}
-    placeholder={words.languagePlaceholder}
+    placeholder={words.language}
     testid="language-add"
     onchange={take}
   />
@@ -84,13 +88,19 @@
   key={(row) => keyOf(row.language)}
   name={(row) => row.language}
   value={level}
-  {add}
+  addLabel={words.languageAdd}
+  {draft}
   {foot}
   testid="languages"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />
 
 <style>
+  .level {
+    display: flex;
+    width: var(--profile-control-width);
+  }
+
   /* Under the add row, on the rows' sides. */
   .error {
     padding: 0 var(--card-pad-x) var(--suggest-line-pad-y);

@@ -43,7 +43,7 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   values, paths) is marked `data-copy`, selectable and copies with Ctrl/Cmd+C; everything else is not selectable.
   Fields behave like native fields: every character the keyboard layout produces (AltGr, macOS Option), the OS
   editing keys (word and line moves, delete word, Home/End, Shift selection, undo/redo, copy/paste/cut/select all),
-  Tab, Enter, Esc. No browser context menu, no zoom, no reload, no find/print. All input handling in
+  Tab, Enter, Esc. No field ever takes the caret by itself (a press on it does), and no button carries an ellipsis. No browser context menu, no zoom, no reload, no find/print. All input handling in
   `ui/src/lib/input/input.ts`, per-OS key conventions in `ui/src/lib/platform.ts`. Motion is quick (<= 180 ms, ring
   fill <= 400 ms, a stagger <= 400 ms), ease-out, no bounce, only transform and opacity, and only on a real change
   (a view or list opens, a new job, an insert), never on a re-render; the chosen row, the sidebar pill and a segment's

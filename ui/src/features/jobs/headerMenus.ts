@@ -65,14 +65,16 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
       });
     }
   }
-  entries.push(
-    { kind: 'separator' },
-    {
-      id: 'filter-reset',
-      label: t.toolbar.filterReset,
-      disabled: !jobs.filtered,
-      run: () => jobs.setFilter(NO_FILTER),
-    },
-  );
+  // Only while there is a filter to take back.
+  if (jobs.filtered) {
+    entries.push(
+      { kind: 'separator' },
+      {
+        id: 'filter-reset',
+        label: t.toolbar.filterReset,
+        run: () => jobs.setFilter(NO_FILTER),
+      },
+    );
+  }
   return entries;
 }

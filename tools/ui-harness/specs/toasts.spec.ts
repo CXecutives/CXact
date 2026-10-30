@@ -4,7 +4,6 @@
 
 import type { Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
-import { T } from './helpers';
 
 async function sheet(page: Page): Promise<void> {
   await open(page, '?sheet=surfaces');
@@ -22,7 +21,7 @@ test('a toast has no close button; a plain one has no sign', async ({ page }) =>
     );
   }
   const plain = page.locator('[data-testid="toast"][data-kind="plain"]');
-  await expect(plain).toHaveText(T.profile.saved);
+  await expect(plain).toHaveText('Profil gespeichert');
   await expect(plain.locator('svg')).toHaveCount(0);
 });
 

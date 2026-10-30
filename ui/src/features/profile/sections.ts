@@ -182,19 +182,6 @@ export function fieldsOf(control: Control): (keyof ProfileForm)[] {
   return [fieldOf(control)];
 }
 
-/** The group a value of the form belongs to. */
-export function sectionOf(field: string): SectionId | null {
-  for (const section of SECTIONS) {
-    if (
-      'list' in section
-        ? section.list === field
-        : section.rows.some((c) => fieldsOf(c).includes(field as keyof ProfileForm))
-    )
-      return section.id;
-  }
-  return null;
-}
-
 /** Every value of the form in the order of the page (the first marked one is revealed). */
 export const FIELD_ORDER: readonly (keyof ProfileForm)[] = SECTIONS.flatMap((section) =>
   'list' in section ? [section.list] : section.rows.map(fieldOf),

@@ -89,7 +89,7 @@
     "ban":                    { "css": "hsl(356.2 70.6% 48%)", "rgb": [209, 36, 47] },
     "ban-track":              { "css": "hsl(358 60% 90%)", "rgb": [245, 214, 215] },
     "verdict-met":            { "css": "hsl(142 50% 38%)", "rgb": [48, 145, 84] },
-    "verdict-partial":        { "css": "hsl(38 92% 40%)", "rgb": [196, 127, 8] },
+    "verdict-partial":        { "css": "hsl(40 88% 52%)", "rgb": [240, 169, 25] },
     "verdict-unmet":          { "css": "hsl(358 70% 55%)", "rgb": [221, 60, 65] },
     "brand":                  { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
     "brand-glyph":            { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },

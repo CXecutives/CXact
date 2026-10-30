@@ -3,10 +3,11 @@
   file that no longer reads) and, while there is a form, the page's own action at its end:
   "Aus Lebenslauf ausfüllen" (secondary, file-up), which opens the file dialog at once. While
   the CV is evaluated a 16 px spinner and "Wird von einer KI ausgewertet" (13 muted) stand in
-  its place, in the same width (both share one cell, the wider sets it). It waits, its
-  tooltip saying why, while the form holds changes or no evaluation is left today. What went
-  wrong with the CV stands under the head as a state box (ProfileView). A file that no longer
-  reads has "Ordner öffnen" there instead, its folder at hand.
+  its place, in the same width (both share one cell, the wider sets it), also on the start
+  page without a form. It waits, its tooltip saying why, while a value is wrong or no
+  evaluation is left today. What went wrong with the CV stands under the head as a state box
+  (ProfileView). A file that no longer reads has "Ordner öffnen" there instead, its folder at
+  hand.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -19,15 +20,15 @@
     heading: string;
     /** There is a form: the CV can fill it. */
     form: boolean;
-    /** The form holds a change: the CV waits. */
-    dirty: boolean;
+    /** The label of a value that is wrong: the CV waits. */
+    held: string | null;
     /** The file dialog of the CV. */
     oncv: () => void;
     /** The folder of a file that no longer reads (no form): the head's action. */
     onfolder?: (() => void) | null;
   }
 
-  let { heading, form, dirty, oncv, onfolder = null }: Props = $props();
+  let { heading, form, held, oncv, onfolder = null }: Props = $props();
 </script>
 
 {#snippet folder()}
@@ -47,14 +48,19 @@
         variant="secondary"
         icon="pickFile"
         label={t.profile.fromCv}
-        disabled={dirty || fromCv.limited}
-        disabledReason={fromCv.limited ? t.profile.cvError.limit : t.profile.saveFirst}
+        disabled={held !== null || fromCv.limited}
+        disabledReason={fromCv.limited
+          ? t.profile.cvError.limit
+          : held !== null
+            ? t.profile.fixFirst(held)
+            : null}
         testid="profile-from-cv"
         onclick={oncv}
       />
     </span>
     <span class="face working" role="status" data-testid="profile-cv-busy">
-      <Spinner size="sm" label={null} />{t.profile.cvBusy}
+      {#if fromCv.busy}<Spinner size="sm" label={null} />{:else}<span class="slot"></span>{/if}{t
+        .profile.cvBusy}
     </span>
   </span>
 {/snippet}
@@ -62,7 +68,7 @@
 <PageHeader
   {heading}
   headingTestid="profile-heading"
-  actions={form ? actions : onfolder ? folder : null}
+  actions={form || fromCv.busy ? actions : onfolder ? folder : null}
   column="page"
   testid="profile-head"
 />
@@ -86,6 +92,11 @@
     color: var(--text-muted);
     font: var(--type-sm);
     white-space: nowrap;
+  }
+
+  /* The spinner's room while there is none (the cell keeps its width). */
+  .slot {
+    width: var(--spinner-sm);
   }
 
   .busy .working {

@@ -2,7 +2,7 @@
 // its term belongs to (core names both: "Kenntnisse in Anaplan" is the tool "Anaplan"), saved
 // at once like a save of the form (the previous file is the backup, every job is scored
 // again), with a toast that takes it back while it is up. A term added here shows as added.
-// (The profile form cannot hold unsaved changes meanwhile: leaving it asks first.)
+// (The profile form cannot hold unsaved changes meanwhile: it saves before it is left.)
 
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';

@@ -29,6 +29,8 @@ async function create(page: Page, scenario = 'no-profile'): Promise<void> {
   await expect(page.getByTestId('profile-form')).toBeVisible();
 }
 
+/** A moment longer than a changed control waits before it saves (--save-delay). */
+const T_SAVE = 400;
 const save = (page: Page): Locator => page.getByTestId('profile-save');
 const discard = (page: Page): Locator => page.getByTestId('profile-discard');
 const chips = (field: Locator): Locator => field.locator('.chip .text');
@@ -57,9 +59,8 @@ async function pickCv(page: Page): Promise<void> {
 const names = (page: Page, list: 'competences' | 'languages'): Locator =>
   page.getByTestId(list).locator('[data-copy]');
 
-/** The toast that answers a save (with what its rescore changed, when it did). */
-const savedToast = (page: Page): Locator =>
-  page.getByTestId('toast').filter({ hasText: T.profile.saved });
+/** The toast that says what the rescore of a save moved (nothing is said otherwise). */
+const savedToast = (page: Page): Locator => page.getByTestId('toast');
 
 /** The next save_profile is refused like core refuses a value (`profileValue`). */
 async function refuseNext(
@@ -118,8 +119,7 @@ test('the title Profil with "Aus Lebenslauf ausfüllen" on its line; the bar com
   expect(await marked(page)).toEqual([]);
   await expect(bar(page)).toHaveCount(0);
   await page.getByTestId('profile-wish-rate').fill('1.250');
-  await expect(bar(page)).toContainText(T.profile.unsaved);
-  await expect(bar(page).getByRole('button')).toHaveText([T.profile.save, T.profile.discard]);
+  await expect(bar(page)).toHaveCount(0);
   await expect(head.getByRole('button')).toHaveCount(1);
 });
 test('six groups on one page in their order, no info symbol at their headings', async ({
@@ -200,16 +200,10 @@ test('each field is a row of its group with its label beside it', async ({ page 
   // The placeholders and the add buttons say what to do.
   await expect(roles(page).locator('input')).toHaveAttribute('placeholder', words.rolesPlaceholder);
   await expect(countryInput(page)).toHaveAttribute('placeholder', words.countriesPlaceholder);
-  await expect(page.getByTestId('competences-add')).toHaveText(words.competencePlaceholder);
-  await expect(page.getByTestId('languages-add')).toHaveText(words.languagePlaceholder);
-  await expect(await adder(page, 'competence')).toHaveAttribute(
-    'placeholder',
-    words.competencePlaceholder,
-  );
-  await expect(await adder(page, 'language')).toHaveAttribute(
-    'placeholder',
-    words.languagePlaceholder,
-  );
+  await expect(page.getByTestId('competences-add')).toHaveText(words.competenceAdd);
+  await expect(page.getByTestId('languages-add')).toHaveText(words.languageAdd);
+  await expect(await adder(page, 'competence')).toHaveAttribute('placeholder', words.competence);
+  await expect(await adder(page, 'language')).toHaveAttribute('placeholder', words.language);
 });
 
 test('in a narrow window the label stands above its control', async ({ page }) => {
@@ -561,13 +555,14 @@ test('"Aus Lebenslauf ausfüllen" opens the file dialog at once; the AI works in
   expect(await marked(page)).toEqual([]);
   await expect(save(page)).toHaveCount(0);
 });
-test('"Aus Lebenslauf ausfüllen" waits while the form holds changes', async ({ page }) => {
+test('"Aus Lebenslauf ausfüllen" waits while a value is wrong', async ({ page }) => {
   await profile(page);
   const cv = page.getByTestId('profile-from-cv');
-  await page.getByTestId('profile-wish-rate').fill('1.250');
+  const rate = page.getByTestId('profile-wish-rate');
+  await rate.fill('0');
   await expect(cv).toHaveAttribute('aria-disabled', 'true');
-  expect(await tooltipOf(page, cv)).toBe(T.profile.saveFirst);
-  await discard(page).click();
+  expect(await tooltipOf(page, cv)).toBe(T.profile.fixFirst(T.profile.field.dayRateWish));
+  await rate.fill('1.250');
   await expect(cv).not.toHaveAttribute('aria-disabled', 'true');
 });
 
@@ -796,14 +791,17 @@ test('edit and save: both forms go to the backend, the toast answers', async ({ 
   await expect(page.getByTestId('profile-date')).toHaveValue('01.11.2026');
 });
 
-test('the toast of a save says what the rescore changed, only the parts that did', async ({
+test('a save says nothing unless its rescore moved jobs, and then only the parts that did', async ({
   page,
 }) => {
-  // The demo profile saved again moves no job: the toast says only that it is saved.
+  // The demo profile saved again moves no job: nothing is said.
   await profile(page);
-  await page.getByTestId('profile-wish-rate').fill('1.250');
-  await save(page).click();
-  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(T.profile.saved);
+  const rate = page.getByTestId('profile-wish-rate');
+  await rate.fill('1.250');
+  await rate.blur();
+  await lastSave(page);
+  await page.waitForTimeout(2 * T_SAVE);
+  await expect(savedToast(page)).toHaveCount(0);
   // A first profile scores the jobs of Aktuell: the ones now high and the excluded ones.
   await create(page);
   await fillRequired(page);
@@ -817,8 +815,7 @@ test('the toast of a save says what the rescore changed, only the parts that did
   await expect(savedToast(page).getByTestId('toast-text')).toHaveText(
     T.profile.savedEffect(high, counts.excluded),
   );
-  expect(T.profile.savedEffect(0, 1)).toBe('Profil gespeichert, 1 Job ausgeschlossen');
-  expect(T.profile.savedEffect(0, 0)).toBe(T.profile.saved);
+  expect(T.profile.savedEffect(0, 1)).toBe('1 Job ausgeschlossen');
 });
 
 test('a value too large is said at its field and holds the save', async ({ page }) => {

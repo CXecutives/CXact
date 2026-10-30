@@ -1041,42 +1041,35 @@ export const de = {
     wayCvNote: 'Eine KI füllt es aus, du prüfst es danach.',
     byHand: 'Selbst ausfüllen',
     byHandNote: 'Du trägst alles von Hand ein.',
-    /** Why "Aus Lebenslauf ausfüllen" waits while the form holds changes. */
-    saveFirst: 'Speichere oder verwirf erst deine Änderungen.',
     /** The toast once the CV filled the profile (saved at once; it adds, never overwrites). */
     filled: 'Profil ergänzt. Bitte prüfen.',
     /** Why the CV filled nothing; where a new try can work "Datei auswählen" stands beside
      *  it. */
     cvError,
     pickFile: 'Datei auswählen',
-    /** The bar at the foot while the form holds a change. */
-    unsaved: 'Ungespeicherte Änderungen',
-    /** The toast of a save. */
-    saved: 'Profil gespeichert',
-    /** The same toast with what the rescore of the save changed in Aktuell: the jobs
-     *  now (or no longer) in the high band and the ones now (or no longer) excluded, only
-     *  what changed. */
+    /** The toast when a change of the profile moved jobs in Aktuell: the jobs now (or no
+     *  longer) in the high band and the ones now (or no longer) excluded, only what changed. */
     savedEffect: (high: number, excluded: number) => {
       const jobs = (value: number): string => count(Math.abs(value), 'Job', 'Jobs');
       // After the high band a bare number; alone the excluded ones name the jobs.
       const out = (value: number): string => (high === 0 ? jobs(value) : n(Math.abs(value)));
-      const parts = [
+      return [
         high > 0 ? `${jobs(high)} jetzt mit hoher Übereinstimmung` : null,
         high < 0 ? `${jobs(high)} nicht mehr mit hoher Übereinstimmung` : null,
         excluded > 0 ? `${out(excluded)} ausgeschlossen` : null,
         excluded < 0 ? `${out(excluded)} nicht mehr ausgeschlossen` : null,
-      ].filter((part) => part !== null);
-      return parts.length === 0 ? 'Profil gespeichert' : `Profil gespeichert, ${parts.join(', ')}`;
+      ]
+        .filter((part) => part !== null)
+        .join(', ');
     },
     warning,
-    save: 'Speichern',
+    /** Leaving while a change cannot be saved (a change saves by itself otherwise). */
     discard: 'Verwerfen',
-    leaveHeading: 'Änderungen speichern?',
-    /** Why Speichern waits while a value is wrong: the field by its label. */
+    leaveHeading: 'Änderung verwerfen?',
+    leaveWrong: (label: string) => `„${label}“ stimmt noch nicht und wird nicht gespeichert.`,
+    leaveFailed: 'Die letzte Änderung lässt sich gerade nicht speichern.',
+    /** Why the CV waits while a value is wrong: the field by its label. */
     fixFirst: (label: string) => `Korrigiere erst „${label}“.`,
-    /** The Profil reads like a profile (round 11): a group opens with Bearbeiten and closes
-     *  with Fertig, which saves at once. */
-    done: 'Fertig',
     /** The card under the head while required values are empty: how many, which, the way. */
     missing: {
       heading: (count: number) =>
@@ -1086,14 +1079,6 @@ export const de = {
           ? labels.join('')
           : `${labels.slice(0, -1).join(', ')} und ${labels.at(-1)}`,
       action: 'Ergänzen',
-    },
-    /** The values as the Profil reads them. */
-    read: {
-      amount: (value: number, unit: string) => `${n(value)} ${unit}`,
-      /** A value still to give (red where it is required), and a group with nothing in it. */
-      none: 'Noch keine Angabe',
-      from: (date: string) => `Ab ${date}`,
-      years: (years: number) => (years === 1 ? '1 Jahr' : `${years} Jahre`),
     },
     /** The groups of the page. */
     section: {
@@ -1133,7 +1118,9 @@ export const de = {
       workload: 'Auslastung',
       minMonths: 'Mindestlaufzeit',
       competences: COMPETENCES,
-      competencePlaceholder: 'Kompetenz hinzufügen',
+      /** The button under the rows, and the name field of the row it brings. */
+      competenceAdd: 'Kompetenz hinzufügen',
+      competence: 'Kompetenz',
       years: 'Jahre',
       /** The years of a competence, as a screen reader names the field. */
       yearsOf: (name: string) => `Jahre in ${name}`,
@@ -1143,7 +1130,9 @@ export const de = {
       industries: 'Branchen',
       industriesPlaceholder: 'Branche hinzufügen',
       languages: LANGUAGES,
-      languagePlaceholder: 'Sprache hinzufügen',
+      /** The button under the rows, and the name field of the row it brings. */
+      languageAdd: 'Sprache hinzufügen',
+      language: 'Sprache',
       /** The level of a language, as a screen reader names its select. */
       levelOf: (name: string) => `Niveau in ${name}`,
       /** The chips a folded chip field hides. */

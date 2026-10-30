@@ -3,24 +3,25 @@
   the title "Profil" and "Aus Lebenslauf ausfüllen", which opens the file dialog at once). A
   CV dropped on the page (Tauri's drag and drop, never a path) is evaluated the same way,
   with a dashed edge while it is over the page; it fills the profile at once. Under the head
-  what went wrong with the CV (a state box with its way out), then the four groups
-  (ProfileEditor). While the form holds a change, or the last save failed, the bar at the
-  foot says so (SaveBar): "Ungespeicherte Änderungen", Verwerfen and Speichern (the view's
-  one primary). Without a profile the two ways in (ProfileStart); a file that no longer
-  reads says so in the same place, with its folder at hand. A save is answered by a toast
-  with what its rescore changed (saveEffect.ts), nothing else moves on the page. Leaving the
-  view or closing the window with unsaved changes asks once ("Änderungen speichern?", the
-  heading alone).
+  what went wrong with the CV (a state box with its way out), then the groups
+  (ProfileEditor). Without a profile the two ways in (ProfileStart); a file that no longer
+  reads says so in the same place, with its folder at hand.
+  A change saves by itself, like a setting (owner, 2026-10-30): a moment after a control
+  changed, a text field once it is left or with Enter, and before the view is left or the
+  window closes. Nothing asks and nothing bars the way, and nothing is said unless the rescore
+  of the save moved jobs (a toast, saveEffect.ts). What changes while a save is under way goes
+  next; a save that failed says so under the head and is tried again with the next change.
+  A value that is wrong holds the save, said at its field; leaving with one asks once whether
+  to drop it.
   What is missing (decisions 2 and 3 of round 10): a required field that is still empty
   (Wunschrollen, Länder, Kompetenzen, Sprachen) is red on the Profil page for as long as it
-  is empty; it never holds the save. Speichern with gaps saves, says so in a plain toast (no
-  success sign) and brings the first red field into view (no caret). Only a value that is
-  wrong holds the save, said at its field, and Speichern's tooltip names it. A new or
-  changed form asks core what it still lacks (`profileMissing`, a moment after the last
-  edit), the stored profile names its own (`missing`).
-  In the setup (`setup`) the same form without the CV, the bar and "Häufig verlangt"; the red
-  marks show only once its "Weiter" (`next`) asked, which brings the first into view and goes
-  on once nothing is missing; a failed save says so above the form.
+  is empty; it never holds the save. The card under the head names them, its "Ergänzen" brings
+  the first into view (no caret). A new or changed form asks core what it still lacks
+  (`profileMissing`, a moment after the last edit), the stored profile names its own
+  (`missing`).
+  In the setup (`setup`) the same form without the CV and the card; its "Weiter" (`next`)
+  saves. The red marks show only once it asked, which brings the first into view and goes on
+  once nothing is missing; a failed save says so above the form.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -35,6 +36,7 @@
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { editor, sameForm } from '$lib/state/profile.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
+  import { tokenMs } from '$lib/tokens';
   import { onMount, tick, untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
   import CvProblem from './CvProblem.svelte';
@@ -42,8 +44,7 @@
   import ProfileEditor, { type FieldError } from './ProfileEditor.svelte';
   import ProfileHead from './ProfileHead.svelte';
   import ProfileStart from './ProfileStart.svelte';
-  import SaveBar from './SaveBar.svelte';
-  import { refused, watchSave } from './saveEffect';
+  import { refused, watchSave, type SaveEffect } from './saveEffect';
   import { FIELD_ORDER, LABEL_OF, blank } from './sections';
 
   interface Props {
@@ -77,7 +78,8 @@
     });
   });
 
-  /** Where the user wanted to go with unsaved changes: a view, or closing the window. */
+  /** Where the user wanted to go with a change that cannot be saved: a view, or closing the
+   *  window. */
   let leaving = $state<ViewId | 'close' | null>(null);
 
   // The stored profile fills the form while nothing unsaved is in it (also after a save).
@@ -100,29 +102,80 @@
     untrack(() => void invoke('set_unsaved', { on }).catch(() => undefined));
   });
 
-  /** The window is to close with unsaved changes: the page says it is here, then asks. */
-  async function closeRequested(): Promise<void> {
-    await invoke('set_unsaved', { on: editor.dirty }).catch(() => undefined);
-    if (editor.dirty) leaving = 'close';
-    else closeWindow();
-  }
-
   function closeWindow(): void {
     invoke('close_window').catch((error: unknown) => (note = () => errorText(error)));
   }
+
+  function go(next: ViewId | 'close'): void {
+    if (next === 'close') closeWindow();
+    else navigation.go(next, true);
+  }
+
+  /** Leaves once what the form holds is saved; a change that cannot be saved asks first. */
+  async function leaveTo(next: ViewId | 'close'): Promise<void> {
+    if (await settled()) go(next);
+    else leaving = next;
+  }
+
+  /** The window is to close: the page says it is here, then saves. */
+  async function closeRequested(): Promise<void> {
+    await invoke('set_unsaved', { on: editor.dirty }).catch(() => undefined);
+    await leaveTo('close');
+  }
+
+  /** The change that cannot be saved goes, and the way goes on. */
+  function leave(): void {
+    const next = leaving;
+    leaving = null;
+    saveNote = null;
+    fieldError = null;
+    editor.discard(stored);
+    if (next !== null) go(next);
+  }
+
+  /** Staying: what holds the save is said at its field, which comes into view. */
+  function stay(): void {
+    leaving = null;
+    panel?.ready();
+  }
+
+  /** A moment after a change, and when a field was left. */
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  function soon(): void {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (!typing()) void trySave();
+    }, tokenMs('--save-delay'));
+  }
+
+  /** The caret stands in a field of the form: its value is not done yet. */
+  function typing(): boolean {
+    const active = document.activeElement;
+    return (
+      document.hasFocus() &&
+      active instanceof HTMLElement &&
+      active.matches('input, textarea') &&
+      active.closest('[data-testid="profile-form"]') !== null
+    );
+  }
+
+  $effect(() => {
+    if (!setup && editor.changed) untrack(soon);
+  });
 
   onMount(() => {
     // The setup's form starts empty where there is no profile yet.
     if (setup && editor.origin === null) editor.create();
     const release = navigation.guard((next) => {
       if (!editor.dirty) return true;
-      leaving = next;
+      void leaveTo(next);
       return false;
     });
     const stopClose = onCloseRequested(() => void closeRequested());
     // The setup takes its CV on its own upload step.
     const stopDrag = setup ? () => undefined : onFileDrag(dragged);
     return () => {
+      clearTimeout(timer);
       release();
       stopClose();
       stopDrag();
@@ -161,17 +214,27 @@
   }
 
   async function fillFromCv(dropped = false): Promise<void> {
+    if (!(await settled())) return;
     const info = await fromCv.run(dropped);
     if (info !== null) filled(info.form);
   }
 
-  /** A file over the page that the CV import would take now. */
+  let panel = $state<ProfileEditor | null>(null);
+
+  /** The label of a value that holds the save. */
+  const held = $derived(panel?.wrongField() ?? null);
+
+  /** A file over the page: the dashed edge shows while the CV import would take it; a drop it
+   *  cannot take says why (the tries used up, in fromCv; a value that is wrong). */
   let over = $state(false);
-  const takesDrop = (): boolean => !editor.dirty && !fromCv.busy && !fromCv.limited;
+  const takesDrop = (): boolean => held === null && !fromCv.busy && !fromCv.limited;
 
   function dragged(drag: FileDrag): void {
     over = drag.kind === 'over' && takesDrop();
-    if (drag.kind === 'drop' && drag.paths.length > 0 && takesDrop()) void fillFromCv(true);
+    if (drag.kind !== 'drop' || drag.paths.length === 0) return;
+    const wrong = held;
+    if (wrong !== null) saveNote = () => t.profile.fixFirst(wrong);
+    else void fillFromCv(true);
   }
 
   /** Back at the ways in, the keyboard focus on the first of them (a button: no caret). */
@@ -180,7 +243,8 @@
     document.querySelector<HTMLElement>('[data-testid="way-cv"]')?.focus();
   }
 
-  let panel = $state<ProfileEditor | null>(null);
+  /** The toast of the last save, until the next one takes over. */
+  let lastSave: SaveEffect | null = null;
 
   /** `true` when the profile is saved. */
   async function save(): Promise<boolean> {
@@ -188,34 +252,40 @@
     saveNote = null;
     fieldError = null;
     refusedValue = null;
-    const effect = watchSave();
+    lastSave?.stop();
+    const watching = watchSave();
+    lastSave = watching;
     try {
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
       // again never puts the old values back.
       if (!(await reload()) && app.state) app.state.profile = info;
       const form = info.form ?? app.state?.profile?.form;
-      if (form) editor.edit(form);
+      if (form) editor.settle(form);
       else editor.close();
-      // The setup's next step is its answer there; with gaps the toast has no success sign.
-      if (!setup) {
-        const kind = missing.length > 0 ? 'plain' : 'success';
-        void effect.said().then((text) => toasts.show(text, kind));
-      } else effect.stop();
+      if (setup) {
+        watching.stop();
+      } else {
+        // What moved is news; that it is saved is not (it always is).
+        void watching.said().then((text) => {
+          if (text !== null) toasts.show(text, 'plain');
+        });
+        if (editor.changed) soon();
+      }
       return true;
     } catch (error) {
-      effect.stop();
+      watching.stop();
       const at = refused(error);
       if (at === null) {
         saveNote = () => errorText(error);
       } else {
-        // Said at its field; the bar says it where the field is not on the page.
+        // Said at its field; the note says it where the field is not on the page.
         fieldError = {
           field: at.field,
           row: at.row,
           text: () => (at.max !== null ? t.profile.field.atMost(at.max) : t.profile.field.refused),
         };
-        if (!(await panel?.openField(at.field))) saveNote = () => errorText(error);
+        if (!(await panel?.revealField(at.field))) saveNote = () => errorText(error);
       }
       return false;
     } finally {
@@ -223,49 +293,36 @@
     }
   }
 
-  /** Fertig and Speichern (and Enter in a field): a value that holds the save is said
-   *  first; with gaps the profile is saved anyway and the first red field comes into view.
-   *  `true` once the profile is saved, or when there was nothing to save. */
+  /** Saves what changed (a change, Enter in a field); `true` once the profile is saved, or when
+   *  there was nothing to save. */
   async function trySave(): Promise<boolean> {
     if (busy) return false;
-    if (!editor.dirty) return true;
-    if (!panel?.ready()) return false;
-    const done = await save();
-    if (done && missing.length > 0) void reveal(missing[0]!);
-    return done;
+    if (!editor.changed) return true;
+    if (!panel?.valid()) return false;
+    return save();
   }
 
-  /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
-   *  focus of the gone form. */
+  /** Before the way goes on: what was typed goes into the form (a tag field takes it when it is
+   *  left, what it does not take is dropped) and the form is saved; `false` when a change
+   *  cannot be saved. */
+  async function settled(): Promise<boolean> {
+    const field = document.activeElement;
+    if (field instanceof HTMLElement && field.matches('input, textarea')) field.blur();
+    await tick();
+    editor.typed.clear();
+    if (!editor.changed) return true;
+    if (!panel?.valid()) return false;
+    return save();
+  }
+
+  /** Esc on an untouched new form: back to the ways in, whose first one takes the focus of the
+   *  gone form. */
   function discard(): void {
     saveNote = null;
     fieldError = null;
     flagged = false;
     editor.discard(stored);
     if (editor.origin === null) void focusFirstWay();
-  }
-
-  /** Leaving without saving. */
-  function leave(): void {
-    const next = leaving;
-    leaving = null;
-    editor.discard(stored);
-    if (next === 'close') closeWindow();
-    else if (next !== null) navigation.go(next, true);
-  }
-
-  /** Saving, then leaving; a date that does not read or a failed save keeps the view. */
-  async function saveAndLeave(): Promise<void> {
-    const next = leaving;
-    if (panel !== null && !panel.ready()) {
-      leaving = null;
-      return;
-    }
-    const done = await save();
-    leaving = null;
-    if (!done || next === null) return;
-    if (next === 'close') closeWindow();
-    else navigation.go(next, true);
   }
 
   // ------------------------------------------------------------ what is still missing
@@ -296,7 +353,7 @@
   });
   const marked = $derived(!setup || flagged ? missing : []);
 
-  /** A field of the form in the middle of the view, no caret (Weiter, Speichern). */
+  /** A field of the form in the middle of the view, no caret (Weiter, Ergänzen). */
   function reveal(field: string): Promise<boolean> {
     return panel?.revealField(field) ?? Promise.resolve(false);
   }
@@ -335,10 +392,6 @@
     }
     return true;
   }
-
-  /** The bar at the foot, for a form that was never stored (a stored profile saves group by
-   *  group with Fertig): a change or a failed save. */
-  const barShown = $derived(editor.origin === 'new' && (editor.dirty || saveNote !== null));
 </script>
 
 {#snippet notes()}
@@ -350,13 +403,13 @@
       action={{
         label: t.profile.missing.action,
         testid: 'profile-missing-go',
-        onclick: () => void panel?.openField(missing[0]!),
+        onclick: () => void reveal(missing[0]!),
       }}
       testid="profile-missing"
     />
   {/if}
   {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
-  {#if !setup && !barShown && saveNote}
+  {#if saveNote}
     <StateBox heading={saveNote()} alert testid="profile-save-error" />
   {/if}
 {/snippet}
@@ -367,9 +420,6 @@
   {#if editor.origin !== null}
     <div class="setup" data-testid="profile">
       {@render notes()}
-      {#if saveNote}
-        <StateBox heading={saveNote()} alert testid="profile-save-error" />
-      {/if}
       <ProfileEditor
         bind:this={panel}
         setup
@@ -385,22 +435,12 @@
     <ProfileHead
       heading={editor.origin === null && profile?.parseError ? t.profile.unreadable : t.nav.profile}
       form={editor.origin !== null}
-      dirty={editor.dirty}
+      {held}
       oncv={() => void fillFromCv()}
       onfolder={editor.origin === null && profile?.parseError ? openFolder : null}
     />
   {/snippet}
-  {#snippet bar()}
-    <SaveBar
-      dirty={editor.dirty}
-      {busy}
-      wrong={panel?.wrongField() ?? null}
-      failure={saveNote?.() ?? null}
-      onsave={() => void trySave()}
-      ondiscard={discard}
-    />
-  {/snippet}
-  <Page testid="profile" {over} {head} foot={barShown && editor.origin !== null ? bar : null}>
+  <Page testid="profile" {over} {head}>
     {#if editor.origin === null}
       <ProfileStart
         text={profile?.parseError
@@ -416,25 +456,24 @@
         bind:this={panel}
         {fieldError}
         missing={marked}
-        {busy}
         onsave={trySave}
         ondiscard={discard}
+        onleft={soon}
       />
     {/if}
   </Page>
 {/if}
 
-<!-- The heading says it all: the dialog does not repeat it. -->
+<!-- A change that cannot be saved: the way goes on without it, or stays. -->
 <Dialog
   open={leaving !== null}
+  variant="danger"
   heading={t.profile.leaveHeading}
-  confirmLabel={t.profile.save}
-  altLabel={t.profile.discard}
-  {busy}
+  text={held !== null ? t.profile.leaveWrong(held) : t.profile.leaveFailed}
+  confirmLabel={t.profile.discard}
   testid="dialog-leave-profile"
-  onconfirm={() => void saveAndLeave()}
-  onalt={leave}
-  oncancel={() => (leaving = null)}
+  onconfirm={leave}
+  oncancel={stay}
 />
 
 <style>

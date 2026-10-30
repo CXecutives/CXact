@@ -6,20 +6,23 @@
   user would copy), its value in the control's column (`value`: the caller's field, a years
   field or a level's select, as wide as the same kind of field elsewhere) and at the end the
   quiet × ("Entfernen", 28).
-  The last row adds an entry: the caller's field (`add`, a tag field or a closed list that
-  opens nothing on focus) in the control's column, always there like every tag field; what it
-  takes becomes a row and it stays ready for the next. Under it the box's last lines (`foot`:
-  what was wrong). A new row rises in, a removed one folds away while the rows below close
-  the gap; a list that comes with its view is simply there.
+  The last row is the button that adds an entry ("+ Kompetenz hinzufügen", owner 2026-10-30,
+  no field standing open). Pressed, its row becomes the new entry's: the caller's field for the
+  name (`draft`) in the names' column and the × that closes it again. No caret goes there by
+  itself (owner, 2026-10-30), a press on the field does it. What the field takes becomes a row
+  above it and it stays ready for the next; left empty it turns back into the button. Under it
+  the box's last lines (`foot`: what was wrong). A new row rises in, a removed one folds away
+  while the rows below close the gap; a list that comes with its view is simply there.
 -->
 <script lang="ts" generics="T">
-  import type { Snippet } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import type { Action } from 'svelte/action';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
-  import { removeBy } from '$lib/input/input';
+  import { formKeys, removeBy } from '$lib/input/input';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { settled } from '$lib/motion/settled.svelte';
+  import Button from './Button.svelte';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -30,8 +33,10 @@
     name: (item: T) => string;
     /** The item's value: a field of the row. */
     value?: Snippet<[T, number]> | null;
-    /** The field that adds an entry, in the last row. */
-    add: Snippet;
+    /** The words of the button that adds an entry. */
+    addLabel: string;
+    /** The field for a new entry's name. */
+    draft: Snippet;
     /** The box's last lines, under the add row. */
     foot?: Snippet | null;
     onremove: (item: T, index: number) => void;
@@ -43,7 +48,8 @@
     key,
     name,
     value = null,
-    add,
+    addLabel,
+    draft,
     foot = null,
     onremove,
     testid = null,
@@ -55,6 +61,30 @@
   const arrive: Action<HTMLElement> = (node) => {
     if (motion.ready) rowEnter(node);
   };
+
+  /** The add row stands as the new entry's row. */
+  let adding = $state(false);
+  let addRow = $state<HTMLElement | null>(null);
+
+  /** The button goes: its row keeps the keyboard's focus, no caret (Tab goes on to the field). */
+  async function add(): Promise<void> {
+    adding = true;
+    await tick();
+    addRow?.focus({ preventScroll: true });
+  }
+
+  function close(): void {
+    adding = false;
+  }
+
+  /** A field left empty turns back into the button (what it took is a row by then). */
+  function left(event: FocusEvent): void {
+    const field = event.target;
+    if (!(field instanceof HTMLInputElement)) return;
+    void tick().then(() => {
+      if (field.value.trim() === '') close();
+    });
+  }
 </script>
 
 <div class="items" data-removes>
@@ -86,10 +116,39 @@
       </div>
     {/each}
   </div>
-  <div class="line add" data-remove-fallback data-testid={testid ? `${testid}-add` : undefined}>
-    <span></span>
-    <span class="field">{@render add()}</span>
-    <span></span>
+  <div
+    class="line add"
+    tabindex="-1"
+    role="group"
+    bind:this={addRow}
+    data-remove-fallback
+    data-testid={testid ? `${testid}-add` : undefined}
+    use:formKeys={adding ? { cancel: close } : {}}
+    onfocusout={adding ? left : undefined}
+  >
+    {#if adding}
+      <span class="draft">{@render draft()}</span>
+      <button
+        type="button"
+        class="remove"
+        aria-label={t.common.remove}
+        data-testid={testid ? `${testid}-draft-close` : undefined}
+        use:tooltip={t.common.remove}
+        onclick={close}
+      >
+        <Icon name="close" size="sm" />
+      </button>
+    {:else}
+      <span class="plus">
+        <Button
+          variant="ghost"
+          icon="add"
+          label={addLabel}
+          testid={testid ? `${testid}-add-button` : null}
+          onclick={() => void add()}
+        />
+      </span>
+    {/if}
   </div>
   {#if foot}{@render foot()}{/if}
 </div>
@@ -138,10 +197,21 @@
     min-width: 0;
   }
 
-  /* The add field fills the control's column like every tag field. */
-  .field {
+  /* The new entry's name field in the names' column, its × at the end. */
+  .draft {
     display: block;
     min-width: 0;
+  }
+
+  .add .remove {
+    grid-column: -2 / -1;
+  }
+
+  /* The button's glyph on the names' left edge. */
+  .plus {
+    display: flex;
+    grid-column: 1 / -1;
+    margin-left: calc(-1 * var(--ghost-inset));
   }
 
   /* The quiet × of a row, like every quiet icon button: the subtle glyph, a wash and ink
@@ -179,14 +249,8 @@
       grid-template-columns: minmax(0, 1fr) var(--control-icon);
     }
 
-    .value,
-    .field {
+    .value {
       grid-column: 1;
-    }
-
-    .add > :first-child,
-    .add > :last-child {
-      display: none;
     }
   }
 </style>

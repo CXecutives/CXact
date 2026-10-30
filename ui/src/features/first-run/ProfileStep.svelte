@@ -1,8 +1,7 @@
 <!--
   The setup's "Dein Profil" (the round 10 draft): a whole page on the setup's cream (Page
   `bg`), its head the title 26/650 and the lead (as the CV filled it, or empty to fill in),
-  the Profil's form in its setup mode (ProfileView `setup`: no CV button, no save bar, no
-  "Häufig verlangt"), and the bar at its foot (BottomBar): Zurück at the left, Weiter at the
+  the Profil's form in its setup mode (ProfileView `setup`: no CV button), and the bar at its foot (BottomBar): Zurück at the left, Weiter at the
   right. Weiter marks what is still missing red and brings the first of it into view (no
   sentence); once nothing is, it saves and goes on. A failed save stays on the page and says
   so in the form.
@@ -94,8 +93,8 @@
 </Page>
 
 <style>
-  /* 2 in, like the titles of the groups under it; lower than a page's head and further from
-     the form (the page's own spacing comes on top). */
+  /* 2 in, like the titles of the groups under it; lower than a page's head (the page's own
+     spacing comes on top). */
   .head {
     display: flex;
     flex-direction: column;
