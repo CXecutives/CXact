@@ -289,9 +289,9 @@ test.describe('header', () => {
     await expectBarePlace(page, T.list.empty.inbox);
     await expect(page.getByTestId('empty-all').getByTestId('fetch')).toBeFocused();
     // A run that brings jobs: the head's button takes it, the head stays.
-    await page.evaluate(() => (window.__harness.holdAfter = null));
     await page.keyboard.press('Enter');
     await expect(cancel).toBeFocused();
+    await page.evaluate(() => (window.__harness.holdAfter = null));
     await runFinished(page);
     await expect(rows(page).first()).toBeVisible();
     await expect(page.getByTestId('list-header').getByTestId('fetch')).toBeFocused();
@@ -300,6 +300,7 @@ test.describe('header', () => {
   test('a short run that brings the first jobs keeps its head at its end', async ({ page }) => {
     await open(page, `${WIN}&scenario=fresh&tick=15`);
     await expectBarePlace(page, T.list.empty.inbox);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
     await page.getByTestId('fetch').click();
     await page.getByTestId('cancel-run').waitFor();
     // From here on the head stands: the rows of the run never stand without it, not even for
@@ -313,6 +314,7 @@ test.describe('header', () => {
             resolve(true);
           });
           watch.observe(document.body, { childList: true, subtree: true });
+          window.__harness.holdAfter = null;
           const done = setInterval(() => {
             if (!window.__harness.done) return;
             clearInterval(done);
@@ -2083,26 +2085,43 @@ test.describe('search', () => {
     await expect.poll(async () => (await lastQuery(page))?.search).toBe('Kernfusion');
     await expect(list(page)).toHaveAttribute('aria-busy', 'false');
     await expect(trash).toHaveCount(0);
-    // The answer to a word typed over comes too late to show.
-    const came = page.evaluate(
-      () =>
-        new Promise<boolean>((resolve) => {
-          const watch = new MutationObserver(() => {
-            if (document.querySelector('[data-testid^="also-"]') === null) return;
-            watch.disconnect();
-            resolve(true);
-          });
-          watch.observe(document.body, { childList: true, subtree: true });
-          setTimeout(() => {
-            watch.disconnect();
-            resolve(false);
-          }, 2000);
-        }),
-    );
-    await search.fill('Bau');
-    await page.waitForTimeout(400);
-    await search.fill('Kernfusion');
-    expect(await came).toBe(false);
+    // The answer to a word typed over comes too late to show: the next word is typed as soon as
+    // the question of the one before has gone out, long before its answer.
+    const came = await search.evaluate(async (field) => {
+      const type = (word: string): void => {
+        (field as HTMLInputElement).value = word;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      const until = (done: () => boolean): Promise<void> =>
+        new Promise((resolve) => {
+          const look = setInterval(() => {
+            if (!done()) return;
+            clearInterval(look);
+            resolve();
+          }, 5);
+        });
+      const asked = (word: string): boolean =>
+        window.__harness.calls.some(
+          ([name, args]) =>
+            name === 'list_jobs' && (args as { query: JobQuery }).query.search === word,
+        );
+      let shown = false;
+      const watch = new MutationObserver(() => {
+        shown ||= document.querySelector('[data-testid^="also-"]') !== null;
+      });
+      watch.observe(document.body, { childList: true, subtree: true });
+      type('BAU');
+      await until(() => asked('BAU'));
+      type('Kernspaltung');
+      await until(() => asked('Kernspaltung'));
+      await until(
+        () =>
+          document.querySelector('[data-testid="job-list"]')?.getAttribute('aria-busy') === 'false',
+      );
+      watch.disconnect();
+      return shown;
+    });
+    expect(came).toBe(false);
   });
 
   test('one more question only while a search looks under a filter', async ({ page }) => {
