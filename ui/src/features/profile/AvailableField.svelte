@@ -10,6 +10,7 @@
   import Select from '$components/Select.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
+  import { afterPress } from '$lib/input/input';
   import { slideIn } from '$lib/motion/transitions';
   import { editor, keptDate } from '$lib/state/profile.svelte';
 
@@ -58,7 +59,8 @@
       class="date"
       role="presentation"
       in:slideIn
-      onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
+      onfocusout={(event) =>
+        afterPress(event.target, () => (editor.judged = editor.dateText.trim() !== ''))}
     >
       <TextField
         value={editor.dateText}

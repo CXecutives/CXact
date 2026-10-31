@@ -1132,6 +1132,134 @@ test('a press on a folded field low in the view keeps the caret in view', async 
   await expect(input).toBeInViewport({ ratio: 1 });
 });
 
+// ------------------------------------------------------------------ leaving a field
+
+/** A press on a select opens its list, under it where it then stands. */
+async function pressOpensList(page: Page, testid: string): Promise<void> {
+  const select = page.getByTestId(testid);
+  await select.click();
+  const menu = page.getByTestId('menu');
+  await expect(menu).toBeVisible();
+  await animationsDone(page);
+  const [control, list] = [(await select.boundingBox())!, (await menu.boundingBox())!];
+  expect(list.y).toBeGreaterThanOrEqual(control.y + control.height);
+  expect(list.y).toBeLessThan(control.y + control.height + 12);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+}
+
+test.describe('a press on a control below a field lands, though leaving the field moves the rows', () => {
+  test.beforeEach(async ({ page }) => {
+    // Nothing below scrolls away.
+    await page.setViewportSize({ width: 1360, height: 1500 });
+  });
+
+  test('the field folds: a tag field of many lines', async ({ page }) => {
+    await profile(page);
+    const tools = await manyTools(page);
+    const box = (await tools.boundingBox())!;
+    await page.mouse.click(box.x + box.width - 4, box.y + box.height - 4);
+    await expect(page.getByTestId('profile-tools-more')).toHaveCount(0);
+    await page.getByTestId('competences-remove').first().click();
+    await expect(names(page, 'competences')).toHaveCount(5);
+    await expect(page.getByTestId('profile-tools-more')).toBeVisible();
+  });
+
+  test('the field folds: Länder, then a select below it', async ({ page }) => {
+    await profile(page);
+    const land = countryInput(page);
+    await land.click();
+    const all = Object.values(T.profile.country);
+    expect(await pasteInto(land, all.join(', '))).toBe(true);
+    await expect(chips(countries(page))).toHaveCount(all.length);
+    await pressOpensList(page, 'profile-work-mode');
+  });
+
+  test('the field folds: Wunschrollen, then a checkbox below it', async ({ page }) => {
+    await profile(page);
+    const input = roles(page).locator('input');
+    const many = Array.from({ length: 12 }, (_, at) => `Interim Rolle ${at + 1}`);
+    await input.fill(many.join(', '));
+    await input.press('Enter');
+    await expect(input).toBeFocused();
+    await contract(page, 'temporary').click();
+    await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('a day that does not read says so under it, a select below it opens', async ({ page }) => {
+    await profile(page);
+    await page.getByTestId('profile-date').fill('12.13');
+    await pressOpensList(page, 'profile-min-months');
+    await expect(field(page, 'available')).toContainText(T.profile.field.dateInvalid);
+  });
+
+  test('the note of a rounded rate, a select below it opens', async ({ page }) => {
+    await profile(page);
+    await page.getByTestId('profile-min-rate').fill('950,50');
+    await pressOpensList(page, 'profile-work-mode');
+    await expect(page.getByTestId('profile-min-rate-rounded')).toBeVisible();
+  });
+
+  test('a chip that takes a new line, a select below it opens', async ({ page }) => {
+    await profile(page);
+    const regions = page.getByTestId('profile-regions');
+    const words = 'Eine Region mit einem Namen so lang dass sie eine eigene Zeile braucht';
+    await regions.locator('input').fill(words);
+    await pressOpensList(page, 'profile-work-mode');
+    await expect(chips(regions).last()).toHaveText(words);
+  });
+});
+
+test('going to the window behind changes nothing in a field; closing the window still settles it', async ({
+  page,
+}) => {
+  await profile(page);
+  /** What the engine sends when the window goes to the back: the focus stays where it is. */
+  const toTheBack = (input: Locator): Promise<void> =>
+    input.evaluate((node) => {
+      node.dispatchEvent(new FocusEvent('blur'));
+      node.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+    });
+  const input = roles(page).locator('input');
+  await input.click();
+  await page.keyboard.type('Inter');
+  await toTheBack(input);
+  await page.waitForTimeout(2 * T_SAVE);
+  await expect(chips(roles(page))).toHaveText(['Interim CFO']);
+  await expect(input).toHaveValue('Inter');
+  expect(await saves(page)).toBe(0);
+  // The name field of a list: no row, its text stays.
+  const name = await adder(page, 'competence');
+  await name.fill('Foo');
+  await toTheBack(name);
+  await page.waitForTimeout(2 * T_SAVE);
+  await expect(names(page, 'competences')).toHaveCount(6);
+  await expect(name).toHaveValue('Foo');
+  await name.fill('');
+  // A number keeps what was typed, ungrouped and with its cents, and nothing is said.
+  const rate = page.getByTestId('profile-min-rate');
+  await rate.fill('1250,5');
+  await toTheBack(rate);
+  await page.waitForTimeout(2 * T_SAVE);
+  await expect(rate).toHaveValue('1250,5');
+  await expect(page.getByTestId('profile-min-rate-rounded')).toHaveCount(0);
+  await rate.fill('1.100');
+  // The day: not judged while it is typed.
+  const date = page.getByTestId('profile-date');
+  await date.fill('1.11.');
+  await toTheBack(date);
+  await page.waitForTimeout(2 * T_SAVE);
+  await expect(field(page, 'available')).not.toContainText(T.profile.field.dateInvalid);
+  await date.fill('01.09.2026');
+  // Closing from the taskbar: the field is left for real, and what it holds goes.
+  await input.fill('Inter');
+  await toTheBack(input);
+  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
+  await page.evaluate(() => window.__harness.requestClose());
+  await expect.poll(() => page.evaluate(() => window.__harness.closed)).toBe(true);
+  expect((await lastSave(page)).after.roles).toEqual(['Interim CFO', 'Inter']);
+});
+
 test('a competence whose years are too large says so under its row and holds the save', async ({
   page,
 }) => {
@@ -1195,11 +1323,12 @@ test('a refusal of a whole list is said under its last row', async ({ page }) =>
   await page.getByRole('listbox').getByRole('option', { name: T.profile.level.C1 }).click();
   const error = page.getByTestId('languages-error');
   await expect(error).toHaveText(T.profile.field.refused);
-  const [add, under] = [
-    await page.getByTestId('languages-add').boundingBox(),
-    await error.boundingBox(),
-  ];
-  expect(under!.y).toBeGreaterThanOrEqual(add!.y + add!.height);
+  // Both in one frame: the group glides into view meanwhile.
+  const under = await error.evaluate((node) => {
+    const add = document.querySelector('[data-testid="languages-add"]')!;
+    return node.getBoundingClientRect().top - add.getBoundingClientRect().bottom;
+  });
+  expect(under).toBeGreaterThanOrEqual(0);
   await expect(page.getByTestId('languages-item').getByTestId('languages-error')).toHaveCount(0);
 });
 

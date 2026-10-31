@@ -36,7 +36,14 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { t } from '$lib/i18n/t';
-  import { byKeyboard, chipKeys, FIELD_ATTRIBUTES, removeBy, withList } from '$lib/input/input';
+  import {
+    afterPress,
+    byKeyboard,
+    chipKeys,
+    FIELD_ATTRIBUTES,
+    removeBy,
+    withList,
+  } from '$lib/input/input';
   import { chipIn } from '$lib/motion/transitions';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
@@ -306,8 +313,10 @@
 
   /** The focus left the field and its chips (not for one of its x). */
   function leave(event: FocusEvent & { currentTarget: HTMLElement }): void {
+    const root = event.currentTarget;
     const next = event.relatedTarget;
-    if (!(next instanceof Node && event.currentTarget.contains(next))) focused = false;
+    if (next instanceof Node && root.contains(next)) return;
+    afterPress(event.target, () => (focused = root.contains(document.activeElement)));
   }
 
   /** The one option not there yet that `text` means: a whole name, else the only one it starts. */
@@ -424,7 +433,7 @@
           autocomplete={FIELD_ATTRIBUTES.autocomplete}
           use:chipKeys={keys}
           onpaste={paste}
-          onblur={settle}
+          onblur={(event) => afterPress(event.currentTarget, settle)}
         /></span
       >
     {/if}

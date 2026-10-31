@@ -22,7 +22,7 @@
   import type { Action } from 'svelte/action';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
-  import { formKeys, removeBy } from '$lib/input/input';
+  import { afterPress, formKeys, removeBy } from '$lib/input/input';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { settled } from '$lib/motion/settled.svelte';
   import Button from './Button.svelte';
@@ -105,10 +105,12 @@
     const next = event.relatedTarget;
     // The button that opened the row goes with the opening: that is no leaving.
     if (from instanceof HTMLButtonElement && from.dataset.keepFocus === undefined) return;
-    if ((next instanceof Node && addRow?.contains(next)) || !document.hasFocus()) return;
-    void tick().then(() => {
-      const field = addRow?.querySelector('input');
-      if (field && field.value.trim() === '') close();
+    if (next instanceof Node && addRow?.contains(next)) return;
+    afterPress(from, () => {
+      void tick().then(() => {
+        const field = addRow?.querySelector('input');
+        if (field && field.value.trim() === '') close();
+      });
     });
   }
 </script>
