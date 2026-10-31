@@ -278,25 +278,6 @@ test('a failed evaluation comes back to the upload and says why above it', async
   await expect(page.getByTestId('upload-zone')).toHaveCount(0);
 });
 
-test('Abbrechen stops the evaluation in the backend and goes back to the upload', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=first-run&step=reading`);
-  await page.getByTestId('cv-cancel').click();
-  await expectStep(page, T.firstRun.upload);
-  expect(await calls(page, 'cancel_run')).toHaveLength(1);
-  await expect(page.getByTestId('cv-error')).toHaveCount(0);
-  // Its answer never comes back as a profile.
-  await page.waitForTimeout(1700);
-  await expectStep(page, T.firstRun.upload);
-  expect(await page.evaluate(() => window.__harness.form())).toBeNull();
-  // The mouse's back button stops it the same way.
-  await open(page, `${WIN}&scenario=first-run&step=reading`);
-  await mouseBack(page);
-  await expectStep(page, T.firstRun.upload);
-  expect(await calls(page, 'cancel_run')).toHaveLength(1);
-});
-
 test('Esc stops the evaluation like Abbrechen, with the focus on the step and nowhere', async ({
   page,
 }) => {
@@ -349,6 +330,15 @@ test('the Profil has the same Abbrechen: the evaluation stops and nothing is fil
   expect(busyBox!.x).toBeGreaterThanOrEqual(title!.x + title!.width);
   expect(stopBox!.x + stopBox!.width).toBeLessThanOrEqual(480);
   await stop.click();
+  // On the start page the cell goes with the evaluation: the focus goes back to its way.
+  await open(page, `${WIN}&view=profile&scenario=no-profile&cv=slow`);
+  const way = page.getByTestId('way-cv');
+  await way.click();
+  await expect(busy).toBeVisible();
+  await stop.focus();
+  await page.keyboard.press('Enter');
+  await expect(stop).toHaveCount(0);
+  await expect(way).toBeFocused();
 });
 
 test('a limit met before any file says only that, on the Profil like in the setup', async ({
@@ -391,6 +381,25 @@ test('a setup resumed from a stored profile does not claim it came from a CV', a
   await expect(page.getByTestId('first-lead')).toHaveText(T.firstRun.profileSelf);
   await back(page).click();
   await expectStep(page, T.firstRun.way);
+});
+
+test('Abbrechen stops the evaluation in the backend and goes back to the upload', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  await page.getByTestId('cv-cancel').click();
+  await expectStep(page, T.firstRun.upload);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expect(page.getByTestId('cv-error')).toHaveCount(0);
+  // Its answer never comes back as a profile.
+  await page.waitForTimeout(1700);
+  await expectStep(page, T.firstRun.upload);
+  expect(await page.evaluate(() => window.__harness.form())).toBeNull();
+  // The mouse's back button stops it the same way.
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  await mouseBack(page);
+  await expectStep(page, T.firstRun.upload);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({

@@ -33,6 +33,8 @@
 
   let { heading, form, held, oncv, onfolder = null }: Props = $props();
 
+  /** The start page's way in by the CV (shared/NewProfileWays). */
+  const WAY_CV = '[data-testid="way-cv"]';
   /** The button and what takes its place while the CV is evaluated, in one cell. */
   let start = $state<HTMLElement | null>(null);
   let working = $state<HTMLElement | null>(null);
@@ -48,7 +50,11 @@
   $effect(() => {
     const busy = fromCv.busy;
     untrack(() => {
-      if (focusHeld) (busy ? working : start)?.querySelector('button')?.focus();
+      if (!focusHeld) return;
+      // Without a form the cell goes with the evaluation: back to the way that started it.
+      const place = busy ? working : form ? start : null;
+      const next = place?.querySelector('button') ?? document.querySelector(WAY_CV);
+      if (next instanceof HTMLElement) next.focus();
     });
   });
 </script>
