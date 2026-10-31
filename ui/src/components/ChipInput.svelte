@@ -336,7 +336,7 @@
     onpointerdown={focusInput}
   >
     {#each visible as value, index (value)}
-      <span class="entry" data-chip={index} data-value={value} in:riseIn={value}>
+      <span class="slot" data-chip={index} data-value={value} in:riseIn={value}>
         <Chip label={labelOf(value)} copy inField onremove={() => remove(index)} />
       </span>
     {/each}
@@ -449,7 +449,7 @@
     transition-duration: var(--dur-fast);
   }
 
-  .entry {
+  .slot {
     display: inline-flex;
     max-width: 100%;
   }
