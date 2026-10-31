@@ -6,7 +6,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
 import {
-  chip,
   chipRemove,
   chooseFilter,
   funnel,
