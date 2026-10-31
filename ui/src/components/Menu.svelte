@@ -37,6 +37,18 @@
   /** The menu opened above its anchor (it drops in upwards then). */
   let up = $state(false);
 
+  /** The focus goes to the menu and a selection of text stays where it is: WebKit drops it when
+   *  the focus moves to anything else, and the menu's Copy needs it. */
+  function takeFocus(menu: HTMLElement | null): void {
+    const text = getSelection();
+    const kept =
+      text?.anchorNode && text.focusNode && !text.isCollapsed
+        ? ([text.anchorNode, text.anchorOffset, text.focusNode, text.focusOffset] as const)
+        : null;
+    menu?.focus({ preventScroll: true });
+    if (kept !== null && text?.isCollapsed) text.setBaseAndExtent(...kept);
+  }
+
   /**
    * Whole-pixel position inside the window, below its anchor or, where only there is room,
    * above it. It never covers its anchor (a second click on a menu button reaches the
@@ -79,7 +91,7 @@
     setVars(node, { 'menu-x': px(x), 'menu-y': px(y) });
     // The menu takes the keys (the entries are no tab stops; the active one is announced). A
     // select's button keeps the focus: it announces the active option itself.
-    if (!listbox) node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });
+    if (!listbox) takeFocus(node.querySelector<HTMLElement>('.menu'));
     node.querySelector('[data-active]')?.scrollIntoView({ block: 'nearest' });
   };
 

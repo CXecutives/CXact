@@ -1937,6 +1937,13 @@ test('a press on the app menu keeps the selection its Copy needs', async ({
   if (reads) {
     expect((await page.evaluate(() => navigator.clipboard.readText())).trim()).toBe(word);
   }
+  // The menu of something else leaves the selection alone as well.
+  await rows(page).nth(1).click({ button: 'right' });
+  await expect(page.getByTestId('menu')).toBeVisible();
+  expect(await selection(page)).toBe(word);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  expect(await selection(page)).toBe(word);
 });
 
 test('Ctrl+A selects the copyable block pressed last, never the page', async ({ page }) => {
