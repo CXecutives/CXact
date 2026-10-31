@@ -1608,7 +1608,8 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
   test.skip(browserName === 'webkit', 'no autoscroll in WebKit');
   await openLongList(page);
   const archive = page.getByTestId('place-archive');
-  const list = (await page.getByTestId('job-list').boundingBox())!;
+  // The pane: the list itself grows with each page it loads, far below the window.
+  const list = (await page.getByTestId('list-scroll').boundingBox())!;
   const inList = { x: list.x + list.width / 2, y: list.y + list.height / 2 };
   // A middle click in the list: the autoscroll runs until the next press.
   await page.mouse.move(inList.x, inList.y);
@@ -1632,7 +1633,7 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
 /** A middle click in the long list: the autoscroll runs until the next press or key. */
 async function startAutoscroll(page: Page): Promise<void> {
   await openLongList(page);
-  const list = (await page.getByTestId('job-list').boundingBox())!;
+  const list = (await page.getByTestId('list-scroll').boundingBox())!;
   await page.mouse.move(list.x + list.width / 2, list.y + list.height / 2);
   await page.mouse.down({ button: 'middle' });
   await page.mouse.up({ button: 'middle' });
@@ -2172,6 +2173,13 @@ test('a double click on what opens a dialog or a menu leaves it open', async ({ 
   await clickTwice(page, await reveal(page, page.getByTestId('profile-work-mode')));
   await page.waitForTimeout(100);
   await expect(page.getByTestId('menu')).toBeVisible();
+  // Endgültig löschen in the job view of the Papierkorb.
+  await open(page, WIN);
+  await page.getByTestId('place-trash').click();
+  await rows(page).first().click();
+  await clickTwice(page, page.getByTestId('reader-purge'));
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('dialog-purge')).toBeVisible();
 });
 
 test('the second press of a double click puts no caret into the field that came under it', async ({
