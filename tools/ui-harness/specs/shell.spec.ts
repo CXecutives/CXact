@@ -661,6 +661,28 @@ test('a value that holds the save keeps the view until the question is answered'
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
 });
 
+test('what the question kept waiting goes with its Abbrechen', async ({ page }) => {
+  // Zurück from the Profil to Einstellungen waits for the question, which is cancelled.
+  await open(page, `${WIN}&view=settings`);
+  await page.getByTestId('nav-profile').click();
+  const field = page.getByTestId('profile-wish-rate');
+  await field.fill('0');
+  await page.getByTestId('history-back').click();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toHaveCount(0);
+  // The value is mended and saved. Einstellungen chosen later is a step of its own, not that
+  // step back: Zurück leads to the Profil, and nothing lies ahead.
+  await field.fill('1.300');
+  await field.blur();
+  await expect.poll(async () => (await calls(page, 'save_profile')).length).toBe(1);
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('history-forward')).toHaveAttribute('aria-disabled', 'true');
+  await page.getByTestId('history-back').click();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+});
+
 test('a click on the place that is open reloads nothing, like Jobs on Aktuell', async ({
   page,
 }) => {
@@ -841,6 +863,20 @@ for (const os of [WIN, MAC]) {
     expect([scrim.x, scrim.y, scrim.width, scrim.height]).toEqual([0, 0, ...size]);
   });
 }
+
+// The window still moves by the bar while a dialog is open: on Windows the caption window of
+// platform.rs lies over the bar and answers for it; on macOS only the page can answer, by a
+// direct hit on a drag region (Tauri's drag script).
+test('macos: while a dialog is open the bar still moves the window', async ({ page }) => {
+  await open(page, `${MAC}&view=settings`);
+  await (await reveal(page, page.getByTestId('reset'))).click();
+  await expect(page.getByTestId('dialog-reset')).toBeVisible();
+  await settle(page);
+  const hit = await page.evaluate(() =>
+    document.elementFromPoint(600, 18)?.hasAttribute('data-tauri-drag-region'),
+  );
+  expect(hit).toBe(true);
+});
 
 test('a start whose data cannot load: try again, a backup, the data folder', async ({ page }) => {
   await open(page, `${WIN}&scenario=load-failed`);
