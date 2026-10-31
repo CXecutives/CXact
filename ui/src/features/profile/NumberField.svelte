@@ -4,9 +4,9 @@
   A decimal part is cut off, never joined to the digits (`7,5` years count 7), and once the
   field is left a note under it says so; in money a group of three digits after a point or
   comma is a thousands separator (`1.100`, `1,100`), one or two digits are cents (`950,50`).
-  It fills the width its place gives it (a field of the form, the years of a competence),
-  whose note stands under it on a line of its own; its unit stands quiet at its right end
-  inside it (`€ am Tag`, `Jahre`).
+  One short control wide wherever it stands (a field of the form, the years of a competence),
+  its note on a line of its own under it, so a note only grows its row downward; its unit stands
+  quiet at its right end inside it (`€ am Tag`, `Jahre`).
 -->
 <script lang="ts">
   import TextField from '$components/TextField.svelte';
@@ -94,45 +94,55 @@
   });
 </script>
 
-<span
-  class="number"
-  role="presentation"
-  onfocusout={() => {
-    text = shown(value);
-    rounded = cut;
-  }}
->
-  <span class="box" bind:this={box}>
-    <TextField
-      bind:value={text}
-      {id}
-      {label}
-      {placeholder}
-      {invalid}
-      {disabled}
-      describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
-      suffix={unit}
-      {testid}
-      oninput={(next) => {
-        const clean = withoutLetters(next);
-        if (clean !== next) text = clean;
-        const typed = read(clean);
-        cut = typed.cut;
-        rounded = false;
-        value = typed.value;
-      }}
-    />
+<span class="stack">
+  <span
+    class="number"
+    role="presentation"
+    onfocusout={() => {
+      text = shown(value);
+      rounded = cut;
+    }}
+  >
+    <span class="box" bind:this={box}>
+      <TextField
+        bind:value={text}
+        {id}
+        {label}
+        {placeholder}
+        {invalid}
+        {disabled}
+        describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
+        suffix={unit}
+        {testid}
+        oninput={(next) => {
+          const clean = withoutLetters(next);
+          if (clean !== next) text = clean;
+          const typed = read(clean);
+          cut = typed.cut;
+          rounded = false;
+          value = typed.value;
+        }}
+      />
+    </span>
   </span>
+  {#if rounded}
+    <p class="note" id="{noteId}-rounded" data-testid={testid ? `${testid}-rounded` : undefined}>
+      {money ? t.profile.field.rounded : t.profile.field.roundedWhole}
+    </p>
+  {/if}
 </span>
-{#if rounded}
-  <p class="note" id="{noteId}-rounded" data-testid={testid ? `${testid}-rounded` : undefined}>
-    {money ? t.profile.field.rounded : t.profile.field.roundedWhole}
-  </p>
-{/if}
 
 <style>
+  .stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
   .number {
     display: flex;
+    width: var(--profile-control-width);
+    max-width: 100%;
     min-width: 0;
   }
 

@@ -83,17 +83,15 @@
     {error}
     row
   >
-    <span class="number">
-      <NumberField
-        id="{id}-{c.key}"
-        money={c.unit !== 'years'}
-        unit={t.profile.unit[c.unit]}
-        placeholder={c.placeholder ? words[c.placeholder] : null}
-        bind:value={form[c.key]}
-        invalid={error !== null}
-        testid={c.testid}
-      />
-    </span>
+    <NumberField
+      id="{id}-{c.key}"
+      money={c.unit !== 'years'}
+      unit={t.profile.unit[c.unit]}
+      placeholder={c.placeholder ? words[c.placeholder] : null}
+      bind:value={form[c.key]}
+      invalid={error !== null}
+      testid={c.testid}
+    />
   </Field>
 {:else if c.kind === 'chips'}
   {@const error = errorOf(c.key)}
@@ -161,14 +159,7 @@
 {/if}
 
 <style>
-  /* Every short control one width; a number's note under it keeps its own line. */
-  .number {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .number > :global(:first-child),
+  /* A select as wide as every short control. */
   .short {
     width: var(--profile-control-width);
     max-width: 100%;

@@ -47,15 +47,13 @@
 </script>
 
 {#snippet years(row: Competence)}
-  <span class="years">
-    <NumberField
-      bind:value={row.years}
-      label={words.yearsOf(row.name)}
-      unit={words.years}
-      invalid={row === refused}
-      testid="competence-years"
-    />
-  </span>
+  <NumberField
+    bind:value={row.years}
+    label={words.yearsOf(row.name)}
+    unit={words.years}
+    invalid={row === refused}
+    testid="competence-years"
+  />
 {/snippet}
 
 {#snippet draft()}
@@ -80,18 +78,3 @@
   testid="competences"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />
-
-<style>
-  /* The field as wide as every short control; the note of a number stands under it on a line
-     of its own, so the row only grows downward. */
-  .years {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .years > :global(:first-child) {
-    width: var(--profile-control-width);
-    max-width: 100%;
-  }
-</style>
