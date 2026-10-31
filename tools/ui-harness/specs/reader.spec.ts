@@ -581,6 +581,13 @@ test.describe('the actions', () => {
     await page.keyboard.up('Enter');
     await settle(page);
     expect(await calls(page, 'move_jobs')).toHaveLength(1);
+    // Space acts on its release, held or not.
+    await page.keyboard.down(' ');
+    await page.waitForTimeout(600);
+    await page.keyboard.down(' ');
+    await page.keyboard.up(' ');
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(2);
   });
 
   test('a click on another move right after a move counts; the second of a double click does not', async ({

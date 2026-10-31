@@ -388,7 +388,6 @@
   .column {
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
     max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
     margin: 0 auto 0
       max(

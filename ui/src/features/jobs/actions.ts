@@ -10,13 +10,13 @@
 // its one undo takes them all back. The undo brings every job back to where it was, its row
 // too, and opens the job again that was open when it left; in another list than the one the
 // move left (the Archiv, once another place was chosen) its rows leave and, when the open job
-// is one of them, the next one opens. The second click of a double click within GUARD_MS after
-// the list or the pane changed is ignored, so a double click never moves the job that slid
-// under the pointer, nor opens the one that did; every other click and key counts at once. The
-// job the app opens by itself counts as read only once it has been
-// looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is
-// already where it goes is no move. A move that fails says so where it was asked (the list
-// header, `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
+// is one of them, the next one opens. A double click never moves the job that slid under the
+// pointer (a button acts once), nor opens the one that did: within GUARD_MS after the list
+// changed the second click of a double click on a row does nothing (`guarded`); every other click
+// and key counts at once. The job the app opens by itself counts as read only once it has been
+// looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is already where
+// it goes is no move. A move that fails says so where it was asked (the list header,
+// `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
@@ -237,8 +237,8 @@ const DWELL_MS = 2000;
 const DWELL_STEP = 250;
 let dwell: ReturnType<typeof setInterval> | undefined;
 
-/** The second click of a double click right after the pane changed to the next job does
- *  nothing. */
+/** The second click of a double click right after the list changed under the pointer: it was
+ *  not meant for the row that slid there. */
 export function guarded(): boolean {
   return performance.now() < guardUntil && secondClick();
 }
@@ -382,7 +382,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   const to = TARGET[action];
   // A job that already lies there is no move (and no toast says it moved).
   const list = all.filter((job) => job.place !== to);
-  if (list.length === 0 || guarded()) return null;
+  if (list.length === 0) return null;
   // Only rows that leave the list fold away, and only a few: many rows folding at once would
   // hold the page for frames.
   const leaving = list.filter((job) => !jobs.lists({ ...job, place: to }));
@@ -411,7 +411,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   const reopen =
     open !== null && leaving.some((job) => sameKey(job.key, open)) ? { ...open } : null;
   // The list changes now, not when the backend answers: the second click of a double click
-  // may come first (it would take the job straight back from where it went).
+  // may come first.
   if (leaving.length > 0) arm();
   const result = await jobs.move(
     list.map((job) => job.key),

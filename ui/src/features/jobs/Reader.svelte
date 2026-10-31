@@ -61,7 +61,6 @@
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import {
-    guarded,
     include as includeJob,
     mayInclude,
     move,
@@ -193,7 +192,6 @@
   /** A move of the hero's tools. Pressed from the keyboard, the next job's view gives the focus
    *  back to the button that had it; a click hands nothing on. */
   function act(id: MoveId): void {
-    if (guarded()) return;
     const focused = document.activeElement;
     const testid =
       byKeyboard() && focused instanceof HTMLElement && article?.contains(focused)
@@ -237,7 +235,6 @@
   let purgeError = $state<string | null>(null);
 
   function askPurge(): void {
-    if (guarded()) return;
     purgeError = null;
     confirmPurge = true;
   }
@@ -259,7 +256,7 @@
   const includable = $derived(excluded && mayInclude(job));
   /** A job put in the Papierkorb is out of sight: nothing goes from it into the profile,
    *  Wiederherstellen comes first (like `mayInclude`). */
-  const mayChange = $derived(job.place !== 'trash');
+  const mayAdd = $derived(job.place !== 'trash');
   /** "Trotzdem bewerten" was pressed: the state box says the job is being scored. */
   let including = $state(false);
 
@@ -300,7 +297,7 @@
       <div class="reqs">
         <ul class="reasons" data-testid="reasons">
           {#each listed as reason (reason.id)}
-            {@const term = addable(reason) && mayChange ? termOf(reason) : null}
+            {@const term = addable(reason) && mayAdd ? termOf(reason) : null}
             {@const added = term !== null && isAdded(term)}
             <li
               class="reason-line"

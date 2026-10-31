@@ -223,6 +223,22 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [], portals: [] });
 });
 
+test('Filter zurücksetzen under what Zeigen set brings the own filter back', async ({ page }) => {
+  await open(page, `${WIN}&tick=15`);
+  await chooseFilter(page, 'portal-linkedin');
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  // Its button stands where the filter leaves nothing.
+  await chooseFilter(page, 'portal-hays');
+  await page.getByTestId('empty-filter').getByTestId('filter-reset').click();
+  await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
+  await expect
+    .poll(() => lastQuery(page))
+    .toMatchObject({ run: null, bands: [], portals: ['linkedin'] });
+});
+
 // The preview's runs that are under way when the page starts (the scenarios `running`,
 // `sign-in-waiting` and `rescoring`) end with Abbrechen like a run the page started.
 for (const scenario of ['running', 'sign-in-waiting', 'rescoring']) {
