@@ -1663,6 +1663,60 @@ test.describe('the job view keeps true', () => {
     expect(job[1]).toBe(second);
   });
 
+  test.describe('Zurück after Endgültig löschen walks what was shown', () => {
+    const title = (page: Page): Locator => stage(page).getByTestId('reader-title');
+    const named = (page: Page, key: string): Promise<string> =>
+      row(page, key).locator('.title').innerText();
+    /** The Papierkorb with a few jobs, its rows in their order. */
+    const inTrash = async (page: Page): Promise<string[]> => {
+      await open(page, WIN);
+      for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
+        await viaMenu(page, 'trash', key);
+        await expect(row(page, key)).toHaveCount(0);
+      }
+      await openPlace(page, 'trash');
+      return listed(page);
+    };
+    const purgeOpen = async (page: Page): Promise<void> => {
+      await choose(page, 'purge');
+      await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
+    };
+
+    test('the row below opens: no empty step on the way back to the job before', async ({
+      page,
+    }) => {
+      const [one, two, three] = await inTrash(page);
+      const [first, third] = [await named(page, one!), await named(page, three!)];
+      await openJob(page, one!);
+      await openJob(page, two!);
+      await purgeOpen(page);
+      await expect(title(page)).toHaveText(third);
+      await page.getByTestId('history-back').click();
+      await expect(title(page)).toHaveText(first);
+      await expect(page.getByTestId('place-reader')).toHaveCount(0);
+      await page.getByTestId('history-forward').click();
+      await expect(title(page)).toHaveText(third);
+      await expect(page.getByTestId('history-forward')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    test('the row above opens, which stood open right before: no step shows it twice', async ({
+      page,
+    }) => {
+      const [above, last] = (await inTrash(page)).slice(-2);
+      const opened = await named(page, above!);
+      await openJob(page, above!);
+      await openJob(page, last!);
+      await purgeOpen(page);
+      await expect(title(page)).toHaveText(opened);
+      // What was shown before that: the Papierkorb with no job.
+      await page.getByTestId('history-back').click();
+      await expect(page.getByTestId('place-reader')).toBeVisible();
+      await page.getByTestId('history-forward').click();
+      await expect(title(page)).toHaveText(opened);
+      await expect(page.getByTestId('history-forward')).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
   test('another job waiting for its page is not loaded by a details run of its own', async ({
     page,
   }) => {

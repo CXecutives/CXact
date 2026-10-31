@@ -5,8 +5,8 @@
 // way (App). In one column a job without a step before it goes back to the list.
 // A job lies where it lies now: a step whose job was archived or put in the Papierkorb since
 // shows it there, and one whose job was deleted for good is dropped (the next step in that
-// direction shows). The first step is what the start ended in (the job kept from the last
-// run open again): the start's way there is no step.
+// direction shows, past one that only shows what stands on screen). The first step is what the
+// start ended in (the job kept from the last run open again): the start's way there is no step.
 
 import { tick, untrack } from 'svelte';
 import type { JobKey, Place } from '../ipc/types';
@@ -88,8 +88,7 @@ class History {
   /**
    * Shows step `to` (an unsaved Profil may keep its view and ask first), reached by going `by`
    * steps back or forward. The job of the step is opened where it lies now, which the step
-   * then names. One that is gone is dropped, and the next step in that direction shows
-   * instead, the step shown before when none is left.
+   * then names. One that is gone is dropped (`#drop`).
    */
   #show(to: number, by: -1 | 1, from = this.#steps[this.#at]): boolean {
     const step = this.#steps[to];
@@ -110,10 +109,7 @@ class History {
             this.#settle();
             return;
           }
-          this.#steps = this.#steps.filter((_, index) => index !== to);
-          const next = by < 0 ? to - 1 : to;
-          if (this.#steps[next] !== undefined) this.#show(next, by, from);
-          else this.#back(from);
+          this.#drop(to, by, from);
         });
       }
     };
@@ -124,6 +120,24 @@ class History {
     this.#showing = true;
     if (!navigation.go(step.view, false, apply)) this.#showing = false;
     return true;
+  }
+
+  /**
+   * Step `to` shows a job that is gone: the next step in that direction shows instead, the step
+   * shown before when none is left. A step beside it that shows what stands on screen (the job
+   * on both sides of the one deleted) is no step any more and goes with it.
+   */
+  #drop(to: number, by: -1 | 1, from: Step | undefined): void {
+    const steps = this.#steps.filter((_, index) => index !== to);
+    let next = by < 0 ? to - 1 : to;
+    const beside = steps[next];
+    if (beside !== undefined && from !== undefined && same(beside, from)) {
+      steps.splice(next, 1);
+      if (by < 0) next -= 1;
+    }
+    this.#steps = steps;
+    if (steps[next] !== undefined) this.#show(next, by, from);
+    else this.#back(from);
   }
 
   /** No step is left that shows: the step shown before shows again. */

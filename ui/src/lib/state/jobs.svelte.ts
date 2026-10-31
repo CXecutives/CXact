@@ -845,14 +845,14 @@ class JobsStore {
   private async forget(command: () => Promise<Deleted>): Promise<Deleted | { error: string }> {
     try {
       const deleted = await command();
-      // What the backend deleted: the rows, the open job (also one the list does not hold).
+      // What the backend deleted goes from the rows. The open job stays until what comes after
+      // it is chosen (actions.ts openNext), so the selection changes once: one step of Zurück.
       const gone = new Set(deleted.keys.map(keyOf));
       const rows = this.rows.filter((job) => !gone.has(keyOf(job.key)));
       for (const job of this.rows) {
         if (gone.has(keyOf(job.key))) this.recount(job, null);
       }
       this.rows = rows;
-      if (this.selected !== null && gone.has(keyOf(this.selected))) this.clearSelection();
       await this.refreshCounts();
       return deleted;
     } catch (error) {
