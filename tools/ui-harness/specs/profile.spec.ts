@@ -788,6 +788,97 @@ test("a field's list shows its eight rows whole, and none stands under the top b
   await expect(list.getByRole('option').last()).toBeInViewport();
 });
 
+test('a row marked with the arrows goes in when the field is left, one under the pointer does not', async ({
+  page,
+}) => {
+  await profile(page);
+  const regions = page.getByTestId('profile-regions');
+  const input = regions.locator('input');
+  const list = page.getByTestId('profile-regions-suggestions').getByRole('option');
+  await input.click();
+  await page.keyboard.type('ber');
+  // Down the list until Berlin is marked: that row, not the typed text.
+  const berlin = list.filter({ hasText: 'Berlin' });
+  await expect(berlin).toBeVisible();
+  while ((await berlin.getAttribute('aria-selected')) !== 'true') {
+    await page.keyboard.press('ArrowDown');
+  }
+  await page.keyboard.press('Tab');
+  await expect(chips(regions)).toHaveText(['Hamburg', 'Berlin']);
+  // A pointer's mark is no choice: the typed text goes in, as without a mark.
+  await input.click();
+  await page.keyboard.type('ba');
+  await list.first().hover();
+  await expect(list.first()).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Tab');
+  await expect(chips(regions)).toHaveText(['Hamburg', 'Berlin', 'ba']);
+  // In a closed list too.
+  const land = countryInput(page);
+  await land.click();
+  await page.keyboard.type('Sch');
+  await expect(options(page).getByRole('option')).toHaveText([country('SE'), CH]);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Tab');
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH]);
+  await expect(land).toHaveValue('');
+});
+
+test('text a closed list did not take says so once the field is left', async ({ page }) => {
+  await profile(page);
+  const land = countryInput(page);
+  const none = page.getByTestId('profile-countries-none');
+  await land.click();
+  await page.keyboard.type('Sch');
+  // Still on its way to a name: nothing yet.
+  await expect(options(page).getByRole('option')).toHaveCount(2);
+  await expect(none).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(land).toHaveValue('Sch');
+  await expect(none).toHaveText(T.profile.field.countryNone);
+  await expect(chips(countries(page))).toHaveText([DE, AT]);
+  // Back in it, typing on: the sentence goes.
+  await land.click();
+  await expect(none).toHaveCount(0);
+});
+
+/** A paste into a field, as the engine sends it; whether the field took it (no text goes in). */
+const pasteInto = (input: Locator, text: string): Promise<boolean> =>
+  input.evaluate((node, words) => {
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', { value: { getData: () => words } });
+    node.dispatchEvent(event);
+    return event.defaultPrevented;
+  }, text);
+
+test('a pasted list works in a closed list too: it takes what it names, the rest stays and says so', async ({
+  page,
+}) => {
+  await profile(page);
+  const land = countryInput(page);
+  await land.click();
+  expect(await pasteInto(land, `${CH}, ${BE}; Klingonien`)).toBe(true);
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH, BE]);
+  await expect(land).toHaveValue('Klingonien');
+  await expect(page.getByTestId('profile-countries-none')).toHaveText(T.profile.field.countryNone);
+  await land.fill('');
+  // What is there already is no news.
+  expect(await pasteInto(land, `${DE}, ${CH}`)).toBe(true);
+  await expect(land).toHaveValue('');
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH, BE]);
+  // A single name is text to search, as typed.
+  expect(await pasteInto(land, country('FR'))).toBe(false);
+  // The rows of Sprachen likewise, the ones there stay as they are.
+  const language = await adder(page, 'language');
+  expect(await pasteInto(language, `${LANGUAGE.fr}, ${LANGUAGE.de}`)).toBe(true);
+  await expect(names(page, 'languages')).toHaveText([LANGUAGE.de, LANGUAGE.en, LANGUAGE.fr]);
+  await expect(language).toHaveValue('');
+  // As every other tag field does.
+  const tools = page.getByTestId('profile-tools');
+  await tools.locator('input').click();
+  expect(await pasteInto(tools.locator('input'), 'Alpha, Beta; Gamma')).toBe(true);
+  await expect(chips(tools).last()).toHaveText('Gamma');
+});
+
 test('Branchen: plain names, no star; only the × removes', async ({ page }) => {
   await profile(page);
   const industries = page.getByTestId('profile-industries');

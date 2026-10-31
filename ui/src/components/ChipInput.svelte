@@ -14,15 +14,16 @@
   yet whose name or other names (the English one of a country) start with the text (any word of them, in any
   case, with or without accents), with the first marked; Enter or a click takes the marked
   one, leaving the field takes a single match, a chosen option leaves the list. Text that
-  matches no option stays in the field and says so (`noMatch`, the look of a refused value); text
-  that matches only
-  chosen ones says nothing. A chip shows its option's name; a value that is no option (from a
-  file) stays and shows as it is. What stands in the list the field adds to (`taken`, the rows of
-  Sprachen and Kompetenzen) counts as chosen.
+  matches no option stays in the field and says so (`noMatch`, the look of a refused value), as
+  does text the field was left with; text that matches only chosen ones says nothing. A chip
+  shows its option's name; a value that is no option (from a file) stays and shows as it is.
+  What stands in the list the field adds to (`taken`, the rows of Sprachen and Kompetenzen)
+  counts as chosen. A pasted list goes in as far as its entries name an option.
   With `suggestions` (the engine's words) a field without options suggests terms from the
   first character (Suggestions.svelte): nothing is marked until the arrows or the pointer
   mark one, Enter or a click takes the marked term as a chip; Enter without a mark and
-  leaving the field take the typed text as always.
+  leaving the field take the typed text as always. A row marked with the arrows also goes in
+  when the field is left (a pointer's mark does not).
   Typed text that is no chip yet is a change of the form around the field (`typedText`).
   30 px high with one line of chips, each 24 px on the track in 13 px words; a chip rises in
   only when it is added, never when the field is drawn again or folds open. Its edge is the
@@ -186,22 +187,28 @@
   );
   /** The marked row (-1: none; typing marks the first option, never a term). */
   let mark = $state(-1);
-  /** The typed text names an option that is a chip already: taking it only clears the text. */
-  const chosen = $derived(
-    options !== null &&
-      folded(draft) !== '' &&
-      options.some(
-        (option) => isThere(option) && names(option).some((name) => folded(name) === folded(draft)),
-      ),
+  /** The mark came with the arrows: its row goes in when the field is left, as with Enter. */
+  let arrowed = false;
+  /** `text` is a whole name of `option`. */
+  const nameOf = (option: ChipOption, text: string): boolean =>
+    names(option).some((name) => folded(name) === folded(text));
+  /** `text` names an option that is a chip already: taking it only clears the text. */
+  const isChosen = (text: string): boolean =>
+    folded(text) !== '' &&
+    (options ?? []).some((option) => isThere(option) && nameOf(option, text));
+  const chosen = $derived(isChosen(draft));
+  /** The typed text names no option at all (one that is chosen already is no news), or the
+   *  field was left with text it did not take. */
+  const nothing = $derived(
+    options !== null && folded(draft) !== '' && (found.length === 0 || !focused),
   );
-  /** The typed text names no option at all (one that is chosen already is no news). */
-  const nothing = $derived(options !== null && folded(draft) !== '' && found.length === 0);
   const suggesting = $derived(options !== null || suggestions !== undefined);
 
   $effect(() => {
     const text = draft.trim() !== '';
     mark = options !== null && text ? 0 : -1;
     closed = false;
+    arrowed = false;
   });
 
   function update(next: string[]): void {
@@ -209,12 +216,16 @@
     onchange?.(next);
   }
 
-  /** Adds every entry of `text` that is not there yet; `true` if there was text. */
-  function add(text: string): boolean {
-    const parts = text
+  /** The entries of `text`. */
+  const partsOf = (text: string): string[] =>
+    text
       .split(separators)
       .map((part) => part.trim())
       .filter((part) => part !== '');
+
+  /** Adds every entry of `text` that is not there yet; `true` if there was text. */
+  function add(text: string): boolean {
+    const parts = partsOf(text);
     if (parts.length === 0) return false;
     const next = [...values];
     for (const part of parts) {
@@ -261,7 +272,10 @@
       get none() {
         return options === null;
       },
-      setMark: (index) => (mark = index),
+      setMark: (index) => {
+        mark = index;
+        arrowed = true;
+      },
       take,
       close: () => (closed = true),
     },
@@ -296,17 +310,26 @@
     if (!(next instanceof Node && event.currentTarget.contains(next))) focused = false;
   }
 
-  /** Typed text becomes chips as when leaving the field; with options only a single match. */
+  /** The one option not there yet that `text` means: a whole name, else the only one it starts. */
+  function meant(text: string): ChipOption | undefined {
+    const open = suggested(options ?? [], text).filter((option) => !isThere(option));
+    const exact = open.filter((option) => nameOf(option, text));
+    return exact.length === 1 ? exact[0] : open.length === 1 ? open[0] : undefined;
+  }
+
+  /** Leaving the field: the row the arrows marked goes in, else typed text becomes chips, with
+   *  options only a single match. */
   function settle(): void {
+    if (arrowed && rows[mark] !== undefined) {
+      take(mark);
+      return;
+    }
     if (options === null) {
       commit();
       return;
     }
     if (draft.trim() === '') return;
-    const exact = matches.filter((option) =>
-      names(option).some((name) => folded(name) === folded(draft)),
-    );
-    const only = exact.length === 1 ? exact[0] : matches.length === 1 ? matches[0] : undefined;
+    const only = meant(draft);
     if (only) take(matches.indexOf(only));
     else if (chosen) draft = '';
   }
@@ -316,13 +339,31 @@
     removeBy(button, () => update(values.filter((_, at) => at !== index)));
   }
 
-  /** A pasted list becomes chips at once; a single value is pasted as text. With options
-   *  a paste is text to search. */
+  /** The entries that name an option become chips, what names none stays as text. */
+  function takeNamed(parts: string[]): void {
+    const next = [...values];
+    const rest: string[] = [];
+    for (const part of parts) {
+      const option = meant(part);
+      if (option === undefined) {
+        if (!isChosen(part)) rest.push(part);
+      } else if (!next.includes(option.id)) {
+        next.push(option.id);
+      }
+    }
+    if (next.length !== values.length) update(next);
+    draft = rest.join(', ');
+  }
+
+  /** A pasted list becomes chips at once; a single value is pasted as text. */
   function paste(event: ClipboardEvent): void {
-    if (options !== null) return;
     const text = event.clipboardData?.getData('text') ?? '';
     if (!separators.test(text.trim())) return;
     event.preventDefault();
+    if (options !== null) {
+      takeNamed(partsOf(`${draft}\n${text}`));
+      return;
+    }
     add(`${draft}\n${text}`);
     draft = '';
   }
@@ -396,7 +437,10 @@
       label={label ?? placeholder}
       testid={testid ? `${testid}-${options !== null ? 'options' : 'suggestions'}` : null}
       onpick={(name) => take(rows.indexOf(name))}
-      onmark={(index) => (mark = index)}
+      onmark={(index) => {
+        mark = index;
+        arrowed = false;
+      }}
     />
   {/if}
   {#if nothing && noMatch}
