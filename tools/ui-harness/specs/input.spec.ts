@@ -1451,13 +1451,24 @@ test('keyboard focus stays clear of the edges of its scroll area', async ({ page
 // The press that ends the OS autoscroll ends only the autoscroll: it presses nothing,
 // whichever button it is, like the native scrolling of Windows.
 
+/** The long list, once it scrolls: a middle press before that starts no autoscroll, and the next
+ *  one would. */
+async function openLongList(page: Page): Promise<void> {
+  await open(page, '?platform=windows&scenario=many');
+  await expect
+    .poll(() =>
+      page.getByTestId('list-scroll').evaluate((node) => node.scrollHeight > node.clientHeight),
+    )
+    .toBe(true);
+}
+
 test('the click that ends the autoscroll presses nothing; a dragged middle press leaves no mode', async ({
   page,
   browserName,
 }) => {
   // The autoscroll is Windows' (WebView2, a Chromium): WebKit has none to end.
   test.skip(browserName === 'webkit', 'no autoscroll in WebKit');
-  await open(page, '?platform=windows&scenario=many');
+  await openLongList(page);
   const archive = page.getByTestId('place-archive');
   const list = (await page.getByTestId('job-list').boundingBox())!;
   const inList = { x: list.x + list.width / 2, y: list.y + list.height / 2 };
@@ -1482,7 +1493,7 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
 
 /** A middle click in the long list: the autoscroll runs until the next press or key. */
 async function startAutoscroll(page: Page): Promise<void> {
-  await open(page, '?platform=windows&scenario=many');
+  await openLongList(page);
   const list = (await page.getByTestId('job-list').boundingBox())!;
   await page.mouse.move(list.x + list.width / 2, list.y + list.height / 2);
   await page.mouse.down({ button: 'middle' });

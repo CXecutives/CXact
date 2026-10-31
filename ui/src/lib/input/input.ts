@@ -67,12 +67,7 @@ import { t } from '../i18n/t';
 import { clipboardText, onMenuUndo, reportUiError } from '../ipc/api';
 import { noteKey } from '../motion/pace';
 import { glideBy, glideTo } from '../motion/scroll';
-import {
-  fieldMenuUndoDelete,
-  hasAutoscroll,
-  keyConventions,
-  type KeyConventions,
-} from '../platform';
+import { fieldMenuUndoDelete, keyConventions, type KeyConventions } from '../platform';
 import {
   chooseEntry,
   closeMenu,
@@ -132,8 +127,7 @@ const EDITING_KEYS = new Set([
 const CONTROL_EDIT_KEYS = new Set(['a', 'e', 'b', 'f', 'n', 'p', 'd', 'h', 'k']);
 const LEFT = 0;
 const MIDDLE = 1;
-/** How far a held press may move and still be a click: a middle press that leaves the
- *  autoscroll on, a left one that is no drag over the text of a control. */
+/** How far a left press may move and still be a click, no drag over the text of a control. */
 const CLICK_SLOP = 4;
 /** Back and forward (buttons 3 and 4). */
 const BACK = 3;
@@ -1508,12 +1502,8 @@ export function installInput(): void {
   if (installed) return;
   installed = true;
   const capture = { capture: true } as const;
-  // The OS autoscroll a middle click starts (it runs until the next press): that press ends
-  // it and nothing else, whichever button it is and wherever it lands, like Windows' own
-  // scrolling. A middle press dragged and released scrolled while held and left no mode.
-  let autoscroll = false;
+  // The left press that closes a menu presses nothing else: its click goes too.
   let swallow = false;
-  let middleAt = { x: 0, y: 0 };
   const endSwallow = (): void => {
     swallow = false;
     auxPress(false);
@@ -1527,13 +1517,6 @@ export function installInput(): void {
       dismiss('press', event.target);
       if (pressOutsideMenu(event)) {
         swallow = true;
-        return;
-      }
-      if (autoscroll) {
-        autoscroll = false;
-        swallow = true;
-        auxPress(true);
-        event.preventDefault();
         return;
       }
       if (event.button === LEFT) {
@@ -1564,10 +1547,11 @@ export function installInput(): void {
         return;
       }
       auxPress(true);
-      // The middle button starts the autoscroll over a scroll area; nothing else gets it.
+      // The middle button starts the autoscroll over a scroll area; nothing else gets it. The
+      // engine runs it (Windows; macOS has none) until the next press or key and keeps that
+      // press or key to itself: only the release reaches the page, and no click. So the press
+      // that ends it presses nothing, and nothing is left to end here.
       if (event.button === MIDDLE && middleScrolls(event.target)) {
-        middleAt = { x: event.clientX, y: event.clientY };
-        autoscroll = hasAutoscroll();
         keepFocus();
         return;
       }
@@ -1585,16 +1569,8 @@ export function installInput(): void {
         if (event.button === BACK) go(backs);
         else if (event.button === FORWARD) go(forwards);
       }
-      // Dragged with the middle button held: it scrolled while held, no mode is left.
-      if (event.button === MIDDLE && autoscroll) {
-        const moved = Math.hypot(event.clientX - middleAt.x, event.clientY - middleAt.y);
-        if (moved > CLICK_SLOP) autoscroll = false;
-      }
-      // Chromium ends its autoscroll with the next press and keeps that press to itself: only
-      // the release arrives, and nothing is left to end.
-      if (autoscroll && event.button !== MIDDLE) autoscroll = false;
-      // The press that ended the autoscroll: its click (a left one) comes right after this
-      // release in the same task; other buttons send none.
+      // The press that closed a menu: its click (a left one) comes right after this release in
+      // the same task; other buttons send none.
       if (swallow) {
         if (event.button === LEFT) setTimeout(endSwallow, 0);
         else endSwallow();
@@ -1615,8 +1591,6 @@ export function installInput(): void {
     { capture: true, passive: true },
   );
   document.addEventListener('pointercancel', () => auxPress(false), capture);
-  document.addEventListener('keydown', () => (autoscroll = false), capture);
-  window.addEventListener('blur', () => (autoscroll = false));
   document.addEventListener(
     'auxclick',
     (event) => {

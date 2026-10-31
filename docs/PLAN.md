@@ -177,7 +177,7 @@ Inside the window both OS show the same app. They differ by OS convention, decid
 - **The top bar:** Windows draws its caption buttons, macOS keeps the native traffic lights (`CLAUDE.md`).
 - **Dialog buttons:** Windows puts the action first; macOS puts cancel left and the action right.
 - **Scrollbars:** Windows slim and styled, their room kept; macOS native overlay.
-- **Middle-button autoscroll:** Windows only.
+- **Middle-button autoscroll:** Windows only, the engine's own: the app decides nothing about it.
 - **Words for OS things:** Explorer or Finder, Anmeldeinformationsverwaltung or Schlüsselbund.
 - **Keys:** the command key (Strg or Cmd) and how keys are written. The back key (Alt+Left, or Cmd+[ and
   Cmd+Left; the mouse's back button on both).

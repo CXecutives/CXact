@@ -98,12 +98,6 @@ export interface KeyConventions {
   contextMenuKey: boolean;
 }
 
-/** A middle click over a scroll area starts the OS autoscroll, which runs until the next
- *  press: Windows (WebView2) has it, macOS has none. */
-export function hasAutoscroll(): boolean {
-  return platform() === 'windows';
-}
-
 export function keyConventions(): KeyConventions {
   const mac = platform() === 'macos';
   return {
