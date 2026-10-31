@@ -105,6 +105,29 @@ test('a select: the arrows open its list, the focus stays on its button; Enter, 
   await expect(list).toBeVisible();
   await select.click();
   await expect(list).toHaveCount(0);
+  // In the open list Home, End and the first letters move, Space chooses, Tab closes it.
+  const marked = async (name: string): Promise<void> => {
+    const id = await list.getByRole('option', { name }).getAttribute('id');
+    await expect(select).toHaveAttribute('aria-activedescendant', id!);
+  };
+  await select.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(list).toBeVisible();
+  await page.keyboard.press('End');
+  await marked('WEB.DE');
+  await page.keyboard.press('Home');
+  await marked('Gmail');
+  await page.keyboard.type('ic');
+  await marked('iCloud');
+  await page.keyboard.press(' ');
+  await expect(list).toHaveCount(0);
+  await expect(select).toHaveText('iCloud');
+  await expect(select).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(list).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(list).toHaveCount(0);
+  await expect(select).toHaveText('iCloud');
 });
 
 test('a radio list: the chosen row carries the one tick; a click and the arrows choose', async ({
