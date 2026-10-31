@@ -750,6 +750,44 @@ test('Regionen suggest the regions of Germany, Austria and Switzerland; typed te
   ]);
 });
 
+test("a field's list shows its eight rows whole, and none stands under the top bar", async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = page.getByTestId('profile-tools').locator('input');
+  const list = page.getByTestId('profile-tools-suggestions');
+  const frame = list.locator('xpath=..');
+  await tools.click();
+  await page.keyboard.type('sa');
+  await expect(list.getByRole('option')).toHaveCount(8);
+  await animationsDone(page);
+  // Nothing to scroll for a list of a fixed short length.
+  expect(await list.evaluate((node) => node.scrollHeight - node.clientHeight)).toBe(0);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await leaveField(page);
+  // A low window: inside the room on the side it opens, its first row in reach.
+  await page.setViewportSize({ width: 480, height: 360 });
+  await page.getByTestId('profile-tools').evaluate((node) => {
+    node.scrollIntoView({ block: 'end' });
+  });
+  await tools.click();
+  await page.keyboard.type('s');
+  await expect(list.getByRole('option')).toHaveCount(8);
+  await animationsDone(page);
+  const bar = (await page.getByTestId('title-bar').boundingBox())!;
+  const low = (await frame.boundingBox())!;
+  expect(low.y).toBeGreaterThanOrEqual(bar.y + bar.height);
+  expect(low.y + low.height).toBeLessThanOrEqual(360);
+  await page.keyboard.press('ArrowDown');
+  await expect(list.getByRole('option').first()).toBeInViewport();
+  expect(await list.evaluate((node) => node.scrollHeight - node.clientHeight)).toBeGreaterThan(0);
+  // What the arrows reach comes into view inside it.
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect(list.getByRole('option').last()).toBeInViewport();
+});
+
 test('Branchen: plain names, no star; only the × removes', async ({ page }) => {
   await profile(page);
   const industries = page.getByTestId('profile-industries');

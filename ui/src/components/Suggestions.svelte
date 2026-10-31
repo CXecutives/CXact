@@ -1,8 +1,8 @@
 <!--
   The list under a field that suggests (round 10, the one look of every menu: rows 32 px,
-  6 px round in a 10 px round box with 4 px around them, the pop shadow, at most 232 px high
-  and then scrolling). It drops in under its field (150 ms, menuIn) and opens above it where
-  only there is room. Two uses:
+  6 px round in a 10 px round box with 4 px around them, the pop shadow). Eight rows show whole
+  and the room on the side it opens is its limit, beyond them it scrolls. It drops in under its
+  field (150 ms, menuIn) and opens above it where only there is room. Two uses:
   - the terms of a vocabulary (the engine's words) for a field that takes free text (a
     competence, its synonyms, tools, industries): from the first character typed, the terms
     that start with it, a whole term first, then a word of one, at most eight, the shorter
@@ -49,7 +49,7 @@
     words: readonly (readonly string[])[];
   }
 
-  /** At most this many suggestions show. */
+  /** At most this many suggestions show, and this many rows of a longer list of options. */
   const MOST = 8;
   /** Suggestions start with the first character typed (round 10). */
   const FROM = 1;
@@ -93,6 +93,7 @@
 
 <script lang="ts">
   import type { Action } from 'svelte/action';
+  import { cssVars, px } from '$lib/actions/cssVars';
   import { menuIn, menuOut } from '$lib/motion/transitions';
   import { tokenPx } from '$lib/tokens';
 
@@ -112,26 +113,31 @@
 
   /** The list opened above its field (there was no room below). */
   let up = $state(false);
+  /** How high it stands: its rows, at most eight, in the room on its side. */
+  let height = $state(0);
 
   /** Below the field, or above it where only there is room, measured whenever the list
    *  grows or shrinks; the marked row stays in view. */
   const place: Action<HTMLElement, { count: number; active: number }> = (node, param) => {
-    const measure = (): void => {
+    const measure = (count: number): void => {
       const field = node.parentElement?.getBoundingClientRect();
       if (field === undefined) return;
       const gap = tokenPx('--menu-gap');
       const edge = tokenPx('--viewport-gap');
       const below = document.documentElement.clientHeight - edge - field.bottom - gap;
       const above = field.top - gap - tokenPx('--titlebar-height') - edge;
-      up = node.offsetHeight > below && above > below;
+      const rows = Math.min(count, MOST) * tokenPx('--menu-row');
+      const wanted = rows + 2 * (tokenPx('--menu-pad') + tokenPx('--border-width'));
+      up = wanted > below && above > below;
+      height = Math.min(wanted, up ? above : below);
     };
     const reveal = (index: number): void => {
       node.querySelector(`#${CSS.escape(`${id}-${index}`)}`)?.scrollIntoView({ block: 'nearest' });
     };
-    measure();
+    measure(param.count);
     return {
       update(next) {
-        if (next.count !== param.count) measure();
+        if (next.count !== param.count) measure(next.count);
         if (next.active !== param.active && next.active >= 0) reveal(next.active);
         param = next;
       },
@@ -144,6 +150,7 @@
     class="frame"
     class:up
     use:place={{ count: items.length, active }}
+    use:cssVars={{ 'list-height': px(height) }}
     in:menuIn={{ up }}
     out:menuOut
   >
@@ -186,7 +193,7 @@
     width: max-content;
     min-width: 100%;
     max-width: var(--menu-max);
-    max-height: var(--menu-max-height);
+    max-height: var(--list-height);
     padding: var(--menu-pad);
     border: var(--border-width) solid var(--border);
     border-radius: var(--menu-radius);
