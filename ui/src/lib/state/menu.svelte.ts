@@ -71,6 +71,14 @@ export const menuState: MenuState = $state({ open: null, active: -1 });
 
 let nextId = 1;
 
+/** Told each time a menu opens: input.ts, which has to hold the wheel for it (a select's list
+ *  takes no focus that could say so). */
+let opened: (() => void) | null = null;
+
+export function onMenuOpened(handler: () => void): void {
+  opened = handler;
+}
+
 export const isItem = (entry: MenuEntry): entry is MenuItem =>
   entry.kind !== 'separator' && entry.kind !== 'heading';
 
@@ -85,6 +93,7 @@ export function openMenu(spec: MenuSpec): void {
   const first = spec.active ?? (spec.fromKeyboard === true ? firstEnabled(spec.entries, 0, 1) : -1);
   menuState.open = { ...spec, id: nextId++, returnFocus };
   menuState.active = first;
+  opened?.();
 }
 
 /** The element ids of a menu and of its entries (a select's aria-controls and

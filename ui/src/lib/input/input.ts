@@ -74,6 +74,7 @@ import {
   firstEnabled,
   isItem,
   menuState,
+  onMenuOpened,
   openMenu,
   type MenuEntry,
 } from '../state/menu.svelte';
@@ -673,9 +674,8 @@ function keepInView(node: HTMLElement): void {
 
 function onFocusIn(event: FocusEvent): void {
   const node = event.target;
-  // A menu and a modal dialog take the focus when they open: from then on the wheel is
-  // held for them (onWheel).
-  if (closest(node, MENU_LAYER) !== null) watchWheel('menu', true);
+  // A modal dialog takes the focus when it opens: from then on the wheel is held for it
+  // (onWheel).
   if (closest(node, MODAL) !== null) watchWheel('modal', true);
   if (!keyboardFocus || !(node instanceof HTMLElement)) return;
   // After the engine's own scroll into view.
@@ -1352,12 +1352,12 @@ function scrollsInside(event: WheelEvent, layer: Element): boolean {
  *  scrolling the page, which closes the menu; a scroll the app makes itself (the list keeping
  *  the open row in view) leaves it open. A press on a scrollbar closes it as any press outside. */
 function holdMenuWheel(event: WheelEvent): void {
-  if (closest(event.target, MENU_LAYER) === null) {
+  const layer = closest(event.target, MENU_LAYER);
+  if (layer === null) {
     closeMenu(false);
     return;
   }
-  const menu = closest(event.target, '[role="menu"]');
-  if (menu !== null && !scrollsInside(event, menu)) event.preventDefault();
+  if (!scrollsInside(event, layer)) event.preventDefault();
 }
 
 /**
@@ -1509,6 +1509,8 @@ export function installInput(): void {
     auxPress(false);
   };
 
+  // From the moment a menu opens the wheel is held for it (onWheel).
+  onMenuOpened(() => watchWheel('menu', true));
   document.addEventListener('contextmenu', onContextMenu, capture);
   document.addEventListener(
     'mousedown',

@@ -201,23 +201,9 @@ test('right click, middle click and drag: what the page lets through', async ({ 
     const init = { bubbles: true, cancelable: true };
     const out = {
       scrolls: scroll.scrollHeight > scroll.clientHeight,
-      contextmenu: fire(view, new MouseEvent('contextmenu', init)),
-      contextmenuInField: fire(field, new MouseEvent('contextmenu', init)),
-      middleDownOutsideScrollArea: fire(
-        header,
-        new MouseEvent('mousedown', { ...init, button: 1 }),
-      ),
-      middleDownOnListRow: fire(row, new MouseEvent('mousedown', { ...init, button: 1 })),
-      rightDown: fire(row, new MouseEvent('mousedown', { ...init, button: 2 })),
-      leftDown: fire(view, new MouseEvent('mousedown', { ...init, button: 0 })),
-      backUp: fire(view, new MouseEvent('mouseup', { ...init, button: 3 })),
-      auxclick: fire(row, new MouseEvent('auxclick', { ...init, button: 1 })),
-      dragstart: fire(view, new Event('dragstart', init)),
-      selectstart: fire(view, new Event('selectstart', init)),
-      selectstartInField: fire(field, new Event('selectstart', init)),
-      dblclick: fire(view, new MouseEvent('dblclick', init)),
       // At rest no wheel listener that may cancel is attached (scrolling never waits for
-      // the page); it is there only while Ctrl or Cmd is held.
+      // the page); it is there only while Ctrl or Cmd is held, or a menu is open (below, the
+      // right click in the field opens one).
       ctrlWheelAtRest: fire(view, new WheelEvent('wheel', { ...init, ctrlKey: true, deltaY: 1 })),
       holdControl: fire(
         view,
@@ -236,6 +222,21 @@ test('right click, middle click and drag: what the page lets through', async ({ 
         view,
         new WheelEvent('wheel', { ...init, metaKey: true, deltaY: 1 }),
       ),
+      contextmenu: fire(view, new MouseEvent('contextmenu', init)),
+      contextmenuInField: fire(field, new MouseEvent('contextmenu', init)),
+      middleDownOutsideScrollArea: fire(
+        header,
+        new MouseEvent('mousedown', { ...init, button: 1 }),
+      ),
+      middleDownOnListRow: fire(row, new MouseEvent('mousedown', { ...init, button: 1 })),
+      rightDown: fire(row, new MouseEvent('mousedown', { ...init, button: 2 })),
+      leftDown: fire(view, new MouseEvent('mousedown', { ...init, button: 0 })),
+      backUp: fire(view, new MouseEvent('mouseup', { ...init, button: 3 })),
+      auxclick: fire(row, new MouseEvent('auxclick', { ...init, button: 1 })),
+      dragstart: fire(view, new Event('dragstart', init)),
+      selectstart: fire(view, new Event('selectstart', init)),
+      selectstartInField: fire(field, new Event('selectstart', init)),
+      dblclick: fire(view, new MouseEvent('dblclick', init)),
     };
     field.remove();
     return out;
