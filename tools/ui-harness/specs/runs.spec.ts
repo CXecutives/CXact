@@ -153,6 +153,34 @@ test('the first search of an empty app: the two columns come with its first row'
   expect(await page.evaluate(() => (window as unknown as { alone: number[] }).alone)).toEqual([]);
 });
 
+test('Zeigen closes the open job its list no longer holds; the one it holds stays', async ({
+  page,
+}) => {
+  /** The new job of the high band, the one Zeigen lists. */
+  const shown = 'linkedin-4100200399';
+  const zeigen = page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action');
+  await open(page, `${WIN}&tick=15`);
+  await row(page, 'freelancermap-2801').click();
+  await expect(page.getByTestId('reader-title')).toBeVisible();
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await zeigen.click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  await expect.poll(() => listed(page)).toEqual([shown]);
+  await expect(page.getByTestId('reader-title')).toHaveCount(0);
+  await expect(page.getByTestId('place-reader')).toBeVisible();
+  // A job of that search stays open beside the jobs Zeigen shows.
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await row(page, shown).click();
+  const title = await page.getByTestId('reader-title').innerText();
+  await zeigen.click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  await expect.poll(() => listed(page)).toEqual([shown]);
+  await expect(page.getByTestId('reader-title')).toHaveText(title);
+});
+
 test('what Zeigen set is never the user filter: its chips taken off keep nothing, the own one stays', async ({
   page,
 }) => {
@@ -170,6 +198,11 @@ test('what Zeigen set is never the user filter: its chips taken off keep nothing
   await expect(chip(page, 'run')).toHaveCount(0);
   await chipRemove(page, 'band-high').click();
   expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBe(kept);
+  // With the last of them gone the user's own stands again at once, not only at the next start.
+  await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
+  await expect
+    .poll(() => lastQuery(page))
+    .toMatchObject({ run: null, bands: [], portals: ['linkedin'] });
   await open(page, `${WIN}&tick=15`);
   await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
 });

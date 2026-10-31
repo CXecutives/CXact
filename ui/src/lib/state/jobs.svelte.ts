@@ -338,14 +338,12 @@ class JobsStore {
    * Another filter (a part of it, or `NO_FILTER` to reset it), the user's own: kept like the
    * order. While "Zeigen" has borrowed the list's filter (`borrowFilter`) nothing is kept,
    * neither what it set nor what the user takes off it chip by chip: the user's own kept
-   * filter waits in the store untouched, and with the last chip gone the list is the user's
-   * again.
+   * filter waits in the store untouched, and with the last chip gone it stands again.
    */
   setFilter(change: Partial<ListFilter>): void {
     const next = { ...this.filterChoice, ...change };
-    if (!this.#show(next)) return;
-    if (this.#borrowed) this.#borrowed = isFiltered(next);
-    else keepFilter(next);
+    if (this.#borrowed && !isFiltered(next)) this.returnFilter();
+    else if (this.#show(next) && !this.#borrowed) keepFilter(next);
   }
 
   /** The filter "Zeigen" of a fetch's toast sets is borrowed: it lasts until the user takes
@@ -364,7 +362,9 @@ class JobsStore {
   /**
    * Shows the list with another filter. The list loads again from the top; the open job
    * stays open when the filter still lists it (its row comes into view), else it closes like
-   * a job the search no longer finds. False when it is the filter shown already.
+   * a job the search no longer finds: at once where the job itself tells, else (a row does not
+   * know its fetch) once a complete list does not hold it. False when it is the filter shown
+   * already.
    */
   #show(next: ListFilter): boolean {
     if (JSON.stringify(next) === JSON.stringify(this.filterChoice)) return false;
@@ -375,9 +375,10 @@ class JobsStore {
     const listed = this.rows.some((row) => sameKey(row.key, open));
     if (job !== null && !this.#passes(job)) this.clearSelection();
     void this.load().then(() => {
-      if (open !== null && listed && sameKey(this.selected, open) && this.status === 'ready') {
-        void this.reach(open, false);
-      }
+      if (open === null || !sameKey(this.selected, open) || this.status !== 'ready') return;
+      const holds = this.rows.some((row) => sameKey(row.key, open));
+      if (!holds && this.rows.length >= this.total) this.clearSelection();
+      else if (listed) void this.reach(open, false);
     });
     return true;
   }
