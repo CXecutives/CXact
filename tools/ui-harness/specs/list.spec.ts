@@ -272,6 +272,99 @@ test.describe('header', () => {
     await expect(page.getByTestId('fetch')).toBeFocused();
   });
 
+  test("from the keyboard the empty state's Jobs suchen hands the focus on too, and takes it back", async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=fresh&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    const empty = await expectBarePlace(page, T.list.empty.inbox);
+    await empty.getByTestId('fetch').focus();
+    await page.keyboard.press('Enter');
+    // The head comes with the run, and its Abbrechen takes the focus.
+    const cancel = page.getByTestId('list-header').getByTestId('cancel-run');
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Enter');
+    await runFinished(page);
+    // The list is bare again: the empty state's button takes it back.
+    await expectBarePlace(page, T.list.empty.inbox);
+    await expect(page.getByTestId('empty-all').getByTestId('fetch')).toBeFocused();
+    // A run that brings jobs: the head's button takes it, the head stays.
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await page.keyboard.press('Enter');
+    await expect(cancel).toBeFocused();
+    await runFinished(page);
+    await expect(rows(page).first()).toBeVisible();
+    await expect(page.getByTestId('list-header').getByTestId('fetch')).toBeFocused();
+  });
+
+  test('a short run that brings the first jobs keeps its head at its end', async ({ page }) => {
+    await open(page, `${WIN}&scenario=fresh&tick=15`);
+    await expectBarePlace(page, T.list.empty.inbox);
+    await page.getByTestId('fetch').click();
+    await page.getByTestId('cancel-run').waitFor();
+    // From here on the head stands: the rows of the run never stand without it, not even for
+    // as long as the counts take to hear of them.
+    const headless = page.evaluate(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const watch = new MutationObserver(() => {
+            if (document.querySelector('[data-testid="list-header"]') !== null) return;
+            watch.disconnect();
+            resolve(true);
+          });
+          watch.observe(document.body, { childList: true, subtree: true });
+          const done = setInterval(() => {
+            if (!window.__harness.done) return;
+            clearInterval(done);
+            setTimeout(() => {
+              watch.disconnect();
+              resolve(false);
+            }, 300);
+          }, 20);
+        }),
+    );
+    await runFinished(page);
+    expect(await headless).toBe(false);
+    await expect(rows(page).first()).toBeVisible();
+    await expect(page.getByTestId('list-header')).toBeVisible();
+  });
+
+  test('from the keyboard an Abbrechen with no Jobs suchen after it hands the focus to the place', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    await openPlace(page, 'archive');
+    await page.getByTestId('cancel-run').focus();
+    await page.keyboard.press('Enter');
+    await runFinished(page);
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
+    await expect(page.getByTestId('place-archive')).toBeFocused();
+  });
+
+  test('a click on the action moves no focus, neither to Abbrechen nor back', async ({ page }) => {
+    await open(page, `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    await expect(cancel).not.toBeFocused();
+    await cancel.click();
+    await runFinished(page);
+    await expect(page.getByTestId('fetch')).not.toBeFocused();
+    // Nor the empty state's, which a press focuses in Chromium.
+    await open(page, `${WIN}&scenario=fresh&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('empty-all').getByTestId('fetch').click();
+    await expect(cancel).toBeVisible();
+    await expect(cancel).not.toBeFocused();
+    await cancel.click();
+    await runFinished(page);
+    await expect(page.getByTestId('fetch')).toBeVisible();
+    await expect(page.getByTestId('fetch')).not.toBeFocused();
+  });
+
   test('while a fetch goes Abbrechen and the strip stand in every place', async ({ page }) => {
     await open(page, `${WIN}&tick=15`);
     await page.evaluate(() => (window.__harness.holdAfter = 3));

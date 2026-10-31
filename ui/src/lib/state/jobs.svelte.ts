@@ -304,7 +304,8 @@ class JobsStore {
   }
 
   /** No job in this place, nothing searched or filtered and no run: the list has nothing to
-   *  head (JobsView hides its head; Aktuell's empty state offers "Jobs suchen"). */
+   *  head (JobsView hides its head; Aktuell's empty state offers "Jobs suchen"). The rows of a
+   *  run that just ended count before the counts have heard of them. */
   get bare(): boolean {
     const counts = this.overviewCounts;
     return (
@@ -313,7 +314,8 @@ class JobsStore {
       counts[this.place] === 0 &&
       !this.searching &&
       !this.filtered &&
-      !run.active
+      !run.active &&
+      !this.rows.some((job) => job.place === this.place)
     );
   }
 
