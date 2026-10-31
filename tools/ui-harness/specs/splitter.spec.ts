@@ -17,7 +17,7 @@ interface Handle {
 }
 
 /** The list column's width as the handle reports it and its live limits; the column is laid
- *  out as wide as the handle says. */
+ *  out as wide as the handle says, and the seam in the top bar follows its border. */
 async function handle(page: Page): Promise<Handle> {
   await settle(page);
   const splitter = page.getByTestId('list-splitter');
@@ -25,6 +25,8 @@ async function handle(page: Page): Promise<Handle> {
   const width = await value('aria-valuenow');
   const column = (await page.getByTestId('list-scroll').boundingBox())!;
   expect(Math.abs(column.width - width), 'laid out = aria-valuenow').toBeLessThanOrEqual(2);
+  const seam = (await page.getByTestId('title-bar-seam').boundingBox())!;
+  expect(Math.abs(seam.x - (column.x + width)), 'the seam on the border').toBeLessThanOrEqual(2);
   return { width, min: await value('aria-valuemin'), max: await value('aria-valuemax') };
 }
 
@@ -147,11 +149,11 @@ test('at its narrowest the list header still shows every control in the column',
 });
 
 // The strip that takes the pointer starts on the border (over the next column, never over
-// the list's scrollbar) and below the top bar
-// (the bar keeps moving the window); it draws nothing at rest and a line over the border
-// under the pointer, no grip.
+// the list's scrollbar) and below the top bar (the bar keeps moving the window); it draws
+// nothing at rest and under the pointer a line over the border, the whole height of the window,
+// through the top bar; no grip.
 for (const id of ['list-splitter', 'sidebar-splitter']) {
-  test(`${id}: starts on the border below the bar, a line only under the pointer`, async ({
+  test(`${id}: starts on the border below the bar, a line through the bar only under the pointer`, async ({
     page,
   }) => {
     await open(page, WIN);
@@ -170,12 +172,20 @@ for (const id of ['list-splitter', 'sidebar-splitter']) {
     // It starts on the border and lies over the next column, never over the list's scrollbar.
     expect(Math.abs(box.x - (border - 0.5))).toBeLessThanOrEqual(1.5);
     await expect(page.getByTestId(id).locator('.grip')).toHaveCount(0);
-    const line = (): Promise<string> =>
-      hit.evaluate((node) => getComputedStyle(node, '::after').opacity);
+    const line = page.getByTestId(id).locator('.line');
+    const shown = (): Promise<string> => line.evaluate((node) => getComputedStyle(node).opacity);
     await page.mouse.move(box.x - 200, box.y + 200);
-    await expect.poll(line).toBe('0');
+    await expect.poll(shown).toBe('0');
     await hit.hover();
-    await expect.poll(line).toBe('1');
+    await expect.poll(shown).toBe('1');
+    // It stands on the border, from the window's top (through the bar) to its bottom.
+    const drawn = (await line.boundingBox())!;
+    const height = await page.evaluate(() => innerHeight);
+    expect(Math.abs(drawn.x - (border - 0.5))).toBeLessThanOrEqual(1.5);
+    expect([drawn.y, drawn.height]).toEqual([0, height]);
+    // The seam in the bar stands there too.
+    const seam = id === 'list-splitter' ? 'title-bar-seam' : 'title-bar-ground';
+    expect((await page.getByTestId(seam).boundingBox())!.x).toBe(border - 0.5);
   });
 }
 
@@ -197,10 +207,15 @@ test('the sidebar keeps its width between its limits; a double click sets it bac
     await page.mouse.move(box.x + box.width / 2 + dx, y, { steps: 4 });
     await page.mouse.up();
   };
+  /** The seam in the top bar follows: it stands on the sidebar's last pixel. */
+  const seam = async (): Promise<number> =>
+    (await page.getByTestId('title-bar-ground').boundingBox())!.x + 1;
   await pull(400);
   await expect.poll(width).toBe(max);
+  await expect.poll(seam).toBe(max);
   await pull(-400);
   await expect.poll(width).toBe(min);
+  await expect.poll(seam).toBe(min);
   await page.reload();
   await expect.poll(width).toBe(min);
   await handle.locator('.hit').dblclick();

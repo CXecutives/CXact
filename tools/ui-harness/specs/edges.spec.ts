@@ -1,9 +1,10 @@
 // Edge cases across the screens: the reader's terms, the search over every word, the form's
-// values and caret, undo and the end of a run.
+// values and what it does with them, undo and the end of a run.
 
-import type { Page } from '@playwright/test';
-import { expect, NOW, open, runFinished, test } from './fixtures';
-import { chooseWay, reveal, T } from './helpers';
+import type { Locator, Page } from '@playwright/test';
+import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
+import { animationsDone, calls, expect, NOW, open, runFinished, test } from './fixtures';
+import { failNext, reveal, stubList, T } from './helpers';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -11,20 +12,66 @@ const row = (page: Page, key: string) => list(page).getByTestId(`job-row-${key}`
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const stage = (page: Page) => page.getByTestId('stage');
 
+/** A moment longer than a changed value waits before it saves (--save-delay). */
+const T_SAVE = 400;
+/** What the saves of the form have sent so far, in their order. */
+const saves = async (page: Page): Promise<ProfileSave[]> =>
+  (await calls(page, 'save_profile')).map(([, args]) => (args as { save: ProfileSave }).save);
+/** The page's last word to the backend (`set_unsaved`): the form holds what is not saved. */
+const unsaved = (page: Page): Promise<boolean> => page.evaluate(() => window.__harness.unsaved);
+/** Takes the caret out of the field that holds it: what it holds saves now. */
+const leaveField = (page: Page): Promise<void> =>
+  page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+
+/** The next save is refused like core refuses a value (`profileValue`). */
+async function refuseNextSave(page: Page, field: string, max: number): Promise<void> {
+  await page.evaluate(
+    ({ field, max }) => {
+      const calls = window.__harness.calls;
+      const push = calls.push.bind(calls);
+      calls.push = (...items: [string, unknown][]) => {
+        if (items.some(([name]) => name === 'save_profile')) {
+          calls.push = push;
+          push(...items);
+          throw { kind: 'invalid', params: { reason: 'profileValue', field, row: null, max } };
+        }
+        return push(...items);
+      };
+    },
+    { field, max },
+  );
+}
+
+/** From the page's end, `field` out of sight, the way to Einstellungen asks, Abbrechen stays. */
+async function leaveAndStay(page: Page, field: Locator, question: string): Promise<void> {
+  const view = page.getByTestId('view-profile');
+  await view.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+  await expect(field).not.toBeInViewport();
+  await page.getByTestId('nav-settings').click();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await expect(dialog).toContainText(question);
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toHaveCount(0);
+  await expect(view).toBeVisible();
+}
+
 test('the reader shows the ad rate and start without a profile minimum', async ({ page }) => {
+  const rate = T.facts.pay(1200, 'day', 'EUR').replace(/\s/g, ' ');
   await open(page, `${WIN}&scenario=no-minimum`);
   await row(page, 'freelancermap-2801').click();
   // The profile sets neither a minimum rate nor a start: the ad's values join the line.
   const line = stage(page).getByTestId('criteria');
-  await expect(line).toContainText('1.200 €/Tag');
-  await expect(line).toContainText('ab sofort');
+  await expect(line).toContainText(rate);
+  await expect(line).toContainText(T.facts.now);
   // With a minimum the criterion chip says the rate, and no fact repeats it.
   await open(page, WIN);
   await row(page, 'freelancermap-2801').click();
   const clean = stage(page).getByTestId('criteria');
-  await expect(clean).toContainText('1.200 €/Tag');
+  await expect(clean).toContainText(rate);
   const text = async () => (await clean.textContent())?.replace(/\s/g, ' ') ?? '';
-  await expect.poll(async () => (await text()).split('1.200 €/Tag').length).toBe(2);
+  await expect.poll(async () => (await text()).split(rate).length).toBe(2);
 });
 
 test('the search matches every word in any field and the portal name', async ({ page }) => {
@@ -35,10 +82,13 @@ test('the search matches every word in any field and the portal name', async ({ 
   await expect(rows(page)).toHaveCount(1);
   await expect(row(page, 'linkedin-4100200301')).toBeVisible();
   await search.fill('controlling berlin');
+  await expect(page.getByTestId('empty-search').locator('h3')).toHaveText(
+    T.list.noHit('controlling berlin'),
+  );
   await expect(rows(page)).toHaveCount(0);
-  // The portal's name narrows to its jobs, and the count of the archive follows.
+  // The portal's name narrows to its jobs, and the archive's hits are named under them.
   await search.fill('linkedin bremen');
-  // Named like its tab, no count.
+  // Named like its place in the sidebar, no count.
   await expect(page.getByTestId('also-archive')).toHaveText(T.place.archive);
   const keys = await rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''));
   expect(keys.length).toBeGreaterThan(0);
@@ -53,69 +103,175 @@ test('a decimal number is cut to a whole one, never joined', async ({ page }) =>
   await expect(page.getByTestId('profile-years-rounded')).toHaveCount(0);
   await page.getByTestId('profile-min-rate').focus();
   await expect(years).toHaveValue('7');
-  await expect(page.getByTestId('profile-years-rounded')).toHaveText(
-    'Auf eine ganze Zahl abgerundet.',
-  );
+  await expect(page.getByTestId('profile-years-rounded')).toHaveText(T.profile.field.roundedWhole);
   await (await reveal(page, page.getByTestId('competence-years'))).first().fill('2.5');
-  await page.getByTestId('profile-save').click();
-  const saves = async (): Promise<unknown[][]> =>
-    (await page.evaluate(() => window.__harness.calls)).filter(([name]) => name === 'save_profile');
-  await expect.poll(async () => (await saves()).length).toBe(1);
-  const sent = (await saves()).at(-1)![1] as {
-    save: { after: { years: number; competences: { years: number | null }[] } };
-  };
-  expect(sent.save.after.years).toBe(7);
-  expect(sent.save.after.competences[0]!.years).toBe(2);
+  // Left, the form saves by itself: the whole numbers are what goes.
+  await leaveField(page);
+  await expect
+    .poll(async () => {
+      const after = (await saves(page)).at(-1)?.after;
+      return [after?.years, after?.competences[0]?.years];
+    })
+    .toEqual([7, 2]);
 });
 
-test('text typed into a chip field is a change: Speichern takes it, closing asks', async ({
+test('text typed into a chip field is a change: leaving takes it, closing saves it first', async ({
   page,
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const save = page.getByTestId('profile-save');
   const tools = (await reveal(page, page.getByTestId('profile-tools'))).locator('input');
   await tools.fill('Miro');
-  // Typed, not yet a chip: Speichern waits no more, and the backend knows it is unsaved.
-  await expect(save).not.toHaveAttribute('aria-disabled', 'true');
-  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
-  const saves = async () =>
-    (await page.evaluate(() => window.__harness.calls)).filter(([name]) => name === 'save_profile');
-  // Ctrl+S is no key of the app: only the button saves.
+  // Typed, not yet a chip: the backend knows it is unsaved, and nothing goes while it is typed.
+  await expect.poll(() => unsaved(page)).toBe(true);
+  // Ctrl+S is no key of the app either.
   await page.keyboard.press('Control+s');
-  await page.waitForTimeout(200);
-  expect(await saves()).toHaveLength(0);
-  await save.click();
-  await expect.poll(async () => (await saves()).length).toBe(1);
-  const sent = (await saves()).at(-1)![1] as { save: { after: { tools: string[] } } };
-  expect(sent.save.after.tools).toContain('Miro');
+  await page.waitForTimeout(T_SAVE);
+  expect((await saves(page)).length).toBe(0);
+  // Left, the text is a chip and saves by itself.
+  await leaveField(page);
+  await expect.poll(async () => (await saves(page)).at(-1)?.after.tools).toContain('Miro');
   await expect(tools).toHaveValue('');
+  await expect.poll(() => unsaved(page)).toBe(false);
 
-  // Closing the window with typed text asks first.
+  // Closing the window with typed text saves it, and nothing asks.
   await (await reveal(page, page.getByTestId('profile-regions'))).locator('input').fill('Berlin');
-  // The form has taken the typed text as a change (as the user sees it), and the backend
-  // knows it (the page's `set_unsaved`), before the window closes.
-  await expect(save).toBeEnabled();
-  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
+  // The backend knows it (the page's `set_unsaved`) before the window closes.
+  await expect.poll(() => unsaved(page)).toBe(true);
   await page.evaluate(() => window.__harness.requestClose());
-  await expect(page.getByTestId('dialog-leave-profile')).toBeVisible();
-  expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.__harness.closed)).toBe(true);
+  expect((await saves(page)).at(-1)?.after.regions).toContain('Berlin');
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
 });
 
-test('a failed save from the leave dialog shows the refused field, without the caret', async ({
+test("the note of a competence's years only grows its row downward", async ({ page }) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  const years = (await reveal(page, page.getByTestId('competence-years'))).first();
+  const before = (await years.boundingBox())!;
+  await years.fill('2.5');
+  await leaveField(page);
+  const note = page.getByTestId('competence-years-rounded');
+  await expect(note).toHaveText(T.profile.field.roundedWhole);
+  // The field keeps its width and the note stands under it, not beside it.
+  const after = (await years.boundingBox())!;
+  expect(after.width).toBe(before.width);
+  expect((await note.boundingBox())!.y).toBeGreaterThanOrEqual(after.y + after.height);
+});
+
+test('staying with a value that holds the save brings its field back, without the caret', async ({
   page,
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const rate = page.getByTestId('profile-min-rate');
   await rate.fill('200000');
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('dialog-leave-profile').getByRole('button', { name: 'Speichern' }).click();
-  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+  await leaveAndStay(page, rate, T.profile.leaveWrong(T.profile.field.dayRateMin));
   // Marked and in view; the user clicks where they want to type (design round 7).
+  await expect(page.locator('[data-field~="dayRateMin"]')).toContainText(
+    T.profile.field.atMost(100_000),
+  );
   await expect(rate).toHaveAttribute('aria-invalid', 'true');
   await expect(rate).toBeInViewport();
   await expect(rate).not.toBeFocused();
+  // Nothing went: it holds the save.
+  expect((await saves(page)).length).toBe(0);
+});
+
+test('a value refused on the way out asks too; staying brings its field back, without the caret', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  const rate = page.getByTestId('profile-min-rate');
+  await rate.fill('1.300');
+  await refuseNextSave(page, 'dayRateMin', 1250);
+  await leaveAndStay(page, rate, T.profile.leaveWrong(T.profile.field.dayRateMin));
+  await expect(page.locator('[data-field~="dayRateMin"]')).toContainText(
+    T.profile.field.atMost(1250),
+  );
+  await expect(rate).toHaveAttribute('aria-invalid', 'true');
+  await expect(rate).toBeInViewport();
+  await expect(rate).not.toBeFocused();
+  // Not tried again by itself; changed, it saves.
+  await page.waitForTimeout(T_SAVE);
+  expect((await saves(page)).length).toBe(1);
+  await rate.fill('1.200');
+  await leaveField(page);
+  await expect.poll(async () => (await saves(page)).at(-1)?.after.dayRateMin).toBe(1200);
+});
+
+test('a wrong day rate out of sight holds no save', async ({ page }) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  const rate = page.getByTestId('profile-min-rate');
+  await rate.fill('200000');
+  await leaveField(page);
+  await expect(page.locator('[data-field~="dayRateMin"]')).toContainText(
+    T.profile.field.atMost(100_000),
+  );
+  // Without Projekt und Interim the day rates are out of sight, and the form saves as ever.
+  await page.getByTestId('contract-project').click();
+  await expect(rate).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__harness.form()?.project)).toBe(false);
+  await expect(page.getByTestId('profile-save-error')).toHaveCount(0);
+  // The next change goes too, and leaving asks nothing.
+  await page.getByTestId('profile-years').fill('21');
+  await leaveField(page);
+  await expect.poll(() => page.evaluate(() => window.__harness.form()?.years)).toBe(21);
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+});
+
+test('a save that fails on the way out asks, none goes behind the question, staying says why', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  await page.getByTestId('profile-min-rate').fill('1.300');
+  await failNext(page, 'save_profile');
+  await page.getByTestId('nav-settings').click();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await expect(dialog).toContainText(T.profile.leaveFailed);
+  // While it asks whether to drop the change, the change is not saved behind it.
+  await page.waitForTimeout(T_SAVE);
+  expect((await saves(page)).length).toBe(1);
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(page.getByTestId('profile-save-error')).toHaveText(T.error.text('db', {}));
+  // The next way out saves first and goes.
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  expect((await saves(page)).at(-1)?.after.dayRateMin).toBe(1300);
+});
+
+test("a select's open list: the wheel over it moves nothing behind it, beside it closes it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 600 });
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  const select = await reveal(page, page.getByTestId('profile-work-mode'));
+  await select.click();
+  const options = page.getByRole('listbox');
+  await expect(options).toBeVisible();
+  await animationsDone(page);
+  const view = page.getByTestId('view-profile');
+  const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
+  const before = await top();
+  const over = (await options.boundingBox())!;
+  await page.mouse.move(over.x + over.width / 2, over.y + over.height / 2);
+  await page.mouse.wheel(0, 120);
+  await page.waitForTimeout(300);
+  expect(await top()).toBe(before);
+  await expect(options).toBeVisible();
+  // Beside it, over the row's label, the page scrolls and the list goes, like every menu: it
+  // never hangs in the air away from its select.
+  const beside = (await select.boundingBox())!;
+  await page.mouse.move(beside.x - 100, beside.y + beside.height / 2);
+  await page.mouse.wheel(0, 120);
+  await expect.poll(top).toBeGreaterThan(before);
+  await expect(options).toHaveCount(0);
 });
 
 test('a row whose exclusion changes in place stands with the scored rows', async ({ page }) => {
@@ -143,22 +299,25 @@ test('a row whose exclusion changes in place stands with the scored rows', async
 
 test('deleting the open job for good opens the next one', async ({ page }) => {
   await open(page, WIN);
-  for (const key of ['freelancermap-2803', 'linkedin-4100200302']) {
-    await row(page, key).click({ button: 'right' });
-    await page.getByTestId('menu-item-trash').click();
-    await page.waitForTimeout(550);
-  }
+  // The Papierkorb's rows as the stub lists them.
+  const [first, next] = (await stubList(page, { place: 'trash' })).active as [string, string];
   await page.getByTestId('place-trash').click();
-  const first = rows(page).first();
-  const firstKey = await first.getAttribute('data-testid');
-  const other =
-    firstKey === 'job-row-freelancermap-2803' ? 'linkedin:4100200302' : 'freelancermap:2803';
-  await first.click();
-  await expect(stage(page).getByTestId('reader-title')).toBeVisible();
-  await first.click({ button: 'right' });
+  await row(page, first).click();
+  await expect(list(page).locator('[data-open]')).toHaveAttribute(
+    'data-key',
+    first.replace('-', ':'),
+  );
+  await row(page, first).click({ button: 'right' });
   await page.getByTestId('menu-item-purge').click();
   await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
-  await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
+  await expect(row(page, first)).toHaveCount(0);
+  await expect(list(page).locator('[data-open]')).toHaveAttribute(
+    'data-key',
+    next.replace('-', ':'),
+  );
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(
+    await row(page, next).locator('.title').innerText(),
+  );
 });
 
 test('one column: closing shows the open row again, with the focus', async ({ page }) => {
@@ -170,13 +329,6 @@ test('one column: closing shows the open row again, with the focus', async ({ pa
   const item = list(page).locator(`[data-key="${key}"]`);
   await expect(item).toBeInViewport();
   await expect(item.locator('[data-testid^="job-row-"]')).toBeFocused();
-});
-
-test('a new form puts the caret where the work starts', async ({ page }) => {
-  await open(page, `${WIN}&scenario=no-profile`);
-  await page.getByTestId('nav-profile').click();
-  await chooseWay(page, 'empty');
-  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
 });
 
 test('typing a country that is chosen already says nothing and Enter clears it', async ({
@@ -196,6 +348,7 @@ test('undoing moves in another order puts the rows back where they stood', async
   await open(page, WIN);
   const keys = async () =>
     (await rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''))).slice(0, 3);
+  await expect(rows(page).first()).toBeVisible();
   const before = await keys();
   for (const [index, id] of before.slice(0, 2).entries()) {
     const key = id.replace('job-row-', '');
@@ -208,15 +361,18 @@ test('undoing moves in another order puts the rows back where they stood', async
   const toasts = page.getByTestId('toast');
   await expect(toasts).toHaveCount(2);
   // The older toast first, then the newer one.
-  await toasts.first().getByRole('button', { name: 'Rückgängig' }).click();
+  await toasts.first().getByRole('button', { name: T.common.undo }).click();
   await page.waitForTimeout(300);
-  await toasts.last().getByRole('button', { name: 'Rückgängig' }).click();
+  await toasts.last().getByRole('button', { name: T.common.undo }).click();
   await expect.poll(keys).toEqual(before);
 });
 
-test('the end of a run keeps the jobs read in Neu, the open one in its place', async ({ page }) => {
+test('the end of a run keeps the jobs read in Aktuell, the open one in its place', async ({
+  page,
+}) => {
   await open(page, WIN);
   const keys = async () => rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''));
+  await expect(rows(page).first()).toBeVisible();
   const before = await keys();
   const first = before[0]!.replace('job-row-', '');
   const third = before[2]!.replace('job-row-', '');

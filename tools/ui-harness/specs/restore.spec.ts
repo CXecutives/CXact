@@ -2,6 +2,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, NOW, open, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
@@ -32,7 +33,7 @@ test('undoing Wiederherstellen keeps the trash date', async ({ page }) => {
   await later(page, 3);
   await page.getByTestId('place-trash').click();
   await viaMenu(page, 'restore', key);
-  const toast = page.getByTestId('toast').filter({ hasText: 'Wiederhergestellt' });
+  const toast = page.getByTestId('toast').filter({ hasText: T.toast.restored });
   await toast.getByTestId('toast-action').click();
   await expect(row(page, key)).toHaveCount(1);
   // The undo sends the first trash date along, and a new list shows it too.
@@ -61,7 +62,7 @@ test('Wiederherstellen puts a job thrown away from the Archiv back there', async
     { keys: [{ portal: 'linkedin', id: '4100200301' }] },
   ]);
   // The undo puts it into the trash again, a second Wiederherstellen back into the Archiv.
-  const toast = page.getByTestId('toast').filter({ hasText: 'wiederhergestellt' });
+  const toast = page.getByTestId('toast').filter({ hasText: T.toast.restored });
   await toast.getByTestId('toast-action').click();
   await expect(row(page, key)).toHaveCount(1);
   expect((await calls(page, 'move_back')).at(-1)?.[1]).toEqual(

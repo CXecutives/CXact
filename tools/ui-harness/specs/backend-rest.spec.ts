@@ -1,5 +1,5 @@
-// The remaining backend pieces and their small UI ends: the excluded jobs counted per place
-// (the section says its number in Archiv and Papierkorb before every page is there).
+// The remaining backend pieces and their small UI ends: the excluded jobs per place (their
+// folded section stands in Archiv and Papierkorb before every page is there).
 
 import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
@@ -64,16 +64,13 @@ function excludedAndTen(): [Portal, string][] {
   return keys;
 }
 
-for (const [place, tab] of [
-  ['archive', 'place-archive'],
-  ['trash', 'place-trash'],
-] as const) {
+for (const place of ['archive', 'trash'] as const) {
   test(`the excluded jobs of the ${place} have their folded section before every page is there`, async ({
     page,
   }) => {
     await movedAtStart(page, excludedAndTen(), place);
     await open(page, `${WIN}&scenario=many`);
-    await page.getByTestId(tab).click();
+    await page.getByTestId(`place-${place}`).click();
     const divider = page.getByTestId('excluded-divider');
     await expect(divider).toHaveText(T.list.excluded);
     await expect(divider).toHaveAttribute('aria-expanded', 'false');

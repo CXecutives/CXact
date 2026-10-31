@@ -4,15 +4,22 @@
 // upload, evaluation, cancel and failures (back on the upload with the reason in a state
 // box), "Dein Profil" whose Weiter marks what is missing red without a sentence, the optional
 // Postfach (skipped or connected, its pair in the OS order), Fertig that says what was set up,
-// resuming from what is stored and the smallest window.
+// resuming from what is stored, the smallest window, and that no step puts a caret in a field.
 
-import type { Page } from '@playwright/test';
-import { calls, expect, open, test } from './fixtures';
-import { fillRequired, T, WIN, MAC } from './helpers';
+import type { Locator, Page } from '@playwright/test';
+import { animationsDone, calls, expect, open, test } from './fixtures';
+import { failNext, fillRequired, T, WIN, MAC } from './helpers';
 
 const heading = (page: Page) => page.getByTestId('first-heading');
 const next = (page: Page) => page.getByTestId('first-next');
 const back = (page: Page) => page.getByTestId('first-back');
+/** The fields that hold the caret: only a press on a field puts it there. */
+const caret = (page: Page) => page.locator('input:focus, textarea:focus');
+/** The rows marked red as required and still empty, in the order of the page. */
+const marks = (page: Page): Promise<string[]> =>
+  page
+    .locator('[data-missing]')
+    .evaluateAll((all) => all.map((cell) => cell.getAttribute('data-field') ?? ''));
 
 /** The step the setup shows (its heading, a badge may follow). */
 async function expectStep(page: Page, words: string): Promise<void> {
@@ -54,9 +61,7 @@ test('the setup is a mode of its own: no sidebar, no buttons in the top bar', as
   }
 });
 
-test('Willkommen: the app mark, one job with its ring and Loslegen; no dots on any step', async ({
-  page,
-}) => {
+test('Willkommen: the app mark, one job with its ring and Loslegen', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   const step = page.getByTestId('first-step');
   await expect(step.locator('img')).toHaveCount(1);
@@ -75,10 +80,23 @@ test('Willkommen: the app mark, one job with its ring and Loslegen; no dots on a
   // Enter is the primary.
   await page.keyboard.press('Enter');
   await expectStep(page, T.firstRun.way);
-  for (const query of ['scenario=first-run', 'scenario=setup-profile', 'scenario=setup-mailbox']) {
+});
+
+test('every step starts with the focus on its heading: no field takes the caret', async ({
+  page,
+}) => {
+  for (const query of [
+    'scenario=first-run',
+    'scenario=first-run&step=way',
+    'scenario=first-run&step=upload',
+    'scenario=first-run&step=profile&way=self',
+    'scenario=setup-cv&step=profile',
+    'scenario=setup-profile',
+    'scenario=first-run&step=done',
+  ]) {
     await open(page, `${WIN}&${query}`);
-    await expect(heading(page)).toBeVisible();
-    await expect(page.getByTestId('first-dots')).toHaveCount(0);
+    await expect(heading(page), query).toBeFocused();
+    await expect(caret(page), query).toHaveCount(0);
   }
 });
 
@@ -137,11 +155,11 @@ test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter go
   await expectStep(page, T.firstRun.profile);
   await expect(page.getByTestId('first-lead')).toHaveText(T.firstRun.profileCv);
   expect((await calls(page, 'profile_from_cv')).at(-1)?.[1]).toEqual({ dropped: false });
-  // The whole Profil page: its six groups, without its head, the CV button and the save bar;
-  // its own bar with Zurück and Weiter.
+  // The whole Profil page: its six groups, without its head and the CV button; its own bar
+  // with Zurück and Weiter.
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await expect(page.locator('[data-section]')).toHaveCount(6);
-  for (const gone of ['profile-heading', 'profile-from-cv', 'profile-save-bar']) {
+  for (const gone of ['profile-heading', 'profile-from-cv']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
   const bar = page.getByTestId('first-bar');
@@ -187,6 +205,24 @@ test('Zurück then "Selbst ausfüllen" keeps what was typed', async ({ page }) =
   await expectStep(page, T.firstRun.way);
   await page.getByTestId('way-self').click();
   await expect(page.getByTestId('profile-roles')).toContainText('Interim CFO');
+  // Typed and not taken yet: Zurück takes it along.
+  await roles.locator('input').fill('Interim CEO');
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-self').click();
+  await expect(page.getByTestId('profile-roles')).toContainText('Interim CEO');
+});
+
+test('the mouse button is Zurück: it keeps what was typed too', async ({ page }) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  const roles = page.getByTestId('profile-roles');
+  await roles.locator('input').fill('Interim CEO');
+  await mouseBack(page);
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-self').click();
+  await expect(roles).toContainText('Interim CEO');
 });
 
 test('a failed evaluation comes back to the upload and says why above it', async ({ page }) => {
@@ -244,6 +280,11 @@ test('Abbrechen stops the evaluation in the backend and goes back to the upload'
   await page.waitForTimeout(1700);
   await expectStep(page, T.firstRun.upload);
   expect(await page.evaluate(() => window.__harness.form())).toBeNull();
+  // The mouse's back button stops it the same way.
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  await mouseBack(page);
+  await expectStep(page, T.firstRun.upload);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
@@ -265,17 +306,90 @@ test('by hand: Weiter marks what is missing red without a sentence; Esc does not
   // no sentence names them; the step stays.
   await next(page).click();
   await expectStep(page, T.firstRun.profile);
-  await expect(page.locator('[data-field~="roles"]')).toHaveAttribute('data-missing', '');
+  await expect.poll(() => marks(page)).toEqual(['roles', 'competences', 'languages']);
   await expect(roles).not.toBeFocused();
+  await expect(caret(page)).toHaveCount(0);
   await expect(roles).toBeInViewport();
   await expect(page.getByTestId('profile-missing')).toHaveCount(0);
+  // Red: a field's label and a list's title, beside the ink of what is not missing.
+  const color = (node: Locator): Promise<string> =>
+    node.evaluate((element) => getComputedStyle(element).color);
+  const label = (name: string): Locator => page.locator(`[data-field~="${name}"] .label`).first();
+  const title = (name: string): Locator => page.getByTestId(`section-${name}`).getByRole('heading');
+  const ink = await color(label('tools'));
+  expect(await color(label('roles'))).not.toBe(ink);
+  expect(await color(title('languages'))).not.toBe(await color(title('job')));
+  // Filled, a row loses its mark at once.
+  await roles.fill('Interim CFO');
+  await roles.press('Enter');
+  await expect.poll(() => marks(page)).toEqual(['competences', 'languages']);
+  expect(await color(label('roles'))).toBe(ink);
   await fillRequired(page);
+  await expect.poll(() => marks(page)).toEqual([]);
   await next(page).click();
   await expectStep(page, T.firstRun.mailbox);
   // Back to the profile (the mouse): what was typed is still there.
   await mouseBack(page);
   await expectStep(page, T.firstRun.profile);
   await expect(page.getByTestId('profile-roles')).toContainText('Interim CFO');
+});
+
+test('Dein Profil: Enter is the primary, on the step and in a field', async ({ page }) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  // On the step (the focus on its heading): like Weiter, what is missing is marked.
+  await expect(heading(page)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => marks(page)).toEqual(['roles', 'competences', 'languages']);
+  await fillRequired(page);
+  // In a field: nothing is missing now, so it goes on.
+  const years = page.getByTestId('profile-years');
+  await years.click();
+  await years.fill('12');
+  await years.press('Enter');
+  await expectStep(page, T.firstRun.mailbox);
+});
+
+test('Weiter waits while a value is wrong: said at its field, which comes into view, no caret', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await fillRequired(page);
+  const wish = page.getByTestId('profile-wish-rate');
+  await wish.fill('0');
+  await next(page).click();
+  await expectStep(page, T.firstRun.profile);
+  await expect(page.locator('[data-field~="dayRateWish"]').getByRole('alert')).toHaveText(
+    T.profile.field.atLeast(1),
+  );
+  await expect(wish).toBeInViewport();
+  await expect(caret(page)).toHaveCount(0);
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
+  await wish.fill('1.000');
+  await next(page).click();
+  await expectStep(page, T.firstRun.mailbox);
+  expect(await calls(page, 'save_profile')).toHaveLength(1);
+});
+
+test('a save that fails at Weiter stays on the step and says so above the form', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await fillRequired(page);
+  await failNext(page, 'save_profile');
+  await next(page).click();
+  await expect(page.getByTestId('profile-save-error')).toHaveText(T.error.text('db', {}));
+  await expectStep(page, T.firstRun.profile);
+  // Weiter again goes on: nothing typed was lost.
+  await next(page).click();
+  await expectStep(page, T.firstRun.mailbox);
+  expect((await page.evaluate(() => window.__harness.form()))?.roles).toEqual(['Interim CFO']);
 });
 
 test('Postfach: optional, its pair in the OS order; skipped, Fertig opens the jobs', async ({
@@ -289,6 +403,29 @@ test('Postfach: optional, its pair in the OS order; skipped, Fertig opens the jo
   );
   await expect(page.getByTestId('mailbox-form')).toBeVisible();
   await expect(back(page)).toBeVisible();
+  // No caret in its first field, and the form in rows: in the card's narrow box each label
+  // above its control, one row under the other, the provider short, the link under its field.
+  await expect(caret(page)).toHaveCount(0);
+  await animationsDone(page);
+  const boxOf = async (node: Locator) => (await node.boundingBox())!;
+  const labels = page.getByTestId('mailbox-form').locator('label');
+  await expect(labels).toHaveCount(3);
+  const provider = await boxOf(page.getByTestId('mailbox-provider'));
+  const user = await boxOf(page.getByTestId('mailbox-user'));
+  const password = await boxOf(page.getByTestId('mailbox-password'));
+  const link = await boxOf(page.getByTestId('create-password'));
+  const [first, second, third] = [
+    await boxOf(labels.nth(0)),
+    await boxOf(labels.nth(1)),
+    await boxOf(labels.nth(2)),
+  ];
+  expect(provider.y).toBeGreaterThanOrEqual(first.y + first.height);
+  expect(second.y).toBeGreaterThanOrEqual(provider.y + provider.height);
+  expect(user.y).toBeGreaterThanOrEqual(second.y + second.height);
+  expect(third.y).toBeGreaterThanOrEqual(user.y + user.height);
+  expect(password.y).toBeGreaterThanOrEqual(third.y + third.height);
+  expect(link.y).toBeGreaterThanOrEqual(password.y + password.height);
+  expect(provider.width).toBeLessThan(user.width);
   // Windows: Verbinden first, then Überspringen; both at least the pair's width.
   const ends = page.getByTestId('first-bar').locator('.actions .btn');
   await expect(ends).toHaveCount(2);
@@ -329,6 +466,53 @@ test('Postfach connected (Enter is the primary): Fertig says everything is set u
   await open(page, `${WIN}&scenario=setup-mailbox`);
   await expectStep(page, T.firstRun.done);
   await expect(back(page)).toHaveCount(0);
+});
+
+/** The Postfach with a Verbinden that signs in and goes on doing so, begun by a press on its
+ *  button or by Enter in the password field. */
+async function connecting(page: Page, by: 'press' | 'enter' = 'press'): Promise<void> {
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await page.evaluate(() => (window.__harness.holdMailbox = true));
+  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
+  const password = page.getByTestId('mailbox-password');
+  await password.fill('abcdabcdabcdabcd');
+  if (by === 'enter') await password.press('Enter');
+  else await next(page).click();
+  await expect(next(page)).toHaveAttribute('aria-busy', 'true');
+}
+
+/** Esc stops it and the step stays, quietly. */
+async function escStops(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
+  await expectStep(page, T.firstRun.mailbox);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
+}
+
+test('Zurück, Überspringen and Esc stop a Verbinden that goes', async ({ page }) => {
+  await connecting(page);
+  await back(page).click();
+  await expectStep(page, T.firstRun.profile);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await connecting(page);
+  await page.getByTestId('first-skip').click();
+  await expectStep(page, T.firstRun.doneProfile);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await connecting(page, 'enter');
+  await escStops(page);
+});
+
+test('Esc stops a Verbinden begun by a press on its button too', async ({ page }) => {
+  await connecting(page);
+  await escStops(page);
+});
+
+test('the mouse button is Zurück: it stops a Verbinden that goes too', async ({ page }) => {
+  await connecting(page);
+  await mouseBack(page);
+  await expectStep(page, T.firstRun.profile);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
 test('the smallest window keeps every step usable', async ({ page }) => {
@@ -385,4 +569,11 @@ test('a double click goes one step: the tile under the pointer after it is not p
   await page.waitForTimeout(300);
   await expectStep(page, T.firstRun.upload);
   expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
+  // Überspringen: Fertig comes, its button in the same place is not pressed.
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await page.getByTestId('first-skip').dblclick();
+  await expectStep(page, T.firstRun.doneProfile);
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.doneProfile);
+  await expect(page.getByTestId('view-jobs')).toHaveCount(0);
 });

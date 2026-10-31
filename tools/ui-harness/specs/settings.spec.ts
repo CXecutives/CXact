@@ -1,10 +1,23 @@
 // Einstellungen against the stub: one page, three groups in their order (Jobportale, Postfach,
 // Daten), the portals with how they bring their jobs and what they brought, the mailbox and
-// its dialog, the profile's folder and the reset. The look of the rows is not pinned here.
+// its form, the profile's folder and the reset. The look of the page's rows is not pinned here
+// beyond their one height; the measures of the mailbox form's rows are.
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
-import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
+import {
+  calls,
+  expect,
+  expectShot,
+  nav,
+  NOW,
+  open,
+  runFinished,
+  settle,
+  test,
+  text,
+  visibleCount,
+} from './fixtures';
 import {
   ALERT_PORTALS,
   expectMailboxState,
@@ -16,6 +29,8 @@ import {
 } from './helpers';
 
 const WIN = '?platform=windows';
+/** What a failed command of the stub says (`failNext`). */
+const DB_ERROR = T.error.text('db', {});
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -59,6 +74,60 @@ function ids(page: Page, testid: string, selector: string): Promise<(string | nu
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
 }
 
+/** The ids of the page's references of a name or a description that name no text. */
+function dangling(page: Page): Promise<string[]> {
+  return page
+    .getByTestId('view-settings')
+    .evaluate((root) =>
+      [...root.querySelectorAll('[aria-describedby], [aria-labelledby]')].flatMap((node) =>
+        ['aria-describedby', 'aria-labelledby'].flatMap((name) =>
+          (node.getAttribute(name) ?? '')
+            .split(/\s+/)
+            .filter((id) => id !== '' && document.getElementById(id) === null),
+        ),
+      ),
+    );
+}
+
+/** The open form's box: it holds the focus while no field has it. */
+const formBox = (page: Page): Locator => page.getByTestId('mailbox-form').locator('xpath=..');
+
+/** A row of the mailbox form by its control's test id: the row, its label, its control and its
+ *  provider's page, each in whole pixels from the form's corner (so it does not matter that the
+ *  page may still glide), and where its hairline starts. */
+function formRow(page: Page, control: string) {
+  return page.getByTestId(control).evaluate((node) => {
+    const row = node.closest('.cell')!;
+    const form = node.closest('[data-testid="mailbox-form"]')!.getBoundingClientRect();
+    const box = (part: Element) => {
+      const { left, right, top, bottom } = part.getBoundingClientRect();
+      return {
+        left: Math.round(left - form.left),
+        right: Math.round(right - form.left),
+        top: Math.round(top - form.top),
+        bottom: Math.round(bottom - form.top),
+      };
+    };
+    const link = row.querySelector('[data-testid="create-password"]');
+    return {
+      row: box(row),
+      label: box(document.querySelector(`label[for="${node.id}"]`)!),
+      control: box(node),
+      link: link === null ? null : box(link),
+      hairline: parseFloat(getComputedStyle(row, '::before').left),
+    };
+  });
+}
+
+/** The form's three rows. */
+async function formRows(page: Page) {
+  return {
+    provider: await formRow(page, 'mailbox-provider'),
+    address: await formRow(page, 'mailbox-user'),
+    password: await formRow(page, 'mailbox-password'),
+  };
+}
+
 /* ---------------------------------------------------------------- the page */
 
 test('one page: Jobportale, Postfach and Daten, the reset last in Daten', async ({ page }) => {
@@ -88,6 +157,10 @@ test('one page: Jobportale, Postfach and Daten, the reset last in Daten', async 
   await expect(page.getByTestId('search-terms')).toHaveCount(0);
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
   await expect(page.getByTestId('settings-heading')).toHaveText(T.nav.settings);
+  // No button carries an ellipsis.
+  const words = await view.getByRole('button').allInnerTexts();
+  expect(words.length).toBeGreaterThan(0);
+  expect(words.filter((word) => /…|\.\.\./.test(word))).toEqual([]);
 });
 // Narrow, a row's buttons stand beside its label or under it, never over it.
 test('narrow, a row keeps its buttons clear of its label', async ({ page }) => {
@@ -141,34 +214,41 @@ test('mailbox: Ändern unfolds the form under the row; Esc folds it, Verbinden s
 }) => {
   await settings(page);
   const change = await reveal(page, page.getByTestId('mailbox-change'));
+  await expect(change).toHaveText(T.common.edit);
   await change.focus();
   await page.keyboard.press('Enter');
-  // No dialog: the form unfolds in the box and the row's buttons step aside.
+  // No dialog: the form unfolds in the box, comes into view whole and the row's buttons step
+  // aside.
   const form = page.getByTestId('mailbox-form');
   await expect(form).toBeVisible();
+  await expect(page.getByTestId('mailbox-buttons')).toBeInViewport({ ratio: 1 });
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.getByTestId('mailbox-change')).toHaveCount(0);
   await expect(page.getByTestId('mailbox-remove')).toHaveCount(0);
   await expect(page.getByTestId('mailbox-save')).toHaveText(T.settings.connect);
-  // The address stays, so the caret waits in the app password; its info symbol beside it,
-  // the provider's page at the label's right and its example in the field.
-  await expect(page.getByTestId('mailbox-password')).toBeFocused();
+  // The address stays. No field takes the caret by itself: the focus rests on the form's box.
+  // The password's info symbol beside its label, the provider's page and the example in the
+  // field.
+  await expect(formBox(page)).toBeFocused();
   await expect(page.getByTestId('mailbox-user')).toHaveValue('alerts.demo@gmail.com');
   await expect(form.getByTestId('info-tip')).toHaveAccessibleName(
     T.common.infoAbout(T.settings.password),
   );
   await expect(form.getByTestId('create-password')).toHaveText(T.settings.createPassword);
-  await expect(page.getByTestId('mailbox-password')).toHaveAttribute(
-    'placeholder',
-    T.settings.passwordExample,
-  );
+  const password = page.getByTestId('mailbox-password');
+  await expect(password).toHaveAttribute('placeholder', T.settings.passwordExample);
   await page.keyboard.press('Escape');
   await expect(form).toHaveCount(0);
   await expect(page.getByTestId('mailbox-change')).toBeFocused();
-  // Empty password: said at its field, the form stays.
+  // Nothing was on its way, so nothing is stopped.
+  expect(await calls(page, 'cancel_run')).toHaveLength(0);
+  // Empty password: said at its field by a danger notice, it describes the field; the form
+  // stays.
   await page.getByTestId('mailbox-change').click();
   await page.getByTestId('mailbox-save').click();
-  await expect(form).toContainText(T.settings.passwordMissing(true));
+  await expect(form.locator('.notice.danger')).toHaveText(T.settings.passwordMissing(true));
+  await expect(password).toHaveAccessibleDescription(T.settings.passwordMissing(true));
+  await expect(password).toHaveAttribute('aria-invalid', 'true');
   expect(await calls(page, 'save_mailbox')).toHaveLength(0);
   // Enter in the field connects; the form folds away once saved.
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
@@ -178,9 +258,7 @@ test('mailbox: Ändern unfolds the form under the row; Esc folds it, Verbinden s
   await expect(page.getByTestId('mailbox-change')).toBeFocused();
 });
 
-test('mailbox form: provider and address side by side, the buttons in the order of the OS', async ({
-  page,
-}) => {
+test('mailbox form: rows like the Profil, the buttons in the order of the OS', async ({ page }) => {
   for (const [os, words] of [
     ['windows', [T.settings.connect, T.common.cancel]],
     ['macos', [T.common.cancel, T.settings.connect]],
@@ -194,25 +272,77 @@ test('mailbox form: provider and address side by side, the buttons in the order 
     expect(first).toBeGreaterThanOrEqual(88);
     expect(first).toBeCloseTo(second!, 0);
   }
-  const [provider, address] = await Promise.all([
-    page.getByTestId('mailbox-provider').boundingBox(),
-    page.getByTestId('mailbox-user').boundingBox(),
+  const form = page.getByTestId('mailbox-form');
+  await expect(form.locator('label')).toHaveText([
+    T.settings.providerLabel,
+    T.settings.address,
+    T.settings.password,
   ]);
-  // The provider fills its cell: the two halves stand on one line.
-  expect(Math.abs(provider!.y - address!.y)).toBeLessThan(2);
-  expect(address!.x).toBeGreaterThan(provider!.x + provider!.width);
+  const { provider, address, password } = await formRows(page);
+  const pageRow = Math.round((await page.getByTestId('mailbox').boundingBox())!.height);
+  // One row each, none beside another, as high as the page's own rows.
+  expect(address.row.top).toBeGreaterThanOrEqual(provider.row.bottom);
+  expect(password.row.top).toBeGreaterThanOrEqual(address.row.bottom);
+  expect(provider.row.bottom - provider.row.top).toBe(pageRow);
+  expect(address.row.bottom - address.row.top).toBe(pageRow);
+  for (const { row, label, control, hairline } of [provider, address, password]) {
+    // The label beside its control, on the control's height; the control 16 under the hairline
+    // (a field's input lies 1 inside its edge), the hairline from the text.
+    expect(label.right).toBeLessThan(control.left);
+    expect(
+      Math.abs((label.top + label.bottom) / 2 - (control.top + control.bottom) / 2),
+    ).toBeLessThan(2);
+    expect(Math.abs(control.top - row.top - 16)).toBeLessThanOrEqual(1);
+    expect(hairline).toBe(label.left);
+  }
+  // One left edge; the provider one short width, the address as wide as its row.
+  expect(Math.abs(address.control.left - provider.control.left)).toBeLessThanOrEqual(1);
+  expect(Math.abs(password.control.left - provider.control.left)).toBeLessThanOrEqual(1);
+  expect(provider.control.right).toBeLessThan(address.control.right);
+  // The provider's page stands under the control, on its left edge.
+  expect(password.link!.top).toBeGreaterThanOrEqual(password.control.bottom);
+  expect(Math.abs(password.link!.left - password.control.left)).toBeLessThanOrEqual(1);
   // The example follows the provider.
-  await expect(page.getByTestId('mailbox-user')).toHaveAttribute(
-    'placeholder',
-    T.settings.addressExample('gmail'),
-  );
-  // The smallest window stacks them.
-  await page.setViewportSize({ width: 480, height: 800 });
-  const [narrowProvider, narrowAddress] = await Promise.all([
-    page.getByTestId('mailbox-provider').boundingBox(),
-    page.getByTestId('mailbox-user').boundingBox(),
+  const user = page.getByTestId('mailbox-user');
+  await expect(user).toHaveAttribute('placeholder', T.settings.addressExample('gmail'));
+  // A message only grows its row downward: its control stays where it was in the row.
+  await user.fill('');
+  await page.getByTestId('mailbox-save').click();
+  await expect(form.locator('.notice.danger')).toHaveText([
+    T.settings.addressMissing,
+    T.settings.passwordMissing(true),
   ]);
-  expect(narrowAddress!.y).toBeGreaterThan(narrowProvider!.y + narrowProvider!.height);
+  const said = await formRows(page);
+  expect(said.address.row.top).toBe(address.row.top);
+  expect(said.address.row.bottom).toBeGreaterThan(address.row.bottom);
+  expect(said.address.control.top).toBe(address.control.top);
+  expect(said.password.control.top - said.password.row.top).toBe(
+    password.control.top - password.row.top,
+  );
+  // In a box under 560 wide the label stands above its control; the provider keeps its short
+  // width.
+  await page.setViewportSize({ width: 480, height: 800 });
+  const narrow = await formRows(page);
+  expect(narrow.address.row.top).toBeGreaterThanOrEqual(narrow.provider.row.bottom);
+  for (const { label, control } of [narrow.provider, narrow.address, narrow.password]) {
+    expect(label.bottom).toBeLessThanOrEqual(control.top);
+    expect(Math.abs(label.left - control.left)).toBeLessThanOrEqual(1);
+  }
+  expect(narrow.provider.control.right).toBeLessThan(narrow.address.control.right);
+  expect(narrow.password.link!.top).toBeGreaterThanOrEqual(narrow.password.control.bottom);
+});
+
+test('mailbox form: a field refers to its message only while one shows', async ({ page }) => {
+  await settings(page);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  const password = page.getByTestId('mailbox-password');
+  // With a message the field is described by it.
+  await page.getByTestId('mailbox-save').click();
+  await expect(password).toHaveAccessibleDescription(T.settings.passwordMissing(true));
+  // Without one it refers to no text that is not there (Field.svelte).
+  await password.pressSequentially('x');
+  await expect(password).toHaveAccessibleDescription('');
+  expect(await dangling(page)).toEqual([]);
 });
 
 test('mailbox: a saved change is answered by its state; a mail error before it is past', async ({
@@ -248,8 +378,8 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach verbund
 }) => {
   await settings(page);
   await reveal(page, page.getByTestId('mailbox-remove'));
-  // Entfernen… is a plain button that opens a dialog, which carries the danger; Ändern
-  // beside it is as wide.
+  // Entfernen is a plain button that opens a dialog, which carries the danger; Ändern beside it
+  // is as wide.
   await expect(page.getByTestId('mailbox-remove')).toHaveClass(/secondary/);
   await expect(page.getByTestId('mailbox-remove')).toHaveText(T.common.remove);
   const [change, remove] = await widths(page, 'mailbox-change', 'mailbox-remove');
@@ -263,7 +393,7 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach verbund
   expect(confirm).toBeCloseTo(cancel!, 0);
   await failNext(page, 'remove_mailbox');
   await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog.getByTestId('dialog-error')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await expect(dialog.getByTestId('dialog-error')).toHaveText(DB_ERROR);
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog).toBeHidden();
   expect(await calls(page, 'remove_mailbox')).toHaveLength(2);
@@ -271,8 +401,13 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach verbund
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnectedHint);
   await page.getByTestId('mailbox-connect').click();
-  await expect(page.getByTestId('mailbox-user')).toBeFocused();
-  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
+  // A new form and no field takes the caret by itself: only a press on the field puts it there.
+  const user = page.getByTestId('mailbox-user');
+  await expect(formBox(page)).toBeFocused();
+  await expect(user).toHaveValue('');
+  await user.click();
+  await expect(user).toBeFocused();
+  await user.fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-save').click();
   await expectMailboxState(page, T.settings.connected);
@@ -300,23 +435,23 @@ test('portals: two groups in the order of the UI, each portal with its state and
   // Every portal has its brand name (LinkedIn, not linkedin.com).
   for (const portal of PORTALS) expect(T.portal[portal], portal).toMatch(/\S/);
   expect(T.portal.linkedin).toBe('LinkedIn');
+  // The last search asked all eight: each says what it brought.
   for (const [portal, state] of [
     ['freelancermap', T.settings.lastNew(3)],
-    ['hays', null],
-    ['michaelpage', null],
-    ['solcom', null],
-    ['gulp', null],
-    ['amadeusfire', null],
-    ['interimx', null],
-    ['fratch', null],
+    ['hays', T.settings.lastNew(0)],
+    ['michaelpage', T.settings.lastNew(0)],
+    ['solcom', T.settings.lastNew(0)],
+    ['gulp', T.settings.lastNew(0)],
+    ['amadeusfire', T.settings.lastNew(0)],
+    ['interimx', T.settings.lastNew(0)],
+    ['fratch', T.settings.lastNew(0)],
     ['linkedin', T.settings.alertMails(24)],
     ['freelance', T.settings.alertMails(11)],
   ] as const) {
     // Its state in one quiet line; no meter, no calls counted.
     const row = await reveal(page, page.getByTestId(`portal-${portal}`));
     await expect(row.locator('.badge')).toHaveCount(0);
-    if (state === null) await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveCount(0);
-    else await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
+    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(state);
     await expect(row.getByRole('progressbar')).toHaveCount(0);
     await expect(row).not.toContainText('Aufrufen');
     // No tile and no glyph that only repeats the name: the name, its line, its calls, the
@@ -341,6 +476,47 @@ test('portals: two groups in the order of the UI, each portal with its state and
   await (await reveal(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
 });
+
+test('portals: before the first search the line says so; a portal the search did not ask has none', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=fresh`);
+  for (const portal of SEARCHED) {
+    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveText(T.settings.noSearchYet);
+  }
+  // No alert mail counted yet: nothing to say, and its switch refers to no line. Its row keeps
+  // the height of a row with a line.
+  for (const portal of ALERT_PORTALS) {
+    await expect(page.getByTestId(`portal-${portal}-hint`)).toHaveCount(0);
+  }
+  expect(await dangling(page)).toEqual([]);
+  const heights = await page
+    .locator('[data-setting-row]')
+    .evaluateAll((rows) => rows.map((row) => Math.round(row.getBoundingClientRect().height)));
+  expect(new Set(heights).size).toBe(1);
+  // Off, a portal is not asked: the next search has no line of it, and its row says nothing.
+  await (await reveal(page, page.getByTestId('toggle-enabled-hays'))).click();
+  await nav(page, 'nav-jobs');
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await nav(page, 'nav-settings');
+  await expect(page.getByTestId('portal-gulp-hint')).toHaveText(T.settings.lastNew(0));
+  await expect(page.getByTestId('portal-linkedin-hint')).toHaveText(T.settings.alertMails(24));
+  await expect(page.getByTestId('portal-hays-hint')).toHaveCount(0);
+});
+
+test('portals: before the first fetch a portal of alert mails says what Verbinden counted', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=fresh`);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await expect(page.getByTestId('portal-linkedin-hint')).toHaveText(T.settings.alertMails(20));
+  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(T.settings.alertMails(0));
+});
+
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);
   const toggle = await reveal(page, page.getByTestId('toggle-enabled-linkedin'));
@@ -359,25 +535,17 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
   // No label element anywhere on the page: no text is a click target of a switch.
   await expect(page.getByTestId('settings').locator('label')).toHaveCount(0);
   // Every reference of a name or a description names a text that is there.
-  const dangling = await page
-    .getByTestId('view-settings')
-    .evaluate((root) =>
-      [...root.querySelectorAll('[aria-describedby], [aria-labelledby]')].flatMap((node) =>
-        ['aria-describedby', 'aria-labelledby'].flatMap((name) =>
-          (node.getAttribute(name) ?? '')
-            .split(/\s+/)
-            .filter((id) => id !== '' && document.getElementById(id) === null),
-        ),
-      ),
-    );
-  expect(dangling).toEqual([]);
-  // A save that fails puts the switch back and says why in the row.
+  expect(await dangling(page)).toEqual([]);
+  // A save that fails puts the switch back and says why in the row, under its word in red.
   await reveal(page, page.getByTestId('toggle-enabled-freelancermap'));
   await failNext(page, 'save_settings');
   await page.getByTestId('toggle-enabled-freelancermap').click();
   await expect(page.getByTestId('portal-freelancermap').getByTestId('portal-error')).toHaveText(
-    'Die Datenbank meldet einen Fehler.',
+    DB_ERROR,
   );
+  const failed = page.getByTestId('portal-freelancermap-hint');
+  await expect(failed).toHaveText(T.settings.problem.failed);
+  await expect(failed.locator('.status')).toHaveClass(/danger/);
   await expect(page.getByTestId('toggle-enabled-freelancermap')).toHaveAttribute(
     'aria-checked',
     'true',
@@ -416,28 +584,33 @@ test('portals: a stored sign-in the fetch does not use looks like none until it 
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
 
-test('portals: a pause says until when in the state line, an empty alert mail in a quiet line', async ({
+test('portals: a pause says until when in the state line, an empty alert mail in one word with its count', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=paused`);
   const status = await reveal(page, page.getByTestId('portal-linkedin-hint'));
-  await expect(status).toHaveText(/^Pausiert bis /);
+  // The stub's pause of linkedin ends 95 minutes after its fixed "now".
+  const until = new Date(NOW.getTime() + 95 * 60_000).toISOString();
+  await expect(status).toHaveText(await text(page, 'settings.pausedUntil', until));
   // A status word: the warning's dot and colour.
   await expect(status.locator('.status')).toHaveClass(/warning/);
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
-  // The word with its count says it all, in the row's one line.
-  await expect(page.getByTestId('portal-freelance-hint')).toHaveText(
-    T.settings.problem.emptyMails(2),
-  );
+  // The word with its count says it all, in the row's one line; no second sentence.
+  const empty = page.getByTestId('portal-freelance-hint');
+  await expect(empty).toHaveText(T.settings.problem.emptyMails(2));
+  await expect(empty.locator('.status')).toHaveClass(/warning/);
   await expect(page.getByTestId('health-freelance')).toHaveCount(0);
   // Its way out takes the place of "Alert anlegen", in its width.
   await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
+  const [way, setUp] = await widths(page, 'alert-mail-freelance', 'setup-linkedin');
+  expect(way).toBeCloseTo(setUp!, 0);
   await page.getByTestId('alert-mail-freelance').click();
   expect(await lastOpened(page)).toEqual({
     target: { kind: 'alertMail', gmailId: '18c2f0a9d1e4b7a3' },
   });
-  // A portal that is off says no problem of its own.
+  // A portal that is off says no problem of its own, only its quiet state.
   await page.getByTestId('toggle-enabled-freelance').click();
+  await expect(empty).toHaveText(T.settings.alertMails(11));
   await expect(page.getByTestId('health-freelance')).toHaveCount(0);
 });
 test('portals: a week without an alert mail is the status word, with Alert prüfen', async ({
@@ -513,6 +686,14 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
   await (await reveal(page, connect)).click();
   await expect(page.getByTestId('mailbox-form')).toBeInViewport();
   await expect(page.getByTestId('mailbox-connect')).toHaveCount(0);
+  // The stored value stayed: connected, the portals work again.
+  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
+  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await expect(page.getByTestId('toggle-enabled-linkedin')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('portal-linkedin-hint')).toHaveText(T.settings.alertMails(24));
+  await expect(page.getByTestId('setup-linkedin')).toBeVisible();
 });
 
 test('portals: a sign-in that ran out says so in red and offers Anmelden', async ({ page }) => {
@@ -553,7 +734,7 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
   await reveal(page, page.getByTestId('folder-open'));
-  // Öffnen and Ändern… are one width.
+  // Öffnen and Ändern are one width.
   const [opens, changes] = await widths(page, 'folder-open', 'folder-change');
   expect(opens).toBeCloseTo(changes!, 0);
   await page.getByTestId('folder-open').click();
@@ -562,14 +743,53 @@ test('Daten: the Profil-Ordner with its path, Ändern and Öffnen; then Alles zu
   // A folder that does not open says so at the end of its section.
   await failNext(page, 'open_target');
   await page.getByTestId('folder-open').click();
-  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await expect(page.getByTestId('data-note')).toHaveText(DB_ERROR);
   // Ändern: the folder dialog; the profile comes along and the toast says so.
   await page.getByTestId('folder-change').click();
   await expect(page.getByTestId('toast-text')).toHaveText(T.settings.folderMoved);
   await expect(data.getByTestId('folder-hint')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
 });
 
-test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
+test('Daten: the note at the end of the box stands on the rows left edge, not on the box edge', async ({
+  page,
+}) => {
+  await settings(page);
+  await failNext(page, 'open_target');
+  await (await reveal(page, page.getByTestId('folder-open'))).click();
+  const note = page.getByTestId('data-note');
+  await expect(note).toHaveText(DB_ERROR);
+  const [sign, name] = await Promise.all([
+    note.boundingBox(),
+    page.getByTestId('folder').getByText(T.settings.folder).boundingBox(),
+  ]);
+  expect(sign!.x).toBeCloseTo(name!.x, 0);
+});
+
+test('Daten: another folder says what became of the profile; no folder chosen says nothing', async ({
+  page,
+}) => {
+  for (const [query, words] of [
+    ['folder=own', T.settings.folderOwnProfile],
+    ['folder=other&scenario=no-profile', T.settings.folderFiles],
+  ] as const) {
+    await settings(page, `${WIN}&${query}`);
+    await (await reveal(page, page.getByTestId('folder-change'))).click();
+    await expect(page.getByTestId('toast-text')).toHaveText(words);
+    await expect(page.getByTestId('folder-hint')).toHaveText('C:\\Users\\demo\\Documents\\Jobs');
+  }
+  // The folder dialog closed without a choice: the path stays, nothing is said.
+  await settings(page);
+  await (await reveal(page, page.getByTestId('folder-change'))).click();
+  await expect.poll(async () => (await calls(page, 'pick_workspace')).length).toBe(1);
+  await expect(page.getByTestId('folder-change')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  await expect(page.getByTestId('data-note')).toHaveCount(0);
+  await expect(page.getByTestId('folder-hint')).toHaveText('C:\\Users\\demo\\Documents\\CXact');
+});
+
+test('reset: the danger dialog says what goes in one sentence; a failure stays in it', async ({
+  page,
+}) => {
   await settings(page);
   await (await reveal(page, page.getByTestId('reset'))).click();
   const dialog = page.getByTestId('dialog-reset');
@@ -581,7 +801,7 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.resetAction);
   await failNext(page, 'reset_all');
   await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog.getByTestId('dialog-error')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await expect(dialog.getByTestId('dialog-error')).toHaveText(DB_ERROR);
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog).toBeHidden();
   expect(await calls(page, 'reset_all')).toHaveLength(2);
@@ -610,7 +830,8 @@ test('a run holds the mailbox, the reset and the sign-in, with its reason', asyn
 test('the dry run keeps to its own data and says so', async ({ page }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
   await expect(page.getByTestId('settings')).toContainText('probelauf@example.org');
-  expect(await reason(page, 'mailbox-remove')).toBe('Im Probelauf geht das nicht.');
+  await expect(page.getByTestId('dry-run-note')).toContainText(T.settings.dryRun);
+  expect(await reason(page, 'mailbox-remove')).toBe(T.error.text('dryRun', {}));
 });
 
 /* ============================================================ what the audit found */
