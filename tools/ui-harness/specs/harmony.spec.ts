@@ -8,7 +8,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { row, WIN } from './helpers';
+import { openPlace, row, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -233,4 +233,74 @@ test('the small tools have their three steps too: a row tool, the x of a chip, t
     .evaluate((node) => getComputedStyle(node).color);
   expect(rest).not.toBe(ink);
   expect(hover).toBe(ink);
+});
+
+/* --------------------------------------------------------- the lines of a glyph */
+
+/** How far a glyph's top edge lies from a pixel's edge: on the seam (0) its line draws as two
+ *  grey rows, in a pixel's middle (.5) as one dark row. */
+const offSeam = (control: Locator): Promise<number> =>
+  control.first().evaluate((node) => {
+    const svg = node.querySelector('svg')!;
+    const top = Math.min(...[...svg.children].map((shape) => shape.getBoundingClientRect().top));
+    return Math.abs(top - Math.floor(top));
+  });
+
+/** How far a glyph's drawing lies from where its box puts it. */
+const shifted = (control: Locator): Promise<number> =>
+  control.first().evaluate((node) => {
+    const icon = node.querySelector('.icon')!.getBoundingClientRect();
+    return Math.abs(node.querySelector('svg')!.getBoundingClientRect().left - icon.left);
+  });
+
+test('the glyphs on the pixel seam at 16 draw one dark row, so one family stands in the bar', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&open=freelance:900411`);
+  for (const id of [
+    'toggle-sidebar',
+    'toggle-reader',
+    'open-ad',
+    'reader-sign-in',
+    'reader-archive',
+  ]) {
+    expect(await offSeam(page.getByTestId(id)), id).toBeCloseTo(0.5, 1);
+  }
+  // Abbrechen's square, beside the list's filter.
+  await open(page, `${WIN}&scenario=running`);
+  expect(await offSeam(page.getByTestId('cancel-run'))).toBeCloseTo(0.5, 1);
+});
+
+test('the half pixel goes by the size: not at 14, and not for what stands low already', async ({
+  page,
+}) => {
+  // A provider's page beside the password: 14, where the shift would soften it.
+  await open(page, `${WIN}&view=settings`);
+  await page.getByTestId('mailbox-change').click();
+  expect(await shifted(page.getByTestId('create-password'))).toBe(0);
+  // Anmelden in a run's strip: 14 as well.
+  await open(page, `${WIN}&scenario=sign-in-waiting`);
+  expect(await shifted(page.getByTestId('run-sign-in'))).toBe(0);
+  // Anzeige laden at 16: its glyph keeps its place.
+  await open(page, `${WIN}&open=linkedin:4100200302`);
+  expect(await shifted(page.getByTestId('load-ad'))).toBe(0);
+});
+
+test('Wiederherstellen is as large as the Löschen beside it', async ({ page }) => {
+  await open(page, WIN);
+  await openPlace(page, 'trash');
+  await page.locator('[data-testid^="job-row-"]').first().click();
+  const width = (control: Locator): Promise<number> =>
+    control.evaluate((node) => {
+      const shapes = [...node.querySelector('svg')!.children].map((shape) =>
+        shape.getBoundingClientRect(),
+      );
+      return (
+        Math.max(...shapes.map((shape) => shape.right)) -
+        Math.min(...shapes.map((shape) => shape.left))
+      );
+    });
+  const undo = await width(page.getByTestId('reader-restore'));
+  const trash = await width(page.getByTestId('reader-purge'));
+  expect(Math.abs(undo - trash)).toBeLessThanOrEqual(0.5);
 });

@@ -147,12 +147,24 @@ export const GLYPH_GROWTH: Partial<Record<Glyph, 'grow-s' | 'grow-m' | 'grow-l'>
   eye: 'grow-s',
 };
 
-/** The glyphs whose middle line runs through their centre, on the seam between two pixel rows at
- *  an even size: Icon.svelte moves them half a pixel, so that line draws crisp at 100 %. */
+/** The glyphs whose straight lines lie on multiples of 3 of the 24 units or through the centre:
+ *  at 16 they stand on the seam between two pixel rows and would draw as two grey ones, a step
+ *  bolder than their neighbours. Icon.svelte moves them half a pixel at that size, so they draw
+ *  crisp at 100 %. Not a glyph that stands low already (the triangle, the download). */
 export const SEAM_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([
   'arrow-left',
   'arrow-right',
   'plus',
   'x',
   'list-filter',
+  'square',
+  'panel-left',
+  'panel-right',
+  'external-link',
+  'log-in',
+  'log-out',
+  'archive',
+  'archive-restore',
+  'text-select',
+  'circle-minus',
 ]);

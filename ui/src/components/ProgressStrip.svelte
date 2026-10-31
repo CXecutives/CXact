@@ -87,5 +87,6 @@
   .action :global(.btn.link .icon) {
     --icon-size: var(--icon-xs);
     --icon-stroke: var(--icon-stroke-xs);
+    --icon-shift: 0;
   }
 </style>

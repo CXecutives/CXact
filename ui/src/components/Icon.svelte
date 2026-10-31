@@ -204,10 +204,11 @@
     stroke-width: calc(var(--icon-stroke) + var(--icon-stroke-more, 0));
   }
 
-  /* A middle line on the seam of two pixel rows would draw as two grey ones (at 100 % only). */
+  /* A line on the seam of two pixel rows would draw as two grey ones (at 100 % only); the sizes
+     where that holds name the shift, an inline 14 or a tile's 24 draws crisp without it. */
   @media (resolution: 1dppx) {
     .seam :global(svg) {
-      translate: var(--icon-seam) var(--icon-seam);
+      translate: var(--icon-shift, 0) var(--icon-shift, 0);
     }
   }
 
@@ -232,6 +233,7 @@
   .xxs {
     --icon-size: var(--icon-2xs);
     --icon-stroke: var(--icon-stroke-2xs);
+    --icon-shift: var(--icon-seam);
   }
 
   .check {
@@ -247,11 +249,13 @@
   .sm {
     --icon-size: var(--icon-sm);
     --icon-stroke: var(--icon-stroke-sm);
+    --icon-shift: var(--icon-seam);
   }
 
   .md {
     --icon-size: var(--icon-md);
     --icon-stroke: var(--icon-stroke-sm);
+    --icon-shift: var(--icon-seam);
   }
 
   .lg {
