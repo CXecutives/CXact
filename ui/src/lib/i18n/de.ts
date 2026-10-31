@@ -971,6 +971,8 @@ export const de = {
     state: {
       missing: 'Die Anzeige ist noch nicht geladen.',
       loading: 'Die Anzeige wird geladen.',
+      /** "Anzeige laden" ended without the ad. */
+      notLoaded: 'Die Anzeige ließ sich nicht laden.',
       /** After "Trotzdem bewerten", until the job has its match. */
       scoring: 'Der Job wird bewertet.',
       teaser: {

@@ -7,15 +7,22 @@
   - excluded: why (the profile's side) and "Trotzdem bewerten" with the plus (not in the
     Papierkorb); the box neutral like the others (the ring and its word are the job's one red);
   - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (its portal
-    off: why there is no button; being loaded, by the run pressed for here or by the search: the spinner, "Die Anzeige wird
-    geladen.", no button; another job's details run does not load this one);
+    off: why there is no button; being loaded, by the run pressed for here or by the search up to
+    its scoring: the spinner, "Die Anzeige wird geladen.", no button; another job's details run
+    does not load this one);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
     then "Anzeige laden"), else "Anzeige laden" where the portal can load it (pressed, it says
     it is being loaded like a missing ad);
   - an ad gone, out of reach or closed ("Beendet"), a text too short to score: the two lines
     only.
-  A failed sign-in says so in a toast, like every result of the job view.
+  A failed sign-in says so in a toast, like every result of the job view, and so does a load that
+  ended without the ad (a run that failed says why, run.svelte.ts).
 -->
+<script lang="ts" module>
+  /** The states of a job's ad after a load that says for itself: there, or its box says why not. */
+  const ANSWERED: readonly string[] = ['ok', 'gone', 'unfetchable'];
+</script>
+
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import StateBox from '$components/StateBox.svelte';
@@ -23,6 +30,8 @@
   import { errorText } from '$lib/i18n/texts';
   import type { JobDetail } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
+  import { sameKey } from '$lib/state/jobRows';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { portalSession, signInLocked } from '$lib/state/portalSession';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -45,10 +54,11 @@
   /** "Anzeige laden" was pressed here: this job is in the run. */
   let requested = $state(false);
   /** This job's ad is being loaded: by the run asked for here (a details run holds no other
-   *  job), or by the search, which loads what is still to come. */
+   *  job), or by the search, which loads what is still to come until it goes on to score. */
   const loading = $derived(
     portalState?.enabled === true &&
-      ((requested && run.fetching) || (detailKind === 'pending' && run.searching)),
+      ((requested && run.fetching) ||
+        (detailKind === 'pending' && run.searching && run.step !== 'score')),
   );
   type AdState = 'missing' | 'loading' | 'teaser' | 'gone' | 'unfetchable' | 'closed';
   /** Why the ad's text is not all there, if it is not. */
@@ -71,6 +81,18 @@
   $effect(() => {
     if (!run.fetching) requested = false;
   });
+  // The run asked for here ended well without the ad: nothing on screen would say so. The list's
+  // row is as the run left it (`detail` loads again only later).
+  $effect(() =>
+    run.listen((event) => {
+      if (event.type !== 'finished' || !requested) return;
+      const row = jobs.rows.find((held) => sameKey(held.key, job.key));
+      const told = row === undefined || ANSWERED.includes(row.detail.kind);
+      if (event.summary.outcome.kind === 'completed' && !told) {
+        toasts.show(t.reader.state.notLoaded, 'warning');
+      }
+    }),
+  );
   /** A preview or a missing ad the portal can load now (a preview only with its sign-in). */
   const canLoad = $derived(
     portalState?.enabled === true &&

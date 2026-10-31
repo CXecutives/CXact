@@ -1512,6 +1512,74 @@ test.describe('the job view keeps true', () => {
     await expect(stage(page).getByTestId('ad-text')).toBeVisible();
   });
 
+  test('a load that ends without the ad says so once, and its box offers it again', async ({
+    page,
+  }) => {
+    const toast = page.getByTestId('toast');
+    const note = stage(page).getByTestId('detail-note');
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.detailsEnd = 'nothing'));
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.reader.state.notLoaded);
+    await expect(note).toHaveText(T.reader.state.missing);
+    await expect(stage(page).getByTestId('load-ad')).toBeEnabled();
+    // A preview too.
+    await openAt(page, 'freelance-900411', `${WIN}&tick=15`);
+    await stage(page).getByTestId('reader-sign-in').click();
+    await page.evaluate(() => (window.__harness.detailsEnd = 'nothing'));
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.reader.state.notLoaded);
+    await expect(note).toHaveText(T.reader.state.teaser.heading);
+  });
+
+  test('a load that failed says why and no more; one that worked says nothing', async ({
+    page,
+  }) => {
+    const toast = page.getByTestId('toast');
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.detailsEnd = 'failed'));
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.error.text('db', {}));
+    // The ad comes: the job's row is as the run left it, its reader follows later.
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    await slowDetails(page, 600);
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+    await expect(toast).toHaveCount(0);
+    // A preview walks through to the loaded job.
+    await openAt(page, 'freelance-900411', `${WIN}&tick=15`);
+    await stage(page).getByTestId('reader-sign-in').click();
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(stage(page).getByTestId('reader-state')).toHaveCount(0);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('a search says it loads the ad until it goes on to score', async ({ page }) => {
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    const note = stage(page).getByTestId('detail-note');
+    await page.evaluate(() => {
+      window.__harness.holdAfter = 2;
+      window.__harness.appRun('fetch');
+    });
+    await expect(note).toHaveText(T.reader.state.loading);
+    // The ads are done, this one did not come.
+    await page.evaluate(() =>
+      window.__harness.emit({ type: 'progress', step: 'score', portal: null, done: 0, total: 3 }),
+    );
+    await expect(note).toHaveText(T.reader.state.missing);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+  });
+
   test('another job waiting for its page is not loaded by a details run of its own', async ({
     page,
   }) => {
