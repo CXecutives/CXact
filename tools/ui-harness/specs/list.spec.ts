@@ -138,8 +138,8 @@ async function inTheMiddle(page: Page, what: Locator): Promise<boolean> {
   );
 }
 
-/** Whether a state stands in the very middle of its pane, top to bottom (on a whole pixel). */
-async function inTheVeryMiddle(what: Locator, pane: Locator): Promise<void> {
+/** A state stands in the very middle of its pane, top to bottom (on a whole pixel). */
+async function expectInTheVeryMiddle(what: Locator, pane: Locator): Promise<void> {
   const box = (await what.boundingBox())!;
   const around = (await pane.boundingBox())!;
   const off = box.y + box.height / 2 - (around.y + around.height / 2);
@@ -1947,6 +1947,11 @@ test.describe('search', () => {
       await expectNoAnswer(page, divider);
       await divider.click({ force: true });
       await expect(divider).toHaveAttribute('aria-expanded', 'true');
+      // A press on it is a press on the list: an open menu closes (its end stands beside the menu).
+      await openFilter(page);
+      const box = (await divider.boundingBox())!;
+      await page.mouse.click(box.x + box.width - 4, box.y + box.height / 2);
+      await expect(page.getByTestId('menu')).toHaveCount(0);
     }
     await expect(page.getByTestId('unscored-rows').locator('[data-key]')).toHaveCount(
       waiting.length,
@@ -1972,16 +1977,20 @@ test.describe('search', () => {
     const unscored = page.getByTestId('unscored-divider');
     await unscored.click();
     await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await openJob(page, 'linkedin-4100200301');
     const marks = list(page).locator('mark');
+    const adMarks = stage(page).getByTestId('ad-text').locator('mark');
     await page.getByTestId('search').fill('Control');
-    // On its way the answer changes nothing: the old list stands as it was.
+    // On its way the answer changes nothing: the old list stands as it was, the open ad too.
     await expect(unscored).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
     await expect(marks).toHaveCount(0);
+    await expect(adMarks).toHaveCount(0);
     // The answer: its hits at once, the sections open with them, nothing unfolding.
     await expect(excludedRows(page)).toHaveCount(1);
     await expect(unscored).toHaveAttribute('aria-expanded', 'true');
     await expect(marks.first()).toBeVisible();
+    await expect(adMarks.first()).toBeVisible();
     expect(
       await page.getByTestId('excluded-rows').evaluate((node) => node.getAnimations().length),
     ).toBe(0);
@@ -3315,14 +3324,14 @@ test('Profil ergänzen has the glyph of Ergänzen on the Profil; Profil öffnen 
 test('the empty states without a head stand in the very middle of their pane', async ({ page }) => {
   await open(page, `${WIN}&scenario=fresh`);
   const column = page.getByTestId('list-scroll');
-  await inTheVeryMiddle(page.getByTestId('empty-all'), column);
+  await expectInTheVeryMiddle(page.getByTestId('empty-all'), column);
   await open(page, `${WIN}&scenario=empty`);
-  await inTheVeryMiddle(page.getByTestId('empty-all'), column);
+  await expectInTheVeryMiddle(page.getByTestId('empty-all'), column);
   await open(page, `${WIN}&scenario=list-error`);
-  await inTheVeryMiddle(page.getByTestId('list-error'), column);
+  await expectInTheVeryMiddle(page.getByTestId('list-error'), column);
   // The job view with no job open, in the same middle.
   await open(page, WIN);
-  await inTheVeryMiddle(page.getByTestId('place-reader'), page.getByTestId('stage'));
+  await expectInTheVeryMiddle(page.getByTestId('place-reader'), page.getByTestId('stage'));
 });
 
 test('a job that closes leaves no room behind: a list that fits stands at its top', async ({

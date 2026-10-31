@@ -5,7 +5,8 @@
   and at its end the chevron 14 in the subtle glyph colour, which turns half a turn while the
   section is open (150 ms, ease-out). Under the pointer the label and the chevron darken to
   ink. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
-  locked, a section held open: no answer to the pointer, no Tab stop, the chevron as it is. A
+  locked, a section held open: no answer to the pointer (a press on it is a press on the list),
+  no Tab stop, the chevron as it is. A
   section that stands first in the list has nothing to part from: no line, and its label stands
   where a day's heading stands.
 -->
@@ -58,7 +59,13 @@
     border-top: 0;
   }
 
-  .divider:hover:not(:disabled) {
+  /* Locked: the pointer goes through it to the list (an engine sends no press to a disabled
+     button: an open menu would stay). */
+  .divider:disabled {
+    pointer-events: none;
+  }
+
+  .divider:hover {
     color: var(--label-hover);
     transition-duration: var(--dur-hover);
   }
@@ -80,7 +87,7 @@
       color var(--dur-base) var(--ease-standard);
   }
 
-  .divider:hover:not(:disabled) .chevron {
+  .divider:hover .chevron {
     color: var(--label-hover);
     transition-duration: var(--dur-slow), var(--dur-hover);
   }

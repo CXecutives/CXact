@@ -39,6 +39,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Colours, sizes, times | `ui/src/styles/tokens.css` | components, `npm run regen` (window, icon) |
 | Facts of a job, their order and icons | `ui/src/lib/facts.ts` | list row, reader |
 | Order and filter of the list | `ui/src/lib/state/filter.ts`; in the backend `filter_condition` in `core/src/store/jobs.rs` (portal, band, contract types, remote) | funnel menu, filter chips, reset, harness |
+| A word of the search in a text (any case, with or without accents) | `ui/src/lib/marks.ts` | a row's title, the ad |
 | The job's menu (what shows it, what changes it, the moves per place) | `jobMenu` in `ui/src/features/jobs/actions.ts` | a row's right click, the reader's "…" (its second group) |
 | Icons (meaning to glyph) | `ui/src/lib/icons.ts` | `Icon.svelte`, every icon position |
 | Views of the sidebar (name, icon) | `ui/src/lib/views.ts` | sidebar |

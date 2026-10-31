@@ -350,7 +350,6 @@ test.describe('the actions', () => {
       target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2801' } },
     });
     // In den Papierkorb legen: the job goes to the trash, the next one opens.
-    await page.waitForTimeout(550);
     await choose(page, 'trash');
     expect((await calls(page, 'move_jobs')).at(-1)?.[1]).toEqual({
       keys: [{ portal: 'freelancermap', id: '2801' }],
@@ -523,7 +522,6 @@ test.describe('the actions', () => {
     await open(page, WIN);
     await rows(page).first().click();
     const first = await page.getByTestId('reader-title').textContent();
-    await page.waitForTimeout(550);
     await page.getByTestId('reader-archive').focus();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
@@ -593,19 +591,24 @@ test.describe('the actions', () => {
   test('a click on another move right after a move counts; the second of a double click does not', async ({
     page,
   }) => {
+    const title = page.getByTestId('reader-title');
     await open(page, WIN);
     await rows(page).first().click();
-    const first = await page.getByTestId('reader-title').textContent();
+    const first = await title.textContent();
     await page.getByTestId('reader-archive').click();
-    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await expect(title).not.toHaveText(first ?? '');
+    const second = await title.textContent();
     await page.getByTestId('reader-trash').click();
     await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(2);
+    await expect(title).not.toHaveText(second ?? '');
+    const third = await title.textContent();
     // A double click at one spot takes one job, the second click comes on the next job's button.
     const archive = (await page.getByTestId('reader-archive').boundingBox())!;
     await page.mouse.click(archive.x + archive.width / 2, archive.y + archive.height / 2);
-    await page.waitForTimeout(200);
+    await expect(title).not.toHaveText(third ?? '');
     await page.mouse.down({ clickCount: 2 });
     await page.mouse.up({ clickCount: 2 });
+    await settle(page);
     expect(await calls(page, 'move_jobs')).toHaveLength(3);
   });
 
@@ -624,6 +627,9 @@ test.describe('the actions', () => {
     await press(stage(page).getByTestId('reader-archive'));
     await press(stage(page).getByTestId('open-ad'));
     await press(stage(page).getByTestId('load-ad'));
+    await openAt(page, 'freelancermap-2802');
+    await press(stage(page).getByTestId('add-to-profile').first());
+    await openAt(page, 'linkedin-4100200302');
     const reached: (string | undefined)[] = [];
     for (let tab = 0; tab < 40 && !reached.includes('load-ad'); tab += 1) {
       await page.keyboard.press('Tab');
