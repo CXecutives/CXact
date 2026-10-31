@@ -463,6 +463,22 @@ test('Postfach: optional, its pair in the OS order; skipped, Fertig opens the jo
   await expect(ends.nth(1)).toHaveAttribute('data-testid', 'first-next');
 });
 
+test('Postfach: its lead never tears the word Alert-Mails across its lines', async ({ page }) => {
+  for (const width of [1360, 480]) {
+    await page.setViewportSize({ width, height: 800 });
+    await open(page, `${WIN}&scenario=setup-profile`);
+    const tops = await page.getByTestId('first-lead').evaluate((lead) => {
+      const text = lead.firstChild as Text;
+      const word = /Alert\S+Mails/.exec(text.data)!;
+      const range = document.createRange();
+      range.setStart(text, word.index);
+      range.setEnd(text, word.index + word[0].length);
+      return [...range.getClientRects()].map((part) => Math.round(part.top));
+    });
+    expect(new Set(tops).size, `${width} wide`).toBe(1);
+  }
+});
+
 test('Postfach connected (Enter is the primary): Fertig says everything is set up', async ({
   page,
 }) => {

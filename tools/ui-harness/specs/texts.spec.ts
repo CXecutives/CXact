@@ -57,3 +57,14 @@ test('an ad the app cannot reach says so in the reader, its row carries no badge
   await expect(page.getByTestId('detail-note')).toHaveText(T.reader.state.unfetchable.heading);
   await expect(row).not.toContainText(T.reader.state.unfetchable.heading);
 });
+
+test('a search without a hit speaks of other words: a place in the app is no "Ort"', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await page.getByTestId('search').fill('zzzz');
+  const none = page.getByTestId('empty-search');
+  await expect(none.locator('p')).toHaveText(T.list.noHitText);
+  // "Ort" is the job's location in Jobdetails: here it read as "search another city".
+  expect(T.list.noHitText).not.toContain(T.reader.term.place);
+});

@@ -6,6 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import {
+  animationsDone,
   calls,
   expect,
   expectShot,
@@ -613,6 +614,34 @@ test('portals: a pause says until when in the state line, an empty alert mail in
   await expect(empty).toHaveText(T.settings.alertMails(11));
   await expect(page.getByTestId('health-freelance')).toHaveCount(0);
 });
+test('portals: pages that changed say so once: the word, and in one line what comes next', async ({
+  page,
+}) => {
+  await settings(page);
+  const row = await reveal(page, page.getByTestId('portal-linkedin'));
+  const plain = (await row.boundingBox())!.height;
+  await page.evaluate(() =>
+    window.__harness.emit({
+      type: 'portalHealth',
+      portal: 'linkedin',
+      health: { kind: 'layoutSuspect', emptyMails: 0, pages: 3 },
+      actionNeeded: false,
+    }),
+  );
+  await expect(page.getByTestId('portal-linkedin-hint')).toHaveText(T.settings.problem.pages);
+  const line = page.getByTestId('health-linkedin');
+  await expect(line).toHaveText(T.health.advice.pages);
+  await animationsDone(page);
+  // The sentence beside the button keeps to one line: no second line that repeats the first.
+  const lines = await line.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    return new Set([...range.getClientRects()].map((part) => Math.round(part.top))).size;
+  });
+  expect(lines).toBe(1);
+  expect((await row.boundingBox())!.height - plain).toBe((await line.boundingBox())!.height);
+});
+
 test('portals: a week without an alert mail is the status word, with Alert prüfen', async ({
   page,
 }) => {

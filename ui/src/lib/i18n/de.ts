@@ -824,7 +824,7 @@ export const de = {
     },
     /** A search or a filter that leaves nothing: an empty state's title and sentence. */
     noHit: (query: string) => `Kein Job passt zu „${query}“`,
-    noHitText: 'Andere Wörter oder ein anderer Ort finden vielleicht mehr.',
+    noHitText: 'Andere Wörter finden vielleicht mehr.',
     noHitFiltered: (query: string) => `Kein Job passt zu „${query}“ und zum Filter`,
     noHitFilteredText: 'Ohne den Filter findest du vielleicht mehr.',
     noFilterHit: 'Kein Job passt zum Filter',
@@ -1013,8 +1013,7 @@ export const de = {
       },
       quota: (iso: string) =>
         `Das Limit ist erreicht, die Suche macht ab ${formatMoment(iso)} von selbst weiter.`,
-      pages:
-        'Die Seiten des Portals sehen anders aus, die nächste Suche versucht es von selbst wieder.',
+      pages: 'Die nächste Suche versucht es von selbst wieder.',
       login: 'Die Anmeldung ist abgelaufen, melde dich neu an.',
     },
   },
@@ -1473,10 +1472,12 @@ export const de = {
     profileCv: 'Aus deinem Lebenslauf ausgefüllt. Prüfe es und ergänze, was nur du weißt.',
     profileSelf: 'Trag ein, was du suchst und was du mitbringst.',
     next: 'Weiter',
-    /** The Postfach, optional: what it brings, the portals of alert mails by name. */
+    /** The Postfach, optional: what it brings, the portals of alert mails by name (a word
+     *  joiner after the hyphen: the balanced lead never tears the word there, and it stays
+     *  the font's own hyphen, which a non-breaking one is not). */
     mailbox: 'Postfach verbinden',
     mailboxText: (portals: readonly Portal[]) =>
-      `Dann liest CXact auch deine Alert-Mails von ${joined(portals.map((p) => BRAND[p]))}.`,
+      `Dann liest CXact auch deine Alert-⁠Mails von ${joined(portals.map((p) => BRAND[p]))}.`,
     skip: 'Überspringen',
     connect: 'Verbinden',
     /** Fertig: everything with a mailbox, else the profile. */
