@@ -83,6 +83,7 @@
     openAd,
     purge,
     rowTools,
+    seen,
     type JobMenuContext,
   } from './actions';
   import DayGroup from './DayGroup.svelte';
@@ -295,11 +296,13 @@
     });
   });
 
-  /** A click opens the job (the open one stays open); right after a move it is the second
-   *  click of a double click on the row that slid under the pointer, and does nothing. */
+  /** A click opens the job (the open one stays open and has been looked at); right after a move
+   *  it is the second click of a double click on the row that slid under the pointer, and does
+   *  nothing. */
   function select(job: JobView): void {
     if (guarded()) return;
-    if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
+    if (sameKey(jobs.selected, job.key)) seen(job.key);
+    else void jobs.select(job, true);
   }
 
   // A search looks in the list's place; the other places that list hits are named under them.

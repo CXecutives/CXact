@@ -41,7 +41,7 @@
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { FOLD_BELOW, viewport } from '$lib/state/viewport.svelte';
-  import { focusPlace } from './actions';
+  import { dwellOn, focusPlace } from './actions';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ReaderSkeleton from './ReaderSkeleton.svelte';
@@ -53,9 +53,13 @@
   /** A job is chosen and on its way: the empty state goes at once, the pane stays blank. */
   const OPENING = 'opening';
 
-  // The list loads as soon as the app state is there (also after the first run page).
+  // The list loads as soon as the app state is there (also after the first run page); the job
+  // kept from the last start opens with it, read only once it has been looked at.
   $effect(() => {
-    if (app.state !== null && jobs.status === 'idle') void jobs.start();
+    if (app.state === null || jobs.status !== 'idle') return;
+    void jobs.start().then(() => {
+      if (jobs.selected !== null) dwellOn(jobs.selected);
+    });
   });
 
   /**

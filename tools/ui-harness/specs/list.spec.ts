@@ -3001,6 +3001,39 @@ test.describe('the list keeps true', () => {
     await expect(page.getByTestId('toast')).toHaveCount(0);
   });
 
+  test('the job kept from the last start counts as read once it has been looked at', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&open=freelance:900411`);
+    const title = row(page, 'freelance-900411').locator('.title');
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    await expect(title).toHaveClass(/unread/);
+    await expect(title).not.toHaveClass(/unread/);
+    expect((await calls(page, 'mark_read')).at(-1)?.[1]).toEqual({
+      key: { portal: 'freelance', id: '900411' },
+    });
+  });
+
+  test('a press on the open row counts as looked at: the job the app opened is read at once', async ({
+    page,
+  }) => {
+    // Opened by itself after the job before it left, not yet read.
+    await open(page, WIN);
+    const [first, second] = await listed(page);
+    await openJob(page, first!);
+    await page.getByTestId('reader-archive').click();
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(page.locator('[data-open]')).toHaveAttribute(
+      'data-key',
+      second!.replace('-', ':'),
+    );
+    const title = row(page, second!).locator('.title');
+    await expect(title).toHaveClass(/unread/);
+    await row(page, second!).click();
+    // Before its dwell of two seconds.
+    await expect(title).not.toHaveClass(/unread/, { timeout: 1000 });
+  });
+
   test('a second click, a slow double click, on the row that slid under a row tool opens nothing', async ({
     page,
   }) => {

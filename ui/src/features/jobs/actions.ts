@@ -14,7 +14,7 @@
 // the list or the pane changed is ignored, so a double click never moves the job that slid
 // under the pointer, nor opens the one that did; every other click and key counts at once. The
 // job the app opens by itself counts as read only once it has been
-// looked at (DWELL_MS on screen in the Jobs view, or a click in the reader). A job that is
+// looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is
 // already where it goes is no move. A move that fails says so where it was asked (the list
 // header, `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
 
@@ -304,7 +304,13 @@ function openNext(
   }
   void jobs.select(next, false);
   jobs.reveal = { key: keyOf(next.key), focus };
-  const key = next.key;
+  dwellOn(next.key);
+}
+
+/** The job the app opened (the next one after a move, the one kept from the last start) counts
+ *  as read once it has been on screen for DWELL_MS. */
+export function dwellOn(key: JobKey): void {
+  clearInterval(dwell);
   let looked = 0;
   dwell = setInterval(() => {
     if (!sameKey(jobs.selected, key)) {
@@ -316,7 +322,8 @@ function openNext(
   }, DWELL_STEP);
 }
 
-/** The job the app opened has been looked at (the dwell, or a click in the reader). */
+/** The job the app opened has been looked at (the dwell, or a press on it, in the reader or on
+ *  its row). */
 export function seen(key: JobKey | null = jobs.selected): void {
   clearInterval(dwell);
   if (key !== null && sameKey(jobs.selected, key)) jobs.markSeen(key);
