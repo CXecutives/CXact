@@ -3,8 +3,8 @@
   and the title (14/540). Nothing else: no company, place, rate, date or dot (the reader and
   the day's heading have them). The title stays on one line (every row one height; a cut
   title, and one that fits but ends under the row's tools, shows in full in a tooltip; while
-  a search is on, its words are marked in a soft
-  yellow, in any case and with or without accents, as the search finds them). A new job
+  a search is on, its words are marked in a soft yellow, in any case and with or without
+  accents, as the search finds them, lib/marks.ts). A new job
   (lib/state/filter.ts `isNew`: not opened yet and not excluded) has its title in 650 and a
   hidden "Neu" for screen readers. A job in the Papierkorb and an ad that takes no
   applications any more step back: the title muted in 450 (an excluded job is not muted, the
@@ -30,44 +30,6 @@
   import { t } from '$lib/i18n/t';
   import type { JobView } from '$lib/ipc/types';
 
-  /** A character as the search compares it: lower case, without its accents. */
-  const fold = (char: string): string =>
-    char
-      .toLocaleLowerCase('de')
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '');
-
-  /** `text` in parts, those that hold a word of the search marked (every place a word
-   *  stands, compared like the search: in any case, with or without accents). */
-  function markedParts(text: string, words: readonly string[]): { text: string; mark: boolean }[] {
-    const chars = Array.from(text);
-    if (words.length === 0 || chars.length === 0) return [{ text, mark: false }];
-    // The folded text, and for each of its characters the character of `text` it came from.
-    let folded = '';
-    const from: number[] = [];
-    chars.forEach((char, at) => {
-      for (const part of Array.from(fold(char))) {
-        folded += part;
-        from.push(at);
-      }
-    });
-    const marked = new Array<boolean>(chars.length).fill(false);
-    for (const word of words.map((each) => Array.from(each).map(fold).join(''))) {
-      if (word === '') continue;
-      for (let at = folded.indexOf(word); at >= 0; at = folded.indexOf(word, at + 1)) {
-        const end = from[at + word.length - 1] ?? chars.length - 1;
-        for (let index = from[at] ?? 0; index <= end; index += 1) marked[index] = true;
-      }
-    }
-    const parts: { text: string; mark: boolean }[] = [];
-    chars.forEach((char, at) => {
-      const last = parts.at(-1);
-      if (last !== undefined && last.mark === marked[at]) last.text += char;
-      else parts.push({ text: char, mark: marked[at] ?? false });
-    });
-    return parts;
-  }
-
   /** A tool of the row under the pointer: a move of the job's place (actions.ts rowTools). */
   export interface RowTool {
     id: string;
@@ -86,6 +48,7 @@
   import { contextMenu, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { displayTitle } from '$lib/i18n/format';
+  import { markedParts } from '$lib/marks';
   import { fade } from '$lib/motion/transitions';
   import { isNew } from '$lib/state/filter';
   import { tokenPx } from '$lib/tokens';

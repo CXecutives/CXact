@@ -4,9 +4,9 @@
   Aufgaben", "Ihr Profil", "Wünschenswert", "Rahmen", "Responsibilities") stand in ink and
   bold, the lines a bullet leads are a clean list 18 in (the bullet drawn by the list, not the
   ad's glyph), everything else stays text with its line breaks. The text is cut at the ends of every word of the list's search, each piece a
-  text node or a <mark>: a word of the search stands on the search's mark colour
-  (--mark) while the search is on. Nothing else is marked (hovering the reader's rows
-  tints nothing here, user decision 2026-09-27). No underline, no tooltip, no HTML from the
+  text node or a <mark>: a word of the search, as the row's title marks it (lib/marks.ts), stands
+  on the search's mark colour (--mark) while the search is on. Nothing else is marked (hovering
+  the reader's rows tints nothing here, user decision 2026-09-27). No underline, no tooltip, no HTML from the
   page (text nodes and marks only). Offsets are UTF-16, as the browser counts. The text selects
   and copies like a document (`data-copy`).
 -->
@@ -18,31 +18,10 @@
     end: number;
   }
 
-  interface Piece {
-    text: string;
-    /** A word of the search covers it. */
-    hit: boolean;
-  }
-
   type Block =
     | { kind: 'heading'; range: Range }
     | { kind: 'list'; items: Range[] }
     | { kind: 'text'; range: Range };
-
-  /** Words a search takes at most (the list's search reads as many). */
-  const SEARCH_WORDS = 8;
-
-  /** Where the words of the search stand in the text, case aside (like the list's search). */
-  function hitsOf(text: string, search: string): Range[] {
-    const words = search.trim().split(/\s+/).filter(Boolean).slice(0, SEARCH_WORDS);
-    if (words.length === 0) return [];
-    const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const pattern = new RegExp(escaped.join('|'), 'giu');
-    return [...text.matchAll(pattern)].map((hit) => ({
-      start: hit.index,
-      end: hit.index + hit[0].length,
-    }));
-  }
 
   /** The text's blocks, line by line: a heading line, a run of list lines, a paragraph (its
    *  lines up to a blank one). */
@@ -81,27 +60,11 @@
     end();
     return blocks;
   }
-
-  /** The part of the text from `start` to `end`, cut at every hit's ends; each piece knows
-   *  whether a hit covers it. */
-  function pieces(text: string, { start, end }: Range, hits: readonly Range[]): Piece[] {
-    const words = hits.filter((p) => p.start < p.end && p.start < end && p.end > start);
-    const clip = (at: number): number => Math.min(end, Math.max(start, at));
-    const cuts = [
-      ...new Set([start, end, ...words.flatMap((p) => [clip(p.start), clip(p.end)])]),
-    ].sort((a, b) => a - b);
-    const out: Piece[] = [];
-    for (let index = 0; index + 1 < cuts.length; index += 1) {
-      const from = cuts[index] ?? start;
-      const to = cuts[index + 1] ?? from;
-      const covers = (p: Range): boolean => p.start <= from && p.end >= to;
-      out.push({ text: text.slice(from, to), hit: words.some(covers) });
-    }
-    return out;
-  }
 </script>
 
 <script lang="ts">
+  import { markedParts, searchWords } from '$lib/marks';
+
   interface Props {
     text: string;
     /** Its headings and list lines. */
@@ -112,11 +75,13 @@
   let { text, layout, search = '' }: Props = $props();
 
   const blocks = $derived(blocksOf(text, layout));
-  const hits = $derived(hitsOf(text, search));
-  const parts = (range: Range): Piece[] => pieces(text, range, hits);
+  const words = $derived(searchWords(search));
 </script>
 
-{#snippet run(range: Range)}{#each parts(range) as part, index (index)}{#if part.hit}<mark
+{#snippet run({
+  start,
+  end,
+}: Range)}{#each markedParts(text.slice(start, end), words) as part, index (index)}{#if part.mark}<mark
         class="hit">{part.text}</mark
       >{:else}{part.text}{/if}{/each}{/snippet}
 

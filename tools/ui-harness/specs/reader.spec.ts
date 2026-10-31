@@ -1176,6 +1176,23 @@ test.describe('the ad', () => {
     await expect(hits).toHaveCount(0);
   });
 
+  test('the ad marks what the search found like the row: in any case, with or without accents', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const search = page.getByTestId('search');
+    const hits = stage(page).getByTestId('ad-text').locator('mark.hit');
+    await search.fill('GESCHAFT');
+    await expect.poll(() => listed(page)).toEqual(['freelancermap-2803']);
+    await row(page, 'freelancermap-2803').click();
+    await expect(row(page, 'freelancermap-2803').locator('mark')).toHaveText(['geschäft']);
+    await expect(hits.first()).toHaveText(/geschäft/iu);
+    await search.fill('Munchen');
+    await expect.poll(() => listed(page)).toContain('freelance-900411');
+    await row(page, 'freelance-900411').click();
+    await expect(hits.first()).toHaveText('München');
+  });
+
   test('a preview says so once, here, with its sign-in right there', async ({ page }) => {
     await openAt(page, 'freelance-900411');
     const note = stage(page).getByTestId('detail-note');

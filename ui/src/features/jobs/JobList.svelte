@@ -62,6 +62,7 @@
   import { t } from '$lib/i18n/t';
   import { warningText } from '$lib/i18n/texts';
   import type { JobView, Place } from '$lib/ipc/types';
+  import { searchWords } from '$lib/marks';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
   import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
@@ -109,8 +110,8 @@
   const shown = $derived(jobs.shown);
   /** The list holds the answer to a search. */
   const searching = $derived(jobs.listedSearch !== '');
-  /** The words of that search, marked in the rows' titles (at most 8, like the backend). */
-  const searchWords = $derived(searching ? jobs.listedSearch.split(/\s+/).slice(0, 8) : []);
+  /** The words of that search, marked in the rows' titles. */
+  const marks = $derived(searchWords(jobs.listedSearch));
   /** The rows as far as the window reaches: the scored ones, the ones without a score yet,
    *  then the excluded ones. */
   const active = $derived(shown.filter((job) => !isExcluded(job) && !isUnscored(job)));
@@ -544,7 +545,7 @@
     {job}
     ring={!profileMissing}
     reveal={rises}
-    marks={searchWords}
+    {marks}
     pending={pending && job.match === null}
     selected={open}
     onselect={select}
