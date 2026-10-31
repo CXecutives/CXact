@@ -3035,6 +3035,40 @@ test.describe('the list keeps true', () => {
     await expect.poll(() => openKeyOf(page)).toBe(waiting[0]);
   });
 
+  test('a row brought into view from below clears the sticky heading of its day', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, WIN);
+    const keys = await listed(page);
+    const [first, last] = [keys[0]!, keys.at(-1)!];
+    const scroller = page.getByTestId('list-scroll');
+    const heading = page.getByTestId('day-heading').first();
+    /** The row's top is under the heading that sticks above it. */
+    const expectClear = async (key: string): Promise<void> => {
+      await expect
+        .poll(async () => {
+          const top = (await row(page, key).boundingBox())!.y;
+          const end = (await heading.boundingBox())!;
+          return top - (end.y + end.height);
+        })
+        .toBeGreaterThanOrEqual(0);
+    };
+    await row(page, first).click();
+    await scroller.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    await row(page, last).click();
+    await page.getByTestId('history-back').click();
+    await expect(page.locator('[data-open]')).toHaveAttribute('data-key', first.replace('-', ':'));
+    await expectClear(first);
+    // From the keyboard too: the focus moves up over a row the heading covers.
+    await scroller.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    await row(page, keys[2]!).focus();
+    await scroller.evaluate((node) => (node.scrollTop += 60));
+    await page.keyboard.press('Shift+Tab');
+    await expect(row(page, keys[1]!)).toBeFocused();
+    await expectClear(keys[1]!);
+  });
+
   test('folding the section of the open job takes the highlight away; unfolding brings it back', async ({
     page,
   }) => {

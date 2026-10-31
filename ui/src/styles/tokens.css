@@ -851,6 +851,8 @@
     hsl(var(--p-ink)) calc(var(--list-tools) + var(--list-tools-fade))
   );
   --day-head-pad: 14px var(--space-10) var(--space-6);
+  /* What a day's heading covers while it sticks: its line and its room above and below. */
+  --day-head-height: calc(14px + var(--leading-xs) + var(--space-6));
   /* The fade under a day's heading while it sticks (the rows go out under it). */
   --day-head-fade: var(--space-12);
   --divider-pad: 22px var(--space-10) var(--space-6);

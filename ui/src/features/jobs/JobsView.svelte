@@ -344,6 +344,7 @@
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
+    scroll-padding-block: var(--day-head-height) var(--list-rows-end);
   }
 
   /* The fade where a job scrolls away under the top bar: the sheet's colour into nothing,
