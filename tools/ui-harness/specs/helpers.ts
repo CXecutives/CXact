@@ -98,11 +98,6 @@ export async function viaMenu(page: Page, id: string, key: string): Promise<void
   await page.getByTestId(`menu-item-${id}`).click();
 }
 
-/** After a move the list ignores clicks for a moment (the row under the pointer changed). */
-export async function settleMoves(page: Page): Promise<void> {
-  await page.waitForTimeout(550);
-}
-
 /** Choose a place by its entry in the sidebar. */
 export async function openPlace(page: Page, place: 'inbox' | 'archive' | 'trash'): Promise<void> {
   await page.getByTestId(`place-${place}`).click();

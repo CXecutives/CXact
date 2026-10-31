@@ -21,7 +21,6 @@ import {
   openPlace,
   row,
   rows,
-  settleMoves,
   stage,
   stubList,
   T,
@@ -395,7 +394,6 @@ test.describe('the actions', () => {
     expect(tools.ids).toEqual(['unarchive', 'trash']);
     expect(tools.labels).toEqual([T.actions.unarchive, T.actions.trash]);
     await choose(page, 'trash');
-    await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, 'linkedin-4100200306');
     tools = await headTools(page);
@@ -422,7 +420,6 @@ test.describe('the actions', () => {
     // Two jobs in the Papierkorb (one toast: the moves merge).
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
-      await settleMoves(page);
     }
     const places = [
       { place: 'inbox', key: 'freelancermap-2802', ids: ['archive', 'trash'] },
@@ -450,7 +447,6 @@ test.describe('the actions', () => {
     // The open job of Aktuell into the trash: while the next one loads the reader shows the
     // job that went to the Papierkorb, and its moves are off (never the Papierkorb's here).
     await openJob(page, 'freelancermap-2801');
-    await settleMoves(page);
     await slowDetails(page, 1500);
     await choose(page, 'trash');
     await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
@@ -459,18 +455,15 @@ test.describe('the actions', () => {
     // The next job of Aktuell: Aktuell's moves.
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
     await slowDetails(page, 0);
-    await settleMoves(page);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // Rückgängig brings it back and opens it again: Aktuell's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
-    await settleMoves(page);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // Wiederherstellen of the open job in the Papierkorb: the same while the next one loads.
     await open(page, WIN);
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
-      await settleMoves(page);
     }
     await openPlace(page, 'trash');
     await openJob(page, 'freelancermap-2803');
@@ -483,7 +476,6 @@ test.describe('the actions', () => {
     await movesOff(page);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
     await slowDetails(page, 0);
-    await settleMoves(page);
     expect(await moves(page)).toEqual(['restore', 'purge']);
   });
 
@@ -601,14 +593,12 @@ test.describe('the actions', () => {
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
     await page.getByTestId('reader-trash').click();
     await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(2);
-    await settleMoves(page);
     // A double click at one spot takes one job, the second click comes on the next job's button.
     const archive = (await page.getByTestId('reader-archive').boundingBox())!;
     await page.mouse.click(archive.x + archive.width / 2, archive.y + archive.height / 2);
     await page.waitForTimeout(200);
     await page.mouse.down({ clickCount: 2 });
     await page.mouse.up({ clickCount: 2 });
-    await settleMoves(page);
     expect(await calls(page, 'move_jobs')).toHaveLength(3);
   });
 

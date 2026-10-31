@@ -27,7 +27,6 @@ import {
   openPlace,
   SEARCHED,
   reveal,
-  settleMoves,
   stage,
   T,
   viaMenu,
@@ -1310,7 +1309,6 @@ test('the close question stands alone: another question that is open is cancelle
   // Deleting for good asks (its dialog is open) when a search the app started is under way and
   // the window is asked to close.
   await viaMenu(page, 'trash', 'freelancermap-2803');
-  await settleMoves(page);
   await openPlace(page, 'trash');
   await viaMenu(page, 'purge', 'freelancermap-2803');
   const purge = page.getByTestId('dialog-purge');

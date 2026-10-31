@@ -8,12 +8,8 @@ const WIN = '?platform=windows';
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
 const DAY_MS = 86_400_000;
 
-/** Waits out the moment after a move in which a click does nothing (actions.ts GUARD_MS). */
-const settleMoves = (page: Page): Promise<void> => page.waitForTimeout(550);
-
 /** A job's action through its row's menu (a right click); its row leaves the list. */
 async function viaMenu(page: Page, id: string, key: string): Promise<void> {
-  await settleMoves(page);
   await row(page, key).click({ button: 'right' });
   await page.getByTestId(`menu-item-${id}`).click();
   await expect(row(page, key)).toHaveCount(0);

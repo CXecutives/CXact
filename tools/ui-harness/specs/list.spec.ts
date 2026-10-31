@@ -52,7 +52,6 @@ import {
   row,
   rowMenu,
   rows,
-  settleMoves,
   reveal,
   sortEntryId,
   SORTS,
@@ -64,6 +63,9 @@ import {
   WIN,
   menuFrame,
 } from './helpers';
+
+/** How long letters typed in a menu count as one word (input.ts). */
+const TYPE_AHEAD = 750;
 
 /** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile.
  *  Tokens are read once, so it is set before the page starts. */
@@ -1331,7 +1333,6 @@ test.describe('one list', () => {
     // A new job moved to the Archiv stays new there, like a mail app's unread mark.
     const moved = fresh[0]!;
     await viaMenu(page, 'archive', moved);
-    await settleMoves(page);
     await openPlace(page, 'archive');
     await expect.poll(dotted).toContain(moved);
   });
@@ -1652,9 +1653,7 @@ test.describe('days', () => {
   test('the Papierkorb heads its days by when the jobs went there', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'trash', 'freelancermap-2805');
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'linkedin-4100200303');
-    await settleMoves(page);
     await openPlace(page, 'trash');
     // Two jobs went there before (today, yesterday), one now (scored, it joins today).
     expect(await headings(page)).toEqual(['Heute', 'Gestern']);
@@ -1762,7 +1761,6 @@ test.describe('rows', () => {
     await page.keyboard.press('Escape');
     // The archive: unarchive, delete.
     await viaMenu(page, 'archive', 'freelancermap-2802');
-    await settleMoves(page);
     await openPlace(page, 'archive');
     menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
@@ -1771,7 +1769,6 @@ test.describe('rows', () => {
       T.actions.trash,
     ]);
     await menuItem(page, 'trash').click();
-    await settleMoves(page);
     // The trash: restore, delete for good.
     await openPlace(page, 'trash');
     menu = await rowMenu(page, 'freelancermap-2802');
@@ -2371,18 +2368,15 @@ test.describe('moves and undo', () => {
     await viaMenu(page, 'trash', 'freelancermap-2805');
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await page.getByTestId('toast-action').click();
-    await settleMoves(page);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
       await viaMenu(page, 'archive', key);
       await expect(row(page, key)).toHaveCount(0);
-      await settleMoves(page);
     }
     await expect(page.getByTestId('toast')).toHaveCount(1);
     await expect(page.getByTestId('toast-text')).toHaveText(T.toast.archived);
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2802')).toHaveCount(1);
     await expect(row(page, 'freelancermap-2803')).toHaveCount(1);
-    await settleMoves(page);
     await viaMenu(page, 'archive', 'freelancermap-2802');
     await openPlace(page, 'archive');
     await viaMenu(page, 'unarchive', 'freelancermap-2802');
@@ -2398,7 +2392,6 @@ test.describe('moves and undo', () => {
     await open(page, WIN);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
       await viaMenu(page, 'trash', key);
-      await settleMoves(page);
     }
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await openPlace(page, 'trash');
@@ -2408,7 +2401,6 @@ test.describe('moves and undo', () => {
     await viaMenu(page, 'restore', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
-    await settleMoves(page);
     // Endgültig löschen asks first: the job by its title, what it means, and "Löschen".
     const title = await row(page, 'freelancermap-2803').locator('.title').innerText();
     await viaMenu(page, 'purge', 'freelancermap-2803');
@@ -2440,7 +2432,6 @@ test.describe('moves and undo', () => {
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
       if (next !== undefined) await expect(row(page, next)).toBeFocused();
-      await settleMoves(page);
     }
     // The last one went: the focus is on the Papierkorb in the sidebar, and the place says it is
     // empty, with no head.
@@ -2464,7 +2455,8 @@ test.describe('moves and undo', () => {
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
       if (next !== undefined) await expect(row(page, next)).toBeFocused();
-      await settleMoves(page);
+      // The letters typed in the next menu stand on their own after a moment (input.ts).
+      await page.waitForTimeout(TYPE_AHEAD);
     }
     await expect(page.getByTestId('place-archive')).toBeFocused();
   });
@@ -2486,7 +2478,8 @@ test.describe('moves and undo', () => {
       await page.keyboard.type(T.actions.unarchive.slice(0, 4));
       await page.keyboard.press('Enter');
       await expect(row(page, key)).toHaveCount(0);
-      await settleMoves(page);
+      // The letters typed in the next menu stand on their own after a moment (input.ts).
+      await page.waitForTimeout(TYPE_AHEAD);
     }
     await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
   });
@@ -2497,25 +2490,21 @@ test.describe('moves and undo', () => {
     // The row holds the focus a press gave it (Chromium), and it opened the job.
     await row(page, first!).click();
     await expect(page.getByTestId('reader-title')).toBeVisible();
-    await settleMoves(page);
     // Its menu: the next job opens, its row takes no focus.
     await viaMenu(page, 'archive', first!);
     await expect(row(page, first!)).toHaveCount(0);
     await expect(row(page, second!)).toHaveAttribute('aria-current', 'true');
     await expect(row(page, second!)).not.toBeFocused();
-    await settleMoves(page);
     // The tool of a row that is not the open one.
     await row(page, third!).hover();
     await row(page, third!).locator('xpath=..').getByTestId('tool-archive').click();
     await expect(row(page, third!)).toHaveCount(0);
     await expect(row(page, fourth!)).not.toBeFocused();
-    await settleMoves(page);
     // A row that holds the focus keeps it while another one moves, by the keyboard too.
     await row(page, fourth!).focus();
     await viaMenu(page, 'archive', second!);
     await expect(row(page, second!)).toHaveCount(0);
     await expect(row(page, fourth!)).toBeFocused();
-    await settleMoves(page);
     const [fifth, sixth] = (await listed(page)).filter((key) => key !== fourth);
     await rowMenu(page, fifth!);
     await page.keyboard.type(T.actions.archive.slice(0, 4));
@@ -2535,7 +2524,6 @@ test.describe('moves and undo', () => {
     for (const key of keys) {
       await viaMenu(page, 'unarchive', key);
       await expect(row(page, key)).toHaveCount(0);
-      await settleMoves(page);
     }
     await expectBarePlace(page, T.list.empty.archive);
     await page.getByTestId('toast-action').click();
@@ -2546,7 +2534,6 @@ test.describe('moves and undo', () => {
   test('deleting for good waits for a run: its menu entry says why', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'trash', 'linkedin-4100200303');
-    await settleMoves(page);
     await page.evaluate(() => (window.__harness.holdAfter = 1));
     await page.getByTestId('fetch').click();
     await openPlace(page, 'trash');
@@ -2579,9 +2566,7 @@ test.describe('moves and undo', () => {
   test('an undo toast stays longer and takes back the moves merged into it', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'archive', 'freelancermap-2803');
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
     await viaMenu(page, 'archive', 'linkedin-4100200302');
     const archived = page.getByTestId('toast').filter({ hasText: T.toast.archived });
     await expect(archived).toHaveCount(1);
@@ -2611,7 +2596,6 @@ test.describe('moves and undo', () => {
     expect(back.jobs.map(({ to }) => to)).toEqual(['inbox']);
     await page.getByTestId('toggle-reader').click();
     await page.getByTestId('toggle-reader').click();
-    await settleMoves(page);
     await viaMenu(page, 'archive', 'freelancermap-2803');
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
@@ -2639,7 +2623,6 @@ test.describe('moves and undo', () => {
   test('deleting a job for good keeps the undo of another one', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'archive', 'freelancermap-2803');
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'freelancermap-2802');
     await openPlace(page, 'trash');
     await viaMenu(page, 'purge', 'freelancermap-2802');
@@ -3278,7 +3261,6 @@ test.describe('the list keeps true', () => {
     await openJob(page, key);
     await expect(page.getByTestId('reader-include')).toBeVisible();
     await viaMenu(page, 'trash', key);
-    await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, key);
     await expect(stage(page).getByTestId('exclusion')).toBeVisible();
