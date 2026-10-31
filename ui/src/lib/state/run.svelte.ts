@@ -200,8 +200,8 @@ class RunStore {
     void this.start(same ?? (kind === 'details' ? { kind: 'fetch' } : { kind }));
   }
 
-  /** The Jobs view with its run line, from anywhere (the sidebar's status, the "Zeigen" of a
-   *  toast), then `then`; an unsaved Profil may keep the view and ask first. */
+  /** The Jobs view with its run line, from anywhere (a place of the floating sidebar, the
+   *  "Zeigen" of a toast), then `then`; an unsaved Profil may keep the view and ask first. */
   show(then?: () => void): void {
     navigation.go('jobs', false, () => {
       // In one column an open job hides the list and its run line: back to the list.

@@ -39,6 +39,7 @@
   import ReasonItem from '$components/ReasonItem.svelte';
   import { ringState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
+  import { byKeyboard } from '$lib/input/input';
   import { displayTitle } from '$lib/i18n/format';
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
@@ -66,6 +67,7 @@
     rowTools,
     seen,
     type MoveId,
+    focusPlace,
   } from './actions';
   import type { ShowId } from './shows';
   import {
@@ -201,6 +203,8 @@
         : { testid, from: keyOf(job.key), until: performance.now() + HANDOFF_MS };
     void move([job], id).then((error) => {
       if (error !== null) handoff = null;
+      // The place's last job: no next one takes the focus, the place does.
+      else if (testid !== null && byKeyboard() && jobs.selected === null) focusPlace();
       fail(error);
     });
   }

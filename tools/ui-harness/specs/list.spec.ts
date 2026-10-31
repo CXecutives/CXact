@@ -3048,3 +3048,29 @@ test('baseline: jobs at the minimum size 480 x 360', async ({ page }) => {
   await open(page, WIN);
   await expectShot(page, 'jobs-min');
 });
+
+test('a job that closes leaves no room behind: a list that fits stands at its top', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 700 });
+  await open(page, '?scenario=default');
+  const scroller = page.getByTestId('list-scroll');
+  await scroller.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+  await page.locator('[data-key="freelancermap:2805"] .row').click();
+  await page.getByTestId('search').fill('Hamburg');
+  await expect(page.locator('[data-key="freelancermap:2801"]')).toBeVisible();
+  await expect
+    .poll(() => scroller.evaluate((node) => node.scrollHeight <= node.clientHeight))
+    .toBe(true);
+});
+
+test('a button of hits elsewhere pressed from the keyboard hands the focus to the place', async ({
+  page,
+}) => {
+  await open(page, '?scenario=default');
+  await page.getByTestId('search').fill('Kreditoren');
+  const also = page.getByTestId('also-archive');
+  await also.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('place-archive')).toBeFocused();
+});

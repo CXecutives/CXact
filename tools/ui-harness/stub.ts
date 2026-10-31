@@ -26,9 +26,6 @@
 //   window.__harness.form()         a copy of the stored profile's form (null: no profile)
 //   window.__harness.list(query)    what `list_jobs` returns for a query (not recorded)
 //
-// `?way=mail`: the fetch reads the mailbox (its menu's "Postfach") instead of searching; a
-// scripted fetch brings the jobs of the way it takes (the search freelancermap's).
-//
 // Scenarios (`?scenario=`): default · first-run · setup-cv (the setup after the CV: no
 // wished role or language; Deutschland as every new profile has it) · setup-profile (a profile, no mailbox) · setup-mailbox
 // (a profile and a mailbox just connected) · mailbox-only · no-profile · empty ·

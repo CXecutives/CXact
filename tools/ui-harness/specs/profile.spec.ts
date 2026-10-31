@@ -760,6 +760,24 @@ test('Sprachen: rows, the level a select of A1 to C2, the button brings a closed
   });
 });
 
+test('the keys in a name field: Tab goes on to its ×, Esc gives the focus to the button', async ({
+  page,
+}) => {
+  await open(page, '?view=profile');
+  await page.getByTestId('competences-add-button').click();
+  const field = page.locator('[data-testid="competence-add"] input');
+  await field.click();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('competences-draft-close')).toBeFocused();
+  // Leaving the row with nothing typed turns it back into the button.
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('competences-add-button')).toBeVisible();
+  await page.getByTestId('competences-add-button').click();
+  await field.click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('competences-add-button')).toBeFocused();
+});
+
 test('the × of a name field takes back what was typed: no new row', async ({ page }) => {
   await profile(page);
   const close = async (list: 'competence' | 'language', typed: string): Promise<void> => {

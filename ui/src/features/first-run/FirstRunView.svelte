@@ -165,7 +165,7 @@
       onself={() => onboarding.byHand()}
     />
   {:else if step === 'alerts'}
-    <MailboxForm bind:this={mailboxForm} bind:busy={checking} />
+    <MailboxForm bind:this={mailboxForm} bind:busy={checking} kept={onboarding.mailbox} />
   {/if}
 {/snippet}
 

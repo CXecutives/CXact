@@ -309,7 +309,6 @@
     background-color: var(--selection-tint);
     opacity: 0;
     pointer-events: none;
-    transform: translateY(var(--bar-top, 0));
     transition:
       opacity var(--dur-fade) var(--ease-in),
       background-color var(--dur-base) var(--ease-standard);
@@ -328,8 +327,18 @@
     transition: background-color var(--dur-base) var(--ease-standard);
   }
 
+  /* Faded out it stands at the list's top: where it stood, it would keep the scroll area long. */
+  .highlight:not(.shown) {
+    transform: none;
+    transition:
+      opacity var(--dur-fade) var(--ease-in),
+      background-color var(--dur-base) var(--ease-standard),
+      transform var(--dur-instant) var(--ease-standard) var(--dur-fade);
+  }
+
   .shown {
     opacity: 1;
+    transform: translateY(var(--bar-top, 0));
     transition-timing-function: var(--ease-out), var(--ease-standard);
   }
 

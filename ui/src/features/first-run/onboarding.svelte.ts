@@ -16,11 +16,14 @@ import { app } from '$lib/state/app.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { editor } from '$lib/state/profile.svelte';
 import { fromCv, retryable } from '../shared/fromCv.svelte';
+import type { MailboxDraft } from '../shared/MailboxForm.svelte';
 import { isStep, stepOf, type StepId, type Walk, type Way } from './steps';
 
 class Onboarding {
   step = $state<StepId>('welcome');
   way = $state<Way>('cv');
+  /** What the Postfach's form holds while Zurück leaves it. */
+  mailbox = $state<MailboxDraft>({ provider: null, user: null });
   /** Why the last evaluation failed (the upload says it above the drop zone). */
   failure = $state<CvFailure | null>(null);
   /** A failure that is no CV code, in words. */

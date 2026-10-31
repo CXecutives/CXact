@@ -181,8 +181,7 @@ Inside the window both OS show the same app. They differ by OS convention, decid
 - **Scrollbars:** Windows slim and styled, their room kept; macOS native overlay.
 - **Middle-button autoscroll:** Windows only, the engine's own: the app decides nothing about it.
 - **Words for OS things:** Explorer or Finder, Anmeldeinformationsverwaltung or Schlüsselbund.
-- **Keys:** the command key (Strg or Cmd) and how keys are written. The back key (Alt+Left, or Cmd+[ and
-  Cmd+Left; the mouse's back button on both).
+- **Keys:** the command key (Strg or Cmd) and how keys are written.
 - **The menu:** none, or a minimal App, Edit, Window.
 - **Smaller differences:** a text field's menu, font smoothing, keychain or credential manager, session
   storage, reveal in folder.

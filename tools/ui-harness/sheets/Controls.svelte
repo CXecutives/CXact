@@ -310,7 +310,6 @@
     >
     <span
       ><Select
-        inline
         options={LEVELS}
         value={level}
         label="Niveau"

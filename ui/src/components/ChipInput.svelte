@@ -309,13 +309,6 @@
     add(`${draft}\n${text}`);
     draft = '';
   }
-
-  /** A press on the free area of the field puts the caret into its input. */
-  function focusInput(event: PointerEvent & { currentTarget: HTMLElement }): void {
-    if (!entry || event.button !== 0 || event.target !== event.currentTarget) return;
-    event.preventDefault();
-    event.currentTarget.querySelector('input')?.focus();
-  }
 </script>
 
 <div
@@ -330,10 +323,9 @@
     class:invalid
     class:entry
     class:filled={values.length > 0}
-    role="presentation"
+    data-field-box={entry ? '' : undefined}
     data-testid={testid ?? undefined}
     data-removes
-    onpointerdown={focusInput}
   >
     {#each visible as value, index (value)}
       <span class="slot" data-chip={index} data-value={value} in:riseIn={value}>

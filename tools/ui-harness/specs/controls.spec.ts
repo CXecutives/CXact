@@ -19,9 +19,7 @@ async function sheet(page: Page): Promise<Locator> {
 const width = async (locator: Locator): Promise<number> => (await locator.boundingBox())!.width;
 const height = async (locator: Locator): Promise<number> => (await locator.boundingBox())!.height;
 
-test('one height per kind: 30, the quiet glyph 28, a suggestion 32, a select inline 26', async ({
-  page,
-}) => {
+test('one height per kind: 30, the quiet glyph 28, a suggestion 32', async ({ page }) => {
   const states = await sheet(page);
   await expect
     .poll(() => height(states.getByRole('button', { name: 'Jobs suchen' }).first()))
@@ -36,7 +34,7 @@ test('one height per kind: 30, the quiet glyph 28, a suggestion 32, a select inl
     await height(states.getByRole('listbox', { name: 'Tools' }).getByRole('option').first()),
   ).toBe(32);
   expect(await height(page.getByTestId('states-select'))).toBe(30);
-  expect(await height(page.getByTestId('states-level'))).toBe(26);
+  expect(await height(page.getByTestId('states-level'))).toBe(30);
   expect(await width(page.getByTestId('states-select'))).toBeGreaterThanOrEqual(150);
 });
 

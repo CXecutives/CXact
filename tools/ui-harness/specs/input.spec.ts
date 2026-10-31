@@ -1334,6 +1334,33 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   await expect(input).toBeFocused();
 });
 
+test('a press on the free part of a tag field is a press like any other: the caret goes in, a menu closes', async ({
+  page,
+}) => {
+  await open(page, '?view=profile');
+  await page.getByTestId('profile-work-mode').click();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  // The field's own box: the strip above its line, around its input.
+  const regions = page.getByTestId('profile-regions');
+  const box = (await regions.boundingBox())!;
+  // The press that closes a menu presses nothing else.
+  await page.mouse.click(box.x + box.width - 6, box.y + 1);
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  await expect(regions.locator('input')).not.toBeFocused();
+  await page.mouse.click(box.x + box.width - 6, box.y + 1);
+  await expect(regions.locator('input')).toBeFocused();
+});
+
+test('a press on the strip around a button in a field keeps the caret there', async ({ page }) => {
+  await open(page, '?scenario=setup-profile');
+  const password = page.getByTestId('mailbox-password');
+  await password.click();
+  const eye = page.getByRole('button', { name: T.field.reveal });
+  const box = (await eye.boundingBox())!;
+  await page.mouse.click(box.x + box.width + 1, box.y + box.height / 2);
+  await expect(password).toBeFocused();
+});
+
 test('a press on the unit inside a number field lands in the field', async ({ page }) => {
   await open(page, `${WIN}&view=profile`);
   // Inside the field's edge, at its right end: a press there is a press on the field, like one

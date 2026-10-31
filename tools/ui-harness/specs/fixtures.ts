@@ -15,7 +15,7 @@ const capturing = new WeakSet<Page>();
  * seven files over five connections (a fresh context each, kept alive, no file twice), a
  * whole run leaves about 2000 closed ones waiting of the 16384 ports, and ports that really
  * ran out read ERR_ADDRESS_IN_USE instead. A test that needs the missing file still fails on
- * its own checks.
+ * its own checks; a page the OS refused the socket for is asked for again (`open`).
  */
 const OS_REFUSED_SOCKET = 'Failed to load resource: net::ERR_NO_BUFFER_SPACE';
 
@@ -57,7 +57,15 @@ export async function open(page: Page, query = ''): Promise<void> {
   const withView = query.includes('view=')
     ? query
     : `${query}${query.includes('?') ? '&' : '?'}view=jobs`;
-  await page.goto(`/${withView}`);
+  for (let tries = 3; ; tries -= 1) {
+    try {
+      await page.goto(`/${withView}`);
+      break;
+    } catch (error) {
+      if (tries === 0 || !String(error).includes('ERR_NO_BUFFER_SPACE')) throw error;
+      await new Promise((go) => setTimeout(go, 250));
+    }
+  }
   await settle(page);
 }
 

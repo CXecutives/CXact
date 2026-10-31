@@ -213,6 +213,16 @@ test('Zurück then "Selbst ausfüllen" keeps what was typed', async ({ page }) =
   await expect(page.getByTestId('profile-roles')).toContainText('Interim CEO');
 });
 
+test('Zurück keeps the address of the Postfach, never the password', async ({ page }) => {
+  await open(page, '?scenario=setup-profile');
+  await page.getByTestId('mailbox-user').fill('name@gmail.com');
+  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
+  await page.getByRole('button', { name: T.common.back }).click();
+  await page.getByRole('button', { name: T.firstRun.next }).click();
+  await expect(page.getByTestId('mailbox-user')).toHaveValue('name@gmail.com');
+  await expect(page.getByTestId('mailbox-password')).toHaveValue('');
+});
+
 test('the mouse button is Zurück: it keeps what was typed too', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   await toWays(page);

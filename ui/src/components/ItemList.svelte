@@ -77,8 +77,13 @@
     addRow?.focus({ preventScroll: true });
   }
 
+  /** The row closes; a focus inside it goes to the button that takes its place, no further. */
   function close(): void {
+    const inside = addRow?.contains(document.activeElement) ?? false;
     adding = false;
+    if (inside) {
+      void tick().then(() => addRow?.querySelector('button')?.focus({ preventScroll: true }));
+    }
   }
 
   /** The ×: the row closes and what was typed goes with it. The press left the field its caret
@@ -93,12 +98,17 @@
     close();
   }
 
-  /** A field left empty turns back into the button (what it took is a row by then). */
+  /** The focus left the row with its field empty: it turns back into the button (what the field
+   *  took is a row by then). Tab goes on from the field to the ×, a window in front changes nothing. */
   function left(event: FocusEvent): void {
-    const field = event.target;
-    if (!(field instanceof HTMLInputElement)) return;
+    const from = event.target;
+    const next = event.relatedTarget;
+    // The button that opened the row goes with the opening: that is no leaving.
+    if (from instanceof HTMLButtonElement && from.dataset.keepFocus === undefined) return;
+    if ((next instanceof Node && addRow?.contains(next)) || !document.hasFocus()) return;
     void tick().then(() => {
-      if (field.value.trim() === '') close();
+      const field = addRow?.querySelector('input');
+      if (field && field.value.trim() === '') close();
     });
   }
 </script>

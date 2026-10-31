@@ -20,8 +20,7 @@
   `trailing` puts a small control inside the field at its right end, like the picker button
   of a native date field (a button `inField`). `suffix` is a quiet unit at the field's right
   end (`€ am Tag`, `Jahre`), read with the value; like the magnifier it lies over the input, so
-  a press on it is a press on the field. `inline` is the 26 px field of a list's row (a
-  competence's years): 6 round, its digits at the right.
+  a press on it is a press on the field, and so is a press on the field's own box.
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
@@ -68,8 +67,6 @@
     trailing?: Snippet | null;
     /** A unit at the right end inside the field (`€`), quiet; its id joins the description. */
     suffix?: string | null;
-    /** 26 px, its text at the right: a short number in a list's row. */
-    inline?: boolean;
     oninput?: (value: string) => void;
   }
 
@@ -87,7 +84,6 @@
     testid = null,
     trailing = null,
     suffix = null,
-    inline = false,
     oninput,
   }: Props = $props();
 
@@ -190,8 +186,8 @@
   class:invalid
   class:disabled
   class:trailed={trailing !== null}
-  class:inline
   class:suffixed={suffix !== null}
+  data-field-box
   use:formKeys={keys}
   use:cssVars={suffix !== null ? { 'unit-width': px(unitWidth) } : {}}
 >
@@ -242,7 +238,7 @@
     />
   {/if}
   {#if kind === 'password'}
-    <span class="trail">
+    <span class="trail" data-field-box>
       <Button
         variant="ghost"
         iconOnly
@@ -253,11 +249,11 @@
       />
     </span>
   {:else if kind === 'search' && value !== ''}
-    <span class="trail" in:pop>
+    <span class="trail" data-field-box in:pop>
       <Button variant="ghost" iconOnly icon="close" label={t.field.clear} inField onclick={clear} />
     </span>
   {:else if trailing}
-    <span class="trail">{@render trailing()}</span>
+    <span class="trail" data-field-box>{@render trailing()}</span>
   {:else if suffix !== null}
     <span class="suffix" id="{own}-suffix" bind:offsetWidth={unitWidth}>{suffix}</span>
   {/if}
@@ -279,28 +275,6 @@
   .field:hover {
     border-color: var(--field-edge-hover);
     transition-duration: var(--dur-hover);
-  }
-
-  /* The row of a list (a competence's years): 26 high, 6 round, the digits at the right. */
-  .inline {
-    height: var(--control-inline);
-    border-radius: var(--radius-inner);
-  }
-
-  .inline .input {
-    padding: 0 var(--space-6);
-    text-align: end;
-  }
-
-  /* Its unit 6 after the digits and 6 from its edge ("12 Jahre"). */
-  .inline .suffix {
-    padding-right: var(--space-6);
-  }
-
-  /* In a quiet list's row (ItemList) the edge shows only while the row is under the pointer
-     or holds the focus, so the values read like text at rest. */
-  .inline {
-    --field-edge: var(--inline-edge, var(--border-strong));
   }
 
   .invalid {
@@ -364,10 +338,6 @@
   /* The unit lies over the input too, whose text ends where the unit begins. */
   .suffixed .input {
     padding-right: calc(var(--field-inset) + var(--unit-width));
-  }
-
-  .suffixed.inline .input {
-    padding-right: calc(var(--space-6) + var(--unit-width));
   }
 
   /* It reads with the value, quieter, the field's right padding after it. */

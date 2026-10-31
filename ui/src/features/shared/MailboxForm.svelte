@@ -19,6 +19,16 @@
   stop the check (`cancel_run`, the backend holds the app for it); the stop itself says
   nothing.
 -->
+<script lang="ts" module>
+  import type { MailProvider } from '$lib/ipc/types';
+
+  /** What was typed, kept while the form goes (the setup's Zurück); the password never is. */
+  export interface MailboxDraft {
+    provider: MailProvider | null;
+    user: string | null;
+  }
+</script>
+
 <script lang="ts">
   import Field from '$components/Field.svelte';
   import Notice from '$components/Notice.svelte';
@@ -27,19 +37,23 @@
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke, IpcError } from '$lib/ipc/api';
-  import type { MailProvider } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
+  import { untrack } from 'svelte';
 
   interface Props {
     /** A check is on its way (the button that called `save` turns meanwhile). */
     busy?: boolean;
     /** The form's rows stand in a box of rows (Einstellungen). */
     boxed?: boolean;
+    /** Provider and address outlive the form here. */
+    kept?: MailboxDraft | null;
   }
-  let { busy = $bindable(false), boxed = false }: Props = $props();
+  let { busy = $bindable(false), boxed = false, kept = null }: Props = $props();
 
   const id = $props.id();
-  let provider = $state<MailProvider>(app.state?.mailbox.provider ?? 'gmail');
+  let provider = $state<MailProvider>(
+    untrack(() => kept?.provider) ?? app.state?.mailbox.provider ?? 'gmail',
+  );
   const PROVIDERS = $derived(
     (Object.keys(t.settings.provider) as MailProvider[]).map((id) => ({
       id,
@@ -51,8 +65,13 @@
   const passwordInfo = $derived(
     provider === 'gmail' || provider === 'icloud' ? t.settings.passwordInfo[provider] : null,
   );
-  let user = $state(app.state?.mailbox.user ?? '');
+  let user = $state(untrack(() => kept?.user) ?? app.state?.mailbox.user ?? '');
   let password = $state('');
+  $effect(() => {
+    if (kept === null) return;
+    kept.provider = provider;
+    kept.user = user;
+  });
   /** An error is said when it shows. */
   type Words = () => string;
   let userError = $state<Words | null>(null);

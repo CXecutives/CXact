@@ -43,7 +43,7 @@
   and has no head while no run goes (JobsView).
 -->
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
@@ -73,6 +73,7 @@
   import type { ContextMenu } from '$lib/input/input';
   import {
     disarm,
+    focusPlace,
     guarded,
     jobMenu,
     moving,
@@ -535,7 +536,11 @@
         icon={PLACE_ICON[other]}
         label={t.place[other]}
         testid="also-{other}"
-        onclick={() => jobs.setPlace(other)}
+        onclick={(event) => {
+          jobs.setPlace(other);
+          // From the keyboard the focus goes on with it: the button goes with this list.
+          if (event.detail === 0) void tick().then(focusPlace);
+        }}
       />
     {/each}
   </div>

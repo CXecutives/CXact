@@ -422,8 +422,6 @@
   --control-field: 30px;
   /* A quiet icon-only button (title bar, row tools, hero tools): 28 (round 10). */
   --control-icon: 28px;
-  /* A control inside a list row. */
-  --control-inline: 26px;
   --nav-row: 32px;
   /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
      centred in it, so their middles lie on one line across the window). */

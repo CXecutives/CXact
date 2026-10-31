@@ -101,6 +101,8 @@ const ENTER_PRESSES =
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
+/** A field's own box: the free part of a tag field, the strip around a button in a field. */
+const FIELD_BOX = '[data-field-box]';
 /** What holds the focus and is no control, no caret and no ring: a form's root, a step's
  *  heading, the mailbox form's box. Every control that leaves the Tab order is a button. */
 const FOCUS_HOLDER = '[tabindex="-1"]:not(button)';
@@ -1551,6 +1553,18 @@ function leaveField(event: MouseEvent): void {
   field.blur();
 }
 
+/** A left press on a field's own box is a press on the field: the caret goes in or stays. It
+ *  stays a mouse press like any other, so it closes a menu and ends a selection as they do. */
+function pressOnFieldBox(event: MouseEvent): boolean {
+  const box = event.target;
+  if (!(box instanceof Element) || !box.matches(FIELD_BOX)) return false;
+  const input = box.querySelector('input') ?? box.parentElement?.querySelector('input');
+  if (!input) return false;
+  event.preventDefault();
+  input.focus();
+  return true;
+}
+
 let installed = false;
 
 export function installInput(): void {
@@ -1601,7 +1615,7 @@ export function installInput(): void {
         }
         if (keepsFocus) {
           event.preventDefault();
-        } else {
+        } else if (!pressOnFieldBox(event)) {
           leaveField(event);
           // The sidebar and the list's header are pressed, not focused (like the toolbar of
           // Mail and Finder on both OS).
