@@ -2455,6 +2455,24 @@ test('Verwerfen with a value refused and a save that then fails: it asks again, 
   expect((await stored(page))?.temporary).toBe(false);
 });
 
+test('Verwerfen when what is left is refused too: the next one leaves, the way never stands for good', async ({
+  page,
+}) => {
+  await profile(page);
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await contract(page, 'temporary').click();
+  await page.getByTestId('profile-years').fill('25');
+  await refuseNext(page, { field: 'years', row: null, max: 20 });
+  await page.getByTestId('nav-settings').click();
+  await expect(dialog).toContainText(T.profile.leaveWrong(T.profile.field.totalYears));
+  await refuseNext(page, { field: 'temporary', row: null, max: null });
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect(dialog).toContainText(T.profile.leaveFailed);
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  expect((await stored(page))?.years).toBe(20);
+});
+
 test('closing the window saves first; a value that is wrong asks; without any it closes at once', async ({
   page,
 }) => {

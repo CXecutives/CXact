@@ -136,8 +136,13 @@ export class ProfileSaving {
     if (held) panel.dropWrong();
     this.fieldError = null;
     if (held && panel.wrongField() === null) {
-      if (await this.settled()) this.#goOn();
-      else this.asking = true;
+      if (await this.settled()) {
+        this.#goOn();
+      } else {
+        // Whatever it was, the next "Verwerfen" drops it all: the way does not stand here forever.
+        this.fieldError = null;
+        this.asking = true;
+      }
       return;
     }
     editor.discard(this.#page.stored());
