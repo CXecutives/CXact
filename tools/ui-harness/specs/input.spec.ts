@@ -873,6 +873,37 @@ test("a drag along the job's title that runs on over its tools keeps what it sel
   await page.mouse.up();
   expect(await calls(page, 'move_jobs')).toHaveLength(0);
   expect(await selection(page)).toBe(await title.innerText());
+  // Let go, the tools take the pointer again.
+  await page.getByTestId('reader-archive').click();
+  await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(1);
+});
+
+test('a drag from a field goes on over the buttons: no hover look, no press', async ({ page }) => {
+  await open(page, WIN);
+  const fetch = page.getByTestId('fetch');
+  const search = page.getByTestId('search');
+  await search.fill('Controlling');
+  const field = (await search.boundingBox())!;
+  const box = (await fetch.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(200);
+  const hovered = await look(fetch);
+  await page.mouse.move(4, 4);
+  await page.waitForTimeout(200);
+  const atRest = await look(fetch);
+  expect(hovered).not.toBe(atRest);
+  // Over the button while the left button holds a press from the field: at rest, no press.
+  await page.mouse.move(field.x + 20, field.y + field.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 6 });
+  await page.waitForTimeout(200);
+  expect(await look(fetch)).toBe(atRest);
+  await page.mouse.up();
+  expect(await calls(page, 'start_run')).toHaveLength(0);
+  await page.waitForTimeout(200);
+  // The pointer that rests there counts again once it moves.
+  await page.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2);
+  await expect.poll(() => look(fetch)).toBe(hovered);
 });
 
 test('native cursor: the arrow on controls, the text cursor on copyable text', async ({ page }) => {

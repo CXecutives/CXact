@@ -95,6 +95,11 @@ button {
   text-align: inherit;
 }
 
+/* A drag from selectable text goes on over the controls as over the text (input.ts). */
+:root[data-text-drag] button {
+  pointer-events: none;
+}
+
 img,
 svg {
   display: block;

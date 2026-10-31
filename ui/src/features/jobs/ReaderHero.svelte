@@ -189,6 +189,12 @@
     margin-inline-start: var(--space-8);
   }
 
+  /* A drag along the title goes on over them to the line's end: like their buttons (base.css)
+     their box gives the pointer through to the title under it. */
+  :global(:root[data-text-drag]) .tools {
+    pointer-events: none;
+  }
+
   .title {
     color: var(--text-heading);
     font: var(--type-xl);

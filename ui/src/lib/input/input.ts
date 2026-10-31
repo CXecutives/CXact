@@ -31,7 +31,8 @@
 // - no dragging of text, links or images (only the column handle and the window's drag
 //   regions move)
 // - text is selectable only in fields and where a user would copy it (`data-copy`: the ad
-//   text, job title and facts, profile values, paths); Ctrl/Cmd+C copies such a selection
+//   text, job title and facts, profile values, paths); Ctrl/Cmd+C copies such a selection,
+//   and a drag that selects goes on over the controls as over the text (`textDrag`)
 // - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
 //   presses the focused button, switch or radio, Enter a button only; in a radio group (the
@@ -764,15 +765,38 @@ let lastForm: Element | null = null;
 let lastCopy: Element | null = null;
 /** Where the last left press went down. */
 let pressedAt: { x: number; y: number } | null = null;
+/** The left button is held since a press in selectable text. */
+let pressedInText = false;
+
+/** The pointer moved further from the last left press than a click may. */
+const movedFromPress = (event: MouseEvent): boolean =>
+  pressedAt !== null &&
+  Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > CLICK_SLOP;
 
 /**
  * The click that ends a drag: the pointer moved from its press to its release (a drag over
  * the text of a control, the contact's e-mail, selects the text and is no click on the
  * control). A keyboard's click has no press.
  */
-export function wasDragged(event: MouseEvent): boolean {
-  if (event.detail === 0 || pressedAt === null) return false;
-  return Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > CLICK_SLOP;
+export const wasDragged = (event: MouseEvent): boolean =>
+  event.detail !== 0 && movedFromPress(event);
+
+/**
+ * A press in selectable text that drags selects text, and nothing else: while it does, :root
+ * carries `data-text-drag` and the controls give the pointer through (base.css). So none looks
+ * hovered, and none stands in the selection's way: over a control before the text in the DOM
+ * (the job's tools float before its title) the engines would take it back to the text's start.
+ */
+function textDrag(on: boolean): void {
+  const root = document.documentElement;
+  if (on) root.dataset.textDrag = '';
+  else if (root.dataset.textDrag !== undefined) delete root.dataset.textDrag;
+}
+
+/** The left button let go, also where the release itself never came. */
+function endTextPress(): void {
+  pressedInText = false;
+  textDrag(false);
 }
 
 /**
@@ -1543,6 +1567,7 @@ export function installInput(): void {
         lastForm = closest(event.target, FORM);
         lastCopy = closest(event.target, COPY);
         pressedAt = { x: event.clientX, y: event.clientY };
+        pressedInText = selectable(event.target);
         // A button inside a field (show password, clear) leaves the caret in the field.
         const keepsFocus = closest(event.target, KEEP_FOCUS) !== null;
         // A press beside the selected text ends the selection, like in a native text view
@@ -1586,6 +1611,7 @@ export function installInput(): void {
   document.addEventListener(
     'mouseup',
     (event) => {
+      if (event.button === LEFT) endTextPress();
       if (event.button >= BACK) {
         event.preventDefault();
         if (event.button === BACK) go(backs);
@@ -1609,10 +1635,21 @@ export function installInput(): void {
       // back to the very pixel it pressed finds the rows and the tooltips awake.
       pointerMoved(event);
       if (!otherButtonsDown(event) && !swallow) auxPress(false);
+      if (pressedInText) {
+        if ((event.buttons & 1) === 0) endTextPress();
+        else if (movedFromPress(event)) textDrag(true);
+      }
     },
     { capture: true, passive: true },
   );
-  document.addEventListener('pointercancel', () => auxPress(false), capture);
+  document.addEventListener(
+    'pointercancel',
+    () => {
+      auxPress(false);
+      endTextPress();
+    },
+    capture,
+  );
   document.addEventListener(
     'auxclick',
     (event) => {
@@ -1668,6 +1705,7 @@ export function installInput(): void {
   window.addEventListener('blur', () => {
     guardZoom(false);
     auxPress(false);
+    endTextPress();
     closeMenu(false);
   });
   window.addEventListener('resize', () => closeMenu(false));
