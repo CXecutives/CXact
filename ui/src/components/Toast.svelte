@@ -1,6 +1,6 @@
 <!--
   The toast stack, bottom right (mounted once in App), the only place that draws a toast
-  (the round 10 draft): short confirmations, 18 from the window's corner, that come up 12 px
+  (the round 10 draft): short confirmations, 18 from the window's corner, that come up 8 px
   as they fade in and go down as they fade out, at most three, the stack moving up as one
   leaves. Each kind's sign and each toast's time come from the tables of
   lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain toast stays 4 s, one with a
@@ -195,7 +195,7 @@
     align-items: center;
     gap: var(--space-10);
     min-width: 0;
-    padding-inline: calc(var(--toast-pad-start) - var(--toast-pad-y));
+    padding-inline: calc(var(--toast-pad-x) - var(--toast-pad-y));
     background-color: var(--surface-raised);
   }
 

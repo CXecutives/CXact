@@ -2,14 +2,15 @@
   Feedback where the action happened. `inline`: a sign and a sentence in the app's small
   text, with at most one small secondary button centred on its first line (a field's or a
   row's failure, a portal's problem): info, success and warning colour only their sign (the
-  words stay ink), danger is the deep red all through. The sentence of a failure or a warning
-  copies (`data-copy`), to search for it or to say it to someone. `box` and `row` are the state box
+  words stay ink), danger is the one red of what is wrong all through. The sentence of a failure
+  or a warning copies (`data-copy`), to search for it or to say it to someone. `box` and `row` are
+  the state box
   (StateBox, the round 10 draft: no sign, a spinner while `busy`, the title, the sentence and
   the button at the right; `ban` the soft red); Notice hands them on until their callers use
   StateBox themselves. A box with only a sentence shows it as its title; an excluded job's box
   keeps its ban before the words until the job view's ring shows it. A sentence with links in
   it comes as `children` instead of `text`. A notice that appears in a view already on screen
-  rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its view is
+  rises 4 px and fades in (150 ms) and fades out (100 ms); one that comes with its view is
   simply there.
 -->
 <script lang="ts" module>

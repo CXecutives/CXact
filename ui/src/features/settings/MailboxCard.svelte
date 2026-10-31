@@ -1,8 +1,7 @@
 <!--
   The mailbox's row in Einstellungen > Postfach (the round 10 draft): the connected address
-  (text to copy) with its state under it, "Ändern" and "Entfernen…" (plain outlined buttons
-  of one width; the dialog of Entfernen carries the danger, so its words end in an
-  ellipsis), or without a mailbox
+  (text to copy) with its state under it, "Ändern" and "Entfernen" (plain outlined buttons
+  of one width; the dialog of Entfernen carries the danger), or without a mailbox
   "Kein Postfach verbunden", what one brings, and "Verbinden". Ändern and Verbinden unfold
   the form under the row (no dialog) and hide the row's buttons meanwhile: rows like the
   Profil's for the provider, the address and the password, then "Abbrechen" and the primary

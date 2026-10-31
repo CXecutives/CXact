@@ -53,14 +53,10 @@
   --p-coral-25: 13 70% 97.2%;
   --p-coral-50: 13 64% 95%;
   --p-coral-100: 13 60% 90%;
-  --p-coral-70: 16 55% 94%;
   /* The navy of cxpertise.de (#3E5C7E) a step richer, so it reads beside the coral (user,
      2026-10-01). */
   --p-navy: 212 50% 36%;
   --p-navy-deep: 213 54% 27%;
-  --p-navy-press: 213 58% 20%;
-  --p-navy-50: 212 50% 96.5%;
-  --p-navy-150: 212 42% 89%;
   /* Glyphs beside text (search, chevron, info, a chip's ×) and placeholders: lighter than the
      subtle text, yet 4.5:1 on white, so a placeholder ("Keins") reads like text. */
   --p-icon-subtle: 30 4% 45%;
@@ -87,7 +83,6 @@
   --p-word-red-press: 358 62% 34%;
   --p-red-50: 358 70% 96.5%;
   --p-red-100: 358 60% 90%;
-  --p-green-50: 142 45% 95%;
   /* The empty part of a ring. */
   --p-ring-track: 30 8% 92%;
   /* What is off: the track of a switch and the edge of an empty checkbox, 3:1 on white (a
@@ -125,8 +120,6 @@
   --surface-selected-inactive: hsl(var(--p-ink) / 0.06);
   /* Track of a choice of a few (the place tabs and every segmented choice, one look). */
   --surface-track: hsl(var(--p-track));
-  /* The chosen option on its track: white with a hairline ring (design round 3). */
-  --thumb: var(--surface);
   --scrim: hsl(var(--p-scrim) / 0.26);
   /* The tooltip bubble: the brand's dark pill, softer than near-black ink. */
   --surface-inverse: hsl(var(--p-emphasis));
@@ -196,7 +189,6 @@
   /* A chip in a field: neutral, the app's ink on the track (design round 7, professional). */
   --chip-surface: hsl(var(--p-track));
   --chip-text: var(--text);
-  --chip-remove: var(--text-subtle);
   --chip-remove-hover: hsl(var(--p-wash) / 0.08);
   --chip-remove-press: hsl(var(--p-wash) / 0.12);
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
@@ -224,10 +216,9 @@
   --field-label-missing: var(--danger-strong);
   /* The tick of what is chosen, in a menu and a select's list alike. */
   --chosen-text: hsl(var(--p-navy));
-  /* Soft grounds of a state: the ban (excluded) and success. */
+  /* The soft ground of a state: the ban (excluded). */
   --danger-tint: hsl(var(--p-red-50));
   --danger-edge: hsl(var(--p-red-100));
-  --success-soft: hsl(var(--p-green-50));
   --danger-strong: var(--score-ring-0);
   --danger-soft: hsl(var(--p-danger-soft));
   /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
@@ -326,9 +317,6 @@
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
      floats above the sheet (dialog, toast, tooltip) casts one; nothing animates a shadow.
      The primary's inner highlight is static. */
-  /* A tile under the pointer: a soft shadow, it does not move (design round 7). */
-  --sh-tile: 0 4px 14px -4px hsl(var(--p-shade-pop) / 0.12);
-  --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.14), 0 0 0 0.5px hsl(var(--p-shade-xs) / 0.08);
   /* A card or a group on the page (round 10), the job view's hero a step higher. */
   --sh-card: 0 1px 2px hsl(var(--p-shade-xs) / 0.05);
   --sh-raised:
@@ -437,8 +425,6 @@
   --icon-check: 13px;
   --icon-nav: 18px;
   --icon-2xl: 28px;
-  /* The round hit area of an info symbol beside a label: a little more than its glyph. */
-  --info-tip: 18px;
   /* Every glyph of a control: buttons, menus, fields, the sidebar (design round 7). */
   --icon-sm: 16px;
   /* The sign before a failure's sentence. */
@@ -543,8 +529,6 @@
   --label-gap: 6px;
   /* An alert mail read in the app: its text scrolls beyond this height. */
   --mail-view-height: 360px;
-  /* Between two short fields side by side (design round 7). */
-  --layout-column-gap: 20px;
   /* The dashed edge of a drop zone (the CV's upload). */
   --drop-edge: 1.5px;
   /* Rows and their washes: a row's hover wash is the row's own box, and rows run edge to
@@ -566,9 +550,6 @@
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
   --head-pad: var(--space-8);
-  /* A page without a title (Profil, Einstellungen): its first heading's line (as high as its
-     text) lies where a head's first row would, centred on the sidebar's first entry. */
-  --page-top: calc(var(--head-pad) + (var(--first-row) - var(--leading-heading)) / 2);
   --ring-sm: 34px;
   --ring-sm-stroke: 3px;
   --ring-sm-digits: var(--font-xs);
@@ -799,7 +780,7 @@
      or without its link as with a button (46). */
   --toast-inset: 18px;
   --toast-pad-y: 7px;
-  --toast-pad-start: 14px;
+  --toast-pad-x: 14px;
   /* A dialog: 22 inside, its sentence 6 under the heading, its buttons 22 under the text. */
   --dialog-pad: 22px;
   --dialog-text-gap: var(--space-6);

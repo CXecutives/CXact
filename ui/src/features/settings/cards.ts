@@ -7,9 +7,8 @@
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch moves at once and is its own
 // answer; every text button of a row is the same outlined button with the glyph of its
 // meaning, whether it opens something or runs a command, grey even when it loses something
-// (only the dialog's confirm is red, design round 7); a button that opens a window or a
-// dialog ends its words in an ellipsis; a pair of buttons is one width; a locked button says
-// why (`locked`).
+// (only the dialog's confirm is red, design round 7); a pair of buttons is one width; a locked
+// button says why (`locked`).
 // A row has no tile: its name says it.
 
 import type { IconName } from '$components/Icon.svelte';

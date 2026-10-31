@@ -1,7 +1,7 @@
 <!--
   The info symbol beside a label, only at the fixed places of docs/PLAN.md: a quiet 14 px
-  glyph in the subtle grey of icons (round 10), hit 24 px wide around it, whose accessible
-  name says what it explains; its one sentence shows in the one
+  glyph in the subtle grey of icons (round 10), the ink under the pointer, hit 24 px wide around
+  it, whose accessible name says what it explains; its one sentence shows in the one
   tooltip layer on hover, on keyboard focus and on a click (a second click hides it). A field
   has either a visible hint or an info symbol, never both (Field).
 -->
