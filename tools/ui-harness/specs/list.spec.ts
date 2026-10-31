@@ -2826,12 +2826,27 @@ test.describe('the list keeps true', () => {
     const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(300);
-    await page.mouse.click(at.x, at.y);
+    // The engine counts the second press of the double click.
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
     await page.waitForTimeout(300);
     await expect(row(page, first)).toHaveCount(0);
     expect(await calls(page, 'job_detail')).toHaveLength(0);
     expect(await calls(page, 'mark_read')).toHaveLength(0);
     await expect(page.getByTestId('reader')).toHaveCount(0);
+  });
+
+  test('a click on another row right after a move opens it: only a double click waits', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const [first, , third] = await listed(page);
+    await row(page, first!).hover();
+    const other = (await row(page, third!).boundingBox())!;
+    await page.getByTestId('tool-archive').click();
+    await page.mouse.click(other.x + other.width / 2, other.y + other.height / 2);
+    await expect.poll(async () => (await calls(page, 'job_detail')).length).toBe(1);
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
   });
 
   test('archiving the last row of Noch nicht bewertet opens the row above, not the folded Ausgeschlossen', async ({

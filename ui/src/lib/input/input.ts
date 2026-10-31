@@ -35,9 +35,9 @@
 //   and a drag that selects goes on over the controls as over the text (`textDrag`)
 // - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
-//   presses the focused button, switch or radio, Enter a button only; in a radio group (the
-//   segments) and a row of tabs the arrows, Home and End choose; on a select the arrows open
-//   its list (`selectKeys`). Inside a field every
+//   presses the focused button, switch or radio, Enter a button only, once for a held key; in
+//   a radio group (the segments) and a row of tabs the arrows, Home and End choose; on a select
+//   the arrows open its list (`selectKeys`). Inside a field every
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
@@ -434,8 +434,10 @@ const pressesControl = (event: KeyboardEvent): boolean =>
     (event.key === 'Enter' && pressedByEnter(event.target)));
 
 /** The engine clicks a native button on its key. What is a button by its role only (a link
- *  that selects like text, components/TextLink.svelte) is clicked here, once for a held key. */
+ *  that selects like text, components/TextLink.svelte) is clicked here. A held key presses once:
+ *  its repeats press nothing further (a held Enter would run through a list). */
 function pressByRole(event: KeyboardEvent): void {
+  if (event.repeat) event.preventDefault();
   const control = closest(event.target, PRESSABLE);
   if (control instanceof HTMLButtonElement || !(control instanceof HTMLElement)) return;
   event.preventDefault();
@@ -605,6 +607,14 @@ let keyboardFocus = false;
 
 /** The keyboard moves the focus now: what held it hands it on when it goes; a click moves none. */
 export const byKeyboard = (): boolean => keyboardFocus;
+
+/** How many presses in a row the last one was, as the engine counts a double click. */
+let pressesInRow = 0;
+
+/** The click now is the second of a double click (the engine counts on: every even one); a
+ *  key's click never is. */
+export const secondClick = (): boolean =>
+  !keyboardFocus && pressesInRow > 1 && pressesInRow % 2 === 0;
 
 /** A list whose items a button removes: the chips of a chip field, the rows of the
  *  competences and the languages, the notes of values that do not read. */
@@ -1584,6 +1594,7 @@ export function installInput(): void {
   document.addEventListener(
     'mousedown',
     (event) => {
+      pressesInRow = event.detail;
       keyboardFocus = false;
       dismiss('press', event.target);
       if (pressOutsideMenu(event)) {

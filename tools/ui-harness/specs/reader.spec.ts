@@ -561,6 +561,57 @@ test.describe('the actions', () => {
     expect(await calls(page, 'open_target')).toHaveLength(1);
   });
 
+  test('every press of a key moves the next job, also right after a move', async ({ page }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await expect(page.getByTestId('reader-archive')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(2);
+  });
+
+  test('a held key moves one job: its repeats run through nothing', async ({ page }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').focus();
+    await page.keyboard.down('Enter');
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await expect(page.getByTestId('reader-archive')).toBeFocused();
+    // Each repeat of the held key, further apart than a double click.
+    for (let repeat = 0; repeat < 2; repeat += 1) {
+      await page.waitForTimeout(600);
+      await page.keyboard.down('Enter');
+    }
+    await page.keyboard.up('Enter');
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
+  });
+
+  test('a click on another move right after a move counts; the second of a double click does not', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').click();
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await page.getByTestId('reader-trash').click();
+    await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(2);
+    await settleMoves(page);
+    // A double click at one spot takes one job, the second click comes on the next job's button.
+    const archive = (await page.getByTestId('reader-archive').boundingBox())!;
+    await page.mouse.click(archive.x + archive.width / 2, archive.y + archive.height / 2);
+    await page.waitForTimeout(200);
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    await settleMoves(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(3);
+  });
+
   test('a press on the buttons of the job view takes no focus, Tab still reaches them', async ({
     page,
   }) => {

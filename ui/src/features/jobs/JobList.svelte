@@ -72,7 +72,6 @@
   import { sections } from '$lib/state/sections.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import {
-    disarm,
     focusPlace,
     guarded,
     jobMenu,
@@ -297,16 +296,6 @@
     if (guarded()) return;
     if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
   }
-
-  // Another list, another search, order or filter: a click right away counts (the guard
-  // after a move is for rows that slid under the pointer).
-  $effect(() => {
-    void jobs.place;
-    void jobs.search;
-    void jobs.sortChoice;
-    void jobs.filterChoice;
-    untrack(disarm);
-  });
 
   // A search looks in the list's place; the other places that list hits are named under them.
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
