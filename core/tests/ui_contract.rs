@@ -1323,6 +1323,8 @@ fn component_tags(code: &str, name: &str) -> Vec<(usize, String)> {
 fn icon_map(all: &[Source]) -> Vec<(String, String)> {
     source(all, "lib/icons.ts")
         .lines()
+        // Only ICONS: the tables below it say something else about a glyph.
+        .take_while(|(_, line)| !line.starts_with("} as const"))
         .filter_map(|(_, line)| {
             let (meaning, rest) = line.trim().split_once(": '")?;
             let glyph = rest.strip_suffix("',")?;

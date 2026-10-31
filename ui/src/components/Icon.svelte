@@ -2,8 +2,8 @@
   The only importer of @lucide/svelte. It draws an icon by its meaning: lib/icons.ts maps
   each meaning to one Lucide glyph, and this file imports exactly those glyphs (one import
   per glyph keeps the bundle small; a glyph without its import is a type error). Size and
-  line from the tokens, the line set per size for the eye, a sparse glyph grown to a dense
-  one's box (its line kept), colour inherited from the text. A filled button asks for more
+  line from the tokens, the line set per size for the eye, a glyph that reads small grown a step
+  (GLYPH_GROWTH, its line kept), colour inherited from the text. A filled button asks for more
   line (`--icon-stroke-more`). Each glyph is drawn once by its Lucide
   component; every Icon shows a copy of that drawing. A Lucide component per icon (props,
   derived attributes, an element per path) made icons the most expensive part of a list row
@@ -12,7 +12,7 @@
 <script lang="ts" module>
   import { mount, unmount, type Component } from 'svelte';
   import type { Action } from 'svelte/action';
-  import { ICONS, SEAM_GLYPHS, SPARSE_GLYPHS, type Glyph, type IconMeaning } from '$lib/icons';
+  import { GLYPH_GROWTH, ICONS, SEAM_GLYPHS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
@@ -181,8 +181,7 @@
 </script>
 
 <span
-  class="icon {size}"
-  class:sparse={SPARSE_GLYPHS.has(ICONS[name])}
+  class="icon {size} {GLYPH_GROWTH[ICONS[name]] ?? ''}"
   class:seam={SEAM_GLYPHS.has(ICONS[name])}
   aria-hidden="true"
   use:draw={name}
@@ -212,11 +211,22 @@
     }
   }
 
-  .sparse :global(svg) {
-    stroke-width: calc(
-      (var(--icon-stroke) + var(--icon-stroke-more, 0)) / var(--icon-sparse-scale)
-    );
-    transform: scale(var(--icon-sparse-scale));
+  /* A glyph that reads small on Lucide's grid grows a step for the eye, its line kept. */
+  .grow-s {
+    --icon-grow: var(--icon-grow-s);
+  }
+
+  .grow-m {
+    --icon-grow: var(--icon-grow-m);
+  }
+
+  .grow-l {
+    --icon-grow: var(--icon-grow-l);
+  }
+
+  :is(.grow-s, .grow-m, .grow-l) :global(svg) {
+    stroke-width: calc((var(--icon-stroke) + var(--icon-stroke-more, 0)) / var(--icon-grow));
+    transform: scale(var(--icon-grow));
   }
 
   .xxs {

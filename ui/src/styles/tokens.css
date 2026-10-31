@@ -457,9 +457,11 @@
   --icon-stroke-2xl: 2.4;
   /* White on a filled button reads thinner than ink on paper: that much more line. */
   --icon-stroke-on-fill: 0.4;
-  /* A sparse glyph (an arrow, a plus, a ×: 14 of the 24 units) grows to a dense one's box
-     (16 of them), its line kept: an arrow beside a panel reads as large. */
-  --icon-sparse-scale: 1.14;
+  /* A glyph that reads small on Lucide's grid grows a step, its line kept (lib/icons.ts
+     GLYPH_GROWTH): an arrow beside a panel, a narrow file beside a pencil read as large. */
+  --icon-grow-s: 1.06;
+  --icon-grow-m: 1.1;
+  --icon-grow-l: 1.14;
   --icon-seam: 0.5px;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
@@ -761,7 +763,8 @@
   --recommended-edge: hsl(var(--p-coral-100));
   --recommended-edge-hover: hsl(var(--p-coral-150));
   --recommended-press: hsl(var(--p-coral-50));
-  --recommended-glyph: hsl(var(--p-coral));
+  /* A step deeper than the fill's coral: on its pale tile it weighs as much as a navy glyph. */
+  --recommended-glyph: hsl(var(--p-coral-variant));
   --sh-tile-hover: 0 6px 18px -8px hsl(var(--p-shade-pop) / 0.18);
   /* The drop zone: 34 20 inside on the page's ground, a dashed edge, its words without a
      glyph; under the pointer a navy edge and the track as its ground. */

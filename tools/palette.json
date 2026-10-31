@@ -112,7 +112,7 @@
     "recommended-edge":       { "css": "hsl(13 60% 90%)", "rgb": [245, 221, 214] },
     "recommended-edge-hover": { "css": "hsl(13 55% 82%)", "rgb": [234, 195, 184] },
     "recommended-press":      { "css": "hsl(13 64% 95%)", "rgb": [250, 238, 234] },
-    "recommended-glyph":      { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
+    "recommended-glyph":      { "css": "hsl(13 64% 56%)", "rgb": [215, 102, 71] },
     "drop-edge-hover":        { "css": "hsl(30 10% 68%)", "rgb": [182, 173, 165] },
     "state-surface":          { "css": "hsl(30 16% 96.4%)", "rgb": [247, 246, 244] },
     "state-edge":             { "css": "hsl(30 10% 90%)", "rgb": [232, 230, 227] },

@@ -126,15 +126,33 @@ export type IconMeaning = keyof typeof ICONS;
 /** The Lucide glyphs of the app (Icon.svelte imports exactly these). */
 export type Glyph = (typeof ICONS)[IconMeaning];
 
-/** The glyphs that fill 14 of the 24 units where the others fill 18: Icon.svelte grows them to
- *  the others' box. */
-export const SPARSE_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([
+/** A glyph's size for the eye (owner, 2026-10-31: each as large as makes sense, so that they
+ *  stand in harmony). On Lucide's one grid a sparse, a narrow or a low glyph reads smaller than a
+ *  dense one beside it, so these grow a step (tokens.css --icon-grow-*), their line kept. The
+ *  rest fill their box (20 to 22 of the 24 units, measured with its line). */
+export const GLYPH_GROWTH: Partial<Record<Glyph, 'grow-s' | 'grow-m' | 'grow-l'>> = {
+  // Only a stroke or two, 14 to 18 units.
+  'arrow-left': 'grow-l',
+  'arrow-right': 'grow-l',
+  plus: 'grow-l',
+  x: 'grow-l',
+  'undo-2': 'grow-l',
+  // 18 wide beside glyphs of 20 and 22, and pale where it stands on its tile.
+  'file-up': 'grow-l',
+  'file-text': 'grow-m',
+  'user-round': 'grow-m',
+  // 22 wide but only 16 to 18 high.
+  mail: 'grow-s',
+  inbox: 'grow-s',
+  eye: 'grow-s',
+};
+
+/** The glyphs whose middle line runs through their centre, on the seam between two pixel rows at
+ *  an even size: Icon.svelte moves them half a pixel, so that line draws crisp at 100 %. */
+export const SEAM_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([
   'arrow-left',
   'arrow-right',
   'plus',
   'x',
+  'list-filter',
 ]);
-
-/** The glyphs whose middle line runs through their centre, on the seam between two pixel rows at
- *  an even size: Icon.svelte moves them half a pixel, so that line draws crisp at 100 %. */
-export const SEAM_GLYPHS: ReadonlySet<Glyph> = new Set<Glyph>([...SPARSE_GLYPHS, 'list-filter']);
