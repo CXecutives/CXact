@@ -52,8 +52,9 @@
     content: '';
   }
 
+  /* From its grey to the ink, like the x of a chip. */
   .info:hover {
-    color: var(--text-muted);
+    color: var(--text);
     transition-duration: var(--dur-hover);
   }
 </style>

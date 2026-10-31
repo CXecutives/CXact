@@ -5,9 +5,10 @@
 // on no state does a field hold the caret by itself or a button end in an ellipsis (owner,
 // 2026-10-30).
 
+import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
-import { expect, open, test } from './fixtures';
-import { WIN } from './helpers';
+import { animationsDone, expect, open, test } from './fixtures';
+import { row, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -131,3 +132,105 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
     expect(problems, 'off the round 10 rules').toEqual([]);
   });
 }
+
+/* ------------------------------------------------------- one weight of a hairline */
+
+test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
+  page,
+}) => {
+  // A box of 1 px comes out at 2 device pixels at 150 %, a border at 1: one way to draw a line.
+  const line = (node: Locator, pseudo = '::before') =>
+    node
+      .first()
+      .evaluate(
+        (element, which) => getComputedStyle(element, which || undefined).borderTopWidth,
+        pseudo,
+      );
+  await open(page, `${WIN}&view=settings`);
+  const drawn = await line(page.locator('.box'), '');
+  expect(drawn).toBe('1px');
+  expect(await line(page.locator('[data-setting-row] + [data-setting-row]'))).toBe(drawn);
+  await page.getByTestId('mailbox-change').click();
+  expect(await line(page.getByTestId('mailbox-form').locator('.cell'))).toBe(drawn);
+  expect(await line(page.getByTestId('mailbox-buttons').locator('..'))).toBe(drawn);
+  await open(page, WIN);
+  expect(await line(page.locator('.day .item + .item'))).toBe(drawn);
+  await row(page, 'linkedin-4100200301').click({ button: 'right' });
+  expect(await line(page.getByTestId('menu').locator('.separator'), '')).toBe(drawn);
+  await open(page, `${WIN}&view=profile`);
+  expect(await line(page.locator('.cell + .cell'))).toBe(drawn);
+  expect(await line(page.locator('.items .item + .item'))).toBe(drawn);
+  expect(await line(page.locator('.items .add'))).toBe(drawn);
+});
+
+/* ------------------------------------------- one answer of a control to the pointer */
+
+/** What a control shows at rest, under the pointer and pressed (the left button is let go
+ *  beside it, so nothing is pressed for real). */
+async function steps(
+  page: Page,
+  control: Locator,
+  read: 'backgroundColor' | 'color',
+): Promise<{ rest: string; hover: string; press: string }> {
+  const now = async (): Promise<string> => {
+    await animationsDone(page);
+    return control.evaluate((node, key) => getComputedStyle(node)[key], read);
+  };
+  await page.mouse.move(0, 0);
+  const rest = await now();
+  await control.hover();
+  const hover = await now();
+  await page.mouse.down();
+  const press = await now();
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  return { rest, hover, press };
+}
+
+test('a secondary button answers the pointer alike on every ground: no ground shows through', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&open=freelance:900411`);
+  const inStateBox = await steps(page, page.getByTestId('reader-sign-in'), 'backgroundColor');
+  const onCard = await steps(page, page.getByTestId('open-ad'), 'backgroundColor');
+  await open(page, `${WIN}&view=profile`);
+  const onPage = await steps(page, page.getByTestId('profile-from-cv'), 'backgroundColor');
+  expect(onCard).toEqual(inStateBox);
+  expect(onPage).toEqual(inStateBox);
+  // Opaque, and three steps.
+  for (const value of [inStateBox.rest, inStateBox.hover, inStateBox.press]) {
+    expect(value).toMatch(/^rgb\(/);
+  }
+  expect(new Set(Object.values(inStateBox)).size).toBe(3);
+});
+
+test('the small tools have their three steps too: a row tool, the x of a chip, the info', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const key = 'linkedin-4100200301';
+  await row(page, key).hover();
+  const tool = row(page, key).locator('..').getByTestId('tool-archive');
+  await expect(tool).toBeVisible();
+  // The pointer goes from the row to its tool: the row keeps its wash meanwhile.
+  await tool.hover();
+  await animationsDone(page);
+  const hovered = await tool.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await page.mouse.down();
+  await animationsDone(page);
+  const pressed = await tool.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  expect(pressed).not.toBe(hovered);
+  await open(page, `${WIN}&view=profile`);
+  const x = await steps(page, page.locator('[data-remove]').first(), 'backgroundColor');
+  expect(new Set(Object.values(x)).size, JSON.stringify(x)).toBe(3);
+  // The info answers like the x of a chip: from its grey to the ink.
+  const info = page.getByTestId('info-tip').first();
+  const { rest, hover } = await steps(page, info, 'color');
+  const ink = await page
+    .getByTestId('profile-heading')
+    .evaluate((node) => getComputedStyle(node).color);
+  expect(rest).not.toBe(ink);
+  expect(hover).toBe(ink);
+});

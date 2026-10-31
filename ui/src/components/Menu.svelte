@@ -302,8 +302,7 @@
 
   .separator {
     flex: none;
-    height: var(--border-width);
     margin: var(--space-4) var(--menu-row-pad);
-    background-color: var(--border);
+    border-top: var(--border-width) solid var(--border);
   }
 </style>

@@ -128,8 +128,7 @@
     top: 0;
     right: 0;
     left: var(--setting-rule-start);
-    height: var(--border-width);
-    background-color: var(--border);
+    border-top: var(--border-width) solid var(--border);
     content: '';
   }
 

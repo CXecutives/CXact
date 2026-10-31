@@ -48,6 +48,8 @@
   --p-coral-press: 13 62% 47%;
   --p-muted-fg: 30 5% 37%;
   --p-line: 30 10% 90%;
+  /* A white button under the pointer: the warm wash over white, as one colour. */
+  --p-button-hover: 28 9.5% 97.3%;
   --p-coral-25: 13 70% 97.2%;
   --p-coral-50: 13 64% 95%;
   --p-coral-100: 13 60% 90%;
@@ -196,6 +198,7 @@
   --chip-text: var(--text);
   --chip-remove: var(--text-subtle);
   --chip-remove-hover: hsl(var(--p-wash) / 0.08);
+  --chip-remove-press: hsl(var(--p-wash) / 0.12);
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
   --meter-fill: hsl(var(--p-navy));
   --meter-track: hsl(var(--p-track));
@@ -462,6 +465,7 @@
   --icon-grow-s: 1.06;
   --icon-grow-m: 1.1;
   --icon-grow-l: 1.14;
+  /* How far a glyph on the pixel seam moves (lib/icons.ts SEAM_GLYPHS). */
   --icon-seam: 0.5px;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
@@ -687,10 +691,11 @@
   --splitter-line: 2px;
 
   /* ------------------------------------------- round 10: controls */
-  /* A button with a box (secondary) under the pointer and pressed: the warm
-     wash over its white (its edge then --control-hover-edge), a deeper wash pressed. */
-  --button-hover: var(--surface-hover);
-  --button-press: var(--surface-press);
+  /* A button with a box (secondary) under the pointer and pressed: the warm wash over its white
+     as one opaque colour (its edge then --control-hover-edge), one step darker pressed, so what
+     lies behind the button never shows through and it answers alike on every ground. */
+  --button-hover: hsl(var(--p-button-hover));
+  --button-press: var(--control-press);
   /* The one look of a menu, a select's list and a field's suggestions: rows 32 high (--menu-row)
      with their words 12 px in. */
   --menu-row-pad: 12px;
@@ -789,8 +794,9 @@
   --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
   --state-gap: 14px;
-  /* A toast: 18 from the window's corner, 7 7 7 14 inside (its link's words 14 from its end),
-     its parts 10 apart, as high with or without its link as with a button (46). */
+  /* A toast: 18 from the window's corner, 7 above and below and 14 in at both its ends (the sign
+     or the words at the start, the words or the link at the end), its parts 10 apart, as high with
+     or without its link as with a button (46). */
   --toast-inset: 18px;
   --toast-pad-y: 7px;
   --toast-pad-start: 14px;

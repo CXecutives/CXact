@@ -88,4 +88,10 @@
     color: var(--chip-text);
     transition-duration: var(--dur-hover);
   }
+
+  /* Pressed: only while the left button is down (input.ts marks a press of the others). */
+  :global(:where(:root:not([data-aux-press]))) .remove:active:hover {
+    background-color: var(--chip-remove-press);
+    transition-duration: var(--dur-instant);
+  }
 </style>

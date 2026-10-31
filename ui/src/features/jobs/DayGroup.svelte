@@ -83,8 +83,7 @@
     top: 0;
     right: var(--list-rule-end);
     left: var(--row-rule-start);
-    height: var(--border-width);
-    background-color: var(--border);
+    border-top: var(--border-width) solid var(--border);
     content: '';
     pointer-events: none;
   }

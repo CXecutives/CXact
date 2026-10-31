@@ -188,14 +188,14 @@
   }
 
   /* The sign, the words and the link on a plate of their own, inside the corners (Menu.svelte
-     says why). */
+     says why), as far in at the end as at the start. */
   .plate {
     display: flex;
     flex: 1;
     align-items: center;
     gap: var(--space-10);
     min-width: 0;
-    padding-inline-start: calc(var(--toast-pad-start) - var(--toast-pad-y));
+    padding-inline: calc(var(--toast-pad-start) - var(--toast-pad-y));
     background-color: var(--surface-raised);
   }
 
@@ -203,11 +203,6 @@
   .action {
     display: inline-flex;
     flex: none;
-  }
-
-  /* The link's words end as far in as the sign starts. */
-  .action {
-    margin-right: calc(var(--toast-pad-start) - var(--toast-pad-y));
   }
 
   /* Each kind in its status colour (the glyph comes from TOAST_KINDS). */

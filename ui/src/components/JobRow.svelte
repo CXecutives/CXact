@@ -323,9 +323,4 @@
   .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)) {
     background-color: var(--quiet-hover);
   }
-
-  /* On the washed row a tool's own hover is one step deeper. */
-  .tool :global(.btn.ghost) {
-    --btn-bg-hover: var(--quiet-press);
-  }
 </style>

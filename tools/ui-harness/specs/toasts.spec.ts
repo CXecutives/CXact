@@ -49,6 +49,27 @@ test('a toast is one height with or without its link; its sign is 16', async ({ 
   expect(sign!.width).toBe(16);
 });
 
+test('a toast stands as far in at its end as at its start, with or without its link', async ({
+  page,
+}) => {
+  await open(page, '?sheet=surfaces&toasts');
+  const toasts = page.getByTestId('toast');
+  await expect(toasts).toHaveCount(3);
+  for (const toast of await toasts.all()) {
+    const { start, end } = await toast.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const first = node.querySelector('.icon') ?? node.querySelector('.text')!;
+      const last = node.querySelector('.action .label') ?? node.querySelector('.text')!;
+      return {
+        start: first.getBoundingClientRect().left - box.left,
+        end: box.right - last.getBoundingClientRect().right,
+      };
+    });
+    // Within the 1 px of the link's own edge.
+    expect(Math.abs(end - start), await toast.innerText()).toBeLessThanOrEqual(1);
+  }
+});
+
 test('the keyboard in a toast stops its time; it goes once the focus leaves', async ({ page }) => {
   await sheet(page);
   await page.getByRole('button', { name: 'Toasts zeigen' }).click();
