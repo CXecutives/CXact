@@ -199,13 +199,18 @@ test.describe('tools', () => {
         const tool = job(page, key).getByTestId(`tool-${id}`);
         await expect(tool).toHaveAccessibleName(T.actions[id]);
         await expect(tool).toHaveAttribute('tabindex', '-1');
-        // Quiet 28 px icon buttons, 10 from the row's end.
+        // Quiet 28 px icon buttons.
         const box = (await tool.boundingBox())!;
         expect(Math.round(box.height)).toBe(28);
         await tool.hover();
         await expect(page.getByRole('tooltip')).toHaveText(T.actions[id]);
       }
-      const last = (await job(page, key).getByTestId(`tool-${tools[1]}`).boundingBox())!;
+      // The last one's glyph ends 10 from the row's end, where the hairline between the rows
+      // ends; the room around the glyph hangs over it.
+      const last = (await job(page, key)
+        .getByTestId(`tool-${tools[1]}`)
+        .locator('svg')
+        .boundingBox())!;
       const end = (await row(page, key).boundingBox())!;
       expect(Math.round(end.x + end.width - (last.x + last.width))).toBe(10);
       // The pointer leaves: the tools go.
