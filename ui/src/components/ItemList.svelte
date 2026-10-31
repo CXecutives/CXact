@@ -236,11 +236,10 @@
     padding: var(--form-row-control-y) var(--form-row-pad-x);
   }
 
+  /* Its first line on the field's line, like a field's label; a long name grows downward. */
   .name {
-    display: flex;
-    align-items: center;
     min-width: 0;
-    min-height: var(--control-field);
+    padding-top: calc((var(--control-field) - var(--leading-md)) / 2);
     overflow-wrap: anywhere;
     font: var(--type-label);
   }
@@ -282,6 +281,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    justify-self: end;
     width: var(--control-icon);
     height: var(--control-icon);
     margin-block: calc((var(--control-field) - var(--control-icon)) / 2);
@@ -311,6 +311,10 @@
   @container (width < 560px) {
     .line {
       grid-template-columns: minmax(0, 1fr) var(--control-icon);
+    }
+
+    .name {
+      padding-top: 0;
     }
 
     .value {

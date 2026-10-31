@@ -346,6 +346,90 @@ test('a row is 62 high, its control 16 under the line, its hairline from the tex
   expect((await wish.boundingBox())!.y).toBe(wishBefore!.y);
 });
 
+test('the × of a list hangs past the edge of the fields above it by its margin, as every quiet tool', async ({
+  page,
+}) => {
+  await profile(page);
+  const edge = (await page.getByTestId('profile-certificates').boundingBox())!;
+  /** Where the box ends without what it hangs out: the glyph's end for the eye. */
+  const end = (button: Locator): Promise<number> =>
+    button.evaluate(
+      (node) =>
+        node.getBoundingClientRect().right + Number.parseFloat(getComputedStyle(node).marginRight),
+    );
+  for (const list of ['competences', 'languages'] as const) {
+    expect(await end(page.getByTestId(`${list}-remove`).first()), list).toBe(edge.x + edge.width);
+    // The × of the row that adds, on the same line.
+    await page.getByTestId(`${list}-add-button`).click();
+    expect(await end(page.getByTestId(`${list}-draft-close`)), list).toBe(edge.x + edge.width);
+  }
+});
+
+/** The middle of the first line of a text. */
+const firstLineMiddle = (text: Locator): Promise<number> =>
+  text.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const line = range.getClientRects()[0]!;
+    return line.top + line.height / 2;
+  });
+
+test('a name of a list stands on the line of its field, a wrapped one too, which grows downward', async ({
+  page,
+}) => {
+  await profile(page);
+  await animationsDone(page);
+  const rows = page.getByTestId('competences-item');
+  const wrapped = rows.filter({ hasText: 'Konzernrechnungslegung nach IFRS' });
+  for (const row of [rows.first(), wrapped]) {
+    const field = await row.getByTestId('competence-years').boundingBox();
+    const middle = field!.y + field!.height / 2;
+    expect(Math.abs((await firstLineMiddle(row.locator('.name'))) - middle)).toBeLessThanOrEqual(1);
+    // The × on the same line.
+    const remove = await row.getByTestId('competences-remove').boundingBox();
+    expect(remove!.y + remove!.height / 2).toBe(middle);
+  }
+  // Two lines, while a name of one keeps the row of every field.
+  const line = await wrapped.locator('.name').evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    return [...range.getClientRects()].length;
+  });
+  expect(line).toBe(2);
+  expect((await rows.first().boundingBox())!.height).toBe(62);
+  expect((await wrapped.boundingBox())!.height).toBeGreaterThan(62);
+});
+
+test('in a narrow box the rows of a list keep the measure of every row', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 360 });
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  await animationsDone(page);
+  const row = async (node: Locator, words: string, control: string) =>
+    node.evaluate(
+      (each, [text, inner]) => {
+        const box = each.getBoundingClientRect();
+        const name = each.querySelector(text!)!.getBoundingClientRect();
+        const field = each.querySelector(`[data-testid="${inner}"]`)!;
+        const edge = (field.closest('.field') ?? field).getBoundingClientRect();
+        return {
+          height: box.height,
+          nameTop: name.top - box.top,
+          nameHeight: name.height,
+          gap: edge.top - name.bottom,
+        };
+      },
+      [words, control],
+    );
+  const field_ = await row(field(page, 'years'), '.label', 'profile-years');
+  expect(
+    await row(page.getByTestId('competences-item').first(), '.name', 'competence-years'),
+  ).toEqual(field_);
+  expect(await row(page.getByTestId('languages-item').first(), '.name', 'language-level')).toEqual(
+    field_,
+  );
+});
+
 test('a tag field with one line of chips is as high as any field, its row like any row', async ({
   page,
 }) => {
