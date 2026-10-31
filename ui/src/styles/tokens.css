@@ -1073,6 +1073,8 @@
   /* Toasts lie below a dialog's scrim: dimmed, and no undo acts behind a modal. */
   --z-toast: 90;
   --z-overlay: 100;
+  /* macOS: what still moves the window over a dialog's scrim (TitleBar.svelte). */
+  --z-overlay-bar: 101;
   --z-menu: 115;
   --z-tooltip: 120;
   --opacity-disabled: 0.45;

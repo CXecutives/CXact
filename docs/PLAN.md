@@ -175,6 +175,8 @@ pre-assessment to any AI chat for a deeper check.
 Inside the window both OS show the same app. They differ by OS convention, decided in
 `ui/src/lib/platform.ts` and `src-tauri/src/platform.rs`:
 - **The top bar:** Windows draws its caption buttons, macOS keeps the native traffic lights (`CLAUDE.md`).
+  It moves the window under a dialog's scrim too: on Windows by the caption window, on macOS by a transparent
+  drag region over the scrim, which a dialog stays clear of.
 - **Dialog buttons:** Windows puts the action first; macOS puts cancel left and the action right.
 - **Scrollbars:** Windows slim and styled, their room kept; macOS native overlay.
 - **Middle-button autoscroll:** Windows only.
