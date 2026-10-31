@@ -812,7 +812,16 @@ test('a language the backend refuses is said under its row', async ({ page }) =>
   await page.getByTestId('language-level').nth(1).click();
   await page.getByRole('listbox').getByRole('option', { name: T.profile.level.C1 }).click();
   const items = page.getByTestId('languages-item');
+  const levels = page.getByTestId('language-level');
   await expect(items.nth(1).getByTestId('languages-error')).toHaveText(T.profile.field.refused);
+  await expect(levels.nth(1)).toHaveAttribute('aria-invalid', 'true');
+  await expect(levels.first()).not.toHaveAttribute('aria-invalid', 'true');
+  // Changed, the error goes and it saves.
+  await levels.nth(1).click();
+  await page.getByRole('listbox').getByRole('option', { name: T.profile.level.C2 }).click();
+  await expect(page.getByTestId('languages-error')).toHaveCount(0);
+  await expect(levels.nth(1)).not.toHaveAttribute('aria-invalid', 'true');
+  await expect.poll(async () => (await stored(page))?.languages[1]?.level).toBe('C2');
 });
 
 test('a refusal of a whole list is said under its last row', async ({ page }) => {

@@ -5,7 +5,8 @@
   button "Sprache hinzufügen", which brings a name field (ChipInput with options): it opens
   nothing on focus, typing lists the languages the app knows and not chosen yet, and it takes
   nothing else ("Keine Sprache mit diesem Namen."); a new language starts at B2, the level the
-  engine assumes. A value the backend refused is said under the add row.
+  engine assumes. A language the backend refused marks its row's select and is said under it,
+  a refusal of the whole list under the add row.
 -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
@@ -18,7 +19,7 @@
 
   interface Props {
     rows: Language[];
-    /** A value the backend refused and why. */
+    /** A row the backend refused (its place among the rows with a name) and why. */
     error?: { row: number | null; text: string } | null;
   }
 
@@ -37,6 +38,12 @@
   const OPTIONS = Object.values(de.profile.languageName)
     .sort((a, b) => a.localeCompare(b))
     .map((name) => ({ id: name, label: name }));
+
+  const listed = $derived(named(rows, (row) => row.language));
+  /** The row the backend refused: counted among the rows with a name, as the backend does. */
+  const refused = $derived(
+    error === null || error.row === null ? null : (listed[error.row] ?? null),
+  );
 
   const same = (a: string, b: string): boolean => keyOf(a) === keyOf(b);
   const chosen = (name: string): boolean => rows.some((row) => same(row.language, name));
@@ -59,6 +66,7 @@
       value={row.level}
       label={words.levelOf(row.language)}
       wide
+      invalid={row === refused}
       testid="language-level"
       onchange={(next) => (row.level = next)}
     />
@@ -78,13 +86,13 @@
 {/snippet}
 
 <ItemList
-  items={named(rows, (row) => row.language)}
+  items={listed}
   key={(row) => keyOf(row.language)}
   name={(row) => row.language}
   value={level}
   addLabel={words.languageAdd}
   {draft}
-  failure={error === null ? null : { item: null, text: error.text }}
+  failure={error === null ? null : { item: refused, text: error.text }}
   testid="languages"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />

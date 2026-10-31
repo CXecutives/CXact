@@ -29,11 +29,11 @@
   const words = $derived(t.profile.field);
   vocabulary.load();
 
+  const listed = $derived(named(rows, (row) => row.name));
   /** The row the backend refused: counted among the rows with a name, as the backend does. */
-  const refused = $derived.by((): Competence | null => {
-    if (error === null || error.row === null) return null;
-    return rows.filter((row) => row.name.trim() !== '')[error.row] ?? null;
-  });
+  const refused = $derived(
+    error === null || error.row === null ? null : (listed[error.row] ?? null),
+  );
 
   const same = (a: string, b: string): boolean => keyOf(a) === keyOf(b);
 
@@ -70,7 +70,7 @@
 {/snippet}
 
 <ItemList
-  items={named(rows, (row) => row.name)}
+  items={listed}
   key={(row) => keyOf(row.name)}
   name={(row) => row.name}
   value={years}
