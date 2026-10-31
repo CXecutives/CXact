@@ -779,6 +779,11 @@
     padding-bottom: var(--list-rows-end);
   }
 
+  /* An end for rows: a state without rows stands in the very middle. */
+  .list:has(> .bare) {
+    padding-bottom: 0;
+  }
+
   /* Watched: once it has scrolled away, the head may draw its line. */
   .mark {
     display: block;

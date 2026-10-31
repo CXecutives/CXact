@@ -136,6 +136,14 @@ async function inTheMiddle(page: Page, what: Locator): Promise<boolean> {
   );
 }
 
+/** Whether a state stands in the very middle of its pane, top to bottom (on a whole pixel). */
+async function inTheVeryMiddle(what: Locator, pane: Locator): Promise<void> {
+  const box = (await what.boundingBox())!;
+  const around = (await pane.boundingBox())!;
+  const off = box.y + box.height / 2 - (around.y + around.height / 2);
+  expect(Math.abs(off)).toBeLessThanOrEqual(1);
+}
+
 /** A place that holds nothing and has no head: its empty state alone. */
 async function expectBarePlace(
   page: Page,
@@ -3193,6 +3201,19 @@ test('baseline: jobs at the minimum size 480 x 360', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
   await expectShot(page, 'jobs-min');
+});
+
+test('the empty states without a head stand in the very middle of their pane', async ({ page }) => {
+  await open(page, `${WIN}&scenario=fresh`);
+  const column = page.getByTestId('list-scroll');
+  await inTheVeryMiddle(page.getByTestId('empty-all'), column);
+  await open(page, `${WIN}&scenario=empty`);
+  await inTheVeryMiddle(page.getByTestId('empty-all'), column);
+  await open(page, `${WIN}&scenario=list-error`);
+  await inTheVeryMiddle(page.getByTestId('list-error'), column);
+  // The job view with no job open, in the same middle.
+  await open(page, WIN);
+  await inTheVeryMiddle(page.getByTestId('place-reader'), page.getByTestId('stage'));
 });
 
 test('a job that closes leaves no room behind: a list that fits stands at its top', async ({

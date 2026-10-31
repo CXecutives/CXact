@@ -412,7 +412,7 @@
      the middle, like every other empty state (the list's): as much under it as above it. */
   .column.idle {
     min-height: 100%;
-    padding-bottom: var(--pane-padding);
+    padding-bottom: var(--head-pad);
   }
 
   .place-reader {
