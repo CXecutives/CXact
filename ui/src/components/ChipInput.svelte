@@ -28,12 +28,13 @@
   text field's (`--field-edge`, red in a required cell that is still empty, red while
   `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
-  focus; a click on it, or the focus, shows them all.
+  focus; a click on it, or the focus, shows them all, and the caret a press put at their end
+  stays in view (the keyboard's way keeps it there by itself, input.ts).
 -->
 <script lang="ts">
   import { tick } from 'svelte';
   import { t } from '$lib/i18n/t';
-  import { chipKeys, FIELD_ATTRIBUTES, removeBy, withList } from '$lib/input/input';
+  import { byKeyboard, chipKeys, FIELD_ATTRIBUTES, removeBy, withList } from '$lib/input/input';
   import { chipIn } from '$lib/motion/transitions';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
@@ -273,6 +274,16 @@
     },
   );
 
+  /** The focus came to the field: what was folded opens, and a press's caret stays in view. */
+  function enter(event: FocusEvent): void {
+    const opens = visible.length < values.length;
+    focused = true;
+    const input = event.target;
+    if (opens && !byKeyboard() && input instanceof HTMLInputElement) {
+      void tick().then(() => input.scrollIntoView({ block: 'nearest' }));
+    }
+  }
+
   /** The focus left the field and its chips (not for one of its x). */
   function leave(event: FocusEvent & { currentTarget: HTMLElement }): void {
     const next = event.relatedTarget;
@@ -311,12 +322,7 @@
   }
 </script>
 
-<div
-  class="chip-input"
-  class:suggests={suggesting}
-  onfocusin={() => (focused = true)}
-  onfocusout={leave}
->
+<div class="chip-input" class:suggests={suggesting} onfocusin={enter} onfocusout={leave}>
   <div
     bind:this={box}
     class="field"

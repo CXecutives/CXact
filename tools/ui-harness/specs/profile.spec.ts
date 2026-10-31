@@ -967,6 +967,52 @@ test('a long tag field folds to two lines without the focus; the focus or its bu
   await expect(more).toHaveCount(0);
 });
 
+/** Tools that fold to two lines and "+ n weitere". */
+async function manyTools(page: Page): Promise<Locator> {
+  const tools = page.getByTestId('profile-tools');
+  const names = Array.from({ length: 24 }, (_, at) => `Werkzeug ${at + 1}`);
+  await tools.locator('input').fill(names.join(', '));
+  await tools.locator('input').press('Enter');
+  await leaveField(page);
+  await allSaved(page);
+  await expect(page.getByTestId('profile-tools-more')).toBeVisible();
+  return tools;
+}
+
+test('with a long folded field the Profil returns to its place', async ({ page }) => {
+  await profile(page);
+  await manyTools(page);
+  const view = page.getByTestId('view-profile');
+  const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
+  await view.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+  const before = await top();
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await page.getByTestId('nav-profile').click();
+  await expect(view).toBeVisible();
+  await expect(page.getByTestId('profile-tools-more')).toBeVisible();
+  await animationsDone(page);
+  await expect.poll(top).toBe(before);
+  // And it stays there.
+  await page.waitForTimeout(100);
+  expect(await top()).toBe(before);
+});
+
+test('a press on a folded field low in the view keeps the caret in view', async ({ page }) => {
+  await profile(page);
+  const tools = await manyTools(page);
+  // Its box at the foot of the view.
+  await tools.evaluate((node) => node.scrollIntoView({ block: 'end' }));
+  const box = (await tools.boundingBox())!;
+  await page.mouse.click(box.x + box.width - 4, box.y + box.height - 4);
+  const input = tools.locator('input');
+  await expect(input).toBeFocused();
+  await expect(input).toBeInViewport({ ratio: 1 });
+  await page.keyboard.type('x');
+  await expect(input).toHaveValue('x');
+  await expect(input).toBeInViewport({ ratio: 1 });
+});
+
 test('a competence whose years are too large says so under its row and holds the save', async ({
   page,
 }) => {
