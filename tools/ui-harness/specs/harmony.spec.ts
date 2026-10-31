@@ -74,9 +74,8 @@ function audit(rules: Rules): string[] {
 
   const caret = document.activeElement;
   if (caret?.matches('input, textarea')) out.add(`${id(caret)}: took the caret`);
-  // The app's buttons: the sheet of the surfaces still writes a few of its own words with one.
   for (const el of document.querySelectorAll('button')) {
-    if (!shown(el) || el.closest('[data-testid="sheet-surfaces"]')) continue;
+    if (!shown(el)) continue;
     if (/(…|\.\.\.)$/.test(el.textContent?.trim() ?? '')) out.add(`${id(el)}: ellipsis`);
   }
 

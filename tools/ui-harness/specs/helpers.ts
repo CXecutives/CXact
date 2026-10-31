@@ -103,7 +103,7 @@ export async function settleMoves(page: Page): Promise<void> {
   await page.waitForTimeout(550);
 }
 
-/** Choose a place by its tab. */
+/** Choose a place by its entry in the sidebar. */
 export async function openPlace(page: Page, place: 'inbox' | 'archive' | 'trash'): Promise<void> {
   await page.getByTestId(`place-${place}`).click();
   await settle(page);
@@ -118,9 +118,14 @@ export const chips = (page: Page): Locator => page.getByTestId('filter-chips');
 /** A chip under the list header by the id of its menu entry (`portal-linkedin`,
  *  `band-mid`), `run` for the one of a fetch's "Zeigen". */
 export const chip = (page: Page, id: string): Locator => page.getByTestId(`chip-${id}`);
+/** The chips of the filter with their words, in their order (each chip's × is its own button). */
+export const chipWords = (page: Page): Locator => chips(page).locator('[data-chip]');
 /** The × of such a chip: only it removes the chip. */
 export const chipRemove = (page: Page, id: string): Locator =>
   page.getByTestId(`chip-${id}-remove`);
+
+/** The box of the menu: its corners and shadow around the scroller that carries the test id. */
+export const menuFrame = (page: Page): Locator => page.getByTestId('menu').locator('xpath=..');
 
 /** Open the funnel's menu. */
 export async function openFilter(page: Page): Promise<Locator> {

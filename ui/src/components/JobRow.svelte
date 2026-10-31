@@ -298,7 +298,8 @@
     color: inherit;
   }
 
-  /* The tools over the end of the line, centred on the row, 10 from its end. */
+  /* The tools over the end of the line, centred on the row, their glyph ending on the hairline's
+     end. */
   .tools {
     position: absolute;
     top: calc(50% - var(--control-icon) / 2);

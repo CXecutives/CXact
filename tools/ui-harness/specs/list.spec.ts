@@ -27,6 +27,7 @@ import {
   chip,
   chipRemove,
   chips,
+  chipWords,
   chipWordsOf,
   chooseFilter,
   chooseSort,
@@ -60,6 +61,7 @@ import {
   unfoldExcluded,
   viaMenu,
   WIN,
+  menuFrame,
 } from './helpers';
 
 /** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile.
@@ -106,12 +108,6 @@ async function onOneRow(page: Page, ...ids: string[]): Promise<boolean> {
     return middle > row.y && middle < row.y + row.height;
   });
 }
-
-/** The chips of the filter with their words, in their order (each chip's × is its own button). */
-const chipWords = (page: Page): Locator => chips(page).locator('[data-chip]');
-
-/** The box of the menu: its corners and shadow around the scroller that carries the test id. */
-const menuFrame = (page: Page): Locator => page.getByTestId('menu').locator('xpath=..');
 
 /** Whether something stands in the middle of the list's column: its own middle within the
  *  middle third of the column, both ways. */

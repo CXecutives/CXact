@@ -21,7 +21,7 @@ test('a toast has no close button; a plain one has no sign', async ({ page }) =>
     );
   }
   const plain = page.locator('[data-testid="toast"][data-kind="plain"]');
-  await expect(plain).toHaveText('Profil gespeichert');
+  await expect(plain).toHaveText('2 Jobs passen jetzt besser');
   await expect(plain.locator('svg')).toHaveCount(0);
 });
 

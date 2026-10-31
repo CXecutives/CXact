@@ -39,9 +39,9 @@
   let dangerOpen = $state(asked === 'danger');
 
   function showToasts(): void {
-    toasts.show('Profil gespeichert');
+    toasts.show('Prompt kopiert. Füg ihn in einen KI-Chat ein.');
     toasts.show('Archiviert', 'success', { label: 'Rückgängig', onclick: () => undefined });
-    toasts.show('Profil gespeichert', 'plain');
+    toasts.show('2 Jobs passen jetzt besser', 'plain');
     toasts.show('2 neue Jobs, 1 mit hoher Übereinstimmung', 'info', {
       label: 'Zeigen',
       undo: false,
@@ -180,16 +180,16 @@
                 <SettingRow label="freelance.de" hint="11 Alert-Mails in 30 Tagen">
                   <Button
                     icon="signIn"
-                    label="Anmelden…"
+                    label="Anmelden"
                     sizeTo={[{ label: 'Abmelden', icon: 'signOut' }]}
                     onclick={noop}
                   />
                   <Button
                     icon="alertAdd"
-                    label="Alert anlegen…"
+                    label="Alert anlegen"
                     sizeTo={[
                       { label: 'Alert-Mail öffnen', icon: 'alertMail' },
-                      { label: 'Alert prüfen…', icon: 'external' },
+                      { label: 'Alert prüfen', icon: 'external' },
                     ]}
                     onclick={noop}
                   />
@@ -209,7 +209,7 @@
                   pair
                 >
                   <Button icon="edit" label="Ändern" onclick={noop} />
-                  <Button icon="trash" label="Entfernen…" onclick={noop} />
+                  <Button icon="trash" label="Entfernen" onclick={noop} />
                 </SettingRow>
                 <SettingRow
                   label="alerts.demo@gmail.com"
@@ -219,7 +219,7 @@
                   pair
                 >
                   <Button icon="edit" label="Ändern" onclick={noop} />
-                  <Button icon="trash" label="Entfernen…" onclick={noop} />
+                  <Button icon="trash" label="Entfernen" onclick={noop} />
                 </SettingRow>
               </Group>
             </Section>
@@ -227,13 +227,13 @@
               <Group>
                 <SettingRow label="Profil-Ordner" hint="C:\Users\demo\Documents\CXact" copy pair>
                   <Button icon="folder" label="Öffnen" onclick={noop} />
-                  <Button icon="edit" label="Ändern…" onclick={noop} />
+                  <Button icon="edit" label="Ändern" onclick={noop} />
                 </SettingRow>
                 <SettingRow
                   label="Alles zurücksetzen"
                   hint="Löscht alles, was CXact gespeichert hat."
                 >
-                  <Button icon="trash" label="Zurücksetzen…" onclick={noop} />
+                  <Button icon="trash" label="Zurücksetzen" onclick={noop} />
                 </SettingRow>
               </Group>
             </Section>
@@ -305,7 +305,7 @@
       <div class="narrow">
         <Group>
           <SettingRow label="Alles zurücksetzen" hint="Löscht alles, was CXact gespeichert hat.">
-            <Button icon="trash" label="Zurücksetzen…" onclick={noop} />
+            <Button icon="trash" label="Zurücksetzen" onclick={noop} />
           </SettingRow>
         </Group>
       </div>

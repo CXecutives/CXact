@@ -829,10 +829,10 @@
 
   /* ------------------------------------------- round 10: jobs list */
   /* The list's head 8 16 10 (the head's own 8 and 2 more under its last row), the rows 6 in
-     from the column's edges and 20 above its end. A row: 9 10 inside, its ring 12 before
+     from the column's edges and 40 above its end. A row: 9 10 inside, its ring 12 before
      the title, at least 48 high, 8 round; the hairline above a row from the title (52) to 10
-     before the end. Its tools (two quiet 28s, 2 apart) 10 from its end, their slot always
-     kept. A day's heading and a section's divider 12/540 muted: the day 14 10 6, sticky; a
+     before the end. Its tools (two quiet 28s, 2 apart) with their glyph ending on the hairline's
+     end, their slot always kept. A day's heading and a section's divider 12/540 muted: the day 14 10 6, sticky; a
      divider 22 10 6 under its hairline, 6 below the last row, its chevron 14. */
   --list-head-tail: var(--space-2);
   --list-rows-inset: var(--space-6);

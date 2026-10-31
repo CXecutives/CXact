@@ -947,7 +947,7 @@ export const de = {
     criterion: criteria,
     note,
     /** Where the job came from, in the row "Gefunden" of the Jobdetails: its portals
-     *  ("freelancermap.de und linkedin.com"). */
+     *  ("freelancermap und LinkedIn"). */
     found: (portals: string[]) => joined(portals),
     close: 'Schließen',
     /** The clipboard refused the prompt. */

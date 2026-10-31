@@ -2,20 +2,20 @@
 // app starts by itself), the end toast says what a fetch brought and leads to it, and the
 // list and the reader stay true while a run updates jobs.
 
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   ALL_PORTALS,
   chip,
   chipRemove,
-  chips,
   chipWordsOf,
   chooseFilter,
   lastQuery,
   stubList,
   listed,
   T,
+  chipWords,
 } from './helpers';
 
 const WIN = '?platform=windows';
@@ -25,8 +25,6 @@ const DONE = T.toast.runDone(2, 1);
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
 /** The chips of the filter, each with its words (its × is a button of its own, without any). */
-const chipsWithWords = (page: Page): Locator =>
-  chips(page).locator('[data-testid^="chip-"]:not([data-testid$="-remove"])');
 
 /** Send run events the way the backend does (the page's channel when no run holds one). */
 async function emit(page: Page, ...events: unknown[]): Promise<void> {
@@ -89,7 +87,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
   // Aktuell with the new jobs of that fetch in the high band: the one the toast names.
-  await expect(chipsWithWords(page)).toHaveText([T.toolbar.lastFetch, ...chipWordsOf('band-high')]);
+  await expect(chipWords(page)).toHaveText([T.toolbar.lastFetch, ...chipWordsOf('band-high')]);
   const query = (await lastQuery(page))!;
   expect(query).toMatchObject({ place: 'inbox', bands: ['high'] });
   expect(query.run).toEqual(expect.any(Number));
@@ -97,7 +95,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   // Each chip takes its part off: without the band the two new jobs the toast counts, not
   // the excluded one of the fetch.
   await chipRemove(page, 'band-high').click();
-  await expect(chipsWithWords(page)).toHaveText([T.toolbar.lastFetch]);
+  await expect(chipWords(page)).toHaveText([T.toolbar.lastFetch]);
   const { active } = await stubList(page, { run: query.run });
   expect(active).toHaveLength(2);
   expect(active).toContain('linkedin-4100200399');
@@ -149,7 +147,7 @@ test('what Zeigen set is never the user filter: its chips taken off keep nothing
   await chipRemove(page, 'band-high').click();
   expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBe(kept);
   await open(page, `${WIN}&tick=15`);
-  await expect(chipsWithWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
+  await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
 });
 
 test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {

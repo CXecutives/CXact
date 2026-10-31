@@ -110,7 +110,7 @@
     void run.start({ kind: 'details', keys: [job.key] });
   }
 
-  /** "Anmelden…": the portal's sign-in window, right here (the words of Einstellungen). */
+  /** "Anmelden": the portal's sign-in window, right here (the words of Einstellungen). */
   let signingIn = $state(false);
   const signInLock = $derived(signInLocked(job.portal));
   async function signIn(): Promise<void> {
