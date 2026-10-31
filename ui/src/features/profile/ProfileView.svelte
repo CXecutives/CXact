@@ -320,7 +320,6 @@
   function discard(): void {
     saveNote = null;
     fieldError = null;
-    flagged = false;
     editor.discard(stored);
     if (editor.origin === null) void focusFirstWay();
   }
@@ -421,14 +420,7 @@
   {#if editor.origin !== null}
     <div class="setup" data-testid="profile">
       {@render notes()}
-      <ProfileEditor
-        bind:this={panel}
-        setup
-        {fieldError}
-        missing={marked}
-        onsave={() => void next()}
-        ondiscard={discard}
-      />
+      <ProfileEditor bind:this={panel} {fieldError} missing={marked} />
     </div>
   {/if}
 {:else}

@@ -4,10 +4,11 @@
   Section with one white box of rows (Group `rows`), and like the rows of Einstellungen every
   value changes where it stands: its control in one column (ProfileControl; a hairline between
   rows). Nothing opens and nothing is confirmed: ProfileView saves a change by itself (`onleft`
-  says focus left a field, Enter in a field is `onsave`), the setup with its Weiter. No field
-  takes the caret by itself (owner, 2026-10-30). Mindestgehalt unfolds while Festanstellung or
-  Zeitarbeit is chosen, the day rates while Projekt und Interim is; a value out of sight holds no
-  save (ProfileControl: what is wrong stays behind with its row, a right day rate stays stored).
+  says focus left a field, Enter in a field is `onsave`), the setup with its Weiter, which its
+  Enter is too (FirstRunView, around the form). No field takes the caret by itself (owner,
+  2026-10-30). Mindestgehalt unfolds while Festanstellung or Zeitarbeit is chosen, the day rates
+  while Projekt und Interim is; a value out of sight holds no save (ProfileControl: what is
+  wrong stays behind with its row, a right day rate stays stored).
   A required field that is still empty carries `data-missing` on its row, a required list
   on its group (`missing`, from ProfileView: only in the setup, once Weiter asked): the field's
   edge and label turn red, a list's group title (tokens.css). A value that
@@ -47,16 +48,15 @@
     fieldError: FieldError | null;
     /** The required fields still empty that are marked. */
     missing: readonly string[];
-    /** The setup's page: Esc does nothing. */
-    setup?: boolean;
-    /** Enter in a field: saves the form. */
-    onsave: () => Promise<boolean> | void;
-    ondiscard: () => void;
+    /** Enter in a field: saves the form (not in the setup, where it goes on to its step). */
+    onsave?: () => Promise<boolean>;
+    /** Esc on a new form nothing was typed into (not in the setup). */
+    ondiscard?: () => void;
     /** Focus left a field of the form. */
     onleft?: () => void;
   }
 
-  let { fieldError, missing, setup = false, onsave, ondiscard, onleft }: Props = $props();
+  let { fieldError, missing, onsave, ondiscard, onleft }: Props = $props();
 
   // Text typed into a tag field of the form counts as a change.
   editor.typed.share();
@@ -168,8 +168,10 @@
 
   /** A new form nothing was typed into: Esc goes back to the ways in. */
   const untouched = $derived(editor.origin === 'new' && !editor.dirty);
-  const save = (): void => void onsave();
-  const rootKeys = $derived(untouched && !setup ? { save, cancel: ondiscard } : { save });
+  const rootKeys = $derived({
+    ...(onsave ? { save: () => void onsave() } : {}),
+    ...(ondiscard && untouched ? { cancel: ondiscard } : {}),
+  });
 </script>
 
 <div
