@@ -1276,6 +1276,18 @@ test('a change taken back while its save is under way goes along when the window
   expect(between).not.toContainEqual(['set_unsaved', { on: false }]);
 });
 
+test('what changes while the way out saves goes along', async ({ page }) => {
+  await profile(page, '&scenario=slow');
+  await contract(page, 'temporary').click();
+  await page.getByTestId('nav-settings').click();
+  await lastSave(page);
+  // That save is under way and the page still stands.
+  await contract(page, 'permanent').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  const form = await stored(page);
+  expect([form?.temporary, form?.permanent]).toEqual([true, false]);
+});
+
 test('a save that fails says so under the head and goes again with the next change; leaving with it asks', async ({
   page,
 }) => {

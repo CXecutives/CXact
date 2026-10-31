@@ -10,9 +10,10 @@
   changed, a text field once it is left or with Enter, and before the view is left or the
   window closes. Nothing asks and nothing bars the way, and nothing is said unless the rescore
   of the save moved jobs (a toast, saveEffect.ts). What changes while a save is under way goes
-  next; a save that failed says so under the head and is tried again with the next change.
-  A value that is wrong holds the save, said at its field; leaving with one asks once whether
-  to drop it.
+  next; a save that failed says so under the head and is tried again with the next change or
+  the next way out. A value that is wrong holds the save, said at its field; leaving with one,
+  or with a save that failed, asks once whether to drop it, and nothing is saved behind the
+  question.
   What is missing (owner, 2026-10-29): a required field that is still empty (Wunschrollen,
   Länder, Kompetenzen, Sprachen) never holds the save and stays calm on the Profil page. The
   card under the head names them, its "Ergänzen" brings the first up under the top bar (no
@@ -78,9 +79,11 @@
     });
   });
 
-  /** Where the user wanted to go with a change that cannot be saved: a view, or closing the
-   *  window. */
-  let leaving = $state<ViewId | 'close' | null>(null);
+  /** Where the way out leads while the form is saved or the question stands: a view, or closing
+   *  the window (a second way only changes where it leads). */
+  let leaving: ViewId | 'close' | null = null;
+  /** A change cannot be saved: the question whether to drop it stands. */
+  let asking = $state(false);
 
   // The stored profile fills the form while nothing unsaved is in it. A save under way decides
   // at its end (`editor.settle`): till then a change taken back reads as none.
@@ -96,8 +99,8 @@
     });
   });
 
-  // The window asks before it closes while the form holds unsaved changes (main.rs); so does a
-  // view, and a save under way counts: what was taken back meanwhile goes after it.
+  // The window (main.rs) and a way out wait while the form holds unsaved changes; a save under
+  // way counts, as what was taken back meanwhile goes after it.
   const dirty = $derived(editor.dirty || busy);
   $effect(() => {
     const on = dirty;
@@ -108,15 +111,23 @@
     invoke('close_window').catch((error: unknown) => (note = () => errorText(error)));
   }
 
-  function go(next: ViewId | 'close'): void {
+  /** The way goes on to where it leads. */
+  function goOn(): void {
+    const next = leaving;
+    leaving = null;
+    asking = false;
     if (next === 'close') closeWindow();
-    else navigation.go(next, true);
+    else if (next !== null) navigation.go(next, true);
   }
 
   /** Leaves once what the form holds is saved; a change that cannot be saved asks first. */
   async function leaveTo(next: ViewId | 'close'): Promise<void> {
-    if (await settled()) go(next);
-    else leaving = next;
+    const going = leaving !== null;
+    leaving = next;
+    if (going) return;
+    clearTimeout(timer);
+    if (await settled()) goOn();
+    else asking = true;
   }
 
   /** The window is to close: the page says it is here, then saves. */
@@ -127,26 +138,27 @@
 
   /** The change that cannot be saved goes, and the way goes on. */
   function leave(): void {
-    const next = leaving;
-    leaving = null;
     saveNote = null;
     fieldError = null;
     editor.discard(stored);
-    if (next !== null) go(next);
+    goOn();
   }
 
   /** Staying: what waited for the way goes with it; what holds the save is said at its field,
    *  which comes into view. */
   function stay(): void {
     leaving = null;
+    asking = false;
     navigation.stay();
     panel?.ready();
   }
 
-  /** A moment after a change, and when a field was left. */
+  /** A moment after a change, and when a field was left; not on a way out, which saves first
+   *  and then stands at its question. */
   let timer: ReturnType<typeof setTimeout> | undefined;
   function soon(): void {
     clearTimeout(timer);
+    if (leaving !== null) return;
     timer = setTimeout(() => {
       if (!typing()) void trySave();
     }, tokenMs('--save-delay'));
@@ -231,11 +243,12 @@
   /** A file over the page: the dashed edge shows while the CV import would take it; a drop it
    *  cannot take says why (the tries used up, in fromCv; a value that is wrong). */
   let over = $state(false);
-  const takesDrop = (): boolean => held === null && !fromCv.busy && !fromCv.limited;
+  const takesDrop = (): boolean =>
+    leaving === null && held === null && !fromCv.busy && !fromCv.limited;
 
   function dragged(drag: FileDrag): void {
     over = drag.kind === 'over' && takesDrop();
-    if (drag.kind !== 'drop' || drag.paths.length === 0) return;
+    if (drag.kind !== 'drop' || drag.paths.length === 0 || leaving !== null) return;
     const wrong = held;
     if (wrong !== null) saveNote = () => t.profile.fixFirst(wrong);
     else void fillFromCv(true);
@@ -259,6 +272,7 @@
     return lastWrite;
   }
 
+  /** One save: the form goes, the state comes back and the form settles on it. */
   async function write(): Promise<boolean> {
     busy = true;
     saveNote = null;
@@ -323,9 +337,10 @@
     await tick();
     editor.typed.clear();
     await lastWrite;
-    if (!editor.changed) return true;
-    if (!panel?.valid()) return false;
-    return save();
+    while (editor.changed) {
+      if (!panel?.valid() || !(await save())) return false;
+    }
+    return true;
   }
 
   /** Esc on an untouched new form: back to the ways in, whose first one takes the focus of the
@@ -464,7 +479,7 @@
 
 <!-- A change that cannot be saved: the way goes on without it, or stays. -->
 <Dialog
-  open={leaving !== null}
+  open={asking}
   variant="danger"
   heading={t.profile.leaveHeading}
   text={held !== null ? t.profile.leaveWrong(held) : t.profile.leaveFailed}

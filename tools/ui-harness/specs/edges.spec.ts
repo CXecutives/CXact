@@ -245,6 +245,39 @@ test('a save that fails on the way out asks, none goes behind the question, stay
   expect((await saves(page)).at(-1)?.after.dayRateMin).toBe(1300);
 });
 
+test('closing with a save that fails asks too; nothing goes behind the question, not by itself after it', async ({
+  page,
+}) => {
+  const close = (): Promise<void> => page.evaluate(() => window.__harness.requestClose());
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  await page.getByTestId('profile-min-rate').fill('1.300');
+  await expect.poll(() => unsaved(page)).toBe(true);
+  await failNext(page, 'save_profile');
+  await close();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await expect(dialog).toContainText(T.profile.leaveFailed);
+  // While it asks, neither a second close nor a file dropped on the page saves behind it.
+  await close();
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await page.waitForTimeout(T_SAVE);
+  expect((await saves(page)).length).toBe(1);
+  expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
+  expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(page.getByTestId('profile-save-error')).toHaveText(T.error.text('db', {}));
+  await page.waitForTimeout(T_SAVE);
+  expect((await saves(page)).length).toBe(1);
+  // The next change takes it along, and the note goes.
+  await page.getByTestId('profile-years').fill('21');
+  await leaveField(page);
+  await expect.poll(async () => (await saves(page)).at(-1)?.after.years).toBe(21);
+  expect((await saves(page)).at(-1)?.after.dayRateMin).toBe(1300);
+  await expect(page.getByTestId('profile-save-error')).toHaveCount(0);
+});
+
 test('a way that waited for the question goes with its Abbrechen: the page opens at its kept place', async ({
   page,
 }) => {
