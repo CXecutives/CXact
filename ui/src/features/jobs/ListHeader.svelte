@@ -25,6 +25,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import Button from '$components/Button.svelte';
+  import Chip from '$components/Chip.svelte';
   import Notice from '$components/Notice.svelte';
   import PageHeader from '$components/PageHeader.svelte';
   import TextField from '$components/TextField.svelte';
@@ -200,13 +201,11 @@
           data-testid="filter-chips"
         >
           {#each chips as chip (chip.id)}
-            <span class="chip" data-chip data-remove transition:fade>
-              <Button
-                variant="secondary"
+            <span class="slot" data-chip transition:fade>
+              <Chip
                 label={chip.label}
-                trailing="close"
                 testid="chip-{chip.id}"
-                onclick={(event) => dropChip(chip, event)}
+                onremove={(event) => dropChip(chip, event)}
               />
             </span>
           {/each}
@@ -266,7 +265,7 @@
     flex-direction: column;
   }
 
-  /* The chosen parts of the filter, each a small button with its ×. */
+  /* The chosen parts of the filter, each a chip like the Profil's. */
   /* 10 under the search. */
   .chips {
     display: flex;
@@ -275,7 +274,7 @@
     padding-top: var(--space-10);
   }
 
-  .chip {
+  .slot {
     display: inline-flex;
   }
 

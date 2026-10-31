@@ -54,8 +54,6 @@
     /** Why the button is disabled - shown in the tooltip. */
     disabledReason?: string | null;
     type?: 'button' | 'submit';
-    /** Toggle buttons. */
-    pressed?: boolean | null;
     /** Fill the width of the container. */
     wide?: boolean;
     /** Sits inside a text field: skipped by Tab, a click keeps the focus in the field. */
@@ -89,7 +87,6 @@
     disabled = false,
     disabledReason = null,
     type = 'button',
-    pressed = null,
     wide = false,
     inField = false,
     trailing = null,
@@ -137,7 +134,6 @@
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
-  aria-pressed={pressed === null ? undefined : pressed}
   aria-haspopup={menu ? 'menu' : undefined}
   aria-expanded={menu ? expanded : undefined}
   tabindex={inField || (disabled && !disabledReason) ? -1 : undefined}
@@ -150,7 +146,7 @@
     <span class="face">
       {#if icon}
         <span class="glyph" data-icon={icon}>
-          <Icon name={icon} size="sm" filled={pressed === true} />
+          <Icon name={icon} size="sm" />
         </span>
       {/if}
       {#if !iconOnly}<span class="label">{label}</span>{/if}
@@ -305,15 +301,6 @@
     --btn-shadow: none;
   }
 
-  /* A secondary toggle that is on: the track with navy words, like a chosen option. */
-  .secondary[aria-pressed='true'] {
-    --btn-bg: var(--chosen-surface);
-    --btn-bg-hover: var(--chosen-surface);
-    --btn-bg-active: var(--chosen-surface);
-    --btn-fg: var(--chosen-text);
-    --btn-fg-hover: var(--chosen-text);
-  }
-
   /* The quiet kind: no box, a wash under the pointer, a deeper one pressed. Words in ink; a
      lone glyph in the top bar's grey until pointed at. */
   .ghost {
@@ -330,11 +317,6 @@
 
   .ghost.icon-only {
     --btn-fg: var(--titlebar-fg);
-  }
-
-  .ghost[aria-pressed='true'] {
-    --btn-fg: var(--pressed);
-    --btn-fg-hover: var(--pressed);
   }
 
   .danger {

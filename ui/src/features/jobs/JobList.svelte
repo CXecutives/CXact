@@ -32,9 +32,10 @@
   Aktuell before the first search, while one fills it, after one that found nothing that fits
   with "Profil öffnen", and with its jobs all moved away). With no job anywhere, nothing
   searched or filtered and no run (jobs.bare) the list has no head: its empty state stands in
-  the middle, like the job view's, with "Jobs suchen" as its one primary under its sentence. A search without hits says so in one
-  quiet line, with the other places' hits under it; a filter that leaves nothing says so and
-  takes itself off ("Filter zurücksetzen"), also when it leaves a search without hits.
+  the middle, like the job view's, with "Jobs suchen" as its one primary under its sentence. A
+  search without hits has the same empty state at the top (the owner, 2026-10-30), with the other
+  places' hits under it; a filter that leaves nothing too, and it takes itself off ("Filter
+  zurücksetzen"), also when it leaves a search without hits.
   Placeholder rows (a ring and a line) come once the list takes 300 ms. Without a usable
   profile a state box on top says so and leads to the Profil ("Profil anlegen", or "Profil
   ergänzen" to the first field it lacks); a thin profile one box with the engine's reason and
@@ -177,6 +178,15 @@
         : { ...t.list.empty.noActive, profile: false };
     }
     return { ...t.list.empty.inbox, profile: false };
+  });
+
+  /** A search or a filter that leaves nothing, in the words of an empty state. */
+  const noHit = $derived.by((): { heading: string; text: string } => {
+    const query = jobs.search.trim();
+    if (!searching) return { heading: t.list.noFilterHit, text: t.list.noFilterHitText };
+    return jobs.filtered
+      ? { heading: t.list.noHitFiltered(query), text: t.list.noHitFilteredText }
+      : { heading: t.list.noHit(query), text: t.list.noHitText };
   });
 
   /* -------------------------------------------------------------------- profile */
@@ -623,24 +633,23 @@
     {#if searching || filterEmptied}
       <!-- The search's × clears it; the other places' hits are the way on. -->
       <div class="none" data-testid={searching ? 'empty-search' : 'empty-filter'}>
-        <p class="none-text">
-          {#if !searching}{t.list.noFilterHit}{:else if jobs.filtered}{t.list.noHitFiltered(
-              jobs.search.trim(),
-            )}{:else}{t.list.noHit(jobs.search.trim())}{/if}
-        </p>
+        <EmptyState
+          icon={searching ? 'search' : 'filter'}
+          placement="list"
+          heading={noHit.heading}
+          text={noHit.text}
+          secondary={jobs.filtered
+            ? {
+                label: t.toolbar.filterReset,
+                icon: 'reset',
+                testid: 'filter-reset',
+                onclick: (event) =>
+                  onresetfilter ? onresetfilter(event.detail === 0) : jobs.setFilter(NO_FILTER),
+              }
+            : null}
+        />
         {#if searching && elsewhere.length > 0}
           {@render alsoIn()}
-        {/if}
-        {#if jobs.filtered}
-          <div class="also">
-            <Button
-              icon="reset"
-              label={t.toolbar.filterReset}
-              testid="filter-reset"
-              onclick={(event) =>
-                onresetfilter ? onresetfilter(event.detail === 0) : jobs.setFilter(NO_FILTER)}
-            />
-          </div>
         {/if}
       </div>
     {:else if jobs.bare}
@@ -823,23 +832,10 @@
     padding: var(--pane-padding);
   }
 
-  /* No hit: one quiet line, centred, and the ways on under it. */
-  .none {
-    padding: 0 var(--list-rows-inset);
-  }
-
-  /* A long search with no space in it breaks inside the column instead of running out of it. */
-  .none-text {
-    padding: var(--list-none-pad);
-    color: var(--text-muted);
-    font: var(--type-md);
-    overflow-wrap: anywhere;
-    text-align: center;
-  }
-
+  /* No hit: the empty state, and the other places' hits centred under it. */
   .none .also {
     justify-content: center;
-    padding: 0 var(--pane-padding);
+    padding: var(--space-12) var(--pane-padding) 0;
   }
 
   .page-error {

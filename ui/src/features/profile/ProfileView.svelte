@@ -444,6 +444,7 @@
   <Page testid="profile" {over} {head}>
     {#if editor.origin === null}
       <ProfileStart
+        broken={profile?.parseError !== null && profile?.parseError !== undefined}
         text={profile?.parseError
           ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
           : t.profile.noneText}

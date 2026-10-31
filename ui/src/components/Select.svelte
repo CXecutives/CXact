@@ -6,8 +6,8 @@
   10 px in, the chevron 16 px in the subtle grey of icons; the `inline` one is 26 px and as
   wide as its words for the rows of a list. Its edge is a field's: darker under the pointer, navy while its list is
   open, the chevron then half turned (150 ms). The list opens below it, above where only
-  there is room, at least as wide as the button; the chosen option is the track with navy
-  words, no tick.
+  there is room, at least as wide as the button; the chosen option carries the tick like
+  every chosen entry of a menu.
   Keys (lib/input/input.ts): ArrowDown and ArrowUp open the list, Enter and Space press the
   button (they open it too); in the open list the arrows, Home, End and the first letters
   move, Enter or Space chooses, Esc and Tab close it. The focus stays on the button the whole

@@ -822,10 +822,13 @@ export const de = {
         text: 'Hier landen Jobs, die du in den Papierkorb legst.',
       },
     },
-    /** A search or a filter that leaves nothing: one quiet line. */
-    noHit: (query: string) => `Kein Job passt zu „${query}“.`,
-    noHitFiltered: (query: string) => `Kein Job passt zu „${query}“ und zum Filter.`,
-    noFilterHit: 'Kein Job passt zum Filter.',
+    /** A search or a filter that leaves nothing: an empty state's title and sentence. */
+    noHit: (query: string) => `Kein Job passt zu „${query}“`,
+    noHitText: 'Andere Wörter oder ein anderer Ort finden vielleicht mehr.',
+    noHitFiltered: (query: string) => `Kein Job passt zu „${query}“ und zum Filter`,
+    noHitFilteredText: 'Ohne den Filter findest du vielleicht mehr.',
+    noFilterHit: 'Kein Job passt zum Filter',
+    noFilterHitText: 'Hier liegen Jobs, aber keiner passt dazu.',
     loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',

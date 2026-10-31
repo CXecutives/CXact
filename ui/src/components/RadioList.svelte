@@ -3,9 +3,9 @@
   wiederherstellen"): its label, a quiet note after it and a detail at its end (a size), the
   numbers tabular. Like native radio buttons the list is one Tab stop, the arrows, Home and
   End choose (lib/input/input.ts) and a click chooses; Enter goes on to the dialog around it.
-  The rows are a menu's (round 10): 32 px, their words 12 px in, 6 px round; the chosen one is
-  the track with navy words, no tick, like the chosen option of a menu or a select; every
-  other row washes quietly on hover and darkens while pressed; nothing moves or scales.
+  The rows are a menu's (round 10): 32 px, their words 12 px in, 6 px round; the chosen one
+  carries the tick, like the chosen option of a menu or a select; a row washes quietly on hover
+  and darkens while pressed; nothing moves or scales.
 -->
 <script lang="ts" module>
   export interface RadioListOption<Id extends string = string> {
@@ -19,6 +19,8 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
+  import Icon from './Icon.svelte';
+
   interface Props {
     options: readonly RadioListOption<Id>[];
     value: Id | null;
@@ -47,6 +49,9 @@
       data-id={option.id}
       onclick={() => onchange(option.id)}
     >
+      <span class="lead"
+        >{#if chosen}<Icon name="check" size="sm" />{/if}</span
+      >
       <span class="label">{option.label}</span>
       {#if option.note}<span class="note">{option.note}</span>{/if}
       {#if option.detail}<span class="detail">{option.detail}</span>{/if}
@@ -79,20 +84,24 @@
     transition: background-color var(--dur-base) var(--ease-out);
   }
 
-  .row:not([aria-checked='true']):hover {
+  .row:hover {
     background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }
 
-  :global(:where(:root:not([data-aux-press]))) .row:not([aria-checked='true']):active:hover {
+  :global(:where(:root:not([data-aux-press]))) .row:active:hover {
     background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
   }
 
-  .row[aria-checked='true'] {
-    background-color: var(--chosen-surface);
+  /* The tick's column, like a menu's. */
+  .lead {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--menu-icon);
     color: var(--chosen-text);
-    font-weight: var(--weight-medium);
   }
 
   .label {

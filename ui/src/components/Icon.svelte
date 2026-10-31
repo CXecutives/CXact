@@ -175,16 +175,13 @@
   interface Props {
     name: IconName;
     size?: IconSize;
-    /** Filled glyph (the pinned star). */
-    filled?: boolean;
   }
 
-  let { name, size = 'md', filled = false }: Props = $props();
+  let { name, size = 'md' }: Props = $props();
 </script>
 
 <span
   class="icon {size}"
-  class:filled
   class:sparse={SPARSE_GLYPHS.has(ICONS[name])}
   class:seam={SEAM_GLYPHS.has(ICONS[name])}
   aria-hidden="true"
@@ -220,10 +217,6 @@
       (var(--icon-stroke) + var(--icon-stroke-more, 0)) / var(--icon-sparse-scale)
     );
     transform: scale(var(--icon-sparse-scale));
-  }
-
-  .filled :global(svg) {
-    fill: currentcolor;
   }
 
   .xxs {

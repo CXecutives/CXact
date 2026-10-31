@@ -200,7 +200,6 @@
   --meter-fill: hsl(var(--p-navy));
   --meter-track: hsl(var(--p-track));
   /* The pinned star and pressed ghost toggles. */
-  --pressed: hsl(var(--p-navy-deep));
   /* Caret and text selection: navy, like the native blue of both OS (the edge of a field
      in focus is --border-focus). */
   --caret: hsl(var(--p-navy));
@@ -220,8 +219,7 @@
      of its cell. */
   --missing-edge: var(--danger-strong);
   --field-label-missing: var(--danger-strong);
-  /* A chosen option in a select's list: the track with navy words, no tick (a menu ticks it). */
-  --chosen-surface: hsl(var(--p-track));
+  /* The tick of what is chosen, in a menu and a select's list alike. */
   --chosen-text: hsl(var(--p-navy));
   /* Soft grounds of a state: the ban (excluded) and success. */
   --danger-tint: hsl(var(--p-red-50));
@@ -700,7 +698,7 @@
   --field-inset: 10px;
   --field-glyph-gap: 7px;
   /* A chip in a field: 13 px words in 540, 3 px after its x. */
-  --type-chip: var(--weight-medium) var(--font-sm) / var(--leading-sm) var(--font-sans);
+  --type-chip: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --chip-pad-end: 3px;
   /* The least a glyph is hit by the pointer (the chip's x, the info symbol): 24 px, larger
      than the glyph, unseen. */
@@ -861,7 +859,6 @@
   --divider-gap: var(--space-6);
   --type-day: var(--weight-medium) var(--font-xs) / var(--leading-xs) var(--font-sans);
   /* A search without hits: one quiet line. */
-  --list-none-pad: var(--space-24) var(--space-10);
   /* The strip of a run under the head: 10 under the search, 16 at its sides. */
   --list-strip-gap: var(--space-10);
 

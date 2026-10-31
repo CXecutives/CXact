@@ -14,12 +14,14 @@
 
   interface Props {
     text: string;
+    /** The sentence says what is wrong with a stored file: it copies. */
+    broken?: boolean;
     note: string | null;
     onfilled: (info: ProfileInfo) => void;
     onempty: () => void;
   }
 
-  let { text, note, onfilled, onempty }: Props = $props();
+  let { text, broken = false, note, onfilled, onempty }: Props = $props();
 
   async function cv(): Promise<void> {
     const info = await fromCv.run();
@@ -28,7 +30,7 @@
 </script>
 
 <div class="start" data-testid="profile-empty">
-  <p class="text">{text}</p>
+  <p class="text" data-copy={broken ? '' : undefined}>{text}</p>
   <NewProfileWays oncv={() => void cv()} onself={onempty} testid="new-profile-ways" />
   <CvProblem onpick={() => void cv()} />
   {#if note}

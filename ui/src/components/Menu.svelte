@@ -7,9 +7,8 @@
   it scrolls only the menu). The one look of every menu, a select's list and a field's
   suggestions (round 10): rows 32 px with their words 12 px in, 6 px round in a 10 px round
   box with 4 px around them, the pop shadow; it drops in by 4 px (menuIn). A menu has one
-  sign for what is chosen, the tick, for a choice and a switch alike (the sort and the
-  filter; the uniformity audit, 2026-10-29); only a select's list marks its option as a
-  track row with navy words, no tick. An icon column stands before the words only where an
+  sign for what is chosen, the tick, for a choice, a switch and a select's option alike (the
+  owner, 2026-10-30). An icon column stands before the words only where an
   entry has an icon or can carry a tick. No entry names a key. A group may carry a small
   muted heading (12/540 like the list's day and section headings), which the keys pass over.
   A select's list (`listbox`) is a listbox at least as wide as its button and at most 232 px
@@ -84,14 +83,12 @@
     node.querySelector('[data-active]')?.scrollIntoView({ block: 'nearest' });
   };
 
-  /** The icon column stands only where an entry has an icon or can carry a tick (a choice
-   *  or a switch of a menu; a select's list has no tick). */
-  const leads = (spec: MenuSpec, listbox: boolean): boolean =>
+  /** The icon column stands only where an entry has an icon or can carry a tick. */
+  const leads = (spec: MenuSpec): boolean =>
     spec.entries.some(
       (entry) =>
         isItem(entry) &&
-        (Boolean(entry.icon) ||
-          (!listbox && entry.checked !== undefined && entry.checked !== null)),
+        (Boolean(entry.icon) || (entry.checked !== undefined && entry.checked !== null)),
     );
 </script>
 
@@ -99,7 +96,7 @@
   {@const open = menuState.open}
   {#key open.id}
     {@const listbox = open.listbox === true}
-    {@const lead = leads(open, listbox)}
+    {@const lead = leads(open)}
     <div class="layer" data-menu-layer use:place={open}>
       <div
         class="frame"
@@ -134,7 +131,6 @@
                 type="button"
                 class="item"
                 class:active={menuState.active === index}
-                class:chosen={listbox && entry.checked === true}
                 class:danger={entry.danger === true}
                 id={menuItemId(open.id, index)}
                 {role}
@@ -151,7 +147,7 @@
               >
                 {#if lead}
                   <span class="lead">
-                    {#if !listbox && entry.checked === true}
+                    {#if entry.checked === true}
                       <span class="tick"><Icon name="check" size="sm" /></span>
                     {:else if entry.icon}
                       <Icon name={entry.icon} size="sm" />
@@ -239,14 +235,6 @@
 
   :global(:where(:root:not([data-aux-press]))) .item:not([aria-disabled='true']):active:hover {
     background-color: var(--quiet-press);
-  }
-
-  /* The chosen option of a select's list: the track with navy words, under the pointer too. */
-  .item.chosen,
-  .item.chosen.active:not([aria-disabled='true']) {
-    background-color: var(--chosen-surface);
-    color: var(--chosen-text);
-    font-weight: var(--weight-medium);
   }
 
   /* Deleting (Löschen, Endgültig löschen): red at rest like its button, on a red wash when

@@ -32,7 +32,6 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { chipKeys, FIELD_ATTRIBUTES, removeBy, withList } from '$lib/input/input';
   import { chipIn } from '$lib/motion/transitions';
@@ -40,7 +39,7 @@
   import { typedText } from '$lib/state/typed.svelte';
   import { ChipFold } from '$lib/state/chipFold.svelte';
   import Button from './Button.svelte';
-  import Icon from './Icon.svelte';
+  import Chip from './Chip.svelte';
   import Notice from './Notice.svelte';
   import Suggestions, {
     folded,
@@ -337,20 +336,8 @@
     onpointerdown={focusInput}
   >
     {#each visible as value, index (value)}
-      <span class="chip" data-chip={index} data-value={value} in:riseIn={value}>
-        <span class="text" data-copy>{labelOf(value)}</span>
-        <button
-          type="button"
-          class="remove"
-          tabindex="-1"
-          data-keep-focus
-          data-remove
-          aria-label={t.chips.remove(labelOf(value))}
-          use:tooltip={t.common.remove}
-          onclick={() => remove(index)}
-        >
-          <Icon name="close" size="xxs" />
-        </button>
+      <span class="entry" data-chip={index} data-value={value} in:riseIn={value}>
+        <Chip label={labelOf(value)} copy inField onremove={() => remove(index)} />
       </span>
     {/each}
     {#if visible.length < values.length}
@@ -462,52 +449,9 @@
     transition-duration: var(--dur-fast);
   }
 
-  .chip {
+  .entry {
     display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
     max-width: 100%;
-    min-height: var(--chip-height);
-    padding: 0 var(--chip-pad-end) 0 var(--space-8);
-    border-radius: var(--radius-inner);
-    background-color: var(--chip-surface);
-    color: var(--chip-text);
-    font: var(--type-chip);
-    cursor: default;
-  }
-
-  /* A long value wraps at its spaces; a word breaks only when it cannot fit alone. */
-  .text {
-    min-width: 0;
-    overflow-wrap: break-word;
-  }
-
-  /* The x: a 12 px glyph on a 16 px wash, hit 24 px wide (the room around it is its own). */
-  .remove {
-    position: relative;
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: var(--chip-x);
-    height: var(--chip-x);
-    border-radius: var(--radius-xs);
-    color: var(--icon-subtle);
-    transition:
-      background-color var(--dur-fast) var(--ease-standard),
-      color var(--dur-fast) var(--ease-standard);
-  }
-
-  .remove::before {
-    position: absolute;
-    inset: calc((var(--chip-x) - var(--hit-min)) / 2);
-    content: '';
-  }
-
-  .remove:hover {
-    background-color: var(--chip-remove-hover);
-    color: var(--chip-text);
-    transition-duration: var(--dur-hover);
   }
 
   /* The input after the chips takes the rest of the line, and at least its placeholder's

@@ -13,7 +13,7 @@
   export interface EmptyAction {
     label: string;
     icon?: IconName;
-    onclick: () => void;
+    onclick: (event: MouseEvent) => void;
     /** Why it cannot be done now (its tooltip; null or absent: it can). */
     reason?: string | null;
     testid?: string | null;
@@ -107,6 +107,7 @@
     color: var(--text-heading);
     font: var(--type-heading);
     letter-spacing: var(--tracking-tight);
+    overflow-wrap: anywhere;
   }
 
   /* A centred sentence breaks into lines of a like length. */

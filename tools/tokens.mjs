@@ -68,7 +68,7 @@ const CONTRAST = [
   // label of a missing field. The band words beside a ring are not here: they take exactly
   // the ring's colour (owner, 2026-10-28), like the ring itself.
   { text: ['text', 'text-muted', 'text-subtle', 'link'], on: ['page'] },
-  { text: ['chosen-text'], on: ['chosen-surface'] },
+  { text: ['chosen-text'], on: ['surface-raised'] },
   { text: ['field-label-missing'], on: ['surface', 'page'] },
   { text: ['text'], on: ['selection-tint', 'danger-tint'] },
   // A placeholder and the empty value of a field ("Keins") in the grey of the glyphs.
