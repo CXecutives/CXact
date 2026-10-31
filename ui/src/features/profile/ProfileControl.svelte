@@ -4,7 +4,9 @@
   control's column, every short control has one width (a number, a select), Vertragsart is a
   choice of several, Arbeitsmodell, Auslastung and Mindestlaufzeit are selects, Länder and
   Verfügbar their own fields. A wished rate under the minimum says so quietly under it; an
-  error is said by its Field.
+  error is said by its Field. A number whose row folds away with its contract type leaves what
+  is wrong in it behind: what is stored stands for it, so out of sight it is neither sent nor
+  said and holds nothing (owner, 2026-10-31).
 -->
 <script lang="ts">
   import CheckGroup from '$components/CheckGroup.svelte';
@@ -18,7 +20,7 @@
   import AvailableField from './AvailableField.svelte';
   import CountriesField from './CountriesField.svelte';
   import NumberField from './NumberField.svelte';
-  import type { ChoiceKey, Control } from './sections';
+  import { NUMBERS, type ChoiceKey, type Control } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
@@ -58,7 +60,11 @@
   );
   const contracts = $derived(CONTRACT_KEYS.filter((key) => form[key]));
   function toggleContract(key: ContractKey): void {
+    const wrong = NUMBERS.filter((number) => errorOf(number.key) !== null);
     form[key] = !form[key];
+    for (const number of wrong) {
+      if (number.shown?.(form) === false) form[number.key] = editor.before[number.key];
+    }
   }
 
   function choose(key: ChoiceKey, value: string): void {

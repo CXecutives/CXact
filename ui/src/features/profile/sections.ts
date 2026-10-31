@@ -197,6 +197,11 @@ export const LABEL_OF: Readonly<Partial<Record<keyof ProfileForm, Word>>> = {
   temporary: 'contracts',
 };
 
+/** The number fields of the form. */
+export const NUMBERS = SECTIONS.flatMap((section) =>
+  'rows' in section ? section.rows : [],
+).filter((control) => control.kind === 'number');
+
 /** The value of a field holds nothing (a required field still to fill). */
 export function blank(form: ProfileForm, field: string): boolean {
   const value = (form as Record<string, unknown>)[field];

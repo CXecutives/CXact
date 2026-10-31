@@ -6,7 +6,8 @@
   rows). Nothing opens and nothing is confirmed: ProfileView saves a change by itself (`onleft`
   says focus left a field, Enter in a field is `onsave`), the setup with its Weiter. No field
   takes the caret by itself (owner, 2026-10-30). Mindestgehalt unfolds while Festanstellung or
-  Zeitarbeit is chosen.
+  Zeitarbeit is chosen, the day rates while Projekt und Interim is; a value out of sight holds no
+  save (ProfileControl: what is wrong stays behind with its row, a right day rate stays stored).
   A required field that is still empty carries `data-missing` on its row, a required list
   on its group (`missing`, from ProfileView: only in the setup, once Weiter asked): the field's
   edge and label turn red, a list's group title (tokens.css). A value that
@@ -60,19 +61,12 @@
   // Text typed into a tag field of the form counts as a change.
   editor.typed.share();
 
-  const NUMBERS = SECTIONS.flatMap((section) => ('rows' in section ? section.rows : [])).filter(
-    (control) => control.kind === 'number',
-  );
   const words = $derived(t.profile.field);
   const id = $props.id();
   const form = $derived(editor.after);
   vocabulary.load();
 
   // ------------------------------------------------------------ values that hold the save
-
-  /** The number field of a value shows on the page now. */
-  const showing = (key: NumberKey): boolean =>
-    NUMBERS.find((control) => control.key === key)?.shown?.(form) ?? true;
 
   /** Day rates where 0 is nothing a job could meet: a typed 0 is said and holds the save. */
   const AT_LEAST_ONE: readonly NumberKey[] = ['dayRateWish', 'dayRateMin'];
@@ -82,8 +76,6 @@
   const invalid = $derived.by((): { field: string; row: number | null; text: string }[] => {
     const found: { field: string; row: number | null; text: string }[] = [];
     for (const [key, max] of Object.entries(NUMBER_LIMITS) as [NumberKey, number][]) {
-      // A value out of sight (the day rates without Projekt und Interim) holds nothing.
-      if (!showing(key)) continue;
       const value = form[key];
       if (value !== null && value > max) {
         found.push({ field: key, row: null, text: words.atMost(max) });

@@ -509,10 +509,43 @@ test('a day rate too large out of sight holds no save either', async ({ page }) 
   await expect(page.getByTestId('profile-save-error')).toHaveCount(0);
   await contract(page, 'temporary').click();
   await expect.poll(async () => (await stored(page))?.temporary).toBe(true);
+  // It never went: what is stored comes back with the row, nothing to say.
+  const sent = await calls(page, 'save_profile');
+  expect(sent.map(([, args]) => (args as { save: ProfileSave }).save.after.dayRateWish)).toEqual(
+    sent.map(() => 1200),
+  );
+  await contract(page, 'project').click();
+  await expect(wish).toHaveValue('1.200');
+  await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.atMost(100000));
+  await contract(page, 'project').click();
+  await expect(wish).toHaveCount(0);
   // And nothing out of sight asks on the way out.
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+});
+
+test('a salary too large out of sight holds no save either, and is not kept like core', async ({
+  page,
+}) => {
+  await profile(page);
+  const salary = page.getByTestId('profile-min-salary');
+  await salary.fill('20000000');
+  await leaveField(page);
+  await expect(field(page, 'minSalary')).toContainText(T.profile.field.atMost(10000000));
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(0);
+  // Without Festanstellung and Zeitarbeit it is out of sight: the form saves, without a salary.
+  await contract(page, 'permanent').click();
+  await expect(salary).toHaveCount(0);
+  await expect.poll(async () => (await stored(page))?.permanent).toBe(false);
+  expect((await stored(page))?.minSalary).toBeNull();
+  await expect(page.getByTestId('profile-save-error')).toHaveCount(0);
+  await allSaved(page);
+  // Back with its contract type: empty, nothing to say.
+  await contract(page, 'permanent').click();
+  await expect(salary).toHaveValue('');
+  await expect(field(page, 'minSalary')).not.toContainText(T.profile.field.atMost(10000000));
 });
 
 test('the rates; a wish under the minimum says so quietly under the wish', async ({ page }) => {
