@@ -2169,6 +2169,62 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('place-archive')).toBeFocused();
   });
 
+  test('a move from the keyboard, the sidebar folded away: its button takes the focus for the place', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await open(page, WIN);
+    await page.getByTestId('toggle-sidebar').click();
+    await page.getByTestId('sidebar-floating').getByTestId('place-archive').click();
+    await expect(page.getByTestId('sidebar-floating')).toHaveCount(0);
+    await settle(page);
+    const keys = await listed(page);
+    for (const key of keys) {
+      await row(page, key).focus();
+      await page.keyboard.press('Shift+F10');
+      await expect(page.getByTestId('menu')).toBeVisible();
+      await page.keyboard.type(T.actions.unarchive.slice(0, 4));
+      await page.keyboard.press('Enter');
+      await expect(row(page, key)).toHaveCount(0);
+      await settleMoves(page);
+    }
+    await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
+  });
+
+  test('a click on a move hands no focus on, by a tool or by the menu', async ({ page }) => {
+    await open(page, WIN);
+    const [first, second, third, fourth] = await listed(page);
+    // The row holds the focus a press gave it (Chromium), and it opened the job.
+    await row(page, first!).click();
+    await expect(page.getByTestId('reader-title')).toBeVisible();
+    await settleMoves(page);
+    // Its menu: the next job opens, its row takes no focus.
+    await viaMenu(page, 'archive', first!);
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(row(page, second!)).toHaveAttribute('aria-current', 'true');
+    await expect(row(page, second!)).not.toBeFocused();
+    await settleMoves(page);
+    // The tool of a row that is not the open one.
+    await row(page, third!).hover();
+    await row(page, third!).locator('xpath=..').getByTestId('tool-archive').click();
+    await expect(row(page, third!)).toHaveCount(0);
+    await expect(row(page, fourth!)).not.toBeFocused();
+    await settleMoves(page);
+    // A row that holds the focus keeps it while another one moves, by the keyboard too.
+    await row(page, fourth!).focus();
+    await viaMenu(page, 'archive', second!);
+    await expect(row(page, second!)).toHaveCount(0);
+    await expect(row(page, fourth!)).toBeFocused();
+    await settleMoves(page);
+    const [fifth, sixth] = (await listed(page)).filter((key) => key !== fourth);
+    await rowMenu(page, fifth!);
+    await page.keyboard.type(T.actions.archive.slice(0, 4));
+    await page.keyboard.press('Enter');
+    await expect(row(page, fifth!)).toHaveCount(0);
+    await expect(row(page, fourth!)).toBeFocused();
+    await expect(row(page, sixth!)).not.toBeFocused();
+  });
+
   test('the last job of a place goes: no head; its undo brings the list and the head back', async ({
     page,
   }) => {

@@ -4,24 +4,25 @@
 //   inbox: archive, into the Papierkorb; archive: back to Aktuell, into the Papierkorb;
 //   trash: restore, delete for good (asks first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
-// next job when the open one left (its row in view, with the focus when the focus was on the
-// row that left), and says so in a short toast ("Archiviert") with Rückgängig; moves of the
-// same kind right after each other merge into it, its one undo takes them all back. The undo
-// brings every job back to where it was, its row too, and opens the job again that was open
-// when it left; in another list than the one the move left (the Archiv, once another place
-// was chosen) its rows leave and, when the open job is one of them, the next one opens. A
-// click within GUARD_MS after the list or the pane changed is ignored, so a double click
-// never moves the job that slid under the pointer, nor opens the one that did. The job the app
-// opens by itself counts as read only once it has been looked at (DWELL_MS on screen in the
-// Jobs view, or a click in the reader). A job that is already where it goes is no move. A move
-// that fails says so where it was asked (the list header, `jobs.actionError`), an undo that
-// fails in its toast too, which offers to try again.
+// next job when the open one left (its row in view), hands the keyboard's focus on when it
+// stood on a row that left (`focusAfter`; a click moves none), and says so in a short toast
+// ("Archiviert") with Rückgängig; moves of the same kind right after each other merge into it,
+// its one undo takes them all back. The undo brings every job back to where it was, its row
+// too, and opens the job again that was open when it left; in another list than the one the
+// move left (the Archiv, once another place was chosen) its rows leave and, when the open job
+// is one of them, the next one opens. A click within GUARD_MS after the list or the pane
+// changed is ignored, so a double click never moves the job that slid under the pointer, nor
+// opens the one that did. The job the app opens by itself counts as read only once it has been
+// looked at (DWELL_MS on screen in the Jobs view, or a click in the reader). A job that is
+// already where it goes is no move. A move that fails says so where it was asked (the list
+// header, `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
+import { byKeyboard } from '$lib/input/input';
 import { invoke } from '$lib/ipc/api';
 import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
@@ -281,14 +282,15 @@ function onScreen(): boolean {
   );
 }
 
-/** The focus was on a row of the list, or on one of its tools. */
-function inRow(): boolean {
-  return document.activeElement?.closest('[data-key]') != null;
+/** The keyboard's focus stands on one of `rows`, which goes with them. */
+function focusOn(rows: readonly JobView[]): boolean {
+  const key = document.activeElement?.closest<HTMLElement>('[data-key]')?.dataset['key'];
+  return byKeyboard() && rows.some((job) => keyOf(job.key) === key);
 }
 
 /**
  * When the open job left the list, the next one opens, not yet read (see `seen`): its row
- * comes into view, and takes the focus when the focus was on the row (or its tool) that left.
+ * comes into view, and takes the focus when `focus` says so (`focusOn`, a dialog that held it).
  * `open` is the job that was open before the action (deleting it for good already closed it).
  */
 function openNext(
@@ -341,7 +343,7 @@ async function undo(
     return row !== undefined && !jobs.lists({ ...row, place: job.place }) ? [row] : [];
   });
   const next = leaving.length > 0 ? nextAfter(leaving) : null;
-  const focus = inRow();
+  const focus = focusOn(leaving);
   const result = await jobs.moveBack(back, generation);
   jobs.actionError = 'error' in result ? result.error : null;
   void jobs.loadOverview();
@@ -381,7 +383,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   // hold the page for frames.
   const leaving = list.filter((job) => !jobs.lists({ ...job, place: to }));
   const next = leaving.length > 0 ? nextAfter(leaving) : null;
-  const focus = inRow();
+  const focus = focusOn(leaving);
   const folding = leaving.length <= staggerLimit() ? leaving : [];
   for (const job of folding) moving.add(keyOf(job.key));
   // What the undo brings back: each job as the list held it, and where its row stood.
@@ -416,6 +418,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   if ('error' in result) return result.error;
   if (leaving.length > 0) arm();
   openNext(leaving, next, focus, open);
+  if (focus) focusAfter(next);
   // Moved into the listed place without being listed (opened from elsewhere): list it.
   if (
     list.some(
@@ -443,13 +446,12 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
 /**
  * Deletes jobs of the trash for good (after the dialog). Resolves with the error text.
  * `fromRow`: a row's menu or tool asked (its dialog held the focus, the row it would go back
- * to is gone): the focus goes to the row that takes its place, or to the place's tab when
- * none is left, never to the top of the window.
+ * to is gone): the focus goes on as after a move from the keyboard (`focusAfter`).
  */
 export async function purge(list: readonly JobView[], fromRow = false): Promise<string | null> {
   if (list.length === 0) return null;
   const next = nextAfter(list);
-  const focus = fromRow || inRow();
+  const focus = fromRow || focusOn(list);
   const folding = list.length <= staggerLimit() ? list : [];
   for (const job of folding) moving.add(keyOf(job.key));
   const open = jobs.selected;
@@ -466,11 +468,15 @@ export async function purge(list: readonly JobView[], fromRow = false): Promise<
 }
 
 /** The keyboard focus after rows left the list: the row that takes their place (the list
- *  brings it into view), else the tab of the place, whose list is empty now. */
+ *  brings it into view), else the place, whose list is empty now. */
 function focusAfter(next: JobView | null): void {
-  if (next !== null) {
-    jobs.reveal = { key: keyOf(next.key), focus: true };
-    return;
-  }
-  document.querySelector<HTMLElement>(`[data-testid="place-${jobs.place}"]`)?.focus();
+  if (next !== null) jobs.reveal = { key: keyOf(next.key), focus: true };
+  else focusPlace();
+}
+
+/** The keyboard focus where what held it went and nothing takes its place: the place's entry in
+ *  the sidebar, or the sidebar's button while it is folded away; never the top of the window. */
+export function focusPlace(): void {
+  const entry = document.querySelector<HTMLElement>(`[data-testid="place-${jobs.place}"]`);
+  (entry ?? document.querySelector<HTMLElement>('[data-testid="toggle-sidebar"]'))?.focus();
 }
