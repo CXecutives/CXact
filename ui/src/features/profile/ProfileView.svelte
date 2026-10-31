@@ -133,9 +133,11 @@
     if (next !== null) go(next);
   }
 
-  /** Staying: what holds the save is said at its field, which comes into view. */
+  /** Staying: what waited for the way goes with it; what holds the save is said at its field,
+   *  which comes into view. */
   function stay(): void {
     leaving = null;
+    navigation.stay();
     panel?.ready();
   }
 

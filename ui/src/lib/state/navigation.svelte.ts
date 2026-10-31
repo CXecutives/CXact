@@ -2,8 +2,9 @@
 // The native menu may ask for a view too (macOS: Cmd+, opens the settings). While the setup
 // stands (App.svelte locks it) every switch is refused: the menu, a toast's action, a link. A
 // view with unsaved work (the Profil editor) holds a guard: it may keep the switch and ask
-// first, then switch itself; what was to happen with the switch waits for it. The places of the jobs (Aktuell,
-// Archiv, Papierkorb) are tabs of the Jobs view, not views (lib/state/jobs.svelte.ts).
+// first, then switch itself or stay; what was to happen with the switch waits for it and goes
+// when it stays. The places of the jobs (Aktuell, Archiv, Papierkorb) belong to the Jobs view,
+// they are no views (lib/state/jobs.svelte.ts).
 
 import { onNavigate } from '../ipc/api';
 import { VIEWS, type ViewId } from '../views';
@@ -37,7 +38,8 @@ class Navigation {
   #guard: LeaveGuard | null = null;
   /** True while no view may be chosen (the setup). */
   #locked: () => boolean = () => false;
-  /** What waits for a switch the guard kept (it runs once that switch happens). */
+  /** What waits for a switch the guard kept (it runs once that switch happens, and goes when
+   *  the view stays). */
   #pending: { view: ViewId; then: () => void } | null = null;
 
   /**
@@ -56,6 +58,12 @@ class Navigation {
     this.current = view;
     (then ?? (pending?.view === view ? pending.then : undefined))?.();
     return true;
+  }
+
+  /** The guard's view stays: what waited for the switch it kept goes, so a later switch to that
+   *  view is one of its own. */
+  stay(): void {
+    this.#pending = null;
   }
 
   /** The current view's guard; returns the function that removes it again. */

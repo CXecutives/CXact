@@ -245,6 +245,32 @@ test('a save that fails on the way out asks, none goes behind the question, stay
   expect((await saves(page)).at(-1)?.after.dayRateMin).toBe(1300);
 });
 
+test('a way that waited for the question goes with its Abbrechen: the page opens at its kept place', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await open(page, `${WIN}&mail=offline&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('nav-profile').click();
+  const rate = page.getByTestId('profile-min-rate');
+  await rate.fill('0');
+  // "Postfach prüfen" of that fetch waits for the question, which is cancelled.
+  await page.getByTestId('toast-action').filter({ hasText: T.run.checkMailbox }).click();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toHaveCount(0);
+  // Mended and saved, Einstellungen chosen later opens at its top, not at the Postfach.
+  await rate.fill('1.300');
+  await leaveField(page);
+  await expect.poll(async () => (await saves(page)).length).toBe(1);
+  await page.getByTestId('nav-settings').click();
+  const view = page.getByTestId('view-settings');
+  await expect(view).toBeVisible();
+  await page.waitForTimeout(T_SAVE);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(0);
+});
+
 test("a select's open list: the wheel over it moves nothing behind it, beside it closes it", async ({
   page,
 }) => {
