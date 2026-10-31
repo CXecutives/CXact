@@ -1305,17 +1305,30 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
 
 test('a press on the unit inside a number field lands in the field', async ({ page }) => {
   await open(page, `${WIN}&view=profile`);
-  const field = await reveal(page, page.getByTestId('profile-wish-rate'));
   // Inside the field's edge, at its right end: a press there is a press on the field, like one
-  // on the magnifier of the search.
-  const unit = field.locator('xpath=..').getByText(T.profile.unit.day);
-  const box = (await unit.boundingBox())!;
-  await field.click();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(field, 'it keeps the caret it has').toBeFocused();
-  await field.evaluate((node) => node.blur());
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(field, 'it takes the caret').toBeFocused();
+  // on the magnifier of the search. A field of the form, a competence's in its row.
+  for (const [id, words] of [
+    ['profile-wish-rate', T.profile.unit.day],
+    ['competence-years', T.profile.unit.years],
+  ] as const) {
+    const field = await reveal(page, page.getByTestId(id).first());
+    const unit = field.locator('xpath=..').getByText(words);
+    const box = (await unit.boundingBox())!;
+    await field.click();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(field, 'it keeps the caret it has').toBeFocused();
+    await field.evaluate((node) => node.blur());
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(field, 'it takes the caret').toBeFocused();
+    // At the end of the text, as a press beyond a native field's text puts it.
+    await page.keyboard.type('1');
+    expect((await field.inputValue()).replace(/\D/g, '').endsWith('1')).toBe(true);
+    // The right button there opens the field's menu too.
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+    await expect(page.getByTestId('menu-item-select-all')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Backspace');
+  }
 });
 
 test('a press on the top bar (a drag region) ends the focus of a field', async ({ page }) => {

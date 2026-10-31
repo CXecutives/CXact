@@ -19,12 +19,14 @@
   the form.
   `trailing` puts a small control inside the field at its right end, like the picker button
   of a native date field (a button `inField`). `suffix` is a quiet unit at the field's right
-  end (`€ am Tag`, `Jahre`), read with the value. `inline` is the 26 px field of a list's row
-  (a competence's years): 6 round, its digits at the right.
+  end (`€ am Tag`, `Jahre`), read with the value; like the magnifier it lies over the input, so
+  a press on it is a press on the field. `inline` is the 26 px field of a list's row (a
+  competence's years): 6 round, its digits at the right.
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
   import type { Action } from 'svelte/action';
+  import { cssVars, px } from '$lib/actions/cssVars';
   import {
     chipKeys,
     FIELD_ATTRIBUTES,
@@ -172,6 +174,8 @@
   const keys = $derived(kind === 'search' && value !== '' ? { cancel: clear } : {});
 
   let box = $state<HTMLElement | null>(null);
+  /** How wide the unit stands over the input, which keeps that room for its text. */
+  let unitWidth = $state(0);
 
   /** The answer to a wrong value where it was typed: the red edge and the sentence say it,
    *  nothing moves (a shake read as a toy); the field is brought into view. */
@@ -187,7 +191,9 @@
   class:disabled
   class:trailed={trailing !== null}
   class:inline
+  class:suffixed={suffix !== null}
   use:formKeys={keys}
+  use:cssVars={suffix !== null ? { 'unit-width': px(unitWidth) } : {}}
 >
   {#if kind === 'search'}
     <span class="lead"><Icon name="search" size="sm" /></span>
@@ -253,7 +259,7 @@
   {:else if trailing}
     <span class="trail">{@render trailing()}</span>
   {:else if suffix !== null}
-    <span class="suffix" id="{own}-suffix">{suffix}</span>
+    <span class="suffix" id="{own}-suffix" bind:offsetWidth={unitWidth}>{suffix}</span>
   {/if}
 </div>
 
@@ -355,9 +361,23 @@
     padding-right: var(--space-2);
   }
 
-  /* The unit reads with the value, quieter, the field's right padding after it. */
+  /* The unit lies over the input too, whose text ends where the unit begins. */
+  .suffixed .input {
+    padding-right: calc(var(--field-inset) + var(--unit-width));
+  }
+
+  .suffixed.inline .input {
+    padding-right: calc(var(--space-6) + var(--unit-width));
+  }
+
+  /* It reads with the value, quieter, the field's right padding after it. */
   .suffix {
-    flex: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: inline-flex;
+    align-items: center;
     padding-right: var(--field-inset);
     color: var(--icon-subtle);
     font: var(--type-md);
