@@ -92,6 +92,7 @@
       stopDrag();
       fromCv.clear();
       void invoke('set_unsaved', { on: false }).catch(() => undefined);
+      editor.endDay();
       // An untouched new form starts over next time.
       if (!editor.dirty && editor.origin !== 'stored') editor.close();
     };

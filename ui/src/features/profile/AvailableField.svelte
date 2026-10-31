@@ -2,9 +2,9 @@
   Verfügbar: one choice of a select ("Sofort", "Ab Datum"). The day of "Ab Datum" exists
   only while it is chosen: it slides in beside the choice (one short control's width,
   TT.MM.JJJJ, no calendar: typing is the way to write it), and the choice keeps its width and
-  place. It is judged when its field is left with text in it or on saving
-  (`editor.judged`), never while it is typed, and a day that does not read is said by its
-  Field and holds the save.
+  place. It is judged when its field is left or on saving (`editor.judged`), never while it is
+  typed, and a day that does not read is said by its Field and holds the save. A day still empty
+  is not done yet: it holds nothing and nothing is said, what is stored stands for it.
 -->
 <script lang="ts">
   import Select from '$components/Select.svelte';
@@ -59,8 +59,7 @@
       class="date"
       role="presentation"
       in:slideIn
-      onfocusout={(event) =>
-        afterPress(event.target, () => (editor.judged = editor.dateText.trim() !== ''))}
+      onfocusout={(event) => afterPress(event.target, () => (editor.judged = true))}
     >
       <TextField
         value={editor.dateText}

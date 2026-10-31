@@ -317,6 +317,23 @@ test('Weiter from the keyboard: the focus goes along to what is missing, a lette
   await expect(add).toBeFocused();
 });
 
+test('Ab Datum with its day still empty holds Weiter up as little as the Profil', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  await fillRequired(page);
+  await page.getByTestId('profile-available').click();
+  await page
+    .getByRole('listbox')
+    .getByRole('option', { name: T.profile.availability.from, exact: true })
+    .click();
+  await expect(page.getByTestId('profile-date')).toHaveValue('');
+  await next(page).click();
+  await expectStep(page, T.firstRun.mailbox);
+  const form = await page.evaluate(() => window.__harness.form());
+  expect(form?.available).toEqual({ kind: 'now' });
+});
+
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
   page,
 }) => {

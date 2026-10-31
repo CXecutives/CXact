@@ -152,10 +152,9 @@
 
   let root = $state<HTMLElement | null>(null);
 
-  /** Nothing holds the save, as far as can be said by itself: a day that does not read is
-   *  judged only once there is text in it ("Ab Datum" just chosen says nothing yet). */
+  /** Nothing holds the save; a day that does not read says so now. */
   export function valid(): boolean {
-    if (editor.dateInvalid && editor.dateText.trim() !== '') editor.judged = true;
+    if (editor.dateInvalid) editor.judged = true;
     return heldField() === null;
   }
 

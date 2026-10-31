@@ -2327,6 +2327,72 @@ test('the day exists only for "Ab Datum", takes no caret and is judged when left
   await savedWith(page, { available: { kind: 'from', date: '20.11.2026' } });
 });
 
+test('Sofort and back to "Ab Datum" brings the stored day', async ({ page }) => {
+  await profile(page);
+  const date = page.getByTestId('profile-date');
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await savedWith(page, { available: { kind: 'now' } });
+  await allSaved(page);
+  await expect(date).toHaveCount(0);
+  await choose(page, 'profile-available', T.profile.availability.from);
+  await expect(date).toHaveValue('01.09.2026');
+  await savedWith(page, { available: { kind: 'from', date: '01.09.2026' } });
+  await allSaved(page);
+  await expect(date).toHaveValue('01.09.2026');
+});
+
+test('a day still empty holds nothing: the form saves with the stored availability, nothing is said', async ({
+  page,
+}) => {
+  await profile(page);
+  const date = page.getByTestId('profile-date');
+  const day = field(page, 'available');
+  const stored = { kind: 'from', date: '01.09.2026' };
+  await date.fill('');
+  await leaveField(page);
+  await page.waitForTimeout(2 * T_SAVE);
+  // Not done yet: no change, no sign of anything.
+  expect(await saves(page)).toBe(0);
+  await expect(day.getByRole('alert')).toHaveCount(0);
+  await expect(date).not.toHaveAttribute('aria-invalid', 'true');
+  expect(await page.evaluate(() => window.__harness.unsaved)).toBe(false);
+  await expect(page.getByTestId('profile-from-cv')).not.toHaveAttribute('aria-disabled', 'true');
+  // The rest of the form goes as ever, with what is stored; the row stays as it stands.
+  await contract(page, 'temporary').click();
+  const sent = await lastSave(page);
+  expect(sent.after.temporary).toBe(true);
+  expect(sent.after.available).toEqual(stored);
+  await allSaved(page);
+  await expect(page.getByTestId('profile-available')).toHaveText(T.profile.availability.from);
+  await expect(date).toHaveValue('');
+  // Text that does not read still holds the save and is said at its field.
+  await date.fill('12.13');
+  await leaveField(page);
+  await expect(day).toContainText(T.profile.field.dateInvalid);
+  const held = await saves(page);
+  await contract(page, 'temporary').click();
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(held);
+  // Emptied again it holds nothing, and what waited goes.
+  await date.fill('');
+  await leaveField(page);
+  await expect(day.getByRole('alert')).toHaveCount(0);
+  await expect
+    .poll(async () => (await page.evaluate(() => window.__harness.form()))?.temporary)
+    .toBe(false);
+  // Leaving asks nothing, and coming back the stored day stands.
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+  await page.getByTestId('nav-profile').click();
+  await expect(date).toHaveValue('01.09.2026');
+  expect((await page.evaluate(() => window.__harness.form()))?.available).toEqual(stored);
+  // A day typed in saves like any value.
+  await date.fill('01.12.2026');
+  await leaveField(page);
+  await savedWith(page, { available: { kind: 'from', date: '01.12.2026' } });
+});
+
 test('a number field shows no letter: after the digits, over a selection, in the middle', async ({
   page,
 }) => {
