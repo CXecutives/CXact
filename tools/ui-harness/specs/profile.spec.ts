@@ -1162,6 +1162,23 @@ test('with a long folded field the Profil returns to its place', async ({ page }
   expect(await top()).toBe(before);
 });
 
+test('"Profil ergänzen" with a place kept below: the field comes into view, not the place', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  const view = page.getByTestId('view-profile');
+  await view.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+  await page.getByTestId('nav-jobs').click();
+  await page
+    .getByTestId('no-profile')
+    .getByRole('button', { name: T.list.completeProfile })
+    .click();
+  await expect(view).toBeVisible();
+  await expect(roles(page)).toBeInViewport();
+  await page.waitForTimeout(300);
+  await expect(roles(page)).toBeInViewport();
+});
+
 test('a press on a folded field low in the view keeps the caret in view', async ({ page }) => {
   await profile(page);
   const tools = await manyTools(page);

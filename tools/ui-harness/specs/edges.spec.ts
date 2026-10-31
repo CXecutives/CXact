@@ -304,6 +304,26 @@ test('a way that waited for the question goes with its Abbrechen: the page opens
   expect(await view.evaluate((node) => node.scrollTop)).toBe(0);
 });
 
+test('"Postfach prüfen" with another place kept in Einstellungen: the Postfach comes into view', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 360 });
+  await open(page, `${WIN}&mail=offline&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('nav-settings').click();
+  const view = page.getByTestId('view-settings');
+  const mailbox = page.getByTestId('settings-mailbox');
+  await view.evaluate((node) => node.scrollTo(0, 60));
+  await expect(mailbox).not.toBeInViewport();
+  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('toast-action').filter({ hasText: T.run.checkMailbox }).click();
+  await expect(view).toBeVisible();
+  await expect(mailbox).toBeInViewport();
+  await page.waitForTimeout(T_SAVE);
+  await expect(mailbox).toBeInViewport();
+});
+
 test("a select's open list: the wheel over it moves nothing behind it, beside it closes it", async ({
   page,
 }) => {

@@ -4,9 +4,10 @@
 // every scroll; it comes back in the first frame, before that frame is painted and after what
 // folds on its first measure (a long tag field), or as soon as the content is tall enough for
 // it (a view that loads its content grows after its first frame). A scroll by the user in the
-// meantime wins.
+// meantime wins, and so does a way into view (a view opened for one of its parts).
 
 import type { Action } from 'svelte/action';
+import { wasLed } from '../motion/scroll';
 
 const places = new Map<string, number>();
 
@@ -27,6 +28,10 @@ export const keepScroll: Action<HTMLElement, string> = (node, key) => {
   const room = (): number => node.scrollHeight - node.clientHeight;
   const restore = (left: number): void => {
     if (!restoring) return;
+    if (wasLed(node)) {
+      restoring = false;
+      return;
+    }
     if (room() >= target || left === 0) {
       node.scrollTop = target;
       restoring = false;

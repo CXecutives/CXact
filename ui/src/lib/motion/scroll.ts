@@ -17,6 +17,11 @@ interface Glide {
 }
 
 const glides = new WeakMap<HTMLElement, Glide>();
+/** The panes something asked to move this way. */
+const led = new WeakSet<HTMLElement>();
+
+/** Something asked `pane` to move (a way into view): a return to a kept place gives way. */
+export const wasLed = (pane: HTMLElement): boolean => led.has(pane);
 
 /** The farthest the pane scrolls down. */
 const maxTop = (pane: HTMLElement): number => Math.max(0, pane.scrollHeight - pane.clientHeight);
@@ -31,6 +36,7 @@ export function stopGlide(pane: HTMLElement): void {
 
 /** Scroll `pane` to `top` (clamped to what it can scroll) in one short tween. */
 export function glideTo(pane: HTMLElement, top: number): void {
+  led.add(pane);
   const to = Math.round(Math.min(maxTop(pane), Math.max(0, top)));
   stopGlide(pane);
   const ms = duration('slow');
@@ -85,6 +91,7 @@ export function glideIntoView(
 ): void {
   const pane = scrollerOf(node);
   if (pane === null) return;
+  led.add(pane);
   const style = getComputedStyle(pane);
   const padTop = Number.parseFloat(style.scrollPaddingTop) || 0;
   const padBottom = Number.parseFloat(style.scrollPaddingBottom) || 0;
