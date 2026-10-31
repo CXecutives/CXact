@@ -2,7 +2,7 @@
 // app starts by itself), the end toast says what a fetch brought and leads to it, and the
 // list and the reader stay true while a run updates jobs.
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
@@ -24,6 +24,9 @@ const WIN = '?platform=windows';
 const DONE = T.toast.runDone(2, 1);
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
+/** The chips of the filter, each with its words (its × is a button of its own, without any). */
+const chipsWithWords = (page: Page): Locator =>
+  chips(page).locator('[data-testid^="chip-"]:not([data-testid$="-remove"])');
 
 /** Send run events the way the backend does (the page's channel when no run holds one). */
 async function emit(page: Page, ...events: unknown[]): Promise<void> {
@@ -86,10 +89,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
   // Aktuell with the new jobs of that fetch in the high band: the one the toast names.
-  await expect(chips(page).getByRole('button')).toHaveText([
-    T.toolbar.lastFetch,
-    ...chipWordsOf('band-high'),
-  ]);
+  await expect(chipsWithWords(page)).toHaveText([T.toolbar.lastFetch, ...chipWordsOf('band-high')]);
   const query = (await lastQuery(page))!;
   expect(query).toMatchObject({ place: 'inbox', bands: ['high'] });
   expect(query.run).toEqual(expect.any(Number));
@@ -97,7 +97,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   // Each chip takes its part off: without the band the two new jobs the toast counts, not
   // the excluded one of the fetch.
   await chipRemove(page, 'band-high').click();
-  await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.lastFetch]);
+  await expect(chipsWithWords(page)).toHaveText([T.toolbar.lastFetch]);
   const { active } = await stubList(page, { run: query.run });
   expect(active).toHaveLength(2);
   expect(active).toContain('linkedin-4100200399');
@@ -149,7 +149,7 @@ test('what Zeigen set is never the user filter: its chips taken off keep nothing
   await chipRemove(page, 'band-high').click();
   expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBe(kept);
   await open(page, `${WIN}&tick=15`);
-  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
+  await expect(chipsWithWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
 });
 
 test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
@@ -158,10 +158,14 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   await runFinished(page);
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
   await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
-  await page.getByTestId('filter').click();
-  await page.getByTestId('menu-item-filter-reset').click();
+  // Its button stands where a filter leaves nothing: no job of the fetch came from this portal.
+  await chooseFilter(page, 'portal-hays');
+  const nothing = page.getByTestId('empty-filter');
+  await expect(nothing.locator('h3')).toHaveText(T.list.noFilterHit);
+  await nothing.getByTestId('filter-reset').click();
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
-  expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
+  await expect.poll(() => listed(page)).toEqual((await stubList(page)).active);
+  expect(await lastQuery(page)).toMatchObject({ run: null, bands: [], portals: [] });
 });
 
 // The preview's runs that are under way when the page starts (the scenarios `running`,
@@ -201,7 +205,7 @@ test('both parts work: the mails first, then the portals; the end toast counts b
   await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
-  // linkedin.com and freelance.de came by mail, freelancermap by the search.
+  // LinkedIn and freelance.de came by mail, freelancermap by the search.
   const { active } = await stubList(page, {});
   expect(active).toEqual(expect.arrayContaining(['linkedin-4100200399', 'freelancermap-2899']));
   await expect(page.getByTestId('toast-text')).toHaveText(DONE);
@@ -255,8 +259,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await expect(rows(page).first()).toBeVisible();
   const first = await rows(page).first().getAttribute('data-testid');
   const newBefore = (await stubList(page)).counts.inbox;
-  // Job 101998, the oldest of the mid scores, sorts far beyond the first page of 500 (the jobs
-  // without a number stand on top).
+  // Job 101998, among the oldest of the scored jobs, sorts far beyond the first page.
   const far = await jobOf(page, 'linkedin', '101998');
   await emit(page, {
     type: 'jobUpdated',
@@ -283,18 +286,16 @@ test('a page that fails while scrolling says so and loads on retry', async ({ pa
   await open(page, `${WIN}&scenario=many`);
   await expect(rows(page).first()).toBeVisible();
   await page.evaluate(() => (window.__harness.failPages = 1));
-  // Scroll window by window to the end of the first page of 500; the next page fails.
+  // Scroll window by window to the end of the first page; the next page fails.
   const scroller = page.getByTestId('list-scroll');
   const error = page.getByTestId('page-error');
   for (let i = 0; i < 40 && (await error.count()) === 0; i += 1) {
     await scroller.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
     await page.waitForTimeout(250);
   }
-  await expect(page.getByTestId('page-error')).toContainText(
-    'Weitere Jobs ließen sich nicht laden.',
-  );
+  await expect(page.getByTestId('page-error')).toContainText(T.list.pageFailed);
   const mounted = await page.locator('[data-testid^="job-row-"]').count();
-  await page.getByTestId('page-error').getByRole('button', { name: 'Erneut versuchen' }).click();
+  await page.getByTestId('page-error').getByRole('button', { name: T.common.retry }).click();
   await expect(page.getByTestId('page-error')).toHaveCount(0);
   await expect
     .poll(() => page.locator('[data-testid^="job-row-"]').count())
