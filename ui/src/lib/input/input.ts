@@ -100,6 +100,9 @@ const ENTER_PRESSES =
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
+/** What holds the focus and is no control, no caret and no ring: a form's root, a step's
+ *  heading, the mailbox form's box. Every control that leaves the Tab order is a button. */
+const FOCUS_HOLDER = '[tabindex="-1"]:not(button)';
 /** The sidebar floating over the view (App.svelte) and its button in the top bar. */
 const PEEK = '[data-peek], [data-testid="toggle-sidebar"]';
 const FOCUSABLE = [
@@ -315,11 +318,12 @@ function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = even
   return true;
 }
 
-/** The arrows, Home and End with the focus nowhere scroll the pane clicked last (the reader,
- *  Einstellungen, Profil), like a native scroll view. `true` if a pane took the key. */
+/** The arrows, Home and End with the focus nowhere scroll the pane around what holds the focus
+ *  or the pane clicked last (the reader, Einstellungen, Profil), like a native scroll view.
+ *  `true` if a pane took the key. */
 function scrollsLine(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey || !isNowhere(event.target)) return false;
-  const pane = lastPane?.isConnected ? lastPane : null;
+  const pane = keyPane(event.target);
   return pane !== null && scrollByKey(pane, event.key);
 }
 
@@ -337,9 +341,11 @@ function scrollByKey(pane: HTMLElement, key: string): boolean {
   return false;
 }
 
-/** The focus is on no control (a click on plain text leaves it on the page). */
+/** The focus is on no control: on the page (a click on plain text leaves it there) or on what
+ *  only holds it for the keys of a form (Enter and Esc reach the form from there). */
 function isNowhere(target: EventTarget | null): boolean {
-  return target === document.body || target === document.documentElement;
+  if (target === document.body || target === document.documentElement) return true;
+  return target instanceof Element && target.matches(FOCUS_HOLDER);
 }
 
 /** The arrows inside a radio group (the segments) or a row of tabs: the previous or the next
@@ -788,14 +794,18 @@ function scrollAreaOf(target: EventTarget | null): HTMLElement | null {
   return null;
 }
 
+/** The pane the page keys scroll: the one around the focus, with the focus nowhere else the
+ *  one clicked last. */
+function keyPane(target: EventTarget | null): HTMLElement | null {
+  return scrollAreaOf(target) ?? (isNowhere(target) && lastPane?.isConnected ? lastPane : null);
+}
+
 /** PageUp and PageDown: the focused (or last clicked) pane scrolls a page. */
 function scrollsPage(event: KeyboardEvent): boolean {
   if (hasModifier(event)) return false;
   const down = event.key === 'PageDown';
   if (!down && event.key !== 'PageUp') return false;
-  const pane =
-    scrollAreaOf(event.target) ??
-    (isNowhere(event.target) && lastPane?.isConnected ? lastPane : null);
+  const pane = keyPane(event.target);
   if (pane === null) return false;
   glideBy(pane, (down ? 1 : -1) * Math.round(pane.clientHeight * PAGE_SHARE));
   return true;

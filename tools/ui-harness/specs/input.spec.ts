@@ -1149,6 +1149,46 @@ test('the page keys scroll the Profil too: a click on plain text leaves no caret
   await expect.poll(() => scrollTop(page, 'view-profile')).toBe(0);
 });
 
+test('what only holds the focus counts as nowhere: the page keys scroll, Enter and Esc reach its form', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  /** End and Home go to the ends of the view, an arrow a line down. */
+  const scrolls = async (pane: string): Promise<void> => {
+    const room = await page
+      .getByTestId(pane)
+      .evaluate((node) => node.scrollHeight - node.clientHeight);
+    expect(room).toBeGreaterThan(0);
+    await page.keyboard.press('End');
+    await expect.poll(() => scrollTop(page, pane)).toBe(room);
+    await page.keyboard.press('Home');
+    await expect.poll(() => scrollTop(page, pane)).toBe(0);
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => scrollTop(page, pane)).toBeGreaterThan(0);
+  };
+  // The Profil as it opens, before any press: its root holds the focus.
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeFocused();
+  await scrolls('view-profile');
+  // A step of the setup: its heading.
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await expect(page.getByTestId('first-heading')).toBeFocused();
+  await scrolls('view-first-run');
+  const form = page.getByTestId('mailbox-form');
+  await page.keyboard.press('Enter');
+  await expect(form.getByRole('alert').first()).toBeVisible();
+  // The mailbox form of Einstellungen: its box.
+  await open(page, `${WIN}&view=settings`);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await expect(form).toBeVisible();
+  await scrolls('view-settings');
+  await page.keyboard.press('Enter');
+  await expect(form.getByRole('alert').first()).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(form).toHaveCount(0);
+});
+
 /* -------------------------------- Presses, radio groups, window menus, the focus in view */
 
 // Final round, team T1 (input): only the left button presses, a click beside a field ends its
