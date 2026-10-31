@@ -1421,6 +1421,32 @@ test.describe('the cards', () => {
     expect(Math.abs(reqs[0]! - reqs[1]!)).toBeLessThan(1);
   });
 
+  test('a fact alone in its row spans it: its line runs the whole way, its value on its column', async ({
+    page,
+  }) => {
+    // Jobs with an odd number of facts beside the contact, or without one.
+    for (const key of ['linkedin-4100200302', 'freelance-900411', 'linkedin-4100200304']) {
+      await openAt(page, key);
+      const facts = await terms(page)
+        .locator('li')
+        .evaluateAll((all) =>
+          all.map((li) => {
+            const box = li.getBoundingClientRect();
+            const value = li.querySelector('.term-line')!.getBoundingClientRect();
+            return { top: box.top, left: box.left, right: box.right, value: value.left };
+          }),
+        );
+      const list = (await terms(page).boundingBox())!;
+      const lone = facts.filter((fact) => facts.filter((f) => f.top === fact.top).length === 1);
+      expect(lone.length, key).toBeGreaterThan(0);
+      for (const fact of lone) {
+        expect(fact.left, key).toBe(list.x);
+        expect(fact.right, key).toBe(list.x + list.width);
+        expect(fact.value, key).toBe(facts[0]!.value);
+      }
+    }
+  });
+
   test('a new job: its cards are there at once, nothing cascades or fades', async ({ page }) => {
     await open(page, WIN);
     await settle(page);

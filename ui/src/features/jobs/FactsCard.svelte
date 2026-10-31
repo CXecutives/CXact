@@ -5,7 +5,8 @@
   the profile carries no mark; one that does not fully fit (in part, not, unclear) carries its
   verdict's icon in the colours of the rings 6 after its value's last word (owner, 2026-10-28:
   the eye goes to what does not fit). The contact (its name, e-mail and phone one under the
-  other) spans both columns and comes last, so the rows above it pair up; its e-mail writes a
+  other) spans both columns and comes last, and so does a fact alone in its row: its line runs
+  the whole way, its value stays on its column; the contact's e-mail writes a
   new mail to it, the job's title its subject, on a click; a drag over it selects it to copy,
   like the name. A hairline between the rows, none after the last, like every box of rows.
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
@@ -103,7 +104,10 @@
     border-top: var(--border-width) solid var(--border);
   }
 
-  .fact.wide {
+  /* The contact, and a last fact without a partner in its row (before the contact too). */
+  .fact.wide,
+  .fact:nth-child(odd):last-child,
+  .fact:nth-child(odd):has(+ .wide) {
     grid-column: 1 / -1;
   }
 
