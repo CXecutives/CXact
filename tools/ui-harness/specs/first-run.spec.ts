@@ -468,14 +468,26 @@ test('Postfach connected (Enter is the primary): Fertig says everything is set u
   await expect(back(page)).toHaveCount(0);
 });
 
-/** The Postfach with a Verbinden that signs in and goes on doing so. */
-async function connecting(page: Page): Promise<void> {
+/** The Postfach with a Verbinden that signs in and goes on doing so, begun by a press on its
+ *  button or by Enter in the password field. */
+async function connecting(page: Page, by: 'press' | 'enter' = 'press'): Promise<void> {
   await open(page, `${WIN}&scenario=setup-profile`);
   await page.evaluate(() => (window.__harness.holdMailbox = true));
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
-  await page.getByTestId('mailbox-password').fill('abcdabcdabcdabcd');
-  await next(page).click();
+  const password = page.getByTestId('mailbox-password');
+  await password.fill('abcdabcdabcdabcd');
+  if (by === 'enter') await password.press('Enter');
+  else await next(page).click();
   await expect(next(page)).toHaveAttribute('aria-busy', 'true');
+}
+
+/** Esc stops it and the step stays, quietly. */
+async function escStops(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
+  await expectStep(page, T.firstRun.mailbox);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
 }
 
 test('Zurück, Überspringen and Esc stop a Verbinden that goes', async ({ page }) => {
@@ -487,13 +499,13 @@ test('Zurück, Überspringen and Esc stop a Verbinden that goes', async ({ page 
   await page.getByTestId('first-skip').click();
   await expectStep(page, T.firstRun.doneProfile);
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
-  // Esc stops it and the step stays, quietly.
+  await connecting(page, 'enter');
+  await escStops(page);
+});
+
+test('Esc stops a Verbinden begun by a press on its button too', async ({ page }) => {
   await connecting(page);
-  await page.keyboard.press('Escape');
-  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
-  await expectStep(page, T.firstRun.mailbox);
-  expect(await calls(page, 'cancel_run')).toHaveLength(1);
-  await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
+  await escStops(page);
 });
 
 test('the mouse button is Zurück: it stops a Verbinden that goes too', async ({ page }) => {
