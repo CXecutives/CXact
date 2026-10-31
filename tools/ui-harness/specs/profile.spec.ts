@@ -357,6 +357,32 @@ test('a tag field with one line of chips is as high as any field, its row like a
   }
 });
 
+test('a placeholder that does not fit beside the chips takes a line of its own, never cut', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 520, height: 700 });
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  const cut = (): Promise<string[]> =>
+    page
+      .getByTestId('profile-form')
+      .locator('.sizer')
+      .evaluateAll((all) =>
+        all
+          .filter((sizer) => sizer.scrollWidth > sizer.clientWidth)
+          .map((sizer) => sizer.getAttribute('data-placeholder') ?? ''),
+      );
+  expect(await cut()).toEqual([]);
+  const industries = page.getByTestId('profile-industries');
+  const chip = await chips(industries).first().boundingBox();
+  const input = await industries.locator('input').boundingBox();
+  expect(input!.y).toBeGreaterThan(chip!.y + chip!.height);
+  // Where it fits, it stays beside them: one line, as high as any field.
+  await page.setViewportSize({ width: 1360, height: 900 });
+  await expect.poll(cut).toEqual([]);
+  await expect.poll(async () => (await industries.boundingBox())!.height).toBe(30);
+});
+
 test('the stored profile fills every field', async ({ page }) => {
   await profile(page);
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
@@ -509,10 +535,43 @@ test('a day rate too large out of sight holds no save either', async ({ page }) 
   await expect(page.getByTestId('profile-save-error')).toHaveCount(0);
   await contract(page, 'temporary').click();
   await expect.poll(async () => (await stored(page))?.temporary).toBe(true);
+  // It never went: what is stored comes back with the row, nothing to say.
+  const sent = await calls(page, 'save_profile');
+  expect(sent.map(([, args]) => (args as { save: ProfileSave }).save.after.dayRateWish)).toEqual(
+    sent.map(() => 1200),
+  );
+  await contract(page, 'project').click();
+  await expect(wish).toHaveValue('1.200');
+  await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.atMost(100000));
+  await contract(page, 'project').click();
+  await expect(wish).toHaveCount(0);
   // And nothing out of sight asks on the way out.
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+});
+
+test('a salary too large out of sight holds no save either, and is not kept like core', async ({
+  page,
+}) => {
+  await profile(page);
+  const salary = page.getByTestId('profile-min-salary');
+  await salary.fill('20000000');
+  await leaveField(page);
+  await expect(field(page, 'minSalary')).toContainText(T.profile.field.atMost(10000000));
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(0);
+  // Without Festanstellung and Zeitarbeit it is out of sight: the form saves, without a salary.
+  await contract(page, 'permanent').click();
+  await expect(salary).toHaveCount(0);
+  await expect.poll(async () => (await stored(page))?.permanent).toBe(false);
+  expect((await stored(page))?.minSalary).toBeNull();
+  await expect(page.getByTestId('profile-save-error')).toHaveCount(0);
+  await allSaved(page);
+  // Back with its contract type: empty, nothing to say.
+  await contract(page, 'permanent').click();
+  await expect(salary).toHaveValue('');
+  await expect(field(page, 'minSalary')).not.toContainText(T.profile.field.atMost(10000000));
 });
 
 test('the rates; a wish under the minimum says so quietly under the wish', async ({ page }) => {
@@ -812,7 +871,16 @@ test('a language the backend refuses is said under its row', async ({ page }) =>
   await page.getByTestId('language-level').nth(1).click();
   await page.getByRole('listbox').getByRole('option', { name: T.profile.level.C1 }).click();
   const items = page.getByTestId('languages-item');
+  const levels = page.getByTestId('language-level');
   await expect(items.nth(1).getByTestId('languages-error')).toHaveText(T.profile.field.refused);
+  await expect(levels.nth(1)).toHaveAttribute('aria-invalid', 'true');
+  await expect(levels.first()).not.toHaveAttribute('aria-invalid', 'true');
+  // Changed, the error goes and it saves.
+  await levels.nth(1).click();
+  await page.getByRole('listbox').getByRole('option', { name: T.profile.level.C2 }).click();
+  await expect(page.getByTestId('languages-error')).toHaveCount(0);
+  await expect(levels.nth(1)).not.toHaveAttribute('aria-invalid', 'true');
+  await expect.poll(async () => (await stored(page))?.languages[1]?.level).toBe('C2');
 });
 
 test('a refusal of a whole list is said under its last row', async ({ page }) => {
@@ -1195,6 +1263,55 @@ test('a change taken back while its save is under way stays and goes next', asyn
   await expect.poll(available).toEqual({ kind: 'from', date: '01.09.2026' });
   await expect(page.getByTestId('profile-available')).toHaveText(T.profile.availability.from);
   await expect(date).toHaveValue('01.09.2026');
+});
+
+test('a change taken back while its save is under way goes along on the way out', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=slow');
+  const available = (): Promise<unknown> => stored(page).then((form) => form?.available);
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await lastSave(page);
+  await choose(page, 'profile-available', T.profile.availability.from);
+  // Nothing differs from what was handed out, yet the way waits for that save and saves after it.
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect.poll(() => saves(page)).toBe(2);
+  await expect.poll(available).toEqual({ kind: 'from', date: '01.09.2026' });
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+});
+
+test('a change taken back while its save is under way goes along when the window closes', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=slow');
+  const available = (): Promise<unknown> => stored(page).then((form) => form?.available);
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await lastSave(page);
+  await choose(page, 'profile-available', T.profile.availability.from);
+  // The window asks the page only once the page has told it that it holds a change.
+  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
+  await page.evaluate(() => window.__harness.requestClose());
+  await expect.poll(() => page.evaluate(() => window.__harness.closed)).toBe(true);
+  // It closed only after both saves, and till then the page never said it held nothing.
+  expect(await saves(page)).toBe(2);
+  await expect.poll(available).toEqual({ kind: 'from', date: '01.09.2026' });
+  const all = await calls(page);
+  const names = all.map(([name]) => name);
+  const between = all.slice(names.indexOf('save_profile'), names.lastIndexOf('save_profile'));
+  expect(between).not.toContainEqual(['set_unsaved', { on: false }]);
+});
+
+test('what changes while the way out saves goes along', async ({ page }) => {
+  await profile(page, '&scenario=slow');
+  await contract(page, 'temporary').click();
+  await page.getByTestId('nav-settings').click();
+  await lastSave(page);
+  // That save is under way and the page still stands.
+  await contract(page, 'permanent').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  const form = await stored(page);
+  expect([form?.temporary, form?.permanent]).toEqual([true, false]);
 });
 
 test('a save that fails says so under the head and goes again with the next change; leaving with it asks', async ({

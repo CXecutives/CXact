@@ -4,7 +4,9 @@
   control's column, every short control has one width (a number, a select), Vertragsart is a
   choice of several, Arbeitsmodell, Auslastung and Mindestlaufzeit are selects, Länder and
   Verfügbar their own fields. A wished rate under the minimum says so quietly under it; an
-  error is said by its Field.
+  error is said by its Field. A number whose row folds away with its contract type leaves what
+  is wrong in it behind: what is stored stands for it, so out of sight it is neither sent nor
+  said and holds nothing (owner, 2026-10-31).
 -->
 <script lang="ts">
   import CheckGroup from '$components/CheckGroup.svelte';
@@ -18,7 +20,7 @@
   import AvailableField from './AvailableField.svelte';
   import CountriesField from './CountriesField.svelte';
   import NumberField from './NumberField.svelte';
-  import type { ChoiceKey, Control } from './sections';
+  import { NUMBERS, type ChoiceKey, type Control } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
@@ -58,7 +60,11 @@
   );
   const contracts = $derived(CONTRACT_KEYS.filter((key) => form[key]));
   function toggleContract(key: ContractKey): void {
+    const wrong = NUMBERS.filter((number) => errorOf(number.key) !== null);
     form[key] = !form[key];
+    for (const number of wrong) {
+      if (number.shown?.(form) === false) form[number.key] = editor.before[number.key];
+    }
   }
 
   function choose(key: ChoiceKey, value: string): void {
@@ -77,17 +83,15 @@
     {error}
     row
   >
-    <span class="number">
-      <NumberField
-        id="{id}-{c.key}"
-        money={c.unit !== 'years'}
-        unit={t.profile.unit[c.unit]}
-        placeholder={c.placeholder ? words[c.placeholder] : null}
-        bind:value={form[c.key]}
-        invalid={error !== null}
-        testid={c.testid}
-      />
-    </span>
+    <NumberField
+      id="{id}-{c.key}"
+      money={c.unit !== 'years'}
+      unit={t.profile.unit[c.unit]}
+      placeholder={c.placeholder ? words[c.placeholder] : null}
+      bind:value={form[c.key]}
+      invalid={error !== null}
+      testid={c.testid}
+    />
   </Field>
 {:else if c.kind === 'chips'}
   {@const error = errorOf(c.key)}
@@ -155,14 +159,7 @@
 {/if}
 
 <style>
-  /* Every short control one width; a number's note under it keeps its own line. */
-  .number {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .number > :global(:first-child),
+  /* A select as wide as every short control. */
   .short {
     width: var(--profile-control-width);
     max-width: 100%;

@@ -455,7 +455,8 @@
   }
 
   /* The input after the chips takes the rest of the line, and at least its placeholder's
-     width (its hidden copy) or the least room to type: else a line of its own. */
+     width (its hidden copy, whose own width counts only when it is not auto) or the least room
+     to type: else a line of its own. */
   .sizer {
     display: inline-grid;
     flex: 1 1 0;
@@ -463,6 +464,7 @@
 
   .sizer::after {
     grid-area: 1 / 1;
+    width: max-content;
     min-width: var(--chip-entry-min);
     height: 0;
     padding: 0 var(--space-8);

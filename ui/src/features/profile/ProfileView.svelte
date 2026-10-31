@@ -10,9 +10,10 @@
   changed, a text field once it is left or with Enter, and before the view is left or the
   window closes. Nothing asks and nothing bars the way, and nothing is said unless the rescore
   of the save moved jobs (a toast, saveEffect.ts). What changes while a save is under way goes
-  next; a save that failed says so under the head and is tried again with the next change.
-  A value that is wrong holds the save, said at its field; leaving with one asks once whether
-  to drop it.
+  next; a save that failed says so under the head and is tried again with the next change or
+  the next way out. A value that is wrong holds the save, said at its field; leaving with one,
+  or with a save that failed, asks once whether to drop it, and nothing is saved behind the
+  question.
   What is missing (owner, 2026-10-29): a required field that is still empty (Wunschrollen,
   Länder, Kompetenzen, Sprachen) never holds the save and stays calm on the Profil page. The
   card under the head names them, its "Ergänzen" brings the first up under the top bar (no
@@ -45,7 +46,7 @@
   import ProfileHead from './ProfileHead.svelte';
   import ProfileStart from './ProfileStart.svelte';
   import { refused, watchSave, type SaveEffect } from './saveEffect';
-  import { FIELD_ORDER, LABEL_OF, blank } from './sections';
+  import { FIELD_ORDER, LABEL_OF } from './sections';
 
   interface Props {
     /** The setup's page: the form alone, its "Weiter" saves (`next`). */
@@ -78,15 +79,18 @@
     });
   });
 
-  /** Where the user wanted to go with a change that cannot be saved: a view, or closing the
-   *  window. */
-  let leaving = $state<ViewId | 'close' | null>(null);
+  /** Where the way out leads while the form is saved or the question stands: a view, or closing
+   *  the window (a second way only changes where it leads). */
+  let leaving: ViewId | 'close' | null = null;
+  /** A change cannot be saved: the question whether to drop it stands. */
+  let asking = $state(false);
 
-  // The stored profile fills the form while nothing unsaved is in it (also after a save).
+  // The stored profile fills the form while nothing unsaved is in it. A save under way decides
+  // at its end (`editor.settle`): till then a change taken back reads as none.
   $effect(() => {
     const form = stored;
     untrack(() => {
-      if (editor.dirty || editor.origin === 'new') return;
+      if (busy || editor.dirty || editor.origin === 'new') return;
       if (form === null) {
         if (editor.origin === 'stored') editor.close();
       } else if (editor.origin !== 'stored' || !sameForm(editor.before, form)) {
@@ -95,8 +99,9 @@
     });
   });
 
-  // The window asks before it closes while the form holds unsaved changes (main.rs).
-  const dirty = $derived(editor.dirty);
+  // The window (main.rs) and a way out wait while the form holds unsaved changes; a save under
+  // way counts, as what was taken back meanwhile goes after it.
+  const dirty = $derived(editor.dirty || busy);
   $effect(() => {
     const on = dirty;
     untrack(() => void invoke('set_unsaved', { on }).catch(() => undefined));
@@ -106,43 +111,54 @@
     invoke('close_window').catch((error: unknown) => (note = () => errorText(error)));
   }
 
-  function go(next: ViewId | 'close'): void {
+  /** The way goes on to where it leads. */
+  function goOn(): void {
+    const next = leaving;
+    leaving = null;
+    asking = false;
     if (next === 'close') closeWindow();
-    else navigation.go(next, true);
+    else if (next !== null) navigation.go(next, true);
   }
 
   /** Leaves once what the form holds is saved; a change that cannot be saved asks first. */
   async function leaveTo(next: ViewId | 'close'): Promise<void> {
-    if (await settled()) go(next);
-    else leaving = next;
+    const going = leaving !== null;
+    leaving = next;
+    if (going) return;
+    clearTimeout(timer);
+    if (await settled()) goOn();
+    else asking = true;
   }
 
   /** The window is to close: the page says it is here, then saves. */
   async function closeRequested(): Promise<void> {
-    await invoke('set_unsaved', { on: editor.dirty }).catch(() => undefined);
+    await invoke('set_unsaved', { on: dirty }).catch(() => undefined);
     await leaveTo('close');
   }
 
   /** The change that cannot be saved goes, and the way goes on. */
   function leave(): void {
-    const next = leaving;
-    leaving = null;
     saveNote = null;
     fieldError = null;
     editor.discard(stored);
-    if (next !== null) go(next);
+    goOn();
   }
 
-  /** Staying: what holds the save is said at its field, which comes into view. */
+  /** Staying: what waited for the way goes with it; what holds the save is said at its field,
+   *  which comes into view. */
   function stay(): void {
     leaving = null;
+    asking = false;
+    navigation.stay();
     panel?.ready();
   }
 
-  /** A moment after a change, and when a field was left. */
+  /** A moment after a change, and when a field was left; not on a way out, which saves first
+   *  and then stands at its question. */
   let timer: ReturnType<typeof setTimeout> | undefined;
   function soon(): void {
     clearTimeout(timer);
+    if (leaving !== null) return;
     timer = setTimeout(() => {
       if (!typing()) void trySave();
     }, tokenMs('--save-delay'));
@@ -167,7 +183,7 @@
     // The setup's form starts empty where there is no profile yet.
     if (setup && editor.origin === null) editor.create();
     const release = navigation.guard((next) => {
-      if (!editor.dirty) return true;
+      if (!dirty) return true;
       void leaveTo(next);
       return false;
     });
@@ -227,11 +243,12 @@
   /** A file over the page: the dashed edge shows while the CV import would take it; a drop it
    *  cannot take says why (the tries used up, in fromCv; a value that is wrong). */
   let over = $state(false);
-  const takesDrop = (): boolean => held === null && !fromCv.busy && !fromCv.limited;
+  const takesDrop = (): boolean =>
+    leaving === null && held === null && !fromCv.busy && !fromCv.limited;
 
   function dragged(drag: FileDrag): void {
     over = drag.kind === 'over' && takesDrop();
-    if (drag.kind !== 'drop' || drag.paths.length === 0) return;
+    if (drag.kind !== 'drop' || drag.paths.length === 0 || leaving !== null) return;
     const wrong = held;
     if (wrong !== null) saveNote = () => t.profile.fixFirst(wrong);
     else void fillFromCv(true);
@@ -246,8 +263,17 @@
   /** The toast of the last save, until the next one takes over. */
   let lastSave: SaveEffect | null = null;
 
+  /** The last save, done or still under way, and whether it saved. */
+  let lastWrite: Promise<boolean> = Promise.resolve(true);
+
   /** `true` when the profile is saved. */
-  async function save(): Promise<boolean> {
+  function save(): Promise<boolean> {
+    lastWrite = write();
+    return lastWrite;
+  }
+
+  /** One save: the form goes, the state comes back and the form settles on it. */
+  async function write(): Promise<boolean> {
     busy = true;
     saveNote = null;
     fieldError = null;
@@ -303,16 +329,18 @@
   }
 
   /** Before the way goes on: what was typed goes into the form (a tag field takes it when it is
-   *  left, what it does not take is dropped) and the form is saved; `false` when a change
-   *  cannot be saved. */
+   *  left, what it does not take is dropped), the save under way ends and the form is saved;
+   *  `false` when a change cannot be saved. */
   async function settled(): Promise<boolean> {
     const field = document.activeElement;
     if (field instanceof HTMLElement && field.matches('input, textarea')) field.blur();
     await tick();
     editor.typed.clear();
-    if (!editor.changed) return true;
-    if (!panel?.valid()) return false;
-    return save();
+    await lastWrite;
+    while (editor.changed) {
+      if (!panel?.valid() || !(await save())) return false;
+    }
+    return true;
   }
 
   /** Esc on an untouched new form: back to the ways in, whose first one takes the focus of the
@@ -320,7 +348,6 @@
   function discard(): void {
     saveNote = null;
     fieldError = null;
-    flagged = false;
     editor.discard(stored);
     if (editor.origin === null) void focusFirstWay();
   }
@@ -333,18 +360,9 @@
     return String((t.profile.field as Record<string, unknown>)[key] ?? field);
   };
 
-  /** What core says a new or changed form still lacks. */
-  const draft = draftMissing();
-
-  /** The required fields still empty, in the order of the page: core names them (for a new
-   *  or changed form on asking, else for the stored profile), the form drops those filled
-   *  since at once. */
-  const missing = $derived(
-    FIELD_ORDER.filter(
-      (field) =>
-        (draft.fields() ?? profile?.missing ?? []).includes(field) && blank(editor.after, field),
-    ),
-  );
+  const stillMissing = draftMissing();
+  /** The required fields still empty, in the order of the page. */
+  const missing = $derived(stillMissing());
   /** The setup's Weiter asked for them: from then on they are marked until they are filled
    *  (on the Profil page the card says it, the rows stay calm). */
   let flagged = $state(false);
@@ -421,14 +439,7 @@
   {#if editor.origin !== null}
     <div class="setup" data-testid="profile">
       {@render notes()}
-      <ProfileEditor
-        bind:this={panel}
-        setup
-        {fieldError}
-        missing={marked}
-        onsave={() => void next()}
-        ondiscard={discard}
-      />
+      <ProfileEditor bind:this={panel} {fieldError} missing={marked} />
     </div>
   {/if}
 {:else}
@@ -468,7 +479,7 @@
 
 <!-- A change that cannot be saved: the way goes on without it, or stays. -->
 <Dialog
-  open={leaving !== null}
+  open={asking}
   variant="danger"
   heading={t.profile.leaveHeading}
   text={held !== null ? t.profile.leaveWrong(held) : t.profile.leaveFailed}

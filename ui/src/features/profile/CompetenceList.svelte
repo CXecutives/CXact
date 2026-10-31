@@ -29,11 +29,11 @@
   const words = $derived(t.profile.field);
   vocabulary.load();
 
+  const listed = $derived(named(rows, (row) => row.name));
   /** The row the backend refused: counted among the rows with a name, as the backend does. */
-  const refused = $derived.by((): Competence | null => {
-    if (error === null || error.row === null) return null;
-    return rows.filter((row) => row.name.trim() !== '')[error.row] ?? null;
-  });
+  const refused = $derived(
+    error === null || error.row === null ? null : (listed[error.row] ?? null),
+  );
 
   const same = (a: string, b: string): boolean => keyOf(a) === keyOf(b);
 
@@ -47,15 +47,13 @@
 </script>
 
 {#snippet years(row: Competence)}
-  <span class="years">
-    <NumberField
-      bind:value={row.years}
-      label={words.yearsOf(row.name)}
-      unit={words.years}
-      invalid={row === refused}
-      testid="competence-years"
-    />
-  </span>
+  <NumberField
+    bind:value={row.years}
+    label={words.yearsOf(row.name)}
+    unit={words.years}
+    invalid={row === refused}
+    testid="competence-years"
+  />
 {/snippet}
 
 {#snippet draft()}
@@ -70,7 +68,7 @@
 {/snippet}
 
 <ItemList
-  items={named(rows, (row) => row.name)}
+  items={listed}
   key={(row) => keyOf(row.name)}
   name={(row) => row.name}
   value={years}
@@ -80,10 +78,3 @@
   testid="competences"
   onremove={(row) => (rows = rows.filter((other) => other !== row))}
 />
-
-<style>
-  .years {
-    display: flex;
-    width: var(--profile-control-width);
-  }
-</style>

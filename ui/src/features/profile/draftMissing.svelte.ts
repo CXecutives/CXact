@@ -5,17 +5,22 @@
 
 import { profileMissing } from '$lib/ipc/api';
 import type { ProfileForm } from '$lib/ipc/types';
+import { app } from '$lib/state/app.svelte';
 import { editor } from '$lib/state/profile.svelte';
 import { untrack } from 'svelte';
+import { FIELD_ORDER, blank } from './sections';
 
 /** How long the form rests before core is asked what it still lacks. */
 const PAUSE = 250;
 
 /**
  * Follows the editor while the component that calls it lives (call it during its init).
- * `fields()` is what core said the form lacks, or null while the stored profile's word holds.
+ * Returns the required fields still empty, in the order of the page: core names them (for a
+ * new or changed form on asking, else for the stored profile), the form drops those filled
+ * since at once.
  */
-export function draftMissing(): { fields: () => string[] | null } {
+export function draftMissing(): () => (keyof ProfileForm)[] {
+  /** What core said the form lacks, or null while the stored profile's word holds. */
   let fields = $state.raw<string[] | null>(null);
   let asked = 0;
   const drafting = $derived(editor.origin === 'new' || editor.dirty);
@@ -38,5 +43,11 @@ export function draftMissing(): { fields: () => string[] | null } {
     );
     return () => clearTimeout(timer);
   });
-  return { fields: () => fields };
+  const missing = $derived(
+    FIELD_ORDER.filter(
+      (field) =>
+        (fields ?? app.state?.profile?.missing ?? []).includes(field) && blank(editor.after, field),
+    ),
+  );
+  return () => missing;
 }
