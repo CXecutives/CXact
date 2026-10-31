@@ -513,6 +513,15 @@ test('the mouse button is Zurück: it stops a Verbinden that goes too', async ({
   await mouseBack(page);
   await expectStep(page, T.firstRun.profile);
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  // The step stays where the user went; nothing was connected, and the Postfach is as it was.
+  await page.evaluate(() => (window.__harness.holdMailbox = false));
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.profile);
+  expect(await calls(page, 'finish_onboarding')).toHaveLength(0);
+  await next(page).click();
+  await expectStep(page, T.firstRun.mailbox);
+  await expect(page.getByTestId('mailbox-user')).toHaveValue('');
+  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
 });
 
 test('Postfach: a field refers to its message only while one shows', async ({ page }) => {

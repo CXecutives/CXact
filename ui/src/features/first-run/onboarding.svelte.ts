@@ -65,8 +65,8 @@ class Onboarding {
     if (step === 'done') this.finish();
   }
 
-  /** Zurück (and the mouse's back button): the step before, `true` if there is one. An
-   *  evaluation that goes is cancelled first. */
+  /** Zurück (and the mouse's back button, FirstRunView's `goBack`): the step before, `true` if
+   *  there is one. An evaluation that goes is cancelled first. */
   back(): boolean {
     if (this.step === 'reading') {
       this.cancelReading();

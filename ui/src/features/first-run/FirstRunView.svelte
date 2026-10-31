@@ -7,7 +7,8 @@
   right); the profile is a whole page with its bar at the foot instead (ProfileStep). A step
   comes in sliding 8 px from the side it was reached from. Every step starts at its top with
   the focus on its heading. Enter is the primary while the step can go on; the mouse's back
-  button is Zurück (onboarding.svelte.ts). Usable down to the window's minimum, 480 x 360.
+  button is Zurück, one way back for both (`goBack`). Usable down to the window's minimum,
+  480 x 360.
 
   The steps (docs/PLAN.md, Setup): Willkommen (what CXact does, one job with its ring,
   Loslegen);
@@ -20,14 +21,14 @@
   mailbox, and "Zu den Jobs", no search).
 -->
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { flushSync, onMount, tick } from 'svelte';
   import AppMark from '$components/AppMark.svelte';
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
   import ScoreRing from '$components/ScoreRing.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
-  import { formKeys } from '$lib/input/input';
+  import { formKeys, onBack } from '$lib/input/input';
   import { enterStep } from '$lib/motion/enter';
   import { primaryFirst } from '$lib/platform';
   import { fromCv } from '../shared/fromCv.svelte';
@@ -108,10 +109,20 @@
     }
   }
 
-  function goBack(): void {
+  /** Zurück, by its button or the mouse's back button: the field with the caret is left first,
+   *  as a press on the button leaves it, so a tag field takes what was typed (flushed: the step
+   *  that goes still reads the form as of the last update), and a "Verbinden" that goes stops;
+   *  `true` if there was a step to go back to. */
+  function goBack(): boolean {
+    const field = document.activeElement;
+    if (field instanceof HTMLElement && field.matches('input, textarea')) {
+      field.blur();
+      flushSync();
+    }
     mailboxForm?.cancel();
-    onboarding.back();
+    return onboarding.back();
   }
+  $effect(() => onBack(goBack));
 
   /** "Überspringen": a "Verbinden" that goes stops first. */
   function skip(): void {
