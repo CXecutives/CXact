@@ -1574,10 +1574,9 @@ let pressWaits: (() => void)[] | null = null;
 /**
  * What leaving `field` does (a fold, a message, a chip that takes a line) moves rows, and rows
  * moved between press and release take the click from the control pressed. So `run` waits for
- * the left press that left the field: it comes with that press's click, ahead of the control's
- * own handler, or right after the release where no click follows; without a press at once. It
- * does not come when `field` holds the focus by then: a window going to the back leaves it
- * there, nothing was left, and the focus returns with the window.
+ * the left press that left the field, until its click comes (ahead of the control's handler) or
+ * right after its release; without a press it runs at once. It does not run when `field` holds
+ * the focus by then: a window going to the back leaves it there, nothing was left.
  */
 export function afterPress(field: EventTarget | null, run: () => void): void {
   const left = (): void => {
@@ -1615,14 +1614,16 @@ export function installInput(): void {
     'mousedown',
     (event) => {
       keyboardFocus = false;
+      if (event.button === LEFT) {
+        pressLanded();
+        pressWaits = [];
+      }
       dismiss('press', event.target);
       if (pressOutsideMenu(event)) {
         swallow = true;
         return;
       }
       if (event.button === LEFT) {
-        pressLanded();
-        pressWaits = [];
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
@@ -1724,12 +1725,12 @@ export function installInput(): void {
     },
     capture,
   );
+  document.addEventListener('click', pressLanded, capture);
   // Some engines (WebKit) still send `click` for the middle button: it never reaches a
   // control.
   document.addEventListener(
     'click',
     (event) => {
-      pressLanded();
       if (swallow) {
         event.preventDefault();
         event.stopImmediatePropagation();
