@@ -5,7 +5,9 @@
   and at its end the chevron 14 in the subtle glyph colour, which turns half a turn while the
   section is open (150 ms, ease-out). Under the pointer the label and the chevron darken to
   ink. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
-  locked, a section held open: no answer to the pointer, no Tab stop, the chevron as it is.
+  locked, a section held open: no answer to the pointer, no Tab stop, the chevron as it is. A
+  section that stands first in the list has nothing to part from: no line, and its label stands
+  where a day's heading stands.
 -->
 <script lang="ts">
   import Icon from './Icon.svelte';
@@ -47,6 +49,13 @@
     font: var(--type-day);
     text-align: left;
     transition: color var(--dur-base) var(--ease-standard);
+  }
+
+  /* First in the list: no rows of the days above it. */
+  :global(.rows:not(:has([data-key]))) + .divider {
+    margin-top: 0;
+    padding: var(--day-head-pad);
+    border-top: 0;
   }
 
   .divider:hover:not(:disabled) {

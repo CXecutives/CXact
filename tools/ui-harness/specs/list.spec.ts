@@ -1982,6 +1982,40 @@ test.describe('search', () => {
     ).toBe(0);
   });
 
+  test('a list that starts with a section: no line over its heading, which stands where a day stands', async ({
+    page,
+  }) => {
+    /** Where the words of a heading start. */
+    const wordsTop = (heading: Locator): Promise<number> =>
+      heading.evaluate((node) => {
+        const words = document.createRange();
+        words.selectNodeContents(node);
+        return words.getBoundingClientRect().top;
+      });
+    const lineOf = (heading: Locator): Promise<string> =>
+      heading.evaluate((node) => getComputedStyle(node).borderTopWidth);
+    await open(page, WIN);
+    const day = await wordsTop(page.getByTestId('day-heading').first());
+    const unscored = page.getByTestId('unscored-divider');
+    // Between rows it keeps its line.
+    expect(await lineOf(unscored)).not.toBe('0px');
+    await page.getByTestId('search').fill('Buchhaltung');
+    const excludedOnes = page.getByTestId('excluded-divider');
+    await expect(excludedRows(page)).toHaveCount(1);
+    await expect(rows(page)).toHaveCount(0);
+    expect(await lineOf(excludedOnes)).toBe('0px');
+    expect(await wordsTop(excludedOnes.locator('.label'))).toBe(day);
+    // In the flat orders too (their rows hold an empty group).
+    await chooseSort(page, 'match');
+    await expect(page.getByTestId('day-heading')).toHaveCount(0);
+    await expect(excludedRows(page)).toHaveCount(1);
+    expect(await lineOf(excludedOnes)).toBe('0px');
+    expect(await wordsTop(excludedOnes.locator('.label'))).toBe(day);
+    // No profile: all of a place stands in its one section, under the state box.
+    await open(page, `${WIN}&scenario=no-profile`);
+    expect(await lineOf(unscored)).toBe('0px');
+  });
+
   test('a place that holds only what its folds hide stands open, its heading locked; the kept choice returns', async ({
     page,
   }) => {
