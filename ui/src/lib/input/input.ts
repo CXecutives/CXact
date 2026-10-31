@@ -1525,18 +1525,22 @@ export function installInput(): void {
         lastPane = scrollAreaOf(event.target);
         lastCopy = closest(event.target, COPY);
         pressedAt = { x: event.clientX, y: event.clientY };
+        // A button inside a field (show password, clear) leaves the caret in the field.
+        const keepsFocus = closest(event.target, KEEP_FOCUS) !== null;
         // A press beside the selected text ends the selection, like in a native text view
         // (copyable text starts a new one; the app's menu with its Copy needs it, and a press
-        // on a scrollbar is no press on the text's view).
+        // on a scrollbar is no press on the text's view). The caret a field keeps is the
+        // page's selection too: taken away, Chromium reveals it on the release, the view jumps
+        // and the click misses, and WebKit reads the field's caret at its start.
         if (
           !selectable(event.target) &&
           closest(event.target, MENU_LAYER) === null &&
-          !onScrollbar(event)
+          !onScrollbar(event) &&
+          !(keepsFocus && inField(document.activeElement))
         ) {
           getSelection()?.removeAllRanges();
         }
-        // A button inside a field (show password, clear) leaves the caret in the field.
-        if (closest(event.target, KEEP_FOCUS) !== null) {
+        if (keepsFocus) {
           event.preventDefault();
         } else {
           leaveField(event);

@@ -696,6 +696,13 @@ test('the password eye and the search clear keep the caret in the field', async 
   await expect(password).toBeFocused();
   await page.keyboard.type('x');
   await expect(password).toHaveValue('abcd efghx');
+  // A selection in the field stays as well.
+  await password.evaluate((node: HTMLInputElement) => node.setSelectionRange(2, 5));
+  await page.getByRole('button', { name: T.field.conceal }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+  expect(
+    await password.evaluate((node: HTMLInputElement) => [node.selectionStart, node.selectionEnd]),
+  ).toEqual([2, 5]);
   await open(page, WIN);
   const search = page.getByTestId('search');
   await search.fill('Controlling');
