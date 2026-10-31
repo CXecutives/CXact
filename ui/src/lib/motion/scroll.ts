@@ -74,11 +74,15 @@ export function scrollerOf(node: Element): HTMLElement | null {
 }
 
 /**
- * Bring `node` into view in its scroll area in one short tween: `center` puts it in the
- * middle (a passage the user jumps to), `nearest` scrolls only as far as needed. The pane's
- * scroll-padding (a sticky band) counts like the engine's scrollIntoView counts it.
+ * Bring `node` into view in its scroll area in one short tween: `start` puts it at the top
+ * (a field of the form the user is led to), `center` in the middle (a passage the user jumps
+ * to), `nearest` scrolls only as far as needed. The pane's scroll-padding (a sticky band) and
+ * the node's scroll-margin-top count like the engine's scrollIntoView counts them.
  */
-export function glideIntoView(node: Element, block: 'center' | 'nearest' = 'nearest'): void {
+export function glideIntoView(
+  node: Element,
+  block: 'start' | 'center' | 'nearest' = 'nearest',
+): void {
   const pane = scrollerOf(node);
   if (pane === null) return;
   const style = getComputedStyle(pane);
@@ -89,7 +93,9 @@ export function glideIntoView(node: Element, block: 'center' | 'nearest' = 'near
   const top = view.top + pane.clientTop + padTop;
   const bottom = view.top + pane.clientTop + pane.clientHeight - padBottom;
   let delta = 0;
-  if (block === 'center') {
+  if (block === 'start') {
+    delta = box.top - top - (Number.parseFloat(getComputedStyle(node).scrollMarginTop) || 0);
+  } else if (block === 'center') {
     delta = box.top + box.height / 2 - (top + bottom) / 2;
   } else if (box.top < top) {
     delta = box.top - top;

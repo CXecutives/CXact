@@ -1051,6 +1051,76 @@ test('what is missing: the card names it and the rows stay calm; a gap never hol
   await expect(card).toHaveCount(0);
   expect(await marked(page)).toEqual([]);
 });
+test('Ergänzen glides to its field like every way into view', async ({ page }) => {
+  await profile(page, '&scenario=profile-incomplete');
+  // Each frame's place of the view from here on.
+  await page.evaluate(() => {
+    const view = document.querySelector('[data-testid="view-profile"]')!;
+    const places: number[] = [];
+    (window as unknown as { places: number[] }).places = places;
+    const note = (): void => {
+      places.push(view.scrollTop);
+      requestAnimationFrame(note);
+    };
+    requestAnimationFrame(note);
+  });
+  await page.getByTestId('profile-missing-go').click();
+  await expect(roles(page).locator('input')).toBeInViewport();
+  await page.waitForTimeout(400);
+  const places = await page.evaluate(() =>
+    (window as unknown as { places: number[] }).places.filter((top) => top > 0),
+  );
+  const end = places.at(-1)!;
+  expect(places.filter((top) => top !== end).length, 'frames on its way').toBeGreaterThan(1);
+  // At its end clear of the top bar's fade, as the row's margin says.
+  const row = await field(page, 'roles').evaluate((node) => ({
+    top: node.getBoundingClientRect().top,
+    margin: Number.parseFloat(getComputedStyle(node).scrollMarginTop),
+  }));
+  const view = await page.getByTestId('view-profile').boundingBox();
+  expect(row.top - row.margin).toBe(view!.y);
+});
+
+test('Ergänzen from the keyboard: the focus comes along, no caret; Tab goes on from there', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  const input = roles(page).locator('input');
+  await input.fill('Interim CFO');
+  await input.press('Enter');
+  await leaveField(page);
+  await expect(missingCard(page)).toContainText(T.profile.missing.heading(1));
+  const view = page.getByTestId('view-profile');
+  /** Where the view comes to rest. */
+  const place = async (): Promise<number> => {
+    let last = -1;
+    await expect
+      .poll(async () => {
+        const now = await view.evaluate((node) => node.scrollTop);
+        const rests = now === last;
+        last = now;
+        return rests;
+      })
+      .toBe(true);
+    return last;
+  };
+  await page.getByTestId('profile-missing-go').focus();
+  await page.keyboard.press('Enter');
+  const add = page.getByTestId('languages-add-button');
+  await expect(add).toBeInViewport();
+  const byKeys = await place();
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
+  await expect(add).toBeInViewport();
+  // With the mouse the same place, and the focus goes nowhere.
+  await view.evaluate((node) => node.scrollTo(0, 0));
+  await page.getByTestId('profile-missing-go').click();
+  await expect(add).toBeInViewport();
+  expect(await place()).toBe(byKeys);
+  await expect(page.locator('[data-field~="languages"]')).not.toBeFocused();
+});
+
 // ------------------------------------------------------------------ the CV
 
 test('"Aus Lebenslauf ausfüllen" opens the file dialog at once; the AI works in its place, then it fills', async ({

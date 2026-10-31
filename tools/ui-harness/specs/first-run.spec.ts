@@ -297,6 +297,26 @@ test('Abbrechen stops the evaluation in the backend and goes back to the upload'
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
+test('Weiter from the keyboard: the focus goes along to what is missing, a letter jumps nowhere', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  const roles = page.getByTestId('profile-roles').locator('input');
+  await roles.click();
+  await page.keyboard.type('Interim CFO');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => marks(page)).toEqual(['competences', 'languages']);
+  const add = page.getByTestId('competences-add-button');
+  await expect(add).toBeInViewport();
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.type('x');
+  await expect(roles).toHaveValue('');
+  await expect(add).toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
+});
+
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
   page,
 }) => {

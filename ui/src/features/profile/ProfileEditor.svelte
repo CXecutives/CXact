@@ -31,9 +31,10 @@
   import Group from '$components/Group.svelte';
   import Section from '$components/Section.svelte';
   import { t } from '$lib/i18n/t';
-  import { formKeys } from '$lib/input/input';
+  import { byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
+  import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { onMount, tick } from 'svelte';
@@ -152,13 +153,19 @@
     return field === null;
   }
 
-  /** A field of the form comes up under the top bar, so the press always moves it, without
-   *  the caret; `false` when the field is not on the page. */
+  /** A field of the form glides up under the top bar, so the press always moves it, without
+   *  the caret; from the keyboard its row holds the focus (no caret, no ring), so that Tab goes
+   *  on from there; `false` when the field is not on the page. */
   export async function revealField(field: string): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
-    scope?.scrollIntoView({ block: 'start' });
-    return scope !== null && scope !== undefined;
+    if (scope === null || scope === undefined) return false;
+    glideIntoView(scope, 'start');
+    if (byKeyboard()) {
+      scope.tabIndex = -1;
+      scope.focus({ preventScroll: true });
+    }
+    return true;
   }
 
   // The way in that opened the form is gone: Esc and Enter reach the form (no caret).

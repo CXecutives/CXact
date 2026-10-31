@@ -698,7 +698,8 @@ function onFocusIn(event: FocusEvent): void {
   // A modal dialog takes the focus when it opens: from then on the wheel is held for it
   // (onWheel).
   if (closest(node, MODAL) !== null) watchWheel('modal', true);
-  if (!keyboardFocus || !(node instanceof HTMLElement)) return;
+  // What only holds the focus is no control, and may be taller than the area.
+  if (!keyboardFocus || !(node instanceof HTMLElement) || isNowhere(node)) return;
   // After the engine's own scroll into view.
   requestAnimationFrame(() => keepInView(node));
 }
