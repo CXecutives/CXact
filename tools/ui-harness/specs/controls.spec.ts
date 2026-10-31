@@ -1,7 +1,7 @@
 // The core controls on their states sheet (`?sheet=controls`, tools/ui-harness/sheets/): one
 // height per kind, one width while a button swaps (`sizeTo`) and for a pair (`--btn-min`), the
-// select's keys with the focus kept on its button, a closed chip list that opens on focus,
-// and a chip that rises in only when it is added.
+// select's keys with the focus kept on its button and the tick on its chosen option, a closed
+// chip list that lists only what is typed, and a chip that rises in only when it is added.
 
 import type { Locator, Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
@@ -19,7 +19,7 @@ async function sheet(page: Page): Promise<Locator> {
 const width = async (locator: Locator): Promise<number> => (await locator.boundingBox())!.width;
 const height = async (locator: Locator): Promise<number> => (await locator.boundingBox())!.height;
 
-test('one height per kind: 30, the quiet glyph 28, a suggestion 26, a select inline 26', async ({
+test('one height per kind: 30, the quiet glyph 28, a suggestion 32, a select inline 26', async ({
   page,
 }) => {
   const states = await sheet(page);
@@ -32,6 +32,9 @@ test('one height per kind: 30, the quiet glyph 28, a suggestion 26, a select inl
   const quiet = states.locator('.btn.ghost.icon-only').first();
   expect(await height(quiet)).toBe(28);
   expect(await width(quiet)).toBe(28);
+  expect(
+    await height(states.getByRole('listbox', { name: 'Tools' }).getByRole('option').first()),
+  ).toBe(32);
   expect(await height(page.getByTestId('states-select'))).toBe(30);
   expect(await height(page.getByTestId('states-level'))).toBe(26);
   expect(await width(page.getByTestId('states-select'))).toBeGreaterThanOrEqual(150);
@@ -71,13 +74,16 @@ test('a select: the arrows open its list, the focus stays on its button; Enter, 
   await expect(list).toBeVisible();
   await expect(select).toBeFocused();
   await expect(select).toHaveAttribute('aria-expanded', 'true');
-  // The chosen option is active and marked as chosen (the track, navy words, no tick).
+  // The chosen option is active and carries the one tick of the list.
   const chosen = list.getByRole('option', { name: 'Gmail' });
   await expect(chosen).toHaveAttribute('aria-selected', 'true');
   await expect(select).toHaveAttribute('aria-activedescendant', (await chosen.getAttribute('id'))!);
-  await expect(chosen.locator('.icon')).toHaveCount(0);
-  // At least as wide as its button.
-  expect(await width(list)).toBeGreaterThanOrEqual(await width(select));
+  await expect(chosen.locator('.tick')).toHaveCount(1);
+  await expect(list.locator('.tick')).toHaveCount(1);
+  // Its box (the frame around the list) is at least as wide as its button.
+  expect(await width(page.locator('[data-menu-layer] .frame'))).toBeGreaterThanOrEqual(
+    await width(select),
+  );
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(list).toHaveCount(0);
@@ -101,38 +107,72 @@ test('a select: the arrows open its list, the focus stays on its button; Enter, 
   await expect(list).toHaveCount(0);
 });
 
-test('a closed chip list opens on focus, narrows by any name, refuses other text', async ({
+test('a radio list: the chosen row carries the one tick; a click and the arrows choose', async ({
+  page,
+}) => {
+  await sheet(page);
+  // The first one is live, the other shows a row under the pointer.
+  const group = page.getByRole('radiogroup', { name: 'Sicherungen' }).first();
+  const radios = group.getByRole('radio');
+  const chosenAlone = async (index: number): Promise<void> => {
+    await expect(radios.nth(index)).toHaveAttribute('aria-checked', 'true');
+    await expect(group.locator('[aria-checked="true"]')).toHaveCount(1);
+    await expect(radios.nth(index).locator('svg')).toHaveCount(1);
+    await expect(group.locator('svg')).toHaveCount(1);
+  };
+  await chosenAlone(0);
+  await radios.nth(1).click();
+  await chosenAlone(1);
+  await radios.nth(1).focus();
+  await page.keyboard.press('ArrowDown');
+  await chosenAlone(2);
+});
+
+test('a closed chip list opens no list on focus, narrows by any name, refuses other text', async ({
   page,
 }) => {
   await sheet(page);
   const field = page.getByTestId('states-countries');
   const input = field.locator('input');
   const options = page.getByTestId('states-countries-options').getByRole('option');
+  const chips = field.locator('[data-chip] .text');
+  const none = page.getByTestId('states-countries-none');
   await input.focus();
-  // Every country not chosen yet, nothing marked: Enter takes nothing.
-  await expect(options).toHaveText(['Schweiz', 'Niederlande', 'Belgien', 'Luxemburg']);
+  // No list and nothing marked: Enter takes nothing.
+  await expect(input).toBeFocused();
+  await expect(options).toHaveCount(0);
   await expect(input).not.toHaveAttribute('aria-activedescendant', /./);
+  await page.keyboard.press('Enter');
+  await expect(chips).toHaveText(['Deutschland', 'Österreich']);
   // By its English name, the first match marked.
   await input.fill('swi');
   await expect(options).toHaveText(['Schweiz']);
+  await expect(input).toHaveAttribute(
+    'aria-activedescendant',
+    (await options.first().getAttribute('id'))!,
+  );
   await page.keyboard.press('Enter');
-  await expect(field.locator('[data-chip] .text')).toHaveText([
-    'Deutschland',
-    'Österreich',
-    'Schweiz',
-  ]);
-  await expect(options).not.toContainText(['Schweiz']);
+  await expect(chips).toHaveText(['Deutschland', 'Österreich', 'Schweiz']);
+  await expect(input).toHaveValue('');
+  // A chosen one leaves the list, and its name says nothing.
+  await input.fill('swi');
+  await expect(options).toHaveCount(0);
+  await expect(none).toHaveCount(0);
   // Text outside the list stays in the field and says so.
   await input.fill('Atlantis');
-  await expect(page.getByTestId('states-countries-none')).toHaveText('Kein Land mit diesem Namen.');
+  await expect(none).toHaveText('Kein Land mit diesem Namen.');
   await page.keyboard.press('Enter');
   await expect(field.locator('[data-chip]')).toHaveCount(3);
   await expect(input).toHaveValue('Atlantis');
   // Esc closes the list, then drops the text.
-  await input.fill('');
-  await expect(options.first()).toBeVisible();
+  await input.fill('Bel');
+  await expect(options).toHaveText(['Belgien']);
+  await expect(none).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(options).toHaveCount(0);
+  await expect(input).toHaveValue('Bel');
+  await page.keyboard.press('Escape');
+  await expect(input).toHaveValue('');
 });
 
 test('only an added chip rises; the x says Entfernen and is hit 24 px wide', async ({ page }) => {
@@ -153,7 +193,7 @@ test('only an added chip rises; the x says Entfernen and is hit 24 px wide', asy
   await expect.poll(moving).toEqual(['Belgien']);
   await expect.poll(moving).toEqual([]);
   // Removing one draws the others again: none of them rises.
-  await field.getByRole('button', { name: 'Österreich entfernen' }).click();
+  await field.getByRole('button', { name: T.chips.remove('Österreich') }).click();
   await expect(field.locator('[data-chip]')).toHaveCount(2);
   expect(await moving()).toEqual([]);
   const remove = field.locator('.remove').first();
