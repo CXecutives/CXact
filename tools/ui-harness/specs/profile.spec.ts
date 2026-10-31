@@ -882,6 +882,34 @@ test('Sprachen: rows, the level a select of A1 to C2, the button brings a closed
   });
 });
 
+test('a name field knows the rows above it: a language there says nothing, a competence is not offered', async ({
+  page,
+}) => {
+  await profile(page);
+  const language = await adder(page, 'language');
+  await expect(names(page, 'languages')).toHaveText([LANGUAGE.de, LANGUAGE.en]);
+  // Like a chosen country: no sentence, and Enter clears the text.
+  await language.fill(LANGUAGE.de);
+  await expect(page.getByTestId('language-add-none')).toHaveCount(0);
+  await expect(page.getByTestId('language-add-options').getByRole('option')).toHaveCount(0);
+  await language.press('Enter');
+  await expect(language).toHaveValue('');
+  await expect(names(page, 'languages')).toHaveCount(2);
+  // The part of a name that is there is no news either, and the row is not offered.
+  await language.fill(LANGUAGE.de.slice(0, 4));
+  await expect(page.getByTestId('language-add-none')).toHaveCount(0);
+  await expect(
+    page.getByTestId('language-add-options').getByRole('option', { name: LANGUAGE.de }),
+  ).toHaveCount(0);
+  await language.fill('');
+  // A competence that is a row is not suggested; the others are.
+  const competence = await adder(page, 'competence');
+  await competence.fill('Contr');
+  const hints = page.getByTestId('competence-add-suggestions').getByRole('option');
+  await expect(hints.first()).toBeVisible();
+  await expect(hints.getByText('Controlling', { exact: true })).toHaveCount(0);
+});
+
 test('the keys in a name field: Tab goes on to its ×, Esc gives the focus to the button', async ({
   page,
 }) => {

@@ -62,6 +62,7 @@
     bind:values={typed}
     placeholder={words.competence}
     suggestions={vocabulary.skills}
+    taken={listed.map((row) => row.name)}
     testid="competence-add"
     onchange={take}
   />

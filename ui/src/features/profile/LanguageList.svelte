@@ -46,12 +46,11 @@
   );
 
   const same = (a: string, b: string): boolean => keyOf(a) === keyOf(b);
-  const chosen = (name: string): boolean => rows.some((row) => same(row.language, name));
 
   /** What the add row took: each language not there yet becomes a row at B2. */
   let typed = $state<string[]>([]);
   function take(names: string[]): void {
-    const fresh = names.filter((name) => !chosen(name));
+    const fresh = names.filter((name) => !rows.some((row) => same(row.language, name)));
     if (fresh.length > 0) {
       rows = [...rows, ...fresh.map((language) => ({ language, level: ASSUMED }))];
     }
@@ -77,7 +76,8 @@
   <ChipInput
     label={words.language}
     bind:values={typed}
-    options={OPTIONS.filter((option) => !chosen(option.id))}
+    options={OPTIONS}
+    taken={listed.map((row) => row.language)}
     noMatch={words.languageNone}
     placeholder={words.language}
     testid="language-add"

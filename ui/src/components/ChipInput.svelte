@@ -17,7 +17,8 @@
   matches no option stays in the field and says so (`noMatch`, the look of a refused value); text
   that matches only
   chosen ones says nothing. A chip shows its option's name; a value that is no option (from a
-  file) stays and shows as it is.
+  file) stays and shows as it is. What stands in the list the field adds to (`taken`, the rows of
+  Sprachen and Kompetenzen) counts as chosen.
   With `suggestions` (the engine's words) a field without options suggests terms from the
   first character (Suggestions.svelte): nothing is marked until the arrows or the pointer
   mark one, Enter or a click takes the marked term as a chip; Enter without a mark and
@@ -71,6 +72,9 @@
     noMatch?: string | null;
     /** Terms to suggest while typing, free text stays (null: not loaded yet). */
     suggestions?: Vocabulary | null | undefined;
+    /** Names that are there already beside `values` (the rows of the list the field adds to):
+     *  they count as chips, not offered and no news. */
+    taken?: readonly string[];
     /** Two lines of chips and "+ n weitere" while the field has no focus. */
     fold?: boolean;
 
@@ -90,6 +94,7 @@
     options = null,
     noMatch = null,
     suggestions = undefined,
+    taken = [],
     fold = false,
     testid = null,
     onchange,
@@ -159,12 +164,15 @@
   const found = $derived(
     options === null ? [] : folded(draft) === '' ? options : suggested(options, draft),
   );
+  /** What is there already, chips and rows. */
+  const there = $derived(new Set([...values, ...taken].map(folded)));
+  const isThere = (option: ChipOption): boolean => there.has(folded(option.id));
   /** The options found that are not chosen yet: the list under the field. */
-  const matches = $derived(found.filter((option) => !values.includes(option.id)));
+  const matches = $derived(found.filter((option) => !isThere(option)));
   /** Esc closed the list until the next character. */
   let closed = $state(false);
   const hints = $derived(
-    suggestions && focused && !closed ? suggest(suggestions, draft, values) : [],
+    suggestions && focused && !closed ? suggest(suggestions, draft, [...values, ...taken]) : [],
   );
   /** The rows under the field: the options not chosen yet, or the suggested terms. */
   const rows = $derived(
@@ -183,9 +191,7 @@
     options !== null &&
       folded(draft) !== '' &&
       options.some(
-        (option) =>
-          values.includes(option.id) &&
-          names(option).some((name) => folded(name) === folded(draft)),
+        (option) => isThere(option) && names(option).some((name) => folded(name) === folded(draft)),
       ),
   );
   /** The typed text names no option at all (one that is chosen already is no news). */
