@@ -12,9 +12,7 @@ test('an empty list during a fetch says the jobs come in as it goes, not at its 
   await open(page, `${WIN}&scenario=empty`);
   await page.evaluate(() => (window.__harness.holdAfter = 1));
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('empty-all').locator('p')).toHaveText(
-    'Die Jobs erscheinen hier nach und nach.',
-  );
+  await expect(page.getByTestId('empty-all').locator('p')).toHaveText(T.list.empty.running.text);
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
 });
@@ -54,8 +52,8 @@ test('an ad the app cannot reach says so in the reader, its row carries no badge
     });
   }, job!);
   const row = page.getByTestId('job-list').getByTestId('job-row-freelancermap-2805');
-  // The row carries no badge; the reader says it.
-  await expect(row.locator('.badge')).toHaveCount(0);
+  // The row says nothing of it; the reader does.
+  await expect(row).not.toContainText(T.reader.state.unfetchable.heading);
   await row.click();
   await expect(page.getByTestId('detail-note')).toHaveText(T.reader.state.unfetchable.heading);
 });

@@ -1,7 +1,9 @@
 // Harmony (owner, 2026-10-24: "alles soll harmonisch und gut aussehen, auch für das Auge"): every
 // state of the Vorschau menu keeps the round 10 scale. Text uses only the type ladder and the four
 // weights, controls only the control heights, line icons only the one stroke, corners only the
-// radius ladder, and nothing is light blue. A new value is a token first, then a line here.
+// radius ladder, and nothing is light blue. A new value is a token first, then a line here. And
+// on no state does a field hold the caret by itself or a button end in an ellipsis (owner,
+// 2026-10-30).
 
 import { PREVIEW_MENU } from '../preview';
 import { expect, open, test } from './fixtures';
@@ -62,12 +64,20 @@ function audit(rules: Rules): string[] {
     if (!rules.weights.includes(weight)) out.add(`${id(el)}: font-weight ${weight}`);
   }
 
-  // Buttons (components/Button) and the options of a segmented choice; rows and dividers are
+  // Buttons (components/Button), selects and the options of a radio list; rows and dividers are
   // not controls and keep their own rhythm.
-  for (const el of document.querySelectorAll('button.btn, [role="tab"], [role="radio"]')) {
+  for (const el of document.querySelectorAll('button.btn, button.select, [role="radio"]')) {
     if (!shown(el) || el.closest('[aria-hidden="true"]')) continue;
     const height = Math.round(el.getBoundingClientRect().height);
     if (!rules.heights.includes(height)) out.add(`${id(el)}: height ${height}`);
+  }
+
+  const caret = document.activeElement;
+  if (caret?.matches('input, textarea')) out.add(`${id(caret)}: took the caret`);
+  // The app's buttons: the sheet of the surfaces still writes a few of its own words with one.
+  for (const el of document.querySelectorAll('button')) {
+    if (!shown(el) || el.closest('[data-testid="sheet-surfaces"]')) continue;
+    if (/(…|\.\.\.)$/.test(el.textContent?.trim() ?? '')) out.add(`${id(el)}: ellipsis`);
   }
 
   for (const svg of document.querySelectorAll('svg.lucide')) {
@@ -119,6 +129,6 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
       radii: RADII,
       line: LINE,
     });
-    expect(problems, 'values off the round 10 scale').toEqual([]);
+    expect(problems, 'off the round 10 rules').toEqual([]);
   });
 }

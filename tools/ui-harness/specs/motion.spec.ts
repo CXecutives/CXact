@@ -10,7 +10,7 @@ import { test as pure, type Page } from '@playwright/test';
 import { staggerDelay } from '../../../ui/src/lib/motion/enter';
 import { createPace } from '../../../ui/src/lib/motion/pace';
 import { expect, motionSettled, nav, open, test } from './fixtures';
-import { WIN } from './helpers';
+import { row, stubList, WIN } from './helpers';
 
 const tokens = readFileSync(
   fileURLToPath(new URL('../../../ui/src/styles/tokens.css', import.meta.url)),
@@ -154,8 +154,11 @@ test('another job is there at once: the job view never stands empty for a frame'
 
 test('another place lets its rows rise', async ({ page }) => {
   await open(page, WIN);
-  await expect(page.getByTestId('places')).toBeVisible();
-  const rises = await started(page, () => page.getByTestId('place-archive').click());
+  const archived = (await stubList(page, { place: 'archive' })).active[0]!;
+  const rises = await started(page, async () => {
+    await page.getByTestId('place-archive').click();
+    await expect(row(page, archived)).toBeVisible();
+  });
   expect(fades(rises).length).toBeGreaterThan(0);
 });
 
@@ -163,7 +166,8 @@ test('another place lets its rows rise', async ({ page }) => {
 test('a menu drops in when it opens', async ({ page }) => {
   await open(page, WIN);
   const opened = await started(page, () => page.getByTestId('filter').click());
-  expect(opened).toContain('menu: opacity,transform');
+  // Its box (Menu.svelte's frame around the rows) fades and moves.
+  expect(opened.join('\n')).toMatch(/^frame .*: opacity,transform$/m);
 });
 
 test('a setup step slides in from the side it was reached from, its card stays', async ({

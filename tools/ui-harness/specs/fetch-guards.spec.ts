@@ -14,7 +14,7 @@ test('every portal may be switched off; Jobs suchen then waits for one and says 
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('settings')).toBeVisible();
-  // Every source switched on (the sites outside Germany are off already).
+  // Every source switched off, one after the other.
   for (const portal of PORTALS) {
     await (await reveal(page, page.getByTestId(`toggle-enabled-${portal}`))).click();
     await expect(page.getByTestId(`toggle-enabled-${portal}`)).toHaveAttribute(
@@ -33,9 +33,9 @@ test('every portal may be switched off; Jobs suchen then waits for one and says 
   await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsPortal);
   await fetch.click({ force: true });
   expect(await calls(page, 'start_run')).toHaveLength(0);
-  // No run began, so no failed fetch and no refusal.
-  await expect(page.getByTestId('start-error')).toHaveCount(0);
-  await expect(page.getByText('Abruf fehlgeschlagen')).toHaveCount(0);
+  // No run began, so no failed fetch and no refusal (either would say so in a toast).
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
+  await expect(page.getByTestId('toast')).toHaveCount(0);
 
   // One portal back on: Jobs suchen goes again.
   await page.getByTestId('nav-settings').click();
