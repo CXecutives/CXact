@@ -928,6 +928,10 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'mailbox-refused': () => {
     state.lastRun = { ...lastRun(), mail: { kind: 'mailAuth', params: {} } };
   },
+  // The last search could not read the app password: the OS's keychain was out of reach.
+  'mailbox-keychain': () => {
+    state.lastRun = lastRun({ kind: 'failed', error: { kind: 'secretStore', params: {} } });
+  },
   // Every job went to the Archiv after the last search: Aktuell is empty.
   archived: () => {
     for (const job of jobs) job.place = 'archive';

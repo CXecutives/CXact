@@ -14,8 +14,8 @@
 // brought so far, and its bar never moves back. What a fetch brought is a toast at its end
 // ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in every view; its "Zeigen" opens Aktuell
 // filtered to exactly the jobs it counts. What went wrong is a toast too, once, with its way
-// on (a mail part that failed while the search ran says "Postfach prüfen"); the other details
-// of a run (each mail, each portal) are in the log, not on screen.
+// on (a mail part that failed at the mailbox while the search ran says "Postfach prüfen"); the
+// other details of a run (each mail, each portal) are in the log, not on screen.
 
 import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
@@ -51,6 +51,19 @@ export const isFetch = (kind: RunKindName): boolean => kind === 'fetch';
 /** The share of the bar each part of a fetch fills: the portals' search, then loading the
  *  ads, then scoring them. Reading the mails stays indeterminate. */
 const SHARE = { search: 0.5, fetch: 0.4 } as const;
+
+/** The failures of a fetch that are the mailbox's own: the Postfach in Einstellungen says them
+ *  (not a cancel, a missing mailbox or a missing network), so a toast about one leads there. */
+export const MAILBOX_FAILURES: readonly string[] = [
+  'mailConnect',
+  'mailAuth',
+  'mailTimeout',
+  'mailLost',
+  'mailNotGmail',
+  'mailServer',
+  'secretStore',
+  'secretCorrupt',
+];
 
 class RunStore {
   active = $state(false);
@@ -286,15 +299,18 @@ class RunStore {
 
   /** What went wrong in a finished run, once as a toast: a failure with its own way on (where
    *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again); a mail
-   *  part that failed while the search ran says why with "Postfach prüfen". */
+   *  part that failed while the search ran says why, with "Postfach prüfen" where the Postfach
+   *  can say more. */
   private tellTrouble(summary: RunSummary): void {
     const mail = summary.mail;
     if (summary.outcome.kind === 'completed' && mail !== null) {
-      toasts.show(t.error.text(mail.kind, mail.params), 'warning', {
-        label: t.run.checkMailbox,
-        onclick: toMailbox,
-        undo: false,
-      });
+      toasts.show(
+        t.error.text(mail.kind, mail.params),
+        'warning',
+        MAILBOX_FAILURES.includes(mail.kind)
+          ? { label: t.run.checkMailbox, onclick: toMailbox, undo: false }
+          : null,
+      );
     }
     if (summary.outcome.kind === 'failed') {
       const error = summary.outcome.error;

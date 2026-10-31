@@ -3,7 +3,7 @@
 // mailbox. The providers: their texts and their pages.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, calls, expect, open, test } from './fixtures';
+import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';
 import { expectMailboxState, reveal, T } from './helpers';
 
 const WIN = '?platform=windows';
@@ -325,6 +325,71 @@ test('a link of a field underlines like every other link: under its words, not t
     hit: Math.round(node.getBoundingClientRect().height),
   }));
   expect(size).toEqual({ words: '13px', glyph: 14, hit: 24 });
+});
+
+/** The form opened for a new mailbox, its first glide over. */
+async function connectForm(page: Page): Promise<void> {
+  await open(page, `${WIN}&scenario=no-mailbox&view=settings`);
+  await (await reveal(page, page.getByTestId('mailbox-connect'))).click();
+  await expect(form(page)).toBeVisible();
+  await animationsDone(page);
+}
+
+/** Verbinden stands wholly in the window. */
+const footInWindow = (page: Page) =>
+  save(page).evaluate((node) => {
+    const { top, bottom } = node.getBoundingClientRect();
+    return top >= 0 && bottom <= innerHeight;
+  });
+
+test('a message that grows the form keeps its buttons in the window', async ({ page }) => {
+  await connectForm(page);
+  await expect.poll(() => footInWindow(page)).toBe(true);
+  // Empty fields: both are said, and the button just pressed stays under the hand.
+  await save(page).click();
+  await expect(said(page)).toHaveCount(2);
+  await expect.poll(() => footInWindow(page)).toBe(true);
+  // A refused pair: the same.
+  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
+  await page.getByTestId('mailbox-password').fill('falschfalschfals');
+  await save(page).click();
+  await expect(said(page)).toHaveText(T.error.text('mailAuth', {}));
+  await expect.poll(() => footInWindow(page)).toBe(true);
+});
+
+test('in the smallest window too the buttons just pressed stay in the window', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 360 });
+  await connectForm(page);
+  // The form is higher than the window here: Verbinden lies at its end.
+  await (await reveal(page, save(page))).click();
+  await expect(said(page)).toHaveCount(2);
+  await expect.poll(() => footInWindow(page)).toBe(true);
+});
+
+test('leaving Einstellungen stops a check under way, as Abbrechen does, and says nothing', async ({
+  page,
+}) => {
+  await connectForm(page);
+  await page.evaluate(() => (window.__harness.holdMailbox = true));
+  await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
+  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
+  await page.getByTestId('mailbox-password').press('Enter');
+  await expect(save(page)).toHaveAttribute('aria-busy', 'true');
+  await page.getByTestId('nav-jobs').click();
+  await expect.poll(async () => (await calls(page, 'cancel_run')).length).toBe(1);
+  // Nothing holds the app any more: a search starts.
+  await page.getByTestId('fetch').click();
+  await expect(page.getByTestId('run-line')).toBeVisible();
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.error.text('busy', { activity: 'mailbox' }) }),
+  ).toHaveCount(0);
+  await runFinished(page);
+  // Back there nothing was connected, and nothing changes by itself later.
+  await page.getByTestId('nav-settings').click();
+  await page.evaluate(() => (window.__harness.holdMailbox = false));
+  await page.waitForTimeout(150);
+  await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
 test('a double click on the provider page opens it once', async ({ page }) => {

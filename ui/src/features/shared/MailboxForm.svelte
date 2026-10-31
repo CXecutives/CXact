@@ -17,8 +17,8 @@
   buttons ("Verbinden") call `save` and `cancel`, and their keys answer Enter and Esc. A
   saved mailbox needs no note: its state "Verbunden" or the setup's next step is the answer.
   While Verbinden signs in and counts (it can take a while), cancel and Esc stay live: they
-  stop the check (`cancel_run`, the backend holds the app for it); the stop itself says
-  nothing.
+  stop the check (`cancel_run`, the backend holds the app for it), and so does leaving the
+  form; the stop itself says nothing.
 -->
 <script lang="ts" module>
   import type { MailProvider } from '$lib/ipc/types';
@@ -38,7 +38,7 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke, IpcError } from '$lib/ipc/api';
   import { app } from '$lib/state/app.svelte';
-  import { untrack } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
 
   interface Props {
     /** A check is on its way (the button that called `save` turns meanwhile). */
@@ -80,6 +80,8 @@
   let refused = $state(false);
   let formError = $state<Words | null>(null);
   let passwordField = $state<TextField | null>(null);
+  /** The stop of the check under way is asked for: once is enough. */
+  let stopping = false;
 
   /** An error goes with what it spoke of: typing in its field takes its sentence and the
    *  provider's refusal of the pair away (the pair is another one now); another provider
@@ -128,16 +130,21 @@
       return false;
     } finally {
       busy = false;
+      stopping = false;
     }
   }
 
-  /** Cancel and Esc around the form: a check in progress is stopped (the answer to
-   *  save_mailbox is then `mailCancelled`, said by nobody). */
+  /** Cancel and Esc around the form, and its going: a check in progress is stopped (the answer
+   *  to save_mailbox is then `mailCancelled`, said by nobody). */
   export function cancel(): void {
-    if (busy) {
-      invoke('cancel_run').catch((error: unknown) => (formError = () => errorText(error)));
-    }
+    if (!busy || stopping) return;
+    stopping = true;
+    invoke('cancel_run').catch((error: unknown) => {
+      stopping = false;
+      formError = () => errorText(error);
+    });
   }
+  onDestroy(cancel);
 
   /** The provider's page: its app passwords, or (GMX, WEB.DE) how to allow IMAP. */
   function openPage(): void {

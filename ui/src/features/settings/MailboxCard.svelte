@@ -10,9 +10,9 @@
   connects, Esc and Abbrechen fold it away and give the focus back to the row's button; while
   it is open and no field has the focus (the row's button went with the opening) the form's
   box holds it, so both keys work there too. After "Entfernen" the focus goes to Verbinden.
-  Unfolded, the form glides into view as far as needed.
-  While Verbinden signs in and counts it spins in its own width; Abbrechen and Esc stay live
-  and stop the check (`cancel_run`).
+  Unfolded, the form glides into view as far as needed; when a message grows it, its buttons
+  stay in the window. While Verbinden signs in and counts it spins in its own width; Abbrechen
+  and Esc stay live and stop the check (`cancel_run`).
   The state is the answer to a saved mailbox ("Verbunden", green; no note, no toast). After a
   red one it says "Passwort abgelehnt" (App-Passwort for Gmail and iCloud) or "Postfach nicht
   erreichbar" for a mail error of a fetch that finished after the mailbox was last accepted
@@ -35,6 +35,7 @@
   import { unfold } from '$lib/motion/transitions';
   import { primaryFirst } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
+  import { MAILBOX_FAILURES } from '$lib/state/run.svelte';
   import { tick } from 'svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
@@ -45,16 +46,6 @@
   }
   let { cfg, locked }: Props = $props();
 
-  /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
-  const MAIL_FAILURES: readonly string[] = [
-    'mailConnect',
-    'mailAuth',
-    'mailTimeout',
-    'mailLost',
-    'mailNotGmail',
-    'mailServer',
-  ];
-
   const actionFirst = primaryFirst();
   /** The stored mailbox signs in with an app password (Gmail, iCloud). */
   const appPassword = $derived(
@@ -63,8 +54,10 @@
   let editing = $state(false);
   let checking = $state(false);
   let form = $state<MailboxForm | null>(null);
-  /** The form, and the place of the row's button that opens it (Ändern, or Verbinden). */
+  /** The form with its buttons, these buttons, and the place of the row's button that opens it
+   *  (Ändern, or Verbinden). */
   let editor = $state<HTMLElement | null>(null);
+  let foot = $state<HTMLElement | null>(null);
   let opening = $state<HTMLElement | null>(null);
   let confirmRemove = $state(false);
   let removing = $state(false);
@@ -78,7 +71,7 @@
     const last = cfg.lastRun;
     if (last === null) return null;
     const error = last.outcome.kind === 'failed' ? last.outcome.error : last.mail;
-    if (error === null || !MAIL_FAILURES.includes(error.kind)) return null;
+    if (error === null || !MAILBOX_FAILURES.includes(error.kind)) return null;
     const checked = cfg.mailbox.checkedAt;
     if (checked !== null && Date.parse(last.finishedAt) <= Date.parse(checked)) return null;
     return error;
@@ -106,9 +99,15 @@
     void close();
   }
 
-  /** Verbinden: the form folds away once the mailbox is saved. */
+  /** Verbinden: the form folds away once the mailbox is saved. A message that grew it may have
+   *  pushed its buttons out of the window: trying again is the next thing to do. */
   async function connect(): Promise<void> {
-    if (await form?.save()) await close();
+    if (await form?.save()) {
+      await close();
+      return;
+    }
+    await tick();
+    if (editing && foot !== null) glideIntoView(foot);
   }
 
   /** The dialog closes only once the mailbox is gone; a failure stays inside it. */
@@ -203,7 +202,7 @@
       use:formKeys={{ save: () => void connect(), cancel }}
     >
       <MailboxForm boxed bind:this={form} bind:busy={checking} />
-      <div class="foot">
+      <div class="foot" bind:this={foot}>
         <div class="buttons" data-testid="mailbox-buttons">
           {#if actionFirst}{@render connectButton()}{@render cancelButton()}{:else}{@render cancelButton()}{@render connectButton()}{/if}
         </div>

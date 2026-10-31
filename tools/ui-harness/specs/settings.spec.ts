@@ -365,6 +365,29 @@ test('mailbox: a saved change is answered by its state; a mail error before it i
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
 
+test('mailbox: no network is no fault of the mailbox: the toast does not lead there', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&mail=no-internet&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  const warning = page.getByTestId('toast').filter({ hasText: T.error.text('offline', {}) });
+  await expect(warning).toHaveCount(1);
+  await expect(warning.getByTestId('toast-action')).toHaveCount(0);
+  // The Postfach has nothing to say about it either: it stays connected.
+  await nav(page, 'nav-settings');
+  await expectMailboxState(page, T.settings.connected);
+});
+
+test('mailbox: what a toast sends here, the row says: a keychain out of reach', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=mailbox-keychain`);
+  await reveal(page, page.getByTestId('settings-mailbox'));
+  await expectMailboxState(page, T.settings.unreachable);
+  await expect(page.getByTestId('mailbox-hint').locator('.status')).toHaveClass(/danger/);
+});
+
 test('mailbox: the app password was refused while the search went on; said once', async ({
   page,
 }) => {
