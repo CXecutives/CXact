@@ -3,9 +3,9 @@
 //
 // The rules of all motion in the UI (lib/motion is their one home):
 //   - Only transform and opacity move, plus colour and stroke-dashoffset. The exceptions are
-//     single small boxes: the height of a row or line that folds or unfolds, and the size of
-//     an element out of the flow that glides to another box (glide.ts, barSlide). End values
-//     are whole pixels.
+//     single small boxes: the height of a row or line that folds or unfolds, the width of a
+//     button that gives up its room in a row (foldAside), and the size of an element out of the
+//     flow that glides to another box (glide.ts, barSlide). End values are whole pixels.
 //   - One curve per kind: entries ease out (--ease-out, 150 to 180 ms), exits ease in
 //     (--ease-in, 60 to 100 ms), every glide (a marker, a thumb, a chevron, rows that move)
 //     180 ms with --ease-out. Two travels: --move-sm (4 px) for small things and every exit,
@@ -257,6 +257,25 @@ export function unfold(node: Element, params: MotionParams = {}): TransitionConf
 }
 
 const UNFOLDING = 'data-unfolding';
+
+/**
+ * A button that comes or goes beside one that stays (a portal's alert call beside its sign-in):
+ * it takes its room or gives it up, its gap included, in one glide (180 ms, ease-out) while it
+ * fades, so the one that stays glides to its new place instead of jumping. With `on` false both
+ * come or go together: it only fades and nothing moves. A cross-fade under reduced motion.
+ */
+export function foldAside(node: Element, params: MotionParams = {}): TransitionConfig {
+  if (params.on === false || isReducedMotion()) return fade(node);
+  const width = node.getBoundingClientRect().width;
+  const row = node.parentElement;
+  const gap = row === null ? 0 : Number.parseFloat(getComputedStyle(row).columnGap) || 0;
+  return {
+    duration: duration('slow'),
+    easing: easing('out'),
+    css: (t, u) =>
+      `overflow: hidden; width: ${Math.round(t * width)}px; margin-left: ${-Math.round(u * gap)}px; opacity: ${t}`,
+  };
+}
 
 /**
  * Runs `then` once whatever unfolds around `node` has its height (`unfold`): a part scrolled

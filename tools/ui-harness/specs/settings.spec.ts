@@ -917,6 +917,118 @@ test('switching a portal off lets its calls fade out together: Anmelden does not
   await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
 });
 
+/** Flips a portal's switch from inside the page and stops its alert call's transition at half
+ *  its time: where the sign-out stands then, and how long the whole of it takes. */
+function flipHalfway(page: Page): Promise<{ x: number; ms: number }> {
+  return page.evaluate(async () => {
+    const by = (id: string) => document.querySelector(`[data-testid="${id}"]`);
+    (by('toggle-enabled-freelance') as HTMLElement).click();
+    for (;;) {
+      await new Promise(requestAnimationFrame);
+      const moving = by('setup-freelance')
+        ?.parentElement?.getAnimations()
+        .find((each) => Number(each.effect?.getComputedTiming().duration) > 0);
+      if (moving === undefined) continue;
+      const ms = Number(moving.effect!.getComputedTiming().duration);
+      moving.pause();
+      moving.currentTime = ms / 2;
+      const { x } = by('sign-out-freelance')!.getBoundingClientRect();
+      moving.play();
+      return { x, ms };
+    }
+  });
+}
+
+test('switching a portal off lets a sign-in that stays glide to its new place, and back', async ({
+  page,
+}) => {
+  await settings(page);
+  await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
+  const signOut = page.getByTestId('sign-out-freelance');
+  await expect(signOut).toBeVisible();
+  await animationsDone(page);
+  const on = (await signOut.boundingBox())!.x;
+  // Off: at half the time on its way, the whole of it no longer than a glide.
+  const leaving = await flipHalfway(page);
+  await expect(page.getByTestId('setup-freelance')).toHaveCount(0);
+  await animationsDone(page);
+  const off = (await signOut.boundingBox())!.x;
+  expect(off - on, 'the row keeps its tidy layout: no hole beside the switch').toBeGreaterThan(100);
+  expect(leaving.ms).toBeLessThanOrEqual(180);
+  expect(leaving.x).toBeGreaterThan(on + 20);
+  expect(leaving.x).toBeLessThan(off - 20);
+  // On: the same way back.
+  const coming = await flipHalfway(page);
+  await expect(page.getByTestId('setup-freelance')).toBeVisible();
+  await animationsDone(page);
+  expect((await signOut.boundingBox())!.x).toBeCloseTo(on, 0);
+  expect(coming.ms).toBeLessThanOrEqual(180);
+  expect(coming.x).toBeGreaterThan(on + 20);
+  expect(coming.x).toBeLessThan(off - 20);
+});
+
+test('portals: from the keyboard Anmelden and Abmelden keep the focus, the last one hands it on', async ({
+  page,
+}) => {
+  await settings(page);
+  await (await reveal(page, page.getByTestId('sign-in-freelance'))).focus();
+  await page.keyboard.press('Enter');
+  // One button with two faces: the focus stays on it, and the next key signs out again.
+  const signOut = page.getByTestId('sign-out-freelance');
+  await expect(signOut).toBeVisible();
+  await expect(signOut).toBeFocused();
+  await page.keyboard.press('Space');
+  const signIn = page.getByTestId('sign-in-freelance');
+  await expect(signIn).toBeVisible();
+  await expect(signIn).toBeFocused();
+  expect(await calls(page, 'portal_logout')).toHaveLength(1);
+  // The last Abmelden of a portal that is off goes with its sign-in: the switch takes over.
+  await settings(page, `${WIN}&scenario=session-left`);
+  await (await reveal(page, page.getByTestId('sign-out-freelance'))).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('sign-out-freelance')).toHaveCount(0);
+  await expect(page.getByTestId('toggle-enabled-freelance')).toBeFocused();
+});
+
+test('portals: a pause holds only a portal that is on, and only until its moment', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=paused`);
+  const status = await reveal(page, page.getByTestId('portal-linkedin-hint'));
+  const until = new Date(NOW.getTime() + 95 * 60_000).toISOString();
+  const paused = await text(page, 'settings.pausedUntil', until);
+  await expect(status).toHaveText(paused);
+  // Off: its quiet state, like every other state of the row.
+  await page.getByTestId('toggle-enabled-linkedin').click();
+  await expect(status).not.toHaveText(paused);
+  await expect(status.locator('.status')).toHaveCount(0);
+  await page.getByTestId('toggle-enabled-linkedin').click();
+  await expect(status).toHaveText(paused);
+  // Past its moment the row reads the clock, not the state last loaded: no word, no sentence.
+  await page.clock.setFixedTime(new Date(NOW.getTime() + 100 * 60_000));
+  await page.evaluate(() => dispatchEvent(new Event('focus')));
+  await expect(status).not.toHaveText(paused);
+  await expect(status.locator('.status')).toHaveCount(0);
+  await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
+  // A limit that ran out, the same, and while it holds it says so.
+  const health = (minutes: number) =>
+    page.evaluate(
+      ([iso]) =>
+        window.__harness.emit({
+          type: 'portalHealth',
+          portal: 'linkedin',
+          health: { kind: 'quotaReached', until: iso! },
+          actionNeeded: false,
+        }),
+      [new Date(NOW.getTime() + minutes * 60_000).toISOString()],
+    );
+  await health(200);
+  await expect(status.locator('.status')).toHaveClass(/warning/);
+  await health(60);
+  await expect(status.locator('.status')).toHaveCount(0);
+  await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
+});
+
 /* ---------------------------------------------------------------- baselines */
 
 test('baseline: first run', async ({ page }) => {

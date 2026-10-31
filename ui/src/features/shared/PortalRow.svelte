@@ -3,21 +3,20 @@
   brand name (`t.portal`), under it one line of its state, then its calls and at the right
   its switch, always last (the name names the switch but, like every text next to a switch,
   does not switch it).
-  The line: a status word (StatusText) while something holds the portal, "Pausiert bis …"
-  (warning) while it rests, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
+  The line: a status word (StatusText) while something holds a portal that is on, "Pausiert
+  bis …" (warning) until its moment, "Anmeldung abgelaufen" (danger) when its sign-in ran out,
   "Wartet auf die Anmeldung" (warning) while its sign-in window waits, the word of a problem
   ("In 2 Alert-Mails keine Jobs"; "Fehlgeschlagen" in red after a failed call), "Seit 9 Tagen keine
   Alert-Mail" (warning) when a portal that is on sent no alert mail for a week before the
   last fetch; else its quiet state ("Zuletzt 4 neue Jobs", "Noch keine Suche"; "24 Alert-Mails in
   30 Tagen").
-  The calls, outlined with the glyph of their meaning: "Anmelden…" or "Abmelden" where the
-  portal offers a sign-in (one width), then the one call about its alert, in one place and
-  one width whatever its face (it follows the portal's state, never the pointer), so
-  Anmelden never moves: "Alert-Mail öffnen" when alert mails came without jobs, "Alert
-  prüfen…" when its alert went quiet, else "Alert anlegen…" for a portal of alert mails (its
-  page in the browser). A call that opens a window or a page to act on ends in an ellipsis.
-  A portal that is off offers no call about its alert. In a narrow box the calls go to a
-  line of their own at the row's end.
+  The calls, outlined with the glyph of their meaning: "Anmelden" or "Abmelden" where the
+  portal offers a sign-in (one button with two faces, one width), then the one call about its
+  alert, in one place and one width whatever its face (it follows the portal's state, never the
+  pointer), so Anmelden never moves: "Alert-Mail öffnen" when alert mails came without jobs,
+  "Alert prüfen" when its alert went quiet, else "Alert anlegen" for a portal of alert mails (its
+  page in the browser). A portal that is off offers no call about its alert. In a narrow box the
+  calls go to a line of their own at the row's end.
   A portal of alert mails without a mailbox cannot work: its name dims, its line says so
   quietly ("Braucht ein Postfach"; the Postfach card is the one way to connect one), it has
   no calls, and its switch stands off and waits with its reason (the stored value stays;
@@ -32,8 +31,10 @@
   while the portal is off the row keeps "Abmelden" until the sign-in is gone. A run holds the
   sign-in (both buttons wait with its reason), except while it waits for this portal's own
   sign-in: the button is the way to give it. A switch moves at once, and the calls that go
-  with a portal switched off fade out together, none jumping into the room of another; a
-  failure puts it back and says why in the row. The switch itself is the answer: no toast.
+  with a portal switched off fade out together; a sign-in that stays glides to the place next
+  to the switch and back (foldAside), its keyboard focus handed on to the switch when the
+  last Abmelden goes. A failure puts the switch back and says why in the row. The switch itself
+  is the answer: no toast.
 -->
 <script lang="ts">
   import Button, { type ButtonFace } from '$components/Button.svelte';
@@ -43,10 +44,12 @@
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
+  import { byKeyboard } from '$lib/input/input';
   import { invoke } from '$lib/ipc/api';
-  import type { PortalState } from '$lib/ipc/types';
-  import { fade, unfold } from '$lib/motion/transitions';
+  import type { PortalHealth, PortalState } from '$lib/ipc/types';
+  import { fade, foldAside, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
+  import { clock } from '$lib/state/clock.svelte';
   import {
     portalSession,
     savePortal,
@@ -54,6 +57,7 @@
     type PortalSwitches,
   } from '$lib/state/portalSession';
   import { run } from '$lib/state/run.svelte';
+  import { tick } from 'svelte';
 
   interface Props {
     portal: PortalState;
@@ -66,28 +70,35 @@
   /** Why the last action failed, said when it shows. */
   let error = $state<(() => string) | null>(null);
   let busy = $state(false);
+  /** The sign-in's place and the switch's. */
+  let sign = $state<HTMLElement | null>(null);
+  let toggle = $state<HTMLElement | null>(null);
 
   const id = $derived(`switch-enabled-${portal.portal}`);
+  /** The portal's health as of now: a pause or a limit past its moment is over, whatever the
+   *  state last loaded says. */
+  const health = $derived.by((): PortalHealth => {
+    const now = portal.health;
+    const until = now.kind === 'paused' || now.kind === 'quotaReached' ? now.until : null;
+    return until !== null && Date.parse(until) <= clock.now.getTime() ? { kind: 'ok' } : now;
+  });
   /** Alert mails of the portal that came without jobs (a mail problem, not one of the pages). */
-  const emptyMails = $derived(
-    portal.health.kind === 'layoutSuspect' ? portal.health.emptyMails : 0,
-  );
+  const emptyMails = $derived(health.kind === 'layoutSuspect' ? health.emptyMails : 0);
   /** A portal of alert mails without a mailbox: it cannot work (decision 26). */
   const idle = $derived(portal.way === 'alert' && !app.hasMailbox);
   /** The ways out of a problem need the mail's place in Gmail (decision 32). */
   const gmail = $derived(app.state?.mailbox.provider === 'gmail');
   /** What holds the portal, as a status word in its line (null: its quiet state). */
   const status = $derived.by((): { tone: StatusTone; text: string } | null => {
-    const now = portal.health;
-    if (idle) return null;
+    const now = health;
+    if (idle || !portal.enabled) return null;
     if (now.kind === 'paused' && now.until !== null)
       return { tone: 'warning', text: t.settings.pausedUntil(now.until) };
     if (now.kind === 'quotaReached')
       return { tone: 'warning', text: t.settings.pausedUntil(now.until) };
     if (run.loginNeeded === portal.portal)
       return { tone: 'warning', text: t.settings.signInWaiting };
-    if (now.kind === 'loginRequired' && portal.enabled)
-      return { tone: 'danger', text: t.settings.signInExpired };
+    if (now.kind === 'loginRequired') return { tone: 'danger', text: t.settings.signInExpired };
     return null;
   });
   /** One of those mails to look at in Gmail (from the last fetch). */
@@ -133,8 +144,8 @@
       !idle &&
       status === null &&
       emptyMails === 0 &&
-      portal.health.kind !== 'loginRequired'
-      ? healthAdvice(portal.health)
+      health.kind !== 'loginRequired'
+      ? healthAdvice(health)
       : null,
   );
   /** The word of its line: a failed call, what holds it, its problem, a quiet alert. */
@@ -146,9 +157,7 @@
     }
     if (problem) {
       const word =
-        portal.health.kind === 'layoutSuspect'
-          ? t.settings.problem.pages
-          : t.settings.problem.paused;
+        health.kind === 'layoutSuspect' ? t.settings.problem.pages : t.settings.problem.paused;
       return { tone: 'warning', text: word };
     }
     if (quietDays !== null) return { tone: 'warning', text: t.settings.problem.quiet(quietDays) };
@@ -163,6 +172,13 @@
    *  (its Abmelden stays until it is gone). */
   const loginShown = $derived(portal.login === 'optional' && !idle && (portal.enabled || stored));
   const loginLocked = $derived(signInLocked(portal.portal));
+  /** The sign-in stands on both sides of a flip of the switch: it is stored. */
+  const signStays = $derived(loginShown && stored);
+  /** Anmelden and Abmelden, one button: it keeps the width of the wider. */
+  const SIGN_FACES: readonly ButtonFace[] = [
+    { label: t.settings.signIn, icon: 'signIn' },
+    { label: t.settings.signOut, icon: 'signOut' },
+  ];
 
   /** The one call about its alert, in one place: the mail that came without jobs, the alert
    *  that went quiet, or a new alert (a portal of alert mails); none while the portal is
@@ -213,6 +229,7 @@
   }
 
   async function session(on: boolean): Promise<void> {
+    const held = byKeyboard() && sign?.contains(document.activeElement) === true;
     error = null;
     busy = true;
     try {
@@ -222,6 +239,9 @@
     } finally {
       busy = false;
     }
+    // The last Abmelden of a portal that is off went: the keyboard goes on to the switch.
+    await tick();
+    if (held && !loginShown) toggle?.querySelector('button')?.focus();
   }
 
   function open(target: 'home' | 'setup' | { gmailId: string }): void {
@@ -251,7 +271,7 @@
 {/snippet}
 
 {#snippet end()}
-  <span class="switch">
+  <span class="switch" bind:this={toggle}>
     <Toggle
       {id}
       checked={portal.enabled && !idle}
@@ -275,36 +295,22 @@
   testid="portal-{portal.portal}"
 >
   {#if loginShown}
-    <span class="sign" transition:fade>
-      {#if signedIn}
-        <Button
-          variant="secondary"
-          icon="signOut"
-          label={t.settings.signOut}
-          sizeTo={[{ label: t.settings.signIn, icon: 'signIn' }]}
-          loading={busy}
-          disabled={loginLocked !== null}
-          disabledReason={loginLocked}
-          testid="sign-out-{portal.portal}"
-          onclick={() => void session(false)}
-        />
-      {:else}
-        <Button
-          variant="secondary"
-          icon="signIn"
-          label={t.settings.signIn}
-          sizeTo={[{ label: t.settings.signOut, icon: 'signOut' }]}
-          loading={busy}
-          disabled={loginLocked !== null}
-          disabledReason={loginLocked}
-          testid="sign-in-{portal.portal}"
-          onclick={() => void session(true)}
-        />
-      {/if}
+    <span class="sign" bind:this={sign} transition:fade>
+      <Button
+        variant="secondary"
+        icon={signedIn ? 'signOut' : 'signIn'}
+        label={signedIn ? t.settings.signOut : t.settings.signIn}
+        sizeTo={SIGN_FACES}
+        loading={busy}
+        disabled={loginLocked !== null}
+        disabledReason={loginLocked}
+        testid="{signedIn ? 'sign-out' : 'sign-in'}-{portal.portal}"
+        onclick={() => void session(!signedIn)}
+      />
     </span>
   {/if}
   {#if alert}
-    <span class="call" transition:fade>
+    <span class="call" transition:foldAside={{ on: signStays }}>
       <Button
         variant="secondary"
         icon={alert.icon}
@@ -334,10 +340,14 @@
     font: var(--type-sm);
   }
 
-  /* The sign-in and the alert's call fade in and out together, each in its place: the one that
-     stays never jumps over the room of the one that goes while it fades. */
-  .sign,
+  .sign {
+    display: flex;
+  }
+
+  /* The call stands at its room's end while the sign-in that stays glides over that room
+     (foldAside); both fade in and out together, each in its place, when neither stays. */
   .call {
     display: flex;
+    justify-content: flex-end;
   }
 </style>
