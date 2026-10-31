@@ -1026,6 +1026,23 @@ test.describe('Anforderungen', () => {
     await expect(why(page).locator('.count')).toHaveText(T.reader.metOf(0, 1));
   });
 
+  test('a job in the Papierkorb has no "+" into the profile: Wiederherstellen comes first', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2802');
+    const missing = why(page).locator('li[data-kind="open"]');
+    const adds = why(page).getByTestId('add-to-profile');
+    await expect(adds.first()).toBeVisible();
+    const open = await missing.count();
+    await choose(page, 'trash');
+    await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
+    await openPlace(page, 'trash');
+    await openJob(page, 'freelancermap-2802');
+    // The crosses stay, the "+" goes.
+    await expect(missing).toHaveCount(open);
+    await expect(adds).toHaveCount(0);
+  });
+
   test('a missing must that is a term goes into its field of the profile with "+", a sentence has none', async ({
     page,
   }) => {

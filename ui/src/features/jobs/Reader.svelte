@@ -12,8 +12,8 @@
     title, one flat list in two columns (one in a narrow card), met first, then in part, not
     met and unclear, a must before what is only nice to have; a quiet "optional" after one
     that is only nice to have and not met; a missing must that is a term has a small "+" into
-    its field of the profile (addToProfile.ts), and once it is there a quiet check stands in
-    place of its cross;
+    its field of the profile (addToProfile.ts; in the Papierkorb none, Wiederherstellen comes
+    first), and once it is there a quiet check stands in place of its cross;
   - ad: the ad's text in its structure, the words of the list's search marked (AdText); only
     once the text is there.
   A new job is there at once, every card in its place (a cascade would leave the pane empty
@@ -257,6 +257,9 @@
   /** An excluded job the user has not scored by hand, not in the Papierkorb: its one button is
    *  "Trotzdem bewerten". */
   const includable = $derived(excluded && mayInclude(job));
+  /** A job put in the Papierkorb is out of sight: nothing goes from it into the profile,
+   *  Wiederherstellen comes first (like `mayInclude`). */
+  const mayChange = $derived(job.place !== 'trash');
   /** "Trotzdem bewerten" was pressed: the state box says the job is being scored. */
   let including = $state(false);
 
@@ -297,7 +300,7 @@
       <div class="reqs">
         <ul class="reasons" data-testid="reasons">
           {#each listed as reason (reason.id)}
-            {@const term = addable(reason) ? termOf(reason) : null}
+            {@const term = addable(reason) && mayChange ? termOf(reason) : null}
             {@const added = term !== null && isAdded(term)}
             <li
               class="reason-line"
