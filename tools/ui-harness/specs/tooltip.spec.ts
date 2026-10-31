@@ -1,5 +1,5 @@
 // The one tooltip handed from anchor to anchor: moving the pointer straight from one trigger
-// to the next (a title bar tool, the window's Schließen, the info symbol, a cut row title)
+// to the next (a title bar tool, the window's Schließen, a cut row title)
 // shows the next tooltip at once, and its very first painted frame already sits where a
 // fresh hover of that trigger places it, never at a place measured from the previous text.
 
@@ -77,10 +77,11 @@ async function fresh(page: Page, trigger: Locator): Promise<{ x: number; y: numb
 }
 
 test('moving from one tooltip to the next shows it at its own anchor at once', async ({ page }) => {
+  // A list dragged to its narrowest cuts the row titles.
+  await page.addInitScript(() => localStorage.setItem('jobs-list-width', '320'));
   await open(page, '?platform=windows');
   const key = (await rows(page).first().getAttribute('data-testid'))!.replace('job-row-', '');
   await openJob(page, key);
-  // A narrow list cuts the row titles.
   await page.setViewportSize({ width: 1180, height: 760 });
   const titles = await list(page).locator('.title').all();
   let truncated: Locator | null = null;
@@ -95,9 +96,8 @@ test('moving from one tooltip to the next shows it at its own anchor at once', a
     page.getByTestId('window-close'),
     page.getByTestId('toggle-reader'),
   ];
-  const info = page.getByTestId('band-info');
-  if ((await info.count()) > 0 && (await info.isVisible())) triggers.splice(2, 0, info);
-  if (truncated !== null) triggers.push(truncated);
+  expect(truncated, 'a cut title').not.toBeNull();
+  triggers.push(truncated!);
 
   // The handover: straight from one trigger to the next, the first frame of each recorded.
   await page.mouse.move(700, 12);
