@@ -561,6 +561,48 @@ for (const os of [WIN, MAC]) {
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
   });
 
+  test(`in one column the place that is shown leads to its list, like a folder of a mail app ${os}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 683, height: 700 });
+    await open(page, os);
+    const row = page.locator('[data-testid^="job-row-"]').first();
+    const title = page.getByTestId('reader-title');
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    for (const entry of ['place-inbox', 'nav-jobs']) {
+      await row.click();
+      await expect(title, entry).toBeVisible();
+      await toggle.click();
+      await floating.getByTestId(entry).click();
+      await expect(floating, entry).toHaveCount(0);
+      await expect(title, entry).toHaveCount(0);
+      await expect(row, entry).toBeVisible();
+    }
+    // Zurück still leads back to the job that stood there.
+    await page.getByTestId('history-back').click();
+    await expect(title).toBeVisible();
+    // A job of another place too, with its entry.
+    await toggle.click();
+    await floating.getByTestId('place-archive').click();
+    await expect(title).toHaveCount(0);
+    await row.click();
+    await expect(title).toBeVisible();
+    await toggle.click();
+    await floating.getByTestId('place-archive').click();
+    await expect(title).toHaveCount(0);
+    await expect(row).toBeVisible();
+    // Beside the list the job stays open: the list is there already.
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await row.click();
+    await expect(title).toBeVisible();
+    await toggle.click();
+    await floating.getByTestId('place-archive').click();
+    await expect(floating).toHaveCount(0);
+    await expect(title).toBeVisible();
+    await expect(row).toBeVisible();
+  });
+
   test(`at 480 x 360 the floating sidebar keeps every entry in the window ${os}`, async ({
     page,
   }) => {
