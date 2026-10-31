@@ -11,11 +11,10 @@
   A deadline within a week, or past, is red. Rows that arrive later (the ad loaded) fade in.
 -->
 <script lang="ts">
-  import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
+  import TextLink from '$components/TextLink.svelte';
   import { t } from '$lib/i18n/t';
-  import { wasDragged } from '$lib/input/input';
   import { fade } from '$lib/motion/transitions';
   import { kindOf } from './reader-sections';
   import type { TermRow } from './terms';
@@ -27,12 +26,6 @@
   }
 
   let { rows, onmail }: Props = $props();
-
-  /** A click on the address writes the mail; a drag over it selected it (to copy), and the
-   *  click that follows its release writes nothing. */
-  function writeMail(event: MouseEvent): void {
-    if (!wasDragged(event)) onmail();
-  }
 </script>
 
 <Card heading={t.reader.details} testid="terms">
@@ -51,15 +44,8 @@
           <span class="term-line">
             {#if row.parts}
               <span class="parts">
-                {#each row.parts as part, index (index)}{#if part === row.mail}<span
-                      class="mail"
-                      data-copy
-                      ><Button
-                        variant="link"
-                        label={part}
-                        testid="contact-mail"
-                        onclick={writeMail}
-                      /></span
+                {#each row.parts as part, index (index)}{#if part === row.mail}<span class="mail"
+                      ><TextLink label={part} testid="contact-mail" onclick={onmail} /></span
                     >{:else}<span class="value" data-copy>{part}</span>{/if}{/each}
               </span>
             {:else}
@@ -162,10 +148,6 @@
   .mail {
     display: inline-flex;
     margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
-  }
-
-  .mail :global(.btn.link) {
-    --btn-type: var(--type-md);
   }
 
   /* The mark 6 after the words, centred on their line without making it taller. */

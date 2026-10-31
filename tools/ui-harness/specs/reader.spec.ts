@@ -1461,7 +1461,8 @@ test.describe('the job view keeps true', () => {
     const box = (await mail.boundingBox())!;
     const selected = (): Promise<string> =>
       page.evaluate(() => getSelection()?.toString().trim() ?? '');
-    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    // From before its first letter, a narrow one, to after its last.
+    await page.mouse.move(box.x + 1, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 6 });
     await page.mouse.up();
@@ -1476,6 +1477,27 @@ test.describe('the job view keeps true', () => {
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
     });
+  });
+
+  test('the contact e-mail from the keyboard: Tab reaches it, Enter and Space write the mail', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const mail = term(page, 'contact').getByTestId('contact-mail');
+    await mail.focus();
+    await page.keyboard.press('Tab');
+    await expect(mail).not.toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(mail).toBeFocused();
+    const writes = async (): Promise<number> => (await calls(page, 'open_target')).length;
+    await page.keyboard.press('Enter');
+    await expect.poll(writes).toBe(1);
+    await page.keyboard.press('Space');
+    await expect.poll(writes).toBe(2);
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
+    });
+    await expect(mail).toHaveCSS('outline-style', 'none');
   });
 
   test('a double click on a text button acts once', async ({ page }) => {

@@ -431,6 +431,15 @@ const pressesControl = (event: KeyboardEvent): boolean =>
   ((event.key === ' ' && closest(event.target, PRESSABLE) !== null) ||
     (event.key === 'Enter' && pressedByEnter(event.target)));
 
+/** The engine clicks a native button on its key. What is a button by its role only (a link
+ *  that selects like text, components/TextLink.svelte) is clicked here, once for a held key. */
+function pressByRole(event: KeyboardEvent): void {
+  const control = closest(event.target, PRESSABLE);
+  if (control instanceof HTMLButtonElement || !(control instanceof HTMLElement)) return;
+  event.preventDefault();
+  if (!event.repeat) control.click();
+}
+
 /** The open modal dialog on top, if any. */
 function topModal(): HTMLElement | null {
   const open = document.querySelectorAll<HTMLElement>(MODAL);
@@ -741,8 +750,12 @@ function onKeyDown(event: KeyboardEvent): void {
     dispatchFormKey(event);
     return;
   }
-  if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
-  if (dispatchSelectKey(event)) return;
+  if (isFocusMove(event)) return;
+  if (pressesControl(event)) {
+    pressByRole(event);
+    return;
+  }
+  if (dispatchRadioKey(event) || dispatchSelectKey(event)) return;
   if (removesByKey(event)) return;
   if (selectsAll(event)) return;
   // Everything else is the app's or nothing: never a shortcut of the web view (reload,
