@@ -7,7 +7,7 @@
 // keys; everything else is swallowed.
 
 import type { Locator, Page } from '@playwright/test';
-import { calls, expect, open, settle, test } from './fixtures';
+import { animationsDone, calls, expect, open, settle, test } from './fixtures';
 import { adder, chooseFilter, failNext, reveal, T } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
@@ -2207,11 +2207,12 @@ test('a real double click selects its word in the ad of a job the app opened its
 }) => {
   // The job that takes the archived one's place is read with this very click.
   await open(page, WIN);
+  const next = await rows(page).nth(1).locator('.title').innerText();
   await rows(page).first().click();
   await page.getByTestId('reader-archive').click();
-  await expect(rows(page).first()).toHaveAttribute('aria-current', 'true');
-  const words = page.locator('[data-testid="reader"] [data-copy]').first();
-  await expect(words).toBeVisible();
+  const words = page.getByTestId('reader-title');
+  await expect(words).toHaveText(next);
+  await animationsDone(page);
   const read = (await calls(page, 'mark_read')).length;
   await clickTwice(page, words);
   expect((await selection(page)).trim()).not.toBe('');
