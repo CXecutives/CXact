@@ -1,9 +1,9 @@
 // The shell of the app, in one place: the window's top bar and its buttons, the sidebar
 // and its views (one table, lib/views.ts), the switch between views, the window sizes it
 // survives, the press that follows the pointer, reduced motion, the tooltips, the toasts and
-// dialogs, the run status, the card of the keys and a start whose data cannot load. The keys
-// themselves are input.spec.ts; the components are checked on the real screens. Texts come
-// from the catalog where a test names a label (text()).
+// dialogs, the run status and a start whose data cannot load. The keys themselves are
+// input.spec.ts; the components are checked on the real screens. Texts come from the catalog
+// where a test names a label (T, text()).
 
 import type { Locator, Page } from '@playwright/test';
 import {
@@ -20,6 +20,7 @@ import {
   visibleCount,
 } from './fixtures';
 import {
+  chip,
   failNext,
   list,
   openJob,
@@ -78,6 +79,16 @@ const WIN = '?platform=windows';
 const MAC = '?platform=macos';
 
 const tooltip = (page: Page) => page.getByRole('tooltip');
+
+/** Every entry of the sidebar in its order: the views, the places of the jobs under Jobs. */
+const SIDEBAR_ENTRIES = [
+  'nav-jobs',
+  'place-inbox',
+  'place-archive',
+  'place-trash',
+  'nav-profile',
+  'nav-settings',
+];
 
 /** A key that moves, like a keyboard user's (after a click the next focus() would be a
  *  pointer's, which shows no tooltip). */
@@ -151,11 +162,13 @@ test('the shell renders sidebar and the jobs view', async ({ page }) => {
   await open(page, '?platform=windows');
   await expect(page.getByTestId('shell')).toBeVisible();
   await expect(page.getByTestId('sidebar')).toBeVisible();
-  for (const item of ['nav-jobs', 'nav-profile', 'nav-settings']) {
+  for (const item of SIDEBAR_ENTRIES) {
     await expect(page.getByTestId(item)).toBeVisible();
   }
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('nav-jobs')).toHaveText('Jobs');
+  // The place that is shown is the current entry; Jobs above it says the view it lies in.
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByTestId('nav-jobs')).toHaveText(T.nav.jobs);
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
 
@@ -177,8 +190,8 @@ test('every view switch shows the new view alone, in the frame the click ends in
 });
 
 test('no view has more than one primary button', async ({ page }) => {
-  // The project allows at most one primary button per view (the Jobs view's fetch, Speichern
-  // while the form holds a change); which one it is, is not pinned here.
+  // The project allows at most one primary button per view (the Jobs view's fetch); which one
+  // it is, is not pinned here. A change of the Profil brings none: it saves by itself.
   await open(page, '?platform=windows');
   for (const view of ['jobs', 'profile', 'settings'] as const) {
     await page.getByTestId(`nav-${view}`).click();
@@ -187,8 +200,16 @@ test('no view has more than one primary button', async ({ page }) => {
   }
   await page.getByTestId('nav-profile').click();
   await page.getByTestId('profile-wish-rate').fill('1.300');
-  await expect(page.getByTestId('profile-save')).toBeVisible();
+  await expect(page.getByTestId('profile-save')).toHaveCount(0);
   expect(await visibleCount(page, '.btn.primary'), 'profile with a change').toBeLessThanOrEqual(1);
+  // A search that finds nothing keeps the head's fetch; a list that fails to load has its retry.
+  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('search').fill('zzqxv');
+  await expect(page.getByTestId('empty-search')).toBeVisible();
+  expect(await visibleCount(page, '.btn.primary'), 'search without hits').toBeLessThanOrEqual(1);
+  await open(page, '?platform=windows&scenario=list-error');
+  await expect(page.getByTestId('list-error')).toBeVisible();
+  expect(await visibleCount(page, '.btn.primary'), 'list that failed').toBeLessThanOrEqual(1);
   await open(page, '?platform=windows&scenario=no-profile');
   await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('new-profile-ways')).toBeVisible();
@@ -415,8 +436,8 @@ test('per-OS convention: the order of dialog buttons', async ({ page }) => {
     return dialog.getByRole('button').allInnerTexts();
   };
   // Windows: the action first; macOS: cancel, then the action on the right.
-  expect(await order('windows')).toEqual(['Entfernen', 'Abbrechen']);
-  expect(await order('macos')).toEqual(['Abbrechen', 'Entfernen']);
+  expect(await order('windows')).toEqual([T.common.remove, T.common.cancel]);
+  expect(await order('macos')).toEqual([T.common.cancel, T.common.remove]);
 });
 
 test('icon-only buttons show a styled tooltip after the delay', async ({ page }) => {
@@ -441,10 +462,10 @@ test('baseline: shell on macOS', async ({ page }) => {
 
 /* --------------------------------------------------------------------------- The sidebar */
 
-// The sidebar: three views (Jobs, Profil, Einstellungen), the app starts in Jobs, no counts,
-// no status line, tooltips only in the rail at small widths, that the sidebar folds only by
-// the window width, and the order of a click when an unsaved profile asks first. The places
-// of the jobs are tabs above the list.
+// The sidebar: three views (Jobs, Profil, Einstellungen) and under Jobs the places of the jobs
+// (Aktuell, Archiv, Papierkorb), the app starts in Jobs, no counts, no status line, no tooltips
+// on its entries, how it folds, and the order of a click when a value that holds the Profil's
+// save asks first.
 
 test('the sidebar shows no counts and no dots: the list says how many jobs are new', async ({
   page,
@@ -455,19 +476,28 @@ test('the sidebar shows no counts and no dots: the list says how many jobs are n
     const sidebar = page.getByTestId('sidebar');
     await expect(sidebar.getByTestId('nav-jobs')).toBeVisible();
     await expect(sidebar.locator('nav .count, nav .dot')).toHaveCount(0);
-    await expect(sidebar.getByTestId('nav-jobs')).not.toContainText(/\d/);
+    await expect(sidebar.locator('nav')).not.toContainText(/\d/);
   }
 });
 
-test('the app starts in Jobs; three views, their names without tooltips, no status line', async ({
+test('the app starts in Jobs; three views and the places, their names without tooltips, no status line', async ({
   page,
 }) => {
   await open(page, `${WIN}&view=start`);
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'true');
   const sidebar = page.getByTestId('sidebar');
-  await expect(sidebar.locator('nav button')).toHaveText(['Jobs', 'Profil', 'Einstellungen']);
+  await expect(sidebar.locator('nav button')).toHaveText([
+    T.nav.jobs,
+    T.place.inbox,
+    T.place.archive,
+    T.place.trash,
+    T.nav.profile,
+    T.nav.settings,
+  ]);
   await expect(page.getByTestId('view-overview')).toHaveCount(0);
+  await expect(page.getByRole('tab')).toHaveCount(0);
   await expect(sidebar.locator('button:not(nav button)')).toHaveCount(0);
   await expect(page.getByTestId('run-status')).toHaveCount(0);
   await page.getByTestId('nav-settings').click();
@@ -476,6 +506,9 @@ test('the app starts in Jobs; three views, their names without tooltips, no stat
   await expect(page.getByTestId('view-profile')).toBeVisible();
   // The name is on the entry: no tooltip repeats it, on hover or on focus.
   await page.getByTestId('nav-jobs').hover();
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await page.getByTestId('place-archive').hover();
   await page.waitForTimeout(700);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await page.getByTestId('nav-settings').focus();
@@ -521,6 +554,11 @@ for (const os of [WIN, MAC]) {
     await expect(floating).toBeVisible();
     await toggle.click();
     await expect(floating).toHaveCount(0);
+    // A place is a choice like a view: it opens and the sidebar folds.
+    await toggle.click();
+    await floating.getByTestId('place-archive').click();
+    await expect(floating).toHaveCount(0);
+    await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
   });
 
   test(`at 480 x 360 the floating sidebar keeps every entry in the window ${os}`, async ({
@@ -529,7 +567,7 @@ for (const os of [WIN, MAC]) {
     await page.setViewportSize({ width: 480, height: 360 });
     await open(page, os);
     await page.getByTestId('toggle-sidebar').click();
-    const ids = ['nav-jobs', 'nav-profile', 'nav-settings'];
+    const ids = SIDEBAR_ENTRIES;
     const boxes = await Promise.all(
       ids.map(async (id) => (await page.getByTestId(id).boundingBox())!),
     );
@@ -566,34 +604,66 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
   await expect(sidebar).toBeVisible();
 });
 
-test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
+test('a change of the Profil goes along on the way to the place that was chosen', async ({
+  page,
+}) => {
   await open(page, WIN);
-  await page.getByTestId('place-archive').click();
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
-  await page.getByTestId('place-inbox').click();
   await page.getByTestId('nav-profile').click();
-  const field = page.getByTestId('profile-wish-rate');
-  await field.fill('1.300');
-  await page.getByTestId('nav-jobs').click();
-  const dialog = page.getByTestId('dialog-leave-profile');
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
-  // Still the Profil, and the Jobs view is where it was (the inbox, not the archive).
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  await expect(page.getByTestId('nav-profile')).toHaveAttribute('aria-current', 'page');
-  await expect(field).toHaveValue('1.300');
-  // Asked again and left without saving: the Jobs view it was asked for, on its inbox.
-  await page.getByTestId('nav-jobs').click();
-  await dialog.getByRole('button', { name: 'Verwerfen' }).click();
-  await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('search')).toHaveAttribute(
-    'placeholder',
-    'Aktuelle Jobs durchsuchen',
-  );
+  await page.getByTestId('profile-wish-rate').fill('1.300');
+  await page.getByTestId('place-archive').click();
+  // Nothing asks: the change is saved and the way goes on.
+  await expect(page.getByTestId('place-archive')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+  expect((await page.evaluate(() => window.__harness.form()))?.dayRateWish).toBe(1300);
 });
 
-test('a click on the tab that is open reloads nothing, like Jobs', async ({ page }) => {
+test('a value that holds the save keeps the view until the question is answered', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  const field = page.getByTestId('profile-wish-rate');
+  const stored = await field.inputValue();
+  await field.fill('0');
+  await page.getByTestId('place-archive').click();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading')).toHaveText(T.profile.leaveHeading);
+  await expect(dialog.locator('.text')).toHaveText(
+    T.profile.leaveWrong(T.profile.field.dayRateWish),
+  );
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toHaveCount(0);
+  // Still the Profil with the value, said at its field; no caret goes back to it.
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+  await expect(page.getByTestId('nav-profile')).toHaveAttribute('aria-current', 'page');
+  await expect(field).toHaveValue('0');
+  await expect(field).not.toBeFocused();
+  await expect(page.getByText(T.profile.field.atLeast(1))).toBeVisible();
+  // Asked again and left without saving: the Jobs view it was asked for last, on Aktuell (not on
+  // the Archiv of the question that was cancelled).
+  await page.getByTestId('nav-jobs').click();
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
+  // The value went, and nothing was saved.
+  await page.getByTestId('nav-profile').click();
+  await expect(field).toHaveValue(stored);
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
+  // The place that was chosen waits for the answer too.
+  await field.fill('0');
+  await page.getByTestId('place-archive').click();
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(page.getByTestId('place-archive')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+});
+
+test('a click on the place that is open reloads nothing, like Jobs on Aktuell', async ({
+  page,
+}) => {
   await open(page, WIN);
   const loads = async (place?: string): Promise<number> =>
     (await calls(page, 'list_jobs')).filter(
@@ -601,30 +671,32 @@ test('a click on the tab that is open reloads nothing, like Jobs', async ({ page
         place === undefined || (args as { query: { place: string } }).query.place === place,
     ).length;
   await page.getByTestId('place-archive').click();
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
   await settle(page);
   const archive = await loads('archive');
   await page.getByTestId('place-archive').click();
   await settle(page);
   expect(await loads('archive')).toBe(archive);
   await page.getByTestId('place-inbox').click();
-  await expect(page.getByTestId('search')).toHaveAttribute(
-    'placeholder',
-    'Aktuelle Jobs durchsuchen',
-  );
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
   await settle(page);
   const all = await loads();
   await page.getByTestId('nav-jobs').click();
   await settle(page);
   expect(await loads()).toBe(all);
+  // From another place Jobs leads to Aktuell.
+  await page.getByTestId('place-trash').click();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.trash);
+  await page.getByTestId('nav-jobs').click();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
 });
 
 /* ------------------------------------------- Tooltips, focus, scroll places, toasts */
 
-// Final round, shell track: tooltips on keyboard focus, the focus back on the trigger, the
-// scroll place of Profil and Einstellungen, the first line of every view, the toasts above a
-// bottom bar and their keys, a dialog under the top bar, the card of the keys and a start whose
-// data cannot load.
+// Tooltips on keyboard focus, the focus back on the trigger, the scroll place of Profil and
+// Einstellungen, a toast over the Profil, a dialog over the top bar and a start whose data cannot
+// load.
 
 test('a tooltip shows on keyboard focus after the delay and goes on blur, resize and window blur', async ({
   page,
@@ -717,42 +789,63 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await expect.poll(() => view('profile').evaluate((node) => node.scrollTop)).toBe(260);
 });
 
-test('a toast of a finished fetch over Profil: its Zeigen opens the fetch once the change goes', async ({
+test('a toast of a finished fetch over Profil: its Zeigen saves a change and opens the fetch', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1360, height: 700 });
   await open(page, `${WIN}&view=profile&tick=5`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  // Speichern shows in the head while the form holds a change.
+  // A value on its way (the caret stands in its field: not saved yet).
   await page.getByTestId('profile-wish-rate').fill('1.300');
-  await expect(page.getByTestId('profile-save')).toBeVisible();
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
-  const toast = page.getByTestId('toast');
-  await expect(toast.getByTestId('toast-action')).toHaveText('Zeigen');
-  // Zeigen is no undo: a click opens the run in Jobs (once the change is discarded).
-  await page.getByTestId('profile-discard').click();
-  const show = toast.getByTestId('toast-action');
-  await expect(show).toHaveText('Zeigen');
+  const show = page.getByTestId('toast').getByTestId('toast-action');
+  await expect(show).toHaveText(T.toast.show);
+  // Zeigen is no undo: a click opens the run in Jobs, the change goes along.
   await show.click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(chip(page, 'run')).toBeVisible();
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+  expect((await page.evaluate(() => window.__harness.form()))?.dayRateWish).toBe(1300);
 });
+
+test('a toast of a finished fetch over Profil: its Zeigen waits for the question about a wrong value', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 700 });
+  await open(page, `${WIN}&view=profile&tick=5`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  await page.getByTestId('profile-wish-rate').fill('0');
+  await page.evaluate(() => window.__harness.appRun('fetch'));
+  await runFinished(page);
+  await page.getByTestId('toast').getByTestId('toast-action').click();
+  // The value holds the save: Zeigen opens the run once the value is dropped.
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(chip(page, 'run')).toBeVisible();
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
+});
+
+// A dialog dims the whole window, the top bar too (owner, 2026-10-28: the bar is part of the app).
 for (const os of [WIN, MAC]) {
-  test(`a dialog leaves the top bar free, and the bar moves the window ${os}`, async ({ page }) => {
+  test(`a dialog dims the top bar too ${os}`, async ({ page }) => {
     await open(page, `${os}&view=settings`);
     await (await reveal(page, page.getByTestId('reset'))).click();
     await expect(page.getByTestId('dialog-reset')).toBeVisible();
     await settle(page);
-    const hit = await page.evaluate(() =>
-      document.elementFromPoint(600, 18)?.hasAttribute('data-tauri-drag-region'),
-    );
-    expect(hit).toBe(true);
+    const size = await page.evaluate(() => [innerWidth, innerHeight]);
+    const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
+    expect([scrim.x, scrim.y, scrim.width, scrim.height]).toEqual([0, 0, ...size]);
   });
 }
+
 test('a start whose data cannot load: try again, a backup, the data folder', async ({ page }) => {
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
-  await expect(failed).toContainText(await text(page, 'shell.loadFailed'));
+  await expect(failed.getByRole('heading')).toHaveText(T.shell.loadFailed);
   // No way to the log (it is written quietly).
   await expect(page.getByTestId('open-log')).toHaveCount(0);
   await page.getByTestId('open-data').click();
@@ -773,7 +866,7 @@ test('a start whose data cannot load offers the backups; a restore loads the app
   // A failure to list them stays a note under the ways.
   await failNext(page, 'list_backups');
   await page.getByTestId('restore-backup').click();
-  await expect(page.getByTestId('backup-note')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await expect(page.getByTestId('backup-note')).toHaveText(T.error.text('db', {}));
   await page.getByTestId('restore-backup').click();
   const dialog = page.getByTestId('dialog-backup');
   await expect(dialog).toBeVisible();
@@ -951,12 +1044,12 @@ test('the sidebar docks and folds by a slide, never by its width', async ({ page
 
 /* ------------------------------ Lists, panes, the run status, closing, shared components */
 
-// Wave 1, track "shell": the keys of lists, panes and radio groups, the closing note per
-// activity and the behaviour of the shared components (dialogs, toasts, chips).
+// The keys of the sidebar and the panes, the closing note and the behaviour of the shared
+// components (dialogs, toasts, chips).
 
-test('keyboard focus stays clear of the reader bar', async ({ page }) => {
+test('keyboard focus is never covered in Einstellungen and the job view', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 600 });
-  // The centre of the focused control is the control itself, not the band over it.
+  // The centre of the focused control is the control itself, not something over it.
   const covered = async (): Promise<string | null> =>
     page.evaluate(() => {
       const node = document.activeElement;
@@ -967,7 +1060,7 @@ test('keyboard focus stays clear of the reader bar', async ({ page }) => {
         ? null
         : (node.getAttribute('data-testid') ?? node.tagName);
     });
-  // Einstellungen from the last control of Suche, the tab that scrolls, upward.
+  // Einstellungen from the last source it searches, upward.
   await settings(page, MAC);
   await page.getByTestId(`toggle-enabled-${SEARCHED.at(-1)!}`).focus();
   const cut: string[] = [];
@@ -977,7 +1070,7 @@ test('keyboard focus stays clear of the reader bar', async ({ page }) => {
     const hidden = await covered();
     if (hidden !== null) cut.push(hidden);
   }
-  // The reader: from its end upward, below the compact bar.
+  // The job view: from its end upward.
   await page.getByTestId('nav-jobs').click();
   await row(page, 'freelancermap-2801').click();
   await expect(page.getByTestId('reader-prompt')).toBeVisible();
@@ -1002,7 +1095,7 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await settings(page);
   await (await reveal(page, page.getByTestId('mailbox-remove'))).click();
   await expect(page.getByTestId('dialog-remove-mailbox').getByTestId('dialog-confirm')).toHaveText(
-    'Entfernen',
+    T.common.remove,
   );
   await page.keyboard.press('Escape');
   await page.getByTestId('nav-jobs').click();
@@ -1166,15 +1259,18 @@ test('Tab passes disabled switches; a disabled button that says why stays a Tab 
   await expect(page.getByRole('tooltip')).toBeVisible();
 });
 
-test('the places above the list choose with left and right', async ({ page }) => {
+test('the places are Tab stops of the sidebar; Enter chooses one', async ({ page }) => {
   await open(page, WIN);
-  const tabs = page.getByTestId('places').getByRole('tab');
-  await page.getByTestId('place-inbox').focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
-  await expect(tabs.nth(1)).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+  await page.getByTestId('nav-jobs').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('place-inbox')).toBeFocused();
+  await page.keyboard.press('Tab');
+  const archive = page.getByTestId('place-archive');
+  await expect(archive).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(archive).toHaveAttribute('aria-current', 'page');
+  await expect(archive).toBeFocused();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {
@@ -1182,7 +1278,7 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   await settings(page);
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
-  // A click on a text that takes no focus (a source's name on Suche, the tab it opens on).
+  // A click on a text that takes no focus (a source's name).
   await page.getByTestId('portal-hays').getByText(T.portal.hays).click();
   await page.keyboard.press('End');
   // Once the glide has ended (a key during it would add to where it is going).
@@ -1243,7 +1339,7 @@ test('a chip value copies, a double click only selects a word; its x says Entfer
   // The x names what it removes for a screen reader, its tooltip the action; it is hit 24 px
   // wide around its 16 px.
   const remove = chip.locator('.remove');
-  await expect(remove).toHaveAccessibleName(`${value} entfernen`);
+  await expect(remove).toHaveAccessibleName(T.chips.remove(value));
   const x = (await remove.boundingBox())!;
   await page.mouse.move(x.x + x.width + 3, x.y + x.height / 2);
   await expect(page.getByRole('tooltip')).toHaveText(T.common.remove);
@@ -1315,7 +1411,7 @@ test('under reduced motion nothing scales or pops', async ({ page }) => {
     document.querySelector<HTMLElement>('[data-testid="contract-temporary"]')!.click(),
   );
   const scripted = await page.evaluate(
-    // What comes meanwhile (the save bar) only fades: nothing moves or scales.
+    // What comes meanwhile (Mindestgehalt unfolds) moves and scales nothing.
     () =>
       document
         .getAnimations()
@@ -1436,22 +1532,19 @@ for (const [width, fold] of [
 }
 
 test('toasts leave on their own once the window is in front again', async ({ page }) => {
-  // Ten seconds of it are the toasts' own life: a busy machine needs more than the usual 30 s.
+  // Seconds of it are the CV's evaluation and the toasts' own life: a busy machine needs more
+  // than the usual 30 s.
   test.slow();
   await open(page, `${WIN}&view=settings`);
   // The window in the back holds their time, so a slow machine still sees all of them.
   await page.evaluate(() => window.__harness.fire('tauri://blur', null));
   const toasts = page.getByTestId('toast');
-  // Three plain toasts: a rescore in Einstellungen, the CV, a save of the profile.
+  // Two plain toasts: a rescore in Einstellungen, the CV.
   await page.evaluate(() => window.__harness.appRun('rescore'));
   await expect(toasts).toHaveCount(1);
   await page.getByTestId('nav-profile').click();
   await page.getByTestId('profile-from-cv').click();
   await expect(toasts).toHaveCount(2);
-  // Enter saves.
-  await page.getByTestId('profile-wish-rate').fill('1.300');
-  await page.getByTestId('profile-wish-rate').press('Enter');
-  await expect(toasts).toHaveCount(3);
   // Their time runs once the window is in front again (the pointer on a toast stops it:
   // toasts.spec.ts).
   await page.evaluate(() => window.__harness.fire('tauri://focus', null));
@@ -1539,7 +1632,8 @@ test('a button held out of the window and released there stays at rest and does 
   await open(page, WIN);
   await pressAndLeave(page, page.getByTestId('fetch'), OUTSIDE);
   await pressAndLeave(page, page.getByTestId('nav-settings'), OUTSIDE);
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  await pressAndLeave(page, page.getByTestId('place-archive'), OUTSIDE);
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
   // The window's own buttons alike (in the app the window over the bar reports the same).
   for (const button of ['minimize', 'maximize', 'close'] as const) {
     await pressAndLeave(page, page.getByTestId(`window-${button}`), OUTSIDE);
@@ -1550,9 +1644,9 @@ test('a button held out of the window and released there stays at rest and does 
 
 test('a held sidebar entry that the pointer leaves looks at rest', async ({ page }) => {
   await open(page, WIN);
-  const entry = page.getByTestId('nav-settings');
-  await pressAndLeave(page, entry);
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  await pressAndLeave(page, page.getByTestId('nav-settings'));
+  await pressAndLeave(page, page.getByTestId('place-archive'));
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
 });
 
 /* ------------------------------------------------------------------ Zurück and Vor */
