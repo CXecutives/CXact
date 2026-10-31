@@ -129,6 +129,30 @@ test('from another view Zeigen opens Aktuell without its search, filtered to the
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
 });
 
+test('the first search of an empty app: the two columns come with its first row', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=fresh&tick=15`);
+  // Every frame that shows a row of the list without the job view beside it.
+  await page.evaluate(() => {
+    const seen: number[] = [];
+    (window as unknown as { alone: number[] }).alone = seen;
+    const look = (): void => {
+      const count = document.querySelectorAll('[data-testid^="job-row-"]').length;
+      if (count > 0 && document.querySelector('[data-testid="reader-pane"]') === null) {
+        seen.push(count);
+      }
+      requestAnimationFrame(look);
+    };
+    look();
+  });
+  await page.getByTestId('fetch').click();
+  await expect(page.locator(`[data-testid^="job-row-"]`).first()).toBeVisible();
+  await expect(page.getByTestId('reader-pane')).toBeVisible();
+  await runFinished(page);
+  expect(await page.evaluate(() => (window as unknown as { alone: number[] }).alone)).toEqual([]);
+});
+
 test('what Zeigen set is never the user filter: its chips taken off keep nothing, the own one stays', async ({
   page,
 }) => {

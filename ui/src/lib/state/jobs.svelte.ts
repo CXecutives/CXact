@@ -290,12 +290,19 @@ class JobsStore {
     return this.#otherRule?.rule === rule ? this.#otherRule.counts[place] : 0;
   }
 
+  /** The list holds a job of its place: the rows of a run count before the counts have heard
+   *  of them (those of another place are the old list's). */
+  get #rowsHere(): boolean {
+    return this.rows.some((job) => job.place === this.place);
+  }
+
   /** The list's place holds no job, or the list did not load: nothing to read beside it (no
    *  job view, no button for it in the top bar). A list still on its way counts by the numbers
    *  the page knows before it (the app state's), so a place without a job never shows the two
-   *  columns for the time its call takes. */
+   *  columns for the time its call takes; the two columns come with its first row. */
   get emptyPlace(): boolean {
     if (this.status === 'error') return true;
+    if (this.#rowsHere) return false;
     const known =
       this.status === 'ready'
         ? (this.overviewCounts ?? this.counts)
@@ -304,8 +311,7 @@ class JobsStore {
   }
 
   /** No job in this place, nothing searched or filtered and no run: the list has nothing to
-   *  head (JobsView hides its head; Aktuell's empty state offers "Jobs suchen"). The rows of a
-   *  run that just ended count before the counts have heard of them. */
+   *  head (JobsView hides its head; Aktuell's empty state offers "Jobs suchen"). */
   get bare(): boolean {
     const counts = this.overviewCounts;
     return (
@@ -315,7 +321,7 @@ class JobsStore {
       !this.searching &&
       !this.filtered &&
       !run.active &&
-      !this.rows.some((job) => job.place === this.place)
+      !this.#rowsHere
     );
   }
 
@@ -976,12 +982,6 @@ class JobsStore {
     if (missing) void this.load(true);
     else void this.refreshCounts();
     return { moved: landed };
-  }
-
-  /** Archives a job or brings it back to the inbox (the reader's and the row's tool). */
-  async archive(key: JobKey, archived: boolean): Promise<string | null> {
-    const result = await this.move([key], archived ? 'archive' : 'inbox');
-    return 'error' in result ? result.error : null;
   }
 
   /** The prompt for a deep analysis of a job in any AI chat. */
