@@ -537,6 +537,54 @@ test.describe('the actions', () => {
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
     await expect(page.getByTestId('reader-archive')).toBeFocused();
   });
+
+  test('a click on a move hands nothing on: Space and Enter a moment later move no further job', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').click();
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await page.waitForTimeout(550);
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Enter');
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
+  });
+
+  test('a click on Anzeige öffnen leaves nothing for Space to open again', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    await stage(page).getByTestId('open-ad').click();
+    await page.keyboard.press('Space');
+    await settle(page);
+    expect(await calls(page, 'open_target')).toHaveLength(1);
+  });
+
+  test('a press on the buttons of the job view takes no focus, Tab still reaches them', async ({
+    page,
+  }) => {
+    // Pressed and let go beside it: a press only, nothing acts.
+    const press = async (button: Locator): Promise<void> => {
+      await button.hover();
+      await page.mouse.down();
+      expect(await button.evaluate((node) => node === document.activeElement)).toBe(false);
+      await page.mouse.move(1, 1);
+      await page.mouse.up();
+    };
+    await openAt(page, 'linkedin-4100200302');
+    await press(stage(page).getByTestId('reader-archive'));
+    await press(stage(page).getByTestId('open-ad'));
+    await press(stage(page).getByTestId('load-ad'));
+    const reached: (string | undefined)[] = [];
+    for (let tab = 0; tab < 40 && !reached.includes('load-ad'); tab += 1) {
+      await page.keyboard.press('Tab');
+      reached.push(
+        await page.evaluate(() => (document.activeElement as HTMLElement).dataset['testid']),
+      );
+    }
+    expect(reached).toEqual(expect.arrayContaining(['reader-archive', 'load-ad']));
+  });
 });
 
 test.describe('an excluded job', () => {

@@ -96,8 +96,8 @@ const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
  *  Space, like the native ones; Enter there goes on to the form (its default action). */
 const ENTER_PRESSES =
   'button:not([role="switch"], [role="radio"], [role="checkbox"]), [role="button"]';
-/** Controls a press does not focus: in the sidebar and the list's header
- *  (`data-press-only`), like the toolbar of Mail and Finder. */
+/** Controls a press does not focus: in the sidebar, the list's header and the job view's rows
+ *  of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
@@ -1617,8 +1617,8 @@ export function installInput(): void {
           event.preventDefault();
         } else if (!pressOnFieldBox(event)) {
           leaveField(event);
-          // The sidebar and the list's header are pressed, not focused (like the toolbar of
-          // Mail and Finder on both OS).
+          // What holds only buttons (the sidebar, the list's header, the job view's rows of
+          // buttons) is pressed, not focused, like the toolbar of Mail and Finder on both OS.
           if (closest(event.target, PRESS_ONLY) !== null) event.preventDefault();
         }
         return;

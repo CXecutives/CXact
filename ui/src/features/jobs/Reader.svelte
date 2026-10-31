@@ -19,9 +19,11 @@
   A new job is there at once, every card in its place (a cascade would leave the pane empty
   for a frame and replay on every job); its ring fills and counts up unless the user browses
   fast (pace.ts). What arrives later on the same job (the ad, its rows) fades in. Hovering or clicking a fact or
-  a requirement marks nothing in the ad (user decision 2026-09-27). Moving the job away from
-  one of its buttons hands the focus to the same button of the next job. Every result and
-  every failure is a toast.
+  a requirement marks nothing in the ad (user decision 2026-09-27). Its buttons are pressed, not
+  focused, like the sidebar's (`data-press-only`, never around what copies): nothing stands armed
+  for a key after a click, and Tab still reaches them. Moving the job away by the keyboard from
+  one of its buttons hands the focus to the same button of the next job. Every result and every
+  failure is a toast.
 -->
 <script lang="ts" module>
   /** A button of the job view had the focus when its job moved away: the same button of the
@@ -188,13 +190,13 @@
     prompt: () => void copyJobPrompt(job.key).then(fail),
   };
 
-  /** A move of the hero's tools. The next job's view gives the focus back to the button that
-   *  had it. */
+  /** A move of the hero's tools. Pressed from the keyboard, the next job's view gives the focus
+   *  back to the button that had it; a click hands nothing on. */
   function act(id: MoveId): void {
     if (guarded()) return;
     const focused = document.activeElement;
     const testid =
-      focused instanceof HTMLElement && article?.contains(focused)
+      byKeyboard() && focused instanceof HTMLElement && article?.contains(focused)
         ? (focused.dataset.testid ?? null)
         : null;
     handoff =
@@ -209,8 +211,8 @@
     });
   }
 
-  // The next job, opened after a move from one of this view's buttons: the same button of
-  // this view takes the focus, unless the user put it somewhere else meanwhile.
+  // The next job, opened after a move from the keyboard on one of this view's buttons: the same
+  // button of this view takes the focus, unless the user put it somewhere else meanwhile.
   $effect(() => {
     if (article === null) return;
     untrack(() => {
@@ -309,7 +311,7 @@
                    (the toast says so in words). -->
               {#snippet plus()}
                 {#if term !== null}
-                  <span class="reason-action">
+                  <span class="reason-action" data-press-only>
                     <Button
                       variant="ghost"
                       iconOnly

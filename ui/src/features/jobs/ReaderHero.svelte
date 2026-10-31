@@ -1,5 +1,5 @@
 <!--
-  The head of the job view, its hero card (the round 10 draft): the ring (56) and beside it
+  The head of the job view, its hero card (the round 10 draft): the ring (60) and beside it
   the title (20/650, copyable) with the band under it in the word colour of its ring; at the
   end of the title's first line, centred on it, the quiet tools, the moves of the job's place
   (actions.ts rowTools: the same as its row's), 14 in from the card's edge; no "×" (the top
@@ -108,7 +108,7 @@
       {/if}
       <div class="heads">
         <div class="line">
-          <span class="tools" data-testid="reader-tools">
+          <span class="tools" data-press-only data-testid="reader-tools">
             {#each tools as tool (tool.id)}
               <Button
                 variant="ghost"
@@ -131,7 +131,7 @@
     <!-- Words, glyphs, what is off and what is not there come from the one table the row's
          menu reads too. -->
     {#if offered.length > 0}
-      <div class="actions" bind:this={actions} data-testid="reader-actions">
+      <div class="actions" data-press-only bind:this={actions} data-testid="reader-actions">
         {#each offered as show (show.id)}
           <Button
             variant="secondary"
