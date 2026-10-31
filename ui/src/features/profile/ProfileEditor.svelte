@@ -41,6 +41,7 @@
   import CompetenceList from './CompetenceList.svelte';
   import LanguageList from './LanguageList.svelte';
   import ProfileControl from './ProfileControl.svelte';
+  import { keyOf } from './rows';
   import { LABEL_OF, SECTIONS, fieldOf, fieldsOf, type Control, type NumberKey } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
@@ -99,6 +100,23 @@
         : words.dateInvalid
       : null,
   );
+
+  /** What holds the save goes back to what was handed out, and only that ("Verwerfen": the
+   *  question names one value, and the other changes stay): a day that does not read, a number
+   *  that is wrong, a competence's years by its name, and a value the backend refused. */
+  export function dropWrong(): void {
+    if (editor.dateInvalid) editor.storedDay();
+    for (const key of Object.keys(NUMBER_LIMITS) as NumberKey[]) {
+      if (invalid.some((each) => each.field === key)) form[key] = editor.before[key];
+    }
+    for (const row of form.competences) {
+      if (row.years !== null && row.years > MAX_YEARS) {
+        const was = editor.before.competences.find((each) => keyOf(each.name) === keyOf(row.name));
+        row.years = was?.years ?? null;
+      }
+    }
+    if (fieldError !== null) editor.restore(fieldError.field, fieldError.row);
+  }
 
   /** A field's label as the page shows it. */
   const labelOf = (field: string): string =>

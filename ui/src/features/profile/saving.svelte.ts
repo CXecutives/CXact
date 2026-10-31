@@ -123,10 +123,21 @@ export class ProfileSaving {
     await this.leaveTo('close');
   }
 
-  /** The change that cannot be saved goes, and the way goes on. */
-  leave(): void {
+  /** "Verwerfen", and the way goes on: a value that holds the save goes back alone and the rest
+   *  is saved as ever, the way waiting for that save and asking again if it fails. After a save
+   *  that failed nothing can be told apart: the form goes back to what is stored. */
+  async leave(): Promise<void> {
+    const panel = this.#page.panel();
+    this.asking = false;
     this.note = null;
+    const held = panel !== null && panel.wrongField() !== null;
+    if (held) panel.dropWrong();
     this.fieldError = null;
+    if (held && panel.wrongField() === null) {
+      if (await this.settled()) this.#goOn();
+      else this.asking = true;
+      return;
+    }
     editor.discard(this.#page.stored());
     this.#goOn();
   }

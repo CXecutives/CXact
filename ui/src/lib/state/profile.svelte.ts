@@ -89,6 +89,22 @@ export function sameForm(a: ProfileForm, b: ProfileForm): boolean {
 
 const copy = (form: ProfileForm): ProfileForm => structuredClone($state.snapshot(form));
 
+/** A list with the row at `at` (counted among the rows with a name, as core does) as it was
+ *  handed out, or without it when it was not. */
+function rowBack<Row>(
+  rows: Row[],
+  handed: readonly Row[],
+  at: number,
+  name: (row: Row) => string,
+): Row[] {
+  const row = rows.filter((each) => name(each).trim() !== '')[at];
+  if (row === undefined) return rows;
+  const was = handed.find((each) => same(name(each).trim(), name(row).trim()));
+  return was === undefined
+    ? rows.filter((each) => each !== row)
+    : rows.map((each) => (each === row ? structuredClone(was) : each));
+}
+
 /** A save of the form: what was handed out and what the user made of it (core rebases the
  *  lists on what is stored meanwhile). Without a stored profile it is the first one. */
 function send(before: ProfileForm, after: ProfileForm): Promise<ProfileInfo> {
@@ -240,7 +256,7 @@ class ProfileEditor {
   }
 
   /** Verfügbar goes back to what was handed out, with its day. */
-  #storedDay(): void {
+  storedDay(): void {
     const stored = this.before.available;
     this.after.available = structuredClone(stored);
     this.dateText = stored.kind === 'from' ? stored.date : '';
@@ -248,7 +264,32 @@ class ProfileEditor {
 
   /** The view goes: a day still empty was never given, what is stored stands. */
   endDay(): void {
-    if (this.#dayWaits) this.#storedDay();
+    if (this.#dayWaits) this.storedDay();
+  }
+
+  /** A value the backend refused goes back to what was handed out: a list's row by its name (one
+   *  that was not handed out goes), any other value whole; what the form does not hold, nothing. */
+  restore(field: string, row: number | null): void {
+    if (field === 'available') this.storedDay();
+    else if (field === 'competences' && row !== null) {
+      this.after.competences = rowBack(
+        this.after.competences,
+        this.before.competences,
+        row,
+        (each) => each.name,
+      );
+    } else if (field === 'languages' && row !== null) {
+      this.after.languages = rowBack(
+        this.after.languages,
+        this.before.languages,
+        row,
+        (each) => each.language,
+      );
+    } else if (field in this.after) {
+      Object.assign(this.after, {
+        [field]: structuredClone((this.before as Record<string, unknown>)[field]),
+      });
+    }
   }
 
   /** Drops the changes: the stored profile as saved, or no form at all. */

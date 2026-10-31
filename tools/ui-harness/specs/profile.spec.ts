@@ -2144,6 +2144,102 @@ test('leaving saves first; a value that is wrong asks once, Abbrechen stays, Ver
   await expect(wish).toHaveValue('1.300');
 });
 
+test('Verwerfen drops only the value the question names; the other changes stay and are saved', async ({
+  page,
+}) => {
+  await profile(page);
+  const wish = page.getByTestId('profile-wish-rate');
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await wish.fill('0');
+  await leaveField(page);
+  // Good changes beside it, none of them saved while the 0 stands.
+  await contract(page, 'temporary').click();
+  await choose(page, 'profile-work-mode', T.profile.workMode.onsite);
+  const regions = page.getByTestId('profile-regions');
+  await regions.locator('input').fill('Bremen');
+  await regions.locator('input').press('Enter');
+  await leaveField(page);
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(0);
+  // Each frame's words of the question: they stand still while the dialog leaves.
+  await page.evaluate(() => {
+    const words: string[] = [];
+    (window as unknown as { words: string[] }).words = words;
+    const note = (): void => {
+      const open = document.querySelector('[data-testid="dialog-leave-profile"]');
+      if (open) words.push(open.textContent ?? '');
+      requestAnimationFrame(note);
+    };
+    requestAnimationFrame(note);
+  });
+  await page.getByTestId('nav-settings').click();
+  await expect(dialog).toContainText(T.profile.leaveWrong(T.profile.field.dayRateWish));
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  const words = await page.evaluate(() => (window as unknown as { words: string[] }).words);
+  expect(words.filter((each) => each.includes(T.profile.leaveFailed))).toEqual([]);
+  // That one value is as stored, all else went as the sentence promised.
+  const form = await stored(page);
+  expect(form?.dayRateWish).toBe(1200);
+  expect(form?.temporary).toBe(true);
+  expect(form?.workMode).toBe('onsite');
+  expect(form?.regions).toEqual(['Hamburg', 'Bremen']);
+  await page.getByTestId('nav-profile').click();
+  await expect(wish).toHaveValue('1.200');
+  await expect(contract(page, 'temporary')).toHaveAttribute('aria-checked', 'true');
+});
+
+test('Verwerfen with a day that does not read, or years too large: those go back by their row', async ({
+  page,
+}) => {
+  await profile(page);
+  const dialog = page.getByTestId('dialog-leave-profile');
+  const date = page.getByTestId('profile-date');
+  const years = page.getByTestId('competence-years');
+  await date.fill('12.13');
+  await years.first().fill(String(MAX_YEARS + 1));
+  // A new row, with years too large: the row stays and only its years go.
+  await (await adder(page, 'competence')).fill('Treasury');
+  await page.keyboard.press('Enter');
+  await expect(names(page, 'competences').last()).toHaveText('Treasury');
+  await years.last().fill(String(MAX_YEARS + 2));
+  await contract(page, 'temporary').click();
+  await page.getByTestId('nav-settings').click();
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  const form = await stored(page);
+  expect(form?.available).toEqual({ kind: 'from', date: '01.09.2026' });
+  expect(form?.temporary).toBe(true);
+  expect(form?.competences[0]).toMatchObject({ name: 'Interim Management', years: 12 });
+  expect(form?.competences.at(-1)).toMatchObject({ name: 'Treasury', years: null });
+  await page.getByTestId('nav-profile').click();
+  await expect(date).toHaveValue('01.09.2026');
+});
+
+test('Verwerfen with a value refused and a save that then fails: it asks again, the next drops all', async ({
+  page,
+}) => {
+  await profile(page);
+  const dialog = page.getByTestId('dialog-leave-profile');
+  const years = page.getByTestId('profile-years');
+  await contract(page, 'temporary').click();
+  await years.fill('25');
+  await refuseNext(page, { field: 'years', row: null, max: 20 });
+  await page.getByTestId('nav-settings').click();
+  await expect(dialog).toContainText(T.profile.leaveWrong(T.profile.field.totalYears));
+  // That value goes; what is left does not save this time: the way does not go on behind it.
+  await failNext(page, 'save_profile');
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect(dialog).toContainText(T.profile.leaveFailed);
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+  await expect(years).toHaveValue('20');
+  // Now nothing can be told apart: the form goes back to what is stored.
+  await dialog.getByRole('button', { name: T.profile.discard }).click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  expect((await stored(page))?.temporary).toBe(false);
+});
+
 test('closing the window saves first; a value that is wrong asks; without any it closes at once', async ({
   page,
 }) => {

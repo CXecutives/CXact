@@ -125,6 +125,12 @@
 
   /** The label of a value that holds the save. */
   const held = $derived(panel?.wrongField() ?? null);
+  /** What the question says; its words stand while the dialog leaves. */
+  let question = $state('');
+  $effect.pre(() => {
+    if (saving.asking)
+      question = held !== null ? t.profile.leaveWrong(held) : t.profile.leaveFailed;
+  });
 
   /** A file over the page: the dashed edge shows while the CV import would take it; a drop it
    *  cannot take says why (the tries used up, in fromCv; a value that is wrong). */
@@ -286,10 +292,10 @@
   open={saving.asking}
   variant="danger"
   heading={t.profile.leaveHeading}
-  text={held !== null ? t.profile.leaveWrong(held) : t.profile.leaveFailed}
+  text={question}
   confirmLabel={t.profile.discard}
   testid="dialog-leave-profile"
-  onconfirm={() => saving.leave()}
+  onconfirm={() => void saving.leave()}
   oncancel={() => saving.stay()}
 />
 
