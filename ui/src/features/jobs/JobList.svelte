@@ -28,6 +28,8 @@
   (jobMenu of actions.ts); under the pointer the row shows the moves of its place as its tools
   (rowTools, the same table). Back in the Jobs view, the list stands where it was scrolled to.
   A job action that fails says so in the list header.
+  What the list shows is the answer it holds: a search or a filter on its way changes nothing
+  until its answer comes, neither the rows, their marks and sections nor the state of no hit.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
@@ -105,12 +107,10 @@
   }));
 
   const shown = $derived(jobs.shown);
-  const searching = $derived(jobs.searching);
-  /** The words of the search whose hits the list holds, marked in the rows' titles (at most 8,
-   *  like the backend). */
-  const searchWords = $derived(
-    jobs.listedSearch === '' ? [] : jobs.listedSearch.split(/\s+/).slice(0, 8),
-  );
+  /** The list holds the answer to a search. */
+  const searching = $derived(jobs.listedSearch !== '');
+  /** The words of that search, marked in the rows' titles (at most 8, like the backend). */
+  const searchWords = $derived(searching ? jobs.listedSearch.split(/\s+/).slice(0, 8) : []);
   /** The rows as far as the window reaches: the scored ones, the ones without a score yet,
    *  then the excluded ones. */
   const active = $derived(shown.filter((job) => !isExcluded(job) && !isUnscored(job)));
@@ -161,7 +161,7 @@
   const totals = $derived(jobs.overviewCounts ?? jobs.counts);
   /** The filter leaves the list empty while the place holds jobs: it says so and takes the
    *  filter off. */
-  const filterEmptied = $derived(jobs.filtered && totals[jobs.place] > 0);
+  const filterEmptied = $derived(jobs.listedFiltered && totals[jobs.place] > 0);
   const place = $derived(jobs.place);
   /** The glyph of each place (the sidebar's Jobs, the archive, the trash). */
   const PLACE_ICON: Record<Place, IconName> = {
@@ -186,9 +186,9 @@
 
   /** A search or a filter that leaves nothing, in the words of an empty state. */
   const noHit = $derived.by((): { heading: string; text: string } => {
-    const query = jobs.search.trim();
+    const query = jobs.listedSearch;
     if (!searching) return { heading: t.list.noFilterHit, text: t.list.noFilterHitText };
-    return jobs.filtered
+    return jobs.listedFiltered
       ? { heading: t.list.noHitFiltered(query), text: t.list.noHitFilteredText }
       : { heading: t.list.noHit(query), text: t.list.noHitText };
   });
@@ -610,11 +610,12 @@
         testid="list-error"
       />
     </div>
-  {:else if jobs.rows.length === 0 && jobs.status !== 'ready' && !jobs.emptyPlace}
+  {:else if jobs.rows.length === 0 && jobs.status !== 'ready' && !jobs.emptyPlace && !jobs.answeredEmpty}
     <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
          jump); they fade in once the list has taken --delay-placeholder (at once when it has
          already, jobs.slow), so a quick list never shows them. None for a place the counts
-         say is empty: it shows that at once. -->
+         say is empty, it shows that at once, and none under a list that answered with nothing:
+         that stands until the next answer. -->
     <div class="skeletons" data-testid="list-skeleton">
       {#each SKELETON_ROWS as line (line.index)}
         <div class="skeleton-row">
@@ -623,8 +624,8 @@
         </div>
       {/each}
     </div>
-  {:else if jobs.visible.length === 0 && (jobs.status === 'ready' || jobs.emptyPlace)}
-    {#if searching || filterEmptied}
+  {:else if jobs.visible.length === 0}
+    {#if jobs.answeredEmpty && (searching || filterEmptied)}
       <!-- The search's × clears it; the other places' hits are the way on. -->
       <div class="none" data-testid={searching ? 'empty-search' : 'empty-filter'}>
         <EmptyState
@@ -632,7 +633,7 @@
           placement="list"
           heading={noHit.heading}
           text={noHit.text}
-          secondary={jobs.filtered
+          secondary={jobs.listedFiltered
             ? {
                 label: t.toolbar.filterReset,
                 icon: 'reset',

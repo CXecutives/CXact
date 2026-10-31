@@ -91,9 +91,7 @@
   });
   /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
    *  list that did not load): the list says why, the reader adds no second tile. */
-  const placeEmpty = $derived(
-    jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
-  );
+  const placeEmpty = $derived(jobs.status === 'error' || jobs.answeredEmpty);
   /** The list scrolled beneath its header where no day's heading sticks: the hairline. */
   let line = $state(false);
   /** The width of the list column (the splitter keeps it per user). */

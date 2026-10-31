@@ -128,6 +128,8 @@ class JobsStore {
   /** The query of the list the page holds: its next pages continue it, also while a typed
    *  search still waits (they never mix another query's rows into it). */
   #listed = $state.raw<JobQuery | null>(null);
+  /** The filter of that query. */
+  #listedFilter = $state.raw<ListFilter>(NO_FILTER);
   status = $state<Status>('idle');
   /** The first load is over and the job kept from the last run is open again, if it was
    *  (`start`): the history records from here, before the list was still on its way. */
@@ -186,6 +188,17 @@ class JobsStore {
    *  later, until then the list is another search's. */
   get listedSearch(): string {
     return this.#listed?.search ?? '';
+  }
+
+  /** The list the page holds answered under a filter (another may be on its way). */
+  get listedFiltered(): boolean {
+    return isFiltered(this.#listedFilter);
+  }
+
+  /** The list's answer for this place holds no row: what the list says of that, and the job view
+   *  beside it, stand until the next answer comes. */
+  get answeredEmpty(): boolean {
+    return this.#listed?.place === this.place && this.rows.length === 0;
   }
 
   /** A search is on, from its first typed word on (its answer may still be on its way). */
@@ -490,10 +503,12 @@ class JobsStore {
     try {
       const limit = keep ? Math.min(MAX_PAGE, Math.max(PAGE, this.rows.length)) : PAGE;
       const query = this.query(0, limit);
+      const filter = this.filter;
       const [page, other] = await Promise.all([invoke('list_jobs', { query }), this.askOther()]);
       if (request !== this.#request) return;
       const mounted = keep ? new Set(this.shown.map((job) => keyOf(job.key))) : null;
       this.#listed = query;
+      this.#listedFilter = filter;
       this.#own.clear();
       this.#served = page.jobs.length;
       this.rows = keep ? reused(this.rows, page.jobs) : page.jobs;

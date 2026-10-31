@@ -2105,6 +2105,55 @@ test.describe('search', () => {
     await expect(waiting).toHaveAttribute('aria-expanded', 'false');
   });
 
+  test('a search or a filter without a hit stands until the next answer: nothing blinks beside the typing', async ({
+    page,
+  }) => {
+    /** Every frame from now on, what it shows of the empty state and beside it. */
+    const watch = (): Promise<void> =>
+      page.evaluate(() => {
+        const frames = new Set<string>();
+        (window as unknown as { frames_: Set<string> }).frames_ = frames;
+        const has = (id: string): boolean =>
+          document.querySelector(`[data-testid="${id}"]`) !== null;
+        const look = (): void => {
+          const rows = document.querySelector('[data-testid^="job-row-"]') !== null;
+          const none = has('empty-search') || has('empty-filter');
+          frames.add(
+            `${none ? 'none' : rows ? 'rows' : 'blank'}${has('place-reader') ? '+tile' : ''}`,
+          );
+          requestAnimationFrame(look);
+        };
+        look();
+      });
+    const seen = (): Promise<string[]> =>
+      page.evaluate(() => [...(window as unknown as { frames_: Set<string> }).frames_]);
+    await open(page, `${WIN}&scenario=slow`);
+    const search = page.getByTestId('search');
+    const none = page.getByTestId('empty-search');
+    await search.fill('zzz');
+    await expect(none.locator('h3')).toHaveText(T.list.noHit('zzz'));
+    await watch();
+    // One more letter: the state stands, it speaks of the answer it has until the next comes.
+    await search.fill('zzzz');
+    await expect.poll(async () => (await lastQuery(page))?.search).toBe('zzzz');
+    await expect(none.locator('h3')).toHaveText(T.list.noHit('zzzz'));
+    await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+    expect(await seen()).toEqual(['none']);
+    // The search taken off: the rows take its place at once, with the tile beside them.
+    await watch();
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(rows(page).first()).toBeVisible();
+    expect((await seen()).sort()).toEqual(['none', 'rows+tile']);
+    // A filter that leaves nothing, taken off: the same.
+    await chooseFilter(page, 'portal-hays');
+    const emptied = page.getByTestId('empty-filter');
+    await expect(emptied).toBeVisible();
+    await watch();
+    await emptied.getByTestId('filter-reset').click();
+    await expect(rows(page).first()).toBeVisible();
+    expect((await seen()).sort()).toEqual(['none', 'rows+tile']);
+  });
+
   test('hits here and elsewhere: a button per other place under the rows, which goes there with the search', async ({
     page,
   }) => {
