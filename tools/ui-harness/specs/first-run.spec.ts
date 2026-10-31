@@ -515,6 +515,19 @@ test('the mouse button is Zurück: it stops a Verbinden that goes too', async ({
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
+test('Postfach: a field refers to its message only while one shows', async ({ page }) => {
+  await open(page, `${WIN}&scenario=setup-profile`);
+  const fields = [page.getByTestId('mailbox-user'), page.getByTestId('mailbox-password')];
+  for (const field of fields) await expect(field).not.toHaveAttribute('aria-describedby');
+  await next(page).click();
+  await expect(fields[0]!).toHaveAccessibleDescription(T.settings.addressMissing);
+  await expect(fields[1]!).toHaveAccessibleDescription(T.settings.passwordMissing(true));
+  // Typing takes a field's sentence away, and its reference with it.
+  await fields[1]!.pressSequentially('x');
+  await expect(fields[1]!).not.toHaveAttribute('aria-describedby');
+  await expect(fields[0]!).toHaveAccessibleDescription(T.settings.addressMissing);
+});
+
 test('the smallest window keeps every step usable', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, `${WIN}&scenario=setup-cv&step=profile`);
