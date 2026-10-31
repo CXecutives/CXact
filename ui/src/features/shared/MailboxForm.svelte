@@ -155,7 +155,6 @@
         bind:value={user}
         placeholder={t.settings.addressExample(provider)}
         invalid={userError !== null || refused}
-        describedby="{id}-user-message"
         testid="mailbox-user"
         oninput={() => changed('user')}
       />
@@ -185,7 +184,6 @@
         bind:value={password}
         placeholder={appPassword ? t.settings.passwordExample : null}
         invalid={passwordError !== null || refused}
-        describedby="{id}-password-message"
         testid="mailbox-password"
         oninput={() => changed('password')}
       />

@@ -5,8 +5,9 @@
 // `&way=self`). Once a profile exists the steps edit exactly that one (the backend merges a
 // second CV into it). Zurück never lands on the evaluation and keeps what was typed; a failed
 // evaluation goes back to the upload, which says why; "Abbrechen" stops the evaluation in the
-// backend (`cancel_run`, which answers the import with nothing). Reaching Fertig saves that
-// the setup is done (`finish_onboarding`), so the next start opens the Jobs view.
+// backend (`cancel_run`, which answers the import with nothing). A step's answer that comes
+// after it was left moves no step (`onward`). Reaching Fertig saves that the setup is done
+// (`finish_onboarding`), so the next start opens the Jobs view.
 
 import { errorText } from '$lib/i18n/texts';
 import { CvError, fillFromCv, invoke, reportUiError, type CvFailure } from '$lib/ipc/api';
@@ -65,8 +66,14 @@ class Onboarding {
     if (step === 'done') this.finish();
   }
 
-  /** Zurück (and the mouse's back button): the step before, `true` if there is one. An
-   *  evaluation that goes is cancelled first. */
+  /** The answer a step waited for (its save, its sign-in) goes on from that step only: whoever
+   *  left it meanwhile (Zurück, "Überspringen") stays where they went. */
+  onward(from: StepId, to: StepId): void {
+    if (this.step === from) this.go(to);
+  }
+
+  /** Zurück (and the mouse's back button, FirstRunView's `goBack`): the step before, `true` if
+   *  there is one. An evaluation that goes is cancelled first. */
   back(): boolean {
     if (this.step === 'reading') {
       this.cancelReading();

@@ -20,7 +20,9 @@
   The buttons follow the OS: the action first on Windows (then the third action, then
   cancel), last (right) on macOS with the third action on the far left. The scrim covers
   the whole window, the page-drawn title bar included (owner, 2026-10-28: it is part of the
-  app); the window still moves by its caption (platform.rs).
+  app). The window still moves by the bar and that cancels nothing: on Windows its caption
+  window (platform.rs) answers over the page, on macOS the bar's drag region rises over the
+  scrim (TitleBar), and the dialog stays clear of the bar's height.
   A dialog may hold content of its own (`children`: the list of the backups, the mailbox
   form). The sentence under the heading is left out where the heading says it all. An action
   that can be stopped while it runs (the check of "Verbinden") keeps cancel and Esc live
@@ -30,7 +32,7 @@
 <script lang="ts">
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import { primaryFirst } from '$lib/platform';
+  import { primaryFirst, scrimNeedsDragRegion } from '$lib/platform';
   import { dialogIn, dialogOut, scrim } from '$lib/motion/transitions';
   import { toasts } from '$lib/state/toasts.svelte';
   import { untrack, type Snippet } from 'svelte';
@@ -98,6 +100,7 @@
   }
 
   const actionFirst = primaryFirst();
+  const clearsBar = scrimNeedsDragRegion();
 
   /** Where the focus was before the dialog opened; it goes back there on close. */
   let opener: HTMLElement | null = null;
@@ -132,6 +135,7 @@
   <div class="layer" in:scrim out:scrim>
     <div
       class="scrim"
+      class:clears-bar={clearsBar}
       onpointerdown={(event) =>
         (pressedOnScrim = event.button === 0 && event.target === event.currentTarget)}
       onclick={(event) => {
@@ -211,7 +215,7 @@
 {/if}
 
 <style>
-  /* The window below its top bar (the bar keeps moving the window). */
+  /* The whole window, its top bar included. */
   .layer {
     position: fixed;
     z-index: var(--z-overlay);
@@ -228,6 +232,12 @@
     min-height: 0;
     padding: var(--space-16);
     background-color: var(--scrim);
+  }
+
+  /* macOS: a tall dialog ends below the bar's height, where the bar's drag region and the
+     traffic lights lie over it; as much below it, so every dialog stays centred. */
+  .clears-bar {
+    padding-block: var(--titlebar-height);
   }
 
   .dialog {

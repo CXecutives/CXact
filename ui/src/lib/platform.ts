@@ -5,6 +5,9 @@
 //     on both, like the Claude app): Windows gets the app's own caption buttons at the right,
 //     macOS its native traffic lights at the left, whose room the bar keeps free
 //     (`drawsWindowButtons()`),
+//   - moving the window while a dialog's scrim lies over that bar: Windows by its caption
+//     window, which lies over the page, macOS by a drag region over the scrim
+//     (`scrimNeedsDragRegion()`),
 //   - dialog buttons: Windows puts the primary first, macOS last (right),
 //   - scrollbars: slim styled ones on Windows, the native overlay scrollbars on macOS
 //     (base.css keys them off `:root[data-platform]`, like the font smoothing),
@@ -12,8 +15,8 @@
 //   - the editing keys of text fields and the context menu key (`keyConventions()`,
 //     applied by lib/input/input.ts: Ctrl on Windows, Cmd on macOS); the app has no
 //     shortcuts of its own.
-// Components ask here (`drawsWindowButtons()`, `primaryFirst()`, `keyConventions()`,
-// `platform()`),
+// Components ask here (`drawsWindowButtons()`, `scrimNeedsDragRegion()`, `primaryFirst()`,
+// `keyConventions()`, `platform()`),
 // never compare OS names themselves. The window's focus state is the same on both:
 // `:root[data-window]` is 'inactive' while the window is in the background, and selections
 // grey out against it as in Mail and Explorer.
@@ -65,6 +68,17 @@ export function platform(): Platform {
  */
 export function drawsWindowButtons(): boolean {
   return platform() === 'windows';
+}
+
+/**
+ * A dialog's scrim lies over the top bar. On Windows the bar still moves the window: the caption
+ * window of src-tauri's platform.rs lies over the page and answers for it. On macOS only the
+ * page can answer, by a direct hit on a drag region (Tauri's drag script), so one has to lie
+ * over the scrim (TitleBar.svelte). The native traffic lights lie over the page and stay
+ * reachable.
+ */
+export function scrimNeedsDragRegion(): boolean {
+  return platform() === 'macos';
 }
 
 /** Dialog buttons: the primary action comes first on Windows, last (right) on macOS. */

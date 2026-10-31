@@ -47,7 +47,6 @@
   import { viewport } from '$lib/state/viewport.svelte';
   import { tokenPx } from '$lib/tokens';
   import FirstRunView from './features/first-run/FirstRunView.svelte';
-  import { onboarding } from './features/first-run/onboarding.svelte';
   import CloseDialog from './features/shell/CloseDialog.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
@@ -67,9 +66,10 @@
   /** Closing while the app is busy: the window waits until it has stopped. */
   let closing = $state(false);
   $effect(() => onClosing(() => (closing = true)));
-  // The mouse's back button goes back like Zurück in the top bar (in the setup its Zurück), the
-  // forward button on like Vor (the setup has none).
-  $effect(() => onBack(() => (shell.firstRun ? onboarding.back() : history.back())));
+  // The mouse's back button goes back like Zurück in the top bar, the forward button on like Vor.
+  // The setup has neither: its step answers the back button itself (FirstRunView), and it has no
+  // way forward.
+  $effect(() => onBack(() => !shell.firstRun && history.back()));
   $effect(() => onForward(() => !shell.firstRun && history.forward()));
 
   // A docked sidebar never floats as well.

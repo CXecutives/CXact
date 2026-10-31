@@ -513,6 +513,58 @@ test('the mouse button is Zurück: it stops a Verbinden that goes too', async ({
   await mouseBack(page);
   await expectStep(page, T.firstRun.profile);
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  // The step stays where the user went, and nothing was connected: Fertig says so.
+  await page.evaluate(() => (window.__harness.holdMailbox = false));
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.profile);
+  expect(await calls(page, 'finish_onboarding')).toHaveLength(0);
+  await next(page).click();
+  await expectStep(page, T.firstRun.mailbox);
+  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
+  await page.getByTestId('first-skip').click();
+  await expectStep(page, T.firstRun.doneProfile);
+});
+
+test('a Verbinden that signs in after Zurück moves no step', async ({ page }) => {
+  await connecting(page);
+  // The stop comes too late (here it fails): the sign-in ends all the same and finds the user gone.
+  await failNext(page, 'cancel_run');
+  await back(page).click();
+  await expectStep(page, T.firstRun.profile);
+  const loads = (await calls(page, 'app_state')).length;
+  await page.evaluate(() => (window.__harness.holdMailbox = false));
+  await expect.poll(async () => (await calls(page, 'app_state')).length).toBeGreaterThan(loads);
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.profile);
+  expect(await calls(page, 'finish_onboarding')).toHaveLength(0);
+});
+
+test('a Weiter whose save answers after Zurück moves no step', async ({ page }) => {
+  await open(page, `${WIN}&scenario=setup-profile&step=profile`);
+  await page.getByTestId('profile-years').fill('12');
+  // Both in one task, so the save is under way when Zurück goes.
+  await page.evaluate(() => {
+    for (const id of ['first-next', 'first-back']) {
+      document.querySelector<HTMLElement>(`[data-testid="${id}"]`)!.click();
+    }
+  });
+  await expectStep(page, T.firstRun.upload);
+  await expect.poll(async () => (await calls(page, 'save_profile')).length).toBe(1);
+  await page.waitForTimeout(300);
+  await expectStep(page, T.firstRun.upload);
+});
+
+test('Postfach: a field refers to its message only while one shows', async ({ page }) => {
+  await open(page, `${WIN}&scenario=setup-profile`);
+  const fields = [page.getByTestId('mailbox-user'), page.getByTestId('mailbox-password')];
+  for (const field of fields) await expect(field).not.toHaveAttribute('aria-describedby');
+  await next(page).click();
+  await expect(fields[0]!).toHaveAccessibleDescription(T.settings.addressMissing);
+  await expect(fields[1]!).toHaveAccessibleDescription(T.settings.passwordMissing(true));
+  // Typing takes a field's sentence away, and its reference with it.
+  await fields[1]!.pressSequentially('x');
+  await expect(fields[1]!).not.toHaveAttribute('aria-describedby');
+  await expect(fields[0]!).toHaveAccessibleDescription(T.settings.addressMissing);
 });
 
 test('the smallest window keeps every step usable', async ({ page }) => {

@@ -275,9 +275,10 @@
     flex-direction: column;
   }
 
+  /* In a box of rows, which has no padding of its own: on the rows' left edge. */
   .note {
     display: flex;
-    padding-block: var(--space-12);
+    padding: 0 var(--card-pad-x) var(--space-12) var(--setting-rule-start);
   }
 
   .skeleton {

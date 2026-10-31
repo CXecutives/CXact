@@ -280,8 +280,8 @@ for (const os of ['windows', 'macos'] as const) {
     }
     expect(second!.x).toBeGreaterThan(first!.x);
     expect(third!.x).toBeGreaterThan(second!.x);
-    // Nothing but the bar moves the window.
-    const drags = page.locator('[data-tauri-drag-region]');
+    // Nothing but the bar moves the window (what lies over a dialog's scrim shows only with one).
+    const drags = page.locator('[data-tauri-drag-region]').filter({ visible: true });
     for (const node of await drags.all()) {
       expect(await node.evaluate((el) => el.closest('[data-testid="title-bar"]') !== null)).toBe(
         true,
@@ -912,12 +912,65 @@ for (const os of [WIN, MAC]) {
 test('macos: while a dialog is open the bar still moves the window', async ({ page }) => {
   await open(page, `${MAC}&view=settings`);
   await (await reveal(page, page.getByTestId('reset'))).click();
+  const dialog = page.getByTestId('dialog-reset');
+  await expect(dialog).toBeVisible();
+  await motionSettled(page);
+  const bar = (await page.getByTestId('title-bar').boundingBox())!;
+  const moves = (x: number, y: number): Promise<boolean> =>
+    page.evaluate(
+      ([x, y]) =>
+        document.elementFromPoint(x!, y!)?.hasAttribute('data-tauri-drag-region') ?? false,
+      [x, y],
+    );
+  // All of the bar, the room of the traffic lights too, and only the bar.
+  for (const [x, y] of [
+    [0, 0],
+    [600, bar.height / 2],
+    [bar.width - 1, bar.height - 1],
+  ] as const) {
+    expect(await moves(x, y), `${x},${y}`).toBe(true);
+  }
+  expect(await moves(600, bar.height)).toBe(false);
+  // The bar stays dimmed: what moves the window paints nothing over the scrim.
+  const painted = await page.evaluate(
+    ([y]) => getComputedStyle(document.elementFromPoint(600, y!)!).backgroundColor,
+    [bar.height / 2],
+  );
+  expect(painted).toBe('rgba(0, 0, 0, 0)');
+  // A short dialog stands in the window's middle, as on Windows.
+  const box = (await dialog.boundingBox())!;
+  expect(box.y + box.height / 2).toBeCloseTo(page.viewportSize()!.height / 2, 0);
+  // A drag there cancels nothing, a press on the scrim below it still does.
+  await page.mouse.move(600, bar.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(640, bar.height / 2 + 2);
+  await page.mouse.up();
+  await expect(dialog).toBeVisible();
+  await page.mouse.click(600, bar.height);
+  await expect(dialog).toBeHidden();
+  // Without a dialog the bar's buttons are pressed again, nothing lies over them.
+  await expect(page.getByTestId('history-back')).toBeVisible();
+  const back = (await page.getByTestId('history-back').boundingBox())!;
+  expect(await moves(back.x + back.width / 2, back.y + back.height / 2)).toBe(false);
+  // A dialog never reaches the bar's height, where the traffic lights lie over the page.
+  await page.setViewportSize({ width: 480, height: 200 });
+  await (await reveal(page, page.getByTestId('reset'))).click();
+  await expect(dialog).toBeVisible();
+  await motionSettled(page);
+  expect((await dialog.boundingBox())!.y).toBeGreaterThanOrEqual(bar.height);
+});
+
+test('windows: a dialog lays no drag region over the bar, the caption window answers for it', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=settings`);
+  await (await reveal(page, page.getByTestId('reset'))).click();
   await expect(page.getByTestId('dialog-reset')).toBeVisible();
   await settle(page);
   const hit = await page.evaluate(() =>
-    document.elementFromPoint(600, 18)?.hasAttribute('data-tauri-drag-region'),
+    document.elementFromPoint(600, 18)?.getAttribute('data-testid'),
   );
-  expect(hit).toBe(true);
+  expect(hit).toBe('dialog-scrim');
 });
 
 test('a start whose data cannot load: try again, a backup, the data folder', async ({ page }) => {
