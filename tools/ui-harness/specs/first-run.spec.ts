@@ -513,15 +513,16 @@ test('the mouse button is Zurück: it stops a Verbinden that goes too', async ({
   await mouseBack(page);
   await expectStep(page, T.firstRun.profile);
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
-  // The step stays where the user went; nothing was connected, and the Postfach is as it was.
+  // The step stays where the user went, and nothing was connected: Fertig says so.
   await page.evaluate(() => (window.__harness.holdMailbox = false));
   await page.waitForTimeout(300);
   await expectStep(page, T.firstRun.profile);
   expect(await calls(page, 'finish_onboarding')).toHaveLength(0);
   await next(page).click();
   await expectStep(page, T.firstRun.mailbox);
-  await expect(page.getByTestId('mailbox-user')).toHaveValue('');
   await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
+  await page.getByTestId('first-skip').click();
+  await expectStep(page, T.firstRun.doneProfile);
 });
 
 test('a Verbinden that signs in after Zurück moves no step', async ({ page }) => {
