@@ -31,7 +31,7 @@
   import Group from '$components/Group.svelte';
   import Section from '$components/Section.svelte';
   import { t } from '$lib/i18n/t';
-  import { byKeyboard, formKeys } from '$lib/input/input';
+  import { afterPress, byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
   import { glideIntoView } from '$lib/motion/scroll';
@@ -128,6 +128,21 @@
     return wrong ? { row: wrong.row, text: wrong.text } : null;
   }
 
+  // ------------------------------------------------------------ the rates against each other
+
+  /** A day rate holds the caret. */
+  let rating = $state(false);
+  const isRate = (node: EventTarget | null): boolean =>
+    node instanceof HTMLInputElement &&
+    node.closest('[data-field="dayRateWish"], [data-field="dayRateMin"]') !== null;
+  /** The wished rate is under the minimum, as last judged: once neither rate holds the caret,
+   *  so what is on its way to a value says nothing and moves no row. */
+  let below = $state(false);
+  $effect(() => {
+    const { dayRateWish: wish, dayRateMin: least } = form;
+    if (!rating) below = wish !== null && least !== null && wish < least;
+  });
+
   const isMissing = (field: string): boolean => missing.includes(field);
   /** A row shows while its field has something to do (Mindestgehalt). */
   const shown = (control: Control): boolean =>
@@ -187,7 +202,11 @@
   role="group"
   bind:this={root}
   use:formKeys={rootKeys}
-  onfocusout={() => onleft?.()}
+  onfocusin={(event) => (rating = isRate(event.target))}
+  onfocusout={(event) => {
+    if (!isRate(event.relatedTarget)) afterPress(event.target, () => (rating = false));
+    onleft?.();
+  }}
   data-testid="profile-form"
 >
   {#each SECTIONS as section (section.id)}
@@ -218,7 +237,7 @@
                   data-missing={isMissing(fieldOf(c)) ? '' : undefined}
                   transition:unfold
                 >
-                  <div class="row"><ProfileControl {c} {id} {errorOf} /></div>
+                  <div class="row"><ProfileControl {c} {id} {errorOf} {below} /></div>
                 </div>
               {/if}
             {/each}

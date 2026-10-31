@@ -3,7 +3,8 @@
   control, only where docs/PLAN.md places one an info symbol after it). A tag field fills the
   control's column, every short control has one width (a number, a select), Vertragsart is a
   choice of several, Arbeitsmodell, Auslastung and Mindestlaufzeit are selects, Länder and
-  Verfügbar their own fields. A wished rate under the minimum says so quietly under it; an
+  Verfügbar their own fields. A wished rate under the minimum says so quietly under it, once
+  neither rate holds the caret (ProfileEditor); an
   error is said by its Field. A number whose row folds away with its contract type leaves what
   is wrong in it behind: what is stored stands for it, so out of sight it is neither sent nor
   said and holds nothing (owner, 2026-10-31).
@@ -29,18 +30,16 @@
     id: string;
     /** The error said at a field (a value the backend refused or one that is wrong). */
     errorOf: (field: string) => string | null;
+    /** The wished rate is under the minimum: a quiet line under the wish. */
+    below: boolean;
   }
 
-  let { c, id, errorOf }: Props = $props();
+  let { c, id, errorOf, below }: Props = $props();
 
   const words = $derived(t.profile.field);
   const form = $derived(editor.after);
 
   const info = $derived('info' in c && c.info ? t.profile.info[c.info] : null);
-  /** The wished rate under the minimum: a quiet line under the wish. */
-  const below = $derived(
-    form.dayRateWish !== null && form.dayRateMin !== null && form.dayRateWish < form.dayRateMin,
-  );
 
   const CHOICES = $derived<Record<ChoiceKey, { id: string; label: string }[]>>({
     workMode: Object.entries(t.profile.workMode).map(([mode, label]) => ({ id: mode, label })),

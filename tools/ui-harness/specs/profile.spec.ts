@@ -661,10 +661,55 @@ test('a salary too large out of sight holds no save either, and is not kept like
 test('the rates; a wish under the minimum says so quietly under the wish', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-wish-rate').fill('900');
+  await leaveField(page);
   await expect(field(page, 'dayRateWish')).toContainText(T.profile.field.belowMinRate);
   await expect(field(page, 'dayRateMin').getByTestId('info-tip')).toHaveCount(1);
   await page.getByTestId('profile-wish-rate').fill('1.300');
+  await leaveField(page);
   await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.belowMinRate);
+});
+
+test('the two rates are judged once neither holds the caret: no sentence and no jump while typed', async ({
+  page,
+}) => {
+  await profile(page);
+  const wish = page.getByTestId('profile-wish-rate');
+  const min = page.getByTestId('profile-min-rate');
+  const row = field(page, 'dayRateWish');
+  const hint = T.profile.field.belowMinRate;
+  const start = (await min.boundingBox())!.y;
+  /** Digit by digit, the field holding the caret stays where it is and nothing is said. */
+  const type = async (input: Locator, digits: string): Promise<void> => {
+    await input.click();
+    await input.press('Control+A');
+    await input.press('Delete');
+    for (const digit of digits) {
+      await page.keyboard.type(digit);
+      await expect(input).toHaveValue(new RegExp(`${digit}$`));
+      await expect(row).not.toContainText(hint);
+      expect((await min.boundingBox())!.y).toBe(start);
+    }
+  };
+  // On its way to 1500 the wish stands under the minimum of 1.100.
+  await type(wish, '1500');
+  // The minimum over it: not while it is typed, going over to the wish does not judge either.
+  await type(min, '1600');
+  await wish.click();
+  await expect(row).not.toContainText(hint);
+  // Neither holds the caret: said, and only now the rows below move.
+  await leaveField(page);
+  await expect(row).toContainText(hint);
+  const below = (await min.boundingBox())!.y;
+  expect(below).toBeGreaterThan(start);
+  // Back in it the sentence stands still until the field is left, so the press moves nothing.
+  await wish.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('2000');
+  await expect(wish).toHaveValue('2000');
+  expect((await min.boundingBox())!.y).toBe(below);
+  await leaveField(page);
+  await expect(row).not.toContainText(hint);
+  await expect.poll(async () => (await min.boundingBox())!.y).toBe(start);
 });
 
 test('Arbeitsmodell, Verfügbar, Auslastung and Mindestlaufzeit are selects; the chosen option carries the tick', async ({
