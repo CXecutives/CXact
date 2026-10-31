@@ -29,7 +29,7 @@
   also the reader's "Anmelden"). A stored sign-in that the fetch does not use looks like none
   while the portal is on, and "Anmelden" then only lets the fetch use it (no sign-in window);
   while the portal is off the row keeps "Abmelden" until the sign-in is gone. A run holds the
-  sign-in (both buttons wait with its reason), except while it waits for this portal's own
+  sign-in (the button waits with its reason), except while it waits for this portal's own
   sign-in: the button is the way to give it. A switch moves at once, and the calls that go
   with a portal switched off fade out together; a sign-in that stays glides to the place next
   to the switch and back (foldAside), its keyboard focus handed on to the switch when the
@@ -117,7 +117,7 @@
     if (!portal.enabled || idle || Number.isNaN(last)) return null;
     if (fetch?.outcome.kind !== 'completed') return null;
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
-    return Math.floor((Date.now() - last) / DAY_MS);
+    return Math.floor((clock.now.getTime() - last) / DAY_MS);
   });
   /** Its quiet state: how many alert mails came in 30 days (a portal of alert mails without a
    *  mailbox says it needs one), or what the last search brought from it ("noch keine Suche"

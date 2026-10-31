@@ -12,8 +12,7 @@
   The line under the name is quiet; a value to copy (a path, in the line's font) selects like
   text (`copy`; it breaks only after a separator), and so does a name that is such a value
   (`copyLabel`, the address of the mailbox). A state is a status word (`status`, StatusText:
-  a dot and the word in its colour; `dot` names the tone of the old callers' line). Its test
-  id is the row's with `-hint`. A row that cannot be used now (`disabled`: an alert portal without a mailbox) dims its name.
+  a dot and the word in its colour). Its test id is the row's with `-hint`. A row that cannot be used now (`disabled`: an alert portal without a mailbox) dims its name.
   With `for` (the id of its switch) the row works like a row of the system settings of
   Windows 11 and macOS: only the switch switches (user decision). The name names the switch
   and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
@@ -31,8 +30,6 @@
     hint?: string | null;
     /** The line is a state: a dot and the word in the state's colour. */
     status?: StatusTone | null;
-    /** The tone of the line's state (as `status`, the connected or failed mailbox). */
-    dot?: 'success' | 'danger' | null;
     /** The hint is a value a user would copy (a folder path). */
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
@@ -56,7 +53,6 @@
     label,
     hint = null,
     status = null,
-    dot = null,
     copy = false,
     copyLabel = false,
     disabled = false,
@@ -67,8 +63,6 @@
     pair = false,
     children,
   }: Props = $props();
-
-  const tone = $derived(status ?? dot);
 
   describe(() => (control !== null && hint ? `${control}-hint` : null));
 
@@ -92,8 +86,8 @@
         data-copy={copy ? '' : undefined}
         data-testid={testid ? `${testid}-hint` : undefined}
       >
-        {#if tone}<StatusText
-            {tone}
+        {#if status}<StatusText
+            tone={status}
             text={hint}
           />{:else if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr
               />{/if}<span class="part">{part}</span>{/each}{:else}{hint}{/if}

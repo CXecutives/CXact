@@ -3,7 +3,8 @@
 // weights, controls only the control heights, line icons only the one stroke, corners only the
 // radius ladder, and nothing is light blue. A new value is a token first, then a line here. And
 // on no state does a field hold the caret by itself or a button end in an ellipsis (owner,
-// 2026-10-30).
+// 2026-10-30). And one way to draw a hairline, the same answer of a control to the pointer on
+// every ground, one family of glyphs.
 
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';

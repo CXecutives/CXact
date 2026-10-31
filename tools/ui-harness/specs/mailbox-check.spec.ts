@@ -1,6 +1,7 @@
 // "Verbinden" in the mailbox form of Einstellungen while it signs in and counts: it keeps its
 // width, it can be stopped, and a sign-in whose count did not finish is still a connected
-// mailbox. The providers: their texts and their pages.
+// mailbox. What the form says stands at its field, its buttons stay in the window. The providers:
+// their texts and their pages.
 
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';

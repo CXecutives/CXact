@@ -259,6 +259,20 @@ export function unfold(node: Element, params: MotionParams = {}): TransitionConf
 const UNFOLDING = 'data-unfolding';
 
 /**
+ * Runs `then` once whatever unfolds around `node` has its height (`unfold`): a part scrolled
+ * into view while its block is still a few pixels high stays out of view, and the scroll
+ * shifts the clipped block's own content. Waits for the transitions of the current update to
+ * start first.
+ */
+export function afterUnfold(node: Element, then: () => void): void {
+  queueMicrotask(() => {
+    const block = node.closest(`[${UNFOLDING}]`);
+    if (block === null) then();
+    else block.addEventListener('introend', () => afterUnfold(node, then), { once: true });
+  });
+}
+
+/**
  * A button that comes or goes beside one that stays (a portal's alert call beside its sign-in):
  * it takes its room or gives it up, its gap included, in one glide (180 ms, ease-out) while it
  * fades, so the one that stays glides to its new place instead of jumping. With `on` false both
@@ -275,20 +289,6 @@ export function foldAside(node: Element, params: MotionParams = {}): TransitionC
     css: (t, u) =>
       `overflow: hidden; width: ${Math.round(t * width)}px; margin-left: ${-Math.round(u * gap)}px; opacity: ${t}`,
   };
-}
-
-/**
- * Runs `then` once whatever unfolds around `node` has its height (`unfold`): a part scrolled
- * into view while its block is still a few pixels high stays out of view, and the scroll
- * shifts the clipped block's own content. Waits for the transitions of the current update to
- * start first.
- */
-export function afterUnfold(node: Element, then: () => void): void {
-  queueMicrotask(() => {
-    const block = node.closest(`[${UNFOLDING}]`);
-    if (block === null) then();
-    else block.addEventListener('introend', () => afterUnfold(node, then), { once: true });
-  });
 }
 
 /** Where the job list's highlight stands: its top in the list and its height (px). */

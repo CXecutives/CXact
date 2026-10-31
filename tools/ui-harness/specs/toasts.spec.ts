@@ -1,6 +1,7 @@
 // The toasts (components/Toast.svelte, lib/state/toasts.svelte.ts) on the sheet of the
 // surfaces (`?sheet=surfaces`): no close button (decision 8, 2026-10-24), a plain toast
-// without a sign, and the pointer on a toast stops its time. The look is not pinned here.
+// without a sign, and the pointer on a toast stops its time. The look is not pinned here beyond
+// its even ends.
 
 import type { Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
