@@ -10,8 +10,8 @@
   (saving.svelte.ts).
   What is missing (owner, 2026-10-29): a required field that is still empty (Wunschrollen,
   Länder, Kompetenzen, Sprachen) never holds the save and stays calm on the Profil page. The
-  card under the head names them, its "Ergänzen" brings the first up under the top bar (no
-  caret). A new or changed form asks core what it still lacks
+  card under the head (it unfolds) names them, its "Ergänzen" brings the first up under the top
+  bar (no caret). A new or changed form asks core what it still lacks
   (`profileMissing`, a moment after the last edit), the stored profile names its own
   (`missing`).
   In the setup (`setup`) the same form without the CV and the card; its "Weiter" (`next`)
@@ -28,6 +28,7 @@
   import type { ProfileForm } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
+  import { unfold } from '$lib/motion/transitions';
   import { editor, sameForm } from '$lib/state/profile.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
@@ -214,17 +215,20 @@
 {#snippet notes()}
   {#if !setup}<CvProblem />{/if}
   {#if !setup && editor.origin === 'stored' && missing.length > 0}
-    <StateBox
-      heading={t.profile.missing.heading(missing.length)}
-      text={t.profile.missing.fields(missing.map(labelOf))}
-      action={{
-        label: t.profile.missing.action,
-        icon: 'edit',
-        testid: 'profile-missing-go',
-        onclick: () => void reveal(missing[0]!),
-      }}
-      testid="profile-missing"
-    />
+    <!-- It unfolds, so the rows below glide (the page's gap under it comes along). -->
+    <div class="fold" transition:unfold>
+      <StateBox
+        heading={t.profile.missing.heading(missing.length)}
+        text={t.profile.missing.fields(missing.map(labelOf))}
+        action={{
+          label: t.profile.missing.action,
+          icon: 'edit',
+          testid: 'profile-missing-go',
+          onclick: () => void reveal(missing[0]!),
+        }}
+        testid="profile-missing"
+      />
+    </div>
   {/if}
   {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
   {#if saving.note}
@@ -293,5 +297,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--group-section-gap);
+  }
+
+  /* The page's gap under the card inside what unfolds, so it does not jump. */
+  .fold {
+    margin-bottom: calc(-1 * var(--group-section-gap));
+    padding-bottom: var(--group-section-gap);
   }
 </style>

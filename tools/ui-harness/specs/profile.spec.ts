@@ -1051,6 +1051,49 @@ test('what is missing: the card names it and the rows stay calm; a gap never hol
   await expect(card).toHaveCount(0);
   expect(await marked(page)).toEqual([]);
 });
+test('the card of what is missing unfolds and folds away: the rows glide, also the gap under it', async ({
+  page,
+}) => {
+  await profile(page);
+  const row = field(page, 'roles');
+  await animationsDone(page);
+  const start = (await row.boundingBox())!.y;
+  // Each frame's place of the row from here on.
+  await row.evaluate((node) => {
+    const places: number[] = [];
+    (window as unknown as { places: number[] }).places = places;
+    const note = (): void => {
+      places.push(node.getBoundingClientRect().top);
+      requestAnimationFrame(note);
+    };
+    requestAnimationFrame(note);
+  });
+  const places = (): Promise<number[]> =>
+    page.evaluate(() => (window as unknown as { places: number[] }).places.splice(0));
+  /** The places between the two ends of a way. */
+  const between = (all: number[], from: number, to: number): number[] =>
+    all.filter((top) => top > Math.min(from, to) + 0.5 && top < Math.max(from, to) - 0.5);
+  await roles(page).locator('[data-remove]').first().click();
+  const card = missingCard(page);
+  await expect(card).toBeVisible();
+  await animationsDone(page);
+  const down = (await row.boundingBox())!.y;
+  // The row stands where a state box and the page's gap put it, each measured.
+  const gap = await page
+    .getByTestId('profile-form')
+    .evaluate((form) => Number.parseFloat(getComputedStyle(form).rowGap));
+  expect(down).toBe(start + (await card.boundingBox())!.height + gap);
+  expect(between(await places(), start, down).length, 'frames on its way down').toBeGreaterThan(1);
+  // Filled, the card folds away under the caret, which glides back with its field.
+  const input = roles(page).locator('input');
+  await input.fill('Interim CFO');
+  await input.press('Enter');
+  await expect(card).toHaveCount(0);
+  await animationsDone(page);
+  expect((await row.boundingBox())!.y).toBe(start);
+  expect(between(await places(), down, start).length, 'frames on its way up').toBeGreaterThan(1);
+});
+
 test('Ergänzen glides to its field like every way into view', async ({ page }) => {
   await profile(page, '&scenario=profile-incomplete');
   // Each frame's place of the view from here on.
