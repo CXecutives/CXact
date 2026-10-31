@@ -82,8 +82,16 @@
 />
 
 <style>
+  /* The field as wide as every short control; the note of a number stands under it on a line
+     of its own, so the row only grows downward. */
   .years {
     display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .years > :global(:first-child) {
     width: var(--profile-control-width);
+    max-width: 100%;
   }
 </style>
