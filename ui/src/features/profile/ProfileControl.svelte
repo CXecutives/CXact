@@ -86,7 +86,7 @@
     <NumberField
       id="{id}-{c.key}"
       money={c.unit !== 'years'}
-      unit={t.profile.unit[c.unit]}
+      unit={t.profile.unitOf(c.unit, form[c.key])}
       placeholder={c.placeholder ? words[c.placeholder] : null}
       bind:value={form[c.key]}
       invalid={error !== null}

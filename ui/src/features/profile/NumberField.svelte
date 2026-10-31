@@ -133,9 +133,11 @@
 </span>
 
 <style>
+  /* Its note as far under it as a hint or an error under any field. */
   .stack {
     display: flex;
     flex-direction: column;
+    gap: var(--label-gap);
     min-width: 0;
   }
 

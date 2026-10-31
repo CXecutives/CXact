@@ -214,6 +214,8 @@ const ANY = 'Egal';
 /** Two lists of the profile, each a group of its own named like its field. */
 const COMPETENCES = 'Kompetenzen';
 const LANGUAGES = 'Sprachen';
+/** The units inside a number field of the profile. */
+const NUMBER_UNIT = { day: '€ am Tag', year: '€ im Jahr', years: 'Jahre' };
 
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
 const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
@@ -1116,7 +1118,6 @@ export const de = {
       /** The button under the rows, and the name field of the row it brings. */
       competenceAdd: 'Kompetenz hinzufügen',
       competence: 'Kompetenz',
-      years: 'Jahre',
       /** The years of a competence, as a screen reader names the field. */
       yearsOf: (name: string) => `Jahre in ${name}`,
       tools: 'Tools und Methoden',
@@ -1158,11 +1159,10 @@ export const de = {
       exclusionWords: 'Nennt eine Anzeige eines dieser Wörter, wird der Job ausgeschlossen.',
     },
     /** The unit at the right end inside a number field. */
-    unit: {
-      day: '€ am Tag',
-      year: '€ im Jahr',
-      years: 'Jahre',
-    },
+    unit: NUMBER_UNIT,
+    /** That unit as it reads after a value: one year is one. */
+    unitOf: (unit: keyof typeof NUMBER_UNIT, value: number | null) =>
+      unit === 'years' && value === 1 ? 'Jahr' : NUMBER_UNIT[unit],
     /** The contract types of Vertragsart. */
     contract: {
       project: 'Projekt und Interim',

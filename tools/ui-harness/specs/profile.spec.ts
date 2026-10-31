@@ -1769,6 +1769,43 @@ test('money is grouped like everywhere; cents count whole, and say so', async ({
   await savedWith(page, { dayRateMin: 950 });
 });
 
+test('a note, a hint and an error stand equally far under a number field', async ({ page }) => {
+  await profile(page);
+  const wish = page.getByTestId('profile-wish-rate');
+  const row = field(page, 'dayRateWish');
+  /** How far a line stands under the field's own box. */
+  const under = async (line: Locator): Promise<number> => {
+    const edge = await wish.evaluate((input) => input.closest('.field')!.getBoundingClientRect());
+    return (await line.boundingBox())!.y - edge.bottom;
+  };
+  await wish.fill('1.250,50');
+  await leaveField(page);
+  const note = await under(page.getByTestId('profile-wish-rate-rounded'));
+  await wish.fill('900');
+  await leaveField(page);
+  await expect(row).toContainText(T.profile.field.belowMinRate);
+  expect(await under(row.locator('.hint'))).toBe(note);
+  await wish.fill('0');
+  expect(await under(row.getByRole('alert'))).toBe(note);
+});
+
+test('one year reads as one, in a competence and in Berufserfahrung', async ({ page }) => {
+  await profile(page);
+  expect(T.profile.unitOf('years', 1)).not.toBe(T.profile.unitOf('years', 2));
+  for (const input of [
+    page.getByTestId('profile-years'),
+    page.getByTestId('competence-years').first(),
+  ]) {
+    const unit = input.locator('xpath=..').locator('.suffix');
+    await input.fill('1');
+    await expect(unit).toHaveText(T.profile.unitOf('years', 1));
+    await input.fill('12');
+    await expect(unit).toHaveText(T.profile.unitOf('years', 12));
+    await input.fill('');
+    await expect(unit).toHaveText(T.profile.unit.years);
+  }
+});
+
 test('the day exists only for "Ab Datum", takes no caret and is judged when left', async ({
   page,
 }) => {
