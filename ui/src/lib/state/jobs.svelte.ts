@@ -49,15 +49,9 @@ import type {
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
 import { app } from './app.svelte';
-import {
-  isFiltered,
-  NO_FILTER,
-  parseFilter,
-  passesFilter,
-  toQuery,
-  type ListFilter,
-} from './filter';
+import { isFiltered, NO_FILTER, passesFilter, toQuery, type ListFilter } from './filter';
 import { isExcluded, isUnscored, keyOf, moved, replaced, reused, sameKey, ZERO } from './jobRows';
+import { keepFilter, keepSort, keptFilter, keptSort } from './listChoices';
 import { keepOpen, keptOpen, type KeptOpen } from './openJob';
 import { run } from './run.svelte';
 import { viewport } from './viewport.svelte';
@@ -99,55 +93,6 @@ function ruleOf(query: JobQuery): string {
 interface RuleCounts {
   rule: string;
   counts: JobCounts;
-}
-
-/** Where the order of the list is kept (one choice for every list, per user). */
-const SORT_KEY = 'jobs-sort';
-
-/** The kept order; a store that cannot be read keeps the default, by date (decision 1,
- *  2026-10-24: the days' headings, the open jobs of a day before the closed ones, then the
- *  best match). */
-function keptSort(): JobSort {
-  try {
-    const value = localStorage.getItem(SORT_KEY);
-    return value === 'match' || value === 'rate' ? value : 'newest';
-  } catch {
-    return 'newest';
-  }
-}
-
-function keepSort(sort: JobSort): void {
-  try {
-    localStorage.setItem(SORT_KEY, sort);
-  } catch {
-    // Without a store the order lasts for this session only.
-    return;
-  }
-}
-
-/** Where the filter is kept (like the order, per user). */
-const FILTER_KEY = 'jobs-filter';
-
-/** The kept filter; a store that cannot be read, or holds something else, keeps none. The
- *  portal is checked against the app's portals where it applies (`filter`). */
-function keptFilter(): ListFilter {
-  try {
-    return parseFilter(JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as unknown);
-  } catch {
-    return NO_FILTER;
-  }
-}
-
-/** Keeps the user's filter; the run of a fetch's "Zeigen" is never kept. */
-function keepFilter(filter: ListFilter): void {
-  const kept = { ...filter, run: null };
-  try {
-    if (isFiltered(kept)) localStorage.setItem(FILTER_KEY, JSON.stringify(kept));
-    else localStorage.removeItem(FILTER_KEY);
-  } catch {
-    // Without a store the filter lasts for this session only.
-    return;
-  }
 }
 
 class JobsStore {
