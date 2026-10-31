@@ -45,7 +45,7 @@
   import ProfileHead from './ProfileHead.svelte';
   import ProfileStart from './ProfileStart.svelte';
   import { refused, watchSave, type SaveEffect } from './saveEffect';
-  import { FIELD_ORDER, LABEL_OF, blank } from './sections';
+  import { FIELD_ORDER, LABEL_OF } from './sections';
 
   interface Props {
     /** The setup's page: the form alone, its "Weiter" saves (`next`). */
@@ -334,18 +334,9 @@
     return String((t.profile.field as Record<string, unknown>)[key] ?? field);
   };
 
-  /** What core says a new or changed form still lacks. */
-  const draft = draftMissing();
-
-  /** The required fields still empty, in the order of the page: core names them (for a new
-   *  or changed form on asking, else for the stored profile), the form drops those filled
-   *  since at once. */
-  const missing = $derived(
-    FIELD_ORDER.filter(
-      (field) =>
-        (draft.fields() ?? profile?.missing ?? []).includes(field) && blank(editor.after, field),
-    ),
-  );
+  const stillMissing = draftMissing();
+  /** The required fields still empty, in the order of the page. */
+  const missing = $derived(stillMissing());
   /** The setup's Weiter asked for them: from then on they are marked until they are filled
    *  (on the Profil page the card says it, the rows stay calm). */
   let flagged = $state(false);
