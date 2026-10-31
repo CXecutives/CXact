@@ -118,6 +118,9 @@ export const chips = (page: Page): Locator => page.getByTestId('filter-chips');
 /** A chip under the list header by the id of its menu entry (`portal-linkedin`,
  *  `band-mid`), `run` for the one of a fetch's "Zeigen". */
 export const chip = (page: Page, id: string): Locator => page.getByTestId(`chip-${id}`);
+/** The × of such a chip: only it removes the chip. */
+export const chipRemove = (page: Page, id: string): Locator =>
+  page.getByTestId(`chip-${id}-remove`);
 
 /** Open the funnel's menu. */
 export async function openFilter(page: Page): Promise<Locator> {

@@ -7,6 +7,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
 import {
   chip,
+  chipRemove,
   chooseFilter,
   funnel,
   list,
@@ -197,7 +198,7 @@ test.describe('a tooltip goes when it should', () => {
   }) => {
     await open(page, WIN);
     await chooseFilter(page, 'portal-linkedin');
-    await chip(page, 'portal-linkedin').click();
+    await chipRemove(page, 'portal-linkedin').click();
     await expect(page.getByTestId('filter-chips')).toHaveCount(0);
     await page.waitForTimeout(700);
     await expect(tip(page)).toHaveCount(0);

@@ -24,6 +24,7 @@ import {
 import {
   checkedSort,
   chip,
+  chipRemove,
   chips,
   chipWordsOf,
   chooseFilter,
@@ -666,7 +667,7 @@ test.describe('filter', () => {
     expect(two.length).toBeGreaterThan(linkedin.length);
     expect(two.every((key) => /^(linkedin|freelance)-/.test(key))).toBe(true);
     await expect.poll(() => listed(page)).toEqual(two);
-    await chip(page, 'portal-freelance').click();
+    await chipRemove(page, 'portal-freelance').click();
     await expect.poll(() => listed(page)).toEqual(linkedin);
     await chooseFilter(page, 'band-mid');
     const mid = await inbox(page, { portals: ['linkedin'], bands: ['mid'] });
@@ -697,14 +698,14 @@ test.describe('filter', () => {
       chipWordsOf('portal-linkedin', 'band-mid', 'band-low'),
     );
     // A chip's × takes its choice off; a click sets no focus anywhere, not even after the last.
-    await chip(page, 'band-mid').click();
+    await chipRemove(page, 'band-mid').click();
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { portals: ['linkedin'], bands: ['low'] }));
-    await chip(page, 'band-low').click();
+    await chipRemove(page, 'band-low').click();
     await expect.poll(() => listed(page)).toEqual(linkedin);
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
-    await chip(page, 'portal-linkedin').click();
+    await chipRemove(page, 'portal-linkedin').click();
     await expect(chips(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
     await expect(funnel(page)).not.toBeFocused();
@@ -713,10 +714,10 @@ test.describe('filter', () => {
     await chooseFilter(page, 'portal-linkedin');
     await chooseFilter(page, 'band-mid');
     await page.keyboard.press('Tab');
-    await chip(page, 'portal-linkedin').focus();
+    await chipRemove(page, 'portal-linkedin').focus();
     await page.keyboard.press('Enter');
     await expect(chip(page, 'portal-linkedin')).toHaveCount(0);
-    await expect(chip(page, 'band-mid')).toBeFocused();
+    await expect(chipRemove(page, 'band-mid')).toBeFocused();
     await page.keyboard.press('Delete');
     await expect(chips(page)).toHaveCount(0);
     await expect(funnel(page)).toBeFocused();
@@ -757,7 +758,7 @@ test.describe('filter', () => {
     // Kept like the rest of the filter: the next start counts from its own today.
     await open(page, WIN);
     await expect.poll(sinceOf).toBe(await midnight(6));
-    await chip(page, 'received-days7').click();
+    await chipRemove(page, 'received-days7').click();
     await expect.poll(sinceOf).toBeNull();
   });
 

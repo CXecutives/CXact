@@ -8,6 +8,7 @@ import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   ALL_PORTALS,
   chip,
+  chipRemove,
   chips,
   chipWordsOf,
   chooseFilter,
@@ -95,7 +96,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   await expect.poll(() => listed(page)).toEqual(['linkedin-4100200399']);
   // Each chip takes its part off: without the band the two new jobs the toast counts, not
   // the excluded one of the fetch.
-  await chip(page, 'band-high').click();
+  await chipRemove(page, 'band-high').click();
   await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.lastFetch]);
   const { active } = await stubList(page, { run: query.run });
   expect(active).toHaveLength(2);
@@ -143,9 +144,9 @@ test('what Zeigen set is never the user filter: its chips taken off keep nothing
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
   await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
   // Taking off Zeigen's chips, each on its own, writes nothing: the stored filter is the user's.
-  await chip(page, 'run').click();
+  await chipRemove(page, 'run').click();
   await expect(chip(page, 'run')).toHaveCount(0);
-  await chip(page, 'band-high').click();
+  await chipRemove(page, 'band-high').click();
   expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBe(kept);
   await open(page, `${WIN}&tick=15`);
   await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
