@@ -1959,6 +1959,8 @@ test.describe('search', () => {
     await waiting.click();
     await expect(waiting).toHaveAttribute('aria-expanded', 'false');
     await page.getByTestId('search').fill('Hamburg');
+    // The search's hits first: a row it does not find would close again when its answer comes.
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { search: 'Hamburg' }));
     await page.getByTestId('unscored-rows').locator('[data-testid^="job-row-"]').first().click();
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
     await page.getByRole('button', { name: T.field.clear }).click();
