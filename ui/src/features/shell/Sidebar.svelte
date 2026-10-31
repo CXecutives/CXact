@@ -21,6 +21,7 @@
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
+  import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { VIEWS } from '$lib/views';
 
@@ -58,11 +59,12 @@
   /** The entry that is current: in the Jobs view its place. */
   const active = $derived(navigation.current === 'jobs' ? jobs.place : navigation.current);
 
-  /** A view or a place (an unsaved Profil may keep it and ask); a chosen place opens without
-   *  the search, like a folder of a mail app, and so does Jobs, which leads to Aktuell. */
+  /** A view or a place (an unsaved Profil may keep it and ask); a chosen place leads to its list
+   *  without the search, like a folder of a mail app, also the one shown, whose job stands in
+   *  place of the list in one column (run.show), and so does Jobs, which leads to Aktuell. */
   function choose(id: ViewId | Place): void {
-    if (isPlace(id)) navigation.go('jobs', false, () => jobs.setPlace(id, true));
-    else if (id === 'jobs') navigation.go('jobs', false, () => jobs.setPlace('inbox', true));
+    if (isPlace(id)) run.show(() => jobs.setPlace(id, true));
+    else if (id === 'jobs') run.show(() => jobs.setPlace('inbox', true));
     else navigation.go(id);
     onchoose?.();
   }

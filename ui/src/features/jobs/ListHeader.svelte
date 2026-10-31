@@ -38,6 +38,7 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
+  import { focusPlace } from './actions';
   import { funnelEntries } from './headerMenus';
   import { fetchBlocked } from './profileGaps';
   import RunLine from './RunLine.svelte';
@@ -82,10 +83,13 @@
   let funnelBox = $state<HTMLElement | null>(null);
   let funnelOpen = $state(false);
 
-  /** The funnel's button (the keyboard focus lands there when what held it goes). */
+  /** The funnel's button (the keyboard focus lands there when what held it goes), the place
+   *  where the funnel went with the head (a place that turned bare). */
   async function focusFunnel(): Promise<void> {
     await tick();
-    funnelBox?.querySelector<HTMLElement>('button')?.focus();
+    const funnel = funnelBox?.querySelector<HTMLElement>('button');
+    if (funnel?.isConnected) funnel.focus();
+    else focusPlace();
   }
 
   /**
@@ -102,7 +106,7 @@
   /**
    * A chip's ×: that choice of the filter goes. From the keyboard (Enter, Space, Delete) the
    * next chip's × takes the focus (input.ts `removeBy`) and the last one hands it to the
-   * funnel; a click moves it nowhere.
+   * funnel (`focusFunnel`); a click moves it nowhere.
    */
   function dropChip(chip: ActiveFilter, event: MouseEvent): void {
     const last = chips.length === 1;

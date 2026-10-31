@@ -272,6 +272,101 @@ test.describe('header', () => {
     await expect(page.getByTestId('fetch')).toBeFocused();
   });
 
+  test("from the keyboard the empty state's Jobs suchen hands the focus on too, and takes it back", async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=fresh&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    const empty = await expectBarePlace(page, T.list.empty.inbox);
+    await empty.getByTestId('fetch').focus();
+    await page.keyboard.press('Enter');
+    // The head comes with the run, and its Abbrechen takes the focus.
+    const cancel = page.getByTestId('list-header').getByTestId('cancel-run');
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Enter');
+    await runFinished(page);
+    // The list is bare again: the empty state's button takes it back.
+    await expectBarePlace(page, T.list.empty.inbox);
+    await expect(page.getByTestId('empty-all').getByTestId('fetch')).toBeFocused();
+    // A run that brings jobs: the head's button takes it, the head stays.
+    await page.keyboard.press('Enter');
+    await expect(cancel).toBeFocused();
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+    await expect(rows(page).first()).toBeVisible();
+    await expect(page.getByTestId('list-header').getByTestId('fetch')).toBeFocused();
+  });
+
+  test('a short run that brings the first jobs keeps its head at its end', async ({ page }) => {
+    await open(page, `${WIN}&scenario=fresh&tick=15`);
+    await expectBarePlace(page, T.list.empty.inbox);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    await page.getByTestId('cancel-run').waitFor();
+    // From here on the head stands: the rows of the run never stand without it, not even for
+    // as long as the counts take to hear of them.
+    const headless = page.evaluate(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const watch = new MutationObserver(() => {
+            if (document.querySelector('[data-testid="list-header"]') !== null) return;
+            watch.disconnect();
+            resolve(true);
+          });
+          watch.observe(document.body, { childList: true, subtree: true });
+          window.__harness.holdAfter = null;
+          const done = setInterval(() => {
+            if (!window.__harness.done) return;
+            clearInterval(done);
+            setTimeout(() => {
+              watch.disconnect();
+              resolve(false);
+            }, 300);
+          }, 20);
+        }),
+    );
+    await runFinished(page);
+    expect(await headless).toBe(false);
+    await expect(rows(page).first()).toBeVisible();
+    await expect(page.getByTestId('list-header')).toBeVisible();
+  });
+
+  test('from the keyboard an Abbrechen with no Jobs suchen after it hands the focus to the place', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    await openPlace(page, 'archive');
+    await page.getByTestId('cancel-run').focus();
+    await page.keyboard.press('Enter');
+    await runFinished(page);
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
+    await expect(page.getByTestId('place-archive')).toBeFocused();
+  });
+
+  test('a click on the action moves no focus, neither to Abbrechen nor back', async ({ page }) => {
+    await open(page, `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    await expect(cancel).not.toBeFocused();
+    await cancel.click();
+    await runFinished(page);
+    await expect(page.getByTestId('fetch')).not.toBeFocused();
+    // Nor the empty state's, which a press focuses in Chromium.
+    await open(page, `${WIN}&scenario=fresh&tick=15`);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('empty-all').getByTestId('fetch').click();
+    await expect(cancel).toBeVisible();
+    await expect(cancel).not.toBeFocused();
+    await cancel.click();
+    await runFinished(page);
+    await expect(page.getByTestId('fetch')).toBeVisible();
+    await expect(page.getByTestId('fetch')).not.toBeFocused();
+  });
+
   test('while a fetch goes Abbrechen and the strip stand in every place', async ({ page }) => {
     await open(page, `${WIN}&tick=15`);
     await page.evaluate(() => (window.__harness.holdAfter = 3));
@@ -1859,6 +1954,16 @@ test.describe('search', () => {
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
+    // Noch nicht bewertet too, once the choice folds it.
+    const waiting = page.getByTestId('unscored-divider');
+    await waiting.click();
+    await expect(waiting).toHaveAttribute('aria-expanded', 'false');
+    await page.getByTestId('search').fill('Hamburg');
+    await page.getByTestId('unscored-rows').locator('[data-testid^="job-row-"]').first().click();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(page.getByTestId('search')).toHaveValue('');
+    await expect(waiting).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('hits here and elsewhere: a button per other place under the rows, which goes there with the search', async ({
@@ -1923,6 +2028,13 @@ test.describe('search', () => {
       await inbox(page, { place: 'archive', search: 'Kreditoren', portals: ['freelance'] }),
     ).toEqual([]);
     await expect(page.getByTestId('also-archive')).toHaveCount(0);
+    // What Aktuell lists under the filter is named, and its button leads there.
+    await page.getByTestId('search').fill('SAP');
+    const hits = await inbox(page, { search: 'SAP', portals: ['freelance'] });
+    expect(hits.length).toBeGreaterThan(0);
+    await page.getByTestId('also-inbox').click();
+    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
+    await expect.poll(() => listed(page)).toEqual(hits);
   });
 
   test('the Papierkorb has no filter: under one its hits are still named', async ({ page }) => {
@@ -1934,6 +2046,107 @@ test.describe('search', () => {
     // Its one job with the word is a freelancermap one, and it lists it whatever the filter.
     expect(await inbox(page, { place: 'trash', search: 'Bau' })).toEqual(['freelancermap-2809']);
     await expect(none.getByTestId('also-trash')).toHaveText(T.place.trash);
+  });
+
+  test('a job moved under a filter: the place it went to is named at once, its undo takes that back', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await chooseFilter(page, 'portal-freelance');
+    await page.getByTestId('search').fill('SAP');
+    const hits = await inbox(page, { search: 'SAP', portals: ['freelance'] });
+    await expect.poll(() => listed(page)).toEqual(hits);
+    const trash = page.getByTestId('also-trash');
+    await expect(trash).toHaveCount(0);
+    await viaMenu(page, 'trash', hits[0]!);
+    await expect(trash).toBeVisible();
+    await page.getByTestId('toast-action').click();
+    await expect(row(page, hits[0]!)).toBeVisible();
+    await expect(trash).toHaveCount(0);
+  });
+
+  test('the hits elsewhere never show an old answer', async ({ page }) => {
+    // Every answer of the backend takes its time here.
+    await open(page, `${WIN}&scenario=slow`);
+    await chooseFilter(page, 'portal-freelance');
+    const search = page.getByTestId('search');
+    const trash = page.getByTestId('also-trash');
+    await search.fill('Bau');
+    await expect(trash).toBeVisible();
+    // Another word: the button goes with the word, not with the word's answer.
+    const stayed = await search.evaluate(async (field) => {
+      const input = field as HTMLInputElement;
+      input.value = 'Kernfusion';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(requestAnimationFrame);
+      return document.querySelector('[data-testid="also-trash"]') !== null;
+    });
+    expect(stayed).toBe(false);
+    await expect.poll(async () => (await lastQuery(page))?.search).toBe('Kernfusion');
+    await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+    await expect(trash).toHaveCount(0);
+    // The answer to a word typed over comes too late to show: the next word is typed as soon as
+    // the question of the one before has gone out, long before its answer.
+    const came = await search.evaluate(async (field) => {
+      const type = (word: string): void => {
+        (field as HTMLInputElement).value = word;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      const until = (done: () => boolean): Promise<void> =>
+        new Promise((resolve) => {
+          const look = setInterval(() => {
+            if (!done()) return;
+            clearInterval(look);
+            resolve();
+          }, 5);
+        });
+      const asked = (word: string): boolean =>
+        window.__harness.calls.some(
+          ([name, args]) =>
+            name === 'list_jobs' && (args as { query: JobQuery }).query.search === word,
+        );
+      let shown = false;
+      const watch = new MutationObserver(() => {
+        shown ||= document.querySelector('[data-testid^="also-"]') !== null;
+      });
+      watch.observe(document.body, { childList: true, subtree: true });
+      type('BAU');
+      await until(() => asked('BAU'));
+      type('Kernspaltung');
+      await until(() => asked('Kernspaltung'));
+      await until(
+        () =>
+          document.querySelector('[data-testid="job-list"]')?.getAttribute('aria-busy') === 'false',
+      );
+      watch.disconnect();
+      return shown;
+    });
+    expect(came).toBe(false);
+  });
+
+  test('one more question only while a search looks under a filter', async ({ page }) => {
+    await open(page, WIN);
+    const searches = async (): Promise<JobQuery[]> =>
+      (await calls(page, 'list_jobs'))
+        .map(([, args]) => (args as { query: JobQuery }).query)
+        .filter((query) => query.limit === 0 && query.search !== null);
+    await page.getByTestId('search').fill('SAP');
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { search: 'SAP' }));
+    expect(await searches()).toEqual([]);
+    // Under a filter it asks what the Papierkorb lists, which has none.
+    await chooseFilter(page, 'portal-freelance');
+    await expect.poll(async () => (await searches()).at(-1)?.portals).toEqual([]);
+    // In the Papierkorb what Aktuell and the Archiv list, under the filter.
+    await page.getByTestId('place-trash').click();
+    await page.getByTestId('search').fill('Bau');
+    await expect.poll(async () => (await searches()).at(-1)?.portals).toEqual(['freelance']);
+    await expect.poll(async () => (await searches()).at(-1)?.search).toBe('Bau');
+    // Without a search none.
+    const asked = (await searches()).length;
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(page.getByTestId('search')).toHaveValue('');
+    await settle(page);
+    expect(await searches()).toHaveLength(asked);
   });
 
   test('a second click keeps the open job; a search that no longer finds it closes it', async ({
@@ -2066,6 +2279,62 @@ test.describe('moves and undo', () => {
       await settleMoves(page);
     }
     await expect(page.getByTestId('place-archive')).toBeFocused();
+  });
+
+  test('a move from the keyboard, the sidebar folded away: its button takes the focus for the place', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await open(page, WIN);
+    await page.getByTestId('toggle-sidebar').click();
+    await page.getByTestId('sidebar-floating').getByTestId('place-archive').click();
+    await expect(page.getByTestId('sidebar-floating')).toHaveCount(0);
+    await settle(page);
+    const keys = await listed(page);
+    for (const key of keys) {
+      await row(page, key).focus();
+      await page.keyboard.press('Shift+F10');
+      await expect(page.getByTestId('menu')).toBeVisible();
+      await page.keyboard.type(T.actions.unarchive.slice(0, 4));
+      await page.keyboard.press('Enter');
+      await expect(row(page, key)).toHaveCount(0);
+      await settleMoves(page);
+    }
+    await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
+  });
+
+  test('a click on a move hands no focus on, by a tool or by the menu', async ({ page }) => {
+    await open(page, WIN);
+    const [first, second, third, fourth] = await listed(page);
+    // The row holds the focus a press gave it (Chromium), and it opened the job.
+    await row(page, first!).click();
+    await expect(page.getByTestId('reader-title')).toBeVisible();
+    await settleMoves(page);
+    // Its menu: the next job opens, its row takes no focus.
+    await viaMenu(page, 'archive', first!);
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(row(page, second!)).toHaveAttribute('aria-current', 'true');
+    await expect(row(page, second!)).not.toBeFocused();
+    await settleMoves(page);
+    // The tool of a row that is not the open one.
+    await row(page, third!).hover();
+    await row(page, third!).locator('xpath=..').getByTestId('tool-archive').click();
+    await expect(row(page, third!)).toHaveCount(0);
+    await expect(row(page, fourth!)).not.toBeFocused();
+    await settleMoves(page);
+    // A row that holds the focus keeps it while another one moves, by the keyboard too.
+    await row(page, fourth!).focus();
+    await viaMenu(page, 'archive', second!);
+    await expect(row(page, second!)).toHaveCount(0);
+    await expect(row(page, fourth!)).toBeFocused();
+    await settleMoves(page);
+    const [fifth, sixth] = (await listed(page)).filter((key) => key !== fourth);
+    await rowMenu(page, fifth!);
+    await page.keyboard.type(T.actions.archive.slice(0, 4));
+    await page.keyboard.press('Enter');
+    await expect(row(page, fifth!)).toHaveCount(0);
+    await expect(row(page, fourth!)).toBeFocused();
+    await expect(row(page, sixth!)).not.toBeFocused();
   });
 
   test('the last job of a place goes: no head; its undo brings the list and the head back', async ({
@@ -2590,6 +2859,26 @@ test.describe('the list keeps true', () => {
     await page.getByTestId('reader-archive').click();
     await expect(row(page, last)).toHaveCount(0);
     await expect.poll(() => openKeyOf(page)).toBe(out[0]);
+  });
+
+  test('a move during a search opens the row below, also where the kept choice folds its section', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const divider = page.getByTestId('unscored-divider');
+    await divider.click();
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await page.getByTestId('search').fill('Hamburg');
+    await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    const { jobs } = await stubList(page, { search: 'Hamburg' });
+    const scored = jobs.filter((job) => job.match?.status === 'scored').map(keyOf);
+    const waiting = jobs.filter((job) => job.match?.status === 'unscorable').map(keyOf);
+    expect(scored.length).toBeGreaterThan(0);
+    expect(waiting.length).toBeGreaterThan(0);
+    await openJob(page, scored.at(-1)!);
+    await page.getByTestId('reader-archive').click();
+    await expect(row(page, scored.at(-1)!)).toHaveCount(0);
+    await expect.poll(() => openKeyOf(page)).toBe(waiting[0]);
   });
 
   test('folding the section of the open job takes the highlight away; unfolding brings it back', async ({

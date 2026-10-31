@@ -7,7 +7,9 @@
   nothing to read: the list takes the whole width, without the reader, the handle and the
   seam (decision 24). With no job anywhere, nothing searched or filtered and no run
   (jobs.bare) the list has no head either: its empty state alone, in the middle, offers
-  "Jobs suchen"; a run brings the head back with its strip and Abbrechen. The handle
+  "Jobs suchen"; a run brings the head back with its strip and Abbrechen. From the keyboard
+  the focus goes with the place's action wherever it stands: Abbrechen takes it, Jobs suchen
+  takes it back, the place's entry where none is left; a click moves none. The handle
   between the columns resizes the list (kept) within limits that follow the window and the
   sidebar and never shrink while the window grows. Below 900 px one column: the list under
   its header, as at every width, or the reader, which the top bar's job view button and
@@ -32,6 +34,7 @@
   import { t } from '$lib/i18n/t';
   import { forgetScroll, keepScroll } from '$lib/actions/keepScroll';
   import { scrollFade } from '$lib/actions/scrollFade';
+  import { byKeyboard } from '$lib/input/input';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
   import { keyOf, sameKey } from '$lib/state/jobRows';
@@ -39,6 +42,7 @@
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { FOLD_BELOW, viewport } from '$lib/state/viewport.svelte';
+  import { focusPlace } from './actions';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ReaderSkeleton from './ReaderSkeleton.svelte';
@@ -190,13 +194,34 @@
       if (complete && !listed.some((row) => sameKey(row.key, selected))) close();
     });
   });
+
+  /** The head stands, unless the place is bare; a list that failed says only that, unless a
+   *  run goes on above it. */
+  const headed = $derived(!jobs.bare && (jobs.status !== 'error' || run.active));
+
+  /** The place's one action, whichever button it is now (the head's, a bare Aktuell's). */
+  const ACTION = '[data-testid="fetch"], [data-testid="cancel-run"]';
+  let actionHeld = false;
+  // Before another button takes its place, or the head goes: did the keyboard hold it?
+  $effect.pre(() => {
+    void [headed, run.active, run.kind];
+    actionHeld = byKeyboard() && document.activeElement?.matches(ACTION) === true;
+  });
+  $effect(() => {
+    void [headed, run.active, run.kind];
+    untrack(() => {
+      if (!actionHeld) return;
+      const action = document.querySelector<HTMLElement>(ACTION);
+      if (action) action.focus();
+      else focusPlace();
+    });
+  });
 </script>
 
 <div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
-      <!-- A list that failed says only that, unless a run goes on above it. -->
-      {#if !jobs.bare && (jobs.status !== 'error' || run.active)}
+      {#if headed}
         <div class="head">
           <ListHeader bind:this={header} {line} />
         </div>

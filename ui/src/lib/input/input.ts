@@ -601,6 +601,9 @@ function dispatchChipKey(event: KeyboardEvent): boolean {
  *  next press of a mouse button. */
 let keyboardFocus = false;
 
+/** The keyboard moves the focus now: what held it hands it on when it goes; a click moves none. */
+export const byKeyboard = (): boolean => keyboardFocus;
+
 /** A list whose items a button removes: the chips of a chip field, the rows of the
  *  competences and the languages, the notes of values that do not read. */
 const REMOVE_LIST = '[data-removes]';
