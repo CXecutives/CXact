@@ -848,6 +848,25 @@ test('the ad text, title and facts select and copy; the rest does not select', a
   }
 });
 
+test("a drag along the job's title that runs on over its tools keeps what it selected", async ({
+  page,
+}) => {
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  const title = page.getByTestId('reader-title');
+  await expect(title).toBeVisible();
+  const from = (await title.boundingBox())!;
+  const tools = (await page.getByTestId('reader-tools').boundingBox())!;
+  const y = from.y + from.height / 2;
+  await page.mouse.move(from.x + 2, y);
+  await page.mouse.down();
+  // Along the title's first line, past its last word onto the tools at the line's end, like a
+  // hand that overshoots: a native text view selects up to the end of the line.
+  await page.mouse.move(tools.x + tools.width / 2, y, { steps: 8 });
+  await page.mouse.up();
+  expect(await calls(page, 'move_jobs')).toHaveLength(0);
+  expect(await selection(page)).toBe(await title.innerText());
+});
+
 test('native cursor: the arrow on controls, the text cursor on copyable text', async ({ page }) => {
   await expect(page.getByTestId('fetch')).toHaveCSS('cursor', 'default');
   await expect(page.getByTestId('nav-profile')).toHaveCSS('cursor', 'default');
@@ -909,6 +928,27 @@ test('over an open menu only the menu scrolls; the list behind stays and the men
   // Esc closes it (a wheel beside it too: the press-outside test above).
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
+});
+
+test("a select's open list takes the wheel like a menu: over it the page stays, beside it the list closes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await open(page, `${WIN}&view=profile`);
+  await (await reveal(page, page.getByTestId('profile-work-mode'))).click();
+  const list = page.getByTestId('menu');
+  await expect(list).toBeVisible();
+  const before = await scrollTop(page, 'view-profile');
+  const box = (await list.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 200);
+  await page.waitForTimeout(300);
+  await expect(list).toBeVisible();
+  expect(await scrollTop(page, 'view-profile')).toBe(before);
+  // Beside it the wheel scrolls the page: the list, which would stay behind in the air, closes.
+  await page.mouse.move(box.x + box.width + 60, box.y + box.height / 2);
+  await page.mouse.wheel(0, 200);
+  await expect(list).toHaveCount(0);
 });
 
 test('behind a modal dialog nothing scrolls', async ({ page }) => {
@@ -1085,6 +1125,22 @@ test('the page keys scroll to the end; under reduced motion they jump', async ({
   await expect.poll(() => scrollTop(page, 'view-settings')).toBe(await room());
 });
 
+test('the page keys scroll the Profil too: a click on plain text leaves no caret', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, `${WIN}&view=profile`);
+  const view = page.getByTestId('view-profile');
+  await view.locator('#profile-section-job-heading').click();
+  const room = await view.evaluate((node) => node.scrollHeight - node.clientHeight);
+  expect(room).toBeGreaterThan(200);
+  await page.keyboard.press('End');
+  await expect.poll(() => scrollTop(page, 'view-profile')).toBe(room);
+  await page.keyboard.press('Home');
+  await expect.poll(() => scrollTop(page, 'view-profile')).toBe(0);
+});
+
 /* -------------------------------- Presses, radio groups, window menus, the focus in view */
 
 // Final round, team T1 (input): only the left button presses, a click beside a field ends its
@@ -1178,6 +1234,21 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   const chipBox = (await tools.boundingBox())!;
   await page.mouse.click(chipBox.x + chipBox.width - 6, chipBox.y + 3);
   await expect(input).toBeFocused();
+});
+
+test('a press on the unit inside a number field lands in the field', async ({ page }) => {
+  await open(page, `${WIN}&view=profile`);
+  const field = await reveal(page, page.getByTestId('profile-wish-rate'));
+  // Inside the field's edge, at its right end: a press there is a press on the field, like one
+  // on the magnifier of the search.
+  const unit = field.locator('xpath=..').getByText(T.profile.unit.day);
+  const box = (await unit.boundingBox())!;
+  await field.click();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(field, 'it keeps the caret it has').toBeFocused();
+  await field.evaluate((node) => node.blur());
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(field, 'it takes the caret').toBeFocused();
 });
 
 test('a press on the top bar (a drag region) ends the focus of a field', async ({ page }) => {
@@ -1407,6 +1478,34 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
   await page.mouse.up({ button: 'middle' });
   await inbox.click();
   await expect(inbox).toHaveAttribute('aria-current', 'page');
+});
+
+/** A middle click in the long list: the autoscroll runs until the next press or key. */
+async function startAutoscroll(page: Page): Promise<void> {
+  await open(page, '?platform=windows&scenario=many');
+  const list = (await page.getByTestId('job-list').boundingBox())!;
+  await page.mouse.move(list.x + list.width / 2, list.y + list.height / 2);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.up({ button: 'middle' });
+}
+
+test('a key that ends the autoscroll leaves no mode: the next click is an ordinary one', async ({
+  page,
+}) => {
+  await startAutoscroll(page);
+  await page.keyboard.press('Escape');
+  const archive = page.getByTestId('place-archive');
+  await archive.click();
+  await expect(archive).toHaveAttribute('aria-current', 'page');
+});
+
+test('a second middle click that ends the autoscroll leaves no mode either', async ({ page }) => {
+  await startAutoscroll(page);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.up({ button: 'middle' });
+  const archive = page.getByTestId('place-archive');
+  await archive.click();
+  await expect(archive).toHaveAttribute('aria-current', 'page');
 });
 
 /* ------------------------------------------- Mouse buttons and the wheel, every kind of control */
