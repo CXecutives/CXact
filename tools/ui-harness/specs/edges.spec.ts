@@ -4,7 +4,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { animationsDone, calls, expect, NOW, open, runFinished, test } from './fixtures';
-import { failNext, reveal, T } from './helpers';
+import { failNext, reveal, stubList, T } from './helpers';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -299,22 +299,25 @@ test('a row whose exclusion changes in place stands with the scored rows', async
 
 test('deleting the open job for good opens the next one', async ({ page }) => {
   await open(page, WIN);
-  for (const key of ['freelancermap-2803', 'linkedin-4100200302']) {
-    await row(page, key).click({ button: 'right' });
-    await page.getByTestId('menu-item-trash').click();
-    await page.waitForTimeout(550);
-  }
+  // The Papierkorb's rows as the stub lists them.
+  const [first, next] = (await stubList(page, { place: 'trash' })).active as [string, string];
   await page.getByTestId('place-trash').click();
-  const first = rows(page).first();
-  const firstKey = await first.getAttribute('data-testid');
-  const other =
-    firstKey === 'job-row-freelancermap-2803' ? 'linkedin:4100200302' : 'freelancermap:2803';
-  await first.click();
-  await expect(stage(page).getByTestId('reader-title')).toBeVisible();
-  await first.click({ button: 'right' });
+  await row(page, first).click();
+  await expect(list(page).locator('[data-open]')).toHaveAttribute(
+    'data-key',
+    first.replace('-', ':'),
+  );
+  await row(page, first).click({ button: 'right' });
   await page.getByTestId('menu-item-purge').click();
   await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
-  await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
+  await expect(row(page, first)).toHaveCount(0);
+  await expect(list(page).locator('[data-open]')).toHaveAttribute(
+    'data-key',
+    next.replace('-', ':'),
+  );
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(
+    await row(page, next).locator('.title').innerText(),
+  );
 });
 
 test('one column: closing shows the open row again, with the focus', async ({ page }) => {
@@ -345,6 +348,7 @@ test('undoing moves in another order puts the rows back where they stood', async
   await open(page, WIN);
   const keys = async () =>
     (await rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''))).slice(0, 3);
+  await expect(rows(page).first()).toBeVisible();
   const before = await keys();
   for (const [index, id] of before.slice(0, 2).entries()) {
     const key = id.replace('job-row-', '');
@@ -368,6 +372,7 @@ test('the end of a run keeps the jobs read in Aktuell, the open one in its place
 }) => {
   await open(page, WIN);
   const keys = async () => rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''));
+  await expect(rows(page).first()).toBeVisible();
   const before = await keys();
   const first = before[0]!.replace('job-row-', '');
   const third = before[2]!.replace('job-row-', '');

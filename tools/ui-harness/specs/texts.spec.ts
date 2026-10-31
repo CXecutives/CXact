@@ -52,8 +52,8 @@ test('an ad the app cannot reach says so in the reader, its row carries no badge
     });
   }, job!);
   const row = page.getByTestId('job-list').getByTestId('job-row-freelancermap-2805');
-  // The row says nothing of it; the reader does.
-  await expect(row).not.toContainText(T.reader.state.unfetchable.heading);
   await row.click();
+  // The reader says it; the row says nothing of it.
   await expect(page.getByTestId('detail-note')).toHaveText(T.reader.state.unfetchable.heading);
+  await expect(row).not.toContainText(T.reader.state.unfetchable.heading);
 });
