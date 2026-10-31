@@ -1580,6 +1580,55 @@ test.describe('the job view keeps true', () => {
     await runFinished(page);
   });
 
+  test('one column: a job that does not load has one Zurück, the top bar', async ({ page }) => {
+    await page.setViewportSize({ width: 899, height: 800 });
+    await open(page, WIN);
+    const back = page.getByRole('button', { name: T.common.back });
+    // While a slow job shows its placeholder.
+    await slowDetails(page, 1500);
+    await rows(page).first().click();
+    await expect(stage(page).getByTestId('reader-skeleton')).toBeVisible();
+    await expect(back).toHaveCount(1);
+    await page.getByTestId('history-back').click();
+    await expect(rows(page).first()).toBeVisible();
+    // A job that fails: the top bar's closes it too.
+    await slowDetails(page, 0);
+    await failNext(page, 'job_detail');
+    await rows(page).first().click();
+    await expect(stage(page).getByTestId('reader-error')).toBeVisible();
+    await expect(back).toHaveCount(1);
+    await page.getByTestId('history-back').click();
+    await expect(rows(page).first()).toBeVisible();
+  });
+
+  test('one column: a list that failed says so, also with a job open', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    // The job kept from the last start opens beside a list that does not load.
+    await open(page, `${WIN}&scenario=list-error`);
+    await expect(page.getByTestId('list-error')).toBeVisible();
+    await page.setViewportSize({ width: 800, height: 700 });
+    await expect(page.getByTestId('list-error')).toBeVisible();
+    await expect(page.getByRole('button', { name: T.common.retry })).toBeVisible();
+  });
+
+  test('the placeholder holds the place of the job: its cards stand where the job has its own', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const cardTops = (): Promise<number[]> =>
+      stage(page)
+        .locator('[data-card]')
+        .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().top));
+    await slowDetails(page, 900);
+    await row(page, 'freelancermap-2801').click();
+    await expect(stage(page).getByTestId('reader-skeleton')).toBeVisible();
+    const [hero, second] = await cardTops();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    const job = await cardTops();
+    expect(job[0]).toBe(hero);
+    expect(job[1]).toBe(second);
+  });
+
   test('another job waiting for its page is not loaded by a details run of its own', async ({
     page,
   }) => {
