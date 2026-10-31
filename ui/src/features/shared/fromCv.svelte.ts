@@ -1,14 +1,15 @@
 // "Aus Lebenslauf ausfüllen", the same wherever it is offered (the start page of the profile,
 // the head of the Profil): the backend asks for the CV, has it evaluated and saves the one
-// profile at once (`fillFromCv`). While it runs the button turns; what went wrong is said in
-// one sentence, with "Datei auswählen" beside it where a new try can work, and the toast says
-// when the profile was filled. While the tries are used up (`AppState.cvUntil`) it is not
-// offered: its button says why ahead of the click (`limited`), a tile says it on the click,
-// and a dropped CV is not taken. The setup's upload says the same sentences (onboarding).
+// profile at once (`fillFromCv`). While it runs the button turns and "Abbrechen" stops it (the
+// import then answers with nothing); what went wrong is said in one sentence, with "Datei
+// auswählen" beside it where a new try can work, and the toast says when the profile was filled.
+// While the tries are used up (`AppState.cvUntil`) it is not offered: its button says why ahead
+// of the click (`limited`), a tile says it on the click, and a dropped CV is not taken. The
+// setup's upload says the same sentences (onboarding).
 
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
-import { CvError, fillFromCv, type CvFailure } from '$lib/ipc/api';
+import { CvError, fillFromCv, invoke, type CvFailure } from '$lib/ipc/api';
 import type { ProfileInfo } from '$lib/ipc/types';
 import { app } from '$lib/state/app.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
@@ -24,6 +25,8 @@ export interface CvProblem {
   text: () => string;
   /** "Datei auswählen" stands beside it. */
   pick: boolean;
+  /** An evaluation was tried and failed (else the sentence says why none can start). */
+  tried: boolean;
 }
 
 class FromCv {
@@ -42,7 +45,7 @@ class FromCv {
     // No evaluation left today: said at once, nothing asked (the tiles of the start page
     // have no way to wait).
     if (this.limited) {
-      this.problem = problemOf(new CvError('limit'));
+      this.problem = { ...problemOf(new CvError('limit')), tried: false };
       return null;
     }
     this.busy = true;
@@ -63,15 +66,22 @@ class FromCv {
     }
   }
 
+  /** "Abbrechen" while it evaluates: the backend stops it and `run` ends with nothing. */
+  cancel(): void {
+    invoke('cancel_run').catch((error: unknown) => (this.problem = problemOf(error)));
+  }
+
   clear(): void {
     this.problem = null;
   }
 }
 
 function problemOf(error: unknown): CvProblem {
-  if (!(error instanceof CvError)) return { text: () => errorText(error), pick: false };
+  if (!(error instanceof CvError)) {
+    return { text: () => errorText(error), pick: false, tried: true };
+  }
   const reason = error.reason;
-  return { text: () => t.profile.cvError[reason], pick: retryable(reason) };
+  return { text: () => t.profile.cvError[reason], pick: retryable(reason), tried: true };
 }
 
 export const fromCv = new FromCv();

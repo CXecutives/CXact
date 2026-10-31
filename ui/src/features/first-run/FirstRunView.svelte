@@ -15,7 +15,7 @@
   Profil anlegen (the two ways as tiles, a click goes on); Lebenslauf hochladen (the whole
   drop zone is one button and takes a dropped file, Upload.svelte; a failed evaluation comes
   back here and says why); Lebenslauf wird ausgewertet (the spinner and Abbrechen, which stops
-  it); Dein Profil (the whole Profil form, Weiter); Postfach verbinden, optional (the mailbox
+  it, like Esc); Dein Profil (the whole Profil form, Weiter); Postfach verbinden, optional (the mailbox
   form, Überspringen and Verbinden in the OS order; Zurück and Überspringen stop a Verbinden
   that goes); Fertig (the full ring, "Alles eingerichtet", or "Profil eingerichtet" without a
   mailbox, and "Zu den Jobs", no search).
@@ -207,7 +207,9 @@
       data-step={step}
       use:formKeys={step === 'alerts'
         ? { save: () => void next(), cancel: () => mailboxForm?.cancel() }
-        : { save: () => void next() }}
+        : step === 'reading'
+          ? { cancel: () => onboarding.cancelReading() }
+          : { save: () => void next() }}
       use:enterStep={{ forward: step === 'profile' ? forward : null }}
     >
       {#if step === 'profile'}

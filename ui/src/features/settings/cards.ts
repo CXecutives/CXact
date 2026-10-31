@@ -66,8 +66,6 @@ export const ACTIONS = {
 } satisfies Record<string, Action>;
 
 export type ActionId = keyof typeof ACTIONS;
-/** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'folderChange' | 'reset';
 
 /** A row: its label, under it its one sentence or a path to copy, its buttons at the end. */
 export interface Row {

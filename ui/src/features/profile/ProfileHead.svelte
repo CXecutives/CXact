@@ -2,9 +2,10 @@
   The Profil's head (the round 10 draft): the title "Profil" 20/650 (or what is wrong with a
   file that no longer reads) and, while there is a form, the page's own action at its end:
   "Aus Lebenslauf ausfüllen" (secondary, file-up), which opens the file dialog at once. While
-  the CV is evaluated a 16 px spinner and "Wird von einer KI ausgewertet" (13 muted) stand in
-  its place, in the same width (both share one cell, the wider sets it), also on the start
-  page without a form. It waits, its tooltip saying why, while a value is wrong or no
+  the CV is evaluated a 16 px spinner, "Wird von einer KI ausgewertet" (13 muted) and the
+  setup's Abbrechen with its square stand in its place, in the same width (both share one cell,
+  the wider sets it; the keyboard's focus goes along), also on the start page without a form.
+  It waits, its tooltip saying why, while a value is wrong or no
   evaluation is left today. What went wrong with the CV stands under the head as a state box
   (ProfileView). A file that no longer reads has "Ordner öffnen" there instead, its folder at
   hand.
@@ -14,6 +15,8 @@
   import PageHeader from '$components/PageHeader.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
+  import { byKeyboard } from '$lib/input/input';
+  import { untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
 
   interface Props {
@@ -29,6 +32,25 @@
   }
 
   let { heading, form, held, oncv, onfolder = null }: Props = $props();
+
+  /** The button and what takes its place while the CV is evaluated, in one cell. */
+  let start = $state<HTMLElement | null>(null);
+  let working = $state<HTMLElement | null>(null);
+  /** Before one takes the other's place: did the keyboard hold it? */
+  let focusHeld = false;
+  $effect.pre(() => {
+    void fromCv.busy;
+    focusHeld =
+      byKeyboard() &&
+      (start?.contains(document.activeElement) === true ||
+        working?.contains(document.activeElement) === true);
+  });
+  $effect(() => {
+    const busy = fromCv.busy;
+    untrack(() => {
+      if (focusHeld) (busy ? working : start)?.querySelector('button')?.focus();
+    });
+  });
 </script>
 
 {#snippet folder()}
@@ -43,7 +65,7 @@
 
 {#snippet actions()}
   <span class="cv" class:busy={fromCv.busy}>
-    <span class="face button" aria-hidden={fromCv.busy ? 'true' : undefined}>
+    <span class="face button" aria-hidden={fromCv.busy ? 'true' : undefined} bind:this={start}>
       <Button
         variant="secondary"
         icon="pickFile"
@@ -58,9 +80,18 @@
         onclick={oncv}
       />
     </span>
-    <span class="face working" role="status" data-testid="profile-cv-busy">
-      {#if fromCv.busy}<Spinner size="sm" label={null} />{:else}<span class="slot"></span>{/if}{t
-        .profile.cvBusy}
+    <span class="face working" bind:this={working}>
+      <span class="words" role="status" data-testid="profile-cv-busy">
+        {#if fromCv.busy}<Spinner size="sm" label={null} />{:else}<span class="slot"></span>{/if}{t
+          .profile.cvBusy}
+      </span>
+      <Button
+        variant="secondary"
+        icon="cancel"
+        label={t.common.cancel}
+        testid="cv-cancel"
+        onclick={() => fromCv.cancel()}
+      />
     </span>
   </span>
 {/snippet}
@@ -87,8 +118,14 @@
   }
 
   .working {
-    gap: var(--space-8);
+    gap: var(--space-12);
     visibility: hidden;
+  }
+
+  .words {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
     color: var(--text-muted);
     font: var(--type-sm);
     white-space: nowrap;

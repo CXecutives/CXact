@@ -861,6 +861,18 @@ test('reset: the danger dialog says what goes in one sentence; a failure stays i
 
 /* ------------------------------------------------------------------- locks */
 
+test('reset: while it runs only the dialog answers, not the row behind its scrim', async ({
+  page,
+}) => {
+  // Every command of this scenario takes its time.
+  await settings(page, `${WIN}&scenario=slow`);
+  await (await reveal(page, page.getByTestId('reset'))).click();
+  const confirm = page.getByTestId('dialog-reset').getByTestId('dialog-confirm');
+  await confirm.click();
+  await expect(confirm).toHaveAttribute('aria-busy', 'true');
+  expect(await page.getByTestId('reset').getAttribute('aria-busy')).toBeNull();
+});
+
 test('a run holds the mailbox, the reset and the sign-in, with its reason', async ({ page }) => {
   await settings(page, `${WIN}&scenario=running`);
   for (const id of ['mailbox-change', 'mailbox-remove', 'reset']) {
@@ -977,6 +989,8 @@ test('portals: from the keyboard Anmelden and Abmelden keep the focus, the last 
   const signOut = page.getByTestId('sign-out-freelance');
   await expect(signOut).toBeVisible();
   await expect(signOut).toBeFocused();
+  // A press while it still answers does nothing, like the press of any busy button.
+  await expect(signOut).not.toHaveAttribute('aria-busy', 'true');
   await page.keyboard.press('Space');
   const signIn = page.getByTestId('sign-in-freelance');
   await expect(signIn).toBeVisible();

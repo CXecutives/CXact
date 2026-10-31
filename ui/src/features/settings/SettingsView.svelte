@@ -46,7 +46,6 @@
     ownOnly,
     type Action,
     type ActionId,
-    type CommandId,
     type Lock,
     type Row,
   } from './cards';
@@ -68,10 +67,12 @@
   const WAYS: readonly Way[] = ['search', 'alert'];
   /** Every portal, in the UI's order (lib/portals.ts). */
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
-  let busy = $state<CommandId | null>(null);
+  /** The folder dialog is open: its row's button turns meanwhile. */
+  let choosing = $state(false);
   /** The note at the end of each card, by section id. */
   let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
+  let resetting = $state(false);
   let resetError = $state<(() => string) | null>(null);
 
   const note = (section: string, feedback: Feedback | null): void => {
@@ -88,7 +89,7 @@
   /** On success the app restarts with the setup; a failure stays in the dialog, which tries
    *  again. */
   async function reset(): Promise<void> {
-    busy = 'reset';
+    resetting = true;
     resetError = null;
     try {
       await invoke('reset_all');
@@ -96,7 +97,7 @@
     } catch (error) {
       resetError = () => errorText(error);
     } finally {
-      busy = null;
+      resetting = false;
     }
   }
 
@@ -104,7 +105,7 @@
    *  own is used; the toast says which. */
   async function pickFolder(section: string): Promise<void> {
     note(section, null);
-    busy = 'folderChange';
+    choosing = true;
     try {
       const picked = await invoke('pick_workspace');
       if (picked === null) return;
@@ -115,7 +116,7 @@
     } catch (error) {
       note(section, { tone: 'danger', text: () => errorText(error) });
     } finally {
-      busy = null;
+      choosing = false;
     }
   }
 
@@ -167,7 +168,7 @@
           variant="secondary"
           icon={action.icon}
           label={action.label(t, cfg)}
-          loading={busy === id}
+          loading={id === 'folderChange' && choosing}
           disabled={locked !== null}
           disabledReason={locked}
           testid={testidOf(id)}
@@ -252,7 +253,7 @@
   heading={t.settings.resetHeading}
   text={t.settings.resetText}
   confirmLabel={t.settings.resetAction}
-  busy={busy === 'reset'}
+  busy={resetting}
   error={resetError?.() ?? null}
   testid="dialog-reset"
   onconfirm={() => void reset()}

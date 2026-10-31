@@ -297,6 +297,102 @@ test('Abbrechen stops the evaluation in the backend and goes back to the upload'
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
+test('Esc stops the evaluation like Abbrechen, with the focus on the step and nowhere', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  await expect(heading(page)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expectStep(page, T.firstRun.upload);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expect(page.getByTestId('cv-error')).toHaveCount(0);
+  await open(page, `${WIN}&scenario=first-run&step=reading`);
+  await page.locator('body').click({ position: { x: 4, y: 500 } });
+  await page.keyboard.press('Escape');
+  await expectStep(page, T.firstRun.upload);
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+});
+
+test('the Profil has the same Abbrechen: the evaluation stops and nothing is filled', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile&cv=slow`);
+  const start = page.getByTestId('profile-from-cv');
+  const busy = page.getByTestId('profile-cv-busy');
+  const stop = page.getByTestId('cv-cancel');
+  await expect(stop).toBeHidden();
+  await start.click();
+  await expect(busy).toHaveText(T.profile.cvBusy);
+  await expect(stop).toHaveText(T.common.cancel);
+  await expect(stop.locator('[data-icon]')).toHaveAttribute('data-icon', 'cancel');
+  await stop.click();
+  await expect(start).toBeVisible();
+  await expect(busy).toBeHidden();
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  // The stop says nothing and fills nothing.
+  await expect(page.getByTestId('cv-error')).toHaveCount(0);
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  // From the keyboard the focus goes along, to Abbrechen and back: they have one place.
+  await start.focus();
+  await page.keyboard.press('Enter');
+  await expect(stop).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(start).toBeFocused();
+  // In the smallest window the head still holds it, beside its title.
+  await page.setViewportSize({ width: 480, height: 360 });
+  await start.click();
+  const [title, busyBox, stopBox] = await Promise.all([
+    page.getByTestId('profile-heading').boundingBox(),
+    busy.boundingBox(),
+    stop.boundingBox(),
+  ]);
+  expect(busyBox!.x).toBeGreaterThanOrEqual(title!.x + title!.width);
+  expect(stopBox!.x + stopBox!.width).toBeLessThanOrEqual(480);
+  await stop.click();
+});
+
+test('a limit met before any file says only that, on the Profil like in the setup', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile&scenario=no-profile&cv=used`);
+  await page.getByTestId('way-cv').click();
+  await expect(page.getByTestId('cv-error-text')).toHaveText(T.profile.cvError.limit);
+  await expect(page.getByTestId('cv-error')).not.toContainText(T.profile.cvFailed);
+  expect(await calls(page, 'profile_from_cv')).toHaveLength(0);
+  // After a real try it says both.
+  await open(page, `${WIN}&view=profile&scenario=no-profile&cv=offline`);
+  await page.getByTestId('way-cv').click();
+  await expect(page.getByTestId('cv-error')).toContainText(T.profile.cvFailed);
+  await expect(page.getByTestId('cv-error-text')).toHaveText(T.profile.cvError.offline);
+});
+
+test('an old failure of the evaluation does not greet a new start', async ({ page }) => {
+  await open(page, `${WIN}&scenario=first-run&step=upload&cv=unreadable`);
+  await page.getByTestId('upload-zone').click();
+  await expect(page.getByTestId('cv-error-text')).toHaveText(T.profile.cvError.unreadable);
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-cv').click();
+  await expectStep(page, T.firstRun.upload);
+  await expect(page.getByTestId('cv-error')).toHaveCount(0);
+  await expect(page.getByTestId('upload-zone')).toBeVisible();
+  // What cannot run stays said.
+  await open(page, `${WIN}&scenario=first-run&cv=used`);
+  await toWays(page);
+  await page.getByTestId('way-cv').click();
+  await expect(page.getByTestId('cv-error-text')).toHaveText(T.profile.cvError.limit);
+});
+
+test('a setup resumed from a stored profile does not claim it came from a CV', async ({ page }) => {
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await expectStep(page, T.firstRun.mailbox);
+  await back(page).click();
+  await expectStep(page, T.firstRun.profile);
+  await expect(page.getByTestId('first-lead')).toHaveText(T.firstRun.profileSelf);
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+});
+
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
   page,
 }) => {

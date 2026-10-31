@@ -1,9 +1,9 @@
 // The walk through the setup (steps.ts): the step shown, the way to the profile, the CV's
 // evaluation and its failure. The first step follows from what is stored: no usable profile
-// leads to Willkommen, a usable one to the Postfach, a connected mailbox to Fertig (the
-// preview and the harness may name a step in the address, `?step=upload`, and the way,
-// `&way=self`). Once a profile exists the steps edit exactly that one (the backend merges a
-// second CV into it). Zurück never lands on the evaluation and keeps what was typed; a failed
+// leads to Willkommen, a usable one to the Postfach, a connected mailbox to Fertig; how a stored
+// profile came about is not known, so its way is "self" (the preview and the harness may name a
+// step in the address, `?step=upload`, and the way, `&way=self`). Once a profile exists the steps
+// edit exactly that one (the backend merges a second CV into it). Zurück never lands on the evaluation and keeps what was typed; a failed
 // evaluation goes back to the upload, which says why; "Abbrechen" stops the evaluation in the
 // backend (`cancel_run`, which answers the import with nothing). A step's answer that comes
 // after it was left moves no step (`onward`). Reaching Fertig saves that the setup is done
@@ -61,6 +61,7 @@ class Onboarding {
       else this.go(asked);
       return;
     }
+    if (app.hasProfile) this.way = 'self';
     this.go(!app.hasProfile ? 'welcome' : !app.hasMailbox ? 'alerts' : 'done');
   }
 
@@ -141,9 +142,12 @@ class Onboarding {
     this.go('profile');
   }
 
-  /** "Aus Lebenslauf": the upload. */
+  /** "Aus Lebenslauf": the upload, without what an earlier try said (what cannot run stays
+   *  said through `fromCv.limited`). */
   byCv(): void {
     this.way = 'cv';
+    this.failure = null;
+    this.error = null;
     this.go('upload');
   }
 
