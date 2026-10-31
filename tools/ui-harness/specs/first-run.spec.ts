@@ -701,6 +701,17 @@ test('beside a real scrollbar the bar of Dein Profil still reaches the edge of t
   }
 });
 
+test('a press on the bar of Dein Profil leaves Enter with Weiter, as on the rest of the step', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  await expect.poll(() => marks(page)).toEqual([]);
+  const bar = (await page.getByTestId('first-bar').boundingBox())!;
+  await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => marks(page)).not.toEqual([]);
+});
+
 test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
   await page.setViewportSize({ width: 1360, height: 640 });
   await open(page, `${WIN}&scenario=setup-cv&step=profile`);

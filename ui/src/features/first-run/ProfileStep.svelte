@@ -5,7 +5,7 @@
   foot of the view (BottomBar, `shell.foot`: under what scrolls): Zurück at the left, Weiter at
   the right. Weiter marks what is still missing red and brings the first of it into view (no
   sentence); once nothing is, it saves and goes on. A failed save stays on the page and says
-  so in the form. Enter on the bar is Weiter too, as anywhere on the step.
+  so in the form. After a press on the bar Enter is Weiter, as anywhere on the step.
 -->
 <script lang="ts">
   import BottomBar from '$components/BottomBar.svelte';
