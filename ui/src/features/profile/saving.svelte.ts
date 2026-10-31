@@ -146,24 +146,13 @@ export class ProfileSaving {
     clearTimeout(this.#timer);
     if (this.leaving !== null) return;
     this.#timer = setTimeout(() => {
-      if (!this.#typing()) void this.trySave();
+      if (!this.#page.panel()?.typing()) void this.trySave();
     }, tokenMs('--save-delay'));
   }
 
   /** The timer of `soon` is off (the view goes). */
   stop(): void {
     clearTimeout(this.#timer);
-  }
-
-  /** The caret stands in a field of the form: its value is not done yet. */
-  #typing(): boolean {
-    const active = document.activeElement;
-    return (
-      document.hasFocus() &&
-      active instanceof HTMLElement &&
-      active.matches('input, textarea') &&
-      active.closest('[data-testid="profile-form"]') !== null
-    );
   }
 
   /** `true` when the profile is saved. */

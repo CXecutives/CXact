@@ -1262,6 +1262,7 @@ test('going to the window behind changes nothing in a field; closing the window 
   /** What the engine sends when the window goes to the back: the focus stays where it is. */
   const toTheBack = (input: Locator): Promise<void> =>
     input.evaluate((node) => {
+      Object.defineProperty(document, 'hasFocus', { value: () => false, configurable: true });
       node.dispatchEvent(new FocusEvent('blur'));
       node.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     });
@@ -1823,6 +1824,34 @@ test('a change saves by itself: a control a moment after it changed, a text fiel
   await expect(date).toHaveValue('01.11.2026');
   // Nothing asks and nothing is said.
   await expect(page.getByTestId('toast')).toHaveCount(0);
+});
+
+test('a value left for another field saves, though that field holds the caret', async ({
+  page,
+}) => {
+  await profile(page);
+  const years = page.getByTestId('profile-years');
+  await page.getByTestId('profile-min-rate').fill('1.250');
+  await years.click();
+  await savedWith(page, { dayRateMin: 1250 });
+  await expect(years).toBeFocused();
+  // A control too, with the caret in a field nothing is typed in.
+  await choose(page, 'profile-workload', T.profile.workload.fulltime);
+  await years.click();
+  await savedWith(page, { workload: 'fulltime' });
+  await allSaved(page);
+  // What is typed there is not done: it never goes along, and is saved once it is left.
+  await page.getByTestId('profile-wish-rate').fill('1.400');
+  await years.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('3');
+  await page.waitForTimeout(2 * T_SAVE);
+  const sent = (await calls(page, 'save_profile')).map(
+    ([, args]) => (args as { save: ProfileSave }).save.after.years,
+  );
+  expect(sent).not.toContain(3);
+  await leaveField(page);
+  await savedWith(page, { dayRateWish: 1400, years: 3 });
 });
 
 test('what changes while a save is under way stays and goes next', async ({ page }) => {

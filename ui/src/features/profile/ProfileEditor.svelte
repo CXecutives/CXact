@@ -152,6 +152,25 @@
 
   let root = $state<HTMLElement | null>(null);
 
+  /** The field typed in since the caret came to it. */
+  let typedIn: EventTarget | null = null;
+
+  /** The caret stands in a field typed in: its value is not done yet, and what the form sends
+   *  would hold half of it. A field the caret only came to holds what it held. */
+  export function typing(): boolean {
+    return typedIn !== null && document.activeElement === typedIn;
+  }
+
+  /** The focus left a control of the form, for good once the press that left it has landed. */
+  function focusLeft(event: FocusEvent): void {
+    const toRate = isRate(event.relatedTarget);
+    afterPress(event.target, () => {
+      if (!toRate) rating = false;
+      typedIn = null;
+      onleft?.();
+    });
+  }
+
   /** Nothing holds the save; a day that does not read says so now. */
   export function valid(): boolean {
     if (editor.dateInvalid) editor.judged = true;
@@ -202,10 +221,8 @@
   bind:this={root}
   use:formKeys={rootKeys}
   onfocusin={(event) => (rating = isRate(event.target))}
-  onfocusout={(event) => {
-    if (!isRate(event.relatedTarget)) afterPress(event.target, () => (rating = false));
-    onleft?.();
-  }}
+  onfocusout={focusLeft}
+  oninput={(event) => (typedIn = event.target)}
   data-testid="profile-form"
 >
   {#each SECTIONS as section (section.id)}
