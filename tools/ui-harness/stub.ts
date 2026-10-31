@@ -30,7 +30,8 @@
 // wished role or language; Deutschland as every new profile has it) · setup-profile (a profile, no mailbox) · setup-mailbox
 // (a profile and a mailbox just connected) · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · mailbox-refused (Gmail refused the app password while the
-// search went on) · paused · running · slow · list-error · profile-broken ·
+// search went on) · mailbox-keychain (the last search could not read the app password) ·
+// paused · running · slow · list-error · profile-broken ·
 // sign-in-waiting (a search that waits for the sign-in at freelance.de) · rescoring (the jobs
 // scored anew after a save) · concept (five jobs for design reviews: high, medium, low, not
 // scored, excluded) ·
