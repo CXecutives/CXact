@@ -261,6 +261,9 @@
           </section>
         {/if}
       {/if}
+      {#if shell.foot}
+        <div class="view-foot">{@render shell.foot()}</div>
+      {/if}
     </main>
     {#if closing}
       <div class="closing" data-testid="closing" role="status" transition:fade>
@@ -320,10 +323,11 @@
 
   /* The sheet of the views: the docked sidebar's hairline is its left edge. Beyond its right
      edge a strip of its end colour, out of sight at rest, fills the window while the sheet
-     slides in from the left (the sidebar docks). */
+     slides in from the left (the sidebar docks). The view fills it, above a bar at its foot. */
   .views {
     display: grid;
     flex: 1;
+    grid-template-rows: minmax(0, 1fr) auto;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
@@ -369,6 +373,11 @@
     border-radius: var(--peek-radius);
     background-color: var(--bg);
     box-shadow: var(--sh-pop);
+  }
+
+  .view-foot {
+    grid-area: 2 / 1;
+    min-width: 0;
   }
 
   /* The one view fills the sheet, on the warm page (Profil, Einstellungen, a start that

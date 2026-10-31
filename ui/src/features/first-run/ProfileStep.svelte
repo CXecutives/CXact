@@ -1,16 +1,19 @@
 <!--
   The setup's "Dein Profil" (the round 10 draft): a whole page on the setup's cream (Page
   `bg`), its head the title 26/650 and the lead (as the CV filled it, or empty to fill in),
-  the Profil's form in its setup mode (ProfileView `setup`: no CV button), and the bar at its foot (BottomBar): Zurück at the left, Weiter at the
-  right. Weiter marks what is still missing red and brings the first of it into view (no
+  the Profil's form in its setup mode (ProfileView `setup`: no CV button), and the bar at the
+  foot of the view (BottomBar, `shell.foot`: under what scrolls): Zurück at the left, Weiter at
+  the right. Weiter marks what is still missing red and brings the first of it into view (no
   sentence); once nothing is, it saves and goes on. A failed save stays on the page and says
-  so in the form.
+  so in the form. Enter on the bar is Weiter too, as anywhere on the step.
 -->
 <script lang="ts">
   import BottomBar from '$components/BottomBar.svelte';
   import Button from '$components/Button.svelte';
   import Page from '$components/Page.svelte';
   import { t } from '$lib/i18n/t';
+  import { formKeys } from '$lib/input/input';
+  import { shell } from '$lib/state/shell.svelte';
   import ProfileView from '../profile/ProfileView.svelte';
 
   interface Props {
@@ -36,6 +39,13 @@
 
   let view = $state<ProfileView | null>(null);
   let busy = $state(false);
+
+  $effect(() => {
+    shell.foot = foot;
+    return () => {
+      shell.foot = null;
+    };
+  });
 
   /** Weiter (and Enter): on once the profile is saved with nothing required open. */
   export async function next(): Promise<void> {
@@ -64,6 +74,7 @@
   </header>
 {/snippet}
 
+<!-- Stands under the view (App), while this step does. -->
 {#snippet foot()}
   {#snippet actions()}
     <Button
@@ -75,20 +86,22 @@
       onclick={() => void next()}
     />
   {/snippet}
-  <BottomBar {actions} testid="first-bar">
-    <span class="back">
-      <Button
-        variant="ghost"
-        icon="back"
-        label={t.common.back}
-        testid="first-back"
-        onclick={onback}
-      />
-    </span>
-  </BottomBar>
+  <div use:formKeys={{ save: () => void next() }}>
+    <BottomBar {actions} testid="first-bar">
+      <span class="back">
+        <Button
+          variant="ghost"
+          icon="back"
+          label={t.common.back}
+          testid="first-back"
+          onclick={onback}
+        />
+      </span>
+    </BottomBar>
+  </div>
 {/snippet}
 
-<Page ground="bg" {head} {foot} bind:element testid="first-profile">
+<Page ground="bg" {head} bind:element testid="first-profile">
   <ProfileView bind:this={view} setup />
 </Page>
 

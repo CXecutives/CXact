@@ -5,8 +5,10 @@
 // by its button (a narrow window folds it by itself; its button then floats it over the
 // view), and the job view beside the list shown or hidden. Both choices are kept per user
 // (in this web view: a store that cannot be read or written keeps them for the session).
-// The ground of the view below the top bar is decided here too: the bar wears it.
+// The ground of the view below the top bar is decided here too: the bar wears it. So is what
+// stands under the view, out of what scrolls (`foot`: the setup's bar).
 
+import type { Snippet } from 'svelte';
 import { app } from './app.svelte';
 import { navigation } from './navigation.svelte';
 import { viewport } from './viewport.svelte';
@@ -47,6 +49,9 @@ class Shell {
   sidebarWidth = $state<number | undefined>(undefined);
   /** The user wants the job view beside the list (one column shows a job in its place). */
   #reader = $state(kept(READER));
+  /** A bar under the view, across the sheet and out of what scrolls (set by the page it belongs
+   *  to, while it stands). */
+  foot = $state<Snippet | null>(null);
   /** Where the list's border stands from the left of the view, in px, while the job view
    *  stands beside it (the top bar continues it); null without one. Set by JobsView. */
   listSeam = $state<number | null>(null);
