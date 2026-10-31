@@ -247,7 +247,9 @@
   role="group"
   bind:this={root}
   use:formKeys={rootKeys}
-  onfocusin={(event) => (rating = isRate(event.target))}
+  onfocusin={(event) => {
+    if (isRate(event.target)) rating = true;
+  }}
   onfocusout={focusLeft}
   oninput={(event) => (typedIn = event.target)}
   data-testid="profile-form"

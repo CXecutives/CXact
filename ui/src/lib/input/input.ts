@@ -1589,7 +1589,8 @@ export function afterPress(field: EventTarget | null, run: () => void): void {
 
 /** The press has landed: what waited for it comes, in its order. */
 function pressLanded(): void {
-  const waiting = pressWaits ?? [];
+  if (pressWaits === null) return;
+  const waiting = pressWaits;
   pressWaits = null;
   for (const run of waiting) run();
 }
@@ -1699,6 +1700,8 @@ export function installInput(): void {
       // back to the very pixel it pressed finds the rows and the tooltips awake.
       pointerMoved(event);
       if (!otherButtonsDown(event) && !swallow) auxPress(false);
+      // A release that went elsewhere (the window moved by its bar) was a release too.
+      if ((event.buttons & 1) === 0) pressLanded();
       if (pressedInText) {
         if ((event.buttons & 1) === 0) endTextPress();
         else if (movedFromPress(event)) textDrag(true);

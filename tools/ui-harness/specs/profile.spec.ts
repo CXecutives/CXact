@@ -1262,6 +1262,13 @@ test.describe('a press on a control below a field lands, though leaving the fiel
     await expect(page.getByTestId('profile-min-rate-rounded')).toBeVisible();
   });
 
+  test('the hint of a wish under the minimum, a select below it opens', async ({ page }) => {
+    await profile(page);
+    await page.getByTestId('profile-wish-rate').fill('900');
+    await pressOpensList(page, 'profile-work-mode');
+    await expect(field(page, 'dayRateWish')).toContainText(T.profile.field.belowMinRate);
+  });
+
   test('a chip that takes a new line, a select below it opens', async ({ page }) => {
     await profile(page);
     const regions = page.getByTestId('profile-regions');
@@ -1270,6 +1277,35 @@ test.describe('a press on a control below a field lands, though leaving the fiel
     await pressOpensList(page, 'profile-work-mode');
     await expect(chips(regions).last()).toHaveText(words);
   });
+});
+
+test('a press that leaves the view takes what was typed along, before the way goes', async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = page.getByTestId('profile-tools');
+  await tools.locator('input').fill('Miro');
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+  expect((await stored(page))?.tools).toContain('Miro');
+});
+
+test('a press whose release never reaches the page lands with the next move of the pointer', async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = page.getByTestId('profile-tools');
+  const input = tools.locator('input');
+  await input.click();
+  await page.keyboard.type('Miro');
+  // The window moved by its bar: the press came, its release went to the OS.
+  await page.getByTestId('title-bar').evaluate((bar) => {
+    bar.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+  });
+  await expect(input).not.toBeFocused();
+  await page.mouse.move(600, 300);
+  await expect(chips(tools).last()).toHaveText('Miro');
 });
 
 test('going to the window behind changes nothing in a field; closing the window still settles it', async ({
