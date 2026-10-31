@@ -2097,7 +2097,7 @@ test.describe('search', () => {
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
-    // Noch nicht bewertet too, once the choice folds it.
+    // The section without a score too, once the choice folds it.
     const waiting = page.getByTestId('unscored-divider');
     await waiting.click();
     await expect(waiting).toHaveAttribute('aria-expanded', 'false');
