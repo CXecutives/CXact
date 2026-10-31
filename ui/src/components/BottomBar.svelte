@@ -6,12 +6,11 @@
   least 50 high. At its left what it says or the way back (`children`: the muted sentence, or
   "Zurück"), at its right its buttons (`actions`, 8 apart, the view's primary last on macOS and
   first on Windows as the caller orders them, each pair at least --button-pair-min wide). It
-  slides up 8 px as it comes (150 ms) and goes with its page at once. The toast stack rises
-  above it (`use:liftToasts`).
+  comes and goes with its page, without a motion of its own. The toast stack rises above it
+  (`use:liftToasts`).
 -->
 <script lang="ts">
   import { liftToasts } from '$lib/actions/liftToasts';
-  import { rise } from '$lib/motion/transitions';
   import type { Snippet } from 'svelte';
 
   interface Props {
@@ -25,7 +24,7 @@
   let { actions = null, testid = null, children }: Props = $props();
 </script>
 
-<div class="bar" data-testid={testid ?? undefined} in:rise={{ distance: 'lg' }} use:liftToasts>
+<div class="bar" data-testid={testid ?? undefined} use:liftToasts>
   <div class="inner">
     <div class="start">{@render children?.()}</div>
     {#if actions}<div class="actions">{@render actions()}</div>{/if}

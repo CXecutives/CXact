@@ -1654,7 +1654,7 @@ export function installInput(): void {
   );
   window.addEventListener('blur', () => {
     guardZoom(false);
-    auxPress(false);
+    endSwallow();
     endTextPress();
     closeMenu(false);
   });
