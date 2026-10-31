@@ -1189,6 +1189,25 @@ test('what only holds the focus counts as nowhere: the page keys scroll, Enter a
   await expect(form).toHaveCount(0);
 });
 
+test('with the focus on nothing Enter and Esc go to the form pressed last, and to no other', async ({
+  page,
+}) => {
+  const alerts = page.getByTestId('mailbox-form').getByRole('alert');
+  // Plain text of the setup's step: the focus leaves its heading and rests on nothing.
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await page.getByTestId('first-lead').click();
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect(alerts.first()).toBeVisible();
+  // The top bar is no part of it: the keys reach nothing.
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await page.mouse.click(700, 10);
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(100);
+  await expect(alerts).toHaveCount(0);
+});
+
 /* -------------------------------- Presses, radio groups, window menus, the focus in view */
 
 // Final round, team T1 (input): only the left button presses, a click beside a field ends its

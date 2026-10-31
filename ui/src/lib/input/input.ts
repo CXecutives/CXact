@@ -40,9 +40,10 @@
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
-//   dialog. PageUp and PageDown scroll the pane that has the focus (or the one clicked
-//   last) by a page, and with the focus nowhere the arrows scroll that pane by a line and
-//   Home/End to its top and end, like a native scroll view. Key scrolling glides in one
+//   dialog (with the focus nowhere the form pressed last). PageUp and PageDown scroll the pane
+//   that has the focus (or the one clicked last) by a page, and with the focus nowhere (on no
+//   control, `isNowhere`) the arrows scroll that pane by a line and Home/End to its top and
+//   end, like a native scroll view. Key scrolling glides in one
 //   short tween (lib/motion/scroll.ts), never the engine's smooth scroll. Everything else,
 //   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
 //   Alt+Arrow back/forward), is swallowed.
@@ -85,7 +86,6 @@ import { pointerMoved } from './hold';
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
 /** Text a user would copy (selectable, Ctrl/Cmd+C). */
 const COPY = '[data-copy]';
-const DIALOG = 'dialog, [role="dialog"], [role="alertdialog"]';
 /** An open modal dialog: it holds the focus. */
 const MODAL = '[aria-modal="true"]';
 const FORM = '[data-form-keys]';
@@ -748,13 +748,18 @@ function onKeyDown(event: KeyboardEvent): void {
   // find, print, zoom, history).
   event.preventDefault();
   if (modal === null && scrollsPage(event)) return;
-  if (closest(event.target, `${FORM}, ${DIALOG}`) !== null && dispatchFormKey(event)) return;
+  if (dispatchFormKey(event)) return;
+  if (isNowhere(event.target) && lastForm?.isConnected && dispatchFormKey(event, lastForm)) return;
   if (modal === null) scrollsLine(event);
 }
 
 /** The scroll area the user clicked in last (the page keys scroll it while the focus is
  *  nowhere, e.g. after a click on the ad's text). */
 let lastPane: HTMLElement | null = null;
+/** The form the user pressed in last (null: the last press was elsewhere): with the focus
+ *  nowhere Enter and Esc go to it. A press on plain text focuses nothing, and in WebKit a press
+ *  on a button neither (a Verbinden begun by its button stays stoppable by Esc). */
+let lastForm: Element | null = null;
 /** The copyable block the user pressed last (null: the last press was elsewhere). */
 let lastCopy: Element | null = null;
 /** Where the last left press went down. */
@@ -1535,6 +1540,7 @@ export function installInput(): void {
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
+        lastForm = closest(event.target, FORM);
         lastCopy = closest(event.target, COPY);
         pressedAt = { x: event.clientX, y: event.clientY };
         // A button inside a field (show password, clear) leaves the caret in the field.
