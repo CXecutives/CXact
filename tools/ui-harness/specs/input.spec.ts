@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { calls, expect, open, settle, test } from './fixtures';
-import { adder, failNext, reveal, T } from './helpers';
+import { adder, chooseFilter, failNext, reveal, T } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -2054,4 +2054,176 @@ test('Tab goes round: from the last control to the first, Shift+Tab the other wa
   expect(last).toBeGreaterThan(0);
   await page.keyboard.press('Tab');
   expect(await where()).toBe(0);
+});
+
+/* ---------------------------------------------- the second click of a double click */
+
+/** A double click as a person makes it, with the pointer at rest: `gap` ms from the first
+ *  release to the second press, so what the first click did has taken its place. */
+async function clickTwice(page: Page, target: Locator, gap = 200): Promise<void> {
+  const box = (await target.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down({ clickCount: 1 });
+  await page.mouse.up({ clickCount: 1 });
+  await page.waitForTimeout(gap);
+  await page.mouse.down({ clickCount: 2 });
+  await page.mouse.up({ clickCount: 2 });
+}
+
+/** The commands of a job opened or read: none when no job was pressed. */
+const opened = async (page: Page): Promise<string[]> =>
+  (await calls(page))
+    .map(([name]) => name)
+    .filter((name) => ['job_detail', 'mark_read', 'open_target'].includes(name));
+
+for (const gap of [200, 350]) {
+  test(`a double click on a row's tool moves its job, the row that slid under it opens nothing (${gap} ms)`, async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const first = rows(page).first();
+    const moved = page.getByTestId((await first.getAttribute('data-testid'))!);
+    await first.hover();
+    await clickTwice(page, page.getByTestId('tool-archive'), gap);
+    await expect(moved).toHaveCount(0);
+    await page.waitForTimeout(100);
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
+    expect(await opened(page)).toEqual([]);
+  });
+}
+
+test('a double click on Filter zurücksetzen resets it, the list that came under it opens nothing', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await chooseFilter(page, 'portal-hays');
+  await expect(rows(page)).toHaveCount(0);
+  await clickTwice(page, page.getByTestId('filter-reset'));
+  await expect(rows(page).first()).toBeVisible();
+  await page.waitForTimeout(100);
+  expect(await opened(page)).toEqual([]);
+});
+
+test('a double click on an entry of a menu chooses it once, the row under it opens nothing', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await rows(page).first().click({ button: 'right' });
+  await clickTwice(page, page.getByTestId('menu-item-open-ad'));
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  await page.waitForTimeout(100);
+  expect(await opened(page)).toEqual(['open_target']);
+});
+
+test('a real double click on one row still opens its job and its ad, and on text selects a word', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await clickTwice(page, rows(page).first());
+  await expect(page.getByTestId('reader')).toBeVisible();
+  await expect.poll(async () => (await calls(page, 'open_target')).length).toBe(1);
+  await clickTwice(page, page.locator('[data-testid="reader"] [data-copy]').first());
+  expect((await selection(page)).trim()).not.toBe('');
+});
+
+test("a double click on a row's x removes that row, never the next one that slid under it", async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const remove = page.getByTestId('competences-remove');
+  for (const gap of [200, 300]) {
+    const count = await remove.count();
+    await reveal(page, remove.first());
+    await clickTwice(page, remove.first(), gap);
+    await expect(remove).toHaveCount(count - 1);
+    await page.waitForTimeout(300);
+    await expect(remove).toHaveCount(count - 1);
+  }
+});
+
+test('a double click on an option chooses it, the select that lies under it stays closed', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const select = await reveal(page, page.getByTestId('profile-work-mode'));
+  await select.click();
+  await clickTwice(page, page.getByTestId('menu-item-onsite'));
+  await expect(select).toHaveText(T.profile.workMode.onsite);
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+});
+
+test('a double click on what opens a dialog or a menu leaves it open', async ({ page }) => {
+  const { opener, dialog } = await resetDialog(page);
+  await clickTwice(page, opener);
+  await page.waitForTimeout(100);
+  await expect(dialog).toBeVisible();
+  // The mailbox's Entfernen too.
+  await open(page, `${WIN}&view=settings`);
+  await clickTwice(page, await reveal(page, page.getByTestId('mailbox-remove')));
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('dialog-remove-mailbox')).toBeVisible();
+  // The funnel's menu and the list of a select: the second press closes neither.
+  await open(page, WIN);
+  await clickTwice(page, page.getByTestId('filter'));
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await open(page, `${WIN}&view=profile`);
+  await clickTwice(page, await reveal(page, page.getByTestId('profile-work-mode')));
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('menu')).toBeVisible();
+});
+
+test('the second press of a double click puts no caret into the field that came under it', async ({
+  page,
+}) => {
+  const caret = page.locator('input:focus, textarea:focus');
+  // The add button of a list turns into its name field under the pointer.
+  await open(page, `${WIN}&view=profile`);
+  const add = await reveal(page, page.getByTestId('competences-add-button'));
+  await clickTwice(page, add);
+  await expect(page.getByTestId('competence-add').locator('input')).toBeVisible();
+  await page.waitForTimeout(100);
+  await expect(caret).toHaveCount(0);
+  // A tile of the setup goes on to the form, whose fields lie under the pointer.
+  await open(page, `${WIN}&scenario=first-run`);
+  await page.getByTestId('first-next').click();
+  await clickTwice(page, page.getByTestId('way-self'));
+  await expect(page.getByTestId('first-step')).toHaveAttribute('data-step', 'profile');
+  await page.waitForTimeout(100);
+  await expect(caret).toHaveCount(0);
+});
+
+test('a real double click selects its word in the ad of a job the app opened itself', async ({
+  page,
+}) => {
+  // The job that takes the archived one's place is read with this very click.
+  await open(page, WIN);
+  await rows(page).first().click();
+  await page.getByTestId('reader-archive').click();
+  await expect(rows(page).first()).toHaveAttribute('aria-current', 'true');
+  const words = page.locator('[data-testid="reader"] [data-copy]').first();
+  await expect(words).toBeVisible();
+  const read = (await calls(page, 'mark_read')).length;
+  await clickTwice(page, words);
+  expect((await selection(page)).trim()).not.toBe('');
+  expect(await calls(page, 'mark_read')).toHaveLength(read + 1);
+});
+
+test('a double click beside an open menu only closes it, and on the button of a list does not open it again', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await page.getByTestId('filter').click();
+  await clickTwice(page, rows(page).last());
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  expect(await opened(page)).toEqual([]);
+  await open(page, `${WIN}&view=profile`);
+  const select = await reveal(page, page.getByTestId('profile-work-mode'));
+  await select.click();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await clickTwice(page, select);
+  await page.waitForTimeout(100);
+  await expect(page.getByTestId('menu')).toHaveCount(0);
 });

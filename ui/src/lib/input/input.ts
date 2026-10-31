@@ -15,7 +15,7 @@
 //   the focused element. While a menu is open it takes every key (arrows, Home/End, the
 //   first letter, Enter and Space, Esc, Tab closes), and a press outside, the window's
 //   blur, resizing or a scroll outside it closes it; the left press that closes it does
-//   nothing else. A menu names no keys.
+//   nothing else, nor does a second click after it. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
@@ -27,7 +27,10 @@
 //   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
 //   held, a menu or a modal dialog open), so plain scrolling never waits for the page.
 // - a double click does nothing (in text that copies it selects a word, like everywhere;
-//   an element that offers `doubleClick` handles it: a job row opens its ad)
+//   an element that offers `doubleClick` handles it: a job row opens its ad). Its second press
+//   counts only on what the first pressed: on what the first click slid under the pointer (the
+//   next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
+//   first click opened stays open (`pressesElsewhere`).
 // - no dragging of text, links or images (only the column handle and the window's drag
 //   regions move)
 // - text is selectable only in fields and where a user would copy it (`data-copy`: the ad
@@ -786,6 +789,23 @@ let lastCopy: Element | null = null;
 let pressedAt: { x: number; y: number } | null = null;
 /** The left button is held since a press in selectable text. */
 let pressedInText = false;
+/** What the first press of a click went down on (null: it closed a menu, it pressed nothing). */
+let firstPress: Element | null = null;
+
+/** The control a press lands on, not the words or the glyph in it; else the element itself. */
+const pressedOn = (target: EventTarget | null): Element | null =>
+  closest(target, `${PRESSABLE}, ${FIELD}`) ?? closest(target, '*');
+
+/**
+ * The second press of a double click that lands on anything but what the first one pressed:
+ * what the first click did slid it under the pointer, and it was never meant. It presses
+ * nothing, so every control is safe from it without a check of its own. Two presses on one row
+ * or one word are a real double click, and a control's own check (Button) keeps those apart.
+ */
+const pressesElsewhere = (event: MouseEvent): boolean =>
+  event.button === LEFT &&
+  event.detail > 1 &&
+  (firstPress?.isConnected !== true || pressedOn(event.target) !== firstPress);
 
 /** The pointer moved further from the last left press than a click may. */
 const movedFromPress = (event: MouseEvent): boolean =>
@@ -1186,16 +1206,15 @@ function dispatchMenuKey(event: KeyboardEvent): void {
 }
 
 /** A press outside the open menu closes it; a left one does nothing else (like the OS: the
- *  click that dismisses a menu never reaches what lies under it), a right one opens the
- *  menu of what it lands on. */
+ *  click that dismisses a menu never reaches what lies under it; `true`), a right one opens
+ *  the menu of what it lands on. The second press of a double click closes nothing: what its
+ *  first click opened stays open. */
 function pressOutsideMenu(event: MouseEvent): boolean {
   if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
+  const left = event.button === LEFT;
+  if (left && event.detail > 1) return false;
   closeMenu();
-  if (event.button === LEFT) {
-    event.preventDefault();
-    return true;
-  }
-  return false;
+  return left;
 }
 
 /**
@@ -1377,7 +1396,8 @@ function holdFocusEvents(event: FocusEvent): void {
  * `:hover`) for any button in the hit test of the press, before a listener could cancel it,
  * and Chromium sets it again with the context menu after a right release. So while another
  * button is down, and until the pointer moves after it, :root carries `data-aux-press` and
- * every pressed rule waits for `:root:not([data-aux-press])` (core/tests/ui_contract.rs).
+ * every pressed rule waits for `:root:not([data-aux-press])` (core/tests/ui_contract.rs). A left
+ * press that presses nothing (it closes a menu, or a second press elsewhere) carries it too.
  */
 function auxPress(on: boolean): void {
   const root = document.documentElement;
@@ -1434,7 +1454,8 @@ export function installInput(): void {
   if (installed) return;
   installed = true;
   const capture = { capture: true } as const;
-  // The left press that closes a menu presses nothing else: its click goes too.
+  // A press that presses nothing (it closes a menu, or it is a second press elsewhere): its
+  // click and its double click go too, no control looks pressed under it.
   let swallow = false;
   const endSwallow = (): void => {
     swallow = false;
@@ -1449,11 +1470,16 @@ export function installInput(): void {
     (event) => {
       keyboardFocus = false;
       dismiss('press', event.target);
-      if (pressOutsideMenu(event)) {
+      if (pressesElsewhere(event) || pressOutsideMenu(event)) {
+        firstPress = null;
         swallow = true;
+        auxPress(true);
+        event.preventDefault();
+        event.stopImmediatePropagation();
         return;
       }
       if (event.button === LEFT) {
+        if (event.detail <= 1) firstPress = pressedOn(event.target);
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
         lastPane = scrollAreaOf(event.target);
@@ -1510,9 +1536,10 @@ export function installInput(): void {
         if (event.button === BACK) go(backs);
         else if (event.button === FORWARD) go(forwards);
       }
-      // The press that closed a menu: its click (a left one) comes right after this release in
+      // A press that pressed nothing: its click (a left one) comes right after this release in
       // the same task; other buttons send none.
       if (swallow) {
+        event.stopImmediatePropagation();
         if (event.button === LEFT) setTimeout(endSwallow, 0);
         else endSwallow();
       }
@@ -1555,12 +1582,7 @@ export function installInput(): void {
   document.addEventListener(
     'click',
     (event) => {
-      if (swallow) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
-      if (event.button === LEFT) return;
+      if (event.button === LEFT && !swallow) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     },
@@ -1569,7 +1591,7 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (runDouble(event) || !selectable(event.target)) {
+      if (swallow || runDouble(event) || !selectable(event.target)) {
         event.preventDefault();
       }
     },
