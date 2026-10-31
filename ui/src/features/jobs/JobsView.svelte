@@ -226,7 +226,7 @@
           <ListHeader bind:this={header} {line} />
         </div>
       {/if}
-      <div class="scroll" data-testid="list-scroll" use:keepScroll={'jobs-list'}>
+      <div class="scroll" data-testid="list-scroll" data-key-pane use:keepScroll={'jobs-list'}>
         <JobList
           onresetfilter={(fromKeyboard) => void header?.resetFilter(fromKeyboard)}
           online={(value) => (line = value)}
@@ -249,6 +249,7 @@
           <div
             class="stage"
             data-testid="stage"
+            data-key-pane
             use:scrollFade
             use:keepScroll={readerScroll(stage.what)}
           >

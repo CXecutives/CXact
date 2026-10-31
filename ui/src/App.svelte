@@ -225,7 +225,7 @@
       {:else}
         <!-- The views are the branches of one block: a switch shows the new one at once. -->
         {#if firstRun}
-          <section class="view side" data-testid="view-first-run" use:scrollFade>
+          <section class="view side" data-testid="view-first-run" data-key-pane use:scrollFade>
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
@@ -236,6 +236,7 @@
           <section
             class="view"
             data-testid="view-profile"
+            data-key-pane
             use:keepScroll={'profile'}
             use:scrollFade
           >
@@ -245,6 +246,7 @@
           <section
             class="view"
             data-testid="view-settings"
+            data-key-pane
             use:keepScroll={'settings'}
             use:scrollFade
           >

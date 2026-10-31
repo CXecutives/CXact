@@ -2227,3 +2227,123 @@ test('a double click beside an open menu only closes it, and on the button of a 
   await page.waitForTimeout(100);
   await expect(page.getByTestId('menu')).toHaveCount(0);
 });
+
+/* --------------------------------------------------------------------- a control's label */
+
+/** The label a Field gives a control by its id. */
+const labelOf = async (page: Page, control: Locator): Promise<Locator> =>
+  page.locator(`label[for="${await control.getAttribute('id')}"]`);
+
+test('a press on the name of a select opens nothing, on the name of a text field it places the caret', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const list = page.getByTestId('menu');
+  for (const id of ['profile-work-mode', 'profile-workload', 'profile-min-months']) {
+    const select = await reveal(page, page.getByTestId(id));
+    await (await labelOf(page, select)).click();
+    await page.waitForTimeout(50);
+    await expect(list, id).toHaveCount(0);
+    // The name still names its button, and the button itself still opens its list.
+    await expect(select).toHaveAccessibleName(await (await labelOf(page, select)).innerText());
+    await select.click();
+    await expect(list).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(list).toHaveCount(0);
+  }
+  const field = await reveal(page, page.getByTestId('profile-min-rate'));
+  await (await labelOf(page, field)).click();
+  await expect(field).toBeFocused();
+  // In Einstellungen the provider of the mailbox's form.
+  await open(page, `${WIN}&view=settings`);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  const provider = page.getByTestId('mailbox-form').getByRole('combobox');
+  await (await labelOf(page, provider)).click();
+  await page.waitForTimeout(50);
+  await expect(list).toHaveCount(0);
+});
+
+/* ------------------------------------------------------- the scroll keys, the focus nowhere */
+
+/** The press leaves the focus nowhere and names no pane: the keys scroll the view's own. */
+async function scrollsByKeys(page: Page, pane: Locator): Promise<void> {
+  const top = (): Promise<number> => pane.evaluate((node) => node.scrollTop);
+  await expect(page.locator('body')).toBeFocused();
+  expect(await top()).toBe(0);
+  let before = 0;
+  for (const key of ['ArrowDown', 'PageDown', 'End']) {
+    await page.keyboard.press(key);
+    await expect.poll(top, key).toBeGreaterThan(before);
+    // Its glide is over: the next key starts from where it went.
+    await page.waitForTimeout(250);
+    before = await top();
+  }
+  await page.keyboard.press('Home');
+  await expect.poll(top).toBe(0);
+  await expect(page.locator('body')).toBeFocused();
+}
+
+test('after a press on an entry of the sidebar the scroll keys scroll the view on screen', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 600 });
+  await open(page, WIN);
+  await page.getByTestId('nav-settings').click();
+  await scrollsByKeys(page, page.getByTestId('view-settings'));
+  await page.getByTestId('nav-profile').click();
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  await scrollsByKeys(page, page.getByTestId('view-profile'));
+  await open(page, `${WIN}&scenario=many`);
+  await page.getByTestId('place-inbox').click();
+  await scrollsByKeys(page, page.getByTestId('list-scroll'));
+});
+
+test('in one column the scroll keys scroll the job that stands in place of the list', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 800, height: 600 });
+  await open(page, WIN);
+  await rows(page).first().click();
+  await expect(page.getByTestId('reader')).toBeVisible();
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  await scrollsByKeys(page, page.getByTestId('stage'));
+});
+
+test('the view on screen takes no scroll key from a field, a menu or a dialog', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 600 });
+  await open(page, `${WIN}&view=settings`);
+  const pane = page.getByTestId('view-settings');
+  const top = (): Promise<number> => pane.evaluate((node) => node.scrollTop);
+  await page.getByTestId('nav-profile').click();
+  await page.getByTestId('nav-settings').click();
+  // A dialog: the page behind it stays where it is.
+  await page.getByTestId('reset').evaluate((node) => (node as HTMLElement).click());
+  await expect(page.getByTestId('dialog-reset')).toBeVisible();
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  for (const key of ['ArrowDown', 'PageDown', 'End']) await page.keyboard.press(key);
+  await page.waitForTimeout(250);
+  expect(await top()).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('dialog-reset')).toHaveCount(0);
+  // A field: the arrows move its caret.
+  await open(page, `${WIN}&view=profile`);
+  const profile = page.getByTestId('view-profile');
+  const field = await reveal(page, page.getByTestId('profile-min-rate'));
+  await field.click();
+  const at = await profile.evaluate((node) => node.scrollTop);
+  for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End']) await page.keyboard.press(key);
+  await page.waitForTimeout(250);
+  await expect(field).toBeFocused();
+  expect(await profile.evaluate((node) => node.scrollTop)).toBe(at);
+  // A menu: the arrows move in its list, with the focus left nowhere (the list's funnel).
+  await open(page, `${WIN}&scenario=many`);
+  const list = page.getByTestId('list-scroll');
+  await page.getByTestId('filter').click();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  for (const key of ['ArrowDown', 'End', 'Home', 'PageDown']) await page.keyboard.press(key);
+  await page.waitForTimeout(250);
+  await expect(page.getByTestId('menu')).toBeVisible();
+  expect(await list.evaluate((node) => node.scrollTop)).toBe(0);
+});

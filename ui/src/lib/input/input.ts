@@ -31,6 +31,8 @@
 //   counts only on what the first pressed: on what the first click slid under the pointer (the
 //   next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
 //   first click opened stays open (`pressesElsewhere`).
+// - the name of a text field leads into it; the name of a button (a select) only names it
+//   (`namesButton`)
 // - no dragging of text, links or images (only the column handle and the window's drag
 //   regions move)
 // - text is selectable only in fields and where a user would copy it (`data-copy`: the ad
@@ -45,9 +47,9 @@
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
 //   dialog (with the focus nowhere the form pressed last). PageUp and PageDown scroll the pane
-//   that has the focus (or the one clicked last) by a page, and with the focus nowhere (on no
-//   control, `isNowhere`) the arrows scroll that pane by a line and Home/End to its top and
-//   end, like a native scroll view. Key scrolling glides in one
+//   that has the focus (or the one clicked last, else the view's own, `data-key-pane`) by a page,
+//   and with the focus nowhere (on no control, `isNowhere`) the arrows scroll that pane by a line
+//   and Home/End to its top and end, like a native scroll view. Key scrolling glides in one
 //   short tween (lib/motion/scroll.ts), never the engine's smooth scroll. Everything else,
 //   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
 //   Alt+Arrow back/forward), is swallowed.
@@ -325,9 +327,9 @@ function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = even
   return true;
 }
 
-/** The arrows, Home and End with the focus nowhere scroll the pane around what holds the focus
- *  or the pane clicked last (the reader, Einstellungen, Profil), like a native scroll view.
- *  `true` if a pane took the key. */
+/** The arrows, Home and End with the focus nowhere scroll the pane around what holds the focus,
+ *  the pane clicked last or the view's own (the reader, Einstellungen, Profil), like a native
+ *  scroll view. `true` if a pane took the key. */
 function scrollsLine(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey || !isNowhere(event.target)) return false;
   const pane = keyPane(event.target);
@@ -862,10 +864,20 @@ function scrollAreaOf(target: EventTarget | null): HTMLElement | null {
   return null;
 }
 
-/** The pane the page keys scroll: the one around the focus, with the focus nowhere else the
- *  one clicked last. */
+/** The panes of the view on screen (App's view, the Jobs view's list and job). */
+const VIEW_PANE = '[data-key-pane]';
+
+/** The pane the page keys scroll: the one around the focus, with the focus nowhere else the one
+ *  clicked last that still scrolls, else the first of the view on screen that does. A menu and a
+ *  dialog have taken their keys before, a field keeps its own. */
 function keyPane(target: EventTarget | null): HTMLElement | null {
-  return scrollAreaOf(target) ?? (isNowhere(target) && lastPane?.isConnected ? lastPane : null);
+  const around = scrollAreaOf(target);
+  if (around !== null || !isNowhere(target)) return around;
+  for (const pane of [lastPane, ...document.querySelectorAll(VIEW_PANE)]) {
+    const area = scrollAreaOf(pane);
+    if (area !== null) return area;
+  }
+  return null;
 }
 
 /** PageUp and PageDown: the focused (or last clicked) pane scrolls a page. */
@@ -1436,6 +1448,13 @@ function leaveField(event: MouseEvent): void {
   field.blur();
 }
 
+/** The name of a button (a select in a Field): it names it and presses nothing, like the caption
+ *  of a native popup and every name beside a switch; a text field's name still leads into it. */
+function namesButton(target: EventTarget | null): boolean {
+  const label = closest(target, 'label');
+  return label instanceof HTMLLabelElement && label.control instanceof HTMLButtonElement;
+}
+
 /** A left press on a field's own box is a press on the field: the caret goes in or stays. It
  *  stays a mouse press like any other, so it closes a menu and ends a selection as they do. */
 function pressOnFieldBox(event: MouseEvent): boolean {
@@ -1582,7 +1601,10 @@ export function installInput(): void {
   document.addEventListener(
     'click',
     (event) => {
-      if (event.button === LEFT && !swallow) return;
+      if (event.button === LEFT && !swallow) {
+        if (namesButton(event.target)) event.preventDefault();
+        return;
+      }
       event.preventDefault();
       event.stopImmediatePropagation();
     },
