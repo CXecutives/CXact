@@ -362,6 +362,7 @@ test('a placeholder that does not fit beside the chips takes a line of its own, 
 }) => {
   await page.setViewportSize({ width: 520, height: 700 });
   await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
   const cut = (): Promise<string[]> =>
     page
       .getByTestId('profile-form')
