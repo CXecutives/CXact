@@ -21,12 +21,12 @@
   rows are simply there. A row the user moves out folds its height away (its day with its last
   row). One highlight marks the open job's row and glides from row to row (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
-  search looks in the list's place; under its hits a button names each other place with hits
-  like its tab (no count) and goes there with the search. A click opens a job, a double click
-  opens its ad in the browser, a right click its menu (jobMenu of actions.ts); under the
-  pointer the row shows the moves of its place as its tools (rowTools, the same table). Back in
-  the Jobs view, the list stands where it was scrolled to. A job action that fails says so in
-  the list header.
+  search looks in the list's place; under its hits a button names each other place that lists
+  a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
+  A click opens a job, a double click opens its ad in the browser, a right click its menu
+  (jobMenu of actions.ts); under the pointer the row shows the moves of its place as its tools
+  (rowTools, the same table). Back in the Jobs view, the list stands where it was scrolled to.
+  A job action that fails says so in the list header.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
@@ -307,16 +307,11 @@
     untrack(disarm);
   });
 
-  // A search looks in the list's place; the other places with hits are named under them,
-  // counted with the same filter (the counts of the list cover every place).
+  // A search looks in the list's place; the other places that list hits are named under them.
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
-  const elsewhere = $derived.by(() => {
-    // Only once the hits of the typed search are there: the counts before are another
-    // search's, and the links would show them and then move.
-    if (!searching || jobs.search.trim() !== jobs.countedSearch) return [];
-    const counts = jobs.counts;
-    return PLACES.filter((other) => other !== place && counts[other] > 0);
-  });
+  const elsewhere = $derived(
+    searching ? PLACES.filter((other) => other !== place && jobs.hitsIn(other) > 0) : [],
+  );
 
   /* ---------------------------------------------------------------------- opens */
 

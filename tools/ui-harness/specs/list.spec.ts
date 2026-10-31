@@ -1933,6 +1933,13 @@ test.describe('search', () => {
       await inbox(page, { place: 'archive', search: 'Kreditoren', portals: ['freelance'] }),
     ).toEqual([]);
     await expect(page.getByTestId('also-archive')).toHaveCount(0);
+    // What Aktuell lists under the filter is named, and its button leads there.
+    await page.getByTestId('search').fill('SAP');
+    const hits = await inbox(page, { search: 'SAP', portals: ['freelance'] });
+    expect(hits.length).toBeGreaterThan(0);
+    await page.getByTestId('also-inbox').click();
+    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
+    await expect.poll(() => listed(page)).toEqual(hits);
   });
 
   test('the Papierkorb has no filter: under one its hits are still named', async ({ page }) => {
@@ -1944,6 +1951,90 @@ test.describe('search', () => {
     // Its one job with the word is a freelancermap one, and it lists it whatever the filter.
     expect(await inbox(page, { place: 'trash', search: 'Bau' })).toEqual(['freelancermap-2809']);
     await expect(none.getByTestId('also-trash')).toHaveText(T.place.trash);
+  });
+
+  test('a job moved under a filter: the place it went to is named at once, its undo takes that back', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await chooseFilter(page, 'portal-freelance');
+    await page.getByTestId('search').fill('SAP');
+    const hits = await inbox(page, { search: 'SAP', portals: ['freelance'] });
+    await expect.poll(() => listed(page)).toEqual(hits);
+    const trash = page.getByTestId('also-trash');
+    await expect(trash).toHaveCount(0);
+    await viaMenu(page, 'trash', hits[0]!);
+    await expect(trash).toBeVisible();
+    await page.getByTestId('toast-action').click();
+    await expect(row(page, hits[0]!)).toBeVisible();
+    await expect(trash).toHaveCount(0);
+  });
+
+  test('the hits elsewhere never show an old answer', async ({ page }) => {
+    // Every answer of the backend takes its time here.
+    await open(page, `${WIN}&scenario=slow`);
+    await chooseFilter(page, 'portal-freelance');
+    const search = page.getByTestId('search');
+    const trash = page.getByTestId('also-trash');
+    await search.fill('Bau');
+    await expect(trash).toBeVisible();
+    // Another word: the button goes with the word, not with the word's answer.
+    const stayed = await search.evaluate(async (field) => {
+      const input = field as HTMLInputElement;
+      input.value = 'Kernfusion';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await new Promise(requestAnimationFrame);
+      return document.querySelector('[data-testid="also-trash"]') !== null;
+    });
+    expect(stayed).toBe(false);
+    await expect.poll(async () => (await lastQuery(page))?.search).toBe('Kernfusion');
+    await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+    await expect(trash).toHaveCount(0);
+    // The answer to a word typed over comes too late to show.
+    const came = page.evaluate(
+      () =>
+        new Promise<boolean>((resolve) => {
+          const watch = new MutationObserver(() => {
+            if (document.querySelector('[data-testid^="also-"]') === null) return;
+            watch.disconnect();
+            resolve(true);
+          });
+          watch.observe(document.body, { childList: true, subtree: true });
+          setTimeout(() => {
+            watch.disconnect();
+            resolve(false);
+          }, 2000);
+        }),
+    );
+    await search.fill('Bau');
+    await page.waitForTimeout(400);
+    await search.fill('Kernfusion');
+    expect(await came).toBe(false);
+  });
+
+  test('one more question only while a search looks under a filter', async ({ page }) => {
+    await open(page, WIN);
+    const searches = async (): Promise<JobQuery[]> =>
+      (await calls(page, 'list_jobs'))
+        .map(([, args]) => (args as { query: JobQuery }).query)
+        .filter((query) => query.limit === 0 && query.search !== null);
+    await page.getByTestId('search').fill('SAP');
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { search: 'SAP' }));
+    expect(await searches()).toEqual([]);
+    // Under a filter it asks what the Papierkorb lists, which has none.
+    await chooseFilter(page, 'portal-freelance');
+    await expect.poll(async () => (await searches()).at(-1)?.portals).toEqual([]);
+    // In the Papierkorb what Aktuell and the Archiv list, under the filter.
+    await page.getByTestId('place-trash').click();
+    await page.getByTestId('search').fill('Bau');
+    await expect.poll(async () => (await searches()).at(-1)?.portals).toEqual(['freelance']);
+    await expect.poll(async () => (await searches()).at(-1)?.search).toBe('Bau');
+    // Without a search none.
+    const asked = (await searches()).length;
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(page.getByTestId('search')).toHaveValue('');
+    await settle(page);
+    expect(await searches()).toHaveLength(asked);
   });
 
   test('a second click keeps the open job; a search that no longer finds it closes it', async ({

@@ -24,10 +24,12 @@
 // - Like mail: every job is in one place (inbox, archive, trash); "fits anyway" is a flag of
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
-// - Each place is one list in the chosen order, the excluded jobs last. Every place has the
-//   same filter beside the search (the funnel, lib/state/filter.ts: portals, bands and the
-//   days the jobs came; kept like the order). It narrows the list and its counts like the
-//   search. The counts over every job never follow it.
+// - Each place is one list in the chosen order, the excluded jobs last. Aktuell and the Archiv
+//   have one filter beside the search (the funnel, lib/state/filter.ts: portals, bands and the
+//   days the jobs came; kept like the order), the Papierkorb has none. It narrows the list and
+//   its counts like the search. The counts over every job never follow it. A query's counts
+//   narrow every place alike, so while a search looks under a filter one more counts-only query
+//   asks for the places under the other rule (`hitsIn`).
 // - The open job is kept per work folder: the next start opens it again (its place with it),
 //   only while it still lies where it lay and the list stands beside it.
 
@@ -86,6 +88,17 @@ export interface Unmove {
   at: number;
   below: string | null;
   above: string | null;
+}
+
+/** What the counts of a query answer: its search and its filter, over every place. */
+function ruleOf(query: JobQuery): string {
+  return JSON.stringify({ ...query, place: null, sort: null, limit: null, offset: null });
+}
+
+/** Counts and what they answer (`ruleOf`). */
+interface RuleCounts {
+  rule: string;
+  counts: JobCounts;
 }
 
 /** Where the order of the list is kept (one choice for every list, per user). */
@@ -148,9 +161,11 @@ class JobsStore {
   rows = $state.raw<JobView[]>([]);
   /** The counts of the list: with the search and the filter, whatever the place. */
   counts = $state<JobCounts>(ZERO);
-  /** The search the counts were loaded with: a typed one follows --dur-base later, until
-   *  then the counts are another search's. */
-  countedSearch = $state('');
+  /** What the counts answer (`ruleOf`): a typed search follows --dur-base later and another
+   *  filter with its answer, until then the counts are another search's or filter's. */
+  #counted = $state('');
+  /** The counts under the rule the list's own query does not follow (`hitsIn`). */
+  #otherRule = $state.raw<RuleCounts | null>(null);
   /** Rows the backend has for the current query: its count, or exactly how many once a page
    *  came back short. */
   total = $state(0);
@@ -238,13 +253,18 @@ class JobsStore {
     return app.hasProfile ? this.sortChoice : 'newest';
   }
 
-  /**
-   * The filter actually used, the same in Aktuell and the Archiv (the Papierkorb has none,
-   * decision 25): without a profile no band (there is no match to filter by), only the
-   * portals the app knows. Sent with every query of the list.
-   */
+  /** The filter actually used, the place's. Sent with every query of the list. */
   get filter(): ListFilter {
-    if (this.place === 'trash') return NO_FILTER;
+    return this.#filterOf(this.place);
+  }
+
+  /**
+   * The filter a place lists by, the same in Aktuell and the Archiv (the Papierkorb has none,
+   * decision 25): without a profile no band (there is no match to filter by), only the
+   * portals the app knows.
+   */
+  #filterOf(place: Place): ListFilter {
+    if (place === 'trash') return NO_FILTER;
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
     return {
@@ -257,6 +277,17 @@ class JobsStore {
   /** A filter narrows the list (the funnel's dot, the chips under the toolbar). */
   get filtered(): boolean {
     return isFiltered(this.filter);
+  }
+
+  /**
+   * How many hits of the search `place` lists by its own rule (Aktuell and the Archiv under the
+   * kept filter, the Papierkorb without one), from the counts that answer that rule. None until
+   * they are there: another search's or another filter's never show.
+   */
+  hitsIn(place: Place): number {
+    const rule = ruleOf(this.query(0, 0, this.#filterOf(place)));
+    if (rule === this.#counted) return this.counts[place];
+    return this.#otherRule?.rule === rule ? this.#otherRule.counts[place] : 0;
   }
 
   /** The list's place holds no job, or the list did not load: nothing to read beside it (no
@@ -505,7 +536,7 @@ class JobsStore {
     try {
       const limit = keep ? Math.min(MAX_PAGE, Math.max(PAGE, this.rows.length)) : PAGE;
       const query = this.query(0, limit);
-      const page = await invoke('list_jobs', { query });
+      const [page, other] = await Promise.all([invoke('list_jobs', { query }), this.askOther()]);
       if (request !== this.#request) return;
       const mounted = keep ? new Set(this.shown.map((job) => keyOf(job.key))) : null;
       this.#listed = query;
@@ -513,7 +544,8 @@ class JobsStore {
       this.#served = page.jobs.length;
       this.rows = keep ? reused(this.rows, page.jobs) : page.jobs;
       this.counts = page.counts;
-      this.countedSearch = query.search ?? '';
+      this.#counted = ruleOf(query);
+      this.#otherRule = other;
       this.total = page.jobs.length < limit ? page.jobs.length : this.countOf(page.counts);
       this.window = keep ? Math.max(WINDOW, this.window) : WINDOW;
       this.rendered = mounted ? this.kept(mounted, Math.min(this.rendered, this.window)) : CHUNK;
@@ -577,7 +609,7 @@ class JobsStore {
     const known = new Set(this.rows.map((job) => keyOf(job.key)));
     this.rows = [...this.rows, ...page.jobs.filter((job) => !known.has(keyOf(job.key)))];
     this.counts = page.counts;
-    this.countedSearch = query.search ?? '';
+    this.#counted = ruleOf(query);
     return true;
   }
 
@@ -659,16 +691,35 @@ class JobsStore {
     }
   }
 
+  /** A search looks under a filter: a place lists by another rule than the list's. */
+  get #rulesDiffer(): boolean {
+    return this.searching && isFiltered(this.#filterOf('inbox'));
+  }
+
+  /** The counts under the rule the list's own query does not follow, while the rules differ;
+   *  one that does not come names no hits there (`hitsIn`). */
+  private async askOther(): Promise<RuleCounts | null> {
+    if (!this.#rulesDiffer) return null;
+    const query = this.query(0, 0, this.#filterOf(this.place === 'trash' ? 'inbox' : 'trash'));
+    try {
+      const { counts } = await invoke('list_jobs', { query });
+      return { rule: ruleOf(query), counts };
+    } catch {
+      return null;
+    }
+  }
+
   /** Both counts again from the backend (the rows stay). */
   private async refreshCounts(): Promise<void> {
     const request = this.#request;
     const narrowed = this.searching || this.filtered;
     try {
       const query = this.query(0, 0);
-      const page = await invoke('list_jobs', { query });
+      const [page, other] = await Promise.all([invoke('list_jobs', { query }), this.askOther()]);
       if (request !== this.#request) return;
       this.counts = page.counts;
-      this.countedSearch = query.search ?? '';
+      this.#counted = ruleOf(query);
+      this.#otherRule = other;
       // Without a search and a filter the list's counts are the counts over every job.
       if (!narrowed) {
         this.#overviewRequest++;
@@ -863,7 +914,7 @@ class JobsStore {
         ? await invoke('restore_jobs', { keys })
         : await invoke('move_jobs', { keys, to });
       if (moved.length < keys.length) void this.load(true);
-      else if (restore) void this.refreshCounts();
+      else if (restore || this.#rulesDiffer) void this.refreshCounts();
       return { moved };
     } catch (error) {
       for (const job of before) this.patch(job.key, { place: job.place });
