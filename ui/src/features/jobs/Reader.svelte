@@ -375,7 +375,7 @@
           {:else if detail.text}
             <Card heading={t.reader.ad} testid="ad">
               <div class="ad">
-                <AdText text={detail.text} layout={detail.layout} search={jobs.search} />
+                <AdText text={detail.text} layout={detail.layout} search={jobs.listedSearch} />
               </div>
             </Card>
           {/if}

@@ -17,6 +17,7 @@ import {
   expectShot,
   NOW,
   open,
+  motionSettled,
   runFinished,
   settle,
   test,
@@ -79,6 +80,19 @@ async function slowSearch(page: Page, ms: number): Promise<void> {
     });
     watch.observe(document, { childList: true });
   }, `${ms}ms`);
+}
+
+/** A locked control answers no pointer: its colours stay what they are at rest. */
+async function expectNoAnswer(page: Page, control: Locator): Promise<void> {
+  await page.mouse.move(0, 0);
+  const colours = (): Promise<string[]> =>
+    control.evaluate((node) =>
+      [node, ...node.querySelectorAll('*')].map((part) => getComputedStyle(part).color),
+    );
+  const rest = await colours();
+  await control.hover({ force: true });
+  await motionSettled(page);
+  expect(await colours()).toEqual(rest);
 }
 
 /** The rows outside the fold as the stub lists them: the inbox by date unless said. */
@@ -1896,7 +1910,7 @@ test.describe('search', () => {
     expect((await lastQuery(page))?.search).toBe('Kreditoren');
   });
 
-  test('while a search is on both sections stand open, their chevrons do nothing; the kept choice returns', async ({
+  test('while a search is on both sections stand open, their headings locked; the kept choice returns', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1922,9 +1936,11 @@ test.describe('search', () => {
     await expect(excludedOnes).toHaveAttribute('aria-expanded', 'true');
     await expect.poll(() => listed(page)).toEqual(active);
     await expect(excludedRows(page)).toHaveCount(out.length);
-    // Their chevrons do nothing while it is on, and change nothing kept.
+    // Their headings are locked while it is on: they answer no pointer and change nothing kept.
     for (const divider of [unscored, excludedOnes]) {
-      await divider.click();
+      await expect(divider).toBeDisabled();
+      await expectNoAnswer(page, divider);
+      await divider.click({ force: true });
       await expect(divider).toHaveAttribute('aria-expanded', 'true');
     }
     await expect(page.getByTestId('unscored-rows').locator('[data-key]')).toHaveCount(
@@ -1941,6 +1957,85 @@ test.describe('search', () => {
     // Their chevrons work again.
     await excludedOnes.click();
     await expect(excludedOnes).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('the first typed letter unfolds nothing over the old list: sections and marks come with the hits', async ({
+    page,
+  }) => {
+    await slowSearch(page, 800);
+    await open(page, WIN);
+    const unscored = page.getByTestId('unscored-divider');
+    await unscored.click();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    const marks = list(page).locator('mark');
+    await page.getByTestId('search').fill('Control');
+    // On its way the answer changes nothing: the old list stands as it was.
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
+    await expect(marks).toHaveCount(0);
+    // The answer: its hits at once, the sections open with them, nothing unfolding.
+    await expect(excludedRows(page)).toHaveCount(1);
+    await expect(unscored).toHaveAttribute('aria-expanded', 'true');
+    await expect(marks.first()).toBeVisible();
+    expect(
+      await page.getByTestId('excluded-rows').evaluate((node) => node.getAnimations().length),
+    ).toBe(0);
+  });
+
+  test('a place that holds only what its folds hide stands open, its heading locked; the kept choice returns', async ({
+    page,
+  }) => {
+    const scored = ['freelancermap-2801', 'freelance-900411', 'freelancermap-2804'];
+    const waiting = 'linkedin-4100200302';
+    const out = 'freelance-900412';
+    await open(page, `${WIN}&scenario=concept`);
+    const unscored = page.getByTestId('unscored-divider');
+    const excludedOnes = page.getByTestId('excluded-divider');
+    const kept = (): Promise<[string | null, string | null]> =>
+      page.evaluate(() => [
+        localStorage.getItem('jobs-unscored-open'),
+        localStorage.getItem('jobs-excluded-open'),
+      ]);
+    const archiveScored = async (): Promise<void> => {
+      for (const key of scored) {
+        await viaMenu(page, 'archive', key);
+        await expect(row(page, key)).toHaveCount(0);
+      }
+    };
+    // Both folded by the choice kept: only the scored rows show.
+    await unscored.click();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(row(page, waiting)).toHaveCount(0);
+    const choice = await kept();
+    await archiveScored();
+    // Nothing else would show: both stand open, locked, the choice untouched.
+    for (const divider of [unscored, excludedOnes]) {
+      await expect(divider).toHaveAttribute('aria-expanded', 'true');
+      await expect(divider).toBeDisabled();
+      await expectNoAnswer(page, divider);
+      await divider.click({ force: true });
+      await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    }
+    await expect(row(page, waiting)).toBeVisible();
+    await expect(row(page, out)).toBeVisible();
+    expect(await kept()).toEqual(choice);
+    // Other rows again: each as it was chosen, and its heading works.
+    await page.getByTestId('toast-action').click();
+    await expect(row(page, scored[0]!)).toBeVisible();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(excludedOnes).toHaveAttribute('aria-expanded', 'false');
+    await expect(unscored).toBeEnabled();
+    await expect(excludedOnes).toBeEnabled();
+    // One section open by the choice: the only one with rows on screen is locked, a fold
+    // beside it stays a fold.
+    await excludedOnes.click();
+    await expect(excludedOnes).toHaveAttribute('aria-expanded', 'true');
+    await archiveScored();
+    await expect(excludedOnes).toBeDisabled();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(unscored).toBeEnabled();
+    await unscored.click();
+    await expect(row(page, waiting)).toBeVisible();
   });
 
   test('a hit opened from a section only the search holds open: without the search the kept choice returns', async ({

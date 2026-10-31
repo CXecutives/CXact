@@ -182,7 +182,7 @@ class JobsStore {
   #own = new Set<string>();
   /** The query of the list the page holds: its next pages continue it, also while a typed
    *  search still waits (they never mix another query's rows into it). */
-  #listed: JobQuery | null = null;
+  #listed = $state.raw<JobQuery | null>(null);
   status = $state<Status>('idle');
   /** The first load is over and the job kept from the last run is open again, if it was
    *  (`start`): the history records from here, before the list was still on its way. */

@@ -4,7 +4,8 @@
   row, under it the label 12/540 muted on the rows' inner edge (22 above, 6 below), no count,
   and at its end the chevron 14 in the subtle glyph colour, which turns half a turn while the
   section is open (150 ms, ease-out). Under the pointer the label and the chevron darken to
-  ink. A button: the list shows or hides the rows below it (`ontoggle`).
+  ink. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
+  locked, a section held open: no answer to the pointer, no Tab stop, the chevron as it is.
 -->
 <script lang="ts">
   import Icon from './Icon.svelte';
@@ -13,17 +14,19 @@
     label: string;
     /** Whether its rows show. */
     open: boolean;
-    ontoggle?: () => void;
+    /** Shows or hides its rows (null: locked). */
+    ontoggle?: (() => void) | null;
     testid?: string | null;
   }
 
-  let { label, open, ontoggle, testid = null }: Props = $props();
+  let { label, open, ontoggle = null, testid = null }: Props = $props();
 </script>
 
 <button
   type="button"
   class="divider"
   aria-expanded={open}
+  disabled={ontoggle === null}
   data-testid={testid ?? undefined}
   onclick={() => ontoggle?.()}
 >
@@ -46,7 +49,7 @@
     transition: color var(--dur-base) var(--ease-standard);
   }
 
-  .divider:hover {
+  .divider:hover:not(:disabled) {
     color: var(--label-hover);
     transition-duration: var(--dur-hover);
   }
@@ -68,7 +71,7 @@
       color var(--dur-base) var(--ease-standard);
   }
 
-  .divider:hover .chevron {
+  .divider:hover:not(:disabled) .chevron {
     color: var(--label-hover);
     transition-duration: var(--dur-slow), var(--dur-hover);
   }

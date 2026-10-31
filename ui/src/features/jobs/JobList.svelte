@@ -10,8 +10,9 @@
   ones without a score yet in a section "Noch nicht bewertet", open by default, and at the end
   the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
   folded by default (ListDivider, no count; each choice is kept; a section opens when its job
-  is opened from elsewhere, and both stand open while a search is on, so a hit is never hidden
-  behind a fold). Neither section has days.
+  is opened from elsewhere, and stands open, its heading locked, while the list holds a search's
+  answer, so a hit is never hidden behind a fold, and while no row of the place would show
+  without it, lib/state/sections.svelte.ts). Neither section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
@@ -105,8 +106,11 @@
 
   const shown = $derived(jobs.shown);
   const searching = $derived(jobs.searching);
-  /** The words of the search, marked in the rows' titles (at most 8, like the backend). */
-  const searchWords = $derived(searching ? jobs.search.trim().split(/\s+/).slice(0, 8) : []);
+  /** The words of the search whose hits the list holds, marked in the rows' titles (at most 8,
+   *  like the backend). */
+  const searchWords = $derived(
+    jobs.listedSearch === '' ? [] : jobs.listedSearch.split(/\s+/).slice(0, 8),
+  );
   /** The rows as far as the window reaches: the scored ones, the ones without a score yet,
    *  then the excluded ones. */
   const active = $derived(shown.filter((job) => !isExcluded(job) && !isUnscored(job)));
@@ -143,7 +147,7 @@
   /* ------------------------------------------------------------------- sections */
 
   /** A section is open (lib/state/sections.svelte.ts, kept like the order): the excluded one
-   *  folded by default, the one without a score yet open; a search opens both for now. */
+   *  folded by default, the one without a score yet open; a search's answer holds both open. */
   const excludedOpen = $derived(sections.excludedShown);
   const unscoredOpen = $derived(sections.unscoredShown);
   /** The folded section ends the list: every other row is loaded (the backend lists the
@@ -695,9 +699,7 @@
           <ListDivider
             label={t.list.unscored}
             open={unscoredOpen}
-            ontoggle={() => {
-              if (!searching) sections.toggleUnscored();
-            }}
+            ontoggle={sections.unscoredHeld ? null : () => sections.toggleUnscored()}
             testid="unscored-divider"
           />
           {#if unscoredOpen}
@@ -716,9 +718,7 @@
           <ListDivider
             label={t.list.excluded}
             open={excludedOpen}
-            ontoggle={() => {
-              if (!searching) sections.toggleExcluded();
-            }}
+            ontoggle={sections.excludedHeld ? null : () => sections.toggleExcluded()}
             testid="excluded-divider"
           />
           {#if excludedOpen}
