@@ -2,7 +2,7 @@
   The frame of a page (Profil, Einstellungen, the setup's steps; the round 10 draft): the
   page's warm white ground (--page; the setup's cream with `ground="bg"`) at least as high as
   the view, its column (--page-max with --page-side, 16 in a narrow page) centred in it, 8
-  under the top bar and with room at its end for the bar at the foot. A head (`head`: the
+  under the top bar and 40 free at its end, like every scroll area. A head (`head`: the
   page's title, PageHeader) opens the column, 22 above the first section's title. A bar at
   the page's foot (`foot`: BottomBar) stays docked at the view's bottom edge. The column is
   the container its parts ask for their width. While a file the page would take is over it
