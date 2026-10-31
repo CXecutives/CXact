@@ -7,8 +7,8 @@
   right); the profile is a whole page with its bar at the foot instead (ProfileStep). A step
   comes in sliding 8 px from the side it was reached from. Every step starts at its top with
   the focus on its heading. Enter is the primary while the step can go on; the mouse's back
-  button is Zurück, one way back for both (`goBack`). Usable down to the window's minimum,
-  480 x 360.
+  button is Zurück, one way back for both (`goBack`). An answer that comes after its step was
+  left moves no step (`onboarding.onward`). Usable down to the window's minimum, 480 x 360.
 
   The steps (docs/PLAN.md, Setup): Willkommen (what CXact does, one job with its ring,
   Loslegen);
@@ -99,7 +99,7 @@
         await profileStep?.next();
         return;
       case 'alerts':
-        if (await mailboxForm?.save()) onboarding.go('done');
+        if (await mailboxForm?.save()) onboarding.onward('alerts', 'done');
         return;
       case 'done':
         onboarding.leave();
@@ -217,7 +217,7 @@
           heading={spec.heading(t, walk)}
           lead={spec.lead(t, walk)}
           onback={goBack}
-          ondone={() => onboarding.go('alerts')}
+          ondone={() => onboarding.onward('profile', 'alerts')}
         />
       {:else}
         <SetupCard
