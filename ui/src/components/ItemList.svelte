@@ -8,13 +8,14 @@
   quiet × ("Entfernen", 28).
   The last row is the button that adds an entry ("+ Kompetenz hinzufügen", owner 2026-10-30,
   no field standing open). Pressed, its row becomes the new entry's: the caller's field for the
-  name (`draft`) in the names' column and the × that closes it again. No caret goes there by
-  itself (owner, 2026-10-30), a press on the field does it. What the field takes becomes a row
-  above it and it stays ready for the next; left empty it turns back into the button. What is
-  wrong with a row (`failure`) stands under its value, without a row under the add row, in the
-  look of every refused value. A control stands 16 under the line, so a message only grows its
-  row downward. A new row rises in, a removed one folds away while the rows below close the
-  gap; a list that comes with its view is simply there.
+  name (`draft`) in the names' column and the × that closes it again and takes back what was
+  typed, like Esc. No caret goes there by itself (owner, 2026-10-30), a press on the field does
+  it. What the field takes becomes a row above it and it stays ready for the next; left empty
+  it turns back into the button. What is wrong with a row (`failure`) stands under its value,
+  without a row under the add row, in the look of every refused value. A control stands 16
+  under the line, so a message only grows its row downward. A new row rises in, a removed one
+  folds away while the rows below close the gap; a list that comes with its view is simply
+  there.
 -->
 <script lang="ts" generics="T">
   import { tick, type Snippet } from 'svelte';
@@ -80,6 +81,18 @@
     adding = false;
   }
 
+  /** The ×: the row closes and what was typed goes with it. The press left the field its caret
+   *  (`data-keep-focus`), and it is emptied first: a field takes its text when it is left, also
+   *  by going away (Chromium blurs it on its way out). */
+  function takeBack(): void {
+    const field = addRow?.querySelector('input');
+    if (field) {
+      field.value = '';
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    close();
+  }
+
   /** A field left empty turns back into the button (what it took is a row by then). */
   function left(event: FocusEvent): void {
     const field = event.target;
@@ -142,9 +155,10 @@
         type="button"
         class="remove"
         aria-label={t.common.remove}
+        data-keep-focus
         data-testid={testid ? `${testid}-draft-close` : undefined}
         use:tooltip={t.common.remove}
-        onclick={close}
+        onclick={takeBack}
       >
         <Icon name="close" size="sm" />
       </button>
