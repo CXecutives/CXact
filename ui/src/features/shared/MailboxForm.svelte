@@ -10,8 +10,9 @@
   sign-in there says to allow it. Errors land at the field
   they belong to, in the same words for every provider (empty fields are said before
   anything is sent); when the provider refuses the pair, both fields are marked, the
-  password comes into view and the one sentence stands under the fields. The password never
-  leaves this form except to save_mailbox (it goes straight into the OS keychain).
+  password comes into view and the one sentence stands under it, where a failure that belongs
+  to neither field stands too. The password never leaves this form except to save_mailbox (it
+  goes straight into the OS keychain).
   Einstellungen unfolds it under the mailbox's row and the setup shows it in its card: their
   buttons ("Verbinden") call `save` and `cancel`, and their keys answer Enter and Esc. A
   saved mailbox needs no note: its state "Verbunden" or the setup's next step is the answer.
@@ -31,7 +32,6 @@
 
 <script lang="ts">
   import Field from '$components/Field.svelte';
-  import Notice from '$components/Notice.svelte';
   import Select from '$components/Select.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
@@ -76,7 +76,7 @@
   type Words = () => string;
   let userError = $state<Words | null>(null);
   let passwordError = $state<Words | null>(null);
-  /** The provider refused the pair: both fields are marked, the sentence stands once below. */
+  /** The provider refused the pair: both fields are marked, the sentence stands once. */
   let refused = $state(false);
   let formError = $state<Words | null>(null);
   let passwordField = $state<TextField | null>(null);
@@ -194,7 +194,7 @@
           onclick: openPage,
         },
       ]}
-      error={passwordError?.() ?? null}
+      error={passwordError?.() ?? formError?.() ?? null}
     >
       <TextField
         bind:this={passwordField}
@@ -208,11 +208,6 @@
       />
     </Field>
   </div>
-  {#if formError}
-    <div class="cell">
-      <Notice tone="danger" variant="inline" text={formError()} testid="mailbox-error" />
-    </div>
-  {/if}
 </div>
 
 <style>

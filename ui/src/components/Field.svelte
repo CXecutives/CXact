@@ -6,17 +6,15 @@
   `aria-describedby`) only while a message shows.
   The label's row holds what belongs to the field: the info symbol beside the label (`info`,
   InfoTip: only where docs/PLAN.md places one, and never with a hint) and at its right end
-  the field's links (`links`, 13/500 navy with the external glyph, 14 apart: "App-Passwort
-  erstellen"); a link underlines under the pointer. `action` is one such link (the old
-  callers' way on). Without `for` the field holds a group of controls (rows, choices) that its
-  label names. The control keeps its own width: a list fills the field, a number or a day is
-  as wide as its token, a choice of a few as wide as its options.
+  the field's links (`links`, Button `link` in the label's size: 13/500 navy with the external
+  glyph, 14 apart: "App-Passwort erstellen"). Without `for` the field holds a group of controls
+  (rows, choices) that its label names. The control keeps its own width: a list fills the field,
+  a number or a day is as wide as its token, a choice of a few as wide as its options.
   As a row (`row`, the Profil: a row of its group's box, like a row of Einstellungen) the
   label (14/540) stands in a column of 188 beside the control, 24 before it, on the height of
   a field (30): a single-line control is centred on it, a tag field or a list starts there,
-  so the label stays on its first line; the links and the message stand under the control. In
-  a box under
-  560 wide the label stands 8 above its control instead.
+  so the label stays on its first line; the message stands right under the control, the links
+  under the message. In a box under 560 wide the label stands 8 above its control instead.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -33,7 +31,7 @@
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
-  import Icon from './Icon.svelte';
+  import Button from './Button.svelte';
   import InfoTip from './InfoTip.svelte';
   import Notice from './Notice.svelte';
   import { t } from '$lib/i18n/t';
@@ -47,8 +45,6 @@
     info?: string | null;
     /** The field's links at the right end of the label's row. */
     links?: readonly FieldLink[];
-    /** One link (as `links`). */
-    action?: FieldLink | null;
     error?: string | null;
     /** A row of a box: the label in its column beside the control. */
     row?: boolean;
@@ -61,7 +57,6 @@
     hint = null,
     info = null,
     links = [],
-    action = null,
     error = null,
     row = false,
     children,
@@ -69,24 +64,19 @@
 
   const own = $props.id();
   const control = $derived(target ?? own);
-  const ways = $derived(action === null ? links : [action, ...links]);
   describe(() => (error || hint ? `${control}-message` : null));
 </script>
 
 {#snippet wayLinks()}
   <span class="links">
-    {#each ways as link (link.label)}
-      <button
-        type="button"
-        class="link"
-        data-testid={link.testid ?? undefined}
-        onclick={(event) => {
-          // A double click opens the page once.
-          if (event.detail < 2) link.onclick();
-        }}
-      >
-        <Icon name={link.icon ?? 'external'} size="xs" />{link.label}
-      </button>
+    {#each links as link (link.label)}
+      <Button
+        variant="link"
+        icon={link.icon ?? 'external'}
+        label={link.label}
+        testid={link.testid ?? null}
+        onclick={() => link.onclick()}
+      />
     {/each}
   </span>
 {/snippet}
@@ -104,16 +94,16 @@
       <label class="label" for={target}>{label}</label>
     {/if}
     {#if info && !hint}<InfoTip text={info} label={t.common.infoAbout(label)} />{/if}
-    {#if ways.length > 0 && !row}{@render wayLinks()}{/if}
+    {#if links.length > 0 && !row}{@render wayLinks()}{/if}
   </div>
   <div class="body">
     <div class="control">{@render children()}</div>
-    {#if ways.length > 0 && row}{@render wayLinks()}{/if}
     {#if error}
       <div id="{control}-message"><Notice tone="danger" text={error} /></div>
     {:else if hint}
       <p class="hint" id="{control}-message">{hint}</p>
     {/if}
+    {#if links.length > 0 && row}{@render wayLinks()}{/if}
   </div>
 </div>
 
@@ -154,36 +144,25 @@
     cursor: default;
   }
 
+  /* A link keeps its hit area but takes only the height of the label's line. */
   .links {
     display: inline-flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-2) var(--field-link-gap);
+    margin-block: calc((var(--leading-sm) - var(--control-sm)) / 2);
     margin-left: auto;
   }
 
-  /* The glyph stands on the words' baseline. */
-  .link {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-4);
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--link);
-    font: var(--field-link);
-    white-space: nowrap;
-    transition: color var(--dur-base) var(--ease-out);
+  /* In the label's size: its words 13, its glyph 14. */
+  .links :global(.btn.link) {
+    --btn-type: var(--field-link);
+    --btn-gap: var(--space-4);
   }
 
-  .link:hover {
-    color: var(--link-hover);
-    text-decoration: underline;
-    transition-duration: var(--dur-hover);
-  }
-
-  :global(:where(:root:not([data-aux-press]))) .link:active:hover {
-    opacity: var(--opacity-press);
+  .links :global(.btn.link .icon) {
+    --icon-size: var(--icon-xs);
+    --icon-stroke: var(--icon-stroke-xs);
   }
 
   .hint {
