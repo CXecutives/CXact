@@ -357,6 +357,31 @@ test('a tag field with one line of chips is as high as any field, its row like a
   }
 });
 
+test('a placeholder that does not fit beside the chips takes a line of its own, never cut', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 520, height: 700 });
+  await open(page, `${WIN}&view=profile`);
+  const cut = (): Promise<string[]> =>
+    page
+      .getByTestId('profile-form')
+      .locator('.sizer')
+      .evaluateAll((all) =>
+        all
+          .filter((sizer) => sizer.scrollWidth > sizer.clientWidth)
+          .map((sizer) => sizer.getAttribute('data-placeholder') ?? ''),
+      );
+  expect(await cut()).toEqual([]);
+  const industries = page.getByTestId('profile-industries');
+  const chip = await chips(industries).first().boundingBox();
+  const input = await industries.locator('input').boundingBox();
+  expect(input!.y).toBeGreaterThan(chip!.y + chip!.height);
+  // Where it fits, it stays beside them: one line, as high as any field.
+  await page.setViewportSize({ width: 1360, height: 900 });
+  await expect.poll(cut).toEqual([]);
+  await expect.poll(async () => (await industries.boundingBox())!.height).toBe(30);
+});
+
 test('the stored profile fills every field', async ({ page }) => {
   await profile(page);
   await expect(chips(roles(page))).toHaveText(['Interim CFO']);
