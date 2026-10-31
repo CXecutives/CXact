@@ -82,11 +82,12 @@
    *  window. */
   let leaving = $state<ViewId | 'close' | null>(null);
 
-  // The stored profile fills the form while nothing unsaved is in it (also after a save).
+  // The stored profile fills the form while nothing unsaved is in it. A save under way decides
+  // at its end (`editor.settle`): till then a change taken back reads as none.
   $effect(() => {
     const form = stored;
     untrack(() => {
-      if (editor.dirty || editor.origin === 'new') return;
+      if (busy || editor.dirty || editor.origin === 'new') return;
       if (form === null) {
         if (editor.origin === 'stored') editor.close();
       } else if (editor.origin !== 'stored' || !sameForm(editor.before, form)) {
@@ -95,8 +96,9 @@
     });
   });
 
-  // The window asks before it closes while the form holds unsaved changes (main.rs).
-  const dirty = $derived(editor.dirty);
+  // The window asks before it closes while the form holds unsaved changes (main.rs); so does a
+  // view, and a save under way counts: what was taken back meanwhile goes after it.
+  const dirty = $derived(editor.dirty || busy);
   $effect(() => {
     const on = dirty;
     untrack(() => void invoke('set_unsaved', { on }).catch(() => undefined));
@@ -119,7 +121,7 @@
 
   /** The window is to close: the page says it is here, then saves. */
   async function closeRequested(): Promise<void> {
-    await invoke('set_unsaved', { on: editor.dirty }).catch(() => undefined);
+    await invoke('set_unsaved', { on: dirty }).catch(() => undefined);
     await leaveTo('close');
   }
 
@@ -169,7 +171,7 @@
     // The setup's form starts empty where there is no profile yet.
     if (setup && editor.origin === null) editor.create();
     const release = navigation.guard((next) => {
-      if (!editor.dirty) return true;
+      if (!dirty) return true;
       void leaveTo(next);
       return false;
     });
@@ -248,8 +250,16 @@
   /** The toast of the last save, until the next one takes over. */
   let lastSave: SaveEffect | null = null;
 
+  /** The last save, done or still under way, and whether it saved. */
+  let lastWrite: Promise<boolean> = Promise.resolve(true);
+
   /** `true` when the profile is saved. */
-  async function save(): Promise<boolean> {
+  function save(): Promise<boolean> {
+    lastWrite = write();
+    return lastWrite;
+  }
+
+  async function write(): Promise<boolean> {
     busy = true;
     saveNote = null;
     fieldError = null;
@@ -305,13 +315,14 @@
   }
 
   /** Before the way goes on: what was typed goes into the form (a tag field takes it when it is
-   *  left, what it does not take is dropped) and the form is saved; `false` when a change
-   *  cannot be saved. */
+   *  left, what it does not take is dropped), the save under way ends and the form is saved;
+   *  `false` when a change cannot be saved. */
   async function settled(): Promise<boolean> {
     const field = document.activeElement;
     if (field instanceof HTMLElement && field.matches('input, textarea')) field.blur();
     await tick();
     editor.typed.clear();
+    await lastWrite;
     if (!editor.changed) return true;
     if (!panel?.valid()) return false;
     return save();

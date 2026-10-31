@@ -1239,6 +1239,43 @@ test('a change taken back while its save is under way stays and goes next', asyn
   await expect(date).toHaveValue('01.09.2026');
 });
 
+test('a change taken back while its save is under way goes along on the way out', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=slow');
+  const available = (): Promise<unknown> => stored(page).then((form) => form?.available);
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await lastSave(page);
+  await choose(page, 'profile-available', T.profile.availability.from);
+  // Nothing differs from what was handed out, yet the way waits for that save and saves after it.
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect.poll(() => saves(page)).toBe(2);
+  await expect.poll(available).toEqual({ kind: 'from', date: '01.09.2026' });
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+});
+
+test('a change taken back while its save is under way goes along when the window closes', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=slow');
+  const available = (): Promise<unknown> => stored(page).then((form) => form?.available);
+  await choose(page, 'profile-available', T.profile.availability.now);
+  await lastSave(page);
+  await choose(page, 'profile-available', T.profile.availability.from);
+  // The window asks the page only once the page has told it that it holds a change.
+  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
+  await page.evaluate(() => window.__harness.requestClose());
+  await expect.poll(() => page.evaluate(() => window.__harness.closed)).toBe(true);
+  // It closed only after both saves, and till then the page never said it held nothing.
+  expect(await saves(page)).toBe(2);
+  await expect.poll(available).toEqual({ kind: 'from', date: '01.09.2026' });
+  const all = await calls(page);
+  const names = all.map(([name]) => name);
+  const between = all.slice(names.indexOf('save_profile'), names.lastIndexOf('save_profile'));
+  expect(between).not.toContainEqual(['set_unsaved', { on: false }]);
+});
+
 test('a save that fails says so under the head and goes again with the next change; leaving with it asks', async ({
   page,
 }) => {
