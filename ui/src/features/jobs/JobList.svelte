@@ -218,7 +218,7 @@
     return {
       heading: t.list.profileEmpty,
       text: t.list.profileBrokenText,
-      action: { label: t.list.completeProfile, icon: 'profile', onclick: completeProfile },
+      action: { label: t.list.completeProfile, icon: 'edit', onclick: completeProfile },
     };
   });
 
@@ -591,7 +591,7 @@
       <StateBox
         heading={t.list.thinProfile}
         text={thinWhy}
-        action={{ label: t.list.completeProfile, icon: 'profile', onclick: completeProfile }}
+        action={{ label: t.list.completeProfile, icon: 'edit', onclick: completeProfile }}
         testid="thin-profile"
       />
     </div>

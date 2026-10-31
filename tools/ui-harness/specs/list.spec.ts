@@ -3319,6 +3319,17 @@ test('baseline: jobs at the minimum size 480 x 360', async ({ page }) => {
   await expectShot(page, 'jobs-min');
 });
 
+test('Profil ergänzen has the glyph of Ergänzen on the Profil; Profil öffnen the person', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=profile-thin`);
+  await expect(page.getByTestId('thin-profile').locator('[data-icon="edit"]')).toHaveCount(1);
+  await open(page, `${WIN}&scenario=profile-incomplete`);
+  await expect(page.getByTestId('no-profile').locator('[data-icon="edit"]')).toHaveCount(1);
+  await open(page, `${WIN}&scenario=profile-broken`);
+  await expect(page.getByTestId('no-profile').locator('[data-icon="profile"]')).toHaveCount(1);
+});
+
 test('the empty states without a head stand in the very middle of their pane', async ({ page }) => {
   await open(page, `${WIN}&scenario=fresh`);
   const column = page.getByTestId('list-scroll');
