@@ -1575,6 +1575,66 @@ test('"Aus Lebenslauf ausfüllen" opens the file dialog at once; the AI works in
   // Nothing required is open any more.
   await expect(missingCard(page)).toHaveCount(0);
 });
+test('what is typed while the CV is evaluated stays, and goes on top of what the CV stored', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  await pickCv(page);
+  await expect(page.getByTestId('profile-cv-busy')).toBeVisible();
+  const regions = page.getByTestId('profile-regions');
+  const input = regions.locator('input');
+  await input.fill('Bremen');
+  await input.press('Enter');
+  await input.fill('Han');
+  const filled = page.getByTestId('toast').filter({ hasText: T.profile.filled });
+  await expect(filled).toBeVisible();
+  // The answer takes nothing away, the field keeps its caret and its text.
+  await expect(chips(regions)).toHaveText(['Hamburg', 'Bremen']);
+  await expect(input).toHaveValue('Han');
+  await expect(input).toBeFocused();
+  // Once it is left it saves, and the form shows both: the CV's values and what was typed.
+  await page.waitForTimeout(2 * T_SAVE);
+  expect(await saves(page)).toBe(0);
+  await leaveField(page);
+  await savedWith(page, { regions: ['Hamburg', 'Bremen', 'Han'] });
+  await allSaved(page);
+  await expect(chips(regions)).toHaveText(['Hamburg', 'Bremen', 'Han']);
+  await expect(chips(roles(page))).toHaveText(['Interim CFO']);
+  await expect(names(page, 'languages')).toHaveText([LANGUAGE.de, LANGUAGE.en]);
+});
+
+test('text typed while the CV is evaluated and then taken back: the form shows what the CV stored', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  await pickCv(page);
+  const input = page.getByTestId('profile-regions').locator('input');
+  await input.fill('Han');
+  await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
+  await expect(chips(roles(page))).toHaveCount(0);
+  await input.fill('');
+  await expect(chips(roles(page))).toHaveText(['Interim CFO']);
+});
+
+test('a new form typed while the CV is evaluated stays, and goes on top of what the CV stored', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=no-profile');
+  await chooseWay(page, 'cv');
+  await chooseWay(page, 'empty');
+  const input = roles(page).locator('input');
+  await input.fill('Meine Rolle');
+  await input.press('Enter');
+  await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
+  await expect(chips(roles(page))).toHaveText(['Meine Rolle']);
+  await leaveField(page);
+  await allSaved(page);
+  await expect(chips(roles(page))).toHaveText(['Meine Rolle']);
+  // What was not typed is the CV's.
+  await expect(names(page, 'competences').first()).toHaveText('Interim Management');
+  await expect.poll(async () => (await stored(page))?.roles).toEqual(['Meine Rolle']);
+});
+
 test('"Aus Lebenslauf ausfüllen" waits while a value is wrong', async ({ page }) => {
   await profile(page);
   const cv = page.getByTestId('profile-from-cv');

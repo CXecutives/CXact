@@ -60,12 +60,13 @@
     onfailed: (words) => (note = words),
   });
 
-  // The stored profile fills the form while nothing unsaved is in it. A save under way decides
-  // at its end (`editor.settle`): till then a change taken back reads as none.
+  // The stored profile fills the form while nothing unsaved is in it, and once nothing is (what
+  // was typed while a CV was evaluated, taken back). A save under way decides at its end
+  // (`editor.settle`): till then a change taken back reads as none.
   $effect(() => {
     const form = stored;
+    if (saving.busy || editor.dirty) return;
     untrack(() => {
-      if (saving.busy || editor.dirty || editor.origin === 'new') return;
       if (form === null) {
         if (editor.origin === 'stored') editor.close();
       } else if (editor.origin !== 'stored' || !sameForm(editor.before, form)) {
@@ -111,10 +112,11 @@
     editor.create();
   }
 
-  /** The CV filled the profile: the form shows it as stored. */
+  /** The CV filled the profile: the form shows it as stored. What was typed meanwhile stays and
+   *  goes with its save, which writes only what differs on top of what the CV stored. */
   function filled(form: ProfileForm | null): void {
-    editor.typed.clear();
-    if (form !== null) editor.edit(form);
+    if (editor.dirty) saving.soon();
+    else if (form !== null) editor.edit(form);
   }
 
   async function fillFromCv(dropped = false): Promise<void> {

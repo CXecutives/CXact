@@ -638,11 +638,18 @@ function rebase<T>(now: T[], before: T[], after: T[], name: (item: T) => string)
   return out;
 }
 
-/** The lists the reader's "+" writes into, rebased on the stored profile when saved. */
+/** A save on the stored form: only what differs from what the view was handed is written (core's
+ *  `merge`), the lists the reader's "+" writes into rebased on what is stored. */
 function rebased(stored: ProfileForm, before: ProfileForm, after: ProfileForm): ProfileForm {
   const text = (item: string): string => item;
+  const written = { ...stored };
+  for (const key of Object.keys(after) as (keyof ProfileForm)[]) {
+    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+      Object.assign(written, { [key]: after[key] });
+    }
+  }
   return {
-    ...after,
+    ...written,
     competences: rebase(stored.competences, before.competences, after.competences, (r) => r.name),
     tools: rebase(stored.tools, before.tools, after.tools, text),
     industries: rebase(stored.industries, before.industries, after.industries, text),
