@@ -32,7 +32,7 @@
   import { scrollFade } from '$lib/actions/scrollFade';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
-  import { onBack, onForward } from '$lib/input/input';
+  import { foldSidebar, onBack, onForward } from '$lib/input/input';
   import { untrack } from 'svelte';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
@@ -72,9 +72,9 @@
   $effect(() => onBack(() => !shell.firstRun && history.back()));
   $effect(() => onForward(() => !shell.firstRun && history.forward()));
 
-  // A docked sidebar never floats as well.
+  // The sidebar floats only in a narrow window: with the room to dock it, it folds.
   $effect(() => {
-    if (shell.docked) shell.peek = false;
+    if (!viewport.fold) shell.peek = false;
   });
 
   /** The views' sheet: it slides when the sidebar docks or folds. */
@@ -166,7 +166,7 @@
     {:else if shell.peek}
       <!-- A narrow window: the sidebar's button floats it over the view. -->
       <div class="peek" data-peek transition:fade>
-        <Sidebar floating onchoose={() => shell.fold()} />
+        <Sidebar floating onchoose={foldSidebar} />
       </div>
     {/if}
     <main

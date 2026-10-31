@@ -64,7 +64,6 @@ class Shell {
       return;
     }
     this.#sidebar = !this.#sidebar;
-    this.fold();
     keep(SIDEBAR, this.#sidebar);
   }
 

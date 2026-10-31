@@ -603,6 +603,65 @@ for (const os of [WIN, MAC]) {
     await expect(row).toBeVisible();
   });
 
+  test(`folded from the keyboard the floating sidebar hands the focus to its button, a press moves none ${os}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await open(page, os);
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    const archive = floating.getByTestId('place-archive');
+    /** From its button, by the keys, out it floats and the focus goes to Archiv in it. */
+    const toArchive = async (): Promise<void> => {
+      await toggle.focus();
+      await page.keyboard.press('Enter');
+      await expect(floating).toBeVisible();
+      for (let press = 0; press < 12; press += 1) {
+        if (await archive.evaluate((node) => node === document.activeElement)) return;
+        await page.keyboard.press('Tab');
+      }
+      await expect(archive).toBeFocused();
+    };
+    // Esc.
+    await toArchive();
+    await page.keyboard.press('Escape');
+    await expect(floating).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+    // A choice: it opens, and Enter on the button floats the sidebar out again.
+    await toArchive();
+    await page.keyboard.press('Enter');
+    await expect(floating).toHaveCount(0);
+    await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    // A press on an entry is a press: the focus stays nowhere.
+    await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+    await floating.getByTestId('place-inbox').click();
+    await expect(floating).toHaveCount(0);
+    await expect(page.locator('body')).toBeFocused();
+  });
+
+  test(`a floating sidebar folds once the window is wide enough to dock it, and its button says so ${os}`, async ({
+    page,
+  }) => {
+    await open(page, os);
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    await toggle.click();
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await toggle.click();
+    await expect(floating).toBeVisible();
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await expect(floating).toHaveCount(0);
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    await expect(toggle).toHaveAccessibleName(T.nav.sidebarShow);
+    await toggle.click();
+    await expect(page.getByTestId('sidebar')).toBeVisible();
+    await expect(toggle).toHaveAccessibleName(T.nav.sidebarHide);
+  });
+
   test(`at 480 x 360 the floating sidebar keeps every entry in the window ${os}`, async ({
     page,
   }) => {

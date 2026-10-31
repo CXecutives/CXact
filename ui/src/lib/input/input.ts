@@ -55,8 +55,9 @@
 //   Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
 //   focus is. Esc closes only the layer on top: the menu, then the dialog, then the sidebar
-//   that floats over the view in a narrow window; a left press beside that sidebar (and
-//   beside its button, which folds it itself) folds it too, and still does what it presses.
+//   that floats over the view in a narrow window, whose button then takes the focus it held
+//   (`foldSidebar`); a left press beside that sidebar (and beside its button, which folds it
+//   itself) folds it too, and still does what it presses.
 // - removing never puts a caret anywhere (`removeBy`): a click on an × drops the focus; from
 //   the keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×) the
 //   next × of the same list takes it, the previous one after the last.
@@ -113,7 +114,8 @@ const FIELD_BOX = '[data-field-box]';
  *  heading, the mailbox form's box. Every control that leaves the Tab order is a button. */
 const FOCUS_HOLDER = '[tabindex="-1"]:not(button)';
 /** The sidebar floating over the view (App.svelte) and its button in the top bar. */
-const PEEK = '[data-peek], [data-testid="toggle-sidebar"]';
+const FLOATING = '[data-peek]';
+const SIDEBAR_BUTTON = '[data-testid="toggle-sidebar"]';
 const FOCUSABLE = [
   'button:not([tabindex="-1"])',
   'input:not([tabindex="-1"])',
@@ -612,6 +614,15 @@ let keyboardFocus = false;
 /** The keyboard moves the focus now: what held it hands it on when it goes; a click moves none. */
 export const byKeyboard = (): boolean => keyboardFocus;
 
+/** The sidebar floating over the view folds by the keyboard: the focus it held goes to its button
+ *  (with the sidebar away the button stands for it, as in `focusPlace`), never to the page. */
+export function foldSidebar(): void {
+  if (keyboardFocus && closest(document.activeElement, FLOATING) !== null) {
+    document.querySelector<HTMLElement>(SIDEBAR_BUTTON)?.focus();
+  }
+  shell.fold();
+}
+
 /** A list whose items a button removes: the chips of a chip field, the rows of the
  *  competences and the languages, the notes of values that do not read. */
 const REMOVE_LIST = '[data-removes]';
@@ -723,7 +734,7 @@ function onKeyDown(event: KeyboardEvent): void {
   const modal = topModal();
   if (modal === null && event.key === 'Escape' && shell.peek) {
     event.preventDefault();
-    shell.fold();
+    foldSidebar();
     return;
   }
   if (modal !== null) {
@@ -1500,7 +1511,9 @@ export function installInput(): void {
       if (event.button === LEFT) {
         if (event.detail <= 1) firstPress = pressedOn(event.target);
         if (!otherButtonsDown(event)) auxPress(false);
-        if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
+        if (shell.peek && closest(event.target, `${FLOATING}, ${SIDEBAR_BUTTON}`) === null) {
+          shell.fold();
+        }
         lastPane = scrollAreaOf(event.target);
         lastForm = closest(event.target, FORM);
         lastCopy = closest(event.target, COPY);
