@@ -1190,7 +1190,7 @@ test('while a job loads, the reader stands in placeholders until the job takes t
 });
 
 test.describe('the cards', () => {
-  test('on the page ground, 8 under the top bar, 28 from the sides, 12 apart, at most 760', async ({
+  test('on the page ground, 8 under the top bar, 28 from the sides, 12 apart, at most 760, the pane 40 longer', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1800, height: 900 });
@@ -1224,6 +1224,11 @@ test.describe('the cards', () => {
     for (let at = 1; at < boxes.length; at += 1) {
       expect(Math.round(boxes[at]!.y - boxes[at - 1]!.bottom)).toBe(12);
     }
+    // The pane's scroll area ends 40 under the last card.
+    const end = await stage(page).evaluate(
+      (node) => node.getBoundingClientRect().top - node.scrollTop + node.scrollHeight,
+    );
+    expect(Math.round(end - boxes.at(-1)!.bottom)).toBe(40);
     // A narrow pane: 28 from its sides.
     await page.setViewportSize({ width: 1100, height: 800 });
     const narrow = (await reader.boundingBox())!;
@@ -1253,6 +1258,20 @@ test.describe('the cards', () => {
     const mark = (await term(page, 'experience').getByTestId('verdict').boundingBox())!;
     expect(Math.round(mark.x - (value.x + value.width))).toBe(6);
     expect(Math.abs(mark.y + mark.height / 2 - (value.y + value.height / 2))).toBeLessThan(1.5);
+    // Hairlines between the rows only: one above each row but the first of each column, none
+    // under the last.
+    const hairlines = async (columns: number): Promise<void> => {
+      const seen = await terms(page)
+        .locator('li')
+        .evaluateAll((all) =>
+          all.map((li) => {
+            const { borderTopWidth, borderBottomWidth } = getComputedStyle(li);
+            return [borderTopWidth, borderBottomWidth];
+          }),
+        );
+      expect(seen).toEqual(seen.map((_, at) => [at < columns ? '0px' : '1px', '0px']));
+    };
+    await hairlines(2);
     // A narrow window: one column.
     await page.setViewportSize({ width: 480, height: 360 });
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
@@ -1264,6 +1283,7 @@ test.describe('the cards', () => {
         return two.y > one.y + one.height - 1 && Math.abs(two.x - one.x) < 1;
       })
       .toBe(true);
+    await hairlines(1);
     const reqs = await why(page)
       .locator('li')
       .evaluateAll((all) => all.slice(0, 2).map((li) => li.getBoundingClientRect().left));
