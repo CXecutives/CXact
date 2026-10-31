@@ -228,6 +228,11 @@ class JobsStore {
     return this.#listed?.search ?? '';
   }
 
+  /** A search is on, from its first typed word on (its answer may still be on its way). */
+  get searching(): boolean {
+    return this.search.trim() !== '';
+  }
+
   /** The sort actually used: without a profile there is no match to sort by. */
   get sort(): JobSort {
     return app.hasProfile ? this.sortChoice : 'newest';
@@ -275,7 +280,7 @@ class JobsStore {
       counts !== null &&
       this.status !== 'error' &&
       counts[this.place] === 0 &&
-      this.search.trim() === '' &&
+      !this.searching &&
       !this.filtered &&
       !run.active
     );
@@ -657,7 +662,7 @@ class JobsStore {
   /** Both counts again from the backend (the rows stay). */
   private async refreshCounts(): Promise<void> {
     const request = this.#request;
-    const narrowed = this.search.trim() !== '' || this.filtered;
+    const narrowed = this.searching || this.filtered;
     try {
       const query = this.query(0, 0);
       const page = await invoke('list_jobs', { query });
@@ -1005,11 +1010,7 @@ class JobsStore {
       }
       this.recount(before, job);
       this.rows = this.rows.with(index, job);
-    } else if (
-      (fresh || this.#served >= this.total) &&
-      this.search.trim() === '' &&
-      this.lists(job)
-    ) {
+    } else if ((fresh || this.#served >= this.total) && !this.searching && this.lists(job)) {
       // An excluded job goes behind the fold, the others on top.
       const at = isExcluded(job) ? this.rows.findIndex(isExcluded) : 0;
       const rows = [...this.rows];

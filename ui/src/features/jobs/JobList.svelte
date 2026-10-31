@@ -104,7 +104,7 @@
   }));
 
   const shown = $derived(jobs.shown);
-  const searching = $derived(jobs.search.trim() !== '');
+  const searching = $derived(jobs.searching);
   /** The words of the search, marked in the rows' titles (at most 8, like the backend). */
   const searchWords = $derived(searching ? jobs.search.trim().split(/\s+/).slice(0, 8) : []);
   /** The rows as far as the window reaches: the scored ones, the ones without a score yet,
@@ -144,8 +144,8 @@
 
   /** A section is open (lib/state/sections.svelte.ts, kept like the order): the excluded one
    *  folded by default, the one without a score yet open; a search opens both for now. */
-  const excludedOpen = $derived(sections.excludedOpen || searching);
-  const unscoredOpen = $derived(sections.unscoredOpen || searching);
+  const excludedOpen = $derived(sections.excludedShown);
+  const unscoredOpen = $derived(sections.unscoredShown);
   /** The folded section ends the list: every other row is loaded (the backend lists the
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
@@ -249,17 +249,18 @@
   );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
-  // is folded away: its section opens (for now; the kept choice stays). A job is settled
-  // once its row is mounted: one opened before its row came (the kept job, beyond the first
-  // rows) opens its section when the row comes.
+  // is folded away: its section opens (for now; the kept choice stays). A row a search holds
+  // open is not folded away: its section goes back to the kept choice with the search. A job
+  // is settled once its row is mounted: one opened before its row came (the kept job, beyond
+  // the first rows) opens its section when the row comes.
   let lastMarked: string | null = null;
   $effect(() => {
     const key = openKey;
     const out = markedExcluded;
     const waiting = markedUnscored;
     untrack(() => {
-      if (key !== lastMarked && out && !sections.excludedOpen) sections.excludedOpen = true;
-      if (key !== lastMarked && waiting && !sections.unscoredOpen) sections.unscoredOpen = true;
+      if (key !== lastMarked && out && !excludedOpen) sections.excludedOpen = true;
+      if (key !== lastMarked && waiting && !unscoredOpen) sections.unscoredOpen = true;
       if (key === null || listed.has(key)) lastMarked = key;
     });
   });

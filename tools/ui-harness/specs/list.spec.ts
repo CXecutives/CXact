@@ -1859,6 +1859,16 @@ test.describe('search', () => {
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
+    // Noch nicht bewertet too, once the choice folds it.
+    const waiting = page.getByTestId('unscored-divider');
+    await waiting.click();
+    await expect(waiting).toHaveAttribute('aria-expanded', 'false');
+    await page.getByTestId('search').fill('Hamburg');
+    await page.getByTestId('unscored-rows').locator('[data-testid^="job-row-"]').first().click();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(page.getByTestId('search')).toHaveValue('');
+    await expect(waiting).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('hits here and elsewhere: a button per other place under the rows, which goes there with the search', async ({
@@ -2590,6 +2600,26 @@ test.describe('the list keeps true', () => {
     await page.getByTestId('reader-archive').click();
     await expect(row(page, last)).toHaveCount(0);
     await expect.poll(() => openKeyOf(page)).toBe(out[0]);
+  });
+
+  test('a move during a search opens the row below, also where the kept choice folds its section', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const divider = page.getByTestId('unscored-divider');
+    await divider.click();
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await page.getByTestId('search').fill('Hamburg');
+    await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    const { jobs } = await stubList(page, { search: 'Hamburg' });
+    const scored = jobs.filter((job) => job.match?.status === 'scored').map(keyOf);
+    const waiting = jobs.filter((job) => job.match?.status === 'unscorable').map(keyOf);
+    expect(scored.length).toBeGreaterThan(0);
+    expect(waiting.length).toBeGreaterThan(0);
+    await openJob(page, scored.at(-1)!);
+    await page.getByTestId('reader-archive').click();
+    await expect(row(page, scored.at(-1)!)).toHaveCount(0);
+    await expect.poll(() => openKeyOf(page)).toBe(waiting[0]);
   });
 
   test('folding the section of the open job takes the highlight away; unfolding brings it back', async ({
