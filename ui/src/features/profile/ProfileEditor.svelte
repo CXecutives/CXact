@@ -34,7 +34,7 @@
   import { afterPress, byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
-  import { glideIntoView } from '$lib/motion/scroll';
+  import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { onMount, tick } from 'svelte';
@@ -206,17 +206,26 @@
 
   /** A field of the form glides up under the top bar, so the press always moves it, without
    *  the caret; from the keyboard its row holds the focus (no caret, no ring), so that Tab goes
-   *  on from there; `false` when the field is not on the page. */
-  export async function revealField(field: string): Promise<boolean> {
+   *  on from there. With `move` off the page stays; `false` when the field is not on the page. */
+  export async function revealField(field: string, move = true): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     if (scope === null || scope === undefined) return false;
+    if (!move) return true;
     glideIntoView(scope, 'start');
     if (byKeyboard()) {
       scope.tabIndex = -1;
       scope.focus({ preventScroll: true });
     }
     return true;
+  }
+
+  /** The page glides up to its head and the state boxes under it: what the user's own action
+   *  caused comes into view. */
+  export async function showHead(): Promise<void> {
+    await tick();
+    const pane = root === null ? null : scrollerOf(root);
+    if (pane !== null) glideTo(pane, 0);
   }
 
   // The way in that opened the form is gone: Esc and Enter reach the form (no caret).

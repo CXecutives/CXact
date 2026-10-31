@@ -1635,6 +1635,108 @@ test('a new form typed while the CV is evaluated stays, and goes on top of what 
   await expect.poll(async () => (await stored(page))?.roles).toEqual(['Meine Rolle']);
 });
 
+// ------------------------------------------------------------------ boxes under the head
+
+/** The page at its end, its head out of view. */
+async function scrolledDown(page: Page): Promise<void> {
+  await page.getByTestId('view-profile').evaluate((node) => node.scrollTo(0, node.scrollHeight));
+  await expect(page.getByTestId('profile-heading')).not.toBeInViewport();
+}
+/** A file dropped on the window. */
+const dropCv = (page: Page): Promise<void> =>
+  page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+
+test("a CV dropped low on the page: it glides up to the head's busy line and to what went wrong", async ({
+  page,
+}) => {
+  await profile(page, '&cv=unreadable');
+  await scrolledDown(page);
+  await dropCv(page);
+  await expect(page.getByTestId('profile-cv-busy')).toBeInViewport();
+  const box = page.getByTestId('cv-error');
+  await expect(box).toHaveCount(1);
+  await expect(box).toBeInViewport();
+});
+
+test('a CV that fails after the page was scrolled down: its box comes into view', async ({
+  page,
+}) => {
+  await profile(page, '&cv=unreadable');
+  await pickCv(page);
+  await expect(page.getByTestId('profile-cv-busy')).toBeVisible();
+  await scrolledDown(page);
+  const box = page.getByTestId('cv-error');
+  await expect(box).toHaveCount(1);
+  await expect(box).toBeInViewport();
+});
+
+test('a drop refused low on the page: its box comes into view', async ({ page }) => {
+  await profile(page);
+  await page.getByTestId('profile-wish-rate').fill('0');
+  await leaveField(page);
+  await scrolledDown(page);
+  await dropCv(page);
+  const box = page.getByTestId('profile-save-error');
+  await expect(box).toHaveText(T.profile.fixFirst(T.profile.field.dayRateWish));
+  await expect(box).toBeInViewport();
+});
+
+test('staying after the question with a save that failed: its box comes into view', async ({
+  page,
+}) => {
+  await profile(page);
+  await page.getByTestId('profile-min-rate').fill('1.300');
+  await failNext(page, 'save_profile');
+  await scrolledDown(page);
+  await page.getByTestId('nav-settings').click();
+  const dialog = page.getByTestId('dialog-leave-profile');
+  await expect(dialog).toContainText(T.profile.leaveFailed);
+  await dialog.getByTestId('dialog-cancel').click();
+  const box = page.getByTestId('profile-save-error');
+  await expect(box).toHaveText(T.error.text('db', {}));
+  await expect(box).toBeInViewport();
+});
+
+test('an automatic save that fails moves nothing: the box stands under the head', async ({
+  page,
+}) => {
+  await profile(page);
+  await scrolledDown(page);
+  const years = page.getByTestId('competence-years').last();
+  await expect(years).toBeInViewport();
+  await years.fill('9');
+  await failNext(page, 'save_profile');
+  await leaveField(page);
+  const box = page.getByTestId('profile-save-error');
+  await expect(box).toHaveText(T.error.text('db', {}));
+  await page.waitForTimeout(T_SAVE);
+  await expect(box).not.toBeInViewport();
+  await expect(years).toBeInViewport();
+});
+
+test('a value refused while another field is typed in is said at its field, the page stays', async ({
+  page,
+}) => {
+  // Low enough that the two never stand in view together.
+  await page.setViewportSize({ width: 1360, height: 420 });
+  await profile(page);
+  const years = page.getByTestId('profile-years');
+  const other = page.getByTestId('competence-years').last();
+  await years.fill('25');
+  await other.click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('3');
+  await expect(years).not.toBeInViewport();
+  await refuseNext(page, { field: 'years', row: null, max: 20 });
+  await page.keyboard.press('Enter');
+  await expect(field(page, 'years')).toContainText(T.profile.field.atMost(20));
+  await page.waitForTimeout(T_SAVE);
+  await expect(other).toBeInViewport();
+  await expect(years).not.toBeInViewport();
+});
+
 test('"Aus Lebenslauf ausfüllen" waits while a value is wrong', async ({ page }) => {
   await profile(page);
   const cv = page.getByTestId('profile-from-cv');

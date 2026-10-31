@@ -17,6 +17,8 @@
   In the setup (`setup`) the same form without the CV and the card; its "Weiter" (`next`)
   saves. The red marks show only once it asked, which brings the first into view and goes on
   once nothing is missing; a failed save says so above the form.
+  A state box the user's own action caused (a dropped CV, its failure, a drop refused, Weiter's
+  failed save, staying after the question) comes into view: the page glides up to it.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -57,7 +59,10 @@
     panel: () => panel,
     setup: () => setup,
     stored: () => stored,
-    onfailed: (words) => (note = words),
+    onfailed: (words) => {
+      note = words;
+      void panel?.showHead();
+    },
   });
 
   // The stored profile fills the form while nothing unsaved is in it, and once nothing is (what
@@ -119,10 +124,17 @@
     else if (form !== null) editor.edit(form);
   }
 
+  /** The file dialog or a drop. What the user's action brings comes into view: a drop's busy line
+   *  in the head and what went wrong under it. */
   async function fillFromCv(dropped = false): Promise<void> {
-    if (!(await saving.settled())) return;
+    if (dropped) void panel?.showHead();
+    if (!(await saving.settled())) {
+      void panel?.showHead();
+      return;
+    }
     const info = await fromCv.run(dropped);
     if (info !== null) filled(info.form);
+    else if (fromCv.problem !== null) void panel?.showHead();
   }
 
   /** The label of a value that holds the save. */
@@ -144,8 +156,12 @@
     over = drag.kind === 'over' && takesDrop();
     if (drag.kind !== 'drop' || drag.paths.length === 0 || saving.leaving !== null) return;
     const wrong = held;
-    if (wrong !== null) saving.note = () => t.profile.fixFirst(wrong);
-    else void fillFromCv(true);
+    if (wrong === null) {
+      void fillFromCv(true);
+      return;
+    }
+    saving.note = () => t.profile.fixFirst(wrong);
+    void panel?.showHead();
   }
 
   /** Back at the ways in, the keyboard focus on the first of them (a button: no caret). */
@@ -209,7 +225,10 @@
     }
     if (editor.dirty || editor.origin === 'new') {
       if (panel !== null && !panel.ready()) return false;
-      if (!(await saving.save())) return false;
+      if (!(await saving.save())) {
+        if (saving.note !== null) void panel?.showHead();
+        return false;
+      }
     }
     const left = FIELD_ORDER.filter((field) => (profile?.missing ?? []).includes(field));
     if (profile === null || left.length > 0) {

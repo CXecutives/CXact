@@ -334,6 +334,21 @@ test('Ab Datum with its day still empty holds Weiter up as little as the Profil'
   expect(form?.available).toEqual({ kind: 'now' });
 });
 
+test("Weiter's failed save low on the page: its box comes into view", async ({ page }) => {
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  await fillRequired(page);
+  await page.getByTestId('profile-form').evaluate((form) => {
+    form.scrollIntoView({ block: 'end' });
+  });
+  await expect(heading(page)).not.toBeInViewport();
+  await failNext(page, 'save_profile');
+  await next(page).click();
+  await expectStep(page, T.firstRun.profile);
+  const box = page.getByTestId('profile-save-error');
+  await expect(box).toHaveText(T.error.text('db', {}));
+  await expect(box).toBeInViewport();
+});
+
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
   page,
 }) => {

@@ -3,9 +3,11 @@
 // left or the window closes. Nothing asks and nothing bars the way, and nothing is said unless
 // the rescore of the save moved jobs (a toast, saveEffect.ts). What changes while a save is
 // under way goes next; a save that failed says so under the head and is tried again with the
-// next change or the next way out. A value that is wrong holds the save, said at its field;
-// leaving with one, or with a save that failed, asks once whether to drop it, and nothing is
-// saved behind the question. ProfileView holds the page, this the save and the way out.
+// next change or the next way out, and a save by itself moves no page: its box stands under the
+// head (a box the user's own action caused comes into view, ProfileView). A value that is wrong
+// holds the save, said at its field; leaving with one, or with a save that failed, asks once
+// whether to drop it, and nothing is saved behind the question. ProfileView holds the page, this
+// the save and the way out.
 
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
@@ -143,12 +145,13 @@ export class ProfileSaving {
   }
 
   /** Staying: what waited for the way goes with it; what holds the save is said at its field,
-   *  which comes into view. */
+   *  which comes into view, a save that failed under the head, which does. */
   stay(): void {
     this.leaving = null;
     this.asking = false;
     navigation.stay();
-    this.#page.panel()?.ready();
+    const panel = this.#page.panel();
+    if (panel?.ready()) void panel.showHead();
   }
 
   /** A moment after a change, and when a field was left; not on a way out, which saves first
@@ -205,13 +208,15 @@ export class ProfileSaving {
       if (at === null) {
         this.note = () => errorText(error);
       } else {
-        // Said at its field; the note says it where the field is not on the page.
+        // Said at its field, which comes into view unless another field is being typed in; the
+        // note says it where the field is not on the page.
         this.fieldError = {
           field: at.field,
           row: at.row,
           text: () => (at.max !== null ? t.profile.field.atMost(at.max) : t.profile.field.refused),
         };
-        if (!(await this.#page.panel()?.revealField(at.field))) {
+        const panel = this.#page.panel();
+        if (!(await panel?.revealField(at.field, !panel.typing()))) {
           this.note = () => errorText(error);
         }
       }
