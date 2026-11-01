@@ -75,7 +75,7 @@
     const vars: Record<string, string> = {};
     if (shell.docked) vars['bar-side'] = `${shell.sidebarWidth ?? tokenPx('--sidebar-width')}px`;
     if (shell.ground === 'list' && shell.listSeam !== null) {
-      vars['bar-list'] = `${shell.listSeam - tokenPx('--border-width')}px`;
+      vars['bar-list'] = `${shell.listSeam}px`;
     }
     return vars;
   });
@@ -90,13 +90,13 @@
   use:cssVars={lines}
 >
   <span
-    class="ground {shell.ground} end-{shell.groundEnd}"
+    class="ground end-{shell.groundEnd}"
     class:docked={shell.docked}
     data-testid="title-bar-ground"
     data-dock-slide
   >
     {#if shell.ground === 'list' && shell.listSeam !== null}
-      <span class="reader" data-testid="title-bar-seam"></span>
+      <span class="list" data-testid="title-bar-seam"></span>
     {/if}
   </span>
   {#if !drawn}
@@ -172,13 +172,14 @@
   }
 
   /* Over the view: from the docked sidebar's edge (its seam, where the view's border lies
-     below) to the right edge, in the view's ground. Beyond its right edge a strip of the end
-     colour, out of sight at rest, fills the bar while the part slides in from the left. It
-     lies under everything else in the bar. */
+     below) to the right edge, in the colour of the view's right edge. Beyond that edge a strip of
+     it, out of sight at rest, fills the bar while the part slides in from the left. It lies under
+     everything else in the bar. */
   .ground {
     position: absolute;
     z-index: var(--z-below);
     inset: 0;
+    background-color: var(--ground-end);
     pointer-events: none;
     box-shadow: var(--sidebar-max) 0 0 0 var(--ground-end);
   }
@@ -187,18 +188,6 @@
   .ground.docked {
     left: calc(var(--bar-side, var(--sidebar-width)) - var(--border-width));
     border-left: var(--border-width) solid var(--border);
-  }
-
-  .ground.side {
-    background-color: var(--bg);
-  }
-
-  .ground.page {
-    background-color: var(--page);
-  }
-
-  .ground.list {
-    background-color: var(--surface);
   }
 
   .end-side {
@@ -213,15 +202,16 @@
     --ground-end: var(--surface);
   }
 
-  /* The job view's page beside the list, its left edge the list's border. */
-  .reader {
+  /* The list beside the job view: its white, up to its border. A box whose right edge stands on
+     the seam, as the column below draws it, so that at any scale of the screen both round alike. */
+  .list {
     position: absolute;
     top: 0;
-    right: 0;
     bottom: 0;
-    left: var(--bar-list);
-    border-left: var(--border-width) solid var(--border);
-    background-color: var(--page);
+    left: 0;
+    width: var(--bar-list);
+    border-right: var(--border-width) solid var(--border);
+    background-color: var(--surface);
   }
 
   /* The buttons lie in the zones the Windows caption leaves to the page; they are the quiet
