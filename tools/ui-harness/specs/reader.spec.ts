@@ -1371,7 +1371,7 @@ test.describe('the ad', () => {
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await runFinished(page);
     await expect(stage(page).getByTestId('ad-text')).toBeVisible();
-    await expect(page.getByTestId('toast')).toHaveCount(0);
+    expect(await page.getByTestId('toast').count()).toBe(0);
   });
 
   test('back at a job whose load ends without the ad it says so once, a later run says nothing', async ({
@@ -1398,7 +1398,7 @@ test.describe('the ad', () => {
     await page.evaluate(() => window.__harness.appRun('rescore'));
     await runFinished(page);
     await page.waitForTimeout(100);
-    await expect(toast).toHaveCount(0);
+    expect(await toast.count()).toBe(0);
   });
 
   test('what arrives later shows: the ad, its rows, its requirements', async ({ page }) => {
