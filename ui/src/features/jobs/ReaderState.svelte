@@ -12,7 +12,7 @@
     geladen.", no button; another job's details run does not load this one);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
     then "Anzeige laden"), else "Anzeige laden" where the portal can load it (pressed, it says
-    it is being loaded like a missing ad);
+    it is being loaded like a missing ad; its portal off: why there is no button);
   - an ad gone, out of reach or closed ("Beendet"), a text too short to score: the two lines
     only.
   A failed sign-in says so in a toast, like every result of the job view, and so does a load that
@@ -99,7 +99,11 @@
   );
   /** The portal shows only a preview without a sign-in that is not set up. */
   const signInMissing = $derived(
-    adState === 'teaser' && portalState !== null && !portalState.loginEnabled,
+    adState === 'teaser' && portalState?.enabled === true && !portalState.loginEnabled,
+  );
+  /** A portal that is off loads nothing: the box says why it has no button. */
+  const portalOff = $derived(
+    portalState?.enabled === false ? t.reader.portalOff(t.portal[job.portal]) : null,
   );
 
   /** The two lines of the ad's state. */
@@ -108,10 +112,11 @@
       case null:
         return null;
       case 'missing':
-        // A portal that is off loads nothing: the box says why it has no button.
+        return { heading: t.reader.state.missing, text: portalOff };
+      case 'teaser':
         return {
-          heading: t.reader.state.missing,
-          text: portalState?.enabled === false ? t.reader.portalOff(t.portal[job.portal]) : null,
+          heading: t.reader.state.teaser.heading,
+          text: portalOff ?? t.reader.state.teaser.text,
         };
       case 'loading':
         return { heading: t.reader.state.loading, text: null };

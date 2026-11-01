@@ -1289,6 +1289,35 @@ test.describe('the ad', () => {
     await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   });
 
+  test('a preview of a portal that is off says so and offers no sign-in, also signed in', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelance-900411');
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('toggle-enabled-freelance').click();
+    await page.getByTestId('nav-jobs').click();
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.teaser.heading);
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(
+      T.reader.portalOff(T.portal.freelance),
+    );
+    await expect(stage(page).getByTestId('reader-sign-in')).toHaveCount(0);
+    await expect(stage(page).getByTestId('load-ad')).toHaveCount(0);
+    // Back on, its sign-in is the way on; signed in and off again the box says the same.
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('toggle-enabled-freelance').click();
+    await page.getByTestId('nav-jobs').click();
+    await stage(page).getByTestId('reader-sign-in').click();
+    await expect(stage(page).getByTestId('load-ad')).toBeVisible();
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('toggle-enabled-freelance').click();
+    await page.getByTestId('nav-jobs').click();
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(
+      T.reader.portalOff(T.portal.freelance),
+    );
+    await expect(stage(page).getByTestId('load-ad')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-sign-in')).toHaveCount(0);
+  });
+
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
     const note = stage(page).getByTestId('detail-note');
