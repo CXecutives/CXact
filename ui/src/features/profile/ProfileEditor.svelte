@@ -17,8 +17,8 @@
   is too large, a 0 where at least 1 counts, a day that does not read and a value the backend
   refused are said at their field in their own sentence, stay with their error until they
   change, and only they hold the save (`wrongField` names the first).
-  Enter in a tag field or a list's name field takes what was typed; an untouched new form goes
-  back to the ways in with Esc (not in the setup).
+  Enter in a tag field or a list's name field takes what was typed, which saves a moment later like
+  any change; an untouched new form goes back to the ways in with Esc (not in the setup).
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -177,9 +177,16 @@
   let typedIn: EventTarget | null = null;
 
   /** The caret stands in a field typed in: its value is not done yet, and what the form sends
-   *  would hold half of it. A field the caret only came to holds what it held. */
+   *  would hold half of it. A field the caret only came to holds what it held, and a tag field
+   *  whose text has gone into chips holds nothing half typed. */
   export function typing(): boolean {
-    return typedIn !== null && document.activeElement === typedIn;
+    const field = typedIn;
+    if (field === null || document.activeElement !== field) return false;
+    return !(
+      field instanceof HTMLInputElement &&
+      'chipKeys' in field.dataset &&
+      field.value === ''
+    );
   }
 
   /** The focus left a control of the form, for good once the press that left it has landed. */

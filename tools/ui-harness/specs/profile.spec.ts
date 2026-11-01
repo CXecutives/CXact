@@ -1917,9 +1917,8 @@ test('a new form typed while the CV is evaluated stays, and goes on top of what 
   await chooseWay(page, 'empty');
   const input = roles(page).locator('input');
   await input.fill('Meine Rolle');
-  await input.press('Enter');
   await expect(page.getByTestId('toast').filter({ hasText: T.profile.filled })).toBeVisible();
-  await expect(chips(roles(page))).toHaveText(['Meine Rolle']);
+  await expect(input).toHaveValue('Meine Rolle');
   await leaveField(page);
   await allSaved(page);
   await expect(chips(roles(page))).toHaveText(['Meine Rolle']);
@@ -2799,6 +2798,7 @@ test('Enter in a field saves at once; lists and chips keep their Enter', async (
     await page.getByTestId(id).fill(value);
     await page.getByTestId(id).press('Enter');
     await expect.poll(() => saves(page), id).toBeGreaterThan(before);
+    await allSaved(page);
   }
   // The day: Enter judges it while it does not read.
   const date = page.getByTestId('profile-date');
@@ -2817,6 +2817,36 @@ test('Enter in a field saves at once; lists and chips keep their Enter', async (
   await name.fill('Treasury');
   await name.press('Enter');
   await expect(names(page, 'competences').last()).toHaveText('Treasury');
+});
+
+test('Enter in a tag field or a name field saves what it took, the caret stays; text typed on waits', async ({
+  page,
+}) => {
+  // Long enough to type on before a change saves, however busy the machine.
+  const delay = 1000;
+  await setToken(page, '--save-delay', `${delay}ms`);
+  await profile(page);
+  const tools = page.getByTestId('profile-tools').locator('input');
+  await tools.click();
+  await page.keyboard.type('Miro');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Not');
+  // Text typed on holds the save until Enter takes it too.
+  await page.waitForTimeout(delay + T_SAVE);
+  expect(await saves(page)).toBe(0);
+  await page.keyboard.press('Enter');
+  await expect
+    .poll(async () => (await stored(page))?.tools)
+    .toEqual(expect.arrayContaining(['Miro', 'Not']));
+  await expect(tools).toBeFocused();
+  await allSaved(page);
+  const name = await adder(page, 'competence');
+  await name.fill('Treasury');
+  await name.press('Enter');
+  await expect
+    .poll(async () => (await stored(page))?.competences.map((row) => row.name))
+    .toContain('Treasury');
+  await expect(name).toBeFocused();
 });
 
 test('Kompetenzen: rows; the button brings a name field that suggests, a name comes once, the x removes', async ({
