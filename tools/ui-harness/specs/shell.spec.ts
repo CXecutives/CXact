@@ -1151,6 +1151,44 @@ test('the note under the ways of a failed start stands in one box, its words ins
   }
 });
 
+test('the note of a failed start moves nothing: the next press lands on the same button', async ({
+  page,
+}) => {
+  const ways = [
+    ['open-data', 'open_target'],
+    ['restore-backup', 'list_backups'],
+  ] as const;
+  for (const size of [
+    { width: 1360, height: 900 },
+    { width: 480, height: 360 },
+  ]) {
+    for (const [way, command] of ways) {
+      await page.setViewportSize(size);
+      await open(page, `${WIN}&scenario=load-failed`);
+      const heading = page.getByTestId('view-error').getByRole('heading');
+      const button = page.getByTestId(way);
+      const before = { button: await button.boundingBox(), heading: await heading.boundingBox() };
+      const at = { x: before.button!.x + 8, y: before.button!.y + before.button!.height / 2 };
+      await failNext(page, command);
+      await page.mouse.click(at.x, at.y);
+      const note = page.getByTestId('ways-note');
+      await expect(note).toHaveText(T.error.text('db', {}));
+      await motionSettled(page);
+      expect({ button: await button.boundingBox(), heading: await heading.boundingBox() }).toEqual(
+        before,
+      );
+      // It stands under the ways and in the window, its box inside the view.
+      const box = (await note.boundingBox())!;
+      expect(box.y).toBeGreaterThan(before.button!.y + before.button!.height);
+      expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+      // The resting pointer still has the button under it.
+      const count = (await calls(page, command)).length;
+      await page.mouse.click(at.x, at.y);
+      await expect.poll(async () => (await calls(page, command)).length).toBe(count + 1);
+    }
+  }
+});
+
 test('Ordner öffnen that fails says so in the note under the ways of a failed start', async ({
   page,
 }) => {

@@ -194,33 +194,35 @@
                 onclick: () => void app.load(),
               }}
             />
-            <div class="ways">
-              <Button
-                variant="ghost"
-                icon="backup"
-                label={t.shell.backupHeading}
-                loading={restoring}
-                testid="restore-backup"
-                onclick={restoreBackup}
-              />
-              <Button
-                variant="ghost"
-                icon="folder"
-                label={t.common.openFolder}
-                testid="open-data"
-                onclick={() => openFolder({ kind: 'dataDir' })}
-              />
-            </div>
-            {#if waysNote}
-              <div class="ways-note">
-                <Notice
-                  tone={waysNote.tone}
-                  variant="box"
-                  text={waysNote.text()}
-                  testid="ways-note"
+            <div class="onward">
+              <div class="ways">
+                <Button
+                  variant="ghost"
+                  icon="backup"
+                  label={t.shell.backupHeading}
+                  loading={restoring}
+                  testid="restore-backup"
+                  onclick={restoreBackup}
+                />
+                <Button
+                  variant="ghost"
+                  icon="folder"
+                  label={t.common.openFolder}
+                  testid="open-data"
+                  onclick={() => openFolder({ kind: 'dataDir' })}
                 />
               </div>
-            {/if}
+              {#if waysNote}
+                <div class="ways-note">
+                  <Notice
+                    tone={waysNote.tone}
+                    variant="box"
+                    text={waysNote.text()}
+                    testid="ways-note"
+                  />
+                </div>
+              {/if}
+            </div>
           </div>
         </section>
       {:else if app.state === null}
@@ -456,8 +458,14 @@
     min-height: 0;
   }
 
-  /* The quieter ways on after a failed start: a backup and the data folder, side by side
-     (one above the other in a narrow window). */
+  /* The ways on after a failed start and what one could not do, a dialog's width. */
+  .onward {
+    position: relative;
+    width: min(100%, var(--dialog-width));
+  }
+
+  /* The quieter ways: a backup and the data folder, side by side (one above the other in a
+     narrow window). */
   .ways {
     display: flex;
     flex-wrap: wrap;
@@ -465,8 +473,13 @@
     gap: var(--space-6);
   }
 
-  /* A state box takes the width it is given (the column centres what it holds): a dialog's. */
+  /* The note hangs under the ways, out of the centred column: nothing moves when it comes, and
+     the button just pressed stays under the pointer. */
   .ways-note {
-    width: min(100%, var(--dialog-width));
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    margin-top: var(--space-12);
   }
 </style>
