@@ -8,17 +8,19 @@
 // stood on a row that left (`focusAfter`; a click moves none), and says so in a short toast
 // ("Archiviert") with Rückgängig; moves of the same kind right after each other merge into it,
 // its one undo takes them all back. The undo brings every job back to where it was, its row
-// too, and opens the job again that was open when it left; in another list than the one the
-// move left (the Archiv, once another place was chosen) its rows leave and, when the open job
-// is one of them, the next one opens. A double click never moves the job that slid under the
-// pointer, nor opens it: its second press presses nothing there (input.ts `pressesElsewhere`);
-// every other click and key counts at once. The job the app opens by itself counts as read only
-// once it has been looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that
-// is already where it goes is no move. A move that fails says so where it was asked (the list
-// header, `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
+// too (`returning`: it unfolds the way it folded), and opens the job again that was open when it
+// left; in another list than the one the move left (the Archiv, once another place was chosen)
+// its rows leave and, when the open job is one of them, the next one opens. A double click never
+// moves the job that slid under the pointer, nor opens it: its second press presses nothing there
+// and it stays the first press's (input.ts `pressesElsewhere`, `runDouble`); every other click and
+// key counts at once. The job the app opens by itself counts as read only once it has been looked
+// at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is already where it goes
+// is no move. A move that fails says so where it was asked (the list header, `jobs.actionError`),
+// an undo that fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
+import { tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
@@ -83,6 +85,20 @@ export function openAd(job: JobView): Promise<string | null> {
   return openTarget({ kind: 'jobUrl', key: job.key });
 }
 
+/** "Alert-Mail öffnen", the row's entry and the job view's button alike: the mail in Gmail where
+ *  the job has a link to it, else the one CXact kept, read in the app (its dialog stands in the
+ *  Jobs view, `jobs.storedMail`). Resolves with the error text, or null. */
+export async function openMail(job: JobView): Promise<string | null> {
+  try {
+    const { mail } = await invoke('job_detail', { key: job.key });
+    if (mail.gmailUrl !== null) return await openTarget({ kind: 'gmail', key: job.key });
+    jobs.storedMail = await invoke('alert_mail', { key: job.key });
+    return null;
+  } catch (error) {
+    return errorText(error);
+  }
+}
+
 /** What the job's menu needs from where it opens (the list's row; the row's tools and the
  *  reader's take the moves of the same context). */
 export interface JobMenuContext {
@@ -106,7 +122,7 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
   const show: MenuEntry[] = [];
   const does: Record<ShowId, () => Promise<string | null>> = {
-    mail: () => openTarget({ kind: 'gmail', key: job.key }),
+    mail: () => openMail(job),
     'open-ad': () => openAd(job),
     prompt: () => copyJobPrompt(job.key),
   };
@@ -228,6 +244,9 @@ function foldedAway(keys: readonly string[]): void {
   }, FOLD_CHECK_MS);
 }
 
+/** Rows an undo brings back, until they are built: they unfold, the mirror of `moving`. */
+export const returning = new Set<string>();
+
 /** How long the next job opened by the app stays on screen before it counts as read. */
 const DWELL_MS = 2000;
 /** The dwell counts in steps of this, only while the job is on screen. */
@@ -334,7 +353,13 @@ async function undo(
   });
   const next = leaving.length > 0 ? nextAfter(leaving) : null;
   const focus = focusOn(leaving);
+  // Only a few, like the rows that fold away.
+  const unfolding = back.length <= staggerLimit() ? back.map(({ job }) => keyOf(job.key)) : [];
+  for (const key of unfolding) returning.add(key);
   const result = await jobs.moveBack(back, generation);
+  void tick().then(() => {
+    for (const key of unfolding) returning.delete(key);
+  });
   jobs.actionError = 'error' in result ? result.error : null;
   void jobs.loadOverview();
   if ('error' in result) return result.error;
@@ -460,8 +485,10 @@ function focusAfter(next: JobView | null): void {
 }
 
 /** The keyboard focus where what held it went and nothing takes its place: the place's entry in
- *  the sidebar, or the sidebar's button while it is folded away; never the top of the window. */
+ *  the sidebar, Jobs while the places are folded (its pill stands for them), or the sidebar's
+ *  button while the sidebar is folded away; never the top of the window. */
 export function focusPlace(): void {
-  const entry = document.querySelector<HTMLElement>(`[data-testid="place-${jobs.place}"]`);
-  (entry ?? document.querySelector<HTMLElement>('[data-testid="toggle-sidebar"]'))?.focus();
+  const entry = (testid: string): HTMLElement | null =>
+    document.querySelector<HTMLElement>(`[data-testid="${testid}"]`);
+  (entry(`place-${jobs.place}`) ?? entry('nav-jobs') ?? entry('toggle-sidebar'))?.focus();
 }

@@ -23,6 +23,7 @@ import { errorText } from '../i18n/texts';
 import { invoke, IpcError, onRun } from '../ipc/api';
 import type {
   ErrorInfo,
+  JobKey,
   Portal,
   RunEvent,
   RunKindName,
@@ -34,6 +35,7 @@ import type {
 } from '../ipc/types';
 import { app } from './app.svelte';
 import { NO_FILTER } from './filter';
+import { sameKey } from './jobRows';
 import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
 import { shell } from './shell.svelte';
@@ -116,15 +118,26 @@ class RunStore {
     for (const event of snapshot.replay) this.handle(event, false);
   }
 
-  /** A run that loads ads is going (a fetch or details run, never a rescore). */
-  get fetching(): boolean {
-    return this.active && this.kind !== 'rescore';
-  }
-
   /** A search ("Jobs suchen") is going: the run line, "Abbrechen" and the empty list say
    *  so. Loading one ad ("Anzeige laden") is no search: its ad section says it. */
   get searching(): boolean {
     return this.active && this.kind === 'fetch';
+  }
+
+  /** The last run was asked for this job's ad ("Anzeige laden"): it goes, or has just ended (its
+   *  listeners hear of its end with `active` off already). */
+  askedAd(key: JobKey): boolean {
+    const request = this.#request;
+    return (
+      this.kind === 'details' &&
+      request?.kind === 'details' &&
+      request.keys.some((asked) => sameKey(asked, key))
+    );
+  }
+
+  /** The run going loads this job's ad, whichever job the page shows meanwhile. */
+  loadsAd(key: JobKey): boolean {
+    return this.active && this.askedAd(key);
   }
 
   /** Why an action waits while a run goes, by its kind (a fetch, the ads of a details run, a

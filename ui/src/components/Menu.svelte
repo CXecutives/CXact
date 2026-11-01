@@ -87,7 +87,8 @@
       x = anchor.align === 'end' ? anchor.rect.right - w : anchor.rect.left;
     }
     x = Math.max(edge, Math.min(x, width - edge - w));
-    const y = up ? above - h : below;
+    // An anchor out of view (the Menu key on a row scrolled away) leaves it inside the window.
+    const y = Math.max(top, Math.min(up ? above - h : below, bottom - h));
     setVars(node, { 'menu-x': px(x), 'menu-y': px(y) });
     // The menu takes the keys (the entries are no tab stops; the active one is announced). A
     // select's button keeps the focus: it announces the active option itself.

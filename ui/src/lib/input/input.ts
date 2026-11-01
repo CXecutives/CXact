@@ -12,10 +12,11 @@
 //   each enabled by the field's state), on selected copyable text (Copy) and on an element
 //   that offers its own (`contextMenu`: a job row). Everywhere else a right click does
 //   nothing. The Menu key and Shift+F10 (Windows) open it at the field, the selection or
-//   the focused element. While a menu is open it takes every key (arrows, Home/End, the
-//   first letter, Enter and Space, Esc, Tab closes), and a press outside, the window's
-//   blur, resizing or a scroll outside it closes it; the left press that closes it does
-//   nothing else, nor does a second click after it. A menu names no keys.
+//   the focused element, with the focus nowhere at the open item of a list (`openItem`: a
+//   click on a row leaves no focus). While a menu is open it takes every key (arrows,
+//   Home/End, the first letter, Enter and Space, Esc, Tab closes), and a press outside, the
+//   window's blur, resizing or a scroll outside it closes it; the left press that closes it
+//   does nothing else, nor does a second click after it. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
@@ -30,9 +31,10 @@
 //   takes no press and no key's press, with no look of its own, which would flicker for that
 //   moment.
 // - a double click does nothing (in text that copies it selects a word, like everywhere;
-//   an element that offers `doubleClick` handles it: a job row opens its ad). Its second press
-//   counts only on what the first pressed: on what the first click slid under the pointer (the
-//   next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
+//   an element that offers `doubleClick` handles it: a job row opens its ad). It belongs to what
+//   its first press landed on, also when the first click slid that away (`runDouble`). Its second
+//   press counts only on what the first pressed: on what the first click slid under the pointer
+//   (the next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
 //   first click opened stays open (`pressesElsewhere`).
 // - the name of a text field leads into it; the name of a button (a select) only names it
 //   (`namesButton`)
@@ -109,8 +111,8 @@ const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
  *  Space, like the native ones; Enter there goes on to the form (its default action). */
 const ENTER_PRESSES =
   'button:not([role="switch"], [role="radio"], [role="checkbox"]), [role="button"]';
-/** Controls a press does not focus: in the sidebar, the list's header and the job view's rows
- *  of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
+/** Controls a press does not focus: in the sidebar, the list's header and rows and the job
+ *  view's rows of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
@@ -811,7 +813,8 @@ let lastCopy: Element | null = null;
 let pressedAt: { x: number; y: number } | null = null;
 /** The left button is held since a press in selectable text. */
 let pressedInText = false;
-/** What the first press of a click went down on (null: it closed a menu, it pressed nothing). */
+/** What the first press of a click went down on (null: it closed a menu, it pressed nothing); a
+ *  second press elsewhere leaves it, its double click is still the first press's. */
 let firstPress: Element | null = null;
 
 /** The control a press lands on, not the words or the glyph in it; else the element itself. */
@@ -1021,10 +1024,11 @@ export const doubleClick: Action<HTMLElement, (() => void) | null> = (node, hand
   };
 };
 
-/** A left double click on an element that offers one (`doubleClick`); `true` if it ran. */
+/** A left double click whose first press landed on an element that offers one (`doubleClick`),
+ *  while that stands, wherever the second press came down; `true` if it ran. */
 function runDouble(event: MouseEvent): boolean {
-  if (event.button !== LEFT) return false;
-  const host = closest(event.target, DOUBLE_HOST);
+  if (event.button !== LEFT || firstPress?.isConnected !== true) return false;
+  const host = closest(firstPress, DOUBLE_HOST);
   const handler = host === null ? undefined : doubleHosts.get(host);
   if (handler === undefined) return false;
   handler();
@@ -1137,9 +1141,17 @@ function onContextMenu(event: MouseEvent): void {
   if (host !== null) openHostMenu(host, at);
 }
 
+/** With the focus nowhere the Menu key speaks for the open item of a list (the job row that
+ *  was clicked), while it stands on the page and no dialog lies over it. */
+function openItem(target: EventTarget | null): Element | null {
+  if (!isNowhere(target) || topModal() !== null) return null;
+  const item = document.querySelector(`${MENU_HOST}:has([aria-current="true"])`);
+  return item?.getClientRects().length ? item : null;
+}
+
 /** Shift+F10 or the Menu key: the menu of the focused field, of the selected copyable text
- *  or of the focused element that offers one, below it (every engine alike, none opens its
- *  own). */
+ *  or of the focused element that offers one, else of the open item of a list, below it
+ *  (every engine alike, none opens its own). */
 function openMenuByKey(target: EventTarget | null): void {
   const field = closest(target, 'input, textarea');
   if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
@@ -1174,7 +1186,7 @@ function openMenuByKey(target: EventTarget | null): void {
     });
     return;
   }
-  const host = closest(target, MENU_HOST);
+  const host = closest(target, MENU_HOST) ?? openItem(target);
   if (host !== null) openHostMenu(host, null);
 }
 
@@ -1531,10 +1543,12 @@ export function installInput(): void {
     auxPress(false);
   };
 
-  // A menu starts without the letters typed in the last one, and from the moment it opens the
-  // wheel is held for it (onWheel).
+  // A menu starts without the letters typed in the last one and without a bubble over it (a key
+  // opened it: no press took that away), and from the moment it opens the wheel is held for it
+  // (onWheel).
   onMenuOpened(() => {
     typed = '';
+    dismiss('press');
     watchWheel('menu', true);
   });
   document.addEventListener('contextmenu', onContextMenu, capture);
@@ -1547,8 +1561,9 @@ export function installInput(): void {
         pressWaits = [];
       }
       dismiss('press', event.target);
-      if (pressesElsewhere(event) || pressOutsideMenu(event)) {
-        firstPress = null;
+      const elsewhere = pressesElsewhere(event);
+      if (elsewhere || pressOutsideMenu(event)) {
+        if (!elsewhere) firstPress = null;
         swallow = true;
         auxPress(true);
         event.preventDefault();
@@ -1679,7 +1694,7 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (swallow || runDouble(event) || !selectable(event.target)) {
+      if (runDouble(event) || swallow || !selectable(event.target)) {
         event.preventDefault();
       }
     },

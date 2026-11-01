@@ -224,6 +224,50 @@ test.describe('a tooltip goes when it should', () => {
     await expect(tip(page)).toHaveText(T.actions.archive);
   });
 
+  test('an open menu silences what lies behind it, an entry of it still says why it is off', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const menu = page.getByTestId('menu');
+    await funnel(page).click();
+    await expect(menu).toBeVisible();
+    // Into the menu and back onto the button that opened it: no bubble over the menu's corner.
+    await menu.locator('[role^="menuitem"]').first().hover();
+    await funnel(page).hover();
+    await page.waitForTimeout(700);
+    await expect(tip(page)).toHaveCount(0);
+    // Nor at the top bar's button behind the menu.
+    await page.getByTestId('toggle-sidebar').hover();
+    await page.waitForTimeout(700);
+    await expect(tip(page)).toHaveCount(0);
+    // The menu gone, they speak again.
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await funnel(page).hover();
+    await expect(tip(page)).toHaveText(T.toolbar.filter);
+    // A bubble that stands goes when the key opens a menu.
+    await rows(page).first().click();
+    await funnel(page).hover();
+    await expect(tip(page)).toHaveText(T.toolbar.filter);
+    await page.keyboard.press('Shift+F10');
+    await expect(menu).toBeVisible();
+    await expect(tip(page)).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    // An entry of a menu still says why it is off.
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    const key = (await listed(page))[0]!;
+    await row(page, key).click({ button: 'right' });
+    await page.getByTestId('menu-item-trash').click();
+    await openPlace(page, 'trash');
+    await row(page, key).click({ button: 'right' });
+    await expect(page.getByTestId('menu-item-purge')).toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('menu-item-purge').hover();
+    await expect(tip(page)).toHaveText(T.error.text('busy', { activity: 'fetch' }));
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+  });
+
   test('a title that fits but ends under the tools of its row shows its tooltip', async ({
     page,
   }) => {

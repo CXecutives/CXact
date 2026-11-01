@@ -360,9 +360,9 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
     // The alert mail and the ad open outside.
     await actions.getByTestId('reader-mail').click();
-    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
-      target: { kind: 'gmail', key: { portal: 'freelancermap', id: '2801' } },
-    });
+    await expect
+      .poll(async () => (await calls(page, 'open_target')).at(-1)?.[1])
+      .toEqual({ target: { kind: 'gmail', key: { portal: 'freelancermap', id: '2801' } } });
     await actions.getByTestId('open-ad').click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2801' } },
@@ -1289,6 +1289,35 @@ test.describe('the ad', () => {
     await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   });
 
+  test('a preview of a portal that is off says so and offers no sign-in, also signed in', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelance-900411');
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('toggle-enabled-freelance').click();
+    await page.getByTestId('nav-jobs').click();
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.teaser.heading);
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(
+      T.reader.portalOff(T.portal.freelance),
+    );
+    await expect(stage(page).getByTestId('reader-sign-in')).toHaveCount(0);
+    await expect(stage(page).getByTestId('load-ad')).toHaveCount(0);
+    // Back on, its sign-in is the way on; signed in and off again the box says the same.
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('toggle-enabled-freelance').click();
+    await page.getByTestId('nav-jobs').click();
+    await stage(page).getByTestId('reader-sign-in').click();
+    await expect(stage(page).getByTestId('load-ad')).toBeVisible();
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('toggle-enabled-freelance').click();
+    await page.getByTestId('nav-jobs').click();
+    await expect(stage(page).getByTestId('detail-text')).toHaveText(
+      T.reader.portalOff(T.portal.freelance),
+    );
+    await expect(stage(page).getByTestId('load-ad')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-sign-in')).toHaveCount(0);
+  });
+
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
     const note = stage(page).getByTestId('detail-note');
@@ -1312,6 +1341,64 @@ test.describe('the ad', () => {
     await openJob(page, 'freelancermap-2805');
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing);
     await expect(stage(page).getByTestId('load-ad')).toBeVisible();
+  });
+
+  /** A job's row is pressed and its job view stands. */
+  async function pressRow(page: Page, key: string): Promise<void> {
+    await row(page, key).click();
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(
+      await row(page, key).locator('.title').innerText(),
+    );
+  }
+
+  test('back at a job whose ad is loading the box still says so, and no dead button stands', async ({
+    page,
+  }) => {
+    const loading = 'linkedin-4100200302';
+    await openAt(page, loading, `${WIN}&tick=15`);
+    const note = stage(page).getByTestId('detail-note');
+    await page.evaluate(() => (window.__harness.holdAfter = 3));
+    await stage(page).getByTestId('load-ad').click();
+    await expect(note).toHaveText(T.reader.state.loading);
+    // Another job meanwhile: its own ad is not what loads, its button waits and says why.
+    await pressRow(page, 'freelancermap-2805');
+    await expect(note).toHaveText(T.reader.state.missing);
+    await expect(stage(page).getByTestId('load-ad')).toHaveAttribute('aria-disabled', 'true');
+    // Back: the same box as before, with its spinner.
+    await pressRow(page, loading);
+    await expect(note).toHaveText(T.reader.state.loading);
+    await expect(stage(page).getByTestId('load-ad')).toHaveCount(0);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+    expect(await page.getByTestId('toast').count()).toBe(0);
+  });
+
+  test('back at a job whose load ends without the ad it says so once, a later run says nothing', async ({
+    page,
+  }) => {
+    const loading = 'linkedin-4100200302';
+    const toast = page.getByTestId('toast');
+    await openAt(page, loading, `${WIN}&tick=15`);
+    await page.evaluate(() => {
+      window.__harness.detailsEnd = 'nothing';
+      window.__harness.holdAfter = 3;
+    });
+    await stage(page).getByTestId('load-ad').click();
+    await pressRow(page, 'freelancermap-2805');
+    await pressRow(page, loading);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.loading);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.reader.state.notLoaded);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.state.missing);
+    // A rescore the app starts by itself, once that toast has gone, is no answer to that press.
+    await expect(toast).toHaveCount(0, { timeout: 8000 });
+    await page.evaluate(() => window.__harness.appRun('rescore'));
+    await runFinished(page);
+    await page.waitForTimeout(100);
+    expect(await toast.count()).toBe(0);
   });
 
   test('what arrives later shows: the ad, its rows, its requirements', async ({ page }) => {

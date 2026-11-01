@@ -9,7 +9,8 @@
   hidden "Neu" for screen readers. A job in the Papierkorb and an ad that takes no
   applications any more step back: the title muted in 450 (an excluded job is not muted, the
   red ban in the ring's place marks it).
-  Under the pointer (and while the row's menu is open) the row's tools fade in at its end:
+  Under the pointer (and while the row's menu is open, which also keeps its wash, like the item a
+  right click marks in Explorer and Finder) the row's tools fade in at its end:
   the moves of its place (actions.ts rowTools: Archivieren and In den Papierkorb legen, Nach
   Aktuell verschieben and In den Papierkorb legen, Wiederherstellen and Endgültig löschen),
   quiet icon buttons that name themselves in their tooltips. No room is kept for them (owner,
@@ -122,11 +123,11 @@
 
   /** The pointer is on the row (after a tool took a row away: once it moved). */
   let here = $state(false);
-  /** The row's menu is open (its tools stay while the pointer is on the menu). */
+  /** The row's menu is open (its tools and its wash stay while the pointer is on the menu). */
   let menuOpen = $state(false);
   const tooled = $derived(tools !== null && (here || menuOpen));
 
-  /** The job's menu, which keeps the row's tools while it is open. */
+  /** The job's menu, which keeps the row's tools and its wash while it is open. */
   const offer = $derived.by(() => {
     const own = menu;
     if (own === null) return null;
@@ -162,7 +163,14 @@
   {/if}
 {/snippet}
 
-<div class="job" class:tooled data-rests="" use:hover={(on) => (here = on)} use:contextMenu={offer}>
+<div
+  class="job"
+  class:tooled
+  class:menued={menuOpen}
+  data-rests=""
+  use:hover={(on) => (here = on)}
+  use:contextMenu={offer}
+>
   <ListRow
     {leading}
     {selected}
@@ -282,8 +290,10 @@
     opacity: 1;
   }
 
-  /* The row keeps its wash while the pointer is on a tool (a sibling of the row's button). */
-  .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)) {
+  /* The row keeps its wash while the pointer is on a tool (a sibling of the row's button), and
+     while its menu is open, so the job the menu acts on stays marked. */
+  .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)),
+  .menued :global(.row:not(.selected, :active)) {
     background-color: var(--quiet-hover);
   }
 </style>

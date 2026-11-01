@@ -6,8 +6,10 @@
 // highlight marks the open row (RowBar). Sizes are pinned only where the design names them.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, calls, expect, open, test } from './fixtures';
+import { animationsDone, calls, expect, motionSettled, open, settle, test } from './fixtures';
 import {
+  chooseSort,
+  failNext,
   list,
   listed,
   openJob,
@@ -15,11 +17,13 @@ import {
   row,
   rowMenu,
   rows,
+  setToken,
   stage,
   stubList,
   T,
   unfoldExcluded,
   viaMenu,
+  wholeInList,
   WIN,
 } from './helpers';
 
@@ -284,6 +288,35 @@ test.describe('tools', () => {
     await page.evaluate(() => (window.__harness.holdAfter = null));
   });
 
+  test("the row of an open menu keeps its wash, so the menu's job stays marked", async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const key = 'linkedin-4100200302';
+    const ground = (): Promise<string> =>
+      row(page, key).evaluate((node) => getComputedStyle(node).backgroundColor);
+    const NONE = 'rgba(0, 0, 0, 0)';
+    await page.mouse.move(0, 0);
+    await expect.poll(ground).toBe(NONE);
+    await pointAt(page, key);
+    await expect.poll(ground).not.toBe(NONE);
+    await animationsDone(page);
+    const wash = await ground();
+    const menu = await rowMenu(page, key);
+    // The menu's corner opens under the pointer: the pointer has left the row.
+    await menu.getByTestId('menu-item-open-ad').hover();
+    await page.waitForTimeout(250);
+    expect(await ground()).toBe(wash);
+    await page.keyboard.press('Escape');
+    await page.mouse.move(0, 0);
+    await expect.poll(ground).toBe(NONE);
+    // The open row has its highlight and takes no wash, with its menu open too.
+    await row(page, key).click();
+    await rowMenu(page, key);
+    await menu.getByTestId('menu-item-open-ad').hover();
+    await expect.poll(ground).toBe(NONE);
+  });
+
   test("the tools stay while the row's menu is open", async ({ page }) => {
     await open(page, WIN);
     const key = 'linkedin-4100200302';
@@ -351,6 +384,83 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
   expect(out.reader).toEqual(out.menu);
 });
 
+test.describe('Alert-Mail öffnen, the row and the job view alike', () => {
+  const key = 'freelancermap-2801';
+  /** A mailbox other than Gmail: no job has a link to its mail (core::view, commands/files.rs). */
+  const noGmail = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      window.__harness.editDetail = (detail) => ({
+        ...detail,
+        mail: { ...detail.mail, gmailUrl: null },
+      });
+    });
+  const dialog = (page: Page): Locator => page.getByTestId('dialog-mail');
+
+  test('without a Gmail link both read the mail CXact kept, in the one dialog', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await noGmail(page);
+    const y = (await row(page, key).boundingBox())!.y;
+    await viaMenu(page, 'mail', key);
+    await expect(dialog(page)).toBeVisible();
+    const text = await page.getByTestId('mail-text').innerText();
+    expect(text).not.toBe('');
+    await page.getByTestId('dialog-confirm').click();
+    await expect(dialog(page)).toHaveCount(0);
+    // No word of a mail that is gone, and the rows stayed where they were.
+    await expect(page.getByTestId('header-error')).toHaveCount(0);
+    expect((await row(page, key).boundingBox())!.y).toBe(y);
+    await openJob(page, key);
+    await stage(page).getByTestId('reader-mail').click();
+    await expect(page.getByTestId('mail-text')).toHaveText(text);
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toHaveCount(0);
+    expect(await calls(page, 'alert_mail')).toHaveLength(2);
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+  });
+
+  test('with a Gmail link both open it, and no dialog', async ({ page }) => {
+    await open(page, WIN);
+    const target = { kind: 'gmail', key: { portal: 'freelancermap', id: '2801' } };
+    await viaMenu(page, 'mail', key);
+    await expect.poll(() => calls(page, 'open_target')).toEqual([['open_target', { target }]]);
+    await openJob(page, key);
+    await stage(page).getByTestId('reader-mail').click();
+    await expect.poll(async () => (await calls(page, 'open_target')).length).toBe(2);
+    await expect(dialog(page)).toHaveCount(0);
+    expect(await calls(page, 'alert_mail')).toHaveLength(0);
+  });
+
+  test('a mail that does not come says so where it was asked', async ({ page }) => {
+    await open(page, WIN);
+    await noGmail(page);
+    await failNext(page, 'alert_mail');
+    await viaMenu(page, 'mail', key);
+    await expect(page.getByTestId('header-error')).toHaveText(T.error.text('db', {}));
+    await expect(dialog(page)).toHaveCount(0);
+    await openJob(page, key);
+    await failNext(page, 'alert_mail');
+    await stage(page).getByTestId('reader-mail').click();
+    await expect(page.getByTestId('toast-text')).toHaveText(T.error.text('db', {}));
+    await expect(dialog(page)).toHaveCount(0);
+  });
+
+  test('the dialog goes with the view', async ({ page }) => {
+    await open(page, WIN);
+    await noGmail(page);
+    await viaMenu(page, 'mail', key);
+    await expect(dialog(page)).toBeVisible();
+    // The native menu changes the view behind it.
+    await page.evaluate(() => window.__harness.fire('navigate', 'settings'));
+    await expect(page.getByTestId('view-settings')).toBeVisible();
+    await expect(dialog(page)).toHaveCount(0);
+    await page.evaluate(() => window.__harness.fire('navigate', 'jobs'));
+    await expect(row(page, key)).toBeVisible();
+    await expect(dialog(page)).toHaveCount(0);
+  });
+});
+
 test('an excluded row shows the ban in the ring place, without a number', async ({ page }) => {
   await open(page, WIN);
   const { excluded } = await stubList(page);
@@ -364,4 +474,380 @@ test('an excluded row shows the ban in the ring place, without a number', async 
   }
   // A scored row keeps its ring.
   await expect(row(page, 'linkedin-4100200301').locator('.ring')).toHaveCount(1);
+});
+
+test.describe('a click on a row that is cut', () => {
+  const pane = (page: Page): Locator => page.getByTestId('list-scroll');
+  const scrollTop = (page: Page): Promise<number> => pane(page).evaluate((node) => node.scrollTop);
+  /** The pane scrolled to `top`, once every row has mounted (they come chunk by chunk). */
+  const scrollTo = async (page: Page, top: number): Promise<void> => {
+    await expect(rows(page)).toHaveCount((await stubList(page)).active.length);
+    await pane(page).evaluate((node, top) => (node.scrollTop = top), top);
+    await settle(page);
+  };
+  /** The first row the day's heading that sticks cuts (its part below the heading is pressed),
+   *  and the heading's lower edge. */
+  const cutByHeading = async (
+    page: Page,
+  ): Promise<{ key: string; x: number; y: number; line: number }> => {
+    const heading = (await page.getByTestId('day-heading').first().boundingBox())!;
+    const line = heading.y + heading.height;
+    for (const key of await listed(page)) {
+      const box = (await row(page, key).boundingBox())!;
+      if (box.y < line && box.y + box.height > line + 4) {
+        return { key, x: box.x + 120, y: line + 2, line };
+      }
+    }
+    throw new Error('no row under the heading');
+  };
+  /** The row the pane's end cuts, and a point of its part in view. */
+  const cutByEnd = async (
+    page: Page,
+  ): Promise<{ key: string; x: number; y: number; end: number }> => {
+    const view = (await pane(page).boundingBox())!;
+    const end = view.y + (await pane(page).evaluate((node) => node.clientHeight));
+    for (const key of await listed(page)) {
+      const box = (await row(page, key).boundingBox())!;
+      if (box.y < end - 4 && box.y + box.height > end) {
+        return { key, x: box.x + 120, y: end - 2, end };
+      }
+    }
+    throw new Error('no row at the end');
+  };
+  /** The tops of the pane from now on, frame by frame. */
+  const logTops = async (page: Page): Promise<() => Promise<number[]>> => {
+    await pane(page).evaluate((node) => {
+      const tops: number[] = [];
+      (window as unknown as { tops: number[] }).tops = tops;
+      const frame = (): void => {
+        tops.push(node.scrollTop);
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
+    return () => page.evaluate(() => (window as unknown as { tops: number[] }).tops);
+  };
+
+  test('under the sticking heading: it glides out, just clear of the heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y, line } = await cutByHeading(page);
+    const box = (await row(page, key).boundingBox())!;
+    const tops = await logTops(page);
+    await page.mouse.click(x, y);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    // As little as it takes: the row stands right under the heading, not in the middle.
+    await expect
+      .poll(async () => Math.round((await row(page, key).boundingBox())!.y))
+      .toBe(Math.round(line));
+    expect(await scrollTop(page)).toBe(Math.round(70 - (line - box.y)));
+    // A glide: it passes places on its way.
+    const log = await tops();
+    expect(new Set(log).size).toBeGreaterThanOrEqual(3);
+  });
+
+  test("at the pane's end: it glides up, clear of the end", async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y, end } = await cutByEnd(page);
+    const room = await pane(page).evaluate((node) =>
+      Number.parseFloat(getComputedStyle(node).scrollPaddingBottom),
+    );
+    const tops = await logTops(page);
+    await page.mouse.click(x, y);
+    await expect
+      .poll(async () => {
+        const box = (await row(page, key).boundingBox())!;
+        return Math.round(end - (box.y + box.height));
+      })
+      .toBe(room);
+    expect(new Set(await tops()).size).toBeGreaterThanOrEqual(3);
+  });
+
+  test('a row that stands whole does not move, also in the room at the end or under the heading', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key: byEnd, end } = await cutByEnd(page);
+    const { key: byHeading, line } = await cutByHeading(page);
+    const keys = await listed(page);
+    // Its end a little above the pane's, in the room a glide leaves there.
+    const box = (await row(page, byEnd).boundingBox())!;
+    await scrollTo(page, Math.round(70 + box.y + box.height - end + 8));
+    const top = await scrollTop(page);
+    // The mouse itself: Playwright's click scrolls an element out of that room first.
+    const pressMiddle = async (key: string): Promise<void> => {
+      const at = (await row(page, key).boundingBox())!;
+      await page.mouse.click(at.x + 120, at.y + at.height / 2);
+    };
+    await pressMiddle(byEnd);
+    await expect(row(page, byEnd)).toHaveAttribute('aria-current', 'true');
+    await page.waitForTimeout(250);
+    expect(await scrollTop(page)).toBe(top);
+    // Its top a little under the heading's lower edge.
+    await scrollTo(page, 70);
+    const next = keys[keys.indexOf(byHeading) + 1]!;
+    const below = (await row(page, next).boundingBox())!;
+    await scrollTo(page, Math.round(70 + below.y - line - 4));
+    const under = await scrollTop(page);
+    await pressMiddle(next);
+    await expect(row(page, next)).toHaveAttribute('aria-current', 'true');
+    await page.waitForTimeout(250);
+    expect(await scrollTop(page)).toBe(under);
+  });
+
+  test('the open row, cut since, pressed again: it comes whole into view too', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y } = await cutByEnd(page);
+    await page.mouse.click(x, y);
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    const brought = await scrollTop(page);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThanOrEqual(brought);
+    await expect.poll(async () => (await row(page, key).boundingBox())!.y).toBeLessThan(y - 40);
+    await page.waitForTimeout(250);
+    await scrollTo(page, 70);
+    expect(await wholeInList(page, key)).toBe(false);
+    await page.mouse.click(x, y);
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+  });
+
+  test('a flat order has no heading to clear: the row glides to the edge of the pane', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await chooseSort(page, 'match');
+    await scrollTo(page, 70);
+    const view = (await pane(page).boundingBox())!;
+    const keys = await listed(page);
+    let key = '';
+    for (const candidate of keys) {
+      const box = (await row(page, candidate).boundingBox())!;
+      if (box.y < view.y && box.y + box.height > view.y + 4) key = candidate;
+    }
+    expect(key).not.toBe('');
+    const box = (await row(page, key).boundingBox())!;
+    await page.mouse.click(box.x + 120, view.y + 2);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    await motionSettled(page);
+    await expect
+      .poll(async () => Math.round((await row(page, key).boundingBox())!.y))
+      .toBe(Math.round(view.y));
+  });
+
+  test('the glide stops when the user scrolls', async ({ page }) => {
+    await setToken(page, '--dur-slow', '1500ms');
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { x, y } = await cutByEnd(page);
+    await page.mouse.click(x, y);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(71);
+    await page.mouse.wheel(0, -30);
+    const after = async (): Promise<number> => {
+      const at = await scrollTop(page);
+      await page.waitForTimeout(200);
+      return at;
+    };
+    // It stands: the wheel has the pane, and nothing takes it to where the glide went.
+    await expect.poll(async () => (await after()) === (await scrollTop(page))).toBe(true);
+    const stands = await scrollTop(page);
+    await page.waitForTimeout(1600);
+    expect(await scrollTop(page)).toBe(stands);
+  });
+
+  test('a double click opens the ad of the row first pressed, though it slid away', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y, end } = await cutByEnd(page);
+    const keys = await listed(page);
+    const next = keys[keys.indexOf(key) + 1]!;
+    expect(end - y).toBeLessThan(10);
+    await page.mouse.move(x, y);
+    await page.mouse.down({ clickCount: 1 });
+    await page.mouse.up({ clickCount: 1 });
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    // The next row slid under the pointer that rests, and the engine counts this press second.
+    await expect
+      .poll(async () => {
+        const box = (await row(page, key).boundingBox())!;
+        return Math.round(end - (box.y + box.height));
+      })
+      .toBe(
+        await pane(page).evaluate((node) =>
+          Number.parseFloat(getComputedStyle(node).scrollPaddingBottom),
+        ),
+      );
+    const under = await page.evaluate(
+      ({ x, y }) =>
+        document
+          .elementFromPoint(x, y)
+          ?.closest('[data-testid^="job-row-"]')
+          ?.getAttribute('data-testid'),
+      { x, y },
+    );
+    expect(under).toBe(`job-row-${next}`);
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    const [portal, id] = key.split(/-(.*)/);
+    await expect
+      .poll(() => calls(page, 'open_target'))
+      .toEqual([['open_target', { target: { kind: 'jobUrl', key: { portal, id } } }]]);
+    // The row under the pointer was pressed by nothing.
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    await expect(row(page, next)).not.toHaveAttribute('aria-current', 'true');
+    expect(
+      (await calls(page, 'job_detail')).filter(
+        ([, args]) => (args as { key: { id: string } }).key.id === next.split(/-(.*)/)[1],
+      ),
+    ).toHaveLength(0);
+  });
+
+  test('a quick double click on a cut row opens its ad, once', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y } = await cutByEnd(page);
+    await page.mouse.dblclick(x, y);
+    const [portal, id] = key.split(/-(.*)/);
+    await expect
+      .poll(() => calls(page, 'open_target'))
+      .toEqual([['open_target', { target: { kind: 'jobUrl', key: { portal, id } } }]]);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+  });
+
+  test('a real double click on a whole row opens its ad, once', async ({ page }) => {
+    await open(page, WIN);
+    const key = (await listed(page))[1]!;
+    await row(page, key).dblclick();
+    const [portal, id] = key.split(/-(.*)/);
+    await expect
+      .poll(() => calls(page, 'open_target'))
+      .toEqual([['open_target', { target: { kind: 'jobUrl', key: { portal, id } } }]]);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('a press that closed a menu starts no double click', async ({ page }) => {
+    await open(page, WIN);
+    const [first, second] = await listed(page);
+    await rowMenu(page, first!);
+    // Beside the menu, which opened at the middle of the row above.
+    const box = (await row(page, second!).boundingBox())!;
+    const at = { x: box.x + 20, y: box.y + box.height / 2 };
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down({ clickCount: 1 });
+    await page.mouse.up({ clickCount: 1 });
+    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    await page.waitForTimeout(150);
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+  });
+});
+
+test.describe('after a click on a row', () => {
+  const scrollTop = (page: Page): Promise<number> =>
+    page.getByTestId('list-scroll').evaluate((node) => node.scrollTop);
+
+  test('the arrows, Home and End scroll the list, in both engines, and Tab still reaches the rows', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, WIN);
+    const first = (await listed(page))[0]!;
+    await row(page, first).click();
+    // A press focuses no row: nothing stands armed for a key.
+    await expect(row(page, first)).not.toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+    await page.keyboard.press('End');
+    const end = await page
+      .getByTestId('list-scroll')
+      .evaluate((node) => node.scrollHeight - node.clientHeight);
+    await expect.poll(() => scrollTop(page)).toBe(end);
+    await page.keyboard.press('Home');
+    await expect.poll(() => scrollTop(page)).toBe(0);
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+    // The keys still go through the rows.
+    await page.keyboard.press('Tab');
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.activeElement?.closest('[data-key]')?.tagName ?? null),
+      )
+      .toBe('DIV');
+  });
+
+  test('Shift+F10 opens the menu of the open row; on a control, or with no job open, nothing', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const menu = page.getByTestId('menu');
+    // No job open: the key has nothing to speak for.
+    await page.keyboard.press('Shift+F10');
+    await page.waitForTimeout(100);
+    await expect(menu).toHaveCount(0);
+    const second = (await listed(page))[1]!;
+    await row(page, second).click();
+    await page.keyboard.press('Shift+F10');
+    await expect(menu).toBeVisible();
+    // Below its row, the first entry active as from the keyboard, and it acts on that job.
+    const box = (await row(page, second).boundingBox())!;
+    expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual(box.y + box.height);
+    await expect(page.getByTestId('menu-item-open-ad')).toHaveAttribute('data-active', '');
+    await page.keyboard.press('Enter');
+    await expect(menu).toHaveCount(0);
+    const [, args] = (await calls(page, 'open_target')).at(-1)!;
+    expect(args).toEqual({
+      target: { kind: 'jobUrl', key: (await stubList(page)).jobs[1]!.key },
+    });
+    // A control that holds the focus speaks for itself.
+    await page.getByTestId('filter').focus();
+    await page.keyboard.press('Shift+F10');
+    await page.waitForTimeout(100);
+    await expect(menu).toHaveCount(0);
+  });
+
+  test('the menu of a row scrolled out of view stands inside the window', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 500 });
+    await open(page, WIN);
+    const keys = await listed(page);
+    const menu = page.getByTestId('menu');
+    const pane = (await page.getByTestId('list-scroll').boundingBox())!;
+    const inWindow = async (): Promise<void> => {
+      await expect(menu).toBeVisible();
+      const box = (await menu.locator('xpath=..').boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(500);
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+    };
+    // Its row above the window.
+    await row(page, keys[0]!).click();
+    await page.mouse.move(pane.x + 40, pane.y + 100);
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(300);
+    await expect.poll(async () => (await row(page, keys[0]!).boundingBox())!.y).toBeLessThan(-40);
+    await page.keyboard.press('Shift+F10');
+    await inWindow();
+    // Its row below the window.
+    await page.getByTestId('list-scroll').evaluate((node) => (node.scrollTop = 0));
+    const last = keys.at(-1)!;
+    await row(page, last).scrollIntoViewIfNeeded();
+    await row(page, last).click();
+    await page.getByTestId('list-scroll').evaluate((node) => (node.scrollTop = 0));
+    await expect.poll(async () => (await row(page, last).boundingBox())!.y).toBeGreaterThan(500);
+    await page.keyboard.press('Shift+F10');
+    await inWindow();
+  });
 });

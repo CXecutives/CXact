@@ -80,6 +80,30 @@ export function scrollerOf(node: Element): HTMLElement | null {
 }
 
 /**
+ * Bring `node` whole into view, in one short tween, when it is cut: by the edges of its scroll
+ * area or, with `sticking`, by what sticks at the area's top (its scroll-padding says how high).
+ * It moves as little as that takes, and from the end as far as the area's scroll-padding keeps
+ * clear of it; a node that stands whole stays where it is, also in that room.
+ */
+export function glideWhole(node: Element, sticking: boolean): void {
+  const pane = scrollerOf(node);
+  if (pane === null) return;
+  const style = getComputedStyle(pane);
+  const view = pane.getBoundingClientRect();
+  const box = node.getBoundingClientRect();
+  const edge = view.top + pane.clientTop;
+  const top = edge + (sticking ? Number.parseFloat(style.scrollPaddingTop) || 0 : 0);
+  const end = edge + pane.clientHeight;
+  // A fraction of a pixel (display scaling) cuts nothing.
+  if (top - box.top >= 1) {
+    glideTo(pane, pane.scrollTop + box.top - top);
+  } else if (box.bottom - end >= 1) {
+    const clear = Number.parseFloat(style.scrollPaddingBottom) || 0;
+    glideTo(pane, pane.scrollTop + Math.min(box.bottom - end + clear, box.top - top));
+  }
+}
+
+/**
  * Bring `node` into view in its scroll area in one short tween: `start` puts it at the top
  * (a field of the form the user is led to), `center` in the middle (a passage the user jumps
  * to), `nearest` scrolls only as far as needed. The pane's scroll-padding (a sticky band) and

@@ -62,6 +62,36 @@ export function mountedKeys(page: Page): Promise<string[]> {
     .evaluateAll((items) => items.map((item) => (item as HTMLElement).dataset.key ?? ''));
 }
 
+/** The row stands whole in the list's pane: inside its edges, clear of the day's heading that
+ *  sticks at its top. */
+export function wholeInList(page: Page, key: string): Promise<boolean> {
+  return row(page, key).evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const pane = node.closest<HTMLElement>('[data-testid="list-scroll"]');
+    // A row on its way out of the page.
+    if (pane === null) return false;
+    const view = pane.getBoundingClientRect();
+    const heading = node
+      .closest('[data-key]')
+      ?.parentElement?.querySelector('[data-testid="day-heading"]');
+    const top = Math.max(view.top, heading?.getBoundingClientRect().bottom ?? view.top);
+    return box.top >= top - 1 && box.bottom <= view.top + pane.clientHeight + 1;
+  });
+}
+
+/** The highlight stands on the row, shown. */
+export async function expectHighlightOn(page: Page, key: string): Promise<void> {
+  const bar = page.getByTestId('row-bar');
+  await expect(bar).toHaveClass(/\bshown\b/);
+  await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+  await expect
+    .poll(async () => {
+      const [of, on] = await Promise.all([bar.boundingBox(), row(page, key).boundingBox()]);
+      return of !== null && on !== null && Math.abs(of.y - on.y) < 1 && of.height === on.height;
+    })
+    .toBe(true);
+}
+
 /** The open job's reader (the one on its way out has dropped its test id). */
 export const stage = (page: Page): Locator => page.getByTestId('stage');
 

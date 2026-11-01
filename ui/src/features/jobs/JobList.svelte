@@ -10,9 +10,10 @@
   ones without a score yet in a section "Noch nicht bewertet", open by default, and at the end
   the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
   folded by default (ListDivider, no count; each choice is kept; a section opens when its job
-  is opened from elsewhere, and stands open, its heading locked, while the list holds a search's
-  answer, so a hit is never hidden behind a fold, and while no row of the place would show
-  without it, lib/state/sections.svelte.ts). Neither section has days.
+  is opened from elsewhere or the open job's row goes there, and stands open, its heading
+  locked, while the list holds a search's answer, so a hit is never hidden behind a fold, and
+  while no row of the place would show without it, lib/state/sections.svelte.ts). Neither
+  section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
@@ -24,9 +25,12 @@
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
   search looks in the list's place; under its hits a button names each other place that lists
   a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
-  A click opens a job, a double click opens its ad in the browser, a right click its menu
+  A click opens a job and brings a row that is cut whole into view (a glide, as little as it
+  takes), a double click opens its ad in the browser, a right click its menu
   (jobMenu of actions.ts); under the pointer the row shows the moves of its place as its tools
-  (rowTools, the same table). Back in the Jobs view, the list stands where it was scrolled to.
+  (rowTools, the same table). The rows are pressed, not focused (`data-press-only`, like the
+  list's head and the sidebar): after a click the keys scroll the list on both OS, Tab still
+  reaches them. Back in the Jobs view, the list stands where it was scrolled to.
   A job action that fails says so in the list header.
   What the list shows is the answer it holds: a search or a filter on its way changes nothing
   until its answer comes, neither the rows, their marks and sections nor the state of no hit.
@@ -65,6 +69,7 @@
   import { searchWords } from '$lib/marks';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
+  import { glideWhole } from '$lib/motion/scroll';
   import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
@@ -254,19 +259,27 @@
   );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
-  // is folded away: its section opens (for now; the kept choice stays). A row a search holds
-  // open is not folded away: its section goes back to the kept choice with the search. A job
-  // is settled once its row is mounted: one opened before its row came (the kept job, beyond
-  // the first rows) opens its section when the row comes.
+  // is folded away, or the open job whose own row goes into a section (a run excludes it, the
+  // undo of "Trotzdem bewerten"): its section opens (for now; the kept choice stays), and a row
+  // that moved stays in view. A fold by hand keeps working: the row stays where it was. A row a
+  // search holds open is not folded away: its section goes back to the kept choice with the
+  // search. A job is settled once its row is mounted: one opened before its row came (the kept
+  // job, beyond the first rows) opens its section when the row comes.
   let lastMarked: string | null = null;
+  let lastSection: 'excluded' | 'unscored' | null = null;
   $effect(() => {
     const key = openKey;
-    const out = markedExcluded;
-    const waiting = markedUnscored;
+    const section = markedExcluded ? 'excluded' : markedUnscored ? 'unscored' : null;
     untrack(() => {
-      if (key !== lastMarked && out && !excludedOpen) sections.excludedOpen = true;
-      if (key !== lastMarked && waiting && !unscoredOpen) sections.unscoredOpen = true;
-      if (key === null || listed.has(key)) lastMarked = key;
+      if (section !== null && (key !== lastMarked || section !== lastSection)) {
+        if (section === 'excluded' && !excludedOpen) sections.excludedOpen = true;
+        if (section === 'unscored' && !unscoredOpen) sections.unscoredOpen = true;
+        if (key !== null && key === lastMarked) jobs.reveal = { key, focus: false };
+      }
+      if (key === null || listed.has(key)) {
+        lastMarked = key;
+        lastSection = section;
+      }
     });
   });
 
@@ -295,10 +308,13 @@
     });
   });
 
-  /** A click opens the job (the open one stays open and has been looked at). */
+  /** A click opens the job (the open one stays open and has been looked at), and a row cut by the
+   *  day's heading that sticks over it or by the end of the list's pane comes whole into view. */
   function select(job: JobView): void {
     if (sameKey(jobs.selected, job.key)) seen(job.key);
     else void jobs.select(job, true);
+    const item = list?.querySelector(`[data-key="${CSS.escape(keyOf(job.key))}"]`);
+    if (item) glideWhole(item, dayed && !isExcluded(job) && !isUnscored(job));
   }
 
   // A search looks in the list's place; the other places that list hits are named under them.
@@ -681,7 +697,7 @@
       />
     {/if}
   {:else}
-    <div class="groups" bind:this={groups}>
+    <div class="groups" data-press-only bind:this={groups}>
       <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
         <div class="rows" data-testid="job-rows" use:topLine>

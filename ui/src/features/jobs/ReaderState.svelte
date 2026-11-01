@@ -7,12 +7,12 @@
   - excluded: why (the profile's side) and "Trotzdem bewerten" with the plus (not in the
     Papierkorb); the box neutral like the others (the ring and its word are the job's one red);
   - an ad still to come: "Die Anzeige ist noch nicht geladen.", "Anzeige laden" (its portal
-    off: why there is no button; being loaded, by the run pressed for here or by the search up to
-    its scoring: the spinner, "Die Anzeige wird geladen.", no button; another job's details run
-    does not load this one);
+    off: why there is no button; being loaded, by the run pressed for it, also on a return to the
+    job while it goes, or by the search up to its scoring: the spinner, "Die Anzeige wird
+    geladen.", no button; another job's details run does not load this one);
   - only a preview: its sign-in right here when none is set up (lib/state/portalSession.ts;
     then "Anzeige laden"), else "Anzeige laden" where the portal can load it (pressed, it says
-    it is being loaded like a missing ad);
+    it is being loaded like a missing ad; its portal off: why there is no button);
   - an ad gone, out of reach or closed ("Beendet"), a text too short to score: the two lines
     only.
   A failed sign-in says so in a toast, like every result of the job view, and so does a load that
@@ -50,14 +50,12 @@
   const job = $derived(detail.job);
   const detailKind = $derived(job.detail.kind);
   const portalState = $derived(app.state?.portals.find((p) => p.portal === job.portal) ?? null);
-  /** "Anzeige laden" was pressed here: this job is in the run. */
-  let requested = $state(false);
-  /** This job's ad is being loaded: by the run asked for here (a details run holds no other
-   *  job), or by the search, which loads what is still to come until it goes on to score. */
+  /** This job's ad is being loaded: by the run asked for it (a details run holds only the jobs
+   *  it was asked for), or by the search, which loads what is still to come until it goes on to
+   *  score. */
   const loading = $derived(
     portalState?.enabled === true &&
-      ((requested && run.fetching) ||
-        (detailKind === 'pending' && run.searching && run.step !== 'score')),
+      (run.loadsAd(job.key) || (detailKind === 'pending' && run.searching && run.step !== 'score')),
   );
   type AdState = 'missing' | 'loading' | 'teaser' | 'gone' | 'unfetchable' | 'closed';
   /** Why the ad's text is not all there, if it is not. */
@@ -77,15 +75,12 @@
         return loading ? 'loading' : 'missing';
     }
   });
-  $effect(() => {
-    if (!run.fetching) requested = false;
-  });
-  /** What the run asked for here said of this job's ad so far (`detail` loads again only later). */
+  /** What the run asked for it said of this job's ad so far (`detail` loads again only later). */
   let came: string | null = null;
   // That run ended well without the ad: nothing on screen would say so.
   $effect(() =>
     run.listen((event) => {
-      if (!requested) return;
+      if (!run.askedAd(job.key)) return;
       if (event.type === 'jobUpdated' && sameKey(event.job.key, job.key)) {
         came = event.job.detail.kind;
       } else if (
@@ -104,7 +99,11 @@
   );
   /** The portal shows only a preview without a sign-in that is not set up. */
   const signInMissing = $derived(
-    adState === 'teaser' && portalState !== null && !portalState.loginEnabled,
+    adState === 'teaser' && portalState?.enabled === true && !portalState.loginEnabled,
+  );
+  /** A portal that is off loads nothing: the box says why it has no button. */
+  const portalOff = $derived(
+    portalState?.enabled === false ? t.reader.portalOff(t.portal[job.portal]) : null,
   );
 
   /** The two lines of the ad's state. */
@@ -113,10 +112,11 @@
       case null:
         return null;
       case 'missing':
-        // A portal that is off loads nothing: the box says why it has no button.
+        return { heading: t.reader.state.missing, text: portalOff };
+      case 'teaser':
         return {
-          heading: t.reader.state.missing,
-          text: portalState?.enabled === false ? t.reader.portalOff(t.portal[job.portal]) : null,
+          heading: t.reader.state.teaser.heading,
+          text: portalOff ?? t.reader.state.teaser.text,
         };
       case 'loading':
         return { heading: t.reader.state.loading, text: null };
@@ -132,7 +132,6 @@
 
   /** "Anzeige laden": this job's ad, in a run of its own. */
   function load(): void {
-    requested = true;
     came = null;
     void run.start({ kind: 'details', keys: [job.key] });
   }

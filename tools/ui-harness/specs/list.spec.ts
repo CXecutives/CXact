@@ -33,6 +33,7 @@ import {
   chooseFilter,
   chooseSort,
   excludedRows,
+  expectHighlightOn,
   failNext,
   FILTER_GROUPS,
   filterLabel,
@@ -56,8 +57,10 @@ import {
   sortEntryId,
   SORTS,
   stage,
+  stubJob,
   stubList,
   setToken,
+  wholeInList,
   T,
   unfoldExcluded,
   viaMenu,
@@ -1773,6 +1776,93 @@ test.describe('rows', () => {
     await expect(excludedRows(page).and(row(page, 'freelance-900412'))).toBeVisible();
   });
 
+  test('the open job that turns out excluded keeps its row: its section opens, the kept choice stays', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, `${WIN}&open=freelancermap:2805&tick=15`);
+    const key = 'freelancermap-2805';
+    const divider = page.getByTestId('excluded-divider');
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.excluded);
+    await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    await expect(excludedRows(page).and(row(page, key))).toBeVisible();
+    await expectHighlightOn(page, key);
+    // Its row stands in view, whichever end of the list it came to.
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    // For now: the kept choice is what it was.
+    expect(await page.evaluate(() => localStorage.getItem('jobs-excluded-open'))).toBeNull();
+    // A fold by hand keeps working: the job stays open, nothing opens the section again.
+    await divider.click();
+    await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
+    await expect(page.getByTestId('row-bar')).not.toHaveClass(/\bshown\b/);
+    const job = await stubJob(page, 'freelancermap', '2805');
+    await page.evaluate(
+      (job) => window.__harness.emit({ type: 'jobUpdated', job, fresh: false }),
+      job,
+    );
+    await page.waitForTimeout(100);
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.excluded);
+  });
+
+  test('the open job that loses its score keeps its row: the folded section without a score opens', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('jobs-unscored-open', '0'));
+    await open(page, WIN);
+    const key = (await listed(page))[0]!;
+    await openJob(page, key);
+    const divider = page.getByTestId('unscored-divider');
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    const [portal, id] = key.split(/-(.*)/) as ['freelancermap', string];
+    const job = await stubJob(page, portal, id);
+    await page.evaluate(
+      (job) =>
+        window.__harness.emit({ type: 'jobUpdated', job: { ...job, match: null }, fresh: false }),
+      job,
+    );
+    await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('unscored-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expectHighlightOn(page, key);
+    expect(await page.evaluate(() => localStorage.getItem('jobs-unscored-open'))).toBe('0');
+  });
+
+  test('an excluded job counts anyway from its job view: its row stays in view, with its undo', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, `${WIN}&open=freelance:900412`);
+    const key = 'freelance-900412';
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await stage(page).getByTestId('reader-include').click();
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await expectHighlightOn(page, key);
+    await page.getByTestId('toast').last().getByTestId('toast-action').click();
+    await expect(excludedRows(page).and(row(page, key))).toBeVisible();
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await expectHighlightOn(page, key);
+  });
+
+  test('another job counting anyway leaves the list where the user looks', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, WIN);
+    const { active, excluded } = await stubList(page);
+    const opened = active[0]!;
+    await openJob(page, opened);
+    await unfoldExcluded(page);
+    const pane = page.getByTestId('list-scroll');
+    await pane.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    await expect.poll(() => wholeInList(page, opened)).toBe(false);
+    await viaMenu(page, 'include', excluded[0]!);
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${excluded[0]}`)).toBeAttached();
+    await page.waitForTimeout(200);
+    expect(await wholeInList(page, opened)).toBe(false);
+  });
+
   test('an excluded job counts anyway from its menu, with an undo; no way to exclude it again', async ({
     page,
   }) => {
@@ -2069,6 +2159,63 @@ test.describe('search', () => {
     await expect(unscored).toBeEnabled();
     await unscored.click();
     await expect(row(page, waiting)).toBeVisible();
+  });
+
+  test('the end of a search brings the open job back into view, as an order or a filter does', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, `${WIN}&scenario=many`);
+    const search = page.getByTestId('search');
+    // A hit further down the whole list than its first page.
+    const words = 'Familienunternehmen 602';
+    const key = (await stubList(page, { search: words })).active[0]!;
+    expect((await stubList(page, { limit: 120 })).active).not.toContain(key);
+    await search.fill(words);
+    await row(page, key).click();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    // Esc in the search: the list loads as far as needed, the row stands in view with its mark.
+    await search.press('Escape');
+    await expect(search).toHaveValue('');
+    await expect(row(page, key)).toBeVisible();
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await expectHighlightOn(page, key);
+    // Its × and a chosen place do the same.
+    for (const end of ['clear', 'place'] as const) {
+      await search.fill(words);
+      await expect(page.getByTestId('list-scroll')).toHaveJSProperty('scrollTop', 0);
+      await expect(row(page, key)).toBeVisible();
+      if (end === 'clear') await page.getByRole('button', { name: T.field.clear }).click();
+      else await page.getByTestId('place-inbox').click();
+      await expect(search).toHaveValue('');
+      await expect.poll(() => wholeInList(page, key)).toBe(true);
+      await expectHighlightOn(page, key);
+    }
+  });
+
+  test('the open job behind a closed fold builds no rows when the list changes under it', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=many`);
+    const words = 'Buchhaltung über Personaldienstleister 404';
+    await page.getByTestId('search').fill(words);
+    await excludedRows(page).first().click();
+    const title = stage(page).getByTestId('reader-title');
+    await expect(title).toBeVisible();
+    const mounted = async (): Promise<number> => (await mountedKeys(page)).length;
+    // The end of the search: its section goes back to the kept choice, the job stays open.
+    await page.getByTestId('search').press('Escape');
+    await expect.poll(mounted).toBe(60);
+    await page.waitForTimeout(300);
+    expect(await mounted()).toBe(60);
+    await expect(title).toBeVisible();
+    // Another order, another filter: the same.
+    await chooseSort(page, 'match');
+    await page.waitForTimeout(300);
+    expect(await mounted()).toBeLessThanOrEqual(60);
+    await chooseFilter(page, 'band-high');
+    await page.waitForTimeout(300);
+    expect(await mounted()).toBeLessThanOrEqual(60);
   });
 
   test('a hit opened from a section only the search holds open: without the search the kept choice returns', async ({
@@ -2474,10 +2621,38 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
   });
 
+  test("with the places folded Jobs takes the focus for the place, not the sidebar's button", async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await page.getByTestId('nav-places').click();
+    await expect(page.getByTestId('place-inbox')).toHaveCount(0);
+    // A button that goes with its list: the way to the hits in another place, from the keyboard.
+    const search = page.getByTestId('search');
+    await search.fill('Kreditoren');
+    await page.getByTestId('also-archive').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('also-archive')).toHaveCount(0);
+    await expect(page.getByTestId('nav-jobs')).toBeFocused();
+    // The place's last job moved away from the keyboard.
+    await search.fill('');
+    const keys = (await stubList(page, { place: 'archive' })).active;
+    await expect.poll(() => listed(page)).toEqual(keys);
+    for (const key of keys) {
+      await row(page, key).focus();
+      await page.keyboard.press('Shift+F10');
+      await expect(page.getByTestId('menu')).toBeVisible();
+      await page.keyboard.type(T.actions.unarchive.slice(0, 4));
+      await page.keyboard.press('Enter');
+      await expect(row(page, key)).toHaveCount(0);
+    }
+    await expect(page.getByTestId('nav-jobs')).toBeFocused();
+  });
+
   test('a click on a move hands no focus on, by a tool or by the menu', async ({ page }) => {
     await open(page, WIN);
     const [first, second, third, fourth] = await listed(page);
-    // The row holds the focus a press gave it (Chromium), and it opened the job.
+    // A press opens the job and leaves no focus on its row.
     await row(page, first!).click();
     await expect(page.getByTestId('reader-title')).toBeVisible();
     // Its menu: the next job opens, its row takes no focus.
@@ -2502,6 +2677,168 @@ test.describe('moves and undo', () => {
     await expect(row(page, fifth!)).toHaveCount(0);
     await expect(row(page, fourth!)).toBeFocused();
     await expect(row(page, sixth!)).not.toBeFocused();
+  });
+
+  test.describe('Rückgängig brings a row back the way it left', () => {
+    /** What each frame paints from now on: a row's top and the highlight's top and height. */
+    interface Painted {
+      y: number | null;
+      tintY: number;
+      tint: number;
+    }
+    const watch = async (page: Page, key: string): Promise<() => Promise<Painted[]>> => {
+      await page.evaluate((key) => {
+        const log: Painted[] = [];
+        (window as unknown as { painted: Painted[] }).painted = log;
+        // After the frame, in a task of its own: the highlight follows in the frame's own layout.
+        const after = new MessageChannel();
+        after.port1.onmessage = (): void => {
+          const row = document.querySelector(`[data-testid="job-row-${key}"]`);
+          const bar = document.querySelector('[data-testid="row-bar"]')!.getBoundingClientRect();
+          log.push({
+            y: row === null ? null : row.getBoundingClientRect().y,
+            tintY: bar.y,
+            tint: bar.height,
+          });
+        };
+        const frame = (): void => {
+          after.port2.postMessage(0);
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }, key);
+      return () => page.evaluate(() => (window as unknown as { painted: Painted[] }).painted);
+    };
+    /** The unfolding, long enough to count its frames on a busy machine. */
+    const slowly = (page: Page): Promise<void> => setToken(page, '--dur-base', '600ms');
+    const undo = (page: Page): Promise<void> => page.getByTestId('toast-action').last().click();
+    const archiveByTool = async (page: Page, key: string): Promise<void> => {
+      await row(page, key).hover();
+      await row(page, key).locator('xpath=..').getByTestId('tool-archive').click();
+      await expect(row(page, key)).toHaveCount(0);
+      await motionSettled(page);
+    };
+    /** The rows' tops of the frames from where it starts to move: never back, and through at
+     *  least three places on the way. */
+    const glided = (tops: number[], distance: number): void => {
+      const start = tops[0]!;
+      const places = new Set(tops);
+      for (const [at, top] of tops.entries()) {
+        if (at > 0) expect(top).toBeGreaterThanOrEqual(tops[at - 1]!);
+      }
+      expect(tops.at(-1)).toBe(start + distance);
+      expect(places.size).toBeGreaterThanOrEqual(5);
+    };
+
+    test('another job: the rows below glide, and the highlight stays on its row', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const [, gone, , opened] = await listed(page);
+      await openJob(page, opened!);
+      await archiveByTool(page, gone!);
+      const before = (await row(page, opened!).boundingBox())!.y;
+      const height = (await row(page, opened!).boundingBox())!.height;
+      const frames = await watch(page, opened!);
+      await undo(page);
+      await expect(row(page, gone!)).toBeVisible();
+      await motionSettled(page);
+      const painted = await frames();
+      expect(painted[0]!.y).toBe(before);
+      glided(
+        painted.map((frame) => frame.y!),
+        height,
+      );
+      for (const frame of painted) {
+        expect(Math.round(frame.tint)).toBe(height);
+        expect(Math.abs(frame.tintY - frame.y!)).toBeLessThanOrEqual(1);
+      }
+    });
+
+    test('the open job: the highlight stands at its full height while its row unfolds under it', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const [, gone, next] = await listed(page);
+      await openJob(page, gone!);
+      const height = (await row(page, gone!).boundingBox())!.height;
+      await archiveByTool(page, gone!);
+      await expect(row(page, next!)).toHaveAttribute('aria-current', 'true');
+      await motionSettled(page);
+      const place = (await row(page, next!).boundingBox())!.y;
+      const frames = await watch(page, next!);
+      await undo(page);
+      await expect(row(page, gone!)).toHaveAttribute('aria-current', 'true');
+      await motionSettled(page);
+      await expectHighlightOn(page, gone!);
+      const painted = await frames();
+      // The next row glides away from under it: no snap.
+      glided(
+        painted.map((frame) => frame.y!),
+        height,
+      );
+      // The highlight never moves and never changes its height.
+      for (const frame of painted) {
+        expect(Math.round(frame.tint)).toBe(height);
+        expect(Math.round(frame.tintY)).toBe(Math.round(place));
+      }
+    });
+
+    test('the open job, with another job opened since: the highlight glides there, one height', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const [, gone, , further] = await listed(page);
+      await openJob(page, gone!);
+      const height = (await row(page, gone!).boundingBox())!.height;
+      await archiveByTool(page, gone!);
+      await openJob(page, further!);
+      const frames = await watch(page, further!);
+      await undo(page);
+      await expect(row(page, gone!)).toHaveAttribute('aria-current', 'true');
+      await motionSettled(page);
+      await expectHighlightOn(page, gone!);
+      const painted = await frames();
+      for (const [at, frame] of painted.entries()) {
+        expect(Math.round(frame.tint)).toBe(height);
+        if (at > 0) expect(frame.tintY).toBeLessThanOrEqual(painted[at - 1]!.tintY + 1);
+      }
+    });
+
+    test('a day comes back with its last row, heading and all', async ({ page }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const { active } = await stubList(page);
+      const days = page.getByTestId('day-heading');
+      const count = await days.count();
+      // The rows of the second day: two moves of different kinds, so each has its own toast.
+      const day = days.nth(1).locator('xpath=..');
+      const keys = await day
+        .locator('[data-key]')
+        .evaluateAll((items) =>
+          items.map((item) => (item as HTMLElement).dataset.key!.replace(':', '-')),
+        );
+      expect(keys.length).toBe(2);
+      const next = active[active.indexOf(keys[1]!) + 1]!;
+      await viaMenu(page, 'trash', keys[0]!);
+      await expect(row(page, keys[0]!)).toHaveCount(0);
+      await motionSettled(page);
+      await archiveByTool(page, keys[1]!);
+      await expect(days).toHaveCount(count - 1);
+      const frames = await watch(page, next);
+      await undo(page);
+      await expect(days).toHaveCount(count);
+      await motionSettled(page);
+      const painted = await frames();
+      const tops = painted.map((frame) => frame.y!);
+      const height = tops.at(-1)! - tops[0]!;
+      glided(tops, height);
+      // The heading comes with the row.
+      expect(height).toBeGreaterThan((await row(page, keys[1]!).boundingBox())!.height);
+    });
   });
 
   test('the last job of a place goes: no head; its undo brings the list and the head back', async ({

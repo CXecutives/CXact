@@ -46,6 +46,7 @@ import type {
   JobView,
   Place,
   RunEvent,
+  StoredMail,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
 import { app } from './app.svelte';
@@ -54,6 +55,7 @@ import { isExcluded, isUnscored, keyOf, moved, replaced, reused, sameKey, ZERO }
 import { keepFilter, keepSort, keptFilter, keptSort } from './listChoices';
 import { keepOpen, keptOpen, type KeptOpen } from './openJob';
 import { run } from './run.svelte';
+import { sections } from './sections.svelte';
 import { viewport } from './viewport.svelte';
 
 export const PAGE = 120;
@@ -168,6 +170,8 @@ class JobsStore {
    *  showed, then its placeholder shows (at once). */
   detailSlow = $state(false);
   detailError = $state<string | null>(null);
+  /** The alert mail read in the app, in its dialog (a mailbox without Gmail links). */
+  storedMail = $state.raw<StoredMail | null>(null);
 
   /** The counts over every job, without the search and the filter: what each place holds
    *  (the Papierkorb's to empty, whether a filter or a search left a place empty). */
@@ -336,7 +340,7 @@ class JobsStore {
       if (open === null || !sameKey(this.selected, open) || this.status !== 'ready') return;
       const holds = this.rows.some((row) => sameKey(row.key, open));
       if (!holds && this.rows.length >= this.total) this.clearSelection();
-      else if (listed) void this.reach(open, false);
+      else if (listed) this.follow(open);
     });
     return true;
   }
@@ -471,7 +475,7 @@ class JobsStore {
     const listed = this.rows.some((job) => sameKey(job.key, open));
     void this.load(true).then(() => {
       if (open !== null && listed && sameKey(this.selected, open) && this.status === 'ready') {
-        void this.reach(open, false);
+        this.follow(open);
       }
     });
   }
@@ -612,6 +616,16 @@ class JobsStore {
     this.pump();
     this.reveal = { key: keyOf(job.key), focus };
     return job;
+  }
+
+  /**
+   * The open job's row stays in view when the list changed under it (another order or filter, the
+   * end of a search). A row behind a fold that is closed stays there: no page and no row is built
+   * for what stays out of sight.
+   */
+  follow(key: JobKey): void {
+    const job = this.held(key);
+    if (job === null || !sections.folded(job)) void this.reach(key, false);
   }
 
   /** The sentinel at the end of the list became visible: show the next window. */
@@ -829,8 +843,11 @@ class JobsStore {
       }
     }
     // The job now counts (or no longer): the list takes it in its order, the filters and
-    // counts follow.
-    void this.load(true);
+    // counts follow, and the open job keeps its row in view.
+    const open = sameKey(this.selected, key) && this.rows.some((job) => sameKey(job.key, key));
+    void this.load(true).then(() => {
+      if (open && sameKey(this.selected, key) && this.status === 'ready') this.follow(key);
+    });
     return null;
   }
 
