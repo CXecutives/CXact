@@ -748,6 +748,30 @@ test('without a mailbox the portals of alert mails say they need one; one Verbin
   await expect(page.getByTestId('setup-linkedin')).toBeVisible();
 });
 
+test('a press beside the mailbox form is no press on it: Esc leaves the form standing', async ({
+  page,
+}) => {
+  // The sidebar folded: nothing of its handle over the view's left edge.
+  await page.setViewportSize({ width: 1099, height: 860 });
+  await settings(page);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  const form = page.getByTestId('mailbox-form');
+  await animationsDone(page);
+  const view = (await page.getByTestId('view-settings').boundingBox())!;
+  expect(view.x).toBe(0);
+  // Where a scrollbar's room stands at the view's left, and beside the page's column.
+  for (const x of [2, 20]) {
+    await page.mouse.click(x, view.y + view.height / 2);
+    await page.keyboard.press('Escape');
+    await animationsDone(page);
+    await expect(form).toBeVisible();
+  }
+  // A press in the form is one: Esc is its Abbrechen.
+  await form.click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press('Escape');
+  await expect(form).toHaveCount(0);
+});
+
 test('portals: a sign-in that ran out says so in red and offers Anmelden', async ({ page }) => {
   await settings(page, `${WIN}&scenario=sign-in-expired`);
   const status = await reveal(page, page.getByTestId('portal-freelance-hint'));
