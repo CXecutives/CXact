@@ -1,6 +1,6 @@
 // Shared test fixture: every console error, page error and CSP violation fails the test.
 
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Page, type Request } from '@playwright/test';
 
 /**
  * Pages currently being captured. For a screenshot Playwright injects its own <style>
@@ -11,13 +11,15 @@ const capturing = new WeakSet<Page>();
 
 /**
  * Windows under load now and then refuses a new socket (WSAENOBUFS), and Chromium reports the
- * file it could not fetch with this message. It is the OS's, not the page's: a test loads
- * seven files over five connections (a fresh context each, kept alive, no file twice), a
- * whole run leaves about 2000 closed ones waiting of the 16384 ports, and ports that really
- * ran out read ERR_ADDRESS_IN_USE instead. A test that needs the missing file still fails on
- * its own checks; a page the OS refused the socket for is asked for again (`open`).
+ * file it could not fetch with this error. It is the OS's, not the page's: a test loads seven
+ * files over five connections (a fresh context each, kept alive, no file twice), a whole run
+ * leaves about 2000 closed ones waiting of the 16384 ports, and ports that really ran out read
+ * ERR_ADDRESS_IN_USE instead. The app never meets it (its files come from the bundle, without a
+ * socket), so a page that lacks a file for this reason is asked for again (`load`): without its
+ * stylesheet every control stands at its natural width and a test fails on a look the app never
+ * has.
  */
-const OS_REFUSED_SOCKET = 'Failed to load resource: net::ERR_NO_BUFFER_SPACE';
+const OS_REFUSED_SOCKET = 'net::ERR_NO_BUFFER_SPACE';
 
 export const test = base.extend<{ problems: string[] }>({
   problems: [
@@ -27,7 +29,7 @@ export const test = base.extend<{ problems: string[] }>({
         if (
           message.type() === 'error' &&
           !capturing.has(page) &&
-          message.text() !== OS_REFUSED_SOCKET
+          message.text() !== `Failed to load resource: ${OS_REFUSED_SOCKET}`
         ) {
           problems.push(`console: ${message.text()}`);
         }
@@ -57,16 +59,31 @@ export async function open(page: Page, query = ''): Promise<void> {
   const withView = query.includes('view=')
     ? query
     : `${query}${query.includes('?') ? '&' : '?'}view=jobs`;
+  await load(page, () => page.goto(`/${withView}`));
+}
+
+/** `go` loads the page (to an address, or `page.reload`): until fonts and the first frame are
+ *  ready, and again while the OS refused a socket for one of its files. */
+export async function load(page: Page, go: () => Promise<unknown>): Promise<void> {
   for (let tries = 3; ; tries -= 1) {
+    let refused = false;
+    const failed = (request: Request): void => {
+      refused ||= request.failure()?.errorText === OS_REFUSED_SOCKET;
+    };
+    page.on('requestfailed', failed);
     try {
-      await page.goto(`/${withView}`);
-      break;
+      await go();
+      await settle(page);
     } catch (error) {
-      if (tries === 0 || !String(error).includes('ERR_NO_BUFFER_SPACE')) throw error;
-      await new Promise((go) => setTimeout(go, 250));
+      if (!String(error).includes(OS_REFUSED_SOCKET)) throw error;
+      refused = true;
+    } finally {
+      page.off('requestfailed', failed);
     }
+    if (!refused) return;
+    if (tries === 0) throw new Error(`The page's files: ${OS_REFUSED_SOCKET}`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  await settle(page);
 }
 
 /** Chooses a view in the sidebar; a folded sidebar (below 1100 px, or folded by its button)

@@ -6,7 +6,7 @@
 // not computed from the tokens: their sizes are not pinned here.
 
 import type { Page } from '@playwright/test';
-import { expect, open, settle, test } from './fixtures';
+import { expect, load, open, settle, test } from './fixtures';
 
 const WIN = '?platform=windows';
 
@@ -84,7 +84,7 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
   expect(narrow.width).toBe(narrow.max);
   await page.setViewportSize({ width: 1360, height: 800 });
   await expect.poll(async () => (await handle(page)).width).toBe(at1360);
-  await page.reload();
+  await load(page, () => page.reload());
   expect((await handle(page)).width).toBe(at1360);
 });
 
@@ -117,11 +117,11 @@ test('the handle has no tooltip; a double click sets the first width back', asyn
   const first = (await handle(page)).width;
   await drag(page, -100);
   await expect.poll(async () => (await handle(page)).width).toBe(first - 100);
-  await page.reload();
+  await load(page, () => page.reload());
   expect((await handle(page)).width).toBe(first - 100);
   await page.getByTestId('list-splitter').locator('.hit').dblclick();
   await expect.poll(async () => (await handle(page)).width).toBe(first);
-  await page.reload();
+  await load(page, () => page.reload());
   expect((await handle(page)).width).toBe(first);
 });
 
@@ -216,7 +216,7 @@ test('the sidebar keeps its width between its limits; a double click sets it bac
   await pull(-400);
   await expect.poll(width).toBe(min);
   await expect.poll(seam).toBe(min);
-  await page.reload();
+  await load(page, () => page.reload());
   await expect.poll(width).toBe(min);
   await handle.locator('.hit').dblclick();
   await expect.poll(width).toBe(first);

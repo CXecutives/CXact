@@ -10,6 +10,7 @@ import {
   calls,
   expect,
   expectShot,
+  load,
   motionSettled,
   open,
   runFinished,
@@ -151,8 +152,10 @@ const OUTSIDE = { x: -40, y: -40 };
 /* ----------------------------------------------------- The frame, the views and the look */
 
 test('the preview server sends the production CSP', async ({ page }) => {
-  const response = await page.goto('/');
-  const csp = response?.headers()['content-security-policy'] ?? '';
+  let csp = '';
+  await load(page, async () => {
+    csp = (await page.goto('/'))?.headers()['content-security-policy'] ?? '';
+  });
   expect(csp).toContain("script-src 'self'");
   expect(csp).toContain("style-src 'self'");
 });
@@ -1550,7 +1553,7 @@ test('the places under Jobs fold by hand: the pill goes to Jobs, the choice is k
   await jobs.click();
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
   // It holds over a new start.
-  await page.reload();
+  await load(page, () => page.reload());
   await expect(page.getByTestId('sidebar')).toBeVisible();
   await expect(fold).toHaveAttribute('aria-expanded', 'false');
   await expect(archive).toHaveCount(0);
