@@ -92,13 +92,12 @@
         <button
           type="button"
           class="fold"
-          class:open={children.open}
           aria-expanded={children.open}
           aria-label={children.toggleLabel}
           data-testid={children.testid}
           onclick={() => children.ontoggle()}
         >
-          <Icon name="expand" size="xs" />
+          <span class="chevron" class:turned={children.open}><Icon name="expand" size="xs" /></span>
         </button>
         {#if children.open}
           <div class="children" transition:unfold>
@@ -180,28 +179,33 @@
     justify-content: center;
     width: var(--hit-min);
     height: var(--hit-min);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-inner);
     color: var(--icon-subtle);
-    transform: rotate(var(--turn-fold));
     transition:
-      transform var(--dur-slow) var(--ease-out),
       background-color var(--dur-base) var(--ease-standard),
       color var(--dur-base) var(--ease-standard);
-  }
-
-  .fold.open {
-    transform: none;
   }
 
   .fold:hover {
     background-color: var(--quiet-hover);
     color: var(--text);
-    transition-duration: var(--dur-slow), var(--dur-hover), var(--dur-hover);
+    transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .fold:active:hover {
     background-color: var(--quiet-press);
-    transition-duration: var(--dur-slow), var(--dur-instant), var(--dur-hover);
+    transition-duration: var(--dur-instant), var(--dur-hover);
+  }
+
+  /* Only the glyph turns (ListDivider's fold): the button and its wash stay still. */
+  .chevron {
+    display: inline-flex;
+    transform: rotate(var(--turn-fold));
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .turned {
+    transform: none;
   }
 
   /* The places: a hairline under the glyph of the entry above. Everything inside what folds, so
