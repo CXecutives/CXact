@@ -284,6 +284,35 @@ test.describe('tools', () => {
     await page.evaluate(() => (window.__harness.holdAfter = null));
   });
 
+  test("the row of an open menu keeps its wash, so the menu's job stays marked", async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const key = 'linkedin-4100200302';
+    const ground = (): Promise<string> =>
+      row(page, key).evaluate((node) => getComputedStyle(node).backgroundColor);
+    const NONE = 'rgba(0, 0, 0, 0)';
+    await page.mouse.move(0, 0);
+    await expect.poll(ground).toBe(NONE);
+    await pointAt(page, key);
+    await expect.poll(ground).not.toBe(NONE);
+    await animationsDone(page);
+    const wash = await ground();
+    const menu = await rowMenu(page, key);
+    // The menu's corner opens under the pointer: the pointer has left the row.
+    await menu.getByTestId('menu-item-open-ad').hover();
+    await page.waitForTimeout(250);
+    expect(await ground()).toBe(wash);
+    await page.keyboard.press('Escape');
+    await page.mouse.move(0, 0);
+    await expect.poll(ground).toBe(NONE);
+    // The open row has its highlight and takes no wash, with its menu open too.
+    await row(page, key).click();
+    await rowMenu(page, key);
+    await menu.getByTestId('menu-item-open-ad').hover();
+    await expect.poll(ground).toBe(NONE);
+  });
+
   test("the tools stay while the row's menu is open", async ({ page }) => {
     await open(page, WIN);
     const key = 'linkedin-4100200302';
