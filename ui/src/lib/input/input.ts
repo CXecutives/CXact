@@ -47,7 +47,7 @@
 // - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
 //   presses the focused button, switch or radio, Enter a button only, once for a held key; in
-//   a radio group (the backups) and a row of tabs the arrows, Home and End choose; on a select
+//   a radio group (the backups) the arrows, Home and End choose; on a select
 //   the arrows open its list (`selectKeys`). Inside a field every
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
@@ -118,7 +118,7 @@ const ENTER_PRESSES =
   'button:not([role="switch"], [role="radio"], [role="checkbox"]), [role="button"]';
 /** Controls a press does not focus: in the sidebar, the list's header and rows and the job
  *  view's rows of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
-const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
+const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
 /** A field's own box: the free part of a tag field, the strip around a button in a field. */
@@ -380,27 +380,23 @@ function isNowhere(target: EventTarget | null): boolean {
   return target instanceof Element && target.matches(FOCUS_HOLDER);
 }
 
-/** The arrows inside a radio group (the backups) or a row of tabs: the previous or the next
- *  option takes the focus and is chosen, wrapping at the ends, like native radio buttons and
- *  tabs; Home and End choose the first and the last. A row of tabs goes left and right only.
- *  The group is one Tab stop (only the chosen option has tabindex 0). `true` if the group
- *  took the key. */
+/** The arrows inside a radio group (the backups): the previous or the next option takes the
+ *  focus and is chosen, wrapping at the ends, like native radio buttons; Home and End choose the
+ *  first and the last. The group is one Tab stop (only the chosen option has tabindex 0). `true`
+ *  if the group took the key. */
 function dispatchRadioKey(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey) return false;
-  const option = closest(event.target, '[role="radio"], [role="tab"]');
-  const role = option?.getAttribute('role') ?? null;
-  const group =
-    option?.closest(role === 'tab' ? '[role="tablist"]' : '[role="radiogroup"]') ?? null;
-  const tabs = role === 'tab';
+  const option = closest(event.target, '[role="radio"]');
+  const group = option?.closest('[role="radiogroup"]') ?? null;
   const step =
-    event.key === 'ArrowRight' || (!tabs && event.key === 'ArrowDown')
+    event.key === 'ArrowRight' || event.key === 'ArrowDown'
       ? 1
-      : event.key === 'ArrowLeft' || (!tabs && event.key === 'ArrowUp')
+      : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
         ? -1
         : 0;
   const edge = event.key === 'Home' ? 0 : event.key === 'End' ? -1 : null;
   if ((step === 0 && edge === null) || option === null || group === null) return false;
-  const options = [...group.querySelectorAll<HTMLElement>(`[role="${role}"]`)].filter(
+  const options = [...group.querySelectorAll<HTMLElement>('[role="radio"]')].filter(
     (node) => node.getAttribute('aria-disabled') !== 'true' && !node.matches(':disabled'),
   );
   const at = options.indexOf(option as HTMLElement);
@@ -1484,9 +1480,16 @@ const otherButtonsDown = (event: MouseEvent): boolean => (event.buttons & ~1) !=
 function onScrollbar(event: MouseEvent): boolean {
   const node = event.target;
   if (!(node instanceof HTMLElement) || node.clientWidth === 0) return false;
-  const scrolls = node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth;
+  // A track takes room beside the client box, also while nothing scrolls yet (a stable gutter).
+  const tracks = {
+    across: node.offsetWidth - node.clientWidth - 2 * node.clientLeft > 0,
+    down: node.offsetHeight - node.clientHeight - 2 * node.clientTop > 0,
+  };
   // offsetX/Y count from the padding edge; the bar lies beyond the client box.
-  return scrolls && (event.offsetX >= node.clientWidth || event.offsetY >= node.clientHeight);
+  return (
+    (tracks.across && event.offsetX >= node.clientWidth) ||
+    (tracks.down && event.offsetY >= node.clientHeight)
+  );
 }
 
 /**
@@ -1539,8 +1542,7 @@ let pressWaits: (() => void)[] | null = null;
  * the left press that left the field, until its click comes (ahead of the control's handler) or
  * right after its release; without a press it runs at once. It does not run when `field` holds
  * the focus by then: a window going to the back leaves it there, nothing was left. A menu that
- * stands has the focus on loan, so `run` waits for it too; one that closes without giving it back
- * (the wheel, the window resized or at the back) has left the field.
+ * stands has the focus on loan, so `run` waits for it too.
  */
 export function afterPress(field: EventTarget | null, run: () => void): void {
   const left = (): void => {
@@ -1607,7 +1609,8 @@ export function installInput(): void {
           shell.fold();
         }
         lastPane = scrollAreaOf(event.target);
-        lastForm = closest(event.target, FORM);
+        // A press on a scrollbar scrolls: Esc and Enter stay with the form pressed last.
+        if (!onScrollbar(event)) lastForm = closest(event.target, FORM);
         lastCopy = closest(event.target, COPY);
         pressedAt = { x: event.clientX, y: event.clientY };
         pressedInText = selectable(event.target);

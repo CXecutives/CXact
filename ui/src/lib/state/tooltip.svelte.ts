@@ -9,7 +9,8 @@ const WARM_MS = 400;
 class TooltipState {
   anchor = $state<HTMLElement | null>(null);
   text = $state('');
-  #hiddenAt = 0;
+  /** When the last one went; none has at first, so the first one waits for its delay. */
+  #hiddenAt = Number.NEGATIVE_INFINITY;
   #dismissed = 0;
   /** A click brought the bubble (an info symbol). */
   #clicked = false;

@@ -590,8 +590,6 @@ test('a press on the last chosen Vertragsart says why at once, also from the key
   const last = contract(page, 'permanent');
   const tip = page.getByRole('tooltip');
   await page.mouse.move(0, 0);
-  // Past a page's first moments, when a tooltip shows at once as if the last had just gone.
-  await page.waitForFunction(() => performance.now() > 500);
   await last.click();
   await expect(last).toHaveAttribute('aria-checked', 'true');
   await expect(tip).toHaveText(T.profile.field.keepOneContract);
@@ -1577,27 +1575,11 @@ for (const [how, close] of [
       page.evaluate(() => void window.dispatchEvent(new Event('blur'))),
   ],
 ] as const) {
-  test(`a menu that gives no focus back has left its field (${how}): nothing sticks, what waited comes`, async ({
+  test(`a field keeps its caret and its word when its menu goes by itself (${how})`, async ({
     page,
   }) => {
     await profile(page);
     const menu = page.getByTestId('menu');
-    // A closed list: its list goes and it says so.
-    const land = countryInput(page);
-    await land.click();
-    await page.keyboard.type('Sch');
-    await expect(options(page).getByRole('option')).toHaveCount(2);
-    await land.click({ button: 'right' });
-    await expect(menu).toBeVisible();
-    await close(page);
-    await expect(menu).toHaveCount(0);
-    await expect(options(page)).toHaveCount(0);
-    await expect(page.getByTestId('profile-countries-none')).toHaveText(
-      T.profile.field.countryNone,
-    );
-    await expect(land).not.toBeFocused();
-    await land.fill('');
-    // A tag field takes the word, and the form saves it.
     const region = page.getByTestId('profile-regions').locator('input');
     await region.click();
     await page.keyboard.type('Bremen');
@@ -1605,9 +1587,15 @@ for (const [how, close] of [
     await expect(menu).toBeVisible();
     await close(page);
     await expect(menu).toHaveCount(0);
-    await expect(chips(page.getByTestId('profile-regions')).last()).toHaveText('Bremen');
-    await expect.poll(async () => (await stored(page))?.regions).toContain('Bremen');
-    await expect(region).not.toBeFocused();
+    await expect(region).toBeFocused();
+    await expect(region).toHaveValue('Bremen');
+    await expect(chips(page.getByTestId('profile-regions'))).not.toContainText(['Bremen']);
+    // It goes on as before: a further word, and Enter takes it.
+    await page.keyboard.type('haven');
+    await page.keyboard.press('Enter');
+    await expect(chips(page.getByTestId('profile-regions')).last()).toHaveText('Bremenhaven');
+    await expect.poll(async () => (await stored(page))?.regions).toContain('Bremenhaven');
+    await expect(region).toBeFocused();
   });
 }
 
@@ -3350,6 +3338,8 @@ test('a note, a hint and an error stand equally far under a number field', async
   await expect(row).toContainText(T.profile.field.belowMinRate);
   expect(await under(row.locator('.hint'))).toBe(note);
   await wish.fill('0');
+  await expect(row.getByRole('alert')).toBeVisible();
+  await animationsDone(page);
   expect(await under(row.getByRole('alert'))).toBe(note);
 });
 
@@ -3368,6 +3358,29 @@ test('one year reads as one, in a competence and in Berufserfahrung', async ({ p
     await input.fill('');
     await expect(unit).toHaveText(T.profile.unit.years);
   }
+});
+
+test('Enter while a save is under way goes next: a day that does not read says so', async ({
+  page,
+}) => {
+  await profile(page);
+  await page.evaluate(() => (window.__harness.saveDelay = 400));
+  const years = page.getByTestId('profile-years');
+  await years.fill('21');
+  const before = await saves(page);
+  await years.press('Enter');
+  await expect.poll(() => saves(page)).toBeGreaterThan(before);
+  await expect(page.evaluate(() => window.__harness.unsaved)).resolves.toBe(true);
+  const date = page.getByTestId('profile-date');
+  await date.fill('31.02.2026');
+  await date.press('Enter');
+  await expect(field(page, 'available')).toContainText(T.profile.field.dateImpossible);
+  await expect(date).toBeFocused();
+  // And what does read goes next, with the same key.
+  await page.evaluate(() => (window.__harness.saveDelay = 0));
+  await date.fill('01.12.2026');
+  await date.press('Enter');
+  await savedWith(page, { available: { kind: 'from', date: '01.12.2026' } });
 });
 
 test('the day exists only for "Ab Datum", takes no caret and is judged when left', async ({

@@ -79,8 +79,8 @@ export function onMenuOpened(handler: () => void): void {
   opened = handler;
 }
 
-/** Told each time a menu has closed and given back its focus, if it does: input.ts, where what
- *  leaving a field does waits for that. */
+/** Told each time a menu has closed and given back its focus: input.ts, where what leaving a
+ *  field does waits for that. */
 let closed: (() => void) | null = null;
 
 export function onMenuClosed(handler: () => void): void {
@@ -109,14 +109,19 @@ export function openMenu(spec: MenuSpec): void {
 export const menuId = (menu: number): string => `menu-${menu}`;
 export const menuItemId = (menu: number, index: number): string => `menu-${menu}-${index}`;
 
-/** Close the open menu; `restore` gives the focus back to where it was before. */
+/** Close the open menu; `restore` gives the focus back to where it was before. A field gets it
+ *  back whatever closed the menu (the wheel, the window resized or at the back): its caret and
+ *  what was typed stay, as in a native field. */
 export function closeMenu(restore = true): void {
   const open = menuState.open;
   if (open === null) return;
   menuState.open = null;
   menuState.active = -1;
   open.onclose?.();
-  if (restore && open.returnFocus?.isConnected) open.returnFocus.focus({ preventScroll: true });
+  const back = open.returnFocus;
+  if (back?.isConnected && (restore || back.matches('input, textarea'))) {
+    back.focus({ preventScroll: true });
+  }
   closed?.();
 }
 

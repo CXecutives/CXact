@@ -311,7 +311,7 @@
         bind:this={panel}
         fieldError={saving.fieldError}
         missing={marked}
-        onsave={() => saving.trySave()}
+        onsave={() => saving.saveNext()}
         ondiscard={discard}
         onleft={() => saving.soon()}
       />

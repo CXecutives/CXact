@@ -16,6 +16,7 @@
 //   window.__harness.fire(name, p)  an app event, as Rust's `window.emit` sends it
 //   window.__harness.done           true once a started run has finished
 //   window.__harness.detailDelay    ms `job_detail` takes (default 0)
+//   window.__harness.saveDelay      ms `save_profile` takes (default 0)
 //   window.__harness.editDetail     changes every job's reader before it is shown (a fact
 //                                   or a param of the engine the demo ads do not state)
 //   window.__harness.failPages      so many next `list_jobs` calls for a later page fail
@@ -121,6 +122,7 @@ interface Harness {
   done: boolean;
   /** Milliseconds `job_detail` takes. */
   detailDelay: number;
+  saveDelay: number;
   /** Changes every job's reader before it is shown (null: as the engine wrote it). */
   editDetail: ((detail: JobDetail) => JobDetail) | null;
   /** So many next `list_jobs` calls for a later page (offset > 0) fail. */
@@ -2435,6 +2437,7 @@ const harness: Harness = {
   },
   done: false,
   detailDelay: 0,
+  saveDelay: 0,
   editDetail: null,
   failPages: 0,
   holdAfter: null,
@@ -2596,7 +2599,13 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
   const handler = handlers[command as keyof Commands] as ((a: unknown) => unknown) | undefined;
   if (handler === undefined) throw fail('internal', { command });
   if (state.dryRun && DRY_RUN_REFUSED.has(command)) throw fail('dryRun');
-  const delay = command === 'job_detail' ? DELAY + harness.detailDelay : DELAY;
+  const delay =
+    DELAY +
+    (command === 'job_detail'
+      ? harness.detailDelay
+      : command === 'save_profile'
+        ? harness.saveDelay
+        : 0);
   if (command !== 'report_ui_error') {
     // Like Tauri's IPC, the answer arrives in a task of its own: the page's work on it is
     // never counted into the click or key that asked.

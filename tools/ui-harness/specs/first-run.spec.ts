@@ -1038,6 +1038,36 @@ test('beside a real scrollbar a press in the room at the left of the view is a p
   }
 });
 
+test('beside a real scrollbar a press on it leaves Esc with the form pressed last', async ({
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  // Windows only (WebView2): macOS's overlay scrollbars take no room.
+  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    const page = await browser.newPage({
+      ...(baseURL ? { baseURL } : {}),
+      viewport: { width: 1360, height: 860 },
+      locale: 'de-DE',
+    });
+    await open(page, `${WIN}&scenario=first-run&step=reading`);
+    const view = page.getByTestId('view-first-run');
+    const room = await view.evaluate(
+      (node) => (node as HTMLElement).offsetWidth - node.clientWidth,
+    );
+    expect(room).toBeGreaterThan(0);
+    await page.mouse.click(40, 500);
+    await page.mouse.click(1360 - room / 2, 500);
+    await page.keyboard.press('Escape');
+    await expectStep(page, T.firstRun.upload);
+    expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a press on the bar of Dein Profil leaves Enter with Weiter, as on the rest of the step', async ({
   page,
 }) => {

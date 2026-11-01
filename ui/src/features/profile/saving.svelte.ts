@@ -239,13 +239,20 @@ export class ProfileSaving {
     }
   }
 
-  /** Saves what changed (a change, Enter in a field); `true` once the profile is saved, or when
-   *  there was nothing to save. */
+  /** Saves what changed; `true` once the profile is saved, or when there was nothing to save.
+   *  Under a save that goes on it does nothing: the end of that save asks again. */
   async trySave(): Promise<boolean> {
     if (this.busy) return false;
     if (!editor.changed) return true;
     if (!this.#page.panel()?.valid()) return false;
     return this.save();
+  }
+
+  /** Enter in a field: what it holds is done, so it is judged and goes next, after a save under
+   *  way. */
+  async saveNext(): Promise<boolean> {
+    while (this.busy) await this.#lastWrite;
+    return this.trySave();
   }
 
   /** Before the way goes on: what was typed goes into the form (a tag field takes it when it is
