@@ -11,19 +11,18 @@
 // too, and opens the job again that was open when it left; in another list than the one the
 // move left (the Archiv, once another place was chosen) its rows leave and, when the open job
 // is one of them, the next one opens. A double click never moves the job that slid under the
-// pointer (a button acts once), nor opens the one that did: within GUARD_MS after the list
-// changed the second click of a double click on a row does nothing (`guarded`); every other click
-// and key counts at once. The job the app opens by itself counts as read only once it has been
-// looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is already where
-// it goes is no move. A move that fails says so where it was asked (the list header,
-// `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
+// pointer, nor opens it: its second press presses nothing there (input.ts `pressesElsewhere`);
+// every other click and key counts at once. The job the app opens by itself counts as read only
+// once it has been looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that
+// is already where it goes is no move. A move that fails says so where it was asked (the list
+// header, `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
-import { byKeyboard, secondClick } from '$lib/input/input';
+import { byKeyboard } from '$lib/input/input';
 import { invoke } from '$lib/ipc/api';
 import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
@@ -229,19 +228,11 @@ function foldedAway(keys: readonly string[]): void {
   }, FOLD_CHECK_MS);
 }
 
-const GUARD_MS = 500;
-let guardUntil = 0;
 /** How long the next job opened by the app stays on screen before it counts as read. */
 const DWELL_MS = 2000;
 /** The dwell counts in steps of this, only while the job is on screen. */
 const DWELL_STEP = 250;
 let dwell: ReturnType<typeof setInterval> | undefined;
-
-/** The second click of a double click right after the list changed under the pointer: it was
- *  not meant for the row that slid there. */
-export function guarded(): boolean {
-  return performance.now() < guardUntil && secondClick();
-}
 
 /** What a move's toast says: one short word, however many jobs it took (no titles). */
 const SAID: Record<MoveId, () => string> = {
@@ -263,11 +254,6 @@ function nextAfter(gone: readonly JobView[]): JobView | null {
   const below = rows.slice(last + 1).find(next);
   if (below) return below;
   return rows.slice(0, Math.max(0, last)).reverse().find(next) ?? null;
-}
-
-/** The list changed under the pointer: the second click of a double click waits a moment. */
-function arm(): void {
-  guardUntil = performance.now() + GUARD_MS;
 }
 
 /** The job is on screen: the Jobs view is shown and the window is in front. */
@@ -410,9 +396,6 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   const open = jobs.selected;
   const reopen =
     open !== null && leaving.some((job) => sameKey(job.key, open)) ? { ...open } : null;
-  // The list changes now, not when the backend answers: the second click of a double click
-  // may come first.
-  if (leaving.length > 0) arm();
   const result = await jobs.move(
     list.map((job) => job.key),
     to,
@@ -420,7 +403,6 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   );
   foldedAway(folding.map((job) => keyOf(job.key)));
   if ('error' in result) return result.error;
-  if (leaving.length > 0) arm();
   openNext(leaving, next, focus, open);
   if (focus) focusAfter(next);
   // Moved into the listed place without being listed (opened from elsewhere): list it.
@@ -462,7 +444,6 @@ export async function purge(list: readonly JobView[], fromRow = false): Promise<
   const result = await jobs.purge(list.map((job) => job.key));
   foldedAway(folding.map((job) => keyOf(job.key)));
   if ('error' in result) return result.error;
-  arm();
   openNext(list, next, focus, open);
   if (focus) focusAfter(next);
   deletedFor(result);

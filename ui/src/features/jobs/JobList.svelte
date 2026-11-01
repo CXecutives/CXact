@@ -77,7 +77,6 @@
   import type { ContextMenu } from '$lib/input/input';
   import {
     focusPlace,
-    guarded,
     jobMenu,
     moving,
     openAd,
@@ -296,11 +295,8 @@
     });
   });
 
-  /** A click opens the job (the open one stays open and has been looked at); right after a move
-   *  it is the second click of a double click on the row that slid under the pointer, and does
-   *  nothing. */
+  /** A click opens the job (the open one stays open and has been looked at). */
   function select(job: JobView): void {
-    if (guarded()) return;
     if (sameKey(jobs.selected, job.key)) seen(job.key);
     else void jobs.select(job, true);
   }

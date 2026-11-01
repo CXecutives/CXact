@@ -3028,9 +3028,7 @@ test.describe('the list keeps true', () => {
     await expect(page.getByTestId('reader')).toHaveCount(0);
   });
 
-  test('a click on another row right after a move opens it: only a double click waits', async ({
-    page,
-  }) => {
+  test('a click on another row right after a move opens it', async ({ page }) => {
     await open(page, WIN);
     const [first, , third] = await listed(page);
     await row(page, first!).hover();

@@ -842,14 +842,6 @@ const movedFromPress = (event: MouseEvent): boolean =>
 export const wasDragged = (event: MouseEvent): boolean =>
   event.detail !== 0 && movedFromPress(event);
 
-/** How many presses in a row the last one was, as the engine counts a double click. */
-let pressesInRow = 0;
-
-/** The click now is the second of a double click (the engine counts on: every even one); a
- *  key's click never is. */
-export const secondClick = (): boolean =>
-  !keyboardFocus && pressesInRow > 1 && pressesInRow % 2 === 0;
-
 /**
  * A press in selectable text that drags selects text, and nothing else: while it does, :root
  * carries `data-text-drag` and the controls give the pointer through (base.css). So none looks
@@ -1549,7 +1541,6 @@ export function installInput(): void {
   document.addEventListener(
     'mousedown',
     (event) => {
-      pressesInRow = event.detail;
       keyboardFocus = false;
       if (event.button === LEFT) {
         pressLanded();
