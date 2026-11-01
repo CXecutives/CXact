@@ -236,10 +236,11 @@ export function rowCollapse(node: Element, { on }: CollapseParams): TransitionCo
 
 /**
  * Something that comes and goes in the flow (a line under the list header, the minimum salary,
- * the mailbox form, a row of the profile): it unfolds to its height while it fades in (150 ms,
- * ease-out) and folds away the same way back, so what is below glides instead of jumping. A
- * cross-fade under reduced motion. `transition:unfold` on it. While it moves it carries
- * `data-unfolding` (afterUnfold, afterFolds): what scrolls to a part of it waits for its height.
+ * the mailbox form, a row of the profile, a job's row an undo brings back): it unfolds to its
+ * height while it fades in (150 ms, ease-out) and folds away the same way back, so what is below
+ * glides instead of jumping. A cross-fade under reduced motion. `transition:unfold` on it. While
+ * it moves it carries `data-unfolding` (afterUnfold, afterFolds): what scrolls to a part of it
+ * waits for its height.
  */
 export function unfold(node: Element, params: MotionParams = {}): TransitionConfig {
   if (params.on === false) return {};

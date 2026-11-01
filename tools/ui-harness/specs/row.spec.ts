@@ -712,6 +712,20 @@ test.describe('a click on a row that is cut', () => {
     ).toHaveLength(0);
   });
 
+  test('a quick double click on a cut row opens its ad, once', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y } = await cutByEnd(page);
+    await page.mouse.dblclick(x, y);
+    const [portal, id] = key.split(/-(.*)/);
+    await expect
+      .poll(() => calls(page, 'open_target'))
+      .toEqual([['open_target', { target: { kind: 'jobUrl', key: { portal, id } } }]]);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+  });
+
   test('a real double click on a whole row opens its ad, once', async ({ page }) => {
     await open(page, WIN);
     const key = (await listed(page))[1]!;
