@@ -8,17 +8,19 @@
 // stood on a row that left (`focusAfter`; a click moves none), and says so in a short toast
 // ("Archiviert") with Rückgängig; moves of the same kind right after each other merge into it,
 // its one undo takes them all back. The undo brings every job back to where it was, its row
-// too, and opens the job again that was open when it left; in another list than the one the
-// move left (the Archiv, once another place was chosen) its rows leave and, when the open job
-// is one of them, the next one opens. A double click never moves the job that slid under the
-// pointer, nor opens it: its second press presses nothing there (input.ts `pressesElsewhere`);
-// every other click and key counts at once. The job the app opens by itself counts as read only
-// once it has been looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that
-// is already where it goes is no move. A move that fails says so where it was asked (the list
-// header, `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
+// too (`returning`: it unfolds the way it folded), and opens the job again that was open when it
+// left; in another list than the one the move left (the Archiv, once another place was chosen)
+// its rows leave and, when the open job is one of them, the next one opens. A double click never
+// moves the job that slid under the pointer, nor opens it: its second press presses nothing there
+// (input.ts `pressesElsewhere`); every other click and key counts at once. The job the app opens
+// by itself counts as read only once it has been looked at (DWELL_MS on screen in the Jobs view,
+// or a press on it). A job that is already where it goes is no move. A move that fails says so
+// where it was asked (the list header, `jobs.actionError`), an undo that fails in its toast too,
+// which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
+import { tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
@@ -242,6 +244,9 @@ function foldedAway(keys: readonly string[]): void {
   }, FOLD_CHECK_MS);
 }
 
+/** Rows an undo brings back, until they are built: they unfold, the mirror of `moving`. */
+export const returning = new Set<string>();
+
 /** How long the next job opened by the app stays on screen before it counts as read. */
 const DWELL_MS = 2000;
 /** The dwell counts in steps of this, only while the job is on screen. */
@@ -348,7 +353,13 @@ async function undo(
   });
   const next = leaving.length > 0 ? nextAfter(leaving) : null;
   const focus = focusOn(leaving);
+  // Only a few, like the rows that fold away.
+  const unfolding = back.length <= staggerLimit() ? back.map(({ job }) => keyOf(job.key)) : [];
+  for (const key of unfolding) returning.add(key);
   const result = await jobs.moveBack(back, generation);
+  void tick().then(() => {
+    for (const key of unfolding) returning.delete(key);
+  });
   jobs.actionError = 'error' in result ? result.error : null;
   void jobs.loadOverview();
   if ('error' in result) return result.error;

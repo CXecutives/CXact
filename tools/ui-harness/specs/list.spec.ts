@@ -2654,6 +2654,168 @@ test.describe('moves and undo', () => {
     await expect(row(page, sixth!)).not.toBeFocused();
   });
 
+  test.describe('Rückgängig brings a row back the way it left', () => {
+    /** What each frame paints from now on: a row's top and the highlight's top and height. */
+    interface Painted {
+      y: number | null;
+      tintY: number;
+      tint: number;
+    }
+    const watch = async (page: Page, key: string): Promise<() => Promise<Painted[]>> => {
+      await page.evaluate((key) => {
+        const log: Painted[] = [];
+        (window as unknown as { painted: Painted[] }).painted = log;
+        // After the frame, in a task of its own: the highlight follows in the frame's own layout.
+        const after = new MessageChannel();
+        after.port1.onmessage = (): void => {
+          const row = document.querySelector(`[data-testid="job-row-${key}"]`);
+          const bar = document.querySelector('[data-testid="row-bar"]')!.getBoundingClientRect();
+          log.push({
+            y: row === null ? null : row.getBoundingClientRect().y,
+            tintY: bar.y,
+            tint: bar.height,
+          });
+        };
+        const frame = (): void => {
+          after.port2.postMessage(0);
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }, key);
+      return () => page.evaluate(() => (window as unknown as { painted: Painted[] }).painted);
+    };
+    /** The unfolding, long enough to count its frames on a busy machine. */
+    const slowly = (page: Page): Promise<void> => setToken(page, '--dur-base', '600ms');
+    const undo = (page: Page): Promise<void> => page.getByTestId('toast-action').last().click();
+    const archiveByTool = async (page: Page, key: string): Promise<void> => {
+      await row(page, key).hover();
+      await row(page, key).locator('xpath=..').getByTestId('tool-archive').click();
+      await expect(row(page, key)).toHaveCount(0);
+      await motionSettled(page);
+    };
+    /** The rows' tops of the frames from where it starts to move: never back, and through at
+     *  least three places on the way. */
+    const glided = (tops: number[], distance: number): void => {
+      const start = tops[0]!;
+      const places = new Set(tops);
+      for (const [at, top] of tops.entries()) {
+        if (at > 0) expect(top).toBeGreaterThanOrEqual(tops[at - 1]!);
+      }
+      expect(tops.at(-1)).toBe(start + distance);
+      expect(places.size).toBeGreaterThanOrEqual(5);
+    };
+
+    test('another job: the rows below glide, and the highlight stays on its row', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const [, gone, , opened] = await listed(page);
+      await openJob(page, opened!);
+      await archiveByTool(page, gone!);
+      const before = (await row(page, opened!).boundingBox())!.y;
+      const height = (await row(page, opened!).boundingBox())!.height;
+      const frames = await watch(page, opened!);
+      await undo(page);
+      await expect(row(page, gone!)).toBeVisible();
+      await motionSettled(page);
+      const painted = await frames();
+      expect(painted[0]!.y).toBe(before);
+      glided(
+        painted.map((frame) => frame.y!),
+        height,
+      );
+      for (const frame of painted) {
+        expect(Math.round(frame.tint)).toBe(height);
+        expect(Math.abs(frame.tintY - frame.y!)).toBeLessThanOrEqual(1);
+      }
+    });
+
+    test('the open job: the highlight stands at its full height while its row unfolds under it', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const [, gone, next] = await listed(page);
+      await openJob(page, gone!);
+      const height = (await row(page, gone!).boundingBox())!.height;
+      await archiveByTool(page, gone!);
+      await expect(row(page, next!)).toHaveAttribute('aria-current', 'true');
+      await motionSettled(page);
+      const place = (await row(page, next!).boundingBox())!.y;
+      const frames = await watch(page, next!);
+      await undo(page);
+      await expect(row(page, gone!)).toHaveAttribute('aria-current', 'true');
+      await motionSettled(page);
+      await expectHighlightOn(page, gone!);
+      const painted = await frames();
+      // The next row glides away from under it: no snap.
+      glided(
+        painted.map((frame) => frame.y!),
+        height,
+      );
+      // The highlight never moves and never changes its height.
+      for (const frame of painted) {
+        expect(Math.round(frame.tint)).toBe(height);
+        expect(Math.round(frame.tintY)).toBe(Math.round(place));
+      }
+    });
+
+    test('the open job, with another job opened since: the highlight glides there, one height', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const [, gone, , further] = await listed(page);
+      await openJob(page, gone!);
+      const height = (await row(page, gone!).boundingBox())!.height;
+      await archiveByTool(page, gone!);
+      await openJob(page, further!);
+      const frames = await watch(page, further!);
+      await undo(page);
+      await expect(row(page, gone!)).toHaveAttribute('aria-current', 'true');
+      await motionSettled(page);
+      await expectHighlightOn(page, gone!);
+      const painted = await frames();
+      for (const [at, frame] of painted.entries()) {
+        expect(Math.round(frame.tint)).toBe(height);
+        if (at > 0) expect(frame.tintY).toBeLessThanOrEqual(painted[at - 1]!.tintY + 1);
+      }
+    });
+
+    test('a day comes back with its last row, heading and all', async ({ page }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const { active } = await stubList(page);
+      const days = page.getByTestId('day-heading');
+      const count = await days.count();
+      // The rows of the second day: two moves of different kinds, so each has its own toast.
+      const day = days.nth(1).locator('xpath=..');
+      const keys = await day
+        .locator('[data-key]')
+        .evaluateAll((items) =>
+          items.map((item) => (item as HTMLElement).dataset.key!.replace(':', '-')),
+        );
+      expect(keys.length).toBe(2);
+      const next = active[active.indexOf(keys[1]!) + 1]!;
+      await viaMenu(page, 'trash', keys[0]!);
+      await expect(row(page, keys[0]!)).toHaveCount(0);
+      await motionSettled(page);
+      await archiveByTool(page, keys[1]!);
+      await expect(days).toHaveCount(count - 1);
+      const frames = await watch(page, next);
+      await undo(page);
+      await expect(days).toHaveCount(count);
+      await motionSettled(page);
+      const painted = await frames();
+      const tops = painted.map((frame) => frame.y!);
+      const height = tops.at(-1)! - tops[0]!;
+      glided(tops, height);
+      // The heading comes with the row.
+      expect(height).toBeGreaterThan((await row(page, keys[1]!).boundingBox())!.height);
+    });
+  });
+
   test('the last job of a place goes: no head; its undo brings the list and the head back', async ({
     page,
   }) => {

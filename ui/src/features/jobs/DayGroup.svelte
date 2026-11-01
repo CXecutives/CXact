@@ -4,7 +4,8 @@
   "Ausgeschlossen": no heading). A hairline above each row but the first, from the title (52)
   to 10 before the row's end, hidden next to the row under the pointer and next to the open
   one (the highlight stands there). A row the user moves out folds its height away; the day
-  folds with its last row, heading and all. When a list opens, its first rows rise into place
+  folds with its last row, heading and all; an undo brings them back the same way, unfolding,
+  so everything below glides there and back. When a list opens, its first rows rise into place
   one after the other (lib/motion enterList; `opening`, at most the first --stagger-max). The
   day's wrapper stays unpositioned: only its heading sticks, and the rows measure from the
   list (RowBar).
@@ -15,9 +16,9 @@
   import type { JobView } from '$lib/ipc/types';
   import { enterList } from '$lib/motion/enter';
   import { staggerLimit } from '$lib/motion/motion';
-  import { rowCollapse } from '$lib/motion/transitions';
+  import { rowCollapse, unfold } from '$lib/motion/transitions';
   import { keyOf } from '$lib/state/jobRows';
-  import { moving } from './actions';
+  import { moving, returning } from './actions';
 
   interface Props {
     /** The day's heading (null: a section without days). */
@@ -50,7 +51,12 @@
   const folding = $derived(jobs.length > 0 && jobs.every((job) => moving.has(keyOf(job.key))));
 </script>
 
-<div class="day" data-testid={testid ?? undefined} out:rowCollapse={{ on: folding }}>
+<div
+  class="day"
+  data-testid={testid ?? undefined}
+  in:unfold={{ on: jobs.length > 0 && jobs.every((job) => returning.has(keyOf(job.key))) }}
+  out:rowCollapse={{ on: folding }}
+>
   {#if label !== null}<DayHeader {label} testid="day-heading" />{/if}
   {#each jobs as job, index (keyOf(job.key))}
     {@const key = keyOf(job.key)}
@@ -60,6 +66,7 @@
       data-key={key}
       data-open={key === open ? '' : undefined}
       data-rests=""
+      in:unfold={{ on: returning.has(key) }}
       out:rowCollapse={{ on: moving.has(key) }}
       use:enterList={{ index: start + index, on: rises }}
     >

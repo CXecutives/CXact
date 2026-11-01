@@ -6,7 +6,8 @@
   by its translateY (180 ms, ease-out, like the sidebar's pill and the segment's thumb); a
   target out of sight, fast browsing (pace.ts: the arrow keys held, opens close together) and
   far jumps place it. It stays with its row whatever moves the rows: at once when rows arrive
-  or fold away above it, gliding along when the list re-sorts. It is simply there the first
+  or fold away above it, gliding along when the list re-sorts. It is the height of its row
+  from the start, also of a row an undo unfolds under it. It is simply there the first
   time: when the list is built or comes back, and after a reload, another filter or a search.
   Opening a job while none is open fades it in, closing fades it out. A job that leaves the
   list (archive, Papierkorb) keeps it where its row was until the next job opens there: it
@@ -69,7 +70,7 @@
   }
 
   /** The row's box: its top in the list (summed along the offset parents: a day's wrapper
-   *  stays unpositioned, a row's own wrapper is) and its height. */
+   *  stays unpositioned, a row's own wrapper is) and its whole height, also while it unfolds. */
   function boxOf(item: HTMLElement): BarBox {
     const list = bar?.parentElement ?? null;
     let top = 0;
@@ -77,7 +78,7 @@
       top += node.offsetTop;
       node = node.offsetParent;
     }
-    return { top, height: item.offsetHeight };
+    return { top, height: item.scrollHeight };
   }
 
   /** Where the row will stand once the rows folding away above it are gone. */
