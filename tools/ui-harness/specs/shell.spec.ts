@@ -970,28 +970,57 @@ for (const os of [WIN, MAC]) {
 // The window still moves by the bar while a dialog is open: on Windows the caption window of
 // platform.rs lies over the bar and answers for it; on macOS only the page can answer, by a
 // direct hit on a drag region (Tauri's drag script).
+/** A press at this point moves the window. */
+const movesWindow = (page: Page, x: number, y: number): Promise<boolean> =>
+  page.evaluate(
+    ([x, y]) => document.elementFromPoint(x!, y!)?.hasAttribute('data-tauri-drag-region') ?? false,
+    [x, y],
+  );
+
+/** All of the bar moves the window, the room of the traffic lights too, and only the bar. */
+async function expectBarMoves(page: Page): Promise<{ height: number }> {
+  const bar = (await page.getByTestId('title-bar').boundingBox())!;
+  for (const [x, y] of [
+    [0, 0],
+    [600, bar.height / 2],
+    [bar.width - 1, bar.height - 1],
+  ] as const) {
+    expect(await movesWindow(page, x, y), `${x},${y}`).toBe(true);
+  }
+  expect(await movesWindow(page, 600, bar.height)).toBe(false);
+  return bar;
+}
+
+test('macos: while the closing note stands the bar still moves the window', async ({ page }) => {
+  await open(page, MAC);
+  await page.evaluate(() => window.__harness.fire('closing', null));
+  await expect(page.getByTestId('closing')).toBeVisible();
+  await motionSettled(page);
+  await expectBarMoves(page);
+});
+
+test('the closing note holds the keys like a dialog: nothing behind it is pressed', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const settings = page.getByTestId('nav-settings');
+  await settings.focus();
+  await page.evaluate(() => window.__harness.fire('closing', null));
+  await expect(page.getByTestId('closing')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('view-settings')).toHaveCount(0);
+});
+
 test('macos: while a dialog is open the bar still moves the window', async ({ page }) => {
   await open(page, `${MAC}&view=settings`);
   await (await reveal(page, page.getByTestId('reset'))).click();
   const dialog = page.getByTestId('dialog-reset');
   await expect(dialog).toBeVisible();
   await motionSettled(page);
-  const bar = (await page.getByTestId('title-bar').boundingBox())!;
-  const moves = (x: number, y: number): Promise<boolean> =>
-    page.evaluate(
-      ([x, y]) =>
-        document.elementFromPoint(x!, y!)?.hasAttribute('data-tauri-drag-region') ?? false,
-      [x, y],
-    );
-  // All of the bar, the room of the traffic lights too, and only the bar.
-  for (const [x, y] of [
-    [0, 0],
-    [600, bar.height / 2],
-    [bar.width - 1, bar.height - 1],
-  ] as const) {
-    expect(await moves(x, y), `${x},${y}`).toBe(true);
-  }
-  expect(await moves(600, bar.height)).toBe(false);
+  const bar = await expectBarMoves(page);
   // The bar stays dimmed: what moves the window paints nothing over the scrim.
   const painted = await page.evaluate(
     ([y]) => getComputedStyle(document.elementFromPoint(600, y!)!).backgroundColor,
@@ -1012,7 +1041,7 @@ test('macos: while a dialog is open the bar still moves the window', async ({ pa
   // Without a dialog the bar's buttons are pressed again, nothing lies over them.
   await expect(page.getByTestId('history-back')).toBeVisible();
   const back = (await page.getByTestId('history-back').boundingBox())!;
-  expect(await moves(back.x + back.width / 2, back.y + back.height / 2)).toBe(false);
+  expect(await movesWindow(page, back.x + back.width / 2, back.y + back.height / 2)).toBe(false);
   // A dialog never reaches the bar's height, where the traffic lights lie over the page.
   await page.setViewportSize({ width: 480, height: 200 });
   await (await reveal(page, page.getByTestId('reset'))).click();

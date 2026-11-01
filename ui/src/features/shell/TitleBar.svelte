@@ -20,10 +20,10 @@
   --titlebar-tools-start and --titlebar-tools-end, to the page; src-tauri/src/platform.rs.
   macOS and the gaps between the buttons: Tauri's drag script). A press on a button here
   never takes the focus, like on a native title bar. In the setup the bar holds none of its
-  buttons (only the caption buttons on Windows) and all of it moves the window. While a
-  dialog's scrim lies over the bar it still moves the window and that cancels nothing: on
-  Windows by the same window of the OS, on macOS by a transparent drag region of its height
-  that rises over the scrim (`overScrim`).
+  buttons (only the caption buttons on Windows) and all of it moves the window. While the scrim
+  of a modal (a dialog, the closing note) lies over the bar it still moves the window and that
+  cancels nothing: on Windows by the same window of the OS, on macOS by a transparent drag region
+  of its height that rises over the scrim (`overScrim`).
   The part over the view (`ground`) slides with the view when the sidebar docks or folds
   (App, data-dock-slide); a strip of its end colour beyond its right edge fills the bar
   while it is drawn in from the left.
@@ -257,7 +257,7 @@
     width: var(--traffic-lights-width);
   }
 
-  /* macOS, while a dialog stands: only a direct hit on a drag region moves the window (Tauri's
+  /* macOS, while a modal stands: only a direct hit on a drag region moves the window (Tauri's
      drag script), and the scrim takes every hit, so this one lies over it. Outside the bar,
      which is a layer of its own below the scrim; a dialog stays clear of it (Dialog.svelte). */
   .over-scrim {

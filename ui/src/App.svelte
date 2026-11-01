@@ -13,8 +13,9 @@
   Jobs view with the last results. Closing while a
   fetch runs asks first (features/shell/CloseDialog.svelte). Closing while the app is busy
   keeps the window until that has stopped; a calm note says what it waits for (a fetch, a
-  rescore, a sign-in, the files) and lies over the whole window, its top bar too, like a
-  dialog's scrim. Profil and Einstellungen keep where they were scrolled to
+  rescore, a sign-in, the files) and counts as a modal dialog: it lies over the whole window, its
+  top bar too, nothing behind it takes a key, and the bar still moves the window (TitleBar).
+  Profil and Einstellungen keep where they were scrolled to
   while the app runs (a return finds the same place). A start whose data cannot load says so
   and offers to try again, to restore a backup (the dialog of Einstellungen, whose restore
   loads the app again) and the data folder; what the restore or the folder could not do stays a
@@ -266,8 +267,15 @@
       {/if}
     </main>
     {#if closing}
-      <div class="closing" data-testid="closing" role="status" transition:fade>
-        <p class="closing-note">
+      <div
+        class="closing"
+        data-testid="closing"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="closing-note"
+        transition:fade
+      >
+        <p class="closing-note" id="closing-note" role="status">
           <Spinner size="sm" label={null} /><span>{t.shell.closing}</span>
         </p>
       </div>
