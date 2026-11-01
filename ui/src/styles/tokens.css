@@ -207,7 +207,6 @@
   --chosen-text: hsl(var(--p-navy));
   /* The soft ground of a state: the ban (excluded). */
   --danger-tint: hsl(var(--p-red-50));
-  --danger-edge: hsl(var(--p-red-100));
   --danger-strong: var(--score-ring-0);
   --danger-soft: hsl(var(--p-red-50));
   /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
@@ -754,11 +753,9 @@
   --empty-text-max: 300px;
   --empty-actions-gap: var(--space-16);
   /* The state box (StateBox): the cream ground with a hairline, 12 20 inside, at least
-     56 high, its parts 14 apart; an excluded job's on the soft red. */
+     56 high, its parts 14 apart. */
   --state-surface: var(--bg);
   --state-edge: var(--border);
-  --state-ban-surface: var(--danger-tint);
-  --state-ban-edge: var(--danger-edge);
   --state-pad-y: var(--space-12);
   --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
