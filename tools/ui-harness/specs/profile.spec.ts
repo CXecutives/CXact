@@ -1170,6 +1170,26 @@ async function manyTools(page: Page): Promise<Locator> {
   return tools;
 }
 
+test('Tab goes through a long folded field: its input opens it, the next Tab goes on', async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = await manyTools(page);
+  const more = page.getByTestId('profile-tools-more');
+  const input = tools.locator('input');
+  const next = page.getByTestId('profile-industries').locator('input');
+  await page.getByTestId('profile-years').click();
+  await page.keyboard.press('Tab');
+  await expect(input).toBeFocused();
+  await expect(more).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(next).toBeFocused();
+  await expect(more).toBeVisible();
+  await page.keyboard.press('Shift+Tab');
+  await expect(input).toBeFocused();
+  await expect(more).toHaveCount(0);
+});
+
 test('with a long folded field the Profil returns to its place', async ({ page }) => {
   await profile(page);
   await manyTools(page);

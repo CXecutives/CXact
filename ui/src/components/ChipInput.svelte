@@ -33,7 +33,8 @@
   `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
   focus; a click on it, or the focus, shows them all, and the caret a press put at their end
-  stays in view (the keyboard's way keeps it there by itself, input.ts).
+  stays in view (the keyboard's way keeps it there by itself, input.ts). The button is no Tab
+  stop: it would go as its own focus opens the fold, and the focus with it; Tab reaches the input.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -398,14 +399,13 @@
       </span>
     {/each}
     {#if visible.length < values.length}
-      <span class="more" data-keep-focus>
-        <Button
-          variant="link"
-          label={t.profile.field.moreChips(values.length - visible.length)}
-          testid={testid ? `${testid}-more` : null}
-          onclick={() => (folder.opened = true)}
-        />
-      </span>
+      <Button
+        variant="link"
+        inField
+        label={t.profile.field.moreChips(values.length - visible.length)}
+        testid={testid ? `${testid}-more` : null}
+        onclick={() => (folder.opened = true)}
+      />
     {/if}
     {#if entry}
       <!-- As wide as its placeholder at least (sizer): it stays beside the chips while its
@@ -569,9 +569,5 @@
 
   .folded .input {
     padding: 0;
-  }
-
-  .more {
-    display: inline-flex;
   }
 </style>
