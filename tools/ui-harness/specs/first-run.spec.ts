@@ -402,6 +402,58 @@ test('Abbrechen stops the evaluation in the backend and goes back to the upload'
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
+test('Weiter from the keyboard: the focus goes along to what is missing, a letter jumps nowhere', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  const roles = page.getByTestId('profile-roles').locator('input');
+  await roles.click();
+  await page.keyboard.type('Interim CFO');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => marks(page)).toEqual(['competences', 'languages']);
+  const add = page.getByTestId('competences-add-button');
+  await expect(add).toBeInViewport();
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.type('x');
+  await expect(roles).toHaveValue('');
+  await expect(add).toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
+});
+
+test('Ab Datum with its day still empty holds Weiter up as little as the Profil', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  await fillRequired(page);
+  await page.getByTestId('profile-available').click();
+  await page
+    .getByRole('listbox')
+    .getByRole('option', { name: T.profile.availability.from, exact: true })
+    .click();
+  await expect(page.getByTestId('profile-date')).toHaveValue('');
+  await next(page).click();
+  await expectStep(page, T.firstRun.mailbox);
+  const form = await page.evaluate(() => window.__harness.form());
+  expect(form?.available).toEqual({ kind: 'now' });
+});
+
+test("Weiter's failed save low on the page: its box comes into view", async ({ page }) => {
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  await fillRequired(page);
+  await page.getByTestId('profile-form').evaluate((form) => {
+    form.scrollIntoView({ block: 'end' });
+  });
+  await expect(heading(page)).not.toBeInViewport();
+  await failNext(page, 'save_profile');
+  await next(page).click();
+  await expectStep(page, T.firstRun.profile);
+  const box = page.getByTestId('profile-save-error');
+  await expect(box).toHaveText(T.error.text('db', {}));
+  await expect(box).toBeInViewport();
+});
+
 test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
   page,
 }) => {

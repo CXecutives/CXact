@@ -69,6 +69,8 @@
 //   (`hover`, `holdHover` of hold.ts); a press on a tooltip's anchor holds the same way, so
 //   the button that takes the place of the one pressed shows no tooltip until the pointer moves
 // - a tooltip's bubble goes on a press anywhere, a scroll of any pane and Esc (`onDismiss`)
+// - what leaving a field does waits for the press that left it to land, and a window going to
+//   the back leaves nothing (`afterPress`)
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -715,7 +717,8 @@ function onFocusIn(event: FocusEvent): void {
   // A modal dialog takes the focus when it opens: from then on the wheel is held for it
   // (onWheel).
   if (closest(node, MODAL) !== null) watchWheel('modal', true);
-  if (!keyboardFocus || !(node instanceof HTMLElement)) return;
+  // What only holds the focus is no control, and may be taller than the area.
+  if (!keyboardFocus || !(node instanceof HTMLElement) || isNowhere(node)) return;
   // After the engine's own scroll into view.
   requestAnimationFrame(() => keepInView(node));
 }
@@ -1478,6 +1481,32 @@ function pressOnFieldBox(event: MouseEvent): boolean {
   return true;
 }
 
+/** What waits for the left press under way to land (`afterPress`); null: no press is down. */
+let pressWaits: (() => void)[] | null = null;
+
+/**
+ * What leaving `field` does (a fold, a message, a chip that takes a line) moves rows, and rows
+ * moved between press and release take the click from the control pressed. So `run` waits for
+ * the left press that left the field, until its click comes (ahead of the control's handler) or
+ * right after its release; without a press it runs at once. It does not run when `field` holds
+ * the focus by then: a window going to the back leaves it there, nothing was left.
+ */
+export function afterPress(field: EventTarget | null, run: () => void): void {
+  const left = (): void => {
+    if (document.activeElement !== field) run();
+  };
+  if (pressWaits === null) left();
+  else pressWaits.push(left);
+}
+
+/** The press has landed: what waited for it comes, in its order. */
+function pressLanded(): void {
+  if (pressWaits === null) return;
+  const waiting = pressWaits;
+  pressWaits = null;
+  for (const run of waiting) run();
+}
+
 let installed = false;
 
 export function installInput(): void {
@@ -1499,6 +1528,10 @@ export function installInput(): void {
     'mousedown',
     (event) => {
       keyboardFocus = false;
+      if (event.button === LEFT) {
+        pressLanded();
+        pressWaits = [];
+      }
       dismiss('press', event.target);
       if (pressesElsewhere(event) || pressOutsideMenu(event)) {
         firstPress = null;
@@ -1562,7 +1595,10 @@ export function installInput(): void {
   document.addEventListener(
     'mouseup',
     (event) => {
-      if (event.button === LEFT) endTextPress();
+      if (event.button === LEFT) {
+        endTextPress();
+        setTimeout(pressLanded, 0);
+      }
       if (event.button >= BACK) {
         event.preventDefault();
         if (event.button === BACK) go(backs);
@@ -1587,6 +1623,8 @@ export function installInput(): void {
       // back to the very pixel it pressed finds the rows and the tooltips awake.
       pointerMoved(event);
       if (!otherButtonsDown(event) && !swallow) auxPress(false);
+      // A release that went elsewhere (the window moved by its bar) was a release too.
+      if ((event.buttons & 1) === 0) pressLanded();
       if (pressedInText) {
         if ((event.buttons & 1) === 0) endTextPress();
         else if (movedFromPress(event)) textDrag(true);
@@ -1609,6 +1647,7 @@ export function installInput(): void {
     },
     capture,
   );
+  document.addEventListener('click', pressLanded, capture);
   // Some engines (WebKit) still send `click` for the middle button: it never reaches a
   // control.
   document.addEventListener(
@@ -1653,6 +1692,7 @@ export function installInput(): void {
     capture,
   );
   window.addEventListener('blur', () => {
+    pressLanded();
     guardZoom(false);
     endSwallow();
     endTextPress();

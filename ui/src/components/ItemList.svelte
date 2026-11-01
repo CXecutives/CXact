@@ -22,7 +22,7 @@
   import type { Action } from 'svelte/action';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
-  import { formKeys, removeBy } from '$lib/input/input';
+  import { afterPress, formKeys, removeBy } from '$lib/input/input';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { settled } from '$lib/motion/settled.svelte';
   import Button from './Button.svelte';
@@ -105,10 +105,12 @@
     const next = event.relatedTarget;
     // The button that opened the row goes with the opening: that is no leaving.
     if (from instanceof HTMLButtonElement && from.dataset.keepFocus === undefined) return;
-    if ((next instanceof Node && addRow?.contains(next)) || !document.hasFocus()) return;
-    void tick().then(() => {
-      const field = addRow?.querySelector('input');
-      if (field && field.value.trim() === '') close();
+    if (next instanceof Node && addRow?.contains(next)) return;
+    afterPress(from, () => {
+      void tick().then(() => {
+        const field = addRow?.querySelector('input');
+        if (field && field.value.trim() === '') close();
+      });
     });
   }
 </script>
@@ -235,11 +237,10 @@
     padding: var(--form-row-control-y) var(--form-row-pad-x);
   }
 
+  /* Its first line on the field's line, like a field's label; a long name grows downward. */
   .name {
-    display: flex;
-    align-items: center;
     min-width: 0;
-    min-height: var(--control-field);
+    padding-top: calc((var(--control-field) - var(--leading-md)) / 2);
     overflow-wrap: anywhere;
     font: var(--type-label);
   }
@@ -281,6 +282,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    justify-self: end;
     width: var(--control-icon);
     height: var(--control-icon);
     margin-block: calc((var(--control-field) - var(--control-icon)) / 2);
@@ -310,6 +312,10 @@
   @container (width < 560px) {
     .line {
       grid-template-columns: minmax(0, 1fr) var(--control-icon);
+    }
+
+    .name {
+      padding-top: 0;
     }
 
     .value {

@@ -31,15 +31,17 @@
   import Group from '$components/Group.svelte';
   import Section from '$components/Section.svelte';
   import { t } from '$lib/i18n/t';
-  import { formKeys } from '$lib/input/input';
+  import { afterPress, byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
+  import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { onMount, tick } from 'svelte';
   import CompetenceList from './CompetenceList.svelte';
   import LanguageList from './LanguageList.svelte';
   import ProfileControl from './ProfileControl.svelte';
+  import { keyOf } from './rows';
   import { LABEL_OF, SECTIONS, fieldOf, fieldsOf, type Control, type NumberKey } from './sections';
   import { vocabulary } from './vocabulary.svelte';
 
@@ -99,6 +101,23 @@
       : null,
   );
 
+  /** What holds the save goes back to what was handed out, and only that ("Verwerfen": the
+   *  question names one value, and the other changes stay): a day that does not read, a number
+   *  that is wrong, a competence's years by its name, and a value the backend refused. */
+  export function dropWrong(): void {
+    if (editor.dateInvalid) editor.storedDay();
+    for (const key of Object.keys(NUMBER_LIMITS) as NumberKey[]) {
+      if (invalid.some((each) => each.field === key)) form[key] = editor.before[key];
+    }
+    for (const row of form.competences) {
+      if (row.years !== null && row.years > MAX_YEARS) {
+        const was = editor.before.competences.find((each) => keyOf(each.name) === keyOf(row.name));
+        row.years = was?.years ?? null;
+      }
+    }
+    if (fieldError !== null) editor.restore(fieldError.field, fieldError.row);
+  }
+
   /** A field's label as the page shows it. */
   const labelOf = (field: string): string =>
     String((words as Record<string, unknown>)[LABEL_OF[field as keyof ProfileForm] ?? field]);
@@ -127,6 +146,21 @@
     return wrong ? { row: wrong.row, text: wrong.text } : null;
   }
 
+  // ------------------------------------------------------------ the rates against each other
+
+  /** A day rate holds the caret. */
+  let rating = $state(false);
+  const isRate = (node: EventTarget | null): boolean =>
+    node instanceof HTMLInputElement &&
+    node.closest('[data-field="dayRateWish"], [data-field="dayRateMin"]') !== null;
+  /** The wished rate is under the minimum, as last judged: once neither rate holds the caret,
+   *  so what is on its way to a value says nothing and moves no row. */
+  let below = $state(false);
+  $effect(() => {
+    const { dayRateWish: wish, dayRateMin: least } = form;
+    if (!rating) below = wish !== null && least !== null && wish < least;
+  });
+
   const isMissing = (field: string): boolean => missing.includes(field);
   /** A row shows while its field has something to do (Mindestgehalt). */
   const shown = (control: Control): boolean =>
@@ -136,10 +170,28 @@
 
   let root = $state<HTMLElement | null>(null);
 
-  /** Nothing holds the save, as far as can be said by itself: a day that does not read is
-   *  judged only once there is text in it ("Ab Datum" just chosen says nothing yet). */
+  /** The field typed in since the caret came to it. */
+  let typedIn: EventTarget | null = null;
+
+  /** The caret stands in a field typed in: its value is not done yet, and what the form sends
+   *  would hold half of it. A field the caret only came to holds what it held. */
+  export function typing(): boolean {
+    return typedIn !== null && document.activeElement === typedIn;
+  }
+
+  /** The focus left a control of the form, for good once the press that left it has landed. */
+  function focusLeft(event: FocusEvent): void {
+    const toRate = isRate(event.relatedTarget);
+    afterPress(event.target, () => {
+      if (!toRate) rating = false;
+      typedIn = null;
+      onleft?.();
+    });
+  }
+
+  /** Nothing holds the save; a day that does not read says so now. */
   export function valid(): boolean {
-    if (editor.dateInvalid && editor.dateText.trim() !== '') editor.judged = true;
+    if (editor.dateInvalid) editor.judged = true;
     return heldField() === null;
   }
 
@@ -152,13 +204,28 @@
     return field === null;
   }
 
-  /** A field of the form comes up under the top bar, so the press always moves it, without
-   *  the caret; `false` when the field is not on the page. */
-  export async function revealField(field: string): Promise<boolean> {
+  /** A field of the form glides up under the top bar, so the press always moves it, without
+   *  the caret; from the keyboard its row holds the focus (no caret, no ring), so that Tab goes
+   *  on from there. With `move` off the page stays; `false` when the field is not on the page. */
+  export async function revealField(field: string, move = true): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
-    scope?.scrollIntoView({ block: 'start' });
-    return scope !== null && scope !== undefined;
+    if (scope === null || scope === undefined) return false;
+    if (!move) return true;
+    glideIntoView(scope, 'start');
+    if (byKeyboard()) {
+      scope.tabIndex = -1;
+      scope.focus({ preventScroll: true });
+    }
+    return true;
+  }
+
+  /** The page glides up to its head and the state boxes under it: what the user's own action
+   *  caused comes into view. */
+  export async function showHead(): Promise<void> {
+    await tick();
+    const pane = root === null ? null : scrollerOf(root);
+    if (pane !== null) glideTo(pane, 0);
   }
 
   // The way in that opened the form is gone: Esc and Enter reach the form (no caret).
@@ -180,7 +247,11 @@
   role="group"
   bind:this={root}
   use:formKeys={rootKeys}
-  onfocusout={() => onleft?.()}
+  onfocusin={(event) => {
+    if (isRate(event.target)) rating = true;
+  }}
+  onfocusout={focusLeft}
+  oninput={(event) => (typedIn = event.target)}
   data-testid="profile-form"
 >
   {#each SECTIONS as section (section.id)}
@@ -211,7 +282,7 @@
                   data-missing={isMissing(fieldOf(c)) ? '' : undefined}
                   transition:unfold
                 >
-                  <div class="row"><ProfileControl {c} {id} {errorOf} /></div>
+                  <div class="row"><ProfileControl {c} {id} {errorOf} {below} /></div>
                 </div>
               {/if}
             {/each}

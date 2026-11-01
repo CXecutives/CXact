@@ -1,11 +1,13 @@
 // `use:keepScroll={'profile'}` on a view's scroll area: where it was scrolled to is kept per
 // view while the app runs, and a return to the view finds it there again (Profil and
 // Einstellungen, App.svelte), like a native window keeps its panes. The place is noted on
-// every scroll; on mount it comes back as soon as the content is tall enough for it (a view
-// that loads its content grows after its first frame). A scroll by the user in the
-// meantime wins.
+// every scroll; it comes back in the first frame, before that frame is painted and after what
+// folds on its first measure (a long tag field), or as soon as the content is tall enough for
+// it (a view that loads its content grows after its first frame). A scroll by the user in the
+// meantime wins, and so does a way into view (a view opened for one of its parts).
 
 import type { Action } from 'svelte/action';
+import { wasLed } from '../motion/scroll';
 
 const places = new Map<string, number>();
 
@@ -26,6 +28,10 @@ export const keepScroll: Action<HTMLElement, string> = (node, key) => {
   const room = (): number => node.scrollHeight - node.clientHeight;
   const restore = (left: number): void => {
     if (!restoring) return;
+    if (wasLed(node)) {
+      restoring = false;
+      return;
+    }
     if (room() >= target || left === 0) {
       node.scrollTop = target;
       restoring = false;
@@ -43,7 +49,7 @@ export const keepScroll: Action<HTMLElement, string> = (node, key) => {
     places.set(current, node.scrollTop);
   };
 
-  if (target > 0) restore(WAIT_FRAMES);
+  if (target > 0) frame = requestAnimationFrame(() => restore(WAIT_FRAMES));
   else restoring = false;
   node.addEventListener('scroll', note, { passive: true });
 

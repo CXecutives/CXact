@@ -17,6 +17,11 @@ interface Glide {
 }
 
 const glides = new WeakMap<HTMLElement, Glide>();
+/** The panes something asked to move this way. */
+const led = new WeakSet<HTMLElement>();
+
+/** Something asked `pane` to move (a way into view): a return to a kept place gives way. */
+export const wasLed = (pane: HTMLElement): boolean => led.has(pane);
 
 /** The farthest the pane scrolls down. */
 const maxTop = (pane: HTMLElement): number => Math.max(0, pane.scrollHeight - pane.clientHeight);
@@ -31,6 +36,7 @@ export function stopGlide(pane: HTMLElement): void {
 
 /** Scroll `pane` to `top` (clamped to what it can scroll) in one short tween. */
 export function glideTo(pane: HTMLElement, top: number): void {
+  led.add(pane);
   const to = Math.round(Math.min(maxTop(pane), Math.max(0, top)));
   stopGlide(pane);
   const ms = duration('slow');
@@ -74,13 +80,18 @@ export function scrollerOf(node: Element): HTMLElement | null {
 }
 
 /**
- * Bring `node` into view in its scroll area in one short tween: `center` puts it in the
- * middle (a passage the user jumps to), `nearest` scrolls only as far as needed. The pane's
- * scroll-padding (a sticky band) counts like the engine's scrollIntoView counts it.
+ * Bring `node` into view in its scroll area in one short tween: `start` puts it at the top
+ * (a field of the form the user is led to), `center` in the middle (a passage the user jumps
+ * to), `nearest` scrolls only as far as needed. The pane's scroll-padding (a sticky band) and
+ * the node's scroll-margin-top count like the engine's scrollIntoView counts them.
  */
-export function glideIntoView(node: Element, block: 'center' | 'nearest' = 'nearest'): void {
+export function glideIntoView(
+  node: Element,
+  block: 'start' | 'center' | 'nearest' = 'nearest',
+): void {
   const pane = scrollerOf(node);
   if (pane === null) return;
+  led.add(pane);
   const style = getComputedStyle(pane);
   const padTop = Number.parseFloat(style.scrollPaddingTop) || 0;
   const padBottom = Number.parseFloat(style.scrollPaddingBottom) || 0;
@@ -89,7 +100,9 @@ export function glideIntoView(node: Element, block: 'center' | 'nearest' = 'near
   const top = view.top + pane.clientTop + padTop;
   const bottom = view.top + pane.clientTop + pane.clientHeight - padBottom;
   let delta = 0;
-  if (block === 'center') {
+  if (block === 'start') {
+    delta = box.top - top - (Number.parseFloat(getComputedStyle(node).scrollMarginTop) || 0);
+  } else if (block === 'center') {
     delta = box.top + box.height / 2 - (top + bottom) / 2;
   } else if (box.top < top) {
     delta = box.top - top;

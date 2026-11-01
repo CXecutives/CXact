@@ -12,6 +12,7 @@
   import TextField from '$components/TextField.svelte';
   import { formatNumber } from '$lib/i18n/format';
   import { t } from '$lib/i18n/t';
+  import { afterPress } from '$lib/input/input';
   import { describedBy } from '$lib/state/described';
 
   interface Props {
@@ -98,10 +99,11 @@
   <span
     class="number"
     role="presentation"
-    onfocusout={() => {
-      text = shown(value);
-      rounded = cut;
-    }}
+    onfocusout={(event) =>
+      afterPress(event.target, () => {
+        text = shown(value);
+        rounded = cut;
+      })}
   >
     <span class="box" bind:this={box}>
       <TextField
@@ -133,9 +135,11 @@
 </span>
 
 <style>
+  /* Its note as far under it as a hint or an error under any field. */
   .stack {
     display: flex;
     flex-direction: column;
+    gap: var(--label-gap);
     min-width: 0;
   }
 

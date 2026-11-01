@@ -50,7 +50,7 @@
   <NumberField
     bind:value={row.years}
     label={words.yearsOf(row.name)}
-    unit={words.years}
+    unit={t.profile.unitOf('years', row.years)}
     invalid={row === refused}
     testid="competence-years"
   />
@@ -62,6 +62,7 @@
     bind:values={typed}
     placeholder={words.competence}
     suggestions={vocabulary.skills}
+    taken={listed.map((row) => row.name)}
     testid="competence-add"
     onchange={take}
   />

@@ -89,6 +89,22 @@ export function sameForm(a: ProfileForm, b: ProfileForm): boolean {
 
 const copy = (form: ProfileForm): ProfileForm => structuredClone($state.snapshot(form));
 
+/** A list with the row at `at` (counted among the rows with a name, as core does) as it was
+ *  handed out, or without it when it was not. */
+function rowBack<Row>(
+  rows: Row[],
+  handed: readonly Row[],
+  at: number,
+  name: (row: Row) => string,
+): Row[] {
+  const row = rows.filter((each) => name(each).trim() !== '')[at];
+  if (row === undefined) return rows;
+  const was = handed.find((each) => same(name(each).trim(), name(row).trim()));
+  return was === undefined
+    ? rows.filter((each) => each !== row)
+    : rows.map((each) => (each === row ? structuredClone(was) : each));
+}
+
 /** A save of the form: what was handed out and what the user made of it (core rebases the
  *  lists on what is stored meanwhile). Without a stored profile it is the first one. */
 function send(before: ProfileForm, after: ProfileForm): Promise<ProfileInfo> {
@@ -174,10 +190,10 @@ class ProfileEditor {
   origin = $state<DraftOrigin | null>(null);
   before = $state.raw<ProfileForm>(emptyForm());
   after = $state<ProfileForm>(emptyForm());
-  /** The day of "Verfügbar" as typed. */
+  /** The day of "Verfügbar" as typed, kept for "Ab Datum" while "Sofort" is chosen. */
   dateText = $state('');
-  /** The day is judged (said when it does not read): once its field is left with text in it
-   *  or on saving, never while it is typed. */
+  /** The day is judged (said when it does not read): once its field is left or on saving, never
+   *  while it is typed. */
   judged = $state(false);
   /** Text typed into a chip field that is no chip yet: a change like any other. */
   readonly typed = new TypedText();
@@ -193,14 +209,26 @@ class ProfileEditor {
 
   /** The form differs from what is stored. */
   get changed(): boolean {
-    return this.origin !== null && !sameForm(this.before, this.after);
+    return this.origin !== null && !sameForm(this.before, this.#done);
+  }
+
+  /** "Ab Datum" with its day still empty: not done yet, so it holds nothing. */
+  get #dayWaits(): boolean {
+    return this.after.available.kind === 'from' && this.dateText.trim() === '';
+  }
+
+  /** The form as far as it is done: what is stored stands for a day still empty. */
+  get #done(): ProfileForm {
+    return this.#dayWaits ? { ...this.after, available: this.before.available } : this.after;
   }
 
   #start(origin: DraftOrigin, before: ProfileForm, after: ProfileForm): void {
+    // A form with a day writes it; one without keeps it for "Ab Datum" while the form goes on.
+    if (after.available.kind === 'from') this.dateText = after.available.date;
+    else if (this.origin === null) this.dateText = '';
     this.origin = origin;
     this.before = copy(before);
     this.after = copy(after);
-    this.dateText = after.available.kind === 'from' ? after.available.date : '';
     this.judged = false;
   }
 
@@ -220,31 +248,76 @@ class ProfileEditor {
     this.origin = null;
   }
 
-  /** "Ab Datum" is chosen but the day does not read. */
+  /** "Ab Datum" is chosen and text stands as its day that does not read. */
   get dateInvalid(): boolean {
-    return this.after.available.kind === 'from' && isoDate(this.dateText) === null;
+    return (
+      this.after.available.kind === 'from' && !this.#dayWaits && isoDate(this.dateText) === null
+    );
+  }
+
+  /** Verfügbar goes back to what was handed out, with its day. */
+  storedDay(): void {
+    const stored = this.before.available;
+    this.after.available = structuredClone(stored);
+    this.dateText = stored.kind === 'from' ? stored.date : '';
+  }
+
+  /** The view goes: a day still empty was never given, what is stored stands. */
+  endDay(): void {
+    if (this.#dayWaits) this.storedDay();
+  }
+
+  /** A value the backend refused goes back to what was handed out: a list's row by its name (one
+   *  that was not handed out goes), any other value whole; what the form does not hold, nothing. */
+  restore(field: string, row: number | null): void {
+    if (field === 'available') this.storedDay();
+    else if (field === 'competences' && row !== null) {
+      this.after.competences = rowBack(
+        this.after.competences,
+        this.before.competences,
+        row,
+        (each) => each.name,
+      );
+    } else if (field === 'languages' && row !== null) {
+      this.after.languages = rowBack(
+        this.after.languages,
+        this.before.languages,
+        row,
+        (each) => each.language,
+      );
+    } else if (field in this.after) {
+      Object.assign(this.after, {
+        [field]: structuredClone((this.before as Record<string, unknown>)[field]),
+      });
+    }
   }
 
   /** Drops the changes: the stored profile as saved, or no form at all. */
   discard(stored: ProfileForm | null): void {
     this.typed.clear();
+    this.close();
     if (stored !== null) this.edit(stored);
-    else this.close();
   }
 
   /** Writes the form; the caller reloads the app state (and with it the stored form). */
   save(): Promise<ProfileInfo> {
     const before = copy(this.before);
     this.#sent = copy(this.after);
-    const after = normalized(copy(this.after));
+    const after = normalized(copy(this.#done));
     return serial(() => send(before, after));
   }
 
   /** A save is done and `form` is what the file holds now: the form shows it, and what was
-   *  changed while the save was under way stays a change. */
+   *  changed while the save was under way stays a change. "Ab Datum" stays chosen with its day
+   *  still empty. */
   settle(form: ProfileForm): void {
     if (sameForm(this.after, this.#sent)) {
+      const waits = this.#dayWaits;
       this.edit(form);
+      if (waits) {
+        this.after.available = { kind: 'from', date: '' };
+        this.dateText = '';
+      }
     } else {
       this.origin = 'stored';
       this.before = copy(form);
