@@ -8,6 +8,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, open, test } from './fixtures';
 import {
+  failNext,
   list,
   listed,
   openJob,
@@ -378,6 +379,83 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
   const out = await offered(excluded[0]!);
   expect(out.menu).toContain(`${T.actions.openAd} on`);
   expect(out.reader).toEqual(out.menu);
+});
+
+test.describe('Alert-Mail öffnen, the row and the job view alike', () => {
+  const key = 'freelancermap-2801';
+  /** A mailbox other than Gmail: no job has a link to its mail (core::view, commands/files.rs). */
+  const noGmail = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      window.__harness.editDetail = (detail) => ({
+        ...detail,
+        mail: { ...detail.mail, gmailUrl: null },
+      });
+    });
+  const dialog = (page: Page): Locator => page.getByTestId('dialog-mail');
+
+  test('without a Gmail link both read the mail CXact kept, in the one dialog', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await noGmail(page);
+    const y = (await row(page, key).boundingBox())!.y;
+    await viaMenu(page, 'mail', key);
+    await expect(dialog(page)).toBeVisible();
+    const text = await page.getByTestId('mail-text').innerText();
+    expect(text).not.toBe('');
+    await page.getByTestId('dialog-confirm').click();
+    await expect(dialog(page)).toHaveCount(0);
+    // No word of a mail that is gone, and the rows stayed where they were.
+    await expect(page.getByTestId('header-error')).toHaveCount(0);
+    expect((await row(page, key).boundingBox())!.y).toBe(y);
+    await openJob(page, key);
+    await stage(page).getByTestId('reader-mail').click();
+    await expect(page.getByTestId('mail-text')).toHaveText(text);
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toHaveCount(0);
+    expect(await calls(page, 'alert_mail')).toHaveLength(2);
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+  });
+
+  test('with a Gmail link both open it, and no dialog', async ({ page }) => {
+    await open(page, WIN);
+    const target = { kind: 'gmail', key: { portal: 'freelancermap', id: '2801' } };
+    await viaMenu(page, 'mail', key);
+    await expect.poll(() => calls(page, 'open_target')).toEqual([['open_target', { target }]]);
+    await openJob(page, key);
+    await stage(page).getByTestId('reader-mail').click();
+    await expect.poll(async () => (await calls(page, 'open_target')).length).toBe(2);
+    await expect(dialog(page)).toHaveCount(0);
+    expect(await calls(page, 'alert_mail')).toHaveLength(0);
+  });
+
+  test('a mail that does not come says so where it was asked', async ({ page }) => {
+    await open(page, WIN);
+    await noGmail(page);
+    await failNext(page, 'alert_mail');
+    await viaMenu(page, 'mail', key);
+    await expect(page.getByTestId('header-error')).toHaveText(T.error.text('db', {}));
+    await expect(dialog(page)).toHaveCount(0);
+    await openJob(page, key);
+    await failNext(page, 'alert_mail');
+    await stage(page).getByTestId('reader-mail').click();
+    await expect(page.getByTestId('toast-text')).toHaveText(T.error.text('db', {}));
+    await expect(dialog(page)).toHaveCount(0);
+  });
+
+  test('the dialog goes with the view', async ({ page }) => {
+    await open(page, WIN);
+    await noGmail(page);
+    await viaMenu(page, 'mail', key);
+    await expect(dialog(page)).toBeVisible();
+    // The native menu changes the view behind it.
+    await page.evaluate(() => window.__harness.fire('navigate', 'settings'));
+    await expect(page.getByTestId('view-settings')).toBeVisible();
+    await expect(dialog(page)).toHaveCount(0);
+    await page.evaluate(() => window.__harness.fire('navigate', 'jobs'));
+    await expect(row(page, key)).toBeVisible();
+    await expect(dialog(page)).toHaveCount(0);
+  });
 });
 
 test('an excluded row shows the ban in the ring place, without a number', async ({ page }) => {

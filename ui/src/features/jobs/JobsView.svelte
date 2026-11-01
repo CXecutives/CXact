@@ -24,6 +24,8 @@
   shown, like Profil and Einstellungen. The top bar's job view button and a search that no
   longer finds the job close it
   (the place's empty state). Esc closes only menus and dialogs: the app has no keys of its own.
+  An alert mail read in the app stands in its dialog here, whichever of a job's two ways to it
+  asked (actions.ts openMail: its row's menu, the job view's button).
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -46,6 +48,7 @@
   import Reader from './Reader.svelte';
   import ReaderSkeleton from './ReaderSkeleton.svelte';
   import ListHeader from './ListHeader.svelte';
+  import MailView from './MailView.svelte';
 
   const NO_JOB = 'none';
   const ERROR = 'error';
@@ -150,6 +153,11 @@
   });
 
   let header = $state<ListHeader | null>(null);
+
+  // A mail read in the app goes with the view (the native menu may change it behind the dialog).
+  $effect(() => () => {
+    jobs.storedMail = null;
+  });
 
   // A search that no longer finds the open job closes it (the list shows what it found);
   // only a change of the search does, never a job opened from elsewhere (an undo).
@@ -285,6 +293,8 @@
     {/if}
   </div>
 </div>
+
+<MailView mail={jobs.storedMail} onclose={() => (jobs.storedMail = null)} />
 
 <style>
   .jobs {

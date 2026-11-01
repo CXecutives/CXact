@@ -83,6 +83,20 @@ export function openAd(job: JobView): Promise<string | null> {
   return openTarget({ kind: 'jobUrl', key: job.key });
 }
 
+/** "Alert-Mail öffnen", the row's entry and the job view's button alike: the mail in Gmail where
+ *  the job has a link to it, else the one CXact kept, read in the app (its dialog stands in the
+ *  Jobs view, `jobs.storedMail`). Resolves with the error text, or null. */
+export async function openMail(job: JobView): Promise<string | null> {
+  try {
+    const { mail } = await invoke('job_detail', { key: job.key });
+    if (mail.gmailUrl !== null) return await openTarget({ kind: 'gmail', key: job.key });
+    jobs.storedMail = await invoke('alert_mail', { key: job.key });
+    return null;
+  } catch (error) {
+    return errorText(error);
+  }
+}
+
 /** What the job's menu needs from where it opens (the list's row; the row's tools and the
  *  reader's take the moves of the same context). */
 export interface JobMenuContext {
@@ -106,7 +120,7 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
   const show: MenuEntry[] = [];
   const does: Record<ShowId, () => Promise<string | null>> = {
-    mail: () => openTarget({ kind: 'gmail', key: job.key }),
+    mail: () => openMail(job),
     'open-ad': () => openAd(job),
     prompt: () => copyJobPrompt(job.key),
   };

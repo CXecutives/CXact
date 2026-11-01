@@ -46,7 +46,7 @@
   import { displayTitle } from '$lib/i18n/format';
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { JobDetail, OpenTarget, StoredMail } from '$lib/ipc/types';
+  import type { JobDetail, OpenTarget } from '$lib/ipc/types';
   import { animateOpen } from '$lib/motion/pace';
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
@@ -57,7 +57,6 @@
   import { toasts } from '$lib/state/toasts.svelte';
   import AdText from './AdText.svelte';
   import FactsCard from './FactsCard.svelte';
-  import MailView from './MailView.svelte';
   import ReaderHero from './ReaderHero.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
@@ -65,6 +64,7 @@
     include as includeJob,
     mayInclude,
     move,
+    openMail,
     purge,
     rowTools,
     seen,
@@ -170,23 +170,9 @@
     invoke('open_target', { target }).catch((error: unknown) => fail(errorText(error)));
   }
 
-  /** "Alert-Mail öffnen": the mail in Gmail, else the one CXact kept, read here. */
-  let storedMail = $state<StoredMail | null>(null);
-  async function openMail(): Promise<void> {
-    if (detail.mail.gmailUrl !== null) {
-      openTarget({ kind: 'gmail', key: job.key });
-      return;
-    }
-    try {
-      storedMail = await invoke('alert_mail', { key: job.key });
-    } catch (error) {
-      fail(errorText(error));
-    }
-  }
-
   const showDoes: Record<ShowId, () => void> = {
     'open-ad': () => openTarget({ kind: 'jobUrl', key: job.key }),
-    mail: () => void openMail(),
+    mail: () => void openMail(job).then(fail),
     prompt: () => void copyJobPrompt(job.key).then(fail),
   };
 
@@ -386,8 +372,6 @@
     {/each}
   </div>
 </article>
-
-<MailView mail={storedMail} onclose={() => (storedMail = null)} />
 
 <Dialog
   bind:open={confirmPurge}

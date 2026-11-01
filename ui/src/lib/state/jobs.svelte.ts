@@ -46,6 +46,7 @@ import type {
   JobView,
   Place,
   RunEvent,
+  StoredMail,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
 import { app } from './app.svelte';
@@ -168,6 +169,8 @@ class JobsStore {
    *  showed, then its placeholder shows (at once). */
   detailSlow = $state(false);
   detailError = $state<string | null>(null);
+  /** The alert mail read in the app, in its dialog (a mailbox without Gmail links). */
+  storedMail = $state.raw<StoredMail | null>(null);
 
   /** The counts over every job, without the search and the filter: what each place holds
    *  (the Papierkorb's to empty, whether a filter or a search left a place empty). */

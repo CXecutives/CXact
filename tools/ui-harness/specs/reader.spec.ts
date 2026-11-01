@@ -360,9 +360,9 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
     // The alert mail and the ad open outside.
     await actions.getByTestId('reader-mail').click();
-    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
-      target: { kind: 'gmail', key: { portal: 'freelancermap', id: '2801' } },
-    });
+    await expect
+      .poll(async () => (await calls(page, 'open_target')).at(-1)?.[1])
+      .toEqual({ target: { kind: 'gmail', key: { portal: 'freelancermap', id: '2801' } } });
     await actions.getByTestId('open-ad').click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2801' } },

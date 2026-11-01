@@ -2030,6 +2030,12 @@ type Handlers = {
 const find = (key: { portal: string; id: string }): JobView | undefined =>
   jobs.find((j) => j.key.portal === key.portal && j.key.id === key.id);
 
+/** What `job_detail` answers for a job now. */
+function detailShown(j: JobView): JobDetail {
+  const detail = structuredClone(detailOf(j));
+  return harness.editDetail === null ? detail : harness.editDetail(detail);
+}
+
 /** The Rust side of the `channel` argument of the command being handled. */
 let sender: Sender | null = null;
 
@@ -2064,8 +2070,7 @@ const handlers: Handlers = {
   job_detail: ({ key }) => {
     const j = find(key);
     if (j === undefined) throw fail('notFound');
-    const detail = structuredClone(detailOf(j));
-    return harness.editDetail === null ? detail : harness.editDetail(detail);
+    return detailShown(j);
   },
   // The alert mail as the app keeps it, for a mailbox without Gmail (view::alert_mail).
   alert_mail: ({ key }) => {
@@ -2281,6 +2286,13 @@ const handlers: Handlers = {
     // A new mail only to the contact an ad names (commands/files.rs).
     if (target.kind === 'contactMail' && !find(target.key)?.match?.facts.contactEmail) {
       throw fail('notFound', { what: 'mail' });
+    }
+    // A mail opens only by its Gmail id, which a mailbox other than Gmail has none of.
+    if (target.kind === 'gmail') {
+      const job = find(target.key);
+      if (job !== undefined && detailShown(job).mail.gmailUrl === null) {
+        throw fail('notFound', { what: 'mail' });
+      }
     }
     return null;
   },
