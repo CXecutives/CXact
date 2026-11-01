@@ -13,7 +13,7 @@
   on its group (`missing`, from ProfileView: once someone asked, by Weiter or its card's button): the
   field's edge and words or the list's add button turn orange, its label and the group's title
   stay ink (tokens.css, owner 2026-11-01). The row someone was taken to takes a moment's wash
-  (`revealField`, lib/motion/arrive.ts). A value that
+  and holds the focus for Tab and Enter (`revealField`, lib/motion/arrive.ts). A value that
   is too large, a 0 where at least 1 counts, a day that does not read and a value the backend
   refused are said at their field in their own sentence, stay with their error until they
   change, and only they hold the save (`wrongField` names the first).
@@ -215,9 +215,9 @@
   }
 
   /** A field of the form comes into view as far as needed and its row takes a moment's wash,
-   *  without the caret; from the keyboard its row holds the focus (no caret, no ring), so that
-   *  Tab goes on from there. With `move` off the page stays; `false` when the field is not on
-   *  the page. */
+   *  without the caret; its row holds the focus (no caret, no ring), so that Tab and Enter go on
+   *  from there, unless the answer of a save finds a caret a press put in a field: that stays.
+   *  With `move` off the page stays; `false` when the field is not on the page. */
   export async function revealField(field: string, move = true): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
@@ -226,9 +226,9 @@
     const row = arrivingRow(scope) ?? scope;
     glideIntoView(row, 'sight');
     washOver(row);
-    if (byKeyboard()) {
-      scope.tabIndex = -1;
-      scope.focus({ preventScroll: true });
+    if (byKeyboard() || document.activeElement?.matches('input, textarea') !== true) {
+      row.tabIndex = -1;
+      row.focus({ preventScroll: true });
     }
     return true;
   }

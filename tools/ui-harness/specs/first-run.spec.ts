@@ -618,6 +618,33 @@ test('above the bar of Dein Profil the caret goes on with its field, the row tak
   }
 });
 
+test('after a press on Weiter Tab and Enter go on from the row it led to, no caret, no jump', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  await next(page).click();
+  await expect.poll(() => marks(page)).toEqual(['roles', 'competences', 'languages']);
+  await next(page).click();
+  const add = page.getByTestId('competences-add-button');
+  await expect(add).toBeInViewport();
+  await motionSettled(page);
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
+  await expect(add).toBeInViewport();
+  // Pressed once more, the row holds the focus again, and Enter is Weiter from there too.
+  await next(page).click();
+  const languages = page.getByTestId('languages-add');
+  await expect(languages).toHaveAttribute('data-arrived', '');
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-field~="roles"]')).toHaveAttribute('data-arrived', '');
+  await expect(caret(page)).toHaveCount(0);
+});
+
 test('Weiter waits while a value is wrong: said at its field, which comes into view, no caret', async ({
   page,
 }) => {

@@ -1645,6 +1645,10 @@ test('a wrong competence: the way back glides to its row, which takes the wash, 
   await expect(first).toHaveAttribute('data-arrived', '');
   await expect(add).not.toHaveAttribute('data-arrived', '');
   await expect(first).toBeInViewport({ ratio: 1 });
+  // It holds the focus, no caret: Tab goes on to its value.
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('competence-years').first()).toBeFocused();
   // A row that is marked keeps its line: the wash is drawn beside it.
   const second = page.getByTestId('competences-item').nth(1);
   await second.getByTestId('competence-years').fill(String(MAX_YEARS + 1));
@@ -2020,12 +2024,46 @@ test('Ergänzen from the keyboard: the focus comes along, no caret; Tab goes on 
   await page.keyboard.press('Tab');
   await expect(add).toBeFocused();
   await expect(add).toBeInViewport();
-  // With the mouse the same place, and the focus goes nowhere.
+  // With the mouse the same place, and the same way on: no caret, and Tab stays there.
   await view.evaluate((node) => node.scrollTo(0, 0));
   await page.getByTestId('profile-missing-go').click();
   await expect(add).toBeInViewport();
   expect(await place()).toBe(byKeys);
-  await expect(page.locator('[data-field~="languages"]')).not.toBeFocused();
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
+  expect(await place()).toBe(byKeys);
+});
+
+test('Tab after a press on Ergänzen goes on from the row it led to, Shift+Tab back from there', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  const go = page.getByTestId('profile-missing-go');
+  await go.click();
+  await expect(field(page, 'roles')).toHaveAttribute('data-arrived', '');
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(roles(page).locator('input')).toBeFocused();
+  // A row further down, the way back into the row before it.
+  await go.click();
+  await expect(page.getByTestId('languages-add')).toHaveAttribute('data-arrived', '');
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByTestId('competences-add-button')).toBeFocused();
+});
+
+test('a value refused while the caret stands in a field a press put it in: the caret stays', async ({
+  page,
+}) => {
+  await profile(page);
+  await refuseNext(page, { field: 'languages', row: 1, max: null });
+  await page.getByTestId('competence-years').nth(1).fill('9');
+  const input = roles(page).locator('input');
+  await input.click();
+  await expect(page.getByTestId('languages-error')).toHaveText(T.profile.field.refused);
+  await expect(page.getByTestId('languages-item').nth(1)).toHaveAttribute('data-arrived', '');
+  await expect(input).toBeFocused();
 });
 
 // ------------------------------------------------------------------ the CV
