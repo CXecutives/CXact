@@ -1767,6 +1767,45 @@ test('a failed save under the head unfolds and folds away, the rows glide with i
   ).toBe(start);
 });
 
+test('the box under the head goes with what it speaks of: nothing changed and no value wrong', async ({
+  page,
+}) => {
+  await profile(page);
+  const box = page.getByTestId('profile-save-error');
+  // A value that held the way: typed back to what is stored, no save comes to take the box.
+  const wish = page.getByTestId('profile-wish-rate');
+  const value = await wish.inputValue();
+  await wish.fill('0');
+  await leaveField(page);
+  await dropCv(page);
+  await expect(box).toHaveText(T.profile.fixFirst(T.profile.field.dayRateWish));
+  await wish.fill(value);
+  await leaveField(page);
+  await expect(box).toHaveCount(0);
+  expect(await saves(page)).toBe(0);
+  // A save that failed: the change taken back.
+  await failNext(page, 'save_profile');
+  await contract(page, 'temporary').click();
+  await expect(box).toHaveText(T.error.text('db', {}));
+  await contract(page, 'temporary').click();
+  await expect(box).toHaveCount(0);
+  expect(await saves(page)).toBe(1);
+  // While the change stands the box does too.
+  await failNext(page, 'save_profile');
+  await contract(page, 'temporary').click();
+  await expect(box).toHaveText(T.error.text('db', {}));
+  await page.waitForTimeout(T_SAVE);
+  await expect(box).toBeVisible();
+  // The folder that would not open says nothing over the new form.
+  await profile(page, '&scenario=profile-broken');
+  await failNext(page, 'open_target');
+  await page.getByTestId('profile-folder').click();
+  await expect(page.getByTestId('profile-note')).toHaveText(T.error.text('db', {}));
+  await chooseWay(page, 'empty');
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  await expect(page.getByTestId('profile-note')).toHaveCount(0);
+});
+
 test('what went wrong with the CV unfolds under the head, the rows glide with it', async ({
   page,
 }) => {

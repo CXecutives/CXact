@@ -54,7 +54,8 @@ export class ProfileSaving {
   readonly #page: ThePage;
   /** A save is under way. */
   busy = $state(false);
-  /** Why a save did not go, said under the head. */
+  /** Why a save did not go, said under the head until the next save or until nothing is left to
+   *  save. */
   note = $state<Words | null>(null);
   /** A value the backend refused on the last save, said at its field. */
   fieldError = $state<FieldError | null>(null);
@@ -93,6 +94,13 @@ export class ProfileSaving {
     });
     $effect(() => {
       if (!page.setup() && editor.changed) untrack(() => this.soon());
+    });
+    // The box goes with what it speaks of: with nothing changed and no value wrong no save comes
+    // to take it. A note that still counts has a change or a wrong value standing.
+    $effect(() => {
+      if (this.note !== null && !editor.changed && page.panel()?.wrongField() === null) {
+        this.note = null;
+      }
     });
   }
 

@@ -115,6 +115,7 @@
 
   /** "Selbst ausfüllen": the new form. */
   function create(): void {
+    note = null;
     fromCv.clear();
     editor.create();
   }
