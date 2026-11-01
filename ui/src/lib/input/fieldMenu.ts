@@ -16,9 +16,13 @@ function deleteSelection(field: HTMLInputElement | HTMLTextAreaElement): void {
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-/** Text typed in as one step of the field's undo (a paste from the menu). */
-function insertText(field: HTMLInputElement | HTMLTextAreaElement, text: string): void {
-  if (document.execCommand('insertText', false, text)) return;
+/** A paste from the menu is the key's: the field's own rule first (a tag field makes a list into
+ *  chips, ChipInput), else the text is typed in as one step of the field's undo. */
+function pasteInto(field: HTMLInputElement | HTMLTextAreaElement, text: string): void {
+  const clipboardData = new DataTransfer();
+  clipboardData.setData('text', text);
+  const paste = new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData });
+  if (!field.dispatchEvent(paste) || document.execCommand('insertText', false, text)) return;
   field.setRangeText(text, field.selectionStart ?? 0, field.selectionEnd ?? 0, 'end');
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -117,7 +121,7 @@ export function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEn
         void clipboardText().then((pasted) => {
           if (pasted === null || pasted === '' || !field.isConnected) return;
           back();
-          insertText(field, pasted);
+          pasteInto(field, pasted);
         });
       },
     },

@@ -12,7 +12,8 @@
   typed, like Esc. No caret goes there by itself (owner, 2026-10-30), a press on the field does
   it. What the field takes becomes a row above it and it stays ready for the next; left empty
   it turns back into the button. What is wrong with a row (`failure`) stands under its value,
-  without a row under the add row, in the look of every refused value. A control stands 16
+  without a row under the add row, in the look of every refused value, and that place is the one
+  a way back lands on (`data-arrive`, lib/motion/arrive.ts), else the add row. A control stands 16
   under the line, so a message only grows its row downward. A new row rises in, a removed one
   folds away while the rows below close the gap; a list that comes with its view is simply
   there.
@@ -120,6 +121,7 @@
     {#each items as item, index (key(item))}
       <div
         class="item"
+        data-arrive={failure !== null && failure.item === item ? '' : undefined}
         data-testid={testid ? `${testid}-item` : undefined}
         use:arrive
         out:rowCollapse={{ on: motion.ready }}
@@ -155,7 +157,7 @@
     class="line add"
     tabindex="-1"
     role="group"
-    data-arrive
+    data-arrive={failure !== null && failure.item === null ? undefined : ''}
     bind:this={addRow}
     data-remove-fallback
     data-testid={testid ? `${testid}-add` : undefined}
@@ -188,7 +190,7 @@
     {/if}
   </div>
   {#if failure !== null && failure.item === null}
-    <div class="foot">
+    <div class="foot" data-arrive>
       <Notice tone="danger" text={failure.text} testid={testid ? `${testid}-error` : null} />
     </div>
   {/if}
@@ -213,7 +215,7 @@
     position: relative;
   }
 
-  .item + .item::before,
+  .item + .item::after,
   .add::after {
     position: absolute;
     top: 0;
@@ -255,9 +257,13 @@
     min-height: var(--control-field);
   }
 
-  /* Under the add row, on the rows' sides. */
+  /* Under the add row, on the rows' sides; its wash reaches up around the sentence. */
   .foot {
     padding: 0 var(--form-row-pad-x) var(--form-row-pad-y);
+  }
+
+  .foot::before {
+    top: calc(-1 * var(--space-2));
   }
 
   /* The new entry's name field in the names' column, its × at the end. */

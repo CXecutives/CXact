@@ -40,6 +40,7 @@
 
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
+  import { secondPress } from '$lib/input/input';
   import { fade } from '$lib/motion/transitions';
   import Icon from './Icon.svelte';
   import Spinner from './Spinner.svelte';
@@ -114,8 +115,7 @@
   const filled = $derived(variant === 'primary' || variant === 'danger');
 
   function handle(event: MouseEvent): void {
-    // The second click of a double click (the keyboard's click has no count).
-    if (inactive || (event.detail > 1 && !repeats)) {
+    if (inactive || (secondPress(event) && !repeats)) {
       event.preventDefault();
       return;
     }

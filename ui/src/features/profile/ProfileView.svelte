@@ -115,6 +115,7 @@
 
   /** "Selbst ausfüllen": the new form. */
   function create(): void {
+    note = null;
     fromCv.clear();
     editor.create();
   }
@@ -190,13 +191,11 @@
   const stillMissing = draftMissing();
   /** The required fields still empty, in the order of the page. */
   const missing = $derived(stillMissing());
-  /** Someone asked for them (Ergänzen, Weiter, Profil ergänzen): from then on they are marked
-   *  until they are filled; until then the rows stay calm. */
-  let flagged = $state(false);
+  // Filled, the marks are done. A new form's gaps are not known at once (core is asked).
   $effect(() => {
-    if (flagged && missing.length === 0) flagged = false;
+    if (editor.asked && editor.origin === 'stored' && missing.length === 0) editor.asked = false;
   });
-  const marked = $derived(flagged ? missing : []);
+  const marked = $derived(editor.asked ? missing : []);
 
   /** The field the last press led to. */
   let ledTo: string | null = null;
@@ -204,7 +203,7 @@
   /** A field of the form comes into view with a moment's wash, no caret, and what is missing is
    *  marked. */
   function lead(field: string): void {
-    flagged = true;
+    editor.asked = true;
     ledTo = field;
     void panel?.revealField(field);
   }

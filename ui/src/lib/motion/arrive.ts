@@ -9,9 +9,15 @@ import { arriveDelay } from './motion';
 const ARRIVED = 'data-arrived';
 const timers = new WeakMap<Element, number>();
 
+/** The row of `scope` the eye is to find: `scope` itself, or the first row inside it. */
+export const arrivingRow = (scope: Element): HTMLElement | null =>
+  scope instanceof HTMLElement && scope.matches('[data-arrive]')
+    ? scope
+    : scope.querySelector('[data-arrive]');
+
 /** The wash on `scope`, or on the row inside it. */
 export function washOver(scope: Element): void {
-  const row = scope.matches('[data-arrive]') ? scope : scope.querySelector('[data-arrive]');
+  const row = arrivingRow(scope);
   if (row === null) return;
   clearTimeout(timers.get(row));
   row.setAttribute(ARRIVED, '');

@@ -13,12 +13,12 @@
   on its group (`missing`, from ProfileView: once someone asked, by Weiter or its card's button): the
   field's edge and words or the list's add button turn orange, its label and the group's title
   stay ink (tokens.css, owner 2026-11-01). The row someone was taken to takes a moment's wash
-  (`revealField`, lib/motion/arrive.ts). A value that
+  and holds the focus for Tab and Enter (`revealField`, lib/motion/arrive.ts). A value that
   is too large, a 0 where at least 1 counts, a day that does not read and a value the backend
   refused are said at their field in their own sentence, stay with their error until they
   change, and only they hold the save (`wrongField` names the first).
-  Enter in a tag field or a list's name field takes what was typed; an untouched new form goes
-  back to the ways in with Esc (not in the setup).
+  Enter in a tag field or a list's name field takes what was typed, which saves a moment later like
+  any change; an untouched new form goes back to the ways in with Esc (not in the setup).
 -->
 <script lang="ts" module>
   /** A value the backend refused on the last save: the field (and row) it names, its words. */
@@ -36,9 +36,10 @@
   import { afterPress, byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
-  import { washOver } from '$lib/motion/arrive';
+  import { arrivingRow, washOver } from '$lib/motion/arrive';
   import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
   import { afterFolds, unfold } from '$lib/motion/transitions';
+  import { menuState } from '$lib/state/menu.svelte';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { onMount, tick } from 'svelte';
   import CompetenceList from './CompetenceList.svelte';
@@ -177,9 +178,19 @@
   let typedIn: EventTarget | null = null;
 
   /** The caret stands in a field typed in: its value is not done yet, and what the form sends
-   *  would hold half of it. A field the caret only came to holds what it held. */
+   *  would hold half of it. A field the caret only came to holds what it held, and a tag field
+   *  whose text has gone into chips holds nothing half typed. The field's own menu has the focus
+   *  only on loan. */
   export function typing(): boolean {
-    return typedIn !== null && document.activeElement === typedIn;
+    const field = typedIn;
+    if (field === null || (menuState.open?.returnFocus ?? document.activeElement) !== field) {
+      return false;
+    }
+    return !(
+      field instanceof HTMLInputElement &&
+      'chipKeys' in field.dataset &&
+      field.value === ''
+    );
   }
 
   /** The focus left a control of the form, for good once the press that left it has landed. */
@@ -208,19 +219,20 @@
   }
 
   /** A field of the form comes into view as far as needed and its row takes a moment's wash,
-   *  without the caret; from the keyboard its row holds the focus (no caret, no ring), so that
-   *  Tab goes on from there. With `move` off the page stays; `false` when the field is not on
-   *  the page. */
+   *  without the caret; its row holds the focus (no caret, no ring), so that Tab and Enter go on
+   *  from there, unless the answer of a save finds a caret a press put in a field: that stays.
+   *  With `move` off the page stays; `false` when the field is not on the page. */
   export async function revealField(field: string, move = true): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     if (scope === null || scope === undefined) return false;
     if (!move) return true;
-    glideIntoView(scope, 'sight');
-    washOver(scope);
-    if (byKeyboard()) {
-      scope.tabIndex = -1;
-      scope.focus({ preventScroll: true });
+    const row = arrivingRow(scope) ?? scope;
+    glideIntoView(row, 'sight');
+    washOver(row);
+    if (byKeyboard() || document.activeElement?.matches('input, textarea') !== true) {
+      row.tabIndex = -1;
+      row.focus({ preventScroll: true });
     }
     return true;
   }
@@ -312,9 +324,11 @@
   }
 
   /* The rows of a box, a hairline from the text between them like the rows of Einstellungen;
-     a row that unfolds (Mindestgehalt) brings its line along. */
+     a row that unfolds (Mindestgehalt) brings its line along. Brought into view (Ergänzen, Weiter)
+     a row stands clear of the top bar's fade. */
   .cell {
     position: relative;
+    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
   }
 
   .cell + .cell::after {
@@ -333,13 +347,9 @@
     padding: var(--form-row-control-y) var(--form-row-pad-x);
   }
 
-  /* A row brought into view (Ergänzen, Weiter) stands clear of the top bar's fade, the first of
-     a group with its group's title whole above it. */
-  .editor :global([data-field]) {
-    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
-  }
-
-  .cell:first-child {
+  /* The first of a group with its group's title whole above it, as a list's row may be. */
+  .cell:first-child,
+  .group[data-field] :global([data-arrive]) {
     scroll-margin-top: calc(
       var(--fade-height) + var(--space-8) + var(--section-head-min) + var(--group-heading-gap)
     );

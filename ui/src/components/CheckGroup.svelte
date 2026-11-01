@@ -4,7 +4,7 @@
   (3:1 on white), the chosen one coral like a switch that is on, with a white 13 px tick that
   fades in (140 ms). Under the pointer an empty box's edge darkens a step, pressed one more,
   like a switch's track; a chosen one darkens like a switch (Toggle). The last chosen option stays
-  (a click does nothing, its tooltip says why: `keepOne`). Each option is a checkbox and its
+  (a click only says why, at once in its tooltip: `keepOne`). Each option is a checkbox and its
   own Tab stop; Space flips it like any button. 24 px high, 22 px between them.
 -->
 <script lang="ts" module>
@@ -44,7 +44,7 @@
       aria-checked={chosen}
       data-chosen={chosen ? '' : undefined}
       data-testid={option.testid ?? undefined}
-      use:tooltip={last(option.id) ? keepOne : null}
+      use:tooltip={last(option.id) ? { text: keepOne, toggle: true } : null}
       onclick={() => {
         if (!last(option.id)) onchange(option.id);
       }}

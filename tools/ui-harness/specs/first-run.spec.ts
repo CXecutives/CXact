@@ -235,6 +235,25 @@ test('the mouse button is Zurück: it keeps what was typed too', async ({ page }
   await expect(roles).toContainText('Interim CEO');
 });
 
+test('what Weiter marked stays marked over Zurück, with the form that was typed in', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  const tools = page.getByTestId('profile-tools').locator('input');
+  await tools.fill('Miro');
+  await tools.press('Enter');
+  await next(page).click();
+  const all = ['roles', 'competences', 'languages'];
+  await expect.poll(() => marks(page)).toEqual(all);
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  await expect.poll(() => marks(page)).toEqual(all);
+});
+
 test('a failed evaluation comes back to the upload and says why above it', async ({ page }) => {
   // A new try can work: the drop zone stays and is the way on.
   for (const [cv, reason] of [
@@ -288,7 +307,8 @@ test('Esc stops the evaluation like Abbrechen, with the focus on the step and no
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
   await expect(page.getByTestId('cv-error')).toHaveCount(0);
   await open(page, `${WIN}&scenario=first-run&step=reading`);
-  await page.locator('body').click({ position: { x: 4, y: 500 } });
+  // On the empty part of the step, past the scrollbar's room of the view.
+  await page.locator('body').click({ position: { x: 20, y: 500 } });
   await page.keyboard.press('Escape');
   await expectStep(page, T.firstRun.upload);
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
@@ -532,6 +552,98 @@ test('Dein Profil: Enter is the primary, on the step and in a field', async ({ p
   await years.fill('12');
   await years.press('Enter');
   await expectStep(page, T.firstRun.mailbox);
+});
+
+test('a held Enter presses once: it takes the chip and stays, it goes on and presses nothing there', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=setup-profile&step=profile&way=self`);
+  await expectStep(page, T.firstRun.profile);
+  const regions = page.getByTestId('profile-regions');
+  const hold = async (): Promise<void> => {
+    for (let repeat = 0; repeat < 3; repeat += 1) await page.keyboard.down('Enter');
+  };
+  await regions.locator('input').click();
+  await page.keyboard.type('Bremen');
+  await hold();
+  await page.keyboard.up('Enter');
+  await expect(regions.locator('[data-chip]').last()).toHaveAttribute('data-value', 'Bremen');
+  await settle(page);
+  await expectStep(page, T.firstRun.profile);
+  // A fresh press on an empty field goes on, and the same hold never presses Verbinden.
+  await page.keyboard.down('Enter');
+  await expectStep(page, T.firstRun.mailbox);
+  await hold();
+  await page.keyboard.up('Enter');
+  await settle(page);
+  await expect(page.getByTestId('mailbox-user')).not.toHaveAccessibleDescription(
+    T.settings.addressMissing,
+  );
+  await expect(page.getByTestId('mailbox-password')).not.toHaveAccessibleDescription(
+    T.settings.passwordMissing(true),
+  );
+});
+
+test('above the bar of Dein Profil the caret goes on with its field, the row taken above it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 860 });
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  const add = page.getByTestId('competences-add-button');
+  await add.evaluate((node) => node.scrollIntoView({ block: 'end' }));
+  // Pressed where they stand, right over the bar.
+  const pressAt = async (target: Locator): Promise<void> => {
+    const box = (await target.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  await pressAt(add);
+  const name = page.getByTestId('competence-add').locator('input');
+  await expect(name).toBeVisible();
+  await pressAt(name);
+  await expect(name).toBeFocused();
+  const bar = page.getByTestId('first-bar');
+  for (const word of ['Treasury', 'Reporting']) {
+    await page.keyboard.type(word);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('competences').locator('[data-copy]').last()).toHaveText(word);
+    await expect(name).toBeFocused();
+    await expect
+      .poll(async () => {
+        const [input, foot] = [(await name.boundingBox())!, (await bar.boundingBox())!];
+        return foot.y - (input.y + input.height);
+      }, word)
+      .toBeGreaterThan(0);
+  }
+});
+
+test('after a press on Weiter Tab and Enter go on from the row it led to, no caret, no jump', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  await next(page).click();
+  await expect.poll(() => marks(page)).toEqual(['roles', 'competences', 'languages']);
+  await next(page).click();
+  const add = page.getByTestId('competences-add-button');
+  await expect(add).toBeInViewport();
+  await motionSettled(page);
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Tab');
+  await expect(add).toBeFocused();
+  await expect(add).toBeInViewport();
+  // Pressed once more, the row holds the focus again, and Enter is Weiter from there too.
+  await next(page).click();
+  const languages = page.getByTestId('languages-add');
+  await expect(languages).toHaveAttribute('data-arrived', '');
+  await expect(caret(page)).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-field~="roles"]')).toHaveAttribute('data-arrived', '');
+  await expect(caret(page)).toHaveCount(0);
 });
 
 test('Weiter waits while a value is wrong: said at its field, which comes into view, no caret', async ({

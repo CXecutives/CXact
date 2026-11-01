@@ -1,14 +1,14 @@
 <!--
   A list of short values as chips in a field (round 10): type and press Enter (or leave the
   field) to add, the x ("Entfernen") removes, Backspace in the empty field removes the last
-  one with the caret staying there, Esc closes the list under the field and then drops what was
-  typed. An x puts no caret anywhere, from the keyboard the next x takes the focus (input.ts
-  removeBy). A chip's value is copyable text (a drag selects it, Ctrl/Cmd+C copies; a double
-  click selects a word, it never edits the chip); while the caret stands in the field a press
-  on it leaves the caret there and what was typed typed (input.ts leaveField). A list of terms
-  (`split` list) also splits at commas and semicolons, typed or pasted; a list of sentences or
-  names that hold commas (`split` lines) only at line breaks. A value that is already there (in
-  any case) is not added twice.
+  one with the caret staying there (a held one stops there), Esc closes the list under the field
+  and then drops what was typed. An x puts no caret anywhere, from the keyboard the next x takes
+  the focus (input.ts removeBy). A chip's value is copyable text (a drag selects it, Ctrl/Cmd+C
+  copies; a double click selects a word, it never edits the chip); while the caret stands in the
+  field a press on it leaves the caret there and what was typed typed (input.ts leaveField). A
+  list of terms (`split` list) also splits at commas and semicolons, typed or pasted; a list of
+  sentences or names that hold commas (`split` lines) only at line breaks. A value that is already
+  there (in any case) is not added twice.
   Without `entry` the field only shows and removes (chips chosen elsewhere). Its keys come
   from input.ts (chipKeys, withList).
   With `options` the field takes only those (the countries, a closed list): like every tag
@@ -17,8 +17,9 @@
   case, with or without accents), with the first marked; Enter or a click takes the marked
   one, leaving the field takes a single match, a chosen option leaves the list. Text that
   matches no option stays in the field and says so (`noMatch`, the look of a refused value), as
-  does text the field was left with; text that matches only chosen ones says nothing. A chip
-  shows its option's name; a value that is no option (from a file) stays and shows as it is.
+  does text the field was left with; text that matches only chosen ones says nothing and goes with
+  Enter or the leaving. A chip shows its option's name; a value that is no option (from a file)
+  stays and shows as it is.
   What stands in the list the field adds to (`taken`, the rows of Sprachen and Kompetenzen)
   counts as chosen. A pasted list goes in as far as its entries name an option.
   With `suggestions` (the engine's words) a field without options suggests terms from the
@@ -33,7 +34,9 @@
   `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
   focus; a click on it, or the focus, shows them all, and the caret a press put at their end
-  stays in view (the keyboard's way keeps it there by itself, input.ts).
+  stays in view, as it does with what the field takes (`keepInView`, the keyboard's way too,
+  input.ts). The button is no Tab stop: it would go as its own focus opens the fold, and the
+  focus with it; Tab reaches the input.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -43,6 +46,7 @@
     byKeyboard,
     chipKeys,
     FIELD_ATTRIBUTES,
+    keepInView,
     removeBy,
     withList,
   } from '$lib/input/input';
@@ -201,15 +205,23 @@
   /** `text` is a whole name of `option`. */
   const nameOf = (option: ChipOption, text: string): boolean =>
     names(option).some((name) => folded(name) === folded(text));
-  /** `text` names an option that is a chip already: taking it only clears the text. */
-  const isChosen = (text: string): boolean =>
-    folded(text) !== '' &&
-    (options ?? []).some((option) => isThere(option) && nameOf(option, text));
+  /** `text` means only what is there already, a whole name or a start only chips share: taking
+   *  it only clears the text. */
+  function isChosen(text: string): boolean {
+    if (options === null || folded(text) === '') return false;
+    const hits = suggested(options, text);
+    return (
+      options.some((option) => isThere(option) && nameOf(option, text)) ||
+      (hits.length > 0 && hits.every(isThere))
+    );
+  }
   const chosen = $derived(isChosen(draft));
   /** The typed text names no option at all (one that is chosen already is no news), or the
-   *  field was left with text it did not take. */
+   *  field was left with a start of several it did not take. */
   const nothing = $derived(
-    options !== null && folded(draft) !== '' && (found.length === 0 || !focused),
+    options !== null &&
+      folded(draft) !== '' &&
+      (found.length === 0 || (!focused && matches.length > 0)),
   );
   const suggesting = $derived(options !== null || suggestions !== undefined);
 
@@ -223,6 +235,12 @@
   function update(next: string[]): void {
     values = next;
     onchange?.(next);
+    // What it took moved the input (a chip on a new line, a row above a name field): the caret
+    // stays in view.
+    void tick().then(() => {
+      const input = document.activeElement;
+      if (input instanceof HTMLInputElement && box?.contains(input)) keepInView(input);
+    });
   }
 
   /** The entries of `text`. */
@@ -310,7 +328,7 @@
     focused = true;
     const input = event.target;
     if (opens && !byKeyboard() && input instanceof HTMLInputElement) {
-      void tick().then(() => input.scrollIntoView({ block: 'nearest' }));
+      void tick().then(() => keepInView(input));
     }
   }
 
@@ -398,14 +416,13 @@
       </span>
     {/each}
     {#if visible.length < values.length}
-      <span class="more" data-keep-focus>
-        <Button
-          variant="link"
-          label={t.profile.field.moreChips(values.length - visible.length)}
-          testid={testid ? `${testid}-more` : null}
-          onclick={() => (folder.opened = true)}
-        />
-      </span>
+      <Button
+        variant="link"
+        inField
+        label={t.profile.field.moreChips(values.length - visible.length)}
+        testid={testid ? `${testid}-more` : null}
+        onclick={() => (folder.opened = true)}
+      />
     {/if}
     {#if entry}
       <!-- As wide as its placeholder at least (sizer): it stays beside the chips while its
@@ -569,9 +586,5 @@
 
   .folded .input {
     padding: 0;
-  }
-
-  .more {
-    display: inline-flex;
   }
 </style>

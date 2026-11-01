@@ -35,7 +35,8 @@
 //   its first press landed on, also when the first click slid that away (`runDouble`). Its second
 //   press counts only on what the first pressed: on what the first click slid under the pointer
 //   (the next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
-//   first click opened stays open (`pressesElsewhere`).
+//   first click opened stays open (`pressesElsewhere`). A third press is a new first one, however
+//   quick the presses come (`secondPress`).
 // - the name of a text field leads into it; the name of a button (a select) only names it
 //   (`namesButton`)
 // - no dragging of text, links or images (only the column handle and the window's drag
@@ -51,13 +52,13 @@
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
-//   dialog (with the focus nowhere the form pressed last). PageUp and PageDown scroll the pane
-//   that has the focus (or the one clicked last, else the view's own, `data-key-pane`) by a page,
-//   and with the focus nowhere (on no control, `isNowhere`) the arrows scroll that pane by a line
-//   and Home/End to its top and end, like a native scroll view. Key scrolling glides in one
-//   short tween (lib/motion/scroll.ts), never the engine's smooth scroll. Everything else,
-//   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
-//   Alt+Arrow back/forward), is swallowed.
+//   dialog (with the focus nowhere the form pressed last), once for a held key. PageUp and
+//   PageDown scroll the pane that has the focus (or the one clicked last, else the view's own,
+//   `data-key-pane`) by a page, and with the focus nowhere (on no control, `isNowhere`) the arrows
+//   scroll that pane by a line and Home/End to its top and end, like a native scroll view. Key
+//   scrolling glides in one short tween (lib/motion/scroll.ts), never the engine's smooth scroll.
+//   Everything else, including every WebView shortcut (reload, find, print, zoom, devtools, caret
+//   browsing, Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
 //   focus is. Esc closes only the layer on top: the menu, then the dialog, then the sidebar
 //   that floats over the view in a narrow window, whose button then takes the focus it held
@@ -66,7 +67,7 @@
 // - an × never puts a caret anywhere (`removeBy`): a click on it drops the focus; from the
 //   keyboard (Enter, Space, Backspace or Delete on a focused ×) the next × of the same list takes
 //   it, the previous one after the last. Backspace in a chip field removes the last chip and the
-//   caret stays there, as in any field (owner, 2026-11-01).
+//   caret stays there, as in any field (owner, 2026-11-01); a held one stops at the field's start.
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
@@ -75,8 +76,9 @@
 //   (`hover`, `holdHover` of hold.ts); a press on a tooltip's anchor holds the same way, so
 //   the button that takes the place of the one pressed shows no tooltip until the pointer moves
 // - a tooltip's bubble goes on a press anywhere, a scroll of any pane and Esc (`onDismiss`)
-// - what leaving a field does waits for the press that left it to land, and a window going to
-//   the back leaves nothing (`afterPress`)
+// - what leaving a field does waits for the press that left it to land, and neither a window
+//   going to the back nor the field's own menu, which gives the focus back, leaves anything
+//   (`afterPress`)
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -90,6 +92,7 @@ import {
   firstEnabled,
   isItem,
   menuState,
+  onMenuClosed,
   onMenuOpened,
   openMenu,
   type MenuEntry,
@@ -320,9 +323,10 @@ function handlerFor(target: EventTarget | null, key: keyof FormKeyHandlers): (()
   return null;
 }
 
-/** Enter and Esc for the nearest form that handles them; `true` if one did. */
+/** Enter and Esc for the nearest form that handles them, once for a held key (its repeats would
+ *  walk on through what comes next); `true` if one did. */
 function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = event.target): boolean {
-  if (event.isComposing || hasModifier(event)) return false;
+  if (event.isComposing || hasModifier(event) || event.repeat) return false;
   let handler: (() => void) | null = null;
   if (event.key === 'Escape') {
     handler = handlerFor(target, 'cancel');
@@ -515,7 +519,7 @@ function cycleFocus(modal: HTMLElement, back: boolean): void {
 export interface ChipKeyHandlers {
   /** Enter: turn the typed text into chips; `true` if there was text. */
   commit: () => boolean;
-  /** Backspace in an empty field: remove the last chip; `true` if one went. */
+  /** A fresh Backspace in an empty field: remove the last chip; `true` if one went. */
   removeLast: () => boolean;
   /** Esc: drop the typed text; `true` if there was some. */
   clear: () => boolean;
@@ -530,9 +534,9 @@ const CHIP = '[data-chip]';
 
 /**
  * The keys of a chip field (components/ChipInput.svelte): Enter adds, Backspace in the empty
- * field removes the last chip, Esc drops the typed text. What a chip field does not use
- * goes on to the form (Enter on an empty chip field saves it). A field with a list under it
- * wraps its handlers in `withList`.
+ * field removes the last chip (a held one has cleared a word and stops there, it takes no chip),
+ * Esc drops the typed text. What a chip field does not use goes on to the form (Enter on an empty
+ * chip field saves it). A field with a list under it wraps its handlers in `withList`.
  */
 export const chipKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) => {
   chipFields.set(node, handlers);
@@ -607,7 +611,7 @@ function dispatchChipKey(event: KeyboardEvent): boolean {
     event.key === 'Enter'
       ? handlers.commit()
       : event.key === 'Backspace'
-        ? handlers.removeLast()
+        ? !event.repeat && handlers.removeLast()
         : event.key === 'Escape'
           ? handlers.clear()
           : event.key === 'ArrowDown'
@@ -701,7 +705,7 @@ function removesByKey(event: KeyboardEvent): boolean {
  * gap (--space-8), below a sticky band too (the area's scroll-padding). The engines scroll a
  * focused control only until it touches the edge, and WebKit ignores scroll-margin there.
  */
-function keepInView(node: HTMLElement): void {
+export function keepInView(node: HTMLElement): void {
   const pane = scrollAreaOf(node.parentElement);
   if (pane === null || !node.isConnected) return;
   const clear = tokenPx('--space-8');
@@ -727,8 +731,10 @@ function onFocusIn(event: FocusEvent): void {
   if (closest(node, MODAL) !== null) watchWheel('modal', true);
   // What only holds the focus is no control, and may be taller than the area.
   if (!keyboardFocus || !(node instanceof HTMLElement) || isNowhere(node)) return;
-  // After the engine's own scroll into view.
-  requestAnimationFrame(() => keepInView(node));
+  // After the engine's own scroll into view, unless the focus has moved on by then.
+  requestAnimationFrame(() => {
+    if (document.activeElement === node) keepInView(node);
+  });
 }
 
 function onKeyDown(event: KeyboardEvent): void {
@@ -822,6 +828,14 @@ const pressedOn = (target: EventTarget | null): Element | null =>
   closest(target, `${PRESSABLE}, ${FIELD}`) ?? closest(target, '*');
 
 /**
+ * The second press of a pair: the engine counts on (1, 2, 3, ...) while the presses keep the OS's
+ * double-click time at one spot, so every even one is a second one and the next a new first; a
+ * keyboard's click counts 0 and presses.
+ */
+export const secondPress = (event: MouseEvent): boolean =>
+  event.detail > 0 && event.detail % 2 === 0;
+
+/**
  * The second press of a double click that lands on anything but what the first one pressed:
  * what the first click did slid it under the pointer, and it was never meant. It presses
  * nothing, so every control is safe from it without a check of its own. Two presses on one row
@@ -829,7 +843,7 @@ const pressedOn = (target: EventTarget | null): Element | null =>
  */
 const pressesElsewhere = (event: MouseEvent): boolean =>
   event.button === LEFT &&
-  event.detail > 1 &&
+  secondPress(event) &&
   (firstPress?.isConnected !== true || pressedOn(event.target) !== firstPress);
 
 /** The pointer moved further from the last left press than a click may. */
@@ -1257,7 +1271,7 @@ function dispatchMenuKey(event: KeyboardEvent): void {
 function pressOutsideMenu(event: MouseEvent): boolean {
   if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
   const left = event.button === LEFT;
-  if (left && event.detail > 1) return false;
+  if (left && secondPress(event)) return false;
   closeMenu();
   return left;
 }
@@ -1511,19 +1525,21 @@ let pressWaits: (() => void)[] | null = null;
  * moved between press and release take the click from the control pressed. So `run` waits for
  * the left press that left the field, until its click comes (ahead of the control's handler) or
  * right after its release; without a press it runs at once. It does not run when `field` holds
- * the focus by then: a window going to the back leaves it there, nothing was left.
+ * the focus by then: a window going to the back leaves it there, nothing was left. A menu that
+ * stands has the focus on loan, so `run` waits for it too; one that closes without giving it back
+ * (the wheel, the window resized or at the back) has left the field.
  */
 export function afterPress(field: EventTarget | null, run: () => void): void {
   const left = (): void => {
     if (document.activeElement !== field) run();
   };
-  if (pressWaits === null) left();
-  else pressWaits.push(left);
+  if (pressWaits === null && menuState.open === null) left();
+  else (pressWaits ??= []).push(left);
 }
 
-/** The press has landed: what waited for it comes, in its order. */
+/** The press has landed and no menu stands: what waited comes, in its order. */
 function pressLanded(): void {
-  if (pressWaits === null) return;
+  if (pressWaits === null || menuState.open !== null) return;
   const waiting = pressWaits;
   pressWaits = null;
   for (const run of waiting) run();
@@ -1551,6 +1567,7 @@ export function installInput(): void {
     dismiss('press');
     watchWheel('menu', true);
   });
+  onMenuClosed(pressLanded);
   document.addEventListener('contextmenu', onContextMenu, capture);
   document.addEventListener(
     'mousedown',
@@ -1558,7 +1575,7 @@ export function installInput(): void {
       keyboardFocus = false;
       if (event.button === LEFT) {
         pressLanded();
-        pressWaits = [];
+        pressWaits ??= [];
       }
       dismiss('press', event.target);
       const elsewhere = pressesElsewhere(event);
@@ -1571,7 +1588,7 @@ export function installInput(): void {
         return;
       }
       if (event.button === LEFT) {
-        if (event.detail <= 1) firstPress = pressedOn(event.target);
+        if (!secondPress(event)) firstPress = pressedOn(event.target);
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, `${FLOATING}, ${SIDEBAR_BUTTON}`) === null) {
           shell.fold();

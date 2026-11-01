@@ -14,6 +14,7 @@
     over the window (`over`), a darker edge and the light wash.
 -->
 <script lang="ts">
+  import { secondPress } from '$lib/input/input';
   import Icon, { type IconName } from './Icon.svelte';
 
   interface Props {
@@ -54,7 +55,7 @@
   data-testid={testid ?? undefined}
   onclick={(event) => {
     // A double click on the button before it (Loslegen, a way) lands its second click here.
-    if (event.detail < 2) onclick();
+    if (!secondPress(event)) onclick();
   }}
 >
   {#if icon && !drop}<span class="glyph"><Icon name={icon} size="nav" /></span>{/if}

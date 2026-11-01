@@ -20,5 +20,7 @@ export function installSheet(): void {
   if (sheet === undefined) return;
   const host = document.createElement('div');
   document.body.append(host);
-  mount(sheet, { target: host, intro: false });
+  // Once every module has run: the stub runs early, among the imports of input.ts, whose controls
+  // the sheet shows.
+  queueMicrotask(() => mount(sheet, { target: host, intro: false }));
 }
