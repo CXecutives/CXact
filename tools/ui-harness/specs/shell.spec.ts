@@ -644,6 +644,29 @@ for (const os of [WIN, MAC]) {
     await expect(page.locator('body')).toBeFocused();
   });
 
+  test(`the keyboard's focus going on into the view folds the floating sidebar, the top bar does not ${os}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1099, height: 700 });
+    await open(page, os);
+    const floating = page.getByTestId('sidebar-floating');
+    await page.getByTestId('toggle-sidebar').focus();
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    const inView = (): Promise<boolean> =>
+      page.evaluate(() => document.activeElement?.closest('main') != null);
+    // On through the bar's buttons (the job view's stands before the entries) and the entries.
+    for (let press = 0; press < 20 && !(await inView()); press += 1) {
+      await expect(floating).toBeVisible();
+      await page.keyboard.press('Tab');
+    }
+    // What holds the focus lies free: the card is gone, and the field keeps the focus.
+    const search = page.getByTestId('search');
+    await expect(search).toBeFocused();
+    await expect(floating).toHaveCount(0);
+    await expect(search).toBeFocused();
+  });
+
   test(`a floating sidebar folds once the window is wide enough to dock it, and its button says so ${os}`, async ({
     page,
   }) => {

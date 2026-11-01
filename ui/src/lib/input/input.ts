@@ -62,7 +62,7 @@
 //   with the key), the menu, then the dialog, then the sidebar that floats over the view in a
 //   narrow window, whose button then takes the focus it held (`foldSidebar`); a left press beside
 //   that sidebar (and beside its button, which folds it itself) folds it too, and still does what
-//   it presses.
+//   it presses, and so does the keyboard's focus going on into the view (`onFocusIn`).
 // - an × never puts a caret anywhere (`removeBy`): a click on it drops the focus; from the
 //   keyboard (Enter, Space, Backspace or Delete on a focused ×) the next × of the same list takes
 //   it, the previous one after the last. Backspace in a chip field removes the last chip and the
@@ -123,9 +123,10 @@ const FIELD_BOX = '[data-field-box]';
 const FOCUS_HOLDER = '[tabindex="-1"]:not(button)';
 /** What is on its way off the screen: no control in it is pressed. */
 const LOCKED = '[data-locked]';
-/** The sidebar floating over the view (App.svelte) and its button in the top bar. */
+/** The sidebar floating over the view (App.svelte), its button in the top bar and the views. */
 const FLOATING = '[data-peek]';
 const SIDEBAR_BUTTON = '[data-testid="toggle-sidebar"]';
+const VIEWS = 'main';
 const FOCUSABLE = [
   'button:not([tabindex="-1"])',
   'input:not([tabindex="-1"])',
@@ -729,6 +730,9 @@ function onFocusIn(event: FocusEvent): void {
   // A modal dialog takes the focus when it opens: from then on the wheel is held for it
   // (onWheel).
   if (closest(node, MODAL) !== null) watchWheel('modal', true);
+  // The floating sidebar would lie over what holds the focus now: it folds as for a press beside
+  // it. Not for the top bar, whose buttons the Tab order crosses on the way to its entries.
+  if (keyboardFocus && shell.peek && closest(node, VIEWS) !== null) shell.fold();
   // What only holds the focus is no control, and may be taller than the area.
   if (!keyboardFocus || !(node instanceof HTMLElement) || isNowhere(node)) return;
   // After the engine's own scroll into view.
