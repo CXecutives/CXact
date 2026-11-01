@@ -1522,47 +1522,114 @@ test('what is missing: the card names it, its button marks and leads; a gap neve
   await expect(card).toHaveCount(0);
   expect(await marked(page)).toEqual([]);
 });
+/**
+ * Runs `act`, which makes a state box under the head come or go, and checks where the first row
+ * stands at the two ends of the fold, each read with the motion held there (a busy machine's
+ * frames may skip them): where it stood at the start and where it stays at the end, so nothing
+ * jumps, its gap neither. Resolves with where the row stays.
+ */
+async function foldsWithoutJump(page: Page, act: () => Promise<void>): Promise<number> {
+  const row = field(page, 'roles');
+  await animationsDone(page);
+  const before = (await row.boundingBox())!.y;
+  await row.evaluate((node) => {
+    const look = (): void => {
+      const fold = document.querySelector('[data-unfolding]');
+      const motion = fold?.getAnimations().find((one) => {
+        const { duration } = one.effect!.getComputedTiming();
+        return Number(duration) > 0;
+      });
+      if (motion === undefined) {
+        requestAnimationFrame(look);
+        return;
+      }
+      motion.pause();
+      const place = (at: number): number => {
+        motion.currentTime = at;
+        return node.getBoundingClientRect().top;
+      };
+      const end = Number(motion.effect!.getComputedTiming().endTime);
+      (window as unknown as { ends: number[] }).ends = [place(0), place(end)];
+      motion.play();
+    };
+    look();
+  });
+  await act();
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { ends?: number[] }).ends ?? null))
+    .not.toBeNull();
+  await animationsDone(page);
+  const after = (await row.boundingBox())!.y;
+  expect(after).not.toBe(before);
+  const ends = await page.evaluate(() => {
+    const seen = window as unknown as { ends?: number[] };
+    const read = seen.ends!;
+    delete seen.ends;
+    return read;
+  });
+  expect(ends).toEqual([before, after]);
+  return after;
+}
+
 test('the card of what is missing unfolds and folds away: the rows glide, also the gap under it', async ({
   page,
 }) => {
   await profile(page);
-  const row = field(page, 'roles');
-  await animationsDone(page);
-  const start = (await row.boundingBox())!.y;
-  // Each frame's place of the row from here on.
-  await row.evaluate((node) => {
-    const places: number[] = [];
-    (window as unknown as { places: number[] }).places = places;
-    const note = (): void => {
-      places.push(node.getBoundingClientRect().top);
-      requestAnimationFrame(note);
-    };
-    requestAnimationFrame(note);
-  });
-  const places = (): Promise<number[]> =>
-    page.evaluate(() => (window as unknown as { places: number[] }).places.splice(0));
-  /** The places between the two ends of a way. */
-  const between = (all: number[], from: number, to: number): number[] =>
-    all.filter((top) => top > Math.min(from, to) + 0.5 && top < Math.max(from, to) - 0.5);
-  await roles(page).locator('[data-remove]').first().click();
+  const start = (await field(page, 'roles').boundingBox())!.y;
   const card = missingCard(page);
-  await expect(card).toBeVisible();
-  await animationsDone(page);
-  const down = (await row.boundingBox())!.y;
+  const down = await foldsWithoutJump(page, async () => {
+    await roles(page).locator('[data-remove]').first().click();
+    await expect(card).toBeVisible();
+  });
   // The row stands where a state box and the page's gap put it, each measured.
   const gap = await page
     .getByTestId('profile-form')
     .evaluate((form) => Number.parseFloat(getComputedStyle(form).rowGap));
   expect(down).toBe(start + (await card.boundingBox())!.height + gap);
-  expect(between(await places(), start, down).length, 'frames on its way down').toBeGreaterThan(1);
   // Filled, the card folds away under the caret, which glides back with its field.
   const input = roles(page).locator('input');
-  await input.fill('Interim CFO');
-  await input.press('Enter');
-  await expect(card).toHaveCount(0);
-  await animationsDone(page);
-  expect((await row.boundingBox())!.y).toBe(start);
-  expect(between(await places(), down, start).length, 'frames on its way up').toBeGreaterThan(1);
+  expect(
+    await foldsWithoutJump(page, async () => {
+      await input.fill('Interim CFO');
+      await input.press('Enter');
+      await expect(card).toHaveCount(0);
+    }),
+  ).toBe(start);
+});
+
+test('a failed save under the head unfolds and folds away, the rows glide with it', async ({
+  page,
+}) => {
+  await profile(page);
+  const box = page.getByTestId('profile-save-error');
+  const start = (await field(page, 'roles').boundingBox())!.y;
+  const down = await foldsWithoutJump(page, async () => {
+    await failNext(page, 'save_profile');
+    await contract(page, 'temporary').click();
+    await expect(box).toBeVisible();
+  });
+  // The box and the page's gap, each measured.
+  const gap = await page
+    .getByTestId('profile-form')
+    .evaluate((form) => Number.parseFloat(getComputedStyle(form).rowGap));
+  expect(down).toBe(start + (await box.boundingBox())!.height + gap);
+  // The next change saves, and the box goes.
+  expect(
+    await foldsWithoutJump(page, async () => {
+      await contract(page, 'permanent').click();
+      await expect(box).toHaveCount(0);
+    }),
+  ).toBe(start);
+});
+
+test('what went wrong with the CV unfolds under the head, the rows glide with it', async ({
+  page,
+}) => {
+  await profile(page, '&cv=unreadable');
+  await foldsWithoutJump(page, async () => {
+    await pickCv(page);
+    await expect(page.getByTestId('cv-error')).toBeVisible();
+  });
 });
 
 test('Ergänzen glides to a field out of view, and shows it whole with what lies around it', async ({

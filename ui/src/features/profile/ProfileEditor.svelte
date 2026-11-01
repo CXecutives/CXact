@@ -38,7 +38,7 @@
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
   import { washOver } from '$lib/motion/arrive';
   import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
-  import { unfold } from '$lib/motion/transitions';
+  import { afterFolds, unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { onMount, tick } from 'svelte';
   import CompetenceList from './CompetenceList.svelte';
@@ -225,12 +225,12 @@
     return true;
   }
 
-  /** The page glides up to its head and the state boxes under it: what the user's own action
-   *  caused comes into view. */
+  /** The page glides up to its head and the state boxes under it, once they have their height:
+   *  what the user's own action caused comes into view. */
   export async function showHead(): Promise<void> {
     await tick();
     const pane = root === null ? null : scrollerOf(root);
-    if (pane !== null) glideTo(pane, 0);
+    if (pane !== null) afterFolds(pane, () => glideTo(pane, 0));
   }
 
   // The way in that opened the form is gone: Esc and Enter reach the form (no caret).

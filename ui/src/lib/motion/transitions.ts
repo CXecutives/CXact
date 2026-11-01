@@ -239,7 +239,7 @@ export function rowCollapse(node: Element, { on }: CollapseParams): TransitionCo
  * the mailbox form, a row of the profile): it unfolds to its height while it fades in (150 ms,
  * ease-out) and folds away the same way back, so what is below glides instead of jumping. A
  * cross-fade under reduced motion. `transition:unfold` on it. While it moves it carries
- * `data-unfolding` (afterUnfold): what scrolls to a part of it waits for its height.
+ * `data-unfolding` (afterUnfold, afterFolds): what scrolls to a part of it waits for its height.
  */
 export function unfold(node: Element, params: MotionParams = {}): TransitionConfig {
   if (params.on === false) return {};
@@ -269,6 +269,28 @@ export function afterUnfold(node: Element, then: () => void): void {
     const block = node.closest(`[${UNFOLDING}]`);
     if (block === null) then();
     else block.addEventListener('introend', () => afterUnfold(node, then), { once: true });
+  });
+}
+
+/**
+ * Runs `then` once nothing unfolds or folds away inside `pane` any more: while the height above
+ * what shows changes the engine keeps the pane's place (scroll anchoring), and that would take
+ * the pane from a glide. Waits for the transitions of the current update to start first.
+ */
+export function afterFolds(pane: Element, then: () => void): void {
+  queueMicrotask(() => {
+    const block = pane.querySelector(`[${UNFOLDING}]`);
+    if (block === null) {
+      then();
+      return;
+    }
+    const ended = new AbortController();
+    const next = (): void => {
+      ended.abort();
+      afterFolds(pane, then);
+    };
+    block.addEventListener('introend', next, { signal: ended.signal });
+    block.addEventListener('outroend', next, { signal: ended.signal });
   });
 }
 

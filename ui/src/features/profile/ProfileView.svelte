@@ -18,8 +18,9 @@
   In the setup (`setup`) the same form without the CV and the card; its "Weiter" (`next`)
   marks and leads the same way, and saves and goes on once nothing is missing; a failed save
   says so above the form.
-  A state box the user's own action caused (a dropped CV, its failure, a drop refused, Weiter's
-  failed save, staying after the question) comes into view: the page glides up to it.
+  Every state box under the head unfolds and folds away, so the rows glide (StateFold). One the
+  user's own action caused (a dropped CV, its failure, a drop refused, Weiter's failed save,
+  staying after the question) comes into view: the page glides up to it.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -31,7 +32,6 @@
   import type { ProfileForm } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { unfold } from '$lib/motion/transitions';
   import { editor, sameForm } from '$lib/state/profile.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
@@ -42,6 +42,7 @@
   import ProfileStart from './ProfileStart.svelte';
   import { ProfileSaving, type Words } from './saving.svelte';
   import { FIELD_ORDER, LABEL_OF } from './sections';
+  import StateFold from './StateFold.svelte';
 
   interface Props {
     /** The setup's page: the form alone, its "Weiter" saves (`next`). */
@@ -253,10 +254,9 @@
 </script>
 
 {#snippet notes()}
-  {#if !setup}<CvProblem />{/if}
+  {#if !setup && fromCv.problem}<StateFold><CvProblem /></StateFold>{/if}
   {#if !setup && editor.origin === 'stored' && missing.length > 0}
-    <!-- It unfolds, so the rows below glide (the page's gap under it comes along). -->
-    <div class="fold" transition:unfold>
+    <StateFold>
       <StateBox
         heading={t.profile.missing.heading(missing.length)}
         text={t.profile.missing.fields(missing.map(labelOf))}
@@ -268,11 +268,11 @@
         }}
         testid="profile-missing"
       />
-    </div>
+    </StateFold>
   {/if}
-  {#if note}<StateBox heading={note()} alert testid="profile-note" />{/if}
+  {#if note}<StateFold><StateBox heading={note()} alert testid="profile-note" /></StateFold>{/if}
   {#if saving.note}
-    <StateBox heading={saving.note()} alert testid="profile-save-error" />
+    <StateFold><StateBox heading={saving.note()} alert testid="profile-save-error" /></StateFold>
   {/if}
 {/snippet}
 
@@ -337,11 +337,5 @@
     display: flex;
     flex-direction: column;
     gap: var(--group-section-gap);
-  }
-
-  /* The page's gap under the card inside what unfolds, so it does not jump. */
-  .fold {
-    margin-bottom: calc(-1 * var(--group-section-gap));
-    padding-bottom: var(--group-section-gap);
   }
 </style>
