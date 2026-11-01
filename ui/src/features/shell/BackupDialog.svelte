@@ -6,7 +6,7 @@
   restores the chosen copy (the current state is saved first, the dialog says so); a failure
   stays in the dialog. After the restore the undos of before go (their jobs may be gone), the
   app state, the list and the counts load again, and a toast offers "Rückgängig": the copy of
-  the state before.
+  the state before. An undo that fails keeps its toast, as every undo does (lib/state/toasts).
 -->
 <script lang="ts" module>
   /** Runs a step for the button that opened it: the button turns meanwhile and a failure is
@@ -33,13 +33,10 @@
   let busy = $state(false);
   let error = $state<(() => string) | null>(null);
   const chosen = $derived(backups.find((backup) => backup.id === chosenId) ?? null);
-  /** The runner of the last `show` (the toast's undo runs through it too). */
-  let run: Runner = (work) => work();
 
   /** Lists the copies and opens on the newest; `onempty` says there is none. */
   export function show(runner: Runner, onempty: () => void): Promise<void> {
-    run = runner;
-    return run(async () => {
+    return runner(async () => {
       const found = await invoke('list_backups');
       if (found.length === 0) {
         onempty();
@@ -66,10 +63,12 @@
       const before = await invoke('restore_backup', { id: chosen.id });
       open = false;
       await reloadAll();
-      toasts.show(t.shell.backupRestored, 'success', {
-        label: t.common.undo,
-        onclick: () => void undo(before.id),
-      });
+      toasts.undoable(
+        'backup',
+        () => t.shell.backupRestored,
+        t.common.undo,
+        () => undo(before.id),
+      );
     } catch (failure) {
       error = () => errorText(failure);
     } finally {
@@ -77,12 +76,11 @@
     }
   }
 
-  const undo = (id: string): Promise<void> =>
-    run(async () => {
-      await invoke('restore_backup', { id });
-      await reloadAll();
-      toasts.show(t.shell.backupUndone);
-    });
+  async function undo(id: string): Promise<void> {
+    await invoke('restore_backup', { id });
+    await reloadAll();
+    toasts.show(t.shell.backupUndone);
+  }
 </script>
 
 <Dialog

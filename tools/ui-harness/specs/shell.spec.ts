@@ -1098,6 +1098,31 @@ test('a start whose data cannot load offers the backups; a restore loads the app
   expect(await calls(page, 'restore_backup')).toHaveLength(1);
 });
 
+test('Rückgängig of a restored backup that fails keeps its toast: the reason, and it tries again', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  await page.getByTestId('restore-backup').click();
+  const dialog = page.getByTestId('dialog-backup');
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  const action = (words: string): Locator =>
+    page.getByTestId('toast').filter({ hasText: words }).getByTestId('toast-action');
+  await expect(action(T.shell.backupRestored)).toHaveText(T.common.undo);
+  await failNext(page, 'restore_backup');
+  await action(T.shell.backupRestored).click();
+  await expect(action(T.error.text('db', {}))).toHaveText(T.common.retry);
+  // It went nowhere: the copy of before is still what the next try restores.
+  const restored = async (): Promise<unknown[]> =>
+    (await calls(page, 'restore_backup')).map(([, args]) => args);
+  const [chosen, undo] = await restored();
+  expect(undo).not.toEqual(chosen);
+  await action(T.error.text('db', {})).click();
+  await expect(page.getByTestId('toast').filter({ hasText: T.shell.backupUndone })).toBeVisible();
+  expect(await restored()).toEqual([chosen, undo, undo]);
+});
+
 test('the note under the ways of a failed start stands in one box, its words inside it', async ({
   page,
 }) => {
