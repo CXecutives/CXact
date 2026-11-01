@@ -1,25 +1,23 @@
 <!--
-  Feedback where the action happened. `inline`: a sign and a sentence in the app's small
-  text, with at most one small secondary button centred on its first line (a field's or a
-  list's failure): info and warning colour only their sign (the words stay ink), danger is the
-  one red of what is wrong all through. The sentence of a failure or a warning copies
-  (`data-copy`), to search for it or to say it to someone. `box` is the state box (StateBox) with
-  the sentence as its title. A notice that appears in a view already on screen rises 4 px and
-  fades in (150 ms) and fades out (100 ms); one that comes with its view is simply there.
+  Feedback where the action happened: a sign and a sentence in the app's small text, with at
+  most one small secondary button centred on its first line (a field's or a list's failure):
+  info and warning colour only their sign (the words stay ink), danger is the one red of what is
+  wrong all through. The sentence of a failure or a warning copies (`data-copy`), to search for
+  it or to say it to someone. A notice that appears in a view already on screen rises 4 px and
+  fades in (150 ms); one that comes with its view is simply there. It goes at once, so that what
+  takes its place (a field's hint) never stands beside it.
 -->
 <script lang="ts" module>
   export type NoticeTone = 'info' | 'warning' | 'danger';
 </script>
 
 <script lang="ts">
-  import { fade, rise } from '$lib/motion/transitions';
+  import { rise } from '$lib/motion/transitions';
   import Button from './Button.svelte';
   import Icon, { type IconName } from './Icon.svelte';
-  import StateBox from './StateBox.svelte';
 
   interface Props {
     tone: NoticeTone;
-    variant?: 'inline' | 'box';
     text: string;
     action?: {
       label: string;
@@ -32,14 +30,7 @@
     textTestid?: string | null;
   }
 
-  let {
-    tone,
-    variant = 'inline',
-    text,
-    action = null,
-    testid = null,
-    textTestid = null,
-  }: Props = $props();
+  let { tone, text, action = null, testid = null, textTestid = null }: Props = $props();
 
   const ICONS: Record<NoticeTone, IconName> = {
     info: 'info',
@@ -50,35 +41,30 @@
   const alert = $derived(tone === 'danger' || tone === 'warning');
 </script>
 
-{#if variant === 'inline'}
-  <div
-    class="notice {tone}"
-    class:acts={action !== null}
-    role={alert ? 'alert' : 'status'}
-    data-testid={testid ?? undefined}
-    in:rise={{ distance: 'sm' }}
-    out:fade
-  >
-    <!-- 14 beside the 13 px sentence, the inline size (centred on its 18 px line). -->
-    <span class="icon"><Icon name={ICONS[tone]} size="xs" /></span>
-    <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
-      {text}
-    </p>
-    {#if action}
-      <span class="action">
-        <Button
-          variant="secondary"
-          label={action.label}
-          icon={action.icon ?? null}
-          testid={action.testid ?? null}
-          onclick={action.onclick}
-        />
-      </span>
-    {/if}
-  </div>
-{:else}
-  <StateBox heading={text} {alert} {testid} />
-{/if}
+<div
+  class="notice {tone}"
+  class:acts={action !== null}
+  role={alert ? 'alert' : 'status'}
+  data-testid={testid ?? undefined}
+  in:rise={{ distance: 'sm' }}
+>
+  <!-- 14 beside the 13 px sentence, the inline size (centred on its 18 px line). -->
+  <span class="icon"><Icon name={ICONS[tone]} size="xs" /></span>
+  <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
+    {text}
+  </p>
+  {#if action}
+    <span class="action">
+      <Button
+        variant="secondary"
+        label={action.label}
+        icon={action.icon ?? null}
+        testid={action.testid ?? null}
+        onclick={action.onclick}
+      />
+    </span>
+  {/if}
+</div>
 
 <style>
   .notice {

@@ -1551,10 +1551,8 @@ fn one_answer_per_surface_kind() {
     for kind in [
         "--quiet-hover:",
         "--quiet-press:",
-        "--control-hover:",
         "--control-hover-edge:",
         "--label-hover:",
-        "--label-glyph-hover:",
     ] {
         if !tokens.code.contains(kind) {
             problems.push(format!("tokens.css: {kind} missing"));

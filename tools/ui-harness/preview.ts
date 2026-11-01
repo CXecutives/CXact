@@ -139,7 +139,7 @@ const STYLE = `
   .panel { position: absolute; right: 0; bottom: 22px; width: 240px;
     max-height: calc(100vh - 60px); overflow: auto;
     padding: 8px; border-radius: 12px; border: 1px solid var(--border, #ccc);
-    background: var(--surface, #fff); box-shadow: var(--sh-menu, 0 4px 16px rgb(0 0 0 / 15%)); }
+    background: var(--surface, #fff); box-shadow: var(--sh-pop, 0 4px 16px rgb(0 0 0 / 15%)); }
   .panel[hidden] { display: none; }
   h3 { margin: 8px 8px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.04em; color: var(--text-muted, #888); }

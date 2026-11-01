@@ -25,7 +25,7 @@
   import Button from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Menu from '$components/Menu.svelte';
-  import Notice, { type NoticeTone } from '$components/Notice.svelte';
+  import StateBox from '$components/StateBox.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Splitter from '$components/Splitter.svelte';
   import Toast from '$components/Toast.svelte';
@@ -121,9 +121,9 @@
 
   /** What a way on after a failed start could not do (or that there is no backup): the one note
    *  under the ways; the next press starts anew. */
-  let waysNote = $state<{ tone: NoticeTone; text: () => string } | null>(null);
+  let waysNote = $state<{ alert: boolean; text: () => string } | null>(null);
   function waysFailed(error: unknown): void {
-    waysNote = { tone: 'danger', text: () => errorText(error) };
+    waysNote = { alert: true, text: () => errorText(error) };
   }
 
   /** Erneut versuchen, after a start that could not load its data. */
@@ -154,7 +154,7 @@
   }
   function restoreBackup(): void {
     void backupDialog?.show(asBackupStep, () => {
-      waysNote = { tone: 'info', text: () => t.shell.backupNone };
+      waysNote = { alert: false, text: () => t.shell.backupNone };
     });
   }
 </script>
@@ -221,12 +221,7 @@
               </div>
               {#if waysNote}
                 <div class="ways-note">
-                  <Notice
-                    tone={waysNote.tone}
-                    variant="box"
-                    text={waysNote.text()}
-                    testid="ways-note"
-                  />
+                  <StateBox heading={waysNote.text()} alert={waysNote.alert} testid="ways-note" />
                 </div>
               {/if}
             </div>

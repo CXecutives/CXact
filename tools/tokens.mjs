@@ -70,7 +70,7 @@ const CONTRAST = [
   { text: ['text', 'text-muted', 'link'], on: ['page'] },
   { text: ['chosen-text'], on: ['surface-raised'] },
   { text: ['missing-words'], on: ['surface'] },
-  { text: ['text'], on: ['selection-tint', 'danger-tint'] },
+  { text: ['text'], on: ['selection-tint', 'danger-soft'] },
   // A placeholder and the empty value of a field ("Keins") in the grey of the glyphs.
   { text: ['icon-subtle'], on: ['surface'] },
   // A switch off and on, and the edge of an empty checkbox (the switch's grey), on white.

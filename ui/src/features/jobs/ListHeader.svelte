@@ -214,7 +214,7 @@
     {#if jobs.actionError}
       <div class="unfold" transition:unfold>
         <div class="note">
-          <Notice tone="danger" variant="inline" text={jobs.actionError} testid="header-error" />
+          <Notice tone="danger" text={jobs.actionError} testid="header-error" />
         </div>
       </div>
     {/if}

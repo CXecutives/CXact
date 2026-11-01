@@ -1,7 +1,7 @@
 <!--
   The profile as groups of rows (the owner's choice of 2026-10-30): the groups of `sections.ts`
   in their order (Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen, Ausschlüsse), each a
-  Section with one white box of rows (Group `rows`), and like the rows of Einstellungen every
+  Section with one white box of rows (Group), and like the rows of Einstellungen every
   value changes where it stands: its control in one column (ProfileControl; a hairline between
   rows). Nothing opens and nothing is confirmed: ProfileView saves a change by itself (`onleft`
   says focus left a field, Enter in a field is `onsave`), the setup with its Weiter, which its
@@ -285,7 +285,7 @@
         heading={t.profile.section[section.id]}
         testid="section-{section.id}"
       >
-        <Group rows>
+        <Group>
           {#if list === 'competences'}
             <CompetenceList bind:rows={form.competences} error={listError('competences')} />
           {:else if list === 'languages'}

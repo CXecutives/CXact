@@ -38,7 +38,7 @@
   }
 
   .danger {
-    --tile-bg: var(--danger-tint);
+    --tile-bg: var(--danger-soft);
     --tile-fg: var(--status-danger);
   }
 </style>

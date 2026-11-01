@@ -31,8 +31,6 @@ import { scrollerOf } from './scroll';
 export interface GlideParams {
   /** The element it marks (null: hidden). */
   to: HTMLElement | null;
-  /** Placed without motion this time (another list, a far jump the caller knows of). */
-  jump?: boolean;
 }
 
 interface Box {
@@ -192,8 +190,8 @@ export const glide: Action<HTMLElement, GlideParams> = (node, initial) => {
   }
 
   /** May this change move (glide or fade)? */
-  function smooth(jump: boolean): boolean {
-    return ready && !pending && !jump && !isReducedMotion() && !browsingFast();
+  function smooth(): boolean {
+    return ready && !pending && !isReducedMotion() && !browsingFast();
   }
 
   function observe(next: HTMLElement | null): void {
@@ -203,12 +201,12 @@ export const glide: Action<HTMLElement, GlideParams> = (node, initial) => {
     target = next;
   }
 
-  function update({ to, jump = false }: GlideParams): void {
+  function update({ to }: GlideParams): void {
     const changed = to !== target;
     observe(to);
     if (to === null) {
       stop();
-      show(false, changed && smooth(jump));
+      show(false, changed && smooth());
       return;
     }
     // Its element is gone (a row that folded away): it waits where it was.
@@ -219,7 +217,7 @@ export const glide: Action<HTMLElement, GlideParams> = (node, initial) => {
       return;
     }
     const was = current();
-    const area = changed && shown && was !== null && smooth(jump) ? scrollerOf(to) : undefined;
+    const area = changed && shown && was !== null && smooth() ? scrollerOf(to) : undefined;
     if (
       was !== null &&
       area !== undefined &&
@@ -234,7 +232,7 @@ export const glide: Action<HTMLElement, GlideParams> = (node, initial) => {
       placed = box;
       write();
     }
-    show(true, changed && !shown && smooth(jump));
+    show(true, changed && !shown && smooth());
     pending = false;
   }
 

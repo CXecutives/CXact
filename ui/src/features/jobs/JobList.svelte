@@ -757,7 +757,6 @@
       <div class="page-error">
         <Notice
           tone="warning"
-          variant="inline"
           text={t.list.pageFailed}
           action={{ label: t.common.retry, icon: 'retry', onclick: () => void jobs.grow() }}
           testid="page-error"

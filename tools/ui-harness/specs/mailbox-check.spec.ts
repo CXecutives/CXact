@@ -269,6 +269,7 @@ test('every message of the form stands right under its field, its way on under t
   await password.fill('');
   await save(page).click();
   await expect(said(page)).toHaveCount(2);
+  await animationsDone(page);
   expect(await messageOf(password)).toEqual(await messageOf(user));
   const [message, link] = await Promise.all([
     said(page).last().boundingBox(),
@@ -287,11 +288,13 @@ test('a refused pair is said under the password, in Einstellungen and the setup 
     await password.fill('');
     await page.keyboard.press('Enter');
     await expect(said(page)).toHaveCount(2);
+    await animationsDone(page);
     const place = await messageOf(user);
     await user.fill('alerts.demo@gmail.com');
     await password.fill('falschfalschfals');
     await page.keyboard.press('Enter');
     await expect(said(page)).toHaveText(T.error.text('mailAuth', {}));
+    await animationsDone(page);
     expect(await messageOf(password)).toEqual(place);
     // It describes the field it stands under, and has no row of its own.
     await expect(password).toHaveAccessibleDescription(T.error.text('mailAuth', {}));

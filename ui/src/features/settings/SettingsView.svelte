@@ -189,12 +189,7 @@
 {#snippet noteOf(section: string, feedback: Feedback)}
   <div class="fold" transition:unfold>
     <div class="note">
-      <Notice
-        tone={feedback.tone}
-        variant="inline"
-        text={feedback.text()}
-        testid="{section}-note"
-      />
+      <Notice tone={feedback.tone} text={feedback.text()} testid="{section}-note" />
     </div>
   </div>
 {/snippet}
@@ -238,7 +233,7 @@
                 </Group>
               {/each}
             {:else}
-              <Group rows>
+              <Group>
                 {#if section.block === 'mailbox'}
                   <MailboxCard {cfg} locked={mailboxLocked} />
                 {/if}

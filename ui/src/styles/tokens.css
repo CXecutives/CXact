@@ -205,9 +205,8 @@
   --delay-arrive: 1200ms;
   /* The tick of what is chosen, in a menu and a select's list alike. */
   --chosen-text: hsl(var(--p-navy));
-  /* The soft ground of a failure's tile. */
-  --danger-tint: hsl(var(--p-red-50));
   --danger-strong: var(--score-ring-0);
+  /* The soft ground of a failure's tile and of a dangerous entry under the pointer. */
   --danger-soft: hsl(var(--p-red-50));
   /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
   --danger-fill: hsl(var(--p-word-red));
@@ -312,9 +311,6 @@
   --sh-dialog: 0 24px 80px -20px hsl(var(--p-shade) / 0.45), 0 2px 8px hsl(var(--p-shade) / 0.2);
   --sh-pop: 0 12px 40px -12px hsl(var(--p-shade) / 0.28), 0 2px 6px hsl(var(--p-shade) / 0.08);
   --sh-tooltip: 0 4px 12px -4px hsl(var(--p-shade) / 0.22), 0 1px 2px hsl(var(--p-shade) / 0.1);
-  /* A menu floats close above the page: a near and a far soft shadow (its edge is the same
-     hairline border every floating surface has: menus, toasts, dialogs, popovers). */
-  --sh-menu: 0 4px 12px hsl(var(--p-shade) / 0.08), 0 16px 40px hsl(var(--p-shade) / 0.12);
   --sh-primary: 0 1px 1px hsl(var(--p-shade-primary) / 0.14);
   /* No focus ring anywhere, not for the keyboard either (user decision 2026-10-04); the
      keys still work. A text field in focus shows its edge in navy, as native fields do. */
@@ -332,7 +328,6 @@
      Focus draws no ring (user decision 2026-10-04). */
   --quiet-hover: var(--surface-hover);
   --quiet-press: var(--surface-press);
-  --control-hover: var(--surface-hover);
   --control-hover-edge: var(--border-input);
   --control-press: hsl(var(--p-track));
   --control-press-edge: hsl(var(--p-border-press));
@@ -344,7 +339,6 @@
   /* A field's placeholder: the grey of the glyphs ([data-missing] below). */
   --field-placeholder: var(--icon-subtle);
   --label-hover: var(--text);
-  --label-glyph-hover: var(--icon-accent);
 
   /* ----------------------------------------------------------- top bar */
   /* The window's top bar in the design's colours, never the system's (user, 2026-09-27):
@@ -563,7 +557,6 @@
   /* cards and groups on the page */
   --card-pad-y: 18px;
   --card-pad-x: 20px;
-  --group-field-gap: 18px;
   --group-heading-gap: 10px;
   --group-section-gap: 30px;
   /* the job view: its side padding, its foot and the widest its content gets */
@@ -698,7 +691,6 @@
      glyph hangs over it (the hero's tools, a list row's, the × of Kompetenzen and Sprachen). */
   --tool-hang: calc((var(--control-icon) - var(--icon-sm)) / 2);
   --card-tools-inset: calc(var(--card-pad-x) - var(--tool-hang));
-  --group-pad-end: var(--space-20);
   --group-caption: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --group-caption-gap: var(--space-6);
   --group-caption-top: 14px;

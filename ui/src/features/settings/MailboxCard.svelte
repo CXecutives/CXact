@@ -216,11 +216,7 @@
 {#if cfg.mailbox.error}
   <div class="fold" transition:unfold>
     <div class="note">
-      <Notice
-        tone="danger"
-        variant="inline"
-        text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
-      />
+      <Notice tone="danger" text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)} />
     </div>
   </div>
 {/if}

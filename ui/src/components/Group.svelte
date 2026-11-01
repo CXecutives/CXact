@@ -1,11 +1,9 @@
 <!--
   The white box of a page's group (Section; Profil, Einstellungen; the round 10 draft): white
-  with a hairline edge and the card's soft shadow, 14 round. A box of fields is 18 20 20 inside
-  with its fields 18 apart, no lines between them. A box of rows (`rows`: the Profil's, Postfach
-  and Daten; or SettingRows as its direct children: the portals) has no padding: its rows pad
-  themselves and draw the hairline between them, the only hairlines of a box. The box is the
-  container its rows ask for their width (a narrow box puts a row's buttons on a line of their
-  own). A box of a group of several has its caption above it (Jobportale's "Suche und
+  with a hairline edge and the card's soft shadow, 14 round. It holds rows, which pad themselves
+  and draw the hairline between them, the only hairlines of a box. The box is the container its
+  rows ask for their width (a narrow box puts a row's buttons on a line of their own). A box of
+  a group of several has its caption above it (Jobportale's "Suche und
   Alert-Mails"): 13/500 muted, 2 in like the section's title, 6 above the box, 14 below the box
   before it (8 under the section's title).
 -->
@@ -19,29 +17,21 @@
     captionTestid?: string | null;
     /** The box's test id. */
     testid?: string | null;
-    /** A box of rows that pad themselves, whatever wraps them. */
-    rows?: boolean;
     children: Snippet;
   }
 
-  let {
-    caption = null,
-    captionTestid = null,
-    testid = null,
-    rows = false,
-    children,
-  }: Props = $props();
+  let { caption = null, captionTestid = null, testid = null, children }: Props = $props();
 </script>
 
 {#if caption !== null}
   <div class="captioned">
     <h3 class="caption" data-testid={captionTestid ?? undefined}>{caption}</h3>
-    <div class="box" class:rows data-testid={testid ?? undefined}>
+    <div class="box" data-testid={testid ?? undefined}>
       {@render children()}
     </div>
   </div>
 {:else}
-  <div class="box" class:rows data-testid={testid ?? undefined}>
+  <div class="box" data-testid={testid ?? undefined}>
     {@render children()}
   </div>
 {/if}
@@ -70,19 +60,10 @@
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: var(--group-field-gap);
     min-width: 0;
-    padding: var(--card-pad-y) var(--card-pad-x) var(--group-pad-end);
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-card);
     background-color: var(--surface);
     box-shadow: var(--sh-card);
-  }
-
-  /* A box of rows: the rows bring their own padding and lines. */
-  .box.rows,
-  .box:has(> :global([data-setting-row])) {
-    gap: 0;
-    padding: 0;
   }
 </style>

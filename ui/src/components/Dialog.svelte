@@ -164,7 +164,7 @@
           {#if children}<div class="content">{@render children()}</div>{/if}
           {#if error}
             <div class="error">
-              <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
+              <Notice tone="danger" text={error} testid="dialog-error" />
             </div>
           {/if}
           <div class="actions">
