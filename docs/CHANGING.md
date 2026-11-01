@@ -158,8 +158,7 @@ Each role of the UI has one pattern, decided in one place; the components only r
   `variant="suggest"` and its `count`, read by `ui/src/features/profile/AskedTerms.svelte`; its
   words on `--surface-track` keep AA (`CONTRAST` in `tools/tokens.mjs`).
 - **An empty state**: `components/EmptyState.svelte`, always a meaningful icon and one quiet
-  sentence, no heading; a notice is `components/Notice.svelte` (inline, or a row at the top of
-  the list).
+  sentence, no heading; a notice is `components/Notice.svelte` (inline, or a state box).
 - **Hover, press and focus**: one answer per surface kind (quiet, control, label) in
   `ui/src/styles/tokens.css` ("one answer per surface kind").
 - **Buttons**: one height (`docs/PLAN.md` "Controls", `--btn-height` in

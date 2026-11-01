@@ -3,10 +3,9 @@
   text, with at most one small secondary button centred on its first line (a field's or a
   row's failure, a portal's problem): info, success and warning colour only their sign (the
   words stay ink), danger is the one red of what is wrong all through. The sentence of a failure
-  or a warning copies (`data-copy`), to search for it or to say it to someone. `box` and `row` are
-  the state box
-  (StateBox, the round 10 draft: no sign, a spinner while `busy`, the title, the sentence and
-  the button at the right; `ban` the soft red); Notice hands them on until their callers use
+  or a warning copies (`data-copy`), to search for it or to say it to someone. `box` is the state
+  box (StateBox, the round 10 draft: no sign, a spinner while `busy`, the title, the sentence and
+  the button at the right; `ban` the soft red); Notice hands it on until its callers use
   StateBox themselves. A box with only a sentence shows it as its title; an excluded job's box
   keeps its ban before the words until the job view's ring shows it. A sentence with links in
   it comes as `children` instead of `text`. A notice that appears in a view already on screen
@@ -26,7 +25,7 @@
 
   interface Props {
     tone?: NoticeTone;
-    variant?: 'inline' | 'row' | 'box';
+    variant?: 'inline' | 'box';
     /** The spinner before the words (a box whose state is changing). */
     busy?: boolean;
     heading?: string | null;

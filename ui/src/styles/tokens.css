@@ -114,7 +114,7 @@
      more while pressed; grey while the window is inactive (like Mail, Explorer). */
   --surface-selected: hsl(var(--p-coral-25));
   --surface-selected-inactive: hsl(var(--p-ink) / 0.06);
-  /* Track of a choice of a few (the place tabs and every segmented choice, one look). */
+  /* The track: a tile's ground, a meter's. */
   --surface-track: hsl(var(--p-track));
   --scrim: hsl(var(--p-scrim) / 0.26);
   /* The tooltip bubble: the navy. */
@@ -153,14 +153,13 @@
   /* The chosen row of the list (round 10): one soft coral tint under the rows with the bar at
      its left, gliding to the chosen job (RowBar). */
   --selection-tint: hsl(var(--p-coral-25));
-  /* The sliding pill of the active sidebar entry: a surface a step above the sidebar, lifted
-     by the thumbs' shadow and without an edge, like a chosen tab or segment
-     (user, 2026-09-30); in CXact a warm white, its label navy and its icon coral. */
+  /* The sliding pill of the active sidebar entry: the line's grey without an edge, its label navy
+     and its icon coral. */
   --nav-active-bg: hsl(var(--p-line));
   --nav-active-fg: hsl(var(--p-navy));
   --nav-active-icon: hsl(var(--p-coral));
 
-  /* ------------------------------------------ navy: the data and the quiet structure */
+  /* ------------------------------------------ switches, chips, progress and the caret */
   /* Switches and checkboxes are coral when on (the steps of the primary; owner, 2026-10-30),
      grey when off (the same grey is the edge of an empty checkbox), the knob white; each state
      darkens a step under the pointer and one more while the left button is down. */
@@ -171,8 +170,7 @@
   --toggle-on-hover: hsl(var(--p-coral-variant));
   --toggle-on-press: hsl(var(--p-coral-press));
   --toggle-knob: hsl(var(--p-white));
-  /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
-     disclosure chevron, the icon of a neutral stat tile). */
+  /* An icon that answers the pointer (a divider's chevron) or marks a way (the setup's tiles). */
   --icon-accent: hsl(var(--p-navy));
   /* A chip in a field: neutral, the app's ink on the track (design round 7, professional). */
   --chip-surface: hsl(var(--p-track));
@@ -182,8 +180,8 @@
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
   --meter-fill: hsl(var(--p-navy));
   --meter-track: hsl(var(--p-track));
-  /* Caret and text selection: navy, like the native blue of both OS (the edge of a field
-     in focus is --border-focus). */
+  /* The caret navy, like the native blue of both OS (the edge of a field in focus is
+     --border-focus), a selection in the soft orange. */
   --caret: hsl(var(--p-navy));
   --selection: hsl(var(--p-coral-100));
   /* Scrollbars stay ink. */
@@ -220,7 +218,7 @@
      ink, translucent, so
      it reads on a plain, a hovered and a selected row alike. */
   --mark: hsl(var(--p-score-yellow) / 0.4);
-  /* One blue in the app: info is the navy. */
+  /* Info is the navy. */
   --info: hsl(var(--p-navy));
 
   /* ------------------------------------------------------------------- score */
@@ -272,9 +270,9 @@
 
   /* --------------------------------------------------------------- gradients */
   /* Only the fades under the top bar. No decorative gradients. */
-  /* The fade under the top bar (user, 2026-09-27; smoother on 2026-10-10): the views' white
-     (Jobs and the pages, --layout-page) into nothing along an eased curve, so neither end
-     shows an edge. */
+  /* The fade under the top bar (user, 2026-09-27; smoother on 2026-10-10): a ground into nothing
+     along an eased curve, so neither end shows an edge: the list's white under a day's heading,
+     the page's, the setup's cream. */
   --grad-fade: linear-gradient(
     hsl(var(--p-white)),
     hsl(var(--p-white) / 0.9) 20%,
@@ -403,10 +401,10 @@
   /* A quiet icon-only button (title bar, row tools, hero tools): 28 (round 10). */
   --control-icon: 28px;
   --nav-row: 32px;
-  /* The first row of every view (the titles, the list's tabs, the sidebar's first entry are
+  /* The first row of every view (the titles, the list's head, the sidebar's first entry are
      centred in it, so their middles lie on one line across the window). */
   --control-lg: 30px;
-  /* The glyphs in a list row's second line. */
+  /* The glyphs beside small text. */
   --icon-xs: 14px;
   /* Round 10: a chip's ×, a checkbox's tick, the sidebar and a toast's
      sign, and the glyph of a 56 px tile (a glyph in a tile is half the tile). */
@@ -442,17 +440,11 @@
   --icon-grow-l: 1.14;
   /* How far a glyph on the pixel seam moves (lib/icons.ts SEAM_GLYPHS). */
   --icon-seam: 0.5px;
-  /* A row's place stays whole up to this width; the company gives way first (user
-     2026-10-01). */
-  /* The vertical padding of a row: a list row's two lines (title and company), and a row of
-     a page's group (a setting, a portal) with its control, roomy. */
+  /* The vertical padding of a list row. */
   --list-row-pad: 10px;
-  /* A row of a page's group: its label and its one line under it, the line its tile, buttons
-     and switch are centred on (every row this high, so a list keeps one rhythm). */
-  /* Mail-style rows: the title line and the company line beside the ring. */
   /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
-     row across the whole window above the sidebar and the sheet (its hairline under it),
-     empty but for the window buttons; below it the app is the same. Windows: 36 px (the
+     row across the whole window above the sidebar and the sheet, no line under it; below it
+     the app is the same. Windows: 36 px (the
      height of Claude's bar there), the app's own caption buttons at the right over the bar's
      full height, as wide as the native ones of Windows 11 (src-tauri/src/platform.rs answers
      the window procedure with the same two numbers, core's `window::BAR_HEIGHT` and
@@ -469,14 +461,12 @@
   --titlebar-tools-end: 34px;
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
-  /* The bar's own buttons are the one button height (--control-field); three with their
+  /* The bar's own buttons are the quiet icon-button height (--control-icon); three with their
      gaps fill --titlebar-tools-start, which core's window.rs hit-tests with. This number is
-     what window.rs counts with (core/tests/ui_contract.rs checks it is the button height). */
+     what window.rs counts with (core/tests/ui_contract.rs checks it is that height). */
   --titlebar-tool: 28px;
-  /* The list column's header rows: the places and the search, as high as a field. */
+  /* The list column's head: its one row, the search, as high as a field. */
   --list-toolbar: var(--control-field);
-  /* The one action at the end of the tabs' row (Jobs suchen, Abbrechen, Papierkorb leeren) is
-     at least this wide, so a swap between them moves nothing. */
   /* The list column beside the reader: the handle keeps it at least this wide, and the
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps
@@ -496,8 +486,8 @@
   /* How far ArrowUp/ArrowDown scroll a pane (a line of text and its gap, like the OS). */
   --scroll-line: 40px;
   /* The app's own menus (components/Menu.svelte): a row as easy to hit as a field row, the
-     text of a field, a fixed icon column, keys right and quiet. It opens this far below
-     its button and keeps --viewport-gap from every edge of the window. */
+     text of a field, a fixed icon column. It opens this far below its button and keeps
+     --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
   --menu-row: 32px;
   --menu-max-height: 232px;
@@ -520,10 +510,6 @@
   --mail-view-height: 360px;
   /* The dashed edge of a drop zone (the CV's upload). */
   --drop-edge: 1.5px;
-  /* Rows and their washes: a row's hover wash is the row's own box, and rows run edge to
-     edge inside their container. A container that insets its content sets --row-inset to
-     that inset; its rows bleed out by it and pad their content in by it, so wash, divider
-     and text share one grid (a card of rows: 14). Unset, rows sit at the content edge. */
   /* The padding of a button's content at its sides (Button). */
   --button-pad: 11px;
   /* How far a ghost button hangs out of its column so its text or icon starts (or ends) on
@@ -533,7 +519,7 @@
      pages, and the left edge of the top strip, so their edges line up. */
   --pane-padding: 16px;
   /* The first line of every view, one row this high below the pane padding: the sidebar's
-     first entry, the tabs and the title of every page header are centred in it (a heading
+     first entry, the list's head and the title of every page header are centred in it (a heading
      takes `data-first-row`, base.css), so their middles lie on one line across the window. */
   --first-row: var(--control-lg);
   /* The padding above and below the content of a view's head (components/PageHeader): its
@@ -554,8 +540,6 @@
   --tile-md: 36px;
   --tile-lg: 48px;
   --tile-xl: 56px;
-  /* The unread dot of a list row sits on the ring axis in the pane padding; the dot of a
-     state (Verbunden) beside its words. */
   /* Round 10 (2026-10-24), the approved draft: */
   /* the dot of a status word (Verbunden) */
   --dot-status: 7px;
@@ -630,7 +614,7 @@
   --row-bar-inset: 10px;
   --dialog-width: 400px;
   --stat-min: 170px;
-  /* Sidebar and the toast stack. */
+  /* The sidebar. */
   --sidebar-width: 232px;
   /* The sidebar's handle keeps it between these. */
   --sidebar-min: 200px;
@@ -684,7 +668,7 @@
   /* A text field: its text 10 px in, a glyph before it (the search's magnifier) 7 px away. */
   --field-inset: 10px;
   --field-glyph-gap: 7px;
-  /* A chip in a field: 13 px words in 540, 3 px after its x. */
+  /* A chip: 13 px words in the values' weight, 3 px after its x. */
   --type-chip: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --chip-pad-end: 3px;
   /* The least a glyph is hit by the pointer (the chip's x, the info symbol): 24 px, larger
@@ -723,7 +707,7 @@
   --page-top-pad: var(--space-8);
   --page-bottom: var(--reader-pad-end);
   /* A field: its links at the right of the label row (13/500 navy, an external glyph), an
-     error under the control in the one red of what is missing or wrong. */
+     error under the control in the one red of what is wrong. */
   --field-link: var(--weight-control) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --field-link-gap: 14px;
   --error-text: var(--danger-strong);
@@ -753,7 +737,7 @@
   --recommended-glyph: hsl(var(--p-coral-variant));
   --sh-tile-hover: 0 6px 18px -8px hsl(var(--p-shade) / 0.18);
   /* The drop zone: 34 20 inside on the page's ground, a dashed edge, its words without a
-     glyph; under the pointer a navy edge and the track as its ground. */
+     glyph; under the pointer a darker edge and the quiet wash. */
   --drop-pad-y: 34px;
   --drop-pad-x: var(--space-20);
   --drop-edge-hover: var(--border-input);
@@ -765,7 +749,7 @@
   --empty-text-gap: var(--space-4);
   --empty-text-max: 300px;
   --empty-actions-gap: var(--space-16);
-  /* The state box (StateBox): the cream ground with a hairline, 12 12 12 20 inside, at least
+  /* The state box (StateBox): the cream ground with a hairline, 12 20 inside, at least
      56 high, its parts 14 apart; an excluded job's on the soft red. */
   --state-surface: var(--bg);
   --state-edge: var(--border);
@@ -817,8 +801,8 @@
 
   /* ------------------------------------------- round 10: jobs list */
   /* The list's head 8 16 10 (the head's own 8 and 2 more under its last row), the rows 6 in
-     from the column's edges and 40 above its end. A row: 9 10 inside, its ring 12 before
-     the title, at least 48 high, 8 round; the hairline above a row from the title (52) to 10
+     from the column's edges and 40 above its end. A row: 10 10 inside, its ring 12 before
+     the title, at least 48 high, 8 round; the hairline above a row from the title (56) to 10
      before the end. Its tools (two quiet 28s, 2 apart) with their glyph ending on the hairline's
      end, their slot always kept. A day's heading and a section's divider 12/540 muted: the day 14 10 6, sticky; a
      divider 22 10 6 under its hairline, 6 below the last row, its chevron 14. */
@@ -848,7 +832,6 @@
   --divider-pad: 22px var(--space-10) var(--space-6);
   --divider-gap: var(--space-6);
   --type-day: var(--weight-medium) var(--font-xs) / var(--leading-xs) var(--font-sans);
-  /* A search without hits: one quiet line. */
   /* The strip of a run under the head: 10 under the search, 16 at its sides. */
   --list-strip-gap: var(--space-10);
 
@@ -871,8 +854,7 @@
   /* A field of the Profil is a row of its group's box, like a row of Einstellungen: its label
      (14/540) in a column of 188, 24 before the control, 12 20 inside and at least 56 high,
      a hairline between rows; in a box under 560 wide the label stands 8 above its control.
-     The number fields carry their unit inside: euros (`€ am Tag`, `€ im Jahr`) 170, the years
-     of experience 130, the day of "Ab Datum" 122. */
+     The number fields carry their unit inside (`€ am Tag`, `€ im Jahr`). */
   --profile-label-width: 188px;
   --profile-label-gap: var(--space-24);
   --profile-label-gap-narrow: var(--space-8);
@@ -930,8 +912,8 @@
 
   /* Geist draws lighter than Inter: one step heavier everywhere (user, 2026-10-10). */
   --weight-regular: 450;
-  /* Four weights (round 10): 450 text, 500 buttons and quiet words, 540 labels, segments, list
-     titles and chips, 650 titles. */
+  /* Four weights (round 10): 450 text and chips, 500 buttons and quiet words, 540 labels and list
+     titles, 650 titles. */
   --weight-control: 500;
   --weight-medium: 540;
   --weight-semibold: 650;
@@ -959,7 +941,6 @@
   /* The lead of a setup step. */
   --font-lead: 15px;
   --leading-lead: 22px;
-  /* The digits of a large ring, the letters of a large tile (semibold). */
   /* The heading of a group of a view (the groups of Profil and Einstellungen, the job view's
      Jobdetails, an empty state's). */
   --font-heading: 16px;
@@ -967,7 +948,7 @@
   /* The title of a view, a step of the setup, the job view. */
   --font-xl: 20px;
   --leading-xl: 25px;
-  /* The title of a setup step and of an empty state. */
+  /* The title of a setup step. */
   --font-display: 26px;
   --leading-display: 30px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
@@ -1045,8 +1026,7 @@
   /* Exits. */
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   /* The two travels: small things (a menu, a notice, a chip, a row that arrives, an exit)
-     move 4 px, large ones (a dialog, a toast, the save bar, the rows of a list, a setup
-     step) 8 px. */
+     move 4 px, large ones (a dialog, a toast, the rows of a list, a setup step) 8 px. */
   --move-sm: 4px;
   --move-lg: 8px;
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
@@ -1063,7 +1043,7 @@
   /* Toasts lie below a dialog's scrim: dimmed, and no undo acts behind a modal. */
   --z-toast: 90;
   --z-overlay: 100;
-  /* macOS: what still moves the window over a dialog's scrim (TitleBar.svelte). */
+  /* macOS: what still moves the window over a modal's scrim (TitleBar.svelte). */
   --z-overlay-bar: 101;
   --z-menu: 115;
   --z-tooltip: 120;
