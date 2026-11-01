@@ -34,7 +34,8 @@
 // many (2000 jobs) · offline · mailbox-refused (Gmail refused the app password while the
 // search went on) · mailbox-keychain (the last search could not read the app password) ·
 // paused · running · slow · list-error · profile-broken ·
-// sign-in-waiting (a search that waits for the sign-in at freelance.de) · rescoring (the jobs
+// sign-in-waiting (a search that waits for the sign-in at freelance.de; once it is given the
+// search goes on to its end, `afterSignIn`) · rescoring (the jobs
 // scored anew after a save) · concept (five jobs for design reviews: high, medium, low, not
 // scored, excluded) ·
 // profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
@@ -1906,6 +1907,11 @@ function startRun(request: RunRequest, sender: Sender | null): void {
         : request.kind === 'details'
           ? detailsScript(request.keys)
           : script(request.kind, ways.mail ? mailFailure : null);
+  play(events);
+}
+
+/** A run's events one by one, to its end. */
+function play(events: readonly RunEvent[]): void {
   let index = 0;
   const step = (): void => {
     if (!running) return;
@@ -1925,6 +1931,33 @@ function startRun(request: RunRequest, sender: Sender | null): void {
     setTimeout(step, TICK);
   };
   setTimeout(step, TICK);
+}
+
+/** The search of `sign-in-waiting` from the sign-in on: the ads it still has to load (it stood at
+ *  2 of 7), their scores, its end; it brings nothing new. */
+function afterSignIn(): RunEvent[] {
+  return [
+    ...[3, 4, 5, 6, 7].map((done): RunEvent => ({
+      type: 'progress',
+      step: 'fetch',
+      portal: null,
+      done,
+      total: 7,
+    })),
+    { type: 'status', code: 'scoring', portal: null, until: null },
+    { type: 'progress', step: 'score', portal: null, done: 7, total: 7 },
+    {
+      type: 'finished',
+      summary: {
+        ...lastRun(),
+        startedAt: at(0.05),
+        finishedAt: at(0),
+        perPortal: [],
+        newJobs: { count: 0, high: 0, excluded: 0 },
+        emptyAlerts: [],
+      },
+    },
+  ];
 }
 
 /** What the rescore after the last profile save changed (null: nothing known). */
@@ -2260,7 +2293,25 @@ const handlers: Handlers = {
   },
   portal_login: ({ portal: name }) => {
     const p = state.portals.find((x) => x.portal === name);
-    if (p) p.signedIn = true;
+    if (p) {
+      p.signedIn = true;
+      // record_session: `set_session` takes away what asked for the sign-in.
+      if (p.health.kind === 'loginRequired') {
+        p.health = { kind: 'ok' };
+        p.actionNeeded = false;
+      }
+    }
+    // Session::sign_in: the run that waits for it hears so and goes on.
+    const asked = state.running?.replay.some(
+      (event) => event.type === 'loginNeeded' && event.waiting && event.portal === name,
+    );
+    if (asked && !running) {
+      emit({ type: 'loginNeeded', portal: name, waiting: false });
+      running = true;
+      runningKind = state.running!.kind;
+      harness.done = false;
+      play(afterSignIn());
+    }
     return true;
   },
   portal_logout: ({ portal: name }) => {

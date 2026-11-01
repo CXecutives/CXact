@@ -253,6 +253,27 @@ for (const scenario of ['running', 'sign-in-waiting', 'rescoring']) {
   });
 }
 
+test('Anmelden at a search that waits ends the wait: the search goes on to its end', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=sign-in-waiting`);
+  const step = page.getByTestId('run-step');
+  await expect(step).toHaveText(T.run.line.waiting(T.portal.freelance));
+  await page.evaluate(() => (window.__harness.holdAfter = 1));
+  await page.getByTestId('run-sign-in').click();
+  await expect
+    .poll(async () => (await calls(page, 'portal_login')).at(-1)?.[1])
+    .toEqual({ portal: 'freelance' });
+  // The strip says what the search does now, without the way to sign in.
+  await expect(step).toHaveText(T.run.line.ads);
+  await expect(page.getByTestId('run-sign-in')).toHaveCount(0);
+  await page.evaluate(() => (window.__harness.holdAfter = null));
+  await runFinished(page);
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
+  await expect(page.getByTestId('fetch')).toBeVisible();
+  await expect(page.getByTestId('toast-text')).toHaveText(T.toast.runDone(0));
+});
+
 test('loading ads is no search: no run line, no Abbrechen, no fetch toast', async ({ page }) => {
   await open(page, `${WIN}&tick=40`);
   await page.evaluate(() => {

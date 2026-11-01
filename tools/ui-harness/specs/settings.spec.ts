@@ -785,6 +785,24 @@ test('portals: a sign-in that ran out says so in red and offers Anmelden', async
   await expect(page.getByTestId('sign-in-freelance')).toBeVisible();
 });
 
+test('portals: a sign-in that ran out and is given again says nothing more, for good', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=sign-in-expired`);
+  const status = page.getByTestId('portal-freelance-hint');
+  await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
+  await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
+  await expect(status).not.toHaveText(T.settings.signInExpired);
+  expect(await calls(page, 'portal_login')).toHaveLength(1);
+  // Off and on again it does not come back.
+  const enabled = page.getByTestId('toggle-enabled-freelance');
+  await enabled.click();
+  await expect(enabled).toHaveAttribute('aria-checked', 'false');
+  await enabled.click();
+  await expect(enabled).toHaveAttribute('aria-checked', 'true');
+  await expect(status).not.toHaveText(T.settings.signInExpired);
+});
+
 test('portals: Anmelden and Abmelden keep one width', async ({ page }) => {
   await settings(page);
   const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
@@ -961,6 +979,11 @@ test('a search that waits for the sign-in leaves Anmelden of that portal on', as
   await expect
     .poll(async () => (await calls(page, 'portal_login')).at(-1)?.[1])
     .toEqual({ portal: 'freelance' });
+  // Given, it waits no more: the row says so at once, and the search goes on to its end.
+  await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
+  await expect(page.getByTestId('portal-freelance-hint')).not.toHaveText(T.settings.signInWaiting);
+  await runFinished(page);
+  await expect(page.getByTestId('portal-freelance-hint')).not.toHaveText(T.settings.signInWaiting);
 });
 
 test('switching a portal off lets its calls fade out together: Anmelden does not jump', async ({
