@@ -17,8 +17,9 @@
   case, with or without accents), with the first marked; Enter or a click takes the marked
   one, leaving the field takes a single match, a chosen option leaves the list. Text that
   matches no option stays in the field and says so (`noMatch`, the look of a refused value), as
-  does text the field was left with; text that matches only chosen ones says nothing. A chip
-  shows its option's name; a value that is no option (from a file) stays and shows as it is.
+  does text the field was left with; text that matches only chosen ones says nothing and goes with
+  Enter or the leaving. A chip shows its option's name; a value that is no option (from a file)
+  stays and shows as it is.
   What stands in the list the field adds to (`taken`, the rows of Sprachen and Kompetenzen)
   counts as chosen. A pasted list goes in as far as its entries name an option.
   With `suggestions` (the engine's words) a field without options suggests terms from the
@@ -202,15 +203,23 @@
   /** `text` is a whole name of `option`. */
   const nameOf = (option: ChipOption, text: string): boolean =>
     names(option).some((name) => folded(name) === folded(text));
-  /** `text` names an option that is a chip already: taking it only clears the text. */
-  const isChosen = (text: string): boolean =>
-    folded(text) !== '' &&
-    (options ?? []).some((option) => isThere(option) && nameOf(option, text));
+  /** `text` means only what is there already, a whole name or a start only chips share: taking
+   *  it only clears the text. */
+  function isChosen(text: string): boolean {
+    if (options === null || folded(text) === '') return false;
+    const hits = suggested(options, text);
+    return (
+      options.some((option) => isThere(option) && nameOf(option, text)) ||
+      (hits.length > 0 && hits.every(isThere))
+    );
+  }
   const chosen = $derived(isChosen(draft));
   /** The typed text names no option at all (one that is chosen already is no news), or the
-   *  field was left with text it did not take. */
+   *  field was left with a start of several it did not take. */
   const nothing = $derived(
-    options !== null && folded(draft) !== '' && (found.length === 0 || !focused),
+    options !== null &&
+      folded(draft) !== '' &&
+      (found.length === 0 || (!focused && matches.length > 0)),
   );
   const suggesting = $derived(options !== null || suggestions !== undefined);
 

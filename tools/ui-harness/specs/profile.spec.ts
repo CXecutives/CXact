@@ -1136,6 +1136,29 @@ test('a name field knows the rows above it: a language there says nothing, a com
     page.getByTestId('language-add-options').getByRole('option', { name: LANGUAGE.de }),
   ).toHaveCount(0);
   await language.fill('');
+  // Text that means only a row: Enter clears it, and so does leaving, with no sentence.
+  const start = LANGUAGE.en.slice(0, 4);
+  await language.fill(start);
+  await language.press('Enter');
+  await expect(language).toHaveValue('');
+  await language.fill(start);
+  await page.getByTestId('profile-tools').locator('input').click();
+  await expect(page.getByTestId('language-add')).toHaveCount(0);
+  await expect(names(page, 'languages')).toHaveText([LANGUAGE.de, LANGUAGE.en]);
+  // A tag field likewise: text that means only its chip, and a part of a pasted list.
+  const land = countryInput(page);
+  const none = page.getByTestId('profile-countries-none');
+  await land.fill(DE.slice(0, 7));
+  await land.press('Enter');
+  await expect(land).toHaveValue('');
+  await land.fill(DE.slice(0, 7));
+  await page.keyboard.press('Tab');
+  await expect(land).toHaveValue('');
+  await expect(none).toHaveCount(0);
+  await land.click();
+  expect(await pasteInto(land, `${DE.slice(0, 7)}, ${CH}`)).toBe(true);
+  await expect(land).toHaveValue('');
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH]);
   // A competence that is a row is not suggested; the others are.
   const competence = await adder(page, 'competence');
   await competence.fill('Contr');
