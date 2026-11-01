@@ -18,8 +18,8 @@
   Profil and Einstellungen keep where they were scrolled to
   while the app runs (a return finds the same place). A start whose data cannot load says so
   and offers to try again (the screen and its button stay until the answer), to restore a backup
-  (the dialog of Einstellungen, whose restore loads the app again) and the data folder; what the
-  restore or the folder could not do stays a note under them.
+  (BackupDialog, whose restore loads the app again) and the data folder; what the listing of the
+  backups or the folder could not do stays a note under them, moving nothing.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
