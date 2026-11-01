@@ -10,7 +10,8 @@
   time: when the list is built or comes back, and after a reload, another filter or a search.
   Opening a job while none is open fades it in, closing fades it out. A job that leaves the
   list (archive, Papierkorb) keeps it where its row was until the next job opens there: it
-  waits there while the next row rises into that place, however long the fold takes. It
+  waits there while the next row rises into that place, however long the fold takes. A list
+  without rows has none: it goes with them at once. It
   greys while the window is inactive, like Mail and Explorer. Under reduced motion it never
   moves.
 -->
@@ -312,6 +313,11 @@
     transition:
       opacity var(--dur-fade) var(--ease-in),
       background-color var(--dur-base) var(--ease-standard);
+  }
+
+  /* A list without rows has none: it would flash over the state that took the rows' place. */
+  .highlight:not(:has(~ :global(.groups))) {
+    display: none;
   }
 
   /* The coral bar at its left edge, 10 in from its top and bottom. */
