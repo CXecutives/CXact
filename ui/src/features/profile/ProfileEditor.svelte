@@ -39,6 +39,7 @@
   import { arrivingRow, washOver } from '$lib/motion/arrive';
   import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
   import { afterFolds, unfold } from '$lib/motion/transitions';
+  import { menuState } from '$lib/state/menu.svelte';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
   import { onMount, tick } from 'svelte';
   import CompetenceList from './CompetenceList.svelte';
@@ -178,10 +179,13 @@
 
   /** The caret stands in a field typed in: its value is not done yet, and what the form sends
    *  would hold half of it. A field the caret only came to holds what it held, and a tag field
-   *  whose text has gone into chips holds nothing half typed. */
+   *  whose text has gone into chips holds nothing half typed. The field's own menu has the focus
+   *  only on loan. */
   export function typing(): boolean {
     const field = typedIn;
-    if (field === null || document.activeElement !== field) return false;
+    if (field === null || (menuState.open?.returnFocus ?? document.activeElement) !== field) {
+      return false;
+    }
     return !(
       field instanceof HTMLInputElement &&
       'chipKeys' in field.dataset &&

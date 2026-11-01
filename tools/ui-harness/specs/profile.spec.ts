@@ -1486,6 +1486,131 @@ test('a press whose release never reaches the page lands with the next move of t
   await expect(chips(tools).last()).toHaveText('Miro');
 });
 
+test("a field's own menu leaves nothing: what was typed stays typed, nothing is judged or saved", async ({
+  page,
+}) => {
+  // The save of a change is due while the menu stands, however busy the machine.
+  await setToken(page, '--save-delay', '600ms');
+  await profile(page);
+  const menu = page.getByTestId('menu');
+  const openMenu = async (input: Locator): Promise<void> => {
+    await input.click({ button: 'right' });
+    await expect(menu).toBeVisible();
+  };
+  const shut = async (): Promise<void> => {
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+  };
+  // A tag field: the word is no chip yet, and Ausschneiden cuts it.
+  const regions = page.getByTestId('profile-regions');
+  const region = regions.locator('input');
+  const before = await chips(regions).allTextContents();
+  await region.fill('Bremen');
+  await region.selectText();
+  await openMenu(region);
+  await expect(chips(regions)).toHaveText(before);
+  await expect(region).toHaveValue('Bremen');
+  await page.getByTestId('menu-item-cut').click();
+  await expect(menu).toHaveCount(0);
+  await expect(region).toHaveValue('');
+  await expect(region).toBeFocused();
+  await expect(chips(regions)).toHaveText(before);
+  // A closed list: on its way to a name, no sentence under the menu, its list comes back with it.
+  const land = countryInput(page);
+  await land.click();
+  await page.keyboard.type('Sch');
+  await openMenu(land);
+  await expect(page.getByTestId('profile-countries-none')).toHaveCount(0);
+  await shut();
+  await expect(land).toBeFocused();
+  await expect(land).toHaveValue('Sch');
+  await expect(options(page).getByRole('option')).toHaveCount(2);
+  await land.fill('');
+  // A number: half typed, neither judged nor saved, though its save falls due under the menu.
+  const wish = page.getByTestId('profile-wish-rate');
+  await wish.fill('15');
+  await openMenu(wish);
+  await page.waitForTimeout(800);
+  expect(await saves(page)).toBe(0);
+  await expect(field(page, 'dayRateWish')).not.toContainText(T.profile.field.belowMinRate);
+  await shut();
+  await expect(wish).toBeFocused();
+  await expect(wish).toHaveValue('15');
+  await wish.fill('1.200');
+  // A day: not judged while it is typed.
+  const date = page.getByTestId('profile-date');
+  await date.fill('12.');
+  await openMenu(date);
+  await expect(field(page, 'available')).not.toContainText(T.profile.field.dateInvalid);
+  await shut();
+  await expect(date).toBeFocused();
+  await expect(field(page, 'available')).not.toContainText(T.profile.field.dateInvalid);
+  await date.fill('01.09.2026');
+  // A list's empty name field stays while its menu stands, for Einfügen.
+  const name = await adder(page, 'competence');
+  await openMenu(name);
+  await expect(name).toBeVisible();
+  await page.evaluate(() => (window.__harness.clipboard = 'Treasury'));
+  await page.getByTestId('menu-item-paste').click();
+  await expect(name).toHaveValue('Treasury');
+  await expect(name).toBeFocused();
+});
+
+for (const [how, close] of [
+  [
+    'the wheel',
+    async (page: Page): Promise<void> => {
+      await page.mouse.move(2, 400);
+      await page.mouse.wheel(0, 60);
+    },
+  ],
+  [
+    'the window resized',
+    async (page: Page): Promise<void> => {
+      const size = page.viewportSize()!;
+      await page.setViewportSize({ width: size.width - 40, height: size.height });
+    },
+  ],
+  [
+    'the window to the back',
+    (page: Page): Promise<void> =>
+      page.evaluate(() => void window.dispatchEvent(new Event('blur'))),
+  ],
+] as const) {
+  test(`a menu that gives no focus back has left its field (${how}): nothing sticks, what waited comes`, async ({
+    page,
+  }) => {
+    await profile(page);
+    const menu = page.getByTestId('menu');
+    // A closed list: its list goes and it says so.
+    const land = countryInput(page);
+    await land.click();
+    await page.keyboard.type('Sch');
+    await expect(options(page).getByRole('option')).toHaveCount(2);
+    await land.click({ button: 'right' });
+    await expect(menu).toBeVisible();
+    await close(page);
+    await expect(menu).toHaveCount(0);
+    await expect(options(page)).toHaveCount(0);
+    await expect(page.getByTestId('profile-countries-none')).toHaveText(
+      T.profile.field.countryNone,
+    );
+    await expect(land).not.toBeFocused();
+    await land.fill('');
+    // A tag field takes the word, and the form saves it.
+    const region = page.getByTestId('profile-regions').locator('input');
+    await region.click();
+    await page.keyboard.type('Bremen');
+    await region.click({ button: 'right' });
+    await expect(menu).toBeVisible();
+    await close(page);
+    await expect(menu).toHaveCount(0);
+    await expect(chips(page.getByTestId('profile-regions')).last()).toHaveText('Bremen');
+    await expect.poll(async () => (await stored(page))?.regions).toContain('Bremen');
+    await expect(region).not.toBeFocused();
+  });
+}
+
 test('going to the window behind changes nothing in a field; closing the window still settles it', async ({
   page,
 }) => {

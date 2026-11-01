@@ -79,6 +79,14 @@ export function onMenuOpened(handler: () => void): void {
   opened = handler;
 }
 
+/** Told each time a menu has closed and given back its focus, if it does: input.ts, where what
+ *  leaving a field does waits for that. */
+let closed: (() => void) | null = null;
+
+export function onMenuClosed(handler: () => void): void {
+  closed = handler;
+}
+
 export const isItem = (entry: MenuEntry): entry is MenuItem =>
   entry.kind !== 'separator' && entry.kind !== 'heading';
 
@@ -109,6 +117,7 @@ export function closeMenu(restore = true): void {
   menuState.active = -1;
   open.onclose?.();
   if (restore && open.returnFocus?.isConnected) open.returnFocus.focus({ preventScroll: true });
+  closed?.();
 }
 
 /** Run an entry (enabled only): the menu closes first, the focus goes back, then it runs. A

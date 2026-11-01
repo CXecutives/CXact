@@ -74,8 +74,9 @@
 //   (`hover`, `holdHover` of hold.ts); a press on a tooltip's anchor holds the same way, so
 //   the button that takes the place of the one pressed shows no tooltip until the pointer moves
 // - a tooltip's bubble goes on a press anywhere, a scroll of any pane and Esc (`onDismiss`)
-// - what leaving a field does waits for the press that left it to land, and a window going to
-//   the back leaves nothing (`afterPress`)
+// - what leaving a field does waits for the press that left it to land, and neither a window
+//   going to the back nor the field's own menu, which gives the focus back, leaves anything
+//   (`afterPress`)
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -89,6 +90,7 @@ import {
   firstEnabled,
   isItem,
   menuState,
+  onMenuClosed,
   onMenuOpened,
   openMenu,
   type MenuEntry,
@@ -1509,19 +1511,21 @@ let pressWaits: (() => void)[] | null = null;
  * moved between press and release take the click from the control pressed. So `run` waits for
  * the left press that left the field, until its click comes (ahead of the control's handler) or
  * right after its release; without a press it runs at once. It does not run when `field` holds
- * the focus by then: a window going to the back leaves it there, nothing was left.
+ * the focus by then: a window going to the back leaves it there, nothing was left. A menu that
+ * stands has the focus on loan, so `run` waits for it too; one that closes without giving it back
+ * (the wheel, the window resized or at the back) has left the field.
  */
 export function afterPress(field: EventTarget | null, run: () => void): void {
   const left = (): void => {
     if (document.activeElement !== field) run();
   };
-  if (pressWaits === null) left();
-  else pressWaits.push(left);
+  if (pressWaits === null && menuState.open === null) left();
+  else (pressWaits ??= []).push(left);
 }
 
-/** The press has landed: what waited for it comes, in its order. */
+/** The press has landed and no menu stands: what waited comes, in its order. */
 function pressLanded(): void {
-  if (pressWaits === null) return;
+  if (pressWaits === null || menuState.open !== null) return;
   const waiting = pressWaits;
   pressWaits = null;
   for (const run of waiting) run();
@@ -1547,6 +1551,7 @@ export function installInput(): void {
     typed = '';
     watchWheel('menu', true);
   });
+  onMenuClosed(pressLanded);
   document.addEventListener('contextmenu', onContextMenu, capture);
   document.addEventListener(
     'mousedown',
@@ -1554,7 +1559,7 @@ export function installInput(): void {
       keyboardFocus = false;
       if (event.button === LEFT) {
         pressLanded();
-        pressWaits = [];
+        pressWaits ??= [];
       }
       dismiss('press', event.target);
       if (pressesElsewhere(event) || pressOutsideMenu(event)) {
