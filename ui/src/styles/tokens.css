@@ -477,8 +477,6 @@
   --list-first-min: 480px;
   --list-first-max: 560px;
   --reader-min: 420px;
-  /* The job view's column: a comfortable line for the ad's text. */
-  --reader-width: 640px;
   /* The column handle: the strip that catches the pointer (over the reader's padding, never
      over the list's scrollbar) and the small grip centred on the border. */
   --splitter-hit: 8px;
