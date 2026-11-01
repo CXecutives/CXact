@@ -324,7 +324,7 @@
   /* Every control answers the pointer by the kind of its surface, the same way everywhere
      (change a kind here and every control of it follows):
      - quiet: no fill at rest (ghost button, list row, reason, sidebar entry, run status,
-       segment, text chip, menu entry): a wash under the pointer, a deeper one pressed.
+       text chip, menu entry): a wash under the pointer, a deeper one pressed.
      - control: a white box with an edge (secondary button, field): a muted fill and a
        darker edge under the pointer, a button one opaque step darker still while pressed.
      - label: text without a box (the excluded divider): ink under the pointer, its chevron
@@ -516,8 +516,8 @@
      pages, and the left edge of the top strip, so their edges line up. */
   --pane-padding: 16px;
   /* The first line of every view, one row this high below the pane padding: the sidebar's
-     first entry, the list's head and the title of every page header are centred in it (a heading
-     takes `data-first-row`, base.css), so their middles lie on one line across the window. */
+     first entry, the list's head and the title of every page header are centred in it, so their
+     middles lie on one line across the window. */
   --first-row: var(--control-lg);
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
@@ -929,7 +929,7 @@
   /* Small text: hints, the second line of a row, a section's line. */
   --font-sm: 13px;
   --leading-sm: 18px;
-  /* The text of the app: running lines, fields, labels, buttons, tabs. */
+  /* The text of the app: running lines, fields, labels, buttons. */
   --font-md: 14px;
   --leading-md: 20px;
   /* List titles on a tight line, so two lines stay one block. */
@@ -982,7 +982,7 @@
      the base rule), a press darkens in 60 ms (nothing scales, moves or deforms), the release
      settles in 150 ms. Colour changes 100 ms. Three curves: entries ease out (150 to 180 ms,
      rising 4 or 8 px), exits ease in (60 to 100 ms), and every glide (list selection, nav pill,
-     segment and toggle thumbs, chevrons, rows that move) takes 180 ms with ease-out. The ring
+     toggle thumbs, chevrons, rows that move) takes 180 ms with ease-out. The ring
      fill and its count 400 ms. Only transform and opacity move (and colour and
      stroke-dashoffset); nothing overshoots. Motion only where something new comes: a list of
      another place, a new job's ring, an insert or a removal, a state change; a view switch,

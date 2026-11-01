@@ -62,7 +62,7 @@ const CONTRAST = [
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info'], on: ['surface'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
-  // A suggestion chip (Button `suggest`): its words and its count on the track's fill.
+  // Words on the track's fill.
   { text: ['text', 'text-muted'], on: ['surface-track'] },
   // Round 10: the warm page of the job view and the pages, the chosen word of a menu, the red
   // label of a missing field. The band words beside a ring are not here: they take exactly

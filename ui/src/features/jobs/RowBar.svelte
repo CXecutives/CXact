@@ -3,7 +3,7 @@
   (8 round, the row's own box), a 3 px coral bar at its left
   edge, 10 in from its top and bottom. It lies under the rows and the days' headings, and in
   the list's scroll content, so it scrolls with the rows. Opening another job glides it there
-  by its translateY (180 ms, ease-out, like the sidebar's pill and the segment's thumb); a
+  by its translateY (180 ms, ease-out, like the sidebar's pill); a
   target out of sight, fast browsing (pace.ts: the arrow keys held, opens close together) and
   far jumps place it. It stays with its row whatever moves the rows: at once when rows arrive
   or fold away above it, gliding along when the list re-sorts. It is simply there the first
