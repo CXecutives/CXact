@@ -6,8 +6,9 @@
 // highlight marks the open row (RowBar). Sizes are pinned only where the design names them.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, calls, expect, open, test } from './fixtures';
+import { animationsDone, calls, expect, motionSettled, open, settle, test } from './fixtures';
 import {
+  chooseSort,
   failNext,
   list,
   listed,
@@ -16,11 +17,13 @@ import {
   row,
   rowMenu,
   rows,
+  setToken,
   stage,
   stubList,
   T,
   unfoldExcluded,
   viaMenu,
+  wholeInList,
   WIN,
 } from './helpers';
 
@@ -471,6 +474,271 @@ test('an excluded row shows the ban in the ring place, without a number', async 
   }
   // A scored row keeps its ring.
   await expect(row(page, 'linkedin-4100200301').locator('.ring')).toHaveCount(1);
+});
+
+test.describe('a click on a row that is cut', () => {
+  const pane = (page: Page): Locator => page.getByTestId('list-scroll');
+  const scrollTop = (page: Page): Promise<number> => pane(page).evaluate((node) => node.scrollTop);
+  /** The pane scrolled to `top`, once every row has mounted (they come chunk by chunk). */
+  const scrollTo = async (page: Page, top: number): Promise<void> => {
+    await expect(rows(page)).toHaveCount((await stubList(page)).active.length);
+    await pane(page).evaluate((node, top) => (node.scrollTop = top), top);
+    await settle(page);
+  };
+  /** The first row the day's heading that sticks cuts (its part below the heading is pressed),
+   *  and the heading's lower edge. */
+  const cutByHeading = async (
+    page: Page,
+  ): Promise<{ key: string; x: number; y: number; line: number }> => {
+    const heading = (await page.getByTestId('day-heading').first().boundingBox())!;
+    const line = heading.y + heading.height;
+    for (const key of await listed(page)) {
+      const box = (await row(page, key).boundingBox())!;
+      if (box.y < line && box.y + box.height > line + 4) {
+        return { key, x: box.x + 120, y: line + 2, line };
+      }
+    }
+    throw new Error('no row under the heading');
+  };
+  /** The row the pane's end cuts, and a point of its part in view. */
+  const cutByEnd = async (
+    page: Page,
+  ): Promise<{ key: string; x: number; y: number; end: number }> => {
+    const view = (await pane(page).boundingBox())!;
+    const end = view.y + (await pane(page).evaluate((node) => node.clientHeight));
+    for (const key of await listed(page)) {
+      const box = (await row(page, key).boundingBox())!;
+      if (box.y < end - 4 && box.y + box.height > end) {
+        return { key, x: box.x + 120, y: end - 2, end };
+      }
+    }
+    throw new Error('no row at the end');
+  };
+  /** The tops of the pane from now on, frame by frame. */
+  const logTops = async (page: Page): Promise<() => Promise<number[]>> => {
+    await pane(page).evaluate((node) => {
+      const tops: number[] = [];
+      (window as unknown as { tops: number[] }).tops = tops;
+      const frame = (): void => {
+        tops.push(node.scrollTop);
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
+    return () => page.evaluate(() => (window as unknown as { tops: number[] }).tops);
+  };
+
+  test('under the sticking heading: it glides out, just clear of the heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y, line } = await cutByHeading(page);
+    const box = (await row(page, key).boundingBox())!;
+    const tops = await logTops(page);
+    await page.mouse.click(x, y);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    // As little as it takes: the row stands right under the heading, not in the middle.
+    await expect
+      .poll(async () => Math.round((await row(page, key).boundingBox())!.y))
+      .toBe(Math.round(line));
+    expect(await scrollTop(page)).toBe(Math.round(70 - (line - box.y)));
+    // A glide: it passes places on its way.
+    const log = await tops();
+    expect(new Set(log).size).toBeGreaterThanOrEqual(3);
+  });
+
+  test("at the pane's end: it glides up, clear of the end", async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y, end } = await cutByEnd(page);
+    const room = await pane(page).evaluate((node) =>
+      Number.parseFloat(getComputedStyle(node).scrollPaddingBottom),
+    );
+    const tops = await logTops(page);
+    await page.mouse.click(x, y);
+    await expect
+      .poll(async () => {
+        const box = (await row(page, key).boundingBox())!;
+        return Math.round(end - (box.y + box.height));
+      })
+      .toBe(room);
+    expect(new Set(await tops()).size).toBeGreaterThanOrEqual(3);
+  });
+
+  test('a row that stands whole does not move, also in the room at the end or under the heading', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key: byEnd, end } = await cutByEnd(page);
+    const { key: byHeading, line } = await cutByHeading(page);
+    const keys = await listed(page);
+    // Its end a little above the pane's, in the room a glide leaves there.
+    const box = (await row(page, byEnd).boundingBox())!;
+    await scrollTo(page, Math.round(70 + box.y + box.height - end + 8));
+    const top = await scrollTop(page);
+    // The mouse itself: Playwright's click scrolls an element out of that room first.
+    const pressMiddle = async (key: string): Promise<void> => {
+      const at = (await row(page, key).boundingBox())!;
+      await page.mouse.click(at.x + 120, at.y + at.height / 2);
+    };
+    await pressMiddle(byEnd);
+    await expect(row(page, byEnd)).toHaveAttribute('aria-current', 'true');
+    await page.waitForTimeout(250);
+    expect(await scrollTop(page)).toBe(top);
+    // Its top a little under the heading's lower edge.
+    await scrollTo(page, 70);
+    const next = keys[keys.indexOf(byHeading) + 1]!;
+    const below = (await row(page, next).boundingBox())!;
+    await scrollTo(page, Math.round(70 + below.y - line - 4));
+    const under = await scrollTop(page);
+    await pressMiddle(next);
+    await expect(row(page, next)).toHaveAttribute('aria-current', 'true');
+    await page.waitForTimeout(250);
+    expect(await scrollTop(page)).toBe(under);
+  });
+
+  test('the open row, cut since, pressed again: it comes whole into view too', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y } = await cutByEnd(page);
+    await page.mouse.click(x, y);
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    const brought = await scrollTop(page);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThanOrEqual(brought);
+    await expect.poll(async () => (await row(page, key).boundingBox())!.y).toBeLessThan(y - 40);
+    await page.waitForTimeout(250);
+    await scrollTo(page, 70);
+    expect(await wholeInList(page, key)).toBe(false);
+    await page.mouse.click(x, y);
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+  });
+
+  test('a flat order has no heading to clear: the row glides to the edge of the pane', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await chooseSort(page, 'match');
+    await scrollTo(page, 70);
+    const view = (await pane(page).boundingBox())!;
+    const keys = await listed(page);
+    let key = '';
+    for (const candidate of keys) {
+      const box = (await row(page, candidate).boundingBox())!;
+      if (box.y < view.y && box.y + box.height > view.y + 4) key = candidate;
+    }
+    expect(key).not.toBe('');
+    const box = (await row(page, key).boundingBox())!;
+    await page.mouse.click(box.x + 120, view.y + 2);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    await motionSettled(page);
+    await expect
+      .poll(async () => Math.round((await row(page, key).boundingBox())!.y))
+      .toBe(Math.round(view.y));
+  });
+
+  test('the glide stops when the user scrolls', async ({ page }) => {
+    await setToken(page, '--dur-slow', '1500ms');
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { x, y } = await cutByEnd(page);
+    await page.mouse.click(x, y);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(71);
+    await page.mouse.wheel(0, -30);
+    const after = async (): Promise<number> => {
+      const at = await scrollTop(page);
+      await page.waitForTimeout(200);
+      return at;
+    };
+    // It stands: the wheel has the pane, and nothing takes it to where the glide went.
+    await expect.poll(async () => (await after()) === (await scrollTop(page))).toBe(true);
+    const stands = await scrollTop(page);
+    await page.waitForTimeout(1600);
+    expect(await scrollTop(page)).toBe(stands);
+  });
+
+  test('a double click opens the ad of the row first pressed, though it slid away', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await open(page, WIN);
+    await scrollTo(page, 70);
+    const { key, x, y, end } = await cutByEnd(page);
+    const keys = await listed(page);
+    const next = keys[keys.indexOf(key) + 1]!;
+    expect(end - y).toBeLessThan(10);
+    await page.mouse.move(x, y);
+    await page.mouse.down({ clickCount: 1 });
+    await page.mouse.up({ clickCount: 1 });
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    // The next row slid under the pointer that rests, and the engine counts this press second.
+    await expect
+      .poll(async () => {
+        const box = (await row(page, key).boundingBox())!;
+        return Math.round(end - (box.y + box.height));
+      })
+      .toBe(
+        await pane(page).evaluate((node) =>
+          Number.parseFloat(getComputedStyle(node).scrollPaddingBottom),
+        ),
+      );
+    const under = await page.evaluate(
+      ({ x, y }) =>
+        document
+          .elementFromPoint(x, y)
+          ?.closest('[data-testid^="job-row-"]')
+          ?.getAttribute('data-testid'),
+      { x, y },
+    );
+    expect(under).toBe(`job-row-${next}`);
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    const [portal, id] = key.split(/-(.*)/);
+    await expect
+      .poll(() => calls(page, 'open_target'))
+      .toEqual([['open_target', { target: { kind: 'jobUrl', key: { portal, id } } }]]);
+    // The row under the pointer was pressed by nothing.
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+    await expect(row(page, next)).not.toHaveAttribute('aria-current', 'true');
+    expect(
+      (await calls(page, 'job_detail')).filter(
+        ([, args]) => (args as { key: { id: string } }).key.id === next.split(/-(.*)/)[1],
+      ),
+    ).toHaveLength(0);
+  });
+
+  test('a real double click on a whole row opens its ad, once', async ({ page }) => {
+    await open(page, WIN);
+    const key = (await listed(page))[1]!;
+    await row(page, key).dblclick();
+    const [portal, id] = key.split(/-(.*)/);
+    await expect
+      .poll(() => calls(page, 'open_target'))
+      .toEqual([['open_target', { target: { kind: 'jobUrl', key: { portal, id } } }]]);
+    await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('a press that closed a menu starts no double click', async ({ page }) => {
+    await open(page, WIN);
+    const [first, second] = await listed(page);
+    await rowMenu(page, first!);
+    // Beside the menu, which opened at the middle of the row above.
+    const box = (await row(page, second!).boundingBox())!;
+    const at = { x: box.x + 20, y: box.y + box.height / 2 };
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down({ clickCount: 1 });
+    await page.mouse.up({ clickCount: 1 });
+    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    await page.waitForTimeout(150);
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+  });
 });
 
 test.describe('after a click on a row', () => {

@@ -31,9 +31,10 @@
 //   takes no press and no key's press, with no look of its own, which would flicker for that
 //   moment.
 // - a double click does nothing (in text that copies it selects a word, like everywhere;
-//   an element that offers `doubleClick` handles it: a job row opens its ad). Its second press
-//   counts only on what the first pressed: on what the first click slid under the pointer (the
-//   next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
+//   an element that offers `doubleClick` handles it: a job row opens its ad). It belongs to what
+//   its first press landed on, also when the first click slid that away (`runDouble`). Its second
+//   press counts only on what the first pressed: on what the first click slid under the pointer
+//   (the next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
 //   first click opened stays open (`pressesElsewhere`).
 // - the name of a text field leads into it; the name of a button (a select) only names it
 //   (`namesButton`)
@@ -812,7 +813,8 @@ let lastCopy: Element | null = null;
 let pressedAt: { x: number; y: number } | null = null;
 /** The left button is held since a press in selectable text. */
 let pressedInText = false;
-/** What the first press of a click went down on (null: it closed a menu, it pressed nothing). */
+/** What the first press of a click went down on (null: it closed a menu, it pressed nothing); a
+ *  second press elsewhere leaves it, its double click is still the first press's. */
 let firstPress: Element | null = null;
 
 /** The control a press lands on, not the words or the glyph in it; else the element itself. */
@@ -1022,10 +1024,11 @@ export const doubleClick: Action<HTMLElement, (() => void) | null> = (node, hand
   };
 };
 
-/** A left double click on an element that offers one (`doubleClick`); `true` if it ran. */
+/** A left double click whose first press landed on an element that offers one (`doubleClick`),
+ *  while that stands, wherever the second press came down; `true` if it ran. */
 function runDouble(event: MouseEvent): boolean {
-  if (event.button !== LEFT) return false;
-  const host = closest(event.target, DOUBLE_HOST);
+  if (event.button !== LEFT || firstPress?.isConnected !== true) return false;
+  const host = closest(firstPress, DOUBLE_HOST);
   const handler = host === null ? undefined : doubleHosts.get(host);
   if (handler === undefined) return false;
   handler();
@@ -1558,8 +1561,9 @@ export function installInput(): void {
         pressWaits = [];
       }
       dismiss('press', event.target);
-      if (pressesElsewhere(event) || pressOutsideMenu(event)) {
-        firstPress = null;
+      const elsewhere = pressesElsewhere(event);
+      if (elsewhere || pressOutsideMenu(event)) {
+        if (!elsewhere) firstPress = null;
         swallow = true;
         auxPress(true);
         event.preventDefault();
@@ -1690,7 +1694,7 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (swallow || runDouble(event) || !selectable(event.target)) {
+      if (runDouble(event) || swallow || !selectable(event.target)) {
         event.preventDefault();
       }
     },

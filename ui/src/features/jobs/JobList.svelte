@@ -25,7 +25,8 @@
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
   search looks in the list's place; under its hits a button names each other place that lists
   a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
-  A click opens a job, a double click opens its ad in the browser, a right click its menu
+  A click opens a job and brings a row that is cut whole into view (a glide, as little as it
+  takes), a double click opens its ad in the browser, a right click its menu
   (jobMenu of actions.ts); under the pointer the row shows the moves of its place as its tools
   (rowTools, the same table). The rows are pressed, not focused (`data-press-only`, like the
   list's head and the sidebar): after a click the keys scroll the list on both OS, Tab still
@@ -68,6 +69,7 @@
   import { searchWords } from '$lib/marks';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
+  import { glideWhole } from '$lib/motion/scroll';
   import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
@@ -306,10 +308,13 @@
     });
   });
 
-  /** A click opens the job (the open one stays open and has been looked at). */
+  /** A click opens the job (the open one stays open and has been looked at), and a row cut by the
+   *  day's heading that sticks over it or by the end of the list's pane comes whole into view. */
   function select(job: JobView): void {
     if (sameKey(jobs.selected, job.key)) seen(job.key);
     else void jobs.select(job, true);
+    const item = list?.querySelector(`[data-key="${CSS.escape(keyOf(job.key))}"]`);
+    if (item) glideWhole(item, dayed && !isExcluded(job) && !isUnscored(job));
   }
 
   // A search looks in the list's place; the other places that list hits are named under them.

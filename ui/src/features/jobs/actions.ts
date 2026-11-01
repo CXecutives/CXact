@@ -12,11 +12,11 @@
 // left; in another list than the one the move left (the Archiv, once another place was chosen)
 // its rows leave and, when the open job is one of them, the next one opens. A double click never
 // moves the job that slid under the pointer, nor opens it: its second press presses nothing there
-// (input.ts `pressesElsewhere`); every other click and key counts at once. The job the app opens
-// by itself counts as read only once it has been looked at (DWELL_MS on screen in the Jobs view,
-// or a press on it). A job that is already where it goes is no move. A move that fails says so
-// where it was asked (the list header, `jobs.actionError`), an undo that fails in its toast too,
-// which offers to try again.
+// and it stays the first press's (input.ts `pressesElsewhere`, `runDouble`); every other click and
+// key counts at once. The job the app opens by itself counts as read only once it has been looked
+// at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is already where it goes
+// is no move. A move that fails says so where it was asked (the list header, `jobs.actionError`),
+// an undo that fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
