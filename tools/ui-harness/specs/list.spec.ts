@@ -3153,7 +3153,7 @@ test.describe('the list keeps true', () => {
             const { display, opacity } = getComputedStyle(bar);
             const empty = document.querySelector('[data-testid="job-list"] [data-key]') === null;
             if (empty && display !== 'none' && Number(opacity) > 0) shown += 1;
-            if (performance.now() - start < 1000) requestAnimationFrame(frame);
+            if (performance.now() - start < 1500) requestAnimationFrame(frame);
             else resolve(shown);
           };
           requestAnimationFrame(frame);

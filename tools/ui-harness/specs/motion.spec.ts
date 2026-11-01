@@ -10,7 +10,7 @@ import { test as pure, type Page } from '@playwright/test';
 import { staggerDelay } from '../../../ui/src/lib/motion/enter';
 import { createPace } from '../../../ui/src/lib/motion/pace';
 import { expect, motionSettled, nav, open, test } from './fixtures';
-import { row, stubList, WIN } from './helpers';
+import { row, setToken, stubList, WIN } from './helpers';
 
 const tokens = readFileSync(
   fileURLToPath(new URL('../../../ui/src/styles/tokens.css', import.meta.url)),
@@ -165,15 +165,18 @@ test('another place lets its rows rise', async ({ page }) => {
 test('the pill glides when the places fold and when they unfold, and never goes out', async ({
   page,
 }) => {
+  // A glide long enough to be seen on a busy machine too.
+  await setToken(page, '--dur-slow', '900ms');
   await open(page, WIN);
   await motionSettled(page);
-  /** Where the pill stands and how it shows, frame by frame, from a press on the chevron until
-   *  it rests. */
-  const glide = (): Promise<{ top: number; opacity: number }[]> =>
+  /** Where the pill stands, and then how it stands and shows, frame by frame, from a press on the
+   *  chevron until it rests. */
+  const glide = (): Promise<{ from: number; frames: { top: number; opacity: number }[] }> =>
     page.evaluate(
       () =>
         new Promise((resolve) => {
           const pill = document.querySelector('nav .pill')!;
+          const from = pill.getBoundingClientRect().top;
           const frames: { top: number; opacity: number }[] = [];
           const start = performance.now();
           const tick = (): void => {
@@ -181,20 +184,19 @@ test('the pill glides when the places fold and when they unfold, and never goes 
               top: pill.getBoundingClientRect().top,
               opacity: Number(getComputedStyle(pill).opacity),
             });
-            if (performance.now() - start < 400) requestAnimationFrame(tick);
-            else resolve(frames);
+            if (performance.now() - start < 1100) requestAnimationFrame(tick);
+            else resolve({ from, frames });
           };
           document.querySelector<HTMLElement>('[data-testid="nav-places"]')!.click();
           requestAnimationFrame(tick);
         }),
     );
   for (const way of ['fold', 'unfold']) {
-    const frames = await glide();
+    const { from, frames } = await glide();
     await motionSettled(page);
     expect(Math.min(...frames.map((frame) => frame.opacity)), way).toBe(1);
-    const from = frames[0]!.top;
     const to = frames.at(-1)!.top;
-    expect(from, way).not.toBe(to);
+    expect(to, way).not.toBe(from);
     const between = frames.filter(
       ({ top }) => top > Math.min(from, to) && top < Math.max(from, to),
     );
