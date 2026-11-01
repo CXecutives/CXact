@@ -129,6 +129,58 @@ test('from another view Zeigen opens Aktuell without its search, filtered to the
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
 });
 
+test('the first search of an empty app: the two columns come with its first row', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=fresh&tick=15`);
+  // Every frame that shows a row of the list without the job view beside it.
+  await page.evaluate(() => {
+    const seen: number[] = [];
+    (window as unknown as { alone: number[] }).alone = seen;
+    const look = (): void => {
+      const count = document.querySelectorAll('[data-testid^="job-row-"]').length;
+      if (count > 0 && document.querySelector('[data-testid="reader-pane"]') === null) {
+        seen.push(count);
+      }
+      requestAnimationFrame(look);
+    };
+    look();
+  });
+  await page.getByTestId('fetch').click();
+  await expect(page.locator(`[data-testid^="job-row-"]`).first()).toBeVisible();
+  await expect(page.getByTestId('reader-pane')).toBeVisible();
+  await runFinished(page);
+  expect(await page.evaluate(() => (window as unknown as { alone: number[] }).alone)).toEqual([]);
+});
+
+test('Zeigen closes the open job its list no longer holds; the one it holds stays', async ({
+  page,
+}) => {
+  /** The new job of the high band, the one Zeigen lists. */
+  const shown = 'linkedin-4100200399';
+  const zeigen = page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action');
+  await open(page, `${WIN}&tick=15`);
+  await row(page, 'freelancermap-2801').click();
+  await expect(page.getByTestId('reader-title')).toBeVisible();
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await zeigen.click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  await expect.poll(() => listed(page)).toEqual([shown]);
+  await expect(page.getByTestId('reader-title')).toHaveCount(0);
+  await expect(page.getByTestId('place-reader')).toBeVisible();
+  // A job of that search stays open beside the jobs Zeigen shows.
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await row(page, shown).click();
+  const title = await page.getByTestId('reader-title').innerText();
+  await zeigen.click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  await expect.poll(() => listed(page)).toEqual([shown]);
+  await expect(page.getByTestId('reader-title')).toHaveText(title);
+});
+
 test('what Zeigen set is never the user filter: its chips taken off keep nothing, the own one stays', async ({
   page,
 }) => {
@@ -146,6 +198,11 @@ test('what Zeigen set is never the user filter: its chips taken off keep nothing
   await expect(chip(page, 'run')).toHaveCount(0);
   await chipRemove(page, 'band-high').click();
   expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBe(kept);
+  // With the last of them gone the user's own stands again at once, not only at the next start.
+  await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
+  await expect
+    .poll(() => lastQuery(page))
+    .toMatchObject({ run: null, bands: [], portals: ['linkedin'] });
   await open(page, `${WIN}&tick=15`);
   await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
 });
@@ -164,6 +221,22 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
   await expect.poll(() => listed(page)).toEqual((await stubList(page)).active);
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [], portals: [] });
+});
+
+test('Filter zurücksetzen under what Zeigen set brings the own filter back', async ({ page }) => {
+  await open(page, `${WIN}&tick=15`);
+  await chooseFilter(page, 'portal-linkedin');
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  // Its button stands where the filter leaves nothing.
+  await chooseFilter(page, 'portal-hays');
+  await page.getByTestId('empty-filter').getByTestId('filter-reset').click();
+  await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
+  await expect
+    .poll(() => lastQuery(page))
+    .toMatchObject({ run: null, bands: [], portals: ['linkedin'] });
 });
 
 // The preview's runs that are under way when the page starts (the scenarios `running`,

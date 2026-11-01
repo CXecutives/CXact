@@ -15,7 +15,6 @@ import {
   row,
   rowMenu,
   rows,
-  settleMoves,
   stage,
   stubList,
   T,
@@ -173,7 +172,6 @@ test.describe('tools', () => {
       { place: 'trash', key: 'freelancermap-2802', tools: ['restore', 'purge'] },
     ] as const;
     await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
     for (const { place, key, tools } of places) {
       await openPlace(page, place);
       // None at rest: only the row under the pointer has them.
@@ -268,9 +266,7 @@ test.describe('tools', () => {
     expect(await calls(page, 'move_jobs')).toHaveLength(1);
     expect(await calls(page, 'open_target')).toHaveLength(0);
     // A tool whose row stays (Endgültig löschen waits for a run) takes the double click too.
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
     await page.evaluate(() => (window.__harness.holdAfter = 1));
     await page.getByTestId('fetch').click();
     await openPlace(page, 'trash');

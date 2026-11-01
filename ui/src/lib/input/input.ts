@@ -40,9 +40,9 @@
 //   and a drag that selects goes on over the controls as over the text (`textDrag`)
 // - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
-//   presses the focused button, switch or radio, Enter a button only; in a radio group (the
-//   segments) and a row of tabs the arrows, Home and End choose; on a select the arrows open
-//   its list (`selectKeys`). Inside a field every
+//   presses the focused button, switch or radio, Enter a button only, once for a held key; in
+//   a radio group (the segments) and a row of tabs the arrows, Home and End choose; on a select
+//   the arrows open its list (`selectKeys`). Inside a field every
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
@@ -105,8 +105,8 @@ const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
  *  Space, like the native ones; Enter there goes on to the form (its default action). */
 const ENTER_PRESSES =
   'button:not([role="switch"], [role="radio"], [role="checkbox"]), [role="button"]';
-/** Controls a press does not focus: in the sidebar and the list's header
- *  (`data-press-only`), like the toolbar of Mail and Finder. */
+/** Controls a press does not focus: in the sidebar, the list's header and the job view's rows
+ *  of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
@@ -444,8 +444,10 @@ const pressesControl = (event: KeyboardEvent): boolean =>
     (event.key === 'Enter' && pressedByEnter(event.target)));
 
 /** The engine clicks a native button on its key. What is a button by its role only (a link
- *  that selects like text, components/TextLink.svelte) is clicked here, once for a held key. */
+ *  that selects like text, components/TextLink.svelte) is clicked here. A held key presses once:
+ *  its repeats press nothing further (a held Enter would run through a list). */
 function pressByRole(event: KeyboardEvent): void {
+  if (event.repeat) event.preventDefault();
   const control = closest(event.target, PRESSABLE);
   if (control instanceof HTMLButtonElement || !(control instanceof HTMLElement)) return;
   event.preventDefault();
@@ -835,6 +837,14 @@ const movedFromPress = (event: MouseEvent): boolean =>
  */
 export const wasDragged = (event: MouseEvent): boolean =>
   event.detail !== 0 && movedFromPress(event);
+
+/** How many presses in a row the last one was, as the engine counts a double click. */
+let pressesInRow = 0;
+
+/** The click now is the second of a double click (the engine counts on: every even one); a
+ *  key's click never is. */
+export const secondClick = (): boolean =>
+  !keyboardFocus && pressesInRow > 1 && pressesInRow % 2 === 0;
 
 /**
  * A press in selectable text that drags selects text, and nothing else: while it does, :root
@@ -1527,6 +1537,7 @@ export function installInput(): void {
   document.addEventListener(
     'mousedown',
     (event) => {
+      pressesInRow = event.detail;
       keyboardFocus = false;
       if (event.button === LEFT) {
         pressLanded();
@@ -1571,8 +1582,8 @@ export function installInput(): void {
           event.preventDefault();
         } else if (!pressOnFieldBox(event)) {
           leaveField(event);
-          // The sidebar and the list's header are pressed, not focused (like the toolbar of
-          // Mail and Finder on both OS).
+          // What holds only buttons (the sidebar, the list's header, the job view's rows of
+          // buttons) is pressed, not focused, like the toolbar of Mail and Finder on both OS.
           if (closest(event.target, PRESS_ONLY) !== null) event.preventDefault();
         }
         return;

@@ -12,16 +12,18 @@
     title, one flat list in two columns (one in a narrow card), met first, then in part, not
     met and unclear, a must before what is only nice to have; a quiet "optional" after one
     that is only nice to have and not met; a missing must that is a term has a small "+" into
-    its field of the profile (addToProfile.ts), and once it is there a quiet check stands in
-    place of its cross;
+    its field of the profile (addToProfile.ts; in the Papierkorb none, Wiederherstellen comes
+    first), and once it is there a quiet check stands in place of its cross;
   - ad: the ad's text in its structure, the words of the list's search marked (AdText); only
     once the text is there.
   A new job is there at once, every card in its place (a cascade would leave the pane empty
   for a frame and replay on every job); its ring fills and counts up unless the user browses
   fast (pace.ts). What arrives later on the same job (the ad, its rows) fades in. Hovering or clicking a fact or
-  a requirement marks nothing in the ad (user decision 2026-09-27). Moving the job away from
-  one of its buttons hands the focus to the same button of the next job. Every result and
-  every failure is a toast.
+  a requirement marks nothing in the ad (user decision 2026-09-27). Its buttons are pressed, not
+  focused, like the sidebar's (`data-press-only`, never around what copies): nothing stands armed
+  for a key after a click, and Tab still reaches them. Moving the job away by the keyboard from
+  one of its buttons hands the focus to the same button of the next job. Every result and every
+  failure is a toast.
 -->
 <script lang="ts" module>
   /** A button of the job view had the focus when its job moved away: the same button of the
@@ -59,7 +61,6 @@
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import {
-    guarded,
     include as includeJob,
     mayInclude,
     move,
@@ -188,13 +189,12 @@
     prompt: () => void copyJobPrompt(job.key).then(fail),
   };
 
-  /** A move of the hero's tools. The next job's view gives the focus back to the button that
-   *  had it. */
+  /** A move of the hero's tools. Pressed from the keyboard, the next job's view gives the focus
+   *  back to the button that had it; a click hands nothing on. */
   function act(id: MoveId): void {
-    if (guarded()) return;
     const focused = document.activeElement;
     const testid =
-      focused instanceof HTMLElement && article?.contains(focused)
+      byKeyboard() && focused instanceof HTMLElement && article?.contains(focused)
         ? (focused.dataset.testid ?? null)
         : null;
     handoff =
@@ -209,8 +209,8 @@
     });
   }
 
-  // The next job, opened after a move from one of this view's buttons: the same button of
-  // this view takes the focus, unless the user put it somewhere else meanwhile.
+  // The next job, opened after a move from the keyboard on one of this view's buttons: the same
+  // button of this view takes the focus, unless the user put it somewhere else meanwhile.
   $effect(() => {
     if (article === null) return;
     untrack(() => {
@@ -235,7 +235,6 @@
   let purgeError = $state<string | null>(null);
 
   function askPurge(): void {
-    if (guarded()) return;
     purgeError = null;
     confirmPurge = true;
   }
@@ -255,6 +254,9 @@
   /** An excluded job the user has not scored by hand, not in the Papierkorb: its one button is
    *  "Trotzdem bewerten". */
   const includable = $derived(excluded && mayInclude(job));
+  /** A job put in the Papierkorb is out of sight: nothing goes from it into the profile,
+   *  Wiederherstellen comes first (like `mayInclude`). */
+  const mayAdd = $derived(job.place !== 'trash');
   /** "Trotzdem bewerten" was pressed: the state box says the job is being scored. */
   let including = $state(false);
 
@@ -295,7 +297,7 @@
       <div class="reqs">
         <ul class="reasons" data-testid="reasons">
           {#each listed as reason (reason.id)}
-            {@const term = addable(reason) ? termOf(reason) : null}
+            {@const term = addable(reason) && mayAdd ? termOf(reason) : null}
             {@const added = term !== null && isAdded(term)}
             <li
               class="reason-line"
@@ -309,7 +311,7 @@
                    (the toast says so in words). -->
               {#snippet plus()}
                 {#if term !== null}
-                  <span class="reason-action">
+                  <span class="reason-action" data-press-only>
                     <Button
                       variant="ghost"
                       iconOnly
@@ -373,7 +375,7 @@
           {:else if detail.text}
             <Card heading={t.reader.ad} testid="ad">
               <div class="ad">
-                <AdText text={detail.text} layout={detail.layout} search={jobs.search} />
+                <AdText text={detail.text} layout={detail.layout} search={jobs.listedSearch} />
               </div>
             </Card>
           {/if}

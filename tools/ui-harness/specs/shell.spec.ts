@@ -27,7 +27,6 @@ import {
   openPlace,
   SEARCHED,
   reveal,
-  settleMoves,
   stage,
   T,
   viaMenu,
@@ -1433,7 +1432,6 @@ test('the close question stands alone: another question that is open is cancelle
   // Deleting for good asks (its dialog is open) when a search the app started is under way and
   // the window is asked to close.
   await viaMenu(page, 'trash', 'freelancermap-2803');
-  await settleMoves(page);
   await openPlace(page, 'trash');
   await viaMenu(page, 'purge', 'freelancermap-2803');
   const purge = page.getByTestId('dialog-purge');
@@ -1931,10 +1929,7 @@ test('Zurück skips a step whose job was deleted for good', async ({ page }) => 
   await page.getByTestId('reader-purge').click();
   await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
   await expect(row(page, 'linkedin-4100200307')).toHaveCount(0);
-  // The delete closed the job (a step), the next one opened by itself (another): two steps
-  // back, the second to the job that is gone.
-  await page.getByTestId('history-back').click();
-  await expect(page.getByTestId('place-reader')).toBeVisible();
+  // The next one opened by itself (a step): one step back, to the job that is gone.
   const asked = (await calls(page, 'job_detail')).length;
   await page.getByTestId('history-back').click();
   await expect.poll(async () => (await calls(page, 'job_detail')).length).toBeGreaterThan(asked);

@@ -17,6 +17,7 @@ import {
   expectShot,
   NOW,
   open,
+  motionSettled,
   runFinished,
   settle,
   test,
@@ -51,7 +52,6 @@ import {
   row,
   rowMenu,
   rows,
-  settleMoves,
   reveal,
   sortEntryId,
   SORTS,
@@ -63,6 +63,9 @@ import {
   WIN,
   menuFrame,
 } from './helpers';
+
+/** How long letters typed in a menu count as one word (input.ts). */
+const TYPE_AHEAD = 750;
 
 /** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile.
  *  Tokens are read once, so it is set before the page starts. */
@@ -79,6 +82,19 @@ async function slowSearch(page: Page, ms: number): Promise<void> {
     });
     watch.observe(document, { childList: true });
   }, `${ms}ms`);
+}
+
+/** A locked control answers no pointer: its colours stay what they are at rest. */
+async function expectNoAnswer(page: Page, control: Locator): Promise<void> {
+  await page.mouse.move(0, 0);
+  const colours = (): Promise<string[]> =>
+    control.evaluate((node) =>
+      [node, ...node.querySelectorAll('*')].map((part) => getComputedStyle(part).color),
+    );
+  const rest = await colours();
+  await control.hover({ force: true });
+  await motionSettled(page);
+  expect(await colours()).toEqual(rest);
 }
 
 /** The rows outside the fold as the stub lists them: the inbox by date unless said. */
@@ -120,6 +136,14 @@ async function inTheMiddle(page: Page, what: Locator): Promise<boolean> {
     inside(box.x + box.width / 2, column.x, column.width) &&
     inside(box.y + box.height / 2, column.y, column.height)
   );
+}
+
+/** A state stands in the very middle of its pane, top to bottom (on a whole pixel). */
+async function expectInTheVeryMiddle(what: Locator, pane: Locator): Promise<void> {
+  const box = (await what.boundingBox())!;
+  const around = (await pane.boundingBox())!;
+  const off = box.y + box.height / 2 - (around.y + around.height / 2);
+  expect(Math.abs(off)).toBeLessThanOrEqual(1);
 }
 
 /** A place that holds nothing and has no head: its empty state alone. */
@@ -1309,7 +1333,6 @@ test.describe('one list', () => {
     // A new job moved to the Archiv stays new there, like a mail app's unread mark.
     const moved = fresh[0]!;
     await viaMenu(page, 'archive', moved);
-    await settleMoves(page);
     await openPlace(page, 'archive');
     await expect.poll(dotted).toContain(moved);
   });
@@ -1630,9 +1653,7 @@ test.describe('days', () => {
   test('the Papierkorb heads its days by when the jobs went there', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'trash', 'freelancermap-2805');
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'linkedin-4100200303');
-    await settleMoves(page);
     await openPlace(page, 'trash');
     // Two jobs went there before (today, yesterday), one now (scored, it joins today).
     expect(await headings(page)).toEqual(['Heute', 'Gestern']);
@@ -1740,7 +1761,6 @@ test.describe('rows', () => {
     await page.keyboard.press('Escape');
     // The archive: unarchive, delete.
     await viaMenu(page, 'archive', 'freelancermap-2802');
-    await settleMoves(page);
     await openPlace(page, 'archive');
     menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
@@ -1749,7 +1769,6 @@ test.describe('rows', () => {
       T.actions.trash,
     ]);
     await menuItem(page, 'trash').click();
-    await settleMoves(page);
     // The trash: restore, delete for good.
     await openPlace(page, 'trash');
     menu = await rowMenu(page, 'freelancermap-2802');
@@ -1896,7 +1915,7 @@ test.describe('search', () => {
     expect((await lastQuery(page))?.search).toBe('Kreditoren');
   });
 
-  test('while a search is on both sections stand open, their chevrons do nothing; the kept choice returns', async ({
+  test('while a search is on both sections stand open, their headings locked; the kept choice returns', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1922,10 +1941,17 @@ test.describe('search', () => {
     await expect(excludedOnes).toHaveAttribute('aria-expanded', 'true');
     await expect.poll(() => listed(page)).toEqual(active);
     await expect(excludedRows(page)).toHaveCount(out.length);
-    // Their chevrons do nothing while it is on, and change nothing kept.
+    // Their headings are locked while it is on: they answer no pointer and change nothing kept.
     for (const divider of [unscored, excludedOnes]) {
-      await divider.click();
+      await expect(divider).toBeDisabled();
+      await expectNoAnswer(page, divider);
+      await divider.click({ force: true });
       await expect(divider).toHaveAttribute('aria-expanded', 'true');
+      // A press on it is a press on the list: an open menu closes (its end stands beside the menu).
+      await openFilter(page);
+      const box = (await divider.boundingBox())!;
+      await page.mouse.click(box.x + box.width - 4, box.y + box.height / 2);
+      await expect(page.getByTestId('menu')).toHaveCount(0);
     }
     await expect(page.getByTestId('unscored-rows').locator('[data-key]')).toHaveCount(
       waiting.length,
@@ -1943,6 +1969,123 @@ test.describe('search', () => {
     await expect(excludedOnes).toHaveAttribute('aria-expanded', 'true');
   });
 
+  test('the first typed letter unfolds nothing over the old list: sections and marks come with the hits', async ({
+    page,
+  }) => {
+    await slowSearch(page, 800);
+    await open(page, WIN);
+    const unscored = page.getByTestId('unscored-divider');
+    await unscored.click();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await openJob(page, 'linkedin-4100200301');
+    const marks = list(page).locator('mark');
+    const adMarks = stage(page).getByTestId('ad-text').locator('mark');
+    await page.getByTestId('search').fill('Control');
+    // On its way the answer changes nothing: the old list stands as it was, the open ad too.
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
+    await expect(marks).toHaveCount(0);
+    await expect(adMarks).toHaveCount(0);
+    // The answer: its hits at once, the sections open with them, nothing unfolding.
+    await expect(excludedRows(page)).toHaveCount(1);
+    await expect(unscored).toHaveAttribute('aria-expanded', 'true');
+    await expect(marks.first()).toBeVisible();
+    await expect(adMarks.first()).toBeVisible();
+    expect(
+      await page.getByTestId('excluded-rows').evaluate((node) => node.getAnimations().length),
+    ).toBe(0);
+  });
+
+  test('a list that starts with a section: no line over its heading, which stands where a day stands', async ({
+    page,
+  }) => {
+    /** Where the words of a heading start. */
+    const wordsTop = (heading: Locator): Promise<number> =>
+      heading.evaluate((node) => {
+        const words = document.createRange();
+        words.selectNodeContents(node);
+        return words.getBoundingClientRect().top;
+      });
+    const lineOf = (heading: Locator): Promise<string> =>
+      heading.evaluate((node) => getComputedStyle(node).borderTopWidth);
+    await open(page, WIN);
+    const day = await wordsTop(page.getByTestId('day-heading').first());
+    const unscored = page.getByTestId('unscored-divider');
+    // Between rows it keeps its line.
+    expect(await lineOf(unscored)).not.toBe('0px');
+    await page.getByTestId('search').fill('Buchhaltung');
+    const excludedOnes = page.getByTestId('excluded-divider');
+    await expect(excludedRows(page)).toHaveCount(1);
+    await expect(rows(page)).toHaveCount(0);
+    expect(await lineOf(excludedOnes)).toBe('0px');
+    expect(await wordsTop(excludedOnes.locator('.label'))).toBe(day);
+    // In the flat orders too (their rows hold an empty group).
+    await chooseSort(page, 'match');
+    await expect(page.getByTestId('day-heading')).toHaveCount(0);
+    await expect(excludedRows(page)).toHaveCount(1);
+    expect(await lineOf(excludedOnes)).toBe('0px');
+    expect(await wordsTop(excludedOnes.locator('.label'))).toBe(day);
+    // No profile: all of a place stands in its one section, under the state box.
+    await open(page, `${WIN}&scenario=no-profile`);
+    expect(await lineOf(unscored)).toBe('0px');
+  });
+
+  test('a place that holds only what its folds hide stands open, its heading locked; the kept choice returns', async ({
+    page,
+  }) => {
+    const scored = ['freelancermap-2801', 'freelance-900411', 'freelancermap-2804'];
+    const waiting = 'linkedin-4100200302';
+    const out = 'freelance-900412';
+    await open(page, `${WIN}&scenario=concept`);
+    const unscored = page.getByTestId('unscored-divider');
+    const excludedOnes = page.getByTestId('excluded-divider');
+    const kept = (): Promise<[string | null, string | null]> =>
+      page.evaluate(() => [
+        localStorage.getItem('jobs-unscored-open'),
+        localStorage.getItem('jobs-excluded-open'),
+      ]);
+    const archiveScored = async (): Promise<void> => {
+      for (const key of scored) {
+        await viaMenu(page, 'archive', key);
+        await expect(row(page, key)).toHaveCount(0);
+      }
+    };
+    // Both folded by the choice kept: only the scored rows show.
+    await unscored.click();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(row(page, waiting)).toHaveCount(0);
+    const choice = await kept();
+    await archiveScored();
+    // Nothing else would show: both stand open, locked, the choice untouched.
+    for (const divider of [unscored, excludedOnes]) {
+      await expect(divider).toHaveAttribute('aria-expanded', 'true');
+      await expect(divider).toBeDisabled();
+      await expectNoAnswer(page, divider);
+      await divider.click({ force: true });
+      await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    }
+    await expect(row(page, waiting)).toBeVisible();
+    await expect(row(page, out)).toBeVisible();
+    expect(await kept()).toEqual(choice);
+    // Other rows again: each as it was chosen, and its heading works.
+    await page.getByTestId('toast-action').click();
+    await expect(row(page, scored[0]!)).toBeVisible();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(excludedOnes).toHaveAttribute('aria-expanded', 'false');
+    await expect(unscored).toBeEnabled();
+    await expect(excludedOnes).toBeEnabled();
+    // One section open by the choice: the only one with rows on screen is locked, a fold
+    // beside it stays a fold.
+    await excludedOnes.click();
+    await expect(excludedOnes).toHaveAttribute('aria-expanded', 'true');
+    await archiveScored();
+    await expect(excludedOnes).toBeDisabled();
+    await expect(unscored).toHaveAttribute('aria-expanded', 'false');
+    await expect(unscored).toBeEnabled();
+    await unscored.click();
+    await expect(row(page, waiting)).toBeVisible();
+  });
+
   test('a hit opened from a section only the search holds open: without the search the kept choice returns', async ({
     page,
   }) => {
@@ -1954,7 +2097,7 @@ test.describe('search', () => {
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
-    // Noch nicht bewertet too, once the choice folds it.
+    // The section without a score too, once the choice folds it.
     const waiting = page.getByTestId('unscored-divider');
     await waiting.click();
     await expect(waiting).toHaveAttribute('aria-expanded', 'false');
@@ -1966,6 +2109,55 @@ test.describe('search', () => {
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect(page.getByTestId('search')).toHaveValue('');
     await expect(waiting).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('a search or a filter without a hit stands until the next answer: nothing blinks beside the typing', async ({
+    page,
+  }) => {
+    /** Every frame from now on, what it shows of the empty state and beside it. */
+    const watch = (): Promise<void> =>
+      page.evaluate(() => {
+        const frames = new Set<string>();
+        (window as unknown as { frames_: Set<string> }).frames_ = frames;
+        const has = (id: string): boolean =>
+          document.querySelector(`[data-testid="${id}"]`) !== null;
+        const look = (): void => {
+          const rows = document.querySelector('[data-testid^="job-row-"]') !== null;
+          const none = has('empty-search') || has('empty-filter');
+          frames.add(
+            `${none ? 'none' : rows ? 'rows' : 'blank'}${has('place-reader') ? '+tile' : ''}`,
+          );
+          requestAnimationFrame(look);
+        };
+        look();
+      });
+    const seen = (): Promise<string[]> =>
+      page.evaluate(() => [...(window as unknown as { frames_: Set<string> }).frames_]);
+    await open(page, `${WIN}&scenario=slow`);
+    const search = page.getByTestId('search');
+    const none = page.getByTestId('empty-search');
+    await search.fill('zzz');
+    await expect(none.locator('h3')).toHaveText(T.list.noHit('zzz'));
+    await watch();
+    // One more letter: the state stands, it speaks of the answer it has until the next comes.
+    await search.fill('zzzz');
+    await expect.poll(async () => (await lastQuery(page))?.search).toBe('zzzz');
+    await expect(none.locator('h3')).toHaveText(T.list.noHit('zzzz'));
+    await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+    expect(await seen()).toEqual(['none']);
+    // The search taken off: the rows take its place at once, with the tile beside them.
+    await watch();
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(rows(page).first()).toBeVisible();
+    expect((await seen()).sort()).toEqual(['none', 'rows+tile']);
+    // A filter that leaves nothing, taken off: the same.
+    await chooseFilter(page, 'portal-hays');
+    const emptied = page.getByTestId('empty-filter');
+    await expect(emptied).toBeVisible();
+    await watch();
+    await emptied.getByTestId('filter-reset').click();
+    await expect(rows(page).first()).toBeVisible();
+    expect((await seen()).sort()).toEqual(['none', 'rows+tile']);
   });
 
   test('hits here and elsewhere: a button per other place under the rows, which goes there with the search', async ({
@@ -2185,18 +2377,15 @@ test.describe('moves and undo', () => {
     await viaMenu(page, 'trash', 'freelancermap-2805');
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await page.getByTestId('toast-action').click();
-    await settleMoves(page);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
       await viaMenu(page, 'archive', key);
       await expect(row(page, key)).toHaveCount(0);
-      await settleMoves(page);
     }
     await expect(page.getByTestId('toast')).toHaveCount(1);
     await expect(page.getByTestId('toast-text')).toHaveText(T.toast.archived);
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2802')).toHaveCount(1);
     await expect(row(page, 'freelancermap-2803')).toHaveCount(1);
-    await settleMoves(page);
     await viaMenu(page, 'archive', 'freelancermap-2802');
     await openPlace(page, 'archive');
     await viaMenu(page, 'unarchive', 'freelancermap-2802');
@@ -2212,7 +2401,6 @@ test.describe('moves and undo', () => {
     await open(page, WIN);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
       await viaMenu(page, 'trash', key);
-      await settleMoves(page);
     }
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await openPlace(page, 'trash');
@@ -2222,7 +2410,6 @@ test.describe('moves and undo', () => {
     await viaMenu(page, 'restore', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
-    await settleMoves(page);
     // Endgültig löschen asks first: the job by its title, what it means, and "Löschen".
     const title = await row(page, 'freelancermap-2803').locator('.title').innerText();
     await viaMenu(page, 'purge', 'freelancermap-2803');
@@ -2254,7 +2441,6 @@ test.describe('moves and undo', () => {
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
       if (next !== undefined) await expect(row(page, next)).toBeFocused();
-      await settleMoves(page);
     }
     // The last one went: the focus is on the Papierkorb in the sidebar, and the place says it is
     // empty, with no head.
@@ -2278,7 +2464,8 @@ test.describe('moves and undo', () => {
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
       if (next !== undefined) await expect(row(page, next)).toBeFocused();
-      await settleMoves(page);
+      // The letters typed in the next menu stand on their own after a moment (input.ts).
+      await page.waitForTimeout(TYPE_AHEAD);
     }
     await expect(page.getByTestId('place-archive')).toBeFocused();
   });
@@ -2300,7 +2487,8 @@ test.describe('moves and undo', () => {
       await page.keyboard.type(T.actions.unarchive.slice(0, 4));
       await page.keyboard.press('Enter');
       await expect(row(page, key)).toHaveCount(0);
-      await settleMoves(page);
+      // The letters typed in the next menu stand on their own after a moment (input.ts).
+      await page.waitForTimeout(TYPE_AHEAD);
     }
     await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
   });
@@ -2311,25 +2499,21 @@ test.describe('moves and undo', () => {
     // The row holds the focus a press gave it (Chromium), and it opened the job.
     await row(page, first!).click();
     await expect(page.getByTestId('reader-title')).toBeVisible();
-    await settleMoves(page);
     // Its menu: the next job opens, its row takes no focus.
     await viaMenu(page, 'archive', first!);
     await expect(row(page, first!)).toHaveCount(0);
     await expect(row(page, second!)).toHaveAttribute('aria-current', 'true');
     await expect(row(page, second!)).not.toBeFocused();
-    await settleMoves(page);
     // The tool of a row that is not the open one.
     await row(page, third!).hover();
     await row(page, third!).locator('xpath=..').getByTestId('tool-archive').click();
     await expect(row(page, third!)).toHaveCount(0);
     await expect(row(page, fourth!)).not.toBeFocused();
-    await settleMoves(page);
     // A row that holds the focus keeps it while another one moves, by the keyboard too.
     await row(page, fourth!).focus();
     await viaMenu(page, 'archive', second!);
     await expect(row(page, second!)).toHaveCount(0);
     await expect(row(page, fourth!)).toBeFocused();
-    await settleMoves(page);
     const [fifth, sixth] = (await listed(page)).filter((key) => key !== fourth);
     await rowMenu(page, fifth!);
     await page.keyboard.type(T.actions.archive.slice(0, 4));
@@ -2349,7 +2533,6 @@ test.describe('moves and undo', () => {
     for (const key of keys) {
       await viaMenu(page, 'unarchive', key);
       await expect(row(page, key)).toHaveCount(0);
-      await settleMoves(page);
     }
     await expectBarePlace(page, T.list.empty.archive);
     await page.getByTestId('toast-action').click();
@@ -2360,7 +2543,6 @@ test.describe('moves and undo', () => {
   test('deleting for good waits for a run: its menu entry says why', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'trash', 'linkedin-4100200303');
-    await settleMoves(page);
     await page.evaluate(() => (window.__harness.holdAfter = 1));
     await page.getByTestId('fetch').click();
     await openPlace(page, 'trash');
@@ -2393,9 +2575,7 @@ test.describe('moves and undo', () => {
   test('an undo toast stays longer and takes back the moves merged into it', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'archive', 'freelancermap-2803');
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
     await viaMenu(page, 'archive', 'linkedin-4100200302');
     const archived = page.getByTestId('toast').filter({ hasText: T.toast.archived });
     await expect(archived).toHaveCount(1);
@@ -2425,7 +2605,6 @@ test.describe('moves and undo', () => {
     expect(back.jobs.map(({ to }) => to)).toEqual(['inbox']);
     await page.getByTestId('toggle-reader').click();
     await page.getByTestId('toggle-reader').click();
-    await settleMoves(page);
     await viaMenu(page, 'archive', 'freelancermap-2803');
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
@@ -2453,7 +2632,6 @@ test.describe('moves and undo', () => {
   test('deleting a job for good keeps the undo of another one', async ({ page }) => {
     await open(page, WIN);
     await viaMenu(page, 'archive', 'freelancermap-2803');
-    await settleMoves(page);
     await viaMenu(page, 'trash', 'freelancermap-2802');
     await openPlace(page, 'trash');
     await viaMenu(page, 'purge', 'freelancermap-2802');
@@ -2815,6 +2993,39 @@ test.describe('the list keeps true', () => {
     await expect(page.getByTestId('toast')).toHaveCount(0);
   });
 
+  test('the job kept from the last start counts as read once it has been looked at', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&open=freelance:900411`);
+    const title = row(page, 'freelance-900411').locator('.title');
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    await expect(title).toHaveClass(/unread/);
+    await expect(title).not.toHaveClass(/unread/);
+    expect((await calls(page, 'mark_read')).at(-1)?.[1]).toEqual({
+      key: { portal: 'freelance', id: '900411' },
+    });
+  });
+
+  test('a press on the open row counts as looked at: the job the app opened is read at once', async ({
+    page,
+  }) => {
+    // Opened by itself after the job before it left, not yet read.
+    await open(page, WIN);
+    const [first, second] = await listed(page);
+    await openJob(page, first!);
+    await page.getByTestId('reader-archive').click();
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(page.locator('[data-open]')).toHaveAttribute(
+      'data-key',
+      second!.replace('-', ':'),
+    );
+    const title = row(page, second!).locator('.title');
+    await expect(title).toHaveClass(/unread/);
+    await row(page, second!).click();
+    // Before its dwell of two seconds.
+    await expect(title).not.toHaveClass(/unread/, { timeout: 1000 });
+  });
+
   test('a second click, a slow double click, on the row that slid under a row tool opens nothing', async ({
     page,
   }) => {
@@ -2826,12 +3037,27 @@ test.describe('the list keeps true', () => {
     const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(300);
-    await page.mouse.click(at.x, at.y);
+    // The engine counts the second press of the double click.
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
     await page.waitForTimeout(300);
     await expect(row(page, first)).toHaveCount(0);
     expect(await calls(page, 'job_detail')).toHaveLength(0);
     expect(await calls(page, 'mark_read')).toHaveLength(0);
     await expect(page.getByTestId('reader')).toHaveCount(0);
+  });
+
+  test('a click on another row right after a move opens it: only a double click waits', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const [first, , third] = await listed(page);
+    await row(page, first!).hover();
+    const other = (await row(page, third!).boundingBox())!;
+    await page.getByTestId('tool-archive').click();
+    await page.mouse.click(other.x + other.width / 2, other.y + other.height / 2);
+    await expect.poll(async () => (await calls(page, 'job_detail')).length).toBe(1);
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
   });
 
   test('archiving the last row of Noch nicht bewertet opens the row above, not the folded Ausgeschlossen', async ({
@@ -2881,6 +3107,40 @@ test.describe('the list keeps true', () => {
     await page.getByTestId('reader-archive').click();
     await expect(row(page, scored.at(-1)!)).toHaveCount(0);
     await expect.poll(() => openKeyOf(page)).toBe(waiting[0]);
+  });
+
+  test('a row brought into view from below clears the sticky heading of its day', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, WIN);
+    const keys = await listed(page);
+    const [first, last] = [keys[0]!, keys.at(-1)!];
+    const scroller = page.getByTestId('list-scroll');
+    const heading = page.getByTestId('day-heading').first();
+    /** The row's top is under the heading that sticks above it. */
+    const expectClear = async (key: string): Promise<void> => {
+      await expect
+        .poll(async () => {
+          const top = (await row(page, key).boundingBox())!.y;
+          const end = (await heading.boundingBox())!;
+          return top - (end.y + end.height);
+        })
+        .toBeGreaterThanOrEqual(0);
+    };
+    await row(page, first).click();
+    await scroller.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    await row(page, last).click();
+    await page.getByTestId('history-back').click();
+    await expect(page.locator('[data-open]')).toHaveAttribute('data-key', first.replace('-', ':'));
+    await expectClear(first);
+    // From the keyboard too: the focus moves up over a row the heading covers.
+    await scroller.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    await row(page, keys[2]!).focus();
+    await scroller.evaluate((node) => (node.scrollTop += 60));
+    await page.keyboard.press('Shift+Tab');
+    await expect(row(page, keys[1]!)).toBeFocused();
+    await expectClear(keys[1]!);
   });
 
   test('folding the section of the open job takes the highlight away; unfolding brings it back', async ({
@@ -3010,7 +3270,6 @@ test.describe('the list keeps true', () => {
     await openJob(page, key);
     await expect(page.getByTestId('reader-include')).toBeVisible();
     await viaMenu(page, 'trash', key);
-    await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, key);
     await expect(stage(page).getByTestId('exclusion')).toBeVisible();
@@ -3049,6 +3308,30 @@ test('baseline: jobs at the minimum size 480 x 360', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
   await expectShot(page, 'jobs-min');
+});
+
+test('Profil ergänzen has the glyph of Ergänzen on the Profil; Profil öffnen the person', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=profile-thin`);
+  await expect(page.getByTestId('thin-profile').locator('[data-icon="edit"]')).toHaveCount(1);
+  await open(page, `${WIN}&scenario=profile-incomplete`);
+  await expect(page.getByTestId('no-profile').locator('[data-icon="edit"]')).toHaveCount(1);
+  await open(page, `${WIN}&scenario=profile-broken`);
+  await expect(page.getByTestId('no-profile').locator('[data-icon="profile"]')).toHaveCount(1);
+});
+
+test('the empty states without a head stand in the very middle of their pane', async ({ page }) => {
+  await open(page, `${WIN}&scenario=fresh`);
+  const column = page.getByTestId('list-scroll');
+  await expectInTheVeryMiddle(page.getByTestId('empty-all'), column);
+  await open(page, `${WIN}&scenario=empty`);
+  await expectInTheVeryMiddle(page.getByTestId('empty-all'), column);
+  await open(page, `${WIN}&scenario=list-error`);
+  await expectInTheVeryMiddle(page.getByTestId('list-error'), column);
+  // The job view with no job open, in the same middle.
+  await open(page, WIN);
+  await expectInTheVeryMiddle(page.getByTestId('place-reader'), page.getByTestId('stage'));
 });
 
 test('a job that closes leaves no room behind: a list that fits stands at its top', async ({

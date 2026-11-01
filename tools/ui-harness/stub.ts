@@ -22,6 +22,8 @@
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
 //   window.__harness.gone(key)      the portal no longer has the job's ad (details gone)
+//   window.__harness.detailsEnd     how a details run ends: 'pages' (default), 'nothing' (the
+//                                   portal stopped it, its jobs stay as they were), 'failed'
 //   window.__harness.noMail(key)    the job's alert mail cannot be opened (no Gmail id)
 //   window.__harness.form()         a copy of the stored profile's form (null: no profile)
 //   window.__harness.list(query)    what `list_jobs` returns for a query (not recorded)
@@ -128,6 +130,9 @@ interface Harness {
   job: (key: JobKey) => JobView | null;
   /** The portal no longer has the job's ad (details `gone`), as a fetch would find it. */
   gone: (key: JobKey) => void;
+  /** How a details run ends: with its pages; with nothing, as when the portal stopped it (its
+   *  jobs stay as they were and it completes); or failed. */
+  detailsEnd: 'pages' | 'nothing' | 'failed';
   /** The job's alert mail cannot be opened (no Gmail id): `hasMail` false. */
   noMail: (key: JobKey) => void;
   /** A copy of the stored profile's form (null without a profile). */
@@ -1820,20 +1825,23 @@ function script(kind: RunSummary['kind'], mailFailure: ErrorInfo | null = null):
   return events;
 }
 
+/** A job once its page came on a details run: the demo's page, or for a preview the job with
+ *  the text it has as its whole ad. */
+function loaded(j: JobView): JobView {
+  return j.detail.kind === 'teaser' ? { ...j, detail: { kind: 'ok' } } : pageOf(j);
+}
+
 /** "Anzeige laden" for jobs: their pages, their scores, no mailbox and no new jobs. */
 function detailsScript(keys: JobKey[]): RunEvent[] {
   const targets = keys.map(find).filter((j): j is JobView => j !== undefined);
+  const pages = harness.detailsEnd === 'pages';
   const events: RunEvent[] = [
     { type: 'started', kind: 'details' },
     { type: 'status', code: 'fetchingDetails', portal: targets[0]?.portal ?? null, until: null },
     { type: 'progress', step: 'fetch', portal: null, done: 0, total: targets.length },
   ];
   targets.forEach((j, i) => {
-    events.push({
-      type: 'jobUpdated',
-      job: pageOf(j),
-      fresh: false,
-    });
+    if (pages) events.push({ type: 'jobUpdated', job: loaded(j), fresh: false });
     events.push({
       type: 'progress',
       step: 'fetch',
@@ -1845,7 +1853,9 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
   events.push({
     type: 'finished',
     summary: {
-      ...lastRun(),
+      ...lastRun(
+        harness.detailsEnd === 'failed' ? { kind: 'failed', error: fail('db') } : undefined,
+      ),
       kind: 'details',
       startedAt: at(0.01),
       finishedAt: at(0),
@@ -1856,10 +1866,10 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
         new: 0,
         known: 0,
         dup: 0,
-        fetched: targets.filter((j) => j.portal === portal).length,
+        fetched: pages ? targets.filter((j) => j.portal === portal).length : 0,
         failed: 0,
         gone: 0,
-        skipped: 0,
+        skipped: pages ? 0 : targets.filter((j) => j.portal === portal).length,
         stopped: null,
       })),
       emptyAlerts: [],
@@ -2362,6 +2372,7 @@ const harness: Harness = {
   editDetail: null,
   failPages: 0,
   holdAfter: null,
+  detailsEnd: 'pages',
   clipboard: null,
   unsaved: false,
   closed: false,

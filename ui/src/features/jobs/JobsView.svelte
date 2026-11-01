@@ -27,7 +27,6 @@
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
-  import Button from '$components/Button.svelte';
   import Splitter, { cappedLimits, splitLimits } from '$components/Splitter.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
@@ -42,7 +41,7 @@
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { FOLD_BELOW, viewport } from '$lib/state/viewport.svelte';
-  import { focusPlace } from './actions';
+  import { dwellOn, focusPlace } from './actions';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ReaderSkeleton from './ReaderSkeleton.svelte';
@@ -54,9 +53,13 @@
   /** A job is chosen and on its way: the empty state goes at once, the pane stays blank. */
   const OPENING = 'opening';
 
-  // The list loads as soon as the app state is there (also after the first run page).
+  // The list loads as soon as the app state is there (also after the first run page); the job
+  // kept from the last start opens with it, read only once it has been looked at.
   $effect(() => {
-    if (app.state !== null && jobs.status === 'idle') void jobs.start();
+    if (app.state === null || jobs.status !== 'idle') return;
+    void jobs.start().then(() => {
+      if (jobs.selected !== null) dwellOn(jobs.selected);
+    });
   });
 
   /**
@@ -90,20 +93,9 @@
     }
     return { what: shown, turn: turns };
   });
-  // One column shows the list or the reader.
-  const reading = $derived(stage.what !== NO_JOB);
-  // One column: a job in place of the list hides the list and its run line.
-  $effect(() => {
-    shell.listHidden = reading && viewport.narrow;
-    return () => {
-      shell.listHidden = false;
-    };
-  });
   /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
    *  list that did not load): the list says why, the reader adds no second tile. */
-  const placeEmpty = $derived(
-    jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
-  );
+  const placeEmpty = $derived(jobs.status === 'error' || jobs.answeredEmpty);
   /** The list scrolled beneath its header where no day's heading sticks: the hairline. */
   let line = $state(false);
   /** The width of the list column (the splitter keeps it per user). */
@@ -124,6 +116,16 @@
   /** The job view stands beside the list unless the user hid it (one column shows a job in
    *  place of the list). A job chosen in the list shows it again. */
   const readerShown = $derived((shell.readerOpen || viewport.narrow) && !jobs.emptyPlace);
+  // One column shows the list or the reader; the list where no reader stands (a list that did
+  // not load says so, also with a job kept open).
+  const reading = $derived(stage.what !== NO_JOB && readerShown);
+  // One column: a job in place of the list hides the list and its run line.
+  $effect(() => {
+    shell.listHidden = reading && viewport.narrow;
+    return () => {
+      shell.listHidden = false;
+    };
+  });
   // The top bar continues the border between the list and the job view.
   $effect(() => {
     shell.listSeam = readerShown && !viewport.narrow && listWidth !== undefined ? listWidth : null;
@@ -146,26 +148,6 @@
       chosen = selected;
     });
   });
-
-  let right = $state<HTMLElement | null>(null);
-
-  /**
-   * Close the job. A focus inside the pane (its Zurück) goes to the row of the job that was
-   * open, like Mail: the list keeps its place and Tab goes on from there.
-   */
-  function close(): void {
-    const open = jobs.selected;
-    const focused = document.activeElement;
-    const inReader = right !== null && focused !== null && right.contains(focused);
-    // In one column the list comes back: at the open job's row, which gets the focus unless
-    // the pointer was elsewhere.
-    const lost = focused === null || focused === document.body;
-    jobs.clearSelection();
-    if (open === null || !(inReader || (viewport.narrow && lost))) return;
-    if (jobs.shown.some((job) => sameKey(job.key, open))) {
-      jobs.reveal = { key: keyOf(open), focus: true };
-    }
-  }
 
   let header = $state<ListHeader | null>(null);
 
@@ -191,7 +173,7 @@
       searchChanged = false;
       if (selected === null || searched === '') return;
       const complete = jobs.rows.length >= jobs.total;
-      if (complete && !listed.some((row) => sameKey(row.key, selected))) close();
+      if (complete && !listed.some((row) => sameKey(row.key, selected))) jobs.clearSelection();
     });
   });
 
@@ -244,7 +226,7 @@
           testid="list-splitter"
         /></span
       >
-      <section class="right" data-testid="reader-pane" bind:this={right}>
+      <section class="right" data-testid="reader-pane">
         {#key stage.turn}
           <div
             class="stage"
@@ -274,41 +256,27 @@
                     />
                   {/if}
                 </div>
-              {:else}
-                <!-- One column: the way back while no job stands. -->
-                {#if stage.what === ERROR || stage.what === WAITING}
-                  <div class="back">
-                    <Button
-                      variant="ghost"
-                      icon="back"
-                      label={t.common.back}
-                      testid="back"
-                      onclick={close}
-                    />
-                  </div>
-                {/if}
-                {#if stage.what === ERROR}
-                  <div class="place-reader">
-                    <EmptyState
-                      icon="warning"
-                      tone="danger"
-                      heading={t.reader.loadFailed}
-                      text={jobs.detailError}
-                      secondary={{
-                        label: t.common.retry,
-                        icon: 'retry',
-                        onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
-                      }}
-                      testid="reader-error"
-                    />
-                  </div>
-                {:else if stage.what === WAITING}
-                  <ReaderSkeleton />
-                {:else if stage.what === OPENING}
-                  <!-- Blank until the chosen job is there. -->
-                {:else if jobs.detail}
-                  <Reader detail={jobs.detail} />
-                {/if}
+              {:else if stage.what === ERROR}
+                <div class="place-reader">
+                  <EmptyState
+                    icon="warning"
+                    tone="danger"
+                    heading={t.reader.loadFailed}
+                    text={jobs.detailError}
+                    secondary={{
+                      label: t.common.retry,
+                      icon: 'retry',
+                      onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
+                    }}
+                    testid="reader-error"
+                  />
+                </div>
+              {:else if stage.what === WAITING}
+                <ReaderSkeleton />
+              {:else if stage.what === OPENING}
+                <!-- Blank until the chosen job is there. -->
+              {:else if jobs.detail}
+                <Reader detail={jobs.detail} />
               {/if}
             </div>
           </div>
@@ -370,7 +338,8 @@
   /* The list and the reader keep their scrollbar's room whether they scroll or not, like the
      views of the shell (Windows: a transparent track, the thumb only under the pointer;
      macOS overlay scrollbars take none): the rows end on the header's line, and the reader
-     does not move sideways between a short and a long job. */
+     does not move sideways between a short and a long job. A row brought into view, by the page
+     or the keyboard, stands clear of the day's heading that sticks at the top and of the end. */
   .scroll {
     display: flex;
     flex: 1;
@@ -378,6 +347,7 @@
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
+    scroll-padding-block: var(--day-head-height) var(--list-rows-end);
   }
 
   /* The fade where a job scrolls away under the top bar: the sheet's colour into nothing,
@@ -419,7 +389,6 @@
   .column {
     display: flex;
     flex-direction: column;
-    gap: var(--space-12);
     max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
     margin: 0 auto 0
       max(
@@ -442,18 +411,11 @@
     padding: 0;
   }
 
-  /* The chevron's ink lines up with the title below it: the button's padding and border
-     hang out, and so does the glyph's own inset in its box. */
-  .back {
-    display: none;
-    margin-left: calc(-1 * (var(--ghost-inset) + var(--space-6)));
-  }
-
   /* The reader with nothing open: the column fills the pane, and its empty state stands in
-     the middle, like every other empty state (the list's). */
+     the middle, like every other empty state (the list's): as much under it as above it. */
   .column.idle {
     min-height: 100%;
-    padding-bottom: var(--pane-padding);
+    padding-bottom: var(--head-pad);
   }
 
   .place-reader {
@@ -480,10 +442,6 @@
 
     .reading .right {
       display: grid;
-    }
-
-    .back {
-      display: block;
     }
 
     .column {

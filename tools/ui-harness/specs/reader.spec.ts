@@ -21,7 +21,6 @@ import {
   openPlace,
   row,
   rows,
-  settleMoves,
   stage,
   stubList,
   T,
@@ -351,7 +350,6 @@ test.describe('the actions', () => {
       target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2801' } },
     });
     // In den Papierkorb legen: the job goes to the trash, the next one opens.
-    await page.waitForTimeout(550);
     await choose(page, 'trash');
     expect((await calls(page, 'move_jobs')).at(-1)?.[1]).toEqual({
       keys: [{ portal: 'freelancermap', id: '2801' }],
@@ -395,7 +393,6 @@ test.describe('the actions', () => {
     expect(tools.ids).toEqual(['unarchive', 'trash']);
     expect(tools.labels).toEqual([T.actions.unarchive, T.actions.trash]);
     await choose(page, 'trash');
-    await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, 'linkedin-4100200306');
     tools = await headTools(page);
@@ -422,7 +419,6 @@ test.describe('the actions', () => {
     // Two jobs in the Papierkorb (one toast: the moves merge).
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
-      await settleMoves(page);
     }
     const places = [
       { place: 'inbox', key: 'freelancermap-2802', ids: ['archive', 'trash'] },
@@ -450,7 +446,6 @@ test.describe('the actions', () => {
     // The open job of Aktuell into the trash: while the next one loads the reader shows the
     // job that went to the Papierkorb, and its moves are off (never the Papierkorb's here).
     await openJob(page, 'freelancermap-2801');
-    await settleMoves(page);
     await slowDetails(page, 1500);
     await choose(page, 'trash');
     await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
@@ -459,18 +454,15 @@ test.describe('the actions', () => {
     // The next job of Aktuell: Aktuell's moves.
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
     await slowDetails(page, 0);
-    await settleMoves(page);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // Rückgängig brings it back and opens it again: Aktuell's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
-    await settleMoves(page);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // Wiederherstellen of the open job in the Papierkorb: the same while the next one loads.
     await open(page, WIN);
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
-      await settleMoves(page);
     }
     await openPlace(page, 'trash');
     await openJob(page, 'freelancermap-2803');
@@ -483,7 +475,6 @@ test.describe('the actions', () => {
     await movesOff(page);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
     await slowDetails(page, 0);
-    await settleMoves(page);
     expect(await moves(page)).toEqual(['restore', 'purge']);
   });
 
@@ -531,11 +522,122 @@ test.describe('the actions', () => {
     await open(page, WIN);
     await rows(page).first().click();
     const first = await page.getByTestId('reader-title').textContent();
-    await page.waitForTimeout(550);
     await page.getByTestId('reader-archive').focus();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
     await expect(page.getByTestId('reader-archive')).toBeFocused();
+  });
+
+  test('a click on a move hands nothing on: Space and Enter a moment later move no further job', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').click();
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await page.waitForTimeout(550);
+    await page.keyboard.press('Space');
+    await page.keyboard.press('Enter');
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
+  });
+
+  test('a click on Anzeige öffnen leaves nothing for Space to open again', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    await stage(page).getByTestId('open-ad').click();
+    await page.keyboard.press('Space');
+    await settle(page);
+    expect(await calls(page, 'open_target')).toHaveLength(1);
+  });
+
+  test('every press of a key moves the next job, also right after a move', async ({ page }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await expect(page.getByTestId('reader-archive')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(2);
+  });
+
+  test('a held key moves one job: its repeats run through nothing', async ({ page }) => {
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await page.getByTestId('reader-title').textContent();
+    await page.getByTestId('reader-archive').focus();
+    await page.keyboard.down('Enter');
+    await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
+    await expect(page.getByTestId('reader-archive')).toBeFocused();
+    // Each repeat of the held key, further apart than a double click.
+    for (let repeat = 0; repeat < 2; repeat += 1) {
+      await page.waitForTimeout(600);
+      await page.keyboard.down('Enter');
+    }
+    await page.keyboard.up('Enter');
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
+    // Space acts on its release, held or not.
+    await page.keyboard.down(' ');
+    await page.waitForTimeout(600);
+    await page.keyboard.down(' ');
+    await page.keyboard.up(' ');
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(2);
+  });
+
+  test('a click on another move right after a move counts; the second of a double click does not', async ({
+    page,
+  }) => {
+    const title = page.getByTestId('reader-title');
+    await open(page, WIN);
+    await rows(page).first().click();
+    const first = await title.textContent();
+    await page.getByTestId('reader-archive').click();
+    await expect(title).not.toHaveText(first ?? '');
+    const second = await title.textContent();
+    await page.getByTestId('reader-trash').click();
+    await expect.poll(async () => (await calls(page, 'move_jobs')).length).toBe(2);
+    await expect(title).not.toHaveText(second ?? '');
+    const third = await title.textContent();
+    // A double click at one spot takes one job, the second click comes on the next job's button.
+    const archive = (await page.getByTestId('reader-archive').boundingBox())!;
+    await page.mouse.click(archive.x + archive.width / 2, archive.y + archive.height / 2);
+    await expect(title).not.toHaveText(third ?? '');
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.up({ clickCount: 2 });
+    await settle(page);
+    expect(await calls(page, 'move_jobs')).toHaveLength(3);
+  });
+
+  test('a press on the buttons of the job view takes no focus, Tab still reaches them', async ({
+    page,
+  }) => {
+    // Pressed and let go beside it: a press only, nothing acts.
+    const press = async (button: Locator): Promise<void> => {
+      await button.hover();
+      await page.mouse.down();
+      expect(await button.evaluate((node) => node === document.activeElement)).toBe(false);
+      await page.mouse.move(1, 1);
+      await page.mouse.up();
+    };
+    await openAt(page, 'linkedin-4100200302');
+    await press(stage(page).getByTestId('reader-archive'));
+    await press(stage(page).getByTestId('open-ad'));
+    await press(stage(page).getByTestId('load-ad'));
+    await openAt(page, 'freelancermap-2802');
+    await press(stage(page).getByTestId('add-to-profile').first());
+    await openAt(page, 'linkedin-4100200302');
+    const reached: (string | undefined)[] = [];
+    for (let tab = 0; tab < 40 && !reached.includes('load-ad'); tab += 1) {
+      await page.keyboard.press('Tab');
+      reached.push(
+        await page.evaluate(() => (document.activeElement as HTMLElement).dataset['testid']),
+      );
+    }
+    expect(reached).toEqual(expect.arrayContaining(['reader-archive', 'load-ad']));
   });
 });
 
@@ -927,6 +1029,23 @@ test.describe('Anforderungen', () => {
     await expect(why(page).locator('.count')).toHaveText(T.reader.metOf(0, 1));
   });
 
+  test('a job in the Papierkorb has no "+" into the profile: Wiederherstellen comes first', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2802');
+    const missing = why(page).locator('li[data-kind="open"]');
+    const adds = why(page).getByTestId('add-to-profile');
+    await expect(adds.first()).toBeVisible();
+    const open = await missing.count();
+    await choose(page, 'trash');
+    await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
+    await openPlace(page, 'trash');
+    await openJob(page, 'freelancermap-2802');
+    // The crosses stay, the "+" goes.
+    await expect(missing).toHaveCount(open);
+    await expect(adds).toHaveCount(0);
+  });
+
   test('a missing must that is a term goes into its field of the profile with "+", a sentence has none', async ({
     page,
   }) => {
@@ -1075,6 +1194,23 @@ test.describe('the ad', () => {
     await expect(hits).toHaveText(['Interim', 'CFO', 'Interim', 'Interim']);
     await search.fill('');
     await expect(hits).toHaveCount(0);
+  });
+
+  test('the ad marks what the search found like the row: in any case, with or without accents', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const search = page.getByTestId('search');
+    const hits = stage(page).getByTestId('ad-text').locator('mark.hit');
+    await search.fill('GESCHAFT');
+    await expect.poll(() => listed(page)).toEqual(['freelancermap-2803']);
+    await row(page, 'freelancermap-2803').click();
+    await expect(row(page, 'freelancermap-2803').locator('mark')).toHaveText(['geschäft']);
+    await expect(hits.first()).toHaveText(/geschäft/iu);
+    await search.fill('Munchen');
+    await expect.poll(() => listed(page)).toContain('freelance-900411');
+    await row(page, 'freelance-900411').click();
+    await expect(hits.first()).toHaveText('München');
   });
 
   test('a preview says so once, here, with its sign-in right there', async ({ page }) => {
@@ -1288,6 +1424,32 @@ test.describe('the cards', () => {
     expect(Math.abs(reqs[0]! - reqs[1]!)).toBeLessThan(1);
   });
 
+  test('a fact alone in its row spans it: its line runs the whole way, its value on its column', async ({
+    page,
+  }) => {
+    // Jobs with an odd number of facts beside the contact, or without one.
+    for (const key of ['linkedin-4100200302', 'freelance-900411', 'linkedin-4100200304']) {
+      await openAt(page, key);
+      const facts = await terms(page)
+        .locator('li')
+        .evaluateAll((all) =>
+          all.map((li) => {
+            const box = li.getBoundingClientRect();
+            const value = li.querySelector('.term-line')!.getBoundingClientRect();
+            return { top: box.top, left: box.left, right: box.right, value: value.left };
+          }),
+        );
+      const list = (await terms(page).boundingBox())!;
+      const lone = facts.filter((fact) => facts.filter((f) => f.top === fact.top).length === 1);
+      expect(lone.length, key).toBeGreaterThan(0);
+      for (const fact of lone) {
+        expect(fact.left, key).toBe(list.x);
+        expect(fact.right, key).toBe(list.x + list.width);
+        expect(fact.value, key).toBe(facts[0]!.value);
+      }
+    }
+  });
+
   test('a new job: its cards are there at once, nothing cascades or fades', async ({ page }) => {
     await open(page, WIN);
     await settle(page);
@@ -1411,6 +1573,177 @@ test.describe('the job view keeps true', () => {
     await expect(load).toHaveCount(0);
     await runFinished(page);
     await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+  });
+
+  test('a load that ends without the ad says so once, and its box offers it again', async ({
+    page,
+  }) => {
+    const toast = page.getByTestId('toast');
+    const note = stage(page).getByTestId('detail-note');
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.detailsEnd = 'nothing'));
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.reader.state.notLoaded);
+    await expect(note).toHaveText(T.reader.state.missing);
+    await expect(stage(page).getByTestId('load-ad')).toBeEnabled();
+    // A preview too.
+    await openAt(page, 'freelance-900411', `${WIN}&tick=15`);
+    await stage(page).getByTestId('reader-sign-in').click();
+    await page.evaluate(() => (window.__harness.detailsEnd = 'nothing'));
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.reader.state.notLoaded);
+    await expect(note).toHaveText(T.reader.state.teaser.heading);
+  });
+
+  test('a load that failed says why and no more; one that worked says nothing', async ({
+    page,
+  }) => {
+    const toast = page.getByTestId('toast');
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    await page.evaluate(() => (window.__harness.detailsEnd = 'failed'));
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(toast).toHaveCount(1);
+    await expect(toast).toContainText(T.error.text('db', {}));
+    // The ad comes: the job's row is as the run left it, its reader follows later.
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    await slowDetails(page, 600);
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+    await expect(toast).toHaveCount(0);
+    // A preview walks through to the loaded job.
+    await openAt(page, 'freelance-900411', `${WIN}&tick=15`);
+    await stage(page).getByTestId('reader-sign-in').click();
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(stage(page).getByTestId('reader-state')).toHaveCount(0);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('a search says it loads the ad until it goes on to score', async ({ page }) => {
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=15`);
+    const note = stage(page).getByTestId('detail-note');
+    await page.evaluate(() => {
+      window.__harness.holdAfter = 2;
+      window.__harness.appRun('fetch');
+    });
+    await expect(note).toHaveText(T.reader.state.loading);
+    // The ads are done, this one did not come.
+    await page.evaluate(() =>
+      window.__harness.emit({ type: 'progress', step: 'score', portal: null, done: 0, total: 3 }),
+    );
+    await expect(note).toHaveText(T.reader.state.missing);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await runFinished(page);
+  });
+
+  test('one column: a job that does not load has one Zurück, the top bar', async ({ page }) => {
+    await page.setViewportSize({ width: 899, height: 800 });
+    await open(page, WIN);
+    const back = page.getByRole('button', { name: T.common.back });
+    // While a slow job shows its placeholder.
+    await slowDetails(page, 1500);
+    await rows(page).first().click();
+    await expect(stage(page).getByTestId('reader-skeleton')).toBeVisible();
+    await expect(back).toHaveCount(1);
+    await page.getByTestId('history-back').click();
+    await expect(rows(page).first()).toBeVisible();
+    // A job that fails: the top bar's closes it too.
+    await slowDetails(page, 0);
+    await failNext(page, 'job_detail');
+    await rows(page).first().click();
+    await expect(stage(page).getByTestId('reader-error')).toBeVisible();
+    await expect(back).toHaveCount(1);
+    await page.getByTestId('history-back').click();
+    await expect(rows(page).first()).toBeVisible();
+  });
+
+  test('one column: a list that failed says so, also with a job open', async ({ page }) => {
+    await openAt(page, 'freelancermap-2801');
+    // The job kept from the last start opens beside a list that does not load.
+    await open(page, `${WIN}&scenario=list-error`);
+    await expect(page.getByTestId('list-error')).toBeVisible();
+    await page.setViewportSize({ width: 800, height: 700 });
+    await expect(page.getByTestId('list-error')).toBeVisible();
+    await expect(page.getByRole('button', { name: T.common.retry })).toBeVisible();
+  });
+
+  test('the placeholder holds the place of the job: its cards stand where the job has its own', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const cardTops = (): Promise<number[]> =>
+      stage(page)
+        .locator('[data-card]')
+        .evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().top));
+    await slowDetails(page, 900);
+    await row(page, 'freelancermap-2801').click();
+    await expect(stage(page).getByTestId('reader-skeleton')).toBeVisible();
+    const [hero, second] = await cardTops();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    const job = await cardTops();
+    expect(job[0]).toBe(hero);
+    expect(job[1]).toBe(second);
+  });
+
+  test.describe('Zurück after Endgültig löschen walks what was shown', () => {
+    const title = (page: Page): Locator => stage(page).getByTestId('reader-title');
+    const named = (page: Page, key: string): Promise<string> =>
+      row(page, key).locator('.title').innerText();
+    /** The Papierkorb with a few jobs, its rows in their order. */
+    const inTrash = async (page: Page): Promise<string[]> => {
+      await open(page, WIN);
+      for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
+        await viaMenu(page, 'trash', key);
+        await expect(row(page, key)).toHaveCount(0);
+      }
+      await openPlace(page, 'trash');
+      return listed(page);
+    };
+    const purgeOpen = async (page: Page): Promise<void> => {
+      await choose(page, 'purge');
+      await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
+    };
+
+    test('the row below opens: no empty step on the way back to the job before', async ({
+      page,
+    }) => {
+      const [one, two, three] = await inTrash(page);
+      const [first, third] = [await named(page, one!), await named(page, three!)];
+      await openJob(page, one!);
+      await openJob(page, two!);
+      await purgeOpen(page);
+      await expect(title(page)).toHaveText(third);
+      await page.getByTestId('history-back').click();
+      await expect(title(page)).toHaveText(first);
+      await expect(page.getByTestId('place-reader')).toHaveCount(0);
+      await page.getByTestId('history-forward').click();
+      await expect(title(page)).toHaveText(third);
+      await expect(page.getByTestId('history-forward')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    test('the row above opens, which stood open right before: no step shows it twice', async ({
+      page,
+    }) => {
+      const [above, last] = (await inTrash(page)).slice(-2);
+      const opened = await named(page, above!);
+      await openJob(page, above!);
+      await openJob(page, last!);
+      await purgeOpen(page);
+      await expect(title(page)).toHaveText(opened);
+      // What was shown before that: the Papierkorb with no job.
+      await page.getByTestId('history-back').click();
+      await expect(page.getByTestId('place-reader')).toBeVisible();
+      await page.getByTestId('history-forward').click();
+      await expect(title(page)).toHaveText(opened);
+      await expect(page.getByTestId('history-forward')).toHaveAttribute('aria-disabled', 'true');
+    });
   });
 
   test('another job waiting for its page is not loaded by a details run of its own', async ({

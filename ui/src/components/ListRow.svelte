@@ -50,7 +50,6 @@
 
 <style>
   .row {
-    scroll-margin-block-end: var(--list-rows-end);
     position: relative;
     display: flex;
     align-items: center;

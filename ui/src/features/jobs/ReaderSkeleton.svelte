@@ -1,9 +1,10 @@
 <!--
   The job view while a job's details load (JobsView shows it once loading takes 300 ms): the
   job view's shape in flat placeholders, so the pane never stands blank and nothing jumps when
-  the job comes. The hero (the 56 ring, a line for the title and one for the band, the pills
+  the job comes. The hero (the 60 ring, a line for the title and one for the band, the pills
   of the buttons), the Jobdetails in their two columns and lines of the ad's text, in the
-  cards and the spacing of the job view (Reader.svelte), in the column of JobsView's stage.
+  cards and the spacing of the job view (Reader.svelte: a card 12 under a card, Card's own
+  margin), in the column of JobsView's stage.
 -->
 <script lang="ts" module>
   /** The widths (percent of their cell) of the facts' values, two columns a row. */
@@ -18,7 +19,7 @@
   import Skeleton from '$components/Skeleton.svelte';
 </script>
 
-<div class="cards" data-testid="reader-skeleton">
+<div data-testid="reader-skeleton">
   <Card hero>
     <div class="top">
       <Skeleton shape="circle" size="md" />
@@ -52,13 +53,6 @@
 </div>
 
 <style>
-  /* The cards 12 apart, in the job view's column (JobsView's stage sets it). */
-  .cards {
-    display: flex;
-    flex-direction: column;
-    gap: var(--card-gap);
-  }
-
   /* The ring beside the title's line and the band's, the room of the hero's tools kept
      (ReaderHero). */
   .top {

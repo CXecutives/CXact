@@ -15,8 +15,8 @@
 // Tagessatz stays.
 // Beside the groups the "Zeigen" of a fetch's toast narrows the list to the new jobs of that
 // fetch (`run`, the chip "Aus der letzten Suche"): no entry of the menu, never kept (nor the
-// band it sets with it: the list borrows its filter, jobs.borrowFilter), gone with "Filter
-// zurücksetzen" and the next fetch.
+// band it sets with it: the list borrows its filter, jobs.borrowFilter), gone with
+// "Filter zurücksetzen" and the next fetch.
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 

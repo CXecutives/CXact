@@ -4,7 +4,11 @@
   row, under it the label 12/540 muted on the rows' inner edge (22 above, 6 below), no count,
   and at its end the chevron 14 in the subtle glyph colour, which turns half a turn while the
   section is open (150 ms, ease-out). Under the pointer the label and the chevron darken to
-  ink. A button: the list shows or hides the rows below it (`ontoggle`).
+  ink. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
+  locked, a section held open: no answer to the pointer (a press on it is a press on the list),
+  no Tab stop, the chevron as it is. A
+  section that stands first in the list has nothing to part from: no line, and its label stands
+  where a day's heading stands.
 -->
 <script lang="ts">
   import Icon from './Icon.svelte';
@@ -13,17 +17,19 @@
     label: string;
     /** Whether its rows show. */
     open: boolean;
-    ontoggle?: () => void;
+    /** Shows or hides its rows (null: locked). */
+    ontoggle?: (() => void) | null;
     testid?: string | null;
   }
 
-  let { label, open, ontoggle, testid = null }: Props = $props();
+  let { label, open, ontoggle = null, testid = null }: Props = $props();
 </script>
 
 <button
   type="button"
   class="divider"
   aria-expanded={open}
+  disabled={ontoggle === null}
   data-testid={testid ?? undefined}
   onclick={() => ontoggle?.()}
 >
@@ -44,6 +50,19 @@
     font: var(--type-day);
     text-align: left;
     transition: color var(--dur-base) var(--ease-standard);
+  }
+
+  /* First in the list: no rows of the days above it. */
+  :global(.rows:not(:has([data-key]))) + .divider {
+    margin-top: 0;
+    padding: var(--day-head-pad);
+    border-top: 0;
+  }
+
+  /* Locked: the pointer goes through it to the list (an engine sends no press to a disabled
+     button: an open menu would stay). */
+  .divider:disabled {
+    pointer-events: none;
   }
 
   .divider:hover {

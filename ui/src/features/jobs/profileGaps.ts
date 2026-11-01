@@ -1,7 +1,7 @@
 // What keeps the profile from being usable, as the Jobs view says it (decision 3,
-// 2026-10-24): "Jobs suchen" names the required fields still empty in its reason ("Ergänze
-// erst Länder und Sprachen im Profil."), and the list's state box leads to the first of them
-// ("Profil ergänzen": the Profil opens with that field in view, `navigation.section`, which
+// 2026-10-24): "Jobs suchen" names the required fields still empty in its reason
+// ("Ergänze erst Länder und Sprachen im Profil."), and the list's state box leads to the first
+// of them ("Profil ergänzen": the Profil opens with that field in view, `navigation.section`, which
 // the Profil reads once like Einstellungen its group). The fields are core's
 // `missing_required` (ProfileInfo.missing), named as the Profil labels them.
 

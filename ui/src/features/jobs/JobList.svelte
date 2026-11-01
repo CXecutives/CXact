@@ -10,8 +10,9 @@
   ones without a score yet in a section "Noch nicht bewertet", open by default, and at the end
   the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
   folded by default (ListDivider, no count; each choice is kept; a section opens when its job
-  is opened from elsewhere, and both stand open while a search is on, so a hit is never hidden
-  behind a fold). Neither section has days.
+  is opened from elsewhere, and stands open, its heading locked, while the list holds a search's
+  answer, so a hit is never hidden behind a fold, and while no row of the place would show
+  without it, lib/state/sections.svelte.ts). Neither section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
@@ -27,6 +28,8 @@
   (jobMenu of actions.ts); under the pointer the row shows the moves of its place as its tools
   (rowTools, the same table). Back in the Jobs view, the list stands where it was scrolled to.
   A job action that fails says so in the list header.
+  What the list shows is the answer it holds: a search or a filter on its way changes nothing
+  until its answer comes, neither the rows, their marks and sections nor the state of no hit.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
@@ -59,6 +62,7 @@
   import { t } from '$lib/i18n/t';
   import { warningText } from '$lib/i18n/texts';
   import type { JobView, Place } from '$lib/ipc/types';
+  import { searchWords } from '$lib/marks';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
   import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
@@ -72,7 +76,6 @@
   import { sections } from '$lib/state/sections.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import {
-    disarm,
     focusPlace,
     guarded,
     jobMenu,
@@ -80,6 +83,7 @@
     openAd,
     purge,
     rowTools,
+    seen,
     type JobMenuContext,
   } from './actions';
   import DayGroup from './DayGroup.svelte';
@@ -105,9 +109,10 @@
   }));
 
   const shown = $derived(jobs.shown);
-  const searching = $derived(jobs.searching);
-  /** The words of the search, marked in the rows' titles (at most 8, like the backend). */
-  const searchWords = $derived(searching ? jobs.search.trim().split(/\s+/).slice(0, 8) : []);
+  /** The list holds the answer to a search. */
+  const searching = $derived(jobs.listedSearch !== '');
+  /** The words of that search, marked in the rows' titles. */
+  const marks = $derived(searchWords(jobs.listedSearch));
   /** The rows as far as the window reaches: the scored ones, the ones without a score yet,
    *  then the excluded ones. */
   const active = $derived(shown.filter((job) => !isExcluded(job) && !isUnscored(job)));
@@ -144,7 +149,7 @@
   /* ------------------------------------------------------------------- sections */
 
   /** A section is open (lib/state/sections.svelte.ts, kept like the order): the excluded one
-   *  folded by default, the one without a score yet open; a search opens both for now. */
+   *  folded by default, the one without a score yet open; a search's answer holds both open. */
   const excludedOpen = $derived(sections.excludedShown);
   const unscoredOpen = $derived(sections.unscoredShown);
   /** The folded section ends the list: every other row is loaded (the backend lists the
@@ -158,7 +163,7 @@
   const totals = $derived(jobs.overviewCounts ?? jobs.counts);
   /** The filter leaves the list empty while the place holds jobs: it says so and takes the
    *  filter off. */
-  const filterEmptied = $derived(jobs.filtered && totals[jobs.place] > 0);
+  const filterEmptied = $derived(jobs.listedFiltered && totals[jobs.place] > 0);
   const place = $derived(jobs.place);
   /** The glyph of each place (the sidebar's Jobs, the archive, the trash). */
   const PLACE_ICON: Record<Place, IconName> = {
@@ -183,9 +188,9 @@
 
   /** A search or a filter that leaves nothing, in the words of an empty state. */
   const noHit = $derived.by((): { heading: string; text: string } => {
-    const query = jobs.search.trim();
+    const query = jobs.listedSearch;
     if (!searching) return { heading: t.list.noFilterHit, text: t.list.noFilterHitText };
-    return jobs.filtered
+    return jobs.listedFiltered
       ? { heading: t.list.noHitFiltered(query), text: t.list.noHitFilteredText }
       : { heading: t.list.noHit(query), text: t.list.noHitText };
   });
@@ -213,7 +218,7 @@
     return {
       heading: t.list.profileEmpty,
       text: t.list.profileBrokenText,
-      action: { label: t.list.completeProfile, icon: 'profile', onclick: completeProfile },
+      action: { label: t.list.completeProfile, icon: 'edit', onclick: completeProfile },
     };
   });
 
@@ -291,22 +296,14 @@
     });
   });
 
-  /** A click opens the job (the open one stays open); right after a move it is the second
-   *  click of a double click on the row that slid under the pointer, and does nothing. */
+  /** A click opens the job (the open one stays open and has been looked at); right after a move
+   *  it is the second click of a double click on the row that slid under the pointer, and does
+   *  nothing. */
   function select(job: JobView): void {
     if (guarded()) return;
-    if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
+    if (sameKey(jobs.selected, job.key)) seen(job.key);
+    else void jobs.select(job, true);
   }
-
-  // Another list, another search, order or filter: a click right away counts (the guard
-  // after a move is for rows that slid under the pointer).
-  $effect(() => {
-    void jobs.place;
-    void jobs.search;
-    void jobs.sortChoice;
-    void jobs.filterChoice;
-    untrack(disarm);
-  });
 
   // A search looks in the list's place; the other places that list hits are named under them.
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
@@ -551,7 +548,7 @@
     {job}
     ring={!profileMissing}
     reveal={rises}
-    marks={searchWords}
+    {marks}
     pending={pending && job.match === null}
     selected={open}
     onselect={select}
@@ -594,7 +591,7 @@
       <StateBox
         heading={t.list.thinProfile}
         text={thinWhy}
-        action={{ label: t.list.completeProfile, icon: 'profile', onclick: completeProfile }}
+        action={{ label: t.list.completeProfile, icon: 'edit', onclick: completeProfile }}
         testid="thin-profile"
       />
     </div>
@@ -617,11 +614,12 @@
         testid="list-error"
       />
     </div>
-  {:else if jobs.rows.length === 0 && jobs.status !== 'ready' && !jobs.emptyPlace}
+  {:else if jobs.rows.length === 0 && jobs.status !== 'ready' && !jobs.emptyPlace && !jobs.answeredEmpty}
     <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
          jump); they fade in once the list has taken --delay-placeholder (at once when it has
          already, jobs.slow), so a quick list never shows them. None for a place the counts
-         say is empty: it shows that at once. -->
+         say is empty, it shows that at once, and none under a list that answered with nothing:
+         that stands until the next answer. -->
     <div class="skeletons" data-testid="list-skeleton">
       {#each SKELETON_ROWS as line (line.index)}
         <div class="skeleton-row">
@@ -630,8 +628,8 @@
         </div>
       {/each}
     </div>
-  {:else if jobs.visible.length === 0 && (jobs.status === 'ready' || jobs.emptyPlace)}
-    {#if searching || filterEmptied}
+  {:else if jobs.visible.length === 0}
+    {#if jobs.answeredEmpty && (searching || filterEmptied)}
       <!-- The search's × clears it; the other places' hits are the way on. -->
       <div class="none" data-testid={searching ? 'empty-search' : 'empty-filter'}>
         <EmptyState
@@ -639,7 +637,7 @@
           placement="list"
           heading={noHit.heading}
           text={noHit.text}
-          secondary={jobs.filtered
+          secondary={jobs.listedFiltered
             ? {
                 label: t.toolbar.filterReset,
                 icon: 'reset',
@@ -706,9 +704,7 @@
           <ListDivider
             label={t.list.unscored}
             open={unscoredOpen}
-            ontoggle={() => {
-              if (!searching) sections.toggleUnscored();
-            }}
+            ontoggle={sections.unscoredHeld ? null : () => sections.toggleUnscored()}
             testid="unscored-divider"
           />
           {#if unscoredOpen}
@@ -727,9 +723,7 @@
           <ListDivider
             label={t.list.excluded}
             open={excludedOpen}
-            ontoggle={() => {
-              if (!searching) sections.toggleExcluded();
-            }}
+            ontoggle={sections.excludedHeld ? null : () => sections.toggleExcluded()}
             testid="excluded-divider"
           />
           {#if excludedOpen}
@@ -788,6 +782,11 @@
     flex: 1 0 auto;
     flex-direction: column;
     padding-bottom: var(--list-rows-end);
+  }
+
+  /* An end for rows: a state without rows stands in the very middle. */
+  .list:has(> .bare) {
+    padding-bottom: 0;
   }
 
   /* Watched: once it has scrolled away, the head may draw its line. */

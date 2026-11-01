@@ -4,7 +4,8 @@
   failure of the Profil's CV. The cream ground with a hairline, 10 round, 12 20 inside
   (its words start and its button ends where a card's rows do) and at least 56 high: its title (14/540 ink), one quiet sentence under it (13 muted), and
   its one button at the right end (`action`, a secondary button with its glyph, or a button of
-  its own in that place: `end`). No sign: the state's mark is elsewhere (the ring) or none;
+  its own in that place: `end`), pressed but not focused (`data-press-only`, input.ts). No sign:
+  the state's mark is elsewhere (the ring) or none;
   only while something is being done a 16 px spinner stands before the words (`busy`). An
   excluded job's box is the soft red (`tone="ban"`). A box that appears in a view already on
   screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its view
@@ -105,9 +106,9 @@
       {/if}
     </div>
     {#if end}
-      <span class="action">{@render end()}</span>
+      <span class="action" data-press-only>{@render end()}</span>
     {:else if action}
-      <span class="action">
+      <span class="action" data-press-only>
         <Button
           variant="secondary"
           label={action.label}
