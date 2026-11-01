@@ -2505,7 +2505,7 @@ test.describe('moves and undo', () => {
   test('a click on a move hands no focus on, by a tool or by the menu', async ({ page }) => {
     await open(page, WIN);
     const [first, second, third, fourth] = await listed(page);
-    // The row holds the focus a press gave it (Chromium), and it opened the job.
+    // A press opens the job and leaves no focus on its row.
     await row(page, first!).click();
     await expect(page.getByTestId('reader-title')).toBeVisible();
     // Its menu: the next job opens, its row takes no focus.

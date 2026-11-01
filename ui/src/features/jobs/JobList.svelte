@@ -26,7 +26,9 @@
   a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
   A click opens a job, a double click opens its ad in the browser, a right click its menu
   (jobMenu of actions.ts); under the pointer the row shows the moves of its place as its tools
-  (rowTools, the same table). Back in the Jobs view, the list stands where it was scrolled to.
+  (rowTools, the same table). The rows are pressed, not focused (`data-press-only`, like the
+  list's head and the sidebar): after a click the keys scroll the list on both OS, Tab still
+  reaches them. Back in the Jobs view, the list stands where it was scrolled to.
   A job action that fails says so in the list header.
   What the list shows is the answer it holds: a search or a filter on its way changes nothing
   until its answer comes, neither the rows, their marks and sections nor the state of no hit.
@@ -681,7 +683,7 @@
       />
     {/if}
   {:else}
-    <div class="groups" bind:this={groups}>
+    <div class="groups" data-press-only bind:this={groups}>
       <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
         <div class="rows" data-testid="job-rows" use:topLine>

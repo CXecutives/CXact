@@ -12,10 +12,11 @@
 //   each enabled by the field's state), on selected copyable text (Copy) and on an element
 //   that offers its own (`contextMenu`: a job row). Everywhere else a right click does
 //   nothing. The Menu key and Shift+F10 (Windows) open it at the field, the selection or
-//   the focused element. While a menu is open it takes every key (arrows, Home/End, the
-//   first letter, Enter and Space, Esc, Tab closes), and a press outside, the window's
-//   blur, resizing or a scroll outside it closes it; the left press that closes it does
-//   nothing else, nor does a second click after it. A menu names no keys.
+//   the focused element, with the focus nowhere at the open item of a list (`openItem`: a
+//   click on a row leaves no focus). While a menu is open it takes every key (arrows,
+//   Home/End, the first letter, Enter and Space, Esc, Tab closes), and a press outside, the
+//   window's blur, resizing or a scroll outside it closes it; the left press that closes it
+//   does nothing else, nor does a second click after it. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
@@ -109,8 +110,8 @@ const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
  *  Space, like the native ones; Enter there goes on to the form (its default action). */
 const ENTER_PRESSES =
   'button:not([role="switch"], [role="radio"], [role="checkbox"]), [role="button"]';
-/** Controls a press does not focus: in the sidebar, the list's header and the job view's rows
- *  of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
+/** Controls a press does not focus: in the sidebar, the list's header and rows and the job
+ *  view's rows of buttons (`data-press-only`), like the toolbar of Mail and Finder. */
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
@@ -1137,9 +1138,17 @@ function onContextMenu(event: MouseEvent): void {
   if (host !== null) openHostMenu(host, at);
 }
 
+/** With the focus nowhere the Menu key speaks for the open item of a list (the job row that
+ *  was clicked), while it stands on the page and no dialog lies over it. */
+function openItem(target: EventTarget | null): Element | null {
+  if (!isNowhere(target) || topModal() !== null) return null;
+  const item = document.querySelector(`${MENU_HOST}:has([aria-current="true"])`);
+  return item?.getClientRects().length ? item : null;
+}
+
 /** Shift+F10 or the Menu key: the menu of the focused field, of the selected copyable text
- *  or of the focused element that offers one, below it (every engine alike, none opens its
- *  own). */
+ *  or of the focused element that offers one, else of the open item of a list, below it
+ *  (every engine alike, none opens its own). */
 function openMenuByKey(target: EventTarget | null): void {
   const field = closest(target, 'input, textarea');
   if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
@@ -1174,7 +1183,7 @@ function openMenuByKey(target: EventTarget | null): void {
     });
     return;
   }
-  const host = closest(target, MENU_HOST);
+  const host = closest(target, MENU_HOST) ?? openItem(target);
   if (host !== null) openHostMenu(host, null);
 }
 

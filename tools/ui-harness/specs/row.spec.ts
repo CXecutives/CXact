@@ -365,3 +365,67 @@ test('an excluded row shows the ban in the ring place, without a number', async 
   // A scored row keeps its ring.
   await expect(row(page, 'linkedin-4100200301').locator('.ring')).toHaveCount(1);
 });
+
+test.describe('after a click on a row', () => {
+  const scrollTop = (page: Page): Promise<number> =>
+    page.getByTestId('list-scroll').evaluate((node) => node.scrollTop);
+
+  test('the arrows, Home and End scroll the list, in both engines, and Tab still reaches the rows', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, WIN);
+    const first = (await listed(page))[0]!;
+    await row(page, first).click();
+    // A press focuses no row: nothing stands armed for a key.
+    await expect(row(page, first)).not.toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+    await page.keyboard.press('End');
+    const end = await page
+      .getByTestId('list-scroll')
+      .evaluate((node) => node.scrollHeight - node.clientHeight);
+    await expect.poll(() => scrollTop(page)).toBe(end);
+    await page.keyboard.press('Home');
+    await expect.poll(() => scrollTop(page)).toBe(0);
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(0);
+    // The keys still go through the rows.
+    await page.keyboard.press('Tab');
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.activeElement?.closest('[data-key]')?.tagName ?? null),
+      )
+      .toBe('DIV');
+  });
+
+  test('Shift+F10 opens the menu of the open row; on a control, or with no job open, nothing', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const menu = page.getByTestId('menu');
+    // No job open: the key has nothing to speak for.
+    await page.keyboard.press('Shift+F10');
+    await page.waitForTimeout(100);
+    await expect(menu).toHaveCount(0);
+    const second = (await listed(page))[1]!;
+    await row(page, second).click();
+    await page.keyboard.press('Shift+F10');
+    await expect(menu).toBeVisible();
+    // Below its row, the first entry active as from the keyboard, and it acts on that job.
+    const box = (await row(page, second).boundingBox())!;
+    expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual(box.y + box.height);
+    await expect(page.getByTestId('menu-item-open-ad')).toHaveAttribute('data-active', '');
+    await page.keyboard.press('Enter');
+    await expect(menu).toHaveCount(0);
+    const [, args] = (await calls(page, 'open_target')).at(-1)!;
+    expect(args).toEqual({
+      target: { kind: 'jobUrl', key: (await stubList(page)).jobs[1]!.key },
+    });
+    // A control that holds the focus speaks for itself.
+    await page.getByTestId('filter').focus();
+    await page.keyboard.press('Shift+F10');
+    await page.waitForTimeout(100);
+    await expect(menu).toHaveCount(0);
+  });
+});
