@@ -7,6 +7,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import {
+  animationsDone,
   calls,
   expect,
   expectShot,
@@ -1618,6 +1619,25 @@ test('the chevron at Jobs: only its glyph turns, its wash stays still and round'
   const radius = await round(fold);
   await page.getByTestId('filter').click();
   expect(radius).toBe(await round(page.getByTestId('menu').getByRole('menuitemradio').first()));
+});
+
+test('the row Jobs keeps its wash under its chevron, like a row of the list under its tools', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const jobs = page.getByTestId('nav-jobs');
+  const wash = async (): Promise<string> => {
+    await animationsDone(page);
+    return jobs.evaluate((node) => getComputedStyle(node).backgroundColor);
+  };
+  const rest = await wash();
+  await jobs.hover();
+  const over = await wash();
+  expect(over).not.toBe(rest);
+  await page.getByTestId('nav-places').hover();
+  expect(await wash()).toBe(over);
+  await page.mouse.move(0, 0);
+  expect(await wash()).toBe(rest);
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {

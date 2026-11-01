@@ -244,7 +244,9 @@
     font: var(--type-field-label);
   }
 
-  .item:not([aria-current='page']):hover {
+  /* The row keeps its wash under its chevron, as a list's row under its tools. */
+  .item:not([aria-current='page']):hover,
+  .entry:has(> .fold:hover) > .item:not([aria-current='page']) {
     background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }
