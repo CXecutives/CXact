@@ -35,7 +35,7 @@ import type {
 import { app } from './app.svelte';
 import { NO_FILTER } from './filter';
 import { jobs } from './jobs.svelte';
-import { navigation } from './navigation.svelte';
+import { navigation, type ViewId } from './navigation.svelte';
 import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
 import { viewport } from './viewport.svelte';
@@ -91,6 +91,8 @@ class RunStore {
   #epoch = 0;
   /** A `started` came through the channel: the page follows the runs live. */
   #followed = false;
+  /** The view the run in progress began in. */
+  #begunIn: ViewId | null = null;
 
   /** Subscribe once to the run channel (App.svelte). */
   install(): void {
@@ -151,6 +153,7 @@ class RunStore {
 
   private begin(kind: RunKindName): void {
     this.#epoch += 1;
+    this.#begunIn = navigation.current;
     this.active = true;
     this.kind = kind;
     this.step = null;
@@ -351,7 +354,7 @@ class RunStore {
           'success',
           show,
         );
-      } else if (kind === 'rescore' && navigation.current === 'settings') {
+      } else if (kind === 'rescore' && this.#begunIn === 'settings') {
         toasts.show(t.toast.rescored);
       }
     }

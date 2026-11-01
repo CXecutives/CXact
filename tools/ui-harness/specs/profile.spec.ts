@@ -2408,6 +2408,46 @@ test('a save says nothing unless its rescore moved jobs; a first profile says wh
   );
 });
 
+test('a change and then Einstellungen: the rescore of the save says nothing there, only what moved', async ({
+  page,
+}) => {
+  await profile(page);
+  await contract(page, 'temporary').click();
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await lastSave(page);
+  await runFinished(page);
+  await page.waitForTimeout(2 * T_SAVE);
+  // Read once: a toast goes by itself, and waiting for none would wait it out.
+  expect(await savedToast(page).count()).toBe(0);
+  // A first profile moves jobs: one toast says what moved, not a second that they were scored.
+  await create(page);
+  const input = roles(page).locator('input');
+  await input.fill('Interim CFO');
+  await input.press('Enter');
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await lastSave(page);
+  await runFinished(page);
+  const { jobs } = await stubList(page);
+  const high = jobs.filter(
+    (job) => job.match?.status === 'scored' && bandOf(job.match.score) === 'high',
+  ).length;
+  const excluded = jobs.filter((job) => job.match?.status === 'excluded').length;
+  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(
+    T.profile.savedEffect(high, excluded),
+  );
+  expect(await savedToast(page).count()).toBe(1);
+  // A rescore that began in Einstellungen (another work folder) speaks, wherever its end finds us.
+  await open(page, `${WIN}&view=settings`);
+  await page.evaluate(() => (window.__harness.holdAfter = 1));
+  await page.evaluate(() => window.__harness.appRun('rescore'));
+  await page.getByTestId('nav-profile').click();
+  await page.evaluate(() => (window.__harness.holdAfter = null));
+  await runFinished(page);
+  await expect(savedToast(page)).toContainText(T.toast.rescored);
+});
+
 test('the toast of a save says only the parts its rescore moved', async ({ page }) => {
   await profile(page);
   // The rescores end as the test says: the stub's own stays at its start.
