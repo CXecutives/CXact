@@ -261,10 +261,8 @@
     scroll-margin-top: calc(var(--fade-height) + var(--space-8));
   }
 
-  /* Tab and focus scrolling keep a field clear of the top bar's fade and of the bar at the
-     foot. */
+  /* Tab and focus scrolling keep a field clear of the top bar's fade. */
   .editor :global(:is(input, textarea, button, [role='switch'])) {
     scroll-margin-top: calc(var(--fade-height) + var(--space-8));
-    scroll-margin-bottom: calc(var(--bar-min) + var(--space-16));
   }
 </style>

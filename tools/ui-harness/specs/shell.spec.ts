@@ -603,6 +603,65 @@ for (const os of [WIN, MAC]) {
     await expect(row).toBeVisible();
   });
 
+  test(`folded from the keyboard the floating sidebar hands the focus to its button, a press moves none ${os}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await open(page, os);
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    const archive = floating.getByTestId('place-archive');
+    /** From its button, by the keys, out it floats and the focus goes to Archiv in it. */
+    const toArchive = async (): Promise<void> => {
+      await toggle.focus();
+      await page.keyboard.press('Enter');
+      await expect(floating).toBeVisible();
+      for (let press = 0; press < 12; press += 1) {
+        if (await archive.evaluate((node) => node === document.activeElement)) return;
+        await page.keyboard.press('Tab');
+      }
+      await expect(archive).toBeFocused();
+    };
+    // Esc.
+    await toArchive();
+    await page.keyboard.press('Escape');
+    await expect(floating).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+    // A choice: it opens, and Enter on the button floats the sidebar out again.
+    await toArchive();
+    await page.keyboard.press('Enter');
+    await expect(floating).toHaveCount(0);
+    await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    // A press on an entry is a press: the focus stays nowhere.
+    await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+    await floating.getByTestId('place-inbox').click();
+    await expect(floating).toHaveCount(0);
+    await expect(page.locator('body')).toBeFocused();
+  });
+
+  test(`a floating sidebar folds once the window is wide enough to dock it, and its button says so ${os}`, async ({
+    page,
+  }) => {
+    await open(page, os);
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    await toggle.click();
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await toggle.click();
+    await expect(floating).toBeVisible();
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await expect(floating).toHaveCount(0);
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    await expect(toggle).toHaveAccessibleName(T.nav.sidebarShow);
+    await toggle.click();
+    await expect(page.getByTestId('sidebar')).toBeVisible();
+    await expect(toggle).toHaveAccessibleName(T.nav.sidebarHide);
+  });
+
   test(`at 480 x 360 the floating sidebar keeps every entry in the window ${os}`, async ({
     page,
   }) => {
@@ -997,15 +1056,57 @@ test('a start whose data cannot load offers the backups; a restore loads the app
   // A failure to list them stays a note under the ways.
   await failNext(page, 'list_backups');
   await page.getByTestId('restore-backup').click();
-  await expect(page.getByTestId('backup-note')).toHaveText(T.error.text('db', {}));
+  await expect(page.getByTestId('ways-note')).toHaveText(T.error.text('db', {}));
   await page.getByTestId('restore-backup').click();
   const dialog = page.getByTestId('dialog-backup');
   await expect(dialog).toBeVisible();
-  await expect(page.getByTestId('backup-note')).toHaveCount(0);
+  await expect(page.getByTestId('ways-note')).toHaveCount(0);
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog).toBeHidden();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   expect(await calls(page, 'restore_backup')).toHaveLength(1);
+});
+
+test('the note under the ways of a failed start stands in one box, its words inside it', async ({
+  page,
+}) => {
+  for (const width of [1360, 480]) {
+    await page.setViewportSize({ width, height: 700 });
+    await open(page, `${WIN}&scenario=load-failed`);
+    await failNext(page, 'list_backups');
+    await page.getByTestId('restore-backup').click();
+    const note = page.getByTestId('ways-note');
+    await expect(note).toHaveText(T.error.text('db', {}));
+    await motionSettled(page);
+    // The sentence on one line, its ends inside the box, the box inside the window.
+    const seen = await note.evaluate((box) => {
+      const range = document.createRange();
+      range.selectNodeContents(box.querySelector('p')!);
+      const lines = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
+      const words = range.getBoundingClientRect();
+      const edge = box.getBoundingClientRect();
+      return {
+        lines: lines.size,
+        inside: words.left >= edge.left && words.right <= edge.right,
+        window: edge.left >= 0 && edge.right <= document.documentElement.clientWidth,
+      };
+    });
+    expect(seen, `${width}`).toEqual({ lines: 1, inside: true, window: true });
+  }
+});
+
+test('Ordner öffnen that fails says so in the note under the ways of a failed start', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const note = page.getByTestId('ways-note');
+  await failNext(page, 'open_target');
+  await page.getByTestId('open-data').click();
+  await expect(note).toHaveText(T.error.text('db', {}));
+  // The next press starts anew: it opens, and the note is gone.
+  await page.getByTestId('open-data').click();
+  await expect(note).toHaveCount(0);
+  expect(await calls(page, 'open_target')).toHaveLength(2);
 });
 
 test('the failed start keeps the top bar', async ({ page }) => {
@@ -1301,6 +1402,28 @@ test('closing during a fetch asks first: Weitersuchen keeps both, Schließen sto
   await expect.poll(() => windowClosed(page)).toBe(true);
   expect(await closeAnswers(page)).toEqual([{ close: false }, { close: true }]);
   expect(await calls(page, 'close_window')).toHaveLength(0);
+});
+
+test('the note that the window is closing lies over the whole window, its top bar too', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=default&tick=3000`);
+  await page.getByTestId('fetch').click();
+  await expect.poll(() => page.evaluate(() => window.__harness.runs())).toBe(true);
+  await requestClose(page);
+  await page.getByTestId('dialog-close-running').getByTestId('dialog-confirm').click();
+  const closing = page.getByTestId('closing');
+  await expect(closing).toBeVisible();
+  const { width, height } = page.viewportSize()!;
+  expect(await closing.boundingBox()).toEqual({ x: 0, y: 0, width, height });
+  // What lies under it takes no press.
+  const under = await page.getByTestId('history-back').boundingBox();
+  expect(
+    await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x!, y!)?.closest('[data-testid="closing"]') !== null,
+      [under!.x + under!.width / 2, under!.y + under!.height / 2],
+    ),
+  ).toBe(true);
 });
 
 test('the close question stands alone: another question that is open is cancelled first', async ({

@@ -13,11 +13,12 @@
   Jobs view with the last results. Closing while a
   fetch runs asks first (features/shell/CloseDialog.svelte). Closing while the app is busy
   keeps the window until that has stopped; a calm note says what it waits for (a fetch, a
-  rescore, a sign-in, the files). Profil and Einstellungen keep where they were scrolled to
+  rescore, a sign-in, the files) and lies over the whole window, its top bar too, like a
+  dialog's scrim. Profil and Einstellungen keep where they were scrolled to
   while the app runs (a return finds the same place). A start whose data cannot load says so
   and offers to try again, to restore a backup (the dialog of Einstellungen, whose restore
-  loads the app again) and the data folder; what the restore could not do stays a note under
-  them.
+  loads the app again) and the data folder; what the restore or the folder could not do stays a
+  note under them.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -32,9 +33,9 @@
   import { scrollFade } from '$lib/actions/scrollFade';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
-  import { onBack, onForward } from '$lib/input/input';
+  import { foldSidebar, onBack, onForward } from '$lib/input/input';
   import { untrack } from 'svelte';
-  import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
+  import { invoke, onClosing } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
   import { play } from '$lib/motion/motion';
   import { fade } from '$lib/motion/transitions';
@@ -72,9 +73,9 @@
   $effect(() => onBack(() => !shell.firstRun && history.back()));
   $effect(() => onForward(() => !shell.firstRun && history.forward()));
 
-  // A docked sidebar never floats as well.
+  // The sidebar floats only in a narrow window: with the room to dock it, it folds.
   $effect(() => {
-    if (shell.docked) shell.peek = false;
+    if (!viewport.fold) shell.peek = false;
   });
 
   /** The views' sheet: it slides when the sidebar docks or folds. */
@@ -117,32 +118,36 @@
     });
   });
 
-  /** The data folder, after a start that could not load its data. */
-  function openFolder(target: OpenTarget): void {
-    invoke('open_target', { target }).catch((error: unknown) => {
-      reportUiError(`open ${target.kind}: ${String(error)}`, null, null);
-    });
+  /** What a way on after a failed start could not do (or that there is no backup): the one note
+   *  under the ways; the next press starts anew. */
+  let waysNote = $state<{ tone: NoticeTone; text: () => string } | null>(null);
+  function waysFailed(error: unknown): void {
+    waysNote = { tone: 'danger', text: () => errorText(error) };
   }
 
-  /** A backup to restore after a failed start: its button turns while the copies are read,
-   *  and what fails (or that there is none) is a note under the ways. */
+  /** The data folder, after a start that could not load its data. */
+  function openFolder(target: OpenTarget): void {
+    waysNote = null;
+    invoke('open_target', { target }).catch(waysFailed);
+  }
+
+  /** A backup to restore after a failed start: its button turns while the copies are read. */
   let backupDialog = $state<BackupDialog | null>(null);
   let restoring = $state(false);
-  let backupNote = $state<{ tone: NoticeTone; text: () => string } | null>(null);
   async function asBackupStep(work: () => Promise<void>): Promise<void> {
     restoring = true;
-    backupNote = null;
+    waysNote = null;
     try {
       await work();
     } catch (error) {
-      backupNote = { tone: 'danger', text: () => errorText(error) };
+      waysFailed(error);
     } finally {
       restoring = false;
     }
   }
   function restoreBackup(): void {
     void backupDialog?.show(asBackupStep, () => {
-      backupNote = { tone: 'info', text: () => t.shell.backupNone };
+      waysNote = { tone: 'info', text: () => t.shell.backupNone };
     });
   }
 </script>
@@ -166,7 +171,7 @@
     {:else if shell.peek}
       <!-- A narrow window: the sidebar's button floats it over the view. -->
       <div class="peek" data-peek transition:fade>
-        <Sidebar floating onchoose={() => shell.fold()} />
+        <Sidebar floating onchoose={foldSidebar} />
       </div>
     {/if}
     <main
@@ -205,13 +210,15 @@
                 onclick={() => openFolder({ kind: 'dataDir' })}
               />
             </div>
-            {#if backupNote}
-              <Notice
-                tone={backupNote.tone}
-                variant="box"
-                text={backupNote.text()}
-                testid="backup-note"
-              />
+            {#if waysNote}
+              <div class="ways-note">
+                <Notice
+                  tone={waysNote.tone}
+                  variant="box"
+                  text={waysNote.text()}
+                  testid="ways-note"
+                />
+              </div>
             {/if}
           </div>
         </section>
@@ -225,7 +232,7 @@
       {:else}
         <!-- The views are the branches of one block: a switch shows the new one at once. -->
         {#if firstRun}
-          <section class="view side" data-testid="view-first-run" use:scrollFade>
+          <section class="view side" data-testid="view-first-run" data-key-pane use:scrollFade>
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
@@ -236,6 +243,7 @@
           <section
             class="view"
             data-testid="view-profile"
+            data-key-pane
             use:keepScroll={'profile'}
             use:scrollFade
           >
@@ -245,12 +253,16 @@
           <section
             class="view"
             data-testid="view-settings"
+            data-key-pane
             use:keepScroll={'settings'}
             use:scrollFade
           >
             <SettingsView />
           </section>
         {/if}
+      {/if}
+      {#if shell.foot}
+        <div class="view-foot">{@render shell.foot()}</div>
       {/if}
     </main>
     {#if closing}
@@ -284,9 +296,9 @@
   }
 
   /* Closing during a fetch: the window waits until the run has stopped; one calm note says
-     so, in the words of a state box. */
+     so, in the words of a state box. Its scrim is the whole window, like a dialog's. */
   .closing {
-    position: absolute;
+    position: fixed;
     z-index: var(--z-overlay);
     inset: 0;
     display: flex;
@@ -311,10 +323,11 @@
 
   /* The sheet of the views: the docked sidebar's hairline is its left edge. Beyond its right
      edge a strip of its end colour, out of sight at rest, fills the window while the sheet
-     slides in from the left (the sidebar docks). */
+     slides in from the left (the sidebar docks). The view fills it, above a bar at its foot. */
   .views {
     display: grid;
     flex: 1;
+    grid-template-rows: minmax(0, 1fr) auto;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
@@ -360,6 +373,11 @@
     border-radius: var(--peek-radius);
     background-color: var(--bg);
     box-shadow: var(--sh-pop);
+  }
+
+  .view-foot {
+    grid-area: 2 / 1;
+    min-width: 0;
   }
 
   /* The one view fills the sheet, on the warm page (Profil, Einstellungen, a start that
@@ -434,5 +452,10 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--space-6);
+  }
+
+  /* A state box takes the width it is given (the column centres what it holds): a dialog's. */
+  .ways-note {
+    width: min(100%, var(--dialog-width));
   }
 </style>

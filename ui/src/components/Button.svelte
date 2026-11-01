@@ -25,8 +25,8 @@
   - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
     the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
   - A double click acts once: its second click does nothing (a text button opened its page
-    twice, the next step's control under the pointer took it). `repeats` (Zurück and Vor)
-    takes both clicks, a step each.
+    twice; on what took the button's place after the first click input.ts keeps it from
+    pressing). `repeats` (Zurück and Vor) takes both clicks, a step each.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>

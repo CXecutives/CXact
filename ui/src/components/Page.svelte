@@ -3,8 +3,7 @@
   page's warm white ground (--page; the setup's cream with `ground="bg"`) at least as high as
   the view, its column (--page-max with --page-side, 16 in a narrow page) centred in it, 8
   under the top bar and 40 free at its end, like every scroll area. A head (`head`: the
-  page's title, PageHeader) opens the column, 22 above the first section's title. A bar at
-  the page's foot (`foot`: BottomBar) stays docked at the view's bottom edge. The column is
+  page's title, PageHeader) opens the column, 22 above the first section's title. The column is
   the container its parts ask for their width. While a file the page would take is over it
   (`over`: a CV on the Profil) a dashed edge stands inside the view.
 -->
@@ -17,8 +16,6 @@
     ground?: 'page' | 'bg';
     /** A head at the top of the column (the page's title). */
     head?: Snippet | null;
-    /** A bar at the page's foot, after the column (BottomBar). */
-    foot?: Snippet | null;
     /** A file the page would take is over it. */
     over?: boolean;
     /** The page's element (a page that finds its rows in it). */
@@ -30,7 +27,6 @@
     testid = null,
     ground = 'page',
     head = null,
-    foot = null,
     over = false,
     element = $bindable(null),
     children,
@@ -48,15 +44,12 @@
     {#if head}{@render head()}{/if}
     <div class="content">{@render children()}</div>
   </div>
-  {#if foot}{@render foot()}{/if}
 </div>
 
 <style>
-  /* At least as high as the view, so a bar at the foot stands there under a short page. */
+  /* At least as high as the view: its ground fills it under a short page. */
   .page {
     container: page / inline-size;
-    display: flex;
-    flex-direction: column;
     min-height: 100%;
     background-color: var(--page);
   }

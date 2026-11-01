@@ -7,7 +7,7 @@
 // resuming from what is stored, the smallest window, and that no step puts a caret in a field.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, calls, expect, open, test } from './fixtures';
+import { animationsDone, calls, expect, motionSettled, open, settle, test } from './fixtures';
 import { failNext, fillRequired, T, WIN, MAC } from './helpers';
 
 const heading = (page: Page) => page.getByTestId('first-heading');
@@ -759,4 +759,104 @@ test('a double click goes one step: the tile under the pointer after it is not p
   await page.waitForTimeout(300);
   await expectStep(page, T.firstRun.doneProfile);
   await expect(page.getByTestId('view-jobs')).toHaveCount(0);
+});
+
+/* ---------------------------------------------------------------- the bar of Dein Profil */
+
+/** The bar of Dein Profil reaches both edges of the window, its column stands on the page's
+ *  column above it, and the view ends where the bar starts: nothing can lie under it. */
+async function expectBarUnderTheView(page: Page): Promise<void> {
+  const bar = page.getByTestId('first-bar');
+  await expect(bar).toBeVisible();
+  await motionSettled(page);
+  const edges = (
+    node: Locator,
+  ): Promise<{ left: number; right: number; top: number; bottom: number }> =>
+    node.evaluate((element) => {
+      const { left, right, top, bottom } = element.getBoundingClientRect();
+      return { left, right, top, bottom };
+    });
+  const box = await edges(bar);
+  expect(box.left).toBe(0);
+  expect(box.right).toBe(await page.evaluate(() => document.documentElement.clientWidth));
+  expect(box.bottom).toBe(await page.evaluate(() => document.documentElement.clientHeight));
+  expect((await edges(page.getByTestId('view-first-run'))).bottom).toBe(box.top);
+  const column = await edges(page.getByTestId('first-profile').locator('.column'));
+  const inner = await edges(bar.locator('.inner'));
+  expect(inner.left).toBe(column.left);
+  expect(inner.right).toBe(column.right);
+}
+
+test('the bar of Dein Profil stands under the view, across the whole window', async ({ page }) => {
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  await expectBarUnderTheView(page);
+  await open(page, `${MAC}&scenario=setup-cv&step=profile`);
+  await expectBarUnderTheView(page);
+});
+
+test('beside a real scrollbar the bar of Dein Profil still reaches the edge of the window', async ({
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  // Windows only (WebView2): macOS's overlay scrollbars take no room.
+  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    const page = await browser.newPage({
+      ...(baseURL ? { baseURL } : {}),
+      viewport: { width: 1360, height: 860 },
+      locale: 'de-DE',
+    });
+    await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+    const view = page.getByTestId('view-first-run');
+    expect(
+      await view.evaluate((node) => (node as HTMLElement).offsetWidth - node.clientWidth),
+    ).toBeGreaterThan(0);
+    await expectBarUnderTheView(page);
+    // At a narrow page too, with the column's narrow sides.
+    await page.setViewportSize({ width: 480, height: 360 });
+    await expectBarUnderTheView(page);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('a press on the bar of Dein Profil leaves Enter with Weiter, as on the rest of the step', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  await expect.poll(() => marks(page)).toEqual([]);
+  const bar = (await page.getByTestId('first-bar').boundingBox())!;
+  await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => marks(page)).not.toEqual([]);
+});
+
+test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
+  await page.setViewportSize({ width: 1360, height: 640 });
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  const top = await page
+    .getByTestId('first-bar')
+    .evaluate((bar) => bar.getBoundingClientRect().top);
+  const below: string[] = [];
+  let reached = 0;
+  for (let press = 0; press < 60; press += 1) {
+    await page.keyboard.press('Tab');
+    await settle(page);
+    const focused = await page.evaluate(() => {
+      const node = document.activeElement as HTMLElement;
+      return {
+        name: node.getAttribute('data-testid') ?? node.id ?? node.tagName,
+        inBar: node.closest('[data-testid="first-bar"]') !== null,
+        bottom: node.getBoundingClientRect().bottom,
+      };
+    });
+    if (focused.inBar) break;
+    reached += 1;
+    if (focused.bottom > top)
+      below.push(`${focused.name} ends at ${focused.bottom}, bar at ${top}`);
+  }
+  expect(reached).toBeGreaterThan(20);
+  expect(below).toEqual([]);
 });

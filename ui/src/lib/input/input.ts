@@ -15,7 +15,7 @@
 //   the focused element. While a menu is open it takes every key (arrows, Home/End, the
 //   first letter, Enter and Space, Esc, Tab closes), and a press outside, the window's
 //   blur, resizing or a scroll outside it closes it; the left press that closes it does
-//   nothing else. A menu names no keys.
+//   nothing else, nor does a second click after it. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
@@ -27,7 +27,12 @@
 //   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
 //   held, a menu or a modal dialog open), so plain scrolling never waits for the page.
 // - a double click does nothing (in text that copies it selects a word, like everywhere;
-//   an element that offers `doubleClick` handles it: a job row opens its ad)
+//   an element that offers `doubleClick` handles it: a job row opens its ad). Its second press
+//   counts only on what the first pressed: on what the first click slid under the pointer (the
+//   next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
+//   first click opened stays open (`pressesElsewhere`).
+// - the name of a text field leads into it; the name of a button (a select) only names it
+//   (`namesButton`)
 // - no dragging of text, links or images (only the column handle and the window's drag
 //   regions move)
 // - text is selectable only in fields and where a user would copy it (`data-copy`: the ad
@@ -42,16 +47,17 @@
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
 //   dialog (with the focus nowhere the form pressed last). PageUp and PageDown scroll the pane
-//   that has the focus (or the one clicked last) by a page, and with the focus nowhere (on no
-//   control, `isNowhere`) the arrows scroll that pane by a line and Home/End to its top and
-//   end, like a native scroll view. Key scrolling glides in one
+//   that has the focus (or the one clicked last, else the view's own, `data-key-pane`) by a page,
+//   and with the focus nowhere (on no control, `isNowhere`) the arrows scroll that pane by a line
+//   and Home/End to its top and end, like a native scroll view. Key scrolling glides in one
 //   short tween (lib/motion/scroll.ts), never the engine's smooth scroll. Everything else,
 //   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
 //   Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
 //   focus is. Esc closes only the layer on top: the menu, then the dialog, then the sidebar
-//   that floats over the view in a narrow window; a left press beside that sidebar (and
-//   beside its button, which folds it itself) folds it too, and still does what it presses.
+//   that floats over the view in a narrow window, whose button then takes the focus it held
+//   (`foldSidebar`); a left press beside that sidebar (and beside its button, which folds it
+//   itself) folds it too, and still does what it presses.
 // - removing never puts a caret anywhere (`removeBy`): a click on an × drops the focus; from
 //   the keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×) the
 //   next × of the same list takes it, the previous one after the last.
@@ -66,10 +72,10 @@
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
-import { clipboardText, onMenuUndo, reportUiError } from '../ipc/api';
+import { onMenuUndo } from '../ipc/api';
 import { noteKey } from '../motion/pace';
 import { glideBy, glideTo } from '../motion/scroll';
-import { fieldMenuUndoDelete, keyConventions, type KeyConventions } from '../platform';
+import { keyConventions, type KeyConventions } from '../platform';
 import {
   chooseEntry,
   closeMenu,
@@ -82,6 +88,7 @@ import {
 } from '../state/menu.svelte';
 import { shell } from '../state/shell.svelte';
 import { tokenMs, tokenPx } from '../tokens';
+import { copyOut, fieldMenu } from './fieldMenu';
 import { pointerMoved } from './hold';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
@@ -107,7 +114,8 @@ const FIELD_BOX = '[data-field-box]';
  *  heading, the mailbox form's box. Every control that leaves the Tab order is a button. */
 const FOCUS_HOLDER = '[tabindex="-1"]:not(button)';
 /** The sidebar floating over the view (App.svelte) and its button in the top bar. */
-const PEEK = '[data-peek], [data-testid="toggle-sidebar"]';
+const FLOATING = '[data-peek]';
+const SIDEBAR_BUTTON = '[data-testid="toggle-sidebar"]';
 const FOCUSABLE = [
   'button:not([tabindex="-1"])',
   'input:not([tabindex="-1"])',
@@ -321,9 +329,9 @@ function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = even
   return true;
 }
 
-/** The arrows, Home and End with the focus nowhere scroll the pane around what holds the focus
- *  or the pane clicked last (the reader, Einstellungen, Profil), like a native scroll view.
- *  `true` if a pane took the key. */
+/** The arrows, Home and End with the focus nowhere scroll the pane around what holds the focus,
+ *  the pane clicked last or the view's own (the reader, Einstellungen, Profil), like a native
+ *  scroll view. `true` if a pane took the key. */
 function scrollsLine(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey || !isNowhere(event.target)) return false;
   const pane = keyPane(event.target);
@@ -606,6 +614,15 @@ let keyboardFocus = false;
 /** The keyboard moves the focus now: what held it hands it on when it goes; a click moves none. */
 export const byKeyboard = (): boolean => keyboardFocus;
 
+/** The sidebar floating over the view folds by the keyboard: the focus it held goes to its button
+ *  (with the sidebar away the button stands for it, as in `focusPlace`), never to the page. */
+export function foldSidebar(): void {
+  if (keyboardFocus && closest(document.activeElement, FLOATING) !== null) {
+    document.querySelector<HTMLElement>(SIDEBAR_BUTTON)?.focus();
+  }
+  shell.fold();
+}
+
 /** A list whose items a button removes: the chips of a chip field, the rows of the
  *  competences and the languages, the notes of values that do not read. */
 const REMOVE_LIST = '[data-removes]';
@@ -717,7 +734,7 @@ function onKeyDown(event: KeyboardEvent): void {
   const modal = topModal();
   if (modal === null && event.key === 'Escape' && shell.peek) {
     event.preventDefault();
-    shell.fold();
+    foldSidebar();
     return;
   }
   if (modal !== null) {
@@ -785,6 +802,23 @@ let lastCopy: Element | null = null;
 let pressedAt: { x: number; y: number } | null = null;
 /** The left button is held since a press in selectable text. */
 let pressedInText = false;
+/** What the first press of a click went down on (null: it closed a menu, it pressed nothing). */
+let firstPress: Element | null = null;
+
+/** The control a press lands on, not the words or the glyph in it; else the element itself. */
+const pressedOn = (target: EventTarget | null): Element | null =>
+  closest(target, `${PRESSABLE}, ${FIELD}`) ?? closest(target, '*');
+
+/**
+ * The second press of a double click that lands on anything but what the first one pressed:
+ * what the first click did slid it under the pointer, and it was never meant. It presses
+ * nothing, so every control is safe from it without a check of its own. Two presses on one row
+ * or one word are a real double click, and a control's own check (Button) keeps those apart.
+ */
+const pressesElsewhere = (event: MouseEvent): boolean =>
+  event.button === LEFT &&
+  event.detail > 1 &&
+  (firstPress?.isConnected !== true || pressedOn(event.target) !== firstPress);
 
 /** The pointer moved further from the last left press than a click may. */
 const movedFromPress = (event: MouseEvent): boolean =>
@@ -841,10 +875,20 @@ function scrollAreaOf(target: EventTarget | null): HTMLElement | null {
   return null;
 }
 
-/** The pane the page keys scroll: the one around the focus, with the focus nowhere else the
- *  one clicked last. */
+/** The panes of the view on screen (App's view, the Jobs view's list and job). */
+const VIEW_PANE = '[data-key-pane]';
+
+/** The pane the page keys scroll: the one around the focus, with the focus nowhere else the one
+ *  clicked last that still scrolls, else the first of the view on screen that does. A menu and a
+ *  dialog have taken their keys before, a field keeps its own. */
 function keyPane(target: EventTarget | null): HTMLElement | null {
-  return scrollAreaOf(target) ?? (isNowhere(target) && lastPane?.isConnected ? lastPane : null);
+  const around = scrollAreaOf(target);
+  if (around !== null || !isNowhere(target)) return around;
+  for (const pane of [lastPane, ...document.querySelectorAll(VIEW_PANE)]) {
+    const area = scrollAreaOf(pane);
+    if (area !== null) return area;
+  }
+  return null;
 }
 
 /** PageUp and PageDown: the focused (or last clicked) pane scrolls a page. */
@@ -897,144 +941,6 @@ function go(ways: readonly (() => boolean)[]): boolean {
 }
 
 const prevent = (event: Event): void => event.preventDefault();
-
-/** The Delete entry of a field's menu: the selection goes, as one step of the field's undo. */
-function deleteSelection(field: HTMLInputElement | HTMLTextAreaElement): void {
-  field.focus();
-  // The editing command keeps the step in the field's own undo (setRangeText would not).
-  if (document.execCommand('delete')) return;
-  field.setRangeText('', field.selectionStart ?? 0, field.selectionEnd ?? 0, 'end');
-  field.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-/** Text typed in as one step of the field's undo (a paste from the menu). */
-function insertText(field: HTMLInputElement | HTMLTextAreaElement, text: string): void {
-  if (document.execCommand('insertText', false, text)) return;
-  field.setRangeText(text, field.selectionStart ?? 0, field.selectionEnd ?? 0, 'end');
-  field.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-/** Put text on the clipboard (the engine's copy first, the clipboard API when it refuses). */
-function copyOut(text: string): void {
-  if (document.execCommand('copy')) return;
-  navigator.clipboard.writeText(text).catch((error: unknown) => {
-    reportUiError(`menu copy: ${String(error)}`, null, null);
-  });
-}
-
-const SEPARATOR: MenuEntry = { kind: 'separator' };
-
-/**
- * The menu of a text field, like the OS's own, its entries enabled by the field's state.
- * Windows: Undo | Cut, Copy, Paste, Delete | Select all; macOS has no undo and no delete
- * there (platform.ts). The menu takes the focus while it is open; an entry puts it back on
- * the field with the selection it had, then acts like the key would.
- */
-function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
-  // A right click in a field that is not focused focuses it (the commands act on it).
-  if (document.activeElement !== field) field.focus();
-  const start = field.selectionStart ?? 0;
-  const end = field.selectionEnd ?? 0;
-  const back = (): void => {
-    field.focus({ preventScroll: true });
-    field.setSelectionRange(start, end);
-  };
-  const editable = !field.readOnly && !field.disabled;
-  const hidden = field instanceof HTMLInputElement && field.type === 'password';
-  const selected = start !== end;
-  const full = fieldMenuUndoDelete();
-  const undo: MenuEntry[] = full
-    ? [
-        {
-          id: 'undo',
-          label: t.edit.undo,
-          icon: 'undo',
-          // The engine keeps one undo history for the page.
-          disabled: !(editable && canUndo()),
-          run: () => {
-            back();
-            document.execCommand('undo');
-          },
-        },
-        SEPARATOR,
-      ]
-    : [];
-  const remove: MenuEntry[] = full
-    ? [
-        {
-          id: 'delete',
-          label: t.edit.delete,
-          icon: 'delete',
-          disabled: !(editable && selected),
-          run: () => {
-            back();
-            deleteSelection(field);
-          },
-        },
-      ]
-    : [];
-  const text = field.value.slice(start, end);
-  return [
-    ...undo,
-    {
-      id: 'cut',
-      label: t.edit.cut,
-      icon: 'cut',
-      disabled: !(editable && selected && !hidden),
-      run: () => {
-        back();
-        if (document.execCommand('cut')) return;
-        copyOut(text);
-        deleteSelection(field);
-      },
-    },
-    {
-      id: 'copy',
-      label: t.edit.copy,
-      icon: 'copy',
-      disabled: !(selected && !hidden),
-      run: () => {
-        back();
-        copyOut(text);
-      },
-    },
-    {
-      id: 'paste',
-      label: t.edit.paste,
-      icon: 'paste',
-      disabled: !editable,
-      run: () => {
-        back();
-        void clipboardText().then((pasted) => {
-          if (pasted === null || pasted === '' || !field.isConnected) return;
-          back();
-          insertText(field, pasted);
-        });
-      },
-    },
-    ...remove,
-    SEPARATOR,
-    {
-      id: 'select-all',
-      label: t.edit.selectAll,
-      icon: 'selectAll',
-      disabled: field.value === '',
-      run: () => {
-        field.focus({ preventScroll: true });
-        field.select();
-      },
-    },
-  ];
-}
-
-/** The page has an edit to take back (greys out the Undo entry otherwise, like the OS). */
-function canUndo(): boolean {
-  try {
-    return document.queryCommandEnabled('undo');
-  } catch {
-    return true;
-  }
-}
 
 /** Copyable text under the pointer that is part of the current selection. */
 function selectedCopy(target: EventTarget | null): boolean {
@@ -1323,16 +1229,15 @@ function dispatchMenuKey(event: KeyboardEvent): void {
 }
 
 /** A press outside the open menu closes it; a left one does nothing else (like the OS: the
- *  click that dismisses a menu never reaches what lies under it), a right one opens the
- *  menu of what it lands on. */
+ *  click that dismisses a menu never reaches what lies under it; `true`), a right one opens
+ *  the menu of what it lands on. The second press of a double click closes nothing: what its
+ *  first click opened stays open. */
 function pressOutsideMenu(event: MouseEvent): boolean {
   if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
+  const left = event.button === LEFT;
+  if (left && event.detail > 1) return false;
   closeMenu();
-  if (event.button === LEFT) {
-    event.preventDefault();
-    return true;
-  }
-  return false;
+  return left;
 }
 
 /**
@@ -1514,7 +1419,8 @@ function holdFocusEvents(event: FocusEvent): void {
  * `:hover`) for any button in the hit test of the press, before a listener could cancel it,
  * and Chromium sets it again with the context menu after a right release. So while another
  * button is down, and until the pointer moves after it, :root carries `data-aux-press` and
- * every pressed rule waits for `:root:not([data-aux-press])` (core/tests/ui_contract.rs).
+ * every pressed rule waits for `:root:not([data-aux-press])` (core/tests/ui_contract.rs). A left
+ * press that presses nothing (it closes a menu, or a second press elsewhere) carries it too.
  */
 function auxPress(on: boolean): void {
   const root = document.documentElement;
@@ -1553,6 +1459,13 @@ function leaveField(event: MouseEvent): void {
   field.blur();
 }
 
+/** The name of a button (a select in a Field): it names it and presses nothing, like the caption
+ *  of a native popup and every name beside a switch; a text field's name still leads into it. */
+function namesButton(target: EventTarget | null): boolean {
+  const label = closest(target, 'label');
+  return label instanceof HTMLLabelElement && label.control instanceof HTMLButtonElement;
+}
+
 /** A left press on a field's own box is a press on the field: the caret goes in or stays. It
  *  stays a mouse press like any other, so it closes a menu and ends a selection as they do. */
 function pressOnFieldBox(event: MouseEvent): boolean {
@@ -1571,7 +1484,8 @@ export function installInput(): void {
   if (installed) return;
   installed = true;
   const capture = { capture: true } as const;
-  // The left press that closes a menu presses nothing else: its click goes too.
+  // A press that presses nothing (it closes a menu, or it is a second press elsewhere): its
+  // click and its double click go too, no control looks pressed under it.
   let swallow = false;
   const endSwallow = (): void => {
     swallow = false;
@@ -1586,13 +1500,20 @@ export function installInput(): void {
     (event) => {
       keyboardFocus = false;
       dismiss('press', event.target);
-      if (pressOutsideMenu(event)) {
+      if (pressesElsewhere(event) || pressOutsideMenu(event)) {
+        firstPress = null;
         swallow = true;
+        auxPress(true);
+        event.preventDefault();
+        event.stopImmediatePropagation();
         return;
       }
       if (event.button === LEFT) {
+        if (event.detail <= 1) firstPress = pressedOn(event.target);
         if (!otherButtonsDown(event)) auxPress(false);
-        if (shell.peek && closest(event.target, PEEK) === null) shell.fold();
+        if (shell.peek && closest(event.target, `${FLOATING}, ${SIDEBAR_BUTTON}`) === null) {
+          shell.fold();
+        }
         lastPane = scrollAreaOf(event.target);
         lastForm = closest(event.target, FORM);
         lastCopy = closest(event.target, COPY);
@@ -1647,9 +1568,10 @@ export function installInput(): void {
         if (event.button === BACK) go(backs);
         else if (event.button === FORWARD) go(forwards);
       }
-      // The press that closed a menu: its click (a left one) comes right after this release in
+      // A press that pressed nothing: its click (a left one) comes right after this release in
       // the same task; other buttons send none.
       if (swallow) {
+        event.stopImmediatePropagation();
         if (event.button === LEFT) setTimeout(endSwallow, 0);
         else endSwallow();
       }
@@ -1692,12 +1614,10 @@ export function installInput(): void {
   document.addEventListener(
     'click',
     (event) => {
-      if (swallow) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+      if (event.button === LEFT && !swallow) {
+        if (namesButton(event.target)) event.preventDefault();
         return;
       }
-      if (event.button === LEFT) return;
       event.preventDefault();
       event.stopImmediatePropagation();
     },
@@ -1706,7 +1626,7 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (runDouble(event) || !selectable(event.target)) {
+      if (swallow || runDouble(event) || !selectable(event.target)) {
         event.preventDefault();
       }
     },
@@ -1734,7 +1654,7 @@ export function installInput(): void {
   );
   window.addEventListener('blur', () => {
     guardZoom(false);
-    auxPress(false);
+    endSwallow();
     endTextPress();
     closeMenu(false);
   });
