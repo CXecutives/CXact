@@ -3097,6 +3097,8 @@ test.describe('the list keeps true', () => {
     await divider.click();
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
     await page.getByTestId('search').fill('Hamburg');
+    // The search's hits first: a row it does not find would close again when its answer comes.
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { search: 'Hamburg' }));
     await expect(divider).toHaveAttribute('aria-expanded', 'true');
     const { jobs } = await stubList(page, { search: 'Hamburg' });
     const scored = jobs.filter((job) => job.match?.status === 'scored').map(keyOf);
