@@ -998,6 +998,30 @@ test('a pasted list works in a closed list too: it takes what it names, the rest
   await expect(chips(tools).last()).toHaveText('Gamma');
 });
 
+test("the field menu's Einfügen does what the key does: a list becomes chips, one value stays text", async ({
+  page,
+}) => {
+  await profile(page);
+  const paste = async (target: Locator, words: string): Promise<void> => {
+    await page.evaluate((text) => (window.__harness.clipboard = text), words);
+    await target.click({ button: 'right' });
+    await page.getByTestId('menu-item-paste').click();
+  };
+  const input = countryInput(page);
+  await paste(input, `${CH}, ${BE}`);
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH, BE]);
+  await expect(input).toHaveValue('');
+  await expect(page.getByTestId('profile-countries-none')).toHaveCount(0);
+  const wish = roles(page).locator('input');
+  const before = await chips(roles(page)).allTextContents();
+  await paste(wish, 'Alpha, Beta; Gamma');
+  await expect(chips(roles(page))).toHaveText([...before, 'Alpha', 'Beta', 'Gamma']);
+  await expect(wish).toHaveValue('');
+  await paste(wish, 'Delta');
+  await expect(wish).toHaveValue('Delta');
+  await expect(chips(roles(page))).toHaveCount(before.length + 3);
+});
+
 test('Branchen: plain names, no star; only the × removes', async ({ page }) => {
   await profile(page);
   const industries = page.getByTestId('profile-industries');
