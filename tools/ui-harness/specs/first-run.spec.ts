@@ -307,7 +307,8 @@ test('Esc stops the evaluation like Abbrechen, with the focus on the step and no
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
   await expect(page.getByTestId('cv-error')).toHaveCount(0);
   await open(page, `${WIN}&scenario=first-run&step=reading`);
-  await page.locator('body').click({ position: { x: 4, y: 500 } });
+  // On the empty part of the step, past the scrollbar's room of the view.
+  await page.locator('body').click({ position: { x: 20, y: 500 } });
   await page.keyboard.press('Escape');
   await expectStep(page, T.firstRun.upload);
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
