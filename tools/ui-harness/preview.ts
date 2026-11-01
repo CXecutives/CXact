@@ -133,7 +133,7 @@ const STYLE = `
   button { font: inherit; color: inherit; cursor: default; }
   .open { display: grid; place-items: center; width: 16px; height: 16px; padding: 0;
     border-radius: 8px; border: 1px solid var(--border, #ccc); background: var(--surface, #fff);
-    color: var(--text-subtle, #888); opacity: 0.55; transition: opacity 120ms ease-out; }
+    color: var(--text-muted, #888); opacity: 0.55; transition: opacity 120ms ease-out; }
   .open:hover, .open[aria-expanded='true'] { opacity: 1; }
   .open svg { width: 10px; height: 10px; }
   .panel { position: absolute; right: 0; bottom: 22px; width: 240px;
@@ -142,7 +142,7 @@ const STYLE = `
     background: var(--surface, #fff); box-shadow: var(--sh-menu, 0 4px 16px rgb(0 0 0 / 15%)); }
   .panel[hidden] { display: none; }
   h3 { margin: 8px 8px 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: 0.04em; color: var(--text-subtle, #888); }
+    letter-spacing: 0.04em; color: var(--text-muted, #888); }
   .entry { display: block; width: 100%; padding: 4px 8px; border: 0; border-radius: 6px;
     background: none; text-align: left; }
   .entry:hover { background: var(--surface-hover, #f2f2f2); }

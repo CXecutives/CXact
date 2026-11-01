@@ -128,7 +128,7 @@
 
   .value.missing,
   .term-note {
-    color: var(--text-subtle);
+    color: var(--text-muted);
   }
 
   .term-note {

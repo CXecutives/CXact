@@ -8,9 +8,9 @@
 
 pub use super::colour::Colour;
 
-/// `--brand` (`--p-brand`).
+/// `--brand` (`--p-coral`).
 pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
-/// `--brand-glyph` (`--p-brand-glyph`).
+/// `--brand-glyph` (`--p-white`).
 pub const BRAND_GLYPH: Colour = Colour::new("hsl(0 0% 100%)", [0xFF, 0xFF, 0xFF]);
 
 /// Every colour constant above by the name of its token (without the dashes).

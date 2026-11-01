@@ -489,7 +489,7 @@
   }
 
   .name {
-    color: var(--text-subtle);
+    color: var(--text-muted);
     font: var(--type-xs);
     letter-spacing: 0.04em;
     text-transform: uppercase;

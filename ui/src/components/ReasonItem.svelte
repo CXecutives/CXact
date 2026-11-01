@@ -116,7 +116,7 @@
   /* Quiet after the words, in their line. */
   .optional {
     margin-inline-start: var(--space-6);
-    color: var(--text-subtle);
+    color: var(--text-muted);
     font: var(--type-sm);
   }
 
@@ -147,6 +147,6 @@
 
   /* Taken care of: quiet, whatever the verdict was. */
   .icon.settled {
-    color: var(--text-subtle);
+    color: var(--text-muted);
   }
 </style>

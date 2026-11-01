@@ -101,7 +101,7 @@
   }
 
   .neutral {
-    --meter-color: var(--text-subtle);
+    --meter-color: var(--text-muted);
     --meter-track-colour: var(--surface-track);
   }
 

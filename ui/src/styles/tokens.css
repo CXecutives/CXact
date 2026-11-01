@@ -6,8 +6,8 @@
  *   1. Palette  `--p-*`  HSL triplets, referenced ONLY inside this file.
  *   2. Semantic tokens   everything components use (colours are complete `hsl()` values).
  *
- * One palette, CXact: the `:root` block below (the cxpertise cream, coral that acts, navy for
- * headings, what is chosen, links and switches).
+ * One palette, CXact: the `:root` block below (the cxpertise cream, coral that acts, one navy for
+ * what is chosen, links, focus, progress and the tooltip).
  *
  * Lint (stylelint + eslint + core/tests/ui_contract.rs) rejects hex, named colours, colour
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
@@ -26,87 +26,83 @@
   color-scheme: light;
 
   /* ------------------------------------------------------------------ palette */
-  /* CXact (user, 2026-09-30: lively, a warm white window): a warm white for the window and the sidebar,
-     white content, the cxpertise orange that acts (#E67A5C like the icon and cxpertise.de, its
-     hover the site's variant; the primary, the unread dot) and the saturated
-     cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
-     progress and the tooltip. What is new or here (the unread dot, the open job's edge, the
-     chosen entry's icon) and a switch or a checkbox that is on are coral like what acts: the
-     orange leads, navy stays small (owner, 2026-10-30). */
+  /* CXact (owner, 2026-11-01: one clean palette): white content on warm greys, the cxpertise
+     orange that acts (#E67A5C like the icon and cxpertise.de) and one navy, the rings' five
+     colours for what scores. Each colour has one name here and no near twin. */
+
+  /* The warm greys, light to dark. */
   --p-white: 0 0% 100%;
-  --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
-  /* The track of a choice of a few (the place tabs, Arbeitsmodell): a warm light grey. */
-  --p-track: 30 12% 94.6%;
-  --p-nav-active: 30 10% 91%; /* the chosen sidebar entry: a warm grey pill, no shadow (round 10) */
+  /* The ground of the job view and the pages: between the cream and white, so the white cards
+     on it read as cards. */
+  --p-page: 30 12% 98.5%;
+  /* The window and the sidebar; a white button under the pointer. */
   --p-cream: 30 16% 96.4%;
-  --p-ink: 30 10% 12%;
-  --p-coral: 13 73% 63%;
-  --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
-  --p-brand-glyph: 0 0% 100%; /* the icon's glyph */
-  --p-knob: 0 0% 100%; /* the knob of a switch: white, like Claude's */
-  --p-coral-variant: 13 64% 56%;
-  --p-coral-press: 13 62% 47%;
-  --p-muted-fg: 30 5% 37%;
+  /* The track of a choice of a few, a chip, a meter. */
+  --p-track: 30 12% 94.6%;
+  /* A hairline, the chosen sidebar entry's pill, the empty part of a ring. */
   --p-line: 30 10% 90%;
-  /* A white button under the pointer: the warm wash over white, as one colour. */
-  --p-button-hover: 28 9.5% 97.3%;
-  --p-coral-25: 13 70% 97.2%;
-  --p-coral-50: 13 64% 95%;
-  --p-coral-100: 13 60% 90%;
-  /* The navy of cxpertise.de (#3E5C7E) a step richer, so it reads beside the coral (user,
-     2026-10-01). */
-  --p-navy: 212 50% 36%;
-  --p-navy-deep: 213 54% 27%;
-  /* Glyphs beside text (search, chevron, info, a chip's ×) and placeholders: lighter than the
-     subtle text, yet 4.5:1 on white, so a placeholder ("Keins") reads like text. */
-  --p-icon-subtle: 30 4% 45%;
   --p-border-strong: 30 8% 82%;
   --p-border-input: 30 10% 68%;
   --p-border-press: 30 10% 62%;
-  --p-wash: 28 30% 24%;
-  --p-danger-soft: 5.5 100% 95.7%;
-  --p-titlebar-close-glyph: 0 0% 100%;
-  /* Schließen under the pointer: Windows 11's own red (#C42B1C), pressed a touch lighter
-     (its 90 %, as Windows draws it). */
-  --p-titlebar-close: 5.4 75% 43.9%;
-  --p-titlebar-close-press: 5.6 60% 49.4%;
-  --p-on-accent: 0 0% 100%;
+  /* What is off: the track of a switch and the edge of an empty checkbox, 3:1 on white (a
+     control's part, WCAG 1.4.11), a step darker under the pointer and one more pressed
+     (--p-icon-subtle). */
+  --p-toggle-off: 30 6% 56%;
+  --p-toggle-off-hover: 30 6% 50%;
+  /* Glyphs beside text (search, chevron, info, a chip's x) and placeholders: lighter than the
+     second lines, yet 4.5:1 on white, so a placeholder ("Keins") reads like text. */
+  --p-icon-subtle: 30 4% 45%;
+  /* The one grey of second lines. */
+  --p-muted-fg: 30 5% 37%;
+  --p-titlebar-fg: 30 6% 28%;
+  --p-ink: 30 10% 12%;
+
+  /* The orange that acts and is new, also the icon's plate; hover and pressed a step deeper
+     each, its soft tints for what is chosen or recommended. */
+  --p-coral: 13 73% 63%;
+  --p-coral-variant: 13 64% 56%;
+  --p-coral-press: 13 62% 47%;
+  --p-coral-25: 13 70% 97.2%;
+  --p-coral-50: 13 64% 95%;
+  --p-coral-100: 13 60% 90%;
+  --p-coral-150: 13 55% 82%;
+
+  /* The one navy, deep (owner, 2026-11-01): what is chosen, links, a field in focus, progress
+     and the tooltip. Small things and words, the orange leads. */
+  --p-navy: 213 54% 27%;
+
+  /* The rings' colours, from red to green. */
   --p-score-red: 358 70% 55%;
   --p-score-orange: 24 87% 54%;
   --p-score-yellow: 40 88% 52%;
   --p-score-lime: 84 56% 42%;
   --p-score-green: 142 50% 38%;
+
   /* The deep red of the filled danger button, a step darker under the pointer and one more
-     pressed. */
+     pressed, and its soft grounds. */
   --p-word-red: 358 62% 46%;
   --p-word-red-hover: 358 62% 40%;
   --p-word-red-press: 358 62% 34%;
   --p-red-50: 358 70% 96.5%;
   --p-red-100: 358 60% 90%;
-  /* The empty part of a ring. */
-  --p-ring-track: 30 8% 92%;
-  /* What is off: the track of a switch and the edge of an empty checkbox, 3:1 on white (a
-     control's part, WCAG 1.4.11), a step darker under the pointer and one more pressed. */
-  --p-toggle-off: 30 6% 56%;
-  --p-toggle-off-hover: 30 6% 50%;
-  --p-toggle-off-press: 30 6% 44%;
-  /* The ground of the job view and the pages (round 10): a warm white between the cream and
-     white, so the white cards on it read as cards. */
-  --p-page: 30 12% 98.5%;
-  --p-titlebar-fg: 30 6% 28%;
+
+  /* Schliessen under the pointer: Windows 11's own red (#C42B1C), pressed a touch lighter
+     (its 90 %, as Windows draws it). */
+  --p-titlebar-close: 5.4 75% 43.9%;
+  --p-titlebar-close-press: 5.6 60% 49.4%;
+
+  /* What only lies over or under things, always with an alpha: the wash under the pointer, the
+     dialog's scrim, the shadows. */
+  --p-wash: 30 30% 24%;
   --p-scrim: 30 15% 10%;
-  --p-shade-xs: 30 15% 25%;
-  --p-shade-pop: 30 15% 18%;
-  --p-shade-dialog: 220 30% 10%;
+  --p-shade: 30 15% 18%;
   --p-shade-primary: 13 45% 30%;
-  /* The tooltip (like Claude's): a dark bubble with a light edge. */
-  --p-emphasis: 213 40% 18%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
   --surface: hsl(var(--p-white));
   /* Menus, dialogs, toasts and pickers: a step above the content. */
-  --surface-raised: hsl(var(--p-raised));
+  --surface-raised: hsl(var(--p-white));
   /* The ground of the job view, Profil and Einstellungen (round 10). */
   --page: hsl(var(--p-page));
   /* Under the pointer and pressed: the warm wash, never grey (every quiet surface). */
@@ -121,28 +117,25 @@
   /* Track of a choice of a few (the place tabs and every segmented choice, one look). */
   --surface-track: hsl(var(--p-track));
   --scrim: hsl(var(--p-scrim) / 0.26);
-  /* The tooltip bubble: the brand's dark pill, softer than near-black ink. */
-  --surface-inverse: hsl(var(--p-emphasis));
+  /* The tooltip bubble: the navy. */
+  --surface-inverse: hsl(var(--p-navy));
 
   /* -------------------------------------------------------------------- text */
   --text: hsl(var(--p-ink));
   --text-muted: hsl(var(--p-muted-fg));
-  --text-subtle: var(--text-muted);
-  /* Headings in the brand's navy itself, not a near-black one (the page's structure reads at
-     a glance; user, 2026-10-01). A label of a field or a row is ink (--text): navy text
-     alone over a form reads as a link. */
+  /* Headings and the label of a field or a row are ink: navy text alone over a form reads as a
+     link. */
   --text-heading: hsl(var(--p-ink));
   --text-label: hsl(var(--p-ink));
   /* The label above a field ([data-missing] turns it red). */
   --field-label: var(--text-label);
-  --text-on-accent: hsl(var(--p-on-accent));
+  --text-on-accent: hsl(var(--p-white));
   /* The label of the filled danger button: white. */
-  --text-on-danger: hsl(var(--p-on-accent));
+  --text-on-danger: hsl(var(--p-white));
   --text-inverse: hsl(var(--p-white));
   /* The second line of a tooltip (a key, a hint): quieter white on the navy bubble. */
   --text-inverse-muted: hsl(var(--p-white) / 0.72);
   --link: hsl(var(--p-navy));
-  --link-hover: hsl(var(--p-navy-deep));
   /* Glyphs beside text: see --p-icon-subtle. */
   --icon-subtle: hsl(var(--p-icon-subtle));
 
@@ -156,7 +149,6 @@
   --primary: hsl(var(--p-coral));
   --primary-hover: hsl(var(--p-coral-variant));
   --primary-active: hsl(var(--p-coral-press));
-  /* The unread dot of a list row. */
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's
      wash). */
   --selection-bar: hsl(var(--p-coral));
@@ -166,7 +158,7 @@
   /* The sliding pill of the active sidebar entry: a surface a step above the sidebar, lifted
      by the thumbs' shadow and without an edge, like a chosen tab or segment
      (user, 2026-09-30); in CXact a warm white, its label navy and its icon coral. */
-  --nav-active-bg: hsl(var(--p-nav-active));
+  --nav-active-bg: hsl(var(--p-line));
   --nav-active-fg: hsl(var(--p-navy));
   --nav-active-icon: hsl(var(--p-coral));
 
@@ -176,16 +168,14 @@
      darkens a step under the pointer and one more while the left button is down. */
   --toggle-off: hsl(var(--p-toggle-off));
   --toggle-off-hover: hsl(var(--p-toggle-off-hover));
-  --toggle-off-press: hsl(var(--p-toggle-off-press));
+  --toggle-off-press: hsl(var(--p-icon-subtle));
   --toggle-on: hsl(var(--p-coral));
   --toggle-on-hover: hsl(var(--p-coral-variant));
   --toggle-on-press: hsl(var(--p-coral-press));
-  --toggle-knob: hsl(var(--p-knob));
+  --toggle-knob: hsl(var(--p-white));
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
      disclosure chevron, the icon of a neutral stat tile). */
   --icon-accent: hsl(var(--p-navy));
-  /* A filter that is on: the active stat tile and a pressed secondary chip. */
-  /* Under the pointer inside a navy chip. */
   /* A chip in a field: neutral, the app's ink on the track (design round 7, professional). */
   --chip-surface: hsl(var(--p-track));
   --chip-text: var(--text);
@@ -194,7 +184,6 @@
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
   --meter-fill: hsl(var(--p-navy));
   --meter-track: hsl(var(--p-track));
-  /* The pinned star and pressed ghost toggles. */
   /* Caret and text selection: navy, like the native blue of both OS (the edge of a field
      in focus is --border-focus). */
   --caret: hsl(var(--p-navy));
@@ -220,7 +209,7 @@
   --danger-tint: hsl(var(--p-red-50));
   --danger-edge: hsl(var(--p-red-100));
   --danger-strong: var(--score-ring-0);
-  --danger-soft: hsl(var(--p-danger-soft));
+  --danger-soft: hsl(var(--p-red-50));
   /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
   --danger-fill: hsl(var(--p-word-red));
   --danger-fill-hover: hsl(var(--p-word-red-hover));
@@ -260,7 +249,7 @@
   --score-text-8: var(--score-ring-8);
   --score-text-9: var(--score-ring-9);
   --score-digits: hsl(var(--p-ink));
-  --score-track: hsl(var(--p-ring-track));
+  --score-track: hsl(var(--p-line));
   /* An excluded job: the red ban (in the list on a light red track as large as a ring, in
      the job view beside the red word on a neutral box). */
   --ban: var(--danger-strong);
@@ -276,8 +265,8 @@
      a plain ring, a placeholder until the real icon exists. tools/icon.py draws every icon file in these two
      (through tools/palette.json): the CXact orange plate and a white glyph, fixed, so the icon
      never changes with a design. */
-  --brand: hsl(var(--p-brand));
-  --brand-glyph: hsl(var(--p-brand-glyph));
+  --brand: hsl(var(--p-coral));
+  --brand-glyph: hsl(var(--p-white));
 
   /* --------------------------------------------------------------- gradients */
   /* Only the fades under the top bar. No decorative gradients. */
@@ -318,19 +307,15 @@
      floats above the sheet (dialog, toast, tooltip) casts one; nothing animates a shadow.
      The primary's inner highlight is static. */
   /* A card or a group on the page (round 10), the job view's hero a step higher. */
-  --sh-card: 0 1px 2px hsl(var(--p-shade-xs) / 0.05);
-  --sh-raised:
-    0 1px 2px hsl(var(--p-shade-xs) / 0.06), 0 8px 24px -10px hsl(var(--p-shade-pop) / 0.14);
-  --sh-knob: 0 1px 2px hsl(var(--p-shade-xs) / 0.2);
-  --sh-dialog:
-    0 24px 80px -20px hsl(var(--p-shade-dialog) / 0.45), 0 2px 8px hsl(var(--p-shade-pop) / 0.2);
-  --sh-pop:
-    0 12px 40px -12px hsl(var(--p-shade-pop) / 0.28), 0 2px 6px hsl(var(--p-shade-pop) / 0.08);
-  --sh-tooltip:
-    0 4px 12px -4px hsl(var(--p-shade-pop) / 0.22), 0 1px 2px hsl(var(--p-shade-pop) / 0.1);
+  --sh-card: 0 1px 2px hsl(var(--p-shade) / 0.05);
+  --sh-raised: 0 1px 2px hsl(var(--p-shade) / 0.06), 0 8px 24px -10px hsl(var(--p-shade) / 0.14);
+  --sh-knob: 0 1px 2px hsl(var(--p-shade) / 0.2);
+  --sh-dialog: 0 24px 80px -20px hsl(var(--p-shade) / 0.45), 0 2px 8px hsl(var(--p-shade) / 0.2);
+  --sh-pop: 0 12px 40px -12px hsl(var(--p-shade) / 0.28), 0 2px 6px hsl(var(--p-shade) / 0.08);
+  --sh-tooltip: 0 4px 12px -4px hsl(var(--p-shade) / 0.22), 0 1px 2px hsl(var(--p-shade) / 0.1);
   /* A menu floats close above the page: a near and a far soft shadow (its edge is the same
      hairline border every floating surface has: menus, toasts, dialogs, popovers). */
-  --sh-menu: 0 4px 12px hsl(var(--p-shade-pop) / 0.08), 0 16px 40px hsl(var(--p-shade-pop) / 0.12);
+  --sh-menu: 0 4px 12px hsl(var(--p-shade) / 0.08), 0 16px 40px hsl(var(--p-shade) / 0.12);
   --sh-primary: 0 1px 1px hsl(var(--p-shade-primary) / 0.14);
   /* No focus ring anywhere, not for the keyboard either (user decision 2026-10-04); the
      keys still work. A text field in focus shows its edge in navy, as native fields do. */
@@ -368,10 +353,10 @@
      11's red with a white glyph (owner, 2026-10-28) and a touch lighter pressed;
      the glyphs fade while the window is in the back. */
   --titlebar-fg: hsl(var(--p-titlebar-fg));
-  --titlebar-fg-inactive: var(--text-subtle);
+  --titlebar-fg-inactive: var(--text-muted);
   --titlebar-close-hover: hsl(var(--p-titlebar-close));
   --titlebar-close-press: hsl(var(--p-titlebar-close-press));
-  --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
+  --titlebar-close-fg: hsl(var(--p-white));
 
   /* ------------------------------------------------------------------- radii */
   --radius-xs: 4px;
@@ -675,7 +660,7 @@
   /* A button with a box (secondary) under the pointer and pressed: the warm wash over its white
      as one opaque colour (its edge then --control-hover-edge), one step darker pressed, so what
      lies behind the button never shows through and it answers alike on every ground. */
-  --button-hover: hsl(var(--p-button-hover));
+  --button-hover: hsl(var(--p-cream));
   --button-press: var(--control-press);
   /* The one look of a menu, a select's list and a field's suggestions: rows 32 high (--menu-row)
      with their words 12 px in. */
@@ -742,7 +727,6 @@
   --tile-accent: hsl(var(--p-navy));
   /* A way of the setup (Tile): 16 inside, its glyph tile 36 white with an edge, the title
      16/650 12 below it. The recommended way is coral: its fill, edge and glyph. */
-  --p-coral-150: 13 55% 82%;
   --way-pad: var(--space-16);
   --way-title-gap: var(--space-12);
   --recommended-surface: hsl(var(--p-coral-25));
@@ -751,7 +735,7 @@
   --recommended-press: hsl(var(--p-coral-50));
   /* A step deeper than the fill's coral: on its pale tile it weighs as much as a navy glyph. */
   --recommended-glyph: hsl(var(--p-coral-variant));
-  --sh-tile-hover: 0 6px 18px -8px hsl(var(--p-shade-pop) / 0.18);
+  --sh-tile-hover: 0 6px 18px -8px hsl(var(--p-shade) / 0.18);
   /* The drop zone: 34 20 inside on the page's ground, a dashed edge, its words without a
      glyph; under the pointer a navy edge and the track as its ground. */
   --drop-pad-y: 34px;
@@ -791,7 +775,7 @@
   --bar-pad-y: var(--space-10);
   /* Spinners: a navy arc on the ring's track, like the run's meter; the setup's large one is
      its head's mark (48). */
-  --spinner-track: hsl(var(--p-ring-track));
+  --spinner-track: hsl(var(--p-line));
   --spinner-arc: hsl(var(--p-navy));
   --spinner-sm: var(--icon-sm);
   --spinner-lg: var(--icon-xl);
@@ -807,7 +791,7 @@
   --strip-text: hsl(var(--p-navy));
   /* The app's mark (the setup's welcome) and its shadow, which follows the plate's shape. */
   --app-mark: var(--tile-xl);
-  --app-mark-shadow: drop-shadow(0 6px 8px hsl(var(--p-shade-dialog) / 0.24));
+  --app-mark-shadow: drop-shadow(0 6px 8px hsl(var(--p-shade) / 0.24));
   /* A loading placeholder: flat, the track. */
   --skeleton: var(--surface-track);
   --skeleton-line: var(--space-12);

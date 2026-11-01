@@ -49,7 +49,6 @@
   }
 
   .link:hover {
-    color: var(--link-hover);
     transition-duration: var(--dur-hover);
   }
 

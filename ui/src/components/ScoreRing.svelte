@@ -190,7 +190,7 @@
     height: var(--ring-size);
     color: var(--ring-text);
     --ring-color: var(--score-track);
-    --ring-text: var(--text-subtle);
+    --ring-text: var(--text-muted);
   }
 
   .svg {

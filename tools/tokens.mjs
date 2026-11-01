@@ -45,7 +45,7 @@ const WIDTH = 100;
  */
 const CONTRAST = [
   {
-    text: ['text', 'text-muted', 'text-subtle', 'text-heading', 'text-label', 'link'],
+    text: ['text', 'text-muted', 'text-heading', 'text-label', 'link'],
     on: ['bg', 'surface', 'surface-selected', 'surface-hover/surface'],
   },
   {
@@ -63,11 +63,11 @@ const CONTRAST = [
   { text: ['info'], on: ['surface'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
   // A suggestion chip (Button `suggest`): its words and its count on the track's fill.
-  { text: ['text', 'text-muted', 'text-subtle'], on: ['surface-track'] },
+  { text: ['text', 'text-muted'], on: ['surface-track'] },
   // Round 10: the warm page of the job view and the pages, the chosen word of a menu, the red
   // label of a missing field. The band words beside a ring are not here: they take exactly
   // the ring's colour (owner, 2026-10-28), like the ring itself.
-  { text: ['text', 'text-muted', 'text-subtle', 'link'], on: ['page'] },
+  { text: ['text', 'text-muted', 'link'], on: ['page'] },
   { text: ['chosen-text'], on: ['surface-raised'] },
   { text: ['field-label-missing'], on: ['surface', 'page'] },
   { text: ['text'], on: ['selection-tint', 'danger-tint'] },
@@ -79,7 +79,7 @@ const CONTRAST = [
 /** WCAG AA for body text. */
 const AA = 4.5;
 /** Pairs below AA by a documented decision of the user (docs/PLAN.md): the primary in the
- *  cxpertise orange of the icon and cxpertise.de (--p-brand, user 2026-09-30) with its white
+ *  cxpertise orange of the icon and cxpertise.de (--p-coral, user 2026-09-30) with its white
  *  label, as the site sets it (2.9:1 at rest, 3.6:1 under the pointer; pressed it is AA), and a
  *  switch or checkbox that is on in the same orange (2.9:1 on white; user 2026-10-30; the knob's
  *  place and the tick say the state as well), and the one red of what is wrong, the rings' own

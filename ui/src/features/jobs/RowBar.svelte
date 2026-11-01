@@ -352,6 +352,6 @@
   }
 
   :global(:root[data-window='inactive']) .highlight::before {
-    background-color: var(--text-subtle);
+    background-color: var(--text-muted);
   }
 </style>

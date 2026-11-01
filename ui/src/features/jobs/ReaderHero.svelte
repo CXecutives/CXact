@@ -208,7 +208,7 @@
   }
 
   .band.quiet {
-    color: var(--text-subtle);
+    color: var(--text-muted);
   }
 
   .band.ban {

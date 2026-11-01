@@ -341,7 +341,7 @@
     --btn-border-hover: transparent;
     --btn-border-active: transparent;
     --btn-fg: var(--link);
-    --btn-fg-hover: var(--link-hover);
+    --btn-fg-hover: var(--link);
     --btn-shadow: none;
     --btn-pad: 0;
 
