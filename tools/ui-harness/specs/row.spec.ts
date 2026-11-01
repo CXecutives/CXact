@@ -428,4 +428,37 @@ test.describe('after a click on a row', () => {
     await page.waitForTimeout(100);
     await expect(menu).toHaveCount(0);
   });
+
+  test('the menu of a row scrolled out of view stands inside the window', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 500 });
+    await open(page, WIN);
+    const keys = await listed(page);
+    const menu = page.getByTestId('menu');
+    const pane = (await page.getByTestId('list-scroll').boundingBox())!;
+    const inWindow = async (): Promise<void> => {
+      await expect(menu).toBeVisible();
+      const box = (await menu.locator('xpath=..').boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(500);
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+    };
+    // Its row above the window.
+    await row(page, keys[0]!).click();
+    await page.mouse.move(pane.x + 40, pane.y + 100);
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(300);
+    await expect.poll(async () => (await row(page, keys[0]!).boundingBox())!.y).toBeLessThan(-40);
+    await page.keyboard.press('Shift+F10');
+    await inWindow();
+    // Its row below the window.
+    await page.getByTestId('list-scroll').evaluate((node) => (node.scrollTop = 0));
+    const last = keys.at(-1)!;
+    await row(page, last).scrollIntoViewIfNeeded();
+    await row(page, last).click();
+    await page.getByTestId('list-scroll').evaluate((node) => (node.scrollTop = 0));
+    await expect.poll(async () => (await row(page, last).boundingBox())!.y).toBeGreaterThan(500);
+    await page.keyboard.press('Shift+F10');
+    await inWindow();
+  });
 });
