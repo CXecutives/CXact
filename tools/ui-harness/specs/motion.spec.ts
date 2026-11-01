@@ -162,6 +162,46 @@ test('another place lets its rows rise', async ({ page }) => {
   expect(fades(rises).length).toBeGreaterThan(0);
 });
 
+test('the pill glides when the places fold and when they unfold, and never goes out', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await motionSettled(page);
+  /** Where the pill stands and how it shows, frame by frame, from a press on the chevron until
+   *  it rests. */
+  const glide = (): Promise<{ top: number; opacity: number }[]> =>
+    page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const pill = document.querySelector('nav .pill')!;
+          const frames: { top: number; opacity: number }[] = [];
+          const start = performance.now();
+          const tick = (): void => {
+            frames.push({
+              top: pill.getBoundingClientRect().top,
+              opacity: Number(getComputedStyle(pill).opacity),
+            });
+            if (performance.now() - start < 400) requestAnimationFrame(tick);
+            else resolve(frames);
+          };
+          document.querySelector<HTMLElement>('[data-testid="nav-places"]')!.click();
+          requestAnimationFrame(tick);
+        }),
+    );
+  for (const way of ['fold', 'unfold']) {
+    const frames = await glide();
+    await motionSettled(page);
+    expect(Math.min(...frames.map((frame) => frame.opacity)), way).toBe(1);
+    const from = frames[0]!.top;
+    const to = frames.at(-1)!.top;
+    expect(from, way).not.toBe(to);
+    const between = frames.filter(
+      ({ top }) => top > Math.min(from, to) && top < Math.max(from, to),
+    );
+    expect(between.length, way).toBeGreaterThan(0);
+  }
+});
+
 // A menu leaves at once (a fading one beside the next would stand twice for a moment).
 test('a menu drops in when it opens', async ({ page }) => {
   await open(page, WIN);

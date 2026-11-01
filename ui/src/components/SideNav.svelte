@@ -59,14 +59,18 @@
   /** Whether the active entry is one of this entry's. */
   const holdsActive = (item: SideNavItem<Id>): boolean =>
     item.children?.items.some((child) => child.id === active) ?? false;
+  const holder = $derived(items.find(holdsActive));
 
   /** The entry the pill stands on: the active one, or the one that holds it while folded. */
   const shown = $derived.by(() => {
     if (active === null) return null;
-    const holder = items.find((item) => holdsActive(item) && !item.children?.open);
-    return holder?.id ?? active;
+    return holder !== undefined && !holder.children?.open ? holder.id : active;
   });
-  const chosen = $derived(shown === null ? null : (entries[shown] ?? null));
+  /** An entry that unfolds has no element yet: until it has, the pill stays on the one that holds
+   *  it, and glides down from there as it glides up when they fold. */
+  const chosen = $derived(
+    shown === null ? null : (entries[shown] ?? (holder && entries[holder.id]) ?? null),
+  );
 </script>
 
 <nav class="nav" aria-label={label}>
