@@ -1932,7 +1932,7 @@ function play(events: readonly RunEvent[]): void {
   };
   // Core sends `started` as it launches a run, so a rescore's comes while the command that caused
   // it (`save_profile`) is still answering, ahead of whatever the page does with the answer.
-  if (kind === 'rescore') step();
+  if (runningKind === 'rescore') step();
   else setTimeout(step, TICK);
 }
 
