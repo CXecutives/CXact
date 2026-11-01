@@ -13,7 +13,8 @@
 // apps name a key: "Suchen" over "Strg+F". The hint rides on the anchor as
 // `data-tooltip-hint`, where the tooltip layer (components/Tooltip.svelte) reads it.
 // `{ text, toggle: true }` (the info symbol, components/InfoTip.svelte): a click shows the
-// bubble at once and a second click hides it; a press does not hide it.
+// bubble at once and a second click hides it; a press does not hide it. A bubble a click brought,
+// or one on the keyboard's focus, takes an Esc alone (`tooltipState.held`).
 
 import type { Action } from 'svelte/action';
 import { holdHover, pointerMoved } from '../input/hold';
@@ -101,8 +102,8 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
   };
-  const present = (): void => {
-    if (options !== null) tooltipState.show(node, options.text);
+  const present = (clicked = false): void => {
+    if (options !== null) tooltipState.show(node, options.text, clicked);
   };
   /** The delay is over: shown unless a press or Esc came meanwhile or the text turned out
    *  to be whole. */
@@ -149,7 +150,7 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     if (!options?.toggle) return;
     cancel();
     if (tooltipState.anchor === node) tooltipState.hide(node);
-    else present();
+    else present(true);
   };
   /** The keyboard brought the focus here (or into it: a wrapped control): the same delay
    *  as hovering, never at once (Tab through a row of buttons would flash every tooltip). */

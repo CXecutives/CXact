@@ -57,10 +57,12 @@
 //   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
 //   Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
-//   focus is. Esc closes only the layer on top: the menu, then the dialog, then the sidebar
-//   that floats over the view in a narrow window, whose button then takes the focus it held
-//   (`foldSidebar`); a left press beside that sidebar (and beside its button, which folds it
-//   itself) folds it too, and still does what it presses.
+//   focus is. Esc closes only the layer on top: a tooltip's bubble the user asked for (a click on
+//   an info symbol, the keyboard's focus on its anchor; one under a passing pointer only goes along
+//   with the key), the menu, then the dialog, then the sidebar that floats over the view in a
+//   narrow window, whose button then takes the focus it held (`foldSidebar`); a left press beside
+//   that sidebar (and beside its button, which folds it itself) folds it too, and still does what
+//   it presses.
 // - an × never puts a caret anywhere (`removeBy`): a click on it drops the focus; from the
 //   keyboard (Enter, Space, Backspace or Delete on a focused ×) the next × of the same list takes
 //   it, the previous one after the last. Backspace in a chip field removes the last chip and the
@@ -178,22 +180,26 @@ const hasModifier = (event: KeyboardEvent): boolean =>
 /** What dismisses a bubble that stands over the page: a press, a scroll, Esc. */
 export type Dismissal = 'press' | 'scroll' | 'escape';
 
-const dismissals = new Set<(cause: Dismissal, target: EventTarget | null) => void>();
+const dismissals = new Set<(cause: Dismissal, target: EventTarget | null) => boolean>();
 
 /**
  * `onDismiss(handler)`: the tooltip's bubble (components/Tooltip.svelte) goes on a press
  * anywhere (with what was pressed), a scroll of any pane and Esc, like the tooltips of a native
- * app. Returns the unsubscribe function.
+ * app. `true` from the handler: that bubble was the layer on top, and Esc goes no further. Returns
+ * the unsubscribe function.
  */
 export function onDismiss(
-  handler: (cause: Dismissal, target: EventTarget | null) => void,
+  handler: (cause: Dismissal, target: EventTarget | null) => boolean,
 ): () => void {
   dismissals.add(handler);
   return () => dismissals.delete(handler);
 }
 
-function dismiss(cause: Dismissal, target: EventTarget | null = null): void {
-  for (const handler of dismissals) handler(cause, target);
+/** `true` if what stood there takes the key alone. */
+function dismiss(cause: Dismissal, target: EventTarget | null = null): boolean {
+  let alone = false;
+  for (const handler of dismissals) alone = handler(cause, target) || alone;
+  return alone;
 }
 
 /** Ctrl/Cmd+C over a selection of copyable text. */
@@ -733,7 +739,10 @@ function onKeyDown(event: KeyboardEvent): void {
   keyboardFocus = true;
   // A held key is fast browsing: an open meanwhile plays no motion (lib/motion/pace).
   noteKey(event.repeat);
-  if (event.key === 'Escape') dismiss('escape');
+  if (event.key === 'Escape' && dismiss('escape')) {
+    event.preventDefault();
+    return;
+  }
   if (menuState.open !== null) {
     dispatchMenuKey(event);
     return;
