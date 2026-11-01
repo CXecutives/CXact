@@ -1189,6 +1189,56 @@ test('the note of a failed start moves nothing: the next press lands on the same
   }
 });
 
+test('Erneut versuchen that fails keeps the screen and the focus, and the note goes', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const failed = page.getByTestId('view-error');
+  const retry = failed.getByRole('button', { name: T.common.retry });
+  const note = page.getByTestId('ways-note');
+  // A note from an earlier press.
+  await failNext(page, 'open_target');
+  await page.getByTestId('open-data').click();
+  await expect(note).toHaveText(T.error.text('db', {}));
+  // From now on: does the screen ever go for the loading one?
+  await page.evaluate(() => {
+    const view = document.querySelector('[data-testid="view-error"]');
+    const watched = window as unknown as { blanked: boolean };
+    watched.blanked = false;
+    new MutationObserver(() => {
+      watched.blanked ||= !document.contains(view);
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  const blanked = (): Promise<boolean> =>
+    page.evaluate(() => (window as unknown as { blanked: boolean }).blanked);
+  await failNext(page, 'app_state');
+  await retry.focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await calls(page, 'app_state')).length).toBe(2);
+  await expect(note).toHaveCount(0);
+  await expect(retry).toBeFocused();
+  expect(await blanked()).toBe(false);
+  // The same key goes on from there, and this time the data comes.
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  expect(await calls(page, 'app_state')).toHaveLength(3);
+});
+
+test('Erneut versuchen turns in its own place while it tries', async ({ page }) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const retry = page.getByTestId('view-error').getByRole('button', { name: T.common.retry });
+  await retry.evaluate((button) => {
+    const watched = window as unknown as { busy: boolean };
+    watched.busy = false;
+    new MutationObserver(() => {
+      watched.busy ||= button.getAttribute('aria-busy') === 'true';
+    }).observe(button, { attributes: true });
+  });
+  await retry.click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { busy: boolean }).busy)).toBe(true);
+});
+
 test('Ordner öffnen that fails says so in the note under the ways of a failed start', async ({
   page,
 }) => {

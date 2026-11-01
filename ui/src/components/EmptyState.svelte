@@ -16,6 +16,8 @@
     onclick: (event: MouseEvent) => void;
     /** Why it cannot be done now (its tooltip; null or absent: it can). */
     reason?: string | null;
+    /** It goes: the button turns in its own width. */
+    loading?: boolean;
     testid?: string | null;
   }
 </script>
@@ -63,6 +65,7 @@
           variant="primary"
           label={action.label}
           icon={action.icon ?? null}
+          loading={action.loading ?? false}
           disabled={(action.reason ?? null) !== null}
           disabledReason={action.reason ?? null}
           testid={action.testid ?? null}
@@ -74,6 +77,7 @@
           variant="secondary"
           label={secondary.label}
           icon={secondary.icon ?? null}
+          loading={secondary.loading ?? false}
           disabled={(secondary.reason ?? null) !== null}
           disabledReason={secondary.reason ?? null}
           testid={secondary.testid ?? null}
