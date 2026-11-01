@@ -1830,6 +1830,39 @@ test.describe('rows', () => {
     expect(await page.evaluate(() => localStorage.getItem('jobs-unscored-open'))).toBe('0');
   });
 
+  test('an excluded job counts anyway from its job view: its row stays in view, with its undo', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, `${WIN}&open=freelance:900412`);
+    const key = 'freelance-900412';
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await stage(page).getByTestId('reader-include').click();
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await expectHighlightOn(page, key);
+    await page.getByTestId('toast').last().getByTestId('toast-action').click();
+    await expect(excludedRows(page).and(row(page, key))).toBeVisible();
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await expectHighlightOn(page, key);
+  });
+
+  test('another job counting anyway leaves the list where the user looks', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 520 });
+    await open(page, WIN);
+    const { active, excluded } = await stubList(page);
+    const opened = active[0]!;
+    await openJob(page, opened);
+    await unfoldExcluded(page);
+    const pane = page.getByTestId('list-scroll');
+    await pane.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    await expect.poll(() => wholeInList(page, opened)).toBe(false);
+    await viaMenu(page, 'include', excluded[0]!);
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${excluded[0]}`)).toBeAttached();
+    await page.waitForTimeout(200);
+    expect(await wholeInList(page, opened)).toBe(false);
+  });
+
   test('an excluded job counts anyway from its menu, with an undo; no way to exclude it again', async ({
     page,
   }) => {

@@ -832,8 +832,13 @@ class JobsStore {
       }
     }
     // The job now counts (or no longer): the list takes it in its order, the filters and
-    // counts follow.
-    void this.load(true);
+    // counts follow, and the open job keeps its row in view.
+    const open = sameKey(this.selected, key) && this.rows.some((job) => sameKey(job.key, key));
+    void this.load(true).then(() => {
+      if (open && sameKey(this.selected, key) && this.status === 'ready') {
+        void this.reach(key, false);
+      }
+    });
     return null;
   }
 
