@@ -55,6 +55,7 @@ import { isExcluded, isUnscored, keyOf, moved, replaced, reused, sameKey, ZERO }
 import { keepFilter, keepSort, keptFilter, keptSort } from './listChoices';
 import { keepOpen, keptOpen, type KeptOpen } from './openJob';
 import { run } from './run.svelte';
+import { sections } from './sections.svelte';
 import { viewport } from './viewport.svelte';
 
 export const PAGE = 120;
@@ -339,7 +340,7 @@ class JobsStore {
       if (open === null || !sameKey(this.selected, open) || this.status !== 'ready') return;
       const holds = this.rows.some((row) => sameKey(row.key, open));
       if (!holds && this.rows.length >= this.total) this.clearSelection();
-      else if (listed) void this.reach(open, false);
+      else if (listed) this.follow(open);
     });
     return true;
   }
@@ -474,7 +475,7 @@ class JobsStore {
     const listed = this.rows.some((job) => sameKey(job.key, open));
     void this.load(true).then(() => {
       if (open !== null && listed && sameKey(this.selected, open) && this.status === 'ready') {
-        void this.reach(open, false);
+        this.follow(open);
       }
     });
   }
@@ -615,6 +616,16 @@ class JobsStore {
     this.pump();
     this.reveal = { key: keyOf(job.key), focus };
     return job;
+  }
+
+  /**
+   * The open job's row stays in view when the list changed under it (another order or filter, the
+   * end of a search). A row behind a fold that is closed stays there: no page and no row is built
+   * for what stays out of sight.
+   */
+  follow(key: JobKey): void {
+    const job = this.held(key);
+    if (job === null || !sections.folded(job)) void this.reach(key, false);
   }
 
   /** The sentinel at the end of the list became visible: show the next window. */
@@ -835,9 +846,7 @@ class JobsStore {
     // counts follow, and the open job keeps its row in view.
     const open = sameKey(this.selected, key) && this.rows.some((job) => sameKey(job.key, key));
     void this.load(true).then(() => {
-      if (open && sameKey(this.selected, key) && this.status === 'ready') {
-        void this.reach(key, false);
-      }
+      if (open && sameKey(this.selected, key) && this.status === 'ready') this.follow(key);
     });
     return null;
   }

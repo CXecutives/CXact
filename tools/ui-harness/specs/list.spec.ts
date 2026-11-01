@@ -2193,6 +2193,31 @@ test.describe('search', () => {
     }
   });
 
+  test('the open job behind a closed fold builds no rows when the list changes under it', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=many`);
+    const words = 'Buchhaltung über Personaldienstleister 404';
+    await page.getByTestId('search').fill(words);
+    await excludedRows(page).first().click();
+    const title = stage(page).getByTestId('reader-title');
+    await expect(title).toBeVisible();
+    const mounted = async (): Promise<number> => (await mountedKeys(page)).length;
+    // The end of the search: its section goes back to the kept choice, the job stays open.
+    await page.getByTestId('search').press('Escape');
+    await expect.poll(mounted).toBe(60);
+    await page.waitForTimeout(300);
+    expect(await mounted()).toBe(60);
+    await expect(title).toBeVisible();
+    // Another order, another filter: the same.
+    await chooseSort(page, 'match');
+    await page.waitForTimeout(300);
+    expect(await mounted()).toBeLessThanOrEqual(60);
+    await chooseFilter(page, 'band-high');
+    await page.waitForTimeout(300);
+    expect(await mounted()).toBeLessThanOrEqual(60);
+  });
+
   test('a hit opened from a section only the search holds open: without the search the kept choice returns', async ({
     page,
   }) => {

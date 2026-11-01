@@ -182,7 +182,7 @@
       searchChanged = false;
       if (selected === null) return;
       if (searched === '') {
-        void jobs.reach(selected, false);
+        jobs.follow(selected);
         return;
       }
       const complete = jobs.rows.length >= jobs.total;
