@@ -825,6 +825,43 @@ test('Regionen suggest the regions of Germany, Austria and Switzerland; typed te
   ]);
 });
 
+/** How far `input` stands clear of the end of what shows it; below 0 it is cut. */
+const clearOf = async (input: Locator, end: () => Promise<number>): Promise<number> =>
+  (await end()) - (await input.evaluate((node) => node.getBoundingClientRect().bottom));
+
+test('the caret goes on with its field: a row taken above it, a chip on a new line, at the foot of the view', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 860 });
+  await profile(page);
+  const view = page.getByTestId('view-profile');
+  const foot = (): Promise<number> =>
+    view.evaluate((node) => node.getBoundingClientRect().top + node.clientHeight);
+  // A list's name field low in the view: each name a row above it.
+  const add = page.getByTestId('competences-add-button');
+  await add.evaluate((node) => node.scrollIntoView({ block: 'end' }));
+  const name = await adder(page, 'competence');
+  for (const word of ['Neue Kompetenz 1', 'Neue Kompetenz 2', 'Neue Kompetenz 3']) {
+    await page.keyboard.type(word);
+    await page.keyboard.press('Enter');
+    await expect(names(page, 'competences').last()).toHaveText(word);
+    await expect(name).toBeFocused();
+    await expect.poll(() => clearOf(name, foot), word).toBeGreaterThan(0);
+  }
+  await leaveField(page);
+  // A tag field at the foot, its chips coming to a new line.
+  const tools = page.getByTestId('profile-tools');
+  await tools.evaluate((node) => node.scrollIntoView({ block: 'end' }));
+  const input = tools.locator('input');
+  await input.click();
+  for (let at = 0; at < 12; at += 1) {
+    await page.keyboard.type(`Ein langes Werkzeug ${at}`);
+    await page.keyboard.press('Enter');
+    await expect(chips(tools).last()).toHaveText(`Ein langes Werkzeug ${at}`);
+    await expect.poll(() => clearOf(input, foot), String(at)).toBeGreaterThan(0);
+  }
+});
+
 test('Backspace in a tag field takes the last chip, the caret stays and typing goes on', async ({
   page,
 }) => {

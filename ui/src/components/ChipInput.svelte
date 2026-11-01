@@ -34,8 +34,9 @@
   `invalid`); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
   focus; a click on it, or the focus, shows them all, and the caret a press put at their end
-  stays in view (the keyboard's way keeps it there by itself, input.ts). The button is no Tab
-  stop: it would go as its own focus opens the fold, and the focus with it; Tab reaches the input.
+  stays in view, as it does with what the field takes (`keepInView`, the keyboard's way too,
+  input.ts). The button is no Tab stop: it would go as its own focus opens the fold, and the
+  focus with it; Tab reaches the input.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -45,6 +46,7 @@
     byKeyboard,
     chipKeys,
     FIELD_ATTRIBUTES,
+    keepInView,
     removeBy,
     withList,
   } from '$lib/input/input';
@@ -233,6 +235,12 @@
   function update(next: string[]): void {
     values = next;
     onchange?.(next);
+    // What it took moved the input (a chip on a new line, a row above a name field): the caret
+    // stays in view.
+    void tick().then(() => {
+      const input = document.activeElement;
+      if (input instanceof HTMLInputElement && box?.contains(input)) keepInView(input);
+    });
   }
 
   /** The entries of `text`. */
@@ -320,7 +328,7 @@
     focused = true;
     const input = event.target;
     if (opens && !byKeyboard() && input instanceof HTMLInputElement) {
-      void tick().then(() => input.scrollIntoView({ block: 'nearest' }));
+      void tick().then(() => keepInView(input));
     }
   }
 

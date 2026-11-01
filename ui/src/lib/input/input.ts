@@ -701,7 +701,7 @@ function removesByKey(event: KeyboardEvent): boolean {
  * gap (--space-8), below a sticky band too (the area's scroll-padding). The engines scroll a
  * focused control only until it touches the edge, and WebKit ignores scroll-margin there.
  */
-function keepInView(node: HTMLElement): void {
+export function keepInView(node: HTMLElement): void {
   const pane = scrollAreaOf(node.parentElement);
   if (pane === null || !node.isConnected) return;
   const clear = tokenPx('--space-8');

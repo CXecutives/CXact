@@ -583,6 +583,41 @@ test('a held Enter presses once: it takes the chip and stays, it goes on and pre
   );
 });
 
+test('above the bar of Dein Profil the caret goes on with its field, the row taken above it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 860 });
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  const add = page.getByTestId('competences-add-button');
+  await add.evaluate((node) => node.scrollIntoView({ block: 'end' }));
+  // Pressed where they stand, right over the bar.
+  const pressAt = async (target: Locator): Promise<void> => {
+    const box = (await target.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  await pressAt(add);
+  const name = page.getByTestId('competence-add').locator('input');
+  await expect(name).toBeVisible();
+  await pressAt(name);
+  await expect(name).toBeFocused();
+  const bar = page.getByTestId('first-bar');
+  for (const word of ['Treasury', 'Reporting']) {
+    await page.keyboard.type(word);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('competences').locator('[data-copy]').last()).toHaveText(word);
+    await expect(name).toBeFocused();
+    await expect
+      .poll(async () => {
+        const [input, foot] = [(await name.boundingBox())!, (await bar.boundingBox())!];
+        return foot.y - (input.y + input.height);
+      }, word)
+      .toBeGreaterThan(0);
+  }
+});
+
 test('Weiter waits while a value is wrong: said at its field, which comes into view, no caret', async ({
   page,
 }) => {
