@@ -1540,10 +1540,12 @@ export function installInput(): void {
     auxPress(false);
   };
 
-  // A menu starts without the letters typed in the last one, and from the moment it opens the
-  // wheel is held for it (onWheel).
+  // A menu starts without the letters typed in the last one and without a bubble over it (a key
+  // opened it: no press took that away), and from the moment it opens the wheel is held for it
+  // (onWheel).
   onMenuOpened(() => {
     typed = '';
+    dismiss('press');
     watchWheel('menu', true);
   });
   document.addEventListener('contextmenu', onContextMenu, capture);

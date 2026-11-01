@@ -2,8 +2,10 @@
 // keyboard focus (`:focus-visible`: Tab lands on the control, never a click). Hides on
 // leave, press and blur (the layer also hides it on a press anywhere, a scroll and Esc, and
 // when the window resizes or goes to the back); moving on to the next anchor with the
-// pointer shows it at once. A button that takes the place of the one pressed under a pointer
-// that rests shows none until the pointer moves (input/hold.ts `pointerMoved`).
+// pointer shows it at once. An open menu silences what lies behind it, like a native one, and
+// only an anchor in the menu itself speaks (the reason of an entry that is off). A button that
+// takes the place of the one pressed under a pointer that rests shows none until the pointer
+// moves (input/hold.ts `pointerMoved`).
 // `{ text, truncated: true }` shows it only while the text of the node is cut off (a long
 // row title, one line or clamped to two; `measure` names the element inside that holds the
 // text): measured once when the pointer enters, never per frame, and again when the tooltip
@@ -18,6 +20,7 @@
 import type { Action } from 'svelte/action';
 import { holdHover, pointerMoved } from '../input/hold';
 import { tooltipDelay } from '../motion/motion';
+import { menuState } from '../state/menu.svelte';
 import { tooltipState } from '../state/tooltip.svelte';
 
 export type TooltipParam =
@@ -101,8 +104,11 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
   };
+  /** An open menu silences every anchor behind it. */
+  const silenced = (): boolean =>
+    menuState.open !== null && node.closest('[data-menu-layer]') === null;
   const present = (): void => {
-    if (options !== null) tooltipState.show(node, options.text);
+    if (options !== null && !silenced()) tooltipState.show(node, options.text);
   };
   /** The delay is over: shown unless a press or Esc came meanwhile or the text turned out
    *  to be whole. */
