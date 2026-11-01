@@ -22,7 +22,7 @@ import {
   settle,
   test,
 } from './fixtures';
-import { adder, chooseWay, failNext, fillRequired, stubList, T, WIN } from './helpers';
+import { adder, chooseWay, failNext, fillRequired, setToken, stubList, T, WIN } from './helpers';
 
 /** A country's German name (the catalog keeps them by code). */
 const country = (code: string): string => T.profile.country[code] ?? code;
@@ -578,6 +578,33 @@ test('Vertragsart is a choice of several, one stays; the salary comes with Festa
   await expect(contract(page, 'project')).toHaveAttribute('aria-checked', 'true');
   expect(await tooltipOf(page, contract(page, 'project'))).toBe(T.profile.field.keepOneContract);
   await savedWith(page, { project: true, temporary: false, minSalary: null });
+});
+
+test('a press on the last chosen Vertragsart says why at once, also from the keyboard', async ({
+  page,
+}) => {
+  // Pressed well within the wait of a tooltip under the pointer, however busy the machine.
+  await setToken(page, '--delay-tooltip', '60s');
+  await profile(page);
+  await contract(page, 'project').click();
+  const last = contract(page, 'permanent');
+  const tip = page.getByRole('tooltip');
+  await page.mouse.move(0, 0);
+  // Past a page's first moments, when a tooltip shows at once as if the last had just gone.
+  await page.waitForFunction(() => performance.now() > 500);
+  await last.click();
+  await expect(last).toHaveAttribute('aria-checked', 'true');
+  await expect(tip).toHaveText(T.profile.field.keepOneContract);
+  // It stands while the pointer does, a further press takes it back.
+  await page.waitForTimeout(T_SAVE);
+  await expect(tip).toBeVisible();
+  await last.click();
+  await expect(tip).toHaveCount(0);
+  await page.mouse.move(0, 0);
+  await last.focus();
+  await page.keyboard.press('Space');
+  await expect(tip).toHaveText(T.profile.field.keepOneContract);
+  await expect(last).toHaveAttribute('aria-checked', 'true');
 });
 
 test('the day rates fold without Projekt und Interim; a 0 out of sight holds no save', async ({
