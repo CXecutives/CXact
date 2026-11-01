@@ -1731,13 +1731,13 @@ test('a profile that lacks fields: Jobs suchen names them, the state box leads t
   await expect(box).toContainText(T.list.profileEmpty);
   await box.getByRole('button', { name: T.list.completeProfile }).click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  // The first required field still empty is in view, without the caret; the card says what is
-  // missing, the rows stay calm.
+  // The first required field still empty is in view, without the caret, and what is missing is
+  // marked, as with the button of the card, which says it too.
   const roles = page.getByTestId('profile-roles');
   await expect(roles).toBeInViewport();
   await expect(roles.locator('input')).not.toBeFocused();
   await expect(page.getByTestId('profile-missing')).toBeVisible();
-  await expect(page.locator('[data-missing]')).toHaveCount(0);
+  await expect(page.locator('[data-field~="roles"][data-missing]')).toHaveCount(1);
 });
 
 /* ========================================================================= rows */
@@ -2812,7 +2812,7 @@ test.describe('sidebar', () => {
     await expect(page.getByTestId('view-jobs')).toBeVisible();
     const sidebar = page.getByTestId('sidebar');
     // The views, and under Jobs its places, like a mailbox's folders.
-    await expect(sidebar.locator('nav button')).toHaveText([
+    await expect(sidebar.locator('nav button:not([aria-expanded])')).toHaveText([
       T.nav.jobs,
       T.place.inbox,
       T.place.archive,

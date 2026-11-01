@@ -55,9 +55,8 @@
     margin-inline: var(--section-inset);
   }
 
-  /* Red while a required list of the group is still empty ([data-missing], tokens.css). */
   .heading {
-    color: var(--section-heading);
+    color: var(--text-heading);
     font: var(--type-heading);
     letter-spacing: var(--tracking-tight);
   }

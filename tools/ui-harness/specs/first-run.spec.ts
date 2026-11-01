@@ -454,7 +454,7 @@ test("Weiter's failed save low on the page: its box comes into view", async ({ p
   await expect(box).toBeInViewport();
 });
 
-test('by hand: Weiter marks what is missing red without a sentence; Esc does nothing', async ({
+test('by hand: Weiter marks what is missing without a sentence; Esc does nothing', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=first-run`);
@@ -469,8 +469,8 @@ test('by hand: Weiter marks what is missing red without a sentence; Esc does not
   // Nothing marked up front; Weiter is always on.
   await expect(page.locator('[data-missing]')).toHaveCount(0);
   await expect(next(page)).not.toHaveAttribute('aria-disabled', 'true');
-  // Weiter: the empty required fields turn red, the first comes into view without a caret,
-  // no sentence names them; the step stays.
+  // Weiter: the empty required fields are marked, the first comes into view without a caret, no
+  // sentence names them; the step stays.
   await next(page).click();
   await expectStep(page, T.firstRun.profile);
   await expect.poll(() => marks(page)).toEqual(['roles', 'competences', 'languages']);
@@ -478,14 +478,29 @@ test('by hand: Weiter marks what is missing red without a sentence; Esc does not
   await expect(caret(page)).toHaveCount(0);
   await expect(roles).toBeInViewport();
   await expect(page.getByTestId('profile-missing')).toHaveCount(0);
-  // Red: a field's label and a list's title, beside the ink of what is not missing.
+  // The orange is on the field itself and on the list's button; names and titles stay ink.
   const color = (node: Locator): Promise<string> =>
     node.evaluate((element) => getComputedStyle(element).color);
+  const placeholder = (node: Locator): Promise<string> =>
+    node.evaluate((element) => getComputedStyle(element, '::placeholder').color);
   const label = (name: string): Locator => page.locator(`[data-field~="${name}"] .label`).first();
   const title = (name: string): Locator => page.getByTestId(`section-${name}`).getByRole('heading');
+  const tools = page.getByTestId('profile-tools').locator('input');
   const ink = await color(label('tools'));
-  expect(await color(label('roles'))).not.toBe(ink);
-  expect(await color(title('languages'))).not.toBe(await color(title('job')));
+  expect(await color(label('roles'))).toBe(ink);
+  expect(await color(title('languages'))).toBe(await color(title('job')));
+  expect(await placeholder(roles)).not.toBe(await placeholder(tools));
+  const add = page.getByTestId('languages-add-button');
+  await expect.poll(() => color(add)).not.toBe(ink);
+  // A further Weiter leads to the next one, and the one after, then round again; still no caret.
+  await next(page).click();
+  await expect(page.getByTestId('section-competences')).toBeInViewport();
+  await next(page).click();
+  await expect(page.getByTestId('section-languages')).toBeInViewport();
+  await next(page).click();
+  await expect(roles).toBeInViewport();
+  await expectStep(page, T.firstRun.profile);
+  await expect(caret(page)).toHaveCount(0);
   // Filled, a row loses its mark at once.
   await roles.fill('Interim CFO');
   await roles.press('Enter');

@@ -3,8 +3,9 @@
 // "Zurücksetzen" it comes again), else the views.
 // And the frame around the views, like the Claude app's: the sidebar docked or folded away
 // by its button (a narrow window folds it by itself; its button then floats it over the
-// view), and the job view beside the list shown or hidden. Both choices are kept per user
-// (in this web view: a store that cannot be read or written keeps them for the session).
+// view), the job view beside the list shown or hidden, and the places under Jobs in the sidebar
+// open or folded. These choices are kept per user (in this web view: a store that cannot be read
+// or written keeps them for the session).
 // The ground of the view below the top bar is decided here too: the bar wears it. So is what
 // stands under the view, out of what scrolls (`foot`: the setup's bar).
 
@@ -15,6 +16,7 @@ import { viewport } from './viewport.svelte';
 
 const SIDEBAR = 'sidebar-open';
 const READER = 'reader-open';
+const PLACES = 'places-open';
 
 /** The colour a view stands on: the setup's cream, the warm page or the list's white. */
 export type Ground = 'side' | 'page' | 'list';
@@ -49,6 +51,8 @@ class Shell {
   sidebarWidth = $state<number | undefined>(undefined);
   /** The user wants the job view beside the list (one column shows a job in its place). */
   #reader = $state(kept(READER));
+  /** The user wants the places under Jobs in the sidebar. */
+  #places = $state(kept(PLACES));
   /** A bar under the view, across the sheet and out of what scrolls (set by the page it belongs
    *  to, while it stands). */
   foot = $state<Snippet | null>(null);
@@ -85,6 +89,16 @@ class Shell {
     if (open === this.#reader) return;
     this.#reader = open;
     keep(READER, open);
+  }
+
+  get placesOpen(): boolean {
+    return this.#places;
+  }
+
+  /** The chevron at Jobs, a plain switch. */
+  togglePlaces(): void {
+    this.#places = !this.#places;
+    keep(PLACES, this.#places);
   }
 
   /** The setup stands in place of the views ("Zu den Jobs" ends it). */

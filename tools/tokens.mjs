@@ -69,7 +69,7 @@ const CONTRAST = [
   // the ring's colour (owner, 2026-10-28), like the ring itself.
   { text: ['text', 'text-muted', 'link'], on: ['page'] },
   { text: ['chosen-text'], on: ['surface-raised'] },
-  { text: ['field-label-missing'], on: ['surface', 'page'] },
+  { text: ['missing-words'], on: ['surface'] },
   { text: ['text'], on: ['selection-tint', 'danger-tint'] },
   // A placeholder and the empty value of a field ("Keins") in the grey of the glyphs.
   { text: ['icon-subtle'], on: ['surface'] },
@@ -90,8 +90,6 @@ const EXCEPTIONS = new Set([
   '--toggle-on on --surface',
   '--danger-strong on --surface',
   '--danger-strong on --danger-soft',
-  '--field-label-missing on --surface',
-  '--field-label-missing on --page',
 ]);
 
 /* ------------------------------------------------------------------ tokens */

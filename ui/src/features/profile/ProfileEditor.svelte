@@ -10,8 +10,10 @@
   while Projekt und Interim is; a value out of sight holds no save (ProfileControl: what is
   wrong stays behind with its row, a right day rate stays stored).
   A required field that is still empty carries `data-missing` on its row, a required list
-  on its group (`missing`, from ProfileView: only in the setup, once Weiter asked): the field's
-  edge and label turn red, a list's group title (tokens.css). A value that
+  on its group (`missing`, from ProfileView: once someone asked, by Weiter or its card's button): the
+  field's edge and words or the list's add button turn orange, its label and the group's title
+  stay ink (tokens.css, owner 2026-11-01). The row someone was taken to takes a moment's wash
+  (`revealField`, lib/motion/arrive.ts). A value that
   is too large, a 0 where at least 1 counts, a day that does not read and a value the backend
   refused are said at their field in their own sentence, stay with their error until they
   change, and only they hold the save (`wrongField` names the first).
@@ -34,6 +36,7 @@
   import { afterPress, byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
+  import { washOver } from '$lib/motion/arrive';
   import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
@@ -204,15 +207,17 @@
     return field === null;
   }
 
-  /** A field of the form glides up under the top bar, so the press always moves it, without
-   *  the caret; from the keyboard its row holds the focus (no caret, no ring), so that Tab goes
-   *  on from there. With `move` off the page stays; `false` when the field is not on the page. */
+  /** A field of the form comes into view as far as needed and its row takes a moment's wash,
+   *  without the caret; from the keyboard its row holds the focus (no caret, no ring), so that
+   *  Tab goes on from there. With `move` off the page stays; `false` when the field is not on
+   *  the page. */
   export async function revealField(field: string, move = true): Promise<boolean> {
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     if (scope === null || scope === undefined) return false;
     if (!move) return true;
-    glideIntoView(scope, 'start');
+    glideIntoView(scope, 'sight');
+    washOver(scope);
     if (byKeyboard()) {
       scope.tabIndex = -1;
       scope.focus({ preventScroll: true });
@@ -278,6 +283,7 @@
               {#if shown(c)}
                 <div
                   class="cell"
+                  data-arrive
                   data-field={fieldsOf(c).join(' ')}
                   data-missing={isMissing(fieldOf(c)) ? '' : undefined}
                   transition:unfold
@@ -311,7 +317,7 @@
     position: relative;
   }
 
-  .cell + .cell::before {
+  .cell + .cell::after {
     position: absolute;
     top: 0;
     right: 0;
@@ -327,9 +333,16 @@
     padding: var(--form-row-control-y) var(--form-row-pad-x);
   }
 
-  /* A row brought into view (Ergänzen, Weiter) stands clear of the top bar's fade. */
+  /* A row brought into view (Ergänzen, Weiter) stands clear of the top bar's fade, the first of
+     a group with its group's title whole above it. */
   .editor :global([data-field]) {
     scroll-margin-top: calc(var(--fade-height) + var(--space-8));
+  }
+
+  .cell:first-child {
+    scroll-margin-top: calc(
+      var(--fade-height) + var(--space-8) + var(--section-head-min) + var(--group-heading-gap)
+    );
   }
 
   /* Tab and focus scrolling keep a field clear of the top bar's fade. */

@@ -158,38 +158,42 @@
 {/snippet}
 
 {#if cfg.mailbox.user}
-  <SettingRow
-    label={cfg.mailbox.user}
-    copyLabel
-    hint={mailFailure === null
-      ? t.settings.connected
-      : mailFailure.kind === 'mailAuth'
-        ? t.settings.refused(appPassword)
-        : t.settings.unreachable}
-    status={mailFailure === null ? 'success' : 'danger'}
-    pair
-    testid="mailbox"
-  >
-    {#if !editing}
-      {@render opener('mailbox-change', 'edit', t.common.edit)}
-      <Button
-        variant="secondary"
-        icon="trash"
-        label={t.common.remove}
-        disabled={locked !== null}
-        disabledReason={locked}
-        testid="mailbox-remove"
-        onclick={() => {
-          removeError = null;
-          confirmRemove = true;
-        }}
-      />
-    {/if}
-  </SettingRow>
+  <div data-arrive>
+    <SettingRow
+      label={cfg.mailbox.user}
+      copyLabel
+      hint={mailFailure === null
+        ? t.settings.connected
+        : mailFailure.kind === 'mailAuth'
+          ? t.settings.refused(appPassword)
+          : t.settings.unreachable}
+      status={mailFailure === null ? 'success' : 'danger'}
+      pair
+      testid="mailbox"
+    >
+      {#if !editing}
+        {@render opener('mailbox-change', 'edit', t.common.edit)}
+        <Button
+          variant="secondary"
+          icon="trash"
+          label={t.common.remove}
+          disabled={locked !== null}
+          disabledReason={locked}
+          testid="mailbox-remove"
+          onclick={() => {
+            removeError = null;
+            confirmRemove = true;
+          }}
+        />
+      {/if}
+    </SettingRow>
+  </div>
 {:else}
-  <SettingRow label={t.settings.notConnected} hint={t.settings.notConnectedHint} testid="mailbox">
-    {#if !editing}{@render opener('mailbox-connect', 'add', t.settings.connect)}{/if}
-  </SettingRow>
+  <div data-arrive>
+    <SettingRow label={t.settings.notConnected} hint={t.settings.notConnectedHint} testid="mailbox">
+      {#if !editing}{@render opener('mailbox-connect', 'add', t.settings.connect)}{/if}
+    </SettingRow>
+  </div>
 {/if}
 {#if editing}
   <!-- Unfolded, the form comes into view whole (it may open below the window's edge). -->

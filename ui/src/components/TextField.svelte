@@ -4,10 +4,10 @@
   Like the native ones: the show and clear buttons are not in the Tab order and leave the
   caret in the field; a search clears on Esc, and a click on its magnifier lands in it.
   30 px high, its text 10 px in (round 10). The edge is `--field-edge` (`--field-edge-hover`
-  under the pointer): a required field that is still empty takes the red of its cell
+  under the pointer): a required field that is still empty takes the orange of its cell
   (`[data-missing]`, tokens.css). Focus turns the edge navy (100 ms) whatever it was, one calm
   edge and no ring around it; the magnifier stays quiet. The placeholder and the glyphs are
-  the subtle grey of icons. The clear button pops in with the first character and leaves at once. A wrong
+  the subtle grey of icons (the placeholder --field-placeholder). The clear button pops in with the first character and leaves at once. A wrong
   value (a password Gmail refused) shows as the red edge (`invalid`) and the one sentence of
   its Field; nothing shakes, `bringIntoView()` only scrolls it into view.
   With `options` (the languages of the profile) it suggests while typing, like the countries
@@ -311,7 +311,7 @@
   }
 
   .input::placeholder {
-    color: var(--icon-subtle);
+    color: var(--field-placeholder);
   }
 
   /* The magnifier lies over the input, so a click on it lands in the field. */

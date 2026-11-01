@@ -155,6 +155,7 @@
     class="line add"
     tabindex="-1"
     role="group"
+    data-arrive
     bind:this={addRow}
     data-remove-fallback
     data-testid={testid ? `${testid}-add` : undefined}
@@ -213,7 +214,7 @@
   }
 
   .item + .item::before,
-  .add::before {
+  .add::after {
     position: absolute;
     top: 0;
     right: 0;
@@ -222,7 +223,7 @@
     content: '';
   }
 
-  .list:not(:has(.item)) + .add::before {
+  .list:not(:has(.item)) + .add::after {
     content: none;
   }
 

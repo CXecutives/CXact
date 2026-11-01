@@ -4,10 +4,9 @@
   count) and nothing at its foot. Its first entry is centred in the first row of every view,
   so its middle lies on one line with the list's tabs and the pages' first heading (y = 59 on
   Windows; the entry's top at 43, a pixel above --head-pad, because the entry is 2 px taller
-  than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) stand under Jobs, always,
-  like a mailbox's folders (owner, 2026-10-30); "Jobs" itself leads to Aktuell. The setup shows
-  no sidebar. A press here never takes the focus (the list keeps its
-  keys).
+  than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) stand under Jobs and fold
+  by hand at its chevron, kept per user (owner, 2026-11-01); "Jobs" itself leads to Aktuell. The
+  setup shows no sidebar. A press here never takes the focus (the list keeps its keys).
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the
   user's, shell.sidebarWidth) or folded away; folded it floats over the view (`floating`,
   App: inside a rounded card, its entries where the docked ones stand), and a choice there
@@ -46,11 +45,17 @@
       testid: `nav-${view.id}`,
       ...(view.id === 'jobs'
         ? {
-            children: PLACES.map((place) => ({
-              id: place,
-              label: t.place[place],
-              testid: `place-${place}`,
-            })),
+            children: {
+              items: PLACES.map((place) => ({
+                id: place,
+                label: t.place[place],
+                testid: `place-${place}`,
+              })),
+              open: shell.placesOpen,
+              toggleLabel: shell.placesOpen ? t.nav.fold : t.nav.unfold,
+              ontoggle: () => shell.togglePlaces(),
+              testid: 'nav-places',
+            },
           }
         : {}),
     })),

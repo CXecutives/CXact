@@ -127,8 +127,6 @@
      link. */
   --text-heading: hsl(var(--p-ink));
   --text-label: hsl(var(--p-ink));
-  /* The label above a field ([data-missing] turns it red). */
-  --field-label: var(--text-label);
   --text-on-accent: hsl(var(--p-white));
   /* The label of the filled danger button: white. */
   --text-on-danger: hsl(var(--p-white));
@@ -197,12 +195,16 @@
      yellow in the app): their signs and dots in it, their words in ink. */
   --success: var(--score-ring-9);
   --warning: var(--score-ring-5);
-  /* A required field that is still empty: only a red edge, no halo (user, design round 6),
-     and red words in its label (round 10), in the one red of what is missing or wrong (the
-     uniformity audit, 2026-10-29); the [data-missing] block below gives them to the fields
-     of its cell. */
-  --missing-edge: var(--danger-strong);
-  --field-label-missing: var(--danger-strong);
+  /* A required field that is still empty, once someone asked for it (the card's button, Weiter): the
+     orange of what acts on the place to act, the field's edge and its words or the add button's
+     (owner, 2026-11-01); its label and its group's title stay ink, nothing is red. The
+     [data-missing] block below gives them to the fields of its cell. */
+  --missing-edge: hsl(var(--p-coral));
+  --missing-words: hsl(var(--p-coral-press));
+  /* The row someone was taken to (lib/motion/arrive.ts): the soft orange of what is chosen. */
+  --arrive-wash: hsl(var(--p-coral-25));
+  --arrive-inset: var(--space-6) var(--space-8);
+  --delay-arrive: 1200ms;
   /* The tick of what is chosen, in a menu and a select's list alike. */
   --chosen-text: hsl(var(--p-navy));
   /* The soft ground of a state: the ban (excluded). */
@@ -342,6 +344,8 @@
      empty the coral ([data-missing] below), and a field in focus is always --border-focus. */
   --field-edge: var(--border-strong);
   --field-edge-hover: var(--control-hover-edge);
+  /* A field's placeholder: the grey of the glyphs ([data-missing] below). */
+  --field-placeholder: var(--icon-subtle);
   --label-hover: var(--text);
   --label-glyph-hover: var(--icon-accent);
 
@@ -642,6 +646,9 @@
   --sidebar-pad-end: 14px;
   --nav-pad: var(--space-10);
   --nav-gap: var(--space-10);
+  /* A place under Jobs: a step lower, the pill 10 before its words. */
+  --nav-child-row: 28px;
+  --nav-child-pad: var(--space-10);
   /* The sidebar a narrow window floats out: its corners, with the entries' pills concentric
      inside it at --peek-inset. */
   --peek-radius: var(--radius-xl);
@@ -864,8 +871,6 @@
   --profile-control-width: 170px;
   /* A changed control saves this long after the last change. */
   --save-delay: 300ms;
-  /* A group's title: ink, red while one of its lists is required and still empty. */
-  --section-heading: var(--text-heading);
 
   /* ------------------------------------------- round 10: settings */
   /* The mailbox form that unfolds under its row: 4 below the row, 18 at its end, the row's 20
@@ -1038,6 +1043,8 @@
   /* Half a turn is state (sort order, open chevron) and keeps its angle under reduced
      motion. */
   --turn-half: 180deg;
+  /* A chevron that folds rows points aside while they are folded, down while they show. */
+  --turn-fold: -90deg;
   --loop-state: running;
 
   /* ------------------------------------------------------------------ layers */
@@ -1057,15 +1064,16 @@
   --opacity-press: 0.7;
 }
 
-/* A required field that is still empty (its row in the profile carries `data-missing`,
-   ProfileEditor; a required list its group): every field in it draws the red edge at rest
-   and under the pointer, its label and a list's group title turn red; the edge stays
-   confined to this block. Focus still turns the edge navy only. */
+/* A required field that is still empty, once someone asked for it (its row in the profile
+   carries `data-missing`, ProfileEditor; a required list its group): a field in it draws the
+   orange edge at rest and under the pointer and its placeholder in the orange's words, a list's
+   add button its words; the edge stays confined to this block. Focus still turns the edge navy
+   only. */
 [data-missing] {
   --field-edge: var(--missing-edge);
   --field-edge-hover: var(--missing-edge);
-  --field-label: var(--field-label-missing);
-  --section-heading: var(--field-label-missing);
+  --field-placeholder: var(--missing-words);
+  --ghost-fg: var(--missing-words);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

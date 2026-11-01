@@ -159,9 +159,9 @@ test('one hairline: the lines between rows are drawn like the edges of the boxes
   await row(page, 'linkedin-4100200301').click({ button: 'right' });
   expect(await line(page.getByTestId('menu').locator('.separator'), '')).toBe(drawn);
   await open(page, `${WIN}&view=profile`);
-  expect(await line(page.locator('.cell + .cell'))).toBe(drawn);
+  expect(await line(page.locator('.cell + .cell'), '::after')).toBe(drawn);
   expect(await line(page.locator('.items .item + .item'))).toBe(drawn);
-  expect(await line(page.locator('.items .add'))).toBe(drawn);
+  expect(await line(page.locator('.items .add'), '::after')).toBe(drawn);
 });
 
 /* ------------------------------------------- one answer of a control to the pointer */

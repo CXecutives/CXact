@@ -8,13 +8,26 @@
   reduced motion). An idle entry takes the quiet wash under
   the pointer and keeps its glyph. While the window is in the back the active label and
   glyph turn ink, like Mail and Explorer.
-  An entry may hold entries of its own (`children`: the places under Jobs), always shown, like
-  a mailbox's folders: as high, no glyph, their words on the words of the entries above. The
-  pill stands on the one that is current; the entry above it keeps its plain words and takes
-  the coral glyph, so every view's glyph says where the window is.
+  An entry may hold entries of its own (`children`: the places under Jobs, owner 2026-11-01,
+  one level). The chevron at its end folds them by hand, a quarter turn, and they keep what the
+  user chose. They stand 28 high in the words of a second line, on the words of the entries
+  above, a hairline from under the glyph beside them; the pill stands on the one that is
+  current, narrower than the others. Folded, the pill stands on the entry that holds them, and
+  while they show that entry keeps its plain words and takes the coral glyph, so every view's
+  glyph says where the window is.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
+
+  export interface SideNavChildren<Id extends string = string> {
+    items: readonly { id: Id; label: string; testid?: string }[];
+    /** Whether they show. */
+    open: boolean;
+    /** The chevron's name: what a press does. */
+    toggleLabel: string;
+    ontoggle: () => void;
+    testid?: string;
+  }
 
   export interface SideNavItem<Id extends string = string> {
     id: Id;
@@ -22,12 +35,13 @@
     icon: IconName;
     testid?: string;
     /** Its entries, under it (one level). */
-    children?: readonly { id: Id; label: string; testid?: string }[];
+    children?: SideNavChildren<Id>;
   }
 </script>
 
 <script lang="ts" generics="Id extends string">
   import { glide } from '$lib/motion/glide';
+  import { unfold } from '$lib/motion/transitions';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -41,41 +55,69 @@
 
   /** The entries by id: the pill stands on the active one. */
   const entries: Partial<Record<Id, HTMLElement>> = $state({});
-  const chosen = $derived(active === null ? null : (entries[active] ?? null));
+
+  /** Whether the active entry is one of this entry's. */
+  const holdsActive = (item: SideNavItem<Id>): boolean =>
+    item.children?.items.some((child) => child.id === active) ?? false;
+
+  /** The entry the pill stands on: the active one, or the one that holds it while folded. */
+  const shown = $derived.by(() => {
+    if (active === null) return null;
+    const holder = items.find((item) => holdsActive(item) && !item.children?.open);
+    return holder?.id ?? active;
+  });
+  const chosen = $derived(shown === null ? null : (entries[shown] ?? null));
 </script>
 
 <nav class="nav" aria-label={label}>
   <span class="pill" aria-hidden="true" use:glide={{ to: chosen }}></span>
   {#each items as item (item.id)}
-    <button
-      bind:this={entries[item.id]}
-      type="button"
-      class="item"
-      aria-current={item.id === active
-        ? 'page'
-        : item.children?.some((child) => child.id === active)
-          ? 'true'
-          : undefined}
-      data-testid={item.testid}
-      onclick={() => onselect(item.id)}
-    >
-      <span class="glyph">
-        <Icon name={item.icon} size="nav" />
-      </span>
-      <span class="label">{item.label}</span>
-    </button>
-    {#each item.children ?? [] as child (child.id)}
+    <div class="entry">
       <button
-        bind:this={entries[child.id]}
+        bind:this={entries[item.id]}
         type="button"
-        class="item child"
-        aria-current={child.id === active ? 'page' : undefined}
-        data-testid={child.testid}
-        onclick={() => onselect(child.id)}
+        class="item"
+        class:folds={item.children !== undefined}
+        aria-current={item.id === shown ? 'page' : holdsActive(item) ? 'true' : undefined}
+        data-testid={item.testid}
+        onclick={() => onselect(item.id)}
       >
-        <span class="label">{child.label}</span>
+        <span class="glyph">
+          <Icon name={item.icon} size="nav" />
+        </span>
+        <span class="label">{item.label}</span>
       </button>
-    {/each}
+      {#if item.children}
+        {@const children = item.children}
+        <button
+          type="button"
+          class="fold"
+          class:open={children.open}
+          aria-expanded={children.open}
+          aria-label={children.toggleLabel}
+          data-testid={children.testid}
+          onclick={() => children.ontoggle()}
+        >
+          <Icon name="expand" size="xs" />
+        </button>
+        {#if children.open}
+          <div class="children" transition:unfold>
+            {#each children.items as child (child.id)}
+              <button
+                bind:this={entries[child.id]}
+                type="button"
+                class="item child"
+                aria-current={child.id === active ? 'page' : undefined}
+                data-testid={child.testid}
+                onclick={() => onselect(child.id)}
+              >
+                <span class="label">{child.label}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+    </div>
   {/each}
 </nav>
 
@@ -103,6 +145,12 @@
     transform: translate(var(--glide-x), var(--glide-y));
   }
 
+  .entry {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
   .item {
     display: flex;
     align-items: center;
@@ -117,9 +165,79 @@
       color var(--dur-base) var(--ease-standard);
   }
 
-  /* Its words on the words of the entries with a glyph. */
+  /* Its words end before the chevron. */
+  .folds {
+    padding-right: calc(var(--nav-pad) + var(--hit-min));
+  }
+
+  /* The chevron stands as far in from the end as a glyph from the start; a line of its own. */
+  .fold {
+    position: absolute;
+    top: calc((var(--nav-row) - var(--hit-min)) / 2);
+    right: calc(var(--nav-pad) - (var(--hit-min) - var(--icon-xs)) / 2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--hit-min);
+    height: var(--hit-min);
+    border-radius: var(--radius-sm);
+    color: var(--icon-subtle);
+    transform: rotate(var(--turn-fold));
+    transition:
+      transform var(--dur-slow) var(--ease-out),
+      background-color var(--dur-base) var(--ease-standard),
+      color var(--dur-base) var(--ease-standard);
+  }
+
+  .fold.open {
+    transform: none;
+  }
+
+  .fold:hover {
+    background-color: var(--quiet-hover);
+    color: var(--text);
+    transition-duration: var(--dur-slow), var(--dur-hover), var(--dur-hover);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .fold:active:hover {
+    background-color: var(--quiet-press);
+    transition-duration: var(--dur-slow), var(--dur-instant), var(--dur-hover);
+  }
+
+  /* The places: a hairline under the glyph of the entry above. Everything inside what folds, so
+     nothing is left to jump when it goes. */
+  .children {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .children::before {
+    position: absolute;
+    top: var(--space-2);
+    bottom: 0;
+    left: calc(var(--nav-pad) + var(--icon-nav) / 2);
+    width: var(--border-width);
+    background-color: var(--border-strong);
+    content: '';
+  }
+
+  /* Its words on the words of the entries with a glyph, the pill right of the hairline. */
   .child {
-    padding-left: calc(var(--nav-pad) + var(--icon-nav) + var(--nav-gap));
+    flex: none;
+    height: var(--nav-child-row);
+    margin-left: calc(var(--nav-pad) + var(--icon-nav) + var(--nav-gap) - var(--nav-child-pad));
+    padding-left: var(--nav-child-pad);
+    font: var(--type-sm);
+  }
+
+  .child:first-child {
+    margin-top: var(--space-2);
+  }
+
+  .child[aria-current='page'] {
+    font: var(--type-field-label);
   }
 
   .item:not([aria-current='page']):hover {

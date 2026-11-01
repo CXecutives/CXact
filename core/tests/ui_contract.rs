@@ -1715,7 +1715,7 @@ fn tooltips_only_where_something_is_missing() {
 fn coral_only_in_its_roles() {
     // The run strip has no pulse and every spinner is navy (uniformity audit 2026-10-29): no
     // coral role for either.
-    const ROLES: [(&str, &[&str]); 7] = [
+    const ROLES: [(&str, &[&str]); 8] = [
         // The one primary action of a view.
         ("var(--primary", &["components/Button.svelte"]),
         // Where you are: the list's one highlight (its tint and bar, grey in the back; round
@@ -1734,6 +1734,8 @@ fn coral_only_in_its_roles() {
         // the `[data-missing]` block of tokens.css, which hands it to the fields' own edge
         // tokens; no component draws it.
         ("var(--missing-edge", &[]),
+        // The row someone was taken to, for a moment (owner, 2026-11-01).
+        ("var(--arrive-wash", &["styles/base.css"]),
     ];
     let all = scanned(MIN_FILES);
     let mut problems = Vec::new();

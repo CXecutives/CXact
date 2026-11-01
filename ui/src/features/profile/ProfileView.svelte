@@ -10,13 +10,14 @@
   (saving.svelte.ts).
   What is missing (owner, 2026-10-29): a required field that is still empty (Wunschrollen,
   Länder, Kompetenzen, Sprachen) never holds the save and stays calm on the Profil page. The
-  card under the head (it unfolds) names them, its "Ergänzen" brings the first up under the top
-  bar (no caret). A new or changed form asks core what it still lacks
+  card under the head (it unfolds) names them. Its "Ergänzen" marks them orange until they are
+  filled and brings the first into view with a moment's wash, no caret; a further press brings
+  the next (owner, 2026-11-01). A new or changed form asks core what it still lacks
   (`profileMissing`, a moment after the last edit), the stored profile names its own
   (`missing`).
   In the setup (`setup`) the same form without the CV and the card; its "Weiter" (`next`)
-  saves. The red marks show only once it asked, which brings the first into view and goes on
-  once nothing is missing; a failed save says so above the form.
+  marks and leads the same way, and saves and goes on once nothing is missing; a failed save
+  says so above the form.
   A state box the user's own action caused (a dropped CV, its failure, a drop refused, Weiter's
   failed save, staying after the question) comes into view: the page glides up to it.
 -->
@@ -188,17 +189,30 @@
   const stillMissing = draftMissing();
   /** The required fields still empty, in the order of the page. */
   const missing = $derived(stillMissing());
-  /** The setup's Weiter asked for them: from then on they are marked until they are filled
-   *  (on the Profil page the card says it, the rows stay calm). */
+  /** Someone asked for them (Ergänzen, Weiter, Profil ergänzen): from then on they are marked
+   *  until they are filled; until then the rows stay calm. */
   let flagged = $state(false);
   $effect(() => {
     if (flagged && missing.length === 0) flagged = false;
   });
-  const marked = $derived(setup && flagged ? missing : []);
+  const marked = $derived(flagged ? missing : []);
 
-  /** A field of the form comes into view, no caret (Weiter, Ergänzen). */
-  function reveal(field: string): Promise<boolean> {
-    return panel?.revealField(field) ?? Promise.resolve(false);
+  /** The field the last press led to. */
+  let ledTo: string | null = null;
+
+  /** A field of the form comes into view with a moment's wash, no caret, and what is missing is
+   *  marked. */
+  function lead(field: string): void {
+    flagged = true;
+    ledTo = field;
+    void panel?.revealField(field);
+  }
+
+  /** Each press leads to the next field still missing, then round again; one that was filled
+   *  meanwhile starts at the first. */
+  function leadOn(): void {
+    const field = missing[(missing.findIndex((one) => one === ledTo) + 1) % missing.length];
+    if (field !== undefined) lead(field);
   }
 
   /** The Profil opened for one of its fields ("Profil ergänzen" in the Jobs view sets
@@ -208,19 +222,18 @@
     const field = navigation.section;
     if (field === null || setup || panel === null) return;
     navigation.section = null;
-    void tick().then(() => reveal(field));
+    void tick().then(() => lead(field));
   });
 
   /**
-   * The setup's "Weiter": what is missing is marked and the first one scrolls into view;
+   * The setup's "Weiter": what is missing is marked and the next of it comes into view;
    * else it saves what changed (a new form always) and is `true` once nothing required is
    * open in the stored profile.
    */
   export async function next(): Promise<boolean> {
     if (saving.busy) return false;
     if (missing.length > 0) {
-      flagged = true;
-      void reveal(missing[0]!);
+      leadOn();
       return false;
     }
     if (editor.dirty || editor.origin === 'new') {
@@ -232,8 +245,7 @@
     }
     const left = FIELD_ORDER.filter((field) => (profile?.missing ?? []).includes(field));
     if (profile === null || left.length > 0) {
-      flagged = true;
-      void reveal(left[0] ?? FIELD_ORDER[0] ?? '');
+      lead(left[0] ?? FIELD_ORDER[0] ?? '');
       return false;
     }
     return true;
@@ -252,7 +264,7 @@
           label: t.profile.missing.action,
           icon: 'edit',
           testid: 'profile-missing-go',
-          onclick: () => void reveal(missing[0]!),
+          onclick: leadOn,
         }}
         testid="profile-missing"
       />

@@ -59,6 +59,33 @@ body {
   height: 100%;
 }
 
+/* The row someone was taken to (lib/motion/arrive.ts): a soft wash inside it, under its words,
+   that fades. It needs no stacking of its own, so what opens from the row (a list under a field)
+   stays above the rows below. */
+[data-arrive] {
+  position: relative;
+}
+
+[data-arrive]::before {
+  position: absolute;
+  inset: var(--arrive-inset);
+  border-radius: var(--radius-md);
+  background-color: var(--arrive-wash);
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+[data-arrive][data-arrived]::before {
+  opacity: 1;
+  transition-duration: var(--dur-base);
+}
+
+[data-arrive] > * {
+  position: relative;
+}
+
 /* Fields take a caret; text a user would copy (ad text, job title, facts, profile values,
    paths) is marked `data-copy` and selects like in a document (input.ts lets its
    selection and Ctrl/Cmd+C through). */

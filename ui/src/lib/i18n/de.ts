@@ -604,6 +604,9 @@ export const de = {
     jobs: 'Jobs',
     profile: 'Profil',
     settings: 'Einstellungen',
+    /** The chevron at Jobs: what a press does to the places under it. */
+    fold: 'Einklappen',
+    unfold: 'Aufklappen',
     /** The buttons of the top bar: back and forward through what was shown, the sidebar and
      *  the job view on and off (their tooltips). */
     back: 'Zurück',

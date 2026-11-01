@@ -32,6 +32,7 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, Way } from '$lib/ipc/types';
+  import { washOver } from '$lib/motion/arrive';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
@@ -137,7 +138,7 @@
   const testidOf = (id: string): string => id.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
   /** Einstellungen opened for one of its groups (`navigation.section`, read once and set
-   *  back): the group glides into view. */
+   *  back): the group glides into view and its row takes a moment's wash. */
   let root = $state<HTMLElement | null>(null);
 
   $effect(() => {
@@ -147,7 +148,9 @@
     const scope = root;
     void tick().then(() => {
       const group = scope.querySelector(`[data-section="${section}"]`);
-      if (group !== null) glideIntoView(group, 'center');
+      if (group === null) return;
+      glideIntoView(group, 'center');
+      washOver(group);
     });
   });
 </script>

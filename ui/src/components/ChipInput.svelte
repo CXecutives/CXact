@@ -545,7 +545,7 @@
   }
 
   .input::placeholder {
-    color: var(--icon-subtle);
+    color: var(--field-placeholder);
   }
 
   /* One line whatever the field's width: a list's name field is narrower than its words. */

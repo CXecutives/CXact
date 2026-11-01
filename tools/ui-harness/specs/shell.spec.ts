@@ -487,7 +487,7 @@ test('the app starts in Jobs; three views and the places, their names without to
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'true');
   const sidebar = page.getByTestId('sidebar');
-  await expect(sidebar.locator('nav button')).toHaveText([
+  await expect(sidebar.locator('nav button:not([aria-expanded])')).toHaveText([
     T.nav.jobs,
     T.place.inbox,
     T.place.archive,
@@ -1515,6 +1515,8 @@ test('the places are Tab stops of the sidebar; Enter chooses one', async ({ page
   await open(page, WIN);
   await page.getByTestId('nav-jobs').focus();
   await page.keyboard.press('Tab');
+  await expect(page.getByTestId('nav-places')).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(page.getByTestId('place-inbox')).toBeFocused();
   await page.keyboard.press('Tab');
   const archive = page.getByTestId('place-archive');
@@ -1523,6 +1525,38 @@ test('the places are Tab stops of the sidebar; Enter chooses one', async ({ page
   await expect(archive).toHaveAttribute('aria-current', 'page');
   await expect(archive).toBeFocused();
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+});
+
+test('the places under Jobs fold by hand: the pill goes to Jobs, the choice is kept', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const fold = page.getByTestId('nav-places');
+  const jobs = page.getByTestId('nav-jobs');
+  const archive = page.getByTestId('place-archive');
+  await expect(fold).toHaveAttribute('aria-expanded', 'true');
+  await expect(fold).toHaveAccessibleName(T.nav.fold);
+  // Chosen while open, then folded: Jobs holds the pill, and the list stays where it is.
+  await archive.click();
+  await expect(archive).toHaveAttribute('aria-current', 'page');
+  await expect(jobs).toHaveAttribute('aria-current', 'true');
+  await fold.click();
+  await expect(archive).toHaveCount(0);
+  await expect(fold).toHaveAttribute('aria-expanded', 'false');
+  await expect(fold).toHaveAccessibleName(T.nav.unfold);
+  await expect(jobs).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
+  // Jobs still leads to the first place.
+  await jobs.click();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
+  // It holds over a new start.
+  await page.reload();
+  await expect(page.getByTestId('sidebar')).toBeVisible();
+  await expect(fold).toHaveAttribute('aria-expanded', 'false');
+  await expect(archive).toHaveCount(0);
+  await fold.click();
+  await expect(archive).toBeVisible();
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {

@@ -12,7 +12,6 @@
     "text-muted":             { "css": "hsl(30 5% 37%)", "rgb": [99, 94, 90] },
     "text-heading":           { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] },
     "text-label":             { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] },
-    "field-label":            { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] },
     "text-on-accent":         { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "text-on-danger":         { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "text-inverse":           { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
@@ -45,8 +44,9 @@
     "selection":              { "css": "hsl(13 60% 90%)", "rgb": [245, 221, 214] },
     "success":                { "css": "hsl(142 50% 38%)", "rgb": [48, 145, 84] },
     "warning":                { "css": "hsl(40 88% 52%)", "rgb": [240, 169, 25] },
-    "missing-edge":           { "css": "hsl(358 70% 55%)", "rgb": [221, 60, 65] },
-    "field-label-missing":    { "css": "hsl(358 70% 55%)", "rgb": [221, 60, 65] },
+    "missing-edge":           { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
+    "missing-words":          { "css": "hsl(13 62% 47%)", "rgb": [194, 78, 46] },
+    "arrive-wash":            { "css": "hsl(13 70% 97.2%)", "rgb": [253, 245, 243] },
     "chosen-text":            { "css": "hsl(213 54% 27%)", "rgb": [32, 65, 106] },
     "danger-tint":            { "css": "hsl(358 70% 96.5%)", "rgb": [252, 240, 240] },
     "danger-edge":            { "css": "hsl(358 60% 90%)", "rgb": [245, 214, 215] },
@@ -91,6 +91,7 @@
     "control-press-edge":     { "css": "hsl(30 10% 62%)", "rgb": [168, 158, 148] },
     "field-edge":             { "css": "hsl(30 8% 82%)", "rgb": [213, 209, 205] },
     "field-edge-hover":       { "css": "hsl(30 10% 68%)", "rgb": [182, 173, 165] },
+    "field-placeholder":      { "css": "hsl(30 4% 45%)", "rgb": [119, 115, 110] },
     "label-hover":            { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] },
     "label-glyph-hover":      { "css": "hsl(213 54% 27%)", "rgb": [32, 65, 106] },
     "titlebar-fg":            { "css": "hsl(30 6% 28%)", "rgb": [76, 71, 67] },
@@ -120,7 +121,6 @@
     "spinner-arc":            { "css": "hsl(213 54% 27%)", "rgb": [32, 65, 106] },
     "strip-surface":          { "css": "hsl(30 16% 96.4%)", "rgb": [247, 246, 244] },
     "strip-text":             { "css": "hsl(213 54% 27%)", "rgb": [32, 65, 106] },
-    "skeleton":               { "css": "hsl(30 12% 94.6%)", "rgb": [243, 241, 240] },
-    "section-heading":        { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] }
+    "skeleton":               { "css": "hsl(30 12% 94.6%)", "rgb": [243, 241, 240] }
   }
 }

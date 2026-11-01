@@ -25,6 +25,7 @@ interface Values {
   staggerSpan: number;
   tooltipDelay: number;
   browseGap: number;
+  arriveDelay: number;
 }
 
 const DURATIONS: readonly Duration[] = [
@@ -104,6 +105,7 @@ function read(): Values {
     staggerSpan: tokenMs('--stagger-span'),
     tooltipDelay: tokenMs('--delay-tooltip'),
     browseGap: tokenMs('--delay-browse'),
+    arriveDelay: tokenMs('--delay-arrive'),
   };
 }
 
@@ -167,6 +169,11 @@ export function staggerSpan(): number {
 
 export function tooltipDelay(): number {
   return current().tooltipDelay;
+}
+
+/** How long the wash stands on the row someone was taken to (arrive.ts). */
+export function arriveDelay(): number {
+  return current().arriveDelay;
 }
 
 /** Two opens closer than this (ms) are fast browsing: the later one does not animate. */

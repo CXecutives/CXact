@@ -1,6 +1,5 @@
 <!--
-  One field, one layout (the round 10 draft): the label (13/540 ink, --field-label: red while
-  the field is required and still empty, `[data-missing]` in tokens.css) 6 above the control,
+  One field, one layout (the round 10 draft): the label (13/540 ink) 6 above the control,
   then the hint (13 muted) or the error in its place (Notice: the sign and the red of what
   is wrong, the one look of every refused value) under the control on the same left edge. The message's id is shared with the control inside (its
   `aria-describedby`) only while a message shows.
@@ -139,7 +138,7 @@
   /* As wide as its text: a click beside the label is a click beside the field, and that ends
      the field's focus (a click on the words still leads into the field). */
   .label {
-    color: var(--field-label);
+    color: var(--text-label);
     font: var(--type-field-label);
     cursor: default;
   }

@@ -95,6 +95,7 @@
   import type { Action } from 'svelte/action';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { menuIn, menuOut } from '$lib/motion/transitions';
+  import { scrollerOf } from '$lib/motion/scroll';
   import { tokenPx } from '$lib/tokens';
 
   interface Props {
@@ -116,8 +117,9 @@
   /** How high it stands: its rows, at most eight, in the room on its side. */
   let height = $state(0);
 
-  /** Below the field, or above it where only there is room, measured whenever the list
-   *  grows or shrinks; the marked row stays in view. */
+  /** Below the field, or above it where only there is room, measured whenever the list, the
+   *  field (it unfolds under a press) or the window changes size and when the page moves the
+   *  field; the marked row stays in view. */
   const place: Action<HTMLElement, { count: number; active: number }> = (node, param) => {
     const measure = (count: number): void => {
       const field = node.parentElement?.getBoundingClientRect();
@@ -135,11 +137,21 @@
       node.querySelector(`#${CSS.escape(`${id}-${index}`)}`)?.scrollIntoView({ block: 'nearest' });
     };
     measure(param.count);
+    const observer = new ResizeObserver(() => measure(param.count));
+    if (node.parentElement !== null) observer.observe(node.parentElement);
+    observer.observe(document.documentElement);
+    const pane = scrollerOf(node);
+    const moved = (): void => measure(param.count);
+    pane?.addEventListener('scroll', moved, { passive: true });
     return {
       update(next) {
         if (next.count !== param.count) measure(next.count);
         if (next.active !== param.active && next.active >= 0) reveal(next.active);
         param = next;
+      },
+      destroy() {
+        observer.disconnect();
+        pane?.removeEventListener('scroll', moved);
       },
     };
   };

@@ -3,7 +3,7 @@
   `bg`), its head the title 26/650 and the lead (as the CV filled it, or empty to fill in),
   the Profil's form in its setup mode (ProfileView `setup`: no CV button), and the bar at the
   foot of the view (BottomBar, `shell.foot`: under what scrolls): Zurück at the left, Weiter at
-  the right. Weiter marks what is still missing red and brings the first of it into view (no
+  the right. Weiter marks what is still missing and brings the next of it into view (no
   sentence); once nothing is, it saves and goes on. A failed save stays on the page and says
   so in the form. After a press on the bar Enter is Weiter, as anywhere on the step.
 -->

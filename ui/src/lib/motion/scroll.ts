@@ -87,7 +87,7 @@ export function scrollerOf(node: Element): HTMLElement | null {
  */
 export function glideIntoView(
   node: Element,
-  block: 'start' | 'center' | 'nearest' = 'nearest',
+  block: 'start' | 'center' | 'nearest' | 'sight' = 'nearest',
 ): void {
   const pane = scrollerOf(node);
   if (pane === null) return;
@@ -104,6 +104,13 @@ export function glideIntoView(
     delta = box.top - top - (Number.parseFloat(getComputedStyle(node).scrollMarginTop) || 0);
   } else if (block === 'center') {
     delta = box.top + box.height / 2 - (top + bottom) / 2;
+  } else if (block === 'sight') {
+    // It stays where it is while it stands whole in view, clear of its scroll margin; else to
+    // the middle, with what lies around it.
+    const clear = Number.parseFloat(getComputedStyle(node).scrollMarginTop) || 0;
+    if (box.top - clear < top || box.bottom > bottom) {
+      delta = box.top + box.height / 2 - (top + bottom) / 2;
+    }
   } else if (box.top < top) {
     delta = box.top - top;
   } else if (box.bottom > bottom) {

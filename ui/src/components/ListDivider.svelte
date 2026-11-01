@@ -2,8 +2,8 @@
   The heading of a section that folds at the end of the job list ("Noch nicht bewertet",
   "Ausgeschlossen"; the round 10 draft): a hairline across the rows' width 6 below the last
   row, under it the label 12/540 muted on the rows' inner edge (22 above, 6 below), no count,
-  and at its end the chevron 14 in the subtle glyph colour, which turns half a turn while the
-  section is open (150 ms, ease-out). Under the pointer the label and the chevron darken to
+  and at its end the chevron 14 in the subtle glyph colour, the one fold of the app: it points
+  aside while the section is folded and down while it is open (a quarter turn, ease-out). Under the pointer the label and the chevron darken to
   ink. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
   locked, a section held open: no answer to the pointer (a press on it is a press on the list),
   no Tab stop, the chevron as it is. A
@@ -82,6 +82,7 @@
     display: inline-flex;
     flex: none;
     color: var(--icon-subtle);
+    transform: rotate(var(--turn-fold));
     transition:
       transform var(--dur-slow) var(--ease-out),
       color var(--dur-base) var(--ease-standard);
@@ -93,6 +94,6 @@
   }
 
   .turned {
-    transform: rotate(var(--turn-half));
+    transform: none;
   }
 </style>

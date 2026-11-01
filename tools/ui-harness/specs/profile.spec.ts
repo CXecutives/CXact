@@ -321,17 +321,20 @@ test('a row is 62 high, its control 16 under the line, its hairline from the tex
     expect(await measure(row, control), control).toEqual({ height: 62, under: 16 });
   }
   // The hairline between rows starts where the row's words do.
-  for (const [row, name] of [
-    [field(page, 'dayRateMin'), '.label'],
-    [page.getByTestId('languages-item').nth(1), '.name'],
+  for (const [row, name, pseudo] of [
+    [field(page, 'dayRateMin'), '.label', '::after'],
+    [page.getByTestId('languages-item').nth(1), '.name', '::before'],
   ] as const) {
-    const { line, text } = await row.evaluate((node, css) => {
-      const box = node.getBoundingClientRect();
-      return {
-        line: Number.parseFloat(getComputedStyle(node, '::before').left),
-        text: node.querySelector(css)!.getBoundingClientRect().left - box.left,
-      };
-    }, name);
+    const { line, text } = await row.evaluate(
+      (node, { css, which }) => {
+        const box = node.getBoundingClientRect();
+        return {
+          line: Number.parseFloat(getComputedStyle(node, which).left),
+          text: node.querySelector(css)!.getBoundingClientRect().left - box.left,
+        };
+      },
+      { css: name, which: pseudo },
+    );
     expect(line, name).toBe(text);
   }
   // A message stands under the control: nothing above it moves, only the row grows.
@@ -826,7 +829,6 @@ test("a field's list shows its eight rows whole, and none stands under the top b
   expect(low.y + low.height).toBeLessThanOrEqual(360);
   await page.keyboard.press('ArrowDown');
   await expect(list.getByRole('option').first()).toBeInViewport();
-  expect(await list.evaluate((node) => node.scrollHeight - node.clientHeight)).toBeGreaterThan(0);
   // What the arrows reach comes into view inside it.
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -1433,7 +1435,7 @@ test('a refusal of a whole list is said under its last row', async ({ page }) =>
 
 // ------------------------------------------------------------------ what is still open
 
-test('what is missing: the card names it and the rows stay calm; a gap never holds a save', async ({
+test('what is missing: the card names it, its button marks and leads; a gap never holds a save', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-incomplete');
@@ -1442,7 +1444,7 @@ test('what is missing: the card names it and the rows stay calm; a gap never hol
   await expect(card).toContainText(T.profile.missing.heading(2));
   await expect(card).toContainText(T.profile.missing.fields([words.roles, words.languages]));
   await expect(page.getByTestId('profile-missing-go')).toHaveText(T.profile.missing.action);
-  // Only the setup marks rows: here none, its label as calm as any.
+  // Until it is asked no row is marked, its label as calm as any.
   expect(await marked(page)).toEqual([]);
   const open = await label(field(page, 'roles')).evaluate((node) => getComputedStyle(node).color);
   const ink = await label(field(page, 'tools')).evaluate((node) => getComputedStyle(node).color);
@@ -1452,28 +1454,41 @@ test('what is missing: the card names it and the rows stay calm; a gap never hol
   await lastSave(page);
   expect(await marked(page)).toEqual([]);
   await expect(card).toContainText(T.profile.missing.heading(2));
-  // Its button brings the first up under the top bar, no caret in it and no mark on it.
+  // Its button marks them and shows the first, already in view: the page stays and its row takes
+  // a moment's wash, no caret in it, the name still ink.
   const input = roles(page).locator('input');
-  const barEnd = async (): Promise<number> => {
-    const bar = await page.getByTestId('title-bar').boundingBox();
-    return bar!.y + bar!.height;
-  };
-  const above = (await field(page, 'roles').boundingBox())!.y;
+  const scrolled = (): Promise<number> =>
+    page.getByTestId('view-profile').evaluate((node) => node.scrollTop);
+  const before = await scrolled();
   await page.getByTestId('profile-missing-go').click();
-  await expect.poll(async () => (await field(page, 'roles').boundingBox())!.y).toBeLessThan(above);
+  await expect.poll(() => marked(page)).toEqual(['roles', 'languages']);
+  await expect(field(page, 'roles')).toHaveAttribute('data-arrived', '');
+  expect(await scrolled()).toBe(before);
   await expect(input).toBeInViewport();
-  await expect(page.getByTestId('profile-heading')).not.toBeInViewport();
-  expect((await field(page, 'roles').boundingBox())!.y).toBeGreaterThanOrEqual(await barEnd());
   await expect(input).not.toBeFocused();
   await expect(caret(page)).toHaveCount(0);
-  expect(await marked(page)).toEqual([]);
+  expect(await label(field(page, 'roles')).evaluate((node) => getComputedStyle(node).color)).toBe(
+    ink,
+  );
+  // The wash goes by itself, the mark stays until the field is filled.
+  await expect(field(page, 'roles')).not.toHaveAttribute('data-arrived', '');
+  expect(await marked(page)).toEqual(['roles', 'languages']);
+  // The next press leads on to the next one, and round again.
+  await page.getByTestId('profile-missing-go').click();
+  await expect(page.getByTestId('section-languages')).toBeInViewport();
+  await expect(page.getByTestId('languages-add')).toHaveAttribute('data-arrived', '');
+  await page.getByTestId('view-profile').evaluate((node) => node.scrollTo(0, 0));
+  await page.getByTestId('profile-missing-go').click();
+  await expect(field(page, 'roles')).toHaveAttribute('data-arrived', '');
   // Filled, the card drops it at once.
   await input.fill('Interim CFO');
   await input.press('Enter');
   await expect(card).toContainText(T.profile.missing.heading(1));
   await expect(card).toContainText(T.profile.missing.fields([words.languages]));
   await expect(card).not.toContainText(words.roles);
+  expect(await marked(page)).toEqual(['languages']);
   // The next press brings up what is left.
+  await page.getByTestId('view-profile').evaluate((node) => node.scrollTo(0, 0));
   await page.getByTestId('profile-missing-go').click();
   await expect(page.getByTestId('section-languages')).toBeInViewport();
   await expect(caret(page)).toHaveCount(0);
@@ -1525,8 +1540,13 @@ test('the card of what is missing unfolds and folds away: the rows glide, also t
   expect(between(await places(), down, start).length, 'frames on its way up').toBeGreaterThan(1);
 });
 
-test('Ergänzen glides to its field like every way into view', async ({ page }) => {
+test('Ergänzen glides to a field out of view, and shows it whole with what lies around it', async ({
+  page,
+}) => {
   await profile(page, '&scenario=profile-incomplete');
+  // The first is in view: this press moves nothing, the next has to.
+  await page.getByTestId('profile-missing-go').click();
+  await expect.poll(() => marked(page)).toEqual(['roles', 'languages']);
   // Each frame's place of the view from here on.
   await page.evaluate(() => {
     const view = document.querySelector('[data-testid="view-profile"]')!;
@@ -1539,7 +1559,7 @@ test('Ergänzen glides to its field like every way into view', async ({ page }) 
     requestAnimationFrame(note);
   });
   await page.getByTestId('profile-missing-go').click();
-  await expect(roles(page).locator('input')).toBeInViewport();
+  await expect(page.getByTestId('languages-add')).toBeInViewport();
   await page.waitForTimeout(400);
   const places = await page.evaluate(() =>
     (window as unknown as { places: number[] }).places.filter((top) => top > 0),
@@ -1547,12 +1567,26 @@ test('Ergänzen glides to its field like every way into view', async ({ page }) 
   const end = places.at(-1)!;
   expect(places.filter((top) => top !== end).length, 'frames on its way').toBeGreaterThan(1);
   // At its end clear of the top bar's fade, as the row's margin says.
-  const row = await field(page, 'roles').evaluate((node) => ({
-    top: node.getBoundingClientRect().top,
-    margin: Number.parseFloat(getComputedStyle(node).scrollMarginTop),
-  }));
-  const view = await page.getByTestId('view-profile').boundingBox();
-  expect(row.top - row.margin).toBe(view!.y);
+  const row = await page
+    .getByTestId('section-languages')
+    .evaluate((node) => node.getBoundingClientRect().top);
+  const bar = (await page.getByTestId('title-bar').boundingBox())!;
+  expect(row).toBeGreaterThanOrEqual(bar.y + bar.height);
+});
+
+test('the first row of a group that Ergänzen brings up has its title whole above it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 480 });
+  await profile(page, '&scenario=profile-incomplete');
+  // Far down the page: roles have to come back.
+  await page.getByTestId('view-profile').evaluate((node) => node.scrollTo(0, node.scrollHeight));
+  await page.getByTestId('profile-missing-go').click();
+  await expect(roles(page)).toBeInViewport();
+  await animationsDone(page);
+  const heading = (await page.getByTestId('section-job').getByRole('heading').boundingBox())!;
+  const bar = (await page.getByTestId('title-bar').boundingBox())!;
+  expect(heading.y).toBeGreaterThanOrEqual(bar.y + bar.height);
 });
 
 test('Ergänzen from the keyboard: the focus comes along, no caret; Tab goes on from there', async ({

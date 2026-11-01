@@ -310,8 +310,8 @@
     --btn-border: transparent;
     --btn-border-hover: transparent;
     --btn-border-active: transparent;
-    --btn-fg: var(--text);
-    --btn-fg-hover: var(--text);
+    --btn-fg: var(--ghost-fg, var(--text));
+    --btn-fg-hover: var(--ghost-fg, var(--text));
     --btn-shadow: none;
   }
 
