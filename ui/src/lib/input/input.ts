@@ -1181,7 +1181,8 @@ function openMenuByKey(target: EventTarget | null): void {
   if (host !== null) openHostMenu(host, null);
 }
 
-/** Letters typed quickly one after the other pick the entry that starts with them. */
+/** Letters typed quickly one after the other pick the entry that starts with them; a menu that
+ *  closed takes them along. */
 let typed = '';
 let typedAt = 0;
 const TYPE_AHEAD_MS = 700;
@@ -1533,8 +1534,12 @@ export function installInput(): void {
     auxPress(false);
   };
 
-  // From the moment a menu opens the wheel is held for it (onWheel).
-  onMenuOpened(() => watchWheel('menu', true));
+  // A menu starts without the letters typed in the last one, and from the moment it opens the
+  // wheel is held for it (onWheel).
+  onMenuOpened(() => {
+    typed = '';
+    watchWheel('menu', true);
+  });
   document.addEventListener('contextmenu', onContextMenu, capture);
   document.addEventListener(
     'mousedown',

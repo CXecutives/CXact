@@ -64,9 +64,6 @@ import {
   menuFrame,
 } from './helpers';
 
-/** How long letters typed in a menu count as one word (input.ts). */
-const TYPE_AHEAD = 750;
-
 /** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile.
  *  Tokens are read once, so it is set before the page starts. */
 async function slowSearch(page: Page, ms: number): Promise<void> {
@@ -2464,8 +2461,6 @@ test.describe('moves and undo', () => {
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
       if (next !== undefined) await expect(row(page, next)).toBeFocused();
-      // The letters typed in the next menu stand on their own after a moment (input.ts).
-      await page.waitForTimeout(TYPE_AHEAD);
     }
     await expect(page.getByTestId('place-archive')).toBeFocused();
   });
@@ -2487,8 +2482,6 @@ test.describe('moves and undo', () => {
       await page.keyboard.type(T.actions.unarchive.slice(0, 4));
       await page.keyboard.press('Enter');
       await expect(row(page, key)).toHaveCount(0);
-      // The letters typed in the next menu stand on their own after a moment (input.ts).
-      await page.waitForTimeout(TYPE_AHEAD);
     }
     await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
   });

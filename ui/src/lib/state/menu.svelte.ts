@@ -71,8 +71,8 @@ export const menuState: MenuState = $state({ open: null, active: -1 });
 
 let nextId = 1;
 
-/** Told each time a menu opens: input.ts, which has to hold the wheel for it (a select's list
- *  takes no focus that could say so). */
+/** Told each time a menu opens: input.ts, which forgets the letters typed in the last one and
+ *  has to hold the wheel for it (a select's list takes no focus that could say so). */
 let opened: (() => void) | null = null;
 
 export function onMenuOpened(handler: () => void): void {
