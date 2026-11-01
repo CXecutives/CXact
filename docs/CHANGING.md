@@ -88,17 +88,15 @@ Commit them together with tokens.css.
 - The Profil-Ordner of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`). "Ordner öffnen" makes a missing folder first.
 - A step of the setup is one entry in `STEPS` of `ui/src/features/first-run/steps.ts` (order,
-  heading, sentence, where Zurück leads, the words of its primary, its dot of the four in the
-  foot and the picture beside it) and its snippet of the same id in `FirstRunView.svelte`;
+  what stands at the top of its card, heading, lead, where Zurück leads, the words of its
+  primary) and its snippet of the same id in `FirstRunView.svelte`;
   `onboarding.svelte.ts` walks them. A failure of the CV's evaluation is its sentence in
   `profile.cvError`; whether a new try can work after it is `FINAL` in
   `ui/src/features/shared/fromCv.svelte.ts` (Profil and the setup).
-- The setup's frame (design round 7): from 900 px on a short step stands beside the picture of
-  the app (`StepPicture.svelte`: which picture each step shows is `picture` in `steps.ts`, the
-  example scores in `pictures.ts`, the words in `t.firstRun.picture`), the top bar follows the
-  two colours (`shell.setupPicture`); the long profile steps take the whole column. The foot
-  (Zurück as an arrow, `components/StepDots.svelte`, the step's buttons; on the long steps the
-  light floating bar that lifts the toasts) is the `footer` of `FirstRunView.svelte`.
+- The setup's frame: a step is a card centred on the window's cream (`SetupCard.svelte`: its
+  head, the step's body and its foot, Zurück at the left and the step's buttons at the right).
+  "Dein Profil" is a whole page instead (`ProfileStep.svelte`), with its bar at the foot of the
+  view, which lifts the toasts (`components/BottomBar.svelte` through `shell.foot`).
 - An info symbol is a decision of its own: five exist (Vertragsart, Mindesttagessatz, Länder,
   Ausschlusswörter, the app password); a new one is a line in `five_info_symbols`
   (`core/tests/ui_contract.rs`) and in docs/PLAN.md.
