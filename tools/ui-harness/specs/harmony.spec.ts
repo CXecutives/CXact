@@ -6,7 +6,7 @@
 // 2026-10-30). And one way to draw a hairline, the same answer of a control to the pointer on
 // every ground, one family of glyphs.
 
-import type { Locator, Page } from '@playwright/test';
+import type { Locator, Page, PlaywrightWorkerArgs } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
 import { openPlace, row, WIN } from './helpers';
@@ -136,24 +136,49 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
 
 /* ------------------------------------------------------- one weight of a hairline */
 
+/** What a test of the margins asks of its fixtures. */
+interface Engine {
+  page: Page;
+  playwright: PlaywrightWorkerArgs['playwright'];
+  baseURL: string | undefined;
+  browserName: string;
+}
+
+/** Runs `check` on a page whose scrollbars take their room, as on Windows: the harness hides
+ *  Chromium's, so it gets a browser of its own; WebKit shows them on the Windows path. */
+async function withRoom(
+  { page, playwright, baseURL, browserName }: Engine,
+  viewport: { width: number; height: number },
+  check: (page: Page) => Promise<void>,
+): Promise<void> {
+  if (browserName !== 'chromium') {
+    await page.setViewportSize(viewport);
+    await check(page);
+    return;
+  }
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    await check(
+      await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport, locale: 'de-DE' }),
+    );
+  } finally {
+    await browser.close();
+  }
+}
+
+const edges = async (node: Locator): Promise<{ left: number; right: number }> => {
+  const box = (await node.boundingBox())!;
+  return { left: box.x, right: box.x + box.width };
+};
+
 test('beside a real scrollbar a column has as much room on both sides', async ({
+  page: fixture,
   playwright,
   baseURL,
   browserName,
 }) => {
-  // Windows only (WebView2): macOS's overlay scrollbars take no room.
-  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
-  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
-  try {
-    const page = await browser.newPage({
-      ...(baseURL ? { baseURL } : {}),
-      viewport: { width: 1360, height: 860 },
-      locale: 'de-DE',
-    });
-    const edges = async (node: Locator): Promise<{ left: number; right: number }> => {
-      const box = (await node.boundingBox())!;
-      return { left: box.x, right: box.x + box.width };
-    };
+  const engine = { page: fixture, playwright, baseURL, browserName };
+  await withRoom(engine, { width: 1360, height: 860 }, async (page) => {
     await open(page, `${WIN}&open=freelancermap:2801`);
     const list = await edges(page.getByTestId('list-header'));
     const room = await page.evaluate(() => {
@@ -161,12 +186,13 @@ test('beside a real scrollbar a column has as much room on both sides', async ({
       return view.offsetWidth - view.clientWidth;
     });
     expect(room).toBeGreaterThan(0);
-    // The list: its head, and its rows with their highlight.
+    // The list: its head, and its rows with their highlight, which is the open row's own box.
     const seam = list.right + room;
     const search = await edges(page.getByTestId('list-header').locator('.row').first());
     expect(search.left - list.left).toBe(seam - search.right);
     const rowBox = await edges(row(page, 'freelancermap-2801'));
     expect(rowBox.left - list.left).toBe(seam - rowBox.right);
+    expect(await edges(page.getByTestId('row-bar'))).toEqual(rowBox);
     // The job view's card, in its pane.
     const card = await edges(page.getByTestId('reader-head'));
     const pane = await edges(page.locator('.stage'));
@@ -176,9 +202,7 @@ test('beside a real scrollbar a column has as much room on both sides', async ({
     const form = await edges(page.getByTestId('profile-form'));
     const view = await edges(page.getByTestId('view-profile'));
     expect(form.left - view.left).toBe(view.right - form.right);
-  } finally {
-    await browser.close();
-  }
+  });
 });
 
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({

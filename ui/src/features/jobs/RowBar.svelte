@@ -1,6 +1,6 @@
 <!--
   The job list's one highlight (the round 10 draft): the open job's row on a soft coral tint
-  (8 round, the row's own box, 6 in from the column's edges), a 3 px coral bar at its left
+  (8 round, the row's own box), a 3 px coral bar at its left
   edge, 10 in from its top and bottom. It lies under the rows and the days' headings, and in
   the list's scroll content, so it scrolls with the rows. Opening another job glides it there
   by its translateY (180 ms, ease-out, like the sidebar's pill and the segment's thumb); a
@@ -302,8 +302,8 @@
   .highlight {
     position: absolute;
     top: 0;
-    right: var(--row-highlight-inset);
-    left: var(--row-highlight-inset);
+    right: var(--list-rows-inset-end);
+    left: var(--list-rows-inset);
     height: var(--bar-height, 0);
     border-radius: var(--list-row-radius);
     background-color: var(--selection-tint);

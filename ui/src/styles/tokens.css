@@ -549,9 +549,8 @@
   /* a chip in a field and its remove button */
   --chip-height: 24px;
   --chip-x: 16px;
-  /* the list: the hairline between rows starts at the title; the highlight is inset this far */
+  /* the list: the hairline between rows starts at the title */
   --row-rule-start: 56px;
-  --row-highlight-inset: 6px;
   /* One row measure for Profil and Einstellungen (owner, 2026-10-24 and 2026-10-28): every row
      of a page's card is as high as a row with a line under its name (12 + 20 + 18 + 12),
      12 above and below, 20 at the sides, its hairline from the text (20). */
