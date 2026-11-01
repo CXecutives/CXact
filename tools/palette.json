@@ -95,7 +95,7 @@
     "label-hover":            { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] },
     "label-glyph-hover":      { "css": "hsl(213 54% 27%)", "rgb": [32, 65, 106] },
     "titlebar-fg":            { "css": "hsl(30 6% 28%)", "rgb": [76, 71, 67] },
-    "titlebar-fg-inactive":   { "css": "hsl(30 5% 37%)", "rgb": [99, 94, 90] },
+    "titlebar-fg-inactive":   { "css": "hsl(30 4% 45%)", "rgb": [119, 115, 110] },
     "titlebar-close-hover":   { "css": "hsl(5.4 75% 43.9%)", "rgb": [196, 43, 28] },
     "titlebar-close-press":   { "css": "hsl(5.6 60% 49.4%)", "rgb": [202, 64, 50] },
     "titlebar-close-fg":      { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },

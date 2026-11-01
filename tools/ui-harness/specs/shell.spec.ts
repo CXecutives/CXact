@@ -235,6 +235,21 @@ test('the window focus state follows the OS window', async ({ page }) => {
   await expect(root).toHaveAttribute('data-window', 'active');
 });
 
+test('with the window in the back the caption glyphs fade, and come back with it', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const glyph = page.getByTestId('window-minimize');
+  const colour = (): Promise<string> => glyph.evaluate((node) => getComputedStyle(node).color);
+  const front = await colour();
+  await page.evaluate(() => window.__harness.fire('tauri://blur', null));
+  await expect.poll(colour).not.toBe(front);
+  await animationsDone(page);
+  expect(await colour()).not.toBe(front);
+  await page.evaluate(() => window.__harness.fire('tauri://focus', null));
+  await expect.poll(colour).toBe(front);
+});
+
 test('the navigation switches the view', async ({ page }) => {
   await open(page, '?platform=windows');
   await page.getByTestId('nav-profile').click();

@@ -355,7 +355,7 @@
      11's red with a white glyph (owner, 2026-10-28) and a touch lighter pressed;
      the glyphs fade while the window is in the back. */
   --titlebar-fg: hsl(var(--p-titlebar-fg));
-  --titlebar-fg-inactive: var(--text-muted);
+  --titlebar-fg-inactive: var(--icon-subtle);
   --titlebar-close-hover: hsl(var(--p-titlebar-close));
   --titlebar-close-press: hsl(var(--p-titlebar-close-press));
   --titlebar-close-fg: hsl(var(--p-white));
