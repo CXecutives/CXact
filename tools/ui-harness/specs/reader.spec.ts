@@ -1650,6 +1650,44 @@ test.describe('the job view keeps true', () => {
     await expect(note).toHaveText(T.reader.state.teaser.heading);
   });
 
+  /** "Anzeige laden" for a job the list does not hold: a search with more hits than a page that
+   *  does not find it leaves it open. Resolves once the run has ended like `end`. */
+  async function loadNotHeld(page: Page, end: 'nothing' | 'pages'): Promise<void> {
+    await open(page, `${WIN}&scenario=many&tick=15`);
+    // Its ad is still to come.
+    await page.evaluate(() => {
+      window.__harness.editDetail = (detail) => ({
+        ...detail,
+        text: null,
+        job: { ...detail.job, detail: { kind: 'pending', retryAt: null } },
+      });
+    });
+    const key = (await listed(page))[0]!;
+    await row(page, key).click();
+    const title = stage(page).getByTestId('reader-title');
+    await expect(title).toBeVisible();
+    const words = (await row(page, key).locator('.title').innerText()).startsWith('Reporting')
+      ? 'Head of Finance'
+      : 'Reporting';
+    expect((await stubList(page, { search: words })).jobs.length).toBeGreaterThan(120);
+    await page.getByTestId('search').fill(words);
+    await expect(row(page, key)).toHaveCount(0);
+    await expect(title).toBeVisible();
+    await page.evaluate((how) => (window.__harness.detailsEnd = how), end);
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+  }
+
+  test('a job the list does not hold says the same when a load brings no ad', async ({ page }) => {
+    await loadNotHeld(page, 'nothing');
+    await expect(page.getByTestId('toast')).toContainText(T.reader.state.notLoaded);
+  });
+
+  test('a job the list does not hold says nothing when the ad comes', async ({ page }) => {
+    await loadNotHeld(page, 'pages');
+    expect(await page.getByTestId('toast').count()).toBe(0);
+  });
+
   test('a load that failed says why and no more; one that worked says nothing', async ({
     page,
   }) => {

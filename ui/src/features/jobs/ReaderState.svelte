@@ -31,7 +31,6 @@
   import type { JobDetail } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { sameKey } from '$lib/state/jobRows';
-  import { jobs } from '$lib/state/jobs.svelte';
   import { portalSession, signInLocked } from '$lib/state/portalSession';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -81,14 +80,19 @@
   $effect(() => {
     if (!run.fetching) requested = false;
   });
-  // The run asked for here ended well without the ad: nothing on screen would say so. The list's
-  // row is as the run left it (`detail` loads again only later).
+  /** What the run asked for here said of this job's ad so far (`detail` loads again only later). */
+  let came: string | null = null;
+  // That run ended well without the ad: nothing on screen would say so.
   $effect(() =>
     run.listen((event) => {
-      if (event.type !== 'finished' || !requested) return;
-      const row = jobs.rows.find((held) => sameKey(held.key, job.key));
-      const told = row === undefined || ANSWERED.includes(row.detail.kind);
-      if (event.summary.outcome.kind === 'completed' && !told) {
+      if (!requested) return;
+      if (event.type === 'jobUpdated' && sameKey(event.job.key, job.key)) {
+        came = event.job.detail.kind;
+      } else if (
+        event.type === 'finished' &&
+        event.summary.outcome.kind === 'completed' &&
+        !ANSWERED.includes(came ?? detailKind)
+      ) {
         toasts.show(t.reader.state.notLoaded, 'warning');
       }
     }),
@@ -129,6 +133,7 @@
   /** "Anzeige laden": this job's ad, in a run of its own. */
   function load(): void {
     requested = true;
+    came = null;
     void run.start({ kind: 'details', keys: [job.key] });
   }
 
