@@ -3,11 +3,12 @@
   field) to add, the x ("Entfernen") removes, Backspace in the empty field removes the last
   one with the caret staying there, Esc closes the list under the field and then drops what was
   typed. An x puts no caret anywhere, from the keyboard the next x takes the focus (input.ts
-  removeBy). A chip's
-  value is copyable text (a drag selects it, Ctrl/Cmd+C copies; a double click selects a
-  word, it never edits the chip). A list of terms (`split` list) also splits at commas and
-  semicolons, typed or pasted; a list of sentences or names that hold commas (`split` lines)
-  only at line breaks. A value that is already there (in any case) is not added twice.
+  removeBy). A chip's value is copyable text (a drag selects it, Ctrl/Cmd+C copies; a double
+  click selects a word, it never edits the chip); while the caret stands in the field a press
+  on it leaves the caret there and what was typed typed (input.ts leaveField). A list of terms
+  (`split` list) also splits at commas and semicolons, typed or pasted; a list of sentences or
+  names that hold commas (`split` lines) only at line breaks. A value that is already there (in
+  any case) is not added twice.
   Without `entry` the field only shows and removes (chips chosen elsewhere). Its keys come
   from input.ts (chipKeys, withList).
   With `options` the field takes only those (the countries, a closed list): like every tag

@@ -1455,17 +1455,20 @@ function onScrollbar(event: MouseEvent): boolean {
 /**
  * A left press beside the focused field ends its focus, like a click on the empty part of a
  * native window. The engine does that by itself only where the press keeps its default: a
- * drag region (the window's top bar) cancels it. The field stays focused for a
- * press inside it or its box (the chips, the clear button), on a button that keeps the caret
- * (`data-keep-focus`), on its own label, and on a scrollbar.
+ * drag region (the window's top bar) cancels it. The field stays focused for a press inside it
+ * or its box (a chip's words, the clear button: the press gives up its default, which would take
+ * the focus and start a selection there), on a button that keeps the caret (`data-keep-focus`),
+ * on its own label, and on a scrollbar.
  */
 function leaveField(event: MouseEvent): void {
   const field = document.activeElement;
   if (!(field instanceof HTMLElement) || !inField(field) || inField(event.target)) return;
   const target = event.target instanceof Element ? event.target : null;
   if (target === null || closest(target, KEEP_FOCUS) !== null || onScrollbar(event)) return;
-  const box = field instanceof HTMLTextAreaElement ? field : (field.parentElement ?? field);
-  if (box.contains(target)) return;
+  if (field.closest(FIELD_BOX)?.contains(target) === true) {
+    event.preventDefault();
+    return;
+  }
   const label = target.closest('label');
   if (label !== null && label.control === field) return;
   field.blur();

@@ -1351,6 +1351,36 @@ test('a press on the free part of a tag field is a press like any other: the car
   await expect(regions.locator('input')).toBeFocused();
 });
 
+test('a press on the words of a chip keeps the caret in its field, what was typed stays typed', async ({
+  page,
+}) => {
+  await open(page, '?view=profile');
+  const tools = page.getByTestId('profile-tools');
+  const input = tools.locator('input');
+  const count = await tools.locator('[data-chip]').count();
+  await input.click();
+  await page.keyboard.type('Mi');
+  const words = tools.locator('.chip .text').first();
+  await words.click();
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue('Mi');
+  await expect(tools.locator('[data-chip]')).toHaveCount(count);
+  // The caret goes on where it was.
+  await page.keyboard.type('ro');
+  await expect(input).toHaveValue('Miro');
+  // The words of a chip of another field are beside this one: its text becomes a chip.
+  await page.getByTestId('profile-industries').locator('.chip .text').first().click();
+  await expect(input).not.toBeFocused();
+  await expect(tools.locator('[data-chip]')).toHaveCount(count + 1);
+  // With the caret nowhere the words select, like all text to copy.
+  const box = (await words.boundingBox())!;
+  await page.mouse.move(box.x + 1, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.up();
+  expect(await page.evaluate(() => getSelection()?.toString().trim().length)).toBeGreaterThan(1);
+});
+
 test('a press on the strip around a button in a field keeps the caret there', async ({ page }) => {
   await open(page, '?scenario=setup-profile');
   const password = page.getByTestId('mailbox-password');
