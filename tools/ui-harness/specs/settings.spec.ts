@@ -21,8 +21,11 @@ import {
 } from './fixtures';
 import {
   ALERT_PORTALS,
+  chips,
+  chooseFilter,
   expectMailboxState,
   failNext,
+  lastQuery,
   PORTALS,
   SEARCHED,
   reveal,
@@ -881,6 +884,29 @@ test('reset: the danger dialog says what goes in one sentence; a failure stays i
   await dialog.getByTestId('dialog-confirm').click();
   await expect(dialog).toBeHidden();
   expect(await calls(page, 'reset_all')).toHaveLength(2);
+});
+
+test('reset: what the page kept goes before the restart: the app starts without the old filter', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await chooseFilter(page, 'portal-linkedin');
+  await expect(chips(page)).toBeVisible();
+  await nav(page, 'nav-settings');
+  const kept = (): Promise<number> => page.evaluate(() => localStorage.length);
+  expect(await kept()).toBeGreaterThan(0);
+  // The restart can come before the answer: gone already when the reset is refused.
+  await failNext(page, 'reset_all');
+  await (await reveal(page, page.getByTestId('reset'))).click();
+  const dialog = page.getByTestId('dialog-reset');
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog.getByTestId('dialog-error')).toHaveText(DB_ERROR);
+  expect(await kept()).toBe(0);
+  // The new start on the same store: no chip on the list, and the first search shows all it brings.
+  await open(page, WIN);
+  await expect(page.getByTestId('job-list')).toBeVisible();
+  await expect(chips(page)).toHaveCount(0);
+  expect((await lastQuery(page))?.portals).toEqual([]);
 });
 
 /* ------------------------------------------------------------------- locks */

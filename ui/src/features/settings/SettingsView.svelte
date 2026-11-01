@@ -37,6 +37,7 @@
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
+  import { forgetKept } from '$lib/state/listChoices';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -88,10 +89,12 @@
   }
 
   /** On success the app restarts with the setup; a failure stays in the dialog, which tries
-   *  again. */
+   *  again. The restart can come before the answer, so what the page keeps goes first: a refused
+   *  reset costs only those choices. */
   async function reset(): Promise<void> {
     resetting = true;
     resetError = null;
+    forgetKept();
     try {
       await invoke('reset_all');
       confirmReset = false;
