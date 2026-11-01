@@ -534,6 +534,36 @@ test('Dein Profil: Enter is the primary, on the step and in a field', async ({ p
   await expectStep(page, T.firstRun.mailbox);
 });
 
+test('a held Enter presses once: it takes the chip and stays, it goes on and presses nothing there', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=setup-profile&step=profile&way=self`);
+  await expectStep(page, T.firstRun.profile);
+  const regions = page.getByTestId('profile-regions');
+  const hold = async (): Promise<void> => {
+    for (let repeat = 0; repeat < 3; repeat += 1) await page.keyboard.down('Enter');
+  };
+  await regions.locator('input').click();
+  await page.keyboard.type('Bremen');
+  await hold();
+  await page.keyboard.up('Enter');
+  await expect(regions.locator('[data-chip]').last()).toHaveAttribute('data-value', 'Bremen');
+  await settle(page);
+  await expectStep(page, T.firstRun.profile);
+  // A fresh press on an empty field goes on, and the same hold never presses Verbinden.
+  await page.keyboard.down('Enter');
+  await expectStep(page, T.firstRun.mailbox);
+  await hold();
+  await page.keyboard.up('Enter');
+  await settle(page);
+  await expect(page.getByTestId('mailbox-user')).not.toHaveAccessibleDescription(
+    T.settings.addressMissing,
+  );
+  await expect(page.getByTestId('mailbox-password')).not.toHaveAccessibleDescription(
+    T.settings.passwordMissing(true),
+  );
+});
+
 test('Weiter waits while a value is wrong: said at its field, which comes into view, no caret', async ({
   page,
 }) => {

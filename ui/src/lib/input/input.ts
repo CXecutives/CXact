@@ -49,13 +49,13 @@
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
 //   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
-//   dialog (with the focus nowhere the form pressed last). PageUp and PageDown scroll the pane
-//   that has the focus (or the one clicked last, else the view's own, `data-key-pane`) by a page,
-//   and with the focus nowhere (on no control, `isNowhere`) the arrows scroll that pane by a line
-//   and Home/End to its top and end, like a native scroll view. Key scrolling glides in one
-//   short tween (lib/motion/scroll.ts), never the engine's smooth scroll. Everything else,
-//   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
-//   Alt+Arrow back/forward), is swallowed.
+//   dialog (with the focus nowhere the form pressed last), once for a held key. PageUp and
+//   PageDown scroll the pane that has the focus (or the one clicked last, else the view's own,
+//   `data-key-pane`) by a page, and with the focus nowhere (on no control, `isNowhere`) the arrows
+//   scroll that pane by a line and Home/End to its top and end, like a native scroll view. Key
+//   scrolling glides in one short tween (lib/motion/scroll.ts), never the engine's smooth scroll.
+//   Everything else, including every WebView shortcut (reload, find, print, zoom, devtools, caret
+//   browsing, Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
 //   focus is. Esc closes only the layer on top: the menu, then the dialog, then the sidebar
 //   that floats over the view in a narrow window, whose button then takes the focus it held
@@ -64,7 +64,7 @@
 // - an × never puts a caret anywhere (`removeBy`): a click on it drops the focus; from the
 //   keyboard (Enter, Space, Backspace or Delete on a focused ×) the next × of the same list takes
 //   it, the previous one after the last. Backspace in a chip field removes the last chip and the
-//   caret stays there, as in any field (owner, 2026-11-01).
+//   caret stays there, as in any field (owner, 2026-11-01); a held one stops at the field's start.
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
@@ -318,9 +318,10 @@ function handlerFor(target: EventTarget | null, key: keyof FormKeyHandlers): (()
   return null;
 }
 
-/** Enter and Esc for the nearest form that handles them; `true` if one did. */
+/** Enter and Esc for the nearest form that handles them, once for a held key (its repeats would
+ *  walk on through what comes next); `true` if one did. */
 function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = event.target): boolean {
-  if (event.isComposing || hasModifier(event)) return false;
+  if (event.isComposing || hasModifier(event) || event.repeat) return false;
   let handler: (() => void) | null = null;
   if (event.key === 'Escape') {
     handler = handlerFor(target, 'cancel');
@@ -513,7 +514,7 @@ function cycleFocus(modal: HTMLElement, back: boolean): void {
 export interface ChipKeyHandlers {
   /** Enter: turn the typed text into chips; `true` if there was text. */
   commit: () => boolean;
-  /** Backspace in an empty field: remove the last chip; `true` if one went. */
+  /** A fresh Backspace in an empty field: remove the last chip; `true` if one went. */
   removeLast: () => boolean;
   /** Esc: drop the typed text; `true` if there was some. */
   clear: () => boolean;
@@ -528,9 +529,9 @@ const CHIP = '[data-chip]';
 
 /**
  * The keys of a chip field (components/ChipInput.svelte): Enter adds, Backspace in the empty
- * field removes the last chip, Esc drops the typed text. What a chip field does not use
- * goes on to the form (Enter on an empty chip field saves it). A field with a list under it
- * wraps its handlers in `withList`.
+ * field removes the last chip (a held one has cleared a word and stops there, it takes no chip),
+ * Esc drops the typed text. What a chip field does not use goes on to the form (Enter on an empty
+ * chip field saves it). A field with a list under it wraps its handlers in `withList`.
  */
 export const chipKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) => {
   chipFields.set(node, handlers);
@@ -605,7 +606,7 @@ function dispatchChipKey(event: KeyboardEvent): boolean {
     event.key === 'Enter'
       ? handlers.commit()
       : event.key === 'Backspace'
-        ? handlers.removeLast()
+        ? !event.repeat && handlers.removeLast()
         : event.key === 'Escape'
           ? handlers.clear()
           : event.key === 'ArrowDown'

@@ -823,6 +823,26 @@ test('Backspace in a tag field takes the last chip, the caret stays and typing g
   await expect(chips).toHaveCount(count);
 });
 
+test('a held Backspace clears the word and stops at the start of the field; a fresh press takes a chip', async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = page.getByTestId('profile-tools');
+  const input = tools.locator('input');
+  const count = await chips(tools).count();
+  await input.click();
+  await page.keyboard.type('abc');
+  // The key repeats of the OS: three for the word, the rest for what must stay.
+  for (let repeat = 0; repeat < 12; repeat += 1) await page.keyboard.down('Backspace');
+  await page.keyboard.up('Backspace');
+  await expect(input).toHaveValue('');
+  await expect(chips(tools)).toHaveCount(count);
+  await expect(input).toBeFocused();
+  await page.keyboard.press('Backspace');
+  await expect(chips(tools)).toHaveCount(count - 1);
+  await expect(input).toBeFocused();
+});
+
 test("a field's list shows its eight rows whole, and none stands under the top bar", async ({
   page,
 }) => {
