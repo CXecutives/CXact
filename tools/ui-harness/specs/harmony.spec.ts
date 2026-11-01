@@ -205,6 +205,75 @@ test('beside a real scrollbar a column has as much room on both sides', async ({
   });
 });
 
+for (const width of [1360, 792, 700, 480]) {
+  test(`at ${width} wide a page counts the scrollbar's room in its margins`, async ({
+    page: fixture,
+    playwright,
+    baseURL,
+    browserName,
+  }) => {
+    const engine = { page: fixture, playwright, baseURL, browserName };
+    await withRoom(engine, { width, height: 700 }, async (page) => {
+      /** A length of the design, whatever the scrollbar takes. */
+      const token = (name: string): Promise<number> =>
+        page.evaluate(
+          (name) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)),
+          name,
+        );
+      await open(page, `${WIN}&view=profile`);
+      const side = await token(width < 560 ? '--page-side-narrow' : '--page-side');
+      const most = (await token('--page-max')) - 2 * (await token('--page-side'));
+      /** Where the column stands in a view: in its middle, with the design's sides. */
+      const column = (view: { left: number; right: number }) => {
+        const wide = Math.min(most, view.right - view.left - 2 * side);
+        const middle = (view.left + view.right) / 2;
+        return { left: middle - wide / 2, right: middle + wide / 2 };
+      };
+      // Profil and Einstellungen stand alike, the title 2 in like the sections' titles.
+      const form = column(await edges(page.getByTestId('view-profile')));
+      expect(await edges(page.getByTestId('profile-form'))).toEqual(form);
+      const title = await edges(page.getByTestId('profile-heading'));
+      expect(title.left).toBe(form.left + (await token('--section-inset')));
+      await open(page, `${WIN}&view=settings`);
+      const box = column(await edges(page.getByTestId('view-settings')));
+      expect(await edges(page.locator('.box').first())).toEqual(box);
+      // The setup's page with its bar, across the whole window: Zurück's glyph and Weiter on the
+      // page's edges.
+      await open(page, `${WIN}&scenario=first-run&step=profile`);
+      await animationsDone(page);
+      const setup = column({ left: 0, right: width });
+      expect(await edges(page.getByTestId('profile-form'))).toEqual(setup);
+      const back = await edges(page.getByTestId('first-back').locator('.icon'));
+      const next = await edges(page.getByTestId('first-next'));
+      expect([back.left, next.right]).toEqual([setup.left, setup.right]);
+    });
+  });
+}
+
+test("narrow, a page, the list's head, a job and its placeholder share one column", async ({
+  page: fixture,
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  const engine = { page: fixture, playwright, baseURL, browserName };
+  await withRoom(engine, { width: 480, height: 700 }, async (page) => {
+    await open(page, `${WIN}&view=profile`);
+    const form = await edges(page.getByTestId('profile-form'));
+    await open(page, WIN);
+    expect(await edges(page.getByTestId('list-header').locator('.row').first())).toEqual(form);
+    // A slow job: nothing moves when it replaces its placeholder.
+    await page.evaluate(() => (window.__harness.detailDelay = 900));
+    await row(page, 'freelancermap-2801').click();
+    const skeleton = page.getByTestId('reader-skeleton');
+    await expect(skeleton).toBeVisible();
+    expect(await edges(skeleton)).toEqual(form);
+    const job = page.getByTestId('reader-head');
+    await expect(job).toBeVisible();
+    expect(await edges(job)).toEqual(form);
+  });
+});
+
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
   page,
 }) => {

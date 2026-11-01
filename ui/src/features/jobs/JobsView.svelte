@@ -452,7 +452,8 @@
   /* A narrow window: the sides of the pages (Page). */
   @media (width < 560px) {
     .column {
-      padding-inline: var(--page-side-narrow);
+      padding-right: var(--page-side-narrow-end);
+      padding-left: var(--page-side-narrow);
     }
   }
 </style>

@@ -1,11 +1,11 @@
 <!--
   The frame of a page (Profil, Einstellungen, the setup's steps; the round 10 draft): the
   page's warm white ground (--page; the setup's cream with `ground="bg"`) at least as high as
-  the view, its column (--page-max with --page-side, 16 in a narrow page) centred in it, 8
-  under the top bar and 40 free at its end, like every scroll area. A head (`head`: the
-  page's title, PageHeader) opens the column, 22 above the first section's title. The column is
-  the container its parts ask for their width. While a file the page would take is over it
-  (`over`: a CV on the Profil) a dashed edge stands inside the view.
+  the view, its column (--page-max with --page-side, 16 in a narrow page, the scrollbar's room
+  counted in them) centred in it, 8 under the top bar and 40 free at its end, like every scroll
+  area. A head (`head`: the page's title, PageHeader) opens the column, 22 above the first
+  section's title. The column is the container its parts ask for their width. While a file the
+  page would take is over it (`over`: a CV on the Profil) a dashed edge stands inside the view.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -64,9 +64,9 @@
     flex-direction: column;
     gap: var(--page-head-gap);
     width: 100%;
-    max-width: var(--page-max);
+    max-width: var(--page-column);
     margin: 0 auto;
-    padding: var(--page-top-pad) var(--page-side) var(--page-bottom);
+    padding: var(--page-top-pad) var(--page-side-end) var(--page-bottom);
   }
 
   .content {
@@ -78,7 +78,7 @@
 
   @container page (width < 560px) {
     .column {
-      padding-inline: var(--page-side-narrow);
+      padding-inline: var(--page-side-narrow-end);
     }
   }
 

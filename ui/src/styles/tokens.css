@@ -597,6 +597,11 @@
   --pane-padding-end: max(0px, calc(var(--pane-padding) - var(--scrollbar-room)));
   --list-rows-inset-end: max(0px, calc(var(--list-rows-inset) - var(--scrollbar-room)));
   --reader-pad-right: max(0px, calc(var(--reader-pad-x) - var(--scrollbar-room)));
+  /* A page keeps the room on both sides (the view's padding at its left, the track at its right):
+     its column is that much narrower and its sides count it, so its content stands as it would
+     without a scrollbar. */
+  --page-column: calc(var(--page-max) - 2 * var(--scrollbar-room));
+  --page-side-end: max(0px, calc(var(--page-side) - var(--scrollbar-room)));
   --page-side-narrow-end: max(0px, calc(var(--page-side-narrow) - var(--scrollbar-room)));
   --tooltip-max: 260px;
   --tooltip-gap: 6px;
