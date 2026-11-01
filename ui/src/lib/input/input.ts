@@ -729,8 +729,10 @@ function onFocusIn(event: FocusEvent): void {
   if (closest(node, MODAL) !== null) watchWheel('modal', true);
   // What only holds the focus is no control, and may be taller than the area.
   if (!keyboardFocus || !(node instanceof HTMLElement) || isNowhere(node)) return;
-  // After the engine's own scroll into view.
-  requestAnimationFrame(() => keepInView(node));
+  // After the engine's own scroll into view, unless the focus has moved on by then.
+  requestAnimationFrame(() => {
+    if (document.activeElement === node) keepInView(node);
+  });
 }
 
 function onKeyDown(event: KeyboardEvent): void {

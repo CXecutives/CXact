@@ -2160,6 +2160,56 @@ test('Ergänzen from the keyboard: the focus comes along, no caret; Tab goes on 
   expect(await place()).toBe(byKeys);
 });
 
+test('a glide goes on to its place though what lies above it changes its height meanwhile', async ({
+  page,
+}) => {
+  // Long enough to change it under way, however busy the machine.
+  await setToken(page, '--dur-slow', '600ms');
+  await profile(page, '&scenario=profile-incomplete');
+  const go = page.getByTestId('profile-missing-go');
+  await go.click();
+  await expect(field(page, 'roles')).toHaveAttribute('data-arrived', '');
+  await page.evaluate(() => {
+    const form = document.querySelector('[data-testid="profile-form"]')!;
+    const watch = (): void => {
+      // Once it lies above the view, where the engine's scroll anchoring takes it into account.
+      if (form.getBoundingClientRect().top > 0) {
+        requestAnimationFrame(watch);
+        return;
+      }
+      const box = document.createElement('div');
+      box.style.height = '100px';
+      form.before(box);
+    };
+    requestAnimationFrame(watch);
+  });
+  await go.click();
+  const add = page.getByTestId('languages-add');
+  await expect(add).toHaveAttribute('data-arrived', '');
+  await expect(add).toBeInViewport({ ratio: 1 });
+  await animationsDone(page);
+  await expect(add).toBeInViewport({ ratio: 1 });
+});
+
+test('a control the focus has left by the next frame is not brought back into view', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  const view = page.getByTestId('view-profile');
+  // The focus by the keyboard: a key before.
+  await page.keyboard.press('Shift');
+  const end = await view.evaluate((node) => {
+    const go = document.querySelector<HTMLElement>('[data-testid="profile-missing-go"]')!;
+    go.focus();
+    document.querySelector<HTMLElement>('[data-field~="languages"] [data-arrive]')!.focus();
+    node.scrollTop = node.scrollHeight;
+    return node.scrollTop;
+  });
+  expect(end).toBeGreaterThan(0);
+  await settle(page);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(end);
+});
+
 test('Tab after a press on Ergänzen goes on from the row it led to, Shift+Tab back from there', async ({
   page,
 }) => {

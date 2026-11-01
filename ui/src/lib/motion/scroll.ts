@@ -4,7 +4,9 @@
 // scroll (its length and curve differ per engine and cannot be set). Under reduced motion
 // the pane jumps. Another key while a glide runs adds to where that glide was going, like
 // the native smooth scroll; the wheel, the scrollbar or the middle button take over at once
-// (the glide ends when the pane moved by something else).
+// (the glide ends when the pane moved by something else). What the content does meanwhile changes
+// nothing: where its height changes above the view the engine's scroll anchoring moves the pane
+// with what it shows, and the glide goes along.
 
 import { duration, easing } from './motion';
 
@@ -13,6 +15,8 @@ interface Glide {
   target: number;
   /** What the glide set last (anything else moved the pane: the glide ends). */
   set: number;
+  /** How tall the content was then. */
+  height: number;
   frame: number;
 }
 
@@ -40,22 +44,28 @@ export function glideTo(pane: HTMLElement, top: number): void {
   const to = Math.round(Math.min(maxTop(pane), Math.max(0, top)));
   stopGlide(pane);
   const ms = duration('slow');
-  const from = pane.scrollTop;
+  let from = pane.scrollTop;
   if (ms === 0 || to === Math.round(from)) {
     pane.scrollTop = to;
     return;
   }
   const ease = easing('out');
   const start = performance.now();
-  const glide: Glide = { target: to, set: from, frame: 0 };
+  const glide: Glide = { target: to, set: from, height: pane.scrollHeight, frame: 0 };
   const step = (now: number): void => {
-    // The wheel, the scrollbar or the middle button moved the pane: they have it now.
-    if (Math.abs(pane.scrollTop - glide.set) > 1) {
-      glides.delete(pane);
-      return;
+    const moved = pane.scrollTop - glide.set;
+    if (Math.abs(moved) > 1) {
+      // The wheel, the scrollbar or the middle button moved the pane: they have it now.
+      if (pane.scrollHeight === glide.height) {
+        glides.delete(pane);
+        return;
+      }
+      from += moved;
+      glide.target += moved;
     }
+    glide.height = pane.scrollHeight;
     const progress = Math.min(1, (now - start) / ms);
-    pane.scrollTop = from + (to - from) * ease(progress);
+    pane.scrollTop = from + (glide.target - from) * ease(progress);
     glide.set = pane.scrollTop;
     if (progress < 1) glide.frame = requestAnimationFrame(step);
     else glides.delete(pane);
