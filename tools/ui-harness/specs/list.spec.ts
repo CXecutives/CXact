@@ -2128,6 +2128,38 @@ test.describe('search', () => {
     await expect(row(page, waiting)).toBeVisible();
   });
 
+  test('the end of a search brings the open job back into view, as an order or a filter does', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, `${WIN}&scenario=many`);
+    const search = page.getByTestId('search');
+    // A hit further down the whole list than its first page.
+    const words = 'Familienunternehmen 602';
+    const key = (await stubList(page, { search: words })).active[0]!;
+    expect((await stubList(page, { limit: 120 })).active).not.toContain(key);
+    await search.fill(words);
+    await row(page, key).click();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+    // Esc in the search: the list loads as far as needed, the row stands in view with its mark.
+    await search.press('Escape');
+    await expect(search).toHaveValue('');
+    await expect(row(page, key)).toBeVisible();
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    await expectHighlightOn(page, key);
+    // Its × and a chosen place do the same.
+    for (const end of ['clear', 'place'] as const) {
+      await search.fill(words);
+      await expect(page.getByTestId('list-scroll')).toHaveJSProperty('scrollTop', 0);
+      await expect(row(page, key)).toBeVisible();
+      if (end === 'clear') await page.getByRole('button', { name: T.field.clear }).click();
+      else await page.getByTestId('place-inbox').click();
+      await expect(search).toHaveValue('');
+      await expect.poll(() => wholeInList(page, key)).toBe(true);
+      await expectHighlightOn(page, key);
+    }
+  });
+
   test('a hit opened from a section only the search holds open: without the search the kept choice returns', async ({
     page,
   }) => {

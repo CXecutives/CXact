@@ -67,7 +67,9 @@ export function mountedKeys(page: Page): Promise<string[]> {
 export function wholeInList(page: Page, key: string): Promise<boolean> {
   return row(page, key).evaluate((node) => {
     const box = node.getBoundingClientRect();
-    const pane = node.closest<HTMLElement>('[data-testid="list-scroll"]')!;
+    const pane = node.closest<HTMLElement>('[data-testid="list-scroll"]');
+    // A row on its way out of the page.
+    if (pane === null) return false;
     const view = pane.getBoundingClientRect();
     const heading = node
       .closest('[data-key]')
