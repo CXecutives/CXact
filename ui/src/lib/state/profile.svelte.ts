@@ -195,6 +195,9 @@ class ProfileEditor {
   /** The day is judged (said when it does not read): once its field is left or on saving, never
    *  while it is typed. */
   judged = $state(false);
+  /** Someone asked for what is missing (Ergänzen, Weiter, Profil ergänzen): it stays marked until
+   *  it is filled, a look at another view changes nothing; until then the rows stay calm. */
+  asked = $state(false);
   /** Text typed into a chip field that is no chip yet: a change like any other. */
   readonly typed = new TypedText();
 
@@ -246,6 +249,7 @@ class ProfileEditor {
   close(): void {
     this.#start('stored', emptyForm(), emptyForm());
     this.origin = null;
+    this.asked = false;
   }
 
   /** "Ab Datum" is chosen and text stands as its day that does not read. */

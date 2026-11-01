@@ -1685,6 +1685,37 @@ async function foldsWithoutJump(page: Page, act: () => Promise<void>): Promise<n
   return after;
 }
 
+test('what Ergänzen marked stays marked over a look at another view, until it is filled', async ({
+  page,
+}) => {
+  await profile(page, '&scenario=profile-incomplete');
+  await page.getByTestId('profile-missing-go').click();
+  await expect.poll(() => marked(page)).toEqual(['roles', 'languages']);
+  const look = async (): Promise<void> => {
+    await page.getByTestId('nav-settings').click();
+    await expect(page.getByTestId('view-settings')).toBeVisible();
+    await page.getByTestId('nav-profile').click();
+    await expect(page.getByTestId('view-profile')).toBeVisible();
+  };
+  await look();
+  await expect(missingCard(page)).toContainText(T.profile.missing.heading(2));
+  expect(await marked(page)).toEqual(['roles', 'languages']);
+  // Filled, nothing stands marked; a gap that opens again is calm until someone asks.
+  const input = roles(page).locator('input');
+  await input.fill('Interim CFO');
+  await input.press('Enter');
+  await (await adder(page, 'language')).fill(LANGUAGE.de);
+  await page.keyboard.press('Enter');
+  await expect(missingCard(page)).toHaveCount(0);
+  expect(await marked(page)).toEqual([]);
+  await roles(page).locator('[data-remove]').first().click();
+  await expect(missingCard(page)).toContainText(T.profile.missing.heading(1));
+  expect(await marked(page)).toEqual([]);
+  await look();
+  await expect(missingCard(page)).toContainText(T.profile.missing.heading(1));
+  expect(await marked(page)).toEqual([]);
+});
+
 test('the card of what is missing unfolds and folds away: the rows glide, also the gap under it', async ({
   page,
 }) => {

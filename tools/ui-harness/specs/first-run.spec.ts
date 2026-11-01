@@ -235,6 +235,25 @@ test('the mouse button is Zurück: it keeps what was typed too', async ({ page }
   await expect(roles).toContainText('Interim CEO');
 });
 
+test('what Weiter marked stays marked over Zurück, with the form that was typed in', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run`);
+  await toWays(page);
+  await page.getByTestId('way-self').click();
+  const tools = page.getByTestId('profile-tools').locator('input');
+  await tools.fill('Miro');
+  await tools.press('Enter');
+  await next(page).click();
+  const all = ['roles', 'competences', 'languages'];
+  await expect.poll(() => marks(page)).toEqual(all);
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-self').click();
+  await expectStep(page, T.firstRun.profile);
+  await expect.poll(() => marks(page)).toEqual(all);
+});
+
 test('a failed evaluation comes back to the upload and says why above it', async ({ page }) => {
   // A new try can work: the drop zone stays and is the way on.
   for (const [cv, reason] of [
