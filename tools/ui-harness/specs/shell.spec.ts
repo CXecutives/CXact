@@ -660,6 +660,29 @@ for (const os of [WIN, MAC]) {
     await expect(page.locator('body')).toBeFocused();
   });
 
+  test(`the keyboard's focus going on into the view folds the floating sidebar, the top bar does not ${os}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1099, height: 700 });
+    await open(page, os);
+    const floating = page.getByTestId('sidebar-floating');
+    await page.getByTestId('toggle-sidebar').focus();
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    const inView = (): Promise<boolean> =>
+      page.evaluate(() => document.activeElement?.closest('main') != null);
+    // On through the bar's buttons (the job view's stands before the entries) and the entries.
+    for (let press = 0; press < 20 && !(await inView()); press += 1) {
+      await expect(floating).toBeVisible();
+      await page.keyboard.press('Tab');
+    }
+    // What holds the focus lies free: the card is gone, and the field keeps the focus.
+    const search = page.getByTestId('search');
+    await expect(search).toBeFocused();
+    await expect(floating).toHaveCount(0);
+    await expect(search).toBeFocused();
+  });
+
   test(`a floating sidebar folds once the window is wide enough to dock it, and its button says so ${os}`, async ({
     page,
   }) => {
@@ -1114,6 +1137,31 @@ test('a start whose data cannot load offers the backups; a restore loads the app
   expect(await calls(page, 'restore_backup')).toHaveLength(1);
 });
 
+test('Rückgängig of a restored backup that fails keeps its toast: the reason, and it tries again', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  await page.getByTestId('restore-backup').click();
+  const dialog = page.getByTestId('dialog-backup');
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  const action = (words: string): Locator =>
+    page.getByTestId('toast').filter({ hasText: words }).getByTestId('toast-action');
+  await expect(action(T.shell.backupRestored)).toHaveText(T.common.undo);
+  await failNext(page, 'restore_backup');
+  await action(T.shell.backupRestored).click();
+  await expect(action(T.error.text('db', {}))).toHaveText(T.common.retry);
+  // It went nowhere: the copy of before is still what the next try restores.
+  const restored = async (): Promise<unknown[]> =>
+    (await calls(page, 'restore_backup')).map(([, args]) => args);
+  const [chosen, undo] = await restored();
+  expect(undo).not.toEqual(chosen);
+  await action(T.error.text('db', {})).click();
+  await expect(page.getByTestId('toast').filter({ hasText: T.shell.backupUndone })).toBeVisible();
+  expect(await restored()).toEqual([chosen, undo, undo]);
+});
+
 test('the note under the ways of a failed start stands in one box, its words inside it', async ({
   page,
 }) => {
@@ -1140,6 +1188,94 @@ test('the note under the ways of a failed start stands in one box, its words ins
     });
     expect(seen, `${width}`).toEqual({ lines: 1, inside: true, window: true });
   }
+});
+
+test('the note of a failed start moves nothing: the next press lands on the same button', async ({
+  page,
+}) => {
+  const ways = [
+    ['open-data', 'open_target'],
+    ['restore-backup', 'list_backups'],
+  ] as const;
+  for (const size of [
+    { width: 1360, height: 900 },
+    { width: 480, height: 360 },
+  ]) {
+    for (const [way, command] of ways) {
+      await page.setViewportSize(size);
+      await open(page, `${WIN}&scenario=load-failed`);
+      const heading = page.getByTestId('view-error').getByRole('heading');
+      const button = page.getByTestId(way);
+      const before = { button: await button.boundingBox(), heading: await heading.boundingBox() };
+      const at = { x: before.button!.x + 8, y: before.button!.y + before.button!.height / 2 };
+      await failNext(page, command);
+      await page.mouse.click(at.x, at.y);
+      const note = page.getByTestId('ways-note');
+      await expect(note).toHaveText(T.error.text('db', {}));
+      await motionSettled(page);
+      expect({ button: await button.boundingBox(), heading: await heading.boundingBox() }).toEqual(
+        before,
+      );
+      // It stands under the ways and in the window, its box inside the view.
+      const box = (await note.boundingBox())!;
+      expect(box.y).toBeGreaterThan(before.button!.y + before.button!.height);
+      expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+      // The resting pointer still has the button under it.
+      const count = (await calls(page, command)).length;
+      await page.mouse.click(at.x, at.y);
+      await expect.poll(async () => (await calls(page, command)).length).toBe(count + 1);
+    }
+  }
+});
+
+test('Erneut versuchen that fails keeps the screen and the focus, and the note goes', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const failed = page.getByTestId('view-error');
+  const retry = failed.getByRole('button', { name: T.common.retry });
+  const note = page.getByTestId('ways-note');
+  // A note from an earlier press.
+  await failNext(page, 'open_target');
+  await page.getByTestId('open-data').click();
+  await expect(note).toHaveText(T.error.text('db', {}));
+  // From now on: does the screen ever go for the loading one?
+  await page.evaluate(() => {
+    const view = document.querySelector('[data-testid="view-error"]');
+    const watched = window as unknown as { blanked: boolean };
+    watched.blanked = false;
+    new MutationObserver(() => {
+      watched.blanked ||= !document.contains(view);
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  const blanked = (): Promise<boolean> =>
+    page.evaluate(() => (window as unknown as { blanked: boolean }).blanked);
+  await failNext(page, 'app_state');
+  await retry.focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await calls(page, 'app_state')).length).toBe(2);
+  await expect(note).toHaveCount(0);
+  await expect(retry).toBeFocused();
+  expect(await blanked()).toBe(false);
+  // The same key goes on from there, and this time the data comes.
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  expect(await calls(page, 'app_state')).toHaveLength(3);
+});
+
+test('Erneut versuchen turns in its own place while it tries', async ({ page }) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const retry = page.getByTestId('view-error').getByRole('button', { name: T.common.retry });
+  await retry.evaluate((button) => {
+    const watched = window as unknown as { busy: boolean };
+    watched.busy = false;
+    new MutationObserver(() => {
+      watched.busy ||= button.getAttribute('aria-busy') === 'true';
+    }).observe(button, { attributes: true });
+  });
+  await retry.click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { busy: boolean }).busy)).toBe(true);
 });
 
 test('Ordner öffnen that fails says so in the note under the ways of a failed start', async ({

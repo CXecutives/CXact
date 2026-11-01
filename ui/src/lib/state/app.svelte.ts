@@ -13,13 +13,14 @@ class AppStore {
   loading = $state(false);
   slow = $state(false);
 
-  /** Loads the state; resolves with it (or null after an error). */
+  /** Loads the state; resolves with it (or null after an error). A failure stands until the
+   *  answer of the next try: the screen that says so and its pressed button stay meanwhile. */
   async load(): Promise<AppState | null> {
     this.loading = true;
-    this.error = null;
     const timer = setTimeout(() => (this.slow = true), tokenMs('--dur-fast'));
     try {
       const next = await invoke('app_state');
+      this.error = null;
       this.set(next);
       return next;
     } catch (error) {

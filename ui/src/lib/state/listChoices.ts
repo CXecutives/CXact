@@ -1,9 +1,21 @@
 // The order and the filter of the job list as the user chose them, kept per user (read by
 // lib/state/jobs.svelte.ts). A store that cannot be read keeps the default; without one the choice
-// lasts for this session.
+// lasts for this session. Here too the one way to forget all the page keeps (`forgetKept`).
 
 import type { JobSort } from '../ipc/types';
 import { isFiltered, NO_FILTER, parseFilter, type ListFilter } from './filter';
+
+/** "Alles zurücksetzen": all the page keeps goes, the list's choices and the others' (the open
+ *  job, the sidebar, the widths). The store is the web view's: it outlives the restart, and core's
+ *  reset does not reach it. */
+export function forgetKept(): void {
+  try {
+    localStorage.clear();
+  } catch {
+    // Without a store nothing was kept.
+    return;
+  }
+}
 
 /** Where the order of the list is kept (one choice for every list, per user). */
 const SORT_KEY = 'jobs-sort';

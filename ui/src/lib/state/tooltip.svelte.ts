@@ -11,6 +11,8 @@ class TooltipState {
   text = $state('');
   #hiddenAt = 0;
   #dismissed = 0;
+  /** A click brought the bubble (an info symbol). */
+  #clicked = false;
 
   get warm(): boolean {
     return this.anchor !== null || performance.now() - this.#hiddenAt < WARM_MS;
@@ -21,15 +23,26 @@ class TooltipState {
     return this.#dismissed;
   }
 
+  /** The user asked for the bubble: a click brought it, or the keyboard's focus holds its anchor.
+   *  It is then the layer on top, which Esc closes alone; one under a passing pointer only comes
+   *  along. */
+  get held(): boolean {
+    if (this.anchor === null) return false;
+    if (this.#clicked) return true;
+    const focused = document.activeElement;
+    return focused !== null && this.anchor.contains(focused) && focused.matches(':focus-visible');
+  }
+
   /** A press or Esc: the bubble goes and every tooltip still waiting for its delay with it. */
   dismiss(): void {
     this.#dismissed += 1;
     this.hide();
   }
 
-  show(anchor: HTMLElement, text: string): void {
+  show(anchor: HTMLElement, text: string, clicked = false): void {
     this.anchor = anchor;
     this.text = text;
+    this.#clicked = clicked;
     anchor.setAttribute('aria-describedby', TOOLTIP_ID);
   }
 

@@ -247,9 +247,13 @@
     min-height: 100%;
   }
 
+  /* The step is the form of the whole view: it reaches over the room the view keeps at its left
+     (App.svelte, --scrollbar-room), so a press there is a press on the step like any other. */
   .step {
     display: grid;
     flex: 1;
+    margin-left: calc(-1 * var(--scrollbar-room));
+    padding-left: var(--scrollbar-room);
   }
 
   .mark {

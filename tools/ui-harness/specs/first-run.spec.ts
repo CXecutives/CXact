@@ -1001,6 +1001,43 @@ test('beside a real scrollbar the bar of Dein Profil still reaches the edge of t
   }
 });
 
+test('beside a real scrollbar a press in the room at the left of the view is a press on the step', async ({
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  // Windows only (WebView2): macOS's overlay scrollbars take no room.
+  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    const page = await browser.newPage({
+      ...(baseURL ? { baseURL } : {}),
+      viewport: { width: 1360, height: 860 },
+      locale: 'de-DE',
+    });
+    await open(page, `${WIN}&scenario=first-run&step=reading`);
+    const view = page.getByTestId('view-first-run');
+    const room = await view.evaluate(
+      (node) => (node as HTMLElement).offsetWidth - node.clientWidth,
+    );
+    expect(room).toBeGreaterThan(0);
+    // The card stands in the middle of the view all the same.
+    const edges = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="first-bar"]')!.closest('.card')!;
+      const box = card.getBoundingClientRect();
+      const pane = document.querySelector('[data-testid="view-first-run"]')!;
+      return { left: box.left, right: pane.getBoundingClientRect().right - box.right };
+    });
+    expect(edges.left).toBe(edges.right);
+    await page.mouse.click(room / 2, 500);
+    await page.keyboard.press('Escape');
+    await expectStep(page, T.firstRun.upload);
+    expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a press on the bar of Dein Profil leaves Enter with Weiter, as on the rest of the step', async ({
   page,
 }) => {

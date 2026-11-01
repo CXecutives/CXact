@@ -4,7 +4,7 @@
 // fresh hover of that trigger places it, never at a place measured from the previous text.
 
 import type { Locator, Page } from '@playwright/test';
-import { expect, open, test } from './fixtures';
+import { animationsDone, expect, open, test } from './fixtures';
 import {
   chipRemove,
   chooseFilter,
@@ -13,6 +13,7 @@ import {
   listed,
   openJob,
   openPlace,
+  reveal,
   row,
   rows,
   stage,
@@ -310,4 +311,62 @@ test('a title that is short never says it again', async ({ page }) => {
   await row(page, key).locator('.title').hover();
   await page.waitForTimeout(700);
   await expect(tip(page)).toHaveCount(0);
+});
+
+test.describe('Esc and the bubble of the info symbol in the mailbox form', () => {
+  const ADDRESS = 'jemand@example.org';
+
+  /** The form with an address typed, and its info symbol. */
+  async function openForm(page: Page): Promise<{ form: Locator; info: Locator }> {
+    await open(page, `${WIN}&scenario=no-mailbox&view=settings`);
+    await (await reveal(page, page.getByTestId('mailbox-connect'))).click();
+    const form = page.getByTestId('mailbox-form');
+    await page.getByTestId('mailbox-user').fill(ADDRESS);
+    // Unfolded, it glides into view once (and a scroll takes every bubble away).
+    await animationsDone(page);
+    const view = page.getByTestId('view-settings');
+    let top: number | null = null;
+    await expect
+      .poll(async () => {
+        const before = top;
+        top = await view.evaluate((node) => node.scrollTop);
+        return before === top;
+      })
+      .toBe(true);
+    return { form, info: form.getByTestId('info-tip') };
+  }
+
+  /** Esc took only the bubble; the next one reaches the form. */
+  async function escTakesBubbleFirst(page: Page, form: Locator): Promise<void> {
+    await expect(tip(page)).toHaveText(T.settings.passwordInfo.gmail);
+    await page.keyboard.press('Escape');
+    await expect(tip(page)).toHaveCount(0);
+    await animationsDone(page);
+    await expect(form).toBeVisible();
+    await expect(page.getByTestId('mailbox-user')).toHaveValue(ADDRESS);
+    await page.keyboard.press('Escape');
+    await expect(form).toHaveCount(0);
+  }
+
+  test('a bubble a press brought goes alone', async ({ page }) => {
+    const { form, info } = await openForm(page);
+    await info.click();
+    await escTakesBubbleFirst(page, form);
+  });
+
+  test('a bubble on the keyboard focus goes alone', async ({ page }) => {
+    const { form, info } = await openForm(page);
+    await page.keyboard.press('Tab');
+    await expect(info).toBeFocused();
+    await escTakesBubbleFirst(page, form);
+  });
+
+  test('a bubble only under the pointer takes no Esc', async ({ page }) => {
+    const { form, info } = await openForm(page);
+    await info.hover();
+    await expect(tip(page)).toHaveText(T.settings.passwordInfo.gmail);
+    await page.keyboard.press('Escape');
+    await expect(tip(page)).toHaveCount(0);
+    await expect(form).toHaveCount(0);
+  });
 });

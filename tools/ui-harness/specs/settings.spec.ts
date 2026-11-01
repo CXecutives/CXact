@@ -21,8 +21,11 @@ import {
 } from './fixtures';
 import {
   ALERT_PORTALS,
+  chips,
+  chooseFilter,
   expectMailboxState,
   failNext,
+  lastQuery,
   PORTALS,
   SEARCHED,
   reveal,
@@ -257,6 +260,30 @@ test('mailbox: Ändern unfolds the form under the row; Esc folds it, Verbinden s
   await expect(form).toHaveCount(0);
   expect(await calls(page, 'save_mailbox')).toHaveLength(1);
   await expect(page.getByTestId('mailbox-change')).toBeFocused();
+});
+
+test('a press beside the mailbox form is no press on it: Esc leaves the form standing', async ({
+  page,
+}) => {
+  // The sidebar folded: nothing of its handle over the view's left edge.
+  await page.setViewportSize({ width: 1099, height: 860 });
+  await settings(page);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  const form = page.getByTestId('mailbox-form');
+  await animationsDone(page);
+  const view = (await page.getByTestId('view-settings').boundingBox())!;
+  expect(view.x).toBe(0);
+  // Where a scrollbar's room stands at the view's left, and beside the page's column.
+  for (const x of [2, 20]) {
+    await page.mouse.click(x, view.y + view.height / 2);
+    await page.keyboard.press('Escape');
+    await animationsDone(page);
+    await expect(form).toBeVisible();
+  }
+  // A press in the form is one: Esc is its Abbrechen.
+  await form.click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press('Escape');
+  await expect(form).toHaveCount(0);
 });
 
 test('mailbox form: rows like the Profil, the buttons in the order of the OS', async ({ page }) => {
@@ -842,6 +869,24 @@ test('portals: a sign-in that ran out says so in red and offers Anmelden', async
   await expect(page.getByTestId('sign-in-freelance')).toBeVisible();
 });
 
+test('portals: a sign-in that ran out and is given again says nothing more, for good', async ({
+  page,
+}) => {
+  await settings(page, `${WIN}&scenario=sign-in-expired`);
+  const status = page.getByTestId('portal-freelance-hint');
+  await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
+  await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
+  await expect(status).not.toHaveText(T.settings.signInExpired);
+  expect(await calls(page, 'portal_login')).toHaveLength(1);
+  // Off and on again it does not come back.
+  const enabled = page.getByTestId('toggle-enabled-freelance');
+  await enabled.click();
+  await expect(enabled).toHaveAttribute('aria-checked', 'false');
+  await enabled.click();
+  await expect(enabled).toHaveAttribute('aria-checked', 'true');
+  await expect(status).not.toHaveText(T.settings.signInExpired);
+});
+
 test('portals: Anmelden and Abmelden keep one width', async ({ page }) => {
   await settings(page);
   const signIn = await reveal(page, page.getByTestId('sign-in-freelance'));
@@ -943,6 +988,29 @@ test('reset: the danger dialog says what goes in one sentence; a failure stays i
   expect(await calls(page, 'reset_all')).toHaveLength(2);
 });
 
+test('reset: what the page kept goes before the restart: the app starts without the old filter', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await chooseFilter(page, 'portal-linkedin');
+  await expect(chips(page)).toBeVisible();
+  await nav(page, 'nav-settings');
+  const kept = (): Promise<number> => page.evaluate(() => localStorage.length);
+  expect(await kept()).toBeGreaterThan(0);
+  // The restart can come before the answer: gone already when the reset is refused.
+  await failNext(page, 'reset_all');
+  await (await reveal(page, page.getByTestId('reset'))).click();
+  const dialog = page.getByTestId('dialog-reset');
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog.getByTestId('dialog-error')).toHaveText(DB_ERROR);
+  expect(await kept()).toBe(0);
+  // The new start on the same store: no chip on the list, and the first search shows all it brings.
+  await open(page, WIN);
+  await expect(page.getByTestId('job-list')).toBeVisible();
+  await expect(chips(page)).toHaveCount(0);
+  expect((await lastQuery(page))?.portals).toEqual([]);
+});
+
 /* ------------------------------------------------------------------- locks */
 
 test('reset: while it runs only the dialog answers, not the row behind its scrim', async ({
@@ -995,6 +1063,11 @@ test('a search that waits for the sign-in leaves Anmelden of that portal on', as
   await expect
     .poll(async () => (await calls(page, 'portal_login')).at(-1)?.[1])
     .toEqual({ portal: 'freelance' });
+  // Given, it waits no more: the row says so at once, and the search goes on to its end.
+  await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
+  await expect(page.getByTestId('portal-freelance-hint')).not.toHaveText(T.settings.signInWaiting);
+  await runFinished(page);
+  await expect(page.getByTestId('portal-freelance-hint')).not.toHaveText(T.settings.signInWaiting);
 });
 
 test('switching a portal off lets its calls fade out together: Anmelden does not jump', async ({
