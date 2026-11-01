@@ -274,6 +274,45 @@ test("narrow, a page, the list's head, a job and its placeholder share one colum
   });
 });
 
+test('no hit: the tile, its words, the button under them and the head have one middle', async ({
+  page: fixture,
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  const engine = { page: fixture, playwright, baseURL, browserName };
+  await withRoom(engine, { width: 1360, height: 860 }, async (page) => {
+    const middle = async (node: Locator): Promise<number> => {
+      const { left, right } = await edges(node);
+      return (left + right) / 2;
+    };
+    await open(page, WIN);
+    await page.getByTestId('search').fill('Kreditoren');
+    const none = page.getByTestId('empty-search');
+    await expect(none.getByTestId('also-archive')).toBeVisible();
+    const head = await middle(page.getByTestId('list-header').locator('.row').first());
+    // (A line of text is as wide as its words, so its middle may lie a little off the pixel.)
+    expect(await middle(none.locator('.tile'))).toBeCloseTo(head, 0);
+    expect(await middle(none.locator('h3'))).toBeCloseTo(head, 0);
+    expect(await middle(none.locator('p'))).toBeCloseTo(head, 0);
+    expect(await middle(none.getByTestId('also-archive'))).toBeCloseTo(head, 0);
+    // An empty place under its head (a kept filter), across the whole width: the view's middle.
+    await page.addInitScript(() =>
+      localStorage.setItem('jobs-filter', JSON.stringify({ portals: ['linkedin'] })),
+    );
+    await open(page, `${WIN}&scenario=concept`);
+    await openPlace(page, 'archive');
+    const place = page.getByTestId('empty-place-archive');
+    await expect(place).toBeVisible();
+    const view = await middle(page.getByTestId('view-jobs'));
+    expect(await middle(page.getByTestId('list-header').locator('.row').first())).toBeCloseTo(
+      view,
+      0,
+    );
+    expect(await middle(place.locator('.tile'))).toBeCloseTo(view, 0);
+  });
+});
+
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
   page,
 }) => {

@@ -92,10 +92,11 @@
     text-align: center;
   }
 
-  /* At the top of a list, across its full width. */
+  /* At the top of a list, across its full width: the scrollbar's room counts in its end, so it
+     stands in the middle of the head and of what stands under it. */
   .list {
     width: 100%;
-    padding: var(--empty-top) var(--empty-side) 0;
+    padding: var(--empty-top) calc(var(--empty-side) - var(--scrollbar-room)) 0 var(--empty-side);
   }
 
   .center {
