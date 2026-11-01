@@ -9,7 +9,7 @@
 import type { Locator, Page, PlaywrightWorkerArgs } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { openPlace, row, WIN } from './helpers';
+import { chooseSort, openPlace, row, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -310,6 +310,34 @@ test('no hit: the tile, its words, the button under them and the head have one m
       0,
     );
     expect(await middle(place.locator('.tile'))).toBeCloseTo(view, 0);
+  });
+});
+
+test("the list's hairline runs across the column, past the scrollbar's room", async ({
+  page: fixture,
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  const engine = { page: fixture, playwright, baseURL, browserName };
+  await withRoom(engine, { width: 1360, height: 600 }, async (page) => {
+    await open(page, WIN);
+    await chooseSort(page, 'match');
+    const scroller = page.getByTestId('list-scroll');
+    const head = page.getByTestId('list-header').locator('xpath=..');
+    const line = (): Promise<string> =>
+      head.evaluate((node) => getComputedStyle(node).borderBottomColor);
+    const seam = await scroller
+      .locator('xpath=..')
+      .evaluate((node) => getComputedStyle(node).borderRightColor);
+    const top = (await scroller.boundingBox())!.y;
+    expect(await line()).not.toBe(seam);
+    await scroller.evaluate((node) => node.scrollTo({ top: 60 }));
+    await expect.poll(line).toBe(seam);
+    // Its box is as wide as the list's own, the track included, up to the column's border; it
+    // takes its height at rest too, so the rows stay.
+    expect(await edges(head)).toEqual(await edges(scroller));
+    expect((await scroller.boundingBox())!.y).toBe(top);
   });
 });
 

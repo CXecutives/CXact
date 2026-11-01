@@ -8,8 +8,7 @@
   (`children`: the list's search, its filter's chips and the run's line). The head of a page
   (`column="page"`: Profil, Einstellungen) stands in the page's column (Page `head`), 2 in like
   the sections' titles, 22 above the first of them; the job view's takes its column, centred
-  in the full width. The list's head stands above its own scroller and draws a hairline under
-  it once the list scrolled (`line`).
+  in the full width. The list's head stands above its own scroller.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -26,8 +25,6 @@
     /** The column the content takes: the pages' (Profil, Einstellungen), the job view's, or
      *  the full width (the list). */
     column?: 'page' | 'reader' | null;
-    /** A hairline under it (the list's head, once the list scrolled beneath it). */
-    line?: boolean;
     testid?: string | null;
     children?: Snippet;
   }
@@ -39,13 +36,12 @@
     lead = null,
     actions = null,
     column = null,
-    line = false,
     testid = null,
     children,
   }: Props = $props();
 </script>
 
-<header class="head" class:paged={column === 'page'} class:line data-testid={testid ?? undefined}>
+<header class="head" class:paged={column === 'page'} data-testid={testid ?? undefined}>
   <div class="inner {column ?? ''}">
     <div class="row">
       {#if heading !== null}
@@ -68,19 +64,12 @@
   .head {
     flex: none;
     padding: var(--head-pad) var(--pane-padding-end) var(--head-pad) var(--pane-padding);
-    border-bottom: var(--border-width) solid transparent;
     container-type: inline-size;
-    transition: border-color var(--dur-fast) var(--ease-standard);
   }
 
   /* A page's head: in the page's column (Page), 2 in like the sections' titles. */
   .paged {
     padding: 0 var(--section-inset);
-    border-bottom: 0;
-  }
-
-  .line {
-    border-bottom-color: var(--border);
   }
 
   .inner {

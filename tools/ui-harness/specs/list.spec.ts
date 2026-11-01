@@ -1607,7 +1607,7 @@ test.describe('days', () => {
   const lined = (page: Page): Promise<boolean> =>
     page
       .getByTestId('list-header')
-      .locator('header')
+      .locator('xpath=..')
       .evaluate((node) => node.classList.contains('line'));
 
   test('by date (the default): Heute, Gestern, then the weekday and date; none in the sections', async ({

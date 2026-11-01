@@ -1,7 +1,7 @@
 <!--
   The header of the list column, the same in the three places (their names stand in the
-  sidebar, under Jobs): the view's head (PageHeader) above the list, 8 16 10, with a hairline
-  under it once the list scrolled beneath it where no day's heading sticks at the top (`line`).
+  sidebar, under Jobs): the view's head (PageHeader) above the list, 8 16 10 (the hairline under
+  it is JobsView's).
   One row: the search, whose placeholder names what it searches (its × clears it); in Aktuell
   and the Archiv the filter "Sortieren und filtern", a 30 px square, the one control of the
   order and the filter: its menu holds, under small headings, "Sortierung" (Nach
@@ -42,12 +42,6 @@
   import { funnelEntries } from './headerMenus';
   import { fetchBlocked } from './profileGaps';
   import RunLine from './RunLine.svelte';
-
-  interface Props {
-    /** The list scrolled beneath it and no day's heading sticks at its top: the hairline. */
-    line?: boolean;
-  }
-  let { line = false }: Props = $props();
 
   const place = $derived(jobs.place);
 
@@ -136,7 +130,7 @@
 </script>
 
 <div class="header" data-testid="list-header" data-press-only>
-  <PageHeader {line}>
+  <PageHeader>
     {#snippet lead()}
       {#if tools}
         <div class="top">

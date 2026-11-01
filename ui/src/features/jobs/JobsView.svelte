@@ -204,8 +204,8 @@
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
       {#if headed}
-        <div class="head">
-          <ListHeader bind:this={header} {line} />
+        <div class="head" class:line>
+          <ListHeader bind:this={header} />
         </div>
       {/if}
       <div class="scroll" data-testid="list-scroll" data-key-pane use:keepScroll={'jobs-list'}>
@@ -320,13 +320,20 @@
      the list a query container made every layout of the view half as long again (the
      reader's ring fill lays the view out in each of its frames).
      It keeps the room of the list's scrollbar beside it, empty (a scroller that never
-     scrolls): its tabs, search and tools end where the rows' text ends, with the engine's
-     own scrollbar width (Windows 8 px, overlay scrollbars none). */
+     scrolls): its search and tools end where the rows' text ends, with the engine's own
+     scrollbar width (Windows 6 px, overlay scrollbars none). Its hairline is that scroller's
+     edge, so it runs past that room, from seam to seam. */
   .head {
     flex: none;
     overflow-x: hidden;
     overflow-y: scroll;
+    border-bottom: var(--border-width) solid transparent;
     container-type: inline-size;
+    transition: border-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .line {
+    border-bottom-color: var(--border);
   }
 
   /* The handle lies over the list's border and takes no room. */
