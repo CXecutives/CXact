@@ -403,8 +403,10 @@
 
   /* A view that scrolls always keeps its scrollbar's room (Windows: a transparent track,
      the thumb only under the pointer; macOS overlay scrollbars take none), so a centred
-     column never jumps sideways between a short and a long view. */
+     column never jumps sideways between a short and a long view. As much at its left, so that
+     column stands in the middle of the view. */
   .view:not(.fixed) {
+    padding-left: var(--scrollbar-room);
     overflow-y: scroll;
   }
 
@@ -419,6 +421,7 @@
     display: block;
     height: var(--fade-height);
     margin-bottom: calc(-1 * var(--fade-height));
+    margin-left: calc(-1 * var(--scrollbar-room));
     background: var(--view-fade);
     opacity: var(--fade-shown, 0);
     pointer-events: none;

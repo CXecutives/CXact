@@ -32,12 +32,13 @@
 </div>
 
 <style>
-  /* Its column stands on the page's: like the list's header it keeps the room of the view's
-     scrollbar beside it, empty (a scroller that never scrolls: Windows 8 px, overlay scrollbars
-     none), and its white goes on under that room to the window's edge. It asks its own width,
-     as the page's parts ask the page's. */
+  /* Its column stands on the page's: like the view above it, it keeps the room of the view's
+     scrollbar beside it, empty (a scroller that never scrolls), and as much at its left, and its
+     white goes on under that room to the window's edges. It asks its own width, as the page's
+     parts ask the page's. */
   .bar {
     container: page / inline-size;
+    padding-left: var(--scrollbar-room);
     overflow-x: hidden;
     overflow-y: scroll;
     border-top: var(--border-width) solid var(--border);

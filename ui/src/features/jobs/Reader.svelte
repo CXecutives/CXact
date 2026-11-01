@@ -411,15 +411,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--card-gap);
-    max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
+    max-width: calc(var(--reader-max) + var(--reader-pad-x) + var(--reader-pad-right));
     margin: 0 auto;
-    padding: var(--head-pad) var(--reader-pad-x) var(--reader-pad-end);
+    padding: var(--head-pad) var(--reader-pad-right) var(--reader-pad-end) var(--reader-pad-x);
   }
 
   /* A narrow window: the sides of the pages (Page). */
   @media (width < 560px) {
     .column {
-      padding-inline: var(--page-side-narrow);
+      padding-right: var(--page-side-narrow-end);
+      padding-left: var(--page-side-narrow);
     }
   }
 

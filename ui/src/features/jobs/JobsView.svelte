@@ -389,17 +389,17 @@
   .column {
     display: flex;
     flex-direction: column;
-    max-width: calc(var(--reader-max) + 2 * var(--reader-pad-x));
+    max-width: calc(var(--reader-max) + var(--reader-pad-x) + var(--reader-pad-right));
     margin: 0 auto 0
       max(
         0%,
         round(
           down,
-          calc((100% - var(--reader-max) - 2 * var(--reader-pad-x)) / 2),
+          calc((100% - var(--reader-max) - var(--reader-pad-x) - var(--reader-pad-right)) / 2),
           var(--border-width)
         )
       );
-    padding: var(--head-pad) var(--reader-pad-x) var(--reader-pad-end);
+    padding: var(--head-pad) var(--reader-pad-right) var(--reader-pad-end) var(--reader-pad-x);
   }
 
   /* A job: the reader takes the whole pane (its head's hairline runs from edge to edge) and

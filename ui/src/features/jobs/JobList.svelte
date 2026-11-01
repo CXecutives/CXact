@@ -798,14 +798,14 @@
 
   /* A state box at the top of the list (no profile, a thin one): under the head, 16 in. */
   .note {
-    padding: 0 var(--pane-padding) var(--space-8);
+    padding: 0 var(--pane-padding-end) var(--space-8) var(--pane-padding);
   }
 
   /* The rows 6 in from the column's edges (their wash and the highlight end there). */
   .groups,
   .skeletons {
     display: block;
-    padding: 0 var(--list-rows-inset);
+    padding: 0 var(--list-rows-inset-end) 0 var(--list-rows-inset);
   }
 
   /* Plain block flow: a flex column adds nothing here and costs a little more each time the
@@ -819,7 +819,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-8);
-    padding: var(--space-12) var(--pane-padding);
+    padding: var(--space-12) var(--pane-padding-end) var(--space-12) var(--pane-padding);
   }
 
   /* No job anywhere and no head: the empty state in the middle of the column, like the job
@@ -829,17 +829,17 @@
     flex: 1;
     align-items: center;
     justify-content: center;
-    padding: var(--pane-padding);
+    padding: var(--pane-padding) var(--pane-padding-end) var(--pane-padding) var(--pane-padding);
   }
 
   /* No hit: the empty state, and the other places' hits centred under it. */
   .none .also {
     justify-content: center;
-    padding: var(--space-12) var(--pane-padding) 0;
+    padding: var(--space-12) var(--pane-padding-end) 0 var(--pane-padding);
   }
 
   .page-error {
-    padding: var(--space-12) var(--pane-padding);
+    padding: var(--space-12) var(--pane-padding-end) var(--space-12) var(--pane-padding);
   }
 
   /* Laid out like a row (ListRow): the ring and a line, so nothing moves when the rows
@@ -859,6 +859,6 @@
   }
 
   .sentinel {
-    padding: var(--pane-padding);
+    padding: var(--pane-padding) var(--pane-padding-end) var(--pane-padding) var(--pane-padding);
   }
 </style>

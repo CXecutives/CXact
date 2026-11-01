@@ -798,6 +798,31 @@ test('Regionen suggest the regions of Germany, Austria and Switzerland; typed te
   ]);
 });
 
+test('Backspace in a tag field takes the last chip, the caret stays and typing goes on', async ({
+  page,
+}) => {
+  await profile(page);
+  const regions = page.getByTestId('profile-regions');
+  const input = regions.locator('input');
+  const chips = regions.locator('[data-chip]');
+  await input.click();
+  await page.keyboard.type('Bremen');
+  await page.keyboard.press('Enter');
+  const count = await chips.count();
+  await page.keyboard.type('Kiel');
+  await page.keyboard.press('Enter');
+  await expect(chips).toHaveCount(count + 1);
+  await page.keyboard.press('Backspace');
+  await expect(chips).toHaveCount(count);
+  await expect(input).toBeFocused();
+  // No letter is lost, and the next Backspace edits the word, it takes no chip.
+  await page.keyboard.type('Ulm');
+  await expect(input).toHaveValue('Ulm');
+  await page.keyboard.press('Backspace');
+  await expect(input).toHaveValue('Ul');
+  await expect(chips).toHaveCount(count);
+});
+
 test("a field's list shows its eight rows whole, and none stands under the top bar", async ({
   page,
 }) => {

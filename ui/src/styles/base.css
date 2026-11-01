@@ -59,6 +59,13 @@ body {
   height: 100%;
 }
 
+/* What measures --scrollbar-room at the start (lib/platform.ts). */
+.scrollbar-probe {
+  position: absolute;
+  visibility: hidden;
+  overflow-y: scroll;
+}
+
 /* The row someone was taken to (lib/motion/arrive.ts): a soft wash inside it, under its words,
    that fades. It needs no stacking of its own, so what opens from the row (a list under a field)
    stays above the rows below. */

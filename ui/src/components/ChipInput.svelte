@@ -1,8 +1,9 @@
 <!--
   A list of short values as chips in a field (round 10): type and press Enter (or leave the
   field) to add, the x ("Entfernen") removes, Backspace in the empty field removes the last
-  one, Esc closes the list under the field and then drops what was typed. Removing puts no
-  caret anywhere, from the keyboard the next x takes the focus (input.ts removeBy). A chip's
+  one with the caret staying there, Esc closes the list under the field and then drops what was
+  typed. An x puts no caret anywhere, from the keyboard the next x takes the focus (input.ts
+  removeBy). A chip's
   value is copyable text (a drag selects it, Ctrl/Cmd+C copies; a double click selects a
   word, it never edits the chip). A list of terms (`split` list) also splits at commas and
   semicolons, typed or pasted; a list of sentences or names that hold commas (`split` lines)
@@ -290,7 +291,8 @@
       commit,
       removeLast: () => {
         if (draft !== '' || values.length === 0) return false;
-        remove(values.length - 1);
+        // The caret stays in the field, as in any field: what comes next is typed on.
+        update(values.slice(0, -1));
         return true;
       },
       clear: () => {

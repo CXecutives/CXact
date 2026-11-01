@@ -67,7 +67,7 @@
 <style>
   .head {
     flex: none;
-    padding: var(--head-pad) var(--pane-padding);
+    padding: var(--head-pad) var(--pane-padding-end) var(--head-pad) var(--pane-padding);
     border-bottom: var(--border-width) solid transparent;
     container-type: inline-size;
     transition: border-color var(--dur-fast) var(--ease-standard);

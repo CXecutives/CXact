@@ -136,6 +136,51 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
 
 /* ------------------------------------------------------- one weight of a hairline */
 
+test('beside a real scrollbar a column has as much room on both sides', async ({
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  // Windows only (WebView2): macOS's overlay scrollbars take no room.
+  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    const page = await browser.newPage({
+      ...(baseURL ? { baseURL } : {}),
+      viewport: { width: 1360, height: 860 },
+      locale: 'de-DE',
+    });
+    const edges = async (node: Locator): Promise<{ left: number; right: number }> => {
+      const box = (await node.boundingBox())!;
+      return { left: box.x, right: box.x + box.width };
+    };
+    await open(page, `${WIN}&open=freelancermap:2801`);
+    const list = await edges(page.getByTestId('list-header'));
+    const room = await page.evaluate(() => {
+      const view = document.querySelector<HTMLElement>('.stage')!;
+      return view.offsetWidth - view.clientWidth;
+    });
+    expect(room).toBeGreaterThan(0);
+    // The list: its head, and its rows with their highlight.
+    const seam = list.right + room;
+    const search = await edges(page.getByTestId('list-header').locator('.row').first());
+    expect(search.left - list.left).toBe(seam - search.right);
+    const rowBox = await edges(row(page, 'freelancermap-2801'));
+    expect(rowBox.left - list.left).toBe(seam - rowBox.right);
+    // The job view's card, in its pane.
+    const card = await edges(page.getByTestId('reader-head'));
+    const pane = await edges(page.locator('.stage'));
+    expect(card.left - pane.left).toBe(pane.right - card.right);
+    // A page, in the middle of its view.
+    await open(page, `${WIN}&view=profile`);
+    const form = await edges(page.getByTestId('profile-form'));
+    const view = await edges(page.getByTestId('view-profile'));
+    expect(form.left - view.left).toBe(view.right - form.right);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
   page,
 }) => {

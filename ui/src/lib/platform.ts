@@ -10,7 +10,8 @@
 //     (`scrimNeedsDragRegion()`),
 //   - dialog buttons: Windows puts the primary first, macOS last (right),
 //   - scrollbars: slim styled ones on Windows, the native overlay scrollbars on macOS
-//     (base.css keys them off `:root[data-platform]`, like the font smoothing),
+//     (base.css keys them off `:root[data-platform]`, like the font smoothing); the margins count
+//     what they take (--scrollbar-room, measured here),
 //   - words that name OS things (Explorer / Finder, the password store),
 //   - the editing keys of text fields and the context menu key (`keyConventions()`,
 //     applied by lib/input/input.ts: Ctrl on Windows, Cmd on macOS); the app has no
@@ -21,6 +22,7 @@
 // `:root[data-window]` is 'inactive' while the window is in the background, and selections
 // grey out against it as in Mail and Explorer.
 
+import { px, setVars } from './actions/cssVars';
 import { onWindowFocus } from './ipc/api';
 
 export type Platform = 'windows' | 'macos';
@@ -36,10 +38,17 @@ function detect(): Platform {
   return /Macintosh|Mac OS X/.test(navigator.userAgent) ? 'macos' : 'windows';
 }
 
-/** Sets `data-platform` on <html> unless the host already did. Call once before mounting. */
+/** Sets `data-platform` on <html> unless the host already did, and what a scrollbar takes from
+ *  its scroller here (--scrollbar-room: the track on Windows, nothing for overlay scrollbars).
+ *  Call once before mounting. */
 export function applyPlatform(): Platform {
   const root = document.documentElement;
   if (!isPlatform(root.dataset.platform)) root.dataset.platform = detect();
+  const probe = document.createElement('div');
+  probe.className = 'scrollbar-probe';
+  document.body.append(probe);
+  setVars(root, { 'scrollbar-room': px(probe.offsetWidth - probe.clientWidth) });
+  probe.remove();
   return platform();
 }
 

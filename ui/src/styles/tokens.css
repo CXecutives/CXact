@@ -601,11 +601,20 @@
   --button-pair-min: 88px;
   /* the setup card */
   --setup-card: 540px;
-  --scrollbar-size: 8px;
-  /* The Windows thumb: 2 px at rest (a 3 px border in the 8 px track), 4 px when hovered
-     (--scrollbar-gap), as in Windows 11. */
-  --scrollbar-gap: 2px;
-  --scrollbar-thumb-rest: 3px;
+  /* The Windows track, as wide as the rows' inset (--list-rows-inset), so the rows stand as far
+     from the edge on both sides. Its thumb: 2 px at rest (a 2 px border in the track), 4 px when
+     hovered (--scrollbar-gap), as in Windows 11. */
+  --scrollbar-size: 6px;
+  --scrollbar-gap: 1px;
+  --scrollbar-thumb-rest: 2px;
+  /* What a scrollbar takes from its scroller, measured at the start (lib/platform.ts): the track
+     on Windows, nothing for overlay scrollbars. It counts as part of the right margin of what
+     stands in a scroller (owner, 2026-11-01), so a column has as much on both sides. */
+  --scrollbar-room: 0px;
+  --pane-padding-end: max(0px, calc(var(--pane-padding) - var(--scrollbar-room)));
+  --list-rows-inset-end: max(0px, calc(var(--list-rows-inset) - var(--scrollbar-room)));
+  --reader-pad-right: max(0px, calc(var(--reader-pad-x) - var(--scrollbar-room)));
+  --page-side-narrow-end: max(0px, calc(var(--page-side-narrow) - var(--scrollbar-room)));
   --tooltip-max: 260px;
   --tooltip-gap: 6px;
   --viewport-gap: 8px;

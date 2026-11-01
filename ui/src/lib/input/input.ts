@@ -58,9 +58,10 @@
 //   that floats over the view in a narrow window, whose button then takes the focus it held
 //   (`foldSidebar`); a left press beside that sidebar (and beside its button, which folds it
 //   itself) folds it too, and still does what it presses.
-// - removing never puts a caret anywhere (`removeBy`): a click on an × drops the focus; from
-//   the keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×) the
-//   next × of the same list takes it, the previous one after the last.
+// - an × never puts a caret anywhere (`removeBy`): a click on it drops the focus; from the
+//   keyboard (Enter, Space, Backspace or Delete on a focused ×) the next × of the same list takes
+//   it, the previous one after the last. Backspace in a chip field removes the last chip and the
+//   caret stays there, as in any field (owner, 2026-11-01).
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
@@ -646,16 +647,14 @@ function removeButtons(list: Element): Element[] {
 }
 
 /**
- * The one rule of removing (a chip, a row, a value): `remove` takes the item of `button` (its
- * remove button; for Backspace in a chip field the × of the last chip) away, and no caret
- * appears anywhere. Removed with the mouse, the focus is simply dropped, without a ring: the
- * button's own, or the caret a press on a chip's × left in its field. Removed with the
- * keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×), the next
- * remove button of the same list (`data-removes`) takes the focus, the previous one after the
- * last, else the list's `data-remove-fallback` (its add button); never a text field. It moves
- * there before the item goes, so it never drops to the page on the way (a chip field keeps its
- * chips open). With none of them the focus stays where it was (Backspace in the field of its
- * only chip).
+ * The one rule of a remove button (a chip's, a row's, a value's): `remove` takes its item away,
+ * and no caret appears anywhere. Removed with the mouse, the focus is simply dropped, without a
+ * ring: the button's own, or the caret a press on a chip's × left in its field. Removed with the
+ * keyboard (Enter, Space, Backspace or Delete on a focused ×), the next remove button of the same
+ * list (`data-removes`) takes the focus, the previous one after the last, else the list's
+ * `data-remove-fallback` (its add button); never a text field. It moves there before the item
+ * goes, so it never drops to the page on the way (a chip field keeps its chips open). With none
+ * of them the focus stays where it was.
  */
 export function removeBy(button: EventTarget | null, remove: () => void): void {
   const slot = closest(button, REMOVE);
