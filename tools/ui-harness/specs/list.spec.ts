@@ -2474,6 +2474,34 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('toggle-sidebar')).toBeFocused();
   });
 
+  test("with the places folded Jobs takes the focus for the place, not the sidebar's button", async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await page.getByTestId('nav-places').click();
+    await expect(page.getByTestId('place-inbox')).toHaveCount(0);
+    // A button that goes with its list: the way to the hits in another place, from the keyboard.
+    const search = page.getByTestId('search');
+    await search.fill('Kreditoren');
+    await page.getByTestId('also-archive').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('also-archive')).toHaveCount(0);
+    await expect(page.getByTestId('nav-jobs')).toBeFocused();
+    // The place's last job moved away from the keyboard.
+    await search.fill('');
+    const keys = (await stubList(page, { place: 'archive' })).active;
+    await expect.poll(() => listed(page)).toEqual(keys);
+    for (const key of keys) {
+      await row(page, key).focus();
+      await page.keyboard.press('Shift+F10');
+      await expect(page.getByTestId('menu')).toBeVisible();
+      await page.keyboard.type(T.actions.unarchive.slice(0, 4));
+      await page.keyboard.press('Enter');
+      await expect(row(page, key)).toHaveCount(0);
+    }
+    await expect(page.getByTestId('nav-jobs')).toBeFocused();
+  });
+
   test('a click on a move hands no focus on, by a tool or by the menu', async ({ page }) => {
     await open(page, WIN);
     const [first, second, third, fourth] = await listed(page);

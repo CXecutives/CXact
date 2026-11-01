@@ -460,8 +460,10 @@ function focusAfter(next: JobView | null): void {
 }
 
 /** The keyboard focus where what held it went and nothing takes its place: the place's entry in
- *  the sidebar, or the sidebar's button while it is folded away; never the top of the window. */
+ *  the sidebar, Jobs while the places are folded (its pill stands for them), or the sidebar's
+ *  button while the sidebar is folded away; never the top of the window. */
 export function focusPlace(): void {
-  const entry = document.querySelector<HTMLElement>(`[data-testid="place-${jobs.place}"]`);
-  (entry ?? document.querySelector<HTMLElement>('[data-testid="toggle-sidebar"]'))?.focus();
+  const entry = (testid: string): HTMLElement | null =>
+    document.querySelector<HTMLElement>(`[data-testid="${testid}"]`);
+  (entry(`place-${jobs.place}`) ?? entry('nav-jobs') ?? entry('toggle-sidebar'))?.focus();
 }
