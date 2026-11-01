@@ -6,14 +6,11 @@
   its one button at the right end (`action`, a secondary button with its glyph, or a button of
   its own in that place: `end`), pressed but not focused (`data-press-only`, input.ts). No sign:
   the state's mark is elsewhere (the ring) or none;
-  only while something is being done a 16 px spinner stands before the words (`busy`). An
-  excluded job's box is the soft red (`tone="ban"`). A box that appears in a view already on
-  screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that comes with its view
-  is simply there. In a box under 480 wide (like a row of Einstellungen) the button goes under
-  the words, at the right, so a title keeps its one line.
-  `mark` is what the old Notice of an excluded job put before its words (the ban, until the
-  job view's ring shows it); it goes with Notice. The words of a box that says something went
-  wrong (`alert`) copy.
+  only while something is being done a 16 px spinner stands before the words (`busy`). A box
+  that appears in a view already on screen rises 2 px and fades in (150 ms) and fades out
+  (100 ms); one that comes with its view is simply there. In a box under 480 wide (like a row of
+  Einstellungen) the button goes under the words, at the right, so a title keeps its one line.
+  The words of a box that says something went wrong (`alert`) copy.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -23,8 +20,6 @@
     label: string;
     icon?: IconName | null;
     testid?: string | null;
-    disabled?: boolean;
-    disabledReason?: string | null;
     onclick: () => void;
   }
 </script>
@@ -36,8 +31,6 @@
   import Spinner from './Spinner.svelte';
 
   interface Props {
-    /** An excluded job: the soft red. */
-    tone?: 'neutral' | 'ban';
     /** Something is being done: the spinner before the words. */
     busy?: boolean;
     /** The title. */
@@ -47,27 +40,20 @@
     action?: StateAction | null;
     /** A button of its own in the action's place (one that waits or loads). */
     end?: Snippet | null;
-    /** The sentence when it holds more than words (links). */
-    children?: Snippet | undefined;
     /** It says something went wrong (announced at once). */
     alert?: boolean;
-    /** The old Notice's sign before the words (see above). */
-    mark?: Snippet | null;
     testid?: string | null;
     headingTestid?: string | null;
     textTestid?: string | null;
   }
 
   let {
-    tone = 'neutral',
     busy = false,
     heading = null,
     text = null,
     action = null,
     end = null,
-    children,
     alert = false,
-    mark = null,
     testid = null,
     headingTestid = null,
     textTestid = null,
@@ -75,7 +61,7 @@
 </script>
 
 <div
-  class="box {tone}"
+  class="box"
   role={alert ? 'alert' : 'status'}
   data-testid={testid ?? undefined}
   in:rise={{ distance: 'sm' }}
@@ -84,8 +70,6 @@
   <div class="row">
     {#if busy}
       <Spinner size="sm" label={null} />
-    {:else if mark}
-      <span class="mark">{@render mark()}</span>
     {/if}
     <div class="words">
       {#if heading}<p
@@ -95,11 +79,7 @@
         >
           {heading}
         </p>{/if}
-      {#if children}
-        <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
-          {@render children()}
-        </p>
-      {:else if text}
+      {#if text}
         <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
           {text}
         </p>
@@ -113,8 +93,6 @@
           variant="secondary"
           label={action.label}
           icon={action.icon ?? null}
-          disabled={action.disabled ?? false}
-          disabledReason={action.disabledReason ?? null}
           testid={action.testid ?? null}
           onclick={action.onclick}
         />
@@ -142,16 +120,6 @@
     gap: var(--state-gap);
   }
 
-  .ban {
-    --state-surface: var(--state-ban-surface);
-    --state-edge: var(--state-ban-edge);
-  }
-
-  .mark {
-    display: inline-flex;
-    flex: none;
-  }
-
   .words {
     display: flex;
     flex: 1;
@@ -176,7 +144,7 @@
   }
 
   /* A narrow box: the button on a line of its own under the words, at the right; a spinner
-     or a mark stays beside the words. */
+     stays beside the words. */
   @container (width < 480px) {
     .row {
       flex-wrap: wrap;

@@ -205,9 +205,8 @@
   --delay-arrive: 1200ms;
   /* The tick of what is chosen, in a menu and a select's list alike. */
   --chosen-text: hsl(var(--p-navy));
-  /* The soft ground of a state: the ban (excluded). */
+  /* The soft ground of a failure's tile. */
   --danger-tint: hsl(var(--p-red-50));
-  --danger-edge: hsl(var(--p-red-100));
   --danger-strong: var(--score-ring-0);
   --danger-soft: hsl(var(--p-red-50));
   /* The filled red button (round 10): the deep red, about 6:1 with its white words. */
@@ -325,7 +324,7 @@
   /* Every control answers the pointer by the kind of its surface, the same way everywhere
      (change a kind here and every control of it follows):
      - quiet: no fill at rest (ghost button, list row, reason, sidebar entry, run status,
-       segment, text chip, menu entry): a wash under the pointer, a deeper one pressed.
+       text chip, menu entry): a wash under the pointer, a deeper one pressed.
      - control: a white box with an edge (secondary button, field): a muted fill and a
        darker edge under the pointer, a button one opaque step darker still while pressed.
      - label: text without a box (the excluded divider): ink under the pointer, its chevron
@@ -355,7 +354,7 @@
      11's red with a white glyph (owner, 2026-10-28) and a touch lighter pressed;
      the glyphs fade while the window is in the back. */
   --titlebar-fg: hsl(var(--p-titlebar-fg));
-  --titlebar-fg-inactive: var(--text-muted);
+  --titlebar-fg-inactive: var(--icon-subtle);
   --titlebar-close-hover: hsl(var(--p-titlebar-close));
   --titlebar-close-press: hsl(var(--p-titlebar-close-press));
   --titlebar-close-fg: hsl(var(--p-white));
@@ -478,8 +477,6 @@
   --list-first-min: 480px;
   --list-first-max: 560px;
   --reader-min: 420px;
-  /* The job view's column: a comfortable line for the ad's text. */
-  --reader-width: 640px;
   /* The column handle: the strip that catches the pointer (over the reader's padding, never
      over the list's scrollbar) and the small grip centred on the border. */
   --splitter-hit: 8px;
@@ -519,8 +516,8 @@
      pages, and the left edge of the top strip, so their edges line up. */
   --pane-padding: 16px;
   /* The first line of every view, one row this high below the pane padding: the sidebar's
-     first entry, the list's head and the title of every page header are centred in it (a heading
-     takes `data-first-row`, base.css), so their middles lie on one line across the window. */
+     first entry, the list's head and the title of every page header are centred in it, so their
+     middles lie on one line across the window. */
   --first-row: var(--control-lg);
   /* The padding above and below the content of a view's head (components/PageHeader): its
      first row then lies this far below the top bar, like the sidebar's first entry. */
@@ -549,9 +546,8 @@
   /* a chip in a field and its remove button */
   --chip-height: 24px;
   --chip-x: 16px;
-  /* the list: the hairline between rows starts at the title; the highlight is inset this far */
+  /* the list: the hairline between rows starts at the title */
   --row-rule-start: 56px;
-  --row-highlight-inset: 6px;
   /* One row measure for Profil and Einstellungen (owner, 2026-10-24 and 2026-10-28): every row
      of a page's card is as high as a row with a line under its name (12 + 20 + 18 + 12),
      12 above and below, 20 at the sides, its hairline from the text (20). */
@@ -598,6 +594,11 @@
   --pane-padding-end: max(0px, calc(var(--pane-padding) - var(--scrollbar-room)));
   --list-rows-inset-end: max(0px, calc(var(--list-rows-inset) - var(--scrollbar-room)));
   --reader-pad-right: max(0px, calc(var(--reader-pad-x) - var(--scrollbar-room)));
+  /* A page keeps the room on both sides (the view's padding at its left, the track at its right):
+     its column is that much narrower and its sides count it, so its content stands as it would
+     without a scrollbar. */
+  --page-column: calc(var(--page-max) - 2 * var(--scrollbar-room));
+  --page-side-end: max(0px, calc(var(--page-side) - var(--scrollbar-room)));
   --page-side-narrow-end: max(0px, calc(var(--page-side-narrow) - var(--scrollbar-room)));
   --tooltip-max: 260px;
   --tooltip-gap: 6px;
@@ -750,11 +751,9 @@
   --empty-text-max: 300px;
   --empty-actions-gap: var(--space-16);
   /* The state box (StateBox): the cream ground with a hairline, 12 20 inside, at least
-     56 high, its parts 14 apart; an excluded job's on the soft red. */
+     56 high, its parts 14 apart. */
   --state-surface: var(--bg);
   --state-edge: var(--border);
-  --state-ban-surface: var(--danger-tint);
-  --state-ban-edge: var(--danger-edge);
   --state-pad-y: var(--space-12);
   --state-pad-start: var(--card-pad-x);
   --state-min: 56px;
@@ -930,7 +929,7 @@
   /* Small text: hints, the second line of a row, a section's line. */
   --font-sm: 13px;
   --leading-sm: 18px;
-  /* The text of the app: running lines, fields, labels, buttons, tabs. */
+  /* The text of the app: running lines, fields, labels, buttons. */
   --font-md: 14px;
   --leading-md: 20px;
   /* List titles on a tight line, so two lines stay one block. */
@@ -983,7 +982,7 @@
      the base rule), a press darkens in 60 ms (nothing scales, moves or deforms), the release
      settles in 150 ms. Colour changes 100 ms. Three curves: entries ease out (150 to 180 ms,
      rising 4 or 8 px), exits ease in (60 to 100 ms), and every glide (list selection, nav pill,
-     segment and toggle thumbs, chevrons, rows that move) takes 180 ms with ease-out. The ring
+     toggle thumbs, chevrons, rows that move) takes 180 ms with ease-out. The ring
      fill and its count 400 ms. Only transform and opacity move (and colour and
      stroke-dashoffset); nothing overshoots. Motion only where something new comes: a list of
      another place, a new job's ring, an insert or a removal, a state change; a view switch,

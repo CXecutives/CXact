@@ -235,7 +235,7 @@
                 </Group>
               {/each}
             {:else}
-              <Group>
+              <Group rows>
                 {#if section.block === 'mailbox'}
                   <MailboxCard {cfg} locked={mailboxLocked} />
                 {/if}

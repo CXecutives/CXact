@@ -3,13 +3,13 @@
 // weights, controls only the control heights, line icons only the one stroke, corners only the
 // radius ladder, and nothing is light blue. A new value is a token first, then a line here. And
 // on no state does a field hold the caret by itself or a button end in an ellipsis (owner,
-// 2026-10-30). And one way to draw a hairline, the same answer of a control to the pointer on
-// every ground, one family of glyphs.
+// 2026-10-30). And the margins count the scrollbar's room, one way to draw a hairline, the same
+// answer of a control to the pointer on every ground, one family of glyphs.
 
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { openPlace, row, WIN } from './helpers';
+import { chooseSort, openPlace, row, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -134,26 +134,41 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
   });
 }
 
-/* ------------------------------------------------------- one weight of a hairline */
+/* ------------------------------------------- the scrollbar's room in the margins */
 
-test('beside a real scrollbar a column has as much room on both sides', async ({
-  playwright,
-  baseURL,
-  browserName,
-}) => {
-  // Windows only (WebView2): macOS's overlay scrollbars take no room.
-  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
-  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
-  try {
-    const page = await browser.newPage({
-      ...(baseURL ? { baseURL } : {}),
-      viewport: { width: 1360, height: 860 },
-      locale: 'de-DE',
-    });
-    const edges = async (node: Locator): Promise<{ left: number; right: number }> => {
-      const box = (await node.boundingBox())!;
-      return { left: box.x, right: box.x + box.width };
-    };
+/** A test on a page whose scrollbars take their room, as on Windows: the harness hides Chromium's,
+ *  so it gets a browser of its own; WebKit shows them on the Windows path. */
+function testWithRoom(
+  title: string,
+  viewport: { width: number; height: number },
+  check: (page: Page) => Promise<void>,
+): void {
+  test(title, async ({ page, playwright, baseURL, browserName }) => {
+    if (browserName !== 'chromium') {
+      await page.setViewportSize(viewport);
+      await check(page);
+      return;
+    }
+    const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+    try {
+      await check(
+        await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport, locale: 'de-DE' }),
+      );
+    } finally {
+      await browser.close();
+    }
+  });
+}
+
+const edges = async (node: Locator): Promise<{ left: number; right: number }> => {
+  const box = (await node.boundingBox())!;
+  return { left: box.x, right: box.x + box.width };
+};
+
+testWithRoom(
+  'beside a real scrollbar a column has as much room on both sides',
+  { width: 1360, height: 860 },
+  async (page) => {
     await open(page, `${WIN}&open=freelancermap:2801`);
     const list = await edges(page.getByTestId('list-header'));
     const room = await page.evaluate(() => {
@@ -161,12 +176,13 @@ test('beside a real scrollbar a column has as much room on both sides', async ({
       return view.offsetWidth - view.clientWidth;
     });
     expect(room).toBeGreaterThan(0);
-    // The list: its head, and its rows with their highlight.
+    // The list: its head, and its rows with their highlight, which is the open row's own box.
     const seam = list.right + room;
     const search = await edges(page.getByTestId('list-header').locator('.row').first());
     expect(search.left - list.left).toBe(seam - search.right);
     const rowBox = await edges(row(page, 'freelancermap-2801'));
     expect(rowBox.left - list.left).toBe(seam - rowBox.right);
+    expect(await edges(page.getByTestId('row-bar'))).toEqual(rowBox);
     // The job view's card, in its pane.
     const card = await edges(page.getByTestId('reader-head'));
     const pane = await edges(page.locator('.stage'));
@@ -176,10 +192,130 @@ test('beside a real scrollbar a column has as much room on both sides', async ({
     const form = await edges(page.getByTestId('profile-form'));
     const view = await edges(page.getByTestId('view-profile'));
     expect(form.left - view.left).toBe(view.right - form.right);
-  } finally {
-    await browser.close();
-  }
-});
+  },
+);
+
+for (const width of [1360, 792, 700, 480]) {
+  testWithRoom(
+    `at ${width} wide a page counts the scrollbar's room in its margins`,
+    { width, height: 700 },
+    async (page) => {
+      /** A length of the design, whatever the scrollbar takes. */
+      const token = (name: string): Promise<number> =>
+        page.evaluate(
+          (name) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)),
+          name,
+        );
+      await open(page, `${WIN}&view=profile`);
+      const side = await token(width < 560 ? '--page-side-narrow' : '--page-side');
+      const most = (await token('--page-max')) - 2 * (await token('--page-side'));
+      /** Where the column stands in a view: in its middle, with the design's sides. */
+      const column = (view: { left: number; right: number }) => {
+        const wide = Math.min(most, view.right - view.left - 2 * side);
+        const middle = (view.left + view.right) / 2;
+        return { left: middle - wide / 2, right: middle + wide / 2 };
+      };
+      // Profil and Einstellungen stand alike, the title 2 in like the sections' titles.
+      const form = column(await edges(page.getByTestId('view-profile')));
+      expect(await edges(page.getByTestId('profile-form'))).toEqual(form);
+      const title = await edges(page.getByTestId('profile-heading'));
+      expect(title.left).toBe(form.left + (await token('--section-inset')));
+      await open(page, `${WIN}&view=settings`);
+      const box = column(await edges(page.getByTestId('view-settings')));
+      expect(await edges(page.locator('.box').first())).toEqual(box);
+      // The setup's page with its bar, across the whole window: Zurück's glyph and Weiter on the
+      // page's edges.
+      await open(page, `${WIN}&scenario=first-run&step=profile`);
+      await animationsDone(page);
+      const setup = column({ left: 0, right: width });
+      expect(await edges(page.getByTestId('profile-form'))).toEqual(setup);
+      const back = await edges(page.getByTestId('first-back').locator('.icon'));
+      const next = await edges(page.getByTestId('first-next'));
+      expect([back.left, next.right]).toEqual([setup.left, setup.right]);
+    },
+  );
+}
+
+testWithRoom(
+  "narrow, a page, the list's head, a job and its placeholder share one column",
+  { width: 480, height: 700 },
+  async (page) => {
+    await open(page, `${WIN}&view=profile`);
+    const form = await edges(page.getByTestId('profile-form'));
+    await open(page, WIN);
+    expect(await edges(page.getByTestId('list-header').locator('.row').first())).toEqual(form);
+    // A slow job: nothing moves when it replaces its placeholder.
+    await page.evaluate(() => (window.__harness.detailDelay = 900));
+    await row(page, 'freelancermap-2801').click();
+    const skeleton = page.getByTestId('reader-skeleton');
+    await expect(skeleton).toBeVisible();
+    expect(await edges(skeleton)).toEqual(form);
+    const job = page.getByTestId('reader-head');
+    await expect(job).toBeVisible();
+    expect(await edges(job)).toEqual(form);
+  },
+);
+
+testWithRoom(
+  'no hit: the tile, its words, the button under them and the head have one middle',
+  { width: 1360, height: 860 },
+  async (page) => {
+    const middle = async (node: Locator): Promise<number> => {
+      const { left, right } = await edges(node);
+      return (left + right) / 2;
+    };
+    await open(page, WIN);
+    await page.getByTestId('search').fill('Kreditoren');
+    const none = page.getByTestId('empty-search');
+    await expect(none.getByTestId('also-archive')).toBeVisible();
+    const head = await middle(page.getByTestId('list-header').locator('.row').first());
+    // (A line of text is as wide as its words, so its middle may lie a little off the pixel.)
+    expect(await middle(none.locator('.tile'))).toBeCloseTo(head, 0);
+    expect(await middle(none.locator('h3'))).toBeCloseTo(head, 0);
+    expect(await middle(none.locator('p'))).toBeCloseTo(head, 0);
+    expect(await middle(none.getByTestId('also-archive'))).toBeCloseTo(head, 0);
+    // An empty place under its head (a kept filter), across the whole width: the view's middle.
+    await page.addInitScript(() =>
+      localStorage.setItem('jobs-filter', JSON.stringify({ portals: ['linkedin'] })),
+    );
+    await open(page, `${WIN}&scenario=concept`);
+    await openPlace(page, 'archive');
+    const place = page.getByTestId('empty-place-archive');
+    await expect(place).toBeVisible();
+    const view = await middle(page.getByTestId('view-jobs'));
+    expect(await middle(page.getByTestId('list-header').locator('.row').first())).toBeCloseTo(
+      view,
+      0,
+    );
+    expect(await middle(place.locator('.tile'))).toBeCloseTo(view, 0);
+  },
+);
+
+testWithRoom(
+  "the list's hairline runs across the column, past the scrollbar's room",
+  { width: 1360, height: 600 },
+  async (page) => {
+    await open(page, WIN);
+    await chooseSort(page, 'match');
+    const scroller = page.getByTestId('list-scroll');
+    const head = page.getByTestId('list-header').locator('xpath=..');
+    const line = (): Promise<string> =>
+      head.evaluate((node) => getComputedStyle(node).borderBottomColor);
+    const seam = await scroller
+      .locator('xpath=..')
+      .evaluate((node) => getComputedStyle(node).borderRightColor);
+    const top = (await scroller.boundingBox())!.y;
+    expect(await line()).not.toBe(seam);
+    await scroller.evaluate((node) => node.scrollTo({ top: 60 }));
+    await expect.poll(line).toBe(seam);
+    // Its box is as wide as the list's own, the track included, up to the column's border; it
+    // takes its height at rest too, so the rows stay.
+    expect(await edges(head)).toEqual(await edges(scroller));
+    expect((await scroller.boundingBox())!.y).toBe(top);
+  },
+);
+
+/* ------------------------------------------------------- one weight of a hairline */
 
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
   page,

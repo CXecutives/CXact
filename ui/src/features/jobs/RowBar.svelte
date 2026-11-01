@@ -1,16 +1,17 @@
 <!--
   The job list's one highlight (the round 10 draft): the open job's row on a soft coral tint
-  (8 round, the row's own box, 6 in from the column's edges), a 3 px coral bar at its left
+  (8 round, the row's own box), a 3 px coral bar at its left
   edge, 10 in from its top and bottom. It lies under the rows and the days' headings, and in
   the list's scroll content, so it scrolls with the rows. Opening another job glides it there
-  by its translateY (180 ms, ease-out, like the sidebar's pill and the segment's thumb); a
+  by its translateY (180 ms, ease-out, like the sidebar's pill); a
   target out of sight, fast browsing (pace.ts: the arrow keys held, opens close together) and
   far jumps place it. It stays with its row whatever moves the rows: at once when rows arrive
   or fold away above it, gliding along when the list re-sorts. It is simply there the first
   time: when the list is built or comes back, and after a reload, another filter or a search.
   Opening a job while none is open fades it in, closing fades it out. A job that leaves the
   list (archive, Papierkorb) keeps it where its row was until the next job opens there: it
-  waits there while the next row rises into that place, however long the fold takes. It
+  waits there while the next row rises into that place, however long the fold takes. A list
+  without rows has none: it goes with them at once. It
   greys while the window is inactive, like Mail and Explorer. Under reduced motion it never
   moves.
 -->
@@ -302,8 +303,8 @@
   .highlight {
     position: absolute;
     top: 0;
-    right: var(--row-highlight-inset);
-    left: var(--row-highlight-inset);
+    right: var(--list-rows-inset-end);
+    left: var(--list-rows-inset);
     height: var(--bar-height, 0);
     border-radius: var(--list-row-radius);
     background-color: var(--selection-tint);
@@ -312,6 +313,11 @@
     transition:
       opacity var(--dur-fade) var(--ease-in),
       background-color var(--dur-base) var(--ease-standard);
+  }
+
+  /* A list without rows has none: it would flash over the state that took the rows' place. */
+  .highlight:not(:has(~ :global(.groups))) {
+    display: none;
   }
 
   /* The coral bar at its left edge, 10 in from its top and bottom. */

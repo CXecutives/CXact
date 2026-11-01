@@ -1,59 +1,47 @@
 <!--
-  The head of a view, one for the job list, the job view, Profil and Einstellungen. It scrolls
-  with its view (design round 4: no sticky heads; the view's content goes under the top bar's
-  fade). Its first row lies on the first row of the window (the sidebar's first entry is
-  centred on it): the view's title (20/650 ink, on a row at least 30 high; a job's title may
-  take two lines and is text to copy) or what leads instead of it (the list's place tabs), and
-  at its end the view's actions, centred on the first line. Below it the head may hold more
-  (`children`: the list's search, its filter's chips and the run's line). The head of a page
+  The head of a view, one for the job list, Profil and Einstellungen. It scrolls with its view
+  (design round 4: no sticky heads; the view's content goes under the top bar's fade). Its first
+  row lies on the first row of the window (the sidebar's first entry is centred on it): the
+  view's title (20/650 ink, on a row at least 30 high) or what leads instead of it (the list's
+  search), and at its end the view's actions, centred on the first line. Below it the head may
+  hold more (`children`: the list's filter's chips and the run's line). The head of a page
   (`column="page"`: Profil, Einstellungen) stands in the page's column (Page `head`), 2 in like
-  the sections' titles, 22 above the first of them; the job view's takes its column, centred
-  in the full width. The list's head stands above its own scroller and draws a hairline under
-  it once the list scrolled (`line`).
+  the sections' titles, 22 above the first of them. The list's head stands above its own
+  scroller.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
   interface Props {
     heading?: string | null;
-    /** The heading is text a user would copy (a job's title). */
-    copy?: boolean;
     headingTestid?: string | null;
-    /** What stands in the title's place (the list's places). */
+    /** What stands in the title's place (the list's search). */
     lead?: Snippet | null;
     /** The view's actions at the end of the first row. */
     actions?: Snippet | null;
-    /** The column the content takes: the pages' (Profil, Einstellungen), the job view's, or
-     *  the full width (the list). */
-    column?: 'page' | 'reader' | null;
-    /** A hairline under it (the list's head, once the list scrolled beneath it). */
-    line?: boolean;
+    /** The column the content takes: the pages' (Profil, Einstellungen), or the full width (the
+     *  list). */
+    column?: 'page' | null;
     testid?: string | null;
     children?: Snippet;
   }
 
   let {
     heading = null,
-    copy = false,
     headingTestid = null,
     lead = null,
     actions = null,
     column = null,
-    line = false,
     testid = null,
     children,
   }: Props = $props();
 </script>
 
-<header class="head" class:paged={column === 'page'} class:line data-testid={testid ?? undefined}>
-  <div class="inner {column ?? ''}">
+<header class="head" class:paged={column === 'page'} data-testid={testid ?? undefined}>
+  <div class="inner" class:page={column === 'page'}>
     <div class="row">
       {#if heading !== null}
-        <h1
-          class="title"
-          data-copy={copy ? '' : undefined}
-          data-testid={headingTestid ?? undefined}
-        >
+        <h1 class="title" data-testid={headingTestid ?? undefined}>
           {heading}
         </h1>
       {/if}
@@ -68,19 +56,12 @@
   .head {
     flex: none;
     padding: var(--head-pad) var(--pane-padding-end) var(--head-pad) var(--pane-padding);
-    border-bottom: var(--border-width) solid transparent;
     container-type: inline-size;
-    transition: border-color var(--dur-fast) var(--ease-standard);
   }
 
   /* A page's head: in the page's column (Page), 2 in like the sections' titles. */
   .paged {
     padding: 0 var(--section-inset);
-    border-bottom: 0;
-  }
-
-  .line {
-    border-bottom-color: var(--border);
   }
 
   .inner {
@@ -90,12 +71,8 @@
     margin: 0 auto;
   }
 
-  .inner.page {
+  .page {
     width: 100%;
-  }
-
-  .inner.reader {
-    max-width: var(--reader-width);
   }
 
   /* The title (or what leads) and the actions on the first row; a title of two lines keeps

@@ -7,6 +7,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import {
+  animationsDone,
   calls,
   expect,
   expectShot,
@@ -232,6 +233,21 @@ test('the window focus state follows the OS window', async ({ page }) => {
   await expect(root).toHaveAttribute('data-window', 'inactive');
   await page.evaluate(() => window.__harness.fire('tauri://focus', null));
   await expect(root).toHaveAttribute('data-window', 'active');
+});
+
+test('with the window in the back the caption glyphs fade, and come back with it', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const glyph = page.getByTestId('window-minimize');
+  const colour = (): Promise<string> => glyph.evaluate((node) => getComputedStyle(node).color);
+  const front = await colour();
+  await page.evaluate(() => window.__harness.fire('tauri://blur', null));
+  await expect.poll(colour).not.toBe(front);
+  await animationsDone(page);
+  expect(await colour()).not.toBe(front);
+  await page.evaluate(() => window.__harness.fire('tauri://focus', null));
+  await expect.poll(colour).toBe(front);
 });
 
 test('the navigation switches the view', async ({ page }) => {
@@ -1589,6 +1605,54 @@ test('the places under Jobs fold by hand: the pill goes to Jobs, the choice is k
   await fold.click();
   await expect(archive).toBeVisible();
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-current', 'page');
+});
+
+test('the chevron at Jobs: only its glyph turns, its wash stays still and round', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const fold = page.getByTestId('nav-places');
+  const glyph = fold.locator('.chevron');
+  const style = (node: Locator) => node.evaluate((element) => getComputedStyle(element).transform);
+  // Open it points down, folded aside; the button itself never turns.
+  await expect.poll(() => style(glyph)).toBe('none');
+  await expect.poll(() => style(fold)).toBe('none');
+  const before = (await fold.boundingBox())!;
+  await fold.hover();
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(fold).toHaveAttribute('aria-expanded', 'false');
+  // On its way the button keeps its box.
+  expect(await fold.boundingBox()).toEqual(before);
+  await motionSettled(page);
+  expect(await style(fold)).toBe('none');
+  expect(await style(glyph)).not.toBe('none');
+  expect(await fold.boundingBox()).toEqual(before);
+  // Its wash is round like a menu's row: what lies inside something (8) takes 6.
+  const round = (node: Locator) =>
+    node.evaluate((element) => getComputedStyle(element).borderRadius);
+  const radius = await round(fold);
+  await page.getByTestId('filter').click();
+  expect(radius).toBe(await round(page.getByTestId('menu').getByRole('menuitemradio').first()));
+});
+
+test('the row Jobs keeps its wash under its chevron, like a row of the list under its tools', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const jobs = page.getByTestId('nav-jobs');
+  const wash = async (): Promise<string> => {
+    await animationsDone(page);
+    return jobs.evaluate((node) => getComputedStyle(node).backgroundColor);
+  };
+  const rest = await wash();
+  await jobs.hover();
+  const over = await wash();
+  expect(over).not.toBe(rest);
+  await page.getByTestId('nav-places').hover();
+  expect(await wash()).toBe(over);
+  await page.mouse.move(0, 0);
+  expect(await wash()).toBe(rest);
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {

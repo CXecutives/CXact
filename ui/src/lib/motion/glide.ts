@@ -1,9 +1,8 @@
-// One glide for what marks a choice: the selection of a list (its tint and bar), the pill of
-// the sidebar, the thumb of a segment. The marker is one element out of the flow; it stands
-// on the element it marks and glides to the next one (180 ms, ease-out), and fades in or out
-// (140 ms) when it appears or hides. Its style holds where it stands, through custom
-// properties the action sets (cssVars): the component's CSS places it with them, insets
-// included:
+// The glide of what marks a choice among entries: the pill of the sidebar (a list's selection
+// moves alike, RowBar). The marker is one element out of the flow; it stands on the element it
+// marks and glides to the next one (180 ms, ease-out), and fades in or out (140 ms) when it
+// appears or hides. Its style holds where it stands, through custom properties the action sets
+// (cssVars): the component's CSS places it with them, insets included:
 //
 //   .marker {
 //     position: absolute; top: 0; left: 0;
@@ -13,8 +12,8 @@
 //   }
 //
 // The move is a transform that adds the way still to go to that place and runs to nothing
-// (composite add, on the compositor), so whatever moves the rows or the options meanwhile
-// moves the marker along at once. Only when the two boxes differ in size does a second
+// (composite add, on the compositor), so whatever moves the entries meanwhile moves the marker
+// along at once. Only when the two boxes differ in size does a second
 // animation take the marker's drawn size to its new one (the box of an element out of the
 // flow; a scale would deform its corners).
 //

@@ -1,10 +1,9 @@
 <!--
-  The white box of a page's group (Section; Profil, Einstellungen, the setup's mailbox form
-  and its portals' rows; the round 10 draft): white with a hairline edge and the card's soft
-  shadow, 14 round. A box of fields is 18 20 20 inside with its fields 18 apart, no lines
-  between them. A box of rows (SettingRow, PortalRow; the Profil's rows, `rows`) has no
-  padding: its rows pad themselves and draw the hairline between them, the only hairlines of
-  a box. The box is the
+  The white box of a page's group (Section; Profil, Einstellungen; the round 10 draft): white
+  with a hairline edge and the card's soft shadow, 14 round. A box of fields is 18 20 20 inside
+  with its fields 18 apart, no lines between them. A box of rows (`rows`: the Profil's, Postfach
+  and Daten; or SettingRows as its direct children: the portals) has no padding: its rows pad
+  themselves and draw the hairline between them, the only hairlines of a box. The box is the
   container its rows ask for their width (a narrow box puts a row's buttons on a line of their
   own). A box of a group of several has its caption above it (Jobportale's "Suche und
   Alert-Mails"): 13/500 muted, 2 in like the section's title, 6 above the box, 14 below the box
@@ -20,7 +19,7 @@
     captionTestid?: string | null;
     /** The box's test id. */
     testid?: string | null;
-    /** A box of rows that pad themselves (the Profil's). */
+    /** A box of rows that pad themselves, whatever wraps them. */
     rows?: boolean;
     children: Snippet;
   }

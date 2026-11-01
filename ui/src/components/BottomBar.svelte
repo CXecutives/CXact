@@ -33,9 +33,9 @@
 
 <style>
   /* Its column stands on the page's: like the view above it, it keeps the room of the view's
-     scrollbar beside it, empty (a scroller that never scrolls), and as much at its left, and its
-     white goes on under that room to the window's edges. It asks its own width, as the page's
-     parts ask the page's. */
+     scrollbar beside it, empty (a scroller that never scrolls), and as much at its left, its sides
+     count that room, and its white goes on under it to the window's edges. It asks its own width,
+     as the page's parts ask the page's. */
   .bar {
     container: page / inline-size;
     padding-left: var(--scrollbar-room);
@@ -51,10 +51,10 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-8) var(--space-12);
-    max-width: var(--page-max);
+    max-width: var(--page-column);
     min-height: var(--bar-min);
     margin: 0 auto;
-    padding: var(--bar-pad-y) var(--page-side);
+    padding: var(--bar-pad-y) var(--page-side-end);
   }
 
   .start {
@@ -77,7 +77,7 @@
 
   @container page (width < 560px) {
     .inner {
-      padding-inline: var(--page-side-narrow);
+      padding-inline: var(--page-side-narrow-end);
     }
   }
 </style>

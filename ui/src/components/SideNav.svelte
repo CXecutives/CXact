@@ -59,14 +59,18 @@
   /** Whether the active entry is one of this entry's. */
   const holdsActive = (item: SideNavItem<Id>): boolean =>
     item.children?.items.some((child) => child.id === active) ?? false;
+  const holder = $derived(items.find(holdsActive));
 
   /** The entry the pill stands on: the active one, or the one that holds it while folded. */
   const shown = $derived.by(() => {
     if (active === null) return null;
-    const holder = items.find((item) => holdsActive(item) && !item.children?.open);
-    return holder?.id ?? active;
+    return holder !== undefined && !holder.children?.open ? holder.id : active;
   });
-  const chosen = $derived(shown === null ? null : (entries[shown] ?? null));
+  /** An entry that unfolds has no element yet: until it has, the pill stays on the one that holds
+   *  it, and glides down from there as it glides up when they fold. */
+  const chosen = $derived(
+    shown === null ? null : (entries[shown] ?? (holder && entries[holder.id]) ?? null),
+  );
 </script>
 
 <nav class="nav" aria-label={label}>
@@ -92,13 +96,12 @@
         <button
           type="button"
           class="fold"
-          class:open={children.open}
           aria-expanded={children.open}
           aria-label={children.toggleLabel}
           data-testid={children.testid}
           onclick={() => children.ontoggle()}
         >
-          <Icon name="expand" size="xs" />
+          <span class="chevron" class:turned={children.open}><Icon name="expand" size="xs" /></span>
         </button>
         {#if children.open}
           <div class="children" transition:unfold>
@@ -180,28 +183,33 @@
     justify-content: center;
     width: var(--hit-min);
     height: var(--hit-min);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-inner);
     color: var(--icon-subtle);
-    transform: rotate(var(--turn-fold));
     transition:
-      transform var(--dur-slow) var(--ease-out),
       background-color var(--dur-base) var(--ease-standard),
       color var(--dur-base) var(--ease-standard);
-  }
-
-  .fold.open {
-    transform: none;
   }
 
   .fold:hover {
     background-color: var(--quiet-hover);
     color: var(--text);
-    transition-duration: var(--dur-slow), var(--dur-hover), var(--dur-hover);
+    transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .fold:active:hover {
     background-color: var(--quiet-press);
-    transition-duration: var(--dur-slow), var(--dur-instant), var(--dur-hover);
+    transition-duration: var(--dur-instant), var(--dur-hover);
+  }
+
+  /* Only the glyph turns (ListDivider's fold): the button and its wash stay still. */
+  .chevron {
+    display: inline-flex;
+    transform: rotate(var(--turn-fold));
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .turned {
+    transform: none;
   }
 
   /* The places: a hairline under the glyph of the entry above. Everything inside what folds, so
@@ -240,7 +248,9 @@
     font: var(--type-field-label);
   }
 
-  .item:not([aria-current='page']):hover {
+  /* The row keeps its wash under its chevron, as a list's row under its tools. */
+  .item:not([aria-current='page']):hover,
+  .entry:has(> .fold:hover) > .item:not([aria-current='page']) {
     background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }

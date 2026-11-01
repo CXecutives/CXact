@@ -1607,7 +1607,7 @@ test.describe('days', () => {
   const lined = (page: Page): Promise<boolean> =>
     page
       .getByTestId('list-header')
-      .locator('header')
+      .locator('xpath=..')
       .evaluate((node) => node.classList.contains('line'));
 
   test('by date (the default): Heute, Gestern, then the weekday and date; none in the sections', async ({
@@ -3138,6 +3138,62 @@ test.describe('the list keeps true', () => {
     await expect(bar).not.toHaveClass(/\bshown\b/);
     await divider.click();
     await expect(bar).toHaveClass(/\bshown\b/);
+  });
+
+  /** The frames in which the highlight shows over a list without a row while `act` runs and a
+   *  moment after it. */
+  const tintWithoutRows = async (page: Page, act: () => Promise<void>): Promise<number> => {
+    const frames = page.evaluate(
+      () =>
+        new Promise<number>((resolve) => {
+          const bar = document.querySelector('[data-testid="row-bar"]')!;
+          const start = performance.now();
+          let shown = 0;
+          const frame = (): void => {
+            const { display, opacity } = getComputedStyle(bar);
+            const empty = document.querySelector('[data-testid="job-list"] [data-key]') === null;
+            if (empty && display !== 'none' && Number(opacity) > 0) shown += 1;
+            if (performance.now() - start < 1500) requestAnimationFrame(frame);
+            else resolve(shown);
+          };
+          requestAnimationFrame(frame);
+        }),
+    );
+    await act();
+    return frames;
+  };
+
+  test('a list that lost its last row has no highlight: no tint over what stands in its place', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const { active } = await stubList(page);
+    const bar = page.getByTestId('row-bar');
+    // A search that finds nothing.
+    await openJob(page, active[0]!);
+    expect(
+      await tintWithoutRows(page, async () => {
+        await page.getByTestId('search').fill('zz');
+        await expect(page.getByTestId('empty-search')).toBeVisible();
+      }),
+    ).toBe(0);
+    await expect(bar).toBeHidden();
+    // Back with its rows, it marks the next job.
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await openJob(page, active[1]!);
+    await expect(bar).toBeVisible();
+    await expect(bar).toHaveClass(/\bshown\b/);
+    // The last jobs of a place moved away, the open one last.
+    await openPlace(page, 'archive');
+    const archived = (await stubList(page, { place: 'archive' })).active;
+    await openJob(page, archived.at(-1)!);
+    for (const key of archived.slice(0, -1)) await viaMenu(page, 'unarchive', key);
+    expect(
+      await tintWithoutRows(page, async () => {
+        await viaMenu(page, 'unarchive', archived.at(-1)!);
+        await expect(page.getByTestId('empty-all')).toBeVisible();
+      }),
+    ).toBe(0);
   });
 
   /** Notes every part of a list with its job view that stands in a frame drawn from now on,

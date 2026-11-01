@@ -84,7 +84,7 @@ Commit them together with tokens.css.
   (`view.rs`).
 - The look of the pages' groups (Profil, Einstellungen): `components/Section.svelte` (the
   heading), `components/Group.svelte` (the white box), `components/Page.svelte` (the column)
-  and the `--layout-*` tokens in `tokens.css`.
+  and the `--form-row-*`, `--group-*` and `--page-*` tokens in `tokens.css`.
 - The Profil-Ordner of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`). "Ordner öffnen" makes a missing folder first.
 - A step of the setup is one entry in `STEPS` of `ui/src/features/first-run/steps.ts` (order,
@@ -125,9 +125,10 @@ menu names a key.
   the order and the filter, and its menu stays open while choosing (`stays` entries of
   `lib/state/menu.svelte.ts`, which shows the entries anew after each choice). The order is no
   part of the filter: it sets no dot and no chip, and "Filter zurücksetzen" keeps it.
-- **The place action**: one slot at the right of the tabs (at least `--place-action` wide) in
-  `ui/src/features/jobs/ListHeader.svelte`, one `{#if}` chain: Abbrechen while a search runs,
-  else Jobs suchen in Aktuell, else Papierkorb leeren. Another action is one more branch there.
+- **The place action**: one slot at the right of the search in
+  `ui/src/features/jobs/ListHeader.svelte`, one `{#if}` chain: Abbrechen while a search or a
+  rescore runs, else Jobs suchen in Aktuell, none in the Archiv and the Papierkorb. Another
+  action is one more branch there.
 - **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
   on a row shows both groups (what shows the job: Anzeige öffnen, Alert-Mail öffnen, Prompt
   kopieren; a click on the row opens the job; what changes it: Trotzdem bewerten, then the moves of its place); the
@@ -154,16 +155,14 @@ Each role of the UI has one pattern, decided in one place; the components only r
   `ui/src/lib/state/toasts.svelte.ts`; a quiet success is always a toast (`toasts.show`),
   never a note that stays in the view. A bar that sticks to the window's bottom edge lifts the
   stack above it with `use:liftToasts` (`ui/src/lib/actions/liftToasts.ts`).
-- **A suggestion chip** (the quick picks of "Häufig verlangt"): `Button` with
-  `variant="suggest"` and its `count`, read by `ui/src/features/profile/AskedTerms.svelte`; its
-  words on `--surface-track` keep AA (`CONTRAST` in `tools/tokens.mjs`).
-- **An empty state**: `components/EmptyState.svelte`, always a meaningful icon and one quiet
-  sentence, no heading; a notice is `components/Notice.svelte` (inline, or a state box).
+- **An empty state**: `components/EmptyState.svelte`, always a meaningful icon, a title and one
+  quiet sentence; a notice is `components/Notice.svelte`, a state in a box
+  `components/StateBox.svelte`.
 - **Hover, press and focus**: one answer per surface kind (quiet, control, label) in
   `ui/src/styles/tokens.css` ("one answer per surface kind").
 - **Buttons**: one height (`docs/PLAN.md` "Controls", `--btn-height` in
-  `ui/src/components/Button.svelte`); a button that loses something for good is `warns` (red
-  at rest).
+  `ui/src/components/Button.svelte`); what loses something for good asks first, and the red fill
+  (`danger`) only confirms in a dialog.
 - **Tooltips**: only where something is missing: a button that shows only its glyph, text
   that is cut off, the reason a control waits; never the words that stand there (the sidebar
   always names its entries).
@@ -225,9 +224,9 @@ A number or a list of words under `harte_kriterien`:
 3. `cargo test -p jobalert-core ipc_types` rewrites `ProfileCriteria.ts`,
    `UnreadableField.ts` and `profile.ts`.
 4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
-   (`{ kind: 'number', key, label, unit, testid }`, `{ kind: 'chips', ... }`, a `segments` or a
-   `select`; a number's limit comes from core, `NUMBER_LIMITS`) and its label (and placeholder,
-   info sentence) in the catalog (`profile.field`, `profile.info`).
+   (`{ kind: 'number', key, label, unit, testid }`, `{ kind: 'chips', ... }`, a `choice`, a
+   select of a few modes; a number's limit comes from core, `NUMBER_LIMITS`) and its label (and
+   placeholder, info sentence) in the catalog (`profile.field`, `profile.info`).
 5. The AI prompt for a new profile (`core/src/profile/prompt.rs`): its key in the skeleton's
    `harte_kriterien`, in the order of `CRITERIA`, and one rule line
    (and, if the CV cannot say it, one question of "Der Ablauf"); a test fails while the
@@ -261,11 +260,8 @@ writes them (`core/src/matching/vocabulary.rs`: `UMLAUTS`, `SPELLED`, `ACRONYMS`
 (`tools/ui-harness/demo/vocabulary.json`, commit it). `vocabulary_report` (ignored) prints
 both lists to read.
 
-"Häufig verlangt" under the competences (`ui/src/features/profile/AskedTerms.svelte`) shows
-what `asked_terms` answers. Its window, its most terms and the jobs a term needs are
-`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`. A requirement's term and the
-field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan", "Branchenerfahrung Energie"
-the industry "Energie") are `core_term` in `core/src/matching/terms.rs`: a lead word, a wish,
+A requirement's term and the field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan",
+"Branchenerfahrung Energie" the industry "Energie") are `core_term` in `core/src/matching/terms.rs`: a lead word, a wish,
 a tool, a certificate or a degree word is one more entry in `core/src/matching/lexicon/terms.rs`
 (add a phrase to the table test there); the words of languages and industries are the
 engine's. It is applied when the terms are read, so a change there needs no scoring again.

@@ -30,7 +30,7 @@ export type ListKey =
   'roles' | 'regions' | 'tools' | 'industries' | 'degrees' | 'certificates' | 'exclusionWords';
 /** The words a tag field suggests while typing (vocabulary.svelte.ts). */
 export type Suggest = 'roles' | 'skills' | 'industries' | 'regions';
-/** A choice of a few modes, one segmented control each. */
+/** A choice of a few modes, one select each. */
 export type ChoiceKey = 'workMode' | 'workload';
 
 /** A field of the form, a row of its group's box. `shown` keeps its row out of the form while

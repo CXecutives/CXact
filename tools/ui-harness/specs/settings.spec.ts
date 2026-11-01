@@ -333,6 +333,90 @@ test('mailbox form: rows like the Profil, the buttons in the order of the OS', a
   expect(narrow.password.link!.top).toBeGreaterThanOrEqual(narrow.password.control.bottom);
 });
 
+/** The left and the right edge of a part of the page. */
+async function edges(node: Locator): Promise<{ left: number; right: number }> {
+  const box = (await node.boundingBox())!;
+  return { left: box.x, right: box.x + box.width };
+}
+
+/** Where the wash of a row someone was taken to stands (lib/motion/arrive.ts). */
+function washEdges(row: Locator): Promise<{ left: number; right: number }> {
+  return row.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const wash = getComputedStyle(node, '::before');
+    return { left: box.left + parseFloat(wash.left), right: box.right - parseFloat(wash.right) };
+  });
+}
+
+test('Postfach is a box of rows like Daten: its row and its form on their measure', async ({
+  page,
+}) => {
+  /** Where a row's name starts. */
+  const words = async (row: Locator): Promise<number> =>
+    (await edges(row.locator('.text > .label'))).left;
+  for (const [query, opener] of [
+    [WIN, 'mailbox-change'],
+    [`${WIN}&scenario=no-mailbox`, 'mailbox-connect'],
+  ] as const) {
+    await settings(page, query);
+    const mailbox = page.getByTestId('mailbox');
+    const folder = page.getByTestId('folder');
+    // The row fills its box, as high as one row and its edges, its words and its buttons level
+    // with the rows below it.
+    const row = (await mailbox.boundingBox())!;
+    const box = (await mailbox
+      .locator('xpath=ancestor::*[contains(@class, "box")]')
+      .boundingBox())!;
+    expect(await edges(mailbox)).toEqual(await edges(folder));
+    expect(box.height).toBe(row.height + 2);
+    expect(await words(mailbox)).toBe(await words(folder));
+    const end = (await edges(folder.getByRole('button').last())).right;
+    expect((await edges(mailbox.getByRole('button').last())).right).toBe(end);
+    // The form: its hairlines from the words to the box's edge, its controls and its buttons
+    // ending with the rows' buttons.
+    await (await reveal(page, page.getByTestId(opener))).click();
+    await animationsDone(page);
+    expect((await edges(page.getByTestId('mailbox-user').locator('..'))).right).toBe(end);
+    expect((await edges(page.getByTestId('mailbox-buttons'))).right).toBe(end);
+    const line = await page.getByTestId('mailbox-user').evaluate((node) => {
+      const cell = node.closest('.cell')!;
+      const { left, right } = cell.getBoundingClientRect();
+      return { left: left + parseFloat(getComputedStyle(cell, '::before').left), right };
+    });
+    expect(line).toEqual({ left: await words(folder), right: (await edges(folder)).right });
+  }
+  // In a narrow window its buttons stay on its line as long as the rows' below it do.
+  await page.setViewportSize({ width: 530, height: 800 });
+  await settings(page);
+  expect((await page.getByTestId('mailbox').boundingBox())!.height).toBe(
+    (await page.getByTestId('folder').boundingBox())!.height,
+  );
+  // The controls stand in the Profil's column.
+  await page.setViewportSize({ width: 1360, height: 900 });
+  await settings(page);
+  await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+  await animationsDone(page);
+  const provider = await edges(page.getByTestId('mailbox-provider'));
+  await nav(page, 'nav-profile');
+  expect(provider).toEqual(await edges(await reveal(page, page.getByTestId('profile-work-mode'))));
+});
+
+test('"Postfach prüfen": the wash stands where the wash of a row of the Profil does', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&mail=offline&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('toast-action').filter({ hasText: T.run.checkMailbox }).click();
+  const row = page.getByTestId('settings-mailbox').locator('[data-arrive]');
+  await expect(row).toHaveAttribute('data-arrived', '');
+  const wash = await washEdges(row);
+  await nav(page, 'nav-profile');
+  expect(wash).toEqual(
+    await washEdges(page.getByTestId('profile-form').locator('[data-arrive]').first()),
+  );
+});
+
 test('mailbox form: a field refers to its message only while one shows', async ({ page }) => {
   await settings(page);
   await (await reveal(page, page.getByTestId('mailbox-change'))).click();

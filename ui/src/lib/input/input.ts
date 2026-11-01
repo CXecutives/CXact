@@ -44,7 +44,7 @@
 // - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
 //   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
 //   presses the focused button, switch or radio, Enter a button only, once for a held key; in
-//   a radio group (the segments) and a row of tabs the arrows, Home and End choose; on a select
+//   a radio group (the backups) and a row of tabs the arrows, Home and End choose; on a select
 //   the arrows open its list (`selectKeys`). Inside a field every
 //   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
 //   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
@@ -367,7 +367,7 @@ function isNowhere(target: EventTarget | null): boolean {
   return target instanceof Element && target.matches(FOCUS_HOLDER);
 }
 
-/** The arrows inside a radio group (the segments) or a row of tabs: the previous or the next
+/** The arrows inside a radio group (the backups) or a row of tabs: the previous or the next
  *  option takes the focus and is chosen, wrapping at the ends, like native radio buttons and
  *  tabs; Home and End choose the first and the last. A row of tabs goes left and right only.
  *  The group is one Tab stop (only the chosen option has tabindex 0). `true` if the group
