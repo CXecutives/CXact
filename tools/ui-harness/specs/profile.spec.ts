@@ -323,7 +323,7 @@ test('a row is 62 high, its control 16 under the line, its hairline from the tex
   // The hairline between rows starts where the row's words do.
   for (const [row, name, pseudo] of [
     [field(page, 'dayRateMin'), '.label', '::after'],
-    [page.getByTestId('languages-item').nth(1), '.name', '::before'],
+    [page.getByTestId('languages-item').nth(1), '.name', '::after'],
   ] as const) {
     const { line, text } = await row.evaluate(
       (node, { css, which }) => {
@@ -1583,6 +1583,7 @@ test('a language the backend refuses is said under its row', async ({ page }) =>
   const items = page.getByTestId('languages-item');
   const levels = page.getByTestId('language-level');
   await expect(items.nth(1).getByTestId('languages-error')).toHaveText(T.profile.field.refused);
+  await expect(items.nth(1)).toHaveAttribute('data-arrived', '');
   await expect(levels.nth(1)).toHaveAttribute('aria-invalid', 'true');
   await expect(levels.first()).not.toHaveAttribute('aria-invalid', 'true');
   // Changed, the error goes and it saves.
@@ -1607,6 +1608,91 @@ test('a refusal of a whole list is said under its last row', async ({ page }) =>
   });
   expect(under).toBeGreaterThanOrEqual(0);
   await expect(page.getByTestId('languages-item').getByTestId('languages-error')).toHaveCount(0);
+});
+
+/** So many more competences that the group is taller than the window. */
+async function longCompetences(page: Page): Promise<void> {
+  const name = await adder(page, 'competence');
+  const more = Array.from({ length: 24 }, (_, at) => `Weitere Kompetenz ${at}`);
+  expect(await pasteInto(name, more.join(', '))).toBe(true);
+  await expect(names(page, 'competences').last()).toHaveText(more.at(-1)!);
+  await leaveField(page);
+  await allSaved(page);
+  const group = (await page.getByTestId('section-competences').boundingBox())!;
+  expect(group.height).toBeGreaterThan(page.viewportSize()!.height);
+}
+
+/** Einstellungen and Abbrechen in the question about a value that holds the save. */
+async function askAndStay(page: Page): Promise<void> {
+  await page.getByTestId('view-profile').evaluate((node) => node.scrollTo(0, 0));
+  await page.getByTestId('nav-settings').click();
+  await page.getByTestId('dialog-leave-profile').getByTestId('dialog-cancel').click();
+  await expect(page.getByTestId('dialog-leave-profile')).toHaveCount(0);
+}
+
+test('a wrong competence: the way back glides to its row, which takes the wash, not the add button', async ({
+  page,
+}) => {
+  await profile(page);
+  const first = page.getByTestId('competences-item').first();
+  const add = page.getByTestId('competences-add');
+  await page
+    .getByTestId('competence-years')
+    .first()
+    .fill(String(MAX_YEARS + 1));
+  await leaveField(page);
+  await askAndStay(page);
+  await expect(first).toHaveAttribute('data-arrived', '');
+  await expect(add).not.toHaveAttribute('data-arrived', '');
+  await expect(first).toBeInViewport({ ratio: 1 });
+  // A row that is marked keeps its line: the wash is drawn beside it.
+  const second = page.getByTestId('competences-item').nth(1);
+  await second.getByTestId('competence-years').fill(String(MAX_YEARS + 1));
+  await leaveField(page);
+  const line = (row: Locator): Promise<string> =>
+    row.evaluate((node) => getComputedStyle(node, '::after').borderTopWidth);
+  expect(await line(second)).toBe(await line(page.getByTestId('competences-item').nth(2)));
+  expect(await line(second)).not.toBe('0px');
+});
+
+test('a wrong competence in a list taller than the window: its row and its sentence come into view', async ({
+  page,
+}) => {
+  await profile(page);
+  await longCompetences(page);
+  const years = page.getByTestId('competence-years');
+  await years.first().fill(String(MAX_YEARS + 1));
+  await leaveField(page);
+  const first = page.getByTestId('competences-item').first();
+  await askAndStay(page);
+  await expect(first).toHaveAttribute('data-arrived', '');
+  await expect(first).toBeInViewport({ ratio: 1 });
+  await expect(page.getByTestId('competences-error')).toBeInViewport();
+  // From the other end, the wrong row the last one.
+  await years.first().fill('');
+  await years.last().fill(String(MAX_YEARS + 1));
+  await leaveField(page);
+  const last = page.getByTestId('competences-item').last();
+  await askAndStay(page);
+  await expect(last).toHaveAttribute('data-arrived', '');
+  await expect(last).toBeInViewport({ ratio: 1 });
+});
+
+test('a refusal of a whole list that is long: its sentence comes into view and takes the wash', async ({
+  page,
+}) => {
+  await profile(page);
+  await longCompetences(page);
+  await refuseNext(page, { field: 'competences', row: null, max: null });
+  await page.getByTestId('competence-years').first().fill('9');
+  await leaveField(page);
+  const error = page.getByTestId('competences-error');
+  await expect(error).toHaveText(T.profile.field.refused);
+  await expect(error).toBeInViewport();
+  await expect(error.locator('xpath=ancestor::*[@data-arrive][1]')).toHaveAttribute(
+    'data-arrived',
+    '',
+  );
 });
 
 // ------------------------------------------------------------------ what is still open

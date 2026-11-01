@@ -36,7 +36,7 @@
   import { afterPress, byKeyboard, formKeys } from '$lib/input/input';
   import type { ProfileForm } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_LIMITS } from '$lib/ipc/types/profile';
-  import { washOver } from '$lib/motion/arrive';
+  import { arrivingRow, washOver } from '$lib/motion/arrive';
   import { glideIntoView, glideTo, scrollerOf } from '$lib/motion/scroll';
   import { afterFolds, unfold } from '$lib/motion/transitions';
   import { dayShaped, editor } from '$lib/state/profile.svelte';
@@ -223,8 +223,9 @@
     const scope = root?.querySelector<HTMLElement>(`[data-field~="${field}"]`);
     if (scope === null || scope === undefined) return false;
     if (!move) return true;
-    glideIntoView(scope, 'sight');
-    washOver(scope);
+    const row = arrivingRow(scope) ?? scope;
+    glideIntoView(row, 'sight');
+    washOver(row);
     if (byKeyboard()) {
       scope.tabIndex = -1;
       scope.focus({ preventScroll: true });
@@ -319,9 +320,11 @@
   }
 
   /* The rows of a box, a hairline from the text between them like the rows of Einstellungen;
-     a row that unfolds (Mindestgehalt) brings its line along. */
+     a row that unfolds (Mindestgehalt) brings its line along. Brought into view (Ergänzen, Weiter)
+     a row stands clear of the top bar's fade. */
   .cell {
     position: relative;
+    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
   }
 
   .cell + .cell::after {
@@ -340,13 +343,9 @@
     padding: var(--form-row-control-y) var(--form-row-pad-x);
   }
 
-  /* A row brought into view (Ergänzen, Weiter) stands clear of the top bar's fade, the first of
-     a group with its group's title whole above it. */
-  .editor :global([data-field]) {
-    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
-  }
-
-  .cell:first-child {
+  /* The first of a group with its group's title whole above it, as a list's row may be. */
+  .cell:first-child,
+  .group[data-field] :global([data-arrive]) {
     scroll-margin-top: calc(
       var(--fade-height) + var(--space-8) + var(--section-head-min) + var(--group-heading-gap)
     );
