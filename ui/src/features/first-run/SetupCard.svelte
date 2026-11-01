@@ -21,7 +21,7 @@
   interface Props {
     heading: string;
     lead: string;
-    /** Zurück (null: none). */
+    /** The way back (null: none). */
     onback?: (() => void) | null;
     /** The foot's buttons stand in its middle (no Zurück). */
     centred?: boolean;

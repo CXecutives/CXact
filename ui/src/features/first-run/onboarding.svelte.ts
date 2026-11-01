@@ -71,7 +71,7 @@ class Onboarding {
   }
 
   /** The answer a step waited for (its save, its sign-in) goes on from that step only: whoever
-   *  left it meanwhile (Zurück, "Überspringen") stays where they went. */
+   *  left it meanwhile (back, skip) stays where they went. */
   onward(from: StepId, to: StepId): void {
     if (this.step === from) this.go(to);
   }

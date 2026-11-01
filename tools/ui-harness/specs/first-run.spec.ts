@@ -614,7 +614,7 @@ test('Postfach: optional, its pair in the OS order; skipped, Fertig opens the jo
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('toggle-sidebar')).toBeVisible();
   expect(await calls(page, 'start_run')).toHaveLength(0);
-  // macOS: Überspringen first, Verbinden last.
+  // macOS: the skip first, the connect last.
   await open(page, `${MAC}&scenario=setup-profile`);
   await expect(ends.nth(0)).toHaveAttribute('data-testid', 'first-skip');
   await expect(ends.nth(1)).toHaveAttribute('data-testid', 'first-next');

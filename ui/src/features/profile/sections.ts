@@ -98,7 +98,7 @@ export const SECTIONS: readonly Section[] = [
     rows: [
       chips('roles', 'profile-roles', { suggest: 'roles' }),
       { kind: 'contracts', info: 'contracts' },
-      // The day rates count for Projekt und Interim only, the salary for the other two.
+      // The day rates count for the project contract type only, the salary for the other two.
       {
         kind: 'number',
         key: 'dayRateWish',

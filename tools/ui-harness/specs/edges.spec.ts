@@ -210,7 +210,7 @@ test('a wrong day rate out of sight holds no save', async ({ page }) => {
   await expect(page.locator('[data-field~="dayRateMin"]')).toContainText(
     T.profile.field.atMost(100_000),
   );
-  // Without Projekt und Interim the day rates are out of sight, and the form saves as ever.
+  // Without the project contract type the day rates are out of sight, and the form saves as ever.
   await page.getByTestId('contract-project').click();
   await expect(rate).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.__harness.form()?.project)).toBe(false);

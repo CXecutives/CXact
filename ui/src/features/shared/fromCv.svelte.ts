@@ -1,8 +1,8 @@
 // "Aus Lebenslauf ausfüllen", the same wherever it is offered (the start page of the profile,
 // the head of the Profil): the backend asks for the CV, has it evaluated and saves the one
 // profile at once (`fillFromCv`). While it runs the button turns and "Abbrechen" stops it (the
-// import then answers with nothing); what went wrong is said in one sentence, with "Datei
-// auswählen" beside it where a new try can work, and the toast says when the profile was filled.
+// import then answers with nothing); what went wrong is said in one sentence, with the choice of
+// a file beside it where a new try can work, and the toast says when the profile was filled.
 // While the tries are used up (`AppState.cvUntil`) it is not offered: its button says why ahead
 // of the click (`limited`), a tile says it on the click, and a dropped CV is not taken. The
 // setup's upload says the same sentences (onboarding).
