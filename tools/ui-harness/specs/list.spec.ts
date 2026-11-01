@@ -33,6 +33,7 @@ import {
   chooseFilter,
   chooseSort,
   excludedRows,
+  expectHighlightOn,
   failNext,
   FILTER_GROUPS,
   filterLabel,
@@ -56,8 +57,10 @@ import {
   sortEntryId,
   SORTS,
   stage,
+  stubJob,
   stubList,
   setToken,
+  wholeInList,
   T,
   unfoldExcluded,
   viaMenu,
@@ -1771,6 +1774,60 @@ test.describe('rows', () => {
     await expect(stage(page).getByTestId('exclusion')).toBeVisible();
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
     await expect(excludedRows(page).and(row(page, 'freelance-900412'))).toBeVisible();
+  });
+
+  test('the open job that turns out excluded keeps its row: its section opens, the kept choice stays', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, `${WIN}&open=freelancermap:2805&tick=15`);
+    const key = 'freelancermap-2805';
+    const divider = page.getByTestId('excluded-divider');
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await stage(page).getByTestId('load-ad').click();
+    await runFinished(page);
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.excluded);
+    await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    await expect(excludedRows(page).and(row(page, key))).toBeVisible();
+    await expectHighlightOn(page, key);
+    // Its row stands in view, whichever end of the list it came to.
+    await expect.poll(() => wholeInList(page, key)).toBe(true);
+    // For now: the kept choice is what it was.
+    expect(await page.evaluate(() => localStorage.getItem('jobs-excluded-open'))).toBeNull();
+    // A fold by hand keeps working: the job stays open, nothing opens the section again.
+    await divider.click();
+    await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
+    await expect(page.getByTestId('row-bar')).not.toHaveClass(/\bshown\b/);
+    const job = await stubJob(page, 'freelancermap', '2805');
+    await page.evaluate(
+      (job) => window.__harness.emit({ type: 'jobUpdated', job, fresh: false }),
+      job,
+    );
+    await page.waitForTimeout(100);
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.excluded);
+  });
+
+  test('the open job that loses its score keeps its row: the folded section without a score opens', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('jobs-unscored-open', '0'));
+    await open(page, WIN);
+    const key = (await listed(page))[0]!;
+    await openJob(page, key);
+    const divider = page.getByTestId('unscored-divider');
+    await expect(divider).toHaveAttribute('aria-expanded', 'false');
+    const [portal, id] = key.split(/-(.*)/) as ['freelancermap', string];
+    const job = await stubJob(page, portal, id);
+    await page.evaluate(
+      (job) =>
+        window.__harness.emit({ type: 'jobUpdated', job: { ...job, match: null }, fresh: false }),
+      job,
+    );
+    await expect(divider).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('unscored-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expectHighlightOn(page, key);
+    expect(await page.evaluate(() => localStorage.getItem('jobs-unscored-open'))).toBe('0');
   });
 
   test('an excluded job counts anyway from its menu, with an undo; no way to exclude it again', async ({

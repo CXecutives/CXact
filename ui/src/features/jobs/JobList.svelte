@@ -10,9 +10,10 @@
   ones without a score yet in a section "Noch nicht bewertet", open by default, and at the end
   the excluded jobs, the red ban in the ring's place, in one section "Ausgeschlossen" that is
   folded by default (ListDivider, no count; each choice is kept; a section opens when its job
-  is opened from elsewhere, and stands open, its heading locked, while the list holds a search's
-  answer, so a hit is never hidden behind a fold, and while no row of the place would show
-  without it, lib/state/sections.svelte.ts). Neither section has days.
+  is opened from elsewhere or the open job's row goes there, and stands open, its heading
+  locked, while the list holds a search's answer, so a hit is never hidden behind a fold, and
+  while no row of the place would show without it, lib/state/sections.svelte.ts). Neither
+  section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
@@ -256,19 +257,27 @@
   );
 
   // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
-  // is folded away: its section opens (for now; the kept choice stays). A row a search holds
-  // open is not folded away: its section goes back to the kept choice with the search. A job
-  // is settled once its row is mounted: one opened before its row came (the kept job, beyond
-  // the first rows) opens its section when the row comes.
+  // is folded away, or the open job whose own row goes into a section (a run excludes it, the
+  // undo of "Trotzdem bewerten"): its section opens (for now; the kept choice stays), and a row
+  // that moved stays in view. A fold by hand keeps working: the row stays where it was. A row a
+  // search holds open is not folded away: its section goes back to the kept choice with the
+  // search. A job is settled once its row is mounted: one opened before its row came (the kept
+  // job, beyond the first rows) opens its section when the row comes.
   let lastMarked: string | null = null;
+  let lastSection: 'excluded' | 'unscored' | null = null;
   $effect(() => {
     const key = openKey;
-    const out = markedExcluded;
-    const waiting = markedUnscored;
+    const section = markedExcluded ? 'excluded' : markedUnscored ? 'unscored' : null;
     untrack(() => {
-      if (key !== lastMarked && out && !excludedOpen) sections.excludedOpen = true;
-      if (key !== lastMarked && waiting && !unscoredOpen) sections.unscoredOpen = true;
-      if (key === null || listed.has(key)) lastMarked = key;
+      if (section !== null && (key !== lastMarked || section !== lastSection)) {
+        if (section === 'excluded' && !excludedOpen) sections.excludedOpen = true;
+        if (section === 'unscored' && !unscoredOpen) sections.unscoredOpen = true;
+        if (key !== null && key === lastMarked) jobs.reveal = { key, focus: false };
+      }
+      if (key === null || listed.has(key)) {
+        lastMarked = key;
+        lastSection = section;
+      }
     });
   });
 
