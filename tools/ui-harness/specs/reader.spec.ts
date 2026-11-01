@@ -21,6 +21,7 @@ import {
   openPlace,
   row,
   rows,
+  setToken,
   stage,
   stubList,
   T,
@@ -141,18 +142,35 @@ async function toolsOf(page: Page, key: string): Promise<string[]> {
   return ids;
 }
 
-/** The moves of a job that just left the list are off (they would be the new place's). */
-async function movesOff(page: Page): Promise<void> {
+/** The moves of a job on its way out take no press and keep their look (a look of their own would
+ *  flicker for that moment). */
+async function movesLocked(page: Page): Promise<void> {
+  const sent = async (): Promise<number> =>
+    (await calls(page)).filter(([name]) => /^(move|restore|purge)_jobs$/.test(name)).length;
+  const before = await sent();
+  const title = stage(page).getByTestId('reader-title');
+  const shown = await title.innerText();
   const tools = stage(page).getByTestId('reader-tools').locator('.btn');
+  await expect(tools).toHaveCount(2);
   for (const tool of await tools.all()) {
-    await expect(tool).toHaveAttribute('aria-disabled', 'true');
+    expect(await tool.getAttribute('aria-disabled')).toBeNull();
+    await tool.click();
   }
+  // Still the same job: the presses went to its tools, not to the next job's.
+  await expect(title).toHaveText(shown);
+  expect(await sent()).toBe(before);
+  await expect(page.getByTestId('dialog-purge')).toHaveCount(0);
 }
 
 /** Every job's details take this long to load (0: at once). */
 async function slowDetails(page: Page, ms: number): Promise<void> {
   await page.evaluate((delay) => (window.__harness.detailDelay = delay), ms);
 }
+
+/** The job view keeps the job it shows while the next one loads, however long that takes, so a
+ *  test can press in it (--delay-placeholder). */
+const noPlaceholder = (page: Page): Promise<void> =>
+  setToken(page, '--delay-placeholder', '60000ms');
 
 test.describe('the head and the match', () => {
   test('the hero: the ring beside the title and its band, the buttons under a hairline; the rest in Jobdetails', async ({
@@ -438,21 +456,24 @@ test.describe('the actions', () => {
     expect(await moves(page)).toEqual(['archive', 'trash']);
   });
 
-  test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
+  test('a job that just moved away takes no press on its moves while the next one loads', async ({
+    page,
+  }) => {
     // Opening a job waits for every animation, the toast's of each move too.
     test.setTimeout(60_000);
+    await noPlaceholder(page);
     await open(page, WIN);
     const best = 'Interim CFO für Familienunternehmen';
     // The open job of Aktuell into the trash: while the next one loads the reader shows the
-    // job that went to the Papierkorb, and its moves are off (never the Papierkorb's here).
+    // job that went to the Papierkorb, and its moves do nothing (never the Papierkorb's here).
     await openJob(page, 'freelancermap-2801');
-    await slowDetails(page, 1500);
+    await slowDetails(page, 4000);
     await choose(page, 'trash');
     await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
-    await movesOff(page);
+    await movesLocked(page);
     // The next job of Aktuell: Aktuell's moves.
-    await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
+    await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 10000 });
     await slowDetails(page, 0);
     expect(await moves(page)).toEqual(['archive', 'trash']);
     // Rückgängig brings it back and opens it again: Aktuell's moves again.
@@ -469,13 +490,43 @@ test.describe('the actions', () => {
     const keys = await listed(page);
     const below = keys[keys.indexOf('freelancermap-2803') + 1]!;
     const next = await row(page, below).locator('.title').innerText();
-    await slowDetails(page, 1500);
+    await slowDetails(page, 4000);
     await choose(page, 'restore');
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
-    await movesOff(page);
-    await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
+    await movesLocked(page);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 10000 });
     await slowDetails(page, 0);
     expect(await moves(page)).toEqual(['restore', 'purge']);
+  });
+
+  test('a job deleted for good takes no press while the next one loads, and looks as it did', async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await noPlaceholder(page);
+    await open(page, WIN);
+    for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
+      await viaMenu(page, 'trash', key);
+    }
+    await openPlace(page, 'trash');
+    await openJob(page, 'freelancermap-2803');
+    const title = stage(page).getByTestId('reader-title');
+    const gone = await title.innerText();
+    await slowDetails(page, 4000);
+    await choose(page, 'purge');
+    await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
+    await expect(page.getByTestId('dialog-purge')).toHaveCount(0);
+    await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
+    await expect(title).toHaveText(gone);
+    await movesLocked(page);
+    // The buttons that show the job, on a job that is gone: no call either.
+    await stage(page).getByTestId('open-ad').click();
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+    // The next job has its tools again.
+    await expect(title).not.toHaveText(gone, { timeout: 10000 });
+    await slowDetails(page, 0);
+    await choose(page, 'purge');
+    await expect(page.getByTestId('dialog-purge')).toBeVisible();
   });
 
   test('copying the prompt says so in a toast, a refusing clipboard too', async ({

@@ -57,6 +57,7 @@ import {
   SORTS,
   stage,
   stubList,
+  setToken,
   T,
   unfoldExcluded,
   viaMenu,
@@ -64,22 +65,9 @@ import {
   menuFrame,
 } from './helpers';
 
-/** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile.
- *  Tokens are read once, so it is set before the page starts. */
-async function slowSearch(page: Page, ms: number): Promise<void> {
-  await page.addInitScript((value) => {
-    const set = (): boolean => {
-      const root = document.documentElement as HTMLElement | null;
-      root?.style.setProperty('--dur-base', value);
-      return root !== null;
-    };
-    if (set()) return;
-    const watch = new MutationObserver(() => {
-      if (set()) watch.disconnect();
-    });
-    watch.observe(document, { childList: true });
-  }, `${ms}ms`);
-}
+/** A typed search waits `ms` before it loads (--dur-base), time to change the list meanwhile. */
+const slowSearch = (page: Page, ms: number): Promise<void> =>
+  setToken(page, '--dur-base', `${ms}ms`);
 
 /** A locked control answers no pointer: its colours stay what they are at rest. */
 async function expectNoAnswer(page: Page, control: Locator): Promise<void> {

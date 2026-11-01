@@ -266,6 +266,26 @@ export async function reveal(_page: Page, target: Locator): Promise<Locator> {
   return target;
 }
 
+/** A token takes this value from the start of the page on (tokens are read once, so it is set
+ *  before the page starts): a wait long enough to act in it. */
+export async function setToken(page: Page, name: string, value: string): Promise<void> {
+  await page.addInitScript(
+    ([name, value]) => {
+      const set = (): boolean => {
+        const root = document.documentElement as HTMLElement | null;
+        root?.style.setProperty(name!, value!);
+        return root !== null;
+      };
+      if (set()) return;
+      const watch = new MutationObserver(() => {
+        if (set()) watch.disconnect();
+      });
+      watch.observe(document, { childList: true });
+    },
+    [name, value],
+  );
+}
+
 /** The mailbox's row in Einstellungen says its state under the address (no badge). */
 export async function expectMailboxState(page: Page, words: string): Promise<void> {
   await expect(page.getByTestId('mailbox').locator('.hint')).toHaveText(words);

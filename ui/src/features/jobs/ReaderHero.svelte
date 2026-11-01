@@ -13,7 +13,6 @@
     Alert-Mail öffnen (only for a job a mail brought), Prompt für KI-Bewertung (only with a
     score and the ad's text); the row wraps. An excluded job and one whose ad is still to come
     show them too, under the button of their state box.
-  A job that just moved away keeps its tools off while the next one loads (`inPlace`).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -41,8 +40,6 @@
     oninclude: (event: MouseEvent) => void;
     /** The moves of the job's place. */
     tools: ReturnType<typeof rowTools>;
-    /** The job still lies in the list's place (its moves are its place's). */
-    inPlace: boolean;
     /** What each button that shows the job does. */
     onshow: (id: ShowId) => void;
     /** The row of those buttons (the focus goes to its first one after "Trotzdem bewerten"). */
@@ -60,7 +57,6 @@
     including,
     oninclude,
     tools,
-    inPlace,
     onshow,
     actions = $bindable(null),
   }: Props = $props();
@@ -115,7 +111,7 @@
                 iconOnly
                 icon={tool.icon}
                 label={tool.label}
-                disabled={tool.disabled || !inPlace}
+                disabled={tool.disabled}
                 disabledReason={tool.reason}
                 testid="reader-{tool.id}"
                 onclick={tool.run}

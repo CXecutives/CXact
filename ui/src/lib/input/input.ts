@@ -26,6 +26,9 @@
 //   Over an open menu only the menu scrolls; behind a modal dialog nothing scrolls. The one
 //   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
 //   held, a menu or a modal dialog open), so plain scrolling never waits for the page.
+// - what is on its way off the screen (`data-locked`: a job's view until the next job has loaded)
+//   takes no press and no key's press, with no look of its own, which would flicker for that
+//   moment.
 // - a double click does nothing (in text that copies it selects a word, like everywhere;
 //   an element that offers `doubleClick` handles it: a job row opens its ad). Its second press
 //   counts only on what the first pressed: on what the first click slid under the pointer (the
@@ -116,6 +119,8 @@ const FIELD_BOX = '[data-field-box]';
 /** What holds the focus and is no control, no caret and no ring: a form's root, a step's
  *  heading, the mailbox form's box. Every control that leaves the Tab order is a button. */
 const FOCUS_HOLDER = '[tabindex="-1"]:not(button)';
+/** What is on its way off the screen: no control in it is pressed. */
+const LOCKED = '[data-locked]';
 /** The sidebar floating over the view (App.svelte) and its button in the top bar. */
 const FLOATING = '[data-peek]';
 const SIDEBAR_BUTTON = '[data-testid="toggle-sidebar"]';
@@ -1671,7 +1676,7 @@ export function installInput(): void {
   document.addEventListener(
     'click',
     (event) => {
-      if (event.button === LEFT && !swallow) {
+      if (event.button === LEFT && !swallow && closest(event.target, LOCKED) === null) {
         if (namesButton(event.target)) event.preventDefault();
         return;
       }

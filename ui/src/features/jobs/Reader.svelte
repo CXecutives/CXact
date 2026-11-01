@@ -22,8 +22,9 @@
   a requirement marks nothing in the ad (user decision 2026-09-27). Its buttons are pressed, not
   focused, like the sidebar's (`data-press-only`, never around what copies): nothing stands armed
   for a key after a click, and Tab still reaches them. Moving the job away by the keyboard from
-  one of its buttons hands the focus to the same button of the next job. Every result and every
-  failure is a toast.
+  one of its buttons hands the focus to the same button of the next job. A job on its way out
+  looks as it did until the next one has loaded, and takes no press meanwhile (`leaving`). Every
+  result and every failure is a toast.
 -->
 <script lang="ts" module>
   /** A button of the job view had the focus when its job moved away: the same button of the
@@ -50,7 +51,7 @@
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
-  import { keyOf } from '$lib/state/jobRows';
+  import { keyOf, sameKey } from '$lib/state/jobRows';
   import { jobs } from '$lib/state/jobs.svelte';
   import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -273,9 +274,10 @@
     actions?.querySelector<HTMLElement>('button:not([aria-disabled="true"])')?.focus();
   }
 
-  /** The job still lies in the list's place: one that just moved away keeps its view until
-   *  the next job has loaded, its moves off meanwhile (they would be the new place's). */
-  const inPlace = $derived(job.place === jobs.place);
+  /** The job is on its way out: it left the list's place, or another job is asked for (the one
+   *  after a job deleted for good). Its view stands until the next job has loaded and takes no
+   *  press meanwhile: its moves would be another place's, or a job's that is gone. */
+  const leaving = $derived(job.place !== jobs.place || !sameKey(job.key, jobs.selected));
   /** The moves of the job's place, from the one table of the job's moves (the row's tools
    *  show the same). A move hands the focus on. */
   const tools = $derived(rowTools(job, { move: act, purge: askPurge, report: fail }));
@@ -342,6 +344,7 @@
 <article
   class="reader"
   data-testid="reader"
+  data-locked={leaving ? '' : undefined}
   bind:this={article}
   onpointerdown={(event) => {
     // Only a left press counts as looking at the job (a right or middle press is no reading).
@@ -364,7 +367,6 @@
               {including}
               oninclude={(event) => void include(event)}
               {tools}
-              {inPlace}
               onshow={(id) => showDoes[id]()}
               bind:actions
             />
