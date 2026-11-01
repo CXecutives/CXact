@@ -33,7 +33,8 @@
 //   an element that offers `doubleClick` handles it: a job row opens its ad). Its second press
 //   counts only on what the first pressed: on what the first click slid under the pointer (the
 //   next row, a dialog's scrim, the select under a list) it presses nothing and a menu the
-//   first click opened stays open (`pressesElsewhere`).
+//   first click opened stays open (`pressesElsewhere`). A third press is a new first one, however
+//   quick the presses come (`secondPress`).
 // - the name of a text field leads into it; the name of a button (a select) only names it
 //   (`namesButton`)
 // - no dragging of text, links or images (only the column handle and the window's drag
@@ -820,6 +821,14 @@ const pressedOn = (target: EventTarget | null): Element | null =>
   closest(target, `${PRESSABLE}, ${FIELD}`) ?? closest(target, '*');
 
 /**
+ * The second press of a pair: the engine counts on (1, 2, 3, ...) while the presses keep the OS's
+ * double-click time at one spot, so every even one is a second one and the next a new first; a
+ * keyboard's click counts 0 and presses.
+ */
+export const secondPress = (event: MouseEvent): boolean =>
+  event.detail > 0 && event.detail % 2 === 0;
+
+/**
  * The second press of a double click that lands on anything but what the first one pressed:
  * what the first click did slid it under the pointer, and it was never meant. It presses
  * nothing, so every control is safe from it without a check of its own. Two presses on one row
@@ -827,7 +836,7 @@ const pressedOn = (target: EventTarget | null): Element | null =>
  */
 const pressesElsewhere = (event: MouseEvent): boolean =>
   event.button === LEFT &&
-  event.detail > 1 &&
+  secondPress(event) &&
   (firstPress?.isConnected !== true || pressedOn(event.target) !== firstPress);
 
 /** The pointer moved further from the last left press than a click may. */
@@ -1246,7 +1255,7 @@ function dispatchMenuKey(event: KeyboardEvent): void {
 function pressOutsideMenu(event: MouseEvent): boolean {
   if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
   const left = event.button === LEFT;
-  if (left && event.detail > 1) return false;
+  if (left && secondPress(event)) return false;
   closeMenu();
   return left;
 }
@@ -1557,7 +1566,7 @@ export function installInput(): void {
         return;
       }
       if (event.button === LEFT) {
-        if (event.detail <= 1) firstPress = pressedOn(event.target);
+        if (!secondPress(event)) firstPress = pressedOn(event.target);
         if (!otherButtonsDown(event)) auxPress(false);
         if (shell.peek && closest(event.target, `${FLOATING}, ${SIDEBAR_BUTTON}`) === null) {
           shell.fold();

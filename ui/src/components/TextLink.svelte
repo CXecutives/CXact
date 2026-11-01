@@ -6,7 +6,7 @@
   a double click once. Tab reaches it, Enter and Space press it (input.ts `pressByRole`).
 -->
 <script lang="ts">
-  import { wasDragged } from '$lib/input/input';
+  import { secondPress, wasDragged } from '$lib/input/input';
 
   interface Props {
     label: string;
@@ -18,7 +18,7 @@
 
   function press(event: MouseEvent): void {
     // The release of a drag; the second click of a double click.
-    if (wasDragged(event) || event.detail > 1) return;
+    if (wasDragged(event) || secondPress(event)) return;
     onclick();
   }
 </script>

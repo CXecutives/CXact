@@ -2123,6 +2123,90 @@ for (const gap of [200, 350]) {
   });
 }
 
+/** Presses at one spot as a person keeps them up: `gap` ms apart, each with the count the engine
+ *  goes on with inside the OS's double-click time (1, 2, 3, ...). What `read` says after each. */
+async function steadyPresses<Seen>(
+  page: Page,
+  target: Locator,
+  presses: number,
+  read: () => Promise<Seen>,
+  gap = 400,
+): Promise<Seen[]> {
+  const box = (await target.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const seen: Seen[] = [];
+  for (let press = 1; press <= presses; press += 1) {
+    await page.mouse.down({ clickCount: press });
+    await page.mouse.up({ clickCount: press });
+    await page.waitForTimeout(gap);
+    // A busy machine takes longer: what the press did has taken its place before the next one.
+    await expect(page.locator('[data-locked]')).toHaveCount(0);
+    await animationsDone(page);
+    seen.push(await read());
+  }
+  return seen;
+}
+
+test("steady presses on the rows' x: every other one takes the row that slid there", async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const remove = page.getByTestId('competences-remove');
+  const count = await remove.count();
+  await reveal(page, remove.first());
+  expect(await steadyPresses(page, remove.first(), 5, () => remove.count())).toEqual(
+    [1, 1, 2, 2, 3].map((gone) => count - gone),
+  );
+});
+
+test("steady presses on the job view's tool: every other one moves the job that came there", async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await rows(page).first().click();
+  await expect(page.getByTestId('reader-archive')).toBeVisible();
+  await animationsDone(page);
+  const moved = async (): Promise<number> => (await calls(page, 'move_jobs')).length;
+  expect(await steadyPresses(page, page.getByTestId('reader-archive'), 5, moved)).toEqual([
+    1, 1, 2, 2, 3,
+  ]);
+});
+
+test('steady presses on a button that stays, a tile and a link that is text: the third acts again', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=profile-incomplete&view=profile`);
+  const go = page.getByTestId('profile-missing-go');
+  const languages = page.getByTestId('languages-add');
+  const box = (await go.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const press = async (count: number): Promise<void> => {
+    await page.mouse.down({ clickCount: count });
+    await page.mouse.up({ clickCount: count });
+  };
+  await press(1);
+  await expect(page.locator('[data-field~="roles"]')).toHaveAttribute('data-arrived', '');
+  await press(2);
+  await page.waitForTimeout(100);
+  await expect(languages).not.toHaveAttribute('data-arrived', '');
+  await press(3);
+  await expect(languages).toHaveAttribute('data-arrived', '');
+  // A tile goes on: a press that keeps counting still is one.
+  await open(page, `${WIN}&scenario=first-run&step=upload`);
+  const zone = (await page.getByTestId('upload-zone').boundingBox())!;
+  await page.mouse.move(zone.x + zone.width / 2, zone.y + zone.height / 2);
+  await press(3);
+  await expect.poll(async () => (await calls(page, 'profile_from_cv')).length).toBe(1);
+  // The contact's e-mail in the job view.
+  await open(page, WIN);
+  await page.getByTestId('job-row-freelancermap-2801').click();
+  const mail = page.getByTestId('contact-mail');
+  await expect(mail).toBeVisible();
+  await animationsDone(page);
+  const mails = async (): Promise<number> => (await calls(page, 'open_target')).length;
+  expect(await steadyPresses(page, mail, 3, mails)).toEqual([1, 1, 2]);
+});
+
 test('a double click on Filter zurücksetzen resets it, the list that came under it opens nothing', async ({
   page,
 }) => {
