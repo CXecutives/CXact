@@ -385,7 +385,14 @@ test('Postfach is a box of rows like Daten: its row and its form on their measur
     });
     expect(line).toEqual({ left: await words(folder), right: (await edges(folder)).right });
   }
+  // In a narrow window its buttons stay on its line as long as the rows' below it do.
+  await page.setViewportSize({ width: 530, height: 800 });
+  await settings(page);
+  expect((await page.getByTestId('mailbox').boundingBox())!.height).toBe(
+    (await page.getByTestId('folder').boundingBox())!.height,
+  );
   // The controls stand in the Profil's column.
+  await page.setViewportSize({ width: 1360, height: 900 });
   await settings(page);
   await (await reveal(page, page.getByTestId('mailbox-change'))).click();
   await animationsDone(page);

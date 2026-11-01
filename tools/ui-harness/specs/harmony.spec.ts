@@ -3,10 +3,10 @@
 // weights, controls only the control heights, line icons only the one stroke, corners only the
 // radius ladder, and nothing is light blue. A new value is a token first, then a line here. And
 // on no state does a field hold the caret by itself or a button end in an ellipsis (owner,
-// 2026-10-30). And one way to draw a hairline, the same answer of a control to the pointer on
-// every ground, one family of glyphs.
+// 2026-10-30). And the margins count the scrollbar's room, one way to draw a hairline, the same
+// answer of a control to the pointer on every ground, one family of glyphs.
 
-import type { Locator, Page, PlaywrightWorkerArgs } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
 import { chooseSort, openPlace, row, WIN } from './helpers';
@@ -134,36 +134,30 @@ for (const { label, query } of PREVIEW_MENU.flatMap((group) => group.entries)) {
   });
 }
 
-/* ------------------------------------------------------- one weight of a hairline */
+/* ------------------------------------------- the scrollbar's room in the margins */
 
-/** What a test of the margins asks of its fixtures. */
-interface Engine {
-  page: Page;
-  playwright: PlaywrightWorkerArgs['playwright'];
-  baseURL: string | undefined;
-  browserName: string;
-}
-
-/** Runs `check` on a page whose scrollbars take their room, as on Windows: the harness hides
- *  Chromium's, so it gets a browser of its own; WebKit shows them on the Windows path. */
-async function withRoom(
-  { page, playwright, baseURL, browserName }: Engine,
+/** A test on a page whose scrollbars take their room, as on Windows: the harness hides Chromium's,
+ *  so it gets a browser of its own; WebKit shows them on the Windows path. */
+function testWithRoom(
+  title: string,
   viewport: { width: number; height: number },
   check: (page: Page) => Promise<void>,
-): Promise<void> {
-  if (browserName !== 'chromium') {
-    await page.setViewportSize(viewport);
-    await check(page);
-    return;
-  }
-  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
-  try {
-    await check(
-      await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport, locale: 'de-DE' }),
-    );
-  } finally {
-    await browser.close();
-  }
+): void {
+  test(title, async ({ page, playwright, baseURL, browserName }) => {
+    if (browserName !== 'chromium') {
+      await page.setViewportSize(viewport);
+      await check(page);
+      return;
+    }
+    const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+    try {
+      await check(
+        await browser.newPage({ ...(baseURL ? { baseURL } : {}), viewport, locale: 'de-DE' }),
+      );
+    } finally {
+      await browser.close();
+    }
+  });
 }
 
 const edges = async (node: Locator): Promise<{ left: number; right: number }> => {
@@ -171,14 +165,10 @@ const edges = async (node: Locator): Promise<{ left: number; right: number }> =>
   return { left: box.x, right: box.x + box.width };
 };
 
-test('beside a real scrollbar a column has as much room on both sides', async ({
-  page: fixture,
-  playwright,
-  baseURL,
-  browserName,
-}) => {
-  const engine = { page: fixture, playwright, baseURL, browserName };
-  await withRoom(engine, { width: 1360, height: 860 }, async (page) => {
+testWithRoom(
+  'beside a real scrollbar a column has as much room on both sides',
+  { width: 1360, height: 860 },
+  async (page) => {
     await open(page, `${WIN}&open=freelancermap:2801`);
     const list = await edges(page.getByTestId('list-header'));
     const room = await page.evaluate(() => {
@@ -202,18 +192,14 @@ test('beside a real scrollbar a column has as much room on both sides', async ({
     const form = await edges(page.getByTestId('profile-form'));
     const view = await edges(page.getByTestId('view-profile'));
     expect(form.left - view.left).toBe(view.right - form.right);
-  });
-});
+  },
+);
 
 for (const width of [1360, 792, 700, 480]) {
-  test(`at ${width} wide a page counts the scrollbar's room in its margins`, async ({
-    page: fixture,
-    playwright,
-    baseURL,
-    browserName,
-  }) => {
-    const engine = { page: fixture, playwright, baseURL, browserName };
-    await withRoom(engine, { width, height: 700 }, async (page) => {
+  testWithRoom(
+    `at ${width} wide a page counts the scrollbar's room in its margins`,
+    { width, height: 700 },
+    async (page) => {
       /** A length of the design, whatever the scrollbar takes. */
       const token = (name: string): Promise<number> =>
         page.evaluate(
@@ -246,18 +232,14 @@ for (const width of [1360, 792, 700, 480]) {
       const back = await edges(page.getByTestId('first-back').locator('.icon'));
       const next = await edges(page.getByTestId('first-next'));
       expect([back.left, next.right]).toEqual([setup.left, setup.right]);
-    });
-  });
+    },
+  );
 }
 
-test("narrow, a page, the list's head, a job and its placeholder share one column", async ({
-  page: fixture,
-  playwright,
-  baseURL,
-  browserName,
-}) => {
-  const engine = { page: fixture, playwright, baseURL, browserName };
-  await withRoom(engine, { width: 480, height: 700 }, async (page) => {
+testWithRoom(
+  "narrow, a page, the list's head, a job and its placeholder share one column",
+  { width: 480, height: 700 },
+  async (page) => {
     await open(page, `${WIN}&view=profile`);
     const form = await edges(page.getByTestId('profile-form'));
     await open(page, WIN);
@@ -271,17 +253,13 @@ test("narrow, a page, the list's head, a job and its placeholder share one colum
     const job = page.getByTestId('reader-head');
     await expect(job).toBeVisible();
     expect(await edges(job)).toEqual(form);
-  });
-});
+  },
+);
 
-test('no hit: the tile, its words, the button under them and the head have one middle', async ({
-  page: fixture,
-  playwright,
-  baseURL,
-  browserName,
-}) => {
-  const engine = { page: fixture, playwright, baseURL, browserName };
-  await withRoom(engine, { width: 1360, height: 860 }, async (page) => {
+testWithRoom(
+  'no hit: the tile, its words, the button under them and the head have one middle',
+  { width: 1360, height: 860 },
+  async (page) => {
     const middle = async (node: Locator): Promise<number> => {
       const { left, right } = await edges(node);
       return (left + right) / 2;
@@ -310,17 +288,13 @@ test('no hit: the tile, its words, the button under them and the head have one m
       0,
     );
     expect(await middle(place.locator('.tile'))).toBeCloseTo(view, 0);
-  });
-});
+  },
+);
 
-test("the list's hairline runs across the column, past the scrollbar's room", async ({
-  page: fixture,
-  playwright,
-  baseURL,
-  browserName,
-}) => {
-  const engine = { page: fixture, playwright, baseURL, browserName };
-  await withRoom(engine, { width: 1360, height: 600 }, async (page) => {
+testWithRoom(
+  "the list's hairline runs across the column, past the scrollbar's room",
+  { width: 1360, height: 600 },
+  async (page) => {
     await open(page, WIN);
     await chooseSort(page, 'match');
     const scroller = page.getByTestId('list-scroll');
@@ -338,8 +312,10 @@ test("the list's hairline runs across the column, past the scrollbar's room", as
     // takes its height at rest too, so the rows stay.
     expect(await edges(head)).toEqual(await edges(scroller));
     expect((await scroller.boundingBox())!.y).toBe(top);
-  });
-});
+  },
+);
+
+/* ------------------------------------------------------- one weight of a hairline */
 
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
   page,

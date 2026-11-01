@@ -205,7 +205,7 @@
   --delay-arrive: 1200ms;
   /* The tick of what is chosen, in a menu and a select's list alike. */
   --chosen-text: hsl(var(--p-navy));
-  /* The soft ground of a state: the ban (excluded). */
+  /* The soft ground of a failure's tile. */
   --danger-tint: hsl(var(--p-red-50));
   --danger-strong: var(--score-ring-0);
   --danger-soft: hsl(var(--p-red-50));
