@@ -481,7 +481,7 @@
      --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
   --menu-row: 32px;
-  --menu-max-height: 232px;
+  --menu-max-height: calc(7 * var(--menu-row) + 2 * var(--menu-pad) + 2 * var(--border-width));
   /* A group's small heading (the filter menu's Sortierung, Portal, Passung). */
   --menu-heading: 24px;
   --menu-pad: var(--space-4);

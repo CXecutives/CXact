@@ -11,8 +11,8 @@
   owner, 2026-10-30). An icon column stands before the words only where an
   entry has an icon or can carry a tick. No entry names a key. A group may carry a small
   muted heading (12/540 like the list's day and section headings), which the keys pass over.
-  A select's list (`listbox`) is a listbox at least as wide as its button and at most 232 px
-  high; the focus stays on the button, and a press on an option never takes it.
+  A select's list (`listbox`) is a listbox at least as wide as its button and at most seven
+  rows high; the focus stays on the button, and a press on an option never takes it.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row at once (the highlight follows the pointer without a
   fade, like the OS's menus), a left click chooses it. An entry that is off is faded as a

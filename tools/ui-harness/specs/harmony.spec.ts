@@ -9,7 +9,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { chooseSort, openPlace, row, WIN } from './helpers';
+import { chooseSort, menuFrame, openPlace, row, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -314,6 +314,23 @@ testWithRoom(
     expect((await scroller.boundingBox())!.y).toBe(top);
   },
 );
+
+test("a select's list of seven rows stands whole, with nothing to scroll", async ({ page }) => {
+  await open(page, `${WIN}&view=profile`);
+  await page.getByTestId('language-level').first().click();
+  const list = page.getByTestId('menu');
+  await expect(list.getByRole('option')).toHaveCount(7);
+  await animationsDone(page);
+  expect(await list.evaluate((node) => node.scrollHeight - node.clientHeight)).toBe(0);
+  const box = (await list.boundingBox())!;
+  await page.mouse.move(box.x + 20, box.y + 20);
+  await page.mouse.wheel(0, 100);
+  await animationsDone(page);
+  expect(await list.evaluate((node) => node.scrollTop)).toBe(0);
+  const frame = await edges(menuFrame(page));
+  const rowBox = await edges(list.getByRole('option').first());
+  expect(rowBox.left - frame.left).toBe(frame.right - rowBox.right);
+});
 
 /* ------------------------------------------------------- one weight of a hairline */
 
