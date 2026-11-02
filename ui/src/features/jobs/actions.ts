@@ -247,6 +247,11 @@ function foldedAway(keys: readonly string[]): void {
 /** Rows an undo brings back, until they are built: they unfold, the mirror of `moving`. */
 export const returning = new Set<string>();
 
+/** Every one of `rows` folds away or comes back (`moving`, `returning`): so does the day or the
+ *  section around them, heading and all. */
+export const allIn = (rows: readonly JobView[], set: ReadonlySet<string>): boolean =>
+  rows.length > 0 && rows.every((job) => set.has(keyOf(job.key)));
+
 /** How long the next job opened by the app stays on screen before it counts as read. */
 const DWELL_MS = 2000;
 /** The dwell counts in steps of this, only while the job is on screen. */

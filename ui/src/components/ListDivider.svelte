@@ -55,8 +55,8 @@
     transition: color var(--dur-base) var(--ease-standard);
   }
 
-  /* First in the list: no rows of the days above it. */
-  :global(.rows:not(:has([data-key]))) + .divider {
+  /* First in the list: no rows of the days above its section. */
+  :global(.rows:not(:has([data-key]))) + :global(.section) > .divider {
     margin-top: 0;
     padding: var(--day-head-pad);
     border-top: 0;

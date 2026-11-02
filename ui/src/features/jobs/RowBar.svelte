@@ -83,15 +83,35 @@
     return { top, height: item.scrollHeight };
   }
 
-  /** Where the row will stand once the rows folding away above it are gone. */
+  /** A row of the page that the list no longer shows and that folds away. */
+  const leaving = (key: string): boolean => folding.has(key) && !listed.has(key);
+
+  /** What folds away with a row: the row, or the day or the section around it, heading and all,
+   *  when it is the last there (the one rule of DayGroup and JobList). */
+  function foldingWith(row: HTMLElement): HTMLElement {
+    let block = row;
+    for (let up = row.parentElement; up !== null && up !== rows; up = up.parentElement) {
+      const inside = up.querySelectorAll<HTMLElement>('[data-key]');
+      if (![...inside].every((one) => leaving(one.dataset['key'] ?? ''))) break;
+      block = up;
+    }
+    return block;
+  }
+
+  /** Where the row will stand once what folds away above it is gone. */
   function settledBox(item: HTMLElement, live: BarBox): BarBox {
     let top = live.top;
+    const counted: HTMLElement[] = [];
     for (const key of folding) {
-      if (listed.has(key)) continue;
+      if (!leaving(key)) continue;
       const other = rows?.querySelector<HTMLElement>(`[data-key="${CSS.escape(key)}"]`);
       if (!other || other === item) continue;
       if (other.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING) {
-        top -= other.offsetHeight;
+        const block = foldingWith(other);
+        if (!counted.includes(block)) {
+          counted.push(block);
+          top -= block.offsetHeight;
+        }
       }
     }
     return { top, height: live.height };

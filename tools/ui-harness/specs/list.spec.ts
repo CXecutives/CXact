@@ -2716,7 +2716,7 @@ test.describe('moves and undo', () => {
     await expect(row(page, sixth!)).not.toBeFocused();
   });
 
-  test.describe('Rückgängig brings a row back the way it left', () => {
+  test.describe('a row goes, and Rückgängig brings it back, without a jump', () => {
     /** What each frame paints from now on: a row's top and the highlight's top and height. */
     interface Painted {
       y: number | null;
@@ -2766,6 +2766,74 @@ test.describe('moves and undo', () => {
       expect(tops.at(-1)).toBe(start + distance);
       expect(places.size).toBeGreaterThanOrEqual(5);
     };
+
+    test('the open job the last of its day: the highlight waits where it stood while the day folds', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const day = page.getByTestId('day-heading').nth(1).locator('xpath=..');
+      await expect(day.locator('[data-key]')).toHaveCount(2);
+      const [other, last] = (await day
+        .locator('[data-key]')
+        .evaluateAll((items) =>
+          items.map((item) => (item as HTMLElement).dataset.key!.replace(':', '-')),
+        )) as [string, string];
+      await archiveByTool(page, other);
+      await page.mouse.move(0, 0);
+      await openJob(page, last);
+      const stands = (await page.getByTestId('row-bar').boundingBox())!.y;
+      const frames = await watch(page, last);
+      await page.getByTestId('reader-archive').click();
+      await expect(row(page, last)).toHaveCount(0);
+      await motionSettled(page);
+      const tops = (await frames()).map((frame) => Math.round(frame.tintY));
+      expect(tops.length).toBeGreaterThan(5);
+      expect(new Set(tops)).toEqual(new Set([Math.round(stands)]));
+    });
+
+    test('the last row of a section: its heading folds away with it, and its undo unfolds them', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await page.setViewportSize({ width: 1360, height: 1100 });
+      await open(page, WIN);
+      await page.getByTestId('excluded-divider').click();
+      await expect(excludedRows(page).first()).toBeVisible();
+      const leaving = page.getByTestId('unscored-rows').locator('[data-testid^="job-row-"]');
+      const heading = page.getByTestId('unscored-divider');
+      const keys = await leaving.evaluateAll((items) =>
+        items.map((item) => item.getAttribute('data-testid')!.replace('job-row-', '')),
+      );
+      expect(keys.length).toBeGreaterThan(1);
+      for (const key of keys.slice(1)) await archiveByTool(page, key);
+      // Its own toast: the moves before it have stopped merging.
+      await page.clock.setFixedTime(NOW.getTime() + 3000);
+      const below = await excludedRows(page)
+        .first()
+        .getAttribute('data-testid')
+        .then((id) => id!.replace('job-row-', ''));
+      const before = (await row(page, below).boundingBox())!.y;
+      const height = (await heading.locator('xpath=..').boundingBox())!.height;
+      await row(page, keys[0]!).hover();
+      let frames = await watch(page, below);
+      await row(page, keys[0]!).locator('xpath=..').getByTestId('tool-archive').click();
+      await expect(heading).toHaveCount(0);
+      await motionSettled(page);
+      let tops = (await frames()).map((frame) => frame.y!);
+      expect(tops[0]).toBe(before);
+      glided(
+        tops.map((top) => -top),
+        Math.round(height),
+      );
+      await page.mouse.move(0, 0);
+      frames = await watch(page, below);
+      await page.getByTestId('toast-action').last().click();
+      await expect(heading).toBeVisible();
+      await motionSettled(page);
+      tops = (await frames()).map((frame) => frame.y!);
+      glided(tops, Math.round(height));
+    });
 
     test('another job: the rows below glide, and the highlight stays on its row', async ({
       page,

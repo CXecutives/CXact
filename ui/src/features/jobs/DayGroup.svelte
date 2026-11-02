@@ -18,7 +18,7 @@
   import { staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, unfold } from '$lib/motion/transitions';
   import { keyOf } from '$lib/state/jobRows';
-  import { moving, returning } from './actions';
+  import { allIn, moving, returning } from './actions';
 
   interface Props {
     /** The day's heading (null: a section without days). */
@@ -46,16 +46,13 @@
     row,
     testid = null,
   }: Props = $props();
-
-  /** Every row of the day folds away: the day folds with them. */
-  const folding = $derived(jobs.length > 0 && jobs.every((job) => moving.has(keyOf(job.key))));
 </script>
 
 <div
   class="day"
   data-testid={testid ?? undefined}
-  in:unfold={{ on: jobs.length > 0 && jobs.every((job) => returning.has(keyOf(job.key))) }}
-  out:rowCollapse={{ on: folding }}
+  in:unfold={{ on: allIn(jobs, returning) }}
+  out:rowCollapse={{ on: allIn(jobs, moving) }}
 >
   {#if label !== null}<DayHeader {label} testid="day-heading" />{/if}
   {#each jobs as job, index (keyOf(job.key))}

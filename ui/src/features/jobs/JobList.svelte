@@ -21,8 +21,8 @@
   rows below simply make room; the rows already there never flicker). Rows move only for the
   user's own change and for the re-sort at the end of a run: after the order, another place
   or a filter the rows on screen glide to their new place (180 ms); rows off screen and new
-  rows are simply there. A row the user moves out folds its height away (its day with its last
-  row). One highlight marks the open job's row and glides from row to row (RowBar).
+  rows are simply there. A row the user moves out folds its height away (its day or its section
+  with its last row). One highlight marks the open job's row and glides from row to row (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
   search looks in the list's place; under its hits a button names each other place that lists
   a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
@@ -71,7 +71,7 @@
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
   import { glideWhole } from '$lib/motion/scroll';
-  import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
+  import { afterUnfold, rowCollapse, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { NO_FILTER } from '$lib/state/filter';
@@ -82,11 +82,13 @@
   import { sections } from '$lib/state/sections.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import {
+    allIn,
     focusPlace,
     jobMenu,
     moving,
     openAd,
     purge,
+    returning,
     rowTools,
     seen,
     type JobMenuContext,
@@ -161,6 +163,27 @@
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
   const more = $derived(jobs.more && !foldedEnd);
+  /** The sections that hold rows: each with its heading, and its rows behind its fold. */
+  const shownSections = $derived(
+    [
+      {
+        id: 'unscored',
+        label: t.list.unscored,
+        jobs: unscored,
+        open: unscoredOpen,
+        toggle: sections.unscoredHeld ? null : () => sections.toggleUnscored(),
+        start: active.length,
+      },
+      {
+        id: 'excluded',
+        label: t.list.excluded,
+        jobs: excluded,
+        open: excludedOpen,
+        toggle: sections.excludedHeld ? null : () => sections.toggleExcluded(),
+        start: active.length + unscored.length,
+      },
+    ].filter((section) => section.jobs.length > 0),
+  );
 
   /* ---------------------------------------------------------------------- empty */
 
@@ -710,44 +733,31 @@
             />
           {/each}
         </div>
-        {#if unscored.length > 0}
-          <ListDivider
-            label={t.list.unscored}
-            open={unscoredOpen}
-            ontoggle={sections.unscoredHeld ? null : () => sections.toggleUnscored()}
-            testid="unscored-divider"
-          />
-          {#if unscoredOpen}
-            <div class="rows" data-testid="unscored-rows" transition:unfold>
-              <DayGroup
-                jobs={unscored}
-                start={active.length}
-                open={openKey}
-                opening={opened}
-                {row}
-              />
-            </div>
-          {/if}
-        {/if}
-        {#if excluded.length > 0}
-          <ListDivider
-            label={t.list.excluded}
-            open={excludedOpen}
-            ontoggle={sections.excludedHeld ? null : () => sections.toggleExcluded()}
-            testid="excluded-divider"
-          />
-          {#if excludedOpen}
-            <div class="rows" data-testid="excluded-rows" transition:unfold>
-              <DayGroup
-                jobs={excluded}
-                start={active.length + unscored.length}
-                open={openKey}
-                opening={opened}
-                {row}
-              />
-            </div>
-          {/if}
-        {/if}
+        {#each shownSections as section (section.id)}
+          <div
+            class="section"
+            in:unfold={{ on: allIn(section.jobs, returning) }}
+            out:rowCollapse={{ on: allIn(section.jobs, moving) }}
+          >
+            <ListDivider
+              label={section.label}
+              open={section.open}
+              ontoggle={section.toggle}
+              testid="{section.id}-divider"
+            />
+            {#if section.open}
+              <div class="rows" data-testid="{section.id}-rows" transition:unfold>
+                <DayGroup
+                  jobs={section.jobs}
+                  start={section.start}
+                  open={openKey}
+                  opening={opened}
+                  {row}
+                />
+              </div>
+            {/if}
+          </div>
+        {/each}
       {/key}
     </div>
     {#if elsewhere.length > 0 && !more}{@render alsoIn()}{/if}
@@ -824,6 +834,11 @@
      rows are laid out again. */
   .rows {
     display: block;
+  }
+
+  /* A section folds as one block, heading and all, the heading's margin inside it. */
+  .section {
+    display: flow-root;
   }
 
   /* Search hits in the other places: buttons under the hits of this one. */
