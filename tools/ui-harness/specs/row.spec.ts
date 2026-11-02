@@ -514,6 +514,16 @@ test.describe('a click on a row that is cut', () => {
     }
     throw new Error('no row at the end');
   };
+  /** The row at a point of the window (its test id). */
+  const underPoint = (page: Page, x: number, y: number): Promise<string | null | undefined> =>
+    page.evaluate(
+      ({ x, y }) =>
+        document
+          .elementFromPoint(x, y)
+          ?.closest('[data-testid^="job-row-"]')
+          ?.getAttribute('data-testid'),
+      { x, y },
+    );
   /** The tops of the pane from now on, frame by frame. */
   const logTops = async (page: Page): Promise<() => Promise<number[]>> => {
     await pane(page).evaluate((node) => {
@@ -547,26 +557,30 @@ test.describe('a click on a row that is cut', () => {
     expect(new Set(log).size).toBeGreaterThanOrEqual(3);
   });
 
-  test("at the pane's end: it glides up, clear of the end", async ({ page }) => {
+  test("at the pane's end: it glides up just far enough, the press stays on it", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1360, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key, x, y, end } = await cutByEnd(page);
-    const room = await pane(page).evaluate((node) =>
-      Number.parseFloat(getComputedStyle(node).scrollPaddingBottom),
-    );
+    const box = (await row(page, key).boundingBox())!;
     const tops = await logTops(page);
     await page.mouse.click(x, y);
     await expect
       .poll(async () => {
-        const box = (await row(page, key).boundingBox())!;
-        return Math.round(end - (box.y + box.height));
+        const at = (await row(page, key).boundingBox())!;
+        return Math.round(end - (at.y + at.height));
       })
-      .toBe(room);
+      .toBe(0);
+    expect(await scrollTop(page)).toBe(Math.round(70 + box.y + box.height - end));
+    // A glide: it passes places on its way.
     expect(new Set(await tops()).size).toBeGreaterThanOrEqual(3);
+    // The pointer that rests still stands on the row it pressed.
+    expect(await underPoint(page, x, y)).toBe(`job-row-${key}`);
   });
 
-  test('a row that stands whole does not move, also in the room at the end or under the heading', async ({
+  test('a row that stands whole does not move, also right at the end or under the heading', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 700 });
@@ -575,7 +589,7 @@ test.describe('a click on a row that is cut', () => {
     const { key: byEnd, end } = await cutByEnd(page);
     const { key: byHeading, line } = await cutByHeading(page);
     const keys = await listed(page);
-    // Its end a little above the pane's, in the room a glide leaves there.
+    // Its end a little above the pane's.
     const box = (await row(page, byEnd).boundingBox())!;
     await scrollTo(page, Math.round(70 + box.y + box.height - end + 8));
     const top = await scrollTop(page);
@@ -607,9 +621,7 @@ test.describe('a click on a row that is cut', () => {
     const { key, x, y } = await cutByEnd(page);
     await page.mouse.click(x, y);
     await expect.poll(() => wholeInList(page, key)).toBe(true);
-    const brought = await scrollTop(page);
-    await expect.poll(() => scrollTop(page)).toBeGreaterThanOrEqual(brought);
-    await expect.poll(async () => (await row(page, key).boundingBox())!.y).toBeLessThan(y - 40);
+    await motionSettled(page);
     await page.waitForTimeout(250);
     await scrollTo(page, 70);
     expect(await wholeInList(page, key)).toBe(false);
@@ -668,34 +680,19 @@ test.describe('a click on a row that is cut', () => {
     await page.setViewportSize({ width: 1360, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
-    const { key, x, y, end } = await cutByEnd(page);
+    const { key, x, y } = await cutByEnd(page);
     const keys = await listed(page);
     const next = keys[keys.indexOf(key) + 1]!;
-    expect(end - y).toBeLessThan(10);
     await page.mouse.move(x, y);
     await page.mouse.down({ clickCount: 1 });
     await page.mouse.up({ clickCount: 1 });
     await expect(row(page, key)).toHaveAttribute('aria-current', 'true');
-    // The next row slid under the pointer that rests, and the engine counts this press second.
-    await expect
-      .poll(async () => {
-        const box = (await row(page, key).boundingBox())!;
-        return Math.round(end - (box.y + box.height));
-      })
-      .toBe(
-        await pane(page).evaluate((node) =>
-          Number.parseFloat(getComputedStyle(node).scrollPaddingBottom),
-        ),
-      );
-    const under = await page.evaluate(
-      ({ x, y }) =>
-        document
-          .elementFromPoint(x, y)
-          ?.closest('[data-testid^="job-row-"]')
-          ?.getAttribute('data-testid'),
-      { x, y },
-    );
-    expect(under).toBe(`job-row-${next}`);
+    await motionSettled(page);
+    // The list moved on by itself (a run's new rows, the wheel): the next row slid under the
+    // pointer that rests, and the engine counts this press second.
+    const height = (await row(page, key).boundingBox())!.height;
+    await scrollTo(page, (await scrollTop(page)) + Math.round(height));
+    await expect.poll(() => underPoint(page, x, y)).toBe(`job-row-${next}`);
     await page.mouse.down({ clickCount: 2 });
     await page.mouse.up({ clickCount: 2 });
     const [portal, id] = key.split(/-(.*)/);

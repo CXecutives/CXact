@@ -92,24 +92,23 @@ export function scrollerOf(node: Element): HTMLElement | null {
 /**
  * Bring `node` whole into view, in one short tween, when it is cut: by the edges of its scroll
  * area or, with `sticking`, by what sticks at the area's top (its scroll-padding says how high).
- * It moves as little as that takes, and from the end as far as the area's scroll-padding keeps
- * clear of it; a node that stands whole stays where it is, also in that room.
+ * It moves as little as that takes, so a press in its part in view stays on it; a node that
+ * stands whole stays where it is.
  */
 export function glideWhole(node: Element, sticking: boolean): void {
   const pane = scrollerOf(node);
   if (pane === null) return;
-  const style = getComputedStyle(pane);
   const view = pane.getBoundingClientRect();
   const box = node.getBoundingClientRect();
   const edge = view.top + pane.clientTop;
-  const top = edge + (sticking ? Number.parseFloat(style.scrollPaddingTop) || 0 : 0);
+  const pad = sticking ? Number.parseFloat(getComputedStyle(pane).scrollPaddingTop) || 0 : 0;
+  const top = edge + pad;
   const end = edge + pane.clientHeight;
   // A fraction of a pixel (display scaling) cuts nothing.
   if (top - box.top >= 1) {
     glideTo(pane, pane.scrollTop + box.top - top);
   } else if (box.bottom - end >= 1) {
-    const clear = Number.parseFloat(style.scrollPaddingBottom) || 0;
-    glideTo(pane, pane.scrollTop + Math.min(box.bottom - end + clear, box.top - top));
+    glideTo(pane, pane.scrollTop + Math.min(box.bottom - end, box.top - top));
   }
 }
 
