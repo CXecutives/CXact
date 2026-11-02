@@ -785,6 +785,40 @@ test.describe('after a click on a row', () => {
       .toBe('DIV');
   });
 
+  test('a press leaves nothing armed that a key left the focus on: Enter and Shift+F10 speak for what is open', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const [, second, , , fifth] = await listed(page);
+    const open_ = (): Promise<string | null> =>
+      list(page).locator('[data-open]').getAttribute('data-key');
+    // Tab reached the second row; the mouse opens the fifth.
+    await row(page, second!).focus();
+    await row(page, fifth!).click();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    await page.keyboard.press('Enter');
+    await settle(page);
+    expect(await open_()).toBe(fifth!.replace('-', ':'));
+    await page.keyboard.press('Shift+F10');
+    const menu = page.getByTestId('menu');
+    await expect(menu).toBeVisible();
+    const box = (await row(page, fifth!).boundingBox())!;
+    expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual(box.y + box.height);
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    // A button the keys reached: Enter after the press does not press it.
+    await page.getByTestId('fetch').focus();
+    await row(page, second!).click();
+    await page.keyboard.press('Enter');
+    await settle(page);
+    await expect(page.getByTestId('cancel-run')).toHaveCount(0);
+    expect(await calls(page, 'start_run')).toHaveLength(0);
+    // A press on what holds the focus keeps it there: nothing else stands armed.
+    await row(page, second!).focus();
+    await row(page, second!).click();
+    await expect(row(page, second!)).toBeFocused();
+  });
+
   test('Shift+F10 opens the menu of the open row; on a control, or with no job open, nothing', async ({
     page,
   }) => {

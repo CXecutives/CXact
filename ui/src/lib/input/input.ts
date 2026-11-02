@@ -1634,8 +1634,14 @@ export function installInput(): void {
         } else if (!pressOnFieldBox(event)) {
           leaveField(event);
           // What holds only buttons (the sidebar, the list's header, the job view's rows of
-          // buttons) is pressed, not focused, like the toolbar of Mail and Finder on both OS.
-          if (closest(event.target, PRESS_ONLY) !== null) event.preventDefault();
+          // buttons) is pressed, not focused, like the toolbar of Mail and Finder on both OS, and
+          // what a key left the focus on stands armed no more.
+          if (closest(event.target, PRESS_ONLY) !== null) {
+            event.preventDefault();
+            const held = document.activeElement;
+            const armed = held instanceof HTMLElement && !isNowhere(held) && !inField(held);
+            if (armed && !held.contains(event.target as Node)) held.blur();
+          }
         }
         return;
       }
