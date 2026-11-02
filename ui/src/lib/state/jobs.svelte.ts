@@ -75,13 +75,14 @@ type Status = 'idle' | 'loading' | 'ready' | 'error';
  *  failed otherwise, or another job was asked for meanwhile. */
 type DetailResult = 'ready' | 'gone' | 'error' | 'stale';
 
-/** A job a move took away, to bring back (`moveBack`): as it was, where it went, its
- *  index in the list then (-1: the list did not hold it) and the rows that stood below and
- *  above it (keyOf, not moved with it): an undo puts it back between them, also when other
- *  moves were undone in another order. */
+/** A job a move took away, to bring back (`moveBack`): as it was, where it went, the list it
+ *  left (`generation`), its index in the list then (-1: the list did not hold it) and the rows
+ *  that stood below and above it (keyOf, not moved with it): an undo puts it back between them,
+ *  also when other moves were undone in another order. */
 export interface Unmove {
   job: JobView;
   to: Place;
+  generation: number;
   at: number;
   below: string | null;
   above: string | null;
@@ -912,16 +913,13 @@ class JobsStore {
   }
 
   /**
-   * Takes moves back (the undo of a toast): every job goes back to the place it came from as
-   * it was there (the trash keeps its date). A row the list lost comes back where it stood
-   * when the list is still the one it left; in another list the list loads again when the
-   * job belongs there. Resolves with the keys that went back (a job already there did not),
-   * or the error text.
+   * Takes moves back (the undo of a toast), the last move first in `back`, in one question and
+   * one change of the list: every job goes back to the place it came from as it was there (the
+   * trash keeps its date). A row the list lost comes back where it stood when the list is still
+   * the one it left; in another list the list loads again when the job belongs there. Resolves
+   * with the keys that went back (a job already there did not), or the error text.
    */
-  async moveBack(
-    back: readonly Unmove[],
-    generation: number,
-  ): Promise<{ moved: JobKey[] } | { error: string }> {
+  async moveBack(back: readonly Unmove[]): Promise<{ moved: JobKey[] } | { error: string }> {
     let landed: JobKey[];
     try {
       landed = await invoke('move_back', {
@@ -932,11 +930,14 @@ class JobsStore {
       return { error: errorText(error) };
     }
     const done = new Set(landed.map(keyOf));
-    const same = generation === this.generation;
     let missing = false;
-    for (const { job, to, at, below, above } of [...back].sort((a, b) => a.at - b.at)) {
+    for (const { job, to, generation, at, below, above } of [...back].sort((a, b) => a.at - b.at)) {
       if (!done.has(keyOf(job.key))) continue;
-      if (this.rows.some((row) => sameKey(row.key, job.key)) || !same || at < 0) {
+      if (
+        this.rows.some((row) => sameKey(row.key, job.key)) ||
+        generation !== this.generation ||
+        at < 0
+      ) {
         this.patch(job.key, { place: job.place });
         // A list that holds the job in the place it went to (the Archiv, after another place
         // was chosen) loses its row: it lies in another place again.

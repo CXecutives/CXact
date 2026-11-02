@@ -2766,6 +2766,11 @@ test.describe('moves and undo', () => {
       expect(tops.at(-1)).toBe(start + distance);
       expect(places.size).toBeGreaterThanOrEqual(5);
     };
+    /** An ease-out ends slowly: no last jump of what was clipped on its way. */
+    const noLastJump = (tops: number[], distance: number): void => {
+      const places = tops.filter((top, at) => at === 0 || top !== tops[at - 1]);
+      expect(places.at(-1)! - places.at(-2)!).toBeLessThan(distance * 0.3);
+    };
 
     test('the open job the last of its day: the highlight waits where it stood while the day folds', async ({
       page,
@@ -2833,6 +2838,107 @@ test.describe('moves and undo', () => {
       await motionSettled(page);
       tops = (await frames()).map((frame) => frame.y!);
       glided(tops, Math.round(height));
+      noLastJump(tops, Math.round(height));
+    });
+
+    test('two merged moves that emptied a day: their one undo brings it back whole, in one glide', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await open(page, WIN);
+      const day = page.getByTestId('day-heading').nth(1).locator('xpath=..');
+      await expect(day.locator('[data-key]')).toHaveCount(2);
+      const [first, second] = (await day
+        .locator('[data-key]')
+        .evaluateAll((items) =>
+          items.map((item) => (item as HTMLElement).dataset.key!.replace(':', '-')),
+        )) as [string, string];
+      const below = await page
+        .getByTestId('day-heading')
+        .nth(2)
+        .locator('xpath=..')
+        .locator('[data-key]')
+        .first()
+        .evaluate((item) => (item as HTMLElement).dataset.key!.replace(':', '-'));
+      await openJob(page, below);
+      const home = (await row(page, below).boundingBox())!.y;
+      await archiveByTool(page, first);
+      await archiveByTool(page, second);
+      await page.mouse.move(0, 0);
+      const start = (await row(page, below).boundingBox())!.y;
+      const frames = await watch(page, below);
+      await undo(page);
+      await expect(row(page, first)).toBeVisible();
+      await expect(row(page, second)).toBeVisible();
+      await motionSettled(page);
+      await page.waitForTimeout(100);
+      const painted = await frames();
+      const tops = painted.map((frame) => frame.y!);
+      glided(tops, home - start);
+      noLastJump(tops, home - start);
+      for (const frame of painted) expect(Math.abs(frame.tintY - frame.y!)).toBeLessThanOrEqual(1);
+      // One question to the backend, the last move first.
+      const asked = (await calls(page, 'move_back')).map(([, args]) => args) as {
+        jobs: { key: { id: string } }[];
+      }[];
+      expect(asked).toHaveLength(1);
+      expect(asked[0]!.jobs.map((job) => job.key.id)).toEqual(
+        [second, first].map((key) => key.split(/-(.*)/)[1]),
+      );
+    });
+
+    test('the rows of a section merged: their one undo brings it back whole, in one glide', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await page.setViewportSize({ width: 1360, height: 1100 });
+      await open(page, WIN);
+      await page.getByTestId('excluded-divider').click();
+      await expect(excludedRows(page).first()).toBeVisible();
+      const heading = page.getByTestId('unscored-divider');
+      const keys = await page
+        .getByTestId('unscored-rows')
+        .locator('[data-testid^="job-row-"]')
+        .evaluateAll((items) =>
+          items.map((item) => item.getAttribute('data-testid')!.replace('job-row-', '')),
+        );
+      const below = (await excludedRows(page).first().getAttribute('data-testid'))!.replace(
+        'job-row-',
+        '',
+      );
+      const home = (await row(page, below).boundingBox())!.y;
+      for (const key of keys) await archiveByTool(page, key);
+      await expect(heading).toHaveCount(0);
+      await page.mouse.move(0, 0);
+      const start = (await row(page, below).boundingBox())!.y;
+      const frames = await watch(page, below);
+      await undo(page);
+      await expect(heading).toBeVisible();
+      await motionSettled(page);
+      await page.waitForTimeout(100);
+      const tops = (await frames()).map((frame) => frame.y!);
+      glided(tops, home - start);
+      noLastJump(tops, home - start);
+    });
+
+    test('merged moves took the open job twice: the undo opens the one first taken', async ({
+      page,
+    }) => {
+      await open(page, WIN);
+      const [first] = await listed(page);
+      await openJob(page, first!);
+      await page.getByTestId('reader-archive').click();
+      await expect(row(page, first!)).toHaveCount(0);
+      const next = await list(page).locator('[data-open]').getAttribute('data-key');
+      await page.getByTestId('reader-archive').click();
+      await expect(list(page).locator(`[data-key="${next}"]`)).toHaveCount(0);
+      await undo(page);
+      await expect(row(page, first!)).toBeVisible();
+      await expect(list(page).locator(`[data-key="${next}"]`)).toBeVisible();
+      await expect(list(page).locator('[data-open]')).toHaveAttribute(
+        'data-key',
+        first!.replace('-', ':'),
+      );
     });
 
     test('another job: the rows below glide, and the highlight stays on its row', async ({
@@ -3455,6 +3561,24 @@ test.describe('the list keeps true', () => {
     await expect(warning.getByTestId('toast-action')).toHaveText(T.common.retry);
     await warning.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
+    await expect(page.getByTestId('toast')).toHaveCount(0);
+  });
+
+  test('a merged undo that fails: Erneut versuchen brings all of its jobs back', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await viaMenu(page, 'archive', 'freelancermap-2803');
+    await viaMenu(page, 'archive', 'freelancermap-2802');
+    await failNext(page, 'move_back');
+    await page.getByTestId('toast-action').click();
+    const warning = page.getByTestId('toast').filter({ hasText: T.error.text('db', {}) });
+    await expect(warning.getByTestId('toast-action')).toHaveText(T.common.retry);
+    await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
+    await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
+    await warning.getByTestId('toast-action').click();
+    await expect(row(page, 'freelancermap-2803')).toBeVisible();
+    await expect(row(page, 'freelancermap-2802')).toBeVisible();
     await expect(page.getByTestId('toast')).toHaveCount(0);
   });
 

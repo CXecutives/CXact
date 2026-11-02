@@ -7,16 +7,16 @@
 // next job when the open one left (its row in view), hands the keyboard's focus on when it
 // stood on a row that left (`focusAfter`; a click moves none), and says so in a short toast
 // ("Archiviert") with Rückgängig; moves of the same kind right after each other merge into it,
-// its one undo takes them all back. The undo brings every job back to where it was, its row
-// too (`returning`: it unfolds the way it folded), and opens the job again that was open when it
-// left; in another list than the one the move left (the Archiv, once another place was chosen)
-// its rows leave and, when the open job is one of them, the next one opens. A double click never
-// moves the job that slid under the pointer, nor opens it: its second press presses nothing there
-// and it stays the first press's (input.ts `pressesElsewhere`, `runDouble`); every other click and
-// key counts at once. The job the app opens by itself counts as read only once it has been looked
-// at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is already where it goes
-// is no move. A move that fails says so where it was asked (the list header, `jobs.actionError`),
-// an undo that fails in its toast too, which offers to try again.
+// its one undo takes them all back as one change. The undo brings every job back to where it was,
+// its row too (`returning`: it unfolds the way it folded), and opens the job again that was open
+// when it left; in another list than the one the move left (the Archiv, once another place was
+// chosen) its rows leave and, when the open job is one of them, the next one opens. A double
+// click never moves the job that slid under the pointer, nor opens it: its second press presses
+// nothing there and it stays the first press's (input.ts `pressesElsewhere`, `runDouble`); every
+// other click and key counts at once. The job the app opens by itself counts as read only once it
+// has been looked at (DWELL_MS on screen in the Jobs view, or a press on it). A job that is already
+// where it goes is no move. A move that fails says so where it was asked (the list header,
+// `jobs.actionError`), an undo that fails in its toast too, which offers to try again.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { RowTool } from '$components/JobRow.svelte';
@@ -247,11 +247,6 @@ function foldedAway(keys: readonly string[]): void {
 /** Rows an undo brings back, until they are built: they unfold, the mirror of `moving`. */
 export const returning = new Set<string>();
 
-/** Every one of `rows` folds away or comes back (`moving`, `returning`): so does the day or the
- *  section around them, heading and all. */
-export const allIn = (rows: readonly JobView[], set: ReadonlySet<string>): boolean =>
-  rows.length > 0 && rows.every((job) => set.has(keyOf(job.key)));
-
 /** How long the next job opened by the app stays on screen before it counts as read. */
 const DWELL_MS = 2000;
 /** The dwell counts in steps of this, only while the job is on screen. */
@@ -340,17 +335,18 @@ export function seen(key: JobKey | null = jobs.selected): void {
 }
 
 /**
- * Takes one move back (the jobs to where they were, their rows too), then opens the job
- * again that was open when the move took it away, if it is listed again. Rows of this list
- * that go back to another place leave it (the Archiv holding a job the undo takes back to
- * Aktuell), and the next job opens when the open one was among them, like after a move.
- * Resolves with the sentence of a failure, which the toast says and offers to try again.
+ * Takes the moves of one toast back, the last first (each with its jobs, and the open job when it
+ * took that away), as one change of the list, so a day or a section they emptied comes back whole
+ * (the jobs to where they were, their rows too), then opens the job again that was open when the
+ * first of them took it away, if it is listed again. Rows of this list that go back to another
+ * place leave it (the Archiv holding a job the undo takes back to Aktuell), and the next job opens
+ * when the open one was among them, like after a move. Resolves with the sentence of a failure,
+ * which the toast says and offers to try again.
  */
 async function undo(
-  back: readonly Unmove[],
-  generation: number,
-  reopen: JobKey | null,
+  moves: readonly { back: readonly Unmove[]; reopen: JobKey | null }[],
 ): Promise<string | null> {
+  const back = moves.flatMap((made) => made.back);
   const open = jobs.selected;
   const leaving = back.flatMap(({ job }) => {
     const row = jobs.rows.find((held) => sameKey(held.key, job.key));
@@ -361,7 +357,7 @@ async function undo(
   // Only a few, like the rows that fold away.
   const unfolding = back.length <= staggerLimit() ? back.map(({ job }) => keyOf(job.key)) : [];
   for (const key of unfolding) returning.add(key);
-  const result = await jobs.moveBack(back, generation);
+  const result = await jobs.moveBack(back);
   void tick().then(() => {
     for (const key of unfolding) returning.delete(key);
   });
@@ -376,8 +372,8 @@ async function undo(
     focus,
     open,
   );
-  if (reopen === null || !came.has(keyOf(reopen))) return null;
-  const row = jobs.rows.find((job) => sameKey(job.key, reopen));
+  const first = moves.findLast(({ reopen }) => reopen !== null && came.has(keyOf(reopen)));
+  const row = jobs.rows.find((job) => sameKey(job.key, first?.reopen ?? null));
   if (row) {
     await jobs.select(row, false);
     jobs.reveal = { key: keyOf(row.key), focus: false };
@@ -418,6 +414,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
     return {
       job: jobs.rows[at] ?? job,
       to,
+      generation,
       at,
       below: at < 0 ? null : neighbour(jobs.rows.slice(at + 1)),
       above: at < 0 ? null : neighbour(jobs.rows.slice(0, at).reverse()),
@@ -452,7 +449,8 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
     `move-${action}`,
     SAID[action],
     t.common.undo,
-    () => undo(undone, generation, reopen),
+    undo,
+    { back: undone, reopen },
     undone.length,
     undone.map((entry) => keyOf(entry.job.key)),
   );

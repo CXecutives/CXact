@@ -17,8 +17,8 @@
   import { enterList } from '$lib/motion/enter';
   import { staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, unfold } from '$lib/motion/transitions';
-  import { keyOf } from '$lib/state/jobRows';
-  import { allIn, moving, returning } from './actions';
+  import { allIn, keyOf } from '$lib/state/jobRows';
+  import { moving, returning } from './actions';
 
   interface Props {
     /** The day's heading (null: a section without days). */

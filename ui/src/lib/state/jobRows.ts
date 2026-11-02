@@ -27,6 +27,11 @@ export const isExcluded = (job: JobView): boolean => job.match?.status === 'excl
 export const isUnscored = (job: JobView): boolean =>
   job.match === null || job.match.status === 'unscorable';
 
+/** Every one of `rows` is in `set`: they fold away or come back (actions.ts `moving`, `returning`),
+ *  and so does the day or the section around them, heading and all. */
+export const allIn = (rows: readonly JobView[], set: ReadonlySet<string>): boolean =>
+  rows.length > 0 && rows.every((job) => set.has(keyOf(job.key)));
+
 /** Every job passes (the counts over every job). */
 const everyJob = (): boolean => true;
 

@@ -79,15 +79,17 @@ const MAX = 3;
  *  short word), whose one undo takes back all of them. */
 const MERGE_MS = 2000;
 
-/** An undo; it may take a while (the next one of a merged toast waits for it). A sentence it
- *  returns (or throws) says why it failed: its toast stays and offers to try again. */
+/** An undo; it may take a while. A sentence it returns (or throws) says why it failed: its toast
+ *  stays and offers to try again. */
 export type Undo = () => void | string | null | Promise<void | string | null>;
 
-/** What a mergeable toast adds up: how many, their undos, when the last one came. */
+/** What a mergeable toast adds up: how many, what each result left to take back, its one undo,
+ *  when the last one came. */
 interface Merged {
   kind: string;
   count: number;
-  undos: Undo[];
+  results: unknown[];
+  undo: Undo;
   at: number;
 }
 
@@ -164,9 +166,9 @@ class Toasts {
 
   /**
    * The button of toast `id`: its action runs and the toast
-   * goes. An undo of results (`undoable`) takes them back, the last first; one that fails
+   * goes. An undo of results (`undoable`) takes them back at once; one that fails
    * brings the toast back as a warning with the reason and "Erneut versuchen", which tries
-   * the rest again.
+   * again.
    */
   act(id: number): void {
     const action = this.items.find((item) => item.id === id)?.action ?? null;
@@ -175,38 +177,36 @@ class Toasts {
     const keys = [...(this.#keys.get(id) ?? [])];
     this.dismiss(id);
     if (merged === undefined) action.onclick();
-    else void this.#takeBack([...merged.undos], keys);
+    else void this.#takeBack(merged.undo, keys);
   }
 
-  /** Run `undos`, the last first; on a failure the rest waits behind a warning toast. */
-  async #takeBack(undos: Undo[], keys: readonly string[]): Promise<void> {
-    while (undos.length > 0) {
-      const reason = await failure(undos.at(-1)!);
-      if (reason !== null) {
-        this.show(
-          reason,
-          'warning',
-          { label: t.common.retry, onclick: () => void this.#takeBack(undos, keys) },
-          keys,
-        );
-        return;
-      }
-      undos.pop();
-    }
+  /** Run `undo`; when it fails, it waits behind a warning toast that offers to try again. */
+  async #takeBack(undo: Undo, keys: readonly string[]): Promise<void> {
+    const reason = await failure(undo);
+    if (reason === null) return;
+    this.show(
+      reason,
+      'warning',
+      { label: t.common.retry, onclick: () => void this.#takeBack(undo, keys) },
+      keys,
+    );
   }
 
   /**
    * A result the user may take back (jobs archived, deleted, restored). One of the same
    * `kind` within 2 s joins the toast that is up: `text(n)` says it for all of them (the job
    * actions one short word, "Archiviert", however many; never a title), the one undo
-   * (`undoLabel`) takes back all of them, the last result first, and the toast stays its full
-   * time from the last one. `count` is how many jobs this result moved, `keys` which ones.
+   * (`undoLabel`) is the first result's `undo`, which takes back all of them at once, told what
+   * each `result` left, the last first (an undo stack), so what they changed comes back as one
+   * change. The toast stays its full time from the last one. `count` is how many jobs this
+   * result moved, `keys` which ones.
    */
-  undoable(
+  undoable<Result>(
     kind: string,
     text: (n: number) => string,
     undoLabel: string,
-    undo: Undo,
+    undo: (results: readonly Result[]) => ReturnType<Undo>,
+    result?: Result,
     count = 1,
     keys: readonly string[] = [],
   ): void {
@@ -218,13 +218,14 @@ class Toasts {
         this.items.some((item) => item.id === id),
     );
     if (open === undefined) {
-      const merged: Merged = { kind, count, undos: [undo], at: now };
-      // Its button goes through act(): the last result first, like an undo stack (each undo
-      // finds the list as it was).
+      const results = result === undefined ? [] : [result];
+      const takeBack: Undo = () => undo(results.toReversed());
+      const merged: Merged = { kind, count, results, undo: takeBack, at: now };
+      // Its button goes through act().
       const id = this.show(
         text(count),
         'success',
-        { label: undoLabel, onclick: () => void this.#takeBack([...merged.undos], keys) },
+        { label: undoLabel, onclick: () => void this.#takeBack(takeBack, keys) },
         keys,
       );
       this.#merged.set(id, merged);
@@ -232,7 +233,7 @@ class Toasts {
     }
     const [id, merged] = open;
     merged.count += count;
-    merged.undos.push(undo);
+    if (result !== undefined) merged.results.push(result);
     merged.at = now;
     const known = new Set([...(this.#keys.get(id) ?? []), ...keys]);
     if (known.size > 0) this.#keys.set(id, known);

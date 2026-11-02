@@ -75,14 +75,13 @@
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { NO_FILTER } from '$lib/state/filter';
-  import { isExcluded, isUnscored, keyOf, sameKey } from '$lib/state/jobRows';
+  import { allIn, isExcluded, isUnscored, keyOf, sameKey } from '$lib/state/jobRows';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { sections } from '$lib/state/sections.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import {
-    allIn,
     focusPlace,
     jobMenu,
     moving,
