@@ -24,10 +24,11 @@
 // - Like mail: every job is in one place (inbox, archive, trash); "fits anyway" is a flag of
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
-// - Each place is one list in the chosen order, the excluded jobs last. Aktuell and the Archiv
-//   have one filter beside the search (the funnel, lib/state/filter.ts: portals, bands and the
-//   days the jobs came; kept like the order), the Papierkorb has none. It narrows the list and
-//   its counts like the search. The counts over every job never follow it. A query's counts
+// - Each place is one list, the excluded jobs last. Aktuell and the Archiv stand in the chosen
+//   order and have one filter beside the search (the funnel, lib/state/filter.ts: portals, bands
+//   and the days the jobs came; both kept), the Papierkorb has neither: it stands by the day a
+//   job went there. The filter narrows the list and its counts like the search. The counts over
+//   every job never follow it. A query's counts
 //   narrow every place alike, so while a search looks under a filter one more counts-only query
 //   asks for the places under the other rule (`hitsIn`).
 // - The open job is kept per work folder: the next start opens it again (its place with it),
@@ -210,9 +211,10 @@ class JobsStore {
     return this.search.trim() !== '';
   }
 
-  /** The sort actually used: without a profile there is no match to sort by. */
+  /** The sort actually used, the place's: without a profile there is no match to sort by, and the
+   *  Papierkorb has no funnel to choose one (its days are when a job went there). */
   get sort(): JobSort {
-    return app.hasProfile ? this.sortChoice : 'newest';
+    return app.hasProfile && this.place !== 'trash' ? this.sortChoice : 'newest';
   }
 
   /** The filter actually used, the place's. Sent with every query of the list. */

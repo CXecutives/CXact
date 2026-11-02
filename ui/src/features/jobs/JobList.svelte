@@ -1,6 +1,7 @@
 <!--
-  The job list (the round 10 draft): one list per place in the chosen order, rows in windows
-  of 60 (a sentinel at the end shows the next window), 6 in from the column's edges. In the
+  The job list (the round 10 draft): one list per place, Aktuell and the Archiv in the chosen
+  order, the Papierkorb by date, rows in windows of 60 (a sentinel at the end shows the next
+  window), 6 in from the column's edges. In the
   order by date (the default, decision 1) the scored jobs stand under the headings of their
   days (DayGroup: the local day a job came into CXact, in the Papierkorb the day it went
   there; "Heute", "Gestern", "Mi 23.09.", rolling over at midnight with the page's clock),

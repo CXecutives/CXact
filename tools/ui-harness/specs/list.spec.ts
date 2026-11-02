@@ -1899,6 +1899,23 @@ test.describe('rows', () => {
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toMatchObject({ include: false });
   });
 
+  test('the Papierkorb keeps its days whatever Aktuell is sorted by, and Aktuell keeps its order', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await chooseSort(page, 'match');
+    await expect(page.getByTestId('day-heading')).toHaveCount(0);
+    await openPlace(page, 'trash');
+    await expect(page.getByTestId('day-heading').first()).toBeVisible();
+    await expect.poll(async () => (await lastQuery(page))?.sort).toBe('newest');
+    await expect(page.getByTestId('filter')).toHaveCount(0);
+    // The way back: the order the user chose.
+    await openPlace(page, 'inbox');
+    await expect.poll(async () => (await lastQuery(page))?.sort).toBe('match');
+    await expect(page.getByTestId('day-heading')).toHaveCount(0);
+    expect(await checkedSort(page)).toBe('match');
+  });
+
   test('a double click on a row opens its ad in the browser, like Anzeige öffnen', async ({
     page,
   }) => {
