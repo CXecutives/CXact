@@ -63,6 +63,14 @@
     min-width: 0;
   }
 
+  /* Beside its label (Field's row) as high as a field, so its first line stands on the label's
+     also when it wraps; under its label (a narrow box) right under it. */
+  @container (width >= 560px) {
+    .checks {
+      padding-block: calc((var(--control-field) - var(--hit-min)) / 2);
+    }
+  }
+
   .option {
     display: inline-flex;
     align-items: center;

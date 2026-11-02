@@ -200,22 +200,12 @@
     min-width: 0;
   }
 
-  /* A control lower than a field (the checkboxes) is centred on its height. */
-  .row .control {
-    justify-content: center;
-    min-height: var(--control-field);
-  }
-
   @container (width < 560px) {
     .row {
       grid-template-columns: minmax(0, 1fr);
     }
 
     .row .top {
-      min-height: 0;
-    }
-
-    .row .control {
       min-height: 0;
     }
   }

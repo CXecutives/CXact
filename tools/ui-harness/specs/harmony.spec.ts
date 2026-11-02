@@ -1030,6 +1030,53 @@ test('the half pixel goes by the size: not at 14, and not for what stands low al
   expect(await shifted(page.getByTestId('load-ad'))).toBe(0);
 });
 
+/* -------------------------------------------------- the rest of the page's measures */
+
+test('Vertragsart: its first line stands on its label, wrapped too; in a narrow box right under it', async ({
+  page,
+}) => {
+  const read = () =>
+    page.getByTestId('profile-contracts').evaluate((group) => {
+      const label = group.closest('.field')!.querySelector('.label')!.getBoundingClientRect();
+      const boxes = [...group.querySelectorAll('.option')].map((option) =>
+        option.getBoundingClientRect(),
+      );
+      const first = boxes[0]!;
+      return {
+        label: (label.top + label.bottom) / 2,
+        first: (first.top + first.bottom) / 2,
+        under: first.top - label.bottom,
+        beside: first.left > label.right,
+        lines: new Set(boxes.map((box) => box.top)).size,
+      };
+    });
+  const at = async (width: number) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, `${WIN}&view=profile`);
+    return read();
+  };
+  const wide = await at(1360);
+  expect(wide.lines).toBe(1);
+  expect(wide.first).toBe(wide.label);
+  let wrapped = 0;
+  for (const width of [640, 660, 680, 700]) {
+    const row = await at(width);
+    if (!row.beside || row.lines < 2) continue;
+    wrapped += 1;
+    expect(row.first, `at ${width}`).toBe(row.label);
+  }
+  expect(wrapped).toBeGreaterThan(0);
+  const narrow = await at(480);
+  expect(narrow.beside).toBe(false);
+  expect(narrow.under).toBe(
+    await page.evaluate(() =>
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--profile-label-gap-narrow'),
+      ),
+    ),
+  );
+});
+
 test('Wiederherstellen is as large as the Löschen beside it', async ({ page }) => {
   await open(page, WIN);
   await openPlace(page, 'trash');
