@@ -1312,6 +1312,72 @@ test('the failed start keeps the top bar', async ({ page }) => {
   }
 });
 
+test('a failed start stands without the frame: no sidebar, no buttons in the bar, the tile in the middle of the window', async ({
+  page,
+}) => {
+  for (const size of [
+    { width: 1360, height: 900 },
+    { width: 1000, height: 700 },
+  ]) {
+    await page.setViewportSize(size);
+    await open(page, `${WIN}&scenario=load-failed`);
+    await expect(page.getByTestId('view-error')).toBeVisible();
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    for (const id of ['history-back', 'history-forward', 'toggle-sidebar']) {
+      await expect(page.getByTestId(id), id).toHaveCount(0);
+    }
+    const tile = (await page.getByTestId('view-error').getByRole('heading').boundingBox())!;
+    expect(Math.abs(tile.x + tile.width / 2 - size.width / 2)).toBeLessThanOrEqual(1);
+  }
+});
+
+test('its recovery just shows the frame: every frame with the jobs has it in place, nothing slides or fades', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const retry = page.getByTestId('view-error').getByRole('button', { name: T.common.retry });
+  await page.evaluate(() => {
+    const log: { jobs: boolean; left: number; moving: number; shown: string | null }[] = [];
+    (window as unknown as { frames: typeof log }).frames = log;
+    const tick = (): void => {
+      const sidebar = document.querySelector('[data-testid="sidebar"]');
+      log.push({
+        jobs: document.querySelector('[data-testid="view-jobs"]') !== null,
+        left: document.querySelector('main')!.getBoundingClientRect().left,
+        moving: document.getAnimations().filter((motion) => {
+          const target = (motion.effect as KeyframeEffect | null)?.target;
+          return target?.matches('[data-dock-slide], [data-testid="sidebar"]');
+        }).length,
+        shown: sidebar && getComputedStyle(sidebar).opacity,
+      });
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await retry.click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('sidebar')).toBeVisible();
+  await expect(page.getByTestId('toggle-sidebar')).toBeVisible();
+  // Longer than a slide takes.
+  await page.waitForTimeout(300);
+  const log = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          frames: { jobs: boolean; left: number; moving: number; shown: string | null }[];
+        }
+      ).frames,
+  );
+  const framed = log.filter((frame) => frame.jobs);
+  expect(framed.length).toBeGreaterThan(1);
+  expect(framed[0]!.left).toBeGreaterThan(0);
+  expect(new Set(framed.map((frame) => frame.left)).size).toBe(1);
+  expect(framed.filter((frame) => frame.moving > 0 || frame.shown !== '1')).toEqual([]);
+  // From here on the sidebar's button docks and folds with its slide, as ever.
+  await page.getByTestId('toggle-sidebar').click();
+  expect(await page.locator('main').evaluate((node) => node.getAnimations().length)).toBe(1);
+});
+
 test('the job view button stands only where it does something', async ({ page }) => {
   const toggle = page.getByTestId('toggle-reader');
   await open(page, `${WIN}&scenario=load-failed`);
