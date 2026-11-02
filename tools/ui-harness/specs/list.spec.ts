@@ -164,6 +164,31 @@ function expectGlide(
   expect(new Set(places).size, said).toBeGreaterThanOrEqual(3);
 }
 
+/** What the frames paint during `act`, until the list has answered: how many rows are mounted
+ *  and where the buttons to the other places stand. */
+async function paintedRows(page: Page, act: () => Promise<unknown>): Promise<string[]> {
+  await page.evaluate(() => {
+    const log: string[] = [];
+    (window as unknown as { shown: string[] }).shown = log;
+    const after = new MessageChannel();
+    after.port1.onmessage = (): void => {
+      const rows = document.querySelectorAll('[data-testid="job-list"] [data-key]').length;
+      const also = document.querySelector('[data-testid="also-in"]');
+      log.push(`${rows} ${also === null ? '-' : Math.round(also.getBoundingClientRect().top)}`);
+    };
+    const frame = (): void => {
+      after.port2.postMessage(0);
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+  await act();
+  await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+  await motionSettled(page);
+  await settle(page);
+  return page.evaluate(() => (window as unknown as { shown: string[] }).shown);
+}
+
 /** Whether the element `a` starts before the element `b` (the order along a line). */
 async function leftOf(page: Page, a: string, b: string): Promise<boolean> {
   const [first, second] = await Promise.all(
@@ -2736,6 +2761,57 @@ test.describe('search', () => {
       return shown;
     });
     expect(came).toBe(false);
+  });
+
+  test('a letter, a chip off and Esc show the list at once: no row comes late, no button hops', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const search = page.getByTestId('search');
+    // From the list before to the new one in one step, whatever the step.
+    const inOneStep = async (act: () => Promise<unknown>): Promise<void> => {
+      const shown = await paintedRows(page, act);
+      expect(new Set(shown).size, shown.join(' | ')).toBeLessThanOrEqual(2);
+    };
+    await search.fill('i');
+    await expect(page.getByTestId('also-archive')).toBeVisible();
+    await motionSettled(page);
+    await settle(page);
+    await inOneStep(() => search.press('n'));
+    await inOneStep(() => search.press('Escape'));
+    await chooseFilter(page, 'portal-linkedin');
+    await motionSettled(page);
+    await settle(page);
+    await inOneStep(() => chipRemove(page, 'portal-linkedin').click());
+  });
+
+  test('a long list comes with what the pane shows in its first frame, the rest below the fold', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=many`);
+    await expect(rows(page).first()).toBeVisible();
+    await motionSettled(page);
+    await settle(page);
+    const pane = (await page.getByTestId('list-scroll').boundingBox())!;
+    const height = (await rows(page).first().boundingBox())!.height;
+    const shown = await paintedRows(page, () => page.getByTestId('search').fill('Interim'));
+    const fewest = Math.min(...shown.map((frame) => Number(frame.split(' ')[0])));
+    expect(fewest, shown.join(' | ')).toBeGreaterThanOrEqual(Math.ceil(pane.height / height));
+  });
+
+  test('another list starts at the top, wherever the one before it was scrolled to', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const pane = page.getByTestId('list-scroll');
+    await expect(rows(page)).toHaveCount((await inbox(page)).length);
+    await pane.evaluate((node) => (node.scrollTop = 80));
+    expect(await pane.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    await page.getByTestId('search').fill('i');
+    await expect.poll(async () => (await lastQuery(page))?.search).toBe('i');
+    await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+    await settle(page);
+    expect(await pane.evaluate((node) => node.scrollTop)).toBe(0);
   });
 
   test('the buttons to the other places stand while a word is typed, under the rows and under no hit', async ({

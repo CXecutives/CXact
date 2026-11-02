@@ -3,7 +3,8 @@
 // - List and counts come from one `list_jobs` call (pages of 120: a page is read in the task
 //   that shows its first rows, and 500 rows made that task several times longer than the 60
 //   it shows); the list renders in windows of 60 rows that grow while scrolling, chunk by
-//   chunk, so 2000 jobs never block a frame. A reload of the same list (sort, undo, the end
+//   chunk, so 2000 jobs never block a frame, and a new list's first frame takes what the pane
+//   shows, so the chunks go on below the fold. A reload of the same list (sort, undo, the end
 //   of a run) asks for as many rows as it holds, keeps the rows that did not change and
 //   builds at most a chunk of new ones at once. Another list (place, tab, search) is
 //   a new generation of rows: the old rows go as one piece instead of one by one.
@@ -49,7 +50,7 @@ import type {
   RunEvent,
   StoredMail,
 } from '../ipc/types';
-import { tokenMs } from '../tokens';
+import { tokenMs, tokenPx } from '../tokens';
 import { app } from './app.svelte';
 import { isFiltered, NO_FILTER, passesFilter, toQuery, type ListFilter } from './filter';
 import { isExcluded, isUnscored, keyOf, moved, replaced, reused, sameKey, ZERO } from './jobRows';
@@ -66,6 +67,9 @@ export const WINDOW = 60;
 /** Rows mounted per frame while a window fills (small: every frame stays well below 50 ms
  *  on a slow machine, also a shared CI runner; the window still fills within a few frames). */
 const CHUNK = 4;
+/** The rows a new list mounts at once: as many as its pane can show (at most the window's height
+ *  in rows of the least height), so nothing on screen comes chunk by chunk. */
+const firstRows = (): number => Math.max(CHUNK, Math.ceil(innerHeight / tokenPx('--list-row-min')));
 /** At most one counts query per this many ms while a run updates jobs. */
 const COUNTS_EVERY = 400;
 
@@ -162,8 +166,7 @@ class JobsStore {
   rendered = $state(CHUNK);
   /** Counts the lists: a load that is not the same list in a new order starts a new one. */
   generation = $state(0);
-  /** Counts the loads of the same list in a new order, from the question on: with its answer the
-   *  rows on screen glide to their new place (JobList). */
+  /** Counts the loads of the same list in a new order: with the answer the rows glide (JobList). */
   reorders = $state(0);
   /** Keys inserted while the list was on screen (they fade in). */
   fresh = new SvelteSet<string>();
@@ -546,7 +549,7 @@ class JobsStore {
       this.#otherRule = other;
       this.total = page.jobs.length < limit ? page.jobs.length : this.countOf(page.counts);
       this.window = keep ? Math.max(WINDOW, this.window) : WINDOW;
-      this.rendered = mounted ? this.kept(mounted, Math.min(this.rendered, this.window)) : CHUNK;
+      this.rendered = mounted ? this.kept(mounted) : firstRows();
       if (!keep) this.generation += 1;
       this.fresh.clear();
       this.status = 'ready';
@@ -563,13 +566,13 @@ class JobsStore {
 
   /**
    * How many rows stay mounted when the same list comes back in a new order (the sort, the
-   * end of a run, an undo): up to `limit`, but never more than CHUNK rows that are not
+   * end of a run, an undo): as many as before, but never more than CHUNK rows that are not
    * mounted yet, so no frame builds a whole window of new rows (another sort shows other
    * jobs in its first rows). The rest follows chunk by chunk.
    */
-  private kept(mounted: ReadonlySet<string>, limit: number): number {
+  private kept(mounted: ReadonlySet<string>): number {
     const rows = this.visible;
-    const end = Math.min(limit, rows.length);
+    const end = Math.min(this.rendered, this.window, rows.length);
     let fresh = 0;
     for (let index = 0; index < end; index += 1) {
       if (!mounted.has(keyOf(rows[index]!.key))) fresh += 1;

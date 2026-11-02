@@ -17,12 +17,15 @@
   section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
-  search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
-  rows below simply make room; the rows already there never flicker). Rows move only for the
+  search, a selection and fast browsing (pace.ts) show the list at once, what the pane can show in
+  one frame and the rest below the fold, from its top. A new job of a run rises in where it lands
+  (the rows below simply make room; the rows already there never flicker). Rows move only for the
   user's own change and for the re-sort at the end of a run: after the order, a filter or
-  "Trotzdem bewerten", with the list's answer, the rows on screen and the sections' headings glide to their new place (180 ms), as the days'
-  headings go or come with the answer; rows off screen and new rows are simply there. A row the user moves out folds its height away (its day or its section
-  with its last row). One highlight marks the open job's row and glides from row to row (RowBar).
+  "Trotzdem bewerten", with the list's answer, the rows on screen and the sections' headings glide
+  to their new place (180 ms), as the days' headings go or come with the answer; rows off screen
+  and new rows are simply there. A row the user moves out folds its height away (its day or its
+  section with its last row). One highlight marks the open job's row and glides from row to row
+  (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
   search looks in the list's place; under its hits a button names each other place that lists
   a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
@@ -457,6 +460,16 @@
     });
   });
 
+  // Another list starts at the top, wherever the one before it was scrolled to.
+  let lastGeneration = untrack(() => jobs.generation);
+  $effect.pre(() => {
+    const generation = jobs.generation;
+    untrack(() => {
+      if (generation !== lastGeneration && list?.parentElement) list.parentElement.scrollTop = 0;
+      lastGeneration = generation;
+    });
+  });
+
   // After the DOM has the new rows: glide from the noted places, before the next frame is drawn
   // (WebKit may draw a layout ahead of its frame callbacks, so whichever comes first of the two):
   // the new rows are laid out once, there, and not a second time inside the task that built them.
@@ -762,7 +775,9 @@
         {/each}
       {/key}
     </div>
-    {#if elsewhere.length > 0 && !more}{@render alsoIn()}{/if}
+    {#if elsewhere.length > 0 && !more && jobs.rendered >= jobs.visible.length}
+      {@render alsoIn()}
+    {/if}
     {#if jobs.pageError}
       <div class="page-error">
         <Notice
