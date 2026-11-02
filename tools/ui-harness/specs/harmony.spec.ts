@@ -372,6 +372,59 @@ async function colours(
   }
 }
 
+/** Two colours an eye tells apart. */
+const apart = (one: number[], other: number[]): boolean =>
+  one.some((value, at) => Math.abs(value - other[at]!) > 8);
+
+/** How many pixels of a scroller's track a thumb covers (not its ends: in a menu they see the
+ *  frame's round corners). */
+async function thumbOn(page: Page, scroller: Locator): Promise<number> {
+  const box = (await scroller.boundingBox())!;
+  const end = 5;
+  const room = await scroller.evaluate(
+    (node) => (node as HTMLElement).offsetWidth - node.clientWidth,
+  );
+  const track = await colours(page, {
+    x: Math.round(box.x + box.width) - room,
+    y: Math.round(box.y) + end,
+    width: room,
+    height: Math.round(box.height) - 2 * end,
+  });
+  return track.filter((pixel) => apart(pixel, track[0]!)).length;
+}
+
+testPixels(
+  'the thumb shows while the pointer is over its scroller and only then, and nothing moves',
+  { width: 1360, height: 640 },
+  async (page) => {
+    const away = (): Promise<void> => page.mouse.move(60, 400);
+    const check = async (scroller: Locator): Promise<void> => {
+      await away();
+      await expect.poll(() => thumbOn(page, scroller)).toBe(0);
+      const width = await scroller.evaluate((node) => node.clientWidth);
+      const box = (await scroller.boundingBox())!;
+      await page.mouse.move(box.x + 40, box.y + 120);
+      await expect.poll(() => thumbOn(page, scroller)).toBeGreaterThan(0);
+      // The wheel moves the list under it and the thumb stays; the pointer gone, it goes.
+      await page.mouse.wheel(0, 60);
+      await expect.poll(() => scroller.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+      expect(await thumbOn(page, scroller)).toBeGreaterThan(0);
+      await away();
+      await expect.poll(() => thumbOn(page, scroller)).toBe(0);
+      expect(await scroller.evaluate((node) => node.clientWidth)).toBe(width);
+    };
+    await open(page, `${WIN}&open=freelancermap:2801`);
+    await check(page.getByTestId('list-scroll'));
+    await check(page.locator('.stage'));
+    await open(page, `${WIN}&view=profile`);
+    await check(page.getByTestId('view-profile'));
+    await open(page, WIN);
+    await openFilter(page);
+    await animationsDone(page);
+    await check(page.getByTestId('menu'));
+  },
+);
+
 /** Where a list (a menu's, a field's) stands in its frame. */
 async function listMeasure(list: Locator): Promise<{
   frame: { left: number; right: number };

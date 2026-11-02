@@ -192,6 +192,18 @@ ol {
   background-color: var(--scrollbar);
 }
 
+/* The engines restyle a thumb only when its scroller's own style changes. This is that change, on
+   every scroller under the pointer; it does not inherit, so nothing inside them restyles. */
+@property --over {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+[data-platform='windows'] :hover {
+  --over: 1;
+}
+
 [data-platform='windows'] ::-webkit-scrollbar-thumb:hover,
 [data-platform='windows'] ::-webkit-scrollbar-thumb:active {
   border-width: var(--scrollbar-gap);
