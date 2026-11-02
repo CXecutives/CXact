@@ -70,7 +70,6 @@
       'menu-height': px(bottom - top),
       'menu-least': anchor.kind === 'below' && listbox ? px(anchor.rect.width) : 'auto',
     });
-    const w = node.offsetWidth;
     let h = node.offsetHeight;
     const roomBelow = bottom - below;
     const roomAbove = above - top;
@@ -80,6 +79,8 @@
       setVars(node, { 'menu-height': px(Math.max(0, room)) });
       h = node.offsetHeight;
     }
+    // Read once its height is set: a classic scrollbar (a Mac with a mouse) comes with that.
+    const w = node.offsetWidth;
     let x: number;
     if (anchor.kind === 'point') {
       x = anchor.x + w <= width - edge ? anchor.x : anchor.x - w;

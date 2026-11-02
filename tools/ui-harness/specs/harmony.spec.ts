@@ -9,7 +9,17 @@
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { chooseSort, failNext, menuFrame, openFilter, openPlace, row, T, WIN } from './helpers';
+import {
+  chooseSort,
+  failNext,
+  MAC,
+  menuFrame,
+  openFilter,
+  openPlace,
+  row,
+  T,
+  WIN,
+} from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -470,6 +480,28 @@ testWithRoom(
       expect(short.scrolls, `at ${height}`).toBe(true);
       expect({ ...short, scrolls: false }, `at ${height}`).toEqual(tall);
     }
+  },
+);
+
+testWithRoom(
+  "on macOS a menu's rows stand even, and a classic scrollbar does not push it past its button",
+  { width: 1360, height: 860 },
+  async (page) => {
+    const at = async (height: number) => {
+      await page.setViewportSize({ width: 1360, height });
+      await open(page, MAC);
+      const button = await edges(page.getByTestId('filter'));
+      await openFilter(page);
+      await animationsDone(page);
+      const measure = await listMeasure(page.getByTestId('menu'));
+      expect(Math.abs(measure.frame.right - button.right), `at ${height}`).toBeLessThan(1);
+      return measure;
+    };
+    const tall = await at(860);
+    expect(tall.scrolls).toBe(false);
+    expect(tall.left - tall.frame.left).toBe(tall.frame.right - tall.right);
+    // A Mac with a mouse has classic scrollbars, which come with the height, like this browser's.
+    expect((await at(820)).scrolls).toBe(true);
   },
 );
 
