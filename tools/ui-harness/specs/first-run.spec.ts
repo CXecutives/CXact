@@ -1128,12 +1128,9 @@ test('a press on the bar of Dein Profil leaves Enter with Weiter, as on the rest
   await expect.poll(() => marks(page)).not.toEqual([]);
 });
 
-test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
-  await page.setViewportSize({ width: 1360, height: 640 });
-  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
-  const top = await page
-    .getByTestId('first-bar')
-    .evaluate((bar) => bar.getBoundingClientRect().top);
+/** Tab from the step's heading until the bar at its foot takes the focus: the controls on the way,
+ *  and those that end below the bar's top. */
+async function tabToTheBar(page: Page): Promise<{ reached: number; below: string[] }> {
   const below: string[] = [];
   let reached = 0;
   for (let press = 0; press < 60; press += 1) {
@@ -1141,17 +1138,161 @@ test('Tab keeps every control of Dein Profil clear of the bar at its foot', asyn
     await settle(page);
     const focused = await page.evaluate(() => {
       const node = document.activeElement as HTMLElement;
+      const bar = document.querySelector('[data-testid="first-bar"]')!;
       return {
         name: node.getAttribute('data-testid') ?? node.id ?? node.tagName,
-        inBar: node.closest('[data-testid="first-bar"]') !== null,
+        inBar: bar.contains(node),
         bottom: node.getBoundingClientRect().bottom,
+        top: bar.getBoundingClientRect().top,
       };
     });
     if (focused.inBar) break;
     reached += 1;
-    if (focused.bottom > top)
-      below.push(`${focused.name} ends at ${focused.bottom}, bar at ${top}`);
+    if (focused.bottom > focused.top) {
+      below.push(`${focused.name} ends at ${focused.bottom}, bar at ${focused.top}`);
+    }
   }
+  return { reached, below };
+}
+
+test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
+  await page.setViewportSize({ width: 1360, height: 640 });
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  const { reached, below } = await tabToTheBar(page);
   expect(reached).toBeGreaterThan(20);
   expect(below).toEqual([]);
+});
+
+test("in a low window Tab and typing stay clear of the foot that sticks over a card's step", async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [480, 360],
+    [800, 420],
+    [1099, 500],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await open(page, `${WIN}&scenario=setup-profile`);
+    const { reached, below } = await tabToTheBar(page);
+    expect(reached, `${width} x ${height}`).toBeGreaterThanOrEqual(3);
+    expect(below, `${width} x ${height}`).toEqual([]);
+    // Typing stands where it can be read, and answers the pointer.
+    await open(page, `${WIN}&scenario=setup-profile`);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('mailbox-user')).toBeFocused();
+    await page.keyboard.type('name.at.home.com');
+    await settle(page);
+    const typed = await page.evaluate(() => {
+      const field = document.querySelector('[data-testid="mailbox-user"]')!;
+      const box = field.getBoundingClientRect();
+      const bar = document.querySelector('[data-testid="first-bar"]')!.getBoundingClientRect();
+      return {
+        clear: box.bottom <= bar.top,
+        hit: document.elementFromPoint(box.left + 4, box.top + box.height / 2) === field,
+      };
+    });
+    expect(typed, `${width} x ${height}`).toEqual({ clear: true, hit: true });
+  }
+  // The steps without fields: the two ways, the upload's zone, what stands where no evaluation
+  // can run.
+  await page.setViewportSize({ width: 480, height: 360 });
+  for (const query of ['step=way', 'step=upload', 'step=upload&cv=used']) {
+    await open(page, `${WIN}&scenario=first-run&${query}`);
+    const { reached, below } = await tabToTheBar(page);
+    expect(reached, query).toBeGreaterThan(0);
+    expect(below, query).toEqual([]);
+  }
+});
+
+test("the room for the card's foot is the setup's alone: a field's list moves nothing on the Profil", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 600 });
+  await open(page, `${WIN}&view=profile`);
+  const view = page.getByTestId('view-profile');
+  const tools = page.getByTestId('profile-tools').locator('input');
+  // The field low in the view: the room of a sticking foot would lift it.
+  await tools.evaluate((node) => {
+    const pane = node.closest<HTMLElement>('[data-testid="view-profile"]')!;
+    const gap = pane.getBoundingClientRect().bottom - node.getBoundingClientRect().bottom;
+    pane.scrollTop -= gap - 24;
+  });
+  await tools.click();
+  const top = await view.evaluate((node) => node.scrollTop);
+  await page.keyboard.type('sa');
+  await expect(page.getByTestId('profile-tools-suggestions').getByRole('option')).toHaveCount(8);
+  await motionSettled(page);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(top);
+  expect(await view.evaluate((node) => getComputedStyle(node).scrollPaddingBottom)).toBe('auto');
+});
+
+/** The edges in the window of a step's card, and of the form of the page "Dein Profil". */
+async function setupEdges(
+  page: Page,
+  query: string,
+  width: number,
+): Promise<{ card: number[]; form: number[] }> {
+  await page.setViewportSize({ width, height: 700 });
+  const edgesOf = async (testid: string): Promise<number[]> => {
+    await motionSettled(page);
+    return page.getByTestId(testid).evaluate((node) => {
+      const box = (node.closest('.card') ?? node).getBoundingClientRect();
+      return [box.left, box.right];
+    });
+  };
+  await open(page, `${query}&scenario=first-run`);
+  const card = await edgesOf('first-bar');
+  await open(page, `${query}&scenario=first-run&step=profile&way=self`);
+  return { card, form: await edgesOf('profile-form') };
+}
+
+/** The sides of a narrow window. */
+const narrowSide = (page: Page): Promise<number> =>
+  page.evaluate(() =>
+    Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--page-side-narrow'),
+    ),
+  );
+
+test("macOS: the card stands the narrow sides from the window's edges, in the middle of a wide one", async ({
+  page,
+}) => {
+  // Its overlay scrollbars take no room.
+  await open(page, MAC);
+  const side = await narrowSide(page);
+  for (const width of [480, 571]) {
+    expect((await setupEdges(page, MAC, width)).card, `${width} wide`).toEqual([
+      side,
+      width - side,
+    ]);
+  }
+  const { card, form } = await setupEdges(page, MAC, 480);
+  expect(card).toEqual(form);
+  const wide = (await setupEdges(page, MAC, 1000)).card;
+  expect(wide[0]).toBe(1000 - wide[1]!);
+});
+
+test("beside a real scrollbar the card stands the narrow sides from the window's edges, as a page does", async ({
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  // Windows only (WebView2): macOS's overlay scrollbars take no room.
+  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    const page = await browser.newPage({ ...(baseURL ? { baseURL } : {}), locale: 'de-DE' });
+    await open(page, WIN);
+    const side = await narrowSide(page);
+    for (const width of [480, 571]) {
+      const { card, form } = await setupEdges(page, WIN, width);
+      expect(card, `${width} wide`).toEqual([side, width - side]);
+      expect(card, `${width} wide`).toEqual(form);
+    }
+    const wide = (await setupEdges(page, WIN, 1000)).card;
+    expect(wide[0]).toBe(1000 - wide[1]!);
+  } finally {
+    await browser.close();
+  }
 });
