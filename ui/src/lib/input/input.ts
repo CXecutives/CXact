@@ -300,6 +300,9 @@ export interface FormKeyHandlers {
   save?: () => void;
   /** Esc anywhere inside the form. */
   cancel?: () => void;
+  /** Esc inside the form with the focus nowhere only: it stops what runs behind the form, and a
+   *  field or a control keeps its own (or none). */
+  stop?: () => void;
 }
 
 const forms = new WeakMap<Element, FormKeyHandlers>();
@@ -337,7 +340,8 @@ function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = even
   if (event.isComposing || hasModifier(event) || event.repeat) return false;
   let handler: (() => void) | null = null;
   if (event.key === 'Escape') {
-    handler = handlerFor(target, 'cancel');
+    handler =
+      handlerFor(target, 'cancel') ?? (isNowhere(event.target) ? handlerFor(target, 'stop') : null);
   } else if (event.key === 'Enter') {
     // Enter on a button presses that button; in a text area it starts a new line.
     if (closest(target, 'textarea') !== null || pressedByEnter(target)) {

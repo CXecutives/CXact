@@ -4,7 +4,8 @@
   "Aus Lebenslauf ausfüllen" (secondary, file-up), which opens the file dialog at once. While
   the CV is evaluated a 16 px spinner, "Wird von einer KI ausgewertet" (13 muted) and the
   setup's Abbrechen with its square stand in its place, in the same width (both share one cell,
-  the wider sets it; the keyboard's focus goes along), also on the start page without a form.
+  the wider sets it; the keyboard's focus goes along, and Esc there is Abbrechen), also on the
+  start page without a form.
   It waits, its tooltip saying why, while a value is wrong or no
   evaluation is left today. What went wrong with the CV stands under the head as a state box
   (ProfileView). A file that no longer reads has "Ordner öffnen" there instead, its folder at
@@ -15,7 +16,7 @@
   import PageHeader from '$components/PageHeader.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
-  import { byKeyboard } from '$lib/input/input';
+  import { byKeyboard, formKeys } from '$lib/input/input';
   import { untrack } from 'svelte';
   import { fromCv } from '../shared/fromCv.svelte';
 
@@ -86,7 +87,11 @@
         onclick={oncv}
       />
     </span>
-    <span class="face working" bind:this={working}>
+    <span
+      class="face working"
+      bind:this={working}
+      use:formKeys={fromCv.busy ? { cancel: () => fromCv.cancel() } : {}}
+    >
       <span class="words" role="status" data-testid="profile-cv-busy">
         {#if fromCv.busy}<Spinner size="sm" label={null} />{:else}<span class="slot"></span>{/if}{t
           .profile.cvBusy}

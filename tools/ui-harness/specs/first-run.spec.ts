@@ -1301,6 +1301,74 @@ test('a change while Verbinden checks stops it in the setup too: the step and wh
   await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
 });
 
+test('Esc stops the evaluation on the Profil from nowhere or on Abbrechen, never from a field', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile&cv=slow`);
+  const start = page.getByTestId('profile-from-cv');
+  const stop = page.getByTestId('cv-cancel');
+  const stops = (): Promise<number> => calls(page, 'cancel_run').then((all) => all.length);
+  // Begun by a press: the focus is nowhere.
+  await start.click();
+  await expect(stop).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(start).toBeVisible();
+  await expect(stop).toBeHidden();
+  expect(await stops()).toBe(1);
+  // Begun by the keyboard: the focus went along to Abbrechen, and comes back.
+  await start.focus();
+  await page.keyboard.press('Enter');
+  await expect(stop).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(start).toBeFocused();
+  expect(await stops()).toBe(2);
+  // In a field the page stays open meanwhile: its Esc is its own, and an empty one is nothing.
+  await start.click();
+  await expect(stop).toBeVisible();
+  const tools = page.getByTestId('profile-tools').locator('input');
+  await tools.click();
+  await page.keyboard.type('sa');
+  await page.keyboard.press('Escape');
+  await expect(tools).toHaveValue('sa');
+  await page.keyboard.press('Escape');
+  await expect(tools).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await expect(stop).toBeVisible();
+  expect(await stops()).toBe(2);
+  // Another control, the same.
+  await page.getByTestId('contract-project').focus();
+  await page.keyboard.press('Escape');
+  await expect(stop).toBeVisible();
+  expect(await stops()).toBe(2);
+  // A press beside the controls: the focus is nowhere again.
+  await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  await expect(start).toBeVisible();
+  expect(await stops()).toBe(3);
+  // The start page without a form: the same, and its ground still fills the view.
+  await open(page, `${WIN}&view=profile&scenario=no-profile&cv=slow`);
+  const [ground, view] = await Promise.all([
+    page.getByTestId('profile').boundingBox(),
+    page.getByTestId('view-profile').evaluate((node) => node.clientHeight),
+  ]);
+  expect(ground!.height).toBe(view);
+  await page.getByTestId('way-cv').click();
+  await expect(stop).toBeVisible();
+  await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  await expect(stop).toHaveCount(0);
+  expect(await stops()).toBe(1);
+  // Over, Esc stops nothing (a search may be going): also where the last press was on its words.
+  await open(page, `${WIN}&view=profile`);
+  await start.click();
+  await page.getByTestId('profile-cv-busy').click();
+  await expect(start).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  expect(await stops()).toBe(0);
+});
+
 /** The edges in the window of a step's card, and of the form of the page "Dein Profil". */
 async function setupEdges(
   page: Page,
