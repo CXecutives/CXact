@@ -162,6 +162,9 @@ class JobsStore {
   rendered = $state(CHUNK);
   /** Counts the lists: a load that is not the same list in a new order starts a new one. */
   generation = $state(0);
+  /** Counts the loads of the same list in a new order, from the question on: with its answer the
+   *  rows on screen glide to their new place (JobList). */
+  reorders = $state(0);
   /** Keys inserted while the list was on screen (they fade in). */
   fresh = new SvelteSet<string>();
   /** A row the list brings into view once it is mounted (a job the keys opened further down,
@@ -519,7 +522,8 @@ class JobsStore {
     this.status = 'loading';
     this.error = null;
     this.pageError = null;
-    if (!keep) this.reveal = null;
+    if (keep) this.reorders += 1;
+    else this.reveal = null;
     const timer = setTimeout(() => {
       if (request === this.#request) this.slow = true;
     }, tokenMs('--delay-placeholder'));
@@ -845,8 +849,9 @@ class JobsStore {
 
   /**
    * "Fits anyway": an excluded job counts as scored with its fit score, or the engine's
-   * verdict applies again. The backend assesses it anew, so the row and the reader follow
-   * its answer. Resolves with the error text, or null.
+   * verdict applies again. The backend assesses it anew: the reader follows its answer, the row
+   * the list's, one answer and one move, also when the list does not come. Resolves with the
+   * error text, or null.
    */
   async setOverride(key: JobKey, include: boolean): Promise<string | null> {
     try {
@@ -854,20 +859,18 @@ class JobsStore {
     } catch (error) {
       return errorText(error);
     }
-    // The reader follows at once; a detail that does not come is brought by the list below.
+    // The reader follows at once.
     const detail = await invoke('job_detail', { key }).catch(() => null);
-    if (detail !== null) {
-      this.patch(key, detail.job);
-      if (sameKey(this.selected, key)) {
-        this.#detailRequest++;
-        this.detail = detail;
-        this.detailStatus = 'ready';
-      }
+    if (detail !== null && sameKey(this.selected, key)) {
+      this.#detailRequest++;
+      this.detail = detail;
+      this.detailStatus = 'ready';
     }
     // The job now counts (or no longer): the list takes it in its order, the filters and
     // counts follow, and the open job keeps its row in view.
     const open = sameKey(this.selected, key) && this.rows.some((job) => sameKey(job.key, key));
     void this.load(true).then(() => {
+      if (this.status === 'error' && detail !== null) this.patch(key, detail.job);
       if (open && sameKey(this.selected, key) && this.status === 'ready') this.follow(key);
     });
     return null;

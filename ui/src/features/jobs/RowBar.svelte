@@ -321,7 +321,8 @@
 
 <style>
   /* Placed by script (--bar-top, --bar-height), shown by opacity (140 ms). Under the rows: the
-     first child of what holds them, and nothing of it takes a z-index. */
+     first child of what holds them, and nothing of it takes a z-index. No anchor for the engine's
+     scroll anchoring: standing first in the pane WebKit takes it, and scrolls the list with it. */
   .highlight {
     position: absolute;
     top: 0;
@@ -331,6 +332,7 @@
     border-radius: var(--list-row-radius);
     background-color: var(--selection-tint);
     opacity: 0;
+    overflow-anchor: none;
     pointer-events: none;
     transition:
       opacity var(--dur-fade) var(--ease-in),

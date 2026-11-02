@@ -19,8 +19,8 @@
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
   rows below simply make room; the rows already there never flicker). Rows move only for the
-  user's own change and for the re-sort at the end of a run: after the order or a filter the
-  rows on screen and the sections' headings glide to their new place (180 ms), as the days'
+  user's own change and for the re-sort at the end of a run: after the order, a filter or
+  "Trotzdem bewerten", with the list's answer, the rows on screen and the sections' headings glide to their new place (180 ms), as the days'
   headings go or come with the answer; rows off screen and new rows are simply there. A row the user moves out folds its height away (its day or its section
   with its last row). One highlight marks the open job's row and glides from row to row (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
@@ -376,16 +376,13 @@
 
   let list = $state<HTMLElement | null>(null);
   let rowBar = $state<RowBar | null>(null);
-  /** The next new rows come from the user's own change (sort, filter) or from the re-sort at
-   *  the end of a run: the rows on screen and the sections' headings glide to their new place. */
+  /** The next new rows come from the user's own change (sort, filter, "Trotzdem bewerten") or
+   *  from the re-sort at the end of a run: the rows on screen and the sections' headings glide to
+   *  their new place. */
   let armed = false;
   /** Top edges of what glides before such a change, until the DOM has the new rows. */
   let before: Map<string, number> | null = null;
-  let last = untrack(() => ({
-    sort: jobs.sortChoice,
-    filter: jobs.filterChoice,
-    active: run.active,
-  }));
+  let last = untrack(() => ({ reorders: jobs.reorders, filter: jobs.filterChoice }));
 
   /** What glides: the rows and the sections' headings among them, each by a key of its own. */
   function rowsOf(root: HTMLElement): HTMLElement[] {
@@ -437,17 +434,14 @@
     }
   }
 
-  // What changed the list: the user's sort or filter (never while a run streams new rows in),
-  // or the end of a run. Another place holds other rows, and a search and live updates arm nothing.
+  // What changed the list: the same list in a new order (the user's sort, "Trotzdem bewerten",
+  // the end of a run) or the user's filter, never while a run streams new rows in. Another place
+  // holds other rows, and a search and live updates arm nothing.
   $effect.pre(() => {
-    const now = {
-      sort: jobs.sortChoice,
-      filter: jobs.filterChoice,
-      active: run.active,
-    };
+    const now = { reorders: jobs.reorders, filter: jobs.filterChoice };
     untrack(() => {
-      const chosen = now.sort !== last.sort || now.filter !== last.filter;
-      if ((chosen && !now.active) || (last.active && !now.active)) armed = true;
+      const chosen = now.reorders !== last.reorders || now.filter !== last.filter;
+      if (chosen && !run.active) armed = true;
       last = now;
     });
   });

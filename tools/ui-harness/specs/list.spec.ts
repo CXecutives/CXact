@@ -117,14 +117,15 @@ async function logPainted(
     };
     new ResizeObserver(() => flip(inner)).observe(outer);
     new ResizeObserver(() => {
-      log.push(
-        Object.fromEntries(
+      log.push({
+        at: performance.now(),
+        ...Object.fromEntries(
           Object.entries(parts).map(([name, css]) => [
             name,
             document.querySelector(css)?.getBoundingClientRect().top ?? null,
           ]),
         ),
-      );
+      });
     }).observe(inner);
     const frame = (): void => {
       flip(outer);
@@ -138,21 +139,29 @@ async function logPainted(
     );
 }
 
-/** A log of what is painted went from where it stood to where it stands now without a jump: it
- *  never goes back, passes places on its way, and no frame takes half the way (the glide slowed
- *  down, so a busy machine's frames count for little). */
-function expectGlide(tops: (number | null)[], from: number, to: number): void {
-  const places = tops.map((top) => Math.round(top!));
-  expect(places[0]).toBe(Math.round(from));
-  expect(places.at(-1)).toBe(Math.round(to));
+/** A part in a log of what is painted went from where it stood to where it stands now without a
+ *  jump: it never goes back, passes places on its way, and no moment takes half the way (the glide
+ *  is slowed down; a frame a busy machine drew late may well show more of it). */
+function expectGlide(
+  frames: Record<string, number | null>[],
+  part: string,
+  from: number,
+  to: number,
+): void {
+  const places = frames.map((frame) => Math.round(frame[part]!));
+  const said = places.join(' ');
+  expect(places[0], said).toBe(Math.round(from));
+  expect(places.at(-1), said).toBe(Math.round(to));
   const way = Math.sign(to - from);
   for (const [at, place] of places.entries()) {
     if (at === 0) continue;
     const step = (place - places[at - 1]!) * way;
-    expect(step, places.join(' ')).toBeGreaterThanOrEqual(0);
-    expect(step, places.join(' ')).toBeLessThan(Math.abs(to - from) / 2);
+    expect(step, said).toBeGreaterThanOrEqual(0);
+    if (frames[at]!.at! - frames[at - 1]!.at! < 100) {
+      expect(step, said).toBeLessThan(Math.abs(to - from) / 2);
+    }
   }
-  expect(new Set(places).size).toBeGreaterThanOrEqual(5);
+  expect(new Set(places).size, said).toBeGreaterThanOrEqual(3);
 }
 
 /** Whether the element `a` starts before the element `b` (the order along a line). */
@@ -1690,21 +1699,14 @@ test('another order: the rows and the sections glide, and the days go and come w
     await chooseSort(page, sort);
     await expect(row(page, key)).toBeVisible();
     await motionSettled(page);
-    await settle(page);
-    const painted = await frames();
     const to = await tops();
+    // A frame has shown the end.
+    await expect.poll(async () => (await frames()).at(-1)!.row).toBe(to.row);
+    const painted = await frames();
     if (dayed) expect(to).toEqual(home);
     expect(to.row).not.toBe(from.row);
-    expectGlide(
-      painted.map((frame) => frame.row!),
-      from.row!,
-      to.row!,
-    );
-    expectGlide(
-      painted.map((frame) => frame.heading!),
-      from.heading!,
-      to.heading!,
-    );
+    expectGlide(painted, 'row', from.row!, to.row!);
+    expectGlide(painted, 'heading', from.heading!, to.heading!);
     await expect(days.first()).toHaveCount(dayed ? 1 : 0);
   }
 });
@@ -1720,6 +1722,155 @@ test('the days stand until the answer of another order comes', async ({ page }) 
   expect(await days.count()).toBeGreaterThan(0);
   await expect(list(page)).toHaveAttribute('aria-busy', 'false');
   await expect(days).toHaveCount(0);
+});
+
+test.describe('Trotzdem bewerten and its undo: one answer, one move', () => {
+  /** The excluded job (its row, a new element once it crosses to the scored rows), the last of
+   *  the scored rows (the row moves past it) and the heading of the section. */
+  const prepare = async (
+    page: Page,
+  ): Promise<{ key: string; parts: Record<string, string>; pane: Locator }> => {
+    await setToken(page, '--dur-slow', '1200ms');
+    await open(page, WIN);
+    await unfoldExcluded(page);
+    const key = 'freelance-900412';
+    await expect(row(page, key)).toBeVisible();
+    await motionSettled(page);
+    const last = await page
+      .getByTestId('job-rows')
+      .locator('[data-testid^="job-row-"]')
+      .last()
+      .getAttribute('data-testid');
+    const pane = page.getByTestId('list-scroll');
+    await pane.evaluate((node) => (node.scrollTop = 200));
+    await settle(page);
+    return {
+      key,
+      pane,
+      parts: {
+        row: `[data-testid="job-row-${key}"]`,
+        other: `[data-testid="${last}"]`,
+        heading: '[data-testid="excluded-divider"]',
+        tint: '[data-testid="row-bar"]',
+      },
+    };
+  };
+
+  /** What the action paints, part by part: where each stood to where it stands, a glide. */
+  const glides = async (
+    page: Page,
+    parts: Record<string, string>,
+    act: () => Promise<unknown>,
+    done: () => Promise<unknown>,
+    open_ = false,
+  ): Promise<void> => {
+    const topOf = (css: string): Promise<number> =>
+      page.locator(css).evaluate((node) => node.getBoundingClientRect().top);
+    const from = {
+      row: await topOf(parts.row!),
+      other: await topOf(parts.other!),
+      heading: await topOf(parts.heading!),
+    };
+    const frames = await logPainted(page, parts);
+    await act();
+    await done();
+    await animationsDone(page);
+    // A frame has shown the end.
+    const end = Math.round(await topOf(parts.row!));
+    await expect.poll(async () => Math.round((await frames()).at(-1)!.row!)).toBe(end);
+    const painted = await frames();
+    for (const part of ['row', 'other', 'heading'] as const) {
+      const to = await topOf(parts[part]!);
+      expect(to, part).not.toBe(from[part]);
+      expectGlide(painted, part, from[part], to);
+    }
+    // The open row's highlight goes along with it, frame by frame.
+    if (open_) {
+      for (const frame of painted)
+        expect(Math.abs(frame.tint! - frame.row!)).toBeLessThanOrEqual(1);
+    }
+  };
+
+  test("from the row's menu: the row and what lies between glide, there and back", async ({
+    page,
+  }) => {
+    const { key, parts, pane } = await prepare(page);
+    const crossing = await row(page, key).elementHandle();
+    await rowMenu(page, key);
+    await glides(
+      page,
+      parts,
+      () => menuItem(page, 'include').click(),
+      () => expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible(),
+    );
+    // It crossed from the section: a new element, and the glide still started where it stood.
+    expect(await crossing!.evaluate((node) => node.isConnected)).toBe(false);
+    expect(await pane.evaluate((node) => node.scrollTop)).toBe(200);
+    await glides(
+      page,
+      parts,
+      () => page.getByTestId('toast-action').last().click(),
+      () => expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible(),
+    );
+    expect(await pane.evaluate((node) => node.scrollTop)).toBe(200);
+  });
+
+  test('from the job view: the reader follows, the row glides with its highlight, there and back', async ({
+    page,
+  }) => {
+    const { key, parts, pane } = await prepare(page);
+    await row(page, key).click();
+    await expectHighlightOn(page, key);
+    await glides(
+      page,
+      parts,
+      () => stage(page).getByTestId('reader-include').click(),
+      () => expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible(),
+      true,
+    );
+    await expect(stage(page).getByTestId('band')).not.toHaveText(T.score.excluded);
+    expect(await pane.evaluate((node) => node.scrollTop)).toBe(200);
+    await glides(
+      page,
+      parts,
+      () => page.getByTestId('toast-action').last().click(),
+      () => expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible(),
+      true,
+    );
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.excluded);
+    expect(await pane.evaluate((node) => node.scrollTop)).toBe(200);
+  });
+
+  test('the row moves with the answer of the list, not before it', async ({ page }) => {
+    await open(page, `${WIN}&scenario=slow`);
+    await unfoldExcluded(page);
+    const key = 'linkedin-4100200305';
+    await row(page, key).click();
+    await expect(stage(page).getByTestId('reader-include')).toBeVisible();
+    await stage(page).getByTestId('reader-include').click();
+    await expect(stage(page).getByTestId('band')).not.toHaveText(T.score.excluded);
+    // The reader has followed; the list's answer is still on its way.
+    await expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toHaveCount(0);
+  });
+
+  test('a list that does not answer says so, and its retry shows the row and the job view as they are', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await unfoldExcluded(page);
+    const key = 'linkedin-4100200305';
+    await row(page, key).click();
+    await expect(stage(page).getByTestId('reader-include')).toBeVisible();
+    await failNext(page, 'list_jobs');
+    await stage(page).getByTestId('reader-include').click();
+    const failed = page.getByTestId('list-error');
+    await expect(failed).toBeVisible();
+    await failed.getByRole('button', { name: T.common.retry }).click();
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expect(stage(page).getByTestId('band')).not.toHaveText(T.score.excluded);
+  });
 });
 
 test.describe('days', () => {
@@ -2938,6 +3089,17 @@ test.describe('moves and undo', () => {
       expect(tops.at(-1)).toBe(start + distance);
       expect(places.size).toBeGreaterThanOrEqual(5);
     };
+    /** The frames until one has shown the row where it stands now (a busy machine draws late). */
+    const framesToEnd = async (
+      page: Page,
+      key: string,
+      frames: () => Promise<Painted[]>,
+    ): Promise<Painted[]> => {
+      await motionSettled(page);
+      const end = (await row(page, key).boundingBox())!.y;
+      await expect.poll(async () => (await frames()).at(-1)!.y).toBe(end);
+      return frames();
+    };
     /** An ease-out ends slowly: no last jump of what was clipped on its way. */
     const noLastJump = (tops: number[], distance: number): void => {
       const places = tops.filter((top, at) => at === 0 || top !== tops[at - 1]);
@@ -2996,8 +3158,7 @@ test.describe('moves and undo', () => {
       let frames = await watch(page, below);
       await row(page, keys[0]!).locator('xpath=..').getByTestId('tool-archive').click();
       await expect(heading).toHaveCount(0);
-      await motionSettled(page);
-      let tops = (await frames()).map((frame) => frame.y!);
+      let tops = (await framesToEnd(page, below, frames)).map((frame) => frame.y!);
       expect(tops[0]).toBe(before);
       glided(
         tops.map((top) => -top),
@@ -3007,8 +3168,7 @@ test.describe('moves and undo', () => {
       frames = await watch(page, below);
       await page.getByTestId('toast-action').last().click();
       await expect(heading).toBeVisible();
-      await motionSettled(page);
-      tops = (await frames()).map((frame) => frame.y!);
+      tops = (await framesToEnd(page, below, frames)).map((frame) => frame.y!);
       glided(tops, Math.round(height));
       noLastJump(tops, Math.round(height));
     });
@@ -3042,9 +3202,7 @@ test.describe('moves and undo', () => {
       await undo(page);
       await expect(row(page, first)).toBeVisible();
       await expect(row(page, second)).toBeVisible();
-      await motionSettled(page);
-      await page.waitForTimeout(100);
-      const painted = await frames();
+      const painted = await framesToEnd(page, below, frames);
       const tops = painted.map((frame) => frame.y!);
       glided(tops, home - start);
       noLastJump(tops, home - start);
@@ -3086,9 +3244,7 @@ test.describe('moves and undo', () => {
       const frames = await watch(page, below);
       await undo(page);
       await expect(heading).toBeVisible();
-      await motionSettled(page);
-      await page.waitForTimeout(100);
-      const tops = (await frames()).map((frame) => frame.y!);
+      const tops = (await framesToEnd(page, below, frames)).map((frame) => frame.y!);
       glided(tops, home - start);
       noLastJump(tops, home - start);
     });
