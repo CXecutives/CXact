@@ -238,51 +238,57 @@
               </Group>
             </Section>
             <Section id="sheet-fields" name="fields" heading="Felder">
-              <Group>
-                <Field
-                  label="App-Passwort"
-                  for="sheet-password"
-                  info="Ein eigenes Passwort nur für CXact. Du erstellst es bei deinem Anbieter."
-                  links={[
-                    { label: 'IMAP-Abruf erlauben', onclick: noop },
-                    { label: 'App-Passwort erstellen', onclick: noop },
-                  ]}
-                >
-                  <TextField id="sheet-password" value="" placeholder="16 Buchstaben" />
-                </Field>
-                <div data-missing>
-                  <Field label="Wunschrollen" for="sheet-roles">
+              <Group testid="sheet-fields">
+                <div class="form-row">
+                  <Field
+                    row
+                    label="App-Passwort"
+                    for="sheet-password"
+                    info="Ein eigenes Passwort nur für CXact. Du erstellst es bei deinem Anbieter."
+                    links={[
+                      { label: 'IMAP-Abruf erlauben', onclick: noop },
+                      { label: 'App-Passwort erstellen', onclick: noop },
+                    ]}
+                  >
+                    <TextField id="sheet-password" value="" placeholder="16 Buchstaben" />
+                  </Field>
+                </div>
+                <div class="form-row" data-missing>
+                  <Field row label="Wunschrollen" for="sheet-roles">
                     <TextField id="sheet-roles" value="" placeholder="Rolle hinzufügen" />
                   </Field>
                 </div>
-                <Field
-                  label="Wunschtagessatz"
-                  for="sheet-rate"
-                  error="Gib einen Betrag bis 100.000 € ein."
-                >
-                  <TextField id="sheet-rate" value="1.000.000" invalid suffix="€ am Tag" />
-                </Field>
-                <Field label="Kompetenzen">
-                  <ItemList
-                    items={competences}
-                    key={(item) => item.name}
-                    name={(item) => item.name}
-                    onremove={(item) => (competences = competences.filter((each) => each !== item))}
-                    testid="sheet-competences"
+                <div class="form-row">
+                  <Field
+                    row
+                    label="Wunschtagessatz"
+                    for="sheet-rate"
+                    error="Gib einen Betrag bis 100.000 € ein."
                   >
-                    {#snippet value(item)}
-                      <span class="years">{item.years}</span> Jahre
-                    {/snippet}
-                    {#snippet add()}
-                      <TextField
-                        value={adding}
-                        quiet
-                        placeholder="Kompetenz hinzufügen"
-                        oninput={(text) => (adding = text)}
-                      />
-                    {/snippet}
-                  </ItemList>
-                </Field>
+                    <TextField id="sheet-rate" value="1.000.000" invalid suffix="€ am Tag" />
+                  </Field>
+                </div>
+              </Group>
+              <Group>
+                <ItemList
+                  items={competences}
+                  key={(item) => item.name}
+                  name={(item) => item.name}
+                  addLabel="Kompetenz hinzufügen"
+                  onremove={(item) => (competences = competences.filter((each) => each !== item))}
+                  testid="sheet-competences"
+                >
+                  {#snippet value(item)}
+                    <span class="short"><TextField value={item.years} suffix="Jahre" /></span>
+                  {/snippet}
+                  {#snippet draft()}
+                    <TextField
+                      value={adding}
+                      placeholder="Kompetenz"
+                      oninput={(text) => (adding = text)}
+                    />
+                  {/snippet}
+                </ItemList>
               </Group>
             </Section>
           </div>
@@ -602,9 +608,26 @@
     color: var(--text-on-accent);
   }
 
-  .years {
-    color: var(--text);
-    font-variant-numeric: var(--numeric);
+  /* A field as a row of its box, the Profil's measure and its hairline (ProfileEditor). */
+  .form-row {
+    position: relative;
+    display: grid;
+    min-height: var(--form-row-min);
+    padding: var(--form-row-control-y) var(--form-row-pad-x);
+  }
+
+  .form-row + .form-row::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--setting-rule-start);
+    border-top: var(--border-width) solid var(--border);
+    content: '';
+  }
+
+  .short {
+    display: block;
+    width: var(--profile-control-width);
   }
 
   .skeletons {

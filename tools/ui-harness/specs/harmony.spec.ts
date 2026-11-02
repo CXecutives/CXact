@@ -1092,6 +1092,31 @@ test('Vertragsart: its first line stands on its label, wrapped too; in a narrow 
   );
 });
 
+test('Flächen: the fields of the sheet stand as rows of their box, like the Profil', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&sheet=surfaces`);
+  const box = (await page.getByTestId('sheet-fields').boundingBox())!;
+  const label = (await page.locator('label[for="sheet-password"]').boundingBox())!;
+  const field = (await page.locator('#sheet-password').boundingBox())!;
+  const inset = await page.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--form-row-pad-x')),
+  );
+  expect(label.x - box.x).toBeGreaterThanOrEqual(inset);
+  expect(label.y + label.height / 2).toBeCloseTo(field.y + field.height / 2, 0);
+  expect(field.x).toBeGreaterThan(label.x + label.width);
+  // A competence: its name on the line of its years, which stand inside their field.
+  const item = page.getByTestId('sheet-competences-item').first();
+  const name = await item.locator('.name').evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const { top, bottom } = range.getBoundingClientRect();
+    return (top + bottom) / 2;
+  });
+  const years = (await item.locator('input').boundingBox())!;
+  expect(name).toBeCloseTo(years.y + years.height / 2, 0);
+});
+
 test('Wiederherstellen is as large as the Löschen beside it', async ({ page }) => {
   await open(page, WIN);
   await openPlace(page, 'trash');
