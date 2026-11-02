@@ -1,6 +1,6 @@
 // What the shell shows: the setup (a mode of its own, without the sidebar and the buttons of
-// the top bar) until it was finished once (`AppState.firstRun`, core's `onboarded`; after
-// "Zurücksetzen" it comes again), else the views.
+// the top bar, like a start that failed: `bare`) until it was finished once (`AppState.firstRun`,
+// core's `onboarded`; after "Zurücksetzen" it comes again), else the views.
 // And the frame around the views, like the Claude app's: the sidebar docked or folded away
 // by its button (a narrow window folds it by itself; its button then floats it over the
 // view), the job view beside the list shown or hidden, and the places under Jobs in the sidebar
@@ -60,9 +60,15 @@ class Shell {
    *  stands beside it (the top bar continues it); null without one. Set by JobsView. */
   listSeam = $state<number | null>(null);
 
-  /** The sidebar stands beside the view (never in the setup). */
+  /** The views stand without the frame around them, no sidebar and no buttons in the top bar: the
+   *  setup, and a start that failed, where they would lead to nothing. */
+  get bare(): boolean {
+    return this.firstRun || (app.error !== null && app.state === null);
+  }
+
+  /** The sidebar stands beside the view (never without the frame). */
   get docked(): boolean {
-    return this.#sidebar && !viewport.fold && !this.firstRun;
+    return this.#sidebar && !viewport.fold && !this.bare;
   }
 
   /** Its button, a plain switch: docks or folds it; in a narrow window it floats it out and

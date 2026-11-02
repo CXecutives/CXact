@@ -12,7 +12,7 @@ class TooltipState {
   /** When the last one went; none has at first, so the first one waits for its delay. */
   #hiddenAt = Number.NEGATIVE_INFINITY;
   #dismissed = 0;
-  /** A click brought the bubble (an info symbol). */
+  /** A click brought the bubble (an anchor that shows and hides it). */
   #clicked = false;
 
   get warm(): boolean {
@@ -34,16 +34,22 @@ class TooltipState {
     return focused !== null && this.anchor.contains(focused) && focused.matches(':focus-visible');
   }
 
+  /** A click brought the bubble that stands on this anchor. */
+  clickedOn(anchor: HTMLElement): boolean {
+    return this.anchor === anchor && this.#clicked;
+  }
+
   /** A press or Esc: the bubble goes and every tooltip still waiting for its delay with it. */
   dismiss(): void {
     this.#dismissed += 1;
     this.hide();
   }
 
+  /** What a click brought stays that, whatever then comes over its anchor. */
   show(anchor: HTMLElement, text: string, clicked = false): void {
+    this.#clicked = clicked || this.clickedOn(anchor);
     this.anchor = anchor;
     this.text = text;
-    this.#clicked = clicked;
     anchor.setAttribute('aria-describedby', TOOLTIP_ID);
   }
 
@@ -56,6 +62,13 @@ class TooltipState {
     this.anchor.removeAttribute('aria-describedby');
     this.anchor = null;
     this.#hiddenAt = performance.now();
+  }
+
+  /** A scroll: the bubble goes and nothing stays warm, so what slides under a pointer that rests
+   *  waits for its delay like a first one. */
+  cool(): void {
+    this.hide();
+    this.#hiddenAt = Number.NEGATIVE_INFINITY;
   }
 }
 

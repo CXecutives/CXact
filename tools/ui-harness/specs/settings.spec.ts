@@ -197,6 +197,26 @@ test('narrow, the calls stay clear of the portal state', async ({ page }) => {
   ]);
   expect(signIn!.y).toBeGreaterThanOrEqual(status!.y + status!.height);
 });
+
+test('narrow, a row whose buttons are away keeps no empty line, with a pair or without one', async ({
+  page,
+}) => {
+  const atRest = async (): Promise<number> => {
+    await settings(page);
+    await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+    await animationsDone(page);
+    return (await page.getByTestId('mailbox').boundingBox())!.height;
+  };
+  await page.setViewportSize({ width: 760, height: 800 });
+  const wide = await atRest();
+  await page.setViewportSize({ width: 480, height: 800 });
+  expect(await atRest()).toBe(wide);
+  // Without a pair the same: its one button goes, and so does its line.
+  await settings(page, `${WIN}&scenario=no-mailbox`);
+  await (await reveal(page, page.getByTestId('mailbox-connect'))).click();
+  await animationsDone(page);
+  expect((await page.getByTestId('mailbox').boundingBox())!.height).toBe(wide);
+});
 /* ---------------------------------------------------------------- Postfach */
 
 test('mailbox: the address, no word about the vault, no whole-mailbox row', async ({ page }) => {
@@ -1134,6 +1154,139 @@ test('switching a portal off lets a sign-in that stays glide to its new place, a
   expect(coming.ms).toBeLessThanOrEqual(180);
   expect(coming.x).toBeGreaterThan(on + 20);
   expect(coming.x).toBeLessThan(off - 20);
+});
+
+/** What stands where, frame by frame, while a portal's switch flips: its transitions are stopped
+ *  and walked through their time, so a frame is one whatever the machine's load, and let go. Each
+ *  frame the row's height, the top of what stands below the box and the sign-in's place; last what
+ *  stands once they are over. */
+function flipFrames(page: Page): Promise<{ height: number; below: number; x: number | null }[]> {
+  return page.evaluate(async () => {
+    const by = (id: string): Element | null => document.querySelector(`[data-testid="${id}"]`);
+    const sign = (): Element | null => by('sign-in-freelance') ?? by('sign-out-freelance');
+    const frame = (): { height: number; below: number; x: number | null } => ({
+      height: by('portal-freelance')!.getBoundingClientRect().height,
+      below: by('mailbox')!.getBoundingClientRect().top,
+      x: sign()?.getBoundingClientRect().x ?? null,
+    });
+    (by('toggle-enabled-freelance') as HTMLElement).click();
+    let motions: Animation[] = [];
+    while (motions.length === 0) {
+      await new Promise(requestAnimationFrame);
+      motions = [...by('portal-freelance')!.querySelectorAll('.actions > *')]
+        .flatMap((node) => node.getAnimations())
+        .filter((each) => Number(each.effect?.getComputedTiming().duration) > 0);
+    }
+    const STEPS = 12;
+    const frames = [];
+    for (const motion of motions) motion.pause();
+    for (let step = 0; step <= STEPS; step += 1) {
+      for (const motion of motions) {
+        motion.currentTime = (Number(motion.effect!.getComputedTiming().duration) * step) / STEPS;
+      }
+      frames.push(frame());
+    }
+    for (const motion of motions) motion.finish();
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    frames.push(frame());
+    return frames;
+  });
+}
+
+/** The biggest change of a measure from one frame to the next. */
+const biggestStep = (values: number[]): number =>
+  Math.max(...values.slice(1).map((value, at) => Math.abs(value - values[at]!)));
+
+test('narrow, a portal switched off and on: its line closes and opens, the rows below glide all the way', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 480, height: 800 });
+  await settings(page);
+  await reveal(page, page.getByTestId('sign-in-freelance'));
+  const tall = (await page.getByTestId('portal-freelance').boundingBox())!.height;
+  // A portal without calls: the row's one height.
+  const short = await page
+    .locator('[data-testid^="portal-"][data-setting-row]')
+    .evaluateAll((rows) => Math.min(...rows.map((row) => row.getBoundingClientRect().height)));
+  expect(tall).toBeGreaterThan(short);
+  for (const [from, to] of [
+    [tall, short],
+    [short, tall],
+  ] as const) {
+    const frames = await flipFrames(page);
+    const heights = frames.map((frame) => frame.height);
+    expect(heights[0], 'its first frame').toBeCloseTo(from, 0);
+    expect(heights.at(-1), 'once it is over').toBeCloseTo(to, 0);
+    // The whole way in steps, none of them a snap, the rows below with it.
+    expect(biggestStep(heights)).toBeLessThan(Math.abs(to - from) / 3);
+    const below = frames.map((frame) => frame.below);
+    expect(biggestStep(below)).toBeLessThan(Math.abs(to - from) / 3);
+    expect(Math.abs(below[0]! - below.at(-1)!)).toBeCloseTo(Math.abs(to - from), 0);
+  }
+});
+
+test('narrow, a sign-in that stays keeps the line: the alert call folds aside, nothing below moves', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 480, height: 800 });
+  await settings(page);
+  await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
+  await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
+  await animationsDone(page);
+  const frames = await flipFrames(page);
+  expect(biggestStep(frames.map((frame) => frame.height))).toBe(0);
+  expect(biggestStep(frames.map((frame) => frame.below))).toBe(0);
+});
+
+test('narrow, one measure for a line of buttons: alone, in a pair, in a wrapper', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 480, height: 800 });
+  await settings(page);
+  const measure = async (id: string): Promise<{ height: number; gap: number }> =>
+    page.getByTestId(id).evaluate((row) => {
+      const text = row.querySelector('.text')!.getBoundingClientRect();
+      const button = row.querySelector('.actions button')!.getBoundingClientRect();
+      return { height: row.getBoundingClientRect().height, gap: button.top - text.bottom };
+    });
+  const pair = await measure('folder');
+  expect(pair.gap).toBeGreaterThan(0);
+  for (const id of ['reset-all', 'portal-freelance']) {
+    expect(await measure(id), id).toEqual(pair);
+  }
+  await settings(page, `${WIN}&scenario=no-mailbox`);
+  expect(await measure('mailbox')).toEqual(pair);
+});
+
+test('wide, a portal switched off and on: its calls only fade, nothing moves; every button stands in the middle of its line', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 900 });
+  const middles = async (): Promise<number[]> =>
+    page.locator('[data-setting-row] .actions').evaluateAll((lines) =>
+      lines.flatMap((line) => {
+        const { top, bottom } = line.getBoundingClientRect();
+        return [...line.querySelectorAll('button')].map((button) => {
+          const box = button.getBoundingClientRect();
+          return box.top - top - (bottom - box.bottom);
+        });
+      }),
+    );
+  await settings(page, `${WIN}&scenario=no-mailbox`);
+  expect((await middles()).filter((miss) => miss !== 0)).toEqual([]);
+  await settings(page);
+  await reveal(page, page.getByTestId('sign-in-freelance'));
+  expect((await middles()).filter((miss) => miss !== 0)).toEqual([]);
+  for (let flip = 0; flip < 2; flip += 1) {
+    const frames = await flipFrames(page);
+    expect(biggestStep(frames.map((frame) => frame.height))).toBe(0);
+    expect(biggestStep(frames.map((frame) => frame.below))).toBe(0);
+    // Anmelden stands where it stands while it fades.
+    const standing = frames.map((frame) => frame.x).filter((x): x is number => x !== null);
+    expect(standing.length).toBeGreaterThan(1);
+    expect(biggestStep(standing)).toBe(0);
+  }
 });
 
 test('portals: from the keyboard Anmelden and Abmelden keep the focus, the last one hands it on', async ({

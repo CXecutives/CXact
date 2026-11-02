@@ -4,8 +4,8 @@
   px of travel). The knob travels in 150 ms (ease-out, no bounce) and the track
   changes colour with it; it darkens a step under the pointer and one more while the left
   button is down, off and on alike (the knob never changes shape).
-  Disabled switches stay hoverable so the tooltip can say why (disabledReason), and Tab
-  passes them like native disabled controls.
+  Disabled switches stay hoverable so the tooltip can say why (disabledReason), a press at
+  once, and Tab passes them like native disabled controls.
   It flips at once, like a native switch: when `onchange` returns a promise (the save),
   the switch shows the new state until it settles, then `checked` again - which is the old
   state if the save failed, so the thumb slides back.
@@ -82,7 +82,7 @@
     aria-disabled={disabled ? 'true' : undefined}
     tabindex={disabled ? -1 : undefined}
     data-testid={testid ?? undefined}
-    use:tooltip={disabled ? disabledReason : null}
+    use:tooltip={disabled ? { text: disabledReason, toggle: true } : null}
     onclick={() => void toggle()}
   >
     <span class="track"><span class="thumb"></span></span>

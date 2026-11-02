@@ -1194,8 +1194,13 @@ test('the note of a failed start moves nothing: the next press lands on the same
   page,
 }) => {
   const ways = [
-    ['open-data', 'open_target'],
-    ['restore-backup', 'list_backups'],
+    [(page: Page): Locator => page.getByTestId('open-data'), 'open_target'],
+    [(page: Page): Locator => page.getByTestId('restore-backup'), 'list_backups'],
+    [
+      (page: Page): Locator =>
+        page.getByTestId('view-error').getByRole('button', { name: T.common.retry }),
+      'app_state',
+    ],
   ] as const;
   for (const size of [
     { width: 1360, height: 900 },
@@ -1205,7 +1210,7 @@ test('the note of a failed start moves nothing: the next press lands on the same
       await page.setViewportSize(size);
       await open(page, `${WIN}&scenario=load-failed`);
       const heading = page.getByTestId('view-error').getByRole('heading');
-      const button = page.getByTestId(way);
+      const button = way(page);
       const before = { button: await button.boundingBox(), heading: await heading.boundingBox() };
       const at = { x: before.button!.x + 8, y: before.button!.y + before.button!.height / 2 };
       await failNext(page, command);
@@ -1228,17 +1233,13 @@ test('the note of a failed start moves nothing: the next press lands on the same
   }
 });
 
-test('Erneut versuchen that fails keeps the screen and the focus, and the note goes', async ({
+test('Erneut versuchen that fails keeps the screen and the focus and says why in the note; the next press clears it', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
   const retry = failed.getByRole('button', { name: T.common.retry });
   const note = page.getByTestId('ways-note');
-  // A note from an earlier press.
-  await failNext(page, 'open_target');
-  await page.getByTestId('open-data').click();
-  await expect(note).toHaveText(T.error.text('db', {}));
   // From now on: does the screen ever go for the loading one?
   await page.evaluate(() => {
     const view = document.querySelector('[data-testid="view-error"]');
@@ -1253,14 +1254,22 @@ test('Erneut versuchen that fails keeps the screen and the focus, and the note g
   await failNext(page, 'app_state');
   await retry.focus();
   await page.keyboard.press('Enter');
-  await expect.poll(async () => (await calls(page, 'app_state')).length).toBe(2);
+  await expect(note).toHaveText(T.error.text('db', {}));
+  await expect(retry).toBeFocused();
+  expect(await blanked()).toBe(false);
+  // The next press starts anew: the note goes.
+  await page.getByTestId('open-data').click();
   await expect(note).toHaveCount(0);
+  await failNext(page, 'app_state');
+  await retry.focus();
+  await page.keyboard.press('Enter');
+  await expect(note).toHaveText(T.error.text('db', {}));
   await expect(retry).toBeFocused();
   expect(await blanked()).toBe(false);
   // The same key goes on from there, and this time the data comes.
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  expect(await calls(page, 'app_state')).toHaveLength(3);
+  expect(await calls(page, 'app_state')).toHaveLength(4);
 });
 
 test('Erneut versuchen turns in its own place while it tries', async ({ page }) => {
@@ -1301,6 +1310,76 @@ test('the failed start keeps the top bar', async ({ page }) => {
     // No job view there: its button is not there either.
     await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
   }
+});
+
+test('a failed start stands without the frame: no sidebar, no buttons in the bar, the tile in the middle of the window', async ({
+  page,
+}) => {
+  for (const size of [
+    { width: 1360, height: 900 },
+    { width: 1000, height: 700 },
+  ]) {
+    await page.setViewportSize(size);
+    await open(page, `${WIN}&scenario=load-failed`);
+    await expect(page.getByTestId('view-error')).toBeVisible();
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    for (const id of ['history-back', 'history-forward', 'toggle-sidebar']) {
+      await expect(page.getByTestId(id), id).toHaveCount(0);
+    }
+    const tile = (await page.getByTestId('view-error').getByRole('heading').boundingBox())!;
+    expect(Math.abs(tile.x + tile.width / 2 - size.width / 2)).toBeLessThanOrEqual(1);
+  }
+});
+
+test('its recovery just shows the frame: every frame with the jobs has it in place, nothing slides or fades', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  const retry = page.getByTestId('view-error').getByRole('button', { name: T.common.retry });
+  await page.evaluate(() => {
+    const log: { jobs: boolean; left: number; moving: number; shown: string | null }[] = [];
+    (window as unknown as { frames: typeof log }).frames = log;
+    const tick = (): void => {
+      const sidebar = document.querySelector('[data-testid="sidebar"]');
+      log.push({
+        jobs: document.querySelector('[data-testid="view-jobs"]') !== null,
+        left: document.querySelector('main')!.getBoundingClientRect().left,
+        moving: document.getAnimations().filter((motion) => {
+          const target = (motion.effect as KeyframeEffect | null)?.target;
+          return target?.matches('[data-dock-slide], [data-testid="sidebar"]');
+        }).length,
+        shown: sidebar && getComputedStyle(sidebar).opacity,
+      });
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await retry.click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('sidebar')).toBeVisible();
+  await expect(page.getByTestId('toggle-sidebar')).toBeVisible();
+  // Longer than a slide takes.
+  await page.waitForTimeout(300);
+  const log = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          frames: { jobs: boolean; left: number; moving: number; shown: string | null }[];
+        }
+      ).frames,
+  );
+  const framed = log.filter((frame) => frame.jobs);
+  expect(framed.length).toBeGreaterThan(1);
+  expect(framed[0]!.left).toBeGreaterThan(0);
+  expect(new Set(framed.map((frame) => frame.left)).size).toBe(1);
+  expect(framed.filter((frame) => frame.moving > 0 || frame.shown !== '1')).toEqual([]);
+  // From here on the sidebar's button docks and folds with its slide, as ever.
+  const slides = await page.evaluate(async () => {
+    document.querySelector<HTMLElement>('[data-testid="toggle-sidebar"]')!.click();
+    await new Promise(requestAnimationFrame);
+    return document.querySelector('main')!.getAnimations().length;
+  });
+  expect(slides).toBe(1);
 });
 
 test('the job view button stands only where it does something', async ({ page }) => {

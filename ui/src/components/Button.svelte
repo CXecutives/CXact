@@ -12,9 +12,10 @@
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
     goes without the tooltip (`plain`). A button with its words never repeats them in a
     tooltip (core/tests/ui_contract.rs), it only says why it waits.
-  - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
-    not react otherwise. Tab passes them like native disabled buttons, except one that says
-    why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus.
+  - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why, a press at
+    once (its `toggle`); they do not react otherwise. Tab passes them like native disabled
+    buttons, except one that says why (`disabledReason`): it stays a Tab stop, and its tooltip
+    shows on keyboard focus.
   - One width while it swaps: `loading` keeps it (the content fades out under the spinner,
     white on a filled button),
     and `sizeTo` names the words (and glyphs) that take its place (Jobs suchen and
@@ -103,7 +104,11 @@
 
   const inactive = $derived(disabled || loading);
   const tip = $derived(
-    disabled && disabledReason ? disabledReason : iconOnly && !plain ? label : null,
+    disabled && disabledReason
+      ? { text: disabledReason, toggle: true }
+      : iconOnly && !plain
+        ? label
+        : null,
   );
   /** The hidden faces that reserve the width of the others. */
   const others = $derived(

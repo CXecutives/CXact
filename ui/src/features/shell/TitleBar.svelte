@@ -19,11 +19,11 @@
   over the bar answers like a native caption and leaves the buttons' zones,
   --titlebar-tools-start and --titlebar-tools-end, to the page; src-tauri/src/platform.rs.
   macOS and the gaps between the buttons: Tauri's drag script). A press on a button here
-  never takes the focus, like on a native title bar. In the setup the bar holds none of its
-  buttons (only the caption buttons on Windows) and all of it moves the window. While the scrim
-  of a modal (a dialog, the closing note) lies over the bar it still moves the window and that
-  cancels nothing: on Windows by the same window of the OS, on macOS by a transparent drag region
-  of its height that rises over the scrim (`overScrim`).
+  never takes the focus, like on a native title bar. In the setup and after a start that failed
+  the bar holds none of its buttons (only the caption buttons on Windows) and all of it moves the
+  window. While the scrim of a modal (a dialog, the closing note) lies over the bar it still moves
+  the window and that cancels nothing: on Windows by the same window of the OS, on macOS by a
+  transparent drag region of its height that rises over the scrim (`overScrim`).
   The part over the view (`ground`) slides with the view when the sidebar docks or folds
   (App, data-dock-slide); a strip of its end colour beyond its right edge fills the bar
   while it is drawn in from the left.
@@ -103,7 +103,7 @@
     <span class="lights" data-testid="traffic-lights" data-tauri-drag-region></span>
   {/if}
   <span class="tools start" data-tauri-drag-region>
-    {#if !shell.firstRun}
+    {#if !shell.bare}
       {@render startTools()}
     {/if}
   </span>

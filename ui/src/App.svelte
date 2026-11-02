@@ -16,10 +16,11 @@
   rescore, a sign-in, the files) and counts as a modal dialog: it lies over the whole window, its
   top bar too, nothing behind it takes a key, and the bar still moves the window (TitleBar).
   Profil and Einstellungen keep where they were scrolled to
-  while the app runs (a return finds the same place). A start whose data cannot load says so
-  and offers to try again (the screen and its button stay until the answer), to restore a backup
-  (BackupDialog, whose restore loads the app again) and the data folder; what the listing of the
-  backups or the folder could not do stays a note under them, moving nothing.
+  while the app runs (a return finds the same place). A start whose data cannot load stands
+  without the sidebar and the top bar's buttons like the setup (`shell.bare`), says so and offers
+  to try again (the screen and its button stay until the answer), to restore a backup (BackupDialog,
+  whose restore loads the app again) and the data folder; what the try, the listing of the backups
+  or the folder could not do stays a note under them, moving nothing.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -84,7 +85,7 @@
   const docked = $derived(shell.docked);
   /** Where the sheet stood before the sidebar docked or folded, and the frame it stood in. */
   let from: number | null = null;
-  let frame = { fold: viewport.fold, firstRun: shell.firstRun };
+  let frame = { fold: viewport.fold, bare: shell.bare };
   $effect.pre(() => {
     void docked;
     untrack(() => (from = views?.getBoundingClientRect().left ?? null));
@@ -95,14 +96,15 @@
   }
   // The sidebar's button docked or folded it: the sidebar fades in, the sheet and the bar's
   // part over it slide from where they stood (a slide still under way starts from where it
-  // is). A window that folds it by its width, and the setup's end, just show the new frame.
+  // is). A window that folds it by its width, the setup's end and a start that recovers just show
+  // the new frame.
   $effect(() => {
     const now = docked;
     untrack(() => {
       const before = frame;
-      frame = { fold: viewport.fold, firstRun: shell.firstRun };
+      frame = { fold: viewport.fold, bare: shell.bare };
       if (from === null || views === null) return;
-      if (before.fold !== frame.fold || before.firstRun !== frame.firstRun) return;
+      if (before.fold !== frame.fold || before.bare !== frame.bare) return;
       const slides = [...document.querySelectorAll('[data-dock-slide]')];
       for (const node of slides) for (const motion of node.getAnimations()) motion.cancel();
       const dx = Math.round(from - views.getBoundingClientRect().left);
@@ -129,7 +131,9 @@
   /** Erneut versuchen, after a start that could not load its data. */
   function retry(): void {
     waysNote = null;
-    void app.load();
+    void app.load().then((state) => {
+      if (state === null) waysFailed(app.error);
+    });
   }
 
   /** The data folder, after a start that could not load its data. */

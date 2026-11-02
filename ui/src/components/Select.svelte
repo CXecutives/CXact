@@ -11,7 +11,7 @@
   button (they open it too); in the open list the arrows, Home, End and the first letters
   move, Enter or Space chooses, Esc and Tab close it. The focus stays on the button the whole
   time (a combobox that names the active option, aria-activedescendant); the pointer never
-  takes it. Disabled it stays hoverable, its tooltip says why (`disabledReason`).
+  takes it. Disabled it stays hoverable, its tooltip says why (`disabledReason`), a press at once.
 -->
 <script lang="ts" module>
   export interface SelectOption<Id extends string = string> {
@@ -112,7 +112,7 @@
   aria-describedby={describedby ?? described() ?? undefined}
   tabindex={disabled && !disabledReason ? -1 : undefined}
   data-testid={testid ?? undefined}
-  use:tooltip={disabled ? disabledReason : null}
+  use:tooltip={disabled ? { text: disabledReason, toggle: true } : null}
   use:selectKeys={() => show(true)}
   onclick={() => show(false)}
 >

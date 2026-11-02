@@ -31,10 +31,10 @@
   while the portal is off the row keeps "Abmelden" until the sign-in is gone. A run holds the
   sign-in (the button waits with its reason), except while it waits for this portal's own
   sign-in: the button is the way to give it. A switch moves at once, and the calls that go
-  with a portal switched off fade out together; a sign-in that stays glides to the place next
-  to the switch and back (foldAside), its keyboard focus handed on to the switch when the
-  last Abmelden goes. A failure puts the switch back and says why in the row. The switch itself
-  is the answer: no toast.
+  with a portal switched off fade out together (in a narrow box their line closes with them, so
+  the rows below glide); a sign-in that stays glides to the place next to the switch and back
+  (foldAside), its keyboard focus handed on to the switch when the last Abmelden goes. A failure
+  puts the switch back and says why in the row. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
   import Button, { type ButtonFace } from '$components/Button.svelte';
@@ -47,7 +47,7 @@
   import { byKeyboard } from '$lib/input/input';
   import { invoke } from '$lib/ipc/api';
   import type { PortalHealth, PortalState } from '$lib/ipc/types';
-  import { fade, foldAside, unfold } from '$lib/motion/transitions';
+  import { foldAside, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import {
@@ -295,7 +295,7 @@
   testid="portal-{portal.portal}"
 >
   {#if loginShown}
-    <span class="sign" bind:this={sign} transition:fade>
+    <span class="sign" bind:this={sign} transition:foldAside={{ on: false }}>
       <Button
         variant="secondary"
         icon={signedIn ? 'signOut' : 'signIn'}

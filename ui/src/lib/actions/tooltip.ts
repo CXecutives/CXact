@@ -1,11 +1,11 @@
-// `use:tooltip={text}` - a styled tooltip after --delay-tooltip (400 ms) of hover, or of
+// `use:tooltip={text}` - a styled tooltip after --delay-tooltip of hover, or of
 // keyboard focus (`:focus-visible`: Tab lands on the control, never a click). Hides on
-// leave, press and blur (the layer also hides it on a press anywhere, a scroll and Esc, and
-// when the window resizes or goes to the back); moving on to the next anchor with the
-// pointer shows it at once. An open menu silences what lies behind it, like a native one, and
-// only an anchor in the menu itself speaks (the reason of an entry that is off). A button that
-// takes the place of the one pressed under a pointer that rests shows none until the pointer
-// moves (input/hold.ts `pointerMoved`).
+// leave, press (the pointer's or a key's) and blur, unless the pointer stays on it (the layer
+// also hides it on a press anywhere, a scroll and Esc, and when the window resizes or goes to the
+// back); moving on to the next anchor with the pointer shows it at once. An open menu silences
+// what lies behind it, like a native one, and only an anchor in the menu itself speaks (the reason
+// of an entry that is off). A button that takes the place of the one pressed under a pointer that
+// rests shows none until the pointer moves (input/hold.ts `pointerMoved`).
 // `{ text, truncated: true }` shows it only while the text of the node is cut off (a long
 // row title, one line or clamped to two; `measure` names the element inside that holds the
 // text): measured once when the pointer enters, never per frame, and again when the tooltip
@@ -14,12 +14,16 @@
 // `{ text, hint }` adds a second, smaller line under the title, like the tooltips of native
 // apps name a key: "Suchen" over "Strg+F". The hint rides on the anchor as
 // `data-tooltip-hint`, where the tooltip layer (components/Tooltip.svelte) reads it.
-// `{ text, toggle: true }` (the info symbol, components/InfoTip.svelte): a click shows the
-// bubble at once and a second click hides it; a press does not hide it. A bubble a click brought,
-// or one on the keyboard's focus, takes an Esc alone (`tooltipState.held`).
+// `{ text, toggle: true }` (the info symbol, components/InfoTip.svelte; the reason of a locked
+// Button, Select or Toggle; the last Vertragsart, CheckGroup): one rule for all of them. A click
+// shows the bubble at once and a further click takes it: a press takes only a bubble a press
+// brought, and one that stands because the pointer or the focus rested stays and counts as brought
+// from then on. A double click belongs to its first press: its second changes nothing
+// (`secondPress`). A bubble a click brought, or one on the keyboard's focus, takes an Esc alone
+// (`tooltipState.held`).
 
 import type { Action } from 'svelte/action';
-import { holdHover, pointerMoved } from '../input/hold';
+import { holdHover, pointerMoved, secondPress } from '../input/hold';
 import { tooltipDelay } from '../motion/motion';
 import { menuState } from '../state/menu.svelte';
 import { tooltipState } from '../state/tooltip.svelte';
@@ -39,7 +43,7 @@ export type TooltipParam =
       covered?: () => boolean;
       /** A second, smaller line (a key, a hint). */
       hint?: string | null;
-      /** A click shows and hides it (the info symbol). */
+      /** A click shows and hides it (the info symbol, the reason of what is locked). */
       toggle?: boolean;
     };
 
@@ -152,10 +156,16 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     if (event.button === 0) holdHover(event);
     leave();
   };
-  const click = (): void => {
-    if (!options?.toggle) return;
+  const click = (event: MouseEvent): void => {
+    if (!options?.toggle) {
+      // A key's click came with no press: it does what the pointer's press did.
+      if (event.detail === 0) leave();
+      return;
+    }
     cancel();
-    if (tooltipState.anchor === node) tooltipState.hide(node);
+    // A double click belongs to its first press.
+    if (secondPress(event)) return;
+    if (tooltipState.clickedOn(node)) tooltipState.hide(node);
     else present(true);
   };
   /** The keyboard brought the focus here (or into it: a wrapped control): the same delay
@@ -170,8 +180,11 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     wait();
   };
   const blur = (event: FocusEvent): void => {
-    // The focus moves on inside the anchor (a wrapped control): nothing changes.
-    if (event.relatedTarget instanceof Node && node.contains(event.relatedTarget)) return;
+    // The focus moves on inside the anchor (a wrapped control), or the pointer on it keeps the
+    // bubble (and a press on it is its own, though WebKit takes the focus off a button it presses):
+    // nothing changes.
+    const inside = event.relatedTarget instanceof Node && node.contains(event.relatedTarget);
+    if (inside || node.matches(':hover')) return;
     cancel();
     // A focused control that goes with its view blurs while the page is being rebuilt, where
     // nothing may be written: the bubble goes right after.

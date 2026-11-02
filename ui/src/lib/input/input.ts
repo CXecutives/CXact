@@ -102,7 +102,9 @@ import {
 import { shell } from '../state/shell.svelte';
 import { tokenMs, tokenPx } from '../tokens';
 import { copyOut, fieldMenu } from './fieldMenu';
-import { pointerMoved } from './hold';
+import { pointerMoved, secondPress } from './hold';
+
+export { secondPress };
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
 /** Text a user would copy (selectable, Ctrl/Cmd+C). */
@@ -835,14 +837,6 @@ let firstPress: Element | null = null;
 /** The control a press lands on, not the words or the glyph in it; else the element itself. */
 const pressedOn = (target: EventTarget | null): Element | null =>
   closest(target, `${PRESSABLE}, ${FIELD}`) ?? closest(target, '*');
-
-/**
- * The second press of a pair: the engine counts on (1, 2, 3, ...) while the presses keep the OS's
- * double-click time at one spot, so every even one is a second one and the next a new first; a
- * keyboard's click counts 0 and presses.
- */
-export const secondPress = (event: MouseEvent): boolean =>
-  event.detail > 0 && event.detail % 2 === 0;
 
 /**
  * The second press of a double click that lands on anything but what the first one pressed:

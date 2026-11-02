@@ -18,7 +18,8 @@
   and the line describes it (`{for}-label`, and `{for}-hint` while there is one, read by
   Toggle), but neither is a click target.
   In a narrow box (the smallest window) the buttons go to a line of their own at the row's
-  end; the text keeps its room and `end` stays at the right.
+  end; the text keeps its room and `end` stays at the right. Buttons that come and go there
+  together (foldAside) open and close their line, so the rows below glide.
 -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
@@ -111,7 +112,7 @@
     position: relative;
     display: flex;
     align-items: flex-start;
-    gap: var(--space-8) var(--setting-row-gap);
+    column-gap: var(--setting-row-gap);
     min-height: var(--setting-row-min);
     padding: var(--setting-row-pad-y) var(--card-pad-x);
   }
@@ -165,9 +166,22 @@
   .end {
     display: flex;
     flex: none;
-    align-items: center;
     gap: var(--space-8);
     height: var(--line-box);
+  }
+
+  .end {
+    align-items: center;
+  }
+
+  /* The buttons hang from the top of their line, in its middle: what closes a line under them
+     (foldAside) moves nothing while its height is fixed. */
+  .actions {
+    align-items: flex-start;
+  }
+
+  .actions :global(button) {
+    margin-top: calc((var(--line-box) - var(--control-field)) / 2);
   }
 
   /* A pair: columns of one width, each as wide as the wider button. */
@@ -179,9 +193,9 @@
     width: max-content;
   }
 
-  /* A row whose buttons are all away (a portal without calls) keeps no room for them: no gap
-     beside the text, and no empty line under it in a narrow box. */
-  .actions:not(:has(*)) {
+  /* A row whose buttons are all away (a portal without calls, a pair while its form stands open)
+     keeps no room for them: no gap beside the text, and no empty line under it in a narrow box. */
+  .actions:not(:has(button)) {
     display: none;
   }
 
@@ -195,9 +209,16 @@
     .actions {
       order: 1;
       flex-wrap: wrap;
+      row-gap: 0;
       justify-content: flex-end;
       width: 100%;
       height: auto;
+      overflow: hidden;
+    }
+
+    /* The gap above the line is its buttons', so a line that closes under them takes it along. */
+    .actions :global(button) {
+      margin-top: var(--space-8);
     }
   }
 </style>

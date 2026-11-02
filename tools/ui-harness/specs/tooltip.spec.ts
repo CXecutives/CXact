@@ -4,7 +4,7 @@
 // fresh hover of that trigger places it, never at a place measured from the previous text.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, expect, open, test } from './fixtures';
+import { animationsDone, expect, open, settle, test } from './fixtures';
 import {
   chipRemove,
   chooseFilter,
@@ -16,6 +16,7 @@ import {
   reveal,
   row,
   rows,
+  setToken,
   stage,
   T,
   WIN,
@@ -126,10 +127,10 @@ test('moving from one tooltip to the next shows it at its own anchor at once', a
 
 /* ============================================================== what the audit found */
 
-// A bubble that came with the keyboard's focus or with a hover goes on a press, a scroll and
-// Esc, never comes from a focus the code set after a mouse action, never returns for a button
-// that slid under a pointer at rest, and its removal with its view throws nothing (the
-// fixture fails a test on any page error).
+// A bubble that came with the keyboard's focus or with a hover goes on a press (an anchor a click
+// shows and hides has its own rule, below), a scroll and Esc, never comes from a focus the code set
+// after a mouse action, never returns for a button that slid under a pointer at rest, and its
+// removal with its view throws nothing (the fixture fails a test on any page error).
 
 /** The keyboard's way: after a Tab the next focus() is a keyboard user's (it shows a tooltip). */
 async function byKeys(page: Page): Promise<void> {
@@ -168,6 +169,50 @@ test.describe('a tooltip goes when it should', () => {
     await page.getByTestId('toggle-sidebar').hover();
     await expect(tip(page)).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(tip(page)).toHaveCount(0);
+  });
+
+  test("on a key's press as on the pointer's: one Esc then folds the floating sidebar", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1099, height: 700 });
+    await open(page, WIN);
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    await byKeys(page);
+    await toggle.focus();
+    await expect(tip(page)).toHaveText(T.nav.sidebarShow);
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    // Nothing lies over its first entry.
+    await expect(tip(page)).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(floating).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+  });
+
+  test("on a key's press also on a Zurück that goes grey with it", async ({ page }) => {
+    await open(page, WIN);
+    await openJob(page, 'linkedin-4100200301');
+    const back = page.getByTestId('history-back');
+    await byKeys(page);
+    await back.focus();
+    await expect(tip(page)).toHaveText(T.nav.back);
+    await page.keyboard.press('Enter');
+    await expect(back).toHaveAttribute('aria-disabled', 'true');
+    await expect(tip(page)).toHaveCount(0);
+  });
+
+  test("a key's press drops the tooltip that still waits", async ({ page }) => {
+    await setToken(page, '--delay-tooltip', '600ms');
+    await page.setViewportSize({ width: 1099, height: 700 });
+    await open(page, WIN);
+    const floating = page.getByTestId('sidebar-floating');
+    await byKeys(page);
+    await page.getByTestId('toggle-sidebar').focus();
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    await page.waitForTimeout(800);
     await expect(tip(page)).toHaveCount(0);
   });
 
@@ -302,6 +347,265 @@ test.describe('a tooltip goes when it should', () => {
     await row(page, key).locator('.title').hover();
     await expect(tip(page)).toBeVisible();
   });
+});
+
+// A scroll takes the bubble and leaves nothing warm: what slides under a pointer that rests waits
+// for its delay like a first one, while moving from anchor to anchor stays warm.
+test.describe('a roll of the wheel under a pointer that rests', () => {
+  const NOTCHES = 8;
+  /** Longer than any pause of the roll, however busy the machine: a bubble that comes back during
+   *  it came because it was warm, and a later one is the rest's. */
+  const LONG = '2s';
+
+  /** Logs per frame, from now on, whether the bubble stands. */
+  const logFrames = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      const log: boolean[] = [];
+      (window as unknown as { tipLog: boolean[] }).tipLog = log;
+      const tick = (): void => {
+        log.push(document.querySelector('[role="tooltip"]') !== null);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  const frames = (page: Page): Promise<boolean[]> =>
+    page.evaluate(() => (window as unknown as { tipLog: boolean[] }).tipLog);
+
+  /** One notch per row: the next row's anchor slides right under the pointer each time. */
+  async function roll(page: Page): Promise<void> {
+    const [first, second] = await Promise.all([
+      rows(page).nth(0).boundingBox(),
+      rows(page).nth(1).boundingBox(),
+    ]);
+    const pane = page.getByTestId('list-scroll');
+    const before = await pane.evaluate((node) => node.scrollTop);
+    await logFrames(page);
+    for (let notch = 0; notch < NOTCHES; notch += 1) {
+      await page.mouse.wheel(0, second!.y - first!.y);
+      await page.waitForTimeout(100);
+    }
+    expect(await pane.evaluate((node) => node.scrollTop)).toBeGreaterThan(before);
+    const log = await frames(page);
+    // It stood when the roll began, went with its first notch and did not come back.
+    expect(log[0], 'the bubble at the first notch').toBe(true);
+    expect(log.indexOf(false), 'it goes').toBeGreaterThan(0);
+    expect(log.slice(log.indexOf(false)).includes(true), 'it comes back').toBe(false);
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await setToken(page, '--delay-tooltip', LONG);
+    await open(page, `${WIN}&scenario=many`);
+    await rows(page).nth(1).hover();
+  });
+
+  test('on a ring it goes and blinks back at no notch; at rest the next says its name, and moving on from that stays warm', async ({
+    page,
+  }) => {
+    const ring = rows(page).nth(1).locator('.ring');
+    await ring.hover();
+    await expect(tip(page)).toBeVisible();
+    const at = (await ring.boundingBox())!;
+    await roll(page);
+    await expect(tip(page)).toBeVisible();
+    // Straight on to a ring further down: it speaks at once, though its delay is long.
+    const next = await list(page)
+      .locator('.ring')
+      .evaluateAll((rings, top) => {
+        const boxes = rings.map((node) => node.getBoundingClientRect());
+        const box = boxes.find((one) => one.top > top + one.height);
+        return { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
+      }, at.y);
+    await page.mouse.move(next.x, next.y);
+    const spoken = await page.evaluate(
+      ({ x, y }) =>
+        document.elementFromPoint(x, y)?.closest('.ring')?.hasAttribute('aria-describedby'),
+      next,
+    );
+    expect(spoken).toBe(true);
+  });
+
+  test('on a tool it goes and blinks back at no notch', async ({ page }) => {
+    await page.getByTestId('tool-trash').hover();
+    await expect(tip(page)).toBeVisible();
+    await roll(page);
+  });
+});
+
+// One rule for every anchor a click shows and hides (the info symbol, the last Vertragsart, what is
+// locked with a reason): a press brings the bubble at once and a further one takes it, a bubble that
+// stands because the pointer rested stays under a press, and a double click is its first press.
+test.describe('a press on an anchor that says why', () => {
+  const BUSY = T.error.text('busy', { activity: 'fetch' });
+  const RUNNING = `${WIN}&scenario=running&view=settings`;
+  const CONTROLS: {
+    kind: string;
+    query: string;
+    control: (page: Page) => Locator;
+    reason: string;
+    first?: (page: Page) => Promise<void>;
+  }[] = [
+    {
+      kind: 'Button in a run',
+      query: RUNNING,
+      control: (page) => page.getByTestId('reset'),
+      reason: BUSY,
+    },
+    {
+      kind: 'Button at its limit',
+      query: `${WIN}&view=profile&cv=used`,
+      control: (page) => page.getByTestId('profile-from-cv'),
+      reason: T.profile.cvError.limit,
+    },
+    {
+      kind: 'Button behind a wrong value, the field still holding the caret',
+      query: `${WIN}&view=profile`,
+      control: (page) => page.getByTestId('profile-from-cv'),
+      reason: T.profile.fixFirst(T.profile.field.dayRateWish),
+      first: (page) => page.getByTestId('profile-wish-rate').fill('0'),
+    },
+    {
+      kind: 'Toggle',
+      query: `${WIN}&scenario=no-mailbox&view=settings`,
+      control: (page) => page.getByTestId('toggle-enabled-linkedin'),
+      reason: T.settings.needsMailboxReason,
+    },
+    {
+      kind: 'Select',
+      query: `${WIN}&sheet=controls`,
+      control: (page) =>
+        page
+          .getByRole('combobox', { name: 'Anbieter', exact: true })
+          .and(page.locator('[aria-disabled]')),
+      reason: 'Erst das Postfach trennen.',
+    },
+  ];
+
+  /** A press: Playwright takes a control that waits for a disabled one and would not press it. */
+  const press = (target: Locator): Promise<void> => target.click({ force: true });
+
+  /** In view, and the scroll that brought it is past: the next frame's event takes every bubble. */
+  async function inView(page: Page, target: Locator): Promise<Locator> {
+    await reveal(page, target);
+    await settle(page);
+    return target;
+  }
+
+  for (const { kind, query, control, reason, first } of CONTROLS) {
+    test(`a locked ${kind} says why at once, a further press takes it back`, async ({ page }) => {
+      // Pressed well within the wait of a tooltip under the pointer, however busy the machine.
+      await setToken(page, '--delay-tooltip', '60s');
+      await open(page, query);
+      await first?.(page);
+      const target = await inView(page, control(page));
+      await expect(target).toHaveAttribute('aria-disabled', 'true');
+      await press(target);
+      await expect(tip(page)).toHaveText(reason);
+      // It stands while the pointer does.
+      await page.waitForTimeout(150);
+      await expect(tip(page)).toHaveText(reason);
+      await press(target);
+      await expect(tip(page)).toHaveCount(0);
+      await press(target);
+      await expect(tip(page)).toHaveText(reason);
+      // Leaving takes it as any other.
+      await page.mouse.move(0, 0);
+      await expect(tip(page)).toHaveCount(0);
+    });
+  }
+
+  /** The info symbol. */
+  async function info(page: Page): Promise<{ target: Locator; words: string }> {
+    await open(page, `${WIN}&sheet=controls`);
+    return {
+      target: await inView(page, page.getByTestId('states-info')),
+      words: 'Welche Verträge du annimmst.',
+    };
+  }
+
+  /** The last chosen Vertragsart. */
+  async function lastContract(page: Page): Promise<{ target: Locator; words: string }> {
+    await open(page, `${WIN}&view=profile`);
+    await page.getByTestId('contract-project').click();
+    return {
+      target: page.getByTestId('contract-permanent'),
+      words: T.profile.field.keepOneContract,
+    };
+  }
+
+  /** A locked button. */
+  async function lockedButton(page: Page): Promise<{ target: Locator; words: string }> {
+    await open(page, RUNNING);
+    return { target: await inView(page, page.getByTestId('reset')), words: BUSY };
+  }
+
+  const ANCHORS = [
+    ['the info symbol', info],
+    ['the last Vertragsart', lastContract],
+    ['a locked button', lockedButton],
+  ] as const;
+
+  for (const [anchor, onto] of ANCHORS) {
+    test(`on ${anchor}: a press leaves a bubble that rested, takes one a press brought; a double click is its first press`, async ({
+      page,
+    }) => {
+      const { target, words } = await onto(page);
+      const stands = async (): Promise<void> => {
+        await page.waitForTimeout(150);
+        await expect(tip(page)).toHaveText(words);
+      };
+      await page.mouse.move(0, 0);
+      await target.hover({ force: true });
+      await expect(tip(page)).toHaveText(words);
+      // It stands because the pointer rested: the press leaves it.
+      await press(target);
+      await stands();
+      // From now on it is one a press brought: the next takes it.
+      await press(target);
+      await expect(tip(page)).toHaveCount(0);
+      // A double click shows it and leaves it, like its first press alone.
+      await target.dblclick({ force: true });
+      await stands();
+      // On one a press brought it takes it, and its second press does not bring it back.
+      await target.dblclick({ force: true });
+      await page.waitForTimeout(150);
+      await expect(tip(page)).toHaveCount(0);
+      // After a bubble that rested: it stays.
+      await page.mouse.move(0, 0);
+      await expect(tip(page)).toHaveCount(0);
+      await target.hover({ force: true });
+      await expect(tip(page)).toBeVisible();
+      await target.dblclick({ force: true });
+      await stands();
+      // A third press in a row is a first one again: it takes what stands.
+      await page.mouse.move(0, 0);
+      await target.hover({ force: true });
+      await expect(tip(page)).toBeVisible();
+      await target.click({ force: true, clickCount: 3 });
+      await expect(tip(page)).toHaveCount(0);
+    });
+  }
+
+  for (const [anchor, onto] of ANCHORS) {
+    test(`on ${anchor} by key the same rule: what rested on the focus stays, what a key brought goes, also with the pointer come over it`, async ({
+      page,
+    }) => {
+      const { target, words } = await onto(page);
+      await page.mouse.move(0, 0);
+      await byKeys(page);
+      await target.focus();
+      await expect(tip(page)).toHaveText(words);
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(150);
+      await expect(tip(page)).toHaveText(words);
+      await page.keyboard.press('Space');
+      await expect(tip(page)).toHaveCount(0);
+      await page.keyboard.press('Space');
+      await expect(tip(page)).toHaveText(words);
+      await target.hover({ force: true });
+      await press(target);
+      await expect(tip(page)).toHaveCount(0);
+    });
+  }
 });
 
 test('a title that is short never says it again', async ({ page }) => {
