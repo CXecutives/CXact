@@ -9,7 +9,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { chooseSort, menuFrame, openFilter, openPlace, row, T, WIN } from './helpers';
+import { chooseSort, failNext, menuFrame, openFilter, openPlace, row, T, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -1031,6 +1031,21 @@ test('the half pixel goes by the size: not at 14, and not for what stands low al
 });
 
 /* -------------------------------------------------- the rest of the page's measures */
+
+test('no title of an empty state ends in a full stop, a failure neither', async ({ page }) => {
+  const title = async (node: Locator, words: string): Promise<void> => {
+    await expect(node.getByRole('heading')).toHaveText(words);
+    expect(words).not.toMatch(/\.$/);
+  };
+  await open(page, `${WIN}&scenario=list-error`);
+  await title(page.getByTestId('list-error'), T.list.loadFailed);
+  await open(page, `${WIN}&scenario=load-failed`);
+  await title(page.getByTestId('view-error'), T.shell.loadFailed);
+  await open(page, WIN);
+  await failNext(page, 'job_detail');
+  await row(page, 'linkedin-4100200301').click();
+  await title(page.getByTestId('reader-error'), T.reader.loadFailed);
+});
 
 test('Vertragsart: its first line stands on its label, wrapped too; in a narrow box right under it', async ({
   page,

@@ -834,7 +834,7 @@ export const de = {
     noHitFilteredText: 'Ohne den Filter findest du vielleicht mehr.',
     noFilterHit: 'Kein Job passt zum Filter',
     noFilterHitText: 'Hier liegen Jobs, aber keiner passt dazu.',
-    loadFailed: 'Die Jobliste ließ sich nicht laden.',
+    loadFailed: 'Die Jobliste ließ sich nicht laden',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',
     openProfile: 'Profil öffnen',
@@ -1003,7 +1003,7 @@ export const de = {
     /** The job view while no job is open. */
     noJob: 'Kein Job gewählt',
     pickJob: 'Wähle einen Job aus der Liste.',
-    loadFailed: 'Der Job ließ sich nicht laden.',
+    loadFailed: 'Der Job ließ sich nicht laden',
     /** Deleting a job of the Papierkorb for good, from its job view. */
     purgeHeading: 'Endgültig löschen?',
     purgeText: (name: string) => `„${name}“ kommt nicht wieder, auch nicht mit alten Alert-Mails.`,
@@ -1493,7 +1493,7 @@ export const de = {
   },
 
   shell: {
-    loadFailed: 'CXact konnte seine Daten nicht laden.',
+    loadFailed: 'CXact konnte seine Daten nicht laden',
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: 'CXact schließt, sobald alles beendet ist.',
     /** Closing the window while a fetch runs asks first: close anyway, or keep searching. */
