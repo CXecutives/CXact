@@ -11,7 +11,7 @@
   box holds it, so both keys work there too. After "Entfernen" the focus goes to Verbinden.
   Unfolded, the form glides into view as far as needed; when a message grows it, its buttons
   stay in the window. While Verbinden signs in and counts it spins in its own width; Abbrechen
-  and Esc stay live and stop the check (`cancel_run`).
+  and Esc stay live and stop the check (`cancel_run`), and a change in the form does too.
   The state is the answer to a saved mailbox ("Verbunden", green; no note, no toast). After a
   red one it says "Passwort abgelehnt" (App-Passwort for Gmail and iCloud) or "Postfach nicht
   erreichbar" for a mail error of a fetch that finished after the mailbox was last accepted
@@ -106,7 +106,7 @@
       return;
     }
     await tick();
-    if (editing && foot !== null) glideIntoView(foot);
+    if (editing && foot !== null && form?.says()) glideIntoView(foot);
   }
 
   /** The dialog closes only once the mailbox is gone; a failure stays inside it. */

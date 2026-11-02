@@ -2,9 +2,11 @@
   Profil (the round 10 draft): one page in the pages' frame (Page) with its head (ProfileHead:
   the title "Profil" and "Aus Lebenslauf ausfüllen", which opens the file dialog at once). A
   CV dropped on the page (Tauri's drag and drop, never a path) is evaluated the same way,
-  with a dashed edge while it is over the page; it fills the profile at once. Under the head
-  what went wrong with the CV (a state box with its way out), then the groups
-  (ProfileEditor). Without a profile the two ways in (ProfileStart); a file that no longer
+  with a dashed edge while it is over the page; it fills the profile at once. While it is
+  evaluated Esc stops it like Abbrechen, with the focus nowhere or on Abbrechen and never from a
+  field or another control, as the page stays open meanwhile and an evaluation counts against the
+  day's limit. Under the head what went wrong with the CV (a state box with its way out), then the
+  groups (ProfileEditor). Without a profile the two ways in (ProfileStart); a file that no longer
   reads says so in the same place, with its folder at hand.
   A change saves by itself, and what cannot be saved asks once on the way out
   (saving.svelte.ts).
@@ -28,6 +30,7 @@
   import StateBox from '$components/StateBox.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
+  import { formKeys } from '$lib/input/input';
   import { invoke, onCloseRequested, onFileDrag, type FileDrag } from '$lib/ipc/api';
   import type { ProfileForm } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
@@ -294,29 +297,31 @@
       onfolder={editor.origin === null && profile?.parseError ? openFolder : null}
     />
   {/snippet}
-  <Page testid="profile" {over} {head}>
-    {#if editor.origin === null}
-      <ProfileStart
-        broken={profile?.parseError !== null && profile?.parseError !== undefined}
-        text={profile?.parseError
-          ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-          : t.profile.noneText}
-        note={note?.() ?? null}
-        onfilled={(info) => filled(info.form)}
-        onempty={create}
-      />
-    {:else}
-      {@render notes()}
-      <ProfileEditor
-        bind:this={panel}
-        fieldError={saving.fieldError}
-        missing={marked}
-        onsave={() => saving.saveNext()}
-        ondiscard={discard}
-        onleft={() => saving.soon()}
-      />
-    {/if}
-  </Page>
+  <div class="page-keys" use:formKeys={fromCv.busy ? { stop: () => fromCv.cancel() } : {}}>
+    <Page testid="profile" {over} {head}>
+      {#if editor.origin === null}
+        <ProfileStart
+          broken={profile?.parseError !== null && profile?.parseError !== undefined}
+          text={profile?.parseError
+            ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
+            : t.profile.noneText}
+          note={note?.() ?? null}
+          onfilled={(info) => filled(info.form)}
+          onempty={create}
+        />
+      {:else}
+        {@render notes()}
+        <ProfileEditor
+          bind:this={panel}
+          fieldError={saving.fieldError}
+          missing={marked}
+          onsave={() => saving.saveNext()}
+          ondiscard={discard}
+          onleft={() => saving.soon()}
+        />
+      {/if}
+    </Page>
+  </div>
 {/if}
 
 <!-- A change that cannot be saved: the way goes on without it, or stays. -->
@@ -336,5 +341,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--group-section-gap);
+  }
+
+  /* The keys of the page and no box of its own: the page stays as high as the view. */
+  .page-keys {
+    display: contents;
   }
 </style>

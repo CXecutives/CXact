@@ -9,16 +9,18 @@
   take the password, with "IMAP-Abruf erlauben" as the way to their help, and a refused
   sign-in there says to allow it. Errors land at the field
   they belong to, in the same words for every provider (empty fields are said before
-  anything is sent); when the provider refuses the pair, both fields are marked, the
-  password comes into view and the one sentence stands under it, where a failure that belongs
-  to neither field stands too. The password never leaves this form except to save_mailbox (it
-  goes straight into the OS keychain).
+  anything is sent); when the provider refuses the pair, both fields are marked and the one
+  sentence stands under the password, where a failure that belongs to neither field stands too.
+  The row of the first sentence comes into view, no caret goes there, and where it stands in view
+  nothing moves. The password never leaves this form except to save_mailbox (it goes straight
+  into the OS keychain).
   Einstellungen unfolds it under the mailbox's row and the setup shows it in its card: their
   buttons ("Verbinden") call `save` and `cancel`, and their keys answer Enter and Esc. A
   saved mailbox needs no note: its state "Verbunden" or the setup's next step is the answer.
   While Verbinden signs in and counts (it can take a while), cancel and Esc stay live: they
   stop the check (`cancel_run`, the backend holds the app for it), and so does leaving the
-  form; the stop itself says nothing.
+  form. So does a change in the form: the check speaks of a pair that is gone, and Verbinden then
+  sends what stands. The stop itself says nothing.
 -->
 <script lang="ts" module>
   import type { MailProvider } from '$lib/ipc/types';
@@ -37,8 +39,9 @@
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke, IpcError } from '$lib/ipc/api';
+  import { glideIntoView } from '$lib/motion/scroll';
   import { app } from '$lib/state/app.svelte';
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
 
   interface Props {
     /** A check is on its way (the button that called `save` turns meanwhile). */
@@ -79,18 +82,33 @@
   /** The provider refused the pair: both fields are marked, the sentence stands once. */
   let refused = $state(false);
   let formError = $state<Words | null>(null);
-  let passwordField = $state<TextField | null>(null);
+  /** The rows of the sentences: the address's, and the password's (the one of the pair too). */
+  let userRow = $state<HTMLElement | null>(null);
+  let passwordRow = $state<HTMLElement | null>(null);
   /** The stop of the check under way is asked for: once is enough. */
   let stopping = false;
 
   /** An error goes with what it spoke of: typing in its field takes its sentence and the
    *  provider's refusal of the pair away (the pair is another one now); another provider
-   *  takes them all, none of them was said of it. */
+   *  takes them all, none of them was said of it. A check under way stops for the same reason. */
   function changed(field: 'user' | 'password' | 'provider'): void {
+    cancel();
     if (field === 'user' || field === 'provider') userError = null;
     if (field === 'password' || field === 'provider') passwordError = null;
     refused = false;
     formError = null;
+  }
+
+  /** A sentence stands at a field. */
+  export function says(): boolean {
+    return userError !== null || passwordError !== null || formError !== null;
+  }
+
+  /** What a press was answered with comes into view: the row of the first sentence. */
+  async function showSaid(): Promise<void> {
+    await tick();
+    const row = userError !== null ? userRow : passwordRow;
+    if (says() && row !== null) glideIntoView(row);
   }
 
   /** Signs in and saves; `true` once the mailbox is saved. */
@@ -101,7 +119,10 @@
     // Empty fields are said at once, both of them, without asking the provider.
     if (user.trim() === '') userError = () => t.settings.addressMissing;
     if (password.trim() === '') passwordError = () => t.settings.passwordMissing(appPassword);
-    if (userError !== null || passwordError !== null) return false;
+    if (says()) {
+      void showSaid();
+      return false;
+    }
     busy = true;
     try {
       await invoke('save_mailbox', { provider, user: user.trim(), password });
@@ -115,11 +136,9 @@
       if (kind === 'mailCancelled') {
         // Stopped on purpose (cancel, Esc, the window closing): nothing to say.
       } else if (kind === 'mailAuth') {
-        // The provider refuses address or password: both are marked, the password comes
-        // into view.
+        // The provider refuses address or password: both are marked.
         refused = true;
         formError = words;
-        passwordField?.bringIntoView();
       } else if (reason === 'mailAddress' || kind === 'mailNotGmail') {
         userError = words;
       } else if (reason === 'appPassword') {
@@ -127,6 +146,7 @@
       } else {
         formError = words;
       }
+      void showSaid();
       return false;
     } finally {
       busy = false;
@@ -174,7 +194,7 @@
       </span>
     </Field>
   </div>
-  <div class="cell">
+  <div class="cell" bind:this={userRow}>
     <Field row label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
       <TextField
         id="{id}-user"
@@ -187,7 +207,7 @@
     </Field>
   </div>
   <!-- The provider's page of the app passwords, or its help on allowing IMAP. -->
-  <div class="cell">
+  <div class="cell" bind:this={passwordRow}>
     <Field
       row
       label={appPassword ? t.settings.password : t.settings.plainPassword}
@@ -204,7 +224,6 @@
       error={passwordError?.() ?? formError?.() ?? null}
     >
       <TextField
-        bind:this={passwordField}
         id="{id}-password"
         kind="password"
         bind:value={password}

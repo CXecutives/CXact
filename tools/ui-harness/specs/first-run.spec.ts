@@ -2,20 +2,20 @@
 // steps from the table as cards on the cream (the profile a whole page), every switch of the
 // view refused, Zurück (and the mouse's back button), Willkommen, the two ways, the CV's
 // upload, evaluation, cancel and failures (back on the upload with the reason in a state
-// box), "Dein Profil" whose Weiter marks what is missing red without a sentence, the optional
+// box), "Dein Profil" whose Weiter marks what is missing orange without a sentence, the optional
 // Postfach (skipped or connected, its pair in the OS order), Fertig that says what was set up,
 // resuming from what is stored, the smallest window, and that no step puts a caret in a field.
 
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, motionSettled, open, settle, test } from './fixtures';
-import { failNext, fillRequired, T, WIN, MAC } from './helpers';
+import { failNext, fillRequired, pressSideButton, T, WIN, MAC } from './helpers';
 
 const heading = (page: Page) => page.getByTestId('first-heading');
 const next = (page: Page) => page.getByTestId('first-next');
 const back = (page: Page) => page.getByTestId('first-back');
 /** The fields that hold the caret: only a press on a field puts it there. */
 const caret = (page: Page) => page.locator('input:focus, textarea:focus');
-/** The rows marked red as required and still empty, in the order of the page. */
+/** The rows marked as required and still empty, in the order of the page. */
 const marks = (page: Page): Promise<string[]> =>
   page
     .locator('[data-missing]')
@@ -126,6 +126,55 @@ test('every switch of the view is refused while it stands; Zurück and the mouse
   await back(page).click();
   await expectStep(page, T.firstRun.way);
   await expect(back(page)).toHaveText(T.common.back);
+});
+
+test("the mouse's back button that closes a list leaves the step, the next one goes back", async ({
+  page,
+}) => {
+  const closesThenGoes = async (): Promise<void> => {
+    const select = page.getByTestId('profile-work-mode');
+    await select.scrollIntoViewIfNeeded();
+    await select.click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    const beside = (await heading(page).or(page.getByTestId('profile-heading')).boundingBox())!;
+    const at = { x: beside.x + 1, y: beside.y + 1 };
+    await pressSideButton(page, 'back', at);
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await page.waitForTimeout(200);
+    await expect(page.getByTestId('profile')).toBeVisible();
+    await pressSideButton(page, 'back', at);
+  };
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  await closesThenGoes();
+  await expectStep(page, T.firstRun.way);
+  // The Profil reached from Jobs: the same.
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('profile')).toBeVisible();
+  await closesThenGoes();
+  await expect(page.getByTestId('profile')).toHaveCount(0);
+});
+
+test("Shift+Tab from a step's heading goes round to its last control, and Enter presses it", async ({
+  page,
+}) => {
+  for (const [query, last] of [
+    ['scenario=first-run', 'first-next'],
+    ['scenario=first-run&step=way', 'first-back'],
+    ['scenario=first-run&step=upload', 'first-back'],
+    ['scenario=setup-profile', 'first-skip'],
+    ['scenario=first-run&step=profile&way=self', 'first-next'],
+    ['scenario=first-run&step=done', 'first-next'],
+  ] as const) {
+    await open(page, `${WIN}&${query}`);
+    await expect(heading(page), query).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByTestId(last), query).toBeFocused();
+  }
+  await open(page, `${WIN}&scenario=first-run`);
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Enter');
+  await expectStep(page, T.firstRun.way);
 });
 
 test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter goes on', async ({
@@ -1079,12 +1128,9 @@ test('a press on the bar of Dein Profil leaves Enter with Weiter, as on the rest
   await expect.poll(() => marks(page)).not.toEqual([]);
 });
 
-test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
-  await page.setViewportSize({ width: 1360, height: 640 });
-  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
-  const top = await page
-    .getByTestId('first-bar')
-    .evaluate((bar) => bar.getBoundingClientRect().top);
+/** Tab from the step's heading until the bar at its foot takes the focus: the controls on the way,
+ *  and those that end below the bar's top. */
+async function tabToTheBar(page: Page): Promise<{ reached: number; below: string[] }> {
   const below: string[] = [];
   let reached = 0;
   for (let press = 0; press < 60; press += 1) {
@@ -1092,17 +1138,366 @@ test('Tab keeps every control of Dein Profil clear of the bar at its foot', asyn
     await settle(page);
     const focused = await page.evaluate(() => {
       const node = document.activeElement as HTMLElement;
+      const bar = document.querySelector('[data-testid="first-bar"]')!;
       return {
         name: node.getAttribute('data-testid') ?? node.id ?? node.tagName,
-        inBar: node.closest('[data-testid="first-bar"]') !== null,
+        inBar: bar.contains(node),
         bottom: node.getBoundingClientRect().bottom,
+        top: bar.getBoundingClientRect().top,
       };
     });
     if (focused.inBar) break;
     reached += 1;
-    if (focused.bottom > top)
-      below.push(`${focused.name} ends at ${focused.bottom}, bar at ${top}`);
+    if (focused.bottom > focused.top) {
+      below.push(`${focused.name} ends at ${focused.bottom}, bar at ${focused.top}`);
+    }
   }
+  return { reached, below };
+}
+
+test("in a low window Tab and typing stay clear of the foot that sticks over a card's step", async ({
+  page,
+}) => {
+  /** The address stands whole above the foot, and answers the pointer. */
+  const typedClear = async (): Promise<{ clear: boolean; hit: boolean }> => {
+    await settle(page);
+    return page.evaluate(() => {
+      const field = document.querySelector('[data-testid="mailbox-user"]')!;
+      const box = field.getBoundingClientRect();
+      const bar = document.querySelector('[data-testid="first-bar"]')!.getBoundingClientRect();
+      return {
+        clear: box.bottom <= bar.top,
+        hit: document.elementFromPoint(box.left + 4, box.top + box.height / 2) === field,
+      };
+    });
+  };
+  for (const [width, height] of [
+    [480, 360],
+    [800, 420],
+    [1099, 500],
+  ] as const) {
+    const size = `${width} x ${height}`;
+    await page.setViewportSize({ width, height });
+    await open(page, `${WIN}&scenario=setup-profile`);
+    const { reached, below } = await tabToTheBar(page);
+    expect(reached, size).toBeGreaterThanOrEqual(3);
+    expect(below, size).toEqual([]);
+    // Typing stands where it can be read.
+    await open(page, `${WIN}&scenario=setup-profile`);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('mailbox-user')).toBeFocused();
+    await page.keyboard.type('name.at.home.com');
+    expect(await typedClear(), size).toEqual({ clear: true, hit: true });
+    // Also in a field the wheel left half under the foot and a press put the caret in.
+    await open(page, `${WIN}&scenario=setup-profile`);
+    const edge = await page.evaluate(() => {
+      const view = document.querySelector('[data-testid="view-first-run"]')!;
+      const field = document.querySelector('[data-testid="mailbox-user"]')!;
+      const bar = document.querySelector('[data-testid="first-bar"]')!;
+      view.scrollTop += field.getBoundingClientRect().top - bar.getBoundingClientRect().top + 10;
+      const box = field.getBoundingClientRect();
+      return { x: box.left + 40, y: box.top + 4 };
+    });
+    await page.mouse.click(edge.x, edge.y);
+    await expect(page.getByTestId('mailbox-user')).toBeFocused();
+    await page.keyboard.type('abc');
+    expect(await typedClear(), size).toEqual({ clear: true, hit: true });
+  }
+  // The steps without fields: the two ways, the upload's zone, what stands where no evaluation
+  // can run.
+  await page.setViewportSize({ width: 480, height: 360 });
+  for (const query of ['step=way', 'step=upload', 'step=upload&cv=used']) {
+    await open(page, `${WIN}&scenario=first-run&${query}`);
+    const { reached, below } = await tabToTheBar(page);
+    expect(reached, query).toBeGreaterThan(0);
+    expect(below, query).toEqual([]);
+  }
+});
+
+test("the room for the card's foot is the setup's alone: a field's list moves nothing on the Profil", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 600 });
+  await open(page, `${WIN}&view=profile`);
+  const view = page.getByTestId('view-profile');
+  const tools = page.getByTestId('profile-tools').locator('input');
+  // The field low in the view: the room of a sticking foot would lift it.
+  await tools.evaluate((node) => {
+    const pane = node.closest<HTMLElement>('[data-testid="view-profile"]')!;
+    const gap = pane.getBoundingClientRect().bottom - node.getBoundingClientRect().bottom;
+    pane.scrollTop -= gap - 24;
+  });
+  await tools.click();
+  const top = await view.evaluate((node) => node.scrollTop);
+  await page.keyboard.type('sa');
+  await expect(page.getByTestId('profile-tools-suggestions').getByRole('option')).toHaveCount(8);
+  await motionSettled(page);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(top);
+  expect(await view.evaluate((node) => getComputedStyle(node).scrollPaddingBottom)).toBe('auto');
+});
+
+test('in a low window Verbinden answers in view, above the foot, and puts no caret anywhere', async ({
+  page,
+}) => {
+  /** A press where it stands: Playwright's click scrolls a control into view first, a real one
+   *  does not. */
+  const press = async (): Promise<void> => {
+    const box = (await next(page).boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  const said = page.getByTestId('mailbox-form').getByRole('alert');
+  const view = page.getByTestId('view-first-run');
+  const toTheTop = (): Promise<void> => view.evaluate((node) => node.scrollTo({ top: 0 }));
+  /** The first sentence said stands whole between the view's top and the foot. */
+  const inView = (): Promise<boolean> =>
+    said.first().evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const bar = document.querySelector('[data-testid="first-bar"]')!.getBoundingClientRect();
+      const pane = document.querySelector('[data-testid="view-first-run"]')!;
+      return box.top >= pane.getBoundingClientRect().top && box.bottom <= bar.top;
+    });
+  await page.setViewportSize({ width: 480, height: 360 });
+  await open(page, `${WIN}&scenario=setup-profile`);
+  // Empty fields: the address's sentence comes up, from the top of the step.
+  await press();
+  await expect(said).toHaveCount(2);
+  await expect(said.first()).toHaveText(T.settings.addressMissing);
+  await expect.poll(inView).toBe(true);
+  await expect(caret(page)).toHaveCount(0);
+  // And it comes down, from the end of the step.
+  await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
+  await press();
+  await expect.poll(inView).toBe(true);
+  // A wrong address, then the refused pair: the sentence of each.
+  const user = page.getByTestId('mailbox-user');
+  const password = page.getByTestId('mailbox-password');
+  await user.fill('kein-at');
+  await password.fill('abcdabcdabcdabcd');
+  await toTheTop();
+  await press();
+  await expect(said).toHaveText(T.error.text('invalid', { reason: 'mailAddress' }));
+  await expect.poll(inView).toBe(true);
+  await user.fill('alerts.demo@gmail.com');
+  await password.fill('falschfalschfals');
+  await toTheTop();
+  await press();
+  await expect(said).toHaveText(T.error.text('mailAuth', {}));
+  await expect.poll(inView).toBe(true);
+  await expect(caret(page)).toHaveCount(0);
+  // Where it stands in view nothing moves: the first sentence fits above the foot here.
+  await page.setViewportSize({ width: 1099, height: 500 });
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await press();
+  await expect(said).toHaveCount(2);
+  await animationsDone(page);
+  expect(await inView()).toBe(true);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(0);
+  // The refused pair is lower: it comes up here too.
+  await user.fill('alerts.demo@gmail.com');
+  await password.fill('falschfalschfals');
+  await toTheTop();
+  await press();
+  await expect(said).toHaveText(T.error.text('mailAuth', {}));
+  await expect.poll(inView).toBe(true);
+});
+
+test('a change while Verbinden checks stops it in the setup too: the step and what stands stay', async ({
+  page,
+}) => {
+  await connecting(page);
+  const user = page.getByTestId('mailbox-user');
+  await user.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('x');
+  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expectStep(page, T.firstRun.mailbox);
+  await expect(user).toHaveValue('alerts.demo@gmail.comx');
+  await expect(user).toBeFocused();
+  await expect(page.getByTestId('mailbox-password')).toHaveValue('abcdabcdabcdabcd');
+  await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
+});
+
+test("what Weiter marked on a dropped draft does not show on the CV's form, until its own Weiter", async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=demo&step=way`);
+  await page.getByTestId('way-self').click();
+  await page.getByTestId('profile-regions').locator('input').click();
+  await page.keyboard.type('Bayern');
+  await page.keyboard.press('Enter');
+  await next(page).click();
+  await expect.poll(() => marks(page)).not.toEqual([]);
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-cv').click();
+  await page.getByTestId('upload-zone').click();
+  await expectStep(page, T.firstRun.profile);
+  // Longer than core takes to name what the new form lacks.
+  await page.waitForTimeout(500);
+  expect(await marks(page)).toEqual([]);
+  await next(page).click();
+  await expect.poll(() => marks(page)).not.toEqual([]);
+});
+
+test('Esc stops the evaluation on the Profil from nowhere or on Abbrechen, never from a field', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile&cv=slow`);
+  const start = page.getByTestId('profile-from-cv');
+  const stop = page.getByTestId('cv-cancel');
+  const stops = (): Promise<number> => calls(page, 'cancel_run').then((all) => all.length);
+  // Begun by a press: the focus is nowhere.
+  await start.click();
+  await expect(stop).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(start).toBeVisible();
+  await expect(stop).toBeHidden();
+  expect(await stops()).toBe(1);
+  // Begun by the keyboard: the focus went along to Abbrechen, and comes back.
+  await start.focus();
+  await page.keyboard.press('Enter');
+  await expect(stop).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(start).toBeFocused();
+  expect(await stops()).toBe(2);
+  // In a field the page stays open meanwhile: its Esc is its own, and an empty one is nothing.
+  await start.click();
+  await expect(stop).toBeVisible();
+  const tools = page.getByTestId('profile-tools').locator('input');
+  await tools.click();
+  await page.keyboard.type('sa');
+  await page.keyboard.press('Escape');
+  await expect(tools).toHaveValue('sa');
+  await page.keyboard.press('Escape');
+  await expect(tools).toHaveValue('');
+  await page.keyboard.press('Escape');
+  await expect(stop).toBeVisible();
+  expect(await stops()).toBe(2);
+  // Another control, the same.
+  await page.getByTestId('contract-project').focus();
+  await page.keyboard.press('Escape');
+  await expect(stop).toBeVisible();
+  expect(await stops()).toBe(2);
+  // A press beside the controls: the focus is nowhere again.
+  await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  await expect(start).toBeVisible();
+  expect(await stops()).toBe(3);
+  // The start page without a form: the same, and its ground still fills the view.
+  await open(page, `${WIN}&view=profile&scenario=no-profile&cv=slow`);
+  const [ground, view] = await Promise.all([
+    page.getByTestId('profile').boundingBox(),
+    page.getByTestId('view-profile').evaluate((node) => node.clientHeight),
+  ]);
+  expect(ground!.height).toBe(view);
+  await page.getByTestId('way-cv').click();
+  await expect(stop).toBeVisible();
+  await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  await expect(stop).toHaveCount(0);
+  expect(await stops()).toBe(1);
+  // A dropped file, with the last press elsewhere: the focus is nowhere, the same.
+  await open(page, `${WIN}&scenario=no-profile&cv=slow`);
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('profile')).toBeVisible();
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await expect(stop).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(stop).toHaveCount(0);
+  expect(await stops()).toBe(1);
+  // Over, Esc stops nothing (a search may be going): also where the last press was on its words.
+  await open(page, `${WIN}&view=profile`);
+  await start.click();
+  await page.getByTestId('profile-cv-busy').click();
+  await expect(start).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  expect(await stops()).toBe(0);
+});
+
+/** The edges in the window of a step's card, and of the form of the page "Dein Profil". */
+async function setupEdges(
+  page: Page,
+  query: string,
+  width: number,
+): Promise<{ card: number[]; form: number[] }> {
+  await page.setViewportSize({ width, height: 700 });
+  const edgesOf = async (testid: string): Promise<number[]> => {
+    await motionSettled(page);
+    return page.getByTestId(testid).evaluate((node) => {
+      const box = (node.closest('.card') ?? node).getBoundingClientRect();
+      return [box.left, box.right];
+    });
+  };
+  await open(page, `${query}&scenario=first-run`);
+  const card = await edgesOf('first-bar');
+  await open(page, `${query}&scenario=first-run&step=profile&way=self`);
+  return { card, form: await edgesOf('profile-form') };
+}
+
+/** The sides of a narrow window. */
+const narrowSide = (page: Page): Promise<number> =>
+  page.evaluate(() =>
+    Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--page-side-narrow'),
+    ),
+  );
+
+test("macOS: the card stands the narrow sides from the window's edges, in the middle of a wide one", async ({
+  page,
+}) => {
+  // Its overlay scrollbars take no room.
+  await open(page, MAC);
+  const side = await narrowSide(page);
+  for (const width of [480, 571]) {
+    expect((await setupEdges(page, MAC, width)).card, `${width} wide`).toEqual([
+      side,
+      width - side,
+    ]);
+  }
+  const { card, form } = await setupEdges(page, MAC, 480);
+  expect(card).toEqual(form);
+  const wide = (await setupEdges(page, MAC, 1000)).card;
+  expect(wide[0]).toBe(1000 - wide[1]!);
+});
+
+test("beside a real scrollbar the card stands the narrow sides from the window's edges, as a page does", async ({
+  playwright,
+  baseURL,
+  browserName,
+}) => {
+  // Windows only (WebView2): macOS's overlay scrollbars take no room.
+  test.skip(browserName !== 'chromium', 'classic scrollbars are Chromium on Windows');
+  const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  try {
+    const page = await browser.newPage({ ...(baseURL ? { baseURL } : {}), locale: 'de-DE' });
+    await open(page, WIN);
+    const side = await narrowSide(page);
+    for (const width of [480, 571]) {
+      const { card, form } = await setupEdges(page, WIN, width);
+      expect(card, `${width} wide`).toEqual([side, width - side]);
+      expect(card, `${width} wide`).toEqual(form);
+    }
+    const wide = (await setupEdges(page, WIN, 1000)).card;
+    expect(wide[0]).toBe(1000 - wide[1]!);
+    // In the smallest window Tab stays clear of its foot here too.
+    await page.setViewportSize({ width: 480, height: 360 });
+    await open(page, `${WIN}&scenario=setup-profile`);
+    expect((await tabToTheBar(page)).below).toEqual([]);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
+  await page.setViewportSize({ width: 1360, height: 640 });
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  const { reached, below } = await tabToTheBar(page);
   expect(reached).toBeGreaterThan(20);
   expect(below).toEqual([]);
 });

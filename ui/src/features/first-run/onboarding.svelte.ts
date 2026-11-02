@@ -107,8 +107,10 @@ class Onboarding {
       }
       if ((await app.load()) === null && app.state) app.state.profile = info;
       if (mine !== this.#attempt) return;
-      // The form shows the CV's profile, never a draft typed before on "Selbst ausfüllen".
+      // The form shows the CV's profile, never a draft typed before on "Selbst ausfüllen", nor
+      // what Weiter asked of that draft.
       editor.typed.clear();
+      editor.asked = false;
       if (info.form) editor.edit(info.form);
       this.step = 'profile';
     } catch (failure) {

@@ -10,7 +10,9 @@
   right (`actions`, in the OS order the caller gives them; a ghost at their end hangs out like
   Zurück, so the words of both stand on the content's edges); a foot without Zurück centres
   its buttons (`centred`: the reading's Abbrechen). On a step longer than the window the foot
-  sticks to the window's bottom edge, so its buttons stay in reach. No step dots.
+  sticks to the window's bottom edge, so its buttons stay in reach, and what the keyboard's focus,
+  typing or a sentence brings into view stands above it (the view's scroll-padding, here while a
+  card stands). No step dots.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -87,14 +89,24 @@
 </div>
 
 <style>
-  /* The window's cream around the card. Its top stays put from step to step (where a card of
-     the usual height would stand a little above the middle), so a shorter or taller step only
-     moves the card's foot, never its head. */
+  /* What comes into view stands 8 above the foot that sticks over the view (its height in a wide
+     card; a narrow card's is a little lower). */
+  :global(.view):has(.frame) {
+    scroll-padding-bottom: calc(
+      var(--setup-foot-pad) + var(--control-field) + var(--setup-foot-end) + var(--border-width) +
+        var(--space-8)
+    );
+  }
+
+  /* The window's cream around the card, 16 from the window's sides with the scrollbar's room
+     counted in. Its top stays put from step to step (where a card of the usual height would stand
+     a little above the middle), so a shorter or taller step only moves the card's foot, never its
+     head. */
   .frame {
     container: setup / inline-size;
     display: grid;
     place-items: start center;
-    padding: var(--setup-frame-top) var(--space-16) var(--setup-frame-bottom);
+    padding: var(--setup-frame-top) var(--page-side-narrow-end) var(--setup-frame-bottom);
   }
 
   .content {

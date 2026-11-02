@@ -15,8 +15,9 @@
 //   the focused element, with the focus nowhere at the open item of a list (`openItem`: a
 //   click on a row leaves no focus). While a menu is open it takes every key (arrows,
 //   Home/End, the first letter, Enter and Space, Esc, Tab closes), and a press outside, the
-//   window's blur, resizing or a scroll outside it closes it; the left press that closes it
-//   does nothing else, nor does a second click after it. A menu names no keys.
+//   window's blur, resizing or a scroll outside it closes it; the left press that closes it (or
+//   the back or forward button's) does nothing else, nor does a second click after it. A menu
+//   names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window, no focus: the
@@ -301,6 +302,9 @@ export interface FormKeyHandlers {
   save?: () => void;
   /** Esc anywhere inside the form. */
   cancel?: () => void;
+  /** Esc inside the form with the focus nowhere only: it stops what runs behind the form, and a
+   *  field or a control keeps its own (or none). */
+  stop?: () => void;
 }
 
 const forms = new WeakMap<Element, FormKeyHandlers>();
@@ -316,6 +320,8 @@ export const formKeys: Action<HTMLElement, FormKeyHandlers> = (node, handlers) =
   return {
     update(next: FormKeyHandlers) {
       forms.set(node, next);
+      // What starts behind the form (a dropped file) answers also where no form was pressed last.
+      if (next.stop !== undefined && lastForm === null) lastForm = node;
     },
     destroy() {
       forms.delete(node);
@@ -338,7 +344,8 @@ function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = even
   if (event.isComposing || hasModifier(event) || event.repeat) return false;
   let handler: (() => void) | null = null;
   if (event.key === 'Escape') {
-    handler = handlerFor(target, 'cancel');
+    handler =
+      handlerFor(target, 'cancel') ?? (isNowhere(event.target) ? handlerFor(target, 'stop') : null);
   } else if (event.key === 'Enter') {
     // Enter on a button presses that button; in a text area it starts a new line.
     if (closest(target, 'textarea') !== null || pressedByEnter(target)) {
@@ -496,12 +503,19 @@ function tabbables(root: ParentNode): HTMLElement[] {
 /**
  * Tab on the last control goes to the first and Shift+Tab on the first to the last, like the
  * controls of a native window: the focus never leaves for the page itself, where it would
- * rest on nothing for one press. `true` if it wrapped (the key is then taken).
+ * rest on nothing for one press. What holds the focus before the first control (a step's heading)
+ * counts as the first. `true` if it wrapped (the key is then taken).
  */
 function wrapFocus(back: boolean): boolean {
   const items = tabbables(document);
   const active = document.activeElement;
-  if (items.length === 0 || active !== items[back ? 0 : items.length - 1]) return false;
+  const edge = items[back ? 0 : items.length - 1];
+  if (edge === undefined || active === null) return false;
+  const holdsBefore =
+    back &&
+    active !== document.body &&
+    (active.compareDocumentPosition(edge) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  if (active !== edge && !holdsBefore) return false;
   items[back ? items.length - 1 : 0]?.focus();
   return true;
 }
@@ -534,8 +548,6 @@ export interface ChipKeyHandlers {
 
 const CHIPS = '[data-chip-keys]';
 const chipFields = new WeakMap<Element, ChipKeyHandlers>();
-/** A chip of a chip field, with its index (`data-chip`). */
-const CHIP = '[data-chip]';
 
 /**
  * The keys of a chip field (components/ChipInput.svelte): Enter adds, Backspace in the empty
@@ -691,17 +703,16 @@ export function removeBy(button: EventTarget | null, remove: () => void): void {
   remove();
 }
 
-/** Backspace or Delete on the focused × of a chip presses it (it removes the chip, like
- *  Backspace in its field removes the last one); `true` if it did. The × is the chip's
- *  remove button, or the button inside the slot that holds it (a filter chip). */
+/** Backspace or Delete on a focused × presses it, once for a held key (the next × has the focus by
+ *  then); `true` if the key was for one. The × is the remove button, or the button inside the slot
+ *  that holds it (a filter chip). */
 function removesByKey(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey) return false;
   if (event.key !== 'Backspace' && event.key !== 'Delete') return false;
   const target = event.target;
-  if (!(target instanceof HTMLButtonElement)) return false;
-  if (target.closest(REMOVE) === null || target.closest(CHIP) === null) return false;
+  if (!(target instanceof HTMLButtonElement) || target.closest(REMOVE) === null) return false;
   event.preventDefault();
-  target.click();
+  if (!event.repeat) target.click();
   return true;
 }
 
@@ -1244,7 +1255,7 @@ function dispatchMenuKey(event: KeyboardEvent): void {
       return;
     case 'Enter':
     case ' ':
-      if (menuState.active >= 0) chooseEntry(menuState.active);
+      if (menuState.active >= 0 && !event.repeat) chooseEntry(menuState.active);
       return;
     case 'Escape':
     case 'Tab':
@@ -1267,16 +1278,16 @@ function dispatchMenuKey(event: KeyboardEvent): void {
   if (hit !== -1) menuState.active = hit;
 }
 
-/** A press outside the open menu closes it; a left one does nothing else (like the OS: the
- *  click that dismisses a menu never reaches what lies under it; `true`), a right one opens
- *  the menu of what it lands on. The second press of a double click closes nothing: what its
- *  first click opened stays open. */
+/** A press outside the open menu closes it; a left one, or the back or forward button's, does
+ *  nothing else (like the OS: the click that dismisses a menu never reaches what lies under it;
+ *  `true`), a right one opens the menu of what it lands on. The second press of a double click
+ *  closes nothing: what its first click opened stays open. */
 function pressOutsideMenu(event: MouseEvent): boolean {
   if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
   const left = event.button === LEFT;
   if (left && secondPress(event)) return false;
   closeMenu();
-  return left;
+  return left || event.button >= BACK;
 }
 
 /**
@@ -1646,8 +1657,8 @@ export function installInput(): void {
     },
     capture,
   );
-  // Back/forward buttons: Chromium navigates on their release. Back goes back where a view
-  // has a way back (`onBack`), forward does nothing.
+  // Back/forward buttons: Chromium navigates on their release. They go where a view has a way
+  // (`onBack`, `onForward`), unless their press closed a menu.
   document.addEventListener(
     'mouseup',
     (event) => {
@@ -1657,8 +1668,8 @@ export function installInput(): void {
       }
       if (event.button >= BACK) {
         event.preventDefault();
-        if (event.button === BACK) go(backs);
-        else if (event.button === FORWARD) go(forwards);
+        if (!swallow && event.button === BACK) go(backs);
+        else if (!swallow && event.button === FORWARD) go(forwards);
       }
       // A press that pressed nothing: its click (a left one) comes right after this release in
       // the same task; other buttons send none.

@@ -396,6 +396,70 @@ test('leaving Einstellungen stops a check under way, as Abbrechen does, and says
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
 });
 
+test('a change while Verbinden checks stops it: the form keeps what stands and its caret, the row stays', async ({
+  page,
+}) => {
+  await connectForm(page);
+  const user = page.getByTestId('mailbox-user');
+  const password = page.getByTestId('mailbox-password');
+  await page.evaluate(() => (window.__harness.holdMailbox = true));
+  await user.fill('tippfehler@gmail.com');
+  await password.fill('abcd efgh ijkl mnop');
+  await save(page).click();
+  await expect(save(page)).toHaveAttribute('aria-busy', 'true');
+  // Noticed while it spins: the correction stops it, nothing dims and nothing is said.
+  await user.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('x');
+  await expect(save(page)).not.toHaveAttribute('aria-busy', 'true');
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expect(user).toHaveValue('tippfehler@gmail.comx');
+  await expect(user).toBeFocused();
+  await expect(password).toHaveValue('abcd efgh ijkl mnop');
+  await expect(said(page)).toHaveCount(0);
+  await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
+  // The other provider too: the check was of the pair at the first one.
+  await save(page).click();
+  await expect(save(page)).toHaveAttribute('aria-busy', 'true');
+  await choose(page, T.settings.provider.icloud);
+  await expect(save(page)).not.toHaveAttribute('aria-busy', 'true');
+  expect(await calls(page, 'cancel_run')).toHaveLength(2);
+  await page.evaluate(() => (window.__harness.holdMailbox = false));
+  // Verbinden then sends what stands.
+  await user.fill('richtig@icloud.com');
+  await save(page).click();
+  await expect(form(page)).toHaveCount(0);
+  const sent = (await calls(page, 'save_mailbox')).at(-1)![1];
+  expect(sent).toMatchObject({ provider: 'icloud', user: 'richtig@icloud.com' });
+  await expect(page.getByTestId('mailbox')).toContainText('richtig@icloud.com');
+});
+
+test('a change that stops the check moves nothing: the caret keeps its place in a low window', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 480, height: 360 });
+  await connectForm(page);
+  const user = page.getByTestId('mailbox-user');
+  const view = page.getByTestId('view-settings');
+  await page.evaluate(() => (window.__harness.holdMailbox = true));
+  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
+  await user.fill('alerts.demo@gmail.com');
+  // Begun from the field, low in the view, with the buttons below the window's edge.
+  await user.evaluate((node) => {
+    const pane = node.closest<HTMLElement>('[data-testid="view-settings"]')!;
+    const gap = pane.getBoundingClientRect().bottom - node.getBoundingClientRect().bottom;
+    pane.scrollTop -= gap - 12;
+  });
+  await page.keyboard.press('Enter');
+  await expect(save(page)).toHaveAttribute('aria-busy', 'true');
+  expect(await footInWindow(page)).toBe(false);
+  const top = await view.evaluate((node) => node.scrollTop);
+  await page.keyboard.type('x');
+  await expect(save(page)).not.toHaveAttribute('aria-busy', 'true');
+  await page.waitForTimeout(300);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(top);
+});
+
 test('a double click on the provider page opens it once', async ({ page }) => {
   await changeMailbox(page);
   await form(page).getByTestId('create-password').dblclick();

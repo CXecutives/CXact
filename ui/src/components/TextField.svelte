@@ -9,7 +9,7 @@
   edge and no ring around it; the magnifier stays quiet. The placeholder and the glyphs are
   the subtle grey of icons (the placeholder --field-placeholder). The clear button pops in with the first character and leaves at once. A wrong
   value (a password Gmail refused) shows as the red edge (`invalid`) and the one sentence of
-  its Field; nothing shakes, `bringIntoView()` only scrolls it into view.
+  its Field; nothing shakes.
   With `options` (the languages of the profile) it suggests while typing, like the countries
   field: the options whose names start with the text drop down under it (Suggestions.svelte,
   the one look of a menu), the arrows move the one mark, Enter or a click takes the marked
@@ -169,19 +169,11 @@
   /** Esc clears a search that has text; otherwise it goes on to the form around. */
   const keys = $derived(kind === 'search' && value !== '' ? { cancel: clear } : {});
 
-  let box = $state<HTMLElement | null>(null);
   /** How wide the unit stands over the input, which keeps that room for its text. */
   let unitWidth = $state(0);
-
-  /** The answer to a wrong value where it was typed: the red edge and the sentence say it,
-   *  nothing moves (a shake read as a toy); the field is brought into view. */
-  export function bringIntoView(): void {
-    box?.scrollIntoView({ block: 'nearest' });
-  }
 </script>
 
 <div
-  bind:this={box}
   class="field {kind}"
   class:invalid
   class:disabled
