@@ -127,10 +127,10 @@ test('moving from one tooltip to the next shows it at its own anchor at once', a
 
 /* ============================================================== what the audit found */
 
-// A bubble that came with the keyboard's focus or with a hover goes on a press, a scroll and
-// Esc, never comes from a focus the code set after a mouse action, never returns for a button
-// that slid under a pointer at rest, and its removal with its view throws nothing (the
-// fixture fails a test on any page error).
+// A bubble that came with the keyboard's focus or with a hover goes on a press (an anchor a click
+// shows and hides has its own rule, below), a scroll and Esc, never comes from a focus the code set
+// after a mouse action, never returns for a button that slid under a pointer at rest, and its
+// removal with its view throws nothing (the fixture fails a test on any page error).
 
 /** The keyboard's way: after a Tab the next focus() is a keyboard user's (it shows a tooltip). */
 async function byKeys(page: Page): Promise<void> {
@@ -436,31 +436,49 @@ test.describe('a roll of the wheel under a pointer that rests', () => {
 // stands because the pointer rested stays under a press, and a double click is its first press.
 test.describe('a press on an anchor that says why', () => {
   const BUSY = T.error.text('busy', { activity: 'fetch' });
-  const CONTROLS = {
-    'Button with its words': {
-      query: `${WIN}&scenario=running&view=settings`,
-      control: (page: Page): Locator => page.getByTestId('reset'),
+  const RUNNING = `${WIN}&scenario=running&view=settings`;
+  const CONTROLS: {
+    kind: string;
+    query: string;
+    control: (page: Page) => Locator;
+    reason: string;
+    first?: (page: Page) => Promise<void>;
+  }[] = [
+    {
+      kind: 'Button in a run',
+      query: RUNNING,
+      control: (page) => page.getByTestId('reset'),
       reason: BUSY,
     },
-    'Button at its limit': {
+    {
+      kind: 'Button at its limit',
       query: `${WIN}&view=profile&cv=used`,
-      control: (page: Page): Locator => page.getByTestId('profile-from-cv'),
+      control: (page) => page.getByTestId('profile-from-cv'),
       reason: T.profile.cvError.limit,
     },
-    Toggle: {
+    {
+      kind: 'Button behind a wrong value, the field still holding the caret',
+      query: `${WIN}&view=profile`,
+      control: (page) => page.getByTestId('profile-from-cv'),
+      reason: T.profile.fixFirst(T.profile.field.dayRateWish),
+      first: (page) => page.getByTestId('profile-wish-rate').fill('0'),
+    },
+    {
+      kind: 'Toggle',
       query: `${WIN}&scenario=no-mailbox&view=settings`,
-      control: (page: Page): Locator => page.getByTestId('toggle-enabled-linkedin'),
+      control: (page) => page.getByTestId('toggle-enabled-linkedin'),
       reason: T.settings.needsMailboxReason,
     },
-    Select: {
+    {
+      kind: 'Select',
       query: `${WIN}&sheet=controls`,
-      control: (page: Page): Locator =>
+      control: (page) =>
         page
           .getByRole('combobox', { name: 'Anbieter', exact: true })
           .and(page.locator('[aria-disabled]')),
       reason: 'Erst das Postfach trennen.',
     },
-  } as const;
+  ];
 
   /** A press: Playwright takes a control that waits for a disabled one and would not press it. */
   const press = (target: Locator): Promise<void> => target.click({ force: true });
@@ -472,11 +490,12 @@ test.describe('a press on an anchor that says why', () => {
     return target;
   }
 
-  for (const [kind, { query, control, reason }] of Object.entries(CONTROLS)) {
+  for (const { kind, query, control, reason, first } of CONTROLS) {
     test(`a locked ${kind} says why at once, a further press takes it back`, async ({ page }) => {
       // Pressed well within the wait of a tooltip under the pointer, however busy the machine.
       await setToken(page, '--delay-tooltip', '60s');
       await open(page, query);
+      await first?.(page);
       const target = await inView(page, control(page));
       await expect(target).toHaveAttribute('aria-disabled', 'true');
       await press(target);
@@ -515,7 +534,7 @@ test.describe('a press on an anchor that says why', () => {
 
   /** A locked button. */
   async function lockedButton(page: Page): Promise<{ target: Locator; words: string }> {
-    await open(page, CONTROLS['Button with its words'].query);
+    await open(page, RUNNING);
     return { target: await inView(page, page.getByTestId('reset')), words: BUSY };
   }
 
