@@ -1227,6 +1227,80 @@ test("the room for the card's foot is the setup's alone: a field's list moves no
   expect(await view.evaluate((node) => getComputedStyle(node).scrollPaddingBottom)).toBe('auto');
 });
 
+test('in a low window Verbinden answers in view, above the foot, and puts no caret anywhere', async ({
+  page,
+}) => {
+  /** A press on it where it stands, by no way of scrolling that a click makes first. */
+  const press = async (): Promise<void> => {
+    const box = (await next(page).boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  const said = page.getByTestId('mailbox-form').getByRole('alert');
+  const view = page.getByTestId('view-first-run');
+  const toTheTop = (): Promise<void> => view.evaluate((node) => node.scrollTo({ top: 0 }));
+  /** The first sentence said stands whole between the view's top and the foot. */
+  const inView = (): Promise<boolean> =>
+    said.first().evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const bar = document.querySelector('[data-testid="first-bar"]')!.getBoundingClientRect();
+      const pane = document.querySelector('[data-testid="view-first-run"]')!;
+      return box.top >= pane.getBoundingClientRect().top && box.bottom <= bar.top;
+    });
+  await page.setViewportSize({ width: 480, height: 360 });
+  await open(page, `${WIN}&scenario=setup-profile`);
+  // Empty fields: the address's sentence comes up, from the top of the step.
+  await press();
+  await expect(said).toHaveCount(2);
+  await expect(said.first()).toHaveText(T.settings.addressMissing);
+  await expect.poll(inView).toBe(true);
+  await expect(caret(page)).toHaveCount(0);
+  // And it comes down, from the end of the step.
+  await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
+  await press();
+  await expect.poll(inView).toBe(true);
+  // A wrong address, then the refused pair: the sentence of each.
+  const user = page.getByTestId('mailbox-user');
+  const password = page.getByTestId('mailbox-password');
+  await user.fill('kein-at');
+  await password.fill('abcdabcdabcdabcd');
+  await toTheTop();
+  await press();
+  await expect(said).toHaveText(T.error.text('invalid', { reason: 'mailAddress' }));
+  await expect.poll(inView).toBe(true);
+  await user.fill('alerts.demo@gmail.com');
+  await password.fill('falschfalschfals');
+  await toTheTop();
+  await press();
+  await expect(said).toHaveText(T.error.text('mailAuth', {}));
+  await expect.poll(inView).toBe(true);
+  await expect(caret(page)).toHaveCount(0);
+  // Where it stands in view nothing moves: the first sentence fits above the foot here.
+  await page.setViewportSize({ width: 1099, height: 500 });
+  await open(page, `${WIN}&scenario=setup-profile`);
+  await press();
+  await expect(said).toHaveCount(2);
+  await animationsDone(page);
+  expect(await inView()).toBe(true);
+  expect(await view.evaluate((node) => node.scrollTop)).toBe(0);
+});
+
+test('a change while Verbinden checks stops it in the setup too: the step and what stands stay', async ({
+  page,
+}) => {
+  await connecting(page);
+  const user = page.getByTestId('mailbox-user');
+  await user.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('x');
+  await expect(next(page)).not.toHaveAttribute('aria-busy', 'true');
+  expect(await calls(page, 'cancel_run')).toHaveLength(1);
+  await expectStep(page, T.firstRun.mailbox);
+  await expect(user).toHaveValue('alerts.demo@gmail.comx');
+  await expect(user).toBeFocused();
+  await expect(page.getByTestId('mailbox-password')).toHaveValue('abcdabcdabcdabcd');
+  await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
+});
+
 /** The edges in the window of a step's card, and of the form of the page "Dein Profil". */
 async function setupEdges(
   page: Page,
