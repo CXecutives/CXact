@@ -103,6 +103,13 @@
     border-radius: var(--tile-radius-sm);
     background-color: var(--surface-track);
     color: var(--icon-accent);
+    transition: background-color var(--dur-base) var(--ease-out);
+  }
+
+  /* Pressed, its small tile goes a step darker with its ground, so it stays. */
+  :global(:where(:root:not([data-aux-press]))) .way:active:hover .glyph {
+    background-color: var(--border);
+    transition-duration: var(--dur-instant);
   }
 
   .way .label {
@@ -136,6 +143,10 @@
   .recommended .glyph {
     background-color: var(--recommended-press);
     color: var(--recommended-glyph);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .recommended:active:hover .glyph {
+    background-color: var(--recommended-edge);
   }
 
   /* The drop zone: dashed on the page's ground, everything centred. */

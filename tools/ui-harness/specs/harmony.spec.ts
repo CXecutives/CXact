@@ -814,6 +814,50 @@ test('one grey in a field: the x of a search and the eye of a password like its 
   expect(await colour(eye)).toBe(glyph);
 });
 
+test('pressed, a way keeps the small tile of its glyph: it goes a step darker with its ground', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=no-profile&view=profile`);
+  for (const id of ['way-self', 'way-cv']) {
+    const tile = page.getByTestId(id);
+    const read = async (): Promise<{ ground: string; glyph: string }> => {
+      await animationsDone(page);
+      return tile.evaluate((node) => ({
+        ground: getComputedStyle(node).backgroundColor,
+        glyph: getComputedStyle(node.querySelector('.glyph')!).backgroundColor,
+      }));
+    };
+    await page.mouse.move(1, 1);
+    const rest = await read();
+    await tile.hover();
+    expect(await read(), id).toEqual(rest);
+    await page.mouse.down();
+    const press = await read();
+    expect(darkness(press.ground), id).toBeGreaterThan(darkness(rest.ground));
+    expect(darkness(press.glyph), id).toBeGreaterThan(darkness(press.ground));
+    // Let go beside it (nothing is chosen): frame by frame the tile stays on its ground.
+    const frames = tile.evaluate(
+      (node) =>
+        new Promise<boolean[]>((done) => {
+          const glyph = node.querySelector('.glyph')!;
+          const log: boolean[] = [];
+          const start = performance.now();
+          const step = (): void => {
+            log.push(
+              getComputedStyle(node).backgroundColor === getComputedStyle(glyph).backgroundColor,
+            );
+            if (performance.now() - start < 300) requestAnimationFrame(step);
+            else done(log);
+          };
+          requestAnimationFrame(step);
+        }),
+    );
+    await page.mouse.move(1, 1);
+    await page.mouse.up();
+    expect((await frames).filter(Boolean), id).toEqual([]);
+  }
+});
+
 test('the small tools have their three steps too: a row tool, the x of a chip, the info', async ({
   page,
 }) => {
