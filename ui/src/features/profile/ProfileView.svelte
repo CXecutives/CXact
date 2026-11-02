@@ -5,9 +5,8 @@
   with a dashed edge while it is over the page; it fills the profile at once. While it is
   evaluated Esc stops it like Abbrechen, with the focus nowhere or on Abbrechen and never from a
   field or another control, as the page stays open meanwhile and an evaluation counts against the
-  day's limit. Under the head
-  what went wrong with the CV (a state box with its way out), then the groups
-  (ProfileEditor). Without a profile the two ways in (ProfileStart); a file that no longer
+  day's limit. Under the head what went wrong with the CV (a state box with its way out), then the
+  groups (ProfileEditor). Without a profile the two ways in (ProfileStart); a file that no longer
   reads says so in the same place, with its folder at hand.
   A change saves by itself, and what cannot be saved asks once on the way out
   (saving.svelte.ts).

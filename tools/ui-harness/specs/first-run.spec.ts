@@ -1493,6 +1493,10 @@ test("beside a real scrollbar the card stands the narrow sides from the window's
     }
     const wide = (await setupEdges(page, WIN, 1000)).card;
     expect(wide[0]).toBe(1000 - wide[1]!);
+    // In the smallest window Tab stays clear of its foot here too.
+    await page.setViewportSize({ width: 480, height: 360 });
+    await open(page, `${WIN}&scenario=setup-profile`);
+    expect((await tabToTheBar(page)).below).toEqual([]);
   } finally {
     await browser.close();
   }
