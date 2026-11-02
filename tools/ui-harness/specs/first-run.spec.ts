@@ -1301,6 +1301,28 @@ test('a change while Verbinden checks stops it in the setup too: the step and wh
   await expect(page.getByTestId('mailbox-form').getByRole('alert')).toHaveCount(0);
 });
 
+test("what Weiter marked on a dropped draft does not show on the CV's form, until its own Weiter", async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=demo&step=way`);
+  await page.getByTestId('way-self').click();
+  await page.getByTestId('profile-regions').locator('input').click();
+  await page.keyboard.type('Bayern');
+  await page.keyboard.press('Enter');
+  await next(page).click();
+  await expect.poll(() => marks(page)).not.toEqual([]);
+  await back(page).click();
+  await expectStep(page, T.firstRun.way);
+  await page.getByTestId('way-cv').click();
+  await page.getByTestId('upload-zone').click();
+  await expectStep(page, T.firstRun.profile);
+  // Longer than core takes to name what the new form lacks.
+  await page.waitForTimeout(500);
+  expect(await marks(page)).toEqual([]);
+  await next(page).click();
+  await expect.poll(() => marks(page)).not.toEqual([]);
+});
+
 test('Esc stops the evaluation on the Profil from nowhere or on Abbrechen, never from a field', async ({
   page,
 }) => {
