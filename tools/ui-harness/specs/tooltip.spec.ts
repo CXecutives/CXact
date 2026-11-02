@@ -172,6 +172,50 @@ test.describe('a tooltip goes when it should', () => {
     await expect(tip(page)).toHaveCount(0);
   });
 
+  test("on a key's press as on the pointer's: one Esc then folds the floating sidebar", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1099, height: 700 });
+    await open(page, WIN);
+    const toggle = page.getByTestId('toggle-sidebar');
+    const floating = page.getByTestId('sidebar-floating');
+    await byKeys(page);
+    await toggle.focus();
+    await expect(tip(page)).toHaveText(T.nav.sidebarShow);
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    // Nothing lies over its first entry.
+    await expect(tip(page)).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(floating).toHaveCount(0);
+    await expect(toggle).toBeFocused();
+  });
+
+  test("on a key's press also on a Zurück that goes grey with it", async ({ page }) => {
+    await open(page, WIN);
+    await openJob(page, 'linkedin-4100200301');
+    const back = page.getByTestId('history-back');
+    await byKeys(page);
+    await back.focus();
+    await expect(tip(page)).toHaveText(T.nav.back);
+    await page.keyboard.press('Enter');
+    await expect(back).toHaveAttribute('aria-disabled', 'true');
+    await expect(tip(page)).toHaveCount(0);
+  });
+
+  test("a key's press drops the tooltip that still waits", async ({ page }) => {
+    await setToken(page, '--delay-tooltip', '600ms');
+    await page.setViewportSize({ width: 1099, height: 700 });
+    await open(page, WIN);
+    const floating = page.getByTestId('sidebar-floating');
+    await byKeys(page);
+    await page.getByTestId('toggle-sidebar').focus();
+    await page.keyboard.press('Enter');
+    await expect(floating).toBeVisible();
+    await page.waitForTimeout(800);
+    await expect(tip(page)).toHaveCount(0);
+  });
+
   test('a press drops the tooltip that still waits for its delay', async ({ page }) => {
     await open(page, WIN);
     await byKeys(page);
@@ -475,11 +519,13 @@ test.describe('a press on an anchor that says why', () => {
     return { target: await inView(page, page.getByTestId('reset')), words: BUSY };
   }
 
-  for (const [anchor, onto] of [
+  const ANCHORS = [
     ['the info symbol', info],
     ['the last Vertragsart', lastContract],
     ['a locked button', lockedButton],
-  ] as const) {
+  ] as const;
+
+  for (const [anchor, onto] of ANCHORS) {
     test(`on ${anchor}: a press leaves a bubble that rested, takes one a press brought; a double click is its first press`, async ({
       page,
     }) => {
@@ -520,25 +566,27 @@ test.describe('a press on an anchor that says why', () => {
     });
   }
 
-  test('by key the same rule: what rested on the focus stays, what a key brought goes, also with the pointer come over it', async ({
-    page,
-  }) => {
-    const { target } = await lockedButton(page);
-    await page.mouse.move(0, 0);
-    await byKeys(page);
-    await target.focus();
-    await expect(tip(page)).toHaveText(BUSY);
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(150);
-    await expect(tip(page)).toHaveText(BUSY);
-    await page.keyboard.press('Enter');
-    await expect(tip(page)).toHaveCount(0);
-    await page.keyboard.press('Enter');
-    await expect(tip(page)).toHaveText(BUSY);
-    await target.hover({ force: true });
-    await press(target);
-    await expect(tip(page)).toHaveCount(0);
-  });
+  for (const [anchor, onto] of ANCHORS) {
+    test(`on ${anchor} by key the same rule: what rested on the focus stays, what a key brought goes, also with the pointer come over it`, async ({
+      page,
+    }) => {
+      const { target, words } = await onto(page);
+      await page.mouse.move(0, 0);
+      await byKeys(page);
+      await target.focus();
+      await expect(tip(page)).toHaveText(words);
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(150);
+      await expect(tip(page)).toHaveText(words);
+      await page.keyboard.press('Space');
+      await expect(tip(page)).toHaveCount(0);
+      await page.keyboard.press('Space');
+      await expect(tip(page)).toHaveText(words);
+      await target.hover({ force: true });
+      await press(target);
+      await expect(tip(page)).toHaveCount(0);
+    });
+  }
 });
 
 test('a title that is short never says it again', async ({ page }) => {

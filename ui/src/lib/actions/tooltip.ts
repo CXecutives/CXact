@@ -1,11 +1,11 @@
 // `use:tooltip={text}` - a styled tooltip after --delay-tooltip (400 ms) of hover, or of
 // keyboard focus (`:focus-visible`: Tab lands on the control, never a click). Hides on
-// leave, press and blur (the layer also hides it on a press anywhere, a scroll and Esc, and
-// when the window resizes or goes to the back); moving on to the next anchor with the
-// pointer shows it at once. An open menu silences what lies behind it, like a native one, and
-// only an anchor in the menu itself speaks (the reason of an entry that is off). A button that
-// takes the place of the one pressed under a pointer that rests shows none until the pointer
-// moves (input/hold.ts `pointerMoved`).
+// leave, press (the pointer's or a key's) and blur, unless the pointer stays on it (the layer
+// also hides it on a press anywhere, a scroll and Esc, and when the window resizes or goes to the
+// back); moving on to the next anchor with the pointer shows it at once. An open menu silences
+// what lies behind it, like a native one, and only an anchor in the menu itself speaks (the reason
+// of an entry that is off). A button that takes the place of the one pressed under a pointer that
+// rests shows none until the pointer moves (input/hold.ts `pointerMoved`).
 // `{ text, truncated: true }` shows it only while the text of the node is cut off (a long
 // row title, one line or clamped to two; `measure` names the element inside that holds the
 // text): measured once when the pointer enters, never per frame, and again when the tooltip
@@ -157,7 +157,11 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     leave();
   };
   const click = (event: MouseEvent): void => {
-    if (!options?.toggle) return;
+    if (!options?.toggle) {
+      // A key's click came with no press: it does what the pointer's press did.
+      if (event.detail === 0) leave();
+      return;
+    }
     cancel();
     if (secondPress(event)) return;
     if (tooltipState.clickedOn(node)) tooltipState.hide(node);
@@ -175,10 +179,11 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     wait();
   };
   const blur = (event: FocusEvent): void => {
-    // The focus moves on inside the anchor (a wrapped control), or to nowhere with the pointer on
-    // it (a press on it, which is its own: WebKit focuses no button): nothing changes.
-    const next = event.relatedTarget;
-    if (next instanceof Node ? node.contains(next) : node.matches(':hover')) return;
+    // The focus moves on inside the anchor (a wrapped control), or the pointer on it keeps the
+    // bubble (and a press on it is its own, though WebKit takes the focus off a button it presses):
+    // nothing changes.
+    const inside = event.relatedTarget instanceof Node && node.contains(event.relatedTarget);
+    if (inside || node.matches(':hover')) return;
     cancel();
     // A focused control that goes with its view blurs while the page is being rebuilt, where
     // nothing may be written: the bubble goes right after.
