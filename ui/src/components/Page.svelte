@@ -82,9 +82,15 @@
     }
   }
 
-  .over {
+  /* The view's, not the page's: one whole frame wherever the page is scrolled to, clear of its
+     head, over the fade under the top bar. */
+  .over::after {
+    position: absolute;
+    z-index: var(--z-sticky);
+    inset: var(--space-4);
+    border: var(--drop-edge) dashed var(--drop-edge-hover);
     border-radius: var(--radius-lg);
-    outline: var(--drop-edge) dashed var(--drop-edge-hover);
-    outline-offset: calc(-1 * var(--space-8));
+    content: '';
+    pointer-events: none;
   }
 </style>

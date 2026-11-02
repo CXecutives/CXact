@@ -335,8 +335,10 @@
 
   /* The sheet of the views: the docked sidebar's hairline is its left edge. Beyond its right
      edge a strip of its end colour, out of sight at rest, fills the window while the sheet
-     slides in from the left (the sidebar docks). The view fills it, above a bar at its foot. */
+     slides in from the left (the sidebar docks). The view fills it, above a bar at its foot, and
+     what stands around the view (Page's dashed edge) is placed in it. */
   .views {
+    position: relative;
     display: grid;
     flex: 1;
     grid-template-rows: minmax(0, 1fr) auto;

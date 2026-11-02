@@ -585,6 +585,80 @@ test("a select's list of seven rows stands whole, with nothing to scroll", async
   expect(rowBox.left - frame.left).toBe(frame.right - rowBox.right);
 });
 
+/* ------------------------------------------------- the dashed edge of a file over a page */
+
+/** A file over the page and gone again: how much of each side of a frame in the view it changes,
+ *  each as a share of that side. */
+async function dashedEdge(page: Page): Promise<{ [side: string]: number }> {
+  const view = (await page.locator('main').boundingBox())!;
+  const inset = await page.getByTestId('profile').evaluate((node) => {
+    node.classList.add('over');
+    const top = parseFloat(getComputedStyle(node, '::after').top);
+    node.classList.remove('over');
+    return top;
+  });
+  const [left, top] = [Math.round(view.x), Math.round(view.y)];
+  const [width, height] = [Math.round(view.width), Math.round(view.height)];
+  const sides = {
+    top: { x: left, y: top + inset - 1, width, height: 3 },
+    bottom: { x: left, y: top + height - inset - 2, width, height: 3 },
+    left: { x: left + inset, y: top, width: 3, height },
+    right: { x: left + width - inset - 2, y: top, width: 3, height },
+  };
+  const read = async () => {
+    const shots: number[][][] = [];
+    for (const clip of Object.values(sides)) shots.push(await colours(page, clip));
+    return shots;
+  };
+  const without = await read();
+  await page.evaluate(() => window.__harness.fire('tauri://drag-enter', { paths: [] }));
+  await expect(page.getByTestId('profile')).toHaveClass(/\bover\b/);
+  const over = await read();
+  await page.evaluate(() => window.__harness.fire('tauri://drag-leave', null));
+  await expect(page.getByTestId('profile')).not.toHaveClass(/\bover\b/);
+  const shares: { [side: string]: number } = {};
+  Object.entries(sides).forEach(([side, clip], index) => {
+    const changed = over[index]!.filter((pixel, at) => apart(pixel, without[index]![at]!)).length;
+    // A side three pixels thick holds one line of dashes.
+    shares[side] = changed / Math.max(clip.width, clip.height);
+  });
+  return shares;
+}
+
+const wholeFrame = async (page: Page, where: string): Promise<void> => {
+  const shares = await dashedEdge(page);
+  for (const [side, share] of Object.entries(shares)) {
+    expect(share, `${side} ${where}`).toBeGreaterThan(0.25);
+  }
+};
+
+testPixels(
+  'a file over the Profil: one whole frame around the view, at every scroll, clear of its head',
+  { width: 1360, height: 860 },
+  async (page) => {
+    await open(page, `${WIN}&view=profile`);
+    const view = page.getByTestId('view-profile');
+    await wholeFrame(page, 'at the top');
+    await view.evaluate((node) => node.scrollTo({ top: 700 }));
+    await wholeFrame(page, 'in the middle');
+    await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
+    await wholeFrame(page, 'at the end');
+    // At the top it stands as far from the head's button as from the bar.
+    await view.evaluate((node) => node.scrollTo({ top: 0 }));
+    await page.evaluate(() => window.__harness.fire('tauri://drag-enter', { paths: [] }));
+    const main = (await page.locator('main').boundingBox())!;
+    const inset = await page
+      .getByTestId('profile')
+      .evaluate((node) => parseFloat(getComputedStyle(node, '::after').top));
+    const button = (await page.getByTestId('profile-from-cv').boundingBox())!;
+    expect(button.y - (main.y + inset)).toBeGreaterThanOrEqual(inset);
+    await page.evaluate(() => window.__harness.fire('tauri://drag-leave', null));
+    // Without a profile too.
+    await open(page, `${WIN}&scenario=no-profile&view=profile`);
+    await wholeFrame(page, 'without a profile');
+  },
+);
+
 /* ------------------------------------------------------- one weight of a hairline */
 
 test('one hairline: the lines between rows are drawn like the edges of the boxes', async ({
