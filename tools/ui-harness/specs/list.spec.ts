@@ -1,7 +1,7 @@
 // The list area of the Jobs view: the places Aktuell, Archiv, Papierkorb under Jobs in the
 // sidebar; the list's head in one row (the search, the funnel, Jobs suchen); the funnel's menu
-// (the order, then the filter table) and the chips of an active filter; one list per place in
-// the chosen order with the excluded jobs folded at its end; the empty states;
+// (the order, then the filter table) and the chips of an active filter; one list per place, in
+// the chosen order but for the Papierkorb's, with the excluded jobs folded at its end; the empty states;
 // the search and its hits elsewhere; moves and their undo; the run line; the open row's bar;
 // the sidebar; the smallest window.
 // Texts come from the catalog (T) and the filter table, the demo data from the stub
@@ -1736,6 +1736,44 @@ test('another order: the rows and the sections glide, and the days go and come w
   }
 });
 
+test("another order: the open row's highlight glides along with it", async ({ page }) => {
+  await setToken(page, '--dur-slow', '900ms');
+  await open(page, WIN);
+  const key = (await stubList(page)).active.at(-1)!;
+  await row(page, key).click();
+  await expectHighlightOn(page, key);
+  await motionSettled(page);
+  const before = (await row(page, key).boundingBox())!.y;
+  const frames = await logPainted(page, {
+    row: `[data-testid="job-row-${key}"]`,
+    tint: '[data-testid="row-bar"]',
+  });
+  await chooseSort(page, 'match');
+  await motionSettled(page);
+  const to = (await row(page, key).boundingBox())!.y;
+  expect(to).not.toBe(before);
+  await expect.poll(async () => (await frames()).at(-1)!.row).toBe(to);
+  const painted = await frames();
+  expectGlide(painted, 'row', before, to);
+  for (const frame of painted) expect(Math.abs(frame.tint! - frame.row!)).toBeLessThanOrEqual(1);
+});
+
+test('a section that stands first has no line, and its label stands where a day stands', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const list_ = (await list(page).boundingBox())!;
+  const dayGap = (await page.getByTestId('day-heading').first().boundingBox())!.y - list_.y;
+  // A word only an excluded job has.
+  await page.getByTestId('search').fill('Buchhaltung');
+  const divider = page.getByTestId('excluded-divider');
+  await expect(page.getByTestId('day-heading')).toHaveCount(0);
+  await expect(divider).toBeVisible();
+  expect(await divider.evaluate((node) => getComputedStyle(node).borderTopWidth)).toBe('0px');
+  const box = (await divider.boundingBox())!;
+  expect(box.y - (await list(page).boundingBox())!.y).toBe(dayGap);
+});
+
 test('the days stand until the answer of another order comes', async ({ page }) => {
   await open(page, `${WIN}&scenario=slow`);
   const days = page.getByTestId('day-heading');
@@ -3205,6 +3243,38 @@ test.describe('moves and undo', () => {
       const tops = (await frames()).map((frame) => Math.round(frame.tintY));
       expect(tops.length).toBeGreaterThan(5);
       expect(new Set(tops)).toEqual(new Set([Math.round(stands)]));
+    });
+
+    test('the open job the last of its section: the highlight waits where the next row rises to', async ({
+      page,
+    }) => {
+      await slowly(page);
+      await page.setViewportSize({ width: 1360, height: 1100 });
+      await open(page, WIN);
+      await page.getByTestId('excluded-divider').click();
+      await expect(excludedRows(page).first()).toBeVisible();
+      const keys = await page
+        .getByTestId('unscored-rows')
+        .locator('[data-testid^="job-row-"]')
+        .evaluateAll((items) =>
+          items.map((item) => item.getAttribute('data-testid')!.replace('job-row-', '')),
+        );
+      for (const key of keys.slice(1)) await archiveByTool(page, key);
+      await page.mouse.move(0, 0);
+      await openJob(page, keys[0]!);
+      const next = (await excludedRows(page).first().getAttribute('data-testid'))!.replace(
+        'job-row-',
+        '',
+      );
+      const stands = (await page.getByTestId('row-bar').boundingBox())!.y;
+      const frames = await watch(page, next);
+      await page.getByTestId('reader-archive').click();
+      await expect(page.getByTestId('unscored-divider')).toHaveCount(0);
+      const painted = await framesToEnd(page, next, frames);
+      expect(painted.length).toBeGreaterThan(5);
+      // It stands still, and the next row ends up exactly there.
+      for (const frame of painted) expect(Math.round(frame.tintY)).toBe(Math.round(stands));
+      expect(Math.round(painted.at(-1)!.y!)).toBe(Math.round(stands));
     });
 
     test('the last row of a section: its heading folds away with it, and its undo unfolds them', async ({

@@ -6,8 +6,8 @@
   Windows; the entry's top at 43, a pixel above --head-pad, because the entry is 2 px taller
   than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) stand under Jobs and fold
   by hand at its chevron, kept per user (owner, 2026-11-01); "Jobs" itself leads to Aktuell. The
-  setup shows no sidebar. A press here never takes the focus and leaves it on no other control:
-  the arrows scroll the list.
+  setup shows no sidebar. A press here never takes the focus and leaves none on another control:
+  the keys scroll the view.
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the
   user's, shell.sidebarWidth) or folded away; folded it floats over the view (`floating`,
   App: inside a rounded card, its entries where the docked ones stand), and a choice there

@@ -3,8 +3,8 @@
   12 apart, at least 48 high, 8 round. Hover washes the row (80 ms in, 150 ms out), a press
   darkens it (60 ms); rows never move or scale. The chosen row has no fill of its own: the
   list's one highlight lies under it (RowBar), so it takes no wash either. The list draws the
-  hairlines between its rows. While the list scrolls rows take no hover: a row rests
-  (`data-rests`), and the rows the pointer passes during a scroll carry `data-still`
+  hairlines between its rows. While the list scrolls and behind an open menu rows take no hover: a
+  row rests (`data-rests`), and the rows the pointer passes meanwhile carry `data-still`
   (input.ts) until it is over, so only those rows restyle. Every row is a button and a Tab
   stop; focus draws no ring (user decision 2026-10-04).
 -->
