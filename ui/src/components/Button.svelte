@@ -302,7 +302,8 @@
   }
 
   /* The quiet kind: no box, a wash under the pointer, a deeper one pressed. Words in ink; a
-     lone glyph in the top bar's grey until pointed at. */
+     lone glyph in the top bar's grey until pointed at, in a field in the grey of the glyphs
+     beside it. */
   .ghost {
     --btn-bg: transparent;
     --btn-bg-hover: var(--surface-hover-quiet);
@@ -317,6 +318,10 @@
 
   .ghost.icon-only {
     --btn-fg: var(--titlebar-fg);
+  }
+
+  .ghost.in-field {
+    --btn-fg: var(--icon-subtle);
   }
 
   .danger {

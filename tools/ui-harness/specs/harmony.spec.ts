@@ -9,7 +9,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { chooseSort, menuFrame, openFilter, openPlace, row, WIN } from './helpers';
+import { chooseSort, menuFrame, openFilter, openPlace, row, T, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -784,6 +784,34 @@ test('the window in the back: the lone glyphs fade with the caption buttons, poi
   await expect(page.locator(':root')).toHaveAttribute('data-window', 'active');
   await animationsDone(page);
   for (const id of glyphs) expect(await colour(id), id).toBe(awake);
+});
+
+test('one grey in a field: the x of a search and the eye of a password like its other glyphs', async ({
+  page,
+}) => {
+  const colour = (node: Locator): Promise<string> =>
+    node.evaluate((element) => getComputedStyle(element).color);
+  await open(page, WIN);
+  const ink = await page.evaluate(() => getComputedStyle(document.body).color);
+  const search = page.getByTestId('search');
+  await search.fill('Controlling');
+  const field = search.locator('xpath=..');
+  const clear = field.getByRole('button', { name: T.field.clear });
+  await expect(clear).toBeVisible();
+  await animationsDone(page);
+  const glyph = await colour(field.locator('.lead'));
+  expect(await colour(clear)).toBe(glyph);
+  await clear.hover();
+  await animationsDone(page);
+  expect(await colour(clear)).toBe(ink);
+  await open(page, `${WIN}&view=settings`);
+  await page.getByTestId('mailbox-change').click();
+  const eye = page.getByRole('button', { name: T.field.reveal });
+  await eye.scrollIntoViewIfNeeded();
+  await animationsDone(page);
+  await page.mouse.move(1, 1);
+  await animationsDone(page);
+  expect(await colour(eye)).toBe(glyph);
 });
 
 test('the small tools have their three steps too: a row tool, the x of a chip, the info', async ({
