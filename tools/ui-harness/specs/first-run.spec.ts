@@ -1155,14 +1155,6 @@ async function tabToTheBar(page: Page): Promise<{ reached: number; below: string
   return { reached, below };
 }
 
-test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
-  await page.setViewportSize({ width: 1360, height: 640 });
-  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
-  const { reached, below } = await tabToTheBar(page);
-  expect(reached).toBeGreaterThan(20);
-  expect(below).toEqual([]);
-});
-
 test("in a low window Tab and typing stay clear of the foot that sticks over a card's step", async ({
   page,
 }) => {
@@ -1500,4 +1492,12 @@ test("beside a real scrollbar the card stands the narrow sides from the window's
   } finally {
     await browser.close();
   }
+});
+
+test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
+  await page.setViewportSize({ width: 1360, height: 640 });
+  await open(page, `${WIN}&scenario=setup-cv&step=profile`);
+  const { reached, below } = await tabToTheBar(page);
+  expect(reached).toBeGreaterThan(20);
+  expect(below).toEqual([]);
 });
