@@ -1166,24 +1166,10 @@ test('Tab keeps every control of Dein Profil clear of the bar at its foot', asyn
 test("in a low window Tab and typing stay clear of the foot that sticks over a card's step", async ({
   page,
 }) => {
-  for (const [width, height] of [
-    [480, 360],
-    [800, 420],
-    [1099, 500],
-  ] as const) {
-    await page.setViewportSize({ width, height });
-    await open(page, `${WIN}&scenario=setup-profile`);
-    const { reached, below } = await tabToTheBar(page);
-    expect(reached, `${width} x ${height}`).toBeGreaterThanOrEqual(3);
-    expect(below, `${width} x ${height}`).toEqual([]);
-    // Typing stands where it can be read, and answers the pointer.
-    await open(page, `${WIN}&scenario=setup-profile`);
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
-    await expect(page.getByTestId('mailbox-user')).toBeFocused();
-    await page.keyboard.type('name.at.home.com');
+  /** The address stands whole above the foot, and answers the pointer. */
+  const typedClear = async (): Promise<{ clear: boolean; hit: boolean }> => {
     await settle(page);
-    const typed = await page.evaluate(() => {
+    return page.evaluate(() => {
       const field = document.querySelector('[data-testid="mailbox-user"]')!;
       const box = field.getBoundingClientRect();
       const bar = document.querySelector('[data-testid="first-bar"]')!.getBoundingClientRect();
@@ -1192,7 +1178,39 @@ test("in a low window Tab and typing stay clear of the foot that sticks over a c
         hit: document.elementFromPoint(box.left + 4, box.top + box.height / 2) === field,
       };
     });
-    expect(typed, `${width} x ${height}`).toEqual({ clear: true, hit: true });
+  };
+  for (const [width, height] of [
+    [480, 360],
+    [800, 420],
+    [1099, 500],
+  ] as const) {
+    const size = `${width} x ${height}`;
+    await page.setViewportSize({ width, height });
+    await open(page, `${WIN}&scenario=setup-profile`);
+    const { reached, below } = await tabToTheBar(page);
+    expect(reached, size).toBeGreaterThanOrEqual(3);
+    expect(below, size).toEqual([]);
+    // Typing stands where it can be read.
+    await open(page, `${WIN}&scenario=setup-profile`);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('mailbox-user')).toBeFocused();
+    await page.keyboard.type('name.at.home.com');
+    expect(await typedClear(), size).toEqual({ clear: true, hit: true });
+    // Also in a field the wheel left half under the foot and a press put the caret in.
+    await open(page, `${WIN}&scenario=setup-profile`);
+    const edge = await page.evaluate(() => {
+      const view = document.querySelector('[data-testid="view-first-run"]')!;
+      const field = document.querySelector('[data-testid="mailbox-user"]')!;
+      const bar = document.querySelector('[data-testid="first-bar"]')!;
+      view.scrollTop += field.getBoundingClientRect().top - bar.getBoundingClientRect().top + 10;
+      const box = field.getBoundingClientRect();
+      return { x: box.left + 40, y: box.top + 4 };
+    });
+    await page.mouse.click(edge.x, edge.y);
+    await expect(page.getByTestId('mailbox-user')).toBeFocused();
+    await page.keyboard.type('abc');
+    expect(await typedClear(), size).toEqual({ clear: true, hit: true });
   }
   // The steps without fields: the two ways, the upload's zone, what stands where no evaluation
   // can run.
@@ -1230,7 +1248,8 @@ test("the room for the card's foot is the setup's alone: a field's list moves no
 test('in a low window Verbinden answers in view, above the foot, and puts no caret anywhere', async ({
   page,
 }) => {
-  /** A press on it where it stands, by no way of scrolling that a click makes first. */
+  /** A press where it stands: Playwright's click scrolls a control into view first, a real one
+   *  does not. */
   const press = async (): Promise<void> => {
     const box = (await next(page).boundingBox())!;
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -1282,6 +1301,13 @@ test('in a low window Verbinden answers in view, above the foot, and puts no car
   await animationsDone(page);
   expect(await inView()).toBe(true);
   expect(await view.evaluate((node) => node.scrollTop)).toBe(0);
+  // The refused pair is lower: it comes up here too.
+  await user.fill('alerts.demo@gmail.com');
+  await password.fill('falschfalschfals');
+  await toTheTop();
+  await press();
+  await expect(said).toHaveText(T.error.text('mailAuth', {}));
+  await expect.poll(inView).toBe(true);
 });
 
 test('a change while Verbinden checks stops it in the setup too: the step and what stands stay', async ({
