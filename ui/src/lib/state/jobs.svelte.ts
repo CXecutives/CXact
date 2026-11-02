@@ -199,6 +199,12 @@ class JobsStore {
     return this.#listed?.search ?? '';
   }
 
+  /** The order of the list the page holds (another may be on its way), until the first answer
+   *  the one that applies. */
+  get listedSort(): JobSort {
+    return this.#listed?.sort ?? this.sort;
+  }
+
   /** The list the page holds answered under a filter (another may be on its way). */
   get listedFiltered(): boolean {
     return isFiltered(this.#listedFilter);

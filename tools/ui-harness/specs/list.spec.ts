@@ -93,6 +93,68 @@ async function inbox(page: Page, query: Partial<JobQuery> = {}): Promise<string[
 const keyOf = (job: JobView): string => `${job.key.portal}-${job.key.id}`;
 const excluded = (job: JobView): boolean => job.match?.status === 'excluded';
 
+/**
+ * The tops of `parts` (a name, a selector) in what each frame paints, from now on. A ResizeObserver
+ * reports after a frame's callbacks and its layout, right before the paint; on two passes, so that
+ * every observer of the page's has run: a probe that changes each frame wakes the first, and it
+ * changes a probe deeper in the tree, which the engine reports on a later pass of that frame.
+ */
+async function logPainted(
+  page: Page,
+  parts: Record<string, string>,
+): Promise<() => Promise<Record<string, number | null>[]>> {
+  await page.evaluate((parts) => {
+    const log: Record<string, number | null>[] = [];
+    (window as unknown as { painted: unknown }).painted = log;
+    const outer = document.createElement('div');
+    const inner = document.createElement('div');
+    outer.style.cssText = 'position: fixed; left: -10px; width: 1px; height: 1px';
+    inner.style.cssText = 'width: 1px; height: 1px';
+    outer.append(inner);
+    document.body.append(outer);
+    const flip = (node: HTMLElement): void => {
+      node.style.width = node.style.width === '1px' ? '2px' : '1px';
+    };
+    new ResizeObserver(() => flip(inner)).observe(outer);
+    new ResizeObserver(() => {
+      log.push(
+        Object.fromEntries(
+          Object.entries(parts).map(([name, css]) => [
+            name,
+            document.querySelector(css)?.getBoundingClientRect().top ?? null,
+          ]),
+        ),
+      );
+    }).observe(inner);
+    const frame = (): void => {
+      flip(outer);
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }, parts);
+  return () =>
+    page.evaluate(
+      () => (window as unknown as { painted: Record<string, number | null>[] }).painted,
+    );
+}
+
+/** A log of what is painted went from where it stood to where it stands now without a jump: it
+ *  never goes back, passes places on its way, and no frame takes half the way (the glide slowed
+ *  down, so a busy machine's frames count for little). */
+function expectGlide(tops: (number | null)[], from: number, to: number): void {
+  const places = tops.map((top) => Math.round(top!));
+  expect(places[0]).toBe(Math.round(from));
+  expect(places.at(-1)).toBe(Math.round(to));
+  const way = Math.sign(to - from);
+  for (const [at, place] of places.entries()) {
+    if (at === 0) continue;
+    const step = (place - places[at - 1]!) * way;
+    expect(step, places.join(' ')).toBeGreaterThanOrEqual(0);
+    expect(step, places.join(' ')).toBeLessThan(Math.abs(to - from) / 2);
+  }
+  expect(new Set(places).size).toBeGreaterThanOrEqual(5);
+}
+
 /** Whether the element `a` starts before the element `b` (the order along a line). */
 async function leftOf(page: Page, a: string, b: string): Promise<boolean> {
   const [first, second] = await Promise.all(
@@ -1601,6 +1663,64 @@ test.describe('one list', () => {
 });
 
 /* ========================================================================= days */
+
+test('another order: the rows and the sections glide, and the days go and come with the answer', async ({
+  page,
+}) => {
+  await setToken(page, '--dur-slow', '900ms');
+  await open(page, WIN);
+  const key = (await stubList(page)).active.at(-1)!;
+  await expect(row(page, key)).toBeVisible();
+  const parts = {
+    row: `[data-testid="job-row-${key}"]`,
+    heading: '[data-testid="unscored-divider"]',
+  };
+  const days = page.getByTestId('day-heading');
+  const tops = async (): Promise<Record<string, number>> => ({
+    row: (await row(page, key).boundingBox())!.y,
+    heading: (await page.getByTestId('unscored-divider').boundingBox())!.y,
+  });
+  const home = await tops();
+  for (const [sort, dayed] of [
+    ['match', false],
+    ['newest', true],
+  ] as const) {
+    const from = await tops();
+    const frames = await logPainted(page, parts);
+    await chooseSort(page, sort);
+    await expect(row(page, key)).toBeVisible();
+    await motionSettled(page);
+    await settle(page);
+    const painted = await frames();
+    const to = await tops();
+    if (dayed) expect(to).toEqual(home);
+    expect(to.row).not.toBe(from.row);
+    expectGlide(
+      painted.map((frame) => frame.row!),
+      from.row!,
+      to.row!,
+    );
+    expectGlide(
+      painted.map((frame) => frame.heading!),
+      from.heading!,
+      to.heading!,
+    );
+    await expect(days.first()).toHaveCount(dayed ? 1 : 0);
+  }
+});
+
+test('the days stand until the answer of another order comes', async ({ page }) => {
+  await open(page, `${WIN}&scenario=slow`);
+  const days = page.getByTestId('day-heading');
+  await expect(days.first()).toBeVisible();
+  await openFilter(page);
+  await menuItem(page, sortEntryId('match')).click();
+  // The question has gone out, its answer takes a while.
+  await expect.poll(async () => (await lastQuery(page))?.sort).toBe('match');
+  expect(await days.count()).toBeGreaterThan(0);
+  await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+  await expect(days).toHaveCount(0);
+});
 
 test.describe('days', () => {
   /** The days' headings of the list, in their order. */

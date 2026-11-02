@@ -719,6 +719,7 @@ test.describe('a click on a row that is cut', () => {
     await page.setViewportSize({ width: 1360, height: 700 });
     await open(page, WIN);
     await chooseSort(page, 'match');
+    await motionSettled(page);
     await scrollTo(page, 70);
     const view = (await pane(page).boundingBox())!;
     const keys = await listed(page);

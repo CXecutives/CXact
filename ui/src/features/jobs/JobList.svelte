@@ -19,9 +19,9 @@
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
   search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
   rows below simply make room; the rows already there never flicker). Rows move only for the
-  user's own change and for the re-sort at the end of a run: after the order, another place
-  or a filter the rows on screen glide to their new place (180 ms); rows off screen and new
-  rows are simply there. A row the user moves out folds its height away (its day or its section
+  user's own change and for the re-sort at the end of a run: after the order or a filter the
+  rows on screen and the sections' headings glide to their new place (180 ms), as the days'
+  headings go or come with the answer; rows off screen and new rows are simply there. A row the user moves out folds its height away (its day or its section
   with its last row). One highlight marks the open job's row and glides from row to row (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
   search looks in the list's place; under its hits a button names each other place that lists
@@ -128,8 +128,9 @@
 
   /* ----------------------------------------------------------------------- days */
 
-  /** The order by date heads its scored rows by their days. */
-  const dayed = $derived(jobs.sort === 'newest');
+  /** The order by date heads its scored rows by their days (the headings go and come with the
+   *  list's answer, as its rows glide). */
+  const dayed = $derived(jobs.listedSort === 'newest');
   /** The moment that dates a row: when it came, in the Papierkorb when it went there. */
   const dated = (job: JobView): string =>
     (job.place === 'trash' ? job.trashedAt : null) ?? job.firstSeenAt;
@@ -375,23 +376,24 @@
 
   let list = $state<HTMLElement | null>(null);
   let rowBar = $state<RowBar | null>(null);
-  /** The next new rows come from the user's own change (sort, place, filter) or from the
-   *  re-sort at the end of a run: the rows on screen glide to their new place. */
+  /** The next new rows come from the user's own change (sort, filter) or from the re-sort at
+   *  the end of a run: the rows on screen and the sections' headings glide to their new place. */
   let armed = false;
-  /** Top edges of the rows before such a change, until the DOM has the new rows. */
+  /** Top edges of what glides before such a change, until the DOM has the new rows. */
   let before: Map<string, number> | null = null;
   let last = untrack(() => ({
     sort: jobs.sortChoice,
-    place: jobs.place,
     filter: jobs.filterChoice,
     active: run.active,
   }));
 
+  /** What glides: the rows and the sections' headings among them, each by a key of its own. */
   function rowsOf(root: HTMLElement): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('[data-key]')];
+    return [...root.querySelectorAll<HTMLElement>('[data-key], [data-testid$="-divider"]')];
   }
+  const glideKey = (node: HTMLElement): string => node.dataset['key'] ?? node.dataset['testid']!;
 
-  /** Every row on screen glides from where it stood (180 ms, ease-out, as every glide); rows
+  /** Everything on screen glides from where it stood (180 ms, ease-out, as every glide); rows
    *  far away are simply there.
    *  Every box is read before the first move starts: a read after a started animation lays
    *  the whole list out again, once per row. */
@@ -399,7 +401,7 @@
     const height = window.innerHeight;
     const moves: [HTMLElement, number][] = [];
     for (const row of rowsOf(root)) {
-      const was = from.get(row.dataset.key ?? '');
+      const was = from.get(glideKey(row));
       if (was === undefined) continue;
       const box = row.getBoundingClientRect();
       const shift = Math.round(was - box.top);
@@ -435,18 +437,16 @@
     }
   }
 
-  // What changed the list: the user's sort, place or filter (never while a run streams new
-  // rows in), or the end of a run. A search and live updates arm nothing.
+  // What changed the list: the user's sort or filter (never while a run streams new rows in),
+  // or the end of a run. Another place holds other rows, and a search and live updates arm nothing.
   $effect.pre(() => {
     const now = {
       sort: jobs.sortChoice,
-      place: jobs.place,
       filter: jobs.filterChoice,
       active: run.active,
     };
     untrack(() => {
-      const chosen =
-        now.sort !== last.sort || now.place !== last.place || now.filter !== last.filter;
+      const chosen = now.sort !== last.sort || now.filter !== last.filter;
       if ((chosen && !now.active) || (last.active && !now.active)) armed = true;
       last = now;
     });
@@ -458,16 +458,15 @@
     void shown;
     untrack(() => {
       if (!armed || list === null) return;
-      before = new Map(
-        rowsOf(list).map((row) => [row.dataset.key ?? '', row.getBoundingClientRect().top]),
-      );
+      before = new Map(rowsOf(list).map((row) => [glideKey(row), row.getBoundingClientRect().top]));
       if (jobs.status !== 'loading') armed = false;
     });
   });
 
-  // After the DOM has the new rows: glide from the noted places, at the start of the next
-  // frame (before it is drawn): the new rows are laid out once, there, and not a second time
-  // inside the task that built them. A new job of a run fades in.
+  // After the DOM has the new rows: glide from the noted places, before the next frame is drawn
+  // (WebKit may draw a layout ahead of its frame callbacks, so whichever comes first of the two):
+  // the new rows are laid out once, there, and not a second time inside the task that built them.
+  // A new job of a run fades in.
   $effect(() => {
     void shown;
     untrack(() => {
@@ -475,7 +474,16 @@
       const from = before;
       before = null;
       if (root === null) return;
-      if (from !== null) requestAnimationFrame(() => glide(root, from));
+      if (from !== null) {
+        const start = (): void => {
+          watch.disconnect();
+          cancelAnimationFrame(frame);
+          glide(root, from);
+        };
+        const watch = new ResizeObserver(start);
+        watch.observe(root);
+        const frame = requestAnimationFrame(start);
+      }
       enterFresh(root);
     });
   });
