@@ -457,12 +457,13 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
 /**
  * Deletes jobs of the trash for good (after the dialog). Resolves with the error text.
  * `fromRow`: a row's menu or tool asked (its dialog held the focus, the row it would go back
- * to is gone): the focus goes on as after a move from the keyboard (`focusAfter`).
+ * to is gone): from the keyboard the focus goes on as after a move (`focusAfter`); a click moves
+ * none.
  */
 export async function purge(list: readonly JobView[], fromRow = false): Promise<string | null> {
   if (list.length === 0) return null;
   const next = nextAfter(list);
-  const focus = fromRow || focusOn(list);
+  const focus = (fromRow && byKeyboard()) || focusOn(list);
   const folding = list.length <= staggerLimit() ? list : [];
   for (const job of folding) moving.add(keyOf(job.key));
   const open = jobs.selected;

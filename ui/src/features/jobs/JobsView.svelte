@@ -141,11 +141,12 @@
     const selected = jobs.selected;
     untrack(() => {
       if (selected !== null && !sameKey(selected, chosen)) shell.setReader(true);
-      // One column: back to the list (Zurück), at the row of the job that was open.
+      // One column: back to the list (Zurück), at the row of the job that was open; from the
+      // keyboard the focus goes to it, after a click the keys scroll the list.
       const left = chosen;
       if (selected === null && left !== null && viewport.narrow) {
         if (jobs.shown.some((job) => sameKey(job.key, left))) {
-          jobs.reveal = { key: keyOf(left), focus: true };
+          jobs.reveal = { key: keyOf(left), focus: byKeyboard() };
         }
       }
       chosen = selected;

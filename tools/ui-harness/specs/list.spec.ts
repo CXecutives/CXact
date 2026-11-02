@@ -2558,18 +2558,38 @@ test.describe('moves and undo', () => {
     expect(await calls(page, 'empty_trash')).toHaveLength(0);
   });
 
-  test('deleting for good hands the focus on: the row below, then the place', async ({ page }) => {
+  test('deleting for good by the mouse moves no focus: no row stands armed for a key', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await openPlace(page, 'trash');
+    const [first] = await listed(page);
+    await viaMenu(page, 'purge', first!);
+    await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(page.getByTestId('dialog-purge')).toHaveCount(0);
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    await page.keyboard.press('Enter');
+    await settle(page);
+    await expect(list(page).locator('[data-open]')).toHaveCount(0);
+  });
+
+  test('deleting for good from the keyboard hands the focus on: the row below, then the place', async ({
+    page,
+  }) => {
     await open(page, WIN);
     await openPlace(page, 'trash');
     const keys = await listed(page);
     expect(keys.length).toBeGreaterThan(1);
     // Endgültig löschen of a row: after the dialog the focus is on the row below.
     for (const [index, key] of keys.entries()) {
-      await viaMenu(page, 'purge', key);
-      await page
-        .getByTestId('dialog-purge')
-        .getByRole('button', { name: T.reader.purgeConfirm, exact: true })
-        .click();
+      await row(page, key).focus();
+      await page.keyboard.press('Shift+F10');
+      await expect(page.getByTestId('menu')).toBeVisible();
+      await page.keyboard.type(T.actions.purge.slice(0, 4));
+      await page.keyboard.press('Enter');
+      await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').focus();
+      await page.keyboard.press('Enter');
       await expect(row(page, key)).toHaveCount(0);
       const next = keys[index + 1];
       if (next !== undefined) await expect(row(page, next)).toBeFocused();

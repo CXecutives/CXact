@@ -399,15 +399,41 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
   );
 });
 
-test('one column: closing shows the open row again, with the focus', async ({ page }) => {
+test('one column: closing shows the open row again, from the keyboard with the focus', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 800, height: 600 });
   await open(page, WIN);
   await rows(page).nth(6).click();
   const key = await list(page).locator('[data-open]').getAttribute('data-key');
-  await page.getByTestId('history-back').click();
+  await page.getByTestId('history-back').focus();
+  await page.keyboard.press('Enter');
   const item = list(page).locator(`[data-key="${key}"]`);
   await expect(item).toBeInViewport();
   await expect(item.locator('[data-testid^="job-row-"]')).toBeFocused();
+});
+
+test('one column: Zurück by the mouse shows the open row again and the keys scroll the list', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 880, height: 500 });
+  await open(page, WIN);
+  await rows(page).nth(6).click();
+  const key = await list(page).locator('[data-open]').getAttribute('data-key');
+  await page.getByTestId('history-back').click();
+  await expect(list(page).locator(`[data-key="${key}"]`)).toBeInViewport();
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+  const pane = page.getByTestId('list-scroll');
+  const top = (): Promise<number> => pane.evaluate((node) => node.scrollTop);
+  const before = await top();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(top).toBeGreaterThan(before);
+  await page.keyboard.press('End');
+  await expect
+    .poll(() => pane.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))
+    .toBeLessThanOrEqual(1);
+  await page.keyboard.press('Home');
+  await expect.poll(top).toBe(0);
 });
 
 test('typing a country that is chosen already says nothing and Enter clears it', async ({
