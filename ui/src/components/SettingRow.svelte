@@ -179,9 +179,9 @@
     width: max-content;
   }
 
-  /* A row whose buttons are all away (a portal without calls) keeps no room for them: no gap
-     beside the text, and no empty line under it in a narrow box. */
-  .actions:not(:has(*)) {
+  /* A row whose buttons are all away (a portal without calls, a pair while its form stands open)
+     keeps no room for them: no gap beside the text, and no empty line under it in a narrow box. */
+  .actions:not(:has(button)) {
     display: none;
   }
 

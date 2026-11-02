@@ -197,6 +197,26 @@ test('narrow, the calls stay clear of the portal state', async ({ page }) => {
   ]);
   expect(signIn!.y).toBeGreaterThanOrEqual(status!.y + status!.height);
 });
+
+test('narrow, a row whose buttons are away keeps no empty line, with a pair or without one', async ({
+  page,
+}) => {
+  const atRest = async (): Promise<number> => {
+    await settings(page);
+    await (await reveal(page, page.getByTestId('mailbox-change'))).click();
+    await animationsDone(page);
+    return (await page.getByTestId('mailbox').boundingBox())!.height;
+  };
+  await page.setViewportSize({ width: 760, height: 800 });
+  const wide = await atRest();
+  await page.setViewportSize({ width: 480, height: 800 });
+  expect(await atRest()).toBe(wide);
+  // Without a pair the same: its one button goes, and so does its line.
+  await settings(page, `${WIN}&scenario=no-mailbox`);
+  await (await reveal(page, page.getByTestId('mailbox-connect'))).click();
+  await animationsDone(page);
+  expect((await page.getByTestId('mailbox').boundingBox())!.height).toBe(wide);
+});
 /* ---------------------------------------------------------------- Postfach */
 
 test('mailbox: the address, no word about the vault, no whole-mailbox row', async ({ page }) => {
