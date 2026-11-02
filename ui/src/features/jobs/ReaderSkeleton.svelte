@@ -24,7 +24,7 @@
     <div class="top">
       <Skeleton shape="circle" size="md" />
       <div class="heads">
-        <span class="title" data-testid="skeleton-title"><Skeleton width={70} /></span>
+        <span class="title"><Skeleton width={70} /></span>
         <span class="band"><Skeleton width={30} /></span>
       </div>
     </div>
@@ -36,7 +36,7 @@
     <span class="heading"><Skeleton width={100} /></span>
     <div class="facts">
       {#each FACTS as width, index (index)}
-        <div class="fact" data-testid="skeleton-row">
+        <div class="fact">
           <Skeleton width={70} /><Skeleton {width} />
         </div>
       {/each}
@@ -46,7 +46,7 @@
     <span class="heading"><Skeleton width={100} /></span>
     <div class="text">
       {#each LINES as width, index (index)}
-        <span class="line" data-testid="skeleton-line"><Skeleton {width} /></span>
+        <span class="line"><Skeleton {width} /></span>
       {/each}
     </div>
   </Card>

@@ -75,14 +75,13 @@
     /** id of the text input, for the label of a Field. */
     id?: string | null;
     /** Default: the message of its Field, while it shows one. */
-    describedby?: string | null;
     invalid?: boolean;
     /** The field takes typed values (off: it only shows and removes). */
     entry?: boolean;
     /** Where text splits into chips: at commas, semicolons and line breaks (terms), or only
      *  at line breaks (sentences, degrees, certificate names). */
     split?: 'list' | 'lines';
-    /** The only values the field takes, listed on focus and narrowed while typing. */
+    /** The only values the field takes, listed while typing. */
     options?: readonly ChipOption[] | null;
     /** Said under the field while the typed text matches no option. */
     noMatch?: string | null;
@@ -103,7 +102,6 @@
     label = null,
     placeholder = null,
     id = null,
-    describedby = null,
     invalid = false,
     entry = true,
     split = 'list',
@@ -226,12 +224,15 @@
     );
   }
   const chosen = $derived(isChosen(draft));
+  /** The list Enter did not take; a change to the text ends that. */
+  let refused = $state<string | null>(null);
   /** An entry of the typed text names no option at all (one that is chosen already is no news),
-   *  or the field was left with a start of several it did not take. */
+   *  or Enter or leaving the field did not take a start of several. */
   const nothing = $derived(
     options !== null &&
       folded(draft) !== '' &&
       (partsOf(draft).some((part) => suggested(options, part).length === 0) ||
+        refused === draft ||
         (!focused && (matches.length > 0 || isList(draft)))),
   );
   /** What it holds is wrong, or its text is refused in words: the one look of a wrong value. */
@@ -289,8 +290,10 @@
       return done;
     }
     if (draft.trim() === '') return false;
-    if (isList(draft)) takeNamed(partsOf(draft));
-    else if (chosen) draft = '';
+    if (isList(draft)) {
+      takeNamed(partsOf(draft));
+      refused = draft;
+    } else if (chosen) draft = '';
     return true;
   }
 
@@ -441,7 +444,7 @@
           aria-activedescendant={rows.length > 0 && mark >= 0 ? `${own}-list-${mark}` : undefined}
           aria-label={label ?? undefined}
           aria-invalid={wrong ? 'true' : undefined}
-          aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
+          aria-describedby={[described(), nothing ? `${own}-none` : null]
             .filter((part) => part !== null)
             .join(' ') || undefined}
           placeholder={placeholder ?? undefined}

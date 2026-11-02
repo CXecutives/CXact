@@ -96,7 +96,7 @@
 
 <Card hero testid="reader-head">
   <div class="body">
-    <div class="top" data-testid="reader-match">
+    <div class="top">
       {#if excluded}
         <ScoreRing ring={shown} size="md" ban testid="reader-ban" />
       {:else}

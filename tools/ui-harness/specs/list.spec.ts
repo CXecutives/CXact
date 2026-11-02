@@ -1774,6 +1774,47 @@ test('a section that stands first has no line, and its label stands where a day 
   expect(box.y - (await list(page).boundingBox())!.y).toBe(dayGap);
 });
 
+test('the last rows above a section go and come back: its heading glides, nothing jumps', async ({
+  page,
+}) => {
+  await setToken(page, '--dur-base', '450ms');
+  await open(page, WIN);
+  const heading = page.getByTestId('unscored-divider');
+  const days = page.getByTestId('job-rows').locator('[data-key]');
+  // A word of one scored job and one that is not scored.
+  await page.getByTestId('search').fill('Controller');
+  await expect(days).toHaveCount(1);
+  await expect(heading).toBeVisible();
+  await motionSettled(page);
+  const last = 'linkedin-4100200303';
+  const top = async (): Promise<number> => (await heading.boundingBox())!.y;
+  const line = (): Promise<string> =>
+    heading.evaluate((node) => getComputedStyle(node).borderTopWidth);
+  const parts = { heading: '[data-testid="unscored-divider"]' };
+
+  const from = await top();
+  expect(await line()).toBe('1px');
+  let frames = await logPainted(page, parts);
+  await rowMenu(page, last);
+  await menuItem(page, 'archive').click();
+  await expect(days).toHaveCount(0);
+  await motionSettled(page);
+  const to = await top();
+  expect(to).toBeLessThan(from);
+  await expect.poll(async () => (await frames()).at(-1)!.heading).toBe(to);
+  expectGlide(await frames(), 'heading', from, to);
+  expect(await line()).toBe('0px');
+
+  // Rückgängig: the room comes back with the row.
+  frames = await logPainted(page, parts);
+  await page.getByTestId('toast-action').last().click();
+  await expect(days).toHaveCount(1);
+  await motionSettled(page);
+  await expect.poll(async () => (await frames()).at(-1)!.heading).toBe(from);
+  expectGlide(await frames(), 'heading', to, from);
+  expect(await line()).toBe('1px');
+});
+
 test('the days stand until the answer of another order comes', async ({ page }) => {
   await open(page, `${WIN}&scenario=slow`);
   const days = page.getByTestId('day-heading');
@@ -2659,6 +2700,20 @@ test.describe('search', () => {
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { place: 'trash', search: 'Leitung' }));
+  });
+
+  test('the buttons to the other places stand until the list of the place pressed comes', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=slow`);
+    await page.getByTestId('search').fill('Leitung');
+    const also = page.getByTestId('also-in').getByRole('button');
+    await expect(also).toHaveText([T.place.archive, T.place.trash]);
+    await page.getByTestId('also-archive').click();
+    // The question has gone out, its answer takes a while: they go with the rows they stand under.
+    await expect.poll(async () => (await lastQuery(page))?.place).toBe('archive');
+    await expect(also).toHaveText([T.place.archive, T.place.trash]);
+    await expect(also).toHaveText([T.place.inbox, T.place.trash]);
   });
 
   test('hits elsewhere are a button under an empty search that goes there', async ({ page }) => {

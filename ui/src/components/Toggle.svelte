@@ -21,14 +21,10 @@
   interface Props {
     checked: boolean;
     label: string;
-    /** Show the label next to the switch (otherwise it is only the accessible name). */
-    showLabel?: boolean;
     disabled?: boolean;
     disabledReason?: string | null;
     /** Ties the switch to the text of its SettingRow (`for`), which names and describes it. */
     id?: string | null;
-    /** The id of a text that describes the switch outside a SettingRow (only while shown). */
-    describedby?: string | null;
     testid?: string | null;
     /** Return the save's promise: the switch shows the new state until it settles. */
     onchange: (checked: boolean) => unknown;
@@ -37,11 +33,9 @@
   let {
     checked,
     label,
-    showLabel = false,
     disabled = false,
     disabledReason = null,
     id = null,
-    describedby = null,
     testid = null,
     onchange,
   }: Props = $props();
@@ -50,9 +44,6 @@
 
   /** The state shown while a save is on its way (null: show `checked`). */
   let pending = $state<boolean | null>(null);
-  const own = $props.id();
-  /** The element that names the switch: the label beside it, else the text of its row. */
-  const labelledby = $derived(showLabel ? `${own}-label` : id ? `${id}-label` : null);
   let attempt = 0;
   const shown = $derived(pending ?? checked);
 
@@ -69,53 +60,29 @@
   }
 </script>
 
-{#snippet control()}
-  <button
-    type="button"
-    role="switch"
-    class="toggle"
-    id={id ?? undefined}
-    aria-checked={shown}
-    aria-label={label}
-    aria-labelledby={labelledby ?? undefined}
-    aria-describedby={describedby ?? described() ?? undefined}
-    aria-disabled={disabled ? 'true' : undefined}
-    tabindex={disabled ? -1 : undefined}
-    data-testid={testid ?? undefined}
-    use:tooltip={disabled ? { text: disabledReason, toggle: true } : null}
-    onclick={() => void toggle()}
-  >
-    <span class="track"><span class="thumb"></span></span>
-  </button>
-{/snippet}
-
-{#if showLabel}
-  <!-- The label beside the switch names it but does not switch it. -->
-  <span class="with-label" class:off={disabled}>
-    {@render control()}
-    <span class="label" id="{own}-label">{label}</span>
-  </span>
-{:else}
-  {@render control()}
-{/if}
+<button
+  type="button"
+  role="switch"
+  class="toggle"
+  id={id ?? undefined}
+  aria-checked={shown}
+  aria-label={label}
+  aria-labelledby={id ? `${id}-label` : undefined}
+  aria-describedby={described() ?? undefined}
+  aria-disabled={disabled ? 'true' : undefined}
+  tabindex={disabled ? -1 : undefined}
+  data-testid={testid ?? undefined}
+  use:tooltip={disabled ? { text: disabledReason, toggle: true } : null}
+  onclick={() => void toggle()}
+>
+  <span class="track"><span class="thumb"></span></span>
+</button>
 
 <style>
   .toggle {
     display: inline-flex;
     flex: none;
     align-items: center;
-  }
-
-  .with-label {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-12);
-    color: var(--text);
-    font: var(--type-md);
-  }
-
-  .with-label.off .label {
-    opacity: var(--opacity-disabled);
   }
 
   .track {

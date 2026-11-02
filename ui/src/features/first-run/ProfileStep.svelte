@@ -21,21 +21,12 @@
     lead: string;
     /** The heading's element (it takes the focus). */
     headingElement?: HTMLElement | null;
-    /** The page's element (the setup scrolls its view to the top). */
-    element?: HTMLElement | null;
     onback: () => void;
     /** The profile is saved and complete: the next step. */
     ondone: () => void;
   }
 
-  let {
-    heading,
-    lead,
-    headingElement = $bindable(null),
-    element = $bindable(null),
-    onback,
-    ondone,
-  }: Props = $props();
+  let { heading, lead, headingElement = $bindable(null), onback, ondone }: Props = $props();
 
   let view = $state<ProfileView | null>(null);
   let busy = $state(false);
@@ -101,7 +92,7 @@
   </div>
 {/snippet}
 
-<Page ground="bg" {head} bind:element testid="first-profile">
+<Page ground="bg" {head} testid="first-profile">
   <ProfileView bind:this={view} setup />
 </Page>
 

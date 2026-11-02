@@ -1038,6 +1038,86 @@ test('text a closed list refuses draws the red edge of every wrong value, once t
   expect(await edge(countries(page))).toBe(calm);
 });
 
+test('Enter on a list of starts that fit several says so at once; a change takes that back', async ({
+  page,
+}) => {
+  await profile(page);
+  const land = countryInput(page);
+  const none = page.getByTestId('profile-countries-none');
+  const before = await chips(countries(page)).allTextContents();
+  await land.click();
+  await page.keyboard.type('Sch, P');
+  await expect(none).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(none).toHaveText(T.profile.field.countryNone);
+  await expect(land).toBeFocused();
+  await expect(land).toHaveValue('Sch, P');
+  expect(await chips(countries(page)).allTextContents()).toEqual(before);
+  await page.keyboard.type(',');
+  await expect(none).toHaveCount(0);
+});
+
+test('a list under a field is no Tab stop, also where it scrolls: Tab goes on from the field', async ({
+  page,
+}) => {
+  await profile(page);
+  await page.setViewportSize({ width: 480, height: 360 });
+  const land = countryInput(page);
+  await land.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+  await land.click();
+  await page.keyboard.type('S');
+  const options = page.getByTestId('profile-countries-options');
+  await expect(options).toBeVisible();
+  await animationsDone(page);
+  expect(await options.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
+  await page.keyboard.press('Tab');
+  await expect(options).toHaveCount(0);
+  await expect(page.getByTestId('profile-regions').locator('input')).toBeFocused();
+});
+
+test('going up from the keyboard a control stands clear of the fade under the top bar', async ({
+  page,
+}) => {
+  await profile(page);
+  await page.setViewportSize({ width: 480, height: 360 });
+  await page
+    .getByTestId('profile-regions')
+    .locator('input')
+    .evaluate((node: HTMLElement) => {
+      node.scrollIntoView({ block: 'center' });
+      node.focus();
+    });
+  const FADE = await page.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fade-height')),
+  );
+  const CLEAR = await page.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--space-8')),
+  );
+  const place = (): Promise<{ gap: number; scrolled: number }> =>
+    page.evaluate(() => {
+      const node = document.activeElement as HTMLElement;
+      const pane = node.closest<HTMLElement>('[data-key-pane]')!;
+      return {
+        gap: node.getBoundingClientRect().top - pane.getBoundingClientRect().top,
+        scrolled: pane.scrollTop,
+      };
+    });
+  let rose = false;
+  for (let step = 0; step < 8; step += 1) {
+    const was = (await place()).scrolled;
+    await page.keyboard.press('Shift+Tab');
+    await expect
+      .poll(async () => {
+        const now = await place();
+        return now.scrolled === 0 || now.gap >= FADE + CLEAR - 1;
+      })
+      .toBe(true);
+    rose ||= (await place()).scrolled < was;
+  }
+  // The way up scrolled the view: the rule was at work, not a page that stood.
+  expect(rose).toBe(true);
+});
+
 test('a list typed into a closed list takes what it names, the rest stays and says so', async ({
   page,
 }) => {

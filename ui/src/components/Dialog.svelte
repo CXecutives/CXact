@@ -1,6 +1,5 @@
 <!--
-  Modal question with at most two actions: confirm | danger, plus an optional third one
-  (`altLabel`, a secondary button, as "Verwerfen" in "Änderungen speichern?"). The round 10
+  Modal question with at most two actions: confirm | danger. The round 10
   draft: white, no edge, 14 round, 22 inside, the dialog's deep shadow, at most 400 wide (16
   from the window's sides in a narrow one); its heading 16/650 ink, the sentence 14 muted 6
   under it, the buttons 8 apart 22 under the text, in columns of one width (the widest
@@ -17,16 +16,13 @@
   action shows inside the dialog (`error`), never behind the scrim. The toasts lie below the
   scrim and wait while it is open.
   Pressing inside and releasing on the scrim keeps it open; only the left button counts.
-  The buttons follow the OS: the action first on Windows (then the third action, then
-  cancel), last (right) on macOS with the third action on the far left. The scrim covers
+  The buttons follow the OS: the action first on Windows, last (right) on macOS. The scrim covers
   the whole window, the page-drawn title bar included (owner, 2026-10-28: it is part of the
   app). The window still moves by the bar and that cancels nothing: on Windows its caption
   window (platform.rs) answers over the page, on macOS the bar's drag region rises over the
   scrim (TitleBar), and the dialog stays clear of the bar's height.
   A dialog may hold content of its own (`children`: the list of the backups, the mailbox
-  form). The sentence under the heading is left out where the heading says it all. An action
-  that can be stopped while it runs (the check of "Verbinden") keeps cancel and Esc live
-  (`stoppable`). A dialog that only shows something (an alert mail read in the app) has one
+  form). The sentence under the heading is left out where the heading says it all. A dialog that only shows something (an alert mail read in the app) has one
   button, its confirm (`single`), and Esc closes it.
 -->
 <script lang="ts">
@@ -53,16 +49,11 @@
     confirmLabel: string;
     cancelLabel?: string;
     busy?: boolean;
-    /** Cancel and Esc stay live while busy (they stop the action; `oncancel` does). */
-    stoppable?: boolean;
     /** Why the action failed (shown inside the dialog, which stays open). */
     error?: string | null;
     testid?: string | null;
-    /** A third action next to confirm and cancel (secondary). */
-    altLabel?: string | null;
     /** Only the confirm button: the dialog shows something, it asks nothing. */
     single?: boolean;
-    onalt?: () => void;
     onconfirm: () => void;
     oncancel?: () => void;
   }
@@ -76,12 +67,9 @@
     confirmLabel,
     cancelLabel,
     busy = false,
-    stoppable = false,
     error = null,
     testid = null,
-    altLabel = null,
     single = false,
-    onalt,
     onconfirm,
     oncancel,
   }: Props = $props();
@@ -90,7 +78,7 @@
   let pressedOnScrim = false;
 
   function cancel(): void {
-    if (busy && !stoppable) return;
+    if (busy) return;
     open = false;
     oncancel?.();
   }
@@ -172,19 +160,10 @@
               <Button
                 variant="secondary"
                 label={cancelLabel ?? t.common.cancel}
-                disabled={busy && !stoppable}
+                disabled={busy}
                 isDefault={variant === 'danger'}
                 testid="dialog-cancel"
                 onclick={cancel}
-              />
-            {/snippet}
-            {#snippet alt()}
-              <Button
-                variant="secondary"
-                label={altLabel ?? ''}
-                disabled={busy}
-                testid="dialog-alt"
-                onclick={() => onalt?.()}
               />
             {/snippet}
             {#snippet act()}
@@ -197,11 +176,10 @@
                 onclick={confirm}
               />
             {/snippet}
-            {#if !actionFirst && !single && altLabel}<span class="apart">{@render alt()}</span>{/if}
             <div class="pair">
               {#if actionFirst}
                 {@render act()}
-                {#if !single}{#if altLabel}{@render alt()}{/if}{@render dismiss()}{/if}
+                {#if !single}{@render dismiss()}{/if}
               {:else}
                 {#if !single}{@render dismiss()}{/if}
                 {@render act()}
@@ -291,9 +269,7 @@
     --btn-min: var(--button-pair-min);
 
     display: flex;
-    flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-8);
     margin-top: var(--dialog-actions-gap);
   }
 
@@ -303,11 +279,5 @@
     grid-auto-columns: 1fr;
     grid-auto-flow: column;
     gap: var(--space-8);
-  }
-
-  /* On macOS the third action stands apart on the left. */
-  .apart {
-    display: flex;
-    margin-right: auto;
   }
 </style>

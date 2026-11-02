@@ -238,37 +238,39 @@
               </Group>
             </Section>
             <Section id="sheet-fields" name="fields" heading="Felder">
-              <Group testid="sheet-fields">
-                <div class="form-row">
-                  <Field
-                    row
-                    label="App-Passwort"
-                    for="sheet-password"
-                    info="Ein eigenes Passwort nur für CXact. Du erstellst es bei deinem Anbieter."
-                    links={[
-                      { label: 'IMAP-Abruf erlauben', onclick: noop },
-                      { label: 'App-Passwort erstellen', onclick: noop },
-                    ]}
-                  >
-                    <TextField id="sheet-password" value="" placeholder="16 Buchstaben" />
-                  </Field>
-                </div>
-                <div class="form-row" data-missing>
-                  <Field row label="Wunschrollen" for="sheet-roles">
-                    <TextField id="sheet-roles" value="" placeholder="Rolle hinzufügen" />
-                  </Field>
-                </div>
-                <div class="form-row">
-                  <Field
-                    row
-                    label="Wunschtagessatz"
-                    for="sheet-rate"
-                    error="Gib einen Betrag bis 100.000 € ein."
-                  >
-                    <TextField id="sheet-rate" value="1.000.000" invalid suffix="€ am Tag" />
-                  </Field>
-                </div>
-              </Group>
+              <div data-testid="sheet-fields">
+                <Group>
+                  <div class="form-row">
+                    <Field
+                      row
+                      label="App-Passwort"
+                      for="sheet-password"
+                      info="Ein eigenes Passwort nur für CXact. Du erstellst es bei deinem Anbieter."
+                      links={[
+                        { label: 'IMAP-Abruf erlauben', onclick: noop },
+                        { label: 'App-Passwort erstellen', onclick: noop },
+                      ]}
+                    >
+                      <TextField id="sheet-password" value="" placeholder="16 Buchstaben" />
+                    </Field>
+                  </div>
+                  <div class="form-row" data-missing>
+                    <Field row label="Wunschrollen" for="sheet-roles">
+                      <TextField id="sheet-roles" value="" placeholder="Rolle hinzufügen" />
+                    </Field>
+                  </div>
+                  <div class="form-row">
+                    <Field
+                      row
+                      label="Wunschtagessatz"
+                      for="sheet-rate"
+                      error="Gib einen Betrag bis 100.000 € ein."
+                    >
+                      <TextField id="sheet-rate" value="1.000.000" invalid suffix="€ am Tag" />
+                    </Field>
+                  </div>
+                </Group>
+              </div>
               <Group>
                 <ItemList
                   items={competences}
@@ -451,10 +453,9 @@
 
 <Dialog
   bind:open={confirmOpen}
-  heading="Änderungen speichern?"
-  text="Dein Profil hat Änderungen, die noch nicht gespeichert sind."
-  confirmLabel="Speichern"
-  altLabel="Verwerfen"
+  heading="Änderung verwerfen?"
+  text="Die letzte Änderung lässt sich gerade nicht speichern."
+  confirmLabel="Verwerfen"
   onconfirm={() => (confirmOpen = false)}
 />
 <Dialog

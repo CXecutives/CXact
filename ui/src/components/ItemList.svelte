@@ -1,7 +1,7 @@
 <!--
   The entries of a list that carry a value (Kompetenzen with their years, Sprachen with their
   level; the Profil), as rows like every field of a group (owner, 2026-10-29, "A Zeilen"):
-  inside a group's box of rows (Group `rows`), at least as high as a field's row, 12 20 inside,
+  inside a group's box of rows, at least as high as a field's row, 12 20 inside,
   a hairline between them. A row holds the entry's name in the label's column (14/540, text a
   user would copy), its value in the control's column (`value`: the caller's field, a years
   field or a level's select, as wide as the same kind of field elsewhere) and at the end the

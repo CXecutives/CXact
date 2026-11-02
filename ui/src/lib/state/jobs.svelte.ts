@@ -6,7 +6,7 @@
 //   chunk, so 2000 jobs never block a frame, and a new list's first frame takes what the pane
 //   shows, so the chunks go on below the fold. A reload of the same list (sort, undo, the end
 //   of a run) asks for as many rows as it holds, keeps the rows that did not change and
-//   builds at most a chunk of new ones at once. Another list (place, tab, search) is
+//   builds at most a chunk of new ones at once. Another list (place, search) is
 //   a new generation of rows: the old rows go as one piece instead of one by one.
 // - Rows are plain objects (`$state.raw`): a change replaces the row, so only that row
 //   renders again, and no proxy sits between the template and 2000 jobs.
@@ -16,12 +16,10 @@
 //   update of a listed row moves them at once; during a run a counts-only query follows
 //   every update (throttled), so they stay exact for rows the page does not hold.
 // - During a run the new jobs of the run are inserted at the top (they fade in) and listed
-//   rows update in place (rings fill live); a job further down the list stays where the
-//   next load puts it. The list re-sorts once, when the run finishes, and keeps the
-//   selection.
+//   rows update in place (rings fill live); a job further down the list stays where the next
+//   load puts it. The list re-sorts once, when the run finishes, and keeps the selection.
 // - `mark_read` when the user opens a job (a click, the keyboard); a job the app opens by
-//   itself (the next one after a move) only once it has been looked at (`markSeen`). A new
-//   job keeps its dot until then; the list itself never changes for it.
+//   itself (the next one after a move) only once it has been looked at (`markSeen`).
 // - Like mail: every job is in one place (inbox, archive, trash); "fits anyway" is a flag of
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
@@ -29,9 +27,8 @@
 //   order and have one filter beside the search (the funnel, lib/state/filter.ts: portals, bands
 //   and the days the jobs came; both kept), the Papierkorb has neither: it stands by the day a
 //   job went there. The filter narrows the list and its counts like the search. The counts over
-//   every job never follow it. A query's counts
-//   narrow every place alike, so while a search looks under a filter one more counts-only query
-//   asks for the places under the other rule (`hitsIn`).
+//   every job never follow it. A query's counts narrow every place alike, so while a search looks
+//   under a filter one more counts-only query asks for the places under the other rule (`hitsIn`).
 // - The open job is kept per work folder: the next start opens it again (its place with it),
 //   only while it still lies where it lay and the list stands beside it.
 
@@ -104,7 +101,7 @@ interface RuleCounts {
 }
 
 class JobsStore {
-  /** The place the list shows (the tabs Aktuell, Archiv, Papierkorb). */
+  /** The place the list shows (Aktuell, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
@@ -205,8 +202,12 @@ class JobsStore {
     return this.#listed?.search ?? '';
   }
 
-  /** The order of the list the page holds (another may be on its way), until the first answer
-   *  the one that applies. */
+  /** The place of the list the page holds (another may be on its way). */
+  get listedPlace(): Place {
+    return this.#listed?.place ?? this.place;
+  }
+
+  /** The order of the list the page holds, until the first answer the one that applies. */
   get listedSort(): JobSort {
     return this.#listed?.sort ?? this.sort;
   }
@@ -469,7 +470,7 @@ class JobsStore {
     await Promise.all([this.load(), this.loadOverview()]);
   }
 
-  /** Another place. `dropSearch`: a place chosen in the tabs opens without the search, like
+  /** Another place. `dropSearch`: a place chosen in the sidebar opens without the search, like
    *  a folder of a mail app (the "Im Archiv (n)" links keep it). */
   setPlace(place: Place, dropSearch = false): void {
     // Another place: an open job of the one left behind closes, like a mail of another

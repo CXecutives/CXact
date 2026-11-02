@@ -20,7 +20,7 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import Notice, { type NoticeTone } from '$components/Notice.svelte';
+  import Notice from '$components/Notice.svelte';
   import StateBox from '$components/StateBox.svelte';
   import Group from '$components/Group.svelte';
   import PageHeader from '$components/PageHeader.svelte';
@@ -55,7 +55,7 @@
   import PortalRow from '../shared/PortalRow.svelte';
 
   /** A note keeps what happened and says it when it shows. */
-  type Feedback = { tone: NoticeTone; text: () => string };
+  type Feedback = { text: () => string };
 
   const cfg = $derived(app.state);
   /** What a locked button asks (null until the state is there). */
@@ -84,7 +84,7 @@
   function open(section: string, target: OpenTarget): void {
     note(section, null);
     invoke('open_target', { target }).catch((error: unknown) =>
-      note(section, { tone: 'danger', text: () => errorText(error) }),
+      note(section, { text: () => errorText(error) }),
     );
   }
 
@@ -118,7 +118,7 @@
       else if (picked.profile === 'copied') toasts.show(t.settings.folderMoved);
       else toasts.show(t.settings.folderFiles);
     } catch (error) {
-      note(section, { tone: 'danger', text: () => errorText(error) });
+      note(section, { text: () => errorText(error) });
     } finally {
       choosing = false;
     }
@@ -189,18 +189,13 @@
 {#snippet noteOf(section: string, feedback: Feedback)}
   <div class="fold" transition:unfold>
     <div class="note">
-      <Notice tone={feedback.tone} text={feedback.text()} testid="{section}-note" />
+      <Notice tone="danger" text={feedback.text()} testid="{section}-note" />
     </div>
   </div>
 {/snippet}
 
 {#snippet head()}
-  <PageHeader
-    heading={t.nav.settings}
-    headingTestid="settings-heading"
-    column="page"
-    testid="settings-head"
-  />
+  <PageHeader heading={t.nav.settings} headingTestid="settings-heading" column="page" />
 {/snippet}
 
 <Page testid="settings" bind:element={root} {head}>

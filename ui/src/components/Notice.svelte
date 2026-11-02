@@ -1,14 +1,14 @@
 <!--
   Feedback where the action happened: a sign and a sentence in the app's small text, with at
   most one small secondary button centred on its first line (a field's or a list's failure):
-  info and warning colour only their sign (the words stay ink), danger is the one red of what is
+  a warning colours only its sign (the words stay ink), danger is the one red of what is
   wrong all through. The sentence of a failure or a warning copies (`data-copy`), to search for
   it or to say it to someone. A notice that appears in a view already on screen rises 4 px and
   fades in (150 ms); one that comes with its view is simply there. It goes at once, so that what
   takes its place (a field's hint) never stands beside it.
 -->
 <script lang="ts" module>
-  export type NoticeTone = 'info' | 'warning' | 'danger';
+  export type NoticeTone = 'warning' | 'danger';
 </script>
 
 <script lang="ts">
@@ -33,24 +33,21 @@
   let { tone, text, action = null, testid = null, textTestid = null }: Props = $props();
 
   const ICONS: Record<NoticeTone, IconName> = {
-    info: 'info',
     warning: 'warning',
     danger: 'warning',
   };
-
-  const alert = $derived(tone === 'danger' || tone === 'warning');
 </script>
 
 <div
   class="notice {tone}"
   class:acts={action !== null}
-  role={alert ? 'alert' : 'status'}
+  role="alert"
   data-testid={testid ?? undefined}
   in:rise={{ distance: 'sm' }}
 >
   <!-- 14 beside the 13 px sentence, the inline size (centred on its 18 px line). -->
   <span class="icon"><Icon name={ICONS[tone]} size="xs" /></span>
-  <p class="text" data-copy={alert ? '' : undefined} data-testid={textTestid ?? undefined}>
+  <p class="text" data-copy data-testid={textTestid ?? undefined}>
     {text}
   </p>
   {#if action}
@@ -100,12 +97,7 @@
     align-items: center;
   }
 
-  /* Info and a warning: the sign in its colour, the words ink. */
-  .info {
-    --notice-fg: var(--text);
-    --notice-sign: var(--info);
-  }
-
+  /* A warning: the sign in its colour, the words ink. */
   .warning {
     --notice-fg: var(--text);
     --notice-sign: var(--warning);

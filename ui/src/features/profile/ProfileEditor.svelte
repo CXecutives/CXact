@@ -325,10 +325,10 @@
 
   /* The rows of a box, a hairline from the text between them like the rows of Einstellungen;
      a row that unfolds (Mindestgehalt) brings its line along. Brought into view (Ergänzen, Weiter)
-     a row stands clear of the top bar's fade. */
+     a row stands clear of the top bar's fade (the view's scroll-padding). */
   .cell {
     position: relative;
-    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
+    scroll-margin-top: var(--space-8);
   }
 
   .cell + .cell::after {
@@ -350,13 +350,11 @@
   /* The first of a group with its group's title whole above it, as a list's row may be. */
   .cell:first-child,
   .group[data-field] :global([data-arrive]) {
-    scroll-margin-top: calc(
-      var(--fade-height) + var(--space-8) + var(--section-head-min) + var(--group-heading-gap)
-    );
+    scroll-margin-top: calc(var(--space-8) + var(--section-head-min) + var(--group-heading-gap));
   }
 
   /* Tab and focus scrolling keep a field clear of the top bar's fade. */
   .editor :global(:is(input, textarea, button, [role='switch'])) {
-    scroll-margin-top: calc(var(--fade-height) + var(--space-8));
+    scroll-margin-top: var(--space-8);
   }
 </style>

@@ -113,7 +113,6 @@
   --surface-press: hsl(var(--p-wash) / 0.07);
   /* The selected list row: a very light warm wash; one step deeper under the pointer and one
      more while pressed; grey while the window is inactive (like Mail, Explorer). */
-  --surface-selected: hsl(var(--p-coral-25));
   --surface-selected-inactive: hsl(var(--p-ink) / 0.06);
   /* The track: a tile's ground, a meter's. */
   --surface-track: hsl(var(--p-track));

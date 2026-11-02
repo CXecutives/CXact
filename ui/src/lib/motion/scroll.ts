@@ -1,4 +1,4 @@
-// Scrolling by the keys and by a jump inside a pane (PageUp/PageDown, Space, the arrows with
+// Scrolling by the keys and by a jump inside a pane (PageUp/PageDown, the arrows with
 // the focus nowhere, Home/End, the jump to a passage of the ad): one short tween of
 // --dur-slow with --ease-out, the same in both engines, instead of the engine's own smooth
 // scroll (its length and curve differ per engine and cannot be set). Under reduced motion

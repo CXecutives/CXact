@@ -10,13 +10,6 @@
   the subtle grey of icons (the placeholder --field-placeholder). The clear button pops in with the first character and leaves at once. A wrong
   value (a password Gmail refused) shows as the red edge (`invalid`) and the one sentence of
   its Field; nothing shakes.
-  With `options` (the languages of the profile) it suggests while typing, like the countries
-  field: the options whose names start with the text drop down under it (Suggestions.svelte,
-  the one look of a menu), the arrows move the one mark, Enter or a click takes the marked
-  one, Esc closes the list; any other text stays as typed (the field takes free text). With
-  `suggestions` (the engine's words, a competence) it suggests terms the same way, but
-  nothing is marked until the arrows or the pointer mark one: Enter without a mark goes on to
-  the form.
   `trailing` puts a small control inside the field at its right end, like the picker button
   of a native date field (a button `inField`). `suffix` is a quiet unit at the field's right
   end (`€ am Tag`, `Jahre`), read with the value; like the magnifier it lies over the input, so
@@ -24,27 +17,13 @@
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
-  import type { Action } from 'svelte/action';
   import { cssVars, px } from '$lib/actions/cssVars';
-  import {
-    chipKeys,
-    FIELD_ATTRIBUTES,
-    formKeys,
-    withList,
-    type ChipKeyHandlers,
-  } from '$lib/input/input';
+  import { FIELD_ATTRIBUTES, formKeys } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
   import { describedBy } from '$lib/state/described';
   import { pop } from '$lib/motion/transitions';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
-  import Suggestions, {
-    folded,
-    suggest,
-    suggested,
-    type ChipOption,
-    type Vocabulary,
-  } from './Suggestions.svelte';
 
   interface Props {
     value: string;
@@ -58,10 +37,6 @@
     /** The ids of the texts that describe the field (default: the message of its Field,
      *  while it shows one). */
     describedby?: string | null;
-    /** Names to suggest while typing (free text stays possible). */
-    options?: readonly ChipOption[] | null;
-    /** Terms to suggest while typing, none marked at first (null: not loaded yet). */
-    suggestions?: Vocabulary | null | undefined;
     testid?: string | null;
     /** A small control inside the field at its right end. */
     trailing?: Snippet | null;
@@ -79,14 +54,13 @@
     invalid = false,
     disabled = false,
     describedby = null,
-    options = null,
-    suggestions = undefined,
     testid = null,
     trailing = null,
     suffix = null,
     oninput,
   }: Props = $props();
 
+  const own = $props.id();
   const described = describedBy();
   let revealed = $state(false);
   let input = $state<HTMLInputElement | null>(null);
@@ -97,56 +71,6 @@
     value = next;
     oninput?.(next);
   }
-
-  // ------------------------------------------------------------ suggestions
-  const own = $props.id();
-  let focused = $state(false);
-  /** Esc or a choice closed the list: it stays closed until the next character. */
-  let closed = $state(false);
-  const found = $derived(options === null ? [] : suggested(options, value));
-  /** The text is an option's name as it would be taken: nothing to suggest. */
-  const taken = $derived(found.some((option) => folded(option.label) === folded(value)));
-  const listed = $derived(focused && !closed && !taken && found.length > 0);
-  /** The suggested terms (none while the list is closed). */
-  const hints = $derived(suggestions && focused && !closed ? suggest(suggestions, value) : []);
-  const suggesting = $derived(options !== null || suggestions !== undefined);
-  /** The rows under the field: its options (the first marked) or its terms (none marked). */
-  const rows = $derived(
-    hints.length > 0 ? hints : listed ? found.map((option) => option.label) : [],
-  );
-  let mark = $state(-1);
-  const listId = $derived(hints.length > 0 ? `${own}-hints` : `${own}-options`);
-
-  /** A row goes in as the text; the list closes until the next character. */
-  function take(index: number): void {
-    const text = rows[index];
-    if (text === undefined) return;
-    update(text);
-    closed = true;
-  }
-
-  /** Enter takes the marked row, Esc closes the list, the arrows move the mark; with no list
-   *  every key goes on to the field and the form. */
-  const suggestKeys: ChipKeyHandlers = withList(
-    {
-      get count() {
-        return rows.length;
-      },
-      get mark() {
-        return mark;
-      },
-      get none() {
-        return hints.length > 0;
-      },
-      setMark: (index) => (mark = index),
-      take,
-      close: () => (closed = true),
-    },
-    { commit: () => false, removeLast: () => false, clear: () => false },
-  );
-  /** The keys of the list only for a field that suggests. */
-  const listKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) =>
-    suggesting ? chipKeys(node, handlers) : undefined;
 
   function clear(): void {
     update('');
@@ -200,35 +124,12 @@
     placeholder={placeholder ?? undefined}
     {disabled}
     data-testid={testid ?? undefined}
-    role={suggesting ? 'combobox' : undefined}
-    aria-autocomplete={suggesting ? 'list' : undefined}
-    aria-expanded={suggesting ? rows.length > 0 : undefined}
-    aria-controls={rows.length > 0 ? listId : undefined}
-    aria-activedescendant={rows.length > 0 && mark >= 0 ? `${listId}-${mark}` : undefined}
     spellcheck={FIELD_ATTRIBUTES.spellcheck}
     autocorrect={FIELD_ATTRIBUTES.autocorrect}
     autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
     autocomplete={FIELD_ATTRIBUTES.autocomplete}
-    use:listKeys={suggestKeys}
-    onfocus={() => (focused = true)}
-    onblur={() => (focused = false)}
-    oninput={(event) => {
-      closed = false;
-      update(event.currentTarget.value);
-      mark = hints.length > 0 || !listed ? -1 : 0;
-    }}
+    oninput={(event) => update(event.currentTarget.value)}
   />
-  {#if suggesting}
-    <Suggestions
-      id={listId}
-      items={rows}
-      active={mark}
-      label={label ?? placeholder}
-      testid={testid ? `${testid}-${hints.length > 0 ? 'suggestions' : 'options'}` : null}
-      onpick={(text) => take(rows.indexOf(text))}
-      onmark={(index) => (mark = index)}
-    />
-  {/if}
   {#if kind === 'password'}
     <span class="trail" data-field-box>
       <Button

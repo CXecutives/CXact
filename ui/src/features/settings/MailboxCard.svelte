@@ -31,7 +31,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
-  import { unfold } from '$lib/motion/transitions';
+  import { foldAside, unfold } from '$lib/motion/transitions';
   import { primaryFirst } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { MAILBOX_FAILURES } from '$lib/state/run.svelte';
@@ -130,7 +130,7 @@
 </script>
 
 {#snippet opener(testid: string, icon: 'edit' | 'add', label: string)}
-  <span class="opener" bind:this={opening}>
+  <span class="call" bind:this={opening} transition:foldAside={{ on: false }}>
     <Button
       variant="secondary"
       {icon}
@@ -173,18 +173,20 @@
     >
       {#if !editing}
         {@render opener('mailbox-change', 'edit', t.common.edit)}
-        <Button
-          variant="secondary"
-          icon="trash"
-          label={t.common.remove}
-          disabled={locked !== null}
-          disabledReason={locked}
-          testid="mailbox-remove"
-          onclick={() => {
-            removeError = null;
-            confirmRemove = true;
-          }}
-        />
+        <span class="call" transition:foldAside={{ on: false }}>
+          <Button
+            variant="secondary"
+            icon="trash"
+            label={t.common.remove}
+            disabled={locked !== null}
+            disabledReason={locked}
+            testid="mailbox-remove"
+            onclick={() => {
+              removeError = null;
+              confirmRemove = true;
+            }}
+          />
+        </span>
       {/if}
     </SettingRow>
   </div>
@@ -234,9 +236,10 @@
 />
 
 <style>
-  /* The row's button keeps its place in the row's buttons. */
-  .opener {
-    display: contents;
+  /* A button of the row in its place in the row's buttons, a wrapper that comes and goes with it
+     (foldAside: in a narrow box its line closes with the form's fold, so nothing twitches). */
+  .call {
+    display: grid;
   }
 
   /* Folds open and away with its own padding (a margin would jump at once). */

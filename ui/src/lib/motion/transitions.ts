@@ -3,9 +3,10 @@
 //
 // The rules of all motion in the UI (lib/motion is their one home):
 //   - Only transform and opacity move, plus colour and stroke-dashoffset. The exceptions are
-//     single small boxes: the height of a row or line that folds or unfolds, the width of a
-//     button that gives up its room in a row (foldAside), and the size of an element out of the
-//     flow that glides to another box (glide.ts, barSlide). End values are whole pixels.
+//     single small boxes: the height of a row or line that folds or unfolds, the room above the
+//     heading under it (headingRoom), the width of a button that gives up its room in a row
+//     (foldAside), and the size of an element out of the flow that glides to another box
+//     (glide.ts, barSlide). End values are whole pixels.
 //   - One curve per kind: entries ease out (--ease-out, 150 to 180 ms), exits ease in
 //     (--ease-in, 60 to 100 ms), every glide (a marker, a thumb, a chevron, rows that move)
 //     180 ms with --ease-out. Two travels: --move-sm (4 px) for small things and every exit,
@@ -33,6 +34,7 @@
 
 import { flip as svelteFlip } from 'svelte/animate';
 import type { AnimationConfig } from 'svelte/animate';
+import type { Action } from 'svelte/action';
 import type { TransitionConfig } from 'svelte/transition';
 import {
   crossfadeDuration,
@@ -233,6 +235,35 @@ export function rowCollapse(node: Element, { on }: CollapseParams): TransitionCo
     css: (t) => `overflow: hidden; height: ${Math.round(t * height)}px; opacity: ${t}`,
   };
 }
+
+/**
+ * A heading that comes to stand first or stops to (`first`; a section's, when the last rows above
+ * it leave or come back): its class holds the room above it, and that room goes or comes in the
+ * time and curve of the fold above it (rowCollapse, unfold), so the heading and what is below glide
+ * on in one move. `use:headingRoom={first}` on the heading.
+ */
+export const headingRoom: Action<HTMLElement, boolean> = (node, first) => {
+  const room = (): Keyframe => {
+    const { marginTop, paddingTop, borderTopWidth } = getComputedStyle(node);
+    return { marginTop, paddingTop, borderTopWidth };
+  };
+  let settled = room();
+  let motion: Animation | null = null;
+  return {
+    update(next) {
+      if (next === first) return;
+      first = next;
+      motion?.cancel();
+      const from = settled;
+      settled = room();
+      motion = play(node, [from, settled], { duration: 'base', easing: next ? 'in' : 'out' });
+      motion?.addEventListener('finish', () => motion?.cancel());
+    },
+    destroy() {
+      motion?.cancel();
+    },
+  };
+};
 
 /**
  * Something that comes and goes in the flow (a line under the list header, the minimum salary,

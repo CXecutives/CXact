@@ -16,22 +16,21 @@
     /** The caption's test id. */
     captionTestid?: string | null;
     /** The box's test id. */
-    testid?: string | null;
     children: Snippet;
   }
 
-  let { caption = null, captionTestid = null, testid = null, children }: Props = $props();
+  let { caption = null, captionTestid = null, children }: Props = $props();
 </script>
 
 {#if caption !== null}
   <div class="captioned">
     <h3 class="caption" data-testid={captionTestid ?? undefined}>{caption}</h3>
-    <div class="box" data-testid={testid ?? undefined}>
+    <div class="box">
       {@render children()}
     </div>
   </div>
 {:else}
-  <div class="box" data-testid={testid ?? undefined}>
+  <div class="box">
     {@render children()}
   </div>
 {/if}

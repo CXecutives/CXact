@@ -1,6 +1,6 @@
 <!--
-  The Jobs view on the white sheet of the shell: left the list column with its header (the
-  places, "Jobs suchen", the search, the order and the filter; a hairline under it once the
+  The Jobs view on the white sheet of the shell: left the list column with its header ("Jobs
+  suchen", the search, the order and the filter; a hairline under it once the
   list scrolled where no day's heading sticks), the run's strip and the list; a hairline;
   right the reader (under the top bar's fade), or with nothing selected its empty state ("Kein
   Job gewählt"). No cards, no shadows. A place without jobs (or a list that did not load) has

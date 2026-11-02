@@ -73,7 +73,6 @@
     repeats?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
-    /** The glyph under the pointer and the keyboard focus: what a click does. */
     /** The faces that take this button's place: it keeps the width of the widest. */
     sizeTo?: readonly ButtonFace[] | null;
     testid?: string | null;

@@ -233,7 +233,7 @@
         </section>
       {:else if app.state === null}
         <!-- Until the state is known nothing is guessed (no jobs view flashing before the first run). -->
-        <section class="view fixed stage" data-testid="view-loading">
+        <section class="view fixed stage">
           <div class="center">
             {#if app.slow}<Spinner size="lg" />{/if}
           </div>
@@ -426,6 +426,7 @@
   .view:not(.fixed) {
     padding-left: var(--scrollbar-room);
     overflow-y: scroll;
+    scroll-padding-top: var(--fade-height);
   }
 
   /* The fade under the top bar (24 px): the view's ground into nothing at the top of a view

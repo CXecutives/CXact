@@ -42,7 +42,6 @@
     disabledReason?: string | null;
     invalid?: boolean;
     /** Default: the message of its Field, while it shows one. */
-    describedby?: string | null;
     testid?: string | null;
     onchange: (id: Id) => void;
   }
@@ -57,7 +56,6 @@
     disabled = false,
     disabledReason = null,
     invalid = false,
-    describedby = null,
     testid = null,
     onchange,
   }: Props = $props();
@@ -109,7 +107,7 @@
     : menuItemId(open, menuState.active)}
   aria-disabled={disabled ? 'true' : undefined}
   aria-invalid={invalid ? 'true' : undefined}
-  aria-describedby={describedby ?? described() ?? undefined}
+  aria-describedby={described() ?? undefined}
   tabindex={disabled && !disabledReason ? -1 : undefined}
   data-testid={testid ?? undefined}
   use:tooltip={disabled ? { text: disabledReason, toggle: true } : null}

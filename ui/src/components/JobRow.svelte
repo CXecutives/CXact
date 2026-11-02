@@ -1,6 +1,6 @@
 <!--
-  One job in the list, one line (the round 10 draft, user decision 2026-10-24): the ring (30)
-  and the title (14/540). Nothing else: no company, place, rate, date or dot (the reader and
+  One job in the list, one line (the round 10 draft, user decision 2026-10-24): the ring (34)
+  and the title. Nothing else: no company, place, rate, date or dot (the reader and
   the day's heading have them). The title stays on one line (every row one height; a cut
   title, and one that fits but ends under the row's tools, shows in full in a tooltip; while
   a search is on, its words are marked in a soft yellow, in any case and with or without

@@ -718,7 +718,8 @@ function removesByKey(event: KeyboardEvent): boolean {
 
 /**
  * A control the keyboard focuses stays clear of its scroll area's edges with its ring and a
- * gap (--space-8), below a sticky band too (the area's scroll-padding). The engines scroll a
+ * gap (--space-8), below a sticky band or the fade under the top bar too (the area's
+ * scroll-padding). The engines scroll a
  * focused control only until it touches the edge, and WebKit ignores scroll-margin there.
  */
 export function keepInView(node: HTMLElement): void {

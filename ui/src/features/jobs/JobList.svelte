@@ -348,7 +348,7 @@
   // A search looks in the list's place; the other places that list hits are named under them.
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
   const elsewhere = $derived(
-    searching ? PLACES.filter((other) => other !== place && jobs.hitsIn(other) > 0) : [],
+    searching ? PLACES.filter((other) => other !== jobs.listedPlace && jobs.hitsIn(other) > 0) : [],
   );
 
   /* ---------------------------------------------------------------------- opens */
@@ -748,7 +748,7 @@
             />
           {/each}
         </div>
-        {#each shownSections as section (section.id)}
+        {#each shownSections as section, index (section.id)}
           <div
             class="section"
             in:unfold={{ on: allIn(section.jobs, returning) }}
@@ -758,6 +758,7 @@
               label={section.label}
               open={section.open}
               ontoggle={section.toggle}
+              first={index === 0 && days.length === 0}
               testid="{section.id}-divider"
             />
             {#if section.open}

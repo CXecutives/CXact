@@ -46,7 +46,7 @@ const WIDTH = 100;
 const CONTRAST = [
   {
     text: ['text', 'text-muted', 'text-heading', 'text-label', 'link'],
-    on: ['bg', 'surface', 'surface-selected', 'surface-hover/surface'],
+    on: ['bg', 'surface', 'selection-tint', 'surface-hover/surface'],
   },
   {
     text: ['text'],
@@ -61,7 +61,7 @@ const CONTRAST = [
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info'], on: ['surface'] },
-  { text: ['score-digits'], on: ['surface', 'surface-selected'] },
+  { text: ['score-digits'], on: ['surface', 'selection-tint'] },
   // Words on the track's fill.
   { text: ['text', 'text-muted'], on: ['surface-track'] },
   // Round 10: the warm page of the job view and the pages, the chosen word of a menu, the red

@@ -22,8 +22,8 @@ export interface MenuItem {
   id: string;
   label: string;
   icon?: IconMeaning | null;
-  /** A choice of a group (the sort, a select's options): the chosen one is a track row with
-   *  navy words, no tick (a radio item, an option). */
+  /** A choice of a group (the sort, a select's options): the chosen one carries the tick (a
+   *  radio item, an option). */
   checked?: boolean | null;
   /** A switch of its own (Nur neue): a checkbox item, the tick while `checked`. */
   toggle?: boolean;

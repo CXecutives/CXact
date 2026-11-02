@@ -534,6 +534,29 @@ testWithRoom(
   },
 );
 
+testPixels(
+  "a press on the scrollbar of a field's list scrolls it and leaves the caret",
+  { width: 480, height: 360 },
+  async (page) => {
+    await open(page, `${WIN}&view=profile`);
+    const input = page.getByTestId('profile-countries').locator('input');
+    await input.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await input.click();
+    await page.keyboard.type('S');
+    const list = page.getByTestId('profile-countries-options');
+    await expect(list).toBeVisible();
+    await animationsDone(page);
+    const box = (await list.boundingBox())!;
+    const scrolled = (): Promise<number> => list.evaluate((node) => node.scrollTop);
+    expect(await scrolled()).toBe(0);
+    // Low on the track, below the thumb that stands at the top.
+    await page.mouse.click(box.x + box.width - 2, box.y + box.height - 3);
+    await expect.poll(scrolled).toBeGreaterThan(0);
+    await expect(input).toBeFocused();
+    await expect(list).toBeVisible();
+  },
+);
+
 for (const height of [860, 640]) {
   testPixels(
     `at ${height} high a menu's list leaves the corners and the edge of its frame alone`,

@@ -2,7 +2,7 @@
   The sidebar: a solid cream column below the top bar with a hairline at its right edge (the
   view's border), the views in it (Jobs, Profil, Einstellungen, each with its glyph and no
   count) and nothing at its foot. Its first entry is centred in the first row of every view,
-  so its middle lies on one line with the list's tabs and the pages' first heading (y = 59 on
+  so its middle lies on one line with the list's head and the pages' first heading (y = 59 on
   Windows; the entry's top at 43, a pixel above --head-pad, because the entry is 2 px taller
   than the row). The places of the jobs (Aktuell, Archiv, Papierkorb) stand under Jobs and fold
   by hand at its chevron, kept per user (owner, 2026-11-01); "Jobs" itself leads to Aktuell. The

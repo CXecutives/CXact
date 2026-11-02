@@ -5,7 +5,6 @@
     "surface":                { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "surface-raised":         { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "page":                   { "css": "hsl(30 12% 98.5%)", "rgb": [252, 251, 251] },
-    "surface-selected":       { "css": "hsl(13 70% 97.2%)", "rgb": [253, 245, 243] },
     "surface-track":          { "css": "hsl(30 12% 94.6%)", "rgb": [243, 241, 240] },
     "surface-inverse":        { "css": "hsl(213 54% 27%)", "rgb": [32, 65, 106] },
     "text":                   { "css": "hsl(30 10% 12%)", "rgb": [34, 31, 28] },

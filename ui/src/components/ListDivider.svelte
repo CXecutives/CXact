@@ -9,10 +9,12 @@
   locked, a section held open: no answer to the pointer (a press on it is a press on the list),
   no Tab stop, the chevron as it is. A
   section that stands first in the list has nothing to part from: no line, and its label stands
-  where a day's heading stands.
+  where a day's heading stands; the line and the room above it go with the fold of what leaves
+  (headingRoom), so nothing jumps.
 -->
 <script lang="ts">
   import { secondPress } from '$lib/input/input';
+  import { headingRoom } from '$lib/motion/transitions';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -21,15 +23,19 @@
     open: boolean;
     /** Shows or hides its rows (null: locked). */
     ontoggle?: (() => void) | null;
+    /** No rows stand above it in the list. */
+    first?: boolean;
     testid?: string | null;
   }
 
-  let { label, open, ontoggle = null, testid = null }: Props = $props();
+  let { label, open, ontoggle = null, first = false, testid = null }: Props = $props();
 </script>
 
 <button
   type="button"
   class="divider"
+  class:first
+  use:headingRoom={first}
   aria-expanded={open}
   disabled={ontoggle === null}
   data-testid={testid ?? undefined}
@@ -57,7 +63,7 @@
   }
 
   /* First in the list: no rows of the days above its section. */
-  :global(.rows:not(:has([data-key]))) + :global(.section) > .divider {
+  .first {
     margin-top: 0;
     padding: var(--day-head-pad);
     border-top: 0;

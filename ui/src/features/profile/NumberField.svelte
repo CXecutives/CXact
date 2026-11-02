@@ -27,7 +27,6 @@
     invalid?: boolean;
     /** Waits for another value (its field's hint says for which). */
     disabled?: boolean;
-    describedby?: string | null;
     testid?: string | null;
   }
 
@@ -40,7 +39,6 @@
     placeholder = null,
     invalid = false,
     disabled = false,
-    describedby = null,
     testid = null,
   }: Props = $props();
 
@@ -113,7 +111,7 @@
         {placeholder}
         {invalid}
         {disabled}
-        describedby={rounded ? `${noteId}-rounded` : (describedby ?? described())}
+        describedby={rounded ? `${noteId}-rounded` : described()}
         suffix={unit}
         {testid}
         oninput={(next) => {

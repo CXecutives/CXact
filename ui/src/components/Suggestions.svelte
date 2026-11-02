@@ -23,7 +23,7 @@
   }
 
   /** The options whose names start with `text` (a whole name first, then a word of one),
-   *  by name; none for no text. Shared with the suggestions of a TextField. */
+   *  by name; none for no text. */
   export function suggested(options: readonly ChipOption[], text: string): ChipOption[] {
     const query = folded(text);
     if (query === '') return [];
@@ -171,8 +171,10 @@
       class="suggestions"
       {id}
       role="listbox"
+      tabindex="-1"
       aria-label={label ?? undefined}
       data-testid={testid ?? undefined}
+      data-keep-focus
     >
       <div class="plate">
         {#each items as item, index (item)}
@@ -222,7 +224,8 @@
   }
 
   /* The list that scrolls and the rows on a plate of their own, as in a menu (Menu.svelte says
-     why). */
+     why). The engine makes a scroller without a control to reach a Tab stop: -1 takes it out, so
+     Tab goes on from the field; data-keep-focus leaves the caret when it is pressed. */
   .suggestions {
     min-height: 0;
     overflow-y: auto;

@@ -1226,6 +1226,57 @@ test('narrow, a portal switched off and on: its line closes and opens, the rows 
   }
 });
 
+test("narrow, the mailbox's form: its row's buttons go and come with the fold, nothing below twitches", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 480, height: 800 });
+  await settings(page);
+  const change = await reveal(page, page.getByTestId('mailbox-change'));
+  /** The distance to the next row, in every frame of `act`. */
+  const during = async (act: () => Promise<void>): Promise<number[]> => {
+    await page.evaluate(() => {
+      const top = (id: string): number =>
+        document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().top;
+      const log: number[] = [];
+      const store = window as unknown as { distances: number[]; logging: boolean };
+      store.distances = log;
+      store.logging = true;
+      const frame = (): void => {
+        if (!store.logging) return;
+        log.push(top('folder') - top('mailbox'));
+        requestAnimationFrame(frame);
+      };
+      frame();
+    });
+    await act();
+    await animationsDone(page);
+    return page.evaluate(() => {
+      const store = window as unknown as { distances: number[]; logging: boolean };
+      store.logging = false;
+      return store.distances;
+    });
+  };
+  const opening = await during(() => change.click());
+  expect(opening.at(-1)!).toBeGreaterThan(opening[0]!);
+  for (const [at, distance] of opening.entries()) {
+    if (at > 0) expect(distance, opening.join(' ')).toBeGreaterThanOrEqual(opening[at - 1]! - 0.5);
+  }
+  const closing = await during(() => page.keyboard.press('Escape'));
+  // A frame after the last one logged has shown the end.
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          document.querySelector('[data-testid="folder"]')!.getBoundingClientRect().top -
+          document.querySelector('[data-testid="mailbox"]')!.getBoundingClientRect().top,
+      ),
+    )
+    .toBeCloseTo(opening[0]!, 0);
+  for (const [at, distance] of closing.entries()) {
+    if (at > 0) expect(distance, closing.join(' ')).toBeLessThanOrEqual(closing[at - 1]! + 0.5);
+  }
+});
+
 test('narrow, a sign-in that stays keeps the line: the alert call folds aside, nothing below moves', async ({
   page,
 }) => {
