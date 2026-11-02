@@ -1045,6 +1045,12 @@
   --opacity-press: 0.7;
 }
 
+/* The window in the back (`data-window`, lib/platform.ts): the lone glyphs of the bar and the job
+   view fade one step with the caption buttons'; under the pointer they still turn ink. */
+:root[data-window='inactive'] {
+  --titlebar-fg: var(--titlebar-fg-inactive);
+}
+
 /* A required field that is still empty, once someone asked for it (its row in the profile
    carries `data-missing`, ProfileEditor; a required list its group): a field in it draws the
    orange edge at rest and under the pointer and its placeholder in the orange's words, a list's

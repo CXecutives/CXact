@@ -761,6 +761,31 @@ test('under the pointer a white button fills on every ground, a state box and a 
   await check(page.getByTestId('profile-from-cv'), 'on the page');
 });
 
+test('the window in the back: the lone glyphs fade with the caption buttons, pointed at they are ink', async ({
+  page,
+}) => {
+  const colour = (id: string): Promise<string> =>
+    page.getByTestId(id).evaluate((node) => getComputedStyle(node).color);
+  await open(page, `${WIN}&open=freelance:900411`);
+  const glyphs = ['toggle-sidebar', 'toggle-reader', 'reader-archive'];
+  const awake = await colour('toggle-reader');
+  await page.evaluate(() => window.__harness.fire('tauri://blur', null));
+  await expect(page.locator(':root')).toHaveAttribute('data-window', 'inactive');
+  await animationsDone(page);
+  const asleep = await colour('window-minimize');
+  expect(asleep).not.toBe(awake);
+  for (const id of glyphs) expect(await colour(id), id).toBe(asleep);
+  await page.getByTestId('toggle-reader').hover();
+  await animationsDone(page);
+  const ink = await page.evaluate(() => getComputedStyle(document.body).color);
+  expect(await colour('toggle-reader')).toBe(ink);
+  await page.mouse.move(600, 500);
+  await page.evaluate(() => window.__harness.fire('tauri://focus', null));
+  await expect(page.locator(':root')).toHaveAttribute('data-window', 'active');
+  await animationsDone(page);
+  for (const id of glyphs) expect(await colour(id), id).toBe(awake);
+});
+
 test('the small tools have their three steps too: a row tool, the x of a chip, the info', async ({
   page,
 }) => {
