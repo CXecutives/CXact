@@ -12,7 +12,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { demoScore } from './demo';
-import { calls, expect, open, runFinished, settle, test } from './fixtures';
+import { animationsDone, calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
   failNext,
@@ -2043,4 +2043,30 @@ test.describe('the job view keeps true', () => {
       { timeout: 5000 },
     );
   });
+});
+
+test('a drag from the ad over the list lights up no row and brings no tools', async ({ page }) => {
+  await openAt(page, 'freelancermap-2801');
+  const text = stage(page).getByTestId('ad-text');
+  const box = (await text.locator('p').first().boundingBox())!;
+  const target = row(page, 'linkedin-4100200301');
+  const over = (await target.boundingBox())!;
+  const wash = (): Promise<string> =>
+    target.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await page.mouse.move(1, 1);
+  await animationsDone(page);
+  const rest = await wash();
+  await page.mouse.move(box.x + 40, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 10, box.y + box.height / 2, { steps: 3 });
+  await page.mouse.move(over.x + over.width / 2, over.y + over.height / 2, { steps: 5 });
+  await animationsDone(page);
+  expect(await page.locator(':root').getAttribute('data-text-drag')).not.toBeNull();
+  expect(await wash()).toBe(rest);
+  await expect(target.locator('..').getByTestId('row-tools')).toHaveCount(0);
+  // The selection went on over it, and after the release the row answers again.
+  expect(await page.evaluate(() => getSelection()?.toString().length)).toBeGreaterThan(0);
+  await page.mouse.up();
+  await page.mouse.move(over.x + over.width / 2 + 1, over.y + over.height / 2);
+  await expect(target.locator('..').getByTestId('row-tools')).toBeVisible();
 });

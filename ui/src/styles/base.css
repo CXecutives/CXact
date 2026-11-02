@@ -121,8 +121,9 @@ button {
   text-align: inherit;
 }
 
-/* A drag from selectable text goes on over the controls as over the text (input.ts). */
-:root[data-text-drag] button {
+/* A drag from selectable text goes on over the controls and a list's rows as over the text
+   (input.ts). */
+:root[data-text-drag] :is(button, [data-rests]) {
   pointer-events: none;
 }
 
