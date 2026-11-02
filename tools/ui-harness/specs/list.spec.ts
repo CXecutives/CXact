@@ -2416,7 +2416,7 @@ test.describe('search', () => {
     const trash = page.getByTestId('also-trash');
     await search.fill('Bau');
     await expect(trash).toBeVisible();
-    // Another word: the button goes with the word, not with the word's answer.
+    // Another word: the button stays until the word's answer comes, like the rows.
     const stayed = await search.evaluate(async (field) => {
       const input = field as HTMLInputElement;
       input.value = 'Kernfusion';
@@ -2424,7 +2424,7 @@ test.describe('search', () => {
       await new Promise(requestAnimationFrame);
       return document.querySelector('[data-testid="also-trash"]') !== null;
     });
-    expect(stayed).toBe(false);
+    expect(stayed).toBe(true);
     await expect.poll(async () => (await lastQuery(page))?.search).toBe('Kernfusion');
     await expect(list(page)).toHaveAttribute('aria-busy', 'false');
     await expect(trash).toHaveCount(0);
@@ -2465,6 +2465,58 @@ test.describe('search', () => {
       return shown;
     });
     expect(came).toBe(false);
+  });
+
+  test('the buttons to the other places stand while a word is typed, under the rows and under no hit', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const search = page.getByTestId('search');
+    /** Types on and says whether a button stood in every frame until the answer has come. */
+    const typeOn = async (letter: string, word: string): Promise<boolean> => {
+      await page.evaluate(() => {
+        const log: boolean[] = [];
+        (window as unknown as { stood: boolean[] }).stood = log;
+        const frame = (): void => {
+          log.push(document.querySelector('[data-testid^="also-"]') !== null);
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      });
+      await search.press(letter);
+      await expect.poll(async () => (await lastQuery(page))?.search).toBe(word);
+      await expect(list(page)).toHaveAttribute('aria-busy', 'false');
+      await settle(page);
+      return page.evaluate(() =>
+        (window as unknown as { stood: boolean[] }).stood.every((stood) => stood),
+      );
+    };
+    await search.fill('Leit');
+    await expect(page.getByTestId('also-archive')).toBeVisible();
+    expect(await typeOn('u', 'Leitu')).toBe(true);
+    expect(await typeOn('n', 'Leitun')).toBe(true);
+    await search.fill('Kredit');
+    await expect(page.getByTestId('empty-search')).toBeVisible();
+    await expect(page.getByTestId('also-archive')).toBeVisible();
+    expect(await typeOn('o', 'Kredito')).toBe(true);
+    await expect(page.getByTestId('also-archive')).toBeVisible();
+  });
+
+  test('the counts of a word on its way do not take the buttons away', async ({ page }) => {
+    await setToken(page, '--dur-base', '600ms');
+    await open(page, WIN);
+    const search = page.getByTestId('search');
+    await search.fill('Leit');
+    await expect(page.getByTestId('also-archive')).toBeVisible();
+    // A run's update asks for the counts while the next word waits for its question.
+    await search.press('u');
+    await page.evaluate(() => {
+      const job = window.__harness.list({}).jobs[0]!;
+      window.__harness.emit({ type: 'jobUpdated', job, fresh: false });
+    });
+    await page.waitForTimeout(450);
+    expect(await page.getByTestId('also-archive').count()).toBe(1);
+    expect(await lastQuery(page)).toMatchObject({ search: 'Leit' });
   });
 
   test('one more question only while a search looks under a filter', async ({ page }) => {

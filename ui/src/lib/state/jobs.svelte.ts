@@ -134,6 +134,9 @@ class JobsStore {
   #listed = $state.raw<JobQuery | null>(null);
   /** The filter of that query. */
   #listedFilter = $state.raw<ListFilter>(NO_FILTER);
+  /** What each place lists that query's search by (`ruleOf`, with the place's filter as of its
+   *  load; `hitsIn`). */
+  #listedRules = $state.raw<Record<Place, string> | null>(null);
   status = $state<Status>('idle');
   /** The first load is over and the job kept from the last run is open again, if it was
    *  (`start`): the history records from here, before the list was still on its way. */
@@ -245,14 +248,21 @@ class JobsStore {
   }
 
   /**
-   * How many hits of the search `place` lists by its own rule (Aktuell and the Archiv under the
-   * kept filter, the Papierkorb without one), from the counts that answer that rule. None until
-   * they are there: another search's or another filter's never show.
+   * How many hits of the search the list holds `place` lists by its own rule (Aktuell and the
+   * Archiv under the filter of that answer, the Papierkorb without one), from the counts that
+   * answer that rule: a search or a filter on its way changes them with its answer, and
+   * another search's or another filter's never show.
    */
   hitsIn(place: Place): number {
-    const rule = ruleOf(this.query(0, 0, this.#filterOf(place)));
+    const rule = this.#listedRules?.[place];
     if (rule === this.#counted) return this.counts[place];
-    return this.#otherRule?.rule === rule ? this.#otherRule.counts[place] : 0;
+    return rule !== undefined && this.#otherRule?.rule === rule ? this.#otherRule.counts[place] : 0;
+  }
+
+  /** What each place lists a search by, as things stand now. */
+  #rules(): Record<Place, string> {
+    const of = (place: Place): string => ruleOf(this.query(0, 0, this.#filterOf(place)));
+    return { inbox: of('inbox'), archive: of('archive'), trash: of('trash') };
   }
 
   /** The list holds a job of its place: the rows of a run count before the counts have heard
@@ -511,11 +521,13 @@ class JobsStore {
       const limit = keep ? Math.min(MAX_PAGE, Math.max(PAGE, this.rows.length)) : PAGE;
       const query = this.query(0, limit);
       const filter = this.filter;
+      const rules = this.#rules();
       const [page, other] = await Promise.all([invoke('list_jobs', { query }), this.askOther()]);
       if (request !== this.#request) return;
       const mounted = keep ? new Set(this.shown.map((job) => keyOf(job.key))) : null;
       this.#listed = query;
       this.#listedFilter = filter;
+      this.#listedRules = rules;
       this.#own.clear();
       this.#served = page.jobs.length;
       this.rows = keep ? reused(this.rows, page.jobs) : page.jobs;
@@ -702,7 +714,8 @@ class JobsStore {
     try {
       const query = this.query(0, 0);
       const [page, other] = await Promise.all([invoke('list_jobs', { query }), this.askOther()]);
-      if (request !== this.#request) return;
+      // A search or a filter on its way brings its own counts.
+      if (request !== this.#request || this.#listedRules?.[this.place] !== ruleOf(query)) return;
       this.counts = page.counts;
       this.#counted = ruleOf(query);
       this.#otherRule = other;

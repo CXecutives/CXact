@@ -34,7 +34,8 @@
   reaches them. Back in the Jobs view, the list stands where it was scrolled to.
   A job action that fails says so in the list header.
   What the list shows is the answer it holds: a search or a filter on its way changes nothing
-  until its answer comes, neither the rows, their marks and sections nor the state of no hit.
+  until its answer comes, neither the rows, their marks and sections, the buttons to the other
+  places nor the state of no hit.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
