@@ -2149,13 +2149,13 @@ test("a held Backspace on a filter's × takes that one chip, the kept filter kee
   await hold(page, 'Backspace');
   await animationsDone(page);
   await expect(chipWords(page)).toHaveCount(2);
-  expect(await kept()).toHaveLength(2);
+  await expect.poll(kept).toHaveLength(2);
   // The next × holds the focus: a fresh press takes that one, and it holds as well.
   await expect(chipRemove(page, 'portal-freelance')).toBeFocused();
   await hold(page, 'Delete');
   await animationsDone(page);
   await expect(chipWords(page)).toHaveCount(1);
-  expect(await kept()).toHaveLength(1);
+  await expect.poll(kept).toHaveLength(1);
 });
 
 test('Delete and Backspace on the focused × of a row take that row, held only that one', async ({

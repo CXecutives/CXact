@@ -318,6 +318,8 @@ export const formKeys: Action<HTMLElement, FormKeyHandlers> = (node, handlers) =
   return {
     update(next: FormKeyHandlers) {
       forms.set(node, next);
+      // What starts behind the form (a dropped file) answers also where no form was pressed last.
+      if (next.stop !== undefined && lastForm === null) lastForm = node;
     },
     destroy() {
       forms.delete(node);

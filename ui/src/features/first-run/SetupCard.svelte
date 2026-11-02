@@ -89,7 +89,8 @@
 </div>
 
 <style>
-  /* What comes into view stands 8 above the foot that sticks over the view, a wide card's foot. */
+  /* What comes into view stands 8 above the foot that sticks over the view (its height in a wide
+     card; a narrow card's is a little lower). */
   :global(.view):has(.frame) {
     scroll-padding-bottom: calc(
       var(--setup-foot-pad) + var(--control-field) + var(--setup-foot-end) + var(--border-width) +

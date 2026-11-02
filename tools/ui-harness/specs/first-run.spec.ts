@@ -2,7 +2,7 @@
 // steps from the table as cards on the cream (the profile a whole page), every switch of the
 // view refused, Zurück (and the mouse's back button), Willkommen, the two ways, the CV's
 // upload, evaluation, cancel and failures (back on the upload with the reason in a state
-// box), "Dein Profil" whose Weiter marks what is missing red without a sentence, the optional
+// box), "Dein Profil" whose Weiter marks what is missing orange without a sentence, the optional
 // Postfach (skipped or connected, its pair in the OS order), Fertig that says what was set up,
 // resuming from what is stored, the smallest window, and that no step puts a caret in a field.
 
@@ -15,7 +15,7 @@ const next = (page: Page) => page.getByTestId('first-next');
 const back = (page: Page) => page.getByTestId('first-back');
 /** The fields that hold the caret: only a press on a field puts it there. */
 const caret = (page: Page) => page.locator('input:focus, textarea:focus');
-/** The rows marked red as required and still empty, in the order of the page. */
+/** The rows marked as required and still empty, in the order of the page. */
 const marks = (page: Page): Promise<string[]> =>
   page
     .locator('[data-missing]')
@@ -1403,6 +1403,17 @@ test('Esc stops the evaluation on the Profil from nowhere or on Abbrechen, never
   await page.getByTestId('way-cv').click();
   await expect(stop).toBeVisible();
   await page.getByTestId('profile-heading').click();
+  await page.keyboard.press('Escape');
+  await expect(stop).toHaveCount(0);
+  expect(await stops()).toBe(1);
+  // A dropped file, with the last press elsewhere: the focus is nowhere, the same.
+  await open(page, `${WIN}&scenario=no-profile&cv=slow`);
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('profile')).toBeVisible();
+  await page.evaluate(() =>
+    window.__harness.fire('tauri://drag-drop', { paths: ['C:/Users/demo/Lebenslauf.pdf'] }),
+  );
+  await expect(stop).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(stop).toHaveCount(0);
   expect(await stops()).toBe(1);
