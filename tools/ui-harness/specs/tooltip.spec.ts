@@ -4,7 +4,7 @@
 // fresh hover of that trigger places it, never at a place measured from the previous text.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, expect, open, test } from './fixtures';
+import { animationsDone, expect, open, settle, test } from './fixtures';
 import {
   chipRemove,
   chooseFilter,
@@ -384,6 +384,160 @@ test.describe('a roll of the wheel under a pointer that rests', () => {
     await page.getByTestId('tool-trash').hover();
     await expect(tip(page)).toBeVisible();
     await roll(page);
+  });
+});
+
+// One rule for every anchor a click shows and hides (the info symbol, the last Vertragsart, what is
+// locked with a reason): a press brings the bubble at once and a further one takes it, a bubble that
+// stands because the pointer rested stays under a press, and a double click is its first press.
+test.describe('a press on an anchor that says why', () => {
+  const BUSY = T.error.text('busy', { activity: 'fetch' });
+  const CONTROLS = {
+    'Button with its words': {
+      query: `${WIN}&scenario=running&view=settings`,
+      control: (page: Page): Locator => page.getByTestId('reset'),
+      reason: BUSY,
+    },
+    'Button at its limit': {
+      query: `${WIN}&view=profile&cv=used`,
+      control: (page: Page): Locator => page.getByTestId('profile-from-cv'),
+      reason: T.profile.cvError.limit,
+    },
+    Toggle: {
+      query: `${WIN}&scenario=no-mailbox&view=settings`,
+      control: (page: Page): Locator => page.getByTestId('toggle-enabled-linkedin'),
+      reason: T.settings.needsMailboxReason,
+    },
+    Select: {
+      query: `${WIN}&sheet=controls`,
+      control: (page: Page): Locator =>
+        page
+          .getByRole('combobox', { name: 'Anbieter', exact: true })
+          .and(page.locator('[aria-disabled]')),
+      reason: 'Erst das Postfach trennen.',
+    },
+  } as const;
+
+  /** A press: Playwright takes a control that waits for a disabled one and would not press it. */
+  const press = (target: Locator): Promise<void> => target.click({ force: true });
+
+  /** In view, and the scroll that brought it is past: the next frame's event takes every bubble. */
+  async function inView(page: Page, target: Locator): Promise<Locator> {
+    await reveal(page, target);
+    await settle(page);
+    return target;
+  }
+
+  for (const [kind, { query, control, reason }] of Object.entries(CONTROLS)) {
+    test(`a locked ${kind} says why at once, a further press takes it back`, async ({ page }) => {
+      // Pressed well within the wait of a tooltip under the pointer, however busy the machine.
+      await setToken(page, '--delay-tooltip', '60s');
+      await open(page, query);
+      const target = await inView(page, control(page));
+      await expect(target).toHaveAttribute('aria-disabled', 'true');
+      await press(target);
+      await expect(tip(page)).toHaveText(reason);
+      // It stands while the pointer does.
+      await page.waitForTimeout(150);
+      await expect(tip(page)).toHaveText(reason);
+      await press(target);
+      await expect(tip(page)).toHaveCount(0);
+      await press(target);
+      await expect(tip(page)).toHaveText(reason);
+      // Leaving takes it as any other.
+      await page.mouse.move(0, 0);
+      await expect(tip(page)).toHaveCount(0);
+    });
+  }
+
+  /** The info symbol. */
+  async function info(page: Page): Promise<{ target: Locator; words: string }> {
+    await open(page, `${WIN}&sheet=controls`);
+    return {
+      target: await inView(page, page.getByTestId('states-info')),
+      words: 'Welche Verträge du annimmst.',
+    };
+  }
+
+  /** The last chosen Vertragsart. */
+  async function lastContract(page: Page): Promise<{ target: Locator; words: string }> {
+    await open(page, `${WIN}&view=profile`);
+    await page.getByTestId('contract-project').click();
+    return {
+      target: page.getByTestId('contract-permanent'),
+      words: T.profile.field.keepOneContract,
+    };
+  }
+
+  /** A locked button. */
+  async function lockedButton(page: Page): Promise<{ target: Locator; words: string }> {
+    await open(page, CONTROLS['Button with its words'].query);
+    return { target: await inView(page, page.getByTestId('reset')), words: BUSY };
+  }
+
+  for (const [anchor, onto] of [
+    ['the info symbol', info],
+    ['the last Vertragsart', lastContract],
+    ['a locked button', lockedButton],
+  ] as const) {
+    test(`on ${anchor}: a press leaves a bubble that rested, takes one a press brought; a double click is its first press`, async ({
+      page,
+    }) => {
+      const { target, words } = await onto(page);
+      const stands = async (): Promise<void> => {
+        await page.waitForTimeout(150);
+        await expect(tip(page)).toHaveText(words);
+      };
+      await page.mouse.move(0, 0);
+      await target.hover({ force: true });
+      await expect(tip(page)).toHaveText(words);
+      // It stands because the pointer rested: the press leaves it.
+      await press(target);
+      await stands();
+      // From now on it is one a press brought: the next takes it.
+      await press(target);
+      await expect(tip(page)).toHaveCount(0);
+      // A double click shows it and leaves it, like its first press alone.
+      await target.dblclick({ force: true });
+      await stands();
+      // On one a press brought it takes it, and its second press does not bring it back.
+      await target.dblclick({ force: true });
+      await page.waitForTimeout(150);
+      await expect(tip(page)).toHaveCount(0);
+      // After a bubble that rested: it stays.
+      await page.mouse.move(0, 0);
+      await expect(tip(page)).toHaveCount(0);
+      await target.hover({ force: true });
+      await expect(tip(page)).toBeVisible();
+      await target.dblclick({ force: true });
+      await stands();
+      // A third press in a row is a first one again: it takes what stands.
+      await page.mouse.move(0, 0);
+      await target.hover({ force: true });
+      await expect(tip(page)).toBeVisible();
+      await target.click({ force: true, clickCount: 3 });
+      await expect(tip(page)).toHaveCount(0);
+    });
+  }
+
+  test('by key the same rule: what rested on the focus stays, what a key brought goes, also with the pointer come over it', async ({
+    page,
+  }) => {
+    const { target } = await lockedButton(page);
+    await page.mouse.move(0, 0);
+    await byKeys(page);
+    await target.focus();
+    await expect(tip(page)).toHaveText(BUSY);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(150);
+    await expect(tip(page)).toHaveText(BUSY);
+    await page.keyboard.press('Enter');
+    await expect(tip(page)).toHaveCount(0);
+    await page.keyboard.press('Enter');
+    await expect(tip(page)).toHaveText(BUSY);
+    await target.hover({ force: true });
+    await press(target);
+    await expect(tip(page)).toHaveCount(0);
   });
 });
 

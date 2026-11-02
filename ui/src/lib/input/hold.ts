@@ -2,10 +2,18 @@
 // took its row away and the next one slid under the pointer, the button that was pressed gave
 // way to the next job's). Until the pointer moves, no element counts as hovered by it: the next
 // row shows no tools and the next button no tooltip under a pointer that did not move
-// (input.ts `hover`, lib/actions/tooltip.ts).
+// (input.ts `hover`, lib/actions/tooltip.ts). And which press of a pair a click is (`secondPress`).
 //
 // No listener and no import, on purpose: the tooltip action, which every button carries, reads
-// it, and input.ts (which reaches the whole IPC layer) must not be pulled in that early.
+// these, and input.ts (which reaches the whole IPC layer) must not be pulled in that early.
+
+/**
+ * The second press of a pair: the engine counts on (1, 2, 3, ...) while the presses keep the OS's
+ * double-click time at one spot, so every even one is a second one and the next a new first; a
+ * keyboard's click counts 0 and presses.
+ */
+export const secondPress = (event: MouseEvent): boolean =>
+  event.detail > 0 && event.detail % 2 === 0;
 
 /** Where the pointer stood when the hold began (null: no hold). */
 let heldAt: { x: number; y: number } | null = null;
