@@ -197,3 +197,28 @@ ol {
   border-width: var(--scrollbar-gap);
   background-color: var(--scrollbar-hover);
 }
+
+/* A menu's list (Menu, Suggestions): its track is the frame's right padding, so the rows stand as
+   far from both edges and the menu keeps its width, whether it scrolls or not. The same thumb,
+   clear of the frame's corners. */
+:root[data-platform='windows'] :is(.menu, .suggestions) {
+  margin-right: calc(-1 * min(var(--menu-pad), var(--scrollbar-room)));
+  overflow-y: scroll;
+}
+
+[data-platform='windows'] :is(.menu, .suggestions)::-webkit-scrollbar {
+  width: var(--menu-pad);
+}
+
+[data-platform='windows'] :is(.menu, .suggestions)::-webkit-scrollbar-track {
+  margin-block: var(--space-2);
+}
+
+[data-platform='windows'] :is(.menu, .suggestions)::-webkit-scrollbar-thumb {
+  border-width: var(--scrollbar-gap);
+}
+
+[data-platform='windows'] :is(.menu, .suggestions)::-webkit-scrollbar-thumb:hover,
+[data-platform='windows'] :is(.menu, .suggestions)::-webkit-scrollbar-thumb:active {
+  border-width: var(--scrollbar-gap) 0;
+}

@@ -130,53 +130,55 @@
             : null}
           data-testid="menu"
         >
-          {#each open.entries as entry, index (index)}
-            {#if isItem(entry)}
-              {@const choice = entry.checked !== undefined && entry.checked !== null}
-              {@const role = listbox
-                ? 'option'
-                : entry.toggle
-                  ? 'menuitemcheckbox'
-                  : choice
-                    ? 'menuitemradio'
-                    : 'menuitem'}
-              <button
-                type="button"
-                class="item"
-                class:active={menuState.active === index}
-                class:danger={entry.danger === true}
-                id={menuItemId(open.id, index)}
-                {role}
-                aria-checked={role === 'menuitem' || listbox ? undefined : entry.checked === true}
-                aria-selected={listbox ? entry.checked === true : undefined}
-                aria-disabled={entry.disabled === true ? 'true' : undefined}
-                tabindex="-1"
-                data-active={menuState.active === index ? '' : undefined}
-                data-keep-focus={listbox ? '' : undefined}
-                data-testid="menu-item-{entry.id}"
-                use:tooltip={entry.disabled === true && entry.reason ? entry.reason : ''}
-                onpointerenter={() => (menuState.active = index)}
-                onclick={() => chooseEntry(index)}
-              >
-                {#if lead}
-                  <span class="lead">
-                    {#if entry.checked === true}
-                      <span class="tick"><Icon name="check" size="sm" /></span>
-                    {:else if entry.icon}
-                      <Icon name={entry.icon} size="sm" />
-                    {/if}
-                  </span>
-                {/if}
-                <span class="label">{entry.label}</span>
-              </button>
-            {:else if entry.kind === 'heading'}
-              <div class="heading" role="presentation" data-testid="menu-heading">
-                {entry.label}
-              </div>
-            {:else}
-              <div class="separator" role="separator"></div>
-            {/if}
-          {/each}
+          <div class="plate">
+            {#each open.entries as entry, index (index)}
+              {#if isItem(entry)}
+                {@const choice = entry.checked !== undefined && entry.checked !== null}
+                {@const role = listbox
+                  ? 'option'
+                  : entry.toggle
+                    ? 'menuitemcheckbox'
+                    : choice
+                      ? 'menuitemradio'
+                      : 'menuitem'}
+                <button
+                  type="button"
+                  class="item"
+                  class:active={menuState.active === index}
+                  class:danger={entry.danger === true}
+                  id={menuItemId(open.id, index)}
+                  {role}
+                  aria-checked={role === 'menuitem' || listbox ? undefined : entry.checked === true}
+                  aria-selected={listbox ? entry.checked === true : undefined}
+                  aria-disabled={entry.disabled === true ? 'true' : undefined}
+                  tabindex="-1"
+                  data-active={menuState.active === index ? '' : undefined}
+                  data-keep-focus={listbox ? '' : undefined}
+                  data-testid="menu-item-{entry.id}"
+                  use:tooltip={entry.disabled === true && entry.reason ? entry.reason : ''}
+                  onpointerenter={() => (menuState.active = index)}
+                  onclick={() => chooseEntry(index)}
+                >
+                  {#if lead}
+                    <span class="lead">
+                      {#if entry.checked === true}
+                        <span class="tick"><Icon name="check" size="sm" /></span>
+                      {:else if entry.icon}
+                        <Icon name={entry.icon} size="sm" />
+                      {/if}
+                    </span>
+                  {/if}
+                  <span class="label">{entry.label}</span>
+                </button>
+              {:else if entry.kind === 'heading'}
+                <div class="heading" role="presentation" data-testid="menu-heading">
+                  {entry.label}
+                </div>
+              {:else}
+                <div class="separator" role="separator"></div>
+              {/if}
+            {/each}
+          </div>
         </div>
       </div>
     </div>
@@ -206,16 +208,22 @@
     box-shadow: var(--sh-pop);
   }
 
-  /* The rows on a plate of their own, inside the corners: only so the words on a rounded box
-     draw as crisply as the page's (LCD antialiasing needs an opaque ground). */
+  /* The list that scrolls; on Windows its track lies in the frame's right padding (base.css). */
   .menu {
-    display: flex;
-    flex-direction: column;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    background-color: var(--surface-raised);
     outline: none;
+  }
+
+  /* The rows on a plate of their own, inside the corners: only so the words on a rounded box
+     draw as crisply as the page's (LCD antialiasing needs an opaque ground). Not the list's own
+     background: that lies under the track and over the corners, and rounded it loses the words'
+     crispness. */
+  .plate {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--surface-raised);
   }
 
   /* A select's list: at least as wide as its button, at most seven rows high. */

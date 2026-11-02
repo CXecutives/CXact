@@ -9,7 +9,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { PREVIEW_MENU } from '../preview';
 import { animationsDone, expect, open, test } from './fixtures';
-import { chooseSort, menuFrame, openPlace, row, WIN } from './helpers';
+import { chooseSort, menuFrame, openFilter, openPlace, row, WIN } from './helpers';
 
 /** The type ladder (tokens.css) and the digits of the two rings. */
 const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
@@ -312,6 +312,206 @@ testWithRoom(
     // takes its height at rest too, so the rows stay.
     expect(await edges(head)).toEqual(await edges(scroller));
     expect((await scroller.boundingBox())!.y).toBe(top);
+  },
+);
+
+/* --------------------------------------------- the thumb, and a menu's list and its track */
+
+/** A test that reads pixels, with scrollbars that take their room: on a page of its own, because
+ *  in WebKit a screenshot's own style breaks the page's policy (fixtures.ts). */
+function testPixels(
+  title: string,
+  viewport: { width: number; height: number; scale?: number },
+  check: (page: Page) => Promise<void>,
+): void {
+  test(title, async ({ playwright, baseURL, browserName }) => {
+    const browser = await playwright[browserName].launch(
+      browserName === 'chromium' ? { ignoreDefaultArgs: ['--hide-scrollbars'] } : {},
+    );
+    try {
+      const context = await browser.newContext({
+        ...(baseURL ? { baseURL } : {}),
+        viewport: { width: viewport.width, height: viewport.height },
+        deviceScaleFactor: viewport.scale ?? 1,
+        locale: 'de-DE',
+      });
+      await check(await context.newPage());
+    } finally {
+      await browser.close();
+    }
+  });
+}
+
+/** The colours of a part of the page, pixel by pixel, read in a blank page of their own. */
+async function colours(
+  page: Page,
+  clip: { x: number; y: number; width: number; height: number },
+): Promise<number[][]> {
+  const shot = (await page.screenshot({ clip })).toString('base64');
+  const context = await page.context().browser()!.newContext();
+  try {
+    const reader = await context.newPage();
+    return await reader.evaluate(async (data) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${data}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const paint = canvas.getContext('2d')!;
+      paint.drawImage(image, 0, 0);
+      const { data: all } = paint.getImageData(0, 0, image.width, image.height);
+      const pixels: number[][] = [];
+      for (let at = 0; at < all.length; at += 4) {
+        pixels.push([all[at]!, all[at + 1]!, all[at + 2]!]);
+      }
+      return pixels;
+    }, shot);
+  } finally {
+    await context.close();
+  }
+}
+
+/** Where a list (a menu's, a field's) stands in its frame. */
+async function listMeasure(list: Locator): Promise<{
+  frame: { left: number; right: number };
+  left: number;
+  right: number;
+  words: number;
+  scrolls: boolean;
+}> {
+  const frame = await edges(list.locator('xpath=..'));
+  const row = list.locator('button').first();
+  const { left, right } = await edges(row);
+  const words = await row.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node.querySelector('.label') ?? node);
+    return range.getBoundingClientRect().left;
+  });
+  const scrolls = await list.evaluate((node) => node.scrollHeight > node.clientHeight);
+  return { frame, left, right, words, scrolls };
+}
+
+testWithRoom(
+  'a menu that scrolls stands like one that does not: the frame, its words, its rows even',
+  { width: 1360, height: 860 },
+  async (page) => {
+    const at = async (height: number) => {
+      await page.setViewportSize({ width: 1360, height });
+      await open(page, WIN);
+      const button = await edges(page.getByTestId('filter'));
+      await openFilter(page);
+      await animationsDone(page);
+      const measure = await listMeasure(page.getByTestId('menu'));
+      // Its right edge on the button's end (a menu stands on whole pixels, the button may not).
+      expect(Math.abs(measure.frame.right - button.right), `at ${height}`).toBeLessThan(1);
+      expect(measure.left - measure.frame.left, `at ${height}`).toBe(
+        measure.frame.right - measure.right,
+      );
+      return measure;
+    };
+    const tall = await at(860);
+    expect(tall.scrolls).toBe(false);
+    for (const height of [810, 640]) {
+      const short = await at(height);
+      expect(short.scrolls, `at ${height}`).toBe(true);
+      expect({ ...short, scrolls: false }, `at ${height}`).toEqual(tall);
+    }
+  },
+);
+
+testWithRoom(
+  "a field's list that scrolls stands like one that does not, in the smallest window",
+  { width: 480, height: 360 },
+  async (page) => {
+    const at = async (block: 'center' | 'end') => {
+      await open(page, `${WIN}&view=profile`);
+      const input = page.getByTestId('profile-countries').locator('input');
+      await input.evaluate((node, where) => node.scrollIntoView({ block: where }), block);
+      await input.click();
+      await page.keyboard.type('S');
+      const list = page.getByTestId('profile-countries-options');
+      await expect(list).toBeVisible();
+      await animationsDone(page);
+      const measure = await listMeasure(list);
+      expect(measure.left - measure.frame.left, block).toBe(measure.frame.right - measure.right);
+      return measure;
+    };
+    const whole = await at('end');
+    expect(whole.scrolls).toBe(false);
+    const cut = await at('center');
+    expect(cut.scrolls).toBe(true);
+    expect({ ...cut, scrolls: false }).toEqual(whole);
+  },
+);
+
+for (const height of [860, 640]) {
+  testPixels(
+    `at ${height} high a menu's list leaves the corners and the edge of its frame alone`,
+    { width: 1360, height, scale: 3 },
+    async (page) => {
+      await open(page, WIN);
+      await openFilter(page);
+      await animationsDone(page);
+      const list = page.getByTestId('menu');
+      const box = (await list.locator('xpath=..').boundingBox())!;
+      const [x, y] = [Math.floor(box.x), Math.floor(box.y)];
+      const [end, foot] = [Math.ceil(box.x + box.width), Math.ceil(box.y + box.height)];
+      const size = 12;
+      /** The four corners and the right edge between them. */
+      const ring = async (): Promise<string[]> => {
+        await page.mouse.move(1, 1);
+        const shots = [
+          { x, y, width: size, height: size },
+          { x: end - size, y, width: size, height: size },
+          { x, y: foot - size, width: size, height: size },
+          { x: end - size, y: foot - size, width: size, height: size },
+          { x: end - 7, y: y + size, width: 8, height: foot - y - 2 * size },
+        ];
+        const parts: string[] = [];
+        for (const clip of shots) parts.push((await page.screenshot({ clip })).toString('base64'));
+        return parts;
+      };
+      /** The ring with the list in it, against the bare frame. */
+      const same = async (): Promise<void> => {
+        const shown = await ring();
+        await list.evaluate((node) => (node.style.visibility = 'hidden'));
+        expect(await ring()).toEqual(shown);
+        await list.evaluate((node) => (node.style.visibility = ''));
+      };
+      await same();
+      await list.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
+      await same();
+    },
+  );
+}
+
+testPixels(
+  "a menu's words draw as crisply as the list's, scrolled or not, at any height",
+  { width: 1360, height: 860 },
+  async (page) => {
+    /** The colours of a word: LCD antialiasing leaves coloured fringes. */
+    const fringed = async (word: Locator): Promise<boolean> => {
+      const box = (await word.boundingBox())!;
+      const pixels = await colours(page, {
+        x: Math.floor(box.x),
+        y: Math.floor(box.y),
+        width: Math.ceil(box.width),
+        height: Math.ceil(box.height),
+      });
+      return pixels.some(([r, g, b]) => Math.abs(r! - g!) > 12 || Math.abs(g! - b!) > 12);
+    };
+    for (const height of [860, 640]) {
+      await page.setViewportSize({ width: 1360, height });
+      await open(page, WIN);
+      const crisp = await fringed(row(page, 'linkedin-4100200301').locator('.title'));
+      const words = page.getByTestId('menu').locator('.item .label');
+      await openFilter(page);
+      await animationsDone(page);
+      expect(await fringed(words.nth(3)), `at ${height}`).toBe(crisp);
+      await page.getByTestId('menu').evaluate((node) => node.scrollTo({ top: 60 }));
+      expect(await fringed(words.nth(5)), `scrolled at ${height}`).toBe(crisp);
+    }
   },
 );
 

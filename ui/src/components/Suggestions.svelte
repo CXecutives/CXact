@@ -173,22 +173,24 @@
       aria-label={label ?? undefined}
       data-testid={testid ?? undefined}
     >
-      {#each items as item, index (item)}
-        <button
-          type="button"
-          class="suggestion"
-          class:active={index === active}
-          id="{id}-{index}"
-          role="option"
-          aria-selected={index === active}
-          tabindex="-1"
-          data-keep-focus
-          onpointermove={() => onmark(index)}
-          onclick={() => onpick(item)}
-        >
-          {item}
-        </button>
-      {/each}
+      <div class="plate">
+        {#each items as item, index (item)}
+          <button
+            type="button"
+            class="suggestion"
+            class:active={index === active}
+            id="{id}-{index}"
+            role="option"
+            aria-selected={index === active}
+            tabindex="-1"
+            data-keep-focus
+            onpointermove={() => onmark(index)}
+            onclick={() => onpick(item)}
+          >
+            {item}
+          </button>
+        {/each}
+      </div>
     </div>
   </div>
 {/if}
@@ -218,13 +220,17 @@
     bottom: calc(100% + var(--menu-gap));
   }
 
-  /* The rows on a plate of their own, inside the corners (Menu.svelte says why). */
+  /* The list that scrolls and the rows on a plate of their own, as in a menu (Menu.svelte says
+     why). */
   .suggestions {
-    display: flex;
-    flex-direction: column;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+
+  .plate {
+    display: flex;
+    flex-direction: column;
     background-color: var(--surface-raised);
   }
 
