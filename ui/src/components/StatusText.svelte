@@ -23,10 +23,11 @@
 >
 
 <style>
-  /* On top of its line: the line stays as high as a plain one, and so does its row. */
+  /* On top of its line: the line stays as high as a plain one, and so does its row. A word that
+     wraps has the dot on its first line. */
   .status {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     vertical-align: top;
     gap: var(--space-6);
     color: var(--status-color);
@@ -36,6 +37,7 @@
   .dot {
     flex: none;
     width: var(--dot-status);
+    margin-top: calc((var(--leading-sm) - var(--dot-status)) / 2);
     height: var(--dot-status);
     border-radius: var(--radius-full);
     background-color: var(--status-color);

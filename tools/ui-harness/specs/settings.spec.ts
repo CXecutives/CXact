@@ -1211,3 +1211,34 @@ test('baseline: settings', async ({ page }) => {
   await settings(page);
   await expectShot(page, 'settings');
 });
+
+test('a status word that wraps has its dot on its first line; on one line it stands as before', async ({
+  page,
+}) => {
+  const read = () =>
+    page
+      .getByTestId('portal-freelance-hint')
+      .locator('.status')
+      .evaluate((status) => {
+        const dot = status.querySelector('.dot')!.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(status.lastChild!);
+        const lines = [...new Set([...range.getClientRects()].map((line) => line.top))];
+        const first = range.getClientRects()[0]!;
+        return {
+          dot: (dot.top + dot.bottom) / 2,
+          line: (first.top + first.bottom) / 2,
+          lines: lines.length,
+        };
+      });
+  let wrapped = 0;
+  for (const width of [1360, 600, 560, 520]) {
+    await page.setViewportSize({ width, height: 900 });
+    await settings(page, `${WIN}&scenario=paused`);
+    await reveal(page, page.getByTestId('portal-freelance-hint'));
+    const word = await read();
+    if (word.lines > 1) wrapped += 1;
+    expect(Math.abs(word.dot - word.line), `at ${width}`).toBeLessThanOrEqual(0.5);
+  }
+  expect(wrapped).toBeGreaterThan(0);
+});
