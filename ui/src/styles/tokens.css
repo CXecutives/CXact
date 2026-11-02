@@ -324,8 +324,8 @@
        text chip, menu entry): a wash under the pointer, a deeper one pressed.
      - control: a white box with an edge (secondary button, field): a muted fill and a
        darker edge under the pointer, a button one opaque step darker still while pressed.
-     - label: text without a box (the excluded divider): ink under the pointer, its chevron
-       in the accent of an icon.
+     - label: text without a box (a section's heading): ink under the pointer, its chevron too,
+       both a step back pressed (ink cannot darken).
      Focus draws no ring (user decision 2026-10-04). */
   --quiet-hover: var(--surface-hover);
   --quiet-press: var(--surface-press);
@@ -337,9 +337,12 @@
      empty the coral ([data-missing] below), and a field in focus is always --border-focus. */
   --field-edge: var(--border-strong);
   --field-edge-hover: var(--control-hover-edge);
+  /* A field that opens a list (Select) while it is pressed. */
+  --field-edge-press: var(--control-press-edge);
   /* A field's placeholder: the grey of the glyphs ([data-missing] below). */
   --field-placeholder: var(--icon-subtle);
   --label-hover: var(--text);
+  --label-press: hsl(var(--p-titlebar-fg));
 
   /* ----------------------------------------------------------- top bar */
   /* The window's top bar in the design's colours, never the system's (user, 2026-09-27):
@@ -1059,6 +1062,7 @@
 [data-missing] {
   --field-edge: var(--missing-edge);
   --field-edge-hover: var(--missing-edge);
+  --field-edge-press: var(--missing-edge);
   --field-placeholder: var(--missing-words);
   --ghost-fg: var(--missing-words);
 }

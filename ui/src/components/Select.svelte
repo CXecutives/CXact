@@ -149,11 +149,18 @@
   .invalid {
     --field-edge: var(--danger-strong);
     --field-edge-hover: var(--danger-strong);
+    --field-edge-press: var(--danger-strong);
   }
 
   .select:not([aria-disabled='true']):hover {
     border-color: var(--field-edge-hover);
     transition-duration: var(--dur-hover);
+  }
+
+  /* Pressed its edge darkens a step; its list opens on the release. */
+  :global(:where(:root:not([data-aux-press]))) .select:not([aria-disabled='true']):active:hover {
+    border-color: var(--field-edge-press);
+    transition-duration: var(--dur-instant);
   }
 
   /* Open: the navy edge, whatever it showed, under the pointer too (like a field in focus). */

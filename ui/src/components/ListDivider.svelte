@@ -4,7 +4,7 @@
   row, under it the label 12/540 muted on the rows' inner edge (22 above, 6 below), no count,
   and at its end the chevron 14 in the subtle glyph colour, the one fold of the app: it points
   aside while the section is folded and down while it is open (a quarter turn, ease-out). Under the pointer the label and the chevron darken to
-  ink. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
+  ink, pressed they go a step back; its hairline stays. A button: the list shows or hides the rows below it (`ontoggle`); without one it is
   locked, a section held open: no answer to the pointer (a press on it is a press on the list),
   no Tab stop, the chevron as it is. A
   section that stands first in the list has nothing to part from: no line, and its label stands
@@ -91,6 +91,16 @@
   .divider:hover .chevron {
     color: var(--label-hover);
     transition-duration: var(--dur-slow), var(--dur-hover);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .divider:active:hover {
+    color: var(--label-press);
+    transition-duration: var(--dur-instant);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .divider:active:hover .chevron {
+    color: var(--label-press);
+    transition-duration: var(--dur-slow), var(--dur-instant);
   }
 
   .turned {

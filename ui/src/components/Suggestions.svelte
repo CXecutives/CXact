@@ -254,4 +254,8 @@
   .suggestion.active {
     background-color: var(--quiet-hover);
   }
+
+  :global(:where(:root:not([data-aux-press]))) .suggestion:active:hover {
+    background-color: var(--quiet-press);
+  }
 </style>

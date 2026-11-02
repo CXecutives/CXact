@@ -858,6 +858,96 @@ test('pressed, a way keeps the small tile of its glyph: it goes a step darker wi
   }
 });
 
+test('a select, a suggestion and a heading have their pressed step too', async ({ page }) => {
+  // A select: its edge, and its list comes only with the release.
+  await open(page, `${WIN}&view=profile`);
+  const select = page.getByTestId('language-level').first();
+  await select.scrollIntoViewIfNeeded();
+  const edge = (): Promise<string> =>
+    select.evaluate((node) => getComputedStyle(node).borderTopColor);
+  await page.mouse.move(1, 1);
+  await animationsDone(page);
+  const rest = await edge();
+  await select.hover();
+  await animationsDone(page);
+  const hover = await edge();
+  await page.mouse.down();
+  await animationsDone(page);
+  const press = await edge();
+  expect(darkness(hover)).toBeGreaterThan(darkness(rest));
+  expect(darkness(press)).toBeGreaterThan(darkness(hover));
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  await page.mouse.up();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  // A suggestion, like a row of a menu.
+  const countries = page.getByTestId('profile-countries').locator('input');
+  await countries.click();
+  await page.keyboard.type('S');
+  const option = page.getByTestId('profile-countries-options').getByRole('option').first();
+  await expect(option).toBeVisible();
+  const suggestion = await steps(page, option, 'backgroundColor');
+  await page.keyboard.press('Escape');
+  await open(page, WIN);
+  await openFilter(page);
+  const entry = page.getByTestId('menu').locator('.item').nth(1);
+  await animationsDone(page);
+  await entry.hover();
+  await animationsDone(page);
+  const entryHover = await entry.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await page.mouse.down();
+  await animationsDone(page);
+  const entryPress = await entry.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await page.mouse.move(1, 1);
+  await page.mouse.up();
+  expect(suggestion.hover).toBe(entryHover);
+  expect(suggestion.press).toBe(entryPress);
+  expect(suggestion.press).not.toBe(suggestion.hover);
+  // A section's heading: its words and its chevron a clear step from both others, its hairline
+  // stays.
+  await open(page, WIN);
+  const heading = page.getByTestId('excluded-divider');
+  await heading.scrollIntoViewIfNeeded();
+  const look = async (): Promise<{ label: string; chevron: string; line: string; dim: string }> => {
+    await animationsDone(page);
+    return heading.evaluate((node) => ({
+      label: getComputedStyle(node.querySelector('.label')!).color,
+      chevron: getComputedStyle(node.querySelector('.chevron')!).color,
+      line: getComputedStyle(node).borderTopColor,
+      dim: getComputedStyle(node).opacity,
+    }));
+  };
+  await page.mouse.move(1, 1);
+  const before = await look();
+  await heading.hover();
+  const pointed = await look();
+  await page.mouse.down();
+  const pressed = await look();
+  await page.mouse.move(1, 1);
+  await page.mouse.up();
+  expect(pressed.line).toBe(before.line);
+  expect(pressed.dim).toBe(before.dim);
+  for (const part of ['label', 'chevron'] as const) {
+    expect(darkness(pointed[part]) - darkness(pressed[part]), part).toBeGreaterThan(16);
+    expect(darkness(pressed[part]) - darkness(before[part]), part).toBeGreaterThan(16);
+  }
+});
+
+test('a wrong select keeps its red edge pressed', async ({ page }) => {
+  await open(page, `${WIN}&sheet=controls`);
+  const select = page.locator('.select.invalid').first();
+  await select.scrollIntoViewIfNeeded();
+  const edge = (): Promise<string> =>
+    select.evaluate((node) => getComputedStyle(node).borderTopColor);
+  const red = await edge();
+  await select.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(100);
+  expect(await edge()).toBe(red);
+  await page.mouse.move(1, 1);
+  await page.mouse.up();
+});
+
 test('the small tools have their three steps too: a row tool, the x of a chip, the info', async ({
   page,
 }) => {
