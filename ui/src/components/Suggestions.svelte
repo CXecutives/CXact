@@ -95,7 +95,6 @@
   import type { Action } from 'svelte/action';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { menuIn, menuOut } from '$lib/motion/transitions';
-  import { scrollerOf } from '$lib/motion/scroll';
   import { tokenPx } from '$lib/tokens';
 
   interface Props {
@@ -121,12 +120,15 @@
    *  field (it unfolds under a press) or the window changes size and when the page moves the
    *  field; the marked row stays in view. */
   const place: Action<HTMLElement, { count: number; active: number }> = (node, param) => {
+    // The view's pane: it moves the field, and the room ends with it, above a bar at its foot.
+    const pane = node.closest('[data-key-pane]');
     const measure = (count: number): void => {
       const field = node.parentElement?.getBoundingClientRect();
       if (field === undefined) return;
       const gap = tokenPx('--menu-gap');
       const edge = tokenPx('--viewport-gap');
-      const below = document.documentElement.clientHeight - edge - field.bottom - gap;
+      const end = pane?.getBoundingClientRect().bottom ?? document.documentElement.clientHeight;
+      const below = end - edge - field.bottom - gap;
       const above = field.top - gap - tokenPx('--titlebar-height') - edge;
       const rows = Math.min(count, MOST) * tokenPx('--menu-row');
       const wanted = rows + 2 * (tokenPx('--menu-pad') + tokenPx('--border-width'));
@@ -140,7 +142,6 @@
     const observer = new ResizeObserver(() => measure(param.count));
     if (node.parentElement !== null) observer.observe(node.parentElement);
     observer.observe(document.documentElement);
-    const pane = scrollerOf(node);
     const moved = (): void => measure(param.count);
     pane?.addEventListener('scroll', moved, { passive: true });
     return {

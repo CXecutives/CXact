@@ -1106,3 +1106,46 @@ test('Tab keeps every control of Dein Profil clear of the bar at its foot', asyn
   expect(reached).toBeGreaterThan(20);
   expect(below).toEqual([]);
 });
+
+test("a field's list low on Dein Profil opens above it, clear of the bar; with room it stays below", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1360, height: 860 });
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  const view = page.getByTestId('view-first-run');
+  const input = page.getByTestId('profile-tools').locator('input');
+  const bar = (await page.getByTestId('first-bar').boundingBox())!;
+  /** Types in the field, standing this far above the bar, and reads its list's frame. */
+  const listAt = async (above: number) => {
+    const gap = async (): Promise<number> => {
+      const box = (await input.boundingBox())!;
+      return bar.y - box.y - box.height;
+    };
+    // (The page may still be gliding to where it opens: it stands there once it stays.)
+    await expect(async () => {
+      await view.evaluate((node, by) => node.scrollBy({ top: by }), above - (await gap()));
+      await settle(page);
+      expect(await gap()).toBe(above);
+    }).toPass();
+    await input.click();
+    await input.fill('Power');
+    const list = page.getByTestId('profile-tools-suggestions');
+    await expect(list).toBeVisible();
+    await motionSettled(page);
+    const frame = (await list.locator('xpath=..').boundingBox())!;
+    const field = (await input.boundingBox())!;
+    const bottom = frame.y + frame.height;
+    const rows = await list.evaluate((node) => node.scrollHeight <= node.clientHeight);
+    await input.fill('');
+    return { bottom, top: frame.y, field, rows };
+  };
+  // 110 above the bar three rows do not fit: they stand above the field, whole.
+  const low = await listAt(110);
+  expect(low.bottom).toBeLessThanOrEqual(low.field.y);
+  expect(low.bottom).toBeLessThan(bar.y);
+  expect(low.rows).toBe(true);
+  // With the room for them they stay below it.
+  const high = await listAt(300);
+  expect(high.top).toBeGreaterThanOrEqual(high.field.y + high.field.height);
+  expect(high.bottom).toBeLessThan(bar.y);
+});
