@@ -23,7 +23,8 @@
   The row's menu (a right click, the app's own) and a double click (the ad in the browser)
   act on the job too. Without a usable profile the ring is empty (a dash). `reveal`: the ring
   fills and counts up as the row mounts (a list that opens). Layout stays inside the row
-  (containment); like the row, its hover rests while the list scrolls (`data-still`).
+  (containment); like the row, its hover rests while the list scrolls and behind an open menu
+  (`data-still`).
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -226,8 +227,10 @@
   }
 
   /* While the tools show, the line fades out under them (their ground is the row's own:
-     its wash, its highlight); while the list scrolls the row rests, the title whole. */
-  .tooled:where(:not([data-still])) .line {
+     its wash, its highlight); while the list scrolls or behind a menu the row rests, the title
+     whole. */
+  .tooled:where(:not([data-still])) .line,
+  .menued .line {
     mask-image: var(--list-tools-mask);
   }
 
@@ -280,13 +283,14 @@
   }
 
   /* Shown while the row is tooled (their group fades in and out, one fade); while the list
-     scrolls the row rests: no tools. */
+     scrolls or behind a menu the row rests: no tools, but for the row of that menu. */
   .tool {
     display: inline-flex;
     opacity: 0;
   }
 
-  .tooled:where(:not([data-still])) .tool {
+  .tooled:where(:not([data-still])) .tool,
+  .menued .tool {
     opacity: 1;
   }
 

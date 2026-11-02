@@ -12,6 +12,7 @@ import {
   failNext,
   list,
   listed,
+  openFilter,
   openJob,
   openPlace,
   row,
@@ -315,6 +316,89 @@ test.describe('tools', () => {
     await rowMenu(page, key);
     await menu.getByTestId('menu-item-open-ad').hover();
     await expect.poll(ground).toBe(NONE);
+  });
+
+  for (const [opens, name] of [
+    ["the row's", (page: Page, key: string) => rowMenu(page, key)],
+    ["the funnel's", (page: Page) => openFilter(page)],
+  ] as const) {
+    test(`behind ${opens} menu another row takes neither wash nor tools; the menu closed, it wakes without a move`, async ({
+      page,
+    }) => {
+      await open(page, WIN);
+      const keys = (await stubList(page)).active;
+      const own = keys[0]!;
+      const other = keys[8]!;
+      await expect(row(page, other)).toBeVisible();
+      const NONE = 'rgba(0, 0, 0, 0)';
+      /** The pointer onto a row, beside the menu that opened on the row or the funnel over it
+       *  (the mouse itself: Playwright's hover may scroll, and a scroll closes the menu). */
+      const over = async (key: string): Promise<void> => {
+        const box = (await row(page, key).boundingBox())!;
+        const x = key === own ? box.x + 100 : box.x + box.width - 120;
+        await page.mouse.move(x, box.y + box.height / 2);
+        await animationsDone(page);
+      };
+      const ground = (key: string): Promise<string> =>
+        row(page, key).evaluate((node) => getComputedStyle(node).backgroundColor);
+      const tools = (key: string): Promise<string> =>
+        job(page, key).evaluate((node) => {
+          const tool = node.querySelector('.tool');
+          return tool === null ? 'none' : getComputedStyle(tool).opacity;
+        });
+      await name(page, own);
+      await over(other);
+      await page.waitForTimeout(250);
+      expect(await ground(other)).toBe(NONE);
+      expect(['none', '0']).toContain(await tools(other));
+      await expect
+        .poll(() =>
+          list(page)
+            .locator(`[data-key="${other.replace('-', ':')}"]`)
+            .getAttribute('data-still'),
+        )
+        .toBe('');
+      if (opens === "the row's") {
+        // The menu's own row stays marked, whether the pointer is away or back on it.
+        expect(await ground(own)).not.toBe(NONE);
+        expect(await tools(own)).toBe('1');
+        await over(own);
+        await page.waitForTimeout(250);
+        expect(await ground(own)).not.toBe(NONE);
+        expect(await tools(own)).toBe('1');
+        await over(other);
+      }
+      // The menu closes: the row under the pointer wakes without a move.
+      await page.keyboard.press('Escape');
+      await expect(page.getByTestId('menu')).toHaveCount(0);
+      await expect.poll(() => ground(other)).not.toBe(NONE);
+      await expect.poll(() => tools(other)).toBe('1');
+    });
+  }
+
+  test('the row of an open menu has no hairlines, like the same row under the pointer', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const [, second, third] = await listed(page);
+    const lines = (): Promise<string[]> =>
+      Promise.all(
+        [second!, third!].map((key) =>
+          page
+            .locator(`[data-key="${key.replace('-', ':')}"]`)
+            .evaluate((node) => getComputedStyle(node, '::before').opacity),
+        ),
+      );
+    await page.mouse.move(0, 0);
+    expect(await lines()).toEqual(['1', '1']);
+    await pointAt(page, second!);
+    expect(await lines()).toEqual(['0', '0']);
+    const menu = await rowMenu(page, second!);
+    await menu.getByTestId('menu-item-open-ad').hover();
+    expect(await lines()).toEqual(['0', '0']);
+    await page.keyboard.press('Escape');
+    await page.mouse.move(0, 0);
+    expect(await lines()).toEqual(['1', '1']);
   });
 
   test("the tools stay while the row's menu is open", async ({ page }) => {
