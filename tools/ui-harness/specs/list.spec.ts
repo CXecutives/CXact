@@ -3122,6 +3122,25 @@ test.describe('run line', () => {
 
 /* ====================================================================== sidebar */
 
+test('a double click on a section heading or the chevron of the places folds once, steady presses act 1, 3, 5', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  for (const id of ['unscored-divider', 'nav-places']) {
+    const fold = page.getByTestId(id);
+    const box = (await fold.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const seen: (string | null)[] = [await fold.getAttribute('aria-expanded')];
+    for (let press = 1; press <= 5; press += 1) {
+      await page.mouse.down({ clickCount: press });
+      await page.mouse.up({ clickCount: press });
+      await animationsDone(page);
+      seen.push(await fold.getAttribute('aria-expanded'));
+    }
+    expect(seen, id).toEqual(['true', 'false', 'false', 'true', 'true', 'false']);
+  }
+});
+
 test.describe('sidebar', () => {
   test('three views, the places under Jobs, no counts, no tooltips beside their names; the app starts in Jobs', async ({
     page,

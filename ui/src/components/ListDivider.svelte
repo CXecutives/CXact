@@ -11,6 +11,7 @@
   where a day's heading stands.
 -->
 <script lang="ts">
+  import { secondPress } from '$lib/input/input';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -31,7 +32,9 @@
   aria-expanded={open}
   disabled={ontoggle === null}
   data-testid={testid ?? undefined}
-  onclick={() => ontoggle?.()}
+  onclick={(event) => {
+    if (!secondPress(event)) ontoggle?.();
+  }}
 >
   <span class="label">{label}</span>
   <span class="chevron" class:turned={open}><Icon name="expand" size="xs" /></span>
