@@ -1,4 +1,4 @@
-// `use:tooltip={text}` - a styled tooltip after --delay-tooltip (400 ms) of hover, or of
+// `use:tooltip={text}` - a styled tooltip after --delay-tooltip of hover, or of
 // keyboard focus (`:focus-visible`: Tab lands on the control, never a click). Hides on
 // leave, press (the pointer's or a key's) and blur, unless the pointer stays on it (the layer
 // also hides it on a press anywhere, a scroll and Esc, and when the window resizes or goes to the
@@ -163,6 +163,7 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
       return;
     }
     cancel();
+    // A double click belongs to its first press.
     if (secondPress(event)) return;
     if (tooltipState.clickedOn(node)) tooltipState.hide(node);
     else present(true);

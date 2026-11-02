@@ -9,9 +9,9 @@
   goes when the window is resized or goes to the back (its anchor may have moved or be
   covered then), on a scroll of any pane (its anchor moved on, and what slides under the pointer
   then waits for its delay), on a press anywhere and on Esc (the last two also drop the tooltips
-  still waiting for their delay; a press on the anchor itself is its own handler's, an info symbol
-  toggles on it): input.ts `onDismiss`. A bubble the user asked for takes its Esc alone
-  (`tooltipState.held`).
+  still waiting for their delay; a press on the anchor itself is its own handler's, what a click
+  shows and hides toggles on it): input.ts `onDismiss`. A bubble the user asked for takes its Esc
+  alone (`tooltipState.held`).
 -->
 <script lang="ts">
   import { px, setVars } from '$lib/actions/cssVars';
@@ -56,8 +56,8 @@
   }
 
   // A scroll takes the bubble away (its anchor moved on) and leaves nothing warm; a press or Esc
-  // also the tooltips that still wait. A press on the anchor is its own (an info symbol toggles on
-  // it); a bubble the user asked for takes its Esc alone.
+  // also the tooltips that still wait. A press on the anchor is its own (what a click shows and
+  // hides toggles on it); a bubble the user asked for takes its Esc alone.
   $effect(() =>
     onDismiss((cause, target) => {
       const anchor = tooltipState.anchor;

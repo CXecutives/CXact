@@ -1374,8 +1374,12 @@ test('its recovery just shows the frame: every frame with the jobs has it in pla
   expect(new Set(framed.map((frame) => frame.left)).size).toBe(1);
   expect(framed.filter((frame) => frame.moving > 0 || frame.shown !== '1')).toEqual([]);
   // From here on the sidebar's button docks and folds with its slide, as ever.
-  await page.getByTestId('toggle-sidebar').click();
-  expect(await page.locator('main').evaluate((node) => node.getAnimations().length)).toBe(1);
+  const slides = await page.evaluate(async () => {
+    document.querySelector<HTMLElement>('[data-testid="toggle-sidebar"]')!.click();
+    await new Promise(requestAnimationFrame);
+    return document.querySelector('main')!.getAnimations().length;
+  });
+  expect(slides).toBe(1);
 });
 
 test('the job view button stands only where it does something', async ({ page }) => {
