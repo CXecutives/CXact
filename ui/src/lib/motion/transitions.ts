@@ -298,12 +298,20 @@ export function afterFolds(pane: Element, then: () => void): void {
 /**
  * A button that comes or goes beside one that stays (a portal's alert call beside its sign-in):
  * it takes its room or gives it up, its gap included, in one glide (180 ms, ease-out) while it
- * fades, so the one that stays glides to its new place instead of jumping. With `on` false both
- * come or go together: it only fades and nothing moves. A cross-fade under reduced motion.
+ * fades, so the one that stays glides to its new place instead of jumping. With `on` false all of
+ * them come or go together: they only fade and nothing beside them moves; where they have a line
+ * of their own (a narrow SettingRow) it closes or opens under them, its gap included, so the rows
+ * below glide, and a line of a fixed height does not feel that. A cross-fade under reduced motion.
  */
 export function foldAside(node: Element, params: MotionParams = {}): TransitionConfig {
-  if (params.on === false || isReducedMotion()) return fade(node);
-  const width = node.getBoundingClientRect().width;
+  if (isReducedMotion()) return fade(node);
+  const { width, height } = node.getBoundingClientRect();
+  if (params.on === false) {
+    return {
+      ...fade(node),
+      css: (t, u) => `opacity: ${t}; margin-bottom: ${-Math.round(u * height)}px`,
+    };
+  }
   const row = node.parentElement;
   const gap = row === null ? 0 : Number.parseFloat(getComputedStyle(row).columnGap) || 0;
   return {
