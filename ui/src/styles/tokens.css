@@ -35,11 +35,12 @@
   /* The ground of the job view and the pages: between the cream and white, so the white cards
      on it read as cards. */
   --p-page: 30 12% 98.5%;
-  /* The window and the sidebar; a white button under the pointer. */
+  /* The window and the sidebar. */
   --p-cream: 30 16% 96.4%;
-  /* The track of a choice of a few, a chip, a meter. */
+  /* The track of a choice of a few, a chip, a meter; a white button under the pointer. */
   --p-track: 30 12% 94.6%;
-  /* A hairline, the chosen sidebar entry's pill, the empty part of a ring. */
+  /* A hairline, the chosen sidebar entry's pill, the empty part of a ring; a white button
+     pressed. */
   --p-line: 30 10% 90%;
   --p-border-strong: 30 8% 82%;
   --p-border-input: 30 10% 68%;
@@ -654,8 +655,8 @@
   /* A button with a box (secondary) under the pointer and pressed: the warm wash over its white
      as one opaque colour (its edge then --control-hover-edge), one step darker pressed, so what
      lies behind the button never shows through and it answers alike on every ground. */
-  --button-hover: hsl(var(--p-cream));
-  --button-press: var(--control-press);
+  --button-hover: hsl(var(--p-track));
+  --button-press: hsl(var(--p-line));
   /* The one look of a menu, a select's list and a field's suggestions: rows 32 high (--menu-row)
      with their words 12 px in. */
   --menu-row-pad: 12px;

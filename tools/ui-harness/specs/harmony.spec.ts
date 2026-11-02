@@ -730,6 +730,37 @@ test('a secondary button answers the pointer alike on every ground: no ground sh
   expect(new Set(Object.values(inStateBox)).size).toBe(3);
 });
 
+/** How dark a colour is (0 white, 255 black). */
+const darkness = (colour: string): number => {
+  const [r, g, b] = colour.match(/[\d.]+/g)!.map(Number);
+  return 255 - (r! + g! + b!) / 3;
+};
+
+test('under the pointer a white button fills on every ground, a state box and a card alike', async ({
+  page,
+}) => {
+  /** The colour of what the control stands on. */
+  const ground = (control: Locator): Promise<string> =>
+    control.evaluate((node) => {
+      for (let at = node.parentElement; at !== null; at = at.parentElement) {
+        const colour = getComputedStyle(at).backgroundColor;
+        if (colour !== 'rgba(0, 0, 0, 0)') return colour;
+      }
+      return '';
+    });
+  const check = async (control: Locator, where: string): Promise<void> => {
+    const under = await ground(control);
+    const { hover, press } = await steps(page, control, 'backgroundColor');
+    expect(darkness(hover), where).toBeGreaterThan(darkness(under));
+    expect(darkness(press), where).toBeGreaterThan(darkness(hover));
+  };
+  await open(page, `${WIN}&open=freelance:900411`);
+  await check(page.getByTestId('reader-sign-in'), 'in a state box');
+  await check(page.getByTestId('open-ad'), 'on a card');
+  await open(page, `${WIN}&view=profile`);
+  await check(page.getByTestId('profile-from-cv'), 'on the page');
+});
+
 test('the small tools have their three steps too: a row tool, the x of a chip, the info', async ({
   page,
 }) => {
