@@ -296,6 +296,33 @@ export async function reveal(_page: Page, target: Locator): Promise<Locator> {
   return target;
 }
 
+/** A real press of the mouse's back or forward button at a point: through the DevTools protocol
+ *  in Chromium, in WebKit its events as the OS sends them (Playwright's mouse has neither). */
+export async function pressSideButton(
+  page: Page,
+  button: 'back' | 'forward',
+  { x, y }: { x: number; y: number },
+): Promise<void> {
+  if (page.context().browser()?.browserType().name() === 'chromium') {
+    const cdp = await page.context().newCDPSession(page);
+    const event = { x, y, button, clickCount: 1 };
+    const held = button === 'back' ? 8 : 16;
+    await cdp.send('Input.dispatchMouseEvent', { ...event, type: 'mousePressed', buttons: held });
+    await cdp.send('Input.dispatchMouseEvent', { ...event, type: 'mouseReleased', buttons: 0 });
+    await cdp.detach();
+    return;
+  }
+  await page.evaluate(
+    ([x, y, button]) => {
+      const init = { bubbles: true, cancelable: true, clientX: x, clientY: y, button };
+      const under = document.elementFromPoint(x, y)!;
+      under.dispatchEvent(new MouseEvent('mousedown', init));
+      under.dispatchEvent(new MouseEvent('mouseup', init));
+    },
+    [x, y, button === 'back' ? 3 : 4] as const,
+  );
+}
+
 /** A token takes this value from the start of the page on (tokens are read once, so it is set
  *  before the page starts): a wait long enough to act in it. */
 export async function setToken(page: Page, name: string, value: string): Promise<void> {

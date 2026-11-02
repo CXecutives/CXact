@@ -8,7 +8,19 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, open, settle, test } from './fixtures';
-import { adder, chooseFilter, failNext, reveal, T } from './helpers';
+import {
+  adder,
+  chipRemove,
+  chipWords,
+  chooseFilter,
+  failNext,
+  menuItem,
+  pressSideButton,
+  reveal,
+  sortEntryId,
+  stage,
+  T,
+} from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -2085,6 +2097,118 @@ test('Tab goes round: from the last control to the first, Shift+Tab the other wa
   expect(last).toBeGreaterThan(0);
   await page.keyboard.press('Tab');
   expect(await where()).toBe(0);
+});
+
+/* -------------------------------------------- a held key, the ×, the mouse's side buttons */
+
+/** The key held: its press and the repeats of the OS. */
+async function hold(page: Page, key: string, repeats = 3): Promise<void> {
+  for (let press = 0; press <= repeats; press += 1) await page.keyboard.down(key);
+  await page.keyboard.up(key);
+}
+
+test('a held Enter in an open menu chooses nothing: its press opened the menu, the repeats wait', async ({
+  page,
+}) => {
+  const newest = menuItem(page, sortEntryId('newest'));
+  const lists = (await calls(page, 'list_jobs')).length;
+  await page.getByTestId('filter').focus();
+  await hold(page, 'Enter');
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await expect(newest).toHaveAttribute('aria-checked', 'true');
+  expect(await calls(page, 'list_jobs')).toHaveLength(lists);
+  // A fresh press still chooses.
+  await page.keyboard.press('Enter');
+  await expect(newest).toHaveAttribute('aria-checked', 'false');
+  // A select's list: the press opens it, and it stays open on its chosen entry.
+  await open(page, `${WIN}&view=profile`);
+  const select = await reveal(page, page.getByTestId('profile-work-mode'));
+  const value = await select.innerText();
+  await select.focus();
+  await hold(page, 'Enter');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await page.waitForTimeout(100);
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await expect(select).toHaveText(value);
+});
+
+test("a held Backspace on a filter's × takes that one chip, the kept filter keeps the others", async ({
+  page,
+}) => {
+  const kept = (): Promise<string[] | null> =>
+    page.evaluate(
+      () =>
+        (JSON.parse(localStorage.getItem('jobs-filter') ?? 'null') as { portals: string[] } | null)
+          ?.portals ?? null,
+    );
+  await chooseFilter(page, 'portal-linkedin');
+  await chooseFilter(page, 'portal-freelance');
+  await chooseFilter(page, 'portal-freelancermap');
+  await expect(chipWords(page)).toHaveCount(3);
+  await chipRemove(page, 'portal-linkedin').focus();
+  await hold(page, 'Backspace');
+  await animationsDone(page);
+  await expect(chipWords(page)).toHaveCount(2);
+  expect(await kept()).toHaveLength(2);
+  // The next × holds the focus: a fresh press takes that one, and it holds as well.
+  await expect(chipRemove(page, 'portal-freelance')).toBeFocused();
+  await hold(page, 'Delete');
+  await animationsDone(page);
+  await expect(chipWords(page)).toHaveCount(1);
+  expect(await kept()).toHaveLength(1);
+});
+
+test('Delete and Backspace on the focused × of a row take that row, held only that one', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  const remove = page.getByTestId('competences-remove');
+  const count = await remove.count();
+  expect(count).toBeGreaterThan(3);
+  await (await reveal(page, remove.first())).focus();
+  await page.keyboard.press('Delete');
+  await expect(remove).toHaveCount(count - 1);
+  await expect(remove.first()).toBeFocused();
+  await page.keyboard.press('Backspace');
+  await expect(remove).toHaveCount(count - 2);
+  await expect(remove.first()).toBeFocused();
+  await hold(page, 'Delete');
+  await animationsDone(page);
+  await expect(remove).toHaveCount(count - 3);
+  await expect(remove.first()).toBeFocused();
+  // The rows of Sprachen are the same list.
+  const language = page.getByTestId('languages-remove');
+  const languages = await language.count();
+  await (await reveal(page, language.first())).focus();
+  await page.keyboard.press('Delete');
+  await expect(language).toHaveCount(languages - 1);
+});
+
+test("the mouse's side button that closes a menu does nothing else, the next one goes", async ({
+  page,
+}) => {
+  await rows(page).nth(0).click();
+  await rows(page).nth(1).click();
+  const title = stage(page).getByTestId('reader-title');
+  await expect(title).toHaveText(await rows(page).nth(1).locator('.title').innerText());
+  // Above the row whose menu opens below it: beside the menu.
+  const beside = (await rows(page).nth(0).boundingBox())!;
+  const at = { x: beside.x + beside.width / 2, y: beside.y + beside.height / 2 };
+  const menu = page.getByTestId('menu');
+  for (const [button, row] of [
+    ['back', rows(page).nth(1)],
+    ['forward', rows(page).nth(0)],
+  ] as const) {
+    const job = await row.locator('.title').innerText();
+    await rows(page).nth(2).click({ button: 'right' });
+    await expect(menu).toBeVisible();
+    await pressSideButton(page, button, at);
+    await expect(menu).toHaveCount(0);
+    await page.waitForTimeout(200);
+    await expect(title).toHaveText(job);
+    await pressSideButton(page, button, at);
+    await expect(title).not.toHaveText(job);
+  }
 });
 
 /* ---------------------------------------------- the second click of a double click */

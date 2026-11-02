@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, motionSettled, open, settle, test } from './fixtures';
-import { failNext, fillRequired, T, WIN, MAC } from './helpers';
+import { failNext, fillRequired, pressSideButton, T, WIN, MAC } from './helpers';
 
 const heading = (page: Page) => page.getByTestId('first-heading');
 const next = (page: Page) => page.getByTestId('first-next');
@@ -126,6 +126,55 @@ test('every switch of the view is refused while it stands; Zurück and the mouse
   await back(page).click();
   await expectStep(page, T.firstRun.way);
   await expect(back(page)).toHaveText(T.common.back);
+});
+
+test("the mouse's back button that closes a list leaves the step, the next one goes back", async ({
+  page,
+}) => {
+  const closesThenGoes = async (): Promise<void> => {
+    const select = page.getByTestId('profile-work-mode');
+    await select.scrollIntoViewIfNeeded();
+    await select.click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    const beside = (await heading(page).or(page.getByTestId('profile-heading')).boundingBox())!;
+    const at = { x: beside.x + 1, y: beside.y + 1 };
+    await pressSideButton(page, 'back', at);
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await page.waitForTimeout(200);
+    await expect(page.getByTestId('profile')).toBeVisible();
+    await pressSideButton(page, 'back', at);
+  };
+  await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
+  await closesThenGoes();
+  await expectStep(page, T.firstRun.way);
+  // The Profil reached from Jobs: the same.
+  await open(page, WIN);
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('profile')).toBeVisible();
+  await closesThenGoes();
+  await expect(page.getByTestId('profile')).toHaveCount(0);
+});
+
+test("Shift+Tab from a step's heading goes round to its last control, and Enter presses it", async ({
+  page,
+}) => {
+  for (const [query, last] of [
+    ['scenario=first-run', 'first-next'],
+    ['scenario=first-run&step=way', 'first-back'],
+    ['scenario=first-run&step=upload', 'first-back'],
+    ['scenario=setup-profile', 'first-skip'],
+    ['scenario=first-run&step=profile&way=self', 'first-next'],
+    ['scenario=first-run&step=done', 'first-next'],
+  ] as const) {
+    await open(page, `${WIN}&${query}`);
+    await expect(heading(page), query).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByTestId(last), query).toBeFocused();
+  }
+  await open(page, `${WIN}&scenario=first-run`);
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Enter');
+  await expectStep(page, T.firstRun.way);
 });
 
 test('the CV: its tile, the upload, the evaluation, the whole profile; Weiter goes on', async ({
