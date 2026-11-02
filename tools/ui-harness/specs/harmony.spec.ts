@@ -409,6 +409,10 @@ testPixels(
   async (page) => {
     const away = (): Promise<void> => page.mouse.move(60, 400);
     const check = async (scroller: Locator): Promise<void> => {
+      // (A job on its way has nothing to scroll yet.)
+      await expect
+        .poll(() => scroller.evaluate((node) => node.scrollHeight > node.clientHeight))
+        .toBe(true);
       await away();
       await expect.poll(() => thumbOn(page, scroller)).toBe(0);
       const width = await scroller.evaluate((node) => node.clientWidth);
@@ -619,16 +623,28 @@ test("a select's list of seven rows stands whole, with nothing to scroll", async
 
 /* ------------------------------------------------- the dashed edge of a file over a page */
 
+/** A file comes over the page, or goes. */
+async function fileOver(page: Page, over: boolean): Promise<void> {
+  const profile = page.getByTestId('profile');
+  await page.evaluate(
+    (on) => window.__harness.fire(`tauri://drag-${on ? 'enter' : 'leave'}`, { paths: [] }),
+    over,
+  );
+  if (over) await expect(profile).toHaveClass(/\bover\b/);
+  else await expect(profile).not.toHaveClass(/\bover\b/);
+}
+
+/** How far in from the view the edge of a file stands; the file is over the page. */
+const dashedInset = (page: Page): Promise<number> =>
+  page.getByTestId('profile').evaluate((node) => parseFloat(getComputedStyle(node, '::after').top));
+
 /** A file over the page and gone again: how much of each side of a frame in the view it changes,
  *  each as a share of that side. */
 async function dashedEdge(page: Page): Promise<{ [side: string]: number }> {
   const view = (await page.locator('main').boundingBox())!;
-  const inset = await page.getByTestId('profile').evaluate((node) => {
-    node.classList.add('over');
-    const top = parseFloat(getComputedStyle(node, '::after').top);
-    node.classList.remove('over');
-    return top;
-  });
+  await fileOver(page, true);
+  const inset = await dashedInset(page);
+  await fileOver(page, false);
   const [left, top] = [Math.round(view.x), Math.round(view.y)];
   const [width, height] = [Math.round(view.width), Math.round(view.height)];
   const sides = {
@@ -643,11 +659,9 @@ async function dashedEdge(page: Page): Promise<{ [side: string]: number }> {
     return shots;
   };
   const without = await read();
-  await page.evaluate(() => window.__harness.fire('tauri://drag-enter', { paths: [] }));
-  await expect(page.getByTestId('profile')).toHaveClass(/\bover\b/);
+  await fileOver(page, true);
   const over = await read();
-  await page.evaluate(() => window.__harness.fire('tauri://drag-leave', null));
-  await expect(page.getByTestId('profile')).not.toHaveClass(/\bover\b/);
+  await fileOver(page, false);
   const shares: { [side: string]: number } = {};
   Object.entries(sides).forEach(([side, clip], index) => {
     const changed = over[index]!.filter((pixel, at) => apart(pixel, without[index]![at]!)).length;
@@ -677,14 +691,12 @@ testPixels(
     await wholeFrame(page, 'at the end');
     // At the top it stands as far from the head's button as from the bar.
     await view.evaluate((node) => node.scrollTo({ top: 0 }));
-    await page.evaluate(() => window.__harness.fire('tauri://drag-enter', { paths: [] }));
+    await fileOver(page, true);
     const main = (await page.locator('main').boundingBox())!;
-    const inset = await page
-      .getByTestId('profile')
-      .evaluate((node) => parseFloat(getComputedStyle(node, '::after').top));
+    const inset = await dashedInset(page);
     const button = (await page.getByTestId('profile-from-cv').boundingBox())!;
     expect(button.y - (main.y + inset)).toBeGreaterThanOrEqual(inset);
-    await page.evaluate(() => window.__harness.fire('tauri://drag-leave', null));
+    await fileOver(page, false);
     // Without a profile too.
     await open(page, `${WIN}&scenario=no-profile&view=profile`);
     await wholeFrame(page, 'without a profile');
