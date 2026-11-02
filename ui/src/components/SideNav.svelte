@@ -40,6 +40,7 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
+  import { secondPress } from '$lib/input/input';
   import { glide } from '$lib/motion/glide';
   import { unfold } from '$lib/motion/transitions';
   import Icon from './Icon.svelte';
@@ -99,7 +100,9 @@
           aria-expanded={children.open}
           aria-label={children.toggleLabel}
           data-testid={children.testid}
-          onclick={() => children.ontoggle()}
+          onclick={(event) => {
+            if (!secondPress(event)) children.ontoggle();
+          }}
         >
           <span class="chevron" class:turned={children.open}><Icon name="expand" size="xs" /></span>
         </button>

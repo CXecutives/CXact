@@ -1,6 +1,7 @@
 <!--
-  The job list (the round 10 draft): one list per place in the chosen order, rows in windows
-  of 60 (a sentinel at the end shows the next window), 6 in from the column's edges. In the
+  The job list (the round 10 draft): one list per place, Aktuell and the Archiv in the chosen
+  order, the Papierkorb by date, rows in windows of 60 (a sentinel at the end shows the next
+  window), 6 in from the column's edges. In the
   order by date (the default, decision 1) the scored jobs stand under the headings of their
   days (DayGroup: the local day a job came into CXact, in the Papierkorb the day it went
   there; "Heute", "Gestern", "Mi 23.09.", rolling over at midnight with the page's clock),
@@ -16,12 +17,15 @@
   section has days.
   The list of another place lets its first 10 rows rise 8 px one after the other (24 ms
   apart) while their rings fill and count up; the start, a return to Jobs, a filter, a
-  search, a selection and fast browsing (pace.ts) show the list at once. A new job of a run rises in where it lands (the
-  rows below simply make room; the rows already there never flicker). Rows move only for the
-  user's own change and for the re-sort at the end of a run: after the order, another place
-  or a filter the rows on screen glide to their new place (180 ms); rows off screen and new
-  rows are simply there. A row the user moves out folds its height away (its day with its last
-  row). One highlight marks the open job's row and glides from row to row (RowBar).
+  search, a selection and fast browsing (pace.ts) show the list at once, what the pane can show in
+  one frame and the rest below the fold, from its top. A new job of a run rises in where it lands
+  (the rows below simply make room; the rows already there never flicker). Rows move only for the
+  user's own change and for the re-sort at the end of a run: after the order, a filter or
+  "Trotzdem bewerten", with the list's answer, the rows on screen and the sections' headings glide
+  to their new place (180 ms), as the days' headings go or come with the answer; rows off screen
+  and new rows are simply there. A row the user moves out folds its height away (its day or its
+  section with its last row). One highlight marks the open job's row and glides from row to row
+  (RowBar).
   A page that fails to load while scrolling says so at the end of the list, with a retry. A
   search looks in the list's place; under its hits a button names each other place that lists
   a hit by its own rule (jobs.hitsIn), by its name (no count), and goes there with the search.
@@ -33,7 +37,8 @@
   reaches them. Back in the Jobs view, the list stands where it was scrolled to.
   A job action that fails says so in the list header.
   What the list shows is the answer it holds: a search or a filter on its way changes nothing
-  until its answer comes, neither the rows, their marks and sections nor the state of no hit.
+  until its answer comes, neither the rows, their marks and sections, the buttons to the other
+  places nor the state of no hit.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
   Aktuell before the first search, while one fills it, after one that found nothing that fits
@@ -70,11 +75,11 @@
   import { play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
   import { glideWhole } from '$lib/motion/scroll';
-  import { afterUnfold, rowEnter, unfold } from '$lib/motion/transitions';
+  import { afterUnfold, rowCollapse, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { NO_FILTER } from '$lib/state/filter';
-  import { isExcluded, isUnscored, keyOf, sameKey } from '$lib/state/jobRows';
+  import { allIn, isExcluded, isUnscored, keyOf, sameKey } from '$lib/state/jobRows';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -86,6 +91,7 @@
     moving,
     openAd,
     purge,
+    returning,
     rowTools,
     seen,
     type JobMenuContext,
@@ -125,8 +131,9 @@
 
   /* ----------------------------------------------------------------------- days */
 
-  /** The order by date heads its scored rows by their days. */
-  const dayed = $derived(jobs.sort === 'newest');
+  /** The order by date heads its scored rows by their days (the headings go and come with the
+   *  list's answer, as its rows glide). */
+  const dayed = $derived(jobs.listedSort === 'newest');
   /** The moment that dates a row: when it came, in the Papierkorb when it went there. */
   const dated = (job: JobView): string =>
     (job.place === 'trash' ? job.trashedAt : null) ?? job.firstSeenAt;
@@ -160,6 +167,27 @@
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
   const more = $derived(jobs.more && !foldedEnd);
+  /** The sections that hold rows: each with its heading, and its rows behind its fold. */
+  const shownSections = $derived(
+    [
+      {
+        id: 'unscored',
+        label: t.list.unscored,
+        jobs: unscored,
+        open: unscoredOpen,
+        toggle: sections.unscoredHeld ? null : () => sections.toggleUnscored(),
+        start: active.length,
+      },
+      {
+        id: 'excluded',
+        label: t.list.excluded,
+        jobs: excluded,
+        open: excludedOpen,
+        toggle: sections.excludedHeld ? null : () => sections.toggleExcluded(),
+        start: active.length + unscored.length,
+      },
+    ].filter((section) => section.jobs.length > 0),
+  );
 
   /* ---------------------------------------------------------------------- empty */
 
@@ -350,26 +378,22 @@
   /* --------------------------------------------------------------------- glides */
 
   let list = $state<HTMLElement | null>(null);
-  /** The rows of the list (both sections and the dividers), which the highlight follows. */
-  let groups = $state<HTMLElement | null>(null);
   let rowBar = $state<RowBar | null>(null);
-  /** The next new rows come from the user's own change (sort, place, filter) or from the
-   *  re-sort at the end of a run: the rows on screen glide to their new place. */
+  /** The next new rows come from the user's own change (sort, filter, "Trotzdem bewerten") or
+   *  from the re-sort at the end of a run: the rows on screen and the sections' headings glide to
+   *  their new place. */
   let armed = false;
-  /** Top edges of the rows before such a change, until the DOM has the new rows. */
+  /** Top edges of what glides before such a change, until the DOM has the new rows. */
   let before: Map<string, number> | null = null;
-  let last = untrack(() => ({
-    sort: jobs.sortChoice,
-    place: jobs.place,
-    filter: jobs.filterChoice,
-    active: run.active,
-  }));
+  let last = untrack(() => ({ reorders: jobs.reorders, filter: jobs.filterChoice }));
 
+  /** What glides: the rows and the sections' headings among them, each by a key of its own. */
   function rowsOf(root: HTMLElement): HTMLElement[] {
-    return [...root.querySelectorAll<HTMLElement>('[data-key]')];
+    return [...root.querySelectorAll<HTMLElement>('[data-key], [data-testid$="-divider"]')];
   }
+  const glideKey = (node: HTMLElement): string => node.dataset['key'] ?? node.dataset['testid']!;
 
-  /** Every row on screen glides from where it stood (180 ms, ease-out, as every glide); rows
+  /** Everything on screen glides from where it stood (180 ms, ease-out, as every glide); rows
    *  far away are simply there.
    *  Every box is read before the first move starts: a read after a started animation lays
    *  the whole list out again, once per row. */
@@ -377,7 +401,7 @@
     const height = window.innerHeight;
     const moves: [HTMLElement, number][] = [];
     for (const row of rowsOf(root)) {
-      const was = from.get(row.dataset.key ?? '');
+      const was = from.get(glideKey(row));
       if (was === undefined) continue;
       const box = row.getBoundingClientRect();
       const shift = Math.round(was - box.top);
@@ -413,19 +437,14 @@
     }
   }
 
-  // What changed the list: the user's sort, place or filter (never while a run streams new
-  // rows in), or the end of a run. A search and live updates arm nothing.
+  // What changed the list: the same list in a new order (the user's sort, "Trotzdem bewerten",
+  // the end of a run) or the user's filter, never while a run streams new rows in. Another place
+  // holds other rows, and a search and live updates arm nothing.
   $effect.pre(() => {
-    const now = {
-      sort: jobs.sortChoice,
-      place: jobs.place,
-      filter: jobs.filterChoice,
-      active: run.active,
-    };
+    const now = { reorders: jobs.reorders, filter: jobs.filterChoice };
     untrack(() => {
-      const chosen =
-        now.sort !== last.sort || now.place !== last.place || now.filter !== last.filter;
-      if ((chosen && !now.active) || (last.active && !now.active)) armed = true;
+      const chosen = now.reorders !== last.reorders || now.filter !== last.filter;
+      if (chosen && !run.active) armed = true;
       last = now;
     });
   });
@@ -436,16 +455,25 @@
     void shown;
     untrack(() => {
       if (!armed || list === null) return;
-      before = new Map(
-        rowsOf(list).map((row) => [row.dataset.key ?? '', row.getBoundingClientRect().top]),
-      );
+      before = new Map(rowsOf(list).map((row) => [glideKey(row), row.getBoundingClientRect().top]));
       if (jobs.status !== 'loading') armed = false;
     });
   });
 
-  // After the DOM has the new rows: glide from the noted places, at the start of the next
-  // frame (before it is drawn): the new rows are laid out once, there, and not a second time
-  // inside the task that built them. A new job of a run fades in.
+  // Another list starts at the top, wherever the one before it was scrolled to.
+  let lastGeneration = untrack(() => jobs.generation);
+  $effect.pre(() => {
+    const generation = jobs.generation;
+    untrack(() => {
+      if (generation !== lastGeneration && list?.parentElement) list.parentElement.scrollTop = 0;
+      lastGeneration = generation;
+    });
+  });
+
+  // After the DOM has the new rows: glide from the noted places, before the next frame is drawn
+  // (WebKit may draw a layout ahead of its frame callbacks, so whichever comes first of the two):
+  // the new rows are laid out once, there, and not a second time inside the task that built them.
+  // A new job of a run fades in.
   $effect(() => {
     void shown;
     untrack(() => {
@@ -453,7 +481,16 @@
       const from = before;
       before = null;
       if (root === null) return;
-      if (from !== null) requestAnimationFrame(() => glide(root, from));
+      if (from !== null) {
+        const start = (): void => {
+          watch.disconnect();
+          cancelAnimationFrame(frame);
+          glide(root, from);
+        };
+        const watch = new ResizeObserver(start);
+        watch.observe(root);
+        const frame = requestAnimationFrame(start);
+      }
       enterFresh(root);
     });
   });
@@ -577,14 +614,6 @@
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
 >
-  <RowBar
-    bind:this={rowBar}
-    rows={groups}
-    open={barOpen}
-    {listed}
-    folding={moving}
-    generation={jobs.generation}
-  />
   <span class="mark" use:inView={(at) => (scrolled = at === 'above')}></span>
 
   {#if profileMissing}
@@ -697,7 +726,14 @@
       />
     {/if}
   {:else}
-    <div class="groups" data-press-only bind:this={groups}>
+    <div class="groups" data-press-only>
+      <RowBar
+        bind:this={rowBar}
+        open={barOpen}
+        {listed}
+        folding={moving}
+        generation={jobs.generation}
+      />
       <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
         <div class="rows" data-testid="job-rows" use:topLine>
@@ -712,47 +748,36 @@
             />
           {/each}
         </div>
-        {#if unscored.length > 0}
-          <ListDivider
-            label={t.list.unscored}
-            open={unscoredOpen}
-            ontoggle={sections.unscoredHeld ? null : () => sections.toggleUnscored()}
-            testid="unscored-divider"
-          />
-          {#if unscoredOpen}
-            <div class="rows" data-testid="unscored-rows" transition:unfold>
-              <DayGroup
-                jobs={unscored}
-                start={active.length}
-                open={openKey}
-                opening={opened}
-                {row}
-              />
-            </div>
-          {/if}
-        {/if}
-        {#if excluded.length > 0}
-          <ListDivider
-            label={t.list.excluded}
-            open={excludedOpen}
-            ontoggle={sections.excludedHeld ? null : () => sections.toggleExcluded()}
-            testid="excluded-divider"
-          />
-          {#if excludedOpen}
-            <div class="rows" data-testid="excluded-rows" transition:unfold>
-              <DayGroup
-                jobs={excluded}
-                start={active.length + unscored.length}
-                open={openKey}
-                opening={opened}
-                {row}
-              />
-            </div>
-          {/if}
-        {/if}
+        {#each shownSections as section (section.id)}
+          <div
+            class="section"
+            in:unfold={{ on: allIn(section.jobs, returning) }}
+            out:rowCollapse={{ on: allIn(section.jobs, moving) }}
+          >
+            <ListDivider
+              label={section.label}
+              open={section.open}
+              ontoggle={section.toggle}
+              testid="{section.id}-divider"
+            />
+            {#if section.open}
+              <div class="rows" data-testid="{section.id}-rows" transition:unfold>
+                <DayGroup
+                  jobs={section.jobs}
+                  start={section.start}
+                  open={openKey}
+                  opening={opened}
+                  {row}
+                />
+              </div>
+            {/if}
+          </div>
+        {/each}
       {/key}
     </div>
-    {#if elsewhere.length > 0 && !more}{@render alsoIn()}{/if}
+    {#if elsewhere.length > 0 && !more && jobs.rendered >= jobs.visible.length}
+      {@render alsoIn()}
+    {/if}
     {#if jobs.pageError}
       <div class="page-error">
         <Notice
@@ -786,9 +811,7 @@
 />
 
 <style>
-  /* The containing block of the rows' one highlight (RowBar). */
   .list {
-    position: relative;
     display: flex;
     flex: 1 0 auto;
     flex-direction: column;
@@ -819,10 +842,20 @@
     padding: 0 var(--list-rows-inset-end) 0 var(--list-rows-inset);
   }
 
+  /* The containing block of the rows' one highlight (RowBar). */
+  .groups {
+    position: relative;
+  }
+
   /* Plain block flow: a flex column adds nothing here and costs a little more each time the
      rows are laid out again. */
   .rows {
     display: block;
+  }
+
+  /* A section folds as one block, heading and all, the heading's margin inside it. */
+  .section {
+    display: flow-root;
   }
 
   /* Search hits in the other places: buttons under the hits of this one. */

@@ -73,7 +73,7 @@
 //   caret stays there, as in any field (owner, 2026-11-01); a held one stops at the field's start.
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
-// - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
+// - rows hover neither while a list scrolls nor behind an open menu (`data-rests`, see onScroll)
 // - a row that slides under a pointer that did not move is not hovered by it: after a row's
 //   tool took its row away, the next row shows its tools only once the pointer moves
 //   (`hover`, `holdHover` of hold.ts); a press on a tooltip's anchor holds the same way, so
@@ -1379,7 +1379,7 @@ function holdMenuWheel(event: WheelEvent): void {
  * hover rules wait for `:not([data-still])`. Only the rows the pointer passes change: one
  * mark on :root restyled every row of a long list at the start and at the end of each
  * scroll (a long task with a few hundred rows). Passive listeners: they never delay a
- * scroll.
+ * scroll. They rest the same way behind an open menu, like a native one's.
  */
 let scrollIdle: ReturnType<typeof setTimeout> | undefined;
 /** --scroll-idle, read once: reading a token inside the handler would force a style
@@ -1423,7 +1423,7 @@ function onScroll(): void {
 
 function onPointerOver(event: PointerEvent): void {
   underPointer = event.target instanceof Element ? event.target : null;
-  if (scrolling) rest(underPointer);
+  if (scrolling || menuState.open !== null) rest(underPointer);
 }
 
 function onPointerOut(event: PointerEvent): void {
@@ -1586,8 +1586,12 @@ export function installInput(): void {
     typed = '';
     dismiss('press');
     watchWheel('menu', true);
+    rest(underPointer);
   });
-  onMenuClosed(pressLanded);
+  onMenuClosed(() => {
+    pressLanded();
+    if (!scrolling) scrollOver();
+  });
   document.addEventListener('contextmenu', onContextMenu, capture);
   document.addEventListener(
     'mousedown',
@@ -1639,8 +1643,14 @@ export function installInput(): void {
         } else if (!pressOnFieldBox(event)) {
           leaveField(event);
           // What holds only buttons (the sidebar, the list's header, the job view's rows of
-          // buttons) is pressed, not focused, like the toolbar of Mail and Finder on both OS.
-          if (closest(event.target, PRESS_ONLY) !== null) event.preventDefault();
+          // buttons) is pressed, not focused, like the toolbar of Mail and Finder on both OS, and
+          // what a key left the focus on stands armed no more.
+          if (closest(event.target, PRESS_ONLY) !== null) {
+            event.preventDefault();
+            const held = document.activeElement;
+            const armed = held instanceof HTMLElement && !isNowhere(held) && !inField(held);
+            if (armed && !held.contains(event.target as Node)) held.blur();
+          }
         }
         return;
       }

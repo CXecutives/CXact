@@ -12,6 +12,7 @@
   where a day's heading stands.
 -->
 <script lang="ts">
+  import { secondPress } from '$lib/input/input';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -32,7 +33,9 @@
   aria-expanded={open}
   disabled={ontoggle === null}
   data-testid={testid ?? undefined}
-  onclick={() => ontoggle?.()}
+  onclick={(event) => {
+    if (!secondPress(event)) ontoggle?.();
+  }}
 >
   <span class="label">{label}</span>
   <span class="chevron" class:turned={open}><Icon name="expand" size="xs" /></span>
@@ -53,8 +56,8 @@
     transition: color var(--dur-base) var(--ease-standard);
   }
 
-  /* First in the list: no rows of the days above it. */
-  :global(.rows:not(:has([data-key]))) + .divider {
+  /* First in the list: no rows of the days above its section. */
+  :global(.rows:not(:has([data-key]))) + :global(.section) > .divider {
     margin-top: 0;
     padding: var(--day-head-pad);
     border-top: 0;
