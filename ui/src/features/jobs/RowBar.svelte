@@ -1,8 +1,9 @@
 <!--
   The job list's one highlight (the round 10 draft): the open job's row on a soft coral tint
   (8 round, the row's own box), a 3 px coral bar at its left
-  edge, 10 in from its top and bottom. It lies under the rows and the days' headings, and in
-  the list's scroll content, so it scrolls with the rows. Opening another job glides it there
+  edge, 10 in from its top and bottom. It lies under the rows and the days' headings, as the first
+  child of what holds them (it comes and goes with the rows, and what moves that block moves it),
+  so it scrolls with the rows. Opening another job glides it there
   by its translateY (180 ms, ease-out, like the sidebar's pill); a
   target out of sight, fast browsing (pace.ts: the arrow keys held, opens close together) and
   far jumps place it. It stays with its row whatever moves the rows: at once when rows arrive
@@ -24,8 +25,6 @@
   import type { BarBox } from '$lib/motion/transitions';
 
   interface Props {
-    /** The rows (elements with `data-key`); their layout moves the highlight. */
-    rows: HTMLElement | null;
     /** The row it marks: the open job's, while it shows as selected. */
     open: string | null;
     /** The listed rows: a row on the page that is not listed is on its way out. */
@@ -36,9 +35,11 @@
     generation: number;
   }
 
-  let { rows, open, listed, folding, generation }: Props = $props();
+  let { open, listed, folding, generation }: Props = $props();
 
   let bar = $state<HTMLElement | null>(null);
+  /** What holds the rows (elements with `data-key`) and the bar; their layout moves it. */
+  const rows = $derived(bar?.parentElement ?? null);
   let shown = $state(false);
   /** This change of `shown` goes without a fade. */
   let snap = $state(false);
@@ -70,12 +71,12 @@
     return found;
   }
 
-  /** The row's box: its top in the list (summed along the offset parents: a day's wrapper
-   *  stays unpositioned, a row's own wrapper is) and its whole height, also while it unfolds. */
+  /** The row's box: its top in what holds the rows (summed along the offset parents: a day's
+   *  wrapper stays unpositioned, a row's own wrapper is) and its whole height, also while it
+   *  unfolds. */
   function boxOf(item: HTMLElement): BarBox {
-    const list = bar?.parentElement ?? null;
     let top = 0;
-    for (let node: Element | null = item; node instanceof HTMLElement && node !== list;) {
+    for (let node: Element | null = item; node instanceof HTMLElement && node !== rows;) {
       top += node.offsetTop;
       node = node.offsetParent;
     }
@@ -299,8 +300,8 @@
 ></span>
 
 <style>
-  /* Placed by script (--bar-top, --bar-height), shown by opacity (140 ms). Under the rows:
-     the first child of the list, and nothing of it takes a z-index. */
+  /* Placed by script (--bar-top, --bar-height), shown by opacity (140 ms). Under the rows: the
+     first child of what holds them, and nothing of it takes a z-index. */
   .highlight {
     position: absolute;
     top: 0;
@@ -314,11 +315,6 @@
     transition:
       opacity var(--dur-fade) var(--ease-in),
       background-color var(--dur-base) var(--ease-standard);
-  }
-
-  /* A list without rows has none: it would flash over the state that took the rows' place. */
-  .highlight:not(:has(~ :global(.groups))) {
-    display: none;
   }
 
   /* The coral bar at its left edge, 10 in from its top and bottom. */

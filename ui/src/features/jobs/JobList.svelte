@@ -351,8 +351,6 @@
   /* --------------------------------------------------------------------- glides */
 
   let list = $state<HTMLElement | null>(null);
-  /** The rows of the list (both sections and the dividers), which the highlight follows. */
-  let groups = $state<HTMLElement | null>(null);
   let rowBar = $state<RowBar | null>(null);
   /** The next new rows come from the user's own change (sort, place, filter) or from the
    *  re-sort at the end of a run: the rows on screen glide to their new place. */
@@ -578,14 +576,6 @@
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
 >
-  <RowBar
-    bind:this={rowBar}
-    rows={groups}
-    open={barOpen}
-    {listed}
-    folding={moving}
-    generation={jobs.generation}
-  />
   <span class="mark" use:inView={(at) => (scrolled = at === 'above')}></span>
 
   {#if profileMissing}
@@ -698,7 +688,14 @@
       />
     {/if}
   {:else}
-    <div class="groups" data-press-only bind:this={groups}>
+    <div class="groups" data-press-only>
+      <RowBar
+        bind:this={rowBar}
+        open={barOpen}
+        {listed}
+        folding={moving}
+        generation={jobs.generation}
+      />
       <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
         <div class="rows" data-testid="job-rows" use:topLine>
@@ -787,9 +784,7 @@
 />
 
 <style>
-  /* The containing block of the rows' one highlight (RowBar). */
   .list {
-    position: relative;
     display: flex;
     flex: 1 0 auto;
     flex-direction: column;
@@ -818,6 +813,11 @@
   .skeletons {
     display: block;
     padding: 0 var(--list-rows-inset-end) 0 var(--list-rows-inset);
+  }
+
+  /* The containing block of the rows' one highlight (RowBar). */
+  .groups {
+    position: relative;
   }
 
   /* Plain block flow: a flex column adds nothing here and costs a little more each time the

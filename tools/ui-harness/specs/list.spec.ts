@@ -3178,6 +3178,29 @@ test('a double click on a section heading or the chevron of the places folds onc
   }
 });
 
+test("the open row's highlight stays on its row when the box above the list goes", async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=no-profile&view=profile`);
+  await page.getByTestId('way-cv').click();
+  await page.getByTestId('nav-jobs').click();
+  const box = page.getByTestId('no-profile');
+  await expect(box).toBeVisible();
+  const key = (await stubList(page)).active[2]!;
+  await row(page, key).click();
+  await expectHighlightOn(page, key);
+  const before = (await row(page, key).boundingBox())!.y;
+  // The CV is read: there is a profile, and the box above the rows goes.
+  await expect(page.getByTestId('toast-text').last()).toHaveText(T.profile.filled);
+  await expect(box).toHaveCount(0);
+  await expect.poll(async () => (await row(page, key).boundingBox())!.y).toBeLessThan(before);
+  await expectHighlightOn(page, key);
+  // The next job glides from there, in the same frame as its wash.
+  const next = (await stubList(page)).active[3]!;
+  await row(page, next).click();
+  await expectHighlightOn(page, next);
+});
+
 test.describe('sidebar', () => {
   test('three views, the places under Jobs, no counts, no tooltips beside their names; the app starts in Jobs', async ({
     page,
