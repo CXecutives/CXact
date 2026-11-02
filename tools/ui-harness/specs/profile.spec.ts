@@ -995,6 +995,91 @@ test('text a closed list did not take says so once the field is left', async ({ 
   await expect(none).toHaveCount(0);
 });
 
+test('text a closed list refuses draws the red edge of every wrong value, once the field is left', async ({
+  page,
+}) => {
+  await profile(page);
+  /** The edge at rest: no animation under way, the pointer elsewhere. */
+  const edge = async (box: Locator): Promise<string> => {
+    await page.mouse.move(0, 0);
+    await animationsDone(page);
+    return box.evaluate((node) => getComputedStyle(node).borderTopColor);
+  };
+  const land = countryInput(page);
+  const rate = page.getByTestId('profile-wish-rate');
+  const rateBox = rate.locator('xpath=ancestor-or-self::*[contains(@class, "field")][1]');
+  const calm = await edge(countries(page));
+  await land.click();
+  await page.keyboard.type('Atlantis');
+  await expect(page.getByTestId('profile-countries-none')).toHaveText(T.profile.field.countryNone);
+  // While the caret stands in it the edge is navy, as in every field.
+  const typing = await edge(countries(page));
+  await rate.click();
+  expect(await edge(rateBox)).toBe(typing);
+  await rate.fill('999999');
+  await leaveField(page);
+  await expect(field(page, 'dayRateWish')).toContainText(T.profile.field.atMost(100000));
+  // Left, both say the same: the one red, and so do their words for a screen reader.
+  const red = await edge(rateBox);
+  expect(red).not.toBe(calm);
+  expect(await edge(countries(page))).toBe(red);
+  await expect(land).toHaveAttribute('aria-invalid', 'true');
+  // The name field of Sprachen is the same field.
+  const language = await adder(page, 'language');
+  await page.keyboard.type('Klingonisch');
+  await leaveField(page);
+  await expect(page.getByTestId('language-add-none')).toHaveText(T.profile.field.languageNone);
+  await expect(language).toHaveAttribute('aria-invalid', 'true');
+  expect(await edge(page.getByTestId('language-add'))).toBe(red);
+  // Taken back, the edge is calm again.
+  await land.fill('');
+  await expect(land).not.toHaveAttribute('aria-invalid', 'true');
+  await leaveField(page);
+  expect(await edge(countries(page))).toBe(calm);
+});
+
+test('a list typed into a closed list takes what it names, the rest stays and says so', async ({
+  page,
+}) => {
+  await profile(page);
+  const land = countryInput(page);
+  const none = page.getByTestId('profile-countries-none');
+  await land.click();
+  // On its way, no false sentence: each of its entries still names a country.
+  await page.keyboard.type(`${CH}, ${country('IT')}`);
+  await expect(none).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH, country('IT')]);
+  await expect(land).toHaveValue('');
+  await expect(land).toBeFocused();
+  await expect(none).toHaveCount(0);
+  // Left with a list it takes it as well; what names no country is not taken and said.
+  await page.keyboard.type(`${BE}; Atlantis`);
+  await expect(none).toHaveText(T.profile.field.countryNone);
+  await page.keyboard.press('Tab');
+  await expect(chips(countries(page))).toHaveText([DE, AT, CH, country('IT'), BE]);
+  await expect(land).toHaveValue('Atlantis');
+  await expect(none).toHaveText(T.profile.field.countryNone);
+  // What is there already is no news, and neither is a list of it.
+  await land.fill(`${DE}, ${CH}`);
+  await land.press('Enter');
+  await expect(land).toHaveValue('');
+  await expect(none).toHaveCount(0);
+  // Nothing it names: all of it stays, as typed text.
+  await land.fill('Atlantis, Klingonien');
+  await land.press('Enter');
+  await expect(land).toHaveValue('Atlantis, Klingonien');
+  await expect(none).toHaveText(T.profile.field.countryNone);
+  await land.fill('');
+  // The rows of Sprachen likewise, Enter stays for the next.
+  const language = await adder(page, 'language');
+  await page.keyboard.type(`${LANGUAGE.fr}, ${LANGUAGE.de}, Klingonisch`);
+  await page.keyboard.press('Enter');
+  await expect(names(page, 'languages')).toHaveText([LANGUAGE.de, LANGUAGE.en, LANGUAGE.fr]);
+  await expect(language).toHaveValue('Klingonisch');
+  await expect(page.getByTestId('language-add-none')).toHaveText(T.profile.field.languageNone);
+});
+
 /** A paste into a field, as the engine sends it; whether the field took it (no text goes in). */
 const pasteInto = (input: Locator, text: string): Promise<boolean> =>
   input.evaluate((node, words) => {
@@ -1298,6 +1383,28 @@ async function manyTools(page: Page): Promise<Locator> {
   await expect(page.getByTestId('profile-tools-more')).toBeVisible();
   return tools;
 }
+
+test('"+ n weitere" takes the size of the chips it counts, and stands on their second line', async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = await manyTools(page);
+  const more = page.getByTestId('profile-tools-more');
+  const size = (node: Locator): Promise<string[]> =>
+    node.evaluate((text) => {
+      const { fontSize, lineHeight } = getComputedStyle(text);
+      return [fontSize, lineHeight];
+    });
+  expect(await size(more.locator('.label'))).toEqual(await size(chips(tools).first()));
+  // The fold counts chips: two lines of them with the button at the end of the second.
+  const tops = await chips(tools).evaluateAll((all) => [
+    ...new Set(all.map((chip) => Math.round(chip.getBoundingClientRect().top))),
+  ]);
+  expect(tops).toHaveLength(2);
+  const line = await tools.locator('.slot').last().boundingBox();
+  const button = await more.boundingBox();
+  expect(button!.y + button!.height / 2).toBeCloseTo(line!.y + line!.height / 2, 0);
+});
 
 test('Tab goes through a long folded field: its input opens it, the next Tab goes on', async ({
   page,

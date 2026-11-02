@@ -16,12 +16,14 @@
   yet whose name or other names (the English one of a country) start with the text (any word of them, in any
   case, with or without accents), with the first marked; Enter or a click takes the marked
   one, leaving the field takes a single match, a chosen option leaves the list. Text that
-  matches no option stays in the field and says so (`noMatch`, the look of a refused value), as
-  does text the field was left with; text that matches only chosen ones says nothing and goes with
-  Enter or the leaving. A chip shows its option's name; a value that is no option (from a file)
-  stays and shows as it is.
+  matches no option stays in the field and says so (`noMatch`, the look of a refused value: its
+  red edge once the field is left), as does text the field was left with; text that matches only
+  chosen ones says nothing and goes with Enter or the leaving. A chip shows its option's name; a
+  value that is no option (from a file) stays and shows as it is.
   What stands in the list the field adds to (`taken`, the rows of Sprachen and Kompetenzen)
-  counts as chosen. A pasted list goes in as far as its entries name an option.
+  counts as chosen. A list, pasted or typed (with Enter or the leaving), goes in as far as its
+  entries name an option; what names none stays as text and says so, an entry on its way to a
+  name says nothing yet.
   With `suggestions` (the engine's words) a field without options suggests terms from the
   first character (Suggestions.svelte): nothing is marked until the arrows or the pointer
   mark one, Enter or a click takes the marked term as a chip; Enter without a mark and
@@ -30,8 +32,8 @@
   Typed text that is no chip yet is a change of the form around the field (`typedText`).
   30 px high with one line of chips, each 24 px on the track in 13 px words; a chip rises in
   only when it is added, never when the field is drawn again or folds open. Its edge is the
-  text field's (`--field-edge`, red in a required cell that is still empty, red while
-  `invalid`); focus turns it navy only.
+  text field's (`--field-edge`, orange in a required cell that is still empty, red while
+  `invalid` or while its text is refused); focus turns it navy only.
   With `fold` a long list shows two lines of chips and "+ n weitere" while the field has no
   focus; a click on it, or the focus, shows them all, and the caret a press put at their end
   stays in view, as it does with what the field takes (`keepInView`, the keyboard's way too,
@@ -153,6 +155,14 @@
   $effect(() => (fold && box !== null ? folder.observe(box) : undefined));
   const known = (list: string[], text: string): boolean =>
     list.some((value) => value.toLowerCase() === text.toLowerCase());
+  /** `text` is a list, not one value. */
+  const isList = (text: string): boolean => separators.test(text.trim());
+  /** The entries of `text`. */
+  const partsOf = (text: string): string[] =>
+    text
+      .split(separators)
+      .map((part) => part.trim())
+      .filter((part) => part !== '');
 
   // ------------------------------------------------------------ the chip that came in
   /** The values added since the last change: only their chips rise in (never one drawn
@@ -216,13 +226,16 @@
     );
   }
   const chosen = $derived(isChosen(draft));
-  /** The typed text names no option at all (one that is chosen already is no news), or the
-   *  field was left with a start of several it did not take. */
+  /** An entry of the typed text names no option at all (one that is chosen already is no news),
+   *  or the field was left with a start of several it did not take. */
   const nothing = $derived(
     options !== null &&
       folded(draft) !== '' &&
-      (found.length === 0 || (!focused && matches.length > 0)),
+      (partsOf(draft).some((part) => suggested(options, part).length === 0) ||
+        (!focused && (matches.length > 0 || isList(draft)))),
   );
+  /** What it holds is wrong, or its text is refused in words: the one look of a wrong value. */
+  const wrong = $derived(invalid || (nothing && noMatch !== null));
   const suggesting = $derived(options !== null || suggestions !== undefined);
 
   $effect(() => {
@@ -242,13 +255,6 @@
       if (input instanceof HTMLInputElement && box?.contains(input)) keepInView(input);
     });
   }
-
-  /** The entries of `text`. */
-  const partsOf = (text: string): string[] =>
-    text
-      .split(separators)
-      .map((part) => part.trim())
-      .filter((part) => part !== '');
 
   /** Adds every entry of `text` that is not there yet; `true` if there was text. */
   function add(text: string): boolean {
@@ -274,8 +280,8 @@
     draft = '';
   }
 
-  /** Enter without a marked row: the typed text (with options it only clears a name that is
-   *  chosen already); `true` if there was text. */
+  /** Enter without a marked row: the typed text (with options a list goes in as far as it names
+   *  them, and a name that is chosen already is cleared); `true` if there was text. */
   function commit(): boolean {
     if (options === null) {
       const done = add(draft);
@@ -283,7 +289,8 @@
       return done;
     }
     if (draft.trim() === '') return false;
-    if (chosen) draft = '';
+    if (isList(draft)) takeNamed(partsOf(draft));
+    else if (chosen) draft = '';
     return true;
   }
 
@@ -348,20 +355,11 @@
   }
 
   /** Leaving the field: the row the arrows marked goes in, else typed text becomes chips, with
-   *  options only a single match. */
+   *  options only what names a single match. */
   function settle(): void {
-    if (arrowed && rows[mark] !== undefined) {
-      take(mark);
-      return;
-    }
-    if (options === null) {
-      commit();
-      return;
-    }
-    if (draft.trim() === '') return;
-    const only = meant(draft);
-    if (only) take(matches.indexOf(only));
-    else if (chosen) draft = '';
+    if (arrowed && rows[mark] !== undefined) take(mark);
+    else if (options === null) commit();
+    else takeNamed(partsOf(draft));
   }
 
   function remove(index: number): void {
@@ -388,7 +386,7 @@
   /** A pasted list becomes chips at once; a single value is pasted as text. */
   function paste(event: ClipboardEvent): void {
     const text = event.clipboardData?.getData('text') ?? '';
-    if (!separators.test(text.trim())) return;
+    if (!isList(text)) return;
     event.preventDefault();
     if (options !== null) {
       takeNamed(partsOf(`${draft}\n${text}`));
@@ -403,7 +401,7 @@
   <div
     bind:this={box}
     class="field"
-    class:invalid
+    class:invalid={wrong}
     class:entry
     class:filled={values.length > 0}
     data-field-box={entry ? '' : undefined}
@@ -442,7 +440,7 @@
           aria-controls={rows.length > 0 ? `${own}-list` : undefined}
           aria-activedescendant={rows.length > 0 && mark >= 0 ? `${own}-list-${mark}` : undefined}
           aria-label={label ?? undefined}
-          aria-invalid={invalid ? 'true' : undefined}
+          aria-invalid={wrong ? 'true' : undefined}
           aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
             .filter((part) => part !== null)
             .join(' ') || undefined}
@@ -518,6 +516,11 @@
   .invalid {
     --field-edge: var(--danger-strong);
     --field-edge-hover: var(--danger-strong);
+  }
+
+  /* "+ n weitere" in the words' size, the written measure of a link in a field. */
+  .field :global(.btn.link) {
+    --btn-type: var(--field-link);
   }
 
   /* Focus last: only the navy edge, whatever the field showed (hover never takes it back). */
