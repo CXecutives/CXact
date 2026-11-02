@@ -16,6 +16,7 @@ import {
   reveal,
   row,
   rows,
+  setToken,
   stage,
   T,
   WIN,
@@ -301,6 +302,88 @@ test.describe('a tooltip goes when it should', () => {
     expect(fits).toBe(true);
     await row(page, key).locator('.title').hover();
     await expect(tip(page)).toBeVisible();
+  });
+});
+
+// A scroll takes the bubble and leaves nothing warm: what slides under a pointer that rests waits
+// for its delay like a first one, while moving from anchor to anchor stays warm.
+test.describe('a roll of the wheel under a pointer that rests', () => {
+  const NOTCHES = 8;
+  /** Longer than any pause of the roll, however busy the machine: a bubble that comes back during
+   *  it came because it was warm, and a later one is the rest's. */
+  const LONG = '2s';
+
+  /** Logs per frame, from now on, whether the bubble stands. */
+  const logFrames = (page: Page): Promise<void> =>
+    page.evaluate(() => {
+      const log: boolean[] = [];
+      (window as unknown as { tipLog: boolean[] }).tipLog = log;
+      const tick = (): void => {
+        log.push(document.querySelector('[role="tooltip"]') !== null);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  const frames = (page: Page): Promise<boolean[]> =>
+    page.evaluate(() => (window as unknown as { tipLog: boolean[] }).tipLog);
+
+  /** One notch per row: the next row's anchor slides right under the pointer each time. */
+  async function roll(page: Page): Promise<void> {
+    const [first, second] = await Promise.all([
+      rows(page).nth(0).boundingBox(),
+      rows(page).nth(1).boundingBox(),
+    ]);
+    const pane = page.getByTestId('list-scroll');
+    const before = await pane.evaluate((node) => node.scrollTop);
+    await logFrames(page);
+    for (let notch = 0; notch < NOTCHES; notch += 1) {
+      await page.mouse.wheel(0, second!.y - first!.y);
+      await page.waitForTimeout(100);
+    }
+    expect(await pane.evaluate((node) => node.scrollTop)).toBeGreaterThan(before);
+    const log = await frames(page);
+    // It stood when the roll began, went with its first notch and did not come back.
+    expect(log[0], 'the bubble at the first notch').toBe(true);
+    expect(log.indexOf(false), 'it goes').toBeGreaterThan(0);
+    expect(log.slice(log.indexOf(false)).includes(true), 'it comes back').toBe(false);
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await setToken(page, '--delay-tooltip', LONG);
+    await open(page, `${WIN}&scenario=many`);
+    await rows(page).nth(1).hover();
+  });
+
+  test('on a ring it goes and blinks back at no notch; at rest the next says its name, and moving on from that stays warm', async ({
+    page,
+  }) => {
+    const ring = rows(page).nth(1).locator('.ring');
+    await ring.hover();
+    await expect(tip(page)).toBeVisible();
+    const at = (await ring.boundingBox())!;
+    await roll(page);
+    await expect(tip(page)).toBeVisible();
+    // Straight on to a ring further down: it speaks at once, though its delay is long.
+    const next = await list(page)
+      .locator('.ring')
+      .evaluateAll((rings, top) => {
+        const boxes = rings.map((node) => node.getBoundingClientRect());
+        const box = boxes.find((one) => one.top > top + one.height);
+        return { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
+      }, at.y);
+    await page.mouse.move(next.x, next.y);
+    const spoken = await page.evaluate(
+      ({ x, y }) =>
+        document.elementFromPoint(x, y)?.closest('.ring')?.hasAttribute('aria-describedby'),
+      next,
+    );
+    expect(spoken).toBe(true);
+  });
+
+  test('on a tool it goes and blinks back at no notch', async ({ page }) => {
+    await page.getByTestId('tool-trash').hover();
+    await expect(tip(page)).toBeVisible();
+    await roll(page);
   });
 });
 

@@ -57,6 +57,13 @@ class TooltipState {
     this.anchor = null;
     this.#hiddenAt = performance.now();
   }
+
+  /** A scroll: the bubble goes and nothing stays warm, so what slides under a pointer that rests
+   *  waits for its delay like a first one. */
+  cool(): void {
+    this.hide();
+    this.#hiddenAt = Number.NEGATIVE_INFINITY;
+  }
 }
 
 export const tooltipState = new TooltipState();
