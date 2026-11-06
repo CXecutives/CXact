@@ -1,7 +1,7 @@
 // What a job can do where it is, with one name, icon and order wherever it shows (the menu of
 // a right click on its row, the reader's head, the row's tools under the pointer), from the
 // tables below (ACTIONS, OF_PLACE, placeMoves, jobMenu, rowTools):
-//   inbox: archive, into the Papierkorb; archive: back to Aktuell, into the Papierkorb;
+//   inbox: archive, into the Papierkorb; archive: back to Eingang, into the Papierkorb;
 //   trash: restore, delete for good (asks first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
 // next job when the open one left (its row in view), hands the keyboard's focus on when it
@@ -51,7 +51,7 @@ const TARGET: Record<MoveId, Place> = {
   restore: 'inbox',
 };
 
-/** One icon per meaning: archiving looks like the archive, Nach Aktuell verschieben like
+/** One icon per meaning: archiving looks like the archive, In den Eingang verschieben like
  *  taking out of it, Wiederherstellen from the Papierkorb like taking back. In den Papierkorb
  *  legen and Endgültig löschen take the trash, both plain (decision 9, 2026-10-24: the red
  *  dialog of Endgültig löschen carries the danger). */
@@ -339,7 +339,7 @@ export function seen(key: JobKey | null = jobs.selected): void {
  * took that away), as one change of the list, so a day or a section they emptied comes back whole
  * (the jobs to where they were, their rows too), then opens the job again that was open when the
  * first of them took it away, if it is listed again. Rows of this list that go back to another
- * place leave it (the Archiv holding a job the undo takes back to Aktuell), and the next job opens
+ * place leave it (the Archiv holding a job the undo takes back to Eingang), and the next job opens
  * when the open one was among them, like after a move. Resolves with the sentence of a failure,
  * which the toast says and offers to try again.
  */

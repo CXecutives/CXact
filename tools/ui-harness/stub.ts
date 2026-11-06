@@ -57,7 +57,7 @@
 // above 100.000, a salary above 10.000.000 and a competence with more than 70 years (with its
 // row) like core's validation, and names what a usable profile still needs (`missing`, like
 // core's missing_required); a saved profile starts the rescore like core (with jobs, while no
-// run goes), whose summary says what the save changed in Aktuell (`ScoreDelta`).
+// run goes), whose summary says what the save changed in Eingang (`ScoreDelta`).
 // "Aus Lebenslauf ausfüllen" (`profile_from_cv`) answers after a few seconds with the demo
 // profile filled from a CV (merged into a stored one);
 // `dropped` takes the files last dropped on the window like the window keeps them (`notFound`
@@ -441,7 +441,7 @@ function placedJob(placed: (typeof PLACED)[number]): JobView {
   };
 }
 
-/** The Papierkorb of the placed jobs: when each went there, and from Aktuell. */
+/** The Papierkorb of the placed jobs: when each went there, and from Eingang. */
 function placeTrash(): void {
   for (const placed of PLACED) {
     if (placed.trashed === undefined) continue;
@@ -890,7 +890,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     state.lastRun = null;
     state.profile = infoOf({ ...mergeCv(null), roles: [], languages: [] });
   },
-  // Before the first search: Aktuell holds nothing yet.
+  // Before the first search: Eingang holds nothing yet.
   fresh: () => {
     jobs = [];
     state.lastRun = null;
@@ -948,7 +948,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'mailbox-keychain': () => {
     state.lastRun = lastRun({ kind: 'failed', error: { kind: 'secretStore', params: {} } });
   },
-  // Every job went to the Archiv after the last search: Aktuell is empty.
+  // Every job went to the Archiv after the last search: Eingang is empty.
   archived: () => {
     for (const job of jobs) job.place = 'archive';
   },
@@ -1200,7 +1200,7 @@ function countsOf(list: JobView[]): JobCounts {
   return c;
 }
 
-/** The excluded jobs of Aktuell and those scored in the high band (a rescore's
+/** The excluded jobs of Eingang and those scored in the high band (a rescore's
  *  `ScoreDelta`). */
 function bandsOf(list: JobView[]): { excluded: number; high: number } {
   const inbox = list.filter((j) => j.place === 'inbox');
@@ -1421,7 +1421,7 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
 /** "Häufig verlangt" like core (`view::asked_terms`, `pipeline::local::terms`): the terms
  *  and fields the engine's readers name for the open must and nice requirements that are
  *  skills (`params.term`, `params.field`, core `pipeline::local::open_term`) of the scored
- *  jobs of Aktuell and the Archiv of the last 30 days, once per job however written,
+ *  jobs of Eingang and the Archiv of the last 30 days, once per job however written,
  *  asked by two jobs at least, the most frequent first (equal counts by their words), at most
  *  eight; what the stored profile names in any field is none of them. */
 function askedTerms(): AskedTerm[] {
@@ -2180,7 +2180,7 @@ const handlers: Handlers = {
     }
     refresh();
     // Like core (scoring::profile_changed): the jobs are scored again, and the rescore says
-    // what changed in Aktuell (`ScoreDelta`); no run without jobs, none while one goes.
+    // what changed in Eingang (`ScoreDelta`); no run without jobs, none while one goes.
     const bandsAfter = bandsOf(jobs);
     rescoreDelta = {
       excludedBefore: bandsBefore.excluded,

@@ -12,7 +12,7 @@
 // One fetch, "Jobs suchen": it reads the alert mails first (with a mailbox), then searches the
 // portals side by side; the run line counts the portals that are done and the new jobs they
 // brought so far, and its bar never moves back. What a fetch brought is a toast at its end
-// ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in every view; its "Zeigen" opens Aktuell
+// ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in every view; its "Zeigen" opens Eingang
 // filtered to exactly the jobs it counts. What went wrong is a toast too, once, with its way
 // on (a mail part that failed at the mailbox while the search ran says "Postfach prüfen"); the
 // other details of a run (each mail, each portal) are in the log, not on screen.
@@ -239,7 +239,7 @@ class RunStore {
     });
   }
 
-  /** The jobs a fetch's toast counts (its "Zeigen"): Aktuell without a search, filtered
+  /** The jobs a fetch's toast counts (its "Zeigen"): Eingang without a search, filtered
    *  to the new jobs of that fetch ("Aus der letzten Suche"), to those of the high band when
    *  the toast names them. Each chip takes its part off again; none of it is kept as the
    *  user's filter. */

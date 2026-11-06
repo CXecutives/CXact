@@ -472,7 +472,7 @@ test('undoing moves in another order puts the rows back where they stood', async
   await expect.poll(keys).toEqual(before);
 });
 
-test('the end of a run keeps the jobs read in Aktuell, the open one in its place', async ({
+test('the end of a run keeps the jobs read in Eingang, the open one in its place', async ({
   page,
 }) => {
   await open(page, WIN);

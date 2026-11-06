@@ -23,7 +23,7 @@
 // - Like mail: every job is in one place (inbox, archive, trash); "fits anyway" is a flag of
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
-// - Each place is one list, the excluded jobs last. Aktuell and the Archiv stand in the chosen
+// - Each place is one list, the excluded jobs last. Eingang and the Archiv stand in the chosen
 //   order and have one filter beside the search (the funnel, lib/state/filter.ts: portals, bands
 //   and the days the jobs came; both kept), the Papierkorb has neither: it stands by the day a
 //   job went there. The filter narrows the list and its counts like the search. The counts over
@@ -101,7 +101,7 @@ interface RuleCounts {
 }
 
 class JobsStore {
-  /** The place the list shows (Aktuell, Archiv, Papierkorb). */
+  /** The place the list shows (Eingang, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
@@ -240,7 +240,7 @@ class JobsStore {
   }
 
   /**
-   * The filter a place lists by, the same in Aktuell and the Archiv (the Papierkorb has none,
+   * The filter a place lists by, the same in Eingang and the Archiv (the Papierkorb has none,
    * decision 25): without a profile no band (there is no match to filter by), only the
    * portals the app knows.
    */
@@ -261,7 +261,7 @@ class JobsStore {
   }
 
   /**
-   * How many hits of the search the list holds `place` lists by its own rule (Aktuell and the
+   * How many hits of the search the list holds `place` lists by its own rule (Eingang and the
    * Archiv under the filter of that answer, the Papierkorb without one), from the counts that
    * answer that rule: a search or a filter on its way changes them with its answer, and
    * another search's or another filter's never show.
@@ -299,7 +299,7 @@ class JobsStore {
   }
 
   /** No job in this place, nothing searched or filtered and no run: the list has nothing to
-   *  head (JobsView hides its head; Aktuell's empty state offers "Jobs suchen"). */
+   *  head (JobsView hides its head; Eingang's empty state offers "Jobs suchen"). */
   get bare(): boolean {
     const counts = this.overviewCounts;
     return (

@@ -2,7 +2,7 @@
   The header of the list column, the same in the three places (their names stand in the
   sidebar, under Jobs): the view's head (PageHeader) above the list, 8 16 10 (the hairline under
   it is JobsView's).
-  One row: the search, whose placeholder names what it searches (its × clears it); in Aktuell
+  One row: the search, whose placeholder names what it searches (its × clears it); in Eingang
   and the Archiv the filter "Sortieren und filtern", a 30 px square, the one control of the
   order and the filter: its menu holds, under small headings, "Sortierung" (Nach
   Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter table (lib/state/filter.ts:
@@ -12,7 +12,7 @@
   profile the order and the bands are off, saying why. The Papierkorb has no filter (decision
   25). At the row's end the place's one action, which keeps one width whichever word it shows
   (Button `sizeTo`): while a search or a rescore goes "Abbrechen", in every place; else in
-  Aktuell "Jobs suchen" (the alert mails, then the portals), the one primary of the Jobs view,
+  Eingang "Jobs suchen" (the alert mails, then the portals), the one primary of the Jobs view,
   locked while its way cannot run, saying why (without a usable profile what it lacks:
   "Ergänze erst Länder und Sprachen im Profil."); in the Archiv and the Papierkorb none.
   While a filter is on, its parts stand as small chips under the row, each with its × 10 under

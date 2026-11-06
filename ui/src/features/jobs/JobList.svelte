@@ -1,5 +1,5 @@
 <!--
-  The job list (the round 10 draft): one list per place, Aktuell and the Archiv in the chosen
+  The job list (the round 10 draft): one list per place, Eingang and the Archiv in the chosen
   order, the Papierkorb by date, rows in windows of 60 (a sentinel at the end shows the next
   window), 6 in from the column's edges. In the
   order by date (the default, decision 1) the scored jobs stand under the headings of their
@@ -41,7 +41,7 @@
   places nor the state of no hit.
   Empty: a place without jobs takes the whole width (JobsView) and says so at the top
   (EmptyState `list`: the briefcase, the archive, the trash, a heading and one sentence;
-  Aktuell before the first search, while one fills it, after one that found nothing that fits
+  Eingang before the first search, while one fills it, after one that found nothing that fits
   with "Profil öffnen", and with its jobs all moved away). With no job anywhere, nothing
   searched or filtered and no run (jobs.bare) the list has no head: its empty state stands in
   the middle, like the job view's, with "Jobs suchen" as its one primary under its sentence. A
@@ -203,7 +203,7 @@
     archive: 'archive',
     trash: 'trash',
   };
-  /** An empty place: Aktuell while a search fills it, after one that found nothing that fits
+  /** An empty place: Eingang while a search fills it, after one that found nothing that fits
    *  (or, its jobs all moved away, that there are none), before any; the Archiv; the
    *  Papierkorb. */
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);

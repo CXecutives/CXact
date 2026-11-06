@@ -3045,7 +3045,7 @@ test('a save says nothing unless its rescore moved jobs; a first profile says wh
   await runFinished(page);
   await page.waitForTimeout(2 * T_SAVE);
   await expect(savedToast(page)).toHaveCount(0);
-  // A first profile scores the jobs of Aktuell: the toast says what moved, in the demo's numbers.
+  // A first profile scores the jobs of Eingang: the toast says what moved, in the demo's numbers.
   await create(page);
   await roles(page).locator('input').fill('Interim CFO');
   await roles(page).locator('input').press('Enter');

@@ -12,8 +12,8 @@
 // its groups Wunschjob, Einsatz, Erfahrung, Kompetenzen, Sprachen and Ausschlüsse, Postfach,
 // Alert-Mail, Jobs suchen (the button: the mails, then the portals' search; what it does is
 // the Suche),
-// Anzeige laden, Profil-Ordner, Ausgeschlossen, Trotzdem bewerten, Neu, Aktuell (the place of
-// the active jobs, user 2026-10-01), Archiv (Zurückholen: back from there), Papierkorb,
+// Anzeige laden, Profil-Ordner, Ausgeschlossen, Trotzdem bewerten, Neu, Eingang (the place where
+// every job arrives, however old; user 2026-11-06), Archiv (Zurückholen: back from there), Papierkorb,
 // Löschen (into the Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the
 // group of the app's data: the Profil-Ordner and the reset), Aufrufe (what a portal allows a
 // day). A profile field has one name: the label of its form field (without the unit) in
@@ -648,12 +648,12 @@ export const de = {
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
     /** The tabs above the job list (their accessible name, and each place). */
-    inbox: 'Aktuell',
+    inbox: 'Eingang',
     archive: 'Archiv',
     trash: 'Papierkorb',
     /** The field's placeholder names what it searches. */
     search: {
-      inbox: 'Aktuell durchsuchen',
+      inbox: 'Eingang durchsuchen',
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
@@ -668,8 +668,8 @@ export const de = {
     /** An excluded job counts with its real match anyway, or is excluded again. */
     include: 'Trotzdem bewerten',
     archive: 'Archivieren',
-    /** Back into Aktuell from the Archiv (Wiederherstellen is the Papierkorb's). */
-    unarchive: 'Nach Aktuell verschieben',
+    /** Back into the Eingang from the Archiv (Wiederherstellen is the Papierkorb's). */
+    unarchive: 'In den Eingang verschieben',
     trash: 'In den Papierkorb legen',
     restore: 'Wiederherstellen',
     /** Its dialog: reader.purgeHeading, purgeText, purgeConfirm (one for the row and the
@@ -801,7 +801,7 @@ export const de = {
      *  counts after them): the jobs without a score yet, then the excluded ones. */
     unscored: 'Noch nicht bewertet',
     excluded: 'Ausgeschlossen',
-    /** An empty place, its heading and one sentence: Aktuell before the first search,
+    /** An empty place, its heading and one sentence: the Eingang before the first search,
      *  while it fills, after a search that found none that fits (nothing archived or
      *  deleted) and with its jobs all archived or deleted; the Archiv; the Papierkorb. */
     empty: {
@@ -815,7 +815,7 @@ export const de = {
         text: 'Prüfe dein Profil oder suche später noch einmal.',
       },
       noActive: {
-        heading: 'Keine aktuellen Jobs',
+        heading: 'Keine Jobs im Eingang',
         text: 'Neue Jobs kommen mit der nächsten Suche.',
       },
       archive: {
@@ -1048,7 +1048,7 @@ export const de = {
      *  it. */
     cvError,
     pickFile: 'Datei auswählen',
-    /** The toast when a change of the profile moved jobs in Aktuell: the jobs now (or no
+    /** The toast when a change of the profile moved jobs in the Eingang: the jobs now (or no
      *  longer) in the high band and the ones now (or no longer) excluded, only what changed. */
     savedEffect: (high: number, excluded: number) => {
       const jobs = (value: number): string => count(Math.abs(value), 'Job', 'Jobs');
@@ -1522,7 +1522,7 @@ export const de = {
     prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
-    unarchived: 'Nach Aktuell verschoben',
+    unarchived: 'In den Eingang verschoben',
     trashed: 'In den Papierkorb gelegt',
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */

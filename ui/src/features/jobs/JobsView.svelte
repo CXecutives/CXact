@@ -195,7 +195,7 @@
    *  run goes on above it. */
   const headed = $derived(!jobs.bare && (jobs.status !== 'error' || run.active));
 
-  /** The place's one action, whichever button it is now (the head's, a bare Aktuell's). */
+  /** The place's one action, whichever button it is now (the head's, a bare Eingang's). */
   const ACTION = '[data-testid="fetch"], [data-testid="cancel-run"]';
   let actionHeld = false;
   // Before another button takes its place, or the head goes: did the keyboard hold it?

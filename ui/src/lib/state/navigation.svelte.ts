@@ -3,7 +3,7 @@
 // stands (App.svelte locks it) every switch is refused: the menu, a toast's action, a link. A
 // view with unsaved work (the Profil editor) holds a guard: it may keep the switch and ask
 // first, then switch itself or stay; what was to happen with the switch waits for it and goes
-// when it stays. The places of the jobs (Aktuell, Archiv, Papierkorb) belong to the Jobs view,
+// when it stays. The places of the jobs (Eingang, Archiv, Papierkorb) belong to the Jobs view,
 // they are no views (lib/state/jobs.svelte.ts).
 
 import { onNavigate } from '../ipc/api';

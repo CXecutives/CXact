@@ -481,7 +481,7 @@ test('baseline: shell on macOS', async ({ page }) => {
 /* --------------------------------------------------------------------------- The sidebar */
 
 // The sidebar: three views (Jobs, Profil, Einstellungen) and under Jobs the places of the jobs
-// (Aktuell, Archiv, Papierkorb), the app starts in Jobs, no counts, no status line, no tooltips
+// (Eingang, Archiv, Papierkorb), the app starts in Jobs, no counts, no status line, no tooltips
 // on its entries, how it folds, and the order of a click when a value that holds the Profil's
 // save asks first.
 
@@ -783,7 +783,7 @@ test('a value that holds the save keeps the view until the question is answered'
   await expect(field).toHaveValue('0');
   await expect(field).not.toBeFocused();
   await expect(page.getByText(T.profile.field.atLeast(1))).toBeVisible();
-  // Asked again and left without saving: the Jobs view it was asked for last, on Aktuell (not on
+  // Asked again and left without saving: the Jobs view it was asked for last, on Eingang (not on
   // the Archiv of the question that was cancelled).
   await page.getByTestId('nav-jobs').click();
   await dialog.getByTestId('dialog-confirm').click();
@@ -825,7 +825,7 @@ test('what the question kept waiting goes with its Abbrechen', async ({ page }) 
   await expect(page.getByTestId('view-profile')).toBeVisible();
 });
 
-test('a click on the place that is open reloads nothing, like Jobs on Aktuell', async ({
+test('a click on the place that is open reloads nothing, like Jobs on Eingang', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -848,7 +848,7 @@ test('a click on the place that is open reloads nothing, like Jobs on Aktuell', 
   await page.getByTestId('nav-jobs').click();
   await settle(page);
   expect(await loads()).toBe(all);
-  // From another place Jobs leads to Aktuell.
+  // From another place Jobs leads to Eingang.
   await page.getByTestId('place-trash').click();
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.trash);
   await page.getByTestId('nav-jobs').click();
@@ -2261,7 +2261,7 @@ test('Zurück to a job that was archived since shows it where it lies, its row m
   await expect(list(page).locator('[data-open][data-key="linkedin:4100200301"]')).toHaveCount(1);
   // It lies in the list's place, so its tools work.
   await expect(page.getByTestId('reader-unarchive')).not.toHaveAttribute('aria-disabled', 'true');
-  // Vor goes on to the job that opened after it, back in Aktuell.
+  // Vor goes on to the job that opened after it, back in Eingang.
   await page.getByTestId('history-forward').click();
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
   await expect(list(page).locator('[data-open]')).toHaveCount(1);

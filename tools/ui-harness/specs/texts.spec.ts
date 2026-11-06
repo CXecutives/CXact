@@ -29,7 +29,7 @@ test('the days of the list: Heute, Gestern, then the weekday and date, not "vor 
   ]);
 });
 
-test('an archived job goes back with Nach Aktuell verschieben', async ({ page }) => {
+test('an archived job goes back with In den Eingang verschieben', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';

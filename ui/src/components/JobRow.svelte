@@ -12,7 +12,7 @@
   Under the pointer (and while the row's menu is open, which also keeps its wash, like the item a
   right click marks in Explorer and Finder) the row's tools fade in at its end:
   the moves of its place (actions.ts rowTools: Archivieren and In den Papierkorb legen, Nach
-  Aktuell verschieben and In den Papierkorb legen, Wiederherstellen and Endgültig löschen),
+  Eingang verschieben and In den Papierkorb legen, Wiederherstellen and Endgültig löschen),
   quiet icon buttons that name themselves in their tooltips. No room is kept for them (owner,
   2026-10-28): the title uses the whole row, and while they show they lie over its end on the
   row's own ground, the title fading out under them over a short stretch; the title never

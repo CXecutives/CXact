@@ -353,7 +353,7 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('open-ad')).toHaveText(T.actions.openAd);
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
     expect(T.actions.prompt).toBe('Prompt für KI-Bewertung');
-    // The moves of Aktuell; no "…" menu.
+    // The moves of Eingang; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
     expect(tools.labels).toEqual([T.actions.archive, T.actions.trash]);
@@ -464,7 +464,7 @@ test.describe('the actions', () => {
     await noPlaceholder(page);
     await open(page, WIN);
     const best = 'Interim CFO für Familienunternehmen';
-    // The open job of Aktuell into the trash: while the next one loads the reader shows the
+    // The open job of Eingang into the trash: while the next one loads the reader shows the
     // job that went to the Papierkorb, and its moves do nothing (never the Papierkorb's here).
     await openJob(page, 'freelancermap-2801');
     await slowDetails(page, 4000);
@@ -472,11 +472,11 @@ test.describe('the actions', () => {
     await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     await movesLocked(page);
-    // The next job of Aktuell: Aktuell's moves.
+    // The next job of Eingang: Eingang's moves.
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 10000 });
     await slowDetails(page, 0);
     expect(await moves(page)).toEqual(['archive', 'trash']);
-    // Rückgängig brings it back and opens it again: Aktuell's moves again.
+    // Rückgängig brings it back and opens it again: Eingang's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     expect(await moves(page)).toEqual(['archive', 'trash']);

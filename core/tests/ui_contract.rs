@@ -1121,7 +1121,8 @@ fn the_catalog_keeps_the_glossary() {
             // The app names itself (design round 6).
             ("die App", "CXact"),
             ("Die App", "CXact"),
-            ("Eingang", "Aktuell"),
+            // The place where every job arrives, however old (user, 2026-11-06).
+            ("Aktuell", "Eingang"),
             ("Farben", "Design"),
             ("Wartung", "Daten"),
             ("Favorit", "nothing (favourites are gone)"),

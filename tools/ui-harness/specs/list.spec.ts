@@ -1,4 +1,4 @@
-// The list area of the Jobs view: the places Aktuell, Archiv, Papierkorb under Jobs in the
+// The list area of the Jobs view: the places Eingang, Archiv, Papierkorb under Jobs in the
 // sidebar; the list's head in one row (the search, the funnel, Jobs suchen); the funnel's menu
 // (the order, then the filter table) and the chips of an active filter; one list per place, in
 // the chosen order but for the Papierkorb's, with the excluded jobs folded at its end; the empty states;
@@ -290,7 +290,7 @@ test.describe('header', () => {
     page,
   }) => {
     await open(page, WIN);
-    // Aktuell: the search, the funnel, at the row's end the fetch; no tabs above it and no sort
+    // Eingang: the search, the funnel, at the row's end the fetch; no tabs above it and no sort
     // button (the order is the funnel's first group).
     await expect(page.getByTestId('fetch')).toHaveAccessibleName(T.toolbar.searchNow);
     expect(await leftOf(page, 'search', 'filter')).toBe(true);
@@ -489,7 +489,7 @@ test.describe('header', () => {
     await cancel.click();
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
-    // Jobs suchen is Aktuell's only.
+    // Jobs suchen is Eingang's only.
     await expect(page.getByTestId('place-action')).toHaveCount(0);
     await expect(page.getByTestId('run-line')).toHaveCount(0);
     await openPlace(page, 'archive');
@@ -535,7 +535,7 @@ test.describe('header', () => {
     await page.getByTestId('history-back').click();
     await expect(page.getByTestId('place-archive')).toHaveAttribute('aria-current', 'page');
     await expect(search).toHaveValue('Kreditoren');
-    // Aktuell: the inbox as a whole, like a folder of a mail app.
+    // Eingang: the inbox as a whole, like a folder of a mail app.
     await openPlace(page, 'inbox');
     await expect(search).toHaveValue('');
     expect((await lastQuery(page))?.search).toBeNull();
@@ -546,11 +546,11 @@ test.describe('header', () => {
     expect((await calls(page, 'list_jobs')).length).toBe(loads);
   });
 
-  test('no job in a place: no head, the empty state in the middle, Aktuell with Jobs suchen', async ({
+  test('no job in a place: no head, the empty state in the middle, Eingang with Jobs suchen', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=fresh`);
-    // Aktuell before the first search: no head (no search, funnel or button above), the
+    // Eingang before the first search: no head (no search, funnel or button above), the
     // briefcase, a heading and one sentence in the middle of the full width, and under them its
     // one primary, Jobs suchen; nothing beside the list. The places stand in the sidebar.
     const inbox = await expectBarePlace(page, T.list.empty.inbox);
@@ -579,7 +579,7 @@ test.describe('header', () => {
       await expect(empty.getByRole('button')).toHaveCount(0);
       await expect(page.getByTestId('reader-pane')).toHaveCount(0);
     }
-    // A job open in Aktuell closes in another place.
+    // A job open in Eingang closes in another place.
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
     await openPlace(page, 'archive');
@@ -625,7 +625,7 @@ test.describe('header', () => {
     await expectBarePlace(page, T.list.empty.trash);
   });
 
-  test('a fetch into an empty Aktuell brings the head back: the strip under the search, Abbrechen', async ({
+  test('a fetch into an empty Eingang brings the head back: the strip under the search, Abbrechen', async ({
     page,
   }) => {
     for (const platform of [WIN, MAC]) {
@@ -636,7 +636,7 @@ test.describe('header', () => {
       const line = page.getByTestId('run-line');
       await expect(line).toBeVisible();
       await expect(page.getByTestId('cancel-run')).toBeVisible();
-      // While it fills Aktuell the empty state says so, at the top under the head.
+      // While it fills Eingang the empty state says so, at the top under the head.
       await expect(page.getByTestId('empty-all').locator('p')).toHaveText(
         T.list.empty.running.text,
       );
@@ -856,7 +856,7 @@ test.describe('filter', () => {
     await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'match' }));
   });
 
-  test('the same control in Aktuell and the Archiv, kept for every list; none in the Papierkorb', async ({
+  test('the same control in Eingang and the Archiv, kept for every list; none in the Papierkorb', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -2110,7 +2110,7 @@ test.describe('rows', () => {
     await open(page, WIN);
     // A click opens the job: the menu has no "Öffnen".
     const shows = [T.actions.openAd, T.actions.mail, T.actions.prompt];
-    // Aktuell.
+    // Eingang.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
@@ -2274,7 +2274,7 @@ test.describe('rows', () => {
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toMatchObject({ include: false });
   });
 
-  test('the Papierkorb keeps its days whatever Aktuell is sorted by, and Aktuell keeps its order', async ({
+  test('the Papierkorb keeps its days whatever Eingang is sorted by, and Eingang keeps its order', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -2760,7 +2760,7 @@ test.describe('search', () => {
       await inbox(page, { place: 'archive', search: 'Kreditoren', portals: ['freelance'] }),
     ).toEqual([]);
     await expect(page.getByTestId('also-archive')).toHaveCount(0);
-    // What Aktuell lists under the filter is named, and its button leads there.
+    // What Eingang lists under the filter is named, and its button leads there.
     await page.getByTestId('search').fill('SAP');
     const hits = await inbox(page, { search: 'SAP', portals: ['freelance'] });
     expect(hits.length).toBeGreaterThan(0);
@@ -2971,7 +2971,7 @@ test.describe('search', () => {
     // Under a filter it asks what the Papierkorb lists, which has none.
     await chooseFilter(page, 'portal-freelance');
     await expect.poll(async () => (await searches()).at(-1)?.portals).toEqual([]);
-    // In the Papierkorb what Aktuell and the Archiv list, under the filter.
+    // In the Papierkorb what Eingang and the Archiv list, under the filter.
     await page.getByTestId('place-trash').click();
     await page.getByTestId('search').fill('Bau');
     await expect.poll(async () => (await searches()).at(-1)?.portals).toEqual(['freelance']);
@@ -4424,7 +4424,7 @@ test.describe('the list keeps true', () => {
     expect(await stage(page).evaluate((node) => node.scrollTop)).toBe(0);
   });
 
-  test('Jobs and Aktuell lead to one place: both open it without the search', async ({ page }) => {
+  test('Jobs and Eingang lead to one place: both open it without the search', async ({ page }) => {
     await open(page, WIN);
     const search = page.getByTestId('search');
     for (const entry of ['nav-jobs', 'place-inbox']) {
