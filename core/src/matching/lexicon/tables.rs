@@ -772,7 +772,6 @@ pub(crate) const JOB_SKILL_VOCAB: &[&str] = &[
 /// Hygiene requirements every candidate is expected to meet (folded, sorted): office tools,
 /// a driving licence, willingness to travel, soft traits and native German. They carry no
 /// information about the fit.
-#[allow(dead_code)] // Read by the engine once main wires it.
 pub(crate) const HYGIENE: &[&str] = &[
     "communication skills",
     "deutsch muttersprache",

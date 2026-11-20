@@ -260,6 +260,14 @@ fn task_lines(own: &str) -> Vec<&str> {
     out
 }
 
+/// Does a requirement name an expectation every candidate meets (`tables::HYGIENE`)?
+fn is_hygiene(text: &str) -> bool {
+    let folded = atoms::fold(text);
+    crate::matching::lexicon::HYGIENE
+        .iter()
+        .any(|w| folded.contains(w))
+}
+
 fn related(a: &str, b: &str) -> bool {
     matches!(atoms::fit(a, b), Fit::Equal | Fit::Specific)
         || matches!(atoms::fit(b, a), Fit::Equal | Fit::Specific)
@@ -367,7 +375,7 @@ fn coverage(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: 
         let soft = matches!(
             x.item.class,
             Class::Soft | Class::Language(..) | Class::Frame
-        );
+        ) || is_hygiene(&x.item.text);
         (h + u64::from(soft), n + 1)
     });
     s.set(
