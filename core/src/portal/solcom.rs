@@ -6,7 +6,8 @@
 //! A hit is `article.project-offer-card`: its link, its title after the project number, its
 //! place among the card's facts; a project is `/fuer-freiberufler/projektliste/<id>-<slug>`
 //! (the slug belongs to the address: the link of the hit is kept), its text the sections of
-//! `.solcom-text` under their headings, its title, place and contract in its JSON-LD.
+//! `.solcom-text` under their headings (without the page's footer), its start, duration and
+//! place in its Eckdaten, its title, contract and industry in its JSON-LD.
 
 use std::sync::LazyLock;
 
@@ -115,7 +116,7 @@ impl PortalAdapter for Solcom {
     }
 
     fn parse_facts(&self, html: &str) -> Facts {
-        facts(posting(&Html::parse_document(html)).as_ref())
+        facts(&Html::parse_document(html))
     }
 
     /// One list per term, through the list's keyword field.
@@ -156,6 +157,9 @@ static SECTION_TEXT: Css = LazyLock::new(|| selector("div.solcom-text"));
 static HEADING: Css = LazyLock::new(|| selector("h2, h3"));
 static TITLE: Css = LazyLock::new(|| selector(r#"meta[property="og:title"]"#));
 static JSON_LD: Css = LazyLock::new(|| selector(r#"script[type="application/ld+json"]"#));
+/// A fact of the ad's Eckdaten.
+static META_ROW: Css = LazyLock::new(|| selector(".meta-row"));
+static ICON: Css = LazyLock::new(|| selector("svg path"));
 
 /// "1083900 Azure Architekt" reads as "Azure Architekt".
 fn without_number(title: &str) -> String {
@@ -166,26 +170,87 @@ fn without_number(title: &str) -> String {
     without_gender_mark(if rest.is_empty() { title } else { rest })
 }
 
-/// A card of the list: its link, its title and its place (the card's fourth fact: number,
-/// duration, start, place, contract, workload).
+/// A card of the list: its link, its title and its place (the fact under the map pin; a
+/// card without a place has none).
 fn hit(card: ElementRef<'_>) -> Option<Hit> {
     let anchor = card.select(&CARD_LINK).next()?;
     let url = Url::parse(ORIGIN)
         .ok()?
         .join(anchor.value().attr("href")?)
         .ok()?;
-    let facts: Vec<String> = card
-        .select(&CARD_FACT)
-        .map(|node| one_line(&node.text().collect::<String>()))
-        .collect();
+    let facts = meta(card.select(&CARD_FACT));
     Some(Hit {
         link: Solcom.job_link(&url)?,
         title: without_number(&anchor.text().collect::<String>()),
         // The client stays unnamed: SOLCOM places the freelancer.
         company: String::new(),
-        location: facts.get(3).cloned().unwrap_or_default(),
+        location: fact(&facts, Fact::Place).unwrap_or_default(),
         contract: None,
     })
+}
+
+/// What a fact of a card or of the ad's Eckdaten names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Fact {
+    Number,
+    Duration,
+    Start,
+    Place,
+    /// The contract or the workload (both under a briefcase), or an icon not known.
+    Other,
+}
+
+/// The facts' icons (the start of their path): a hash, a clock, a calendar, a map pin.
+const ICONS: [(&str, Fact); 4] = [
+    ("M224,88H", Fact::Number),
+    ("M128,40a", Fact::Duration),
+    ("M208,32H", Fact::Start),
+    ("M128,64a", Fact::Place),
+];
+/// The facts' order where they come without icons; a card without a place leaves it out.
+const ORDER: [Fact; 4] = [Fact::Number, Fact::Duration, Fact::Start, Fact::Place];
+
+/// The facts of a card or of the Eckdaten, each with what it names: by its icon, or without
+/// icons by its place in the row.
+fn meta<'a>(items: impl Iterator<Item = ElementRef<'a>>) -> Vec<(Fact, String)> {
+    let items: Vec<(Option<String>, String)> = items
+        .map(|item| {
+            let icon = item
+                .select(&ICON)
+                .next()
+                .and_then(|path| path.value().attr("d"))
+                .map(str::to_owned);
+            (icon, one_line(&item.text().collect::<String>()))
+        })
+        .collect();
+    let icons = items.iter().any(|(icon, _)| icon.is_some());
+    items
+        .into_iter()
+        .enumerate()
+        .map(|(index, (icon, value))| {
+            let kind = if icons {
+                icon.and_then(|icon| {
+                    ICONS
+                        .iter()
+                        .find(|(start, _)| icon.starts_with(start))
+                        .map(|&(_, kind)| kind)
+                })
+                .unwrap_or(Fact::Other)
+            } else {
+                ORDER.get(index).copied().unwrap_or(Fact::Other)
+            };
+            (kind, value)
+        })
+        .filter(|(_, value)| !value.is_empty())
+        .collect()
+}
+
+/// The first fact of that kind.
+fn fact(facts: &[(Fact, String)], kind: Fact) -> Option<String> {
+    facts
+        .iter()
+        .find(|(k, _)| *k == kind)
+        .map(|(_, value)| value.clone())
 }
 
 /// The project's JSON-LD `JobPosting`, if any.
@@ -196,8 +261,11 @@ fn posting(doc: &Html) -> Option<Value> {
 }
 
 fn parse(doc: &Html) -> Parsed {
+    // The Eckdaten heading stands alone (its facts are facts), the footer names SOLCOM.
     let sections: Vec<String> = doc
         .select(&SECTION_TEXT)
+        .filter(|section| !in_footer(*section))
+        .filter(|section| one_line(&section.text().collect::<String>()) != "Eckdaten")
         .map(|section| {
             let heading = section
                 .parent()
@@ -219,11 +287,14 @@ fn parse(doc: &Html) -> Parsed {
         .and_then(|node| node.value().attr("content"))
         .map(without_number)
         .unwrap_or_default();
-    let location = posting
-        .as_ref()
-        .and_then(|p| p.pointer("/jobLocation/address/addressLocality"))
-        .and_then(Value::as_str)
-        .map(one_line)
+    let location = fact(&meta(doc.select(&META_ROW)), Fact::Place)
+        .or_else(|| {
+            posting
+                .as_ref()
+                .and_then(|p| p.pointer("/jobLocation/address/addressLocality"))
+                .and_then(Value::as_str)
+                .map(one_line)
+        })
         .unwrap_or_default();
     Parsed {
         text,
@@ -233,13 +304,29 @@ fn parse(doc: &Html) -> Parsed {
             company: String::new(),
             location,
         },
-        facts: facts(posting.as_ref()),
+        facts: facts(doc),
     }
 }
 
-/// The contract and the industry of the project's JSON-LD.
-fn facts(posting: Option<&Value>) -> Facts {
-    let mut facts = Facts::default();
+/// Is the element part of the page's footer?
+fn in_footer(element: ElementRef<'_>) -> bool {
+    element
+        .ancestors()
+        .filter_map(ElementRef::wrap)
+        .any(|ancestor| ancestor.value().name() == "footer")
+}
+
+/// The start and the duration of the Eckdaten, the contract and the industry of the
+/// project's JSON-LD.
+fn facts(doc: &Html) -> Facts {
+    let posting = posting(doc);
+    let posting = posting.as_ref();
+    let eckdaten = meta(doc.select(&META_ROW));
+    let mut facts = Facts {
+        start: fact(&eckdaten, Fact::Start).and_then(|value| Facts::value(&value)),
+        duration: fact(&eckdaten, Fact::Duration).and_then(|value| Facts::value(&value)),
+        ..Facts::default()
+    };
     let text = |name: &str| {
         posting
             .and_then(|p| p.get(name))
@@ -320,6 +407,75 @@ mod tests {
         assert_eq!(facts.industries.as_deref(), Some("Informationstechnologie"));
     }
 
+    /// One fact as the page draws it: its icon (the start of its path) and its value.
+    fn row(icon: &str, value: &str) -> String {
+        format!(
+            r#"<div class="meta-row"><div><svg viewBox="0 0 256 256"><path d="{icon},8Z"/></svg></div><span class="meta-row__value">{value}</span></div>"#
+        )
+    }
+
+    /// The start, the duration and the place come from the Eckdaten, by their icons in
+    /// whatever order; the footer is no part of the ad.
+    #[test]
+    fn the_eckdaten_give_start_duration_and_place() {
+        let eckdaten = [
+            ("M224,88H", "1083899"),
+            ("M128,40a", "6 MM++"),
+            ("M208,32H", "05.10.2026"),
+            ("M216,56H", "freiberuflich"),
+            ("M128,64a", "Remote und Hamburg"),
+            ("M220,158", "50"),
+        ]
+        .map(|(icon, value)| row(icon, value))
+        .concat();
+        let ad = AD.replace(
+            "<body><h1>Projektdetails</h1>",
+            &format!(
+                r#"<body><h1>Projektdetails</h1><div><div class="solcom-text">Eckdaten</div><div>{eckdaten}</div></div>"#
+            ),
+        )
+        .replace(
+            "</body>",
+            r#"<footer><div class="solcom-text"><p>SOLCOM GmbH, Kontakt</p></div><div class="solcom-text"><p>© 2026 SOLCOM GmbH</p></div></footer></body>"#,
+        );
+        let url = Url::parse(
+            "https://www.solcom.de/fuer-freiberufler/projektliste/1083900-azure-architekt",
+        )
+        .unwrap();
+        let link = Solcom.job_link(&url).unwrap();
+        let PageOutcome::Text {
+            text,
+            fields,
+            facts,
+            ..
+        } = Solcom.guest_page(&ad, "/", &link)
+        else {
+            panic!("no text");
+        };
+        assert!(text.starts_with("Aufgaben\n"), "{text}");
+        assert!(!text.contains("SOLCOM GmbH"), "{text}");
+        assert_eq!(fields.unwrap().location, "Remote und Hamburg");
+        assert_eq!(facts.start.as_deref(), Some("05.10.2026"));
+        assert_eq!(facts.duration.as_deref(), Some("6 MM++"));
+        assert_eq!(Solcom.parse_facts(&ad), facts);
+        // A card without a place names none (its fourth fact is the contract).
+        let card = format!(
+            r#"<div class="view-project-offers-listing"><article class="project-offer-card"><a href="/fuer-freiberufler/projektliste/1083901-sap-basis" class="project-offer-card__title-link">1083901 SAP Basis</a><ul>{}</ul></article></div>"#,
+            [
+                ("M224,88H", "1083901"),
+                ("M128,40a", "6 MM"),
+                ("M208,32H", "01.11.2026"),
+                ("M216,56H", "freiberuflich")
+            ]
+            .map(|(icon, value)| format!(
+                r#"<li class="project-offer-card__meta-item"><svg><path d="{icon},8Z"/></svg><span>{value}</span></li>"#
+            ))
+            .concat()
+        );
+        let hits = Solcom.search_page(&card).unwrap();
+        assert_eq!(hits[0].location, "");
+    }
+
     #[test]
     #[ignore = "reads the private pages under core/tests/fixtures/private"]
     fn the_real_pages_read() {
@@ -333,9 +489,20 @@ mod tests {
         )
         .unwrap();
         let link = Solcom.job_link(&url).unwrap();
-        assert!(matches!(
-            Solcom.guest_page(&ad, "/", &link),
-            PageOutcome::Text { .. }
-        ));
+        let PageOutcome::Text {
+            text,
+            fields,
+            facts,
+            ..
+        } = Solcom.guest_page(&ad, "/", &link)
+        else {
+            panic!("no text");
+        };
+        assert!(!text.contains("© 2026"), "no footer: {text}");
+        assert!(!fields.unwrap().location.is_empty());
+        assert!(
+            facts.start.is_some() && facts.duration.is_some(),
+            "{facts:?}"
+        );
     }
 }
