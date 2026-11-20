@@ -597,7 +597,8 @@ type Named = (&'static str, Range<usize>);
 /// naming the place (`Ort: 3199 Rotterdam, Niederlande`) is decided like the job location.
 /// An on-site statement that also names an allowed country or the job's own place on site
 /// (`on site in Leverkusen and at the plants in Belgium`) makes the other countries second
-/// sites, checked like travel.
+/// sites, checked like travel; so does a frame line naming an allowed country beside others
+/// (`Location: Remote, meetings in Germany and Poland`).
 fn places_of_work(
     segments: &[(Range<usize>, String)],
     allowed: &[String],
@@ -629,9 +630,9 @@ fn places_of_work(
                 (false, None) => {}
             }
         }
-        let home_on_site = !place
-            && (here.iter().any(|c| allowed.iter().any(|a| a == c))
-                || home.iter().any(|word| {
+        let home_on_site = here.iter().any(|c| allowed.iter().any(|a| a == c))
+            || (!place
+                && home.iter().any(|word| {
                     f.match_indices(word)
                         .any(|(at, _)| word_at(f, at, word.len()) && cue_at(at) == Some(true))
                 }));
@@ -1725,6 +1726,17 @@ mod tests {
                  den Niederlanden."
             ),
             [(ReasonCode::CountryUnclear, false)]
+        );
+        // A frame line naming an allowed country beside another makes it a second site.
+        assert_eq!(
+            country_codes(
+                "Location: Remote - Meetings in Germany (Unterfranken) and Poland (Posen) may                  happen after agreement"
+            ),
+            [(ReasonCode::CountryUnclear, false)]
+        );
+        assert_eq!(
+            country_codes("Ort: 3199 Rotterdam, Niederlande"),
+            [(ReasonCode::Country, true)]
         );
     }
 
