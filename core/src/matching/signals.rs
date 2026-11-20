@@ -184,6 +184,23 @@ pub struct Trace {
     pub permanent: bool,
     /// Every cap that fired: its code and the highest score it allows.
     pub caps: Vec<(&'static str, u8)>,
+    /// Every requirement the engine read, in reading order.
+    pub items: Vec<TraceItem>,
+}
+
+/// One requirement as the engine read and met it (the private trainer aligns it with the
+/// teachers' line verdicts).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraceItem {
+    /// The ad line the requirement stands in (empty for a vocabulary term).
+    pub line: String,
+    pub text: String,
+    /// 2 a counted must, 1 a counted nice-to-have, 0 neither.
+    pub role: u8,
+    /// The evidence in per-mille.
+    pub value: u16,
+    /// The profile entry that met it, as written.
+    pub entry: Option<String>,
 }
 
 /// The [`Trace`] of a job for a profile, read as [`super::assess`] reads it.
@@ -204,6 +221,31 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
         wish: e.wishes.iter().map(|w| w.points).sum(),
         permanent: e.contract == super::contract::ContractKind::Permanent,
         caps: e.caps.iter().map(|&(c, kind)| (kind.code(), c)).collect(),
+        items: e
+            .items
+            .iter()
+            .map(|x| TraceItem {
+                line: x.item.span.as_ref().map_or_else(String::new, |span| {
+                    let start = read.text[..span.start].rfind('\n').map_or(0, |i| i + 1);
+                    let end = read.text[span.start..]
+                        .find('\n')
+                        .map_or(read.text.len(), |i| span.start + i);
+                    read.text[start..end].trim().to_owned()
+                }),
+                text: x.item.text.clone(),
+                role: if engine::is_must(x) {
+                    2
+                } else {
+                    u8::from(engine::is_nice(x))
+                },
+                value: x.fit.value,
+                entry: x
+                    .fit
+                    .entry
+                    .and_then(|i| profile.engine.skills.entries.get(i))
+                    .map(|e| e.text.clone()),
+            })
+            .collect(),
     }
 }
 

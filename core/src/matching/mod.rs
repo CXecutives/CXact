@@ -54,8 +54,8 @@ use crate::profile::ProfileForm;
 pub use gaps::{Gap, JobGaps, vocabulary_gaps};
 pub use layout::{TextLayout, text_layout};
 pub use signals::{
-    MAX as SIGNAL_MAX, N as SIGNALS, NAMES as SIGNAL_NAMES, SIGN, Sig, Signals, Trace, signals,
-    trace,
+    MAX as SIGNAL_MAX, N as SIGNALS, NAMES as SIGNAL_NAMES, SIGN, Sig, Signals, Trace, TraceItem,
+    signals, trace,
 };
 pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;
