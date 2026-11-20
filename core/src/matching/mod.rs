@@ -50,7 +50,9 @@ use crate::profile::ProfileForm;
 #[cfg(debug_assertions)]
 pub use gaps::{Gap, JobGaps, vocabulary_gaps};
 pub use layout::{TextLayout, text_layout};
-pub use signals::{N as SIGNALS, NAMES as SIGNAL_NAMES, SIGN, Sig, Signals, signals};
+pub use signals::{
+    MAX as SIGNAL_MAX, N as SIGNALS, NAMES as SIGNAL_NAMES, SIGN, Sig, Signals, signals,
+};
 pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;
 pub use vocabulary::{Vocabulary, vocabulary};

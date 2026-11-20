@@ -68,6 +68,34 @@ impl LocalMatcher {
     /// its page stated; a teaser is judged as one. A job without text is judged from title
     /// and location alone - usually `unscorable`, but a clear location can already exclude it.
     pub fn assessment(&self, job: &JobRow, text: Option<&str>) -> Option<Assessment> {
+        Self::with_input(job, text, |input, full, stripped| {
+            let mut assessment = matching::assess(&self.profile, input)?;
+            if stripped {
+                let contact = application::contact(full);
+                let facts = &mut assessment.facts;
+                facts.deadline = application::deadline(full, input.posted).map(|d| d.to_string());
+                facts.contact_name = contact.name;
+                facts.contact_email = contact.email;
+                facts.contact_phone = contact.phone;
+            }
+            Some(assessment)
+        })
+    }
+
+    /// The signals of a job, read as [`LocalMatcher::assessment`] reads it (the learned
+    /// scorer's inputs; the private trainer dumps them).
+    pub fn signals(&self, job: &JobRow, text: Option<&str>) -> matching::Signals {
+        Self::with_input(job, text, |input, _, _| {
+            matching::signals(&self.profile, input)
+        })
+    }
+
+    /// What a stored job hands the engine.
+    fn with_input<T>(
+        job: &JobRow,
+        text: Option<&str>,
+        read: impl FnOnce(&JobInput<'_>, &str, bool) -> T,
+    ) -> T {
         let title = if is_usable_title(&job.title) {
             job.title.clone()
         } else {
@@ -94,16 +122,7 @@ impl LocalMatcher {
             posted: Some(posted),
             kind,
         };
-        let mut assessment = matching::assess(&self.profile, &input)?;
-        if matches!(scored, Cow::Owned(_)) {
-            let contact = application::contact(full);
-            let facts = &mut assessment.facts;
-            facts.deadline = application::deadline(full, Some(posted)).map(|d| d.to_string());
-            facts.contact_name = contact.name;
-            facts.contact_email = contact.email;
-            facts.contact_phone = contact.phone;
-        }
-        Some(assessment)
+        read(&input, full, matches!(scored, Cow::Owned(_)))
     }
 }
 
