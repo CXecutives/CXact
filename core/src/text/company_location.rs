@@ -180,10 +180,96 @@ fn without_country(value: &str) -> String {
     strip_chars(&value, EDGE_TRIM).to_string()
 }
 
-/// Just the location - an address gets shortened to the town name (at most 60
-/// characters).
+/// A postcode alone, or in brackets behind the town ("Rain (86641)").
+static POSTCODE_ONLY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(&format!(r"^{POSTCODE}$")).unwrap());
+static POSTCODE_IN_BRACKETS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(&format!(r"\s*\({POSTCODE}\)")).unwrap());
+
+/// A work mode glued to the town (`MünsterRemote`).
+static GLUED_MODE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\p{Ll})(Remote|Hybrid)\b").unwrap());
+
+/// A work mode before the place ("Remote und München", "remote/Köln"). German and English
+/// joiners, do not translate.
+static MODE_FIRST: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)^\(?(remote|hybrid)\)?\s*(?:und/oder|and/or|[,/&+;-]|und|and|oder|or|\s)\s*(.+)$",
+    )
+    .unwrap()
+});
+
+/// A work mode after the place ("München Remote", "Ulm / remote").
+static MODE_LAST: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)^(.+?)\s*(?:\bund/oder\b|\band/or\b|[,/&+;-]|\bund\b|\band\b|\boder\b|\bor\b)?\s*\(?(remote|hybrid)\)?$",
+    )
+    .unwrap()
+});
+
+/// The place first, the work mode behind it in brackets: "Remote und München" ->
+/// "München (Remote)", "remote" -> "Remote". A value with numbers ("Remote 50% / Europe
+/// 50%") or with another work mode ("Remote & vor Ort") stays.
+fn place_first(value: &str) -> String {
+    let value = GLUED_MODE.replace(value, "$1 $2");
+    let mode = |m: &str| {
+        if m.eq_ignore_ascii_case("hybrid") {
+            "Hybrid"
+        } else {
+            "Remote"
+        }
+    };
+    if WORKPLACE.find_iter(&value).count() == 1
+        && let Some(only) = WORKPLACE.find(&value)
+        && strip_chars(&value, " ()").eq_ignore_ascii_case(only.as_str())
+    {
+        return mode(only.as_str()).to_owned();
+    }
+    if value.contains(|c: char| c.is_ascii_digit() || c == '%')
+        || WORKPLACE.find_iter(&value).count() != 1
+    {
+        return value.into_owned();
+    }
+    let split = MODE_FIRST
+        .captures(&value)
+        .map(|c| (c[1].to_owned(), c[2].to_owned()))
+        .or_else(|| {
+            MODE_LAST
+                .captures(&value)
+                .map(|c| (c[2].to_owned(), c[1].to_owned()))
+        });
+    match split {
+        Some((m, place)) => {
+            let place = strip_chars(place.trim(), EDGE_TRIM);
+            if place.is_empty() {
+                mode(&m).to_owned()
+            } else {
+                format!("{place} ({})", mode(&m))
+            }
+        }
+        None => value.into_owned(),
+    }
+}
+
+/// The parts of a location without a repeat ("Deutschland, Deutschland").
+fn without_repeats(value: &str) -> String {
+    let mut seen: Vec<String> = Vec::new();
+    let mut kept: Vec<&str> = Vec::new();
+    for part in value.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+        let key = part.to_lowercase();
+        if !seen.contains(&key) {
+            seen.push(key);
+            kept.push(part);
+        }
+    }
+    kept.join(", ")
+}
+
+/// Just the location - an address gets shortened to the town name, the place comes first
+/// and a work mode behind it (at most 60 characters).
 pub fn short_location(text: &str) -> String {
-    let mut value = without_country(flat(text).trim());
+    let flat = super::title::entities(&flat(text));
+    let mut value = without_country(&without_repeats(flat.trim()));
     if let Some(town) = ADDRESS
         .captures(&value)
         .or_else(|| STREET.captures(&value))
@@ -199,7 +285,12 @@ pub fn short_location(text: &str) -> String {
     {
         value = head.to_string();
     }
-    truncate_chars(strip_chars(&value, " -–—,·|"), 60)
+    let value = POSTCODE_IN_BRACKETS.replace_all(&value, "");
+    let value = strip_chars(&value, " -–—,·|");
+    if POSTCODE_ONLY.is_match(value) {
+        return String::new();
+    }
+    truncate_chars(&place_first(value), 60)
 }
 
 /// Does the value hold a location instead of a company?
@@ -296,6 +387,42 @@ mod tests {
         assert_eq!(short_location("Am Mühlenweg 68, Rotenburg"), "Rotenburg");
         assert_eq!(short_location("D-68159 Mannheim"), "Mannheim");
         assert_eq!(short_location("68159 Mannheim"), "Mannheim");
+    }
+
+    #[test]
+    fn the_place_comes_first_and_the_work_mode_stays() {
+        for (raw, shown) in [
+            ("Remote und München", "München (Remote)"),
+            ("remote/Köln", "Köln (Remote)"),
+            ("Ulm / remote", "Ulm (Remote)"),
+            ("München Remote", "München (Remote)"),
+            ("MünsterRemote", "Münster (Remote)"),
+            ("Remote, Nürnberg", "Nürnberg (Remote)"),
+            ("Osnabrück, Münster (Remote)", "Osnabrück, Münster (Remote)"),
+            ("Hybrid / Essen", "Essen (Hybrid)"),
+            ("Nürnberg und/oder Remote", "Nürnberg (Remote)"),
+            ("remote", "Remote"),
+            ("(Remote)", "Remote"),
+            ("Remote &amp; vor Ort", "Remote & vor Ort"),
+            ("Remote 50% / Europe 50%", "Remote 50% / Europe 50%"),
+            ("Bern / Work Smart", "Bern / Work Smart"),
+        ] {
+            assert_eq!(short_location(raw), shown, "{raw}");
+        }
+    }
+
+    #[test]
+    fn a_postcode_alone_or_a_repeat_is_no_place() {
+        assert_eq!(short_location("80331"), "");
+        assert_eq!(short_location("D-80331"), "");
+        assert_eq!(short_location("Rain (86641)"), "Rain");
+        assert_eq!(
+            short_location("Ingelheim am Rhein (55218)"),
+            "Ingelheim am Rhein"
+        );
+        assert_eq!(short_location("Deutschland, Deutschland"), "Deutschland");
+        assert_eq!(short_location("Berlin, Berlin"), "Berlin");
+        assert_eq!(short_location("Deutschland"), "Deutschland");
     }
 
     #[test]

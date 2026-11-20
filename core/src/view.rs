@@ -295,10 +295,13 @@ impl JobMatch {
 
 /// The stored title, or - if it is unusable - one read from the slug of a link. A portal's
 /// mark for an ended project ("Archiviertes Projekt - ") is no part of it (also in titles
-/// stored before the parser dropped it). The app and the Excel file show this one title.
+/// stored before the parser dropped it), nor are its codes and frame (`text::tidy_title`). The app and the Excel file show this one title.
 pub(crate) fn display_title(job: &JobRow) -> String {
     if is_usable_title(&job.title) {
-        return crate::portal::without_archive_mark(&job.title).to_owned();
+        return crate::text::tidy_title(
+            crate::portal::without_archive_mark(&job.title),
+            &job.location,
+        );
     }
     [job.title.as_str(), job.url.as_str()]
         .into_iter()
