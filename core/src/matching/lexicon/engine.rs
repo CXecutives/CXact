@@ -1420,6 +1420,10 @@ pub(crate) const NICE_CUES: &[&str] = &[
     "klarer vorteil",
     "preferred",
     "is a plus",
+    "vorzugsweise",
+    "bevorzugt",
+    "desirable",
+    "beneficial",
 ];
 /// Nice cues that close a line (`X und Y von Vorteil`): the whole line is nice.
 pub(crate) const NICE_CLOSING: &[&str] = &[

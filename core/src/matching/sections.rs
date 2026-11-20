@@ -168,6 +168,23 @@ mod tests {
     }
 
     #[test]
+    fn new_headings() {
+        for (line, kind) in [
+            ("Qualifikation", HeadingKind::Must),
+            ("Anforderungen", HeadingKind::Must),
+            ("Muss-Anforderungen", HeadingKind::Must),
+            ("Profile", HeadingKind::Must),
+            ("Requirements", HeadingKind::Must),
+            ("Aufgaben", HeadingKind::Task),
+            ("Hauptaufgaben", HeadingKind::Task),
+            ("Responsibilities", HeadingKind::Task),
+            ("Key Responsibilities", HeadingKind::Task),
+        ] {
+            assert_eq!(section_kind(line), Some(kind), "{line}");
+        }
+    }
+
+    #[test]
     fn inline_headings() {
         assert!(matches!(
             inline_heading("Anforderungen: SAP"),

@@ -364,10 +364,12 @@ pub(crate) const MUST_HEADINGS: &[&str] = &[
     "kenntnisse und erfahrungen",
     "key requirements",
     "minimum qualifications",
+    "muss-anforderungen",
     "muss-kriterien",
     "must have",
     "must-have",
     "profil",
+    "profile",
     "qualifications",
     "qualifikation",
     "qualifikationen",
@@ -444,6 +446,7 @@ pub(crate) const TASK_HEADINGS: &[&str] = &[
     "deine tätigkeit",
     "einsatz",
     "einsatzbeschreibung",
+    "hauptaufgaben",
     "hintergrund",
     "ihre aufgaben",
     "ihre hauptaufgaben",
@@ -453,6 +456,7 @@ pub(crate) const TASK_HEADINGS: &[&str] = &[
     "ihre verantwortung",
     "job description",
     "jobbeschreibung",
+    "key responsibilities",
     "leistungsbeschreibung",
     "project description",
     "projektbeschreibung",
@@ -764,3 +768,50 @@ pub(crate) const JOB_SKILL_VOCAB: &[&str] = &[
     "chinesisch",
     "portugiesisch",
 ];
+
+/// Hygiene requirements every candidate is expected to meet (folded, sorted): office tools,
+/// a driving licence, willingness to travel, soft traits and native German. They carry no
+/// information about the fit.
+#[allow(dead_code)] // Read by the engine once main wires it.
+pub(crate) const HYGIENE: &[&str] = &[
+    "communication skills",
+    "deutsch muttersprache",
+    "driver's licence",
+    "driving licence",
+    "excel",
+    "fuhrerschein",
+    "kommunikationsstarke",
+    "ms office",
+    "native german",
+    "powerpoint",
+    "reisebereitschaft",
+    "team player",
+    "teamfahigkeit",
+    "willingness to travel",
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::matching::atoms::fold;
+
+    #[test]
+    fn hygiene_is_folded_and_sorted() {
+        assert!(HYGIENE.windows(2).all(|w| w[0] < w[1]), "sorted");
+        for word in HYGIENE {
+            assert_eq!(fold(word), *word, "folded");
+        }
+        assert_eq!(fold("Führerschein"), "fuhrerschein");
+        assert_eq!(fold("Teamfähigkeit"), "teamfahigkeit");
+        assert_eq!(fold("Kommunikationsstärke"), "kommunikationsstarke");
+        assert!(HYGIENE.binary_search(&"ms office").is_ok());
+    }
+
+    #[test]
+    fn new_nice_cues_make_a_line_nice() {
+        use crate::matching::lexicon::engine::NICE_CUES;
+        for cue in ["vorzugsweise", "bevorzugt", "desirable", "beneficial"] {
+            assert!(NICE_CUES.contains(&cue), "{cue}");
+        }
+    }
+}

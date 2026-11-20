@@ -58,6 +58,9 @@ pub(crate) struct JobDoc {
     pub items: Vec<Item>,
     /// Byte ranges of requirement lines (the "requirements" field of the relevance).
     pub requirement_lines: Vec<Range<usize>>,
+    /// Byte ranges of the lines under a task heading (`Aufgaben`). Tasks never become
+    /// requirement rows.
+    pub task_lines: Vec<Range<usize>>,
 }
 
 use super::lexicon::engine::{
@@ -204,11 +207,21 @@ fn not_needed(item: &str) -> bool {
 
 type Phrase<'a> = (&'a str, ReqKind, Stage);
 
-/// Stage 1: requirement and nice-to-have sections; also the offsets of nice lines.
-fn section_phrases(text: &str) -> (Vec<Phrase<'_>>, Vec<usize>) {
+/// What stage 1 read: the phrases of the requirement sections, the offsets of nice lines
+/// and the lines of the task sections.
+struct SectionRead<'a> {
+    phrases: Vec<Phrase<'a>>,
+    in_nice: Vec<usize>,
+    tasks: Vec<Range<usize>>,
+}
+
+/// Stage 1: requirement and nice-to-have sections; also the offsets of nice lines and the
+/// lines of the task sections.
+fn section_phrases(text: &str) -> SectionRead<'_> {
     let mut current: Option<HeadingKind> = None;
     let mut phrases: Vec<Phrase<'_>> = Vec::new();
     let mut in_nice = Vec::new();
+    let mut tasks = Vec::new();
     let lines = splitlines(text);
     for (at, line) in lines.iter().enumerate() {
         let (stripped, bullet) = line_of(line);
@@ -259,6 +272,11 @@ fn section_phrases(text: &str) -> (Vec<Phrase<'_>>, Vec<usize>) {
                 in_nice.push(offset(text, stripped));
                 ReqKind::Nice
             }
+            Some(HeadingKind::Task) => {
+                let start = offset(text, stripped);
+                tasks.push(start..start + stripped.len());
+                continue;
+            }
             _ => continue,
         };
         for sentence in sentences(stripped) {
@@ -268,13 +286,19 @@ fn section_phrases(text: &str) -> (Vec<Phrase<'_>>, Vec<usize>) {
             }
         }
     }
-    (phrases, in_nice)
+    SectionRead {
+        phrases,
+        in_nice,
+        tasks,
+    }
 }
 
 /// Reads the requirements of a job text.
 pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
     let mut doc = JobDoc::default();
-    let (mut phrases, in_nice) = section_phrases(text);
+    let read = section_phrases(text);
+    doc.task_lines = read.tasks;
+    let (mut phrases, in_nice) = (read.phrases, read.in_nice);
     if !phrases.iter().any(|(_, kind, _)| *kind == ReqKind::Must) {
         for line in splitlines(text) {
             let (stripped, bullet) = line_of(line);
@@ -1127,6 +1151,28 @@ pub(crate) fn heading_kind(line: &str) -> Option<HeadingKind> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn task_lines_follow_a_task_heading() {
+        let text = "Aufgaben:
+- Aufbau des Service Desk
+- Steuerung der Dienstleister
+
+Ihr Profil:
+- SAP FI
+";
+        let doc = read(text, &Vocab::all());
+        let lines: Vec<&str> = doc.task_lines.iter().map(|r| &text[r.clone()]).collect();
+        assert_eq!(
+            lines,
+            ["- Aufbau des Service Desk", "- Steuerung der Dienstleister"]
+        );
+        assert!(doc.items.iter().all(|i| !i.text.contains("Service Desk")));
+        let key = "Key Responsibilities
+Lead the team
+";
+        assert_eq!(read(key, &Vocab::all()).task_lines.len(), 1);
+    }
 
     #[test]
     fn degrees_and_their_fields() {
