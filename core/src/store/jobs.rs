@@ -190,9 +190,23 @@ fn page_order(query: &PageQuery, p: &str) -> String {
     } else {
         String::new()
     };
-    // Three sections in every order (design round 7): the scored jobs, then the ones whose
-    // ring shows no number (not scored yet, not scorable), then the excluded ones; in each a
-    // closed ad (no applications any more) follows the open ones.
+    let closed = format!("({p}desc_status = 'ok' AND {p}desc_closed = 1)");
+    if !query.by_match && !query.by_rate {
+        // By date: the day the job came in (the local day, the trash: the day it went there),
+        // newest first; within a day the open ads before the closed ones, then the better score
+        // (and the score before the caps), then the newest.
+        let day = if query.place == Place::Trash {
+            format!("date({p}trashed_at, 'unixepoch', 'localtime') DESC")
+        } else {
+            format!("date({p}first_seen_at, 'unixepoch', 'localtime') DESC")
+        };
+        return format!(
+            "({p}match_status IS 'excluded'), {day}, {closed},              (CASE WHEN {scored} THEN {p}match_score END) DESC,              (CASE WHEN {scored} THEN json_extract({p}match_note, '$.rank') END) DESC,              {date}, {p}portal, {p}job_id"
+        );
+    }
+    // Three sections in match and rate order (design round 7): the scored jobs, then the ones
+    // whose ring shows no number (not scored yet, not scorable), then the excluded ones; in
+    // each a closed ad (no applications any more) follows the open ones.
     format!(
         "({p}match_status IS 'excluded'), (NOT ({scored})), \
          ({p}desc_status = 'ok' AND {p}desc_closed = 1), {by_match}{date}, \
@@ -1883,18 +1897,18 @@ mod tests {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         // P and Q wait for their score, H and L are scored, C is a closed ad, X excluded;
-        // the mails from the newest (P) to the oldest (X).
+        // the mails from the newest (P) to the oldest (X), a day apart.
         let mut keys = Vec::new();
-        for (hours, title) in (1..).zip(["P", "Q", "H", "L", "C", "X"]) {
+        for (days, title) in (1..).zip(["P", "Q", "H", "L", "C", "X"]) {
             let job = posting(
-                &format!("https://www.linkedin.com/jobs/view/41000000{hours:02}/"),
+                &format!("https://www.linkedin.com/jobs/view/41000000{days:02}/"),
                 title,
                 "",
                 "",
             );
             let mail = MailRef {
                 subject: "x",
-                date: Some(now() - SignedDuration::from_hours(hours)),
+                date: Some(now() - SignedDuration::from_hours(days * 24)),
                 gmail_id: None,
             };
             store.upsert_posting(run, &job, mail, now()).unwrap();
@@ -1942,7 +1956,8 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(titles(true), ["H", "L", "C", "P", "Q", "X"]);
-        assert_eq!(titles(false), ["H", "L", "C", "P", "Q", "X"]);
+        // By date (one day here): the open ads, the scored ones first, then the closed ones.
+        assert_eq!(titles(false), ["H", "L", "P", "C", "Q", "X"]);
         // A page of two by match holds two scored jobs.
         assert!(page(true, 2).iter().all(|job| job.match_.is_some()));
     }
@@ -2016,5 +2031,85 @@ mod tests {
         assert_eq!(page(50), ["B", "S", "U", "N", "V", "A", "E"]);
         // A page of three holds the two scored ones and the newest without a number.
         assert_eq!(page(3), ["B", "S", "U"]);
+    }
+
+    /// By date the day a job came in leads, then open before closed, then the score: a
+    /// closed ad of today still stands above every ad of yesterday.
+    #[test]
+    fn by_date_the_day_leads_then_open_then_score() {
+        use crate::model::MatchStatus::Scored;
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        // Two days, the mails far from any local midnight (10:15 to 10:45 UTC).
+        let day = |n: i64| {
+            Timestamp::from_second(1_800_000_000 - 1_800_000_000 % 86_400 + 10 * 3600 + n * 86_400)
+                .unwrap()
+        };
+        // (title, day, minutes, score, closed): today T, yesterday Y.
+        let rows = [
+            ("T-open-low", 0, 15, 20, false),
+            ("T-open-high", 0, 45, 80, false),
+            ("T-closed-top", 0, 30, 99, true),
+            ("Y-open-low", -1, 15, 10, false),
+            ("Y-open-high", -1, 45, 70, false),
+            ("Y-closed-top", -1, 30, 95, true),
+        ];
+        let mut matches = Vec::new();
+        for (i, (title, n, minutes, score, closed)) in rows.into_iter().enumerate() {
+            let job = posting(
+                &format!("https://www.linkedin.com/jobs/view/430000000{i}/"),
+                title,
+                "",
+                "",
+            );
+            let seen = day(n) + SignedDuration::from_mins(minutes);
+            let mail = MailRef {
+                subject: "x",
+                date: Some(seen),
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &job, mail, seen).unwrap();
+            if closed {
+                store
+                    .record_text(&job.key, "Nicht mehr offen", false, true, now())
+                    .unwrap();
+            }
+            matches.push((
+                job.key,
+                MatchRecord {
+                    status: Scored,
+                    score,
+                    note: None,
+                    must_met: 0,
+                    must_total: 0,
+                    top: Vec::new(),
+                    facts: crate::model::KeyFacts::default(),
+                    rank: 0,
+                },
+            ));
+        }
+        store.save_matches(&matches, "r", now()).unwrap();
+        let query = PageQuery {
+            limit: 50,
+            ..PageQuery::default()
+        };
+        let titles: Vec<_> = store
+            .job_page(&query)
+            .unwrap()
+            .0
+            .into_iter()
+            .map(|job| job.title)
+            .collect();
+        assert_eq!(
+            titles,
+            [
+                "T-open-high",
+                "T-open-low",
+                "T-closed-top",
+                "Y-open-high",
+                "Y-open-low",
+                "Y-closed-top"
+            ]
+        );
     }
 }
