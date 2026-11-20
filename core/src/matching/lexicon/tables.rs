@@ -403,6 +403,8 @@ pub(crate) const NICE_HEADINGS: &[&str] = &[
     "good to have",
     "ideal",
     "idealerweise",
+    "kann-anforderungen",
+    "kann-kriterien",
     "nice to have",
     "nice to haves",
     "nice-to-have",
