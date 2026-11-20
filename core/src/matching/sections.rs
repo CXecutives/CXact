@@ -68,19 +68,34 @@ pub(crate) fn norm_heading(line: &str) -> String {
     split_whitespace(&kept).collect::<Vec<_>>().join(" ")
 }
 
+/// Possessive and emphasis words a heading may lead with (`Ihre Qualifikation`, `Key Requirements`).
+/// external contract - do not translate
+const HEADING_LEADS: &[&str] = &[
+    "mein", "meine", "ihr", "ihre", "unser", "unsere", "key", "your", "main", "core",
+];
+
 /// Python `_section_kind`: what a heading line opens, `None` for ordinary lines.
 pub(crate) fn section_kind(line: &str) -> Option<HeadingKind> {
     let norm = norm_heading(line);
     if norm.is_empty() || char_len(&norm) > HEADING_MAX_CHARS {
         return None;
     }
+    heading_kind(&norm).or_else(|| {
+        // `Ihre Qualifikation`, `Unsere Aufgaben`: the heading without its lead word.
+        let (lead, rest) = norm.split_once(' ')?;
+        HEADING_LEADS.contains(&lead).then(|| heading_kind(rest))?
+    })
+}
+
+/// The kind of a normalised heading: the exact lists, then the prefixes.
+fn heading_kind(norm: &str) -> Option<HeadingKind> {
     for (table, kind) in [
         (lexicon::NEUTRAL_HEADINGS, HeadingKind::Neutral),
         (lexicon::NICE_HEADINGS, HeadingKind::Nice),
         (lexicon::MUST_HEADINGS, HeadingKind::Must),
         (lexicon::TASK_HEADINGS, HeadingKind::Task),
     ] {
-        if lexicon::contains(table, &norm) {
+        if lexicon::contains(table, norm) {
             return Some(kind);
         }
     }
@@ -162,13 +177,13 @@ mod tests {
     fn headings() {
         assert_eq!(section_kind("Anforderungen:"), Some(HeadingKind::Must));
         assert_eq!(section_kind("- 2) Wünschenswert"), Some(HeadingKind::Nice));
-        assert_eq!(section_kind("Ihre Qualifikation"), None);
+        assert_eq!(section_kind("Ihre Qualifikation"), Some(HeadingKind::Must));
         assert_eq!(section_kind("Über uns"), Some(HeadingKind::Neutral));
         assert_eq!(norm_heading("• 1. Ihr Profil："), "ihr profil");
     }
 
     #[test]
-    fn new_headings() {
+    fn new_headings_and_lead_words() {
         for (line, kind) in [
             ("Qualifikation", HeadingKind::Must),
             ("Anforderungen", HeadingKind::Must),
@@ -179,9 +194,17 @@ mod tests {
             ("Hauptaufgaben", HeadingKind::Task),
             ("Responsibilities", HeadingKind::Task),
             ("Key Responsibilities", HeadingKind::Task),
+            ("Ihre Qualifikation", HeadingKind::Must),
+            ("Unsere Aufgaben", HeadingKind::Task),
+            ("Meine Anforderungen", HeadingKind::Must),
+            ("Core Requirements", HeadingKind::Must),
+            ("Your Profile", HeadingKind::Must),
+            ("Main Responsibilities", HeadingKind::Task),
         ] {
             assert_eq!(section_kind(line), Some(kind), "{line}");
         }
+        assert_eq!(section_kind("Ihre Reise"), None);
+        assert_eq!(section_kind("Key"), None);
     }
 
     #[test]
