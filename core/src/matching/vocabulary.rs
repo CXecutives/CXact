@@ -53,6 +53,10 @@ const HIDDEN: &[&str] = &[
     "interim manag",
     "change managment",
     "projekt management",
+    // Inflected forms and false friends that only read ads.
+    "safe operating area",
+    "skalierte agile",
+    "skalierten agilen",
     // Phrases that lost their small words (`of`, `&`, `to`) to the folding, and written-out
     // hyphen ellipses (`Absatz- und Produktionsplanung`).
     "absatzplanung produktionsplanung",

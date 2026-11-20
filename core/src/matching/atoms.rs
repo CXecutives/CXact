@@ -870,7 +870,7 @@ mod tests {
         atoms(text, &Vocab::all())
     }
 
-    /// SAFe is scaled agile work (the safe operating area of power electronics is none), the
+    /// `SAFe` is scaled agile work (the safe operating area of power electronics is none), the
     /// general ledger the Hauptbuch, cost centres their accounting, FICO the FI module.
     #[test]
     fn scaled_agile_ledger_cost_centres_and_fico() {
