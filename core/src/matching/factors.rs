@@ -167,7 +167,7 @@ mod tests {
         • Erfahrung in der Konsolidierung\n\
         • Kenntnisse in Anaplan\n\n\
         Wünschenswert\n\
-        • Französisch in Wort und Schrift\n";
+        • Erfahrung mit Power BI\n";
 
     #[test]
     fn the_lines_say_what_moved_the_score_in_reading_order() {

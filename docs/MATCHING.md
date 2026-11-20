@@ -320,7 +320,7 @@ comes from the profile.
 | Seniority | `seniority.rs`, whatever topic the highest years name: a closed range whose upper end is at most half the profile's years, and from `JUNIOR_ROLE_YEARS` 5 on a junior title, a junior or entry level of the page (an internship, a working student) or a must that asks for first experience, is `overqualified` (met in part, never an exclusion); an assistant or associate level without years is `seniorityUnclear`; a junior role caps a profile of `SENIOR_YEARS` 10 or more at `JUNIOR_CAP` 40 |
 | Formal duties | a must degree of another field or a missing licence = `formalOpen` check with a cap of 40; decided only when worded as mandatory (`zwingend`, `unabdingbar`, `mandatory`); no degree in the profile = a check |
 | Relevance | title fit and a BM25F-like lexical score (title 3, requirement lines 2, rest 1) of the ad against the profile's query; an atom only named in an entry long enough to be a sentence weighs half; languages, contract words and quantities are no part of the query |
-| Score | `M`, `K`, `P` and the shrinkage of "Formulas"; permanent roles x 0.9 (second category); caps: open formal must 40, several musts open (at least two and at least half) 40, an open must on the title's topic 60 (for a teaser an open field word of the title), no skill must met (at least two) 25, a single open skill must under a title of little fit 30, a text without requirements 60 (judged from its title, low evidence), a junior role for a senior profile 40; a scored ad keeps at least 10 |
+| Score | `M`, `K`, `P` and the blend of "Formulas"; permanent roles x 0.9 (second category); caps: open formal must 40, several musts open (at least two and at least half, the core of the role among them) 40, an open must on the title's topic 60 (for a teaser an open field word of the title), no skill must met (at least two) 25, a single open skill must under a title of little fit 30, a text without requirements 60 (judged from its title, low evidence), a junior role for a senior profile 40; a scored ad keeps at least 10 |
 
 A text long enough to read but without any requirement is scored from its title alone; a short
 teaser is judged from its title, a short full text stays unscorable. Titles lose gender markers
@@ -362,13 +362,21 @@ not read at all. An empty value turns its rule off.
 
 Integer per-mille, parameters in `params.rs`.
 
-- Requirements: `M = sum(w*e)/sum(w)` over the musts (`w` 1000, soft and language 250, frame 0;
-  `e` the evidence 1000, 500 or 0), `K` the mean of `e` over the nice-to-haves, `P = must ? (nice
-  ? (3M+K)/4 : M) : K`; every competence counts the same. The evidence is `n = sum(w_must) + 500
-  * n_nice`.
-- Shrinkage: `P' = (n*P + k*R' + prior_w*prior) / (n + k + prior_w)` with `k` = `K_SHRINK` 2000;
-  low evidence (a teaser, vocabulary only, nice-to-haves only, fewer than two items) also
-  shrinks towards `LOW_PRIOR` 400 with weight 1500; permanent roles x 0.9.
+- Musts (`engine::is_must`, the one definition the fit, the caps, the evidence, the lift and
+  the summary read): skills, degrees and licences (`w` 1000) and a teaser's terms (`w` 250);
+  never soft skills; a language only when asked at C1 or higher and not met in full (then
+  `w` 1000). A must met only through `methoden_tools` counts half unless the title names the
+  tool. A must degree while the profile names none is unknown: no must, `DEGREE_UNKNOWN` 20
+  less, a cap only when the ad makes it mandatory without an equivalent.
+- Requirements: `M = (sum(w*e) + u*R) / max(sum(w), C)` with `C = MUST_SATURATION * 1000`
+  (7, the median number of musts of the 641 real ads with musts) and the unnamed weight
+  `u = max(0, C - sum(w))`: the musts a short list does not name stand at the relevance. `K`
+  the mean of `e` over the nice-to-haves that are skills, `P = must ? (nice ? (3M+K)/4 : M) :
+  K`; every competence counts the same. The evidence is `n = sum(w_must) + 500 * n_nice`.
+- Blend: `P' = 750*P + 250*R` per-mille (`R_SHARE`, the relevance's fixed share); low
+  evidence (a teaser, vocabulary only, nice-to-haves only, fewer than two items, a long text
+  read thin) leans on a prior from the title, `((n + k)*P' + 1500*prior) / (n + k + 1500)` with
+  `k` = `K_SHRINK` 2000 and `prior = 150 + 400 * title fit / 1000`; permanent roles x 0.9.
 - Target role: the title meets a role (topic atoms without lead words, contract words such as
   `Interim` met by the title or an interim contract, a lead role needs a lead title) =
   `ROLE_FULL` 80; a junior title or a lead role without lead title = `ROLE_HALF` 40.

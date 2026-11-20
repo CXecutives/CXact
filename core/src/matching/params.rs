@@ -7,18 +7,30 @@ pub(crate) const E_NONE: u16 = 0;
 
 /// Weight of a must item (skill, language, degree, years).
 pub(crate) const W_MUST: u64 = 1000;
-/// Weight of a soft skill; unproven soft skills count half.
+/// Weight of a soft skill (shown, never counted: engine 22).
 pub(crate) const W_SOFT: u64 = 250;
 /// Weight of a vocabulary term (no explicit requirements).
 pub(crate) const W_TERM: u64 = 250;
+/// A language asked at this level or higher (C1) counts against the profile while it is not
+/// met in full; below it, or met, a language is hygiene and adds nothing (engine 22).
+pub(crate) const LANGUAGE_MUST_LEVEL: u8 = 5;
+/// Musts a typical real ad names (the median over the 641 private real ads with musts,
+/// engine 22): `M = sum(w*e) / max(sum(w), MUST_SATURATION * W_MUST)`, so meeting the two
+/// musts of a thin list is not a full fit.
+pub(crate) const MUST_SATURATION: u64 = 7;
 /// Evidence one nice-to-have adds.
 pub(crate) const N_NICE: u64 = 500;
 
-/// Shrinkage towards the relevance: `P' = (n*P + k*R) / (n + k)`.
+/// The relevance's fixed share beside the fit (per-mille): `P' = (750*P + 250*R) / 1000`
+/// (engine 22; was the shrinkage `(n*P + k*R) / (n + k)`).
+pub(crate) const R_SHARE: u64 = 250;
+/// Mass of the fit beside the prior of low evidence: `(n + k)*P' + w*prior`.
 pub(crate) const K_SHRINK: u64 = 2000;
 /// Low evidence (teaser, vocabulary only, nice-to-haves only, fewer than two items) is also
-/// shrunk towards a cautious prior.
-pub(crate) const LOW_PRIOR: u64 = 400;
+/// shrunk towards a prior from the title: `LOW_PRIOR` for a title that names nothing of the
+/// field, rising linearly with the title fit to `HIGH_PRIOR` (engine 22).
+pub(crate) const LOW_PRIOR: u64 = 150;
+pub(crate) const HIGH_PRIOR: u64 = 550;
 pub(crate) const LOW_PRIOR_WEIGHT: u64 = 1500;
 
 /// BM25F-like relevance: k1 and b in per-mille, fixed document length in characters.
@@ -56,6 +68,9 @@ pub(crate) const PERMANENT_FACTOR: u64 = 900;
 /// open must on the topic of the title (the core of the role) at most 6; no skill must
 /// met at all (at least two) is outside the field.
 pub(crate) const FORMAL_CAP: u8 = 40;
+/// A must degree while the profile names none is unknown: this much less (per-mille), once
+/// per ad (engine 22).
+pub(crate) const DEGREE_UNKNOWN: u64 = 20;
 pub(crate) const SEVERAL_OPEN_CAP: u8 = 40;
 pub(crate) const TITLE_OPEN_CAP: u8 = 60;
 pub(crate) const OFF_FIELD_CAP: u8 = 25;

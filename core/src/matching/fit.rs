@@ -514,10 +514,12 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     }
     // The ad asks for more than the profile names (`Tableau im Reporting` against
     // `Reporting`): the profile is more general, half.
+    // Words of experience (`Berufserfahrung`, `Projekterfahrung`, `Praxis`) ask for nothing
+    // more: what the profile names literally stays met (engine 22).
     if best.value == E_FULL
         && job
             .iter()
-            .any(|j| !atoms::is_generic(j) && !covered(skills, j))
+            .any(|j| !atoms::is_generic(j) && !experience_atom(j) && !covered(skills, j))
     {
         // An industry is the setting of a requirement, never its function
         // (`Vertriebserfahrung im Maschinenbau` is not half met by `Maschinenbau`).
@@ -548,6 +550,17 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
         }
     }
     best
+}
+
+/// An atom that only says experience (`berufserfahr`, `projekterfahr`, `praxis`), not
+/// the experience of a function (`Vertriebserfahrung`).
+fn experience_atom(atom: &str) -> bool {
+    lex::GENERAL_EXPERIENCE
+        .iter()
+        .chain(lex::EXPERIENCE_WORDS)
+        .map(|w| atoms::stem(w))
+        .any(|w| atom.starts_with(&w))
+        || atom == atoms::stem("projekterfahrung")
 }
 
 /// An atom of leadership (`fuhrung`, `personalverantwortung`).
@@ -881,6 +894,30 @@ mod tests {
         assert_eq!(fit("Erfahrung im Service Management"), E_NONE);
         assert_eq!(fit("Sicherer Umgang mit Cloud"), E_NONE);
         assert_eq!(fit("Kenntnisse in Cognos"), E_FULL);
+    }
+
+    /// What the profile names literally stays met when the ad adds only words of experience;
+    /// working with stakeholders is half of stakeholder management; SAP module codes stay.
+    #[test]
+    fn the_profile_named_literally_is_met() {
+        let data = of_json(&json!({
+            "kernkompetenzen": [
+                {"kompetenz": "Projektmanagement"},
+                {"kompetenz": "Customer Experience"},
+                {"kompetenz": "Stakeholder-Management"}
+            ],
+            "methoden_tools": ["SAP CS"]
+        }));
+        let skills = Skills::new(&core_texts(&data), &data);
+        let fit = |text: &str| skill_fit_in(&skills, text, true).value;
+        assert_eq!(
+            fit("Mehrjährige Berufserfahrung im Projektmanagement"),
+            E_FULL
+        );
+        assert_eq!(fit("Projekterfahrung im Stakeholder-Management"), E_FULL);
+        assert_eq!(fit("Erfahrung im Umgang mit Stakeholdern"), E_HALF);
+        assert_eq!(fit("Kenntnisse in SAP CS"), E_FULL);
+        assert_eq!(fit("SAP PS"), E_NONE);
     }
 
     /// An industry of the profile is the setting of a requirement, never its function:

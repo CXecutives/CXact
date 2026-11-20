@@ -185,10 +185,25 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering. Jede
 zählt gleich. Ein fehlender Kann-Punkt kostet höchstens 5 Punkte. Die Entfernung kostet bei Interim und
 Projekten nichts.
 
+## Muss-Punkte
+
+- Muss-Punkte sind fachliche Anforderungen, Abschlüsse und Zulassungen. Soft Skills und Sprachen sind
+  keine Muss-Punkte und bringen keine Punkte. Nur eine verlangte Sprache ab C1, die das Profil nicht
+  erfüllt, zählt wie ein offener Muss-Punkt.
+- Ein Muss-Punkt, den das Profil nur über seine Tools (methoden_tools) belegt, zählt halb, außer der
+  Titel nennt das Tool. Kernkompetenzen zählen voll. Jahre und Sterne gewichten nichts.
+- Was das Profil wörtlich nennt, ist erfüllt, auch wenn die Anzeige Erfahrung oder Berufserfahrung
+  davor schreibt.
+- Eine Anzeige mit wenigen Muss-Punkten belegt wenig. Die Punkte, die sie nicht nennt, zählen so, wie
+  der übrige Text zum Fachgebiet passt.
+- Verlangt die Anzeige einen Abschluss und nennt das Profil keinen (abschluesse), ist er unklar. Das
+  kostet wenig und deckelt nicht, außer die Anzeige verlangt ihn zwingend und ohne „oder vergleichbar“.
+
 ## Obergrenzen
 
 - Eine formale Pflicht offen (Abschluss, Zulassung, Zertifikat) höchstens 40
-- Mindestens zwei und mindestens die Hälfte der Muss-Punkte offen höchstens 40
+- Mindestens zwei und mindestens die Hälfte der Muss-Punkte offen, darunter der Kern der Rolle,
+  höchstens 40. Ein offener Nebenpunkt kostet nur seinen Anteil, etwa 5 Punkte.
 - Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung höchstens 40
 - Ein Muss-Punkt zum Kern der Rolle, also zum Thema des Titels, offen höchstens 60
 - Eine Anzeige ohne erkennbare Anforderungen höchstens 60

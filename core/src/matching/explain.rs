@@ -8,16 +8,15 @@ use serde_json::{Map, Value, json};
 
 use super::ad_facts::{self, AdFacts, currency_code, start_code};
 use super::contract::ContractKind;
-use super::engine::{EngineProfile, Evaluation, Scored};
+use super::engine::{self, EngineProfile, Evaluation, Scored};
 use super::factors;
 use super::facts::{HardCriteria, Start};
 use super::fit;
 use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
-use super::params::{E_FULL, E_NONE, W_MUST};
+use super::params::{E_FULL, E_NONE};
 use super::permanent;
-use super::sections::ReqKind;
 use super::types::{
     Assessment, CriterionKey, CriterionState, CriterionStatus, Evidence, EvidenceLevel, Highlight,
     Reason, ReasonCode, ReasonKind, Summary, Via, Weight,
@@ -130,12 +129,13 @@ pub(crate) fn assessment(
             E_NONE => ReasonKind::Open,
             _ => ReasonKind::Partial,
         };
-        let weight = match (item.kind, scored.weight) {
-            (_, 0) => Weight::Info,
-            (ReqKind::Must, W_MUST) => Weight::Must,
-            (ReqKind::Must, _) if item.class == Class::Soft => Weight::Info,
-            (ReqKind::Must, _) => Weight::Must,
-            (ReqKind::Nice, _) => Weight::Nice,
+        // The engine's one definition of a must and of a nice-to-have that counts.
+        let weight = if engine::is_must(scored) {
+            Weight::Must
+        } else if engine::is_nice(scored) {
+            Weight::Nice
+        } else {
+            Weight::Info
         };
         match (weight, kind) {
             (Weight::Must, ReasonKind::Met) => summary.must_met += 1,

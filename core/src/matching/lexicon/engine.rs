@@ -423,9 +423,15 @@ pub(crate) const EQUIVALENT_HEADS: &[(&str, &str)] = &[
     ("programmmanagement", "projektmanagement"),
 ];
 /// A concept of a profile entry and the concepts of an ad it meets in half, for every
-/// profile (the packs add their own, `Domain::half`): an AI tool used is half of AI asked for.
-pub(crate) const CORE_HALF: &[(&str, &[&str])] =
-    &[("chatgpt", AI), ("claude", AI), ("copilot", AI)];
+/// profile (the packs add their own, `Domain::half`): an AI tool used is half of AI asked for,
+/// stakeholder management half of stakeholders.
+pub(crate) const CORE_HALF: &[(&str, &[&str])] = &[
+    ("chatgpt", AI),
+    ("claude", AI),
+    ("copilot", AI),
+    // Working with stakeholders (`Umgang mit Stakeholdern`) is half of managing them.
+    ("stakeholdermanagement", &["stakeholder"]),
+];
 /// What an ad asks for as artificial intelligence.
 const AI: &[&str] = &["generative-ki", "ki", "llm"];
 /// Gender endings of a word (after folding).

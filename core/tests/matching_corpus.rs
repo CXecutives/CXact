@@ -37,7 +37,9 @@ use sha2::Digest as _;
 /// Version 20: no Schwerpunkte (the owner's decision of 2026-10-10). Version 21: the
 /// industries are experience, no wish (the owner's decision of 2026-10-10); a target role's
 /// contract word costs nothing where the profile allows the ad's contract type (wish K42).
-const GOLDEN_DIGEST: &str = "523d5f6a23de37b6";
+/// Version 22: the aggregation repaired (one must, saturating musts, a fixed relevance share,
+/// a prior from the title, tools half); every exclusion, status and band row holds.
+const GOLDEN_DIGEST: &str = "723707feabbb574e";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")

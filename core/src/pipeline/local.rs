@@ -300,19 +300,19 @@ pub fn open(assessment: &Assessment) -> Vec<String> {
 }
 
 /// The met requirements quoted in the list row: musts before optional ones, a language
-/// last (met, it says little about the field).
+/// last (met, it says little about the field, and the engine shows it as information).
 fn top(assessment: &Assessment) -> Vec<String> {
+    let language =
+        |r: &matching::Reason| r.params.get("class").and_then(Value::as_str) == Some("language");
     let mut met: Vec<&matching::Reason> = assessment
         .reasons
         .iter()
         .filter(|r| {
             r.kind == ReasonKind::Met
-                && matches!(r.weight, Weight::Must | Weight::Nice)
+                && (matches!(r.weight, Weight::Must | Weight::Nice) || language(r))
                 && matches!(r.code, ReasonCode::Requirement | ReasonCode::Term)
         })
         .collect();
-    let language =
-        |r: &matching::Reason| r.params.get("class").and_then(Value::as_str) == Some("language");
     met.sort_by_key(|r| (language(r), r.weight != Weight::Must));
     met.into_iter()
         .filter_map(|r| r.label.clone())
@@ -438,7 +438,8 @@ Rahmenbedingungen:
         let record = assess(&matcher, "Interim CFO (m/w/d)", "Hamburg", FIT);
         assert_eq!(record.status, MatchStatus::Scored);
         assert!(record.score >= 40, "{record:?}");
-        assert_eq!((record.must_met, record.must_total), (3, 4), "{record:?}");
+        // SAP S/4HANA is met only through the tools: half (engine 22).
+        assert_eq!((record.must_met, record.must_total), (2, 4), "{record:?}");
         assert_eq!(
             record.top,
             [
@@ -526,7 +527,7 @@ Rahmenbedingungen:
             reasons
                 .iter()
                 .filter(language)
-                .any(|r| r.kind == ReasonKind::Open && r.weight == Weight::Nice),
+                .any(|r| r.kind == ReasonKind::Open),
             "an open language stays out: {reasons:?}"
         );
     }

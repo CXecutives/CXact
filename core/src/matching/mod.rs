@@ -98,8 +98,15 @@ use facts::{Availability, HardCriteria};
 /// words, AI tools; a role's contract word costs nothing for an allowed contract type; a common
 /// word of a name is no part of an entry; a long text read thin is low evidence; Swiss regions
 /// and delivery countries; a monthly salary far below the minimum and a missing mandatory
-/// certificate decide.
-pub const ENGINE_VERSION: u32 = 21;
+/// certificate decide. 22: the aggregation repaired: one definition of a must (soft skills and
+/// languages are none; a language asked at C1 or higher and not met counts against), the musts
+/// saturate at the median of real ads (the musts a short list does not name stand at the
+/// relevance), the relevance holds a fixed quarter beside the fit, low evidence leans on a prior
+/// from the title, a must met only through the tools counts half, several open musts cap only
+/// with the core of the role open, a degree the profile cannot judge is unknown (a small
+/// minus), SAP module codes CS and PS, stakeholders are half of stakeholder management and
+/// words of experience ask for nothing more.
+pub const ENGINE_VERSION: u32 = 22;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.
