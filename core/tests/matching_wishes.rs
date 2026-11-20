@@ -65,7 +65,7 @@ fn run(profile: &ProfileForm, ad: &Ad<'_>) -> Assessment {
         posted: None,
         kind: TextKind::Full,
     };
-    assess(&compile_profile(profile), &job, None).expect("assessed")
+    assess(&compile_profile(profile), &job).expect("assessed")
 }
 
 fn reason(a: &Assessment, code: ReasonCode) -> Option<&Reason> {

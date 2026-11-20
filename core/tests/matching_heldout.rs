@@ -109,7 +109,7 @@ fn run_set(name: &str) -> SetRun {
                     TextKind::Full
                 },
             };
-            let a = assess(&profile, &input, None).expect("a usable profile");
+            let a = assess(&profile, &input).expect("a usable profile");
             let pair_name = format!(
                 "{name} {} {}",
                 profile_name.trim_end_matches(".json"),

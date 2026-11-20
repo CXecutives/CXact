@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn the_lines_say_what_moved_the_score_in_reading_order() {
         let profile = compile_profile(&crate::profile::parse(PROFILE).unwrap());
-        let a = assess(&profile, &job("Interim CFO (m/w/d)", AD), None).unwrap();
+        let a = assess(&profile, &job("Interim CFO (m/w/d)", AD)).unwrap();
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
         assert_eq!(
             codes,
@@ -214,7 +214,7 @@ mod tests {
             "Wir suchen einen Controller in Festanstellung, Vollzeit und unbefristet, \
              zu 100 % vor Ort in Hamburg.\n\n{requirements}"
         );
-        let a = assess(&profile, &job("Junior Controller (m/w/d)", &ad), None).unwrap();
+        let a = assess(&profile, &job("Junior Controller (m/w/d)", &ad)).unwrap();
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
         assert_eq!(
             codes,
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn an_unscorable_job_has_none() {
         let profile = compile_profile(&crate::profile::parse(PROFILE).unwrap());
-        let a = assess(&profile, &job("Projekt", "Kurz."), None).unwrap();
+        let a = assess(&profile, &job("Projekt", "Kurz.")).unwrap();
         assert!(a.factors.is_empty());
     }
 }

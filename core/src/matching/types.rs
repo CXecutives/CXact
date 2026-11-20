@@ -35,14 +35,6 @@ pub struct JobInput<'a> {
     pub kind: TextKind,
 }
 
-/// Optional semantic similarity (feature experiment; not used yet).
-pub trait Embedder: Send + Sync {
-    /// Stable model id; part of the match revision.
-    fn model_id(&self) -> &str;
-    /// Similarity of two short texts in per-mille (0..=1000).
-    fn similarity(&self, a: &str, b: &str) -> u16;
-}
-
 /// Overall outcome for a job.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -228,7 +220,6 @@ pub enum ReasonCode {
 #[serde(rename_all = "camelCase")]
 pub enum Via {
     Exact,
-    Stem,
     Synonym,
     /// The profile entry is more specific than the requirement.
     Specific,

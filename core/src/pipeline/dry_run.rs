@@ -338,7 +338,7 @@ mod tests {
                 posted: None,
                 kind: TextKind::Full,
             };
-            let a = matching::assess(matcher.profile(), &job, None).unwrap();
+            let a = matching::assess(matcher.profile(), &job).unwrap();
             (a.verdict, band(a.score))
         };
         assert_eq!(

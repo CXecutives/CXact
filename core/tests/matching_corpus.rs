@@ -90,7 +90,7 @@ fn engine_on_local_data() {
                 posted: None,
                 kind: TextKind::Full,
             };
-            let assessment = assess(&profile, &input, None);
+            let assessment = assess(&profile, &input);
             let verdict = assessment.as_ref().map(|a| code_of_verdict(a.verdict));
             println!(
                 "{name} #{index}: {:?} {verdict:?}",
@@ -309,7 +309,7 @@ fn run_with(prepare: impl Fn(&str, ProfileForm) -> ProfileForm) -> Run {
                 posted: job.mail_date,
                 kind: job.kind,
             };
-            let new = assess(&profile, &input, None);
+            let new = assess(&profile, &input);
             let (_, expect) = job
                 .expect
                 .iter()
@@ -514,7 +514,7 @@ fn engine_is_fast_enough() {
             kind: job.kind,
         };
         let one = Instant::now();
-        let _ = assess(&profile, &input, None);
+        let _ = assess(&profile, &input);
         times.push(one.elapsed());
     }
     let total = started.elapsed();

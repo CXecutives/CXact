@@ -46,7 +46,7 @@ fn run(facts: &Value) -> Assessment {
         kind: TextKind::Full,
     };
     let profile = jobalert_core::profile::parse(&profile().to_string()).expect("a v19 profile");
-    assess(&compile_profile(&profile), &job, None).expect("assessed")
+    assess(&compile_profile(&profile), &job).expect("assessed")
 }
 
 fn has(a: &Assessment, code: ReasonCode, kind: ReasonKind) -> bool {

@@ -94,7 +94,7 @@ impl LocalMatcher {
             posted: Some(posted),
             kind,
         };
-        let mut assessment = matching::assess(&self.profile, &input, None)?;
+        let mut assessment = matching::assess(&self.profile, &input)?;
         if matches!(scored, Cow::Owned(_)) {
             let contact = application::contact(full);
             let facts = &mut assessment.facts;

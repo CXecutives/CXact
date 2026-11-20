@@ -178,7 +178,7 @@ fn check(
         posted: Some(jiff::civil::date(2026, 9, 1)),
         kind,
     };
-    let result = catch_unwind(AssertUnwindSafe(|| assess(profile, &job, None)));
+    let result = catch_unwind(AssertUnwindSafe(|| assess(profile, &job)));
     let Ok(assessment) = result else {
         panic!("{what} with {name} panicked; text:\n{text}");
     };

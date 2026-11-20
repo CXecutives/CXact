@@ -30,7 +30,7 @@ fn run(profile: &ProfileForm, title: &str, text: &str) -> Assessment {
         posted: None,
         kind: TextKind::Full,
     };
-    assess(&compile_profile(profile), &job, None).expect("assessed")
+    assess(&compile_profile(profile), &job).expect("assessed")
 }
 
 fn has(a: &Assessment, code: ReasonCode, kind: ReasonKind) -> bool {

@@ -781,7 +781,7 @@ mod local {
                         posted: None,
                         kind: TextKind::Full,
                     };
-                    let a = assess(&profile, &input, None).expect("assessment");
+                    let a = assess(&profile, &input).expect("assessment");
                     let mut labels: Vec<String> = a
                         .reasons
                         .iter()

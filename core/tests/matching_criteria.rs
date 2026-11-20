@@ -38,7 +38,7 @@ fn run(location: &str, text: &str) -> Assessment {
         posted: None,
         kind: TextKind::Full,
     };
-    assess(&compile_profile(&profile()), &job, None).expect("assessed")
+    assess(&compile_profile(&profile()), &job).expect("assessed")
 }
 
 fn criterion(a: &Assessment, key: CriterionKey) -> &CriterionState {
@@ -174,7 +174,7 @@ fn assess_with(profile: &CompiledProfile, title: &str, text: &str) -> Assessment
         posted: None,
         kind: TextKind::Full,
     };
-    assess(profile, &job, None).expect("assessed")
+    assess(profile, &job).expect("assessed")
 }
 
 /// Permanent employment not among the contract types: a stated permanent role is excluded
@@ -356,7 +356,7 @@ Ihr Profil:
         posted: None,
         kind: TextKind::Full,
     };
-    let a = assess(&excluded, &job, None).expect("assessed");
+    let a = assess(&excluded, &job).expect("assessed");
     assert_eq!(a.verdict, Verdict::Excluded);
     let reason = a
         .reasons
@@ -458,7 +458,7 @@ fn country_names_in_a_profile_keep_the_country_rule() {
             posted: None,
             kind: TextKind::Full,
         };
-        assess(&named, &job, None).expect("assessed")
+        assess(&named, &job).expect("assessed")
     };
     assert_eq!(
         criterion(&at("Hamburg"), CriterionKey::Countries).status,
@@ -671,7 +671,7 @@ Ihr Profil:
         posted: None,
         kind: TextKind::Full,
     };
-    let a = assess(&compile_profile(&profile()), &job, None).expect("assessed");
+    let a = assess(&compile_profile(&profile()), &job).expect("assessed");
     assert_eq!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
     assert!(
         codes(&a).contains(&(ReasonCode::Anue, ReasonKind::Violation)),

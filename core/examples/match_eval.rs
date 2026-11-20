@@ -178,7 +178,7 @@ fn run_profile(
                 TextKind::Full
             },
         };
-        let Some(assessment) = matching::assess(&profile, &input, None) else {
+        let Some(assessment) = matching::assess(&profile, &input) else {
             println!("{name}: the profile names no competences; skipped");
             return Ok(None);
         };

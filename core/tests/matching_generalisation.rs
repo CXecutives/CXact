@@ -23,7 +23,7 @@ fn run(profile: &Value, title: &str, text: &str) -> Assessment {
         posted: None,
         kind: TextKind::Full,
     };
-    assess(&compile_profile(&form(profile)), &job, None).expect("assessed")
+    assess(&compile_profile(&form(profile)), &job).expect("assessed")
 }
 
 /// A profile written as v19 JSON.
@@ -146,7 +146,7 @@ fn a_short_teaser_is_judged_from_its_title() {
             posted: None,
             kind,
         };
-        assess(&compile_profile(&form(&profile)), &job, None).expect("assessed")
+        assess(&compile_profile(&form(&profile)), &job).expect("assessed")
     };
     let cfo = teaser("Interim CFO (m/w/d)", TextKind::Teaser);
     assert_eq!(cfo.verdict, Verdict::Scored);
@@ -330,6 +330,6 @@ fn an_open_title_word_caps_a_teaser() {
         posted: None,
         kind: TextKind::Teaser,
     };
-    let a = assess(&compile_profile(&form(&finance())), &job, None).expect("assessed");
+    let a = assess(&compile_profile(&form(&finance())), &job).expect("assessed");
     assert!(a.score <= 60, "{} {:#?}", a.score, a.reasons);
 }

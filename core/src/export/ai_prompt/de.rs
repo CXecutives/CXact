@@ -725,7 +725,7 @@ impl Wording for German {
                     .map(|y| format!(", {}", plural(y, "Jahr", "Jahre")))
                     .unwrap_or_default();
                 let via = match entry.via {
-                    Via::Exact | Via::Stem => "",
+                    Via::Exact => "",
                     Via::Synonym => " (als Synonym)",
                     Via::Specific => " (spezifischer Eintrag)",
                     Via::General => " (nur allgemeiner Eintrag)",

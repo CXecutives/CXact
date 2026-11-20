@@ -407,12 +407,7 @@ pub(crate) fn language_level(text: &str) -> Option<u8> {
 }
 
 /// Assesses one job; `None` when the profile is `Empty` (nothing is scored then).
-pub fn assess(
-    profile: &CompiledProfile,
-    job: &JobInput<'_>,
-    embedder: Option<&dyn Embedder>,
-) -> Option<Assessment> {
-    let _ = embedder; // Semantic matching is a later experiment.
+pub fn assess(profile: &CompiledProfile, job: &JobInput<'_>) -> Option<Assessment> {
     if profile.quality == ProfileQuality::Empty {
         return None;
     }
