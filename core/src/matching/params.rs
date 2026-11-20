@@ -15,8 +15,9 @@ pub(crate) const W_TERM: u64 = 250;
 /// met in full; below it, or met, a language is hygiene and adds nothing (engine 22).
 pub(crate) const LANGUAGE_MUST_LEVEL: u8 = 5;
 /// Musts a typical real ad names (the median over the 641 private real ads with musts,
-/// engine 22): `M = sum(w*e) / max(sum(w), MUST_SATURATION * W_MUST)`, so meeting the two
-/// musts of a thin list is not a full fit.
+/// engine 22): the musts weigh at least `MUST_SATURATION * W_MUST`, and those a short list
+/// does not name stand half way between the fit of the named ones and the relevance
+/// (engine 23), so meeting the two musts of a thin list is not a full fit.
 pub(crate) const MUST_SATURATION: u64 = 7;
 /// Evidence one nice-to-have adds.
 pub(crate) const N_NICE: u64 = 500;
@@ -107,6 +108,11 @@ pub(crate) const JUNIOR_CAP: u8 = 40;
 /// experience) is below a profile with this many years of experience or more: it is
 /// over-qualified there (engine 18).
 pub(crate) const JUNIOR_ROLE_YEARS: u32 = 5;
+/// An ad one level below the profile (engine 23): this much less (per-mille); two or more
+/// below cap at `LEVEL_CAP` unless a target role names the ad's level (a profile without
+/// target roles: twice the points, no cap).
+pub(crate) const LEVEL_BELOW: u64 = 50;
+pub(crate) const LEVEL_CAP: u8 = 40;
 /// Highest score of a text without any requirement (judged from title and words alone).
 pub(crate) const NO_ITEMS_CAP: u8 = 60;
 /// While fewer than half of the musts are met, the target role and the wishes lift a score

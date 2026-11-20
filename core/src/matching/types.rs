@@ -124,9 +124,15 @@ pub enum FactorCode {
     Evidence,
     /// A permanent role weighs less (`percent` of its fit, 90).
     Permanent,
-    /// A cap held the score down (`cap` formal, severalOpen, offField, titleOpen, noItems or
-    /// junior; `max` the highest score it allows).
+    /// A cap held the score down (`cap` formal, severalOpen, offField, titleOpen, noItems,
+    /// junior or level; `max` the highest score it allows).
     Cap,
+    /// The role stands below the profile (`level` the ad's, 1 to 6; `gap` the levels below;
+    /// engine 23).
+    Level,
+    /// The ad's field lies far from the profile's (`field` its family, `distance` far): its
+    /// musts count half (engine 23).
+    Field,
 }
 
 /// Kind of a reason.

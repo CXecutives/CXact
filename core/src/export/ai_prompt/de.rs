@@ -353,6 +353,13 @@ impl Wording for German {
                 (Some("half"), Some(role)) => format!("Wunschrolle: der Titel kommt {role} nahe"),
                 _ => "Wunschrolle: keine im Titel".to_owned(),
             },
+            FactorCode::Level => match int(p, "gap").unwrap_or(1) {
+                1 => "Ebene: eine Stufe unter dem Profil".to_owned(),
+                n => format!("Ebene: {n} Stufen unter dem Profil"),
+            },
+            FactorCode::Field => {
+                "Fachgebiet: fern vom Profil, die Muss-Anforderungen zählen halb".to_owned()
+            }
             FactorCode::Wishes => match int(p, "points").unwrap_or(0) {
                 n if n < 0 => format!("Wünsche: senken die Punktzahl um {} von 100 Punkten", -n),
                 n => format!("Wünsche: heben die Punktzahl um {n} von 100 Punkten"),
@@ -376,6 +383,7 @@ impl Wording for German {
                     Some("titleOpen") => "Muss-Anforderung zum Kern der Rolle offen",
                     Some("noItems") => "keine erkennbaren Anforderungen",
                     Some("junior") => "Einstiegsrolle bei langer Berufserfahrung",
+                    Some("level") => "Rolle zwei oder mehr Stufen unter dem Profil",
                     _ => "eine Obergrenze der Bewertungsregel",
                 };
                 match int(p, "max") {

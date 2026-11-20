@@ -1023,6 +1023,8 @@ fn every_factor() -> Vec<Factor> {
         F::Evidence,
         F::Permanent,
         F::Cap,
+        F::Level,
+        F::Field,
     ];
     for code in &all {
         match code {
@@ -1032,12 +1034,15 @@ fn every_factor() -> Vec<Factor> {
             | F::Wishes
             | F::Evidence
             | F::Permanent
-            | F::Cap => {}
+            | F::Cap
+            | F::Level
+            | F::Field => {}
         }
     }
     let params = json!({
         "met": 1, "partial": 0, "total": 2, "role": "Interim CFO", "fit": "half",
-        "points": 2, "evidence": "low", "percent": 90, "cap": "severalOpen", "max": 40
+        "points": 2, "evidence": "low", "percent": 90, "cap": "severalOpen", "max": 40,
+        "level": 1, "gap": 2, "field": "it", "distance": "far"
     });
     all.iter()
         .map(|code| factor(*code, params.clone()))

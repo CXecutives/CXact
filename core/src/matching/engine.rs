@@ -26,11 +26,11 @@ use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
     DEGREE_UNKNOWN, E_FULL, E_NONE, FORMAL_CAP, HIGH_PRIOR, JUNIOR_CAP, K_SHRINK,
-    LANGUAGE_MUST_LEVEL, LIFT_CAP, LOW_EVIDENCE_ITEMS, LOW_PRIOR, LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS,
-    MUST_SATURATION, N_NICE, NO_ITEMS_CAP, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP,
-    OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, R_SHARE, ROLE_FULL, ROLE_HALF, SCORE_FLOOR,
-    SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, TITLE_OPEN_CAP, W_MUST, W_SOFT,
-    W_TERM, WISH_MAX,
+    LANGUAGE_MUST_LEVEL, LEVEL_BELOW, LEVEL_CAP, LIFT_CAP, LOW_EVIDENCE_ITEMS, LOW_PRIOR,
+    LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, MUST_SATURATION, N_NICE, NO_ITEMS_CAP, OFF_FIELD_CAP,
+    OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, R_SHARE, ROLE_FULL, ROLE_HALF,
+    SCORE_FLOOR, SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, TITLE_OPEN_CAP,
+    W_MUST, W_SOFT, W_TERM, WISH_MAX,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
@@ -39,6 +39,7 @@ use super::roles::{self, Role, RoleFit};
 use super::score::div_round_half_even;
 use super::sections::ReqKind;
 use super::seniority;
+use super::title::{self, Distance, ProfileLevel};
 use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict};
 use super::wishes::{self, WishResult, Wishes};
 use crate::profile::{ProfileForm, key};
@@ -54,6 +55,10 @@ pub(crate) struct EngineProfile {
     pub title_query: Vec<(String, u64)>,
     pub roles: Vec<Role>,
     pub wishes: Wishes,
+    /// The levels of the target roles and the profile's highest (engine 23).
+    pub level: ProfileLevel,
+    /// The field families of the profile's packs (engine 23).
+    pub fields: Vec<&'static str>,
 }
 
 impl EngineProfile {
@@ -65,6 +70,8 @@ impl EngineProfile {
         let roles = roles::read(form, &skills.vocab);
         let title_query = relevance::title_query(&query, &roles::topics(&roles));
         let wishes = Wishes::new(form);
+        let level = ProfileLevel::new(form.roles.iter().map(String::as_str), skills.total_years);
+        let fields = title::profile_fields(skills.vocab.packs());
         Self {
             core,
             skills,
@@ -73,6 +80,8 @@ impl EngineProfile {
             title_query,
             roles,
             wishes,
+            level,
+            fields,
         }
     }
 }
@@ -106,6 +115,11 @@ pub(crate) struct Evaluation {
     /// The cap that held the score down, with the highest score it allows (none when the
     /// rounded score stays at or below every cap).
     pub capped: Option<(CapKind, u8)>,
+    /// The ad's level and how many levels it stands below the profile (none at a level the
+    /// profile wants or without a level).
+    pub level: Option<(u8, u8)>,
+    /// The ad's field family and its distance to the profile's.
+    pub field: Option<(&'static str, Distance)>,
 }
 
 /// Why a score is capped (the rubric's caps, a text without requirements, a junior role).
@@ -123,6 +137,8 @@ pub(crate) enum CapKind {
     NoItems,
     /// A junior or entry-level role for a senior profile.
     Junior,
+    /// A role two or more levels below the profile (engine 23).
+    Level,
 }
 
 impl CapKind {
@@ -135,6 +151,7 @@ impl CapKind {
             CapKind::TitleOpen => "titleOpen",
             CapKind::NoItems => "noItems",
             CapKind::Junior => "junior",
+            CapKind::Level => "level",
         }
     }
 }
@@ -325,8 +342,9 @@ fn cap(
 
 /// `P` with the must weight and the number of nice-to-haves (the evidence `n`): `M` over
 /// the musts ([`is_must`]), `K` over the nice-to-haves that are skills; soft skills and
-/// languages add nothing. `M = (sum(w*e) + u*R) / max(sum(w), C)` with `C =
-/// MUST_SATURATION * W_MUST` and the unnamed weight `u = max(0, C - sum(w))`.
+/// languages add nothing. `M = (sum(w*e) + u*(m + R)/2) / max(sum(w), C)` with `C =
+/// MUST_SATURATION * W_MUST`, the unnamed weight `u = max(0, C - sum(w))` and the named
+/// musts' mean `m = sum(w*e)/sum(w)`.
 fn fit_score(items: &[Scored], relevance: u64) -> (u64, u64, u64) {
     let (mut must_weight, mut must_mass) = (0u64, 0u64);
     let (mut nice_count, mut nice_mass) = (0u64, 0u64);
@@ -341,12 +359,13 @@ fn fit_score(items: &[Scored], relevance: u64) -> (u64, u64, u64) {
         }
     }
     // Saturating coverage: a short list is thin evidence, so the musts weigh at least as
-    // many as a typical ad names (`MUST_SATURATION`); the musts it does not name stand at the
-    // relevance (what the rest of the ad says of the field).
+    // many as a typical ad names (`MUST_SATURATION`); the musts it does not name stand
+    // half way between the fit of the named ones and the relevance (engine 23).
     let saturation = MUST_SATURATION * W_MUST;
     let must_score = (must_weight > 0).then(|| {
         let unnamed = saturation.saturating_sub(must_weight);
-        ((must_mass + unnamed * relevance) / must_weight.max(saturation)).min(1000)
+        let pad = u64::midpoint(must_mass / must_weight, relevance);
+        ((must_mass + unnamed * pad) / must_weight.max(saturation)).min(1000)
     });
     let nice_score = nice_mass.checked_div(nice_count);
     let fit = match (must_score, nice_score) {
@@ -384,6 +403,7 @@ fn preferences(
     profile: &EngineProfile,
     ad: &wishes::Ad<'_>,
     title: &str,
+    level: Option<u8>,
 ) -> (Option<(RoleFit, i64, String)>, Vec<WishResult>) {
     let criteria = &profile.criteria;
     let allowed = match ad.contract {
@@ -392,7 +412,14 @@ fn preferences(
         ContractKind::Anue => !criteria.anue_excluded,
         ContractKind::Unclear => false,
     };
-    let role = roles::best(&profile.roles, title, ad.vocab, ad.contract, allowed).map(|fit| {
+    let fit = roles::best(
+        &profile.roles,
+        title,
+        ad.vocab,
+        (ad.contract, allowed),
+        level,
+    );
+    let role = fit.map(|fit| {
         let points = if fit.full { ROLE_FULL } else { ROLE_HALF };
         (fit, points, title.to_owned())
     });
@@ -456,7 +483,10 @@ fn evidence_level(
 /// Every requirement item with its fit and weight. A must met only through the profile's
 /// tools (`methoden_tools`) counts half unless the title names that tool: a tool on the list
 /// proves use, a competence proves the work (engine 22).
-fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str) -> Vec<Scored> {
+///
+/// In a field far from the profile's (engine 23) every must counts half: what meets it there
+/// is work the profile carries from its own field.
+fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> Vec<Scored> {
     let title_atoms = atoms::atoms(title, &profile.skills.vocab);
     items
         .into_iter()
@@ -471,6 +501,9 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str) -> Vec<Scored>
                     .filter(|a| !atoms::is_generic(a))
                     .any(|a| title_atoms.iter().any(|t| atoms::fit(t, a) == Fit::Equal))
             {
+                fit.value /= 2;
+            }
+            if far && item.kind == ReqKind::Must {
                 fit.value /= 2;
             }
             // General experience without the profile's years: nothing to judge it by.
@@ -668,6 +701,50 @@ fn blend(
     shrunk
 }
 
+/// The level of the role and the field of the ad against the profile's (engine 23).
+struct Frame {
+    level: Option<u8>,
+    /// Levels below the profile ([`ProfileLevel::gap`]).
+    gap: u8,
+    field: Option<(&'static str, Distance)>,
+}
+
+impl Frame {
+    fn of(profile: &EngineProfile, title: &str, own: &str, items: &[Item]) -> Self {
+        let level = title::ad_level(title, own);
+        let musts = items
+            .iter()
+            .filter(|i| i.kind == ReqKind::Must)
+            .map(|i| i.text.as_str());
+        Self {
+            level,
+            gap: profile.level.gap(level),
+            field: title::field(&profile.fields, title, musts),
+        }
+    }
+
+    /// One level below the profile costs `LEVEL_BELOW`; two or more cap ([`Frame::cap`]), or
+    /// cost twice when the profile names no target role.
+    fn level_points(&self, profile: &EngineProfile) -> u64 {
+        match self.gap {
+            0 => 0,
+            1 => LEVEL_BELOW,
+            _ if profile.level.wished.is_empty() => 2 * LEVEL_BELOW,
+            _ => 0,
+        }
+    }
+
+    /// Two or more levels below the target roles cap at `LEVEL_CAP`.
+    fn cap(&self, profile: &EngineProfile) -> Option<Cap> {
+        (self.gap >= 2 && !profile.level.wished.is_empty()).then_some((LEVEL_CAP, CapKind::Level))
+    }
+
+    /// The ad's level and its gap, when it stands below the profile.
+    fn below(&self) -> Option<(u8, u8)> {
+        self.level.filter(|_| self.gap > 0).map(|l| (l, self.gap))
+    }
+}
+
 /// Assesses one job.
 pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let text = job.text;
@@ -681,7 +758,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let contract = stated_contract.kind;
     let short = char_len(strip(text)) < MIN_TEXT_CHARS;
     // The title without gender markers and marketing tails (what the role is).
-    let title = relevance::clean_title(job.title);
+    let title = title::clean(job.title);
     // A short teaser still has its title: the portal hides the ad, it is not empty.
     let title_only = short && job.kind == TextKind::Teaser;
     let doc = if short {
@@ -694,7 +771,9 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         profile, job, own, &segments, &ad_facts, &doc,
     ));
     let requirement_lines = doc.requirement_lines;
-    let items = scored(profile, doc.items, &title);
+    let frame = Frame::of(profile, &title, own, &doc.items);
+    let far = matches!(frame.field, Some((_, Distance::Far)));
+    let items = scored(profile, doc.items, &title, far);
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
     let (fit_score, must_weight, nice_count) = fit_score(&items, relevance);
     let evidence = evidence_level(job.kind, &items, must_weight, char_len(strip(text)));
@@ -714,7 +793,8 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         relevance,
         evidence,
         contract,
-    );
+    )
+    .saturating_sub(frame.level_points(profile));
     let (role, wishes) = if readable {
         let ad = wishes::Ad {
             job: &facts,
@@ -723,7 +803,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
             contract,
             vocab,
         };
-        preferences(profile, &ad, &title)
+        preferences(profile, &ad, &title, frame.level)
     } else {
         (None, Vec::new())
     };
@@ -742,7 +822,10 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         formal_cap,
         no_items,
         role.is_some(),
-    );
+    )
+    .into_iter()
+    .chain(frame.cap(profile))
+    .reduce(lower);
     let adjusted = adjust(shrunk, role.as_ref(), &wishes, &items);
     let (score, rank, capped) = final_score(adjusted, cap, unscorable);
     let verdict = match (decided, unscorable) {
@@ -762,6 +845,8 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         facts: ad_facts,
         rank,
         capped,
+        level: frame.below(),
+        field: frame.field,
     }
 }
 
@@ -849,14 +934,16 @@ mod tests {
         assert_eq!(seven(language(Some(5), E_NONE)), seven(must(E_NONE)));
     }
 
-    /// The musts saturate at `MUST_SATURATION`: a short list stands at the relevance for the
-    /// musts it does not name; a full list is its mean.
+    /// The musts saturate at `MUST_SATURATION`: the musts a short list does not name stand
+    /// half way between its own fit and the relevance; a full list is its mean.
     #[test]
     fn a_short_list_of_musts_leans_on_the_relevance() {
+        // The six unnamed musts stand half way between the named one and the relevance.
         assert_eq!(
             fit_score(&[must(E_FULL)], 400).0,
-            (1000 + 6 * 400) * 1000 / 7000
+            (1000 + 6 * 700) * 1000 / 7000
         );
+        assert_eq!(fit_score(&[must(E_NONE)], 1000).0, 6 * 500 * 1000 / 7000);
         assert_eq!(fit_score(&vec![must(E_FULL); 7], 0).0, 1000);
         let mut eight = vec![must(E_FULL); 4];
         eight.extend(vec![must(E_NONE); 4]);

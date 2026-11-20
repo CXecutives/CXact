@@ -29,10 +29,25 @@ Projekten nichts.
   Titel nennt das Tool. Kernkompetenzen zählen voll. Jahre und Sterne gewichten nichts.
 - Was das Profil wörtlich nennt, ist erfüllt, auch wenn die Anzeige Erfahrung oder Berufserfahrung
   davor schreibt.
-- Eine Anzeige mit wenigen Muss-Punkten belegt wenig. Die Punkte, die sie nicht nennt, zählen so, wie
-  der übrige Text zum Fachgebiet passt.
+- Eine Anzeige mit wenigen Muss-Punkten belegt wenig. Die Punkte, die sie nicht nennt, zählen halb
+  so, wie die genannten erfüllt sind, und halb so, wie der übrige Text zum Fachgebiet passt.
 - Verlangt die Anzeige einen Abschluss und nennt das Profil keinen (abschluesse), ist er unklar. Das
   kostet wenig und deckelt nicht, außer die Anzeige verlangt ihn zwingend und ohne „oder vergleichbar“.
+
+## Ebene und Fachgebiet
+
+- Die Ebene einer Rolle kommt aus dem Titel: Sachbearbeitung, Agent und Assistenz, dann Spezialist,
+  Berater und Referent, dann Senior und Projektleitung, dann Teamleitung, dann die Leitung eines
+  Bereichs (Head, Leiter, Manager), dann Direktion, Bereichsleitung, Interim-Management und C-Level.
+  Disziplinarische Führung in der Anzeige macht eine Rolle zur Führungsrolle, ohne
+  Personalverantwortung ist sie keine.
+- Nur operative Rollen (Sachbearbeitung, Agent, Assistenz, Teamleitung) liegen unter einem Profil.
+  Eine Stufe unter der nächsten Wunschrolle kostet etwa 5 Punkte, zwei oder mehr Stufen heißen
+  höchstens 40, außer eine Wunschrolle nennt diese Stufe. Beratungs-, Experten- und Projektrollen
+  liegen nie darunter. Das ist nie ein Ausschluss.
+- Eine Wunschrolle passt nur voll, wenn die Ebene des Titels mindestens ihre ist.
+- Liegt das Fachgebiet der Anzeige fern von dem des Profils, zählen die erfüllten Muss-Punkte halb:
+  Was dort passt, bringt das Profil aus seinem eigenen Fach mit.
 
 ## Obergrenzen
 
@@ -40,6 +55,7 @@ Projekten nichts.
 - Mindestens zwei und mindestens die Hälfte der Muss-Punkte offen, darunter der Kern der Rolle,
   höchstens 40. Ein offener Nebenpunkt kostet nur seinen Anteil, etwa 5 Punkte.
 - Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung höchstens 40
+- Eine operative Rolle zwei oder mehr Stufen unter der nächsten Wunschrolle höchstens 40
 - Ein Muss-Punkt zum Kern der Rolle, also zum Thema des Titels, offen höchstens 60
 - Eine Anzeige ohne erkennbare Anforderungen höchstens 60
 - Kein fachlicher Muss-Punkt erfüllt höchstens 30

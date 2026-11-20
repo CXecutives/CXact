@@ -133,6 +133,36 @@ clearly (the best Youden index for grade 2 or 3 is 0.19, at 50), and no real job
 any more. The corpus keeps 331 of 348 rows in their band; the two wish profiles move by two
 points without their industry wish, wish K42 85 to 89 by the contract word of its role.
 
+### Versions 22 and 23
+
+Engine 22 repairs the aggregation, engine 23 reads the frame of the title (level and field).
+Each change was measured once on the 154 graded real jobs and on every held-out set; a change
+stayed where it held the held-out floors. The 154 grades come from one grader and one
+profile and were used for engine 21, so they are a report, no unseen measurement.
+
+| Measure | Engine 21 | Engine 23 |
+|---|---|---|
+| Spearman, list order and grade | 0.403 | 0.510 |
+| NDCG@10 / NDCG@20 | 0.442 / 0.477 | 0.446 / 0.487 |
+| Places of the grade-3 jobs in the list | 9, 32, 57, 85, 112 | 9, 17, 29, 74, 106 |
+| Mean score of grade 3 / 2 / 1 / 0 | 40 / 42 / 38 / 28 | 42 / 43 / 36 / 24 |
+
+Held-out sets at version 23 (NDCG@10, buried grade 3): 0.957, 0 / 0.888, 0 / 0.891, 0 / 0.868,
+0 / 0.800, 0 / 0.910, 0 / 0.934, 3 / 0.953, 0 / 0.896, 0 / 0.944, 0; exclusion precision and
+recall unchanged. The steps on the 154 (Spearman / NDCG@10): one must and no points for soft
+skills and languages 0.380 / 0.470; saturating musts padded with zero 0.411 / 0.520; tools half
+0.411 / 0.511; the prior from the title 0.494 / 0.526; the fixed relevance share 0.601 / 0.526;
+several open musts only with the core 0.607 / 0.549; the unknown degree 0.610 / 0.541; the
+small word fixes 0.618 / 0.541. Padding with zero buries 5 grade-3 jobs of set 1 and 24 in all (2 before)
+(their short lists stand at zero for what they do not name); padding with the relevance (engine
+22) keeps the held-out sets but lets an operative ad with nothing met stand at its title (0.529
+/ 0.360); half way between the named fit and the relevance (engine 23) keeps both. The level
+rule as first written (every level below the highest target role) capped project and lead
+roles the held-out labels grade 3 (the senior profile's `Projektleitung Konzernabschluss`);
+only operative roles count now. Tried and left out: padding with the named fit times the
+relevance (0.574 / 0.503, but 7 more grade-3 jobs buried in five held-out sets) and a teaser's
+terms that never saturate (0.515 / 0.489, set 3 0.899 to 0.855).
+
 Engine 20 has no Schwerpunkte (the owner's decision of 2026-10-10): every competence counts the
 same, without a weight by its years. Gone are the double weight of a requirement met in full
 through a starred competence, the relevance a demanded one added (100 for at most three), the
@@ -368,15 +398,31 @@ Integer per-mille, parameters in `params.rs`.
   `w` 1000). A must met only through `methoden_tools` counts half unless the title names the
   tool. A must degree while the profile names none is unknown: no must, `DEGREE_UNKNOWN` 20
   less, a cap only when the ad makes it mandatory without an equivalent.
-- Requirements: `M = (sum(w*e) + u*R) / max(sum(w), C)` with `C = MUST_SATURATION * 1000`
-  (7, the median number of musts of the 641 real ads with musts) and the unnamed weight
-  `u = max(0, C - sum(w))`: the musts a short list does not name stand at the relevance. `K`
+- Requirements: `M = (sum(w*e) + u*(m + R)/2) / max(sum(w), C)` with `C = MUST_SATURATION *
+  1000` (7, the median number of musts of the 641 real ads with musts), the unnamed weight
+  `u = max(0, C - sum(w))` and the named mean `m = sum(w*e)/sum(w)`: the musts a short list does
+  not name stand half way between the fit of the named ones and the relevance. `K`
   the mean of `e` over the nice-to-haves that are skills, `P = must ? (nice ? (3M+K)/4 : M) :
   K`; every competence counts the same. The evidence is `n = sum(w_must) + 500 * n_nice`.
 - Blend: `P' = 750*P + 250*R` per-mille (`R_SHARE`, the relevance's fixed share); low
   evidence (a teaser, vocabulary only, nice-to-haves only, fewer than two items, a long text
   read thin) leans on a prior from the title, `((n + k)*P' + 1500*prior) / (n + k + 1500)` with
   `k` = `K_SHRINK` 2000 and `prior = 150 + 400 * title fit / 1000`; permanent roles x 0.9.
+- Title frame (`title.rs`): the title without IDs, entities, gender markers and tails; its
+  level from the head noun (`TITLE_HEADS`, `TITLE_HEAD_PHRASES`: 1 clerical and agent work, 2
+  specialist and consultant, 3 senior and project lead, 4 team lead, 5 lead of a function, 6
+  director, division, interim manager, C-level; the head before `der`, `to` counts, `Senior`
+  raises 1 and 2), moved by the ad (`LEAD_CUES` at least 4, `NO_LEAD_CUES` at most 3, a
+  vocational training under a title without head 1). The profile's levels are its target
+  roles' (else its years'). Only an operative ad (1 or 4) stands below: one level below the
+  nearest line level of a target role (1, 4, 5, 6) costs `LEVEL_BELOW` 50, two or more cap at
+  `LEVEL_CAP` 40 (no target roles: twice the points, no cap); a level a target role names
+  costs nothing. A full target role needs the title's level at least the role's.
+- Field: the families of `FIELD_PACKS` (finance, IT, project, HR, procurement, sales, service,
+  engineering, legal); the ad's family is the one the title (x3) and the musts trigger most
+  (at least 3), a tie with a profile family is the same field; near pairs `NEAR_FIELDS`; in a
+  far field every must counts half. Factor codes `level` (`level`, `gap`) and `field`
+  (`field`, `distance`), cap code `level`.
 - Target role: the title meets a role (topic atoms without lead words, contract words such as
   `Interim` met by the title or an interim contract, a lead role needs a lead title) =
   `ROLE_FULL` 80; a junior title or a lead role without lead title = `ROLE_HALF` 40.

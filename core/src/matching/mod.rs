@@ -33,6 +33,7 @@ mod score;
 mod sections;
 mod seniority;
 mod terms;
+mod title;
 mod types;
 mod vocabulary;
 mod wishes;
@@ -105,8 +106,14 @@ use facts::{Availability, HardCriteria};
 /// from the title, a must met only through the tools counts half, several open musts cap only
 /// with the core of the role open, a degree the profile cannot judge is unknown (a small
 /// minus), SAP module codes CS and PS, stakeholders are half of stakeholder management and
-/// words of experience ask for nothing more.
-pub const ENGINE_VERSION: u32 = 22;
+/// words of experience ask for nothing more. 23: the frame of the title (`title.rs`): its
+/// noise goes (IDs, entities), its head noun gives a level on a ladder of six (moved by the
+/// ad's words on staff, a vocational training for a title without head), an operative role
+/// one line level below the profile's target roles costs points and two or more cap at 40, a
+/// full target role needs its level, the ad's field family against the profile's (a far field
+/// halves every must); the musts a short list does not name stand half way between the fit
+/// of the named ones and the relevance.
+pub const ENGINE_VERSION: u32 = 23;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.

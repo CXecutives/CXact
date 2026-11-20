@@ -15,10 +15,12 @@ use super::types::{EvidenceLevel, Factor, FactorCode, MAX_FACTORS, Summary, Verd
 const PERMANENT_PERCENT: u64 = super::params::PERMANENT_FACTOR / 10;
 
 /// The lines in the order they are read.
-const READING: [FactorCode; 7] = [
+const READING: [FactorCode; 9] = [
     FactorCode::Musts,
     FactorCode::Nice,
     FactorCode::TargetRole,
+    FactorCode::Level,
+    FactorCode::Field,
     FactorCode::Wishes,
     FactorCode::Evidence,
     FactorCode::Permanent,
@@ -26,10 +28,12 @@ const READING: [FactorCode; 7] = [
 ];
 
 /// The lines kept first where there are more than [`MAX_FACTORS`].
-const KEPT_FIRST: [FactorCode; 7] = [
+const KEPT_FIRST: [FactorCode; 9] = [
     FactorCode::Cap,
     FactorCode::Permanent,
     FactorCode::Musts,
+    FactorCode::Level,
+    FactorCode::Field,
     FactorCode::TargetRole,
     FactorCode::Wishes,
     FactorCode::Evidence,
@@ -71,6 +75,20 @@ fn all(profile: &EngineProfile, evaluation: &Evaluation, summary: &Summary) -> V
             None => json!({ "fit": "none" }),
         };
         out.push(factor(FactorCode::TargetRole, &params));
+    }
+    if let Some((level, gap)) = evaluation.level {
+        out.push(factor(
+            FactorCode::Level,
+            &json!({ "level": level, "gap": gap }),
+        ));
+    }
+    if let Some((field, distance)) = evaluation.field
+        && distance == super::title::Distance::Far
+    {
+        out.push(factor(
+            FactorCode::Field,
+            &json!({ "field": field, "distance": distance.code() }),
+        ));
     }
     let wish_points = evaluation
         .wishes

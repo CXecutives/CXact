@@ -43,6 +43,8 @@ pub(crate) struct Role {
     specific: bool,
     /// The occupations ESCO names in it.
     occupations: Broad,
+    /// Its level on the ladder of `title.rs` (engine 23).
+    level: Option<u8>,
 }
 
 /// The parts of a role or a title.
@@ -151,6 +153,7 @@ pub(crate) fn read(form: &ProfileForm, vocab: &Vocab) -> Vec<Role> {
             (!p.topic.is_empty()).then(|| Role {
                 specific: p.topic.iter().any(|a| !atoms::is_generic(a)),
                 occupations: occupations(text, vocab),
+                level: super::title::level_of(text),
                 path: format!("{}[{i}]", key::ROLES),
                 text: text.clone(),
                 topic: p.topic,
@@ -182,7 +185,12 @@ pub(crate) struct RoleFit {
 /// How one role fits a title: `None`, `Some(false)` half, `Some(true)` full; `contract_ok`:
 /// the ad's contract needs no contract word of the role (interim, or a type the profile
 /// allows).
-fn role_fit(role: &Role, title: &Parts, junior: bool, contract_ok: bool) -> Option<bool> {
+fn role_fit(
+    role: &Role,
+    title: &Parts,
+    (junior, level): (bool, Option<u8>),
+    contract_ok: bool,
+) -> Option<bool> {
     let mut full = true;
     for atom in &role.topic {
         let best = title
@@ -205,6 +213,12 @@ fn role_fit(role: &Role, title: &Parts, junior: bool, contract_ok: bool) -> Opti
         full = false;
     }
     if (role.lead && !title.lead) || junior {
+        full = false;
+    }
+    // A full fit needs the role's level (engine 23): a team lead is no head of the field.
+    if let (Some(title_level), Some(role_level)) = (level, role.level)
+        && title_level < role_level
+    {
         full = false;
     }
     // A role of generic words only (`Head of Finance`) is another role when the title
@@ -232,13 +246,14 @@ pub(crate) fn topics(roles: &[Role]) -> Vec<String> {
 }
 
 /// The best target role for a job title (full before half, profile order on a tie);
-/// `allowed`: the profile allows the ad's contract type.
+/// `allowed`: the profile allows the ad's contract type; `level`: the ad's level (a full fit
+/// needs at least the role's).
 pub(crate) fn best(
     roles: &[Role],
     title: &str,
     vocab: &Vocab,
-    contract: ContractKind,
-    allowed: bool,
+    (contract, allowed): (ContractKind, bool),
+    level: Option<u8>,
 ) -> Option<RoleFit> {
     if roles.is_empty() {
         return None;
@@ -249,7 +264,9 @@ pub(crate) fn best(
     let fits: Vec<(usize, bool)> = roles
         .iter()
         .enumerate()
-        .filter_map(|(i, role)| role_fit(role, &parts, junior, contract_ok).map(|full| (i, full)))
+        .filter_map(|(i, role)| {
+            role_fit(role, &parts, (junior, level), contract_ok).map(|full| (i, full))
+        })
         .collect();
     let best = fits
         .iter()
@@ -283,7 +300,8 @@ mod tests {
         let vocab = Vocab::all();
         let read = read(&form(roles), &vocab);
         assert_eq!(read.len(), roles.len());
-        best(&read, title, &vocab, contract, false).map(|f| (read[f.role].text.clone(), f.full))
+        best(&read, title, &vocab, (contract, false), None)
+            .map(|f| (read[f.role].text.clone(), f.full))
     }
 
     #[test]
@@ -311,8 +329,8 @@ mod tests {
             &read,
             "Chief Financial Officer (m/w/d)",
             &vocab,
-            Permanent,
-            true,
+            (Permanent, true),
+            None,
         );
         assert_eq!(
             allowed,

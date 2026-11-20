@@ -280,11 +280,11 @@ const HELDOUT5: Floor = Floor {
 /// (0.844; remote work abroad a profile rules out, decided since version 16, gives 0.863).
 /// Engine 21: a monthly salary decides when even fourteen of them stay below the minimum
 /// (M14 of four profiles, back to excluded in the labels), 0.870 and every kept exclusion.
-/// Engine 22 (the aggregation repaired; 0.916 to 0.910): P14's J11 ends at 39, one point
-/// under the line, because its two open SAP musts weigh in the saturating `M` beside the
-/// partial lead of digitalisation projects (third buried with K06 and J08).
+/// Engine 22 (the aggregation repaired): P14's J11 ends at 39, one point under the line,
+/// because its open SAP musts weigh in the saturating `M` beside the partial lead of
+/// digitalisation projects (third buried with K06 and J08); engine 23 0.934.
 const HELDOUT7: Floor = Floor {
-    ndcg10: 0.90,
+    ndcg10: 0.92,
     spearman: 0.44,
     exclusion_precision: 0.98,
     exclusion_recall: 0.87,
@@ -324,11 +324,11 @@ const HELDOUT9: Floor = Floor {
 /// ads whose only fitting musts are languages (grade 0 and 1 alike) fall below the cap they
 /// shared, and Y05 loses its German where `Projekt Management` (written apart) stays open.
 /// Recall 1.0 and Spearman 0.64 until version 16, for the reason of set 7 (X06 for P2 is
-/// scored, 0.640 -> 0.639). Engine 22 (the aggregation repaired) moved it from 0.896 to 0.873:
-/// in two lists of 24 one grade-2 job passes a grade-3 job (P3's X09 before X07, the senior
-/// profile's); the loss is a little above 0.02, every other gate of the set holds.
+/// scored, 0.640 -> 0.639). Engine 22 (the aggregation repaired) moved it from 0.896 to 0.873
+/// (in two lists of 24 one grade-2 job passes a grade-3 job), engine 23 (half way pads, the
+/// level and field of the title) back to 0.888.
 const HELDOUT2: Floor = Floor {
-    ndcg10: 0.87,
+    ndcg10: 0.88,
     spearman: 0.62,
     exclusion_precision: 1.0,
     exclusion_recall: 0.84,

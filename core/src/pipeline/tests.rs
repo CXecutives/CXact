@@ -188,7 +188,7 @@ async fn one_click_run_writes_everything_and_finishes_once() {
             excluded: 1,
             unscorable: 1,
             pending: 0,
-            best: Some(94),
+            best: Some(92),
             delta: None,
         }),
         "a fetch has no delta"
@@ -196,7 +196,7 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     assert!(
         events.iter().any(|e| matches!(
             e,
-            RunEvent::JobUpdated { job, .. } if job.match_.as_ref().is_some_and(|m| m.score == 94)
+            RunEvent::JobUpdated { job, .. } if job.match_.as_ref().is_some_and(|m| m.score == 92)
         )),
         "the ring appears with the details"
     );
