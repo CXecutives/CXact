@@ -324,14 +324,16 @@ fn posting(data: &Value) -> Value {
 
 fn parse(data: &Value) -> Parsed {
     let posting = posting(data);
-    // The posting's description holds the intro, the tasks and the requirements; the data's
-    // own only the intro (GULP's own) or the same (another agency's).
+    // The posting's description holds the intro, the tasks and the requirements without
+    // headings; the data's own only the intro (GULP's own) or the same (another agency's).
+    // The headings come from the data's lists: the musts apart from the nice-to-haves.
     let text = [data.get("description"), posting.get("description")]
         .into_iter()
         .filter_map(|value| value.and_then(Value::as_str))
         .map(html_to_text)
         .filter(|text| !text.trim().is_empty())
-        .max_by_key(String::len);
+        .max_by_key(String::len)
+        .map(|text| sectioned(data, &text));
     // Another agency's project names that agency; GULP's own name no client.
     let company = if data.get("type").and_then(Value::as_str) == Some("AGENCY") {
         String::new()
@@ -350,6 +352,69 @@ fn parse(data: &Value) -> Parsed {
         },
         facts: facts(data),
     }
+}
+
+/// The ad text with headings the engine reads over the parts the data lists: the tasks
+/// (`responsibilities`), the musts (`mustHaveSkills`, and `skills`, GULP's own
+/// requirements) and the nice-to-haves (`niceToHaveSkills`). A part the text already holds
+/// gets its heading above its first line; one it lacks is added at the end.
+fn sectioned(data: &Value, text: &str) -> String {
+    let list = |names: &[&str]| -> Vec<String> {
+        let mut items: Vec<String> = Vec::new();
+        for item in names
+            .iter()
+            .filter_map(|name| data.get(*name).and_then(Value::as_array))
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(|item| one_line(&html_to_text(item)))
+            .filter(|item| !item.is_empty())
+        {
+            if !items.contains(&item) {
+                items.push(item);
+            }
+        }
+        items
+    };
+    let tasks: Vec<String> = data
+        .get("responsibilities")
+        .and_then(Value::as_str)
+        .map(html_to_text)
+        .unwrap_or_default()
+        .lines()
+        .map(one_line)
+        .filter(|line| !line.is_empty())
+        .collect();
+    let mut lines: Vec<String> = text.lines().map(str::to_owned).collect();
+    // Headings of the ad text, external contract - do not translate.
+    for (heading, items) in [
+        ("Aufgaben", tasks),
+        ("Anforderungen", list(&["mustHaveSkills", "skills"])),
+        ("W\u{fc}nschenswert", list(&["niceToHaveSkills"])),
+    ] {
+        if items.is_empty() {
+            continue;
+        }
+        let found: Vec<usize> = lines
+            .iter()
+            .enumerate()
+            .filter(|(_, line)| items.contains(&one_line(line)))
+            .map(|(index, _)| index)
+            .collect();
+        let missing: Vec<String> = items
+            .iter()
+            .filter(|item| !lines.iter().any(|line| one_line(line) == **item))
+            .map(|item| format!("- {item}"))
+            .collect();
+        if let (Some(&start), Some(&end)) = (found.first(), found.last()) {
+            let after = end + 1;
+            lines.splice(after..after, missing);
+            lines.insert(start, heading.to_owned());
+        } else {
+            lines.extend([String::new(), heading.to_owned()]);
+            lines.extend(missing);
+        }
+    }
+    lines.join("\n").trim().to_owned()
 }
 
 /// The start, the duration, the industry, the skills, remote work and the kind of contract
@@ -471,6 +536,49 @@ mod tests {
         assert_eq!(facts.start.as_deref(), Some("19.10.2026"));
         assert_eq!(facts.industries.as_deref(), Some("Medizin/Pharma/Biotech"));
         assert_eq!(facts.skills.len(), 1);
+    }
+
+    /// The requirements the data lists stand under headings the engine reads: where the
+    /// text holds them already above their first line, else added at the end - each once.
+    #[test]
+    fn the_requirements_get_their_headings() {
+        let link = Gulp
+            .job_link(&url(
+                "https://www.gulp.de/gulp2/g/projekte/agentur/C01344448",
+            ))
+            .unwrap();
+        let PageOutcome::Text { text, .. } = Gulp.guest_page(OWN, "/", &link) else {
+            panic!("no text");
+        };
+        let skill = "Mind. 5 Jahre Erfahrung im GMP-regulierten Umfeld";
+        assert!(text.contains(&format!("Anforderungen\n{skill}")), "{text}");
+        assert_eq!(text.matches(skill).count(), 1, "once: {text}");
+        let data = r#"{"id":"6abd43a340b5a3a29f35d9c1","type":"TALENT_FINDER","title":"Azure Architekt",
+          "companyName":"Ferrum Systems SE","description":"Unser Kunde sucht einen Azure Architekten für die Migration.",
+          "responsibilities":"<ul><li>Konzeption der Landing Zone</li></ul>",
+          "mustHaveSkills":["Azure","Terraform"],"niceToHaveSkills":["Kubernetes"]}"#;
+        let link = Gulp
+            .job_link(&url(
+                "https://www.gulp.de/gulp2/g/projekte/talentfinder/6abd43a340b5a3a29f35d9c1",
+            ))
+            .unwrap();
+        let PageOutcome::Text { text, .. } = Gulp.guest_page(data, "/", &link) else {
+            panic!("no text");
+        };
+        assert!(
+            text.ends_with(
+                "Aufgaben\n- Konzeption der Landing Zone\n\nAnforderungen\n- Azure\n- Terraform\n\n\
+                 Wünschenswert\n- Kubernetes"
+            ),
+            "{text}"
+        );
+        let units: Vec<u16> = text.encode_utf16().collect();
+        let headings: Vec<String> = crate::matching::text_layout(&text)
+            .headings
+            .iter()
+            .map(|&(from, to)| String::from_utf16_lossy(&units[from as usize..to as usize]))
+            .collect();
+        assert_eq!(headings, ["Aufgaben", "Anforderungen", "Wünschenswert"]);
     }
 
     #[test]
