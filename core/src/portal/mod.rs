@@ -306,6 +306,12 @@ pub trait PortalAdapter: Send + Sync {
         let _ = html;
         Ok(Vec::new())
     }
+    /// The hits of the search page `url` (one of [`Self::search_urls`] or a further page of
+    /// it) answered with `html`: [`Self::search_page`], unless the source's answer brings
+    /// more than its hits for the term (GULP's, which keeps only those that name it).
+    fn search_page_for(&self, _url: &Url, html: &str) -> Result<Vec<Hit>, NoHits> {
+        self.search_page(html)
+    }
     /// How many hits the whole search finds, where its page states it (freelancermap's
     /// `result.count`); `None` where it does not. Only for a source whose pages list that
     /// search's hits and nothing else: a term's paging stops once its pages showed so many,

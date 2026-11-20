@@ -1,8 +1,9 @@
 //! GULP (gulp.de, Randstad): IT, engineering and finance projects. The app searches its
 //! project exchange itself as its page does (user decision 2026-10-01: the user gets no alert
 //! mails of it): one POST of the term to `/gulp2/rest/internal/projects/search`, the newest 20
-//! hits. The robots.txt allows the search, the project pages and the data they load (checked
-//! at run time); its alert mails are read where they come.
+//! hits, of which only those that name the term in their title or skills are kept. The
+//! robots.txt allows the search, the project pages and the data they load (checked at run
+//! time); its alert mails are read where they come.
 //!
 //! A project is `/gulp2/g/projekte/agentur/C<number>` (GULP's own) or
 //! `/gulp2/g/projekte/talentfinder/<24 hex>` (another agency's, through GULP). The page is
@@ -128,18 +129,24 @@ impl PortalAdapter for Gulp {
     }
 
     fn search_page(&self, body: &str) -> Result<Vec<Hit>, NoHits> {
-        let Ok(data) = serde_json::from_str::<Value>(body) else {
-            let doc = scraper::Html::parse_document(body);
-            if super::has_challenge(&doc, body) {
-                return Err(NoHits::Blocked(Cause::Captcha));
-            }
-            return Err(NoHits::Suspicious(Cause::PageNotRecognised));
+        Ok(projects(body)?.iter().filter_map(hit).collect())
+    }
+
+    /// Only the projects whose title or skills name the term: GULP answers a term with its
+    /// newest projects of every kind, most of which name it nowhere.
+    fn search_page_for(&self, url: &Url, body: &str) -> Result<Vec<Hit>, NoHits> {
+        let Some(term) = url
+            .query_pairs()
+            .find(|(name, _)| name == "query")
+            .map(|(_, value)| value.into_owned())
+        else {
+            return self.search_page(body);
         };
-        let projects = data
-            .get("projects")
-            .and_then(Value::as_array)
-            .ok_or(NoHits::Suspicious(Cause::PageNotRecognised))?;
-        Ok(projects.iter().filter_map(hit).collect())
+        Ok(projects(body)?
+            .iter()
+            .filter(|project| names_term(project, &term))
+            .filter_map(hit)
+            .collect())
     }
 
     /// `/gulp2/g/projekte/agentur/C<number>` and `/gulp2/g/projekte/talentfinder/<24 hex>`.
@@ -218,6 +225,56 @@ impl PortalAdapter for Gulp {
             .map(|data| facts(&data))
             .unwrap_or_default()
     }
+}
+
+/// The projects of a search answer, or what it is instead.
+fn projects(body: &str) -> Result<Vec<Value>, NoHits> {
+    let Ok(mut data) = serde_json::from_str::<Value>(body) else {
+        let doc = scraper::Html::parse_document(body);
+        if super::has_challenge(&doc, body) {
+            return Err(NoHits::Blocked(Cause::Captcha));
+        }
+        return Err(NoHits::Suspicious(Cause::PageNotRecognised));
+    };
+    match data.get_mut("projects").map(Value::take) {
+        Some(Value::Array(projects)) => Ok(projects),
+        _ => Err(NoHits::Suspicious(Cause::PageNotRecognised)),
+    }
+}
+
+/// The lists of a project that name its skills.
+const SKILL_LISTS: [&str; 3] = ["mustHaveSkills", "niceToHaveSkills", "skills"];
+
+/// Does the project's title or a skill name every word of the term (a short word whole, a
+/// longer one also at the start of a word: `Interim` in `Interimsmanager`), or the term
+/// without its spaces and signs (`SAP FI/CO` in `SAP FICO`)?
+fn names_term(project: &Value, term: &str) -> bool {
+    let mut text = field(project, "title").unwrap_or_default();
+    for skill in SKILL_LISTS
+        .iter()
+        .filter_map(|list| project.get(*list).and_then(Value::as_array))
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        text.push(' ');
+        text.push_str(skill);
+    }
+    let words = |text: &str| -> Vec<String> {
+        text.to_lowercase()
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|word| !word.is_empty())
+            .map(str::to_owned)
+            .collect()
+    };
+    let (wanted, have) = (words(term), words(&text));
+    if wanted.is_empty() {
+        return true;
+    }
+    let each = wanted.iter().all(|word| {
+        have.iter()
+            .any(|w| w == word || (word.chars().count() >= 4 && w.starts_with(word.as_str())))
+    });
+    each || have.concat().contains(&wanted.concat())
 }
 
 /// A project of the search: its address (or the one its id and kind make), title, place and,
@@ -478,6 +535,36 @@ mod tests {
             Gulp.search_page(r#"{"status":500}"#),
             Err(NoHits::Suspicious(Cause::PageNotRecognised))
         );
+    }
+
+    /// GULP answers a term with its newest projects of every kind: only those whose title
+    /// or skills name the term stay.
+    #[test]
+    fn the_search_keeps_the_projects_that_name_the_term() {
+        const PAGE: &str = include_str!("../../tests/fixtures/pages/gulp_search.json");
+        let ids = |term: &str| -> Vec<String> {
+            let url = &Gulp.search_urls(&[term.to_owned()])[0];
+            let second = Gulp.search_page_url(url, 2).unwrap();
+            let hits = Gulp.search_page_for(url, PAGE).unwrap();
+            assert_eq!(
+                Gulp.search_page_for(&second, PAGE).unwrap(),
+                hits,
+                "every page"
+            );
+            hits.into_iter().map(|hit| hit.link.key.id).collect()
+        };
+        let fico = ids("SAP FI/CO");
+        assert_eq!(
+            fico.len(),
+            2,
+            "the title, and a skill as SAP FICO: {fico:?}"
+        );
+        assert_eq!(fico[0], "01329404");
+        assert!(fico[1].starts_with('u'));
+        assert_eq!(ids("Controller"), ["01329420"]);
+        assert_eq!(ids("Terraform").len(), 1, "a skill alone");
+        assert!(ids("Interim Manager").is_empty());
+        assert_eq!(Gulp.search_page(PAGE).unwrap().len(), 6, "unfiltered");
     }
 
     #[test]

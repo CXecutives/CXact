@@ -179,7 +179,9 @@ impl HttpFetcher {
         }
         let body = body(response).await?;
         Ok(SearchPage {
-            hits: adapter.search_page(&body).map_err(PageOutcome::from)?,
+            hits: adapter
+                .search_page_for(url, &body)
+                .map_err(PageOutcome::from)?,
             count: adapter.search_count(&body),
         })
     }
@@ -770,7 +772,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/gulp2/rest/internal/projects/search"))
             .respond_with(ResponseTemplate::new(200).set_body_string(
-                r#"{"totalCount":1,"projects":[{"id":"C01329404","type":"AGENCY","title":"Controller","location":"Hamburg","url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329404"}]}"#,
+                r#"{"totalCount":1,"projects":[{"id":"C01329404","type":"AGENCY","title":"Leiter Controlling","location":"Hamburg","url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329404"}]}"#,
             ))
             .expect(1)
             .mount(&server)

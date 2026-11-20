@@ -1,0 +1,8 @@
+{"totalCount":2841,"projects":[
+  {"id":"C01329404","type":"AGENCY","title":"SAP FI/CO Consultant (m/w/d)","location":"Hamburg","companyName":null,"url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329404","skills":["SAP FI","SAP CO"]},
+  {"id":"C01329411","type":"AGENCY","title":"Servicetechniker Kältetechnik (m/w/d)","location":"90403 Nürnberg","companyName":null,"url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329411","skills":["Kältetechnik"]},
+  {"id":"6abd43a340b5a3a29f35d9c0","type":"TALENT_FINDER","title":"1083900 Senior Finance Consultant","location":"Remote","companyName":"SOLCOM GmbH","url":null,"mustHaveSkills":["SAP FICO","S/4HANA Finance"],"niceToHaveSkills":[]},
+  {"id":"6abd43a340b5a3a29f35d9c1","type":"TALENT_FINDER","title":"Azure Architekt","location":"Remote","companyName":"Ferrum Systems SE","url":null,"skills":["Azure","Terraform"]},
+  {"id":"C01329420","type":"AGENCY","title":"Controller Werkscontrolling","location":"Stuttgart","companyName":null,"url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329420","niceToHaveSkills":["SAP CO"]},
+  {"id":"C01329433","type":"AGENCY","title":"Sachbearbeiter Kreditorenbuchhaltung","location":"Köln","companyName":null,"url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329433"}
+]}
