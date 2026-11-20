@@ -1,11 +1,13 @@
 //! A real search of the sources the app searches itself, run as a fetch does it: the deep
 //! search's terms, the screen of the new titles, the ads by title pre-score and the engine's
-//! scores (a developer's check; the policy lives in memory, the jobs in `--db` or in memory):
+//! scores (a developer's check; the policy lives in memory or in `--policy`, the jobs in `--db` or
+//! in memory):
 //!
 //! `cargo run -p jobalert-core --example live_search -- --profile profil.json`
 //! `--sources hays,gulp`: only those sources. `--terms old.txt`: these terms (one per line)
 //! instead of the profile's. `--db run.db`: the store (a fresh file for a fresh run).
-//! `--out a.json`: what it brought, for a comparison.
+//! `--out a.json`: what it brought, for a comparison. `--policy policy.json`: caps and pauses kept
+//! across runs, as the app keeps them.
 //! `cargo run -p jobalert-core --example live_search -- --compare a.json b.json`: two term
 //! lists of the same profile on the same day side by side (the union scored once by the same
 //! engine: each job keeps its score), what each brought, the jobs one found and the other not.
@@ -159,7 +161,9 @@ async fn main() {
             temporary: form.temporary,
         },
     };
-    let policy = Mutex::new(Policy::in_memory());
+    let policy = Mutex::new(value("--policy").map_or_else(Policy::in_memory, |file| {
+        Policy::load(std::path::Path::new(&file), Timestamp::now())
+    }));
     let mut live = Live {
         matcher: Arc::new(LocalMatcher::from_form(&form)),
     };
