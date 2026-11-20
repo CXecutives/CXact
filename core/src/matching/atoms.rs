@@ -886,6 +886,18 @@ mod tests {
         );
     }
 
+    /// `Integration` and `Central` alone are too broad: `Post-Merger-Integration` does not
+    /// meet integration technologies, `Central Finance` not `Employee Central`.
+    #[test]
+    fn integration_and_central_alone_meet_nothing() {
+        assert_eq!(fit("integration", "post-merger-integration"), Fit::None);
+        assert_eq!(fit("central", "central-finance"), Fit::None);
+        assert_eq!(
+            fit("post-merger-integration", "post-merger-integration"),
+            Fit::Equal
+        );
+    }
+
     /// English process words are their German concepts; an AI tool meets AI in half; a
     /// programme is half a project.
     #[test]
