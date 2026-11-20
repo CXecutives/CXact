@@ -1,12 +1,22 @@
-//! Cross-portal duplicates: the same job announced by two portals. A job whose full text
-//! (or guest teaser) arrives is compared with the jobs of the other portals that already
-//! have one: the same normalised title and company, and a text whose SimHash-64 differs in
-//! at most [`MAX_DISTANCE`] bits - or, for a teaser against a full text, whose word triples
-//! the full text contains. The later one points to the earlier one (`dup_of`), a teaser
-//! always to the full text; the list shows one row with the other portals in `alsoOn`, and
-//! only that row is scored.
+//! Duplicates: the same position announced more than once - by several agencies, by several
+//! portals, or posted again under a new number - is one job. A job whose full text (or guest
+//! teaser) arrives is compared with the other jobs that have one ([`same_job`]):
+//!
+//! - the same project by its number: a GULP project of SOLCOM names SOLCOM's project number
+//!   first in its title ([`source_key`]);
+//! - otherwise the same normalised title ([`title_key`]: no IDs, gender marks, place or
+//!   duration tails, contract words; no company needed, agencies name none or their own)
+//!   and texts whose word triples overlap by at least [`MIN_OVERLAP`] percent of the
+//!   shorter one - a teaser is contained in its full text, an agency's copy shares most of
+//!   the client's words. Within one portal (a repost) the places must meet too: one template
+//!   for two cities is two jobs.
+//!
+//! The copies point to one original (`dup_of`): the richest copy ([`outranks`]), which alone
+//! is listed and scored; the list shows one row with the other portals in `alsoOn`. Nothing
+//! the user did is lost: the original takes the union of the copies' marks ([`merge_marks`]),
+//! and an archived or trashed job is never merged at all.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use rusqlite::{OptionalExtension, params};
 
@@ -14,51 +24,43 @@ use super::Store;
 use crate::error::Result;
 use crate::portal::{JobKey, Portal};
 
-/// Most differing bits of two `SimHash` values of the same text.
-pub const MAX_DISTANCE: u32 = 3;
+/// Share (percent) of the shorter text's word triples the other text must contain.
+const MIN_OVERLAP: usize = 80;
+/// Fewest word triples the shorter text needs to be compared at all (a few words prove
+/// nothing).
+const MIN_TRIPLES: usize = 8;
+/// A full text replaces the original's when it is at least this much longer (percent).
+const RICHER_BY: usize = 125;
 
 impl Store {
-    /// Compares a job that just got its full text (or a guest's teaser) with the other
-    /// portals' jobs - and with its own portal's where one key has no portal id (a slug
-    /// link of a project the alerts name by its id) - and links it to the earliest match;
-    /// the row with the portal's id is always the original. Returns the original.
+    /// Compares a job that just got its full text (or a guest's teaser) with every other job
+    /// with a text and links it with the first (earliest seen) one that announces the same
+    /// position: the richer of the two becomes (or stays) the original, the other one and
+    /// every copy that pointed to it point to that one. A copy that is itself a duplicate
+    /// leads to its original. Returns the original.
     ///
-    /// Two full texts match by `SimHash`; a teaser (the start of the ad, cut) matches a full
-    /// text when its word triples are contained in it ([`MIN_CONTAINED`]), since a
-    /// 300-character teaser is never within a few bits of the whole ad. A teaser row always
-    /// points to the full-text row, never the reverse, so the row that is listed and scored
-    /// carries the full text: a full text that arrives after its teaser becomes the original,
-    /// and the teaser (with anything that pointed to it) points to it; the original keeps what
-    /// the user and the files already had of the job ([`inherit`]).
-    ///
-    /// A job the user marked (moved out of the inbox, "fits anyway") is never
-    /// linked: a duplicate leaves every list, and her marks must not leave with it. An
-    /// archived, trashed or closed job is never the original either - the fresh, open
-    /// announcement would vanish behind it.
+    /// An archived or trashed job is never linked, in either direction: its place would
+    /// leave with it, or the fresh, open announcement would vanish behind it; a closed ad is
+    /// never the original.
     pub fn link_duplicate(&self, key: &JobKey) -> Result<Option<JobKey>> {
         self.write(|conn| {
-            let Some(own) = row(conn, key.portal.key(), &key.id, true)? else {
+            let Some(own) = copy(conn, key)? else {
                 return Ok(None);
             };
-            let same = identity(&own.title, &own.company);
-            if same.0.is_empty() {
+            if own.dup_of.is_some() || own.hidden {
                 return Ok(None);
             }
-            // Titles and companies first (small), texts only for the few that match. The
-            // other portals' jobs - and the same portal's where one side has no portal id
-            // (freelancermap's `/projekt/<slug>` link of a project the alerts name as
-            // `/nproj/<id>`, or its .com slug): the same page, two keys.
+            let own_title = title_key(&own.title);
+            let own_source = source_key(&own);
+            // Titles first (small), texts only for the few that may match.
             let mut stmt = conn.prepare_cached(
                 "SELECT portal, job_id, title, company FROM job
-                 WHERE (portal <> ?1
-                        OR (job_id <> ?2 AND (?3 OR job_id GLOB 'u*')))
-                   AND desc_status IN ('ok', 'teaser') AND dup_of IS NULL
-                   AND archived_at IS NULL AND trashed_at IS NULL AND desc_closed = 0
+                 WHERE NOT (portal = ?1 AND job_id = ?2)
+                   AND desc_status IN ('ok', 'teaser') AND desc_text IS NOT NULL
                  ORDER BY first_seen_at, portal, job_id",
             )?;
-            let own_hash = !key.has_portal_id();
-            let candidates: Vec<(String, String)> = stmt
-                .query_map(params![key.portal.key(), key.id, own_hash], |r| {
+            let candidates: Vec<JobKey> = stmt
+                .query_map(params![key.portal.key(), key.id], |r| {
                     Ok((
                         r.get::<_, String>(0)?,
                         r.get::<_, String>(1)?,
@@ -67,44 +69,45 @@ impl Store {
                     ))
                 })?
                 .filter_map(std::result::Result::ok)
-                .filter(|(_, _, t, c)| identity(t, c) == same)
-                .map(|(portal, id, _, _)| (portal, id))
+                .filter_map(|(portal, id, title, company)| {
+                    let other = JobKey {
+                        portal: Portal::from_key(&portal)?,
+                        id,
+                    };
+                    let source = project_of(other.portal, &title, &company);
+                    let related = (!own_title.is_empty() && title_key(&title) == own_title)
+                        || own_source.as_ref() == Some(&other)
+                        || source.as_ref() == Some(key)
+                        || (own_source.is_some() && source == own_source);
+                    related.then_some(other)
+                })
                 .collect();
-            for (portal, id) in candidates {
-                let Some(other) = row(conn, &portal, &id, false)? else {
+            for other_key in candidates {
+                let Some(other) = copy(conn, &other_key)? else {
                     continue;
                 };
-                if !same_ad(&own, &other) {
+                if !same_job(&own, &other) {
                     continue;
                 }
-                let Some(portal) = Portal::from_key(&portal) else {
+                // A copy that is a duplicate itself leads to its original.
+                let root_key = other.dup_of.clone().unwrap_or(other_key);
+                if &root_key == key {
+                    continue;
+                }
+                let Some(root) = copy(conn, &root_key)? else {
                     continue;
                 };
-                let other_key = JobKey { portal, id };
-                // The full text arrived after its teaser, or the job with the portal's id
-                // after the same page under a slug key: it becomes the original, and the
-                // other row (with whatever pointed to it) points to it - unless the user
-                // marked that row, or this ad is closed.
-                let same_portal = other_key.portal == key.portal;
-                let id_after_slug =
-                    same_portal && key.has_portal_id() && !other_key.has_portal_id();
-                if (other.teaser && !own.teaser) || id_after_slug {
-                    if other.marked || own.closed {
-                        continue;
-                    }
-                    link(conn, &other_key, key)?;
-                    conn.execute(
-                        "UPDATE job SET dup_of = ?1 WHERE dup_of = ?2",
-                        params![key.to_string(), other_key.to_string()],
-                    )?;
-                    inherit(conn, key, &other_key)?;
-                    return Ok(Some(key.clone()));
+                if root.dup_of.is_some() || root.hidden || root.closed {
+                    continue;
                 }
-                if own.marked {
-                    return Ok(None);
-                }
-                link(conn, key, &other_key)?;
-                return Ok(Some(other_key));
+                let (original, duplicate) = if outranks(&own, &root) && !own.closed {
+                    (key, &root_key)
+                } else {
+                    (&root_key, key)
+                };
+                link(conn, duplicate, original)?;
+                merge_marks(conn, original, duplicate)?;
+                return Ok(Some(original.clone()));
             }
             Ok(None)
         })
@@ -140,7 +143,7 @@ impl Store {
             else {
                 continue;
             };
-            // The same portal under a second key (a slug link) is no other portal.
+            // The same portal under a second key (a slug link, a repost) is no other portal.
             if keys.contains(&&original) && portal != original.portal {
                 let portals = out.entry(original).or_default();
                 if !portals.contains(&portal) {
@@ -152,72 +155,124 @@ impl Store {
     }
 }
 
-/// What the comparison needs of a row.
-struct Row {
+/// One announcement as the comparison reads it.
+#[derive(Debug, Clone)]
+struct Copy {
+    key: JobKey,
     title: String,
     company: String,
+    location: String,
     text: String,
     /// Only a guest's teaser, not the full text.
     teaser: bool,
     closed: bool,
-    /// The user marked it (moved out of the inbox, "fits anyway").
-    marked: bool,
+    /// In the archive or the trash.
+    hidden: bool,
+    dup_of: Option<JobKey>,
 }
 
-/// A row with a text; `open`: only one that may still be linked (a full text or teaser,
-/// not yet a duplicate).
-fn row(conn: &rusqlite::Connection, portal: &str, id: &str, open: bool) -> Result<Option<Row>> {
+/// A job with a text (a full text or a teaser).
+fn copy(conn: &rusqlite::Connection, key: &JobKey) -> Result<Option<Copy>> {
     Ok(conn
         .query_row(
-            "SELECT title, company, desc_text, desc_status = 'teaser', desc_closed,
-                    archived_at IS NOT NULL OR trashed_at IS NOT NULL
-                      OR override_include IS NOT NULL
+            "SELECT title, company, location, desc_text, desc_status = 'teaser', desc_closed,
+                    archived_at IS NOT NULL OR trashed_at IS NOT NULL, dup_of
              FROM job
              WHERE portal = ?1 AND job_id = ?2 AND desc_text IS NOT NULL
-               AND (NOT ?3 OR (desc_status IN ('ok', 'teaser') AND dup_of IS NULL))",
-            params![portal, id, open],
+               AND desc_status IN ('ok', 'teaser')",
+            params![key.portal.key(), key.id],
             |r| {
-                Ok(Row {
+                Ok(Copy {
+                    key: key.clone(),
                     title: r.get(0)?,
                     company: r.get(1)?,
-                    text: r.get(2)?,
-                    teaser: r.get(3)?,
-                    closed: r.get(4)?,
-                    marked: r.get(5)?,
+                    location: r.get(2)?,
+                    text: r.get(3)?,
+                    teaser: r.get(4)?,
+                    closed: r.get(5)?,
+                    hidden: r.get(6)?,
+                    dup_of: r
+                        .get::<_, Option<String>>(7)?
+                        .as_deref()
+                        .and_then(JobKey::parse),
                 })
             },
         )
         .optional()?)
 }
 
-/// Share of a teaser's word triples (in percent) that the full text must contain.
-pub const MIN_CONTAINED: usize = 80;
-/// Fewest word triples a teaser needs to be compared at all (a few words prove nothing).
-const MIN_TRIPLES: usize = 8;
-
-/// Do the two texts announce the same ad? Two full texts (or two teasers) by `SimHash`, a
-/// teaser and a full text by containment.
-fn same_ad(a: &Row, b: &Row) -> bool {
-    match (a.teaser, b.teaser) {
-        (true, false) => contained(&a.text, &b.text),
-        (false, true) => contained(&b.text, &a.text),
-        _ => distance(simhash(&a.text), simhash(&b.text)) <= MAX_DISTANCE,
-    }
-}
-
-/// Are at least [`MIN_CONTAINED`] percent of the teaser's word triples in the full text?
-pub(crate) fn contained(teaser: &str, full: &str) -> bool {
-    let part = triples(teaser);
-    if part.len() < MIN_TRIPLES {
+/// Do the two announce the same position? By the project's number, else by the normalised
+/// title and the overlap of the texts; within one portal the places must meet too.
+fn same_job(a: &Copy, b: &Copy) -> bool {
+    if a.key == b.key {
         return false;
     }
-    let whole = triples(full);
-    let hits = part.iter().filter(|t| whole.contains(*t)).count();
-    hits * 100 >= part.len() * MIN_CONTAINED
+    let (source_a, source_b) = (source_key(a), source_key(b));
+    if source_a.as_ref() == Some(&b.key)
+        || source_b.as_ref() == Some(&a.key)
+        || (source_a.is_some() && source_a == source_b)
+    {
+        return true;
+    }
+    let title = title_key(&a.title);
+    if title.is_empty() || title != title_key(&b.title) {
+        return false;
+    }
+    if a.key.portal == b.key.portal && !places_meet(&a.location, &b.location) {
+        return false;
+    }
+    overlaps(&a.text, &b.text)
+}
+
+/// Is `a` the richer copy, the one to list and score? A full text before a teaser, within
+/// one portal the key with the portal's id before a slug link's, then a text at least a
+/// quarter longer; the earlier one otherwise.
+fn outranks(a: &Copy, b: &Copy) -> bool {
+    if a.teaser != b.teaser {
+        return b.teaser;
+    }
+    if a.key.portal == b.key.portal && a.key.has_portal_id() != b.key.has_portal_id() {
+        return a.key.has_portal_id();
+    }
+    let length = |copy: &Copy| copy.text.chars().count();
+    length(a) * 100 >= length(b) * RICHER_BY
+}
+
+/// The project a copy announces by its number at its source: GULP lists SOLCOM's projects
+/// with SOLCOM's number first in the title.
+fn source_key(copy: &Copy) -> Option<JobKey> {
+    project_of(copy.key.portal, &copy.title, &copy.company)
+}
+
+fn project_of(portal: Portal, title: &str, company: &str) -> Option<JobKey> {
+    if portal != Portal::Gulp || !company.to_lowercase().contains("solcom") {
+        return None;
+    }
+    let number: String = title
+        .trim_start()
+        .chars()
+        .take_while(char::is_ascii_digit)
+        .collect();
+    (number.len() >= 6).then_some(JobKey {
+        portal: Portal::Solcom,
+        id: number,
+    })
+}
+
+/// Do the overlapping texts announce the same ad? At least [`MIN_OVERLAP`] percent of the
+/// shorter text's word triples are in the other one.
+fn overlaps(a: &str, b: &str) -> bool {
+    let (a, b) = (triples(a), triples(b));
+    let (small, large) = if a.len() <= b.len() { (a, b) } else { (b, a) };
+    if small.len() < MIN_TRIPLES {
+        return false;
+    }
+    let hits = small.iter().filter(|t| large.contains(*t)).count();
+    hits * 100 >= small.len() * MIN_OVERLAP
 }
 
 /// The word triples of a text (lower case, letters and digits only).
-fn triples(text: &str) -> std::collections::HashSet<String> {
+fn triples(text: &str) -> HashSet<String> {
     let lower = text.to_lowercase();
     let words: Vec<&str> = lower
         .split(|c: char| !c.is_alphanumeric())
@@ -226,9 +281,13 @@ fn triples(text: &str) -> std::collections::HashSet<String> {
     words.windows(3).map(|w| w.join(" ")).collect()
 }
 
-/// `key` goes into `original`'s row: its own score is gone for good (never scored again,
-/// never listed on its own).
+/// `key` goes into `original`'s row, and so does every copy that pointed to `key`: their own
+/// scores are gone for good (never scored again, never listed on their own).
 fn link(conn: &rusqlite::Connection, key: &JobKey, original: &JobKey) -> Result<()> {
+    conn.execute(
+        "UPDATE job SET dup_of = ?1 WHERE dup_of = ?2",
+        params![original.to_string(), key.to_string()],
+    )?;
     conn.execute(
         "UPDATE job SET dup_of = ?3, match_score = NULL, match_status = NULL,
                         match_note = NULL, match_at = NULL, match_rev = NULL
@@ -238,21 +297,23 @@ fn link(conn: &rusqlite::Connection, key: &JobKey, original: &JobKey) -> Result<
     Ok(())
 }
 
-/// What a row that becomes the original takes over from the row it replaces (a teaser or
-/// a slug row the user may have read): read stays read (the earlier time), the job counts
-/// from its first sighting - so "Neu", the run card's new jobs and the age that archives it
-/// treat it as the job the user already saw - a move back into the inbox keeps counting from
-/// then (the later one).
-fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) -> Result<()> {
+/// The original keeps the union of what the user and the files had of both copies: read
+/// stays read (the earlier time), "fits anyway" stays, the job counts from its first
+/// sighting - so "Neu", the run card's new jobs and the age that archives it treat it as the
+/// job the user already saw - and a move back into the inbox keeps counting from then (the
+/// later one). The duplicate's own marks stay on its row too.
+fn merge_marks(conn: &rusqlite::Connection, original: &JobKey, other: &JobKey) -> Result<()> {
     struct Kept {
         read_at: Option<i64>,
         first_seen_at: i64,
         first_seen_run: i64,
         inbox_at: Option<i64>,
+        include: bool,
     }
     let kept = |key: &JobKey| {
         conn.query_row(
-            "SELECT read_at, first_seen_at, first_seen_run, inbox_at
+            "SELECT read_at, first_seen_at, first_seen_run, inbox_at,
+                    override_include IS NOT NULL
              FROM job WHERE portal = ?1 AND job_id = ?2",
             params![key.portal.key(), key.id],
             |r| {
@@ -261,11 +322,12 @@ fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) ->
                     first_seen_at: r.get(1)?,
                     first_seen_run: r.get(2)?,
                     inbox_at: r.get(3)?,
+                    include: r.get(4)?,
                 })
             },
         )
     };
-    let (new, old) = (kept(original)?, kept(replaced)?);
+    let (new, old) = (kept(original)?, kept(other)?);
     let read_at = match (new.read_at, old.read_at) {
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),
@@ -276,7 +338,10 @@ fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) ->
     };
     conn.execute(
         "UPDATE job SET read_at = ?3, first_seen_at = ?4, first_seen_run = ?5,
-                        inbox_at = ?6
+                        inbox_at = ?6,
+                        override_include = CASE WHEN ?7 THEN 1 ELSE override_include END,
+                        match_status = CASE WHEN ?7 AND match_status = 'excluded'
+                                            THEN 'scored' ELSE match_status END
          WHERE portal = ?1 AND job_id = ?2",
         params![
             original.portal.key(),
@@ -285,86 +350,194 @@ fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) ->
             new.first_seen_at.min(old.first_seen_at),
             new.first_seen_run.min(old.first_seen_run),
             inbox_at,
+            old.include,
         ],
     )?;
     Ok(())
 }
 
-/// Normalised title and company: lower case, words only, without gender markers
-/// ("(m/w/d)") and legal forms ("GmbH") - the same job reads alike on every portal.
-pub(crate) fn identity(title: &str, company: &str) -> (String, String) {
-    // German and English job ad words, do not translate.
-    const GENDER: &[&str] = &["m", "w", "d", "f", "x", "div", "all", "genders", "gn"];
-    const LEGAL: &[&str] = &[
-        "gmbh",
-        "ag",
-        "se",
-        "kg",
-        "kgaa",
-        "co",
-        "mbh",
-        "ug",
-        "ev",
-        "e",
-        "v",
-        "inc",
-        "ltd",
-        "llc",
-        "plc",
-        "sa",
-        "bv",
-        "nv",
-        "haftungsbeschränkt",
+/// Within one portal, do the two places name a common place? An empty place or one that
+/// names only remote work meets every place.
+fn places_meet(a: &str, b: &str) -> bool {
+    // German and English place words that name no place, do not translate.
+    const NO_PLACE: &[&str] = &[
+        "remote",
+        "home",
+        "office",
+        "homeoffice",
+        "hybrid",
+        "mobil",
+        "raum",
+        "grossraum",
+        "region",
+        "und",
+        "and",
+        "oder",
+        "or",
+        "bei",
+        "near",
+        "deutschland",
+        "germany",
+        "de",
+        "dach",
+        "bundesweit",
+        "deutschlandweit",
+        "europa",
+        "europe",
+        "freiberuflich",
+        "vor",
+        "ort",
+        "onsite",
+        "im",
+        "monat",
+        "x",
+        "1x",
     ];
-    let words = |text: &str, skip: &[&str]| -> String {
-        text.to_lowercase()
+    let places = |text: &str| -> HashSet<String> {
+        fold(text)
             .split(|c: char| !c.is_alphanumeric())
-            .filter(|w| !w.is_empty() && !skip.contains(w))
-            .collect::<Vec<_>>()
-            .join(" ")
+            .filter(|w| w.len() > 1 && !w.bytes().all(|b| b.is_ascii_digit()))
+            .filter(|w| !NO_PLACE.contains(w))
+            .map(str::to_owned)
+            .collect()
     };
-    (words(title, GENDER), words(company, LEGAL))
+    let (a, b) = (places(a), places(b));
+    a.is_empty() || b.is_empty() || !a.is_disjoint(&b)
 }
 
-/// SimHash-64 over the words of the text (lower case, two and more characters, each
-/// occurrence counts) - a few changed words move only a few bits.
-pub(crate) fn simhash(text: &str) -> u64 {
-    let lower = text.to_lowercase();
-    let words: Vec<&str> = lower
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| w.chars().count() >= 2)
-        .collect();
-    let mut weights = [0i64; 64];
-    for word in words {
-        let hash = fnv1a(word);
-        for (bit, weight) in weights.iter_mut().enumerate() {
-            if hash >> bit & 1 == 1 {
-                *weight += 1;
-            } else {
-                *weight -= 1;
-            }
-        }
-    }
-    weights
-        .iter()
+// German and English job ad words, do not translate.
+const GENDER: &[&str] = &[
+    "m", "w", "d", "f", "x", "i", "div", "divers", "all", "genders", "gn", "mwd", "wmd", "mfd",
+    "fmd", "dmw", "mwx",
+];
+const CONTRACT: &[&str] = &[
+    "interim",
+    "freelance",
+    "freelancer",
+    "freiberuflich",
+    "freiberufler",
+    "contract",
+    "contractor",
+    "befristet",
+    "unbefristet",
+    "teilzeit",
+    "vollzeit",
+    "remote",
+    "hybrid",
+    "homeoffice",
+    "onsite",
+    "projekteinsatz",
+    "anue",
+    "ref",
+    "nr",
+    "id",
+    "job",
+    "amp",
+    "nbsp",
+];
+// Words of a tail that names no part of the role.
+const TAIL: &[&str] = &[
+    "remote",
+    "hybrid",
+    "vor",
+    "ort",
+    "und",
+    "and",
+    "monate",
+    "monat",
+    "months",
+    "month",
+    "wochen",
+    "weeks",
+    "jahre",
+    "years",
+    "ab",
+    "sofort",
+    "asap",
+    "start",
+    "bis",
+    "zu",
+    "von",
+    "mit",
+    "in",
+    "im",
+    "the",
+    "auf",
+    "nur",
+    "fest",
+    "angestellte",
+    "mitarbeiter",
+    "mgl",
+    "moeglich",
+    "possible",
+    "ueberwiegend",
+    "mostly",
+    "full",
+    "fully",
+    "teilweise",
+    "deutschland",
+    "germany",
+    "bundesweit",
+    "dach",
+    "onsite",
+    "homeoffice",
+    "freelance",
+    "interim",
+    "freiberuflich",
+    "contract",
+    "teilzeit",
+    "vollzeit",
+    "region",
+    "raum",
+];
+
+/// The title as every agency words it alike: lower case, umlauts spelled out, words only;
+/// without IDs and project numbers, gender marks, a tail after a bar (`| Ort | Dauer`), a
+/// tail after a dash that names only place, time, share or contract, and contract words.
+fn title_key(title: &str) -> String {
+    let head = fold(title.split('|').next().unwrap_or_default()).replace('\u{a0}', " ");
+    let words = |part: &str| -> Vec<String> {
+        part.split(|c: char| !c.is_alphanumeric())
+            .filter(|w| !w.is_empty())
+            .map(str::to_owned)
+            .collect()
+    };
+    let numeric = |w: &str| w.bytes().filter(u8::is_ascii_digit).count() >= 4;
+    let mut kept: Vec<String> = Vec::new();
+    for (index, part) in head
+        .split(" - ")
+        .flat_map(|part| part.split(" \u{2013} "))
+        .flat_map(|part| part.split(" \u{2014} "))
         .enumerate()
-        .filter(|(_, weight)| **weight > 0)
-        .fold(0, |hash, (bit, _)| hash | 1 << bit)
-}
-
-/// Number of differing bits.
-pub(crate) fn distance(a: u64, b: u64) -> u32 {
-    (a ^ b).count_ones()
-}
-
-/// FNV-1a of a word (stable across runs and versions, unlike the std hasher).
-fn fnv1a(word: &str) -> u64 {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for byte in word.bytes() {
-        hash ^= u64::from(byte);
-        hash = hash.wrapping_mul(0x0100_0000_01b3);
+    {
+        let part_words = words(part);
+        let noise = |w: &String| {
+            TAIL.contains(&w.as_str())
+                || w.bytes().all(|b| b.is_ascii_digit())
+                || numeric(w)
+                || GENDER.contains(&w.as_str())
+        };
+        if index > 0 && part_words.iter().all(noise) {
+            continue;
+        }
+        kept.extend(part_words);
     }
-    hash
+    kept.retain(|w| {
+        !GENDER.contains(&w.as_str()) && !CONTRACT.contains(&w.as_str()) && !numeric(w)
+    });
+    kept.join(" ")
+}
+
+/// Lower case with the umlauts spelled out (`fuer` and `für` alike) and HTML's dashes and
+/// ampersands as text.
+fn fold(text: &str) -> String {
+    text.replace("&#8211;", "\u{2013}")
+        .replace("&amp;", "&")
+        .to_lowercase()
+        .replace('\u{e4}', "ae")
+        .replace('\u{f6}', "oe")
+        .replace('\u{fc}', "ue")
+        .replace('\u{df}', "ss")
 }
 
 #[cfg(test)]
@@ -376,28 +549,70 @@ mod tests {
         der Hauptbuchhaltung und Anlagenbuchhaltung, Schulung der Key User. Profil: mehrjährige \
         Projekterfahrung im Controlling, sehr gute Deutschkenntnisse, Reisebereitschaft.";
 
+    const OTHER: &str = "Wir suchen eine Projektleitung für den Rollout eines \
+        Warenwirtschaftssystems in 40 Filialen. Aufgaben: Planung, Steuerung der Dienstleister, \
+        Berichtswesen an die Geschäftsführung. Profil: Erfahrung im Handel und in agilen \
+        Methoden.";
+
     #[test]
     fn the_same_job_reads_alike() {
-        assert_eq!(
-            identity("SAP FI/CO Berater (m/w/d)", "Ferrum Systems SE"),
-            identity("SAP FI/CO-Berater (w/m/d)", "Ferrum Systems")
-        );
-        assert_ne!(
-            identity("SAP FI/CO Berater (m/w/d)", "Ferrum Systems SE"),
-            identity("SAP MM Berater (m/w/d)", "Ferrum Systems SE")
-        );
+        let same = |a: &str, b: &str| title_key(a) == title_key(b);
+        assert!(same(
+            "SAP FI/CO Berater (m/w/d)",
+            "SAP FI/CO-Berater (w/m/d)"
+        ));
+        assert!(same(
+            "1083881 Power Platform Entwickler",
+            "Power Platform Entwickler"
+        ));
+        assert!(same(
+            "Risk Manager Medical Devices (m/w/d) | 100% remote | Teilzeit",
+            "Risk Manager Medical Devices"
+        ));
+        assert!(same(
+            "Interim Projektcontroller (m/w/d) - remote",
+            "Projektcontroller"
+        ));
+        assert!(same("Manager f\u{fc}r Einkauf", "Manager fuer Einkauf"));
+        assert!(same(
+            "***** Application Manager Lovion",
+            "Application Manager Lovion"
+        ));
+        assert!(same(
+            "SAP TM Lead Consultant POS77281",
+            "SAP TM Lead Consultant"
+        ));
+        assert!(!same("SAP FI/CO Berater (m/w/d)", "SAP MM Berater (m/w/d)"));
+        assert!(!same(
+            "Consultant AI Strategy - Financial Services",
+            "Consultant AI Strategy - Data Infrastructure"
+        ));
+        assert_eq!(title_key("(m/w/d)"), "");
     }
 
     #[test]
-    fn near_identical_texts_are_close_and_others_far() {
-        let same = simhash(TEXT);
-        assert_eq!(same, simhash(&TEXT.to_uppercase()), "case does not count");
+    fn near_identical_texts_overlap_and_others_not() {
+        assert!(overlaps(TEXT, &TEXT.to_uppercase()), "case does not count");
         let edited = TEXT.replace("Reisebereitschaft", "Reisebereitschaft (20 %)");
-        assert!(distance(same, simhash(&edited)) <= MAX_DISTANCE);
-        let other = "Wir suchen eine Projektleitung für den Rollout eines Warenwirtschaftssystems \
-            in 40 Filialen. Aufgaben: Planung, Steuerung der Dienstleister, Berichtswesen an \
-            die Geschäftsführung. Profil: Erfahrung im Handel und in agilen Methoden.";
-        assert!(distance(same, simhash(other)) > MAX_DISTANCE);
+        assert!(overlaps(TEXT, &edited));
+        let agency = format!(
+            "{TEXT}\n\nIhre Vorteile: ein kurzer Draht, faire Konditionen, schnelle Entscheidungen."
+        );
+        assert!(
+            overlaps(&agency, TEXT),
+            "an agency's copy with its own lines"
+        );
+        assert!(!overlaps(TEXT, OTHER));
+    }
+
+    /// Within one portal the places must meet: one template for two cities is two jobs.
+    #[test]
+    fn places_meet_unless_they_name_two_places() {
+        assert!(places_meet("Hamburg", "22767 Hamburg"));
+        assert!(places_meet("Remote", "Hamburg"));
+        assert!(places_meet("", "Berlin"));
+        assert!(places_meet("Remote / Regensburg", "Regensburg"));
+        assert!(!places_meet("Dresden", "Braunschweig"));
     }
 
     /// A job scored before it turned out to be a duplicate: its score goes, and the top
@@ -465,10 +680,10 @@ mod tests {
         assert_eq!(rows, [first.key], "the original's row stands for it");
     }
 
-    /// A job the user marked stays a job of its own: linked as a duplicate it would leave
-    /// every list with its place or "fits anyway".
+    /// A job in the archive or the trash is never merged (its place would leave with it);
+    /// "fits anyway" and read merge: the original keeps both.
     #[test]
-    fn a_marked_job_is_never_hidden_as_a_duplicate() {
+    fn no_mark_is_lost_in_a_merge() {
         use crate::model::Place;
         use crate::store::test_support::{mail, now, posting};
         type Mark<'a> = &'a dyn Fn(&JobKey);
@@ -485,10 +700,7 @@ mod tests {
         store
             .record_text(&original.key, TEXT, false, false, now())
             .unwrap();
-        let marks: [(&str, Mark<'_>); 3] = [
-            ("4000000001", &|key| {
-                store.set_override(key, true).unwrap();
-            }),
+        let marks: [(&str, Mark<'_>); 2] = [
             ("4000000002", &|key| {
                 store
                     .move_jobs(std::slice::from_ref(key), Place::Trash, now())
@@ -500,36 +712,182 @@ mod tests {
                     .unwrap();
             }),
         ];
-        for (id, mark) in marks {
-            let later = posting(
+        let add = |id: &str| {
+            let p = posting(
                 &format!("https://www.linkedin.com/jobs/view/{id}/"),
                 "SAP FI/CO Berater (m/w/d)",
-                "Ferrum Systems SE",
+                "",
                 "Hamburg",
             );
-            store.upsert_posting(run, &later, mail(), now()).unwrap();
-            mark(&later.key);
+            store.upsert_posting(run, &p, mail(), now()).unwrap();
+            p.key
+        };
+        for (id, mark) in marks {
+            let later = add(id);
+            mark(&later);
             store
-                .record_text(&later.key, TEXT, false, false, now())
+                .record_text(&later, TEXT, false, false, now())
                 .unwrap();
-            assert_eq!(store.link_duplicate(&later.key).unwrap(), None, "{id}");
-            assert_eq!(store.dup_of(&later.key).unwrap(), None);
+            assert_eq!(store.link_duplicate(&later).unwrap(), None, "{id}");
+            assert_eq!(store.dup_of(&later).unwrap(), None);
+            let place = store.job(&later).unwrap().unwrap().place();
+            assert_ne!(place, Place::Inbox, "{id} stays where it lay");
         }
-        // An unmarked one is linked as before.
-        let plain = posting(
-            "https://www.linkedin.com/jobs/view/4000000005/",
-            "SAP FI/CO Berater (m/w/d)",
-            "Ferrum Systems SE",
-            "Hamburg",
-        );
-        store.upsert_posting(run, &plain, mail(), now()).unwrap();
+        // "Fits anyway" and read on the copy: the original keeps both.
+        let later = add("4000000005");
+        store.set_override(&later, true).unwrap();
+        let read = now() - jiff::SignedDuration::from_hours(5);
+        assert!(store.mark_read(&later, read).unwrap());
         store
-            .record_text(&plain.key, TEXT, false, false, now())
+            .record_text(&later, TEXT, false, false, now())
             .unwrap();
         assert_eq!(
-            store.link_duplicate(&plain.key).unwrap(),
-            Some(original.key)
+            store.link_duplicate(&later).unwrap(),
+            Some(original.key.clone())
         );
+        let job = store.job(&original.key).unwrap().unwrap();
+        assert!(job.override_include, "fits anyway carries over");
+        assert_eq!(job.read_at, Some(read), "read stays read");
+        let copy = store.job(&later).unwrap().unwrap();
+        assert!(copy.override_include, "the copy keeps its own marks too");
+        assert_eq!(copy.read_at, Some(read));
+    }
+
+    /// Several agencies post the same position, without a company or each with its own:
+    /// one job, and the richer copy is the one listed and scored - with the marks of both.
+    #[test]
+    fn the_richer_copy_of_several_agencies_is_the_original() {
+        use crate::store::test_support::{mail, now, posting};
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let add = |url: &str, company: &str| {
+            let p = posting(url, "SAP FI/CO Berater (m/w/d)", company, "Hamburg");
+            store.upsert_posting(run, &p, mail(), now()).unwrap();
+            p.key
+        };
+        let plain = add("https://www.gulp.de/gulp2/g/projekte/agentur/C01329404", "");
+        store
+            .record_text(&plain, TEXT, false, false, now())
+            .unwrap();
+        assert_eq!(store.link_duplicate(&plain).unwrap(), None);
+        let read = now() - jiff::SignedDuration::from_hours(3);
+        assert!(store.mark_read(&plain, read).unwrap());
+        let rich = add(
+            "https://www.freelancermap.de/nproj/2971857.html",
+            "Ferrum Systems SE",
+        );
+        let longer = format!(
+            "{TEXT}\n\nRahmendaten: Start im November, Auslastung 100 %, Dauer zwölf Monate, \
+             Einsatzort Hamburg mit zwei Tagen vor Ort pro Woche, Abrechnung nach Stunden, \
+             Verlängerung möglich, Ansprechpartner im Fachbereich Finanzen."
+        );
+        store
+            .record_text(&rich, &longer, false, false, now())
+            .unwrap();
+        assert_eq!(store.link_duplicate(&rich).unwrap(), Some(rich.clone()));
+        assert_eq!(store.dup_of(&plain).unwrap(), Some(rich.clone()));
+        let job = store.job(&rich).unwrap().unwrap();
+        assert_eq!(
+            job.read_at,
+            Some(read),
+            "the user read it as the other copy"
+        );
+        assert_eq!(
+            store.also_on(&[&rich]).unwrap().remove(&rich),
+            Some(vec![Portal::Gulp])
+        );
+        // A third copy leads to the original, not to the copy it reads like.
+        let third = add("https://www.linkedin.com/jobs/view/4000000007/", "");
+        store
+            .record_text(&third, TEXT, false, false, now())
+            .unwrap();
+        assert_eq!(store.link_duplicate(&third).unwrap(), Some(rich));
+    }
+
+    /// GULP lists SOLCOM's projects with SOLCOM's number first in the title: one job with
+    /// SOLCOM's own ad, however short GULP's text.
+    #[test]
+    fn a_partner_s_project_is_one_job_by_its_number() {
+        use crate::store::test_support::{mail, now, posting};
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let solcom = posting(
+            "https://www.solcom.de/fuer-freiberufler/projektliste/1083900-azure-architekt",
+            "Azure Architekt",
+            "",
+            "Remote",
+        );
+        let gulp = posting(
+            "https://www.gulp.de/gulp2/g/projekte/talentfinder/6abd43a340b5a3a29f35d9c0",
+            "1083900 Azure Architekt",
+            "SOLCOM GmbH",
+            "Remote",
+        );
+        let other = posting(
+            "https://www.gulp.de/gulp2/g/projekte/talentfinder/6abd43a340b5a3a29f35d9c1",
+            "1083901 Azure Architekt",
+            "SOLCOM GmbH",
+            "Remote",
+        );
+        for p in [&gulp, &solcom, &other] {
+            store.upsert_posting(run, p, mail(), now()).unwrap();
+        }
+        let short = "Unser Kunde sucht einen Azure Architekten.";
+        store
+            .record_text(&gulp.key, short, false, false, now())
+            .unwrap();
+        store
+            .record_text(&solcom.key, TEXT, false, false, now())
+            .unwrap();
+        assert_eq!(
+            store.link_duplicate(&solcom.key).unwrap(),
+            Some(solcom.key.clone())
+        );
+        assert_eq!(store.dup_of(&gulp.key).unwrap(), Some(solcom.key.clone()));
+        store
+            .record_text(&other.key, OTHER, false, false, now())
+            .unwrap();
+        assert_eq!(
+            store.link_duplicate(&other.key).unwrap(),
+            None,
+            "another number"
+        );
+    }
+
+    /// The jobs a term brought fit as their original does: a duplicate counts once, through
+    /// the job it stands behind.
+    #[test]
+    fn fitting_follows_the_original() {
+        use crate::model::{MatchRecord, MatchStatus};
+        use crate::store::test_support::{mail, now, posting};
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let add = |url: &str| {
+            let p = posting(url, "SAP FI/CO Berater (m/w/d)", "", "Hamburg");
+            store.upsert_posting(run, &p, mail(), now()).unwrap();
+            store
+                .record_text(&p.key, TEXT, false, false, now())
+                .unwrap();
+            p.key
+        };
+        let first = add("https://www.freelancermap.de/nproj/12345.html");
+        let second = add("https://www.linkedin.com/jobs/view/4000000001/");
+        assert_eq!(store.link_duplicate(&second).unwrap(), Some(first.clone()));
+        let record = MatchRecord {
+            status: MatchStatus::Scored,
+            score: 80,
+            note: None,
+            must_met: 1,
+            must_total: 1,
+            top: Vec::new(),
+            facts: crate::model::KeyFacts::default(),
+            rank: 0,
+        };
+        store
+            .save_matches(&[(first.clone(), record)], "r1", now())
+            .unwrap();
+        assert_eq!(store.fitting(std::slice::from_ref(&second)).unwrap(), 1);
+        assert_eq!(store.fitting(&[first, second]).unwrap(), 1, "once");
     }
 
     /// The start of the ad, as freelance.de shows it to a guest.
@@ -539,14 +897,9 @@ mod tests {
 
     #[test]
     fn a_teaser_is_contained_in_its_full_text_only() {
-        assert!(contained(&teaser_of(TEXT), TEXT));
-        let other = "Wir suchen eine Projektleitung für den Rollout eines Warenwirtschaftssystems \
-            in 40 Filialen. Aufgaben: Planung, Steuerung der Dienstleister, Berichtswesen an \
-            die Geschäftsführung. Profil: Erfahrung im Handel und in agilen Methoden.";
-        assert!(!contained(&teaser_of(TEXT), other));
-        assert!(!contained("Für unseren Kunden", TEXT), "too little to tell");
-        // A teaser is never within a few SimHash bits of the whole ad.
-        assert!(distance(simhash(&teaser_of(TEXT)), simhash(TEXT)) > MAX_DISTANCE);
+        assert!(overlaps(&teaser_of(TEXT), TEXT));
+        assert!(!overlaps(&teaser_of(TEXT), OTHER));
+        assert!(!overlaps("Für unseren Kunden", TEXT), "too little to tell");
     }
 
     /// freelance.de as a guest gives teasers: the same project on another portal with its
@@ -730,24 +1083,36 @@ mod tests {
             assert_eq!(store.dup_of(&id).unwrap(), None);
             assert!(store.also_on(&[&id]).unwrap().is_empty(), "no other portal");
         }
-        // Two projects of the portal, both with an id: never merged, however alike.
+        // The same project posted again under a new number: one job - unless the places
+        // differ (one template for two cities).
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
-        for url in [
-            "https://www.freelancermap.de/nproj/2971857.html",
-            "https://www.freelancermap.de/nproj/2971858.html",
-        ] {
-            let p = posting(
-                url,
-                "SAP FI/CO Berater (m/w/d)",
-                "Ferrum Systems SE",
+        let mut first = None;
+        for (url, place, original) in [
+            (
+                "https://www.freelancermap.de/nproj/2971857.html",
                 "Hamburg",
-            );
+                None,
+            ),
+            (
+                "https://www.freelancermap.de/nproj/2971858.html",
+                "Hamburg",
+                Some(0),
+            ),
+            (
+                "https://www.freelancermap.de/nproj/2971859.html",
+                "Dresden",
+                None,
+            ),
+        ] {
+            let p = posting(url, "SAP FI/CO Berater (m/w/d)", "Ferrum Systems SE", place);
             store.upsert_posting(run, &p, mail(), now()).unwrap();
             store
                 .record_text(&p.key, TEXT, false, false, now())
                 .unwrap();
-            assert_eq!(store.link_duplicate(&p.key).unwrap(), None);
+            let expected = original.and(first.clone());
+            assert_eq!(store.link_duplicate(&p.key).unwrap(), expected, "{url}");
+            first.get_or_insert(p.key);
         }
     }
 
@@ -788,5 +1153,78 @@ mod tests {
             .unwrap();
         assert_eq!(store.link_duplicate(&fresh).unwrap(), None);
         assert_eq!(store.dup_of(&fresh).unwrap(), None);
+    }
+}
+
+/// The pairs the comparison finds in the private run databases (read only), with about seven
+/// pairs' titles of each for a look by eye: `cargo test -p jobalert-core --lib
+/// duplicates_in_the_private_runs -- --ignored --nocapture`.
+#[cfg(test)]
+mod measure {
+    use super::*;
+
+    #[test]
+    #[ignore = "reads the private run databases under core/tests/fixtures/private"]
+    fn duplicates_in_the_private_runs() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/private/baseline");
+        for name in ["run_old.db", "run_new.db", "run_new2.db"] {
+            let conn = rusqlite::Connection::open_with_flags(
+                dir.join(name),
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+            )
+            .unwrap();
+            let mut stmt = conn
+                .prepare(
+                    "SELECT portal, job_id, title, company, location, desc_text,
+                            desc_status = 'teaser'
+                     FROM job WHERE desc_status IN ('ok', 'teaser') AND desc_text IS NOT NULL
+                     ORDER BY first_seen_at, portal, job_id",
+                )
+                .unwrap();
+            let copies: Vec<Copy> = stmt
+                .query_map([], |r| {
+                    Ok(Copy {
+                        key: JobKey {
+                            portal: Portal::from_key(&r.get::<_, String>(0)?).unwrap(),
+                            id: r.get(1)?,
+                        },
+                        title: r.get(2)?,
+                        company: r.get(3)?,
+                        location: r.get(4)?,
+                        text: r.get(5)?,
+                        teaser: r.get(6)?,
+                        closed: false,
+                        hidden: false,
+                        dup_of: None,
+                    })
+                })
+                .unwrap()
+                .map(std::result::Result::unwrap)
+                .collect();
+            let mut pairs = Vec::new();
+            for (i, a) in copies.iter().enumerate() {
+                for b in &copies[i + 1..] {
+                    if same_job(a, b) {
+                        pairs.push((a, b));
+                    }
+                }
+            }
+            let cross = pairs
+                .iter()
+                .filter(|(a, b)| a.key.portal != b.key.portal)
+                .count();
+            println!(
+                "{name}: {} jobs with a text, {} pairs ({cross} across portals)",
+                copies.len(),
+                pairs.len()
+            );
+            for (a, b) in pairs.iter().step_by((pairs.len() / 7).max(1)) {
+                println!(
+                    "  {} | {} <> {} | {}",
+                    a.key.portal, a.title, b.key.portal, b.title
+                );
+            }
+        }
     }
 }

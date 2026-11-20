@@ -357,16 +357,15 @@ impl Store {
         Ok((size(count), size(high), size(excluded)))
     }
 
-    /// How many of these jobs fit (scored in the mid or high band), duplicates aside (their
-    /// original counts where it was found).
+    /// How many of these jobs fit (scored in the mid or high band): a duplicate as the job it
+    /// stands behind (that one alone is scored), each job once.
     pub fn fitting(&self, keys: &[JobKey]) -> Result<u32> {
-        let wanted: Vec<String> = keys
-            .iter()
-            .map(|key| format!("{}:{}", key.portal.key(), key.id))
-            .collect();
+        let wanted: Vec<String> = keys.iter().map(JobKey::to_string).collect();
         let count: i64 = self.conn().query_row(
             "SELECT COUNT(*) FROM job
-             WHERE portal || ':' || job_id IN (SELECT value FROM json_each(?1))
+             WHERE portal || ':' || job_id IN (
+                   SELECT COALESCE(dup_of, portal || ':' || job_id) FROM job
+                   WHERE portal || ':' || job_id IN (SELECT value FROM json_each(?1)))
                AND dup_of IS NULL AND match_status = 'scored' AND match_score >= ?2",
             params![serde_json::to_string(&wanted).unwrap_or_default(), MID_FROM],
             |r| r.get(0),

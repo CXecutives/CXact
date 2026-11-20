@@ -66,7 +66,11 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
   wall; the same 4xx on three ad pages in a row stops a source for the run, only the first ad charged.
 - Rejected for good: jobs.ch, karriere.at, eFinancialCareers and StepStone (their terms forbid automated
   access); Robert Half and Etengo (almost no interim or project roles); web search APIs; the Bundesagentur.
-- Jobs that several sources bring merge into one (`dup_of`); "Gefunden" names every way it came.
+- Jobs that several sources bring merge into one (`dup_of`, `store/duplicates.rs`); "Gefunden" names every way it
+  came. The same position by its project number (GULP's copy of a SOLCOM project), or by the normalised title
+  and 80 % of the shorter text's word triples, without a company; reposts of one portal when the places meet.
+  The richest copy is the original, the only one listed and scored; it takes the union of the marks, and an
+  archived or trashed job never merges.
 
 ## Matching
 
