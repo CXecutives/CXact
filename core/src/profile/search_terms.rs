@@ -12,6 +12,11 @@
 //! - the competences, those of that field first, each in the profile's order (every
 //!   competence counts the same, the owner's decision of 2026-10-10); then the tools.
 //!
+//! The order puts the most telling first: the roles as the profile names them and the
+//! competences of their field, then the roles' other names, the field's names, the other
+//! competences and the tools. One word the engine finds generic (`Manager`, `Berater`) never
+//! stands alone, also not as a role's core (`Interim Manager` -> `Manager`).
+//!
 //! Each once, at most [`MAX_CANDIDATES`]; a search asks for the first [`MAX_DEEP_TERMS`] of them
 //! that it has not set aside (`fetch::terms`). A competence or a tool the engine finds too broad to
 //! search alone (`Projektmanagement`, `Personalführung`, `Automatisierung`, `SAP`,
@@ -118,16 +123,29 @@ fn other_names(text: &str) -> Vec<String> {
 }
 
 /// The deep search's terms for a profile form, in the order they are asked for (the first
-/// [`MAX_DEEP_TERMS`] not set aside, `fetch::terms::active_terms`).
+/// [`MAX_DEEP_TERMS`] not set aside, `fetch::terms::active_terms`): the target roles as the
+/// profile names them, then the competences of their field (the specific core), then the
+/// roles' other names, the field's names, the other competences and the tools.
 pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
     let mut terms = Terms::default();
+    let mut bases = Vec::new();
     for role in &form.roles {
         terms.add(role);
         let core = core(role);
         if let Some(core) = &core {
             terms.add(core);
         }
-        let base = core.as_deref().unwrap_or(role);
+        bases.push(core.unwrap_or_else(|| role.clone()));
+    }
+    let field = crate::matching::SearchField::of(form.roles.iter().map(String::as_str));
+    let (specific, other): (Vec<_>, Vec<_>) = form
+        .competences
+        .iter()
+        .partition(|c| field.is_some_and(|f| f.holds(&c.name)));
+    for competence in &specific {
+        terms.add_specific(&competence.name);
+    }
+    for base in &bases {
         for name in other_names(base) {
             terms.add(&name);
         }
@@ -135,20 +153,30 @@ pub fn deep_search_terms(form: &ProfileForm) -> Vec<String> {
             terms.add(name);
         }
     }
-    let field = crate::matching::SearchField::of(form.roles.iter().map(String::as_str));
     for name in field.map_or(&[][..], |f| f.names()) {
         terms.add(name);
     }
-    // The competences of the field first, each in the profile's order.
-    let mut competences: Vec<_> = form.competences.iter().collect();
-    competences.sort_by_cached_key(|c| !field.is_some_and(|f| f.holds(&c.name)));
-    for competence in &competences {
+    for competence in &other {
         terms.add_specific(&competence.name);
     }
     for tool in &form.tools {
         terms.add_specific(tool);
     }
     terms.list
+}
+
+/// Is the term one word the engine finds generic (`Manager`, `Berater`, `Consultant`)? It
+/// never stands alone.
+fn generic_word(term: &str) -> bool {
+    let word = key(term);
+    !word.contains(' ')
+        && [
+            word.as_str(),
+            word.trim_end_matches("in"),
+            word.trim_end_matches('s'),
+        ]
+        .iter()
+        .any(|w| crate::matching::lexicon::engine::GENERIC_ATOMS.contains(w))
 }
 
 /// The terms gathered so far, each once.
@@ -166,12 +194,13 @@ impl Terms {
         }
     }
 
-    /// Adds a term unless it is known, too long, empty, or the list is full.
+    /// Adds a term unless it is known, too long, empty, one generic word, or the list is full.
     fn add(&mut self, term: &str) {
         let term = term.trim();
         let words = term.split_whitespace().count();
         if term.chars().count() < 2
             || words > MAX_TERM_WORDS
+            || generic_word(term)
             || self.list.len() >= MAX_CANDIDATES
             || !self.seen.insert(key(term))
         {
@@ -194,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn roles_with_their_names_then_the_rest() {
+    fn roles_and_their_core_competences_first() {
         let form = ProfileForm {
             roles: vec!["Interim CFO".into(), "Head of Controlling".into()],
             competences: vec![
@@ -208,14 +237,21 @@ mod tests {
         };
         let terms = deep_search_terms(&form);
         assert_eq!(
-            terms[..3],
+            terms[..6],
             [
                 "Interim CFO",
-                // The role without its contract word, then its other names.
+                // The role without its contract word.
                 "CFO",
-                "Chief Financial Officer",
+                "Head of Controlling",
+                // The competences of the roles' field, in the profile's order.
+                "Liquiditätsplanung",
+                "Controlling",
+                "Restrukturierung",
             ]
         );
+        // Then the roles' other names, the tools last.
+        assert_eq!(terms[6], "Chief Financial Officer");
+        assert_eq!(terms.last().map(String::as_str), Some("LucaNet"));
         for wanted in [
             "Finanzvorstand",
             "Kaufmännische Geschäftsführung",
@@ -235,6 +271,31 @@ mod tests {
         let keys: std::collections::HashSet<_> = terms.iter().map(|t| key(t)).collect();
         assert_eq!(keys.len(), terms.len());
         assert!(terms.len() <= MAX_CANDIDATES);
+    }
+
+    /// Many roles with many other names never push the core competences out of the terms a
+    /// search asks for.
+    #[test]
+    fn the_core_competences_are_asked_for() {
+        let form = ProfileForm {
+            roles: vec![
+                "Interim CFO".into(),
+                "Head of Finance".into(),
+                "Kaufmännischer Geschäftsführer".into(),
+                "Leiter Rechnungswesen".into(),
+            ],
+            competences: vec![
+                competence("Konzernabschluss", 10),
+                competence("Treasury", 8),
+            ],
+            ..ProfileForm::default()
+        };
+        let terms = deep_search_terms(&form);
+        let asked = &terms[..MAX_DEEP_TERMS.min(terms.len())];
+        for wanted in ["Konzernabschluss", "Treasury", "Finanzvorstand"] {
+            assert!(asked.iter().any(|t| t == wanted), "{wanted} in {asked:?}");
+        }
+        assert!(!terms.iter().any(|t| generic_word(t)), "{terms:?}");
     }
 
     #[test]
@@ -278,6 +339,8 @@ mod tests {
             "Personalführung",
             "Generative KI",
             "SAP",
+            // One generic word never stands alone, also not as a role's core.
+            "Manager",
         ] {
             assert!(!terms.iter().any(|t| t == broad), "{broad} in {terms:?}");
         }
@@ -345,9 +408,12 @@ mod tests {
         ] {
             assert!(!terms.iter().any(|t| t == noise), "{noise} in {terms:?}");
         }
-        // The field's competences before the others.
+        // The field's competences before the roles' other names, the field's names and the
+        // other competences.
         let at = |t: &str| terms.iter().position(|x| x == t).unwrap();
-        assert!(at("Workforce Management") < at("Coaching"));
+        assert!(at("Workforce Management") < at("Project Manager Customer Service"));
+        assert!(at("Workforce Management") < at("Kundenservice"));
+        assert!(at("Kundenservice") < at("Coaching"));
         // A profile without a field of its own searches no field's names.
         let finance = ProfileForm {
             competences: vec![competence("Controlling", 10)],
