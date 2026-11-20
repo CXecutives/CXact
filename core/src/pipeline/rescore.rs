@@ -10,6 +10,13 @@ use crate::error::ErrorKind;
 pub trait Host {
     /// A run (not a sign-in) is in progress.
     fn running(&self) -> bool;
+    /// The run in progress is a rescore (a fetch or a details run is not).
+    fn rescoring(&self) -> bool {
+        false
+    }
+    /// Cancels the run in progress if it is a rescore, never a fetch that began meanwhile;
+    /// the run's end then calls [`Rescore::run_ended`].
+    fn cancel_rescore(&self) {}
     /// A usable profile exists (one that names competences).
     fn usable(&self) -> bool;
     /// What `usable` says is certain: the work folder can be reached and the profile file is
@@ -35,13 +42,17 @@ pub struct Rescore {
 
 impl Rescore {
     /// The profile changed: score everything again - now, or right after the run in progress
-    /// (which still scores with the profile it started with).
+    /// (which still scores with the profile it started with). A rescore in progress is
+    /// cancelled and restarts once with the new profile; a fetch run is never cancelled.
     ///
     /// The debt is noted before the check: a run that ends right after `running()` said yes
     /// then still finds it in [`Rescore::run_ended`]; whoever takes it first rescores, once.
     pub fn profile_changed(&self, host: &impl Host) {
         self.due.store(true, Ordering::SeqCst);
         if host.running() {
+            if host.rescoring() {
+                host.cancel_rescore();
+            }
             return;
         }
         if self.due.swap(false, Ordering::SeqCst) {
@@ -84,11 +95,15 @@ impl Rescore {
     }
 
     /// Without a usable profile the old scores go (the run then only writes the files again);
-    /// with one, every job is scored anew. Without any job nothing runs - a run would also
-    /// end the first-run state.
+    /// with one, every job that waits for a score is scored (a profile that did not change
+    /// the engine's revision leaves none, then nothing starts). Without any job nothing runs
+    /// - a run would also end the first-run state.
     fn rescore(&self, host: &impl Host) {
         if !host.usable() {
             host.clear_matches();
+        } else if host.pending() == 0 {
+            log::info!("rescore skipped: no job waits for a score");
+            return;
         }
         if host.has_jobs() {
             self.start(host);
@@ -129,12 +144,20 @@ mod tests {
         scored: bool,
         jobs: bool,
         busy: Cell<bool>,
+        /// The run in progress is a rescore.
+        rescoring: Cell<bool>,
         log: RefCell<Vec<&'static str>>,
     }
 
     impl Host for Fake {
         fn running(&self) -> bool {
             self.running.get()
+        }
+        fn rescoring(&self) -> bool {
+            self.rescoring.get()
+        }
+        fn cancel_rescore(&self) {
+            self.log.borrow_mut().push("cancel");
         }
         fn usable(&self) -> bool {
             self.usable
@@ -163,10 +186,12 @@ mod tests {
         }
     }
 
+    /// The app after a profile change: with jobs, they wait for a score.
     fn fake(usable: bool, jobs: bool) -> Fake {
         Fake {
             usable,
             jobs,
+            pending: u32::from(jobs),
             ..Fake::default()
         }
     }
@@ -187,6 +212,58 @@ mod tests {
         let host = fake(false, true);
         Rescore::default().profile_changed(&host);
         assert_eq!(log(&host), ["clear", "run"]);
+    }
+
+    #[test]
+    fn nothing_pending_launches_nothing() {
+        let host = Fake {
+            pending: 0,
+            ..fake(true, true)
+        };
+        Rescore::default().profile_changed(&host);
+        assert!(log(&host).is_empty(), "no job waits for a score");
+        // After a run: the same.
+        let rules = Rescore::default();
+        host.running.set(true);
+        rules.profile_changed(&host);
+        host.running.set(false);
+        rules.run_ended(&host);
+        assert!(log(&host).is_empty());
+        // A removed profile still writes its files without the scores.
+        let gone = Fake {
+            pending: 0,
+            ..fake(false, true)
+        };
+        Rescore::default().profile_changed(&gone);
+        assert_eq!(log(&gone), ["clear", "run"]);
+    }
+
+    #[test]
+    fn a_save_during_a_rescore_cancels_it_and_restarts_once() {
+        let rules = Rescore::default();
+        let host = fake(true, true);
+        host.running.set(true);
+        host.rescoring.set(true);
+        rules.profile_changed(&host);
+        assert_eq!(log(&host), ["cancel"], "nothing starts before the end");
+        host.running.set(false);
+        host.rescoring.set(false);
+        rules.run_ended(&host);
+        assert_eq!(log(&host), ["cancel", "run"], "one restart");
+        rules.run_ended(&host);
+        assert_eq!(log(&host), ["cancel", "run"], "only once");
+    }
+
+    #[test]
+    fn a_fetch_run_is_never_cancelled() {
+        let rules = Rescore::default();
+        let host = fake(true, true);
+        host.running.set(true);
+        rules.profile_changed(&host);
+        assert!(log(&host).is_empty(), "no cancel");
+        host.running.set(false);
+        rules.run_ended(&host);
+        assert_eq!(log(&host), ["run"], "scored after the fetch");
     }
 
     #[test]
@@ -224,6 +301,12 @@ mod tests {
                 self.rules.run_ended(self.fake);
             }
             was
+        }
+        fn rescoring(&self) -> bool {
+            self.fake.rescoring()
+        }
+        fn cancel_rescore(&self) {
+            self.fake.cancel_rescore();
         }
         fn usable(&self) -> bool {
             self.fake.usable()
@@ -276,7 +359,10 @@ mod tests {
 
     #[test]
     fn the_start_rescores_only_when_jobs_wait() {
-        let idle = fake(true, true);
+        let idle = Fake {
+            pending: 0,
+            ..fake(true, true)
+        };
         Rescore::default().at_start(&idle);
         assert!(log(&idle).is_empty(), "nothing pending");
         let waiting = Fake {
@@ -303,6 +389,7 @@ mod tests {
         assert!(log(&clean).is_empty(), "no scores, nothing to do");
         let usable = Fake {
             scored: true,
+            pending: 0,
             ..fake(true, true)
         };
         Rescore::default().at_start(&usable);

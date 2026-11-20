@@ -130,6 +130,21 @@ impl AppState {
     pub(super) fn running(&self) -> bool {
         matches!(*lock(&self.activity), Activity::Run(_))
     }
+
+    /// The run in progress is a rescore.
+    fn rescoring(&self) -> bool {
+        matches!(&*lock(&self.activity), Activity::Run(run) if run.is_rescore())
+    }
+
+    /// Cancels the run in progress when it is a rescore (checked under the same lock, so a
+    /// fetch that began meanwhile is never cancelled).
+    fn cancel_rescore(&self) {
+        if let Activity::Run(run) = &*lock(&self.activity)
+            && run.is_rescore()
+        {
+            run.cancel();
+        }
+    }
 }
 
 /// The profile changed (chosen, removed, other workspace): the cached one goes, and every job
@@ -161,6 +176,14 @@ struct AppHost<'a> {
 impl Host for AppHost<'_> {
     fn running(&self) -> bool {
         self.state.running()
+    }
+
+    fn rescoring(&self) -> bool {
+        self.state.rescoring()
+    }
+
+    fn cancel_rescore(&self) {
+        self.state.cancel_rescore();
     }
 
     fn usable(&self) -> bool {

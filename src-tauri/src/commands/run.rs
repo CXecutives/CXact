@@ -47,6 +47,11 @@ impl RunHandle {
         self.cancel.cancel();
     }
 
+    /// The run is a rescore (never a fetch or a details run).
+    pub(super) fn is_rescore(&self) -> bool {
+        lock(&self.snapshot).kind == RunKindName::Rescore
+    }
+
     /// A reloaded page takes over the events.
     pub(super) fn attach(&self, channel: Channel<RunEvent>) {
         *lock(&self.sink) = Some(channel);
