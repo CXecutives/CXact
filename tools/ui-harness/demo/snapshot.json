@@ -299,8 +299,7 @@
       "firstSeenAt": "2026-09-23T20:30:00Z",
       "unread": true,
       "detail": {
-        "kind": "pending",
-        "retryAt": null
+        "kind": "onRequest"
       },
       "short": false,
       "closed": false,
@@ -687,7 +686,7 @@
       "detail": {
         "kind": "failed",
         "attempts": 2,
-        "retryAt": "2026-09-21T21:30:00Z"
+        "retryAt": null
       },
       "short": false,
       "closed": false,
@@ -4188,7 +4187,7 @@
         "detail": {
           "kind": "failed",
           "attempts": 2,
-          "retryAt": "2026-09-21T21:30:00Z"
+          "retryAt": null
         },
         "short": false,
         "closed": false,
@@ -5483,8 +5482,7 @@
         "firstSeenAt": "2026-09-23T20:30:00Z",
         "unread": true,
         "detail": {
-          "kind": "pending",
-          "retryAt": null
+          "kind": "onRequest"
         },
         "short": false,
         "closed": false,
@@ -7280,8 +7278,7 @@
       "firstSeenAt": "2026-09-24T07:24:00Z",
       "unread": true,
       "detail": {
-        "kind": "pending",
-        "retryAt": null
+        "kind": "onRequest"
       },
       "short": false,
       "closed": false,
@@ -7309,8 +7306,7 @@
       "firstSeenAt": "2026-09-24T07:24:00Z",
       "unread": true,
       "detail": {
-        "kind": "pending",
-        "retryAt": null
+        "kind": "onRequest"
       },
       "short": false,
       "closed": false,
@@ -7339,8 +7335,7 @@
       "firstSeenAt": "2026-09-24T07:24:00Z",
       "unread": true,
       "detail": {
-        "kind": "pending",
-        "retryAt": null
+        "kind": "onRequest"
       },
       "short": false,
       "closed": false,
