@@ -30,6 +30,9 @@ mod relevance;
 mod requirements;
 mod roles;
 mod score;
+mod scorer;
+#[rustfmt::skip]
+mod scorer_tables;
 mod sections;
 mod seniority;
 mod signals;
@@ -116,8 +119,10 @@ use facts::{Availability, HardCriteria};
 /// one line level below the profile's target roles costs points and two or more cap at 40, a
 /// full target role needs its level, the ad's field family against the profile's (a far field
 /// halves every must); the musts a short list does not name stand half way between the fit
-/// of the named ones and the relevance.
-pub const ENGINE_VERSION: u32 = 23;
+/// of the named ones and the relevance. 24 (draft): the fit is learned from teacher labels
+/// (`signals.rs`, `scorer.rs`, tables by `tools/scorer/train.py`) in place of the hand
+/// formula; wishes, the permanent factor and the caps stay.
+pub const ENGINE_VERSION: u32 = 24;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.

@@ -20,6 +20,10 @@ pub(crate) const LANGUAGE_MUST_LEVEL: u8 = 5;
 /// (engine 23), so meeting the two musts of a thin list is not a full fit.
 pub(crate) const MUST_SATURATION: u64 = 7;
 /// Evidence one nice-to-have adds.
+#[allow(
+    dead_code,
+    reason = "engine 24 draft: the hand formula goes in the final commit"
+)]
 pub(crate) const N_NICE: u64 = 500;
 
 /// The relevance's fixed share beside the fit (per-mille): `P' = (750*P + 250*R) / 1000`

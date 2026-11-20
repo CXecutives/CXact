@@ -27,7 +27,7 @@ use super::normalize::{char_len, strip};
 use super::params::{
     DEGREE_UNKNOWN, E_FULL, E_NONE, FORMAL_CAP, HIGH_PRIOR, JUNIOR_CAP, K_SHRINK,
     LANGUAGE_MUST_LEVEL, LEVEL_BELOW, LEVEL_CAP, LIFT_CAP, LOW_EVIDENCE_ITEMS, LOW_PRIOR,
-    LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, MUST_SATURATION, N_NICE, NO_ITEMS_CAP, OFF_FIELD_CAP,
+    LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, MUST_SATURATION, NO_ITEMS_CAP, OFF_FIELD_CAP,
     OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, R_SHARE, ROLE_FULL, ROLE_HALF,
     SCORE_FLOOR, SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, TITLE_OPEN_CAP,
     W_MUST, W_SOFT, W_TERM, WISH_MAX,
@@ -37,6 +37,7 @@ use super::profile::{self, CoreText};
 use super::relevance;
 use super::roles::{self, Role, RoleFit};
 use super::score::div_round_half_even;
+use super::scorer;
 use super::sections::ReqKind;
 use super::seniority;
 use super::signals::{self, Signals};
@@ -431,6 +432,10 @@ fn preferences(
 
 /// The shrunk fit plus the target role and the bounded wishes (per-mille, 0..=1000). While
 /// fewer than half of the musts are met, a lift ends at `LIFT_CAP` (below the high band).
+#[allow(
+    dead_code,
+    reason = "engine 24 draft: the hand formula goes in the final commit"
+)]
 fn adjust(
     shrunk: u64,
     role: Option<&(RoleFit, i64, String)>,
@@ -615,6 +620,33 @@ fn relevance_of(
     .min(1000)
 }
 
+/// The points of a job before the caps (engine 24, per-mille): the learned fit
+/// ([`scorer::learned`]), the bounded wishes, a permanent role at `PERMANENT_FACTOR`, and no
+/// high band while fewer than half of the musts are met (`LIFT_CAP`). The rubric's caps then
+/// limit the result in [`final_score`], so no wish lifts past them.
+fn points(
+    signals: &Signals,
+    wishes: &[WishResult],
+    items: &[Scored],
+    contract: ContractKind,
+) -> u64 {
+    let fit = i64::from(scorer::learned(signals));
+    let wish = wishes
+        .iter()
+        .map(|w| w.points)
+        .sum::<i64>()
+        .clamp(-WISH_MAX, WISH_MAX);
+    let mut points = u64::try_from((fit + wish).clamp(0, 1000)).unwrap_or(0);
+    if contract == ContractKind::Permanent {
+        points = points * PERMANENT_FACTOR / 1000;
+    }
+    let (met, total) = musts_met(items);
+    if 2 * met < total {
+        points = points.min(LIFT_CAP);
+    }
+    points
+}
+
 /// The score (rounded, capped, at least the floor; 0 when unscorable), the rank (the
 /// per-mille score before caps and rounding) and the cap that held the score down.
 fn final_score(
@@ -665,6 +697,10 @@ fn limit_findings(
 /// (`R_SHARE`) beside the fit `(P, n)`; low evidence leans on a prior from what the title says
 /// of the field (`LOW_PRIOR` to `HIGH_PRIOR`); a permanent role at `PERMANENT_FACTOR`; a must
 /// degree the profile cannot judge costs `DEGREE_UNKNOWN` (engine 22).
+#[allow(
+    dead_code,
+    reason = "engine 24 draft: the hand formula goes in the final commit"
+)]
 fn blend(
     profile: &EngineProfile,
     items: &[Scored],
@@ -728,6 +764,10 @@ impl Frame {
 
     /// One level below the profile costs `LEVEL_BELOW`; two or more cap ([`Frame::cap`]), or
     /// cost twice when the profile names no target role.
+    #[allow(
+        dead_code,
+        reason = "engine 24 draft: the hand formula goes in the final commit"
+    )]
     fn level_points(&self, profile: &EngineProfile) -> u64 {
         match self.gap {
             0 => 0,
@@ -749,10 +789,6 @@ impl Frame {
 }
 
 /// Assesses one job.
-#[expect(
-    clippy::too_many_lines,
-    reason = "one job read in order, the signals beside it"
-)]
 pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let text = job.text;
     let vocab = &profile.skills.vocab;
@@ -782,7 +818,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let far = matches!(frame.field, Some((_, Distance::Far)));
     let items = scored(profile, doc.items, &title, far);
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
-    let (fit_score, must_weight, nice_count) = fit_score(&items, relevance);
+    let (_, must_weight, _) = fit_score(&items, relevance);
     let evidence = evidence_level(job.kind, &items, must_weight, char_len(strip(text)));
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
@@ -792,16 +828,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let decided = findings.iter().any(|f| f.decided);
 
     let readable = !short || title_only;
-    let shrunk = blend(
-        profile,
-        &items,
-        &title,
-        (fit_score, must_weight + N_NICE * nice_count),
-        relevance,
-        evidence,
-        contract,
-    )
-    .saturating_sub(frame.level_points(profile));
     let (role, wishes) = if readable {
         let ad = wishes::Ad {
             job: &facts,
@@ -848,7 +874,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
             formal_open: formal_cap,
         },
     );
-    let adjusted = adjust(shrunk, role.as_ref(), &wishes, &items);
+    let adjusted = points(&signals, &wishes, &items, contract);
     let (score, rank, capped) = final_score(adjusted, cap, unscorable);
     let verdict = match (decided, unscorable) {
         (true, _) => Verdict::Excluded,
