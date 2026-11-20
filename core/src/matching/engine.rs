@@ -39,6 +39,7 @@ use super::roles::{self, Role, RoleFit};
 use super::score::div_round_half_even;
 use super::sections::ReqKind;
 use super::seniority;
+use super::signals::{self, Signals};
 use super::title::{self, Distance, ProfileLevel};
 use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict};
 use super::wishes::{self, WishResult, Wishes};
@@ -120,6 +121,8 @@ pub(crate) struct Evaluation {
     pub level: Option<(u8, u8)>,
     /// The ad's field family and its distance to the profile's.
     pub field: Option<(&'static str, Distance)>,
+    /// What the engine read, as the learned scorer's inputs (engine 24 groundwork).
+    pub signals: Signals,
 }
 
 /// Why a score is capped (the rubric's caps, a text without requirements, a junior role).
@@ -746,6 +749,10 @@ impl Frame {
 }
 
 /// Assesses one job.
+#[expect(
+    clippy::too_many_lines,
+    reason = "one job read in order, the signals beside it"
+)]
 pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let text = job.text;
     let vocab = &profile.skills.vocab;
@@ -826,6 +833,21 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     .into_iter()
     .chain(frame.cap(profile))
     .reduce(lower);
+    let signals = signals::compute(
+        profile,
+        &signals::Parts {
+            title: &title,
+            own,
+            items: &items,
+            relevance,
+            role: role.as_ref().map(|(fit, _, _)| fit),
+            ad_level: frame.level,
+            gap: frame.gap,
+            field: frame.field.map(|(_, d)| d),
+            evidence,
+            formal_open: formal_cap,
+        },
+    );
     let adjusted = adjust(shrunk, role.as_ref(), &wishes, &items);
     let (score, rank, capped) = final_score(adjusted, cap, unscorable);
     let verdict = match (decided, unscorable) {
@@ -847,6 +869,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         capped,
         level: frame.below(),
         field: frame.field,
+        signals,
     }
 }
 
