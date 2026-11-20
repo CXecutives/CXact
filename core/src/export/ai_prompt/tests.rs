@@ -642,7 +642,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         factor(FactorCode::Wishes, json!({ "points": -1 })),
         factor(FactorCode::Evidence, json!({ "evidence": "teaser" })),
         factor(FactorCode::Permanent, json!({ "percent": 90 })),
-        factor(FactorCode::Cap, json!({ "cap": "titleOpen", "max": 60 })),
+        factor(FactorCode::Cap, json!({ "cap": "severalOpen", "max": 40 })),
     ];
     let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let result = de.split("**Harte Kriterien**").next().unwrap();
@@ -651,7 +651,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         "- Wünsche: senken die Punktzahl um 1 von 100 Punkten",
         "- Text: nur der Anriss, die Punktzahl rückt zur Mitte",
         "- Festanstellung: zählt mit 90 % der fachlichen Passung",
-        "- Obergrenze: Muss-Anforderung zum Kern der Rolle offen, höchstens 60 von 100 Punkten",
+        "- Obergrenze: mehrere Muss-Anforderungen offen, höchstens 40 von 100 Punkten",
     ] {
         assert!(result.contains(part), "{part}:\n{result}");
     }

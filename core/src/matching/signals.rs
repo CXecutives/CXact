@@ -172,6 +172,41 @@ pub fn signals(profile: &CompiledProfile, input: &JobInput<'_>) -> Signals {
     engine::evaluate(&profile.engine, &read).signals
 }
 
+/// How the points of one job came about (the private trainer replays them): the learned fit,
+/// the wishes, the contract and every cap that fired.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Trace {
+    pub signals: Signals,
+    /// [`super::scorer`]'s fit with the tables the engine was built with (per-mille).
+    pub learned: u16,
+    /// The summed wish points (per-mille, not yet bounded).
+    pub wish: i64,
+    pub permanent: bool,
+    /// Every cap that fired: its code and the highest score it allows.
+    pub caps: Vec<(&'static str, u8)>,
+}
+
+/// The [`Trace`] of a job for a profile, read as [`super::assess`] reads it.
+pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
+    if profile.quality() == super::ProfileQuality::Empty {
+        return Trace::default();
+    }
+    fit::forget();
+    let masked = normalize::mask_placeholders(input.text);
+    let read = JobInput {
+        text: &masked,
+        ..*input
+    };
+    let e = engine::evaluate(&profile.engine, &read);
+    Trace {
+        signals: e.signals,
+        learned: super::scorer::learned(&e.signals),
+        wish: e.wishes.iter().map(|w| w.points).sum(),
+        permanent: e.contract == super::contract::ContractKind::Permanent,
+        caps: e.caps.iter().map(|&(c, kind)| (kind.code(), c)).collect(),
+    }
+}
+
 /// What the engine read of one job, handed over by `engine::evaluate`.
 pub(crate) struct Parts<'a> {
     /// The cleaned title.
@@ -397,10 +432,7 @@ fn coverage(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: 
 /// The open musts, on the core of the role (a skill that names what the title names) or not.
 fn opens(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: &[&Scored]) {
     let vocab = &profile.skills.vocab;
-    let title_atoms: Vec<String> = atoms::atoms(parts.title, vocab)
-        .into_iter()
-        .filter(|a| !atoms::is_generic(a))
-        .collect();
+    let title_atoms = roles::title_core(parts.title, vocab);
     let (mut open_core, mut open_other) = (0u64, 0u64);
     for m in musts.iter().filter(|m| m.fit.value == E_NONE) {
         let on_core = m.item.class == Class::Skill

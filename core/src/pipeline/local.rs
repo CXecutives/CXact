@@ -90,6 +90,13 @@ impl LocalMatcher {
         })
     }
 
+    /// How the points of a stored job came about (the private trainer replays them).
+    pub fn trace(&self, job: &JobRow, text: Option<&str>) -> matching::Trace {
+        Self::with_input(job, text, |input, _, _| {
+            matching::trace(&self.profile, input)
+        })
+    }
+
     /// What a stored job hands the engine.
     fn with_input<T>(
         job: &JobRow,

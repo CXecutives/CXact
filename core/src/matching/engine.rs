@@ -27,10 +27,9 @@ use super::normalize::{char_len, strip};
 use super::params::{
     DEGREE_UNKNOWN, E_FULL, E_NONE, FORMAL_CAP, HIGH_PRIOR, JUNIOR_CAP, K_SHRINK,
     LANGUAGE_MUST_LEVEL, LEVEL_BELOW, LEVEL_CAP, LIFT_CAP, LOW_EVIDENCE_ITEMS, LOW_PRIOR,
-    LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, MUST_SATURATION, NO_ITEMS_CAP, OFF_FIELD_CAP,
-    OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, R_SHARE, ROLE_FULL, ROLE_HALF,
-    SCORE_FLOOR, SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, TITLE_OPEN_CAP,
-    W_MUST, W_SOFT, W_TERM, WISH_MAX,
+    LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, MUST_SATURATION, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP,
+    OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, R_SHARE, ROLE_FULL, ROLE_HALF, SENIOR_YEARS,
+    SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT, W_TERM, WISH_MAX,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
@@ -124,6 +123,10 @@ pub(crate) struct Evaluation {
     pub field: Option<(&'static str, Distance)>,
     /// What the engine read, as the learned scorer's inputs (engine 24 groundwork).
     pub signals: Signals,
+    /// Every cap that fired, with the highest score it allows (the lowest one holds).
+    pub caps: Vec<Cap>,
+    /// The contract type the ad states.
+    pub contract: ContractKind,
 }
 
 /// Why a score is capped (the rubric's caps, a text without requirements, a junior role).
@@ -135,10 +138,6 @@ pub(crate) enum CapKind {
     SeveralOpen,
     /// No skill must met at all: outside the field.
     OffField,
-    /// An open must on the topic of the title (the core of the role).
-    TitleOpen,
-    /// A text without any requirement, judged from its title.
-    NoItems,
     /// A junior or entry-level role for a senior profile.
     Junior,
     /// A role two or more levels below the profile (engine 23).
@@ -152,8 +151,6 @@ impl CapKind {
             CapKind::Formal => "formal",
             CapKind::SeveralOpen => "severalOpen",
             CapKind::OffField => "offField",
-            CapKind::TitleOpen => "titleOpen",
-            CapKind::NoItems => "noItems",
             CapKind::Junior => "junior",
             CapKind::Level => "level",
         }
@@ -161,7 +158,7 @@ impl CapKind {
 }
 
 /// A cap with its kind; the lower of two, the first of two alike.
-type Cap = (u8, CapKind);
+pub(crate) type Cap = (u8, CapKind);
 
 fn lower(a: Cap, b: Cap) -> Cap {
     if b.0 < a.0 { b } else { a }
@@ -283,13 +280,7 @@ fn formal(profile: &EngineProfile, items: &[Scored]) -> (Vec<Finding>, bool) {
 /// half) with the core of the role among them; no skill must met at all (outside the field: at least two, or the only one when
 /// the title names nothing of the profile either); an open must on the topic of the title
 /// (the core of the role).
-fn cap(
-    items: &[Scored],
-    title: &str,
-    vocab: &Vocab,
-    formal_cap: bool,
-    title_fit: u64,
-) -> Option<Cap> {
+fn cap(items: &[Scored], title: &str, vocab: &Vocab, formal_cap: bool, title_fit: u64) -> Vec<Cap> {
     let musts: Vec<&Scored> = items.iter().filter(|s| is_must(s)).collect();
     let open = musts.iter().filter(|s| s.fit.value == E_NONE).count();
     let several_open = open >= 2 && 2 * open >= musts.len();
@@ -312,10 +303,7 @@ fn cap(
     // The only skill must open and a title that names little of the profile: off the field
     // too, a little milder (one requirement is thin evidence).
     let off_field_single = all_open && skills.len() == 1 && title_fit < OFF_FIELD_TITLE_FIT;
-    let title_atoms: Vec<String> = atoms::atoms(title, vocab)
-        .into_iter()
-        .filter(|a| !atoms::is_generic(a))
-        .collect();
+    let title_atoms = roles::title_core(title, vocab);
     let related = |a: &str, t: &str| {
         matches!(atoms::fit(a, t), Fit::Equal | Fit::Specific)
             || matches!(atoms::fit(t, a), Fit::Equal | Fit::Specific)
@@ -337,11 +325,10 @@ fn cap(
         (several_open && core_open).then_some((SEVERAL_OPEN_CAP, CapKind::SeveralOpen)),
         off_field.then_some((OFF_FIELD_CAP, CapKind::OffField)),
         off_field_single.then_some((OFF_FIELD_SINGLE_CAP, CapKind::OffField)),
-        core_open.then_some((TITLE_OPEN_CAP, CapKind::TitleOpen)),
     ]
     .into_iter()
     .flatten()
-    .reduce(lower)
+    .collect()
 }
 
 /// `P` with the must weight and the number of nice-to-haves (the evidence `n`): `M` over
@@ -542,29 +529,27 @@ fn job_facts<'a>(job: &JobInput<'a>) -> JobFacts<'a> {
     }
 }
 
-/// Every cap of a job: the rubric's caps, a text without requirements (`NO_ITEMS_CAP`)
-/// and a junior role for a senior profile (`JUNIOR_CAP`); no off-field cap where the title
-/// names the profile's field (`field_title`: it meets a target role).
+/// Every cap of a job: the rubric's caps and a junior role for a senior profile
+/// (`JUNIOR_CAP`); no off-field cap where the title names the profile's field
+/// (`field_title`: it meets a target role).
 fn all_caps(
     profile: &EngineProfile,
     items: &[Scored],
     title: &str,
     job: &JobInput<'_>,
     formal_cap: bool,
-    no_items: bool,
     field_title: bool,
-) -> Option<Cap> {
+) -> Vec<Cap> {
     let vocab = &profile.skills.vocab;
     let title_fit = relevance::title_fit(&profile.query, title, vocab);
     cap(items, title, vocab, formal_cap, title_fit)
-        .filter(|c| !(field_title && c.1 == CapKind::OffField))
         .into_iter()
-        .chain(no_items.then_some((NO_ITEMS_CAP, CapKind::NoItems)))
+        .filter(|c| !(field_title && c.1 == CapKind::OffField))
         .chain(
             junior_for_senior(profile, job.title, &page_levels(job), items)
                 .then_some((JUNIOR_CAP, CapKind::Junior)),
         )
-        .reduce(lower)
+        .collect()
 }
 
 /// A junior role for a profile with `SENIOR_YEARS` or more: a junior title (`Junior`,
@@ -621,15 +606,10 @@ fn relevance_of(
 }
 
 /// The points of a job before the caps (engine 24, per-mille): the learned fit
-/// ([`scorer::learned`]), the bounded wishes, a permanent role at `PERMANENT_FACTOR`, and no
-/// high band while fewer than half of the musts are met (`LIFT_CAP`). The rubric's caps then
-/// limit the result in [`final_score`], so no wish lifts past them.
-fn points(
-    signals: &Signals,
-    wishes: &[WishResult],
-    items: &[Scored],
-    contract: ContractKind,
-) -> u64 {
+/// ([`scorer::learned`]), the bounded wishes and a permanent role at `PERMANENT_FACTOR`. The
+/// rubric's caps then limit the result in [`final_score`], so no wish lifts past them
+/// (`tools/scorer/train.py` replays this order: change both together).
+fn points(signals: &Signals, wishes: &[WishResult], contract: ContractKind) -> u64 {
     let fit = i64::from(scorer::learned(signals));
     let wish = wishes
         .iter()
@@ -640,14 +620,10 @@ fn points(
     if contract == ContractKind::Permanent {
         points = points * PERMANENT_FACTOR / 1000;
     }
-    let (met, total) = musts_met(items);
-    if 2 * met < total {
-        points = points.min(LIFT_CAP);
-    }
     points
 }
 
-/// The score (rounded, capped, at least the floor; 0 when unscorable), the rank (the
+/// The score (rounded and capped; 0 when unscorable), the rank (the
 /// per-mille score before caps and rounding) and the cap that held the score down.
 fn final_score(
     adjusted: u64,
@@ -658,9 +634,7 @@ fn final_score(
         return (0, 0, None);
     }
     let rounded = u8::try_from(div_round_half_even(adjusted, 10).min(100)).unwrap_or(100);
-    let score = cap
-        .map_or(rounded, |(c, _)| rounded.min(c))
-        .max(SCORE_FLOOR);
+    let score = cap.map_or(rounded, |(c, _)| rounded.min(c));
     let capped = cap.filter(|&(c, _)| c < rounded).map(|(c, kind)| (kind, c));
     (score, u16::try_from(adjusted).unwrap_or(1000), capped)
 }
@@ -822,9 +796,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let evidence = evidence_level(job.kind, &items, must_weight, char_len(strip(text)));
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
-    // A text without any requirement (long enough to read, or a short teaser) is judged
-    // from its title: low evidence, at most `NO_ITEMS_CAP`.
-    let no_items = (!short || title_only) && items.is_empty();
     let decided = findings.iter().any(|f| f.decided);
 
     let readable = !short || title_only;
@@ -847,18 +818,11 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     } else {
         (role, wishes)
     };
-    let cap = all_caps(
-        profile,
-        &items,
-        &title,
-        job,
-        formal_cap,
-        no_items,
-        role.is_some(),
-    )
-    .into_iter()
-    .chain(frame.cap(profile))
-    .reduce(lower);
+    let caps: Vec<Cap> = all_caps(profile, &items, &title, job, formal_cap, role.is_some())
+        .into_iter()
+        .chain(frame.cap(profile))
+        .collect();
+    let cap = caps.iter().copied().reduce(lower);
     let signals = signals::compute(
         profile,
         &signals::Parts {
@@ -874,7 +838,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
             formal_open: formal_cap,
         },
     );
-    let adjusted = points(&signals, &wishes, &items, contract);
+    let adjusted = points(&signals, &wishes, contract);
     let (score, rank, capped) = final_score(adjusted, cap, unscorable);
     let verdict = match (decided, unscorable) {
         (true, _) => Verdict::Excluded,
@@ -896,6 +860,8 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         level: frame.below(),
         field: frame.field,
         signals,
+        caps,
+        contract,
     }
 }
 

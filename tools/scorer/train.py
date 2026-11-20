@@ -6,8 +6,13 @@
 Inputs (both private, never in the repo):
   --signals  the engine's signals per pair: a header line {"names", "sign", "max"} and then
              one line per pair {"pair", "profile", "split", "group", "v": [...]}.
+             A dump with the trace of each pair ("learned", "wish", "permanent", "caps") lets the
+             report replay the engine's points after the fit.
   --labels   the teachers' consensus per pair: {"pair", "passung" 0-100, "punkte", "note" 0-3,
-             "drop"}. A pair with "drop": true or without "passung" is left out.
+             "drop", "excluded"}. A pair with "drop": true or without "note" is left out; a pair
+             the teachers excluded counts as note 0 (the gain of retrain.sh and metrics.rs).
+
+Target: the score of the pair's note (NOTE_TARGET, 0 -> 12 ... 3 -> 88).
 
 Model: cyclic boosting of an additive model. Each signal is cut into at most MAX_BINS
 quantile bins of at least MIN_BIN pairs; each pass walks the signals in order and moves
@@ -17,14 +22,17 @@ monotone table (PAVA, weighted by the bin counts); free signals (sign 0) keep th
 Tables are centred, their means go into the intercept.
 
 Evaluation: 5 folds grouped by "group" on the training pairs give out-of-fold predictions.
-Calibration maps the out-of-fold predictions onto the distribution of the training labels
-by quantile matching at CALIB_KNOTS knots (piecewise linear), which undoes the shrink to the
-mean. The final model is fitted on all training pairs.
+Calibration is the isotonic (PAVA) map of the out-of-fold predictions to NOTE_TARGET of each
+pair's note, read at CALIB_KNOTS quantiles of the predictions (piecewise linear between them):
+it undoes the shrink to the mean and puts each note at its score. The final model is fitted
+on all training pairs.
 
 Output: a Rust file with INTERCEPT (tenths of a point), TABLES (per signal, the lower edge of
 each bin and its points in tenths) and CALIB (knots in tenths), all integer. The report
 prints Spearman and NDCG@10 per profile, out of fold on the training split and with the
-integer model on every report split.
+integer model on every report split; with a traced dump both replay the engine's points
+(`replay`, the mirror of `points` and `final_score` in engine.rs) and order the pairs as
+retrain.sh does (scored, unscorable, excluded; then score, then the points before the caps).
 """
 
 import argparse
@@ -42,6 +50,14 @@ LEARNING_RATE = 0.3
 FOLDS = 5
 CALIB_KNOTS = 21
 TOP_K = 10
+# The score (tenths) a note is calibrated to.
+NOTE_TARGET = {0: 120, 1: 450, 2: 680, 3: 880}
+
+# The mirror of engine.rs `points` and `final_score` (change both together).
+WISH_MAX = 100
+PERMANENT_FACTOR = 900
+CAPS = {"formal", "severalOpen", "offField", "junior", "level"}
+VERDICT_ORDER = {"scored": 0, "unscorable": 1, "excluded": 2}
 
 
 def read_jsonl(path):
@@ -59,10 +75,15 @@ def read_signals(path):
 def read_labels(path):
     labels = {}
     for row in read_jsonl(path):
-        if row.get("drop") or row.get("passung") is None:
+        if row.get("drop") or row.get("note") is None:
             continue
         labels[row["pair"]] = row
     return labels
+
+
+def note_of(label):
+    """The note a pair counts with: 0 when the teachers excluded it."""
+    return 0 if label.get("excluded") else int(label["note"])
 
 
 # -- bins -----------------------------------------------------------------------------------
@@ -157,17 +178,29 @@ def fold_of(group):
 # -- calibration ----------------------------------------------------------------------------
 
 
-def calibration(pred_tenths, label_tenths):
-    """CALIB_KNOTS knots (x strictly rising in 0..1000, y non-decreasing in 0..1000)."""
+def calibration(pred_tenths, target_tenths):
+    """The isotonic map of the predictions to the targets as CALIB_KNOTS knots (x strictly
+    rising in 0..1000, y non-decreasing in 0..1000), the knots at quantiles of the
+    predictions from the lowest to the highest (flat outside them)."""
+    pred = np.clip(np.round(np.asarray(pred_tenths, dtype=float)), 0, 1000).astype(int)
+    target = np.asarray(target_tenths, dtype=float)
+    order = np.argsort(pred, kind="mergesort")
+    xs_sorted, fitted = pred[order], pava(target[order], np.ones(len(pred)), True)
     q = np.linspace(0.0, 1.0, CALIB_KNOTS)
-    xs = np.clip(np.round(np.quantile(pred_tenths, q)), 0, 1000).astype(int).tolist()
-    ys = np.clip(np.round(np.quantile(label_tenths, q)), 0, 1000).astype(int).tolist()
+    xs = np.round(np.quantile(xs_sorted, q)).astype(int).tolist()
     for k in range(1, CALIB_KNOTS):
         xs[k] = max(xs[k], xs[k - 1] + 1)
+    for k in range(CALIB_KNOTS - 2, -1, -1):
+        xs[k] = min(xs[k], xs[k + 1] - 1)
+
+    def at(x):
+        """The fitted value of the last prediction at or below x (the first one below all)."""
+        i = int(np.searchsorted(xs_sorted, x, side="right")) - 1
+        return float(fitted[max(i, 0)])
+
+    ys = [int(np.clip(round(at(x)), 0, 1000)) for x in xs]
+    for k in range(1, CALIB_KNOTS):
         ys[k] = max(ys[k], ys[k - 1])
-    for k in range(CALIB_KNOTS - 1, -1, -1):
-        upper = 1000 - (CALIB_KNOTS - 1 - k)
-        xs[k] = min(xs[k], upper if k == CALIB_KNOTS - 1 else min(upper, xs[k + 1] - 1))
     return list(zip(xs, ys))
 
 
@@ -223,41 +256,67 @@ def spearman(a, b):
     return float(np.corrcoef(ra, rb)[0, 1])
 
 
-def ndcg(pred, notes, k=TOP_K):
+def round_half_even(n, d):
+    q, r = divmod(n, d)
+    return q + (1 if 2 * r > d or (2 * r == d and q % 2 == 1) else 0)
+
+
+def replay(fit, row, caps=None):
+    """The engine's (score, points before the caps, verdict) of a pair from its learned fit
+    (per-mille): the bounded wishes, a permanent role at PERMANENT_FACTOR, the rounding and the
+    caps (CAPS, or the codes given). A dump without a trace gives the fit itself."""
+    caps = CAPS if caps is None else caps
+    verdict = row.get("verdict") or "scored"
+    if "caps" not in row:
+        return fit / 10, fit, verdict
+    if verdict == "unscorable":
+        return 0, 0, verdict
+    points = min(1000, max(0, fit + max(-WISH_MAX, min(WISH_MAX, row["wish"]))))
+    if row["permanent"]:
+        points = points * PERMANENT_FACTOR // 1000
+    score = min([min(100, round_half_even(points, 10))] + [c for k, c in row["caps"] if k in caps])
+    return score, points, verdict
+
+
+def ndcg(keys, notes, k=TOP_K):
+    """NDCG@k of the pairs ordered by their keys (smallest first)."""
     gains = np.asarray([2 ** int(n) - 1 for n in notes], dtype=float)
     if gains.sum() == 0:
         return float("nan")
-    order = np.argsort(-np.asarray(pred, dtype=float), kind="mergesort")
+    order = sorted(range(len(keys)), key=lambda i: keys[i])
     discounts = 1.0 / np.log2(np.arange(2, k + 2))
     dcg = (gains[order][:k] * discounts[: min(k, len(gains))]).sum()
     ideal = (np.sort(gains)[::-1][:k] * discounts[: min(k, len(gains))]).sum()
     return float(dcg / ideal)
 
 
-def note_of(label):
-    note = label.get("note")
-    if note is None:
-        note = min(3, int(label["passung"]) // 25)
-    return int(note)
-
-
-def report(title, rows, pred, labels):
-    print(f"{title}: {len(rows)} pairs")
-    profiles = sorted({r["profile"] for r in rows})
-    all_y = [labels[r["pair"]]["passung"] for r in rows]
-    print(f"  all        spearman {spearman(pred, all_y):6.3f}")
-    nd = []
-    for p in profiles:
+def measure(rows, fits, labels, caps=None):
+    """Mean NDCG@10 over profiles, the mean score per note (scored pairs), NDCG@10 per profile
+    and the replay of every pair."""
+    out = [replay(f, r, caps) for f, r in zip(fits, rows)]
+    keys = [(VERDICT_ORDER[v], -s, -p, r["pair"]) for (s, p, v), r in zip(out, rows)]
+    notes = [note_of(labels[r["pair"]]) for r in rows]
+    per = {}
+    for p in sorted({r["profile"] for r in rows}):
         idx = [i for i, r in enumerate(rows) if r["profile"] == p]
-        y = [all_y[i] for i in idx]
-        notes = [note_of(labels[rows[i]["pair"]]) for i in idx]
-        pr = [pred[i] for i in idx]
-        n = ndcg(pr, notes)
-        if not np.isnan(n):
-            nd.append(n)
-        print(f"  {p:10s} n {len(idx):4d}  spearman {spearman(pr, y):6.3f}  ndcg@10 {n:6.3f}")
-    if nd:
-        print(f"  mean ndcg@10 over profiles {float(np.mean(nd)):6.3f}")
+        per[p] = (len(idx), ndcg([keys[i] for i in idx], [notes[i] for i in idx]))
+    nd = [n for _, n in per.values() if not np.isnan(n)]
+    means = {}
+    for note in range(4):
+        s = [o[0] for o, n in zip(out, notes) if o[2] == "scored" and n == note]
+        means[note] = (float(np.mean(s)) if s else float("nan"), len(s))
+    return float(np.mean(nd)) if nd else float("nan"), means, per, out
+
+
+def report(title, rows, fits, labels):
+    nd, means, per, out = measure(rows, fits, labels)
+    print(f"{title}: {len(rows)} pairs")
+    notes = [note_of(labels[r["pair"]]) for r in rows]
+    print(f"  all        spearman {spearman([o[0] for o in out], notes):6.3f}")
+    for p, (n, v) in per.items():
+        print(f"  {p:10s} n {n:4d}  ndcg@10 {v:6.3f}")
+    grades = "  ".join(f"{g}: {m:5.1f} (n {c})" for g, (m, c) in sorted(means.items(), reverse=True))
+    print(f"  mean ndcg@10 over profiles {nd:6.3f}; mean score per note {grades}")
 
 
 # -- output ---------------------------------------------------------------------------------
@@ -308,7 +367,7 @@ def main():
         sys.exit(f"only {len(train)} labelled training pairs; at least {2 * MIN_BIN} are needed")
 
     X = np.asarray([r["v"] for r in train], dtype=np.int64)
-    y = np.asarray([float(labels[r["pair"]]["passung"]) for r in train])
+    y = np.asarray([NOTE_TARGET[note_of(labels[r["pair"]])] / 10 for r in train])
     edges = [bin_edges(X[:, j]) for j in range(X.shape[1])]
     n_bins = [len(e) for e in edges]
     bins = np.stack([bin_index(edges[j], X[:, j]) for j in range(X.shape[1])], axis=1)

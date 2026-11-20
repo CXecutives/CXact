@@ -32,6 +32,29 @@ pub(crate) const LEVEL_WORDS: &[&str] = &[
     "specialist",
     "spezialist",
 ];
+/// Title words that name the shape of a role, not its topic (engine 24): an open must on them
+/// is no open core (`Delivery`, `Technical Support`, `6 Monate`).
+pub(crate) const ROLE_SHAPE_WORDS: &[&str] = &[
+    "berater",
+    "beraterin",
+    "consultant",
+    "delivery",
+    "field",
+    "manager",
+    "managerin",
+    "monat",
+    "monate",
+    "month",
+    "months",
+    "owner",
+    "solution",
+    "solutions",
+    "support",
+    "technical",
+    "technisch",
+    "technische",
+    "technischer",
+];
 /// Words of a contract type inside a target role (`Interim CFO`): met by the title or by
 /// an interim contract.
 pub(crate) const ROLE_CONTRACT_WORDS: &[&str] = &[

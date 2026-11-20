@@ -232,6 +232,23 @@ fn role_fit(
     Some(full)
 }
 
+/// The core of a title (engine 24): its specific atoms without the words of lead, level,
+/// contract, junior roles and the role's shape. An open must on them is an open core.
+pub(crate) fn title_core(title: &str, vocab: &Vocab) -> Vec<String> {
+    let shape: Vec<String> = lex::LEAD_WORDS
+        .iter()
+        .chain(lex::LEVEL_WORDS)
+        .chain(lex::ROLE_CONTRACT_WORDS)
+        .chain(lex::ROLE_SHAPE_WORDS)
+        .chain(lexicon::engine::JUNIOR_TITLES)
+        .flat_map(|w| atoms::atoms(w, vocab))
+        .collect();
+    atoms::atoms(title, vocab)
+        .into_iter()
+        .filter(|a| !atoms::is_generic(a) && !shape.contains(a))
+        .collect()
+}
+
 /// The topic atoms of every target role (what a title may name).
 pub(crate) fn topics(roles: &[Role]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();

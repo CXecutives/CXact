@@ -68,19 +68,15 @@ pub(crate) const SENTENCE_ATOMS: usize = 4;
 /// Permanent roles are the second category of a consultant: the shrunk fit is scaled
 /// by this factor (per-mille).
 pub(crate) const PERMANENT_FACTOR: u64 = 900;
-/// Score caps of the rubric (1-10 scale times ten): an open formal must (degree field,
-/// licence) at most 4; several musts open (at least two and at least half) at most 4; an
-/// open must on the topic of the title (the core of the role) at most 6; no skill must
-/// met at all (at least two) is outside the field.
+/// Score caps of the rubric: an open formal must (degree field, licence) at most 40; several
+/// musts open (at least two and at least half, the core of the role among them) at most 40;
+/// no skill must met at all (at least two) is outside the field.
 pub(crate) const FORMAL_CAP: u8 = 40;
 /// A must degree while the profile names none is unknown: this much less (per-mille), once
 /// per ad (engine 22).
 pub(crate) const DEGREE_UNKNOWN: u64 = 20;
 pub(crate) const SEVERAL_OPEN_CAP: u8 = 40;
-pub(crate) const TITLE_OPEN_CAP: u8 = 60;
 pub(crate) const OFF_FIELD_CAP: u8 = 25;
-/// A scored ad keeps at least this (the rubric never shows a 1 of 10).
-pub(crate) const SCORE_FLOOR: u8 = 10;
 
 // --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 
@@ -117,10 +113,12 @@ pub(crate) const JUNIOR_ROLE_YEARS: u32 = 5;
 /// target roles: twice the points, no cap).
 pub(crate) const LEVEL_BELOW: u64 = 50;
 pub(crate) const LEVEL_CAP: u8 = 40;
-/// Highest score of a text without any requirement (judged from title and words alone).
-pub(crate) const NO_ITEMS_CAP: u8 = 60;
 /// While fewer than half of the musts are met, the target role and the wishes lift a score
 /// at most to this (per-mille, score 79): never into the high band (80) of the list.
+#[allow(
+    dead_code,
+    reason = "engine 24 draft: the hand formula goes in the final commit"
+)]
 pub(crate) const LIFT_CAP: u64 = 790;
 /// A day rate of at least this share of the wish (per-mille) is near, below it missed.
 pub(crate) const WISH_RATE_NEAR: u64 = 950;
