@@ -3,12 +3,14 @@
 //! facts, teaser or full text) and the mapping of an [`Assessment`] onto what the store keeps
 //! per job ([`MatchRecord`]).
 
+use std::borrow::Cow;
+
 use serde_json::{Map, Value};
 
 use super::Matcher;
 use crate::matching::{
     self, Assessment, CompiledProfile, CoreTerm, JobInput, ProfileQuality, ReasonCode, ReasonKind,
-    TextKind, Verdict, Weight, fact_key,
+    TextKind, Verdict, Weight, application, fact_key,
 };
 use crate::model::{DescStatus, MatchRecord, MatchStatus, Notice, is_usable_title};
 use crate::portal::Facts;
@@ -26,8 +28,10 @@ pub const MAX_TERMS: usize = 8;
 /// industry wish; 4: career level, industries and a remote field in words; 5: the workload
 /// in the stored facts; 6: the open terms for "Häufig verlangt"; 7: an open term is a
 /// requirement whose words hold a term, [`open_term`]; 8: the quoted requirements put a
-/// language last). Part of the revision: a change scores every stored job again.
-const INPUTS: u32 = 8;
+/// language last; 9: the text without its contact, legal and footer passages,
+/// [`crate::text::scored_text`]). Part of the revision: a change scores every stored job
+/// again.
+const INPUTS: u32 = 9;
 
 /// The local engine with one profile.
 pub struct LocalMatcher {
@@ -76,17 +80,30 @@ impl LocalMatcher {
         } else {
             TextKind::Full
         };
+        let full = text.unwrap_or_default();
+        // The engine scores the ad without its contact, legal and footer passages; the
+        // contact and the deadline are read from the whole ad.
+        let scored = crate::text::scored_text(full);
         let input = JobInput {
             title: &title,
             company: &job.company,
             location: &job.location,
             portal: job.key.portal,
-            text: text.unwrap_or_default(),
+            text: &scored,
             facts: facts.as_ref(),
             posted: Some(posted),
             kind,
         };
-        matching::assess(&self.profile, &input, None)
+        let mut assessment = matching::assess(&self.profile, &input, None)?;
+        if matches!(scored, Cow::Owned(_)) {
+            let contact = application::contact(full);
+            let facts = &mut assessment.facts;
+            facts.deadline = application::deadline(full, Some(posted)).map(|d| d.to_string());
+            facts.contact_name = contact.name;
+            facts.contact_email = contact.email;
+            facts.contact_phone = contact.phone;
+        }
+        Some(assessment)
     }
 }
 
@@ -455,6 +472,31 @@ Rahmenbedingungen:
         assert_eq!(judged.record, record);
         assert_eq!(judged.open, ["Kenntnisse in Zollabwicklung"]);
         assert_eq!(judged.terms, ["Kenntnisse in Zollabwicklung"], "a term too");
+    }
+
+    /// The contact block of an ad is no requirement, yet its contact and deadline stay.
+    #[test]
+    fn the_contact_is_read_but_not_scored() {
+        let matcher = LocalMatcher::from_form(&profile());
+        let text = format!(
+            "{FIT}\n\nIhre Ansprechpartnerin: Julia Brandt\nSenior Recruiter SAP Zollabwicklung\njulia.brandt@agentur.example\nTel.: +49 40 5550 1234\nBewerbungsfrist 15.10.2026"
+        );
+        let plain = assess(&matcher, "Interim CFO (m/w/d)", "Hamburg", FIT);
+        let record = assess(&matcher, "Interim CFO (m/w/d)", "Hamburg", &text);
+        assert_eq!(
+            (record.must_met, record.must_total, record.score),
+            (plain.must_met, plain.must_total, plain.score)
+        );
+        assert_eq!(record.facts.contact_name.as_deref(), Some("Julia Brandt"));
+        assert_eq!(
+            record.facts.contact_email.as_deref(),
+            Some("julia.brandt@agentur.example")
+        );
+        assert_eq!(
+            record.facts.contact_phone.as_deref(),
+            Some("+49 40 5550 1234")
+        );
+        assert_eq!(record.facts.deadline.as_deref(), Some("2026-10-15"));
     }
 
     /// A met language is quoted after every other met requirement, a nice one included.

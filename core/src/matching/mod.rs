@@ -4,7 +4,7 @@
 //! once per profile, then [`assess`] per job. See `docs/MATCHING.md`.
 
 mod ad_facts;
-mod application;
+pub(crate) mod application;
 mod atoms;
 mod contract;
 mod engine;

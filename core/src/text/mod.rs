@@ -1,11 +1,13 @@
 //! Text building blocks with no network and no state: HTML to text, whitespace, company
-//! and location.
+//! and location, the text the engine scores.
 
 mod company_location;
 mod html_text;
+mod scored;
 
 pub use company_location::{page_location, split_company_location};
 pub(crate) use html_text::{SKIP, html_to_text};
+pub use scored::scored_text;
 
 /// Smooth out whitespace: trim lines, collapse spaces, at most one blank line, no
 /// leading/trailing blank.
