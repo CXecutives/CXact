@@ -270,6 +270,7 @@ pub(crate) const SYNONYM_WORDS: &[(&str, Option<&str>)] = &[
     ("consulting", Some("beratung")),
     ("cs", Some("cs")),
     ("fi", Some("fi")),
+    ("fico", Some("fi")),
     ("führungsentwicklung", Some("leadershipdevelopment")),
     ("hana", None),
     ("hr", Some("hr")),

@@ -39,6 +39,16 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("roll out", "rollout"),
         ("go live", "go-live"),
         ("produktivsetzung", "go-live"),
+        // Scaled agile work (SAFe); the power electronics' safe operating area is none.
+        ("scaled agile framework", "safe"),
+        ("scaled agile", "safe"),
+        ("agile release train", "safe"),
+        ("release train", "safe"),
+        ("agile skalierung", "safe"),
+        ("agile scaling", "safe"),
+        ("skalierte agile", "safe"),
+        ("skalierten agilen", "safe"),
+        ("safe operating area", "safe-operating-area"),
     ],
     half: &[],
 };

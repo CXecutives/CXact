@@ -870,6 +870,22 @@ mod tests {
         atoms(text, &Vocab::all())
     }
 
+    /// SAFe is scaled agile work (the safe operating area of power electronics is none), the
+    /// general ledger the Hauptbuch, cost centres their accounting, FICO the FI module.
+    #[test]
+    fn scaled_agile_ledger_cost_centres_and_fico() {
+        assert_eq!(all("SAFe"), all("Scaled Agile Framework"));
+        assert_eq!(all("SAFe"), all("Agile Skalierung"));
+        assert_ne!(all("Safe Operating Area"), all("SAFe"));
+        assert_eq!(all("Hauptbuch"), all("General Ledger"));
+        assert_eq!(all("Kostenstellen"), all("Kostenstellenrechnung"));
+        assert!(
+            all("SAP FICO").contains(&"fi".to_owned()),
+            "{:?}",
+            all("SAP FICO")
+        );
+    }
+
     /// English process words are their German concepts; an AI tool meets AI in half; a
     /// programme is half a project.
     #[test]
