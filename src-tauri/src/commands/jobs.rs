@@ -2,14 +2,14 @@
 
 use jiff::Timestamp;
 use jobalert_core::export;
-use jobalert_core::model::Place;
-use jobalert_core::pipeline::{self, dry_run};
+use jobalert_core::model::{DescStatus, Place};
+use jobalert_core::pipeline::{self, RunKind, RunRequest, dry_run};
 use jobalert_core::portal::JobKey;
 use jobalert_core::profile;
 use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack, StoredMail};
 use tauri::{AppHandle, State};
 
-use super::{AppState, CmdResult, not_found};
+use super::{AppState, CmdResult, not_found, run};
 
 /// One page of the list with its counts (one store query).
 #[tauri::command]
@@ -86,9 +86,11 @@ pub async fn move_back(state: State<'_, AppState>, jobs: Vec<MoveBack>) -> CmdRe
 
 /// "Fits anyway": an excluded job counts as scored with its fit score (`include`), or the
 /// engine's verdict applies again - assessed right away unless a run is active (then its
-/// catch-up does it); `false` = nothing changed.
+/// catch-up does it); `false` = nothing changed. A job included without its ad text gets a
+/// details run for that job, so the score has a text to rest on (see [`needs_ad`]).
 #[tauri::command]
 pub async fn set_override(
+    app: AppHandle,
     state: State<'_, AppState>,
     key: JobKey,
     include: bool,
@@ -104,7 +106,25 @@ pub async fn set_override(
             Timestamp::now(),
         )?;
     }
+    if changed && include {
+        let status = state.store.job(&key)?.map(|job| job.desc_status);
+        if status.is_some_and(|status| needs_ad(include, status)) {
+            let request = RunRequest {
+                kind: RunKind::Details { keys: vec![key] },
+            };
+            // Through the channel of the app's own runs (like the rescore); a run or sign-in
+            // in progress keeps the slot, and the job's ad stays one click away ("Anzeige laden").
+            if let Err(e) = run::launch(&app, &state, request, state.scoring.page()) {
+                log::info!("ad of an included job not fetched: {:?}", e.kind);
+            }
+        }
+    }
     Ok(changed)
+}
+
+/// Whether including a job starts a details run: the ad text was never loaded.
+fn needs_ad(include: bool, status: DescStatus) -> bool {
+    include && status == DescStatus::Missing
 }
 
 /// "Endgültig löschen": deletes these jobs for good - only those in the trash. Rows, text
@@ -161,4 +181,27 @@ pub async fn ai_prompt(state: State<'_, AppState>, key: JobKey) -> CmdResult<Str
     let source = export::PromptSource::load(&state.store, matcher.as_deref(), &row)?;
     let today = jobalert_core::time::local_date(Timestamp::now());
     Ok(export::ai_prompt(&profile, source.job(), today))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_including_a_job_without_its_ad_fetches_it() {
+        assert!(needs_ad(true, DescStatus::Missing));
+        for status in [
+            DescStatus::Ok,
+            DescStatus::Teaser,
+            DescStatus::Failed,
+            DescStatus::Gone,
+            DescStatus::Unfetchable,
+        ] {
+            assert!(!needs_ad(true, status), "{status:?} is left alone");
+        }
+        assert!(
+            !needs_ad(false, DescStatus::Missing),
+            "taking it back fetches nothing"
+        );
+    }
 }
