@@ -3537,6 +3537,26 @@ pub(crate) const TITLE_HEAD_PHRASES: &[(&str, u8)] = &[
     ("managing director", 6),
     ("vice president", 6),
 ];
+/// Heads of the levels 2 and 3 that name an engagement of every level, not a rung below a
+/// lead (`title::engagement`): consulting, a project, architecture, expertise, coaching.
+pub(crate) const TITLE_ENGAGEMENTS: &[&str] = &[
+    "architect",
+    "architekt",
+    "berater",
+    "beraterin",
+    "coach",
+    "consultant",
+    "expert",
+    "experte",
+    "expertin",
+    "project lead",
+    "project manager",
+    "projektleiter",
+    "projektleiterin",
+    "projektleitung",
+    "projektmanager",
+    "projektmanagerin",
+];
 /// Words after which a title names whom the role serves, not the role (`der`, `to`).
 pub(crate) const TITLE_SERVES: &[&str] = &["der", "des", "to", "fur"];
 /// A title word that raises a specialist (2) or clerical (1) head one level.

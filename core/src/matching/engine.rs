@@ -586,15 +586,26 @@ struct Frame {
 }
 
 impl Frame {
-    fn of(profile: &EngineProfile, title: &str, own: &str, items: &[Item]) -> Self {
+    /// A specialist offered as an employment (`contract` permanent or ANÜ) is a rung of the
+    /// ladder; on a project, interim or an unclear contract it is an engagement of every level,
+    /// as consulting and project roles always are (`title::engagement`).
+    fn of(
+        profile: &EngineProfile,
+        title: &str,
+        own: &str,
+        items: &[Item],
+        contract: ContractKind,
+    ) -> Self {
         let level = title::ad_level(title, own);
+        let employment = matches!(contract, ContractKind::Permanent | ContractKind::Anue);
+        let engagement = !employment || title::engagement(title);
         let musts = items
             .iter()
             .filter(|i| i.kind == ReqKind::Must)
             .map(|i| i.text.as_str());
         Self {
             level,
-            gap: profile.level.gap(level),
+            gap: profile.level.gap(level, engagement),
             field: title::field(&profile.fields, title, musts),
         }
     }
@@ -637,7 +648,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         profile, job, own, &segments, &ad_facts, &doc,
     ));
     let requirement_lines = doc.requirement_lines;
-    let frame = Frame::of(profile, &title, own, &doc.items);
+    let frame = Frame::of(profile, &title, own, &doc.items, contract);
     let far = matches!(frame.field, Some((_, Distance::Far)));
     let items = scored(profile, doc.items, &title, far);
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());

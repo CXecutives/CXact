@@ -139,7 +139,8 @@ pub(crate) fn factors(
 mod tests {
     use serde_json::json;
 
-    use crate::matching::{FactorCode, JobInput, TextKind, assess, compile_profile};
+    use crate::matching::params::LEVEL_CAP;
+    use crate::matching::{Assessment, FactorCode, JobInput, TextKind, assess, compile_profile};
     use crate::portal::Portal;
 
     fn job<'a>(title: &'a str, text: &'a str) -> JobInput<'a> {
@@ -192,7 +193,8 @@ mod tests {
     #[test]
     fn a_permanent_role_and_a_cap_say_so_and_the_lines_stay_five() {
         // A senior profile (20 years) and a permanent junior role of its own field: the junior
-        // cap holds the score.
+        // cap holds the score; the controller stands rungs below the CFO (the level line
+        // takes the place of the nice-to-haves).
         let mut data = crate::profile::parse(PROFILE).unwrap();
         data.years = Some(20);
         let profile = compile_profile(&data);
@@ -208,8 +210,8 @@ mod tests {
             codes,
             [
                 FactorCode::Musts,
-                FactorCode::Nice,
                 FactorCode::TargetRole,
+                FactorCode::Level,
                 FactorCode::Permanent,
                 FactorCode::Cap
             ]
@@ -218,6 +220,64 @@ mod tests {
         assert_eq!(cap.params["cap"], json!("junior"));
         assert_eq!(cap.params["max"], json!(a.score));
         assert_eq!(a.factors[3].params["percent"], json!(90));
+    }
+
+    /// A senior specialist offered as an employment stands two rungs below a plant manager:
+    /// it caps at 40 with the level as its reason, however well the musts fit; the same title
+    /// as an interim project is an engagement of every level and keeps its score.
+    #[test]
+    fn a_specialist_employment_two_rungs_below_caps() {
+        let data = crate::profile::parse(
+            r#"{
+                "kernkompetenzen": [
+                    {"kompetenz": "Qualitätsmanagement"}, {"kompetenz": "IATF 16949"},
+                    {"kompetenz": "VDA 6.3"}, {"kompetenz": "8D-Methodik"},
+                    {"kompetenz": "FMEA"}, {"kompetenz": "Six Sigma"}
+                ],
+                "wunschrollen": ["Interim Werksleiter", "Interim COO"],
+                "vertragsarten": ["projekt", "festanstellung", "zeitarbeit"]
+            }"#,
+        )
+        .unwrap();
+        let profile = compile_profile(&data);
+        let musts = "Ihr Profil\n\
+            • Erfahrung im Qualitätsmanagement\n\
+            • Kenntnisse der IATF 16949\n\
+            • Erfahrung mit VDA 6.3 und FMEA\n\
+            • Reklamationsbearbeitung mit 8D-Methodik\n";
+        let title = "Senior Qualitätsingenieur (m/w/d) Serienbetreuung";
+        let cap = |a: &Assessment| {
+            a.factors
+                .iter()
+                .find(|f| f.code == FactorCode::Cap)
+                .map(|f| f.params["cap"].clone())
+        };
+        let employed = assess(
+            &profile,
+            &job(
+                title,
+                &format!(
+                    "Für einen Zulieferer suchen wir einen Senior Qualitätsingenieur in \
+                     Festanstellung, unbefristet und in Vollzeit.\n\n{musts}"
+                ),
+            ),
+        )
+        .unwrap();
+        assert_eq!(employed.score, LEVEL_CAP);
+        assert_eq!(cap(&employed), Some(json!("level")));
+        let project = assess(
+            &profile,
+            &job(
+                title,
+                &format!(
+                    "Für einen Zulieferer suchen wir für ein Interim-Projekt über sechs Monate \
+                     einen freiberuflichen Senior Qualitätsingenieur.\n\n{musts}"
+                ),
+            ),
+        )
+        .unwrap();
+        assert!(project.score > LEVEL_CAP, "{}", project.score);
+        assert_ne!(cap(&project), Some(json!("level")));
     }
 
     #[test]

@@ -8,7 +8,9 @@
 //! whom the role serves (`Assistenz der Geschäftsführung` is 1); `Senior` raises a level 1 or
 //! 2 by one; the ad's own words make a role a lead role (`disziplinarische Führung`, at least
 //! 4) or one without staff (`ohne Personalverantwortung`, at most 3). The profile's levels are
-//! those of its target roles, else one from its years.
+//! those of its target roles, else one from its years. For the levels below the profile a
+//! specialist stands with a senior (the rubric's ladder: `Spezialist, Senior und Referent`),
+//! and consulting and project heads are engagements of every level, never below.
 //!
 //! The field families group the domain packs (`FIELD_PACKS`); an ad's family is the one the
 //! title (three times) and the musts trigger most; its distance to the profile's families is
@@ -50,24 +52,27 @@ pub(crate) fn clean(title: &str) -> String {
     relevance::clean_title(&text)
 }
 
-/// The level of a head word: the longest head the token is or ends with.
-fn head_level(token: &str) -> Option<u8> {
+/// The head word a token is or ends with (the longest) and its level.
+fn head_level(token: &str) -> Option<(&'static str, u8)> {
     lex::TITLE_HEADS
         .iter()
         .filter(|(head, _)| {
             token == *head || (token.len() >= head.len() + 3 && token.ends_with(head))
         })
         .max_by_key(|(head, _)| head.len())
-        .map(|&(_, level)| level)
+        .copied()
 }
 
-/// The level of a title's head noun (none when it names no head: `Customer Service`).
-pub(crate) fn level_of(title: &str) -> Option<u8> {
+/// The level of a title's head noun (none when it names no head: `Customer Service`) and
+/// whether a head of it is an engagement of every level (`TITLE_ENGAGEMENTS`).
+fn head_of(title: &str) -> (Option<u8>, bool) {
     let mut folded = fold(title);
     let mut level: Option<u8> = None;
-    for (phrase, phrase_level) in lex::TITLE_HEAD_PHRASES {
+    let mut engagement = false;
+    for &(phrase, phrase_level) in lex::TITLE_HEAD_PHRASES {
         if contains_word(&folded, phrase) {
-            level = level.max(Some(*phrase_level));
+            level = level.max(Some(phrase_level));
+            engagement |= lex::TITLE_ENGAGEMENTS.contains(&phrase);
             folded = folded.replace(phrase, " ");
         }
     }
@@ -77,13 +82,28 @@ pub(crate) fn level_of(title: &str) -> Option<u8> {
             break;
         }
         senior |= lex::TITLE_SENIOR.contains(&token);
-        level = level.max(head_level(token));
+        if let Some((head, head_level)) = head_level(token) {
+            level = level.max(Some(head_level));
+            engagement |= lex::TITLE_ENGAGEMENTS.contains(&head);
+        }
     }
+    // `Senior` without a head names no rung (`Senior HR Business Partner`).
     match level {
-        Some(l @ 1..=2) if senior => Some(l + 1),
-        None if senior => Some(3),
-        other => other,
+        Some(l @ 1..=2) if senior => (Some(l + 1), engagement),
+        None if senior => (Some(3), true),
+        other => (other, engagement),
     }
+}
+
+/// The level of a title's head noun (none when it names no head: `Customer Service`).
+pub(crate) fn level_of(title: &str) -> Option<u8> {
+    head_of(title).0
+}
+
+/// Does the title name an engagement of every level (`Senior Berater`, `Projektleiter`), not
+/// a rung below a lead (`Senior Qualitätsingenieur`)?
+pub(crate) fn engagement(title: &str) -> bool {
+    head_of(title).1
 }
 
 /// The level of an ad: its title's, moved by what the ad says of staff, or operative work
@@ -105,42 +125,67 @@ pub(crate) fn ad_level(title: &str, own: &str) -> Option<u8> {
     level
 }
 
-/// Levels off the line: specialist and consultant (2), senior and project lead (3).
-const TRACK: [u8; 2] = [2, 3];
-/// Operative levels (the owner's rule): clerical and agent work (1) and team lead (4).
+/// Operative levels (the owner's rule): clerical and agent work (1) and team lead (4); the
+/// only ones a profile without target roles is judged above, by its years.
 const OPERATIVE: [u8; 2] = [1, 4];
 
-/// The profile's levels: those of its target roles (wished), and the highest one, else one
-/// from its years (`years_level`).
+/// The rung of a level on the line of the rubric's ladder: a specialist (2) stands with a
+/// senior (3); an engagement of every level (consulting, a project) at 2 or 3 stands on none.
+fn rung(level: u8, engagement: bool) -> Option<u8> {
+    match level {
+        2 | 3 if engagement => None,
+        2 => Some(3),
+        l => Some(l),
+    }
+}
+
+/// The profile's levels: those of its target roles (wished), their rungs on the line, and
+/// the highest level, else one from its years (`years_level`).
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ProfileLevel {
     pub wished: Vec<u8>,
+    line: Vec<u8>,
     pub top: Option<u8>,
 }
 
 impl ProfileLevel {
     pub(crate) fn new<'a>(roles: impl IntoIterator<Item = &'a str>, years: Option<u32>) -> Self {
-        let mut wished: Vec<u8> = roles.into_iter().filter_map(level_of).collect();
-        wished.sort_unstable();
-        wished.dedup();
+        let heads: Vec<(Option<u8>, bool)> = roles.into_iter().map(head_of).collect();
+        let sorted = |mut v: Vec<u8>| {
+            v.sort_unstable();
+            v.dedup();
+            v
+        };
+        let wished = sorted(heads.iter().filter_map(|h| h.0).collect());
+        let line = sorted(
+            heads
+                .iter()
+                .filter_map(|&(l, e)| l.and_then(|l| rung(l, e)))
+                .collect(),
+        );
         let top = wished.last().copied().or_else(|| years.map(years_level));
-        Self { wished, top }
+        Self { wished, line, top }
     }
 
-    /// How many levels an operative ad (clerical and agent work, team lead) stands below the
-    /// profile: below the nearest line level (1, 4, 5, 6) a target role names at or above it,
-    /// else below the years' level when the profile names no target role. Specialist,
-    /// consultant and project roles are engagements of every level and a lead of a function
-    /// is the tier of a director's mandate: never below a profile (0 for them, a level a
-    /// target role names, or no level to judge).
-    pub(crate) fn gap(&self, ad: Option<u8>) -> u8 {
-        let Some(ad) = ad.filter(|l| OPERATIVE.contains(l)) else {
+    /// How many levels an ad stands below the profile (the owner's rule: two or more cap,
+    /// unless a target role names the level): its rung below the nearest rung a target role
+    /// names at or above it; a profile without target roles judges an operative ad (clerical
+    /// and agent work, team lead) by its years. A specialist or a senior specialist is a rung
+    /// (`Senior Qualitätsingenieur` for a plant manager); consulting and project roles
+    /// (`engagement`) are engagements of every level and a lead of a function is the tier of
+    /// a director's mandate: never below a profile (0 for them, or no level to judge).
+    pub(crate) fn gap(&self, ad: Option<u8>, engagement: bool) -> u8 {
+        let Some((level, rung)) = ad.and_then(|l| rung(l, engagement).map(|r| (l, r))) else {
             return 0;
         };
-        let mut line = self.wished.iter().filter(|l| !TRACK.contains(l));
-        match line.find(|&&w| w >= ad) {
-            Some(&wished) => wished - ad,
-            None if self.wished.is_empty() => self.top.map_or(0, |top| top.saturating_sub(ad)),
+        if rung >= 5 {
+            return 0;
+        }
+        match self.line.iter().find(|&&w| w >= rung) {
+            Some(&wished) => wished - rung,
+            None if self.wished.is_empty() && OPERATIVE.contains(&level) => {
+                self.top.map_or(0, |top| top.saturating_sub(level))
+            }
             None => 0,
         }
     }
@@ -337,17 +382,57 @@ mod tests {
     fn levels_below_the_profile() {
         let p = ProfileLevel::new(["Interim CFO", "Leiter Controlling"], Some(25));
         assert_eq!((p.top, p.wished.clone()), (Some(6), vec![5, 6]));
-        assert_eq!(p.gap(Some(5)), 0, "a target role names it");
-        assert_eq!(p.gap(Some(4)), 1);
-        assert_eq!(p.gap(Some(1)), 4);
-        assert_eq!(ProfileLevel::new(["Interim CFO"], None).gap(Some(5)), 0);
-        assert_eq!(p.gap(Some(3)), 0, "a project role is no level below");
-        assert_eq!(p.gap(None), 0);
+        assert_eq!(p.gap(Some(5), false), 0, "a target role names it");
+        assert_eq!(p.gap(Some(4), false), 1);
+        assert_eq!(p.gap(Some(1), false), 4);
+        assert_eq!(
+            ProfileLevel::new(["Interim CFO"], None).gap(Some(5), false),
+            0
+        );
+        assert_eq!(p.gap(Some(3), true), 0, "a project role is no level below");
+        assert_eq!(p.gap(Some(2), true), 0, "nor is a consultant");
+        assert_eq!(p.gap(None, false), 0);
         let years = ProfileLevel::new([], Some(20));
         assert_eq!(
-            (years.top, years.gap(Some(1)), years.gap(Some(2))),
+            (
+                years.top,
+                years.gap(Some(1), false),
+                years.gap(Some(2), false)
+            ),
             (Some(5), 4, 0)
         );
+    }
+
+    /// A senior specialist is a rung, not an engagement of every level: two below a plant
+    /// manager it caps, a senior consultant or a project lead stays level with any profile,
+    /// and a target role at the specialist's rung brings it within one.
+    #[test]
+    fn a_senior_specialist_is_a_rung_below_a_lead() {
+        let plant = ProfileLevel::new(["Interim Werksleiter", "Interim COO"], Some(18));
+        let gap = |p: &ProfileLevel, t: &str| p.gap(level_of(t), engagement(t));
+        assert_eq!(gap(&plant, "Senior Qualitätsingenieur Serienbetreuung"), 2);
+        assert_eq!(
+            gap(&plant, "Qualitätsingenieur"),
+            2,
+            "a specialist stands with a senior"
+        );
+        assert_eq!(gap(&plant, "Senior Berater Qualitätsmanagement"), 0);
+        assert_eq!(gap(&plant, "Lead Consultant Operational Excellence"), 0);
+        assert_eq!(gap(&plant, "Projektleiter Werksverlagerung"), 0);
+        assert_eq!(
+            gap(&plant, "Kundenberater Innendienst"),
+            4,
+            "a clerk is no consultant"
+        );
+        assert_eq!(
+            gap(&plant, "Senior HR Business Partner"),
+            0,
+            "no head, no rung"
+        );
+        let lead = ProfileLevel::new(["Teamleiter Qualität"], None);
+        assert_eq!(gap(&lead, "Qualitätsingenieur"), 1);
+        let engineer = ProfileLevel::new(["Senior Qualitätsingenieur", "Werksleiter"], None);
+        assert_eq!(gap(&engineer, "Qualitätsingenieur"), 0);
     }
 
     #[test]
