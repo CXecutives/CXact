@@ -15,7 +15,15 @@
 
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type { Commands, ErrorInfo, ErrorKind, ProfileForm, ProfileInfo, RunEvent } from './types';
+import type {
+  Commands,
+  CvFailure,
+  ErrorInfo,
+  ErrorKind,
+  ProfileForm,
+  ProfileInfo,
+  RunEvent,
+} from './types';
 
 /** The three contract types of Vertragsart, each a value of the form (at least one on). */
 export type ContractKey = keyof Pick<ProfileForm, 'project' | 'permanent' | 'temporary'>;
@@ -59,21 +67,6 @@ function toIpcError(error: unknown): IpcError {
   return new IpcError('unknown', { detail: String(error).slice(0, 200) });
 }
 
-/** Why "Aus Lebenslauf ausfüllen" failed: the CV evaluation's codes. */
-export const CV_FAILURES = [
-  'limit',
-  'paused',
-  'timeout',
-  'outdated',
-  'unreadable',
-  'tooLarge',
-  'unsupported',
-  'offline',
-  'refused',
-  'unavailable',
-] as const;
-export type CvFailure = (typeof CV_FAILURES)[number];
-
 /** A failed "Aus Lebenslauf ausfüllen", by its code. */
 export class CvError extends Error {
   readonly reason: CvFailure;
@@ -84,9 +77,6 @@ export class CvError extends Error {
     this.reason = reason;
   }
 }
-
-const isCvFailure = (value: unknown): value is CvFailure =>
-  (CV_FAILURES as readonly unknown[]).includes(value);
 
 /**
  * "Aus Lebenslauf ausfüllen" (`profile_from_cv`): the files last dropped on the window
@@ -100,8 +90,9 @@ export async function fillFromCv(dropped = false): Promise<ProfileInfo | null> {
   } catch (error) {
     if (!(error instanceof IpcError)) throw error;
     if (error.kind === 'offline') throw new CvError('offline');
-    if (error.kind === 'cv' && isCvFailure(error.params.reason)) {
-      throw new CvError(error.params.reason);
+    // The error `cv` names its CvFailure (`reason`, core's contract).
+    if (error.kind === 'cv' && typeof error.params.reason === 'string') {
+      throw new CvError(error.params.reason as CvFailure);
     }
     throw error;
   }

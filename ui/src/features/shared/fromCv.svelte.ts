@@ -9,8 +9,8 @@
 
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
-import { CvError, fillFromCv, invoke, type CvFailure } from '$lib/ipc/api';
-import type { ProfileInfo } from '$lib/ipc/types';
+import { CvError, fillFromCv, invoke } from '$lib/ipc/api';
+import type { CvFailure, ProfileInfo } from '$lib/ipc/types';
 import { app } from '$lib/state/app.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 

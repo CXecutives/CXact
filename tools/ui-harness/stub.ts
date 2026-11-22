@@ -65,9 +65,9 @@
 // outdated` fails like the CV evaluation (`limit` also sets `cvUntil`), `?cv=used` starts with
 // the tries used up (`cvUntil`), `?cv=slow` takes as long as a real one, `?cv=none` closes the
 // file dialog. `profile_missing` names what a form still lacks like core's missing_required.
-// Engine 16 in the demo: the profile works three to five days a week for at least six months
-// and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
-// (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
+// The demo profile (demo/profile.json, Profil-JSON v19) wants at least six months and
+// excludes "Werkstudent" and "Praktikum"; every demo ad names its role in demo/ads.json
+// (`expect`: its band or status), which core's snapshot test holds it to.
 // `?tick=ms` sets the pace of a scripted run (default 40); `?mail=offline` lets every fetch fail to reach Gmail,
 // `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
@@ -91,6 +91,7 @@ import type {
   MoveBack,
   Place,
   PortalState,
+  CvFailure,
   ProfileForm,
   ProfileInfo,
   ProfileUnderstanding,
@@ -102,9 +103,21 @@ import type {
   TermField,
 } from '../../ui/src/lib/ipc/types';
 import { bandOf } from '../../ui/src/lib/ipc/types/bands';
-import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
-import { EMPTY_FORM, MAX_YEARS, NUMBER_LIMITS } from '../../ui/src/lib/ipc/types/profile';
-import type { CvFailure } from '../../ui/src/lib/ipc/api';
+import { MAX_PAGE } from '../../ui/src/lib/ipc/types/limits';
+import {
+  PORTAL_LABEL,
+  PORTAL_LIMITS,
+  PORTAL_LOGIN,
+  PORTAL_WAY,
+  PORTALS,
+} from '../../ui/src/lib/ipc/types/portals';
+import {
+  EMPTY_FORM,
+  MAX_YEARS,
+  NUMBER_LIMITS,
+  REQUIRED,
+  type RequiredField,
+} from '../../ui/src/lib/ipc/types/profile';
 import snapshot from './demo/snapshot.json';
 // The engine's words of the suggestions (written by core's matching::vocabulary test).
 import VOCABULARY from './demo/vocabulary.json';
@@ -479,51 +492,17 @@ function manyJobs(count: number): JobView[] {
   });
 }
 
-/** The demo profile (demo/profile.json) in the form of Profil-JSON v19. The snapshot holds
- *  what the engine understood of it; its form follows once core writes v19 forms. */
-const DEMO_FORM: ProfileForm = {
-  roles: ['Interim CFO'],
-  project: true,
-  permanent: true,
-  temporary: false,
-  dayRateWish: 1200,
-  dayRateMin: 1100,
-  minSalary: null,
-  workMode: 'remote',
-  countries: ['DE', 'AT'],
-  regions: ['Hamburg'],
-  available: { kind: 'from', date: '01.09.2026' },
-  workload: 'any',
-  minMonths: 6,
-  competences: [
-    { name: 'Interim Management', years: 12 },
-    { name: 'Controlling', years: 18 },
-    { name: 'Konzernrechnungslegung nach IFRS', years: 14 },
-    { name: 'Konsolidierung', years: 11 },
-    { name: 'Liquiditätsplanung', years: 10 },
-    { name: 'Restrukturierung', years: 8 },
-  ],
-  tools: ['SAP S/4HANA', 'LucaNet', 'Power BI', 'IFRS', 'HGB', 'Konzernabschluss'],
-  years: 20,
-  industries: ['Maschinenbau', 'Automotive', 'Chemie'],
-  languages: [
-    { language: 'Deutsch', level: 'native' },
-    { language: 'Englisch', level: 'B2' },
-  ],
-  degrees: ['Diplom-Kauffrau (Univ.)'],
-  certificates: ['Certified Interim Manager (DDIM)'],
-  exclusionWords: ['Werkstudent', 'Praktikum'],
+/** When a required field (core's `REQUIRED`) is still open, like core's `missing_required`. */
+const LACKS: Record<RequiredField, (form: ProfileForm) => boolean> = {
+  roles: (form) => form.roles.length === 0,
+  countries: (form) => form.countries.length === 0,
+  competences: (form) => form.competences.every((row) => row.name.trim() === ''),
+  languages: (form) => form.languages.length === 0,
 };
 
-/** What a usable profile still needs, like core's `missing_required`: a wished role, a
- *  country, a competence and a language. */
-function missingOf(form: ProfileForm): string[] {
-  return [
-    form.roles.length === 0 ? 'roles' : null,
-    form.countries.length === 0 ? 'countries' : null,
-    form.competences.every((row) => row.name.trim() === '') ? 'competences' : null,
-    form.languages.length === 0 ? 'languages' : null,
-  ].filter((field) => field !== null);
+/** What a usable profile still needs, in the form's order. */
+function missingOf(form: ProfileForm): RequiredField[] {
+  return REQUIRED.filter((field) => LACKS[field](form));
 }
 
 /** What the engine understands of a form (a rough stand-in: the form's own terms). */
@@ -559,13 +538,13 @@ function infoOf(form: ProfileForm): ProfileInfo {
 }
 
 /** The demo profile with what the engine understood of it. */
-const PROFILE: ProfileInfo = { ...DEMO.profile, form: DEMO_FORM, missing: [] };
+const PROFILE: ProfileInfo = DEMO.profile;
 
 /** A CV merged into a stored profile like core: by normalized names, nothing overwritten
  *  (stars, levels and years stay). */
 function mergeCv(stored: ProfileForm | null): ProfileForm {
   const base = stored ?? structuredClone(EMPTY_FORM);
-  const cv = DEMO_FORM;
+  const cv = DEMO.profile.form!;
   const has = (list: string[], name: string): boolean =>
     list.some((item) => item.toLowerCase() === name.toLowerCase());
   const add = (list: string[], more: string[]): string[] => [
@@ -650,52 +629,60 @@ function rebase<T>(now: T[], before: T[], after: T[], name: (item: T) => string)
 /** A save on the stored form: only what differs from what the view was handed is written (core's
  *  `merge`), the lists the reader's "+" writes into rebased on what is stored. */
 function rebased(stored: ProfileForm, before: ProfileForm, after: ProfileForm): ProfileForm {
-  const text = (item: string): string => item;
   const written = { ...stored };
   for (const key of Object.keys(after) as (keyof ProfileForm)[]) {
     if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
       Object.assign(written, { [key]: after[key] });
     }
   }
+  // Every list of the form, like core's `merge`: one the editor changed is rebased.
+  const list = <T>(now: T[], old: T[], next: T[], name: (item: T) => string): T[] =>
+    JSON.stringify(old) === JSON.stringify(next) ? now : rebase(now, old, next, name);
+  const text = (item: string): string => item;
+  const [s, b, a] = [stored, before, after];
   return {
     ...written,
-    competences: rebase(stored.competences, before.competences, after.competences, (r) => r.name),
-    tools: rebase(stored.tools, before.tools, after.tools, text),
-    industries: rebase(stored.industries, before.industries, after.industries, text),
-    languages: rebase(stored.languages, before.languages, after.languages, (r) => r.language),
-    degrees: rebase(stored.degrees, before.degrees, after.degrees, text),
-    certificates: rebase(stored.certificates, before.certificates, after.certificates, text),
+    roles: list(s.roles, b.roles, a.roles, text),
+    countries: list(s.countries, b.countries, a.countries, text),
+    regions: list(s.regions, b.regions, a.regions, text),
+    competences: list(s.competences, b.competences, a.competences, (row) => row.name),
+    tools: list(s.tools, b.tools, a.tools, text),
+    industries: list(s.industries, b.industries, a.industries, text),
+    languages: list(s.languages, b.languages, a.languages, (row) => row.language),
+    degrees: list(s.degrees, b.degrees, a.degrees, text),
+    certificates: list(s.certificates, b.certificates, a.certificates, text),
+    exclusionWords: list(s.exclusionWords, b.exclusionWords, a.exclusionWords, text),
   };
 }
-
-/** The sources the app searches itself (core's `Way::Search`). */
-const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
-  'hays',
-  'freelancermap',
-  'michaelpage',
-  'solcom',
-  'gulp',
-  'amadeusfire',
-  'interimx',
-  'fratch',
-]);
 
 /** How many alert mails of a portal of alert mails came in the last 30 days (the demo's). */
 const ALERT_MAILS: Partial<Record<PortalState['portal'], number>> = { linkedin: 24, freelance: 11 };
 
 const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
   portal: name,
-  way: SEARCHED.has(name) ? 'search' : 'alert',
+  way: PORTAL_WAY[name],
   enabled: true,
-  login: name === 'freelance' ? 'optional' : 'none',
+  login: PORTAL_LOGIN[name],
   loginEnabled: false,
-  signedIn: name === 'freelance' ? false : null,
+  signedIn: PORTAL_LOGIN[name] === 'none' ? null : false,
   health: { kind: 'ok' },
   actionNeeded: false,
   quota: null,
   lastAlert: null,
   alertMails: ALERT_MAILS[name] ?? null,
   ...extra,
+});
+
+/** A portal's calls of this hour and of today against its limits (`fetch::policy::limits`). */
+const quota = (
+  name: PortalState['portal'],
+  usedHour: number,
+  usedDay: number,
+): PortalState['quota'] => ({
+  usedHour,
+  capHour: PORTAL_LIMITS[name].perHour,
+  usedDay,
+  capDay: PORTAL_LIMITS[name].perDay,
 });
 
 /** The date of a portal's last alert mail (store::last_alerts): the mail of its newest job. */
@@ -911,7 +898,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
     };
   },
   'no-minimum': () => {
-    state.profile = { ...PROFILE, form: { ...DEMO_FORM, dayRateMin: null } };
+    state.profile = { ...PROFILE, form: { ...DEMO.profile.form!, dayRateMin: null } };
   },
   'no-profile': () => {
     state.profile = null;
@@ -996,7 +983,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'profile-thin': () => {
     // A complete profile that names few terms: the match stays rough.
     state.profile = infoOf({
-      ...structuredClone(DEMO_FORM),
+      ...structuredClone(DEMO.profile.form!),
       competences: [
         { name: 'Controlling', years: 18 },
         { name: 'Treasury', years: null },
@@ -1010,7 +997,7 @@ const SCENARIOS: Readonly<Record<string, () => void>> = {
   'profile-incomplete': () => {
     // A profile without a wished role and a language: two required fields are open.
     state.profile = infoOf({
-      ...structuredClone(DEMO_FORM),
+      ...structuredClone(DEMO.profile.form!),
       roles: [],
       competences: [
         { name: 'Controlling', years: 18 },
@@ -1090,19 +1077,19 @@ function initial(): void {
       checkedAt: null,
     },
     profile: PROFILE,
-    // Every portal counts its calls (the backend sends the numbers of each): the alert
-    // sources 100 a day, the sources the app searches 1,500 (the deep search).
+    // Every portal counts its calls against core's limits (the backend sends the numbers of
+    // each): the demo's calls of this hour and of today.
     portals: [
-      portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 100 } }),
-      portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 100 } }),
-      portal('freelancermap', { quota: { usedHour: 9, capHour: 300, usedDay: 86, capDay: 1500 } }),
-      portal('hays', { quota: { usedHour: 6, capHour: 300, usedDay: 18, capDay: 1500 } }),
-      portal('michaelpage', { quota: { usedHour: 2, capHour: 300, usedDay: 6, capDay: 1500 } }),
-      portal('solcom', { quota: { usedHour: 2, capHour: 300, usedDay: 6, capDay: 1500 } }),
-      portal('gulp', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
-      portal('amadeusfire', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
-      portal('interimx', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
-      portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
+      portal('linkedin', { quota: quota('linkedin', 4, 23) }),
+      portal('freelance', { quota: quota('freelance', 2, 11) }),
+      portal('freelancermap', { quota: quota('freelancermap', 9, 86) }),
+      portal('hays', { quota: quota('hays', 6, 18) }),
+      portal('michaelpage', { quota: quota('michaelpage', 2, 6) }),
+      portal('solcom', { quota: quota('solcom', 2, 6) }),
+      portal('gulp', { quota: quota('gulp', 0, 0) }),
+      portal('amadeusfire', { quota: quota('amadeusfire', 0, 0) }),
+      portal('interimx', { quota: quota('interimx', 0, 0) }),
+      portal('fratch', { quota: quota('fratch', 0, 0) }),
     ],
     lastRun: lastRun(),
     counts: countsOf([]),
@@ -1411,7 +1398,7 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
       return a.key.id.localeCompare(b.key.id);
     });
   return {
-    jobs: page.slice(query.offset, query.offset + Math.min(query.limit, 500)),
+    jobs: page.slice(query.offset, query.offset + Math.min(query.limit, MAX_PAGE)),
     counts: countsOf(base),
   };
 }
@@ -1545,17 +1532,6 @@ function detailOf(j: JobView): JobDetail {
   if (match !== null && j.overridden) {
     match.status = 'scored';
     match.summary = { code: 'userOverride', params: {} };
-    const own: Reason = {
-      id: 'userOverride',
-      kind: 'met',
-      weight: 'info',
-      code: 'userOverride',
-      label: '',
-      evidence: null,
-      params: {},
-      ranges: [],
-    };
-    match.reasons = [own, ...match.reasons].slice(0, 40);
   }
   // The profile of `no-minimum` sets neither a minimum day rate nor a start: its strip leaves
   // those criteria out.
@@ -2494,7 +2470,7 @@ const harness: Harness = {
         bands: [],
         run: null,
         receivedSince: null,
-        limit: 500,
+        limit: MAX_PAGE,
         offset: 0,
         ...query,
       }),

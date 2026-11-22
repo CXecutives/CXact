@@ -137,7 +137,7 @@ export function formatDayTime(iso: string, now: Date = new Date()): string {
 }
 
 /** `1.200 €` */
-export function formatEuro(value: number | string | boolean | null | undefined): string {
+export function formatEuro(value: unknown): string {
   const number = typeof value === 'number' ? value : Number(value);
   const amount = Number.isFinite(number) ? formats().integer.format(number) : String(value ?? '');
   return `${amount}${NARROW_NBSP}€`;

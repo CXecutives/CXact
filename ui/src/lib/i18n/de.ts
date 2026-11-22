@@ -25,8 +25,12 @@
 // `Record<Code, ...>`, so a new code without a text is a type error.
 
 import type {
+  AppNote,
   BackupKind,
   Band,
+  BusyActivity,
+  CriterionKey,
+  CvFailure,
   ErrorKind,
   InvalidInput,
   JobSort,
@@ -38,11 +42,13 @@ import type {
   Way,
   WorkMode,
   MailProvider,
+  Params,
+  ProfileWarningCode,
+  ReasonCode,
 } from '../ipc/types';
-import type { ContractKey, CvFailure } from '../ipc/api';
+import type { ContractKey } from '../ipc/api';
 import { formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
-type Params = Record<string, string | number | boolean | null>;
 type Text = string | ((params: Params) => string);
 
 const str = (value: unknown): string =>
@@ -73,20 +79,19 @@ const portalOf = (value: unknown): string =>
 const INTERNAL = 'Ein interner Fehler ist aufgetreten.';
 
 /** What holds the app (the backend's `activity`: a run by its kind, a sign-in, a file
- *  command, the mailbox check of Verbinden), for the busy error. Reading the whole mailbox
- *  is a fetch, and so is what the backend does not name. */
-type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files' | 'mailbox';
-const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbox'];
-const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
-
-const busy: Record<Busy, string> = {
+ *  command, the mailbox check of Verbinden, the CV import), for the busy error. Reading the
+ *  whole mailbox is a fetch, and so is what the backend does not name. */
+const busy = {
   fetch: 'Gerade läuft schon eine Suche.',
   details: 'Gerade werden schon Anzeigen geladen.',
   rescore: 'Die Jobs werden gerade neu bewertet.',
   session: 'Gerade läuft eine Anmeldung.',
   files: 'CXact schreibt gerade seine Dateien.',
   mailbox: 'Gerade wird das Postfach geprüft.',
-};
+  cv: 'Gerade wird ein Lebenslauf ausgewertet.',
+} satisfies Record<BusyActivity, string>;
+const busyOf = (value: unknown): string =>
+  typeof value === 'string' && value in busy ? busy[value as BusyActivity] : busy.fetch;
 
 /** The CV could not be evaluated: a file that does not read. */
 const CV_UNREADABLE = 'Die Datei lässt sich nicht lesen.';
@@ -113,7 +118,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   corrupt: (p) =>
     p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten von CXact sind beschädigt.',
   invalid: 'Die Eingabe passt nicht.',
-  busy: (p) => busy[busyOf(p.activity)],
+  busy: (p) => busyOf(p.activity),
   // By what was looked for (`what`): a file or folder may never have been written (a new
   // result folder), a job or a mail is gone.
   notFound: (p) =>
@@ -421,20 +426,6 @@ const reasonCode = {
     p.stated === true
       ? 'Der Job ist ein Projekt, das in deinem Profil nicht gewählt ist.'
       : 'Das klingt nach einem Projekt, das in deinem Profil nicht gewählt ist.',
-  permanentRegion: (p) => {
-    const place = p.location
-      ? `${str(p.location)} liegt außerhalb deiner Orte für Festanstellung`
-      : 'Der Ort liegt außerhalb deiner Orte für Festanstellung';
-    // The remote share decides too where the profile sets a minimum for it.
-    if (typeof p.remoteMin !== 'number') return `${place}.`;
-    return typeof p.remote === 'number'
-      ? `${place}, und ${formatPercent(p.remote)} remote liegt unter deinem Minimum von ${formatPercent(p.remoteMin)}.`
-      : `${place}, und die Anzeige nennt keine ${formatPercent(p.remoteMin)} remote.`;
-  },
-  permanentRegionUnclear: (p) =>
-    p.location
-      ? `Ob ${str(p.location)} zu den Orten für Festanstellung gehört, ist unklar.`
-      : 'Der Arbeitsort der Festanstellung ist unklar.',
   salary: (p) => {
     // A salary in another currency is not compared with a minimum in euros.
     if (typeof p.currency === 'string' && p.currency !== 'EUR') {
@@ -477,10 +468,6 @@ const reasonCode = {
   },
   lowEvidence: LOW_TEXT,
   shortText: SHORT_TEXT,
-  focus: (p) =>
-    num(p.met) > 0 || p.inTitle === true
-      ? `Gefragt ist der Schwerpunkt ${str(p.focus)}.`
-      : `Die Anzeige streift den Schwerpunkt ${str(p.focus)}.`,
   targetRole: (p) =>
     p.fit === 'half'
       ? `Der Titel kommt der Wunschrolle ${str(p.role)} nahe.`
@@ -501,8 +488,7 @@ const reasonCode = {
       : DURATION;
   },
   exclusionWord: (p) => `„${str(p.word)}“ ist eines deiner Ausschlusswörter.`,
-} satisfies Record<string, Text>;
-export type ReasonCode = keyof typeof reasonCode;
+} satisfies Record<ReasonCode, Text>;
 
 /**
  * Hard criteria of the profile (`MatchDetail.criteria[].code`, `ProfileUnderstanding.
@@ -518,69 +504,36 @@ const criteria = {
   noProject: 'Projekt und Interim ist in deinem Profil nicht gewählt.',
   availability: 'Der Start liegt vor deiner Verfügbarkeit.',
   minSalary: 'Das Gehalt liegt unter deinem Mindestgehalt.',
-  permanentRegion: 'Der Ort liegt nicht in deinen Orten für Festanstellung.',
   // The workload and the duration are checks, never an exclusion (engine 16).
   workload: WORKLOAD,
   duration: DURATION,
   exclusionWords: 'Die Anzeige nennt eines deiner Ausschlusswörter.',
-} satisfies Record<string, string>;
-export type CriterionKey = keyof typeof criteria;
+} satisfies Record<CriterionKey, string>;
 
 /** How a row of the reader's Jobdetails fits the profile (features/jobs/terms.ts): met, met in
  *  part (a wish or a limit missed, never an exclusion), not met, unclear in the ad (check),
  *  nothing to judge (no icon). */
 export type TermVerdict = 'met' | 'partial' | 'violated' | 'unknown' | 'unset';
 
-/** `JobMatch.note` / `MatchDetail.summary` codes. */
+/** `JobMatch.note` / `MatchDetail.summary` codes the app says itself (`AppNote`; the summary
+ *  carries counts, an overridden job says so by `JobView.overridden`), and the notes of a job
+ *  not scored that read other than their reason. */
 const note = {
-  hardCriterion: 'Ein Ausschlusskriterium greift.',
+  summary: null,
+  userOverride: null,
+  engineFailed: 'Diese Anzeige ließ sich nicht bewerten.',
   shortText: 'Zu wenig Text für eine Bewertung.',
   lowEvidence: LOW_TEXT,
-  engineFailed: 'Diese Anzeige ließ sich nicht bewerten.',
-} satisfies Record<string, Text>;
-export type MatchNote = keyof typeof note;
+} satisfies Record<AppNote, Text | null> & Partial<Record<ReasonCode, Text>>;
 
-/** The keys of the profile file the app speaks about (Profil-JSON v19, an external
- *  contract), each by the field it belongs to, which every catalog names by the label of its
- *  form field (`fieldName`). */
-const PROFILE_KEY_FIELD: Readonly<Record<string, string>> = {
-  wunschrollen: 'roles',
-  vertragsarten: 'contracts',
-  tagessatz_wunsch: 'dayRateWish',
-  tagessatz_min: 'dayRateMin',
-  mindestgehalt: 'minSalary',
-  arbeitsmodell: 'workMode',
-  laender: 'countries',
-  regionen: 'regions',
-  verfuegbar_ab: 'available',
-  auslastung: 'workload',
-  mindestlaufzeit_monate: 'minMonths',
-  kernkompetenzen: 'competences',
-  methoden_tools: 'tools',
-  berufserfahrung_jahre: 'years',
-  branchen: 'industries',
-  sprachen: 'languages',
-  abschluesse: 'degrees',
-  zertifizierungen: 'certificates',
-  ausschlusswoerter: 'exclusionWords',
-};
-const keyLabel = (key: string): string =>
-  key in PROFILE_KEY_FIELD ? fieldName(PROFILE_KEY_FIELD[key]) : key;
-/** Keys the engine does not read, as written in the file (so they can be found there). */
-const rawKeys = (value: unknown): string[] =>
-  str(value)
-    .split(',')
-    .map((key) => key.trim())
-    .filter((key) => key !== '')
-    .map((key) => `„${key}“`);
 const joined = (items: string[]): string =>
   items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} und ${items.at(-1)}`;
-/** ISO codes as the engine sends them (`DE, AT`) in words: "Deutschland und Österreich". */
+/** ISO codes as the engine sends them (`["DE", "AT"]`) in words: "Deutschland und
+ *  Österreich". */
 const countryNames = (value: unknown): string =>
   joined(
-    str(value)
-      .split(',')
-      .map((code) => code.trim())
+    (Array.isArray(value) ? value : [value])
+      .map((code) => str(code).trim())
       .filter((code) => code !== '')
       .map((code) => de.profile.country[code.toUpperCase()] ?? code),
   );
@@ -590,13 +543,7 @@ const warning = {
   noCompetences: 'Das Profil nennt keine Kompetenzen.',
   fewCompetences: 'Das Profil nennt nur wenige Kompetenzen.',
   noCriteria: 'Das Profil setzt keine Bedingungen.',
-  availabilityNotUnderstood: '„Verfügbar“ ist nicht lesbar.',
-  // Keys of a criteria section the engine does not read (a typo, an unknown rule).
-  ignoredKeys: (p) => `CXact liest ${joined(rawKeys(p.keys))} in den Bedingungen nicht.`,
-  criterionNotUnderstood: (p) => `„${keyLabel(str(p.key))}“ ist nicht lesbar.`,
-  regionWithoutPlaces: 'Der Mindest-Remote-Anteil wirkt nur zusammen mit Orten.',
-  focusTrimmed: (p) => `Nur die ersten ${n(num(p.max))} Schwerpunkte zählen.`,
-} satisfies Record<string, Text>;
+} satisfies Record<ProfileWarningCode, Text>;
 
 export const de = {
   nav: {
@@ -951,6 +898,8 @@ export const de = {
     } satisfies Record<Exclude<TermVerdict, 'unset'>, string>,
     criterion: criteria,
     note,
+    /** Why an excluded job is excluded, while nothing more precise is known. */
+    excludedBy: 'Ein Ausschlusskriterium greift.',
     /** Where the job came from, in the row "Gefunden" of the Jobdetails: its portals
      *  ("freelancermap und LinkedIn"). */
     found: (portals: string[]) => joined(portals),

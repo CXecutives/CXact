@@ -3,7 +3,7 @@
 // (read by terms.ts).
 
 import type { TermKey } from '$lib/facts';
-import type { Reason, ReasonKind, ReasonWeight, TermField } from '$lib/ipc/types';
+import type { Reason, ReasonCode, ReasonKind, ReasonWeight, TermField } from '$lib/ipc/types';
 import type { ProfileTerm } from '$lib/state/terms';
 import type { Verdict } from './terms';
 
@@ -52,7 +52,7 @@ export function kindOf(verdict: Exclude<Verdict, 'unset'>): ReasonKind {
 
 /** What the Anforderungen list: the ad's requirements (a skill, a term, a formal degree or
  *  licence); a title, a wish or a Schwerpunkt is no requirement, and a fact has its row. */
-export const REQUIREMENT_CODES: readonly string[] = ['requirement', 'term', 'formalOpen'];
+export const REQUIREMENT_CODES: readonly ReasonCode[] = ['requirement', 'term', 'formalOpen'];
 
 const FIELDS: ReadonlySet<string> = new Set<TermField>([
   'competence',

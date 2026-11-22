@@ -15,10 +15,17 @@
 
 import { TERM_ROWS, modeWords, startWords, type TermKey } from '$lib/facts';
 import { formatDay, formatMoment } from '$lib/i18n/format';
-import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
+import type { TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
-import { criterionKey } from '$lib/i18n/texts';
-import type { JobView, KeyFacts, Reason, TextRange } from '$lib/ipc/types';
+import type {
+  Criterion,
+  CriterionKey,
+  JobView,
+  KeyFacts,
+  Reason,
+  ReasonCode,
+  TextRange,
+} from '$lib/ipc/types';
 import { placeOf } from '$lib/place';
 import { hourlyOf, rateOf, salaryOf } from './pay';
 import { criterionVerdict, isRequirement, reasonVerdict, worst, type Judgement } from './verdicts';
@@ -74,8 +81,8 @@ interface Context {
   facts: KeyFacts | null;
   contract: Contract;
   /** The row's criterion by its key, the row's reason by its code. */
-  criterion: (key: CriterionKey) => Reason | undefined;
-  code: (name: string) => Reason | undefined;
+  criterion: (key: CriterionKey) => Criterion | undefined;
+  code: (name: ReasonCode) => Reason | undefined;
   /** The requirements the row claims. */
   claimed: readonly Reason[];
   /** A passage of the text shown states the value (else a number is the engine's estimate). */
@@ -97,7 +104,7 @@ interface Value {
 
 /** The engine's codes and the profile's criteria a row stands for. */
 interface Checks {
-  codes: readonly string[];
+  codes: readonly ReasonCode[];
   criteria: readonly CriterionKey[];
 }
 
@@ -124,8 +131,8 @@ const NONE: Checks = { codes: [], criteria: [] };
 const TERMS: Record<TermKey, Term> = {
   company: { ...NONE, read: ({ job }) => ({ value: text(job.company) }) },
   place: {
-    codes: ['country', 'countryUnclear', 'regionWish', 'permanentRegion', 'permanentRegionUnclear'],
-    criteria: ['countries', 'permanentRegion'],
+    codes: ['country', 'countryUnclear', 'regionWish'],
+    criteria: ['countries'],
     read: ({ job }) => ({ value: text(placeOf(job.location)) }),
   },
   mode: {
@@ -291,7 +298,7 @@ const KEYS: readonly TermKey[] = TERM_ROWS;
 
 /** The row of each reason code, whatever the pay (a reason a row stands for is never listed
  *  again). */
-const ROW_OF_CODE: ReadonlyMap<string, TermKey> = new Map(
+const ROW_OF_CODE: ReadonlyMap<ReasonCode, TermKey> = new Map(
   KEYS.flatMap((key) =>
     [...TERMS[key].codes, ...(TERMS[key].employment?.codes ?? [])].map(
       (code) => [code, key] as const,
@@ -308,7 +315,7 @@ export function rowOf(reason: Reason): TermKey | null {
 function contractOf(
   facts: KeyFacts | null,
   reasons: readonly Reason[],
-  criteria: readonly Reason[],
+  criteria: readonly Criterion[],
 ): Contract {
   const stated = reasons.find((reason) => reason.code === 'contractType');
   const type =
@@ -328,7 +335,7 @@ export interface TermInput {
   job: JobView;
   /** The match's reasons and the profile's criteria (empty without a match). */
   reasons: readonly Reason[];
-  criteria: readonly Reason[];
+  criteria: readonly Criterion[];
   /** A match to judge by: without one no row has a verdict. */
   withVerdict: boolean;
   /** The length of the ad's text shown: passages lie within it. */
@@ -355,10 +362,7 @@ function build(
 ): TermRow | null {
   const term = TERMS[key];
   const checks = (contract.employment ? term.employment : undefined) ?? term;
-  const criteria = input.criteria.filter((reason) => {
-    const key = criterionKey(reason.code);
-    return key !== null && checks.criteria.includes(key);
-  });
+  const criteria = input.criteria.filter((criterion) => checks.criteria.includes(criterion.code));
   const claimed = input.reasons.filter((reason) => term.claims?.(reason) === true);
   const reasons = input.reasons.filter((reason) => checks.codes.includes(reason.code));
   const shown = (range: TextRange): boolean =>
@@ -369,7 +373,7 @@ function build(
     job: input.job,
     facts,
     contract,
-    criterion: (key) => criteria.find((reason) => criterionKey(reason.code) === key),
+    criterion: (key) => criteria.find((criterion) => criterion.code === key),
     code: (name) => reasons.find((reason) => reason.code === name),
     claimed,
     stated,
@@ -379,7 +383,7 @@ function build(
   const read = term.read(ctx);
   const missing = read.value === null;
   // A criterion names the reason that decided it (core view::criteria_strip).
-  const linkedOf = (criterion: Reason): Reason | undefined => {
+  const linkedOf = (criterion: Criterion): Reason | undefined => {
     const id = text(criterion.params.reason);
     return id === null ? undefined : input.reasons.find((reason) => reason.id === id);
   };

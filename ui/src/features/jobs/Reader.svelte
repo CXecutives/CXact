@@ -11,7 +11,7 @@
   - requirements (a scored job only): "Anforderungen" with "x von N erfüllt" beside the
     title, one flat list in two columns (one in a narrow card), met first, then in part, not
     met and unclear, a must before what is only nice to have; a quiet "optional" after one
-    that is only nice to have and not met; a missing must that is a term has a small "+" into
+    that is no must (nice to have, or one the score does not count) and not met; a missing must that is a term has a small "+" into
     its field of the profile (addToProfile.ts; in the Papierkorb none, Wiederherstellen comes
     first), and once it is there a quiet check stands in place of its cross;
   - ad: the ad's text in its structure, the words of the list's search marked (AdText); only
@@ -44,7 +44,7 @@
   import { t } from '$lib/i18n/t';
   import { byKeyboard } from '$lib/input/input';
   import { displayTitle } from '$lib/i18n/format';
-  import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
+  import { criterionOf, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobDetail, OpenTarget } from '$lib/ipc/types';
   import { animateOpen } from '$lib/motion/pace';
@@ -115,11 +115,11 @@
   const exclusion = $derived.by((): string => {
     for (const reason of all) {
       if (reason.kind !== 'violation') continue;
-      const key = rowOf(reason) === null ? null : criterionKey(reason.code);
+      const key = rowOf(reason) === null ? null : criterionOf(reason.params);
       const text = key === null ? reasonText(reason) : t.reader.criterion[key];
       if (text !== '') return text;
     }
-    return noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.note.hardCriterion;
+    return noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.excludedBy;
   });
 
   /** The ad is not loaded yet (no text, no preview): only what the mail or search said. */
@@ -313,7 +313,7 @@
               {/snippet}
               <ReasonItem
                 kind={reason.kind}
-                optional={reason.weight === 'nice' && reason.kind !== 'met'}
+                optional={reason.weight !== 'must' && reason.kind !== 'met'}
                 label={reasonText(reason)}
                 settled={added ? t.reader.added : null}
                 after={term !== null && !added ? plus : null}

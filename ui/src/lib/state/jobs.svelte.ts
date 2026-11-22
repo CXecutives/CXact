@@ -47,6 +47,7 @@ import type {
   RunEvent,
   StoredMail,
 } from '../ipc/types';
+import { MAX_PAGE } from '../ipc/types/limits';
 import { tokenMs, tokenPx } from '../tokens';
 import { app } from './app.svelte';
 import { isFiltered, NO_FILTER, passesFilter, toQuery, type ListFilter } from './filter';
@@ -58,8 +59,6 @@ import { sections } from './sections.svelte';
 import { viewport } from './viewport.svelte';
 
 export const PAGE = 120;
-/** The most rows one `list_jobs` call returns (core::view::MAX_PAGE). */
-const MAX_PAGE = 500;
 export const WINDOW = 60;
 /** Rows mounted per frame while a window fills (small: every frame stays well below 50 ms
  *  on a slow machine, also a shared CI runner; the window still fills within a few frames). */

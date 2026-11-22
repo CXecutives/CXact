@@ -2,17 +2,17 @@
 // the match says about the row, and the worst of them.
 
 import type { TermVerdict as Verdict } from '$lib/i18n/de';
-import type { Reason } from '$lib/ipc/types';
+import type { Criterion, Reason, ReasonCode } from '$lib/ipc/types';
 
 /** The engine's requirements: the ad's own words, judged against the profile's skills. */
-const REQUIREMENTS: readonly string[] = ['requirement', 'term'];
+const REQUIREMENTS: readonly ReasonCode[] = ['requirement', 'term'];
 export const isRequirement = (reason: Reason): boolean => REQUIREMENTS.includes(reason.code);
 
 /** Wishes of the profile (`params.state` met, near, missed or unknown). */
-const WISHES: readonly string[] = ['dayRateWish', 'remoteWish', 'regionWish'];
+const WISHES: readonly ReasonCode[] = ['dayRateWish', 'remoteWish', 'regionWish'];
 /** Checks that compare a stated value with a limit of the profile: the value is known and
  *  misses the limit (it is met in part), unlike a check of what the ad leaves unclear. */
-const LIMITS: readonly string[] = ['workload', 'duration', 'availabilityGap'];
+const LIMITS: readonly ReasonCode[] = ['workload', 'duration', 'availabilityGap'];
 
 /** What a reason says about its row: a missed or near wish and a missed limit are met in
  *  part, a check of an unclear ad is unclear. */
@@ -38,7 +38,7 @@ export function reasonVerdict(reason: Reason): Verdict | null {
 
 /** A criterion's state; the reason that decided it says how (a workload outside the
  *  profile's days is a limit missed, a start to be agreed is unclear). */
-export function criterionVerdict(criterion: Reason, linked: Reason | undefined): Verdict {
+export function criterionVerdict(criterion: Criterion, linked: Reason | undefined): Verdict {
   const own: Verdict =
     criterion.kind === 'violation'
       ? 'violated'

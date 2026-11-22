@@ -6,20 +6,21 @@
 
 import type { Portal } from './ipc/types';
 
-export const PORTAL_ORDER: readonly Portal[] = [
-  'freelancermap',
-  'gulp',
-  'hays',
-  'solcom',
-  'michaelpage',
-  'amadeusfire',
-  'interimx',
-  'fratch',
-  'linkedin',
-  'freelance',
-];
+/** Each portal's place in the UI's order (a new portal is a type error until it has one). */
+export const PORTAL_ORDER: Record<Portal, number> = {
+  freelancermap: 0,
+  gulp: 1,
+  hays: 2,
+  solcom: 3,
+  michaelpage: 4,
+  amadeusfire: 5,
+  interimx: 6,
+  fratch: 7,
+  linkedin: 8,
+  freelance: 9,
+};
 
 /** Items of the portals (their states, their counts) in the UI's order. */
 export function inPortalOrder<Item extends { portal: Portal }>(items: readonly Item[]): Item[] {
-  return [...items].sort((a, b) => PORTAL_ORDER.indexOf(a.portal) - PORTAL_ORDER.indexOf(b.portal));
+  return [...items].sort((a, b) => PORTAL_ORDER[a.portal] - PORTAL_ORDER[b.portal]);
 }

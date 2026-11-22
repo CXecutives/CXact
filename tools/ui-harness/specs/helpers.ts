@@ -5,7 +5,8 @@
 import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
 import type { JobCounts, JobQuery, JobSort, JobView, Portal } from '../../../ui/src/lib/ipc/types';
-import { PORTAL_ORDER } from '../../../ui/src/lib/portals';
+import { PORTAL_WAY, PORTALS as CORE_PORTALS } from '../../../ui/src/lib/ipc/types/portals';
+import { inPortalOrder } from '../../../ui/src/lib/portals';
 import {
   activeFilters,
   FILTER_GROUPS,
@@ -24,15 +25,18 @@ export const WIN = '?platform=windows';
 export const MAC = '?platform=macos';
 
 /** Every source in the UI's order (lib/portals.ts). */
-export const ALL_PORTALS = PORTAL_ORDER;
-/** The sources the app searches itself (Einstellungen, Suche); the others bring alert mails. */
-export const ALERT_PORTALS: readonly Portal[] = ['linkedin', 'freelance'];
-export const SEARCHED: readonly Portal[] = PORTAL_ORDER.filter(
-  (portal) => !ALERT_PORTALS.includes(portal),
+export const ALL_PORTALS: readonly Portal[] = inPortalOrder(
+  CORE_PORTALS.map((portal) => ({ portal })),
+).map(({ portal }) => portal);
+/** The sources the app searches itself (Einstellungen, Suche) and the ones of alert mails,
+ *  each in the UI's order (core's `PORTAL_WAY`). */
+export const SEARCHED: readonly Portal[] = ALL_PORTALS.filter((p) => PORTAL_WAY[p] === 'search');
+export const ALERT_PORTALS: readonly Portal[] = ALL_PORTALS.filter(
+  (p) => PORTAL_WAY[p] === 'alert',
 );
 /** The sources the funnel's menu lists, in the UI's order: every one switched on (all of
  *  them in the stub), jobs or not yet (user 2026-10-01). */
-export const PORTALS: readonly Portal[] = PORTAL_ORDER;
+export const PORTALS: readonly Portal[] = ALL_PORTALS;
 
 /* ---------------------------------------------------------------------- list */
 

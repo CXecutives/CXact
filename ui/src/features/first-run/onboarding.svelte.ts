@@ -10,7 +10,8 @@
 // (`finish_onboarding`), so the next start opens the Jobs view.
 
 import { errorText } from '$lib/i18n/texts';
-import { CvError, fillFromCv, invoke, reportUiError, type CvFailure } from '$lib/ipc/api';
+import { CvError, fillFromCv, invoke, reportUiError } from '$lib/ipc/api';
+import type { CvFailure } from '$lib/ipc/types';
 import { inPortalOrder } from '$lib/portals';
 import { app } from '$lib/state/app.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
