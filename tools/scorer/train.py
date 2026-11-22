@@ -1,84 +1,66 @@
-"""Trains the learned scorer of the matching engine and writes its tables.
+"""Fits the weights of the Passungsgrad (engine 25) on graded pairs and prints them.
 
-    py -3.14 -X utf8 -I tools/scorer/train.py --labels <consensus.jsonl> --signals <eNN.jsonl>
-        --out core/src/matching/scorer_tables.rs [--train-splits train] [--report-splits test,locked]
-        [--calib <gold.jsonl> --calib-part tune]
+    py -3.14 -X utf8 -I tools/scorer/train.py --signals <scores.jsonl> --gold <gold.jsonl>
+        [--part tune] [--params core/src/matching/params.rs]
 
 Inputs (both private, never in the repo):
-  --signals  the engine's signals per pair: a header line {"names", "sign", "max"} and then
-             one line per pair {"pair", "profile", "split", "group", "v": [...]}.
-             A dump with the trace of each pair ("learned", "wish", "permanent", "caps") lets the
-             report replay the engine's points after the fit.
-  --labels   the teachers' consensus per pair: {"pair", "passung" 0-100, "punkte", "note" 0-3,
-             "drop", "excluded"}. A pair with "drop": true or without "note" is left out; a pair
-             the teachers excluded counts as note 0 (the gain of retrain.sh and metrics.rs).
-             Optional: "split" moves the pair to that split (a graded test pair into training),
-             "weight" (a whole number, default 1) counts it that many times in the fit and the
-             calibration (a stronger teacher's label).
+  --signals  the engine's dump of every pair: a header line {"names", "sign", "max"} and then
+             one line per pair {"pair", "profile", "v": [...], "score", "rank", "verdict"}.
+  --gold     graded pairs {"pair", "profile", "gold": part, "answer": {"note", "passung",
+             "ausschluss"}}; only the pairs of --part are read.
 
-Target: the score of the pair's note (NOTE_TARGET, 0 -> 12 ... 3 -> 88).
+The fitter replays `scorer.rs` from the signals (`percent` and `caps`, integer arithmetic,
+the mirror of the Rust: change both together) and first checks that the replay with the
+constants of --params gives every dumped score. It then searches, deterministically:
 
-Model: cyclic boosting of an additive model. Each signal is cut into at most MAX_BINS
-quantile bins of at least MIN_BIN pairs; each pass walks the signals in order and moves
-every bin of one signal by LEARNING_RATE times the mean residual of its pairs (L2 loss).
-After each pass every signal with a direction (sign +1 or -1) is projected onto a
-monotone table (PAVA, weighted by the bin counts); free signals (sign 0) keep their shape.
-Tables are centred, their means go into the intercept.
+  - the four weights (W_ROLE, W_CORE, W_MUSTS, W_FRAME), each 10 to 50 in steps of 5, sum 100,
+    with the value of a requirement met in part (PARTIAL) on a grid;
+  - then the level values (LEVEL_ONE, LEVEL_TWO_ABOVE) on a grid;
+  - the two steps once more from the best.
 
-Evaluation: 5 folds grouped by "group" on the training pairs give out-of-fold predictions.
-Calibration is a monotone quantile map of the out-of-fold predictions onto the note bands
-(BANDS: note 0 at 0-25, 1 at 26-49, 2 at 50-79, 3 at 80-100): the share of the calibration
-pairs per note sets where each band starts among their predictions, and within a band the
-score follows the quantile of the prediction (piecewise linear between CALIB_KNOTS knots).
-The calibration pairs are those of --calib (a gold label file, its part --calib-part) that
-the engine scores and the teacher does not exclude, else every training pair; a note with
-fewer than MIN_NOTE calibration pairs takes its share of the notes at and above it from all
-training pairs. It undoes the shrink to the mean: a strong fit lands in the top band, a
-clear misfit stays low. The final model is fitted on all training pairs.
-
-Output: a Rust file with INTERCEPT (tenths of a point), TABLES (per signal, the lower edge of
-each bin and its points in tenths) and CALIB (knots in tenths), all integer. The report
-prints Spearman and NDCG@10 per profile, out of fold on the training split and with the
-integer model on every report split; with a traced dump both replay the engine's points
-(`replay`, the mirror of `points` and `final_score` in engine.rs) and order the pairs as
-retrain.sh does (scored, unscorable, excluded; then score, then the points before the caps).
+The objective is NDCG@10 (mean over profiles, the order of gold/eval.py: scored, unscorable,
+excluded, then score, then rank) plus Spearman of the score against the graded passung
+(excluded -1 on both sides). A tie keeps the values nearest the current ones. The output is
+the named constants for `core/src/matching/params.rs` and the measures before and after.
 """
 
 import argparse
-import hashlib
 import json
-import sys
+import math
+import re
+from collections import defaultdict
 from pathlib import Path
 
-import numpy as np
-
-MAX_BINS = 16
-MIN_BIN = 20
-PASSES = 30
-LEARNING_RATE = 0.3
-FOLDS = 5
-CALIB_KNOTS = 21
-# The score band (tenths) of each note, contiguous; the note-2 band starts at 50 (optimistic).
-BANDS = [(0, 255), (255, 495), (495, 795), (795, 1000)]
-# A note with fewer calibration pairs takes its share from all training pairs.
-MIN_NOTE = 10
+E_FULL = 1000
+FRAME_ASPECTS = 5
 TOP_K = 10
-# The score (tenths) a note is calibrated to.
-NOTE_TARGET = {0: 120, 1: 450, 2: 680, 3: 880}
-
-# Signals outside the fit, with their points (tenths) after the calibration: the plus of a
-# target role, at most 10 (the mirror of `ROLE_POINTS` in scorer.rs; change both together).
-FIXED = {"role": [0, 50, 100]}
-
-# Signals outside the fit without points: how much text the ad has never costs (the
-# rubric's rule 8).
-NEUTRAL = {"evidence"}
-
-# The mirror of engine.rs `points` and `final_score` (change both together).
-WISH_MAX = 100
-PERMANENT_FACTOR = 900
-CAPS = {"formal", "severalOpen", "offField", "junior", "level"}
 VERDICT_ORDER = {"scored": 0, "unscorable": 1, "excluded": 2}
+
+# The constants the replay reads from params.rs; the fitted ones first.
+FITTED = ["W_ROLE", "W_CORE", "W_MUSTS", "W_FRAME", "PARTIAL", "LEVEL_ONE", "LEVEL_TWO_ABOVE"]
+FIXED = [
+    "MUST_SATURATION",
+    "NICE_MAX",
+    "PERMANENT_FACTOR",
+    "TITLE_SAME",
+    "TITLE_NEAR",
+    "HIT_RELEVANCE",
+    "HITS_MAX",
+    "UNNAMED",
+    "RELEVANCE_SAME",
+    "RELEVANCE_NEAR",
+    "RELEVANCE_FAR",
+    "FORMAL_CAP",
+    "CORE_OPEN_CAP",
+    "OFF_FIELD_CAP",
+    "JUNIOR_CAP",
+    "LEVEL_CAP",
+]
+
+WEIGHT_STEPS = range(10, 51, 5)
+PARTIAL_STEPS = range(300, 901, 50)
+LEVEL_ONE_STEPS = range(700, 1001, 50)
+LEVEL_TWO_STEPS = range(300, 701, 50)
 
 
 def read_jsonl(path):
@@ -86,423 +68,257 @@ def read_jsonl(path):
         return [json.loads(line) for line in f if line.strip()]
 
 
-def read_signals(path):
-    rows = read_jsonl(path)
-    if not rows or "names" not in rows[0]:
-        sys.exit(f"{path}: the first line must be the header with names, sign and max")
-    return rows[0], rows[1:]
+def read_params(path):
+    """The constants of params.rs: name -> int (FIELD_VALUES as a list)."""
+    text = Path(path).read_text(encoding="utf-8")
+    out = {}
+    for name, value in re.findall(r"pub\(crate\) const (\w+): u\d+ = (\d+);", text):
+        out[name] = int(value)
+    values = re.search(r"pub\(crate\) const FIELD_VALUES: \[u64; 4\] = \[([^\]]*)\];", text)
+    out["FIELD_VALUES"] = [int(x) for x in values.group(1).split(",")]
+    missing = [n for n in FITTED + FIXED if n not in out]
+    if missing:
+        raise SystemExit(f"{path}: no constant {', '.join(missing)}")
+    return out
 
 
-def read_labels(path):
-    labels = {}
-    for row in read_jsonl(path):
-        if row.get("drop") or row.get("note") is None:
-            continue
-        labels[row["pair"]] = row
-    return labels
+def div_rhe(n, d):
+    """`score::div_round_half_even` for n >= 0."""
+    if d == 0:
+        return 0
+    q, r = divmod(n, d)
+    if 2 * r > d or (2 * r == d and q % 2 == 1):
+        q += 1
+    return q
 
 
-def read_gold(path, part):
-    """The gold labels of one part: pair -> (note, excluded)."""
+def share(met, partial, open_, units, fill, p):
+    n = met + partial + open_
+    units = max(units, n)
+    if units == 0:
+        return fill
+    return (met * E_FULL + partial * p["PARTIAL"] + (units - n) * fill) // units
+
+
+def field_class(s, p):
+    """`scorer::class`: 0 same, 1 near, 2 far, 3 foreign."""
+    title, role = s["title_field"], s["role"]
+    field = s["relevance"] + p["HIT_RELEVANCE"] * min(s["core_hits"], p["HITS_MAX"])
+    if s["off_field"] == 1:
+        return 3
+    if role == 2 or title >= p["TITLE_SAME"] or field >= p["RELEVANCE_SAME"]:
+        return 0
+    if role == 1 or title >= p["TITLE_NEAR"] or field >= p["RELEVANCE_NEAR"]:
+        return 1
+    if field >= p["RELEVANCE_FAR"]:
+        return 2
+    return 3
+
+
+def level_factor(level, p):
+    if level == 0:
+        return 1000
+    if level == 3:
+        return p["LEVEL_TWO_ABOVE"]
+    return p["LEVEL_ONE"]
+
+
+def percent(s, p):
+    """`scorer::percent`: (total, fine, class)."""
+    klass = field_class(s, p)
+    role = p["FIELD_VALUES"][klass] * level_factor(s["level"], p) // 1000
+    core = share(s["core_met"], s["core_partial"], s["core_open"], 0, role, p)
+    unnamed = role * p["UNNAMED"] // 1000
+    musts = share(
+        s["other_met"], s["other_partial"], s["other_open"], p["MUST_SATURATION"], unnamed, p
+    )
+    missed = min(s["frame_missed"], FRAME_ASPECTS)
+    near = min(s["frame_near"], FRAME_ASPECTS - missed)
+    frame = share(FRAME_ASPECTS - near - missed, near, missed, FRAME_ASPECTS, E_FULL, p)
+    weights = [p["W_ROLE"], p["W_CORE"], p["W_MUSTS"], p["W_FRAME"]]
+    shares = [role, core, musts, frame]
+    points = [min(100, div_rhe(w * sh, 1000)) for w, sh in zip(weights, shares)]
+    nice_n = s["nice_met"] + s["nice_partial"] + s["nice_open"]
+    nice_share = 0 if nice_n == 0 else share(s["nice_met"], s["nice_partial"], s["nice_open"], 0, 0, p)
+    nice = min(100, div_rhe(p["NICE_MAX"] * nice_share, 1000))
+    total = min(100, sum(points) + nice)
+    fine = min(1000, (sum(w * sh for w, sh in zip(weights, shares)) + p["NICE_MAX"] * nice_share) // 100)
+    if s["permanent"] == 1:
+        total -= min(100, div_rhe(total * (1000 - p["PERMANENT_FACTOR"]), 1000))
+        fine = fine * p["PERMANENT_FACTOR"] // 1000
+    return total, fine, klass
+
+
+def caps(s, klass, p):
+    """`scorer::caps`: the highest scores the caps allow."""
+    out = []
+    if s["formal_open"] == 1:
+        out.append(p["FORMAL_CAP"])
+    core = share(s["core_met"], s["core_partial"], s["core_open"], 0, 0, p)
+    if s["core_open"] >= 1 and 2 * core < E_FULL:
+        out.append(p["CORE_OPEN_CAP"])
+    if klass == 3:
+        out.append(p["OFF_FIELD_CAP"])
+    if s["junior"] == 1:
+        out.append(p["JUNIOR_CAP"])
+    if s["level"] == 4:
+        out.append(p["LEVEL_CAP"])
+    return out
+
+
+def replay(row, s, p):
+    """The engine's (score, rank) of one pair: 0 when unscorable."""
+    if row["verdict"] == "unscorable":
+        return 0, 0
+    total, fine, klass = percent(s, p)
+    return min([total] + caps(s, klass, p)), fine
+
+
+def ranks(x):
+    order = sorted(range(len(x)), key=lambda i: x[i])
+    out = [0.0] * len(x)
+    i = 0
+    while i < len(x):
+        j = i
+        while j + 1 < len(x) and x[order[j + 1]] == x[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            out[order[k]] = (i + j) / 2
+        i = j + 1
+    return out
+
+
+def spearman(a, b):
+    ra, rb = ranks(a), ranks(b)
+    n = len(a)
+    ma, mb = sum(ra) / n, sum(rb) / n
+    cov = sum((x - ma) * (y - mb) for x, y in zip(ra, rb))
+    den = math.sqrt(sum((x - ma) ** 2 for x in ra) * sum((y - mb) ** 2 for y in rb))
+    return cov / den if den else 0.0
+
+
+def dcg(gains):
+    return sum((2**g - 1) / math.log2(i + 2) for i, g in enumerate(gains))
+
+
+def measure(pairs, p):
+    """NDCG@10 (mean over profiles), Spearman and the mean score per note."""
+    scored = []
+    for row, s, gold in pairs:
+        score, rank = replay(row, s, p)
+        scored.append((row, gold, score, rank))
+    by = defaultdict(list)
+    for item in scored:
+        by[item[0]["profile"]].append(item)
+    ndcgs = []
+    for _, items in sorted(by.items()):
+        items.sort(key=lambda t: (VERDICT_ORDER.get(t[0]["verdict"], 3), -t[2], -t[3], t[0]["pair"]))
+        gains = [t[1]["note"] for t in items]
+        ideal = dcg(sorted(gains, reverse=True)[:TOP_K])
+        if ideal > 0:
+            ndcgs.append(dcg(gains[:TOP_K]) / ideal)
+    eff = [-1 if t[0]["verdict"] == "excluded" else t[2] for t in scored]
+    want = [-1 if t[1]["excluded"] else t[1]["passung"] for t in scored]
+    means = {}
+    for note in range(4):
+        xs = [t[2] for t in scored if t[1]["note"] == note and not t[1]["excluded"] and t[0]["verdict"] == "scored"]
+        means[note] = round(sum(xs) / len(xs)) if xs else None
+    return sum(ndcgs) / len(ndcgs), spearman(eff, want), means
+
+
+def objective(pairs, p):
+    nd, sp, _ = measure(pairs, p)
+    return nd + sp
+
+
+def distance(p, start):
+    return sum(abs(p[k] - start[k]) for k in FITTED)
+
+
+def better(candidate, best):
+    """Higher objective first, then nearer the current values, then the smaller tuple."""
+    return (-candidate[0], candidate[1], candidate[2]) < (-best[0], best[1], best[2])
+
+
+def search(pairs, start):
+    best_p = dict(start)
+    best = (round(objective(pairs, best_p), 9), 0, tuple(best_p[k] for k in FITTED))
+    for _ in range(2):
+        base = dict(best_p)
+        for a in WEIGHT_STEPS:
+            for b in WEIGHT_STEPS:
+                for c in WEIGHT_STEPS:
+                    d = 100 - a - b - c
+                    if d not in WEIGHT_STEPS:
+                        continue
+                    for partial in PARTIAL_STEPS:
+                        p = dict(base, W_ROLE=a, W_CORE=b, W_MUSTS=c, W_FRAME=d, PARTIAL=partial)
+                        cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
+                        if better(cand, best):
+                            best, best_p = cand, p
+        base = dict(best_p)
+        for one in LEVEL_ONE_STEPS:
+            for two in LEVEL_TWO_STEPS:
+                if two > one:
+                    continue
+                p = dict(base, LEVEL_ONE=one, LEVEL_TWO_ABOVE=two)
+                cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
+                if better(cand, best):
+                    best, best_p = cand, p
+    return best_p
+
+
+def load(signals, gold_path, part):
+    rows = read_jsonl(signals)
+    header, rows = rows[0], rows[1:]
+    names = header["names"]
     gold = {}
-    for row in read_jsonl(path):
+    for row in read_jsonl(gold_path):
         if row.get("gold") != part:
             continue
         answer = row["answer"]
         excluded = (answer.get("ausschluss") or {}).get("grund", "keiner") != "keiner"
-        gold[row["pair"]] = (0 if excluded else int(answer["note"]), excluded)
-    return gold
+        gold[row["pair"]] = {
+            "note": 0 if excluded else int(answer["note"]),
+            "passung": answer["passung"],
+            "excluded": excluded,
+        }
+    pairs = [(r, dict(zip(names, r["v"])), gold[r["pair"]]) for r in rows if r["pair"] in gold]
+    return rows, names, pairs
 
 
-def split_of(row, labels):
-    """The split of a pair: its label's, else the dump's."""
-    return labels.get(row["pair"], {}).get("split") or row["split"]
-
-
-def weight_of(label):
-    return max(1, int(label.get("weight", 1)))
-
-
-def note_of(label):
-    """The note a pair counts with: 0 when the teachers excluded it."""
-    return 0 if label.get("excluded") else int(label["note"])
-
-
-# -- bins -----------------------------------------------------------------------------------
-
-
-def bin_edges(values):
-    """Lower edges of at most MAX_BINS quantile bins with at least MIN_BIN values each;
-    the first edge is 0, so every value falls into a bin."""
-    values = np.sort(np.asarray(values, dtype=np.int64))
-    n = len(values)
-    if n < 2 * MIN_BIN:
-        return [0]
-    target = max(MIN_BIN, int(np.ceil(n / MAX_BINS)))
-    uniques, counts = np.unique(values, return_counts=True)
-    edges, filled = [0], 0
-    for value, count in zip(uniques, counts):
-        if filled >= target and n - sum_before(uniques, counts, value) >= MIN_BIN:
-            edges.append(int(value))
-            filled = 0
-        filled += int(count)
-    return edges[:MAX_BINS]
-
-
-def sum_before(uniques, counts, value):
-    return int(counts[uniques < value].sum())
-
-
-def bin_index(edges, values):
-    return np.searchsorted(np.asarray(edges), np.asarray(values), side="right") - 1
-
-
-# -- model ----------------------------------------------------------------------------------
-
-
-def pava(values, weights, increasing):
-    """Weighted isotonic regression of a sequence (non-decreasing, or non-increasing)."""
-    if not increasing:
-        return -pava(-values, weights, True)
-    blocks = []  # [mean, weight, count]
-    for v, w in zip(values, weights):
-        blocks.append([float(v), float(max(w, 1e-9)), 1])
-        while len(blocks) > 1 and blocks[-2][0] > blocks[-1][0]:
-            m2, w2, c2 = blocks.pop()
-            m1, w1, c1 = blocks.pop()
-            blocks.append([(m1 * w1 + m2 * w2) / (w1 + w2), w1 + w2, c1 + c2])
-    out = []
-    for m, _, c in blocks:
-        out.extend([m] * c)
-    return np.asarray(out)
-
-
-def fit(bins, y, signs, n_bins):
-    """Cyclic boosting: returns the intercept and one table per signal."""
-    n, m = bins.shape
-    intercept = float(y.mean())
-    tables = [np.zeros(n_bins[j]) for j in range(m)]
-    pred = np.full(n, intercept)
-    for _ in range(PASSES):
-        for j in range(m):
-            if n_bins[j] < 2:
-                continue
-            residual = y - pred
-            counts = np.bincount(bins[:, j], minlength=n_bins[j])
-            sums = np.bincount(bins[:, j], weights=residual, minlength=n_bins[j])
-            step = np.where(counts > 0, sums / np.maximum(counts, 1), 0.0) * LEARNING_RATE
-            tables[j] += step
-            pred += step[bins[:, j]]
-        for j in range(m):
-            if n_bins[j] < 2:
-                continue
-            counts = np.bincount(bins[:, j], minlength=n_bins[j])
-            if signs[j] != 0:
-                tables[j] = pava(tables[j], counts, signs[j] > 0)
-            mean = float((tables[j] * counts).sum() / max(counts.sum(), 1))
-            tables[j] -= mean
-            intercept += mean
-        pred = predict(intercept, tables, bins)
-    return intercept, tables
-
-
-def predict(intercept, tables, bins):
-    pred = np.full(bins.shape[0], intercept)
-    for j, table in enumerate(tables):
-        pred += table[bins[:, j]]
-    return pred
-
-
-def fold_of(group):
-    return int(hashlib.sha1(f"{group}|fold".encode()).hexdigest(), 16) % FOLDS
-
-
-# -- calibration ----------------------------------------------------------------------------
-
-
-def note_shares(cal_notes, all_notes):
-    """The share of each note among the calibration pairs; a note with fewer than MIN_NOTE
-    pairs (from the top) splits the share of the notes at and above it as all pairs do."""
-    cal = np.bincount(np.asarray(cal_notes, dtype=int), minlength=4).astype(float)
-    every = np.bincount(np.asarray(all_notes, dtype=int), minlength=4).astype(float)
-    shares = cal / max(cal.sum(), 1)
-    for k in range(3, 0, -1):
-        if cal[k] >= MIN_NOTE:
-            continue
-        upper = shares[k - 1 :].sum()
-        ratio = every[k:].sum() / max(every[k - 1 :].sum(), 1)
-        # The thin note keeps at least its own pairs' share.
-        top = max(shares[k:].sum(), upper * ratio)
-        rest = shares[k:].sum()
-        if rest > 0:
-            shares[k:] *= top / rest
-        else:
-            shares[k] = top
-        shares[k - 1] = upper - top
-    return shares
-
-
-def calibration(cal_pred, cal_notes, all_notes):
-    """The quantile map of the predictions (tenths) of the calibration pairs onto BANDS as
-    CALIB_KNOTS knots (x strictly rising in 0..1000, y rising in 0..1000; flat outside)."""
-    pred = np.sort(np.clip(np.round(np.asarray(cal_pred, dtype=float)), 0, 1000))
-    shares = note_shares(cal_notes, all_notes)
-    cum = np.concatenate([[0.0], np.cumsum(shares)])
-    cum[-1] = 1.0
-
-    def score_at(q):
-        """The score of the cumulative share q: linear within the band it falls in."""
-        for k, (lo, hi) in enumerate(BANDS):
-            if q <= cum[k + 1] or k == 3:
-                width = cum[k + 1] - cum[k]
-                t = 0.0 if width <= 0 else (q - cum[k]) / width
-                return lo + (hi - lo) * min(1.0, max(0.0, t))
-        return BANDS[-1][1]
-
-    # Knots at every band edge and evenly between them.
-    qs = sorted(set(np.round(np.concatenate([np.linspace(0.0, 1.0, CALIB_KNOTS - 3), cum[1:4]]), 6)))
-    xs = [int(round(float(np.quantile(pred, q)))) for q in qs]
-    ys = [int(round(score_at(q))) for q in qs]
-    knots = []
-    for x, y in zip(xs, ys):
-        if knots and x <= knots[-1][0]:
-            knots[-1] = (knots[-1][0], max(knots[-1][1], y))
-            continue
-        knots.append((x, max(y, knots[-1][1]) if knots else y))
-    while len(knots) < 2:
-        knots.append((min(1000, knots[-1][0] + 1), 1000))
-    return [(int(np.clip(x, 0, 1000)), int(np.clip(y, 0, 1000))) for x, y in knots]
-
-
-def calibrate(knots, v):
-    """Integer piecewise linear, as `scorer.rs` computes it."""
-    if v <= knots[0][0]:
-        return knots[0][1]
-    for (x0, y0), (x1, y1) in zip(knots, knots[1:]):
-        if v <= x1:
-            return y0 + (y1 - y0) * (v - x0) // (x1 - x0)
-    return knots[-1][1]
-
-
-# -- integer model --------------------------------------------------------------------------
-
-
-def integer_model(intercept, tables, edges):
-    ints = [[(int(e), int(round(10 * t))) for e, t in zip(edges[j], tables[j])] for j in range(len(tables))]
-    return int(round(10 * intercept)), ints
-
-
-def integer_raw(intercept, ints, v):
-    total = intercept
-    for j, table in enumerate(ints):
-        points = table[0][1]
-        for edge, p in table:
-            if v[j] >= edge:
-                points = p
-        total += points
-    return min(1000, max(0, total))
-
-
-# -- metrics --------------------------------------------------------------------------------
-
-
-def ranks(x):
-    x = np.asarray(x, dtype=float)
-    order = np.argsort(x, kind="mergesort")
-    r = np.empty(len(x))
-    r[order] = np.arange(len(x))
-    for value in np.unique(x):
-        same = x == value
-        r[same] = r[same].mean()
-    return r
-
-
-def spearman(a, b):
-    if len(a) < 3:
-        return float("nan")
-    ra, rb = ranks(a), ranks(b)
-    if ra.std() == 0 or rb.std() == 0:
-        return float("nan")
-    return float(np.corrcoef(ra, rb)[0, 1])
-
-
-def round_half_even(n, d):
-    q, r = divmod(n, d)
-    return q + (1 if 2 * r > d or (2 * r == d and q % 2 == 1) else 0)
-
-
-def replay(fit, row, caps=None):
-    """The engine's (score, points before the caps, verdict) of a pair from its learned fit
-    (per-mille): the bounded wishes, a permanent role at PERMANENT_FACTOR, the rounding and the
-    caps (CAPS, or the codes given). A dump without a trace gives the fit itself."""
-    caps = CAPS if caps is None else caps
-    verdict = row.get("verdict") or "scored"
-    if "caps" not in row:
-        return fit / 10, fit, verdict
-    if verdict == "unscorable":
-        return 0, 0, verdict
-    points = min(1000, max(0, fit + max(-WISH_MAX, min(WISH_MAX, row["wish"]))))
-    if row["permanent"]:
-        points = points * PERMANENT_FACTOR // 1000
-    score = min([min(100, round_half_even(points, 10))] + [c for k, c in row["caps"] if k in caps])
-    return score, points, verdict
-
-
-def ndcg(keys, notes, k=TOP_K):
-    """NDCG@k of the pairs ordered by their keys (smallest first)."""
-    gains = np.asarray([2 ** int(n) - 1 for n in notes], dtype=float)
-    if gains.sum() == 0:
-        return float("nan")
-    order = sorted(range(len(keys)), key=lambda i: keys[i])
-    discounts = 1.0 / np.log2(np.arange(2, k + 2))
-    dcg = (gains[order][:k] * discounts[: min(k, len(gains))]).sum()
-    ideal = (np.sort(gains)[::-1][:k] * discounts[: min(k, len(gains))]).sum()
-    return float(dcg / ideal)
-
-
-def measure(rows, fits, labels, caps=None):
-    """Mean NDCG@10 over profiles, the mean score per note (scored pairs), NDCG@10 per profile
-    and the replay of every pair."""
-    out = [replay(f, r, caps) for f, r in zip(fits, rows)]
-    keys = [(VERDICT_ORDER[v], -s, -p, r["pair"]) for (s, p, v), r in zip(out, rows)]
-    notes = [note_of(labels[r["pair"]]) for r in rows]
-    per = {}
-    for p in sorted({r["profile"] for r in rows}):
-        idx = [i for i, r in enumerate(rows) if r["profile"] == p]
-        per[p] = (len(idx), ndcg([keys[i] for i in idx], [notes[i] for i in idx]))
-    nd = [n for _, n in per.values() if not np.isnan(n)]
-    means = {}
-    for note in range(4):
-        s = [o[0] for o, n in zip(out, notes) if o[2] == "scored" and n == note]
-        means[note] = (float(np.mean(s)) if s else float("nan"), len(s))
-    return float(np.mean(nd)) if nd else float("nan"), means, per, out
-
-
-def report(title, rows, fits, labels):
-    nd, means, per, out = measure(rows, fits, labels)
-    print(f"{title}: {len(rows)} pairs")
-    notes = [note_of(labels[r["pair"]]) for r in rows]
-    print(f"  all        spearman {spearman([o[0] for o in out], notes):6.3f}")
-    for p, (n, v) in per.items():
-        print(f"  {p:10s} n {n:4d}  ndcg@10 {v:6.3f}")
-    grades = "  ".join(f"{g}: {m:5.1f} (n {c})" for g, (m, c) in sorted(means.items(), reverse=True))
-    print(f"  mean ndcg@10 over profiles {nd:6.3f}; mean score per note {grades}")
-
-
-# -- output ---------------------------------------------------------------------------------
-
-
-def rust(names, intercept, ints, knots, n_train):
-    lines = [
-        "//! generated by tools/scorer/train.py from private teacher labels; do not edit.",
-        f"//! {n_train} training pairs, {PASSES} passes, learning rate {LEARNING_RATE}, at most",
-        f"//! {MAX_BINS} bins of at least {MIN_BIN} pairs, {len(knots)} calibration knots.",
-        "//! Points and knots in tenths of a score point.",
-        "",
-        "use super::signals::N;",
-        "",
-        "/// The points every job starts from.",
-        f"pub(crate) const INTERCEPT: i32 = {intercept};",
-        "",
-        "/// Per signal: the lower edge of each bin and its points.",
-        "pub(crate) const TABLES: [&[(u16, i16)]; N] = [",
-    ]
-    for name, table in zip(names, ints):
-        body = ", ".join(f"({e}, {p})" for e, p in table)
-        lines.append(f"    // {name}")
-        lines.append(f"    &[{body}],")
-    lines.append("];")
-    lines.append("")
-    lines.append("/// The calibration knots: raw points to points.")
-    body = ", ".join(f"({x}, {y})" for x, y in knots)
-    lines.append(f"pub(crate) const CALIB: [(u16, u16); {len(knots)}] = [{body}];")
-    return "\n".join(lines) + "\n"
+def show(title, pairs, p):
+    nd, sp, means = measure(pairs, p)
+    m = "/".join(str(means[n]) for n in (3, 2, 1, 0))
+    print(f"{title}: ndcg@10 {nd:.3f}  spearman {sp:.3f}  mean per note 3/2/1/0 {m}")
 
 
 def main():
+    here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--labels", required=True)
     parser.add_argument("--signals", required=True)
-    parser.add_argument("--out", required=True)
-    parser.add_argument("--train-splits", default="train")
-    parser.add_argument("--report-splits", default="test,locked")
-    parser.add_argument("--calib", help="gold labels whose pairs set the calibration bands")
-    parser.add_argument("--calib-part", default="tune")
+    parser.add_argument("--gold", required=True)
+    parser.add_argument("--part", default="tune")
+    parser.add_argument("--params", default=str(here / "../../core/src/matching/params.rs"))
     args = parser.parse_args()
-
-    header, rows = read_signals(args.signals)
-    labels = read_labels(args.labels)
-    names, signs = header["names"], header["sign"]
-    train_splits = set(args.train_splits.split(","))
-    unique = [r for r in rows if r["pair"] in labels and split_of(r, labels) in train_splits]
-    if len(unique) < 2 * MIN_BIN:
-        sys.exit(f"only {len(unique)} labelled training pairs; at least {2 * MIN_BIN} are needed")
-    # A weighted pair counts as that many copies (same group, so the same fold).
-    first, train = [], []
-    for r in unique:
-        first.append(len(train))
-        train.extend([r] * weight_of(labels[r["pair"]]))
-
-    X = np.asarray([r["v"] for r in train], dtype=np.int64)
-    y = np.asarray([NOTE_TARGET[note_of(labels[r["pair"]])] / 10 for r in train])
-    edges = [[0] if names[j] in FIXED or names[j] in NEUTRAL else bin_edges(X[:, j]) for j in range(X.shape[1])]
-    fixed = [(j, FIXED[n]) for j, n in enumerate(names) if n in FIXED]
-
-    def plus(v):
-        return sum(points[min(int(v[j]), len(points) - 1)] for j, points in fixed)
-
-    n_bins = [len(e) for e in edges]
-    bins = np.stack([bin_index(edges[j], X[:, j]) for j in range(X.shape[1])], axis=1)
-
-    folds = np.asarray([fold_of(r["group"]) for r in train])
-    oof = np.zeros(len(train))
-    for f in range(FOLDS):
-        held = folds == f
-        if held.all() or not held.any():
-            continue
-        b, t = fit(bins[~held], y[~held], signs, n_bins)
-        oof[held] = predict(b, t, bins[held])
-
-    gold = read_gold(args.calib, args.calib_part) if args.calib else {}
-    oof_unique = [oof[i] for i in first]
-    scored = [i for i, r in enumerate(unique) if (r.get("verdict") or "scored") == "scored"]
-    cal = [i for i in scored if unique[i]["pair"] in gold and not gold[unique[i]["pair"]][1]]
-    if len(cal) < 4 * MIN_NOTE:
-        cal = [i for i in scored if not labels[unique[i]["pair"]].get("excluded")]
-    cal_notes = [gold[unique[i]["pair"]][0] if unique[i]["pair"] in gold else note_of(labels[unique[i]["pair"]]) for i in cal]
-    all_notes = [note_of(labels[unique[i]["pair"]]) for i in scored if not labels[unique[i]["pair"]].get("excluded")]
-    knots = calibration([10 * oof_unique[i] for i in cal], cal_notes, all_notes)
-    print(f"calibration on {len(cal)} pairs, note shares {np.round(note_shares(cal_notes, all_notes), 3).tolist()}")
-    oof_cal = [
-        min(1000, calibrate(knots, int(round(min(1000, max(0, 10 * p))))) + plus(r["v"]))
-        for p, r in zip(oof, train)
-    ]
-    intercept, tables = fit(bins, y, signs, n_bins)
-    int_b, ints = integer_model(intercept, tables, edges)
-
-    print(
-        f"signals {len(names)}, training pairs {len(unique)}, {len(train)} with weights "
-        f"(splits {sorted(train_splits)})"
-    )
-    for name, table in zip(names, ints):
-        if len(table) > 1:
-            span = max(p for _, p in table) - min(p for _, p in table)
-            print(f"  {name:14s} bins {len(table):2d}  span {span / 10:6.1f} points")
-    report("train, out of fold", unique, [oof_cal[i] for i in first], labels)
-    if gold:
-        part = [i for i, r in enumerate(unique) if r["pair"] in gold]
-        glabels = {unique[i]["pair"]: {"note": gold[unique[i]["pair"]][0], "excluded": gold[unique[i]["pair"]][1]} for i in part}
-        report(f"gold {args.calib_part}, out of fold", [unique[i] for i in part], [oof_cal[first[i]] for i in part], glabels)
-    for split in [s for s in args.report_splits.split(",") if s]:
-        part = [r for r in rows if r["pair"] in labels and split_of(r, labels) == split]
-        if not part:
-            print(f"{split}: no labelled pairs")
-            continue
-        pred = [min(1000, calibrate(knots, integer_raw(int_b, ints, r["v"])) + plus(r["v"])) for r in part]
-        report(f"{split}, integer model", part, pred, labels)
-
-    Path(args.out).write_text(rust(names, int_b, ints, knots, len(unique)), encoding="utf-8", newline="\n")
-    print(f"wrote {args.out}")
+    current = read_params(args.params)
+    rows, names, pairs = load(args.signals, args.gold, args.part)
+    if not pairs:
+        raise SystemExit(f"no pairs of part {args.part} in {args.signals}")
+    wrong = []
+    for row in rows:
+        s = dict(zip(names, row["v"]))
+        if row.get("score") is not None and replay(row, s, current) != (row["score"], row["rank"]):
+            wrong.append(row["pair"])
+    if wrong:
+        raise SystemExit(f"the replay differs from the engine on {len(wrong)} pairs, e.g. {wrong[:3]}")
+    print(f"{len(pairs)} pairs of part {args.part}; the replay matches all {len(rows)} dumped scores")
+    show("current", pairs, current)
+    fitted = search(pairs, current)
+    show("fitted ", pairs, fitted)
+    print("\n// fitted on the gold labels by tools/scorer/train.py")
+    for name in FITTED:
+        print(f"pub(crate) const {name}: u64 = {fitted[name]};")
 
 
 if __name__ == "__main__":

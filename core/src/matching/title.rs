@@ -199,6 +199,16 @@ fn tally(text: &str, weight: u32, hits: &mut [u32]) {
     }
 }
 
+/// Does a text name a field family (a trigger of one of its packs)?
+pub(crate) fn names_field(text: &str, family: &str) -> bool {
+    let Some(index) = lex::FIELD_PACKS.iter().position(|(f, _)| *f == family) else {
+        return false;
+    };
+    let mut hits = vec![0u32; lex::FIELD_PACKS.len()];
+    tally(text, 1, &mut hits);
+    hits[index] > 0
+}
+
 /// How far an ad's field lies from the profile's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Distance {

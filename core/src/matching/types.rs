@@ -86,6 +86,83 @@ pub struct Assessment {
     /// What moved the score, at most [`MAX_FACTORS`] lines in reading order (empty for an
     /// unscorable job): the reader's "why this number".
     pub factors: Vec<Factor>,
+    /// The Passungsgrad line by line (empty for an unscorable job): the four parts with their
+    /// points of their weight, the Kann bonus, the permanent line and the cap that held; the
+    /// points add up to `score`.
+    pub parts: Vec<Part>,
+    /// Every cap that fired, with its reason, the lowest first.
+    pub caps: Vec<CapLine>,
+}
+
+/// One line of the Passungsgrad: its points (a minus for the permanent line and the cap) of
+/// its maximum, with what it was read from.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Part {
+    pub code: PartCode,
+    pub points: i16,
+    pub max: u8,
+    pub params: Map<String, Value>,
+}
+
+/// What a [`Part`] is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PartCode {
+    /// Rolle und Fach: `class` same, near, far or foreign, the target role (`role`, `fit`),
+    /// the level (`level`: at, oneAbove, oneBelow, twoAbove, twoBelow).
+    Role,
+    /// Kern der Rolle: the musts on the core met (`met`), in part (`partial`) of `total`;
+    /// `fallback` without any (the share of Rolle und Fach).
+    Core,
+    /// Weitere Muss-Punkte: `met`, `partial` of `total`, counted as at least `counted`.
+    Musts,
+    /// Rahmen: the aspects met in part (`near`) and missed (`missed`) of `aspects`.
+    Frame,
+    /// The nice-to-haves (`met`, `partial` of `total`): only a plus.
+    Nice,
+    /// A permanent role keeps `percent` of the points.
+    Permanent,
+    /// The cap that held (`cap`, its `max`).
+    Cap,
+}
+
+/// A cap that fired, with the highest score it allows and its reason.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CapLine {
+    pub code: CapCode,
+    pub max: u8,
+    pub params: Map<String, Value>,
+}
+
+/// Why a score is capped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CapCode {
+    /// An open formal must (a degree of another field, a licence, a mandatory certificate).
+    Formal,
+    /// The core of the role clearly open: at least half of its musts open.
+    CoreOpen,
+    /// A foreign field: no skill must met at all.
+    OffField,
+    /// A junior or entry-level role for a senior profile.
+    Junior,
+    /// A role two or more levels below the target roles.
+    Level,
+}
+
+impl CapCode {
+    /// The code the interface reads (`Factor` params).
+    pub fn code(self) -> &'static str {
+        match self {
+            CapCode::Formal => "formal",
+            CapCode::CoreOpen => "coreOpen",
+            CapCode::OffField => "offField",
+            CapCode::Junior => "junior",
+            CapCode::Level => "level",
+        }
+    }
 }
 
 /// Most lines of [`Assessment::factors`].
@@ -116,7 +193,7 @@ pub enum FactorCode {
     Evidence,
     /// A permanent role weighs less (`percent` of its fit, 90).
     Permanent,
-    /// A cap held the score down (`cap` formal, severalOpen, offField, junior or level;
+    /// A cap held the score down (`cap` formal, coreOpen, offField, junior or level;
     /// `max` the highest score it allows).
     Cap,
     /// The role stands below the profile (`level` the ad's, 1 to 6; `gap` the levels below;

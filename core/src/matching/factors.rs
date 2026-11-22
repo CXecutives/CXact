@@ -1,5 +1,5 @@
 //! What moved a score, for the reader's "why this number": the musts met, the optional
-//! requirements, the target role, the wishes, a text with little evidence,
+//! requirements, the target role, a text with little evidence,
 //! the factor of a permanent role and the cap that held the score down. Codes and params
 //! only, read from the evaluation the score came from (it never changes the score). At most
 //! [`MAX_FACTORS`] lines: where there are more, the ones that explain the most stay (a cap,
@@ -15,27 +15,25 @@ use super::types::{EvidenceLevel, Factor, FactorCode, MAX_FACTORS, Summary, Verd
 const PERMANENT_PERCENT: u64 = super::params::PERMANENT_FACTOR / 10;
 
 /// The lines in the order they are read.
-const READING: [FactorCode; 9] = [
+const READING: [FactorCode; 8] = [
     FactorCode::Musts,
     FactorCode::Nice,
     FactorCode::TargetRole,
     FactorCode::Level,
     FactorCode::Field,
-    FactorCode::Wishes,
     FactorCode::Evidence,
     FactorCode::Permanent,
     FactorCode::Cap,
 ];
 
 /// The lines kept first where there are more than [`MAX_FACTORS`].
-const KEPT_FIRST: [FactorCode; 9] = [
+const KEPT_FIRST: [FactorCode; 8] = [
     FactorCode::Cap,
     FactorCode::Permanent,
     FactorCode::Musts,
     FactorCode::Level,
     FactorCode::Field,
     FactorCode::TargetRole,
-    FactorCode::Wishes,
     FactorCode::Evidence,
     FactorCode::Nice,
 ];
@@ -89,17 +87,6 @@ fn all(profile: &EngineProfile, evaluation: &Evaluation, summary: &Summary) -> V
             FactorCode::Field,
             &json!({ "field": field, "distance": distance.code() }),
         ));
-    }
-    let wish_points = evaluation
-        .wishes
-        .iter()
-        .map(|w| w.points)
-        .sum::<i64>()
-        .clamp(-super::params::WISH_MAX, super::params::WISH_MAX);
-    if wish_points != 0 {
-        // Per-mille of the score: one point is ten.
-        let points = (wish_points + wish_points.signum() * 5) / 10;
-        out.push(factor(FactorCode::Wishes, &json!({ "points": points })));
     }
     let evidence = match evaluation.evidence {
         EvidenceLevel::Full => None,
@@ -204,8 +191,8 @@ mod tests {
 
     #[test]
     fn a_permanent_role_and_a_cap_say_so_and_the_lines_stay_five() {
-        // A senior profile (20 years) and a junior role of its own field, fully remote: the
-        // junior cap holds the score, the remote wish met moves it.
+        // A senior profile (20 years) and a permanent junior role of its own field: the junior
+        // cap holds the score.
         let mut data = crate::profile::parse(PROFILE).unwrap();
         data.years = Some(20);
         let profile = compile_profile(&data);
@@ -221,12 +208,11 @@ mod tests {
             codes,
             [
                 FactorCode::Musts,
+                FactorCode::Nice,
                 FactorCode::TargetRole,
-                FactorCode::Wishes,
                 FactorCode::Permanent,
                 FactorCode::Cap
-            ],
-            "the optional requirements give way to the cap"
+            ]
         );
         let cap = &a.factors[4];
         assert_eq!(cap.params["cap"], json!("junior"));

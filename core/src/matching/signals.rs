@@ -1,143 +1,161 @@
-//! The signals of a job (engine 24 groundwork): what the engine read of one ad against one
-//! profile, as small integers in fixed ranges. The learned scorer (`scorer.rs`) turns them
-//! into points; the private trainer (`tools/scorer/train.py`) learns its tables from them.
+//! The signals of a job (engine 25): what the engine read of one ad against one profile, as
+//! small integers in fixed ranges. They are the inputs of the Passungsgrad (`scorer.rs`):
+//! the role and the field, the level, the musts on the core of the role and the others as
+//! met, met in part and open, the frame, the nice-to-haves and the facts behind the caps.
+//! The private fitter (`tools/scorer/train.py`) replays the scorer from them.
 //!
 //! Every signal has a direction ([`SIGN`]): +1 when more of it may only raise the score, -1
-//! when it may only lower it, 0 when the trainer may learn any shape. Integer arithmetic
-//! only; the same profile and job give the same signals.
+//! when it may only lower it, 0 when it may do either. Integer arithmetic only; the same
+//! profile and job give the same signals.
 
 use super::CompiledProfile;
-use super::atoms::{self, Fit, Vocab, fold};
+use super::atoms::{self, Fit, Vocab};
 use super::engine::{self, EngineProfile, Scored};
+use super::facts::Finding;
+use super::fit;
 use super::job::{self, Class};
-use super::lexicon::HeadingKind;
-use super::normalize::{self, splitlines, strip};
-use super::params::{E_FULL, E_NONE, MUST_SATURATION};
+use super::normalize;
+use super::params::{E_FULL, E_NONE};
 use super::roles::{self, RoleFit};
-use super::sections::{self, ReqKind};
-use super::title::Distance;
-use super::types::{EvidenceLevel, JobInput, Via};
-use super::{fit, relevance};
-use crate::profile::key;
+#[cfg(test)]
+use super::scorer;
+use super::title::{self, Distance};
+use super::types::{JobInput, ReasonCode};
+use super::wishes::{State, WishResult};
 
 /// The number of signals.
-pub const N: usize = 22;
+pub const N: usize = 21;
 
 /// The signals in table order (the index into [`Signals::v`], [`SIGN`], [`NAMES`], [`MAX`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
 pub enum Sig {
-    /// Saturating coverage of the musts through the profile's competences, focus,
-    /// certificates, degrees and industries (per-mille).
-    CoreCov,
-    /// Coverage of the musts through the profile's tools (per-mille).
-    ToolCov,
-    /// Coverage of the musts through a more general profile entry, at half (per-mille).
-    GeneralCov,
-    /// Distinct core competences any requirement hits (at most 8).
-    RevCov,
-    /// Distinct core competences and target role topics in the task lines, the first three
-    /// lines double (at most 5).
-    TaskCore,
-    /// Open musts on the core of the role (at most 5).
-    OpenCore,
-    /// Other open musts (at most 10).
-    OpenOther,
-    /// Weighted musts (at most 20).
-    NMusts,
-    /// Share of the ad's musts that are hygiene: soft skills, languages, frame (per-mille).
-    HygieneShare,
-    /// Mean fit of the nice-to-haves (per-mille).
-    NiceCov,
-    /// The lexical relevance of the ad (per-mille).
-    Relevance,
-    /// What the title names of the profile's field and target roles (per-mille).
-    TitleField,
     /// The target role the title meets: 0 none, 1 half, 2 full.
     Role,
-    /// Levels the ad stands below the profile (at most 3).
-    LevelBelow,
-    /// Levels the ad stands above the profile's highest (at most 2).
-    LevelAbove,
-    /// The ad's field against the profile's: 0 same, 1 near, 2 unknown, 3 far.
-    FieldClass,
-    /// In the profile's own or a near field: the fit of the musts that name carrier work
-    /// (project management, leadership, stakeholders, process work, KPI reporting) (per-mille).
-    Carrier,
-    /// The mandate builds or changes something (1) or not (0).
-    Build,
-    /// A seat in running operations for a profile at team lead level or above (1) or not (0).
-    RunSeat,
-    /// How much the text allowed to read: 0 full, 1 low, 2 teaser.
-    Evidence,
-    /// An open formal must (degree of another field, licence, mandatory certificate).
+    /// What the title names of the profile's field and target roles (per-mille).
+    TitleField,
+    /// The lexical relevance of the ad (per-mille).
+    Relevance,
+    /// No skill must met at all (1): outside the field.
+    OffField,
+    /// The ad's level against the target roles: 0 a wished level or none to judge, 1 one
+    /// above, 2 one below, 3 two or more above, 4 two or more below.
+    Level,
+    /// The musts on the core of the role (what the title or the ad's field names): met in
+    /// full, in part, open.
+    CoreMet,
+    CorePartial,
+    CoreOpen,
+    /// The other musts: met in full, in part, open.
+    OtherMet,
+    OtherPartial,
+    OtherOpen,
+    /// The frame (day rate, remote and place, start, duration, workload): the aspects met in
+    /// part and those clearly missed; the rest fits or is not stated.
+    FrameNear,
+    FrameMissed,
+    /// The nice-to-haves: met in full, in part, open.
+    NiceMet,
+    NicePartial,
+    NiceOpen,
+    /// An open formal must (a degree of another field, a licence, a mandatory certificate).
     FormalOpen,
-    /// An open language must at C1 or above.
-    LangOpenC1,
+    /// A junior or entry-level role for a senior profile.
+    Junior,
+    /// A permanent role.
+    Permanent,
+    /// How much the text allowed to read: 0 full, 1 low, 2 teaser (shown, never counted).
+    Evidence,
+    /// Distinct core competences of the profile any requirement meets (at most 8).
+    CoreHits,
 }
 
 impl Sig {
     /// Every signal in table order.
     pub const ALL: [Sig; N] = [
-        Sig::CoreCov,
-        Sig::ToolCov,
-        Sig::GeneralCov,
-        Sig::RevCov,
-        Sig::TaskCore,
-        Sig::OpenCore,
-        Sig::OpenOther,
-        Sig::NMusts,
-        Sig::HygieneShare,
-        Sig::NiceCov,
-        Sig::Relevance,
-        Sig::TitleField,
         Sig::Role,
-        Sig::LevelBelow,
-        Sig::LevelAbove,
-        Sig::FieldClass,
-        Sig::Carrier,
-        Sig::Build,
-        Sig::RunSeat,
-        Sig::Evidence,
+        Sig::TitleField,
+        Sig::Relevance,
+        Sig::OffField,
+        Sig::Level,
+        Sig::CoreMet,
+        Sig::CorePartial,
+        Sig::CoreOpen,
+        Sig::OtherMet,
+        Sig::OtherPartial,
+        Sig::OtherOpen,
+        Sig::FrameNear,
+        Sig::FrameMissed,
+        Sig::NiceMet,
+        Sig::NicePartial,
+        Sig::NiceOpen,
         Sig::FormalOpen,
-        Sig::LangOpenC1,
+        Sig::Junior,
+        Sig::Permanent,
+        Sig::Evidence,
+        Sig::CoreHits,
     ];
 }
 
-/// The direction of each signal: +1 up, -1 down, 0 free.
+/// The direction of each signal: +1 up, -1 down, 0 either.
 pub const SIGN: [i8; N] = [
-    1, 1, 1, 1, 1, -1, -1, 0, 0, 1, 1, 1, 1, -1, -1, -1, 1, 1, -1, 0, -1, -1,
+    1, 1, 1, -1, 0, 1, 0, -1, 1, 0, -1, -1, -1, 1, 0, -1, -1, -1, -1, 0, 1,
 ];
 
-/// The names of the signals (the trainer's and the dump's).
+/// The names of the signals (the fitter's and the dump's).
 pub const NAMES: [&str; N] = [
-    "core_cov",
-    "tool_cov",
-    "general_cov",
-    "rev_cov",
-    "task_core",
-    "open_core",
-    "open_other",
-    "n_musts",
-    "hygiene_share",
-    "nice_cov",
-    "relevance",
-    "title_field",
     "role",
-    "level_below",
-    "level_above",
-    "field_class",
-    "carrier",
-    "build",
-    "run_seat",
-    "evidence",
+    "title_field",
+    "relevance",
+    "off_field",
+    "level",
+    "core_met",
+    "core_partial",
+    "core_open",
+    "other_met",
+    "other_partial",
+    "other_open",
+    "frame_near",
+    "frame_missed",
+    "nice_met",
+    "nice_partial",
+    "nice_open",
     "formal_open",
-    "lang_open_c1",
+    "junior",
+    "permanent",
+    "evidence",
+    "core_hits",
 ];
+
+/// Most requirements of one kind a signal counts.
+const COUNT_MAX: u16 = 30;
+
+/// The frame aspects: day rate, remote and place, start, duration, workload.
+pub(crate) const FRAME_ASPECTS: u16 = 5;
 
 /// The highest value of each signal.
 pub const MAX: [u16; N] = [
-    1000, 1000, 1000, 8, 5, 5, 10, 20, 1000, 1000, 1000, 1000, 2, 3, 2, 3, 1000, 1, 1, 2, 1, 1,
+    2,
+    1000,
+    1000,
+    1,
+    4,
+    COUNT_MAX,
+    COUNT_MAX,
+    COUNT_MAX,
+    COUNT_MAX,
+    COUNT_MAX,
+    COUNT_MAX,
+    FRAME_ASPECTS,
+    FRAME_ASPECTS,
+    COUNT_MAX,
+    COUNT_MAX,
+    COUNT_MAX,
+    1,
+    1,
+    1,
+    2,
+    8,
 ];
 
 /// The signals of one job.
@@ -151,7 +169,7 @@ impl Signals {
         self.v[sig as usize]
     }
 
-    fn set(&mut self, sig: Sig, value: u64) {
+    pub(crate) fn set(&mut self, sig: Sig, value: u64) {
         let max = MAX[sig as usize];
         self.v[sig as usize] = u16::try_from(value).unwrap_or(max).min(max);
     }
@@ -160,27 +178,16 @@ impl Signals {
 /// The signals of a job for a profile, read as [`super::assess`] reads it (all zero for an
 /// empty profile).
 pub fn signals(profile: &CompiledProfile, input: &JobInput<'_>) -> Signals {
-    if profile.quality() == super::ProfileQuality::Empty {
-        return Signals::default();
-    }
-    fit::forget();
-    let masked = normalize::mask_placeholders(input.text);
-    let read = JobInput {
-        text: &masked,
-        ..*input
-    };
-    engine::evaluate(&profile.engine, &read).signals
+    trace(profile, input).signals
 }
 
-/// How the points of one job came about (the private trainer replays them): the learned fit,
-/// the wishes, the contract and every cap that fired.
+/// How the points of one job came about (the private fitter replays them): the signals, the
+/// points before the caps and every cap that fired.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Trace {
     pub signals: Signals,
-    /// [`super::scorer`]'s fit with the tables the engine was built with (per-mille).
-    pub learned: u16,
-    /// The summed wish points (per-mille, not yet bounded).
-    pub wish: i64,
+    /// The score before the caps (0..=100).
+    pub total: u8,
     pub permanent: bool,
     /// Every cap that fired: its code and the highest score it allows.
     pub caps: Vec<(&'static str, u8)>,
@@ -188,7 +195,7 @@ pub struct Trace {
     pub items: Vec<TraceItem>,
 }
 
-/// One requirement as the engine read and met it (the private trainer aligns it with the
+/// One requirement as the engine read and met it (the private fitter aligns it with the
 /// teachers' line verdicts).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraceItem {
@@ -197,6 +204,8 @@ pub struct TraceItem {
     pub text: String,
     /// 2 a counted must, 1 a counted nice-to-have, 0 neither.
     pub role: u8,
+    /// A must on the core of the role.
+    pub core: bool,
     /// The evidence in per-mille.
     pub value: u16,
     /// The profile entry that met it, as written.
@@ -215,11 +224,12 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
         ..*input
     };
     let e = engine::evaluate(&profile.engine, &read);
+    let title = title::clean(read.title);
+    let core = CoreTest::new(&profile.engine, &title, e.field.map(|(f, _)| f));
     Trace {
         signals: e.signals,
-        learned: super::scorer::learned(&e.signals),
-        wish: e.wishes.iter().map(|w| w.points).sum(),
-        permanent: e.contract == super::contract::ContractKind::Permanent,
+        total: e.percent.total,
+        permanent: e.signals.get(Sig::Permanent) == 1,
         caps: e.caps.iter().map(|&(c, kind)| (kind.code(), c)).collect(),
         items: e
             .items
@@ -238,6 +248,7 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
                 } else {
                     u8::from(engine::is_nice(x))
                 },
+                core: engine::is_must(x) && core.on_core(x),
                 value: x.fit.value,
                 entry: x
                     .fit
@@ -253,88 +264,17 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
 pub(crate) struct Parts<'a> {
     /// The cleaned title.
     pub title: &'a str,
-    /// The ad without the other listings under it.
-    pub own: &'a str,
     pub items: &'a [Scored],
     pub relevance: u64,
     pub role: Option<&'a RoleFit>,
+    /// The ad's level, the levels it stands below the profile and whether that caps.
     pub ad_level: Option<u8>,
     pub gap: u8,
-    pub field: Option<Distance>,
-    pub evidence: EvidenceLevel,
-    pub formal_open: bool,
-}
-
-/// Words of carrier work: what a profile brings into a near field (folded, as substrings).
-// external contract - do not translate (matching lexicon)
-const CARRIER_WORDS: &[&str] = &[
-    "projektmanagement",
-    "projektleitung",
-    "project management",
-    "fuhrung",
-    "leadership",
-    "stakeholder",
-    "prozessoptimierung",
-    "process improvement",
-    "kpi",
-    "reporting",
-];
-
-/// Words of a mandate that builds or changes something (folded, as substrings).
-// external contract - do not translate (matching lexicon)
-const BUILD_WORDS: &[&str] = &[
-    "aufbau",
-    "neuausrichtung",
-    "transformation",
-    "einfuhrung",
-    "vakanz",
-    "restrukturierung",
-    "turnaround",
-    "implementierung",
-    "build-up",
-    "set up",
-    "setup",
-];
-
-/// Words of a seat in running operations (folded, as substrings).
-// external contract - do not translate (matching lexicon)
-const RUN_WORDS: &[&str] = &[
-    "laufenden betrieb",
-    "laufender betrieb",
-    "operative tatigkeit",
-    "tagesgeschaft",
-    "sachbearbeitung",
-    "day-to-day",
-];
-
-/// The profile's highest level at which a run seat counts against it (team lead).
-const RUN_SEAT_LEVEL: u8 = 4;
-
-/// The first task lines count twice in `task_core`.
-const LEADING_TASKS: usize = 3;
-
-/// Lines of the ad's own text the mandate is read from beside the title and the tasks.
-const LEADING_LINES: usize = 2;
-
-/// The task lines of the ad: the lines under a task heading up to the next heading.
-// TODO(integrator): take `JobDoc::task_lines` once the reading branch (wt-read) merges.
-fn task_lines(own: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let mut in_tasks = false;
-    for line in splitlines(own) {
-        let stripped = strip(line);
-        if stripped.is_empty() {
-            continue;
-        }
-        if job::is_heading_line(line) {
-            in_tasks = sections::section_kind(stripped) == Some(HeadingKind::Task);
-            continue;
-        }
-        if in_tasks {
-            out.push(stripped);
-        }
-    }
-    out
+    pub level_cap: bool,
+    pub field: Option<(&'static str, Distance)>,
+    pub evidence: super::types::EvidenceLevel,
+    pub findings: &'a [Finding],
+    pub wishes: &'a [WishResult],
 }
 
 /// Does a requirement name an expectation every candidate meets (`tables::HYGIENE`; a
@@ -351,216 +291,177 @@ fn related(a: &str, b: &str) -> bool {
         || matches!(atoms::fit(b, a), Fit::Equal | Fit::Specific)
 }
 
-/// Does a text name one of the specific atoms?
-fn names_any(text_atoms: &[String], wanted: &[String]) -> bool {
-    wanted
-        .iter()
-        .filter(|w| !atoms::is_generic(w))
-        .any(|w| text_atoms.iter().any(|t| related(t, w)))
+/// Which musts stand on the core of the role: a skill that names what the title names, or
+/// the ad's field (a trigger of its family).
+pub(crate) struct CoreTest<'a> {
+    title_atoms: Vec<String>,
+    field: Option<&'static str>,
+    vocab: &'a Vocab,
 }
 
-/// Distinct core competences and target role topics in the task lines (`LEADING_TASKS`
-/// lines count twice), at most `MAX`.
-fn task_core(profile: &EngineProfile, lines: &[&str], vocab: &Vocab) -> u64 {
-    let core: Vec<&fit::Entry> = profile
-        .skills
-        .entries
-        .iter()
-        .filter(|e| e.path.starts_with(key::COMPETENCES))
-        .collect();
-    let topics: Vec<String> = roles::topics(&profile.roles);
-    let mut best = vec![0u64; core.len() + topics.len()];
-    for (i, line) in lines.iter().enumerate() {
-        let weight = if i < LEADING_TASKS { 2 } else { 1 };
-        let line_atoms = atoms::atoms(line, vocab);
-        for (j, entry) in core.iter().enumerate() {
-            if names_any(&line_atoms, &entry.atoms) {
-                best[j] = best[j].max(weight);
-            }
-        }
-        for (j, topic) in topics.iter().enumerate() {
-            if names_any(&line_atoms, std::slice::from_ref(topic)) {
-                best[core.len() + j] = best[core.len() + j].max(weight);
-            }
+impl<'a> CoreTest<'a> {
+    pub(crate) fn new(
+        profile: &'a EngineProfile,
+        title: &str,
+        field: Option<&'static str>,
+    ) -> Self {
+        let vocab = &profile.skills.vocab;
+        Self {
+            title_atoms: roles::title_core(title, vocab),
+            field,
+            vocab,
         }
     }
-    best.iter().sum()
+
+    pub(crate) fn on_core(&self, m: &Scored) -> bool {
+        m.item.class == Class::Skill
+            && (atoms::atoms(&m.item.text, self.vocab)
+                .iter()
+                .any(|a| !atoms::is_generic(a) && self.title_atoms.iter().any(|t| related(a, t)))
+                || self
+                    .field
+                    .is_some_and(|f| title::names_field(&m.item.text, f)))
+    }
 }
 
 fn count(n: usize) -> u64 {
     u64::try_from(n).unwrap_or(u64::MAX)
 }
 
-/// The mean of per-mille values (0 without any).
-fn mean(values: impl Iterator<Item = u16>) -> u64 {
-    let (sum, n) = values.fold((0u64, 0u64), |(s, n), v| (s + u64::from(v), n + 1));
-    sum.checked_div(n).unwrap_or(0)
+/// Met in full, in part and open, as the job view groups them.
+fn tally<'a>(items: impl Iterator<Item = &'a Scored>) -> [u64; 3] {
+    let mut out = [0u64; 3];
+    for x in items {
+        let i = match x.fit.value {
+            E_FULL => 0,
+            E_NONE => 2,
+            _ => 1,
+        };
+        out[i] += 1;
+    }
+    out
 }
 
-/// The signals of one job from what the engine read.
+/// The signals of one job from what the engine read; the facts behind the caps (`OffField`,
+/// `FormalOpen`, `Junior`) and `Permanent` are the engine's to set.
 pub(crate) fn compute(profile: &EngineProfile, parts: &Parts<'_>) -> Signals {
     let mut s = Signals::default();
+    role_and_field(&mut s, profile, parts);
+    let core = CoreTest::new(profile, parts.title, parts.field.map(|(f, _)| f));
     let musts: Vec<&Scored> = parts.items.iter().filter(|x| engine::is_must(x)).collect();
-    let tasks = task_lines(parts.own);
-    coverage(&mut s, profile, parts, &musts);
-    opens(&mut s, profile, parts, &musts);
-    s.set(
-        Sig::TaskCore,
-        task_core(profile, &tasks, &profile.skills.vocab),
-    );
-    frame(&mut s, profile, parts, &musts);
-    mandate(&mut s, profile, parts, &tasks);
-    s
-}
-
-/// How the musts and nice-to-haves are met: through which kind of profile entry, which core
-/// competences, and how much of the ad's musts are hygiene.
-fn coverage(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: &[&Scored]) {
-    let entries = &profile.skills.entries;
-    let units = count(musts.len()).max(MUST_SATURATION);
-    let (mut core, mut tools, mut general) = (0u64, 0u64, 0u64);
-    for m in musts {
-        let value = u64::from(m.fit.value);
-        let entry = m.fit.entry.and_then(|e| entries.get(e));
-        if m.fit.via == Via::General {
-            general += value;
-        } else if entry.is_some_and(|e| e.path.starts_with(key::TOOLS)) {
-            tools += value;
-        } else {
-            core += value;
-        }
-    }
-    s.set(Sig::CoreCov, core / units);
-    s.set(Sig::ToolCov, tools / units);
-    s.set(Sig::GeneralCov, general / units);
+    let [met, partial, open] = tally(musts.iter().copied().filter(|m| core.on_core(m)));
+    s.set(Sig::CoreMet, met);
+    s.set(Sig::CorePartial, partial);
+    s.set(Sig::CoreOpen, open);
+    let [met, partial, open] = tally(musts.iter().copied().filter(|m| !core.on_core(m)));
+    s.set(Sig::OtherMet, met);
+    s.set(Sig::OtherPartial, partial);
+    s.set(Sig::OtherOpen, open);
     let mut hit: Vec<usize> = parts
         .items
         .iter()
         .filter(|x| x.fit.value > E_NONE)
         .filter_map(|x| x.fit.entry)
         .filter(|&e| {
-            entries
+            profile
+                .skills
+                .entries
                 .get(e)
-                .is_some_and(|e| e.path.starts_with(key::COMPETENCES))
+                .is_some_and(|e| e.path.starts_with(crate::profile::key::COMPETENCES))
         })
         .collect();
     hit.sort_unstable();
     hit.dedup();
-    s.set(Sig::RevCov, count(hit.len()));
-    s.set(Sig::NMusts, count(musts.len()));
-    let asked = parts.items.iter().filter(|x| x.item.kind == ReqKind::Must);
-    let (hygiene, all) = asked.fold((0u64, 0u64), |(h, n), x| {
-        let soft = matches!(
-            x.item.class,
-            Class::Soft | Class::Language(..) | Class::Frame
-        ) || is_hygiene(&x.item.text);
-        (h + u64::from(soft), n + 1)
-    });
+    s.set(Sig::CoreHits, count(hit.len()));
+    let [met, partial, open] = tally(parts.items.iter().filter(|x| engine::is_nice(x)));
+    s.set(Sig::NiceMet, met);
+    s.set(Sig::NicePartial, partial);
+    s.set(Sig::NiceOpen, open);
+    let (near, missed) = frame(parts.findings, parts.wishes);
+    s.set(Sig::FrameNear, near);
+    s.set(Sig::FrameMissed, missed);
     s.set(
-        Sig::HygieneShare,
-        (1000 * hygiene).checked_div(all).unwrap_or(0),
+        Sig::Evidence,
+        match parts.evidence {
+            super::types::EvidenceLevel::Full => 0,
+            super::types::EvidenceLevel::Low => 1,
+            super::types::EvidenceLevel::Teaser => 2,
+        },
     );
-    s.set(
-        Sig::NiceCov,
-        mean(
-            parts
-                .items
-                .iter()
-                .filter(|x| engine::is_nice(x))
-                .map(|x| x.fit.value),
-        ),
-    );
+    s
 }
 
-/// The open musts, on the core of the role (a skill that names what the title names) or not.
-fn opens(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: &[&Scored]) {
-    let vocab = &profile.skills.vocab;
-    let title_atoms = roles::title_core(parts.title, vocab);
-    let (mut open_core, mut open_other) = (0u64, 0u64);
-    for m in musts.iter().filter(|m| m.fit.value == E_NONE) {
-        let on_core = m.item.class == Class::Skill
-            && atoms::atoms(&m.item.text, vocab)
-                .iter()
-                .any(|a| !atoms::is_generic(a) && title_atoms.iter().any(|t| related(a, t)));
-        if on_core {
-            open_core += 1;
-        } else {
-            open_other += 1;
-        }
-    }
-    s.set(Sig::OpenCore, open_core);
-    s.set(Sig::OpenOther, open_other);
-    s.set(Sig::FormalOpen, u64::from(parts.formal_open));
-    let lang_open = musts
-        .iter()
-        .any(|m| matches!(m.item.class, Class::Language(..)) && m.fit.value < E_FULL);
-    s.set(Sig::LangOpenC1, u64::from(lang_open));
-}
-
-/// The frame of the role: relevance, title, target role, level, field and carrier work.
-fn frame(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: &[&Scored]) {
-    s.set(Sig::Relevance, parts.relevance.min(1000));
-    s.set(
-        Sig::TitleField,
-        relevance::field_title_fit(&profile.title_query, parts.title, &profile.skills.vocab)
-            .min(1000),
-    );
+/// The role and the field: the target role, the title, the relevance, no skill must met, and
+/// the level.
+fn role_and_field(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>) {
     s.set(
         Sig::Role,
         parts.role.map_or(0, |r| if r.full { 2 } else { 1 }),
     );
-    s.set(Sig::LevelBelow, u64::from(parts.gap));
+    s.set(
+        Sig::TitleField,
+        super::relevance::field_title_fit(&profile.title_query, parts.title, &profile.skills.vocab)
+            .min(1000),
+    );
+    s.set(Sig::Relevance, parts.relevance.min(1000));
+    let wished = parts
+        .ad_level
+        .is_some_and(|l| profile.level.wished.contains(&l));
     let above = match (parts.ad_level, profile.level.top) {
-        (Some(ad), Some(top)) => ad.saturating_sub(top),
+        (Some(ad), Some(top)) if !wished => ad.saturating_sub(top),
         _ => 0,
     };
-    s.set(Sig::LevelAbove, u64::from(above));
-    let field_class = match parts.field {
-        Some(Distance::Same) => 0,
-        Some(Distance::Near) => 1,
-        None => 2,
-        Some(Distance::Far) => 3,
+    let below = if wished { 0 } else { parts.gap };
+    let level = if parts.level_cap && below >= 2 {
+        4
+    } else if above >= 2 {
+        3
+    } else if below >= 1 {
+        2
+    } else {
+        u64::from(above >= 1)
     };
-    s.set(Sig::FieldClass, field_class);
-    if field_class <= 1 {
-        let carriers = musts
-            .iter()
-            .filter(|m| {
-                let folded = fold(&m.item.text);
-                CARRIER_WORDS.iter().any(|w| folded.contains(w))
-            })
-            .map(|m| m.fit.value);
-        s.set(Sig::Carrier, mean(carriers));
-    }
-    s.set(
-        Sig::Evidence,
-        match parts.evidence {
-            EvidenceLevel::Full => 0,
-            EvidenceLevel::Low => 1,
-            EvidenceLevel::Teaser => 2,
-        },
-    );
+    s.set(Sig::Level, level);
 }
 
-/// The mandate from the title, the task lines and the ad's first lines: building or
-/// changing something, or a seat in running operations.
-fn mandate(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, tasks: &[&str]) {
-    let mut text = fold(parts.title);
-    let leading = splitlines(parts.own)
-        .into_iter()
-        .map(strip)
-        .filter(|l| !l.is_empty())
-        .take(LEADING_LINES);
-    for line in tasks.iter().copied().chain(leading) {
-        text.push('\n');
-        text.push_str(&fold(line));
+/// The frame aspects met in part and clearly missed (day rate, remote and place, start,
+/// duration, workload); an aspect the ad does not state fits.
+fn frame(findings: &[Finding], wishes: &[WishResult]) -> (u64, u64) {
+    // Per aspect: 0 fits, 1 in part, 2 missed (the worst of what speaks to it).
+    let mut aspects = [0u8; 5];
+    for wish in wishes {
+        let index = match wish.code {
+            ReasonCode::DayRateWish => 0,
+            ReasonCode::RemoteWish | ReasonCode::RegionWish => 1,
+            _ => continue,
+        };
+        let state = match wish.state {
+            State::Met | State::Unknown => 0,
+            State::Near => 1,
+            State::Missed => 2,
+        };
+        aspects[index] = aspects[index].max(state);
     }
-    let build = BUILD_WORDS.iter().any(|w| text.contains(w));
-    s.set(Sig::Build, u64::from(build));
-    let run = !build
-        && profile.level.top.is_some_and(|l| l >= RUN_SEAT_LEVEL)
-        && RUN_WORDS.iter().any(|w| text.contains(w));
-    s.set(Sig::RunSeat, u64::from(run));
+    for finding in findings.iter().filter(|f| !f.decided) {
+        let (index, state) = match finding.code {
+            ReasonCode::Salary => (0, 1),
+            ReasonCode::AvailabilityGap => (2, 2),
+            ReasonCode::Duration => (3, 2),
+            ReasonCode::Workload => (4, 2),
+            _ => continue,
+        };
+        aspects[index] = aspects[index].max(state);
+    }
+    let (near, missed) = aspects.iter().fold((0u64, 0u64), |(n, m), a| {
+        (n + u64::from(*a == 1), m + u64::from(*a == 2))
+    });
+    (near, missed)
+}
+
+/// The share of the frame that fits (per-mille), the scorer's reading of the signals.
+#[cfg(test)]
+pub(crate) fn frame_share(s: &Signals) -> u16 {
+    scorer::percent(s).shares[3]
 }
 
 #[cfg(test)]
@@ -621,25 +522,28 @@ mod tests {
             }
         }
         let s = signals(&p, &input(AD));
-        assert!(s.get(Sig::NMusts) > 0, "{s:?}");
-        assert_eq!(s.get(Sig::Build), 1, "{s:?}");
-    }
-
-    #[test]
-    fn task_lines_are_the_lines_under_a_task_heading() {
-        assert_eq!(
-            task_lines(AD),
-            vec![
-                "- Aufbau und Leitung des Kundenservice",
-                "- Prozessoptimierung im Contact Center",
-                "- KPI-Reporting an die Geschäftsführung",
-            ]
-        );
+        let musts = [
+            Sig::CoreMet,
+            Sig::CorePartial,
+            Sig::CoreOpen,
+            Sig::OtherMet,
+            Sig::OtherPartial,
+            Sig::OtherOpen,
+        ];
+        assert!(musts.iter().map(|m| s.get(*m)).sum::<u16>() > 0, "{s:?}");
+        assert_eq!(s.get(Sig::FormalOpen), 1, "{s:?}");
     }
 
     #[test]
     fn an_empty_profile_has_no_signals() {
         let empty = compile_profile(&ProfileForm::default());
         assert_eq!(signals(&empty, &input(AD)), Signals::default());
+    }
+
+    /// An ad that states nothing of the frame fits it in full.
+    #[test]
+    fn an_unstated_frame_fits() {
+        assert_eq!(frame(&[], &[]), (0, 0));
+        assert_eq!(frame_share(&Signals::default()), 1000);
     }
 }

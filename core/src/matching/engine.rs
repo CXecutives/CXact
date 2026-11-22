@@ -1,10 +1,9 @@
 //! The engine: requirements read from the job (V5-V7, V16), each item scored on the
 //! ladder (V1-V4, V8, V9, V15), hard criteria decided or checked (V10-V13), relevance
-//! (V17, V18), the signals of the job ([`signals`]) and the learned points (engine 24).
-//! Integer arithmetic only.
+//! (V17, V18), the signals of the job ([`signals`]) and the Passungsgrad ([`scorer`],
+//! engine 25). Integer arithmetic only.
 //!
-//! `points = clamp(learned(signals) + clamp(sum(wishes), -100, 100), 0, 1000)`, a permanent
-//! role `* 0.9`, `score = round_half_even(points/10)`, then the lowest cap that fired.
+//! `score = min(parts + Kann - permanent line, lowest cap)`, every line in whole points.
 
 use std::ops::Range;
 
@@ -21,22 +20,19 @@ use super::lexicon::engine as lex;
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    E_FULL, E_HALF, E_NONE, FORMAL_CAP, JUNIOR_CAP, LANGUAGE_MUST_LEVEL, LEVEL_CAP,
-    LOW_EVIDENCE_ITEMS, MIN_TEXT_CHARS, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT,
-    PERMANENT_FACTOR, SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT,
-    W_TERM, WISH_MAX,
+    E_FULL, E_HALF, E_NONE, LANGUAGE_MUST_LEVEL, LOW_EVIDENCE_ITEMS, MIN_TEXT_CHARS,
+    OFF_FIELD_TITLE_FIT, SENIOR_YEARS, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT, W_TERM,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
 use super::relevance;
 use super::roles::{self, Role, RoleFit};
-use super::score::div_round_half_even;
-use super::scorer;
+use super::scorer::{self, Percent};
 use super::sections::ReqKind;
 use super::seniority;
-use super::signals::{self, Signals};
+use super::signals::{self, Sig, Signals};
 use super::title::{self, Distance, ProfileLevel};
-use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict, Via};
+use super::types::{CapCode, EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict, Via};
 use super::wishes::{self, WishResult, Wishes};
 use crate::profile::{ProfileForm, key};
 
@@ -124,51 +120,23 @@ pub(crate) struct Evaluation {
     /// score (two jobs capped at 40 are not equally good).
     pub rank: u16,
     /// The cap that held the score down, with the highest score it allows (none when the
-    /// rounded score stays at or below every cap).
-    pub capped: Option<(CapKind, u8)>,
+    /// score before the caps stays at or below every cap).
+    pub capped: Option<(CapCode, u8)>,
+    /// The Passungsgrad line by line.
+    pub percent: Percent,
     /// The ad's level and how many levels it stands below the profile (none at a level the
     /// profile wants or without a level).
     pub level: Option<(u8, u8)>,
     /// The ad's field family and its distance to the profile's.
     pub field: Option<(&'static str, Distance)>,
-    /// What the engine read, as the learned scorer's inputs (engine 24 groundwork).
+    /// What the engine read, as the inputs of the Passungsgrad.
     pub signals: Signals,
     /// Every cap that fired, with the highest score it allows (the lowest one holds).
     pub caps: Vec<Cap>,
-    /// The contract type the ad states.
-    pub contract: ContractKind,
-}
-
-/// Why a score is capped (the rubric's caps, a text without requirements, a junior role).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CapKind {
-    /// An open formal must (a degree of another field, a licence).
-    Formal,
-    /// Several musts open (at least two and at least half).
-    SeveralOpen,
-    /// No skill must met at all: outside the field.
-    OffField,
-    /// A junior or entry-level role for a senior profile.
-    Junior,
-    /// A role two or more levels below the profile (engine 23).
-    Level,
-}
-
-impl CapKind {
-    /// The code the interface reads (`Factor` params).
-    pub(crate) fn code(self) -> &'static str {
-        match self {
-            CapKind::Formal => "formal",
-            CapKind::SeveralOpen => "severalOpen",
-            CapKind::OffField => "offField",
-            CapKind::Junior => "junior",
-            CapKind::Level => "level",
-        }
-    }
 }
 
 /// A cap with its kind; the lower of two, the first of two alike.
-pub(crate) type Cap = (u8, CapKind);
+pub(crate) type Cap = (u8, CapCode);
 
 fn lower(a: Cap, b: Cap) -> Cap {
     if b.0 < a.0 { b } else { a }
@@ -286,16 +254,11 @@ fn formal(profile: &EngineProfile, items: &[Scored]) -> (Vec<Finding>, bool) {
     (findings, cap)
 }
 
-/// The rubric's caps: an open formal must; several musts open (at least two and at least
-/// half) with the core of the role among them; no skill must met at all (outside the field: at least two, or the only one when
-/// the title names nothing of the profile either); an open must on the topic of the title
-/// (the core of the role).
-fn cap(items: &[Scored], title: &str, vocab: &Vocab, formal_cap: bool, title_fit: u64) -> Vec<Cap> {
-    let musts: Vec<&Scored> = items.iter().filter(|s| is_must(s)).collect();
-    let open = musts.iter().filter(|s| s.fit.value == E_NONE).count();
-    let several_open = open >= 2 && 2 * open >= musts.len();
-    // Only explicit requirements, never a teaser's vocabulary terms; a must of generic words
-    // and leadership alone (`SAP-Kenntnisse`, `Erste Führungserfahrung`) names no field.
+/// No skill must met at all: outside the field (at least two, or the only one when the title
+/// names little of the profile either). Only explicit requirements, never a teaser's
+/// vocabulary terms; a must of generic words and leadership alone (`SAP-Kenntnisse`, `Erste
+/// Führungserfahrung`) names no field.
+fn off_field(items: &[Scored], vocab: &Vocab, title_fit: u64) -> bool {
     let names_field = |s: &Scored| {
         let atoms = atoms::atoms(&s.item.text, vocab);
         atoms.is_empty()
@@ -303,42 +266,14 @@ fn cap(items: &[Scored], title: &str, vocab: &Vocab, formal_cap: bool, title_fit
                 .iter()
                 .any(|a| !atoms::is_generic(a) && !fit::leadership_atom(a))
     };
-    let skills: Vec<&&Scored> = musts
+    let skills: Vec<&Scored> = items
         .iter()
+        .filter(|s| is_must(s))
         .filter(|s| s.item.class == Class::Skill && s.item.stage != Stage::Vocabulary)
         .filter(|s| names_field(s))
         .collect();
     let all_open = !skills.is_empty() && skills.iter().all(|s| s.fit.value == E_NONE);
-    let off_field = all_open && skills.len() >= 2;
-    // The only skill must open and a title that names little of the profile: off the field
-    // too, a little milder (one requirement is thin evidence).
-    let off_field_single = all_open && skills.len() == 1 && title_fit < OFF_FIELD_TITLE_FIT;
-    let title_atoms = roles::title_core(title, vocab);
-    let related = |a: &str, t: &str| {
-        matches!(atoms::fit(a, t), Fit::Equal | Fit::Specific)
-            || matches!(atoms::fit(t, a), Fit::Equal | Fit::Specific)
-    };
-    // A teaser's term from the title counts here like an explicit must.
-    let core_open = musts
-        .iter()
-        .filter(|s| s.item.class == Class::Skill)
-        .any(|s| {
-            s.fit.value == E_NONE
-                && atoms::atoms(&s.item.text, vocab)
-                    .iter()
-                    .any(|a| !atoms::is_generic(a) && title_atoms.iter().any(|t| related(a, t)))
-        });
-    [
-        formal_cap.then_some((FORMAL_CAP, CapKind::Formal)),
-        // Several musts open cap at 40 only with the core of the role open: open peripheral
-        // musts cost their share of `M`, no more (engine 22).
-        (several_open && core_open).then_some((SEVERAL_OPEN_CAP, CapKind::SeveralOpen)),
-        off_field.then_some((OFF_FIELD_CAP, CapKind::OffField)),
-        off_field_single.then_some((OFF_FIELD_SINGLE_CAP, CapKind::OffField)),
-    ]
-    .into_iter()
-    .flatten()
-    .collect()
+    all_open && (skills.len() >= 2 || title_fit < OFF_FIELD_TITLE_FIT)
 }
 
 /// The weight of the musts ([`is_must`]): what the evidence level reads.
@@ -536,27 +471,6 @@ fn job_facts<'a>(job: &JobInput<'a>) -> JobFacts<'a> {
     }
 }
 
-/// Every cap of a job: the rubric's caps and a junior role for a senior profile
-/// (`JUNIOR_CAP`). A title that meets a target role lifts no cap (the rubric: a target role
-/// never lifts a cap), the off-field cap included.
-fn all_caps(
-    profile: &EngineProfile,
-    items: &[Scored],
-    title: &str,
-    job: &JobInput<'_>,
-    formal_cap: bool,
-) -> Vec<Cap> {
-    let vocab = &profile.skills.vocab;
-    let title_fit = relevance::title_fit(&profile.query, title, vocab);
-    cap(items, title, vocab, formal_cap, title_fit)
-        .into_iter()
-        .chain(
-            junior_for_senior(profile, job.title, &page_levels(job), items)
-                .then_some((JUNIOR_CAP, CapKind::Junior)),
-        )
-        .collect()
-}
-
 /// A junior role for a profile with `SENIOR_YEARS` or more: a junior title (`Junior`,
 /// `Werkstudent`, `Trainee`, `Berufseinstieg`), a junior or entry level the page states (an
 /// internship), or a must that asks for first professional experience (`Erste
@@ -610,38 +524,20 @@ fn relevance_of(
     .min(1000)
 }
 
-/// The points of a job before the caps (engine 24, per-mille): the learned fit
-/// ([`scorer::learned`]), the bounded wishes and a permanent role at `PERMANENT_FACTOR`. The
-/// rubric's caps then limit the result in [`final_score`], so no wish lifts past them
-/// (`tools/scorer/train.py` replays this order: change both together).
-fn points(signals: &Signals, wishes: &[WishResult], contract: ContractKind) -> u64 {
-    let fit = i64::from(scorer::learned(signals));
-    let wish = wishes
-        .iter()
-        .map(|w| w.points)
-        .sum::<i64>()
-        .clamp(-WISH_MAX, WISH_MAX);
-    let mut points = u64::try_from((fit + wish).clamp(0, 1000)).unwrap_or(0);
-    if contract == ContractKind::Permanent {
-        points = points * PERMANENT_FACTOR / 1000;
-    }
-    points
-}
-
-/// The score (rounded and capped; 0 when unscorable), the rank (the
-/// per-mille score before caps and rounding) and the cap that held the score down.
+/// The score (capped; 0 when unscorable), the rank (the per-mille score before caps and
+/// rounding) and the cap that held the score down.
 fn final_score(
-    adjusted: u64,
+    percent: &Percent,
     cap: Option<Cap>,
     unscorable: bool,
-) -> (u8, u16, Option<(CapKind, u8)>) {
+) -> (u8, u16, Option<(CapCode, u8)>) {
     if unscorable {
         return (0, 0, None);
     }
-    let rounded = u8::try_from(div_round_half_even(adjusted, 10).min(100)).unwrap_or(100);
-    let score = cap.map_or(rounded, |(c, _)| rounded.min(c));
-    let capped = cap.filter(|&(c, _)| c < rounded).map(|(c, kind)| (kind, c));
-    (score, u16::try_from(adjusted).unwrap_or(1000), capped)
+    let total = percent.total;
+    let score = cap.map_or(total, |(c, _)| total.min(c));
+    let capped = cap.filter(|&(c, _)| c < total).map(|(c, kind)| (kind, c));
+    (score, percent.fine, capped)
 }
 
 /// The level of the ad against the profile's years (the same for every profile: all packs,
@@ -672,6 +568,14 @@ fn limit_findings(
     findings
 }
 
+fn verdict(decided: bool, unscorable: bool) -> Verdict {
+    match (decided, unscorable) {
+        (true, _) => Verdict::Excluded,
+        (false, true) => Verdict::Unscorable,
+        (false, false) => Verdict::Scored,
+    }
+}
+
 /// The level of the role and the field of the ad against the profile's (engine 23).
 struct Frame {
     level: Option<u8>,
@@ -695,8 +599,8 @@ impl Frame {
     }
 
     /// Two or more levels below the target roles cap at `LEVEL_CAP`.
-    fn cap(&self, profile: &EngineProfile) -> Option<Cap> {
-        (self.gap >= 2 && !profile.level.wished.is_empty()).then_some((LEVEL_CAP, CapKind::Level))
+    fn caps(&self, profile: &EngineProfile) -> bool {
+        self.gap >= 2 && !profile.level.wished.is_empty()
     }
 
     /// The ad's level and its gap, when it stands below the profile.
@@ -761,37 +665,42 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     } else {
         (role, wishes)
     };
-    let caps: Vec<Cap> = all_caps(profile, &items, &title, job, formal_cap)
-        .into_iter()
-        .chain(frame.cap(profile))
-        .collect();
-    let cap = caps.iter().copied().reduce(lower);
-    let signals = signals::compute(
+    let title_fit = relevance::title_fit(&profile.query, &title, vocab);
+    let mut signals = signals::compute(
         profile,
         &signals::Parts {
             title: &title,
-            own,
             items: &items,
             relevance,
             role: role.as_ref().map(|(fit, _)| fit),
             ad_level: frame.level,
             gap: frame.gap,
-            field: frame.field.map(|(_, d)| d),
+            level_cap: frame.caps(profile),
+            field: frame.field,
             evidence,
-            formal_open: formal_cap,
+            findings: &findings,
+            wishes: &wishes,
         },
     );
-    let adjusted = points(&signals, &wishes, contract);
-    let (score, rank, capped) = final_score(adjusted, cap, unscorable);
-    let verdict = match (decided, unscorable) {
-        (true, _) => Verdict::Excluded,
-        (false, true) => Verdict::Unscorable,
-        (false, false) => Verdict::Scored,
-    };
+    for (sig, set) in [
+        (Sig::OffField, off_field(&items, vocab, title_fit)),
+        (Sig::FormalOpen, formal_cap),
+        (
+            Sig::Junior,
+            junior_for_senior(profile, job.title, &page_levels(job), &items),
+        ),
+        (Sig::Permanent, contract == ContractKind::Permanent),
+    ] {
+        signals.set(sig, u64::from(set));
+    }
+    let percent = scorer::percent(&signals);
+    let caps = scorer::caps(&signals);
+    let cap = caps.iter().copied().reduce(lower);
+    let (score, rank, capped) = final_score(&percent, cap, unscorable);
     Evaluation {
         items,
         findings,
-        verdict,
+        verdict: verdict(decided, unscorable),
         score,
         evidence,
         short,
@@ -800,18 +709,18 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         facts: ad_facts,
         rank,
         capped,
+        percent,
         level: frame.below(),
         field: frame.field,
         signals,
         caps,
-        contract,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::matching::wishes::State;
+    use crate::matching::params::{FORMAL_CAP, OFF_FIELD_CAP};
 
     fn must(value: u16) -> Scored {
         Scored {
@@ -832,16 +741,6 @@ mod tests {
             },
             weight: W_MUST,
         }
-    }
-
-    fn lift(points: i64) -> Vec<WishResult> {
-        vec![WishResult {
-            code: ReasonCode::RemoteWish,
-            state: State::Met,
-            points,
-            params: json!({}),
-            spans: Vec::new(),
-        }]
     }
 
     /// A long text read with fewer than three weighted musts is low evidence; a short one
@@ -880,43 +779,34 @@ mod tests {
         assert_eq!(must_weight(&[language(None, E_FULL), soft]), 0);
     }
 
-    /// The wishes move the points by at most `WISH_MAX` either way, never out of 0..=1000; a
-    /// permanent role keeps `PERMANENT_FACTOR` of them.
-    #[test]
-    fn wishes_are_bounded_and_a_permanent_role_counts_less() {
-        let mut signals = Signals::default();
-        for (j, max) in signals::MAX.iter().enumerate() {
-            signals.v[j] = max / 2;
-        }
-        let base = points(&signals, &[], ContractKind::Interim);
-        let up = points(&signals, &lift(3 * WISH_MAX), ContractKind::Interim);
-        let down = points(&signals, &lift(-3 * WISH_MAX), ContractKind::Interim);
-        let bound = u64::try_from(WISH_MAX).unwrap();
-        assert!(up >= base && up - base <= bound, "{base} -> {up}");
-        assert!(down <= base && base - down <= bound, "{base} -> {down}");
-        assert!(up <= 1000);
-        let permanent = points(&signals, &[], ContractKind::Permanent);
-        assert_eq!(permanent, base * PERMANENT_FACTOR / 1000);
-    }
-
     /// The lowest cap holds the score; the rank keeps the points before it; an unscorable
     /// job scores 0.
     #[test]
     fn the_cap_holds_the_score_and_the_rank_keeps_the_points() {
-        assert_eq!(final_score(735, None, false), (74, 735, None));
-        let cap = Some((FORMAL_CAP, CapKind::Formal));
+        let percent = Percent {
+            total: 74,
+            fine: 735,
+            ..Percent::default()
+        };
+        assert_eq!(final_score(&percent, None, false), (74, 735, None));
+        let cap = Some((FORMAL_CAP, CapCode::Formal));
         assert_eq!(
-            final_score(735, cap, false),
-            (FORMAL_CAP, 735, Some((CapKind::Formal, FORMAL_CAP)))
+            final_score(&percent, cap, false),
+            (FORMAL_CAP, 735, Some((CapCode::Formal, FORMAL_CAP)))
         );
-        assert_eq!(final_score(300, cap, false), (30, 300, None));
-        assert_eq!(final_score(735, cap, true), (0, 0, None));
+        let low = Percent {
+            total: 30,
+            fine: 300,
+            ..Percent::default()
+        };
+        assert_eq!(final_score(&low, cap, false), (30, 300, None));
+        assert_eq!(final_score(&percent, cap, true), (0, 0, None));
         assert_eq!(
             lower(
-                (FORMAL_CAP, CapKind::Formal),
-                (OFF_FIELD_CAP, CapKind::OffField)
+                (FORMAL_CAP, CapCode::Formal),
+                (OFF_FIELD_CAP, CapCode::OffField)
             ),
-            (OFF_FIELD_CAP, CapKind::OffField)
+            (OFF_FIELD_CAP, CapCode::OffField)
         );
     }
 }

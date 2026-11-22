@@ -15,8 +15,8 @@ pub(crate) const W_TERM: u64 = 250;
 /// met in full; below it, or met, a language is hygiene and adds nothing (engine 22).
 pub(crate) const LANGUAGE_MUST_LEVEL: u8 = 5;
 /// Musts a typical real ad names (the median over the 641 private real ads with musts,
-/// engine 22): the coverage signals divide by at least this many musts, so meeting the two
-/// musts of a thin list is not a full fit (engine 24).
+/// engine 22): the share of the other musts counts at least this many, and the ones a short
+/// list does not name count as Rolle und Fach does (engine 25).
 pub(crate) const MUST_SATURATION: u64 = 7;
 /// BM25F-like relevance: k1 and b in per-mille, fixed document length in characters.
 pub(crate) const BM25_K1: u64 = 1200;
@@ -46,33 +46,61 @@ pub(crate) const HOURS_PER_DAY: u64 = 8;
 /// proves nothing (USP sentences never do).
 pub(crate) const SENTENCE_ATOMS: usize = 4;
 /// Permanent roles are the second category of a consultant: the points are scaled by this
-/// factor (per-mille).
+/// factor (per-mille), shown as a line of its own.
 pub(crate) const PERMANENT_FACTOR: u64 = 900;
-/// Score caps of the rubric: an open formal must (degree field, licence) at most 40; several
-/// musts open (at least two and at least half, the core of the role among them) at most 40;
-/// no skill must met at all (at least two) is outside the field.
+/// Score caps of the Passungsgrad, each with its reason: an open formal must (degree field,
+/// licence, mandatory certificate) at most 40; the core of the role clearly open (less than
+/// half of it met, a must on it open) at most 49; a foreign field at most 24.
 pub(crate) const FORMAL_CAP: u8 = 40;
-pub(crate) const SEVERAL_OPEN_CAP: u8 = 40;
-pub(crate) const OFF_FIELD_CAP: u8 = 25;
+pub(crate) const CORE_OPEN_CAP: u8 = 49;
+pub(crate) const OFF_FIELD_CAP: u8 = 24;
+
+// --- ENGINE_VERSION 25: the Passungsgrad (`scorer.rs`) ---
+// The weights, the value of a requirement met in part and the level values are fitted on
+// the private gold labels by `tools/scorer/train.py` (each weight 10 to 50, sum 100; gold
+// tune NDCG@10 0.792, Spearman 0.733).
+
+/// The weights of the four parts in points: Rolle und Fach, Kern der Rolle, weitere
+/// Muss-Punkte, Rahmen.
+pub(crate) const W_ROLE: u64 = 20;
+pub(crate) const W_CORE: u64 = 25;
+pub(crate) const W_MUSTS: u64 = 35;
+pub(crate) const W_FRAME: u64 = 20;
+/// What a requirement met in part (and a frame aspect met in part) counts (per-mille).
+pub(crate) const PARTIAL: u64 = 800;
+/// Rolle und Fach at a level one above or one below the target roles, and two or more
+/// above (per-mille of the part); two or more below caps at `LEVEL_CAP`.
+pub(crate) const LEVEL_ONE: u64 = 1000;
+pub(crate) const LEVEL_TWO_ABOVE: u64 = 300;
+/// Rolle und Fach by the field of the role (per-mille): the same field, near, far, foreign.
+pub(crate) const FIELD_VALUES: [u64; 4] = [1000, 700, 200, 0];
+/// The title fit (per-mille) from which a title of the profile's field is the same field,
+/// and from which it is near.
+pub(crate) const TITLE_SAME: u64 = 600;
+pub(crate) const TITLE_NEAR: u64 = 300;
+/// How the ad fits the profile's field (its relevance plus `HIT_RELEVANCE` for each of at
+/// most `HITS_MAX` distinct core competences its requirements meet) from which it is the same
+/// field, near and far; below, foreign.
+pub(crate) const HIT_RELEVANCE: u64 = 150;
+pub(crate) const HITS_MAX: u16 = 4;
+pub(crate) const RELEVANCE_SAME: u64 = 900;
+pub(crate) const RELEVANCE_NEAR: u64 = 650;
+pub(crate) const RELEVANCE_FAR: u64 = 350;
+/// The other musts a short list does not name count this share of Rolle und Fach
+/// (per-mille).
+pub(crate) const UNNAMED: u64 = 750;
+/// The Kann bonus at most (points; only a plus).
+pub(crate) const NICE_MAX: u64 = 5;
 
 // --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 
-/// Wishes: per-mille added for a wish met and taken for a wish clearly missed; near and
-/// unknown add nothing. Together they reach at most `WISH_MAX`.
-pub(crate) const WISH_RATE: i64 = 30;
-pub(crate) const WISH_REMOTE: i64 = 30;
-pub(crate) const WISH_REGION: i64 = 20;
 /// Tokens of the profile a domain pack needs among its triggers to switch on.
 pub(crate) const PACK_HITS: usize = 2;
-/// Bound of the summed wish effect (per-mille, both directions).
-pub(crate) const WISH_MAX: i64 = 100;
 /// Working hours of a year (40 per week): an hourly wage of an employment per year.
 pub(crate) const HOURS_PER_YEAR: u64 = 2080;
-/// A single open skill must caps the score as off-field only when the title fit (per-mille)
-/// stays below this: the title names little of the profile either.
+/// A single open skill must makes a foreign field only when the title fit (per-mille) stays
+/// below this: the title names little of the profile either.
 pub(crate) const OFF_FIELD_TITLE_FIT: u64 = 300;
-/// The cap of that single open skill must (the cap of two or more is `OFF_FIELD_CAP`).
-pub(crate) const OFF_FIELD_SINGLE_CAP: u8 = 30;
 /// A profile with this many years of experience or more is senior: a junior role caps it
 /// at `JUNIOR_CAP`.
 pub(crate) const SENIOR_YEARS: u32 = 10;

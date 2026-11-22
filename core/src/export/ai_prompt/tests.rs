@@ -329,6 +329,8 @@ fn assessment() -> Assessment {
             ),
             factor(FactorCode::Wishes, json!({ "points": 3 })),
         ],
+        parts: Vec::new(),
+        caps: Vec::new(),
     }
 }
 
@@ -642,7 +644,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         factor(FactorCode::Wishes, json!({ "points": -1 })),
         factor(FactorCode::Evidence, json!({ "evidence": "teaser" })),
         factor(FactorCode::Permanent, json!({ "percent": 90 })),
-        factor(FactorCode::Cap, json!({ "cap": "severalOpen", "max": 40 })),
+        factor(FactorCode::Cap, json!({ "cap": "coreOpen", "max": 49 })),
     ];
     let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let result = de.split("**Harte Kriterien**").next().unwrap();
@@ -651,7 +653,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         "- Wünsche: senken die Punktzahl um 1 von 100 Punkten",
         "- Text: nur der Anriss, die Punktzahl rückt zur Mitte",
         "- Festanstellung: zählt mit 90 % der fachlichen Passung",
-        "- Obergrenze: mehrere Muss-Anforderungen offen, höchstens 40 von 100 Punkten",
+        "- Obergrenze: Kern der Rolle klar offen, höchstens 49 von 100 Punkten",
     ] {
         assert!(result.contains(part), "{part}:\n{result}");
     }
@@ -919,6 +921,8 @@ fn an_excluded_job_says_why() {
         },
         rank: 900,
         factors: Vec::new(),
+        parts: Vec::new(),
+        caps: Vec::new(),
     };
     let mut job = view();
     let de = prompt_of(&profile(), item(&job, Some(ad), Some(&excluded)));
@@ -1041,7 +1045,7 @@ fn every_factor() -> Vec<Factor> {
     }
     let params = json!({
         "met": 1, "partial": 0, "total": 2, "role": "Interim CFO", "fit": "half",
-        "points": 2, "evidence": "low", "percent": 90, "cap": "severalOpen", "max": 40,
+        "points": 2, "evidence": "low", "percent": 90, "cap": "coreOpen", "max": 49,
         "level": 1, "gap": 2, "field": "it", "distance": "far"
     });
     all.iter()
@@ -1126,6 +1130,8 @@ fn every_reason() -> Assessment {
         },
         rank: 1,
         factors: every_factor(),
+        parts: Vec::new(),
+        caps: Vec::new(),
     }
 }
 

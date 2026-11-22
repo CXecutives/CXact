@@ -378,8 +378,8 @@ impl Wording for German {
             FactorCode::Cap => {
                 let why = match text_param(p, "cap") {
                     Some("formal") => "formale Pflicht offen",
-                    Some("severalOpen") => "mehrere Muss-Anforderungen offen",
-                    Some("offField") => "keine fachliche Muss-Anforderung erfüllt",
+                    Some("coreOpen") => "Kern der Rolle klar offen",
+                    Some("offField") => "fremdes Fachgebiet",
                     Some("junior") => "Einstiegsrolle bei langer Berufserfahrung",
                     Some("level") => "Rolle zwei oder mehr Stufen unter dem Profil",
                     _ => "eine Obergrenze der Bewertungsregel",
