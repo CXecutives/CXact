@@ -829,6 +829,26 @@ mod tests {
         assert_eq!(nurse.parts[0].points, 0);
         assert!(nurse.caps.iter().any(|c| c.code == CapCode::OffField));
         assert!(nurse.score <= 24, "{}", nurse.score);
+        // A role of the profile's own field is never foreign, even when its one must is open;
+        // a tool that "helps" is a nice-to-have, no must.
+        let treasury = assessed(
+            "Interim Treasury Manager (m/w/d)",
+            "Für die Neuordnung der Konzernfinanzierung suchen wir einen Interim Treasury Manager, \
+             der die Liquiditätsplanung der Gesellschaften übernimmt und das Cash Management neu \
+             aufsetzt. Kenntnisse in Anaplan helfen dabei.\n",
+        );
+        assert!(
+            !treasury.caps.iter().any(|c| c.code == CapCode::OffField),
+            "{:?}",
+            treasury.parts
+        );
+        assert_ne!(treasury.parts[0].params["class"], "foreign");
+        assert!(
+            treasury.score >= 40,
+            "{} {:?}",
+            treasury.score,
+            treasury.parts
+        );
     }
 
     /// Core of the role: the musts on the field of the role count; open, they cost the part and

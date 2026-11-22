@@ -1488,6 +1488,11 @@ pub(crate) const NICE_CUES: &[&str] = &[
     "bevorzugt",
     "desirable",
     "beneficial",
+    "helfen dabei",
+    "hilft dabei",
+    "helfen ihnen",
+    "hilft ihnen",
+    "would help",
 ];
 /// Nice cues that open a clause after a comma (`10+ years in finance, ideally in
 /// controlling`): the clause from the cue on is nice, what stands before it keeps its kind.
