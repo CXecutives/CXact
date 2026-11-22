@@ -3,10 +3,14 @@
 //! an unclear contract (an agency without details) or unclear wording gives a check.
 //!
 //! Salary: EUR per year, the upper bound counts (`110.000 bis 130.000 €` -> 130,000) with the
-//! bonus share its sentence names (`plus bis zu 20 % Bonus`), `ab 100.000` is only a lower
-//! bound, a monthly amount decides only when fourteen of them stay below the minimum (else a
+//! bonus share its sentence names (`plus bis zu 20 % Bonus`), `ab 100.000` is a lower bound
+//! that decides only when it stays below the minimum with `LOWER_BOUND_HEADROOM` added, a
+//! salary heading of its own (`Gehaltsinformationen`) names the amounts of the line below it,
+//! a monthly amount decides only when fourteen of them stay below the minimum (else a
 //! check: the number of salaries a year is unknown), one in another currency is not compared
 //! with a minimum in euros (a check, like a day rate in another currency).
+
+use std::ops::Range;
 
 use serde_json::json;
 
@@ -19,6 +23,9 @@ use super::types::{CriterionKey, ReasonCode};
 
 /// The most salaries a year a monthly amount stands for (twelve and two extra).
 const MONTHLY_SALARIES_MAX: u64 = 14;
+/// How far above a lower bound (`ab 75.000 €`, `at least 60.000 €`) a salary may still go
+/// (percent): a lower bound decides only when this much more stays below the minimum.
+const LOWER_BOUND_HEADROOM: u64 = 25;
 
 /// Does a rule for permanent roles apply, and may it decide?
 fn scope(contract: &Contract) -> Option<bool> {
@@ -152,6 +159,30 @@ pub(crate) fn parse_salary(folded: &str) -> Option<Salary> {
     if !lex::SALARY_CUES.iter().any(|w| folded.contains(w)) {
         return None;
     }
+    parse_amounts(folded)
+}
+
+/// A salary heading of its own (`Gehaltsinformationen`, `Salary information`): a salary word
+/// and no digit in a few words.
+fn salary_heading(folded: &str) -> bool {
+    lex::SALARY_CUES.iter().any(|w| folded.contains(w))
+        && !folded.chars().any(|c| c.is_ascii_digit())
+        && folded.split_whitespace().count() <= 3
+}
+
+/// The salary of a sentence: stated in it, or in the line below a salary heading
+/// (`Gehaltsinformationen` then `100.000€- 120.000€ je nach Berufserfahrung`).
+fn stated_salary(segments: &[Segment]) -> Option<(Salary, Range<usize>)> {
+    segments.iter().enumerate().find_map(|(i, (range, f))| {
+        parse_salary(f).map(|s| (s, range.clone())).or_else(|| {
+            let (next, below) = segments.get(i + 1).filter(|_| salary_heading(f))?;
+            parse_amounts(below).map(|s| (s, next.clone()))
+        })
+    })
+}
+
+/// The amounts of a sentence known to state a salary.
+fn parse_amounts(folded: &str) -> Option<Salary> {
     let monthly = lex::MONTHLY_WORDS.iter().any(|w| folded.contains(w));
     let floor = if monthly {
         lex::SALARY_MIN_AMOUNT / 10
@@ -218,9 +249,7 @@ pub(crate) fn salary(
             Some((salary, range.clone()))
         })
     };
-    let stated = segments
-        .iter()
-        .find_map(|(range, f)| parse_salary(f).map(|s| (s, range.clone())));
+    let stated = stated_salary(segments);
     // The stated wage of a student role decides like a stated salary.
     let wage = stated.is_none() && super::contract::student_role(title);
     let may_decide = may_decide || wage;
@@ -273,7 +302,9 @@ pub(crate) fn salary(
         || salary.upper.is_some_and(|upper| {
             with_bonus(upper.saturating_mul(MONTHLY_SALARIES_MAX), bonus) < min
         });
-    let decided = may_decide && salary.upper.is_some() && clear;
+    // A lower bound decides only when the headroom above it stays below the minimum too.
+    let bounded = salary.upper.is_some() || with_bonus(compared, LOWER_BOUND_HEADROOM) < min;
+    let decided = may_decide && bounded && clear;
     vec![Finding::new(
         ReasonCode::Salary,
         decided,
@@ -374,8 +405,22 @@ mod tests {
         assert!(salary_of(&with("Jahresgehalt 160.000 €.")).is_empty());
         let low = with("Jahresgehalt von 110.000 bis 130.000 € zuzüglich Bonus.");
         assert_eq!(salary_of(&low), [(ReasonCode::Salary, true)]);
-        let from = with("Gehalt ab 100.000 € brutto.");
+        // A lower bound decides only far below the minimum (with a quarter more still below).
+        let from = with("Gehalt ab 130.000 € brutto.");
         assert_eq!(salary_of(&from), [(ReasonCode::Salary, false)]);
+        let far = with("Für die Stelle ist ein Jahresbruttogehalt ab EUR 110.000 vorgesehen.");
+        assert_eq!(salary_of(&far), [(ReasonCode::Salary, true)]);
+        let least = with("The compensation is at least 90.000 € gross per year.");
+        assert_eq!(salary_of(&least), [(ReasonCode::Salary, true)]);
+        // A salary heading of its own names the amounts of the line below it; the upper end
+        // decides.
+        let below = with("Gehaltsinformationen\n100.000€- 120.000€ je nach Berufserfahrung");
+        assert_eq!(salary_of(&below), [(ReasonCode::Salary, true)]);
+        let above = with("Gehaltsinformationen\n140.000€- 160.000€ je nach Berufserfahrung");
+        assert!(salary_of(&above).is_empty());
+        // A heading without a line of amounts below it states nothing.
+        let none = with("Salary information\nAttraktive Vergütung und Firmenwagen.");
+        assert_eq!(salary_of(&none), [(ReasonCode::SalaryUnknown, false)]);
         assert!(salary_of("Interim-Mandat, Tagessatz 1.200 € pro Tag.").is_empty());
         // A monthly salary decides only when fourteen of them stay below the minimum.
         let monthly = with("3.950 €/Monat - 4.850 €/Monat");
