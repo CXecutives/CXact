@@ -67,7 +67,7 @@ everything the app knows and does, without UI and without…
 - settings.rs 300 · Settings of the app - stored as JSON in the key/value… · Settings, PortalSwitches, default_workspace, KEY
 - sync.rs 28 · Short locks on shared state. · lock
 - time.rs 129 · Time: UTC timestamps inside; local time for display, file… · zone, set_zone, follow_system_zone, local +7
-- view.rs 3075 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +64
+- view.rs 3084 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +65
 - window.rs 500 · Placement of the app window across restarts, as plain… · Placement, Screen, Restore, restore +6
 
 ### core/src/export
@@ -492,7 +492,7 @@ the app's state
 beside the app.
 
 ### tools
-- affected.mjs 537 · The checks a change needs, from the files it touches: the… · plan, sameId, commands, rustPaths +12
+- affected.mjs 546 · The checks a change needs, from the files it touches: the… · plan, sameId, commands, rustPaths +12
 - affected.test.mjs 232 · Unit tests of the mapping in tools/affected.mjs, on a…
 - architecture.mjs 353 · The architecture of the UI as a gate, run by `npm run…
 - codemap.mjs 353 · Writes docs/CODEMAP.md, the map a helper reads first…

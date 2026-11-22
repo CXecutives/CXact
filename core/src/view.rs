@@ -949,8 +949,13 @@ pub struct JobPage {
     pub counts: JobCounts,
 }
 
-/// List and counts from one store query. A job is in exactly one place.
+/// List and counts from one store query, now. A job is in exactly one place.
 pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
+    job_page_at(store, query, Timestamp::now())
+}
+
+/// [`job_page`] at `now` (the preview's demo has a fixed clock).
+pub fn job_page_at(store: &Store, query: &JobQuery, now: Timestamp) -> crate::Result<JobPage> {
     let (rows, counts) = store.job_page(&PageQuery {
         place: query.place,
         by_match: query.sort == JobSort::Match,
@@ -961,7 +966,7 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
         offset: query.offset,
     })?;
     Ok(JobPage {
-        jobs: job_views(store, &rows, Timestamp::now())?,
+        jobs: job_views(store, &rows, now)?,
         counts: JobCounts {
             inbox: counts.inbox,
             archive: counts.archive,

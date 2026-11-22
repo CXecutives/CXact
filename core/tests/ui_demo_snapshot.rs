@@ -277,7 +277,7 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
             limit: view::MAX_PAGE,
             offset: 0,
         };
-        for job in view::job_page(store, &query).unwrap().jobs {
+        for job in view::job_page_at(store, &query, now()).unwrap().jobs {
             rows.insert(job.key.to_string(), job);
         }
     }
