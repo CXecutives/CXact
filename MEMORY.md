@@ -26,13 +26,14 @@ and current: replace what changes, drop what no longer holds.
 - Run the harness with no dev server beside it. Two at once once failed with `ERR_NO_BUFFER_SPACE`.
 - Reports are a few lines. Say plainly when an earlier answer was wrong.
 
-## State (2026-10-11)
+## State (2026-11-22)
 
-- Design round 6 and the backend for the new UI are finished on two branches, not merged and not pushed:
-  - `main` holds the backend. Its gates are green.
-  - `ui-preview` (worktree `.claude/worktrees/ui-preview`) holds the new UI. It already uses main's generated
-    types, and its full harness passes in Chromium and WebKit.
-- The next step is the user's changes or the wiring: merge, then the checklist in `docs/PLAN.md` "Next", then build.
+- `main` holds the backend; `ui-preview` (worktree `.claude/worktrees/ui-preview`) holds the new UI, built against
+  main's generated types of 2026-10-11. The engine is being rebuilt as an explainable percent fit (the
+  Passungsgrad, branch `wt-percent`), measured on a private Claude-graded gold set (`private/bench/gold/`).
+- The user changes the UI next. Connecting comes only after that (`CLAUDE.md` "Change and connect").
+- Engine rules of the user: fair and rather optimistic like a good consultant; what an ad does not say never
+  costs points; every point of the number is explained.
 - The search already pages deeply (`docs/PLAN.md` "Sources", deep search). On 2026-10-02 the user was told by
   mistake that only the first page is read. Correct that when the search comes up.
 

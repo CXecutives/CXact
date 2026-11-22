@@ -89,8 +89,22 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 - A flaky test is fixed or removed the same day, never retried (CI fails a test that passes only on its retry).
 - macOS is verified through the `macos-latest` CI runner (real app screenshots, dmg install probe) and WebKit locally.
 
+## Change and connect (project rules)
+Two kinds of work, both fast; the structure keeps them fast ("a tree needs roots"):
+- **Change, add or remove** a function, rule, field, code or text inside the frontend or inside the backend: one
+  source per decision, tables instead of wiring, and the change touches only the places `docs/CHANGING.md` names.
+  When a small change needs edits in more than three places, fix the structure first (a table, a helper, a
+  generated list), then make the change. What goes, goes whole: code, texts, tests and docs together.
+- **Connect** frontend and backend only when both are finished. They meet only through the generated types and
+  `ui/src/lib/ipc/api.ts`; the stub (`tools/ui-harness/stub.ts`) serves the same contract. A change to the
+  contract updates the stub in the same block, so connecting stays a merge, not a rebuild.
+
 ## Speed and tokens (project rules)
-Fast AND lean: the cost comes from extra work, not from speed. So:
+Fast AND lean: as much as possible in the shortest time, without losing quality. The cost comes from extra work,
+not from speed. So:
+- Batch the checks: run the gates once at the end of a block, not after every step ("lieber alles auf einmal").
+- Parallel tracks in worktrees made by hand from the current base (the workflow's worktree isolation starts from a
+  stale base), disjoint files, one integrator who merges as soon as a track is done.
 - Only what pays off. Decide before building (product questions in one round, with a recommendation), so nothing
   is built twice. Deliver what the user can see first (preview early), background work after.
 - Small UI changes (text, colour, spacing, order, a fact, an icon): the main session edits directly, no subagent,
