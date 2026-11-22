@@ -9,8 +9,11 @@
 //! preview without mirroring it by hand.
 //!
 //! Like the generated TypeScript types: the test rewrites the snapshot and fails while the
-//! committed file differs (run it again, then commit the file):
-//! `cargo test -p jobalert-core --test ui_demo_snapshot`.
+//! committed file differs (commit the file; `npm run gen` writes and passes).
+//!
+//! Every ad of `ads.json` but a duplicate names its role in the demo (`expect`): the band of
+//! its score, or its status while it is not scored, once its page came. An engine change that
+//! moves an ad out of its role fails here by the ad's name, not later in a spec.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -94,6 +97,8 @@ struct Ad {
     /// The job arrives with the preview's scripted fetch.
     #[serde(default)]
     run: bool,
+    /// Its role in the demo once its page came ([`role`]); none for a duplicate.
+    expect: Option<String>,
 }
 
 fn ok() -> String {
@@ -472,18 +477,65 @@ fn snapshot() -> Snapshot {
     }
 }
 
+/// The role of a job in the demo: the band of its score (`high`, `mid`, `low`), or its status
+/// while it is not scored (`excluded`, `unscorable`); `none` without a match.
+fn role(job: &JobView) -> String {
+    let Some(found) = &job.match_ else {
+        return "none".to_owned();
+    };
+    let json = serde_json::to_value(found).unwrap();
+    let field = if json["status"] == "scored" {
+        "band"
+    } else {
+        "status"
+    };
+    json[field].as_str().unwrap().to_owned()
+}
+
+/// Every ad keeps the role `ads.json` gives it, judged once its page came (the scripted
+/// fetch's jobs and the ones whose details were missing after that fetch).
+#[test]
+fn every_demo_ad_keeps_its_role() {
+    let demo = Demo::load();
+    let listed = demo.fill();
+    let rows = rows(&demo.store);
+    let (_, fetched) = demo.fetch(&listed);
+    let mut wrong = Vec::new();
+    for ad in &demo.ads {
+        let key = key_of(ad).to_string();
+        let job = fetched
+            .get(&key)
+            .map(|entry| &entry.job)
+            .or_else(|| rows.get(&key));
+        match (&ad.expect, &ad.duplicate_of, job) {
+            (None, Some(_), _) => {}
+            (Some(_), Some(_), _) => wrong.push(format!("{key}: a duplicate has no role")),
+            (None, None, _) => wrong.push(format!("{key} \"{}\": no expect", ad.title)),
+            (Some(_), None, None) => wrong.push(format!("{key} \"{}\": not listed", ad.title)),
+            (Some(expect), None, Some(job)) => {
+                let now = role(job);
+                if &now != expect {
+                    let score = job.match_.as_ref().map_or(0, |m| m.score);
+                    wrong.push(format!(
+                        "{key} \"{}\" left its role {expect}: now {now} ({score})",
+                        ad.title
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "the demo ads' roles (expect in demo/ads.json):\n{}",
+        wrong.join("\n")
+    );
+}
+
 /// Writes the snapshot; fails while the committed one differs.
 #[test]
 fn the_preview_s_demo_data_come_from_the_engine() {
     let path = demo_dir().join("snapshot.json");
     let mut json = serde_json::to_string_pretty(&snapshot()).unwrap();
     json.push('\n');
-    let committed = std::fs::read_to_string(&path).unwrap_or_default();
-    if committed.replace("\r\n", "\n") != json {
-        std::fs::write(&path, &json).unwrap();
-        panic!(
-            "regenerated {} - commit it (the preview's demo data follow the engine)",
-            path.display()
-        );
-    }
+    jobalert_core::export::generated::write(&path, &json).unwrap_or_else(|e| panic!("{e}"));
 }

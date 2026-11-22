@@ -1325,7 +1325,7 @@ fn passages_follow_utf16_offsets() {
 
 /// One full prompt, checked in: a change to the prompt shows as a diff of
 /// `core/tests/fixtures/prompts/job.de.md` (the test writes the new text and fails once -
-/// look at the diff and commit it).
+/// look at the diff and commit it; `npm run gen` writes and passes).
 #[test]
 fn golden_prompt() {
     let view = view();
@@ -1333,16 +1333,7 @@ fn golden_prompt() {
     let prompt = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let path =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/prompts/job.de.md");
-    let stored = std::fs::read_to_string(&path)
-        .unwrap_or_default()
-        .replace("\r\n", "\n");
-    if stored != prompt {
-        std::fs::write(&path, &prompt).unwrap();
-        panic!(
-            "regenerated {} - check the diff and commit it",
-            path.display()
-        );
-    }
+    crate::export::generated::write(&path, &prompt).unwrap_or_else(|e| panic!("{e}"));
 }
 
 #[test]

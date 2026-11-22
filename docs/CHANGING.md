@@ -152,9 +152,10 @@ Each role of the UI has one pattern, decided in one place; the components only r
 
 ## What the backend generates for the UI
 
-`cargo test -p jobalert-core ipc_types` writes `ui/src/lib/ipc/types/` from core and fails
-while a file changed (commit the result); `cargo test -p jobalert-core --test contract`
-writes `commands.ts`. Never edit them by hand. The PascalCase files are the IPC types
+`npm run gen` writes every generated file in one run and passes (`tools/gen.mjs`;
+`cargo test` alone writes a stale file and fails, commit the result): `ui/src/lib/ipc/types/`
+from core (`ipc_types`), `commands.ts` (`--test contract`), the demo snapshot and vocabulary,
+the golden prompt and the corpus digest. Never edit them by hand. The PascalCase files are the IPC types
 (ts-rs); the lower-case ones are values the UI imports by their path:
 
 | File | Source | Holds |
@@ -316,13 +317,16 @@ reasons and passages, the jobs once their page came ("Anzeige laden", the script
 profile as the app understood it and the AI prompts. Never write a
 score, a reason or a prompt into the stub by hand.
 
-- An engine, view or prompt change: run `cargo test -p jobalert-core --test ui_demo_snapshot`.
-  It rewrites the snapshot and fails while the committed one differs; run it again and commit
-  the file with the change. CI fails while it is stale.
+- An engine, view or prompt change: run `npm run gen` and commit the snapshot it wrote with
+  the change. CI fails while it is stale.
 - Another demo job, other ad words, another demo state (read, archive, a duplicate,
   details pending or failed, a job of the scripted fetch): edit
   `tools/ui-harness/demo/ads.json`, then regenerate. The sample profile is
   `tools/ui-harness/demo/profile.json`.
+- Every ad there but a duplicate names its role (`expect`: `high`, `mid`, `low`, or
+  `excluded`, `unscorable` while it is not scored), judged once its page came;
+  `every_demo_ad_keeps_its_role` names the ad an engine change moved out of it. Move the role
+  only on purpose, or change the ad.
 - The stub keeps only state: moving, reading, deleting, the list's filter, runs, scenarios and
   errors.
 - Specs read engine values (a score, a reason, a count) from the snapshot
@@ -369,8 +373,7 @@ a word that occurs nowhere stays out.
    `core/tests/fixtures/private/bench/retrain.sh` with `CORE` and `WORK` (see "Change the
    Passungsgrad"); refit only when its fitter prints other values. Measure once on the gold
    set's `gold-locked` part with `bench/gold/eval.py`. Then re-pin `GOLDEN_DIGEST` with its
-   reason, regenerate the demo snapshot (`cargo test -p jobalert-core --test
-   ui_demo_snapshot`, commit what it writes) and follow a held-out floor only for a loss
+   reason and regenerate the demo snapshot (`npm run gen` writes both, commit them) and follow a held-out floor only for a loss
    within 0.03, with a one-line reason.
 5. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
    scores the stored jobs again) and updates the rules and measurements in `docs/MATCHING.md`;

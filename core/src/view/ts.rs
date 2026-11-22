@@ -486,8 +486,8 @@ fn ipc_types_are_generated_and_committed() {
         }
     }
     assert!(
-        changed.is_empty(),
-        "regenerated TypeScript types - commit them: {changed:?}"
+        changed.is_empty() || crate::export::generated::regen(),
+        "regenerated TypeScript types - commit them (or npm run gen): {changed:?}"
     );
 }
 
