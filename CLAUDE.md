@@ -9,6 +9,8 @@ which every session loads; this file holds only what is CXact's, `MEMORY.md` (im
 The old app `CXecutives/projektscraper` is a read-only reference.
 
 ## Hard rules
+- CXact has no users yet: no backward compatibility (old keys, formats, migrations, reset warnings) until
+  the owner says it is finished; fixtures are migrated, never tolerated.
 - Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/CXact` (formerly `Project`),
   fast-forward only; never bypass `.githooks/pre-push`; never force-push. The repo holds CXact only: no old code,
   branches or history.
