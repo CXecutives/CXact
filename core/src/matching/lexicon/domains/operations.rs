@@ -151,6 +151,15 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("quality management system", "qualitatsmanagementsystem"),
         ("qms", "qualitatsmanagementsystem"),
         ("qm system", "qualitatsmanagementsystem"),
+        ("qm systeme", "qualitatsmanagementsystem"),
+        ("quality management systems", "qualitatsmanagementsystem"),
+        ("qualitatsmanagementsysteme", "qualitatsmanagementsystem"),
+        ("auditvorbereitung", "audit"),
+        ("audit preparation", "audit"),
+        ("zertifizierung", "zertifizierung"),
+        ("certification", "zertifizierung"),
+        ("zertifizierungsaudit", "zertifizierung"),
+        ("zertifizierungen", "zertifizierung"),
         ("head quality", "qualitatsleitung"),
         ("quality director", "qualitatsleitung"),
         ("director quality", "qualitatsleitung"),
@@ -188,7 +197,13 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("ehs", "arbeitssicherheit"),
         ("arbeitsschutz", "arbeitssicherheit"),
     ],
-    half: &[],
+    // Systems, audits and certifications are the narrower work of quality management: a
+    // profile that names the field (`Qualitätsmanagement`) or the audit meets them in half.
+    half: &[
+        ("qualitatsmanagement", &["qualitatsmanagementsystem"]),
+        ("prozessaudit", &["audit", "zertifizierung"]),
+        ("qualitatsmanagementsystem", &["audit", "zertifizierung"]),
+    ],
 };
 
 #[cfg(test)]
