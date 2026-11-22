@@ -2484,8 +2484,8 @@ pub(crate) const CITIES: &[(&str, &str)] = &[
     ("zurich", "CH"),
 ];
 
-/// Words before a place that name it as a landmark, not as the place of work (`Straelen
-/// (nähe Venlo)`): the place after them is no country of the job (folded).
+/// Words before a place that name it as a landmark, not as the place of work (a town "near" a
+/// city across a border): the place after them is no country of the job (folded).
 pub(crate) const NEAR_WORDS: &[&str] = &["nahe", "naehe", "near", "unweit", "nahe von"];
 
 /// Words that turn a country mention into a work location.
