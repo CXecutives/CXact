@@ -534,6 +534,18 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             best.via = Via::General;
         }
     }
+    // Another tool of the same kind (`HubSpot` for `Salesforce`, both CRM) is similar:
+    // partly met, never open (the rubric's rule 3).
+    if broad
+        && best.value < E_HALF
+        && let Some(index) = same_kind(skills, text)
+    {
+        best = ItemFit {
+            value: E_HALF,
+            entry: Some(index),
+            via: Via::General,
+        };
+    }
     // ESCO, the broad layer: a concept the item and an entry both name.
     if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
         let item = Broad::skills(text, &skills.vocab);
@@ -550,6 +562,28 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
         }
     }
     best
+}
+
+/// The kinds of tool a text names (`TOOL_KINDS`).
+fn tool_kinds(text: &str) -> Vec<&'static str> {
+    let folded = fold(text).replace('-', " ");
+    super::lexicon::TOOL_KINDS
+        .iter()
+        .filter(|(_, names)| names.iter().any(|n| contains_word(&folded, n)))
+        .map(|(kind, _)| *kind)
+        .collect()
+}
+
+/// The first profile entry that names a tool of a kind the text names.
+fn same_kind(skills: &Skills, text: &str) -> Option<usize> {
+    let kinds = tool_kinds(text);
+    if kinds.is_empty() {
+        return None;
+    }
+    skills
+        .entries
+        .iter()
+        .position(|e| tool_kinds(&e.text).iter().any(|k| kinds.contains(k)))
 }
 
 /// An atom that only says experience (`berufserfahr`, `projekterfahr`, `praxis`), not
