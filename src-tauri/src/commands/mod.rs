@@ -25,7 +25,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use jobalert_core::error::{ErrorInfo, ErrorKind};
+use jobalert_core::error::{BusyActivity, ErrorInfo, ErrorKind};
 use jobalert_core::secrets::Vault;
 use jobalert_core::settings::Settings;
 use jobalert_core::store::Store;
@@ -178,24 +178,20 @@ pub enum Activity {
 }
 
 /// What holds the app, by the name the page knows (a run by its kind); `None` while idle.
-fn activity_name(activity: &Activity) -> Option<serde_json::Value> {
+fn activity_name(activity: &Activity) -> Option<BusyActivity> {
     match activity {
         Activity::Idle => None,
-        Activity::Run(handle) => serde_json::to_value(handle.snapshot().kind).ok(),
-        Activity::Session(_) => Some("session".into()),
-        Activity::Files => Some("files".into()),
-        Activity::Mailbox(_) => Some("mailbox".into()),
-        Activity::Cv(_) => Some("cv".into()),
+        Activity::Run(handle) => Some(handle.snapshot().kind.into()),
+        Activity::Session(_) => Some(BusyActivity::Session),
+        Activity::Files => Some(BusyActivity::Files),
+        Activity::Mailbox(_) => Some(BusyActivity::Mailbox),
+        Activity::Cv(_) => Some(BusyActivity::Cv),
     }
 }
 
 /// `Busy` with what holds the app as its `activity` (no prose: the page words it).
 fn busy_error(activity: &Activity) -> ErrorInfo {
-    let error = ErrorInfo::new(ErrorKind::Busy);
-    match activity_name(activity) {
-        Some(name) => error.with("activity", name),
-        None => error,
-    }
+    ErrorInfo::busy(activity_name(activity))
 }
 
 /// The app held for a file command ([`AppState::claim_files`]); dropped, the slot is free
@@ -289,10 +285,8 @@ impl AppState {
         matches!(&*lock(&self.activity), Activity::Run(run) if run.snapshot().kind.reads_mail())
     }
 
-    /// What holds the app, as the page names it (`fetch`, `details`,
-    /// `rescore`, `session`, `files`, `mailbox`): the closing note and the busy error say
-    /// which.
-    pub fn activity_name(&self) -> Option<serde_json::Value> {
+    /// What holds the app ([`BusyActivity`]): the closing note and the busy error say which.
+    pub fn activity_name(&self) -> Option<BusyActivity> {
         activity_name(&lock(&self.activity))
     }
 
@@ -404,6 +398,8 @@ mod tests {
         assert_eq!(session.params.get("activity"), Some(&"session".into()));
         let mailbox = busy_error(&Activity::Mailbox(CancellationToken::new()));
         assert_eq!(mailbox.params.get("activity"), Some(&"mailbox".into()));
+        let cv = busy_error(&Activity::Cv(CancellationToken::new()));
+        assert_eq!(cv.params.get("activity"), Some(&"cv".into()));
         assert!(busy_error(&Activity::Idle).params.is_empty());
     }
 }

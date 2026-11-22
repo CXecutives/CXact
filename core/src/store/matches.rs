@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::Store;
 use super::jobs::{JOB_COLUMNS, JobRow, job_row};
 use crate::error::Result;
-use crate::model::{HIGH_FROM, KeyFacts, MID_FROM, MatchRecord, MatchStatus, Notice};
+use crate::model::{HIGH_FROM, KeyFacts, MID_FROM, MatchRecord, MatchStatus, NoteCode, Notice};
 use crate::portal::{JobKey, Portal};
 use crate::text::truncate_chars;
 use crate::time::{from_db, to_db};
@@ -44,7 +44,7 @@ impl From<MatchRecord> for Judgement {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct StoredNote {
-    code: Option<String>,
+    code: Option<NoteCode>,
     params: serde_json::Map<String, serde_json::Value>,
     must_met: u16,
     must_total: u16,
@@ -82,7 +82,7 @@ pub(super) fn encode_note(judged: &Judgement) -> String {
             .collect()
     };
     let mut note = StoredNote {
-        code: record.note.as_ref().map(|n| n.code.clone()),
+        code: record.note.as_ref().map(|n| n.code),
         params: record
             .note
             .as_ref()
@@ -430,10 +430,7 @@ mod tests {
         MatchRecord {
             status,
             score,
-            note: Some(Notice {
-                code: "fewMust".into(),
-                params: serde_json::Map::new(),
-            }),
+            note: Some(Notice::bare(crate::matching::ReasonCode::LowEvidence)),
             must_met: 2,
             must_total: 3,
             top: vec!["SAP FI".into(), "x".repeat(500), "dritter".into()],

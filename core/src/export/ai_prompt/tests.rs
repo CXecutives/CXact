@@ -8,7 +8,7 @@ use serde_json::{Map, Value, json};
 
 use super::*;
 use crate::matching::{
-    Evidence, EvidenceLevel, Factor, Highlight, KeyFacts, Summary, compile_profile,
+    Evidence, EvidenceLevel, Highlight, KeyFacts, PartCode, Summary, compile_profile,
 };
 use crate::model::{Place, Posting};
 use crate::portal::{JobKey, Portal, job_link};
@@ -279,16 +279,19 @@ fn reasons() -> (Built, u16) {
     (b, gap)
 }
 
-/// A factor of what moved a score.
-fn factor(code: FactorCode, params: Value) -> Factor {
-    Factor {
+/// A line of the Passungsgrad.
+fn part(code: PartCode, points: i16, max: u8, params: Value) -> Part {
+    Part {
         code,
+        points,
+        max,
         params: object(params),
     }
 }
 
-/// The app's assessment of [`AD`] for [`profile`] (the reasons of [`reasons`], and what
-/// moved the score: the counts, the target role and the wishes).
+/// The app's assessment of [`AD`] for [`profile`] (the reasons of [`reasons`], and the
+/// Passungsgrad: role and field, the core, the other musts, the nice-to-have and the day rate
+/// a little below the wish; the points add up to the score).
 fn assessment() -> Assessment {
     let (b, gap) = reasons();
     Assessment {
@@ -317,19 +320,38 @@ fn assessment() -> Assessment {
             ..KeyFacts::default()
         },
         rank: 700,
-        factors: vec![
-            factor(
-                FactorCode::Musts,
-                json!({ "met": 3, "partial": 0, "total": 4 }),
+        parts: vec![
+            part(
+                PartCode::Role,
+                32,
+                40,
+                json!({ "class": "same", "role": "Interim CFO", "fit": "full", "level": "at" }),
             ),
-            factor(FactorCode::Nice, json!({ "met": 0, "total": 1 })),
-            factor(
-                FactorCode::TargetRole,
-                json!({ "role": "Interim CFO", "fit": "full" }),
+            part(
+                PartCode::Core,
+                24,
+                40,
+                json!({ "met": 2, "partial": 0, "total": 3, "counted": 3 }),
             ),
-            factor(FactorCode::Wishes, json!({ "points": 3 })),
+            part(
+                PartCode::Musts,
+                14,
+                20,
+                json!({ "met": 1, "partial": 0, "total": 1, "counted": 2 }),
+            ),
+            part(
+                PartCode::Nice,
+                0,
+                5,
+                json!({ "met": 0, "partial": 0, "total": 1 }),
+            ),
+            part(
+                PartCode::Frame,
+                -2,
+                0,
+                json!({ "aspect": "rate", "state": "near", "percent": 95 }),
+            ),
         ],
-        parts: Vec::new(),
         caps: Vec::new(),
     }
 }
@@ -596,10 +618,12 @@ fn the_pre_assessment_says_what_the_app_found() {
     let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     for part in [
         "- Ergebnis: 68 von 100 Punkten von CXact, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)",
-        "- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen",
-        "- Kann-Anforderungen: 0 von 1 erfüllt",
-        // What moved the score, as the reader's "why this number" shows it.
-        "- Wünsche: heben die Punktzahl um 3 von 100 Punkten",
+        // The Passungsgrad line by line, the target role said once with the wishes.
+        "- Rolle und Fachgebiet: 32 von 40 Punkten (gleiches Fachgebiet)",
+        "- Kern der Rolle: 24 von 40 Punkten (2 von 3 Muss-Anforderungen am Kern erfüllt)",
+        "- Weitere Muss-Anforderungen: 14 von 20 Punkten (1 von 1 weiteren Muss-Anforderungen erfüllt)",
+        "- Kann-Anforderungen: plus 0 von höchstens 5 Punkten (0 von 1 Kann-Anforderungen erfüllt)",
+        "- Rahmen, Tagessatz: knapp anders als gewünscht, minus 2 Punkte",
         // Every criterion the profile sets, with its threshold and the ad's words.
         "- Tagessatz mindestens 1.100 €: erfüllt, 1.250 € pro Tag („Tagessatz bis 1.250 €“)",
         "- Einsatzland DE, AT oder voll remote: erfüllt, Ort Hamburg",
@@ -632,31 +656,63 @@ fn the_pre_assessment_says_what_the_app_found() {
     assert!(!de.contains("- Wunschrolle:"), "the target role once");
 }
 
-/// What moved the score stands under the result as the reader shows it: the text's evidence,
-/// the permanent role, the cap with its maximum and a title without a target role.
+/// The Passungsgrad stands under the result line by line: a title without a target role a
+/// level below, a frame condition missed, the permanent role and the cap that held.
 #[test]
-fn what_moved_the_score_is_said_with_the_cap() {
+fn the_passungsgrad_is_said_with_the_cap() {
     let view = view();
     let mut a = assessment();
     a.reasons.retain(|r| r.code != ReasonCode::TargetRole);
-    a.factors = vec![
-        factor(FactorCode::TargetRole, json!({ "fit": "none" })),
-        factor(FactorCode::Wishes, json!({ "points": -1 })),
-        factor(FactorCode::Evidence, json!({ "evidence": "teaser" })),
-        factor(FactorCode::Permanent, json!({ "percent": 90 })),
-        factor(FactorCode::Cap, json!({ "cap": "coreOpen", "max": 49 })),
+    a.score = 45;
+    a.parts = vec![
+        part(
+            PartCode::Role,
+            20,
+            40,
+            json!({ "class": "near", "role": null, "fit": "none", "level": "oneBelow" }),
+        ),
+        part(
+            PartCode::Core,
+            10,
+            40,
+            json!({ "met": 1, "partial": 1, "total": 4, "counted": 4 }),
+        ),
+        part(
+            PartCode::Musts,
+            20,
+            20,
+            json!({ "met": 0, "partial": 0, "total": 0, "counted": 2 }),
+        ),
+        part(
+            PartCode::Frame,
+            -3,
+            0,
+            json!({ "aspect": "workload", "state": "missed", "percent": 95 }),
+        ),
+        part(PartCode::Permanent, -1, 0, json!({ "percent": 90 })),
+        part(
+            PartCode::Cap,
+            -1,
+            0,
+            json!({ "cap": "coreOpen", "max": 45 }),
+        ),
     ];
     let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let result = de.split("**Harte Kriterien**").next().unwrap();
     for part in [
-        "- Wunschrolle: keine im Titel",
-        "- Wünsche: senken die Punktzahl um 1 von 100 Punkten",
-        "- Text: nur der Anriss, die Punktzahl rückt zur Mitte",
-        "- Festanstellung: zählt mit 90 % der fachlichen Passung",
-        "- Obergrenze: Kern der Rolle klar offen, höchstens 49 von 100 Punkten",
+        "- Rolle und Fachgebiet: 20 von 40 Punkten (nahes Fachgebiet, keine Wunschrolle im Titel, eine Stufe unter dem Profil)",
+        "- Kern der Rolle: 10 von 40 Punkten (1 von 4 Muss-Anforderungen am Kern erfüllt, 1 teilweise)",
+        "- Weitere Muss-Anforderungen: 20 von 20 Punkten (die Anzeige nennt keine weiteren Muss-Anforderungen)",
+        "- Rahmen, Auslastung: nicht wie gewünscht, minus 3 Punkte",
+        "- Festanstellung: zählt mit 90 % der Punkte, minus 1 Punkt",
+        "- Obergrenze: Kern der Rolle klar offen, höchstens 45 von 100 Punkten, minus 1 Punkt",
     ] {
         assert!(result.contains(part), "{part}:\n{result}");
     }
+    assert!(
+        !result.contains("- Muss-Anforderungen:"),
+        "the counts only in the parts"
+    );
 }
 
 // ------------------------------------------------------------------------- the profile
@@ -889,7 +945,7 @@ fn an_excluded_job_says_why() {
     let rate = b.reason(
         (ReasonKind::Violation, Weight::Hard, ReasonCode::DayRate),
         None,
-        json!({ "rate": 760, "min": "1100", "hourly": true }),
+        json!({ "rate": 760, "min": 1100, "hourly": true }),
         None,
         Some("Honorar: 95,- € pro Stunde"),
     );
@@ -920,7 +976,6 @@ fn an_excluded_job_says_why() {
             ..KeyFacts::default()
         },
         rank: 900,
-        factors: Vec::new(),
         parts: Vec::new(),
         caps: Vec::new(),
     };
@@ -1015,41 +1070,31 @@ fn every_code() -> Vec<ReasonCode> {
     all
 }
 
-/// Every factor code once, so a new one cannot go unsaid (the match is exhaustive), with a
-/// cap code the words must hide.
-fn every_factor() -> Vec<Factor> {
-    use FactorCode as F;
+/// Every part code once, so a new one cannot go unsaid (the match is exhaustive), with a cap
+/// code the words must hide.
+fn every_part() -> Vec<Part> {
+    use PartCode as P;
     let all = [
-        F::Musts,
-        F::Nice,
-        F::TargetRole,
-        F::Wishes,
-        F::Evidence,
-        F::Permanent,
-        F::Cap,
-        F::Level,
-        F::Field,
+        P::Role,
+        P::Core,
+        P::Musts,
+        P::Frame,
+        P::Nice,
+        P::Permanent,
+        P::Cap,
     ];
     for code in &all {
         match code {
-            F::Musts
-            | F::Nice
-            | F::TargetRole
-            | F::Wishes
-            | F::Evidence
-            | F::Permanent
-            | F::Cap
-            | F::Level
-            | F::Field => {}
+            P::Role | P::Core | P::Musts | P::Frame | P::Nice | P::Permanent | P::Cap => {}
         }
     }
     let params = json!({
-        "met": 1, "partial": 0, "total": 2, "role": "Interim CFO", "fit": "half",
-        "points": 2, "evidence": "low", "percent": 90, "cap": "coreOpen", "max": 49,
-        "level": 1, "gap": 2, "field": "it", "distance": "far"
+        "class": "foreign", "role": "Interim CFO", "fit": "half", "level": "twoAbove",
+        "met": 1, "partial": 1, "total": 2, "counted": 4, "aspect": "place", "state": "near",
+        "percent": 90, "cap": "coreOpen", "max": 49
     });
     all.iter()
-        .map(|code| factor(*code, params.clone()))
+        .map(|code| part(*code, -2, 10, params.clone()))
         .collect()
 }
 
@@ -1129,8 +1174,7 @@ fn every_reason() -> Assessment {
             ..KeyFacts::default()
         },
         rank: 1,
-        factors: every_factor(),
-        parts: Vec::new(),
+        parts: every_part(),
         caps: Vec::new(),
     }
 }

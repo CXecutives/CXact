@@ -1,7 +1,7 @@
 //! Input and output types of the matching engine. Self-contained: the integrator maps
 //! them onto the IPC and store types.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 pub use crate::model::KeyFacts;
@@ -83,9 +83,6 @@ pub struct Assessment {
     pub facts: KeyFacts,
     /// Per-mille score before caps and rounding: the tie-breaker of equal scores.
     pub rank: u16,
-    /// What moved the score, at most [`MAX_FACTORS`] lines in reading order (empty for an
-    /// unscorable job): the reader's "why this number".
-    pub factors: Vec<Factor>,
     /// The Passungsgrad line by line (empty for an unscorable job): the three content parts
     /// with their points of their weight, the nice-to-have bonus, one line per frame condition
     /// worse than wished, the permanent line and the cap that held; the points add up to
@@ -99,16 +96,19 @@ pub struct Assessment {
 /// the cap) of its maximum, with what it was read from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Part {
     pub code: PartCode,
     pub points: i16,
     pub max: u8,
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: Map<String, Value>,
 }
 
 /// What a [`Part`] is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum PartCode {
     /// Role and field: `class` same, near, far or foreign, the target role (`role`, `fit`),
     /// the level (`level`: at, oneAbove, oneBelow, twoAbove, twoBelow).
@@ -133,15 +133,19 @@ pub enum PartCode {
 /// A cap that fired, with the highest score it allows and its reason.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub struct CapLine {
     pub code: CapCode,
     pub max: u8,
+    /// `open`, `total` (coreOpen), `level`, `gap` (level), `field` (offField).
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: Map<String, Value>,
 }
 
 /// Why a score is capped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum CapCode {
     /// An open formal must (a degree of another field, a licence, a mandatory certificate).
     Formal,
@@ -156,7 +160,7 @@ pub enum CapCode {
 }
 
 impl CapCode {
-    /// The code the interface reads (`Factor` params).
+    /// Its camelCase name (the trace, the cap part's `cap`).
     pub fn code(self) -> &'static str {
         match self {
             CapCode::Formal => "formal",
@@ -166,45 +170,6 @@ impl CapCode {
             CapCode::Level => "level",
         }
     }
-}
-
-/// Most lines of [`Assessment::factors`].
-pub const MAX_FACTORS: usize = 5;
-
-/// One thing that moved a score, as a code with its params (the UI catalog words it). The
-/// engine's own arithmetic says it; it never changes the score.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Factor {
-    pub code: FactorCode,
-    pub params: Map<String, Value>,
-}
-
-/// What a [`Factor`] is about.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum FactorCode {
-    /// The musts met in full (`met`), in part (`partial`) and all of them (`total`).
-    Musts,
-    /// The optional requirements met at least in part (`met`) of all of them (`total`).
-    Nice,
-    /// The title meets a target role (`role`, `fit` full or half), or none (`fit` none).
-    TargetRole,
-    /// The wishes together lift (`points` above 0) or lower (below 0) the score, in points.
-    Wishes,
-    /// Little text to judge by (`evidence` low or teaser): the score leans to the middle.
-    Evidence,
-    /// A permanent role weighs less (`percent` of its fit, 90).
-    Permanent,
-    /// A cap held the score down (`cap` formal, coreOpen, offField, junior or level;
-    /// `max` the highest score it allows).
-    Cap,
-    /// The role stands below the profile (`level` the ad's, 1 to 6; `gap` the levels below;
-    /// engine 23).
-    Level,
-    /// The ad's field lies far from the profile's (`field` its family, `distance` far): its
-    /// musts count half (engine 23).
-    Field,
 }
 
 /// Kind of a reason.
@@ -229,8 +194,9 @@ pub enum Weight {
 }
 
 /// What a reason is about; the UI catalog turns code + params into text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum ReasonCode {
     /// A requirement of the ad (label = quote).
     Requirement,
@@ -298,6 +264,7 @@ pub enum ReasonCode {
 /// How a profile entry met a requirement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum Via {
     Exact,
     Synonym,
@@ -349,8 +316,9 @@ pub struct Highlight {
 }
 
 /// The hard criteria of the profile.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum CriterionKey {
     MinDayRate,
     Countries,
@@ -438,8 +406,9 @@ pub struct ProfileWarning {
 }
 
 /// Profile warning codes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum ProfileWarningCode {
     NoCompetences,
     FewCompetences,

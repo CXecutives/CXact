@@ -4,6 +4,7 @@ use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::matching::{CriterionKey, ProfileWarningCode, ReasonCode};
 use crate::portal::{JobKey, Portal};
 use crate::text::{one_line, truncate_chars};
 
@@ -343,9 +344,70 @@ impl KeyFacts {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Notice {
-    pub code: String,
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    pub code: NoteCode,
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: serde_json::Map<String, serde_json::Value>,
+}
+
+impl Notice {
+    /// A notice without data.
+    pub fn bare(code: impl Into<NoteCode>) -> Notice {
+        Notice {
+            code: code.into(),
+            params: serde_json::Map::new(),
+        }
+    }
+}
+
+/// The code of a [`Notice`]: an engine reason (the list row's note), a hard criterion or a
+/// profile warning (what the app understood of the profile), or one of the app's own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum NoteCode {
+    Reason(ReasonCode),
+    Criterion(CriterionKey),
+    Warning(ProfileWarningCode),
+    App(AppNote),
+}
+
+/// The notes the app says itself, not the engine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum AppNote {
+    /// The counts behind the score (`mustMet`, `mustPartial`, `mustOpen`, `mustTotal`,
+    /// `niceMet`, `niceTotal`, `evidence`): the reader's summary.
+    Summary,
+    /// The user marked the job as fitting although the engine excludes it.
+    UserOverride,
+    /// The engine failed on the job (a panic): unscorable, never retried with the same
+    /// revision.
+    EngineFailed,
+}
+
+impl From<ReasonCode> for NoteCode {
+    fn from(code: ReasonCode) -> NoteCode {
+        NoteCode::Reason(code)
+    }
+}
+
+impl From<CriterionKey> for NoteCode {
+    fn from(key: CriterionKey) -> NoteCode {
+        NoteCode::Criterion(key)
+    }
+}
+
+impl From<ProfileWarningCode> for NoteCode {
+    fn from(code: ProfileWarningCode) -> NoteCode {
+        NoteCode::Warning(code)
+    }
+}
+
+impl From<AppNote> for NoteCode {
+    fn from(note: AppNote) -> NoteCode {
+        NoteCode::App(note)
+    }
 }
 
 #[cfg(test)]

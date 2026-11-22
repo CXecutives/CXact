@@ -926,7 +926,7 @@ async fn an_engine_panic_marks_the_job_and_the_run_goes_on() {
         assert_eq!(record.status, crate::model::MatchStatus::Unscorable);
         assert_eq!(
             record.note.as_ref().unwrap().code,
-            super::score::ENGINE_FAILED
+            crate::model::AppNote::EngineFailed.into()
         );
         assert_eq!(job.match_rev.as_deref(), Some("boom"), "not asked again");
     }

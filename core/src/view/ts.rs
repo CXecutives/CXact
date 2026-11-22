@@ -6,8 +6,9 @@
 //!
 //! Beside the types, the decisions the interface shares with the backend are written as
 //! values, one lower-case module each (never edited by hand, [`values`]): `bands.ts` (the
-//! band thresholds), `portals.ts` (the portals' names and marks), `profile.ts` (the form's
-//! limits and empty form).
+//! band thresholds), `limits.ts` (the list's page, the reader's reasons and the days the mail
+//! counts look back), `portals.ts` (the portals' names, marks, ways, sign-ins and caps),
+//! `profile.ts` (the form's limits, empty form and required fields).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -15,24 +16,28 @@ use std::path::{Path, PathBuf};
 
 use ts_rs::{Config, TS, TypeVisitor};
 
-use crate::error::{ErrorInfo, ErrorKind, InvalidInput};
+use crate::error::{BusyActivity, ErrorInfo, ErrorKind, InvalidInput};
 use crate::fetch::PortalHealth;
 use crate::fetch::policy::PauseReason;
 use crate::mail::MailProvider;
-use crate::model::{Band, KeyFacts, MatchStatus, Notice, Place};
+use crate::matching::{
+    CapCode, CapLine, CriterionKey, Part, PartCode, ProfileWarningCode, ReasonCode, Via,
+};
+use crate::model::{AppNote, Band, KeyFacts, MatchStatus, NoteCode, Notice, Place};
 use crate::pipeline::{
     NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest, RunSnapshot,
     RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
 };
 use crate::portal::{JobKey, Portal, Way};
+use crate::profile::cv::CvFailure;
 use crate::store::{Backup, BackupKind};
 use crate::view::{
-    AppState, AskedTerm, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
-    JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
-    MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount, PortalLogin,
-    PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave, ProfileSource,
-    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, SettingsPatch, SettingsView,
-    StoredMail, TermField, TextLayout, TextRange, VaultKind, WorkMode, WorkspacePick,
+    AppState, AskedTerm, Criterion, Deleted, DetailState, EmptyAlert, Evidence, Highlight,
+    JobCounts, JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel,
+    Mailbox, MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount,
+    PortalLogin, PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave,
+    ProfileSource, ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, SettingsPatch,
+    SettingsView, StoredMail, TermField, TextLayout, TextRange, VaultKind, WorkMode, WorkspacePick,
     WorkspaceProfile,
 };
 
@@ -70,6 +75,44 @@ impl TS for Portal {
     }
     fn output_path() -> Option<PathBuf> {
         Some(PathBuf::from("Portal.ts"))
+    }
+}
+
+/// The data of a code (`Notice`, `Reason`, `Criterion`, `Part`, `CapLine`): scalars and lists
+/// of scalars, numbers as numbers (`pipeline::local::ui_params`). The fields say `ts(as)` it.
+pub(crate) struct Params;
+
+impl TS for Params {
+    type WithoutGenerics = Params;
+    type OptionInnerType = Params;
+    fn docs() -> Option<String> {
+        Some(ts_rs::format_docs(&[
+            " The data of a code: scalars and lists of scalars, numbers as numbers.",
+        ]))
+    }
+    fn ident(_: &Config) -> String {
+        "Params".to_owned()
+    }
+    fn name(_: &Config) -> String {
+        "Params".to_owned()
+    }
+    fn inline(_: &Config) -> String {
+        "Record<string, string | number | boolean | null | Array<string | number | boolean | null>>"
+            .to_owned()
+    }
+    fn decl(cfg: &Config) -> String {
+        format!("type Params = {};", Self::inline(cfg))
+    }
+    fn decl_concrete(cfg: &Config) -> String {
+        Self::decl(cfg)
+    }
+    fn visit_dependencies(_: &mut impl TypeVisitor)
+    where
+        Self: 'static,
+    {
+    }
+    fn output_path() -> Option<PathBuf> {
+        Some(PathBuf::from("Params.ts"))
     }
 }
 
@@ -156,12 +199,20 @@ fn contract() -> BTreeMap<String, String> {
     };
     f.add::<Portal>();
     f.add::<JobKey>();
+    f.add::<Params>();
     f.add::<ErrorKind>();
     f.add::<ErrorInfo>();
     f.add::<InvalidInput>();
+    f.add::<BusyActivity>();
+    f.add::<CvFailure>();
     f.add::<MatchStatus>();
     f.add::<Place>();
     f.add::<Band>();
+    f.add::<ReasonCode>();
+    f.add::<CriterionKey>();
+    f.add::<ProfileWarningCode>();
+    f.add::<AppNote>();
+    f.add::<NoteCode>();
     f.add::<Notice>();
     f.add::<KeyFacts>();
     f.add::<PauseReason>();
@@ -174,10 +225,16 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<JobView>();
     f.add::<ReasonKind>();
     f.add::<ReasonWeight>();
+    f.add::<Via>();
     f.add::<Evidence>();
     f.add::<TextRange>();
     f.add::<Reason>();
+    f.add::<Criterion>();
     f.add::<Highlight>();
+    f.add::<PartCode>();
+    f.add::<Part>();
+    f.add::<CapCode>();
+    f.add::<CapLine>();
     f.add::<MatchDetail>();
     f.add::<TextLayout>();
     f.add::<JobMail>();
@@ -304,9 +361,20 @@ fn values() -> BTreeMap<String, String> {
     );
     out.insert("bands.ts".to_owned(), bands);
 
+    out.insert("portals.ts".to_owned(), portals());
+    out.insert("limits.ts".to_owned(), limits());
+    let profile = value_header("core/src/profile/form.rs") + &crate::profile::form_typescript();
+    out.insert("profile.ts".to_owned(), profile);
+    out
+}
+
+/// `portals.ts`: every portal's name, mark, way, sign-in and caps.
+fn portals() -> String {
     let mut portals = value_header("the portal registry, core/src/portal");
     portals.push_str(
-        "import type { Portal } from \"./Portal\";\n\n\
+        "import type { Portal } from \"./Portal\";\n\
+         import type { PortalLogin } from \"./PortalLogin\";\n\
+         import type { Way } from \"./Way\";\n\n\
          /** Every portal in the app's order (`Portal::ALL`). */\n\
          export const PORTALS: readonly Portal[] = [",
     );
@@ -329,12 +397,63 @@ fn values() -> BTreeMap<String, String> {
     for portal in Portal::ALL {
         let _ = writeln!(portals, "  {}: \"{}\",", portal.key(), portal.monogram());
     }
+    portals.push_str(
+        "};\n\n/** How the app gets a portal's jobs: its own search or alert mails (`Portal::way`). */\n\
+         export const PORTAL_WAY: Record<Portal, Way> = {\n",
+    );
+    for portal in Portal::ALL {
+        let _ = writeln!(
+            portals,
+            "  {}: \"{}\",",
+            portal.key(),
+            json_name(portal.way())
+        );
+    }
+    portals.push_str(
+        "};\n\n/** The sign-in a portal offers (`PortalLogin::of`). */\n\
+         export const PORTAL_LOGIN: Record<Portal, PortalLogin> = {\n",
+    );
+    for portal in Portal::ALL {
+        let login = json_name(crate::view::PortalLogin::of(portal));
+        let _ = writeln!(portals, "  {}: \"{login}\",", portal.key());
+    }
+    portals.push_str(
+        "};\n\n/** A portal's requests per hour and per local day (`fetch::policy::limits`). */\n\
+         export const PORTAL_LIMITS: Record<Portal, { perHour: number; perDay: number }> = {\n",
+    );
+    for portal in Portal::ALL {
+        let limits = crate::fetch::policy::limits(portal);
+        let _ = writeln!(
+            portals,
+            "  {}: {{ perHour: {}, perDay: {} }},",
+            portal.key(),
+            limits.per_hour,
+            limits.per_day
+        );
+    }
     portals.push_str("};\n");
-    out.insert("portals.ts".to_owned(), portals);
+    portals
+}
 
-    let profile = value_header("core/src/profile/form.rs") + &crate::profile::form_typescript();
-    out.insert("profile.ts".to_owned(), profile);
-    out
+/// `limits.ts`: the list's page, the reader's reasons and the days the mail counts look back.
+fn limits() -> String {
+    let mut limits = value_header("core/src/view.rs and core/src/mail/scan.rs");
+    let _ = write!(
+        limits,
+        "\n/** The most rows one `list_jobs` call returns. */\n\
+         export const MAX_PAGE = {};\n\
+         /** The most reasons the reader gets. */\n\
+         export const MAX_REASONS = {};\n\
+         /** The days a portal's alert mails are counted back (`PortalState.alertMails`). */\n\
+         export const ALERT_MAIL_DAYS = {};\n\
+         /** The days the first mailbox scan looks back. */\n\
+         export const FIRST_SCAN_DAYS = {};\n",
+        crate::view::MAX_PAGE,
+        crate::view::MAX_REASONS,
+        crate::view::ALERT_MAIL_DAYS,
+        crate::mail::scan::FIRST_SCAN_DAYS,
+    );
+    limits
 }
 
 pub(crate) fn types_dir() -> PathBuf {

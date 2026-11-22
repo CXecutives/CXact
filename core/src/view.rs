@@ -18,9 +18,9 @@ use crate::fetch::policy::{Policy, limits};
 use crate::fetch::{MAX_AGE, PortalHealth, RETRY_AFTER};
 pub use crate::mail::MailProvider;
 pub use crate::matching::TermField;
-use crate::matching::{self, Assessment, CoreTerm, ProfileSummary};
+use crate::matching::{self, Assessment, CoreTerm, CriterionKey, ProfileSummary, ReasonCode, Via};
 use crate::model::{
-    Band, DescStatus, KeyFacts, MatchRecord, MatchStatus, Notice, Place, band, gmail_url,
+    AppNote, Band, DescStatus, KeyFacts, MatchRecord, MatchStatus, Notice, Place, band, gmail_url,
     is_usable_title,
 };
 use crate::pipeline::{LocalMatcher, Matcher, RunSnapshot, RunSummary, local};
@@ -36,7 +36,7 @@ use crate::store::{
 use crate::text::split_company_location;
 
 #[cfg(test)]
-mod ts;
+pub(crate) mod ts;
 
 /// Most jobs one page of the list carries.
 pub const MAX_PAGE: u32 = 500;
@@ -253,10 +253,7 @@ impl From<&JobRow> for JobView {
                 let mut shown = JobMatch::of(record, &job.match_open);
                 if job.override_include {
                     shown.status = MatchStatus::Scored;
-                    shown.note = Some(Notice {
-                        code: crate::store::marks::USER_OVERRIDE.to_owned(),
-                        params: serde_json::Map::new(),
-                    });
+                    shown.note = Some(Notice::bare(AppNote::UserOverride));
                 }
                 shown
             }),
@@ -403,8 +400,8 @@ pub struct Evidence {
     pub profile: String,
     /// JSON path in the profile file.
     pub path: String,
-    /// Code of the match ladder step (exact, stem, synonym ...).
-    pub via: String,
+    /// The step of the match ladder.
+    pub via: Via,
     /// Words of the ad.
     pub quote: String,
 }
@@ -425,11 +422,30 @@ pub struct Reason {
     pub id: String,
     pub kind: ReasonKind,
     pub weight: ReasonWeight,
-    pub code: String,
+    pub code: ReasonCode,
     /// The requirement as the ad words it (data, not prose of the app).
     pub label: String,
     pub evidence: Option<Evidence>,
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    /// A reason that decided a hard criterion names it (`criterion`, a `CriterionKey`).
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
+    pub params: serde_json::Map<String, serde_json::Value>,
+    pub ranges: Vec<TextRange>,
+}
+
+/// One hard criterion of the reader's strip: the profile's values, the ad's value and the
+/// reason that decided it (`params.reason`, its id).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct Criterion {
+    /// `c:` and the key.
+    pub id: String,
+    /// `met` only with the ad's value as evidence, `open` when the ad does not mention it.
+    pub kind: ReasonKind,
+    pub code: CriterionKey,
+    /// The ad's words of the deciding reason (empty without one).
+    pub label: String,
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: serde_json::Map<String, serde_json::Value>,
     pub ranges: Vec<TextRange>,
 }
@@ -465,7 +481,12 @@ pub struct MatchDetail {
     /// At most 200.
     pub highlights: Vec<Highlight>,
     /// The hard criteria strip.
-    pub criteria: Vec<Reason>,
+    pub criteria: Vec<Criterion>,
+    /// The Passungsgrad line by line (empty for an unscorable job): the points of the lines
+    /// add up to `score`.
+    pub parts: Vec<matching::Part>,
+    /// Every cap that fired, with its reason, the lowest first.
+    pub caps: Vec<matching::CapLine>,
 }
 
 /// How the reader lays out the ad's text (UTF-16 ranges of `JobDetail::text`).
@@ -637,30 +658,12 @@ pub fn job_detail(
     }))
 }
 
-/// The reader of a job the user marked as fitting anyway: it counts as scored, its summary
-/// is `userOverride`, and a reason with that code comes first (the engine's violations stay
-/// listed: the user sees what the engine found).
+/// The reader of a job the user marked as fitting anyway: it counts as scored and its summary
+/// is `userOverride` (the engine's violations stay listed: the user sees what the engine
+/// found).
 fn overridden(detail: &mut MatchDetail) {
-    let code = crate::store::marks::USER_OVERRIDE;
     detail.status = MatchStatus::Scored;
-    detail.summary = Some(Notice {
-        code: code.to_owned(),
-        params: serde_json::Map::new(),
-    });
-    detail.reasons.insert(
-        0,
-        Reason {
-            id: code.to_owned(),
-            kind: ReasonKind::Met,
-            weight: ReasonWeight::Info,
-            code: code.to_owned(),
-            label: String::new(),
-            evidence: None,
-            params: serde_json::Map::new(),
-            ranges: Vec::new(),
-        },
-    );
-    detail.reasons.truncate(MAX_REASONS);
+    detail.summary = Some(Notice::bare(AppNote::UserOverride));
 }
 
 /// The reader's explanation of an assessment: at most [`MAX_REASONS`] reasons (violations,
@@ -701,15 +704,15 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
             id: reason_id(r.id),
             kind: reason_kind(r.kind),
             weight: reason_weight(r.weight),
-            code: local::code_name(&r.code),
+            code: r.code,
             label: r.label.clone().unwrap_or_default(),
             evidence: r.evidence.as_ref().map(|e| Evidence {
                 profile: e.profile.clone(),
                 path: e.path.clone(),
-                via: local::code_name(&e.via),
+                via: e.via,
                 quote: e.quote.clone(),
             }),
-            params: reason_params(r),
+            params: local::with_criterion(assessment, r, reason_params(r)),
             ranges: ranges(r),
         })
         .collect();
@@ -734,6 +737,8 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
             })
             .collect(),
         criteria,
+        parts: assessment.parts.clone(),
+        caps: assessment.caps.clone(),
     }
 }
 
@@ -741,7 +746,7 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
 /// names its term and field (`term`, `field`: `pipeline::local::open_term`) and a language
 /// its level (`level`), what the reader's "+" adds.
 fn reason_params(reason: &matching::Reason) -> serde_json::Map<String, serde_json::Value> {
-    let mut params = local::flat_params(&reason.params);
+    let mut params = local::ui_params(&reason.params);
     if let Some(core) = local::open_term(reason) {
         let level = term_level(&core, reason.label.as_deref().unwrap_or(&core.term));
         if let Some(level) = level.and_then(|l| serde_json::to_value(l).ok()) {
@@ -761,7 +766,7 @@ fn criteria_strip(
     assessment: &Assessment,
     matcher: &LocalMatcher,
     ranges: &dyn Fn(&matching::Reason) -> Vec<TextRange>,
-) -> Vec<Reason> {
+) -> Vec<Criterion> {
     let set = &matcher.profile().summary().criteria;
     assessment
         .criteria
@@ -774,11 +779,11 @@ fn criteria_strip(
             let mut params = set
                 .iter()
                 .find(|info| info.key == c.key)
-                .map(|info| local::flat_params(&info.params))
+                .map(|info| local::ui_params(&info.params))
                 .unwrap_or_default();
-            params.extend(local::flat_params(&c.params));
+            params.extend(local::ui_params(&c.params));
             if let Some(reason) = linked {
-                params.extend(local::flat_params(&reason.params));
+                params.extend(local::ui_params(&reason.params));
                 params.insert("reason".into(), reason_id(reason.id).into());
             }
             let mut passages = linked.map(ranges).unwrap_or_default();
@@ -787,19 +792,16 @@ fn criteria_strip(
             {
                 passages.push(TextRange { start, end });
             }
-            let code = local::code_name(&c.key);
-            Reason {
-                id: format!("c:{code}"),
+            Criterion {
+                id: format!("c:{}", local::code_name(&c.key)),
                 kind: match c.status {
                     matching::CriterionStatus::Violated => ReasonKind::Violation,
                     matching::CriterionStatus::Check => ReasonKind::Check,
                     matching::CriterionStatus::NotMentioned => ReasonKind::Open,
                     _ => ReasonKind::Met,
                 },
-                weight: ReasonWeight::Hard,
-                code,
+                code: c.key,
                 label: linked.and_then(|r| r.label.clone()).unwrap_or_default(),
-                evidence: None,
                 params,
                 ranges: passages,
             }
@@ -810,7 +812,7 @@ fn criteria_strip(
 /// The counts behind the score (`n of m must`) and how much text there was.
 fn summary_notice(s: &matching::Summary) -> Notice {
     Notice {
-        code: "summary".into(),
+        code: AppNote::Summary.into(),
         params: serde_json::Map::from_iter([
             ("mustMet".into(), s.must_met.into()),
             ("mustPartial".into(), s.must_partial.into()),
@@ -1116,6 +1118,17 @@ pub enum PortalLogin {
     Optional,
 }
 
+impl PortalLogin {
+    /// The sign-in a portal offers (its access).
+    pub fn of(portal: Portal) -> PortalLogin {
+        if portal.access().can_sign_in() {
+            PortalLogin::Optional
+        } else {
+            PortalLogin::None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -1174,11 +1187,7 @@ pub fn portal_states(
             let switches = settings.portal(portal);
             let limits = limits(portal);
             let (used_hour, used_day) = policy.usage(portal, now);
-            let login = if portal.access().can_sign_in() {
-                PortalLogin::Optional
-            } else {
-                PortalLogin::None
-            };
+            let login = PortalLogin::of(portal);
             // Nothing remembered means "unknown": only a sign-in or a page that asks for one
             // turns it into a statement.
             let signed_in = match (login, state.login_needed, state.session_confirmed_at) {
@@ -1286,6 +1295,7 @@ pub struct ProfileInfo {
     /// The profile as the editor shows it (`null` while the file does not read).
     pub form: Option<ProfileForm>,
     /// The `ProfileForm` fields a usable profile still needs (core `missing_required`).
+    #[cfg_attr(test, ts(type = "Array<keyof ProfileForm>"))]
     pub missing: Vec<String>,
 }
 
@@ -1359,10 +1369,10 @@ pub fn understanding(summary: &ProfileSummary) -> ProfileUnderstanding {
             .criteria
             .iter()
             .map(|c| {
-                let mut params = local::flat_params(&c.params);
+                let mut params = local::ui_params(&c.params);
                 params.insert("set".into(), c.set.into());
                 Notice {
-                    code: local::code_name(&c.key),
+                    code: c.key.into(),
                     params,
                 }
             })
@@ -1377,8 +1387,8 @@ pub fn understanding(summary: &ProfileSummary) -> ProfileUnderstanding {
 /// A warning of the engine about the profile.
 fn profile_warning(warning: &matching::ProfileWarning) -> Notice {
     Notice {
-        code: local::code_name(&warning.code),
-        params: local::flat_params(&warning.params),
+        code: warning.code.into(),
+        params: local::ui_params(&warning.params),
     }
 }
 
@@ -2560,7 +2570,7 @@ Rahmenbedingungen:
             Some(matcher.rev())
         );
         let stored = store.job(&key).unwrap().unwrap().match_.unwrap();
-        assert_eq!(stored.note.unwrap().code, "dayRate");
+        assert_eq!(stored.note.unwrap().code, ReasonCode::DayRate.into());
         let t2: Timestamp = "2026-09-21T08:00:00Z".parse().unwrap();
         let later = job_detail(&store, &key, Some(&matcher), true, t2)
             .unwrap()
@@ -2574,8 +2584,8 @@ Rahmenbedingungen:
         assert_eq!(none.match_, None);
     }
 
-    /// "Fits anyway": the excluded job shows as scored with the user's word first (the
-    /// engine's findings stay listed); taken back, the engine's verdict is stored again.
+    /// "Fits anyway": the excluded job shows as scored with the user's word as its summary
+    /// (the engine's findings stay listed); taken back, the engine's verdict is stored again.
     #[test]
     fn an_override_shows_the_users_word_and_can_be_taken_back() {
         let matcher = crate::pipeline::dry_run::matcher();
@@ -2589,13 +2599,16 @@ Rahmenbedingungen:
         assert!(detail.job.overridden);
         let m = detail.match_.unwrap();
         assert_eq!(m.status, MatchStatus::Scored);
-        assert_eq!(m.summary.unwrap().code, "userOverride");
-        assert_eq!(m.reasons[0].code, "userOverride");
+        assert_eq!(m.summary.unwrap().code, AppNote::UserOverride.into());
         assert!(m.reasons.iter().any(|r| r.kind == ReasonKind::Violation));
         // The engine's verdict stays where it is said: the criterion is still violated and
         // the stored note still names it; the override is a mark of its own, also after a
         // rescore.
-        let rate = m.criteria.iter().find(|c| c.code == "minDayRate").unwrap();
+        let rate = m
+            .criteria
+            .iter()
+            .find(|c| c.code == CriterionKey::MinDayRate)
+            .unwrap();
         assert_eq!(rate.kind, ReasonKind::Violation, "{:?}", m.criteria);
         let row = store.job(&key).unwrap().unwrap();
         let fresh = matcher.judge(&row, store.description(&key).unwrap().as_deref());
@@ -2605,12 +2618,12 @@ Rahmenbedingungen:
         let stored = store.job(&key).unwrap().unwrap();
         let record = stored.match_.as_ref().unwrap();
         assert_eq!(
-            (record.status, record.note.as_ref().unwrap().code.as_str()),
-            (MatchStatus::Scored, "dayRate")
+            (record.status, record.note.as_ref().unwrap().code),
+            (MatchStatus::Scored, ReasonCode::DayRate.into())
         );
         let shown = JobView::from(&stored).match_.unwrap();
         assert_eq!(shown.status, MatchStatus::Scored);
-        assert_eq!(shown.note.unwrap().code, "userOverride");
+        assert_eq!(shown.note.unwrap().code, AppNote::UserOverride.into());
         assert!(store.set_override(&key, false).unwrap());
         let back = job_detail(&store, &key, Some(&matcher), true, now)
             .unwrap()
@@ -2652,23 +2665,27 @@ Rahmenbedingungen:
             .find(|r| r.label == "Erfahrung im Controlling");
         let quoted = quoted.expect("a met requirement");
         assert_eq!(quoted.kind, ReasonKind::Met);
-        assert_eq!(quoted.evidence.as_ref().unwrap().via, "exact");
+        assert_eq!(quoted.evidence.as_ref().unwrap().via, Via::Exact);
         let range = quoted.ranges[0];
         let passage = String::from_utf16(&text16[range.start as usize..range.end as usize]);
         assert!(passage.unwrap().contains("Controlling"));
         // The strip: every criterion the sample profile sets, the day rate violated and
         // linked to its reason.
-        let codes: Vec<&str> = m.criteria.iter().map(|c| c.code.as_str()).collect();
+        let codes: Vec<String> = m
+            .criteria
+            .iter()
+            .map(|c| local::code_name(&c.code))
+            .collect();
         assert_eq!(codes, ["minDayRate", "countries", "noAnue", "availability"]);
         let rate = &m.criteria[0];
-        assert_eq!(
-            (rate.kind, rate.weight),
-            (ReasonKind::Violation, ReasonWeight::Hard)
-        );
+        assert_eq!(rate.kind, ReasonKind::Violation);
         let linked = rate.params["reason"].as_str().unwrap();
         assert!(ids.contains(linked) && !rate.ranges.is_empty(), "{rate:?}");
         assert_eq!(m.criteria[1].kind, ReasonKind::Met);
-        assert_eq!(m.criteria[1].params["countries"], "DE, AT, CH");
+        assert_eq!(
+            m.criteria[1].params["countries"],
+            serde_json::json!(["DE", "AT", "CH"])
+        );
         // Met with the ad's value as evidence; the start is not mentioned (open).
         assert_eq!(m.criteria[1].params["location"], "Hamburg");
         assert_eq!(m.criteria[2].params["contract"], "interim");
@@ -2705,11 +2722,12 @@ Rahmenbedingungen:
                 .iter()
                 .any(|s| s.path == "kernkompetenzen[].kompetenz" && s.count > 0)
         );
-        let criteria: Vec<(&str, bool)> = understood
+        let names: Vec<(String, bool)> = understood
             .criteria
             .iter()
-            .map(|c| (c.code.as_str(), c.params["set"] == true))
+            .map(|c| (local::code_name(&c.code), c.params["set"] == true))
             .collect();
+        let criteria: Vec<(&str, bool)> = names.iter().map(|(n, set)| (n.as_str(), *set)).collect();
         assert_eq!(
             criteria,
             [
@@ -2746,7 +2764,7 @@ Rahmenbedingungen:
             .unwrap();
         assert_eq!(info.quality, Some(ProfileQuality::Thin));
         let warnings = info.understood.unwrap().warnings;
-        let codes: Vec<&str> = warnings.iter().map(|w| w.code.as_str()).collect();
+        let codes: Vec<String> = warnings.iter().map(|w| local::code_name(&w.code)).collect();
         assert_eq!(codes, ["fewCompetences"]);
         let empty = LocalMatcher::from_form(&ProfileForm::default());
         let info = ProfileInfo::of(&file, None)
@@ -3021,5 +3039,37 @@ Anforderungen:
         let took = started.elapsed();
         assert_eq!(asked.len(), MAX_ASKED);
         assert!(took < std::time::Duration::from_millis(500), "{took:?}");
+    }
+
+    /// The reader's Passungsgrad adds up: for every job of the preview's demo (the snapshot
+    /// the real engine computed, `core/tests/ui_demo_snapshot.rs`) the points of the parts are
+    /// its score, and an unscorable job has none.
+    #[test]
+    fn the_parts_add_up_to_the_score_of_every_demo_job() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../tools/ui-harness/demo/snapshot.json");
+        let snapshot: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let mut checked = 0;
+        for group in ["details", "fetched"] {
+            for (key, detail) in snapshot[group].as_object().unwrap() {
+                let m = &detail["match"];
+                if m.is_null() {
+                    continue;
+                }
+                let parts = m["parts"].as_array().unwrap();
+                let sum: i64 = parts.iter().map(|p| p["points"].as_i64().unwrap()).sum();
+                if m["status"] == "unscorable" {
+                    assert!(parts.is_empty(), "{key}: {parts:?}");
+                } else {
+                    assert_eq!(Some(sum), m["score"].as_i64(), "{key}: {parts:?}");
+                    checked += 1;
+                }
+            }
+        }
+        assert!(
+            checked >= 10,
+            "only {checked} scored demo jobs - did the snapshot move?"
+        );
     }
 }

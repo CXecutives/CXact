@@ -1359,17 +1359,6 @@ function detailOf(j: JobView): JobDetail {
   if (match !== null && j.overridden) {
     match.status = 'scored';
     match.summary = { code: 'userOverride', params: {} };
-    const own: Reason = {
-      id: 'userOverride',
-      kind: 'met',
-      weight: 'info',
-      code: 'userOverride',
-      label: '',
-      evidence: null,
-      params: {},
-      ranges: [],
-    };
-    match.reasons = [own, ...match.reasons].slice(0, 40);
   }
   // The profile of `no-minimum` sets neither a minimum day rate nor a start: its strip leaves
   // those criteria out.

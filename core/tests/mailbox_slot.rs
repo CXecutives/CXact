@@ -77,7 +77,7 @@ fn cred_1_saving_the_mailbox_holds_the_app_and_can_be_stopped() {
     assert!(commands.contains("Mailbox(CancellationToken),"));
     assert!(
         body(&commands, "activity_name")
-            .contains("Activity::Mailbox(_) => Some(\"mailbox\".into())"),
+            .contains("Activity::Mailbox(_) => Some(BusyActivity::Mailbox)"),
         "the busy error and the closing note name the check"
     );
     let cancel = body(&commands, "cancel_run");

@@ -10,7 +10,6 @@ mod contract;
 mod engine;
 mod exclusion;
 mod explain;
-mod factors;
 pub(crate) mod facts;
 mod fit;
 /// The gap finder (`core/examples/vocab_gaps.rs`), a developer's tool: in debug builds only, so
@@ -227,7 +226,7 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
         info(
             CriterionKey::MinDayRate,
             c.min_rate.is_some(),
-            json!({ "min": c.min_rate.map(|m| m.to_string()) }),
+            json!({ "min": c.min_rate.and_then(|m| i64::try_from(m).ok()) }),
         ),
         info(
             CriterionKey::Countries,

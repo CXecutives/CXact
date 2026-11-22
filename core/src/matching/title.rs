@@ -262,17 +262,6 @@ pub(crate) enum Distance {
     Far,
 }
 
-impl Distance {
-    /// The code the interface reads (`Factor` params).
-    pub(crate) fn code(self) -> &'static str {
-        match self {
-            Distance::Same => "same",
-            Distance::Near => "near",
-            Distance::Far => "far",
-        }
-    }
-}
-
 /// Title hits weigh this many times a must's.
 const TITLE_WEIGHT: u32 = 3;
 /// An ad names a field with at least this many weighted hits.

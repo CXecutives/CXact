@@ -11,9 +11,6 @@ use crate::model::Place;
 use crate::portal::{JobKey, Portal};
 use crate::time::to_db;
 
-/// The note code of a job the user marked as fitting although the engine excludes it.
-pub const USER_OVERRIDE: &str = "userOverride";
-
 /// The jobs in the inbox (the active ones; every list and count but the archive's and the
 /// trash's).
 pub(crate) const INBOX: &str = "archived_at IS NULL AND trashed_at IS NULL";
