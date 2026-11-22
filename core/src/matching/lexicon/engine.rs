@@ -267,16 +267,17 @@ pub(crate) const GENERIC_ATOMS: &[&str] = &[
     "zusammenarbeit",
 ];
 
-/// Generic atoms that name a field, with the field: too broad to meet a requirement alone,
-/// but a must that names the field of the title stands on the core of the role (`10+ years
-/// in finance` for a `Finance Transformation Lead`).
+/// Generic atoms that name a field, with its family (`FIELD_PACKS`): too broad to meet a
+/// requirement through a word of the profile, but a must that names the field of the title
+/// stands on the core of the role (`10+ years in finance` for a `Finance Transformation
+/// Lead`), and a must that names only a field is met by a profile of that field.
 pub(crate) const FIELD_ATOMS: &[(&str, &str)] = &[
-    ("erp", "erp"),
+    ("erp", "it"),
     ("financ", "finance"),
     ("finance", "finance"),
     ("finanz", "finance"),
     ("it", "it"),
-    ("sap", "sap"),
+    ("sap", "it"),
 ];
 
 /// Compound modifiers that do not narrow a skill (`Konzernkonsolidierung` is still

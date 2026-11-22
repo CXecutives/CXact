@@ -66,6 +66,14 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("group consolidation", "konzernkonsolidierung"),
         ("group treasury", "konzerntreasury"),
         ("consolidation", "konsolidierung"),
+        // The steps of a consolidation: each one is part of it.
+        ("intercompany elimination", "ic-eliminierung"),
+        ("intercompany eliminierung", "ic-eliminierung"),
+        ("ic-eliminierung", "ic-eliminierung"),
+        ("schuldenkonsolidierung", "ic-eliminierung"),
+        ("currency translation", "wahrungsumrechnung"),
+        ("foreign currency translation", "wahrungsumrechnung"),
+        ("wahrungsumrechnung", "wahrungsumrechnung"),
         ("berichtswesen", "reporting"),
         // Finance leadership roles and paraphrases (held-out sets).
         ("finance director", "cfo"),
@@ -171,7 +179,48 @@ pub(crate) const DOMAIN: Domain = Domain {
         ),
         ("jahresabschluss", &["rechnungswesen"]),
         ("konzernrechnungslegung", &["rechnungswesen"]),
+        ("konsolidierung", &["ic-eliminierung", "wahrungsumrechnung"]),
         ("liquiditatsplanung", &["cash-management"]),
         ("treasury", &["cash-management"]),
     ],
 };
+
+#[cfg(test)]
+mod tests {
+    use super::super::testing::{assert_same, vocab};
+    use crate::matching::atoms::{Fit, Vocab, atoms, fit};
+
+    fn finance() -> Vocab {
+        let v = vocab(&[
+            "Konzernrechnungslegung nach IFRS",
+            "Konsolidierung",
+            "Controlling",
+        ]);
+        assert!(v.packs().contains(&"finance"), "{:?}", v.packs());
+        v
+    }
+
+    /// English group accounting reads as the German; the steps of a consolidation are met
+    /// in half by it, never the other way.
+    #[test]
+    fn group_accounting_and_the_steps_of_a_consolidation() {
+        let v = finance();
+        assert_same(
+            &v,
+            &[
+                (
+                    "several years in group accounting",
+                    "Konzernrechnungslegung",
+                ),
+                ("intercompany eliminations", "Schuldenkonsolidierung"),
+                ("currency translation", "Währungsumrechnung"),
+            ],
+        );
+        let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        let consolidation = one("Konsolidierung");
+        for step in ["intercompany eliminations", "currency translation"] {
+            assert_eq!(fit(&one(step), &consolidation), Fit::General, "{step}");
+            assert_eq!(fit(&consolidation, &one(step)), Fit::None, "{step}");
+        }
+    }
+}

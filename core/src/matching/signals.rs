@@ -307,6 +307,15 @@ pub(crate) fn only_field_words(atoms: &[String]) -> bool {
     !atoms.is_empty() && atoms.iter().all(|a| words.iter().any(|(w, _)| w == a))
 }
 
+/// The field family a requirement names and nothing else (`10+ years in finance`): every atom
+/// generic, at least one a field word (`lexicon::engine::FIELD_ATOMS`).
+pub(crate) fn only_names_field(atoms: &[String]) -> Option<&'static str> {
+    if !atoms.iter().all(|a| atoms::is_generic(a)) {
+        return None;
+    }
+    field_words(atoms).next()
+}
+
 /// The fields the field words of a text's atoms name (`lexicon::engine::FIELD_ATOMS`).
 fn field_words(atoms: &[String]) -> impl Iterator<Item = &'static str> + '_ {
     crate::matching::lexicon::engine::FIELD_ATOMS

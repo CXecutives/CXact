@@ -115,7 +115,7 @@ is the pure integer engine
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
 - atoms.rs 1223 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +9
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 830 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 843 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 927 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1825 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
@@ -137,15 +137,15 @@ is the pure integer engine
 - scorer.rs 514 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 576 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 585 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +15
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
-- vocabulary.rs 567 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
+- vocabulary.rs 571 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
 - wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/lexicon
-- engine.rs 3635 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +238
+- engine.rs 3636 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +238
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 79 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +7
 - tables.rs 1027 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
@@ -157,7 +157,7 @@ is the pure integer engine
 - customer_service.rs 598 · Customer service and customer experience: customer service… · DOMAIN
 - data.rs 218 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
 - energy.rs 126 · Energy industry: grids and their regulation, metering and… · DOMAIN
-- finance.rs 177 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
+- finance.rs 226 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
 - hr.rs 332 · Human resources: HR leadership and transformation, labour… · DOMAIN
 - it_project.rs 54 · IT projects and PMO: delivery, testing, data and… · DOMAIN
 - it_service.rs 180 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN

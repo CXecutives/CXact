@@ -377,6 +377,19 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                     via: Via::General,
                 };
             }
+            // A requirement that names only a field (`10+ years in finance`) is met by a
+            // profile of that field: its own words name the work, never the field alone.
+            if fit.value == E_NONE
+                && item.class == Class::Skill
+                && signals::only_names_field(&atoms::atoms(&item.text, &profile.skills.vocab))
+                    .is_some_and(|field| profile.fields.contains(&field))
+            {
+                fit = ItemFit {
+                    value: E_FULL,
+                    entry: None,
+                    via: Via::Exact,
+                };
+            }
             // A requirement that names a role of the profile (`Erfahrung als Head of Finance`)
             // is shown by it: full for a full fit, half otherwise (the rubric's rule 2).
             if fit.value < E_FULL

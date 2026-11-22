@@ -102,6 +102,8 @@ const HIDDEN: &[&str] = &[
     "herstellungspraxis",
     "vertriebspraxis",
     // Second spellings of a term that is shown.
+    "foreign currency translation",
+    "intercompany eliminierung",
     "hr process harmonization",
     "hr prozessharmonisierung",
     "apis",
@@ -248,6 +250,7 @@ const UMLAUTS: &[(&str, &str)] = &[
     ("ubertrag", "übertrag"),
     ("vergut", "vergüt"),
     ("vorstandin", "vorständin"),
+    ("wahrung", "währung"),
     ("zustandig", "zuständig"),
 ];
 
@@ -265,9 +268,10 @@ const ACRONYMS: &[&str] = &[
     "abac", "abap", "alcoa", "alm", "alv", "aml", "api", "aris", "aws", "banf", "bapi", "bi",
     "capa", "cco", "cem", "chro", "cics", "cmo", "co", "cobol", "cpo", "csat", "dax", "dpo",
     "dsgvo", "ebit", "ecm", "edi", "eeg", "ehs", "elt", "erm", "erp", "etl", "eu", "ewm", "fi",
-    "gaap", "hana", "hse", "iam", "ich", "icfr", "ics", "idw", "ifrs", "ipma", "isms", "iso", "it",
-    "itam", "itil", "itsm", "json", "kam", "ki", "kpi", "mes", "mlro", "otc", "pmbok", "pmi", "qa",
-    "rest", "rpa", "sap", "sla", "soap", "sox", "ssis", "ssrs", "togaf", "uft", "us", "vba", "wfo",
+    "gaap", "hana", "hse", "iam", "ic", "ich", "icfr", "ics", "idw", "ifrs", "ipma", "isms", "iso",
+    "it", "itam", "itil", "itsm", "json", "kam", "ki", "kpi", "mes", "mlro", "otc", "pmbok", "pmi",
+    "qa", "rest", "rpa", "sap", "sla", "soap", "sox", "ssis", "ssrs", "togaf", "uft", "us", "vba",
+    "wfo",
 ];
 
 /// Words and parts written their own way (brands, laws, methods).

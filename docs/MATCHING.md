@@ -493,8 +493,14 @@ requirement. Before the round: gold tune 0.788, the 154 0.665, teacher test 0.72
 
 Known limits: the note-3 mean of gold tune (3 pairs) stays below 85, one of them a permanent
 role with a frame step; AI roles lean on project and stakeholder hits the field no longer counts
-(two note-3 jobs of the 154 sit at 50 and 59); English paraphrases of consolidation work (group
-accounting, intercompany eliminations) stay open for the finance profile.
+(two note-3 jobs of the 154 sit at 50 and 59: governance, portfolio steering and vendor selection
+are open words there; closing them from those jobs would tune on a check set); an English verb
+before a skill (`You have spent several years in group accounting`) leaves the skill open, since a
+filler `spent` would break ESCO keys (`spent acid`).
+
+A must that only names a field (`10+ years in finance`) is met by a profile of that field
+(`FIELD_ATOMS` name the family); the steps of a consolidation (intercompany eliminations,
+currency translation) are met in half by consolidation. Held-out set 1 0.930 -> 0.948.
 
 Refit (private data; from the repo root):
 
