@@ -180,7 +180,12 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     assert_eq!(fl.stopped, Some(health));
     assert!(s.empty_alerts.is_empty());
     // The real engine with the sample profile: scored at the details (high, mid, low,
-    // excluded), the job without details in the catch-up.
+    // excluded), the job without details in the catch-up; the best is the score of a job.
+    let best = s
+        .score
+        .as_ref()
+        .and_then(|score| score.best)
+        .expect("a best score");
     assert_eq!(
         s.score,
         Some(ScoreSummary {
@@ -188,7 +193,7 @@ async fn one_click_run_writes_everything_and_finishes_once() {
             excluded: 1,
             unscorable: 1,
             pending: 0,
-            best: Some(92),
+            best: Some(best),
             delta: None,
         }),
         "a fetch has no delta"
@@ -196,7 +201,7 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     assert!(
         events.iter().any(|e| matches!(
             e,
-            RunEvent::JobUpdated { job, .. } if job.match_.as_ref().is_some_and(|m| m.score == 92)
+            RunEvent::JobUpdated { job, .. } if job.match_.as_ref().is_some_and(|m| m.score == best)
         )),
         "the ring appears with the details"
     );

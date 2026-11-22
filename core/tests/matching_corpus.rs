@@ -40,7 +40,10 @@ use sha2::Digest as _;
 /// Version 22: the aggregation repaired (one must, saturating musts, a fixed relevance share,
 /// a prior from the title, tools half); every exclusion, status and band row holds. Version
 /// 23: the frame of the title (levels, fields), the half way pads; the rows hold again.
-const GOLDEN_DIGEST: &str = "84aa5136c6fcf26e";
+/// Version 24: the learned scorer in place of the hand formula, a target role lifts no
+/// off-field cap, salary headings and lower bounds far below the minimum; the corpus's band,
+/// status and exclusion checks hold.
+const GOLDEN_DIGEST: &str = "50f6d76d32dd7951";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")

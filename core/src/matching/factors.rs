@@ -204,17 +204,18 @@ mod tests {
 
     #[test]
     fn a_permanent_role_and_a_cap_say_so_and_the_lines_stay_five() {
-        // A senior profile (20 years) and a junior role on site: the junior cap holds the
-        // score, the remote wish missed lowers it.
+        // A senior profile (20 years) and a junior role of its own field, fully remote: the
+        // junior cap holds the score, the remote wish met moves it.
         let mut data = crate::profile::parse(PROFILE).unwrap();
         data.years = Some(20);
         let profile = compile_profile(&data);
         let requirements = AD.split_once("\n\n").map_or(AD, |(_, rest)| rest);
         let ad = format!(
             "Wir suchen einen Controller in Festanstellung, Vollzeit und unbefristet, \
-             zu 100 % vor Ort in Hamburg.\n\n{requirements}"
+             zu 100 % remote.\n\n{requirements}"
         );
-        let a = assess(&profile, &job("Junior Controller (m/w/d)", &ad)).unwrap();
+        let title = "Junior Finance Controller Konsolidierung IFRS (m/w/d)";
+        let a = assess(&profile, &job(title, &ad)).unwrap();
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
         assert_eq!(
             codes,

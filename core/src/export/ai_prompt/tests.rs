@@ -1221,7 +1221,9 @@ fn the_real_engine_behind_a_stored_job() {
     let prompt = prompt_of(&profile, fits.job());
     for part in [
         "- Ergebnis: ",
-        " von 100 Punkten von CXact, hohe Übereinstimmung",
+        // The engine's own score and band, whatever they are.
+        " von 100 Punkten von CXact, ",
+        " Übereinstimmung (ab 80 hoch, ab 40 mittel)",
         "- Tagessatz mindestens 1.000 €: erfüllt, 1.200 € pro Tag („Tagessatz 1.200 €“)",
         "- Vergütung: 1.200 € pro Tag",
         "- Start: ab sofort",

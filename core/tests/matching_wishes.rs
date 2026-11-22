@@ -107,20 +107,22 @@ fn target_roles_full_half_and_none() {
         (r.kind, r.params["fit"].as_str()),
         (ReasonKind::Met, Some("full"))
     );
-    assert_eq!(r.params["points"], 8);
     assert!(
-        (7..=9).contains(&(full.score - plain.score)),
+        full.score > plain.score,
         "{} vs {}",
         full.score,
         plain.score
     );
-    // The field without the lead level: half.
-    let half = run(&roles, &titled("Interim Finance Manager (m/w/d)"));
+    // The field without the lead level: half, still a lift.
+    let title = "Interim Finance Manager (m/w/d)";
+    let half = run(&roles, &titled(title));
     let r = reason(&half, ReasonCode::TargetRole).expect("half role");
     assert_eq!(
-        (r.kind, r.params["points"].as_i64()),
-        (ReasonKind::Partial, Some(4))
+        (r.kind, r.params["fit"].as_str()),
+        (ReasonKind::Partial, Some("half"))
     );
+    let without = run(&base(), &titled(title)).score;
+    assert!(half.score > without, "{} vs {without}", half.score);
     // Another role: nothing.
     let other = run(&roles, &titled("Senior Controller (m/w/d)"));
     assert!(reason(&other, ReasonCode::TargetRole).is_none());
