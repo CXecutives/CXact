@@ -71,7 +71,7 @@ generated files and the guardrails.
 ## Workflow
 - Small English commits, each green on its own. Docs only where they make the work faster (CLAUDE.md, CHANGING.md
   as the map of where a change goes); no doc duties per change. Parallel tracks work in their own worktree with
-  disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs`,
+  disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs` and `core/src/view/**`,
   `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`)
   belong to the integrator.
 - Remove worktrees right after merging and run `cargo clean` there (disk).

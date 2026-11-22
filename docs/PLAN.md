@@ -186,7 +186,7 @@ pre-assessment to any AI chat for a deeper check.
   portals' senders, a copy counted once by its Message-ID (`core/src/mail/imap.rs`). "Alert-Mail öffnen"
   opens Gmail's link; a mail of the others opens in the app as the store keeps it (`alert_mail`).
 - No backward compatibility until the owner declares the project finished (2026-10-10).
-- **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`
+- **IPC:** the types come from Rust (ts-rs, `core/src/view/`), the commands from `src-tauri/commands.txt`
   (`docs/CHANGING.md`).
 
 ## Platforms (documented differences only)
