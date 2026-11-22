@@ -15,8 +15,8 @@
 //! - none otherwise, and always when a role of generic words only (`Head of Finance`)
 //!   meets a title that names a specific topic of its own (`S/4HANA Finance Lead`).
 //!
-//! The best role adds `ROLE_FULL` or `ROLE_HALF` to the shrunk fit before the caps, so it
-//! never lifts an off-field ad over its cap and never touches an exclusion.
+//! The best role is a signal of the learned scorer (`signals`: in full or in half) before
+//! the caps, so it never lifts an off-field ad over its cap and never touches an exclusion.
 
 use std::sync::LazyLock;
 

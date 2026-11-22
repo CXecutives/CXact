@@ -241,7 +241,7 @@ fn requirement_params(profile: &EngineProfile, scored: &Scored) -> Value {
 
 /// Reasons of the version-4 inputs: the target role the title matches, every wish.
 fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evaluation) {
-    if let Some((fit, points, title)) = &evaluation.role {
+    if let Some((fit, title)) = &evaluation.role {
         let role = &profile.roles[fit.role];
         let (kind, name, via) = if fit.full {
             (ReasonKind::Met, "full", Via::Exact)
@@ -249,7 +249,7 @@ fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evalua
             (ReasonKind::Partial, "half", Via::General)
         };
         let reason = b.reason(kind, Weight::Info, ReasonCode::TargetRole);
-        reason.params = object(&json!({ "role": role.text, "fit": name, "points": points / 10 }));
+        reason.params = object(&json!({ "role": role.text, "fit": name }));
         reason.evidence = Some(Evidence {
             profile: role.text.clone(),
             path: role.path.clone(),

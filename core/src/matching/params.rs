@@ -15,29 +15,9 @@ pub(crate) const W_TERM: u64 = 250;
 /// met in full; below it, or met, a language is hygiene and adds nothing (engine 22).
 pub(crate) const LANGUAGE_MUST_LEVEL: u8 = 5;
 /// Musts a typical real ad names (the median over the 641 private real ads with musts,
-/// engine 22): the musts weigh at least `MUST_SATURATION * W_MUST`, and those a short list
-/// does not name stand half way between the fit of the named ones and the relevance
-/// (engine 23), so meeting the two musts of a thin list is not a full fit.
+/// engine 22): the coverage signals divide by at least this many musts, so meeting the two
+/// musts of a thin list is not a full fit (engine 24).
 pub(crate) const MUST_SATURATION: u64 = 7;
-/// Evidence one nice-to-have adds.
-#[allow(
-    dead_code,
-    reason = "engine 24 draft: the hand formula goes in the final commit"
-)]
-pub(crate) const N_NICE: u64 = 500;
-
-/// The relevance's fixed share beside the fit (per-mille): `P' = (750*P + 250*R) / 1000`
-/// (engine 22; was the shrinkage `(n*P + k*R) / (n + k)`).
-pub(crate) const R_SHARE: u64 = 250;
-/// Mass of the fit beside the prior of low evidence: `(n + k)*P' + w*prior`.
-pub(crate) const K_SHRINK: u64 = 2000;
-/// Low evidence (teaser, vocabulary only, nice-to-haves only, fewer than two items) is also
-/// shrunk towards a prior from the title: `LOW_PRIOR` for a title that names nothing of the
-/// field, rising linearly with the title fit to `HIGH_PRIOR` (engine 22).
-pub(crate) const LOW_PRIOR: u64 = 150;
-pub(crate) const HIGH_PRIOR: u64 = 550;
-pub(crate) const LOW_PRIOR_WEIGHT: u64 = 1500;
-
 /// BM25F-like relevance: k1 and b in per-mille, fixed document length in characters.
 pub(crate) const BM25_K1: u64 = 1200;
 pub(crate) const BM25_B: u64 = 750;
@@ -65,25 +45,18 @@ pub(crate) const HOURS_PER_DAY: u64 = 8;
 /// A profile entry with this many specific atoms is free text: containing a requirement
 /// proves nothing (USP sentences never do).
 pub(crate) const SENTENCE_ATOMS: usize = 4;
-/// Permanent roles are the second category of a consultant: the shrunk fit is scaled
-/// by this factor (per-mille).
+/// Permanent roles are the second category of a consultant: the points are scaled by this
+/// factor (per-mille).
 pub(crate) const PERMANENT_FACTOR: u64 = 900;
 /// Score caps of the rubric: an open formal must (degree field, licence) at most 40; several
 /// musts open (at least two and at least half, the core of the role among them) at most 40;
 /// no skill must met at all (at least two) is outside the field.
 pub(crate) const FORMAL_CAP: u8 = 40;
-/// A must degree while the profile names none is unknown: this much less (per-mille), once
-/// per ad (engine 22).
-pub(crate) const DEGREE_UNKNOWN: u64 = 20;
 pub(crate) const SEVERAL_OPEN_CAP: u8 = 40;
 pub(crate) const OFF_FIELD_CAP: u8 = 25;
 
 // --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 
-/// Target roles: per-mille added to the shrunk fit when the title matches a target role in
-/// full or in half (the best role counts; the caps still apply afterwards).
-pub(crate) const ROLE_FULL: i64 = 80;
-pub(crate) const ROLE_HALF: i64 = 40;
 /// Wishes: per-mille added for a wish met and taken for a wish clearly missed; near and
 /// unknown add nothing. Together they reach at most `WISH_MAX`.
 pub(crate) const WISH_RATE: i64 = 30;
@@ -108,18 +81,9 @@ pub(crate) const JUNIOR_CAP: u8 = 40;
 /// experience) is below a profile with this many years of experience or more: it is
 /// over-qualified there (engine 18).
 pub(crate) const JUNIOR_ROLE_YEARS: u32 = 5;
-/// An ad one level below the profile (engine 23): this much less (per-mille); two or more
-/// below cap at `LEVEL_CAP` unless a target role names the ad's level (a profile without
-/// target roles: twice the points, no cap).
-pub(crate) const LEVEL_BELOW: u64 = 50;
+/// An ad two or more levels below the target roles caps at this (engine 23; one level below
+/// is a signal of the learned scorer, engine 24).
 pub(crate) const LEVEL_CAP: u8 = 40;
-/// While fewer than half of the musts are met, the target role and the wishes lift a score
-/// at most to this (per-mille, score 79): never into the high band (80) of the list.
-#[allow(
-    dead_code,
-    reason = "engine 24 draft: the hand formula goes in the final commit"
-)]
-pub(crate) const LIFT_CAP: u64 = 790;
 /// A day rate of at least this share of the wish (per-mille) is near, below it missed.
 pub(crate) const WISH_RATE_NEAR: u64 = 950;
 /// Work modes as minimum remote shares (percent): `remote`, `hybrid`.

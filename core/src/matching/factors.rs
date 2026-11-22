@@ -68,7 +68,7 @@ fn all(profile: &EngineProfile, evaluation: &Evaluation, summary: &Summary) -> V
     }
     if !profile.roles.is_empty() {
         let params = match &evaluation.role {
-            Some((fit, _, _)) => json!({
+            Some((fit, _)) => json!({
                 "role": profile.roles[fit.role].text,
                 "fit": if fit.full { "full" } else { "half" },
             }),

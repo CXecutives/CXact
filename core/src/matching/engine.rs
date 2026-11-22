@@ -1,14 +1,10 @@
 //! The engine: requirements read from the job (V5-V7, V16), each item scored on the
 //! ladder (V1-V4, V8, V9, V15), hard criteria decided or checked (V10-V13), relevance
-//! (V17, V18) and the shrunk score (V19). Integer arithmetic only.
+//! (V17, V18), the signals of the job ([`signals`]) and the learned points (engine 24).
+//! Integer arithmetic only.
 //!
-//! `M = sum(w*e)/sum(w)` over musts (w 1000, soft 250, frame 0), `K = mean(e)` over
-//! nice-to-haves, `P = must ? (nice ? (3M+K)/4 : M) : K` (`(M+3K)/4` when the musts are
-//! languages and soft skills only), evidence `n = sum(w_must) + 500*n_nice`, the relevance
-//! `R'`, `P' = (n*P + k*R')/(n + k)`,
-//! permanent roles `P' * 0.9`, then `+ role + clamp(sum(wishes), -100, 100)` per-mille (a
-//! lift ends at 790 while fewer than half of the musts are met),
-//! `score = round_half_even(P'/10)`, the caps, the floor.
+//! `points = clamp(learned(signals) + clamp(sum(wishes), -100, 100), 0, 1000)`, a permanent
+//! role `* 0.9`, `score = round_half_even(points/10)`, then the lowest cap that fired.
 
 use std::ops::Range;
 
@@ -25,11 +21,9 @@ use super::lexicon::engine as lex;
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    DEGREE_UNKNOWN, E_FULL, E_NONE, FORMAL_CAP, HIGH_PRIOR, JUNIOR_CAP, K_SHRINK,
-    LANGUAGE_MUST_LEVEL, LEVEL_BELOW, LEVEL_CAP, LIFT_CAP, LOW_EVIDENCE_ITEMS, LOW_PRIOR,
-    LOW_PRIOR_WEIGHT, MIN_TEXT_CHARS, MUST_SATURATION, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP,
-    OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR, R_SHARE, ROLE_FULL, ROLE_HALF, SENIOR_YEARS,
-    SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT, W_TERM, WISH_MAX,
+    E_FULL, E_NONE, FORMAL_CAP, JUNIOR_CAP, LANGUAGE_MUST_LEVEL, LEVEL_CAP, LOW_EVIDENCE_ITEMS,
+    MIN_TEXT_CHARS, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR,
+    SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT, W_TERM, WISH_MAX,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
@@ -104,8 +98,8 @@ pub(crate) struct Evaluation {
     pub score: u8,
     pub evidence: EvidenceLevel,
     pub short: bool,
-    /// The best target role with its points (per-mille) and the title it met.
-    pub role: Option<(RoleFit, i64, String)>,
+    /// The best target role and the title it met.
+    pub role: Option<(RoleFit, String)>,
     /// The wishes with their points (per-mille).
     pub wishes: Vec<WishResult>,
     /// What the ad states about rate, start, duration, remote share, place and contract.
@@ -174,7 +168,7 @@ fn weight(item: &Item) -> u64 {
     }
 }
 
-/// The one definition of a must, read by the fit, the caps, the evidence, the lift and the
+/// The one definition of a must, read by the signals, the caps, the evidence and the
 /// summary: a must the engine weighs (a skill, degree or licence, a teaser's term), never a
 /// soft skill; a language only while it counts against the profile (asked at C1 or higher
 /// and not met in full; met it is hygiene and adds nothing).
@@ -190,8 +184,8 @@ pub(crate) fn is_must(s: &Scored) -> bool {
         }
 }
 
-/// The weight a must carries in `M` and in the evidence: a language that counts against
-/// weighs like a skill.
+/// The weight a must carries in the evidence: a language that counts against weighs like a
+/// skill.
 fn must_weight_of(s: &Scored) -> u64 {
     if matches!(s.item.class, Class::Language(..)) {
         W_MUST
@@ -200,7 +194,7 @@ fn must_weight_of(s: &Scored) -> u64 {
     }
 }
 
-/// A nice-to-have that counts in `K` (soft skills and languages add nothing).
+/// A nice-to-have that counts in the summary (soft skills and languages add nothing).
 pub(crate) fn is_nice(s: &Scored) -> bool {
     s.item.kind == ReqKind::Nice
         && s.weight > 0
@@ -331,41 +325,13 @@ fn cap(items: &[Scored], title: &str, vocab: &Vocab, formal_cap: bool, title_fit
     .collect()
 }
 
-/// `P` with the must weight and the number of nice-to-haves (the evidence `n`): `M` over
-/// the musts ([`is_must`]), `K` over the nice-to-haves that are skills; soft skills and
-/// languages add nothing. `M = (sum(w*e) + u*(m + R)/2) / max(sum(w), C)` with `C =
-/// MUST_SATURATION * W_MUST`, the unnamed weight `u = max(0, C - sum(w))` and the named
-/// musts' mean `m = sum(w*e)/sum(w)`.
-fn fit_score(items: &[Scored], relevance: u64) -> (u64, u64, u64) {
-    let (mut must_weight, mut must_mass) = (0u64, 0u64);
-    let (mut nice_count, mut nice_mass) = (0u64, 0u64);
-    for s in items {
-        if is_must(s) {
-            let w = must_weight_of(s);
-            must_weight += w;
-            must_mass += w * u64::from(s.fit.value);
-        } else if is_nice(s) {
-            nice_count += 1;
-            nice_mass += u64::from(s.fit.value);
-        }
-    }
-    // Saturating coverage: a short list is thin evidence, so the musts weigh at least as
-    // many as a typical ad names (`MUST_SATURATION`); the musts it does not name stand
-    // half way between the fit of the named ones and the relevance (engine 23).
-    let saturation = MUST_SATURATION * W_MUST;
-    let must_score = (must_weight > 0).then(|| {
-        let unnamed = saturation.saturating_sub(must_weight);
-        let pad = u64::midpoint(must_mass / must_weight, relevance);
-        ((must_mass + unnamed * pad) / must_weight.max(saturation)).min(1000)
-    });
-    let nice_score = nice_mass.checked_div(nice_count);
-    let fit = match (must_score, nice_score) {
-        (Some(must), Some(nice)) => (3 * must + nice) / 4,
-        (Some(must), None) => must,
-        (None, Some(nice)) => nice,
-        (None, None) => 0,
-    };
-    (fit, must_weight, nice_count)
+/// The weight of the musts ([`is_must`]): what the evidence level reads.
+fn must_weight(items: &[Scored]) -> u64 {
+    items
+        .iter()
+        .filter(|s| is_must(s))
+        .map(must_weight_of)
+        .sum()
 }
 
 /// Contract type and the findings of the hard criteria (ANÜ, country, day rate,
@@ -389,13 +355,13 @@ fn criteria_findings(
     (findings, contract)
 }
 
-/// The target role the title matches (with its points) and the wishes for one ad.
+/// The target role the title matches and the wishes for one ad.
 fn preferences(
     profile: &EngineProfile,
     ad: &wishes::Ad<'_>,
     title: &str,
     level: Option<u8>,
-) -> (Option<(RoleFit, i64, String)>, Vec<WishResult>) {
+) -> (Option<(RoleFit, String)>, Vec<WishResult>) {
     let criteria = &profile.criteria;
     let allowed = match ad.contract {
         ContractKind::Interim => !criteria.project_excluded,
@@ -410,48 +376,8 @@ fn preferences(
         (ad.contract, allowed),
         level,
     );
-    let role = fit.map(|fit| {
-        let points = if fit.full { ROLE_FULL } else { ROLE_HALF };
-        (fit, points, title.to_owned())
-    });
+    let role = fit.map(|fit| (fit, title.to_owned()));
     (role, wishes::evaluate(&profile.wishes, ad))
-}
-
-/// The shrunk fit plus the target role and the bounded wishes (per-mille, 0..=1000). While
-/// fewer than half of the musts are met, a lift ends at `LIFT_CAP` (below the high band).
-#[allow(
-    dead_code,
-    reason = "engine 24 draft: the hand formula goes in the final commit"
-)]
-fn adjust(
-    shrunk: u64,
-    role: Option<&(RoleFit, i64, String)>,
-    wishes: &[WishResult],
-    items: &[Scored],
-) -> u64 {
-    let role_points = role.map_or(0, |(_, points, _)| *points);
-    let wish_points = wishes
-        .iter()
-        .map(|w| w.points)
-        .sum::<i64>()
-        .clamp(-WISH_MAX, WISH_MAX);
-    let adjusted = i64::try_from(shrunk).unwrap_or(1000) + role_points + wish_points;
-    let adjusted = u64::try_from(adjusted.clamp(0, 1000)).unwrap_or(0);
-    let (met, total) = musts_met(items);
-    if adjusted > shrunk && 2 * met < total {
-        adjusted.min(shrunk.max(LIFT_CAP))
-    } else {
-        adjusted
-    }
-}
-
-/// Musts met in full and all musts, counted like the summary of the assessment (a soft
-/// skill below the must weight is information, not a must).
-pub(crate) fn musts_met(items: &[Scored]) -> (usize, usize) {
-    let musts = items.iter().filter(|s| is_must(s));
-    musts.fold((0, 0), |(met, total), s| {
-        (met + usize::from(s.fit.value == E_FULL), total + 1)
-    })
 }
 
 /// How much the text allowed to assess: a teaser, low (vocabulary terms, no weighted
@@ -667,53 +593,6 @@ fn limit_findings(
     findings
 }
 
-/// The fit and the relevance blended (per-mille): the relevance holds a fixed share
-/// (`R_SHARE`) beside the fit `(P, n)`; low evidence leans on a prior from what the title says
-/// of the field (`LOW_PRIOR` to `HIGH_PRIOR`); a permanent role at `PERMANENT_FACTOR`; a must
-/// degree the profile cannot judge costs `DEGREE_UNKNOWN` (engine 22).
-#[allow(
-    dead_code,
-    reason = "engine 24 draft: the hand formula goes in the final commit"
-)]
-fn blend(
-    profile: &EngineProfile,
-    items: &[Scored],
-    title: &str,
-    (fit_score, weight_of_evidence): (u64, u64),
-    relevance: u64,
-    evidence: EvidenceLevel,
-    contract: ContractKind,
-) -> u64 {
-    let (prior_weight, prior) = if evidence == EvidenceLevel::Full {
-        (0, 0)
-    } else {
-        let title_fit =
-            relevance::field_title_fit(&profile.title_query, title, &profile.skills.vocab);
-        (
-            LOW_PRIOR_WEIGHT,
-            LOW_PRIOR + title_fit.min(1000) * (HIGH_PRIOR - LOW_PRIOR) / 1000,
-        )
-    };
-    let mixed = if weight_of_evidence == 0 {
-        relevance
-    } else {
-        ((1000 - R_SHARE) * fit_score + R_SHARE * relevance) / 1000
-    };
-    let mass = weight_of_evidence + K_SHRINK;
-    let mut shrunk = (mass * mixed + prior_weight * prior) / (mass + prior_weight);
-    if contract == ContractKind::Permanent {
-        shrunk = shrunk * PERMANENT_FACTOR / 1000;
-    }
-    if items
-        .iter()
-        .any(|s| s.item.kind == ReqKind::Must && s.item.class == Class::Degree)
-        && profile.skills.degree_fields.is_none()
-    {
-        shrunk = shrunk.saturating_sub(DEGREE_UNKNOWN);
-    }
-    shrunk
-}
-
 /// The level of the role and the field of the ad against the profile's (engine 23).
 struct Frame {
     level: Option<u8>,
@@ -733,21 +612,6 @@ impl Frame {
             level,
             gap: profile.level.gap(level),
             field: title::field(&profile.fields, title, musts),
-        }
-    }
-
-    /// One level below the profile costs `LEVEL_BELOW`; two or more cap ([`Frame::cap`]), or
-    /// cost twice when the profile names no target role.
-    #[allow(
-        dead_code,
-        reason = "engine 24 draft: the hand formula goes in the final commit"
-    )]
-    fn level_points(&self, profile: &EngineProfile) -> u64 {
-        match self.gap {
-            0 => 0,
-            1 => LEVEL_BELOW,
-            _ if profile.level.wished.is_empty() => 2 * LEVEL_BELOW,
-            _ => 0,
         }
     }
 
@@ -792,8 +656,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let far = matches!(frame.field, Some((_, Distance::Far)));
     let items = scored(profile, doc.items, &title, far);
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
-    let (_, must_weight, _) = fit_score(&items, relevance);
-    let evidence = evidence_level(job.kind, &items, must_weight, char_len(strip(text)));
+    let evidence = evidence_level(job.kind, &items, must_weight(&items), char_len(strip(text)));
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
     let decided = findings.iter().any(|f| f.decided);
@@ -830,7 +693,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
             own,
             items: &items,
             relevance,
-            role: role.as_ref().map(|(fit, _, _)| fit),
+            role: role.as_ref().map(|(fit, _)| fit),
             ad_level: frame.level,
             gap: frame.gap,
             field: frame.field.map(|(_, d)| d),
@@ -868,7 +731,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::matching::params::E_HALF;
     use crate::matching::types::Via;
     use crate::matching::wishes::State;
 
@@ -933,61 +795,49 @@ mod tests {
         assert!(!is_must(&language(None, E_NONE)));
         assert!(!is_must(&language(Some(5), E_FULL)));
         assert!(is_must(&language(Some(5), E_NONE)));
-        let mut nice = must(E_NONE);
-        nice.item.kind = ReqKind::Nice;
-        // Only the nice-to-have speaks: languages and soft skills are no musts.
-        assert_eq!(
-            fit_score(&[language(None, E_FULL), soft.clone(), nice], 0).0,
-            0
-        );
-        // An open C1 language weighs like an open skill must.
-        let seven = |extra: Scored| {
-            let mut items = vec![must(E_FULL); 6];
-            items.push(extra);
-            fit_score(&items, 0).0
-        };
-        assert_eq!(seven(language(Some(5), E_NONE)), seven(must(E_NONE)));
+        // An open C1 language weighs like an open skill must; soft skills and other
+        // languages weigh nothing.
+        assert_eq!(must_weight(&[language(Some(5), E_NONE)]), W_MUST);
+        assert_eq!(must_weight(&[language(None, E_FULL), soft]), 0);
     }
 
-    /// The musts saturate at `MUST_SATURATION`: the musts a short list does not name stand
-    /// half way between its own fit and the relevance; a full list is its mean.
+    /// The wishes move the points by at most `WISH_MAX` either way, never out of 0..=1000; a
+    /// permanent role keeps `PERMANENT_FACTOR` of them.
     #[test]
-    fn a_short_list_of_musts_leans_on_the_relevance() {
-        // The six unnamed musts stand half way between the named one and the relevance.
-        assert_eq!(
-            fit_score(&[must(E_FULL)], 400).0,
-            (1000 + 6 * 700) * 1000 / 7000
-        );
-        assert_eq!(fit_score(&[must(E_NONE)], 1000).0, 6 * 500 * 1000 / 7000);
-        assert_eq!(fit_score(&vec![must(E_FULL); 7], 0).0, 1000);
-        let mut eight = vec![must(E_FULL); 4];
-        eight.extend(vec![must(E_NONE); 4]);
-        assert_eq!(fit_score(&eight, 1000).0, 500);
+    fn wishes_are_bounded_and_a_permanent_role_counts_less() {
+        let mut signals = Signals::default();
+        for (j, max) in signals::MAX.iter().enumerate() {
+            signals.v[j] = max / 2;
+        }
+        let base = points(&signals, &[], ContractKind::Interim);
+        let up = points(&signals, &lift(3 * WISH_MAX), ContractKind::Interim);
+        let down = points(&signals, &lift(-3 * WISH_MAX), ContractKind::Interim);
+        let bound = u64::try_from(WISH_MAX).unwrap();
+        assert!(up >= base && up - base <= bound, "{base} -> {up}");
+        assert!(down <= base && base - down <= bound, "{base} -> {down}");
+        assert!(up <= 1000);
+        let permanent = points(&signals, &[], ContractKind::Permanent);
+        assert_eq!(permanent, base * PERMANENT_FACTOR / 1000);
     }
 
+    /// The lowest cap holds the score; the rank keeps the points before it; an unscorable
+    /// job scores 0.
     #[test]
-    fn wishes_lift_below_the_high_band_while_most_musts_are_open() {
-        let role = (
-            RoleFit {
-                role: 0,
-                full: true,
-            },
-            ROLE_FULL,
-            "CFO".to_owned(),
+    fn the_cap_holds_the_score_and_the_rank_keeps_the_points() {
+        assert_eq!(final_score(735, None, false), (74, 735, None));
+        let cap = Some((FORMAL_CAP, CapKind::Formal));
+        assert_eq!(
+            final_score(735, cap, false),
+            (FORMAL_CAP, 735, Some((CapKind::Formal, FORMAL_CAP)))
         );
-        // One of four musts met, three half: role and wishes stop at the cap.
-        let weak = [must(E_FULL), must(E_HALF), must(E_HALF), must(E_HALF)];
-        assert_eq!(adjust(760, Some(&role), &lift(WISH_MAX), &weak), LIFT_CAP);
-        // A score already above the cap is not lowered, a malus still applies.
-        assert_eq!(adjust(800, Some(&role), &lift(WISH_MAX), &weak), 800);
-        assert_eq!(adjust(760, None, &lift(-WISH_MAX), &weak), 660);
-        // Half of the musts met: the lift is free (bounded by the wish maximum).
-        let half = [must(E_FULL), must(E_FULL), must(E_HALF), must(E_NONE)];
-        assert_eq!(adjust(760, Some(&role), &lift(WISH_MAX), &half), 940);
-        // A soft skill below the must weight is no must.
-        let mut soft = must(E_NONE);
-        soft.item.class = Class::Soft;
-        soft.weight = W_SOFT;
-        assert_eq!(musts_met(&[must(E_FULL), soft]), (1, 1));
+        assert_eq!(final_score(300, cap, false), (30, 300, None));
+        assert_eq!(final_score(735, cap, true), (0, 0, None));
+        assert_eq!(
+            lower(
+                (FORMAL_CAP, CapKind::Formal),
+                (OFF_FIELD_CAP, CapKind::OffField)
+            ),
+            (OFF_FIELD_CAP, CapKind::OffField)
+        );
     }
 }
