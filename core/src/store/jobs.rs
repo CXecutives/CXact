@@ -823,7 +823,7 @@ const DUE: &str = "COALESCE(mail_date, first_seen_at) >= ?1
 fn screened_out() -> String {
     let codes: Vec<String> = crate::pipeline::score::TITLE_DECIDED
         .iter()
-        .map(|code| format!("'{code}'"))
+        .map(|code| format!("'{}'", crate::pipeline::local::code_name(code)))
         .collect();
     format!(
         "(desc_status = 'missing' AND match_status IS 'excluded'

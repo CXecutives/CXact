@@ -248,7 +248,8 @@ pub fn record(assessment: &Assessment) -> MatchRecord {
 }
 
 /// The statement of the list row: the first decided violation of an excluded job, why an
-/// unscorable one has no score, else the first point to check (`None` if nothing).
+/// unscorable one has no score, else the first point to check (`None` if nothing). A reason
+/// that decided a hard criterion names it (`criterion`, [`with_criterion`]).
 fn note(assessment: &Assessment) -> Option<Notice> {
     let first = |kind: ReasonKind| assessment.reasons.iter().find(|r| r.kind == kind);
     let reason = match assessment.verdict {
@@ -261,9 +262,26 @@ fn note(assessment: &Assessment) -> Option<Notice> {
         Verdict::Scored => first(ReasonKind::Check),
     }?;
     Some(Notice {
-        code: code_name(&reason.code),
-        params: flat_params(&reason.params),
+        code: reason.code.into(),
+        params: with_criterion(assessment, reason, flat_params(&reason.params)),
     })
+}
+
+/// `params` with the hard criterion the reason decided (`criterion`, a `CriterionKey`), if it
+/// decided one: the interface words a violation from the profile's side by that key.
+pub(crate) fn with_criterion(
+    assessment: &Assessment,
+    reason: &matching::Reason,
+    mut params: Map<String, Value>,
+) -> Map<String, Value> {
+    if let Some(state) = assessment
+        .criteria
+        .iter()
+        .find(|c| c.reason == Some(reason.id))
+    {
+        params.insert("criterion".into(), code_name(&state.key).into());
+    }
+    params
 }
 
 /// What the store keeps of an assessment: its [`record`], up to two open must requirements
@@ -666,12 +684,14 @@ Wünschenswert:
         );
         assert_eq!(excluded.status, MatchStatus::Excluded);
         let note = excluded.note.unwrap();
-        assert_eq!(note.code, "dayRate");
+        assert_eq!(note.code, ReasonCode::DayRate.into());
         assert_eq!(note.params["min"], "1000", "{note:?}");
+        assert_eq!(note.params["criterion"], "minDayRate", "{note:?}");
         let country = assess(&matcher, "Interim CFO", "Paris, Frankreich", "");
         assert_eq!(country.status, MatchStatus::Excluded, "{country:?}");
         let country = country.note.unwrap();
-        assert_eq!(country.code, "country");
+        assert_eq!(country.code, ReasonCode::Country.into());
+        assert_eq!(country.params["criterion"], "countries", "{country:?}");
         assert!(
             country
                 .params
@@ -686,8 +706,8 @@ Wünschenswert:
         let untold = assess(&matcher, "Pflegefachkraft Intensivstation", "Hamburg", "");
         assert_eq!(untold.status, MatchStatus::Unscorable, "{untold:?}");
         assert_eq!(
-            (untold.score, untold.note.unwrap().code.as_str()),
-            (0, "shortText")
+            (untold.score, untold.note.unwrap().code),
+            (0, ReasonCode::ShortText.into())
         );
         let check = assess(
             &matcher,
@@ -696,7 +716,7 @@ Wünschenswert:
             &format!("{FIT}\n- Einsatz optional im Rahmen der Arbeitnehmerüberlassung"),
         );
         assert_eq!(check.status, MatchStatus::Scored, "{check:?}");
-        assert_eq!(check.note.unwrap().code, "anueOptional");
+        assert_eq!(check.note.unwrap().code, ReasonCode::AnueOptional.into());
     }
 
     #[test]
@@ -729,7 +749,7 @@ Wünschenswert:
         assert_eq!(row.facts.as_ref(), Some(&facts));
         let record = matcher.assess(&row, Some(FIT)).unwrap();
         assert_eq!(record.status, MatchStatus::Excluded, "{record:?}");
-        assert_eq!(record.note.unwrap().code, "dayRate");
+        assert_eq!(record.note.unwrap().code, ReasonCode::DayRate.into());
 
         let (store, key) = job("Interim CFO (m/w/d)", "Hamburg", "");
         store.record_teaser(&key, FIT, Timestamp::now()).unwrap();

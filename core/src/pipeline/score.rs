@@ -9,8 +9,8 @@ use jiff::Timestamp;
 use tokio_util::sync::CancellationToken;
 
 use super::{RunEvent, ScoreSummary, StatusCode, Step, status};
-use crate::matching::Assessment;
-use crate::model::{MatchRecord, MatchStatus, Notice};
+use crate::matching::{Assessment, ReasonCode};
+use crate::model::{AppNote, MatchRecord, MatchStatus, NoteCode, Notice};
 use crate::portal::JobKey;
 use crate::store::{JobRow, Judgement, Store};
 
@@ -70,19 +70,13 @@ impl Tally {
     }
 }
 
-/// Note code of a job the engine failed on (a panic): unscorable, never retried with the
-/// same revision, and the run goes on.
-pub const ENGINE_FAILED: &str = "engineFailed";
-
-/// The record of a job the engine failed on.
+/// The record of a job the engine failed on (a panic): unscorable with the note
+/// `engineFailed`, never retried with the same revision, and the run goes on.
 pub fn engine_failed() -> MatchRecord {
     MatchRecord {
         status: MatchStatus::Unscorable,
         score: 0,
-        note: Some(Notice {
-            code: ENGINE_FAILED.to_owned(),
-            params: serde_json::Map::new(),
-        }),
+        note: Some(Notice::bare(AppNote::EngineFailed)),
         must_met: 0,
         must_total: 0,
         top: Vec::new(),
@@ -102,7 +96,7 @@ pub(crate) fn guarded<T>(key: &JobKey, judge: impl FnOnce() -> T) -> Option<T> {
 }
 
 /// [`Matcher::judge`] that survives a panic of the engine: the job becomes unscorable
-/// with [`ENGINE_FAILED`].
+/// with the note `engineFailed` ([`engine_failed`]).
 fn judge_guarded(matcher: &dyn Matcher, job: &JobRow, text: Option<&str>) -> Option<Judgement> {
     guarded(&job.key, || matcher.judge(job, text))
         .unwrap_or_else(|| Some(Judgement::from(engine_failed())))
@@ -112,7 +106,7 @@ fn judge_guarded(matcher: &dyn Matcher, job: &JobRow, text: Option<&str>) -> Opt
 /// before any ad is read): an exclusion word in the title, Zeitarbeit in the title while the
 /// profile does not allow it. A place, a junior level or Festanstellung never screen a job
 /// out: their ad decides.
-pub const TITLE_DECIDED: [&str; 2] = ["exclusionWord", "anue"];
+pub const TITLE_DECIDED: [ReasonCode; 2] = [ReasonCode::ExclusionWord, ReasonCode::Anue];
 
 /// Screens new jobs before their ads are read: each is judged from its title alone and kept
 /// as excluded where the engine excludes it for a [`TITLE_DECIDED`] reason (its ad is then
@@ -147,7 +141,7 @@ pub fn title_decided(record: &MatchRecord) -> bool {
         && record
             .note
             .as_ref()
-            .is_some_and(|note| TITLE_DECIDED.contains(&note.code.as_str()))
+            .is_some_and(|note| TITLE_DECIDED.map(NoteCode::Reason).contains(&note.code))
 }
 
 /// Scores one job right after its details changed. Errors only go to the log - the fetch

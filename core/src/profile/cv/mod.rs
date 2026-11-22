@@ -90,6 +90,44 @@ pub enum CvError {
     Cancelled,
 }
 
+/// The code of a [`CvError`] as the interface words it (`ErrorKind::Cv`'s `reason`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum CvFailure {
+    Unreadable,
+    TooLarge,
+    Unsupported,
+    /// With `until`, the first day that works again.
+    Limit,
+    Paused,
+    Outdated,
+    Refused,
+    Unavailable,
+    Offline,
+    Timeout,
+}
+
+impl CvError {
+    /// Its code for the interface; `None` for a cancel, which the page never sees as an
+    /// error.
+    pub fn failure(&self) -> Option<CvFailure> {
+        Some(match self {
+            CvError::Unreadable => CvFailure::Unreadable,
+            CvError::TooLarge => CvFailure::TooLarge,
+            CvError::Unsupported => CvFailure::Unsupported,
+            CvError::Limit { .. } => CvFailure::Limit,
+            CvError::Paused => CvFailure::Paused,
+            CvError::Outdated => CvFailure::Outdated,
+            CvError::Refused => CvFailure::Refused,
+            CvError::Unavailable => CvFailure::Unavailable,
+            CvError::Offline => CvFailure::Offline,
+            CvError::Timeout => CvFailure::Timeout,
+            CvError::Cancelled => return None,
+        })
+    }
+}
+
 /// The format of the chosen file, for the log and the UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

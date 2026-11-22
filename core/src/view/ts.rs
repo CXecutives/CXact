@@ -15,24 +15,26 @@ use std::path::{Path, PathBuf};
 
 use ts_rs::{Config, TS, TypeVisitor};
 
-use crate::error::{ErrorInfo, ErrorKind, InvalidInput};
+use crate::error::{BusyActivity, ErrorInfo, ErrorKind, InvalidInput};
 use crate::fetch::PortalHealth;
 use crate::fetch::policy::PauseReason;
 use crate::mail::MailProvider;
-use crate::model::{Band, KeyFacts, MatchStatus, Notice, Place};
+use crate::matching::{CriterionKey, ProfileWarningCode, ReasonCode, Via};
+use crate::model::{AppNote, Band, KeyFacts, MatchStatus, NoteCode, Notice, Place};
 use crate::pipeline::{
     NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest, RunSnapshot,
     RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
 };
 use crate::portal::{JobKey, Portal, Way};
+use crate::profile::cv::CvFailure;
 use crate::store::{Backup, BackupKind};
 use crate::view::{
-    AppState, AskedTerm, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
-    JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
-    MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount, PortalLogin,
-    PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave, ProfileSource,
-    ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, SettingsPatch, SettingsView,
-    StoredMail, TermField, TextLayout, TextRange, VaultKind, WorkMode, WorkspacePick,
+    AppState, AskedTerm, Criterion, Deleted, DetailState, EmptyAlert, Evidence, Highlight,
+    JobCounts, JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel,
+    Mailbox, MailboxCheck, MatchDetail, MoveBack, OpenTarget, Origin, Platform, PortalCount,
+    PortalLogin, PortalPatch, PortalState, ProfileForm, ProfileInfo, ProfileQuality, ProfileSave,
+    ProfileSource, ProfileUnderstanding, Quota, Reason, ReasonKind, ReasonWeight, SettingsPatch,
+    SettingsView, StoredMail, TermField, TextLayout, TextRange, VaultKind, WorkMode, WorkspacePick,
     WorkspaceProfile,
 };
 
@@ -159,9 +161,16 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ErrorKind>();
     f.add::<ErrorInfo>();
     f.add::<InvalidInput>();
+    f.add::<BusyActivity>();
+    f.add::<CvFailure>();
     f.add::<MatchStatus>();
     f.add::<Place>();
     f.add::<Band>();
+    f.add::<ReasonCode>();
+    f.add::<CriterionKey>();
+    f.add::<ProfileWarningCode>();
+    f.add::<AppNote>();
+    f.add::<NoteCode>();
     f.add::<Notice>();
     f.add::<KeyFacts>();
     f.add::<PauseReason>();
@@ -174,9 +183,11 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<JobView>();
     f.add::<ReasonKind>();
     f.add::<ReasonWeight>();
+    f.add::<Via>();
     f.add::<Evidence>();
     f.add::<TextRange>();
     f.add::<Reason>();
+    f.add::<Criterion>();
     f.add::<Highlight>();
     f.add::<MatchDetail>();
     f.add::<TextLayout>();

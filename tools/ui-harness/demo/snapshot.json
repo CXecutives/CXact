@@ -189,6 +189,7 @@
         "note": {
           "code": "duration",
           "params": {
+            "criterion": "duration",
             "min": 6,
             "months": 3
           }
@@ -354,7 +355,9 @@
         "status": "excluded",
         "note": {
           "code": "anue",
-          "params": {}
+          "params": {
+            "criterion": "noAnue"
+          }
         },
         "mustMet": 0,
         "mustTotal": 4,
@@ -464,7 +467,9 @@
         "status": "scored",
         "note": {
           "code": "startVague",
-          "params": {}
+          "params": {
+            "criterion": "availability"
+          }
         },
         "mustMet": 0,
         "mustTotal": 1,
@@ -737,6 +742,7 @@
           "code": "country",
           "params": {
             "allowed": "DE, AT",
+            "criterion": "countries",
             "outside": "CH"
           }
         },
@@ -793,6 +799,7 @@
         "note": {
           "code": "exclusionWord",
           "params": {
+            "criterion": "exclusionWords",
             "word": "Werkstudent"
           }
         },
@@ -1126,10 +1133,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100"
             },
@@ -1138,10 +1143,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "München (Vor Ort)"
@@ -1151,10 +1154,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "freelance"
             },
@@ -1168,10 +1169,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -1180,10 +1179,8 @@
           {
             "id": "c:duration",
             "kind": "open",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6
             },
@@ -1217,7 +1214,9 @@
           "status": "excluded",
           "note": {
             "code": "anue",
-            "params": {}
+            "params": {
+              "criterion": "noAnue"
+            }
           },
           "mustMet": 0,
           "mustTotal": 4,
@@ -1433,7 +1432,9 @@
             "code": "anue",
             "label": "",
             "evidence": null,
-            "params": {},
+            "params": {
+              "criterion": "noAnue"
+            },
             "ranges": [
               {
                 "start": 392,
@@ -1547,10 +1548,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Berlin"
@@ -1560,10 +1559,8 @@
           {
             "id": "c:noAnue",
             "kind": "violation",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "reason": "r5"
             },
@@ -1577,10 +1574,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -1589,10 +1584,8 @@
           {
             "id": "c:duration",
             "kind": "met",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6,
               "months": 12
@@ -1991,10 +1984,8 @@
           {
             "id": "c:minDayRate",
             "kind": "met",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "hourly": false,
               "min": "1100",
@@ -2010,10 +2001,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "München (Vor Ort)"
@@ -2023,10 +2012,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "freelance"
             },
@@ -2040,10 +2027,8 @@
           {
             "id": "c:availability",
             "kind": "met",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01",
               "start": "2026-11-01"
@@ -2058,10 +2043,8 @@
           {
             "id": "c:duration",
             "kind": "met",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6,
               "months": 12
@@ -2602,10 +2585,8 @@
           {
             "id": "c:minDayRate",
             "kind": "met",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "hourly": false,
               "min": "1100",
@@ -2621,10 +2602,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Hamburg"
@@ -2634,10 +2613,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "interim"
             },
@@ -2651,10 +2628,8 @@
           {
             "id": "c:availability",
             "kind": "met",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01",
               "start": "now"
@@ -2669,10 +2644,8 @@
           {
             "id": "c:duration",
             "kind": "met",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6,
               "months": 6
@@ -2713,6 +2686,7 @@
           "note": {
             "code": "duration",
             "params": {
+              "criterion": "duration",
               "min": 6,
               "months": 3
             }
@@ -3081,6 +3055,7 @@
             "label": "",
             "evidence": null,
             "params": {
+              "criterion": "duration",
               "min": 6,
               "months": 3
             },
@@ -3239,10 +3214,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100",
               "rateOpen": true
@@ -3257,10 +3230,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "remote": true
@@ -3270,10 +3241,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "interim"
             },
@@ -3287,10 +3256,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -3299,10 +3266,8 @@
           {
             "id": "c:duration",
             "kind": "check",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6,
               "months": 3,
@@ -3729,10 +3694,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100",
               "rateOpen": true
@@ -3747,10 +3710,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Kiel (Vor Ort)"
@@ -3760,10 +3721,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "freelance"
             },
@@ -3777,10 +3736,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -3789,10 +3746,8 @@
           {
             "id": "c:duration",
             "kind": "met",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6,
               "months": 9
@@ -3832,7 +3787,9 @@
           "status": "scored",
           "note": {
             "code": "startVague",
-            "params": {}
+            "params": {
+              "criterion": "availability"
+            }
           },
           "mustMet": 0,
           "mustTotal": 1,
@@ -3946,7 +3903,9 @@
             "code": "startVague",
             "label": "",
             "evidence": null,
-            "params": {},
+            "params": {
+              "criterion": "availability"
+            },
             "ranges": [
               {
                 "start": 348,
@@ -4056,10 +4015,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100"
             },
@@ -4068,10 +4025,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Köln"
@@ -4081,10 +4036,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "interim"
             },
@@ -4098,10 +4051,8 @@
           {
             "id": "c:availability",
             "kind": "check",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01",
               "reason": "r2",
@@ -4117,10 +4068,8 @@
           {
             "id": "c:duration",
             "kind": "met",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6,
               "months": 12
@@ -4306,10 +4255,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100"
             },
@@ -4318,10 +4265,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Stuttgart"
@@ -4331,20 +4276,16 @@
           {
             "id": "c:noAnue",
             "kind": "open",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {},
             "ranges": []
           },
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -4353,10 +4294,8 @@
           {
             "id": "c:duration",
             "kind": "open",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6
             },
@@ -4477,10 +4416,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100"
             },
@@ -4489,10 +4426,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Hamburg"
@@ -4502,20 +4437,16 @@
           {
             "id": "c:noAnue",
             "kind": "open",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {},
             "ranges": []
           },
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -4524,10 +4455,8 @@
           {
             "id": "c:duration",
             "kind": "open",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6
             },
@@ -4562,6 +4491,7 @@
           "note": {
             "code": "exclusionWord",
             "params": {
+              "criterion": "exclusionWords",
               "word": "Werkstudent"
             }
           },
@@ -4742,6 +4672,7 @@
             "label": "",
             "evidence": null,
             "params": {
+              "criterion": "exclusionWords",
               "word": "Werkstudent"
             },
             "ranges": [
@@ -4818,10 +4749,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Hamburg"
@@ -4831,20 +4760,16 @@
           {
             "id": "c:noAnue",
             "kind": "open",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {},
             "ranges": []
           },
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -4853,10 +4778,8 @@
           {
             "id": "c:exclusionWords",
             "kind": "violation",
-            "weight": "hard",
             "code": "exclusionWords",
             "label": "",
-            "evidence": null,
             "params": {
               "reason": "r5",
               "word": "Werkstudent",
@@ -5401,10 +5324,8 @@
           {
             "id": "c:minDayRate",
             "kind": "met",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "hourly": false,
               "min": "1100",
@@ -5420,10 +5341,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "remote": true
@@ -5433,10 +5352,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "interim"
             },
@@ -5450,10 +5367,8 @@
           {
             "id": "c:availability",
             "kind": "met",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01",
               "start": "now"
@@ -5468,10 +5383,8 @@
           {
             "id": "c:duration",
             "kind": "open",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6
             },
@@ -5591,10 +5504,8 @@
           {
             "id": "c:minDayRate",
             "kind": "open",
-            "weight": "hard",
             "code": "minDayRate",
             "label": "",
-            "evidence": null,
             "params": {
               "min": "1100"
             },
@@ -5603,10 +5514,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Leipzig (Hybrid)"
@@ -5616,20 +5525,16 @@
           {
             "id": "c:noAnue",
             "kind": "open",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {},
             "ranges": []
           },
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -5638,10 +5543,8 @@
           {
             "id": "c:duration",
             "kind": "open",
-            "weight": "hard",
             "code": "duration",
             "label": "",
-            "evidence": null,
             "params": {
               "min": 6
             },
@@ -6039,10 +5942,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Frankfurt am Main (Hybrid)"
@@ -6052,10 +5953,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "permanent"
             },
@@ -6069,10 +5968,8 @@
           {
             "id": "c:availability",
             "kind": "met",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01",
               "start": "2026-11-01"
@@ -6442,10 +6339,8 @@
           {
             "id": "c:countries",
             "kind": "open",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Buchholz (Vor Ort)"
@@ -6455,10 +6350,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "permanent"
             },
@@ -6472,10 +6365,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -6511,6 +6402,7 @@
             "code": "country",
             "params": {
               "allowed": "DE, AT",
+              "criterion": "countries",
               "outside": "CH"
             }
           },
@@ -6735,6 +6627,7 @@
             "evidence": null,
             "params": {
               "allowed": "DE, AT",
+              "criterion": "countries",
               "outside": "CH"
             },
             "ranges": []
@@ -6822,10 +6715,8 @@
           {
             "id": "c:countries",
             "kind": "violation",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "allowed": "DE, AT",
               "countries": "DE, AT",
@@ -6838,10 +6729,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "permanent"
             },
@@ -6855,10 +6744,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -7218,10 +7105,8 @@
           {
             "id": "c:countries",
             "kind": "met",
-            "weight": "hard",
             "code": "countries",
             "label": "",
-            "evidence": null,
             "params": {
               "countries": "DE, AT",
               "location": "Bremen"
@@ -7231,10 +7116,8 @@
           {
             "id": "c:noAnue",
             "kind": "met",
-            "weight": "hard",
             "code": "noAnue",
             "label": "",
-            "evidence": null,
             "params": {
               "contract": "permanent"
             },
@@ -7248,10 +7131,8 @@
           {
             "id": "c:availability",
             "kind": "open",
-            "weight": "hard",
             "code": "availability",
             "label": "",
-            "evidence": null,
             "params": {
               "from": "2026-09-01"
             },
@@ -7374,7 +7255,9 @@
           "status": "excluded",
           "note": {
             "code": "anue",
-            "params": {}
+            "params": {
+              "criterion": "noAnue"
+            }
           },
           "mustMet": 0,
           "mustTotal": 2,
@@ -7428,7 +7311,9 @@
             "status": "excluded",
             "note": {
               "code": "anue",
-              "params": {}
+              "params": {
+                "criterion": "noAnue"
+              }
             },
             "mustMet": 0,
             "mustTotal": 2,
@@ -7585,7 +7470,9 @@
               "code": "anue",
               "label": "",
               "evidence": null,
-              "params": {},
+              "params": {
+                "criterion": "noAnue"
+              },
               "ranges": [
                 {
                   "start": 287,
@@ -7685,10 +7572,8 @@
             {
               "id": "c:countries",
               "kind": "met",
-              "weight": "hard",
               "code": "countries",
               "label": "",
-              "evidence": null,
               "params": {
                 "countries": "DE, AT",
                 "location": "Bremen"
@@ -7698,10 +7583,8 @@
             {
               "id": "c:noAnue",
               "kind": "violation",
-              "weight": "hard",
               "code": "noAnue",
               "label": "",
-              "evidence": null,
               "params": {
                 "reason": "r3"
               },
@@ -7715,10 +7598,8 @@
             {
               "id": "c:availability",
               "kind": "open",
-              "weight": "hard",
               "code": "availability",
               "label": "",
-              "evidence": null,
               "params": {
                 "from": "2026-09-01"
               },
@@ -7727,10 +7608,8 @@
             {
               "id": "c:duration",
               "kind": "open",
-              "weight": "hard",
               "code": "duration",
               "label": "",
-              "evidence": null,
               "params": {
                 "min": 6
               },
@@ -7766,6 +7645,7 @@
           "note": {
             "code": "dayRate",
             "params": {
+              "criterion": "minDayRate",
               "hourly": false,
               "min": "1100",
               "rate": 950
@@ -7826,6 +7706,7 @@
             "note": {
               "code": "dayRate",
               "params": {
+                "criterion": "minDayRate",
                 "hourly": false,
                 "min": "1100",
                 "rate": 950
@@ -8041,6 +7922,7 @@
               "label": "",
               "evidence": null,
               "params": {
+                "criterion": "minDayRate",
                 "hourly": false,
                 "min": "1100",
                 "rate": 950
@@ -8179,10 +8061,8 @@
             {
               "id": "c:minDayRate",
               "kind": "violation",
-              "weight": "hard",
               "code": "minDayRate",
               "label": "",
-              "evidence": null,
               "params": {
                 "hourly": false,
                 "min": "1100",
@@ -8199,10 +8079,8 @@
             {
               "id": "c:countries",
               "kind": "met",
-              "weight": "hard",
               "code": "countries",
               "label": "",
-              "evidence": null,
               "params": {
                 "countries": "DE, AT",
                 "location": "Stuttgart"
@@ -8212,10 +8090,8 @@
             {
               "id": "c:noAnue",
               "kind": "met",
-              "weight": "hard",
               "code": "noAnue",
               "label": "",
-              "evidence": null,
               "params": {
                 "contract": "freelance"
               },
@@ -8229,10 +8105,8 @@
             {
               "id": "c:availability",
               "kind": "open",
-              "weight": "hard",
               "code": "availability",
               "label": "",
-              "evidence": null,
               "params": {
                 "from": "2026-09-01"
               },
@@ -8241,10 +8115,8 @@
             {
               "id": "c:duration",
               "kind": "met",
-              "weight": "hard",
               "code": "duration",
               "label": "",
-              "evidence": null,
               "params": {
                 "min": 6,
                 "months": 10
@@ -8718,10 +8590,8 @@
             {
               "id": "c:minDayRate",
               "kind": "open",
-              "weight": "hard",
               "code": "minDayRate",
               "label": "",
-              "evidence": null,
               "params": {
                 "min": "1100",
                 "rateOpen": true
@@ -8736,10 +8606,8 @@
             {
               "id": "c:countries",
               "kind": "met",
-              "weight": "hard",
               "code": "countries",
               "label": "",
-              "evidence": null,
               "params": {
                 "countries": "DE, AT",
                 "location": "Hamburg"
@@ -8749,10 +8617,8 @@
             {
               "id": "c:noAnue",
               "kind": "met",
-              "weight": "hard",
               "code": "noAnue",
               "label": "",
-              "evidence": null,
               "params": {
                 "contract": "interim"
               },
@@ -8766,10 +8632,8 @@
             {
               "id": "c:availability",
               "kind": "open",
-              "weight": "hard",
               "code": "availability",
               "label": "",
-              "evidence": null,
               "params": {
                 "from": "2026-09-01"
               },
@@ -8778,10 +8642,8 @@
             {
               "id": "c:duration",
               "kind": "met",
-              "weight": "hard",
               "code": "duration",
               "label": "",
-              "evidence": null,
               "params": {
                 "min": 6,
                 "months": 6
@@ -9205,10 +9067,8 @@
             {
               "id": "c:minDayRate",
               "kind": "met",
-              "weight": "hard",
               "code": "minDayRate",
               "label": "",
-              "evidence": null,
               "params": {
                 "hourly": false,
                 "min": "1100",
@@ -9224,10 +9084,8 @@
             {
               "id": "c:countries",
               "kind": "met",
-              "weight": "hard",
               "code": "countries",
               "label": "",
-              "evidence": null,
               "params": {
                 "countries": "DE, AT",
                 "location": "Leipzig (Hybrid)"
@@ -9237,10 +9095,8 @@
             {
               "id": "c:noAnue",
               "kind": "met",
-              "weight": "hard",
               "code": "noAnue",
               "label": "",
-              "evidence": null,
               "params": {
                 "contract": "interim"
               },
@@ -9254,10 +9110,8 @@
             {
               "id": "c:availability",
               "kind": "open",
-              "weight": "hard",
               "code": "availability",
               "label": "",
-              "evidence": null,
               "params": {
                 "from": "2026-09-01"
               },
@@ -9266,10 +9120,8 @@
             {
               "id": "c:duration",
               "kind": "met",
-              "weight": "hard",
               "code": "duration",
               "label": "",
-              "evidence": null,
               "params": {
                 "min": 6,
                 "months": 6
@@ -9789,10 +9641,8 @@
             {
               "id": "c:minDayRate",
               "kind": "met",
-              "weight": "hard",
               "code": "minDayRate",
               "label": "",
-              "evidence": null,
               "params": {
                 "hourly": false,
                 "min": "1100",
@@ -9808,10 +9658,8 @@
             {
               "id": "c:countries",
               "kind": "met",
-              "weight": "hard",
               "code": "countries",
               "label": "",
-              "evidence": null,
               "params": {
                 "countries": "DE, AT",
                 "location": "Hannover (Hybrid)"
@@ -9821,10 +9669,8 @@
             {
               "id": "c:noAnue",
               "kind": "met",
-              "weight": "hard",
               "code": "noAnue",
               "label": "",
-              "evidence": null,
               "params": {
                 "contract": "interim"
               },
@@ -9838,10 +9684,8 @@
             {
               "id": "c:availability",
               "kind": "met",
-              "weight": "hard",
               "code": "availability",
               "label": "",
-              "evidence": null,
               "params": {
                 "from": "2026-09-01",
                 "start": "now"
@@ -9856,10 +9700,8 @@
             {
               "id": "c:duration",
               "kind": "met",
-              "weight": "hard",
               "code": "duration",
               "label": "",
-              "evidence": null,
               "params": {
                 "min": 6,
                 "months": 9
@@ -10444,7 +10286,9 @@
           "status": "excluded",
           "note": {
             "code": "anue",
-            "params": {}
+            "params": {
+              "criterion": "noAnue"
+            }
           },
           "mustMet": 1,
           "mustTotal": 4,
@@ -10658,6 +10502,7 @@
           "note": {
             "code": "exclusionWord",
             "params": {
+              "criterion": "exclusionWords",
               "word": "Werkstudent"
             }
           },
@@ -11186,7 +11031,9 @@
           "status": "excluded",
           "note": {
             "code": "anue",
-            "params": {}
+            "params": {
+              "criterion": "noAnue"
+            }
           },
           "mustMet": 0,
           "mustTotal": 4,
@@ -11395,6 +11242,7 @@
           "note": {
             "code": "exclusionWord",
             "params": {
+              "criterion": "exclusionWords",
               "word": "Werkstudent"
             }
           },
@@ -11474,6 +11322,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -11506,6 +11355,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -11536,6 +11386,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -11566,6 +11417,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -11937,7 +11789,9 @@
           "status": "excluded",
           "note": {
             "code": "anue",
-            "params": {}
+            "params": {
+              "criterion": "noAnue"
+            }
           },
           "mustMet": 0,
           "mustTotal": 4,
@@ -12147,6 +12001,7 @@
           "note": {
             "code": "exclusionWord",
             "params": {
+              "criterion": "exclusionWords",
               "word": "Werkstudent"
             }
           },
@@ -12225,6 +12080,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -12257,6 +12113,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -12287,6 +12144,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }
@@ -12317,6 +12175,7 @@
           "note": {
             "code": "permanent",
             "params": {
+              "criterion": "noPermanent",
               "excluded": true,
               "stated": true
             }

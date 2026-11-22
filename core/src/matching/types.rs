@@ -1,7 +1,7 @@
 //! Input and output types of the matching engine. Self-contained: the integrator maps
 //! them onto the IPC and store types.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 pub use crate::model::KeyFacts;
@@ -109,6 +109,7 @@ pub struct Part {
 /// What a [`Part`] is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum PartCode {
     /// Role and field: `class` same, near, far or foreign, the target role (`role`, `fit`),
     /// the level (`level`: at, oneAbove, oneBelow, twoAbove, twoBelow).
@@ -142,6 +143,7 @@ pub struct CapLine {
 /// Why a score is capped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum CapCode {
     /// An open formal must (a degree of another field, a licence, a mandatory certificate).
     Formal,
@@ -229,8 +231,9 @@ pub enum Weight {
 }
 
 /// What a reason is about; the UI catalog turns code + params into text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum ReasonCode {
     /// A requirement of the ad (label = quote).
     Requirement,
@@ -298,6 +301,7 @@ pub enum ReasonCode {
 /// How a profile entry met a requirement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum Via {
     Exact,
     Synonym,
@@ -349,8 +353,9 @@ pub struct Highlight {
 }
 
 /// The hard criteria of the profile.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum CriterionKey {
     MinDayRate,
     Countries,
@@ -438,8 +443,9 @@ pub struct ProfileWarning {
 }
 
 /// Profile warning codes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub enum ProfileWarningCode {
     NoCompetences,
     FewCompetences,

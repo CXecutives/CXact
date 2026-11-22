@@ -103,7 +103,7 @@ pub enum ErrorKind {
     Io,
     Corrupt,
     Invalid,
-    /// A run or a sign-in window is active.
+    /// Something else holds the app: `params.activity` says what ([`BusyActivity`]).
     Busy,
     NotFound,
     /// Not available in the dry run.
@@ -130,11 +130,54 @@ pub enum ErrorKind {
     /// The hourly or daily cap of the portal is reached (`params.until`).
     PortalQuota,
     /// "Aus Lebenslauf ausfüllen" failed: `params.reason` is the code of the CV import
-    /// (`profile::cv::CvError`: `unreadable`, `tooLarge`, `unsupported`, `limit` with `until`,
-    /// `paused`, `outdated`, `refused`, `unavailable`, `offline`, `timeout`).
+    /// (`profile::cv::CvFailure`; `limit` with `until`).
     Cv,
     /// A crash inside the app; details are in the log.
     Internal,
+}
+
+/// What holds the app while a command waits (`Busy`'s `activity`): a run by its kind, or the
+/// one thing that runs instead of a run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum BusyActivity {
+    /// A fetch run (mail, search, ads).
+    Fetch,
+    /// The ads of chosen jobs are loaded.
+    Details,
+    /// The jobs are scored again.
+    Rescore,
+    /// The session window is in use for signing in or out.
+    Session,
+    /// A file command writes or deletes the app's files.
+    Files,
+    /// The mailbox is checked and stored, or removed.
+    Mailbox,
+    /// A CV is read and evaluated for the profile.
+    Cv,
+}
+
+impl From<crate::pipeline::RunKindName> for BusyActivity {
+    fn from(kind: crate::pipeline::RunKindName) -> BusyActivity {
+        use crate::pipeline::RunKindName;
+        match kind {
+            RunKindName::Fetch => BusyActivity::Fetch,
+            RunKindName::Details => BusyActivity::Details,
+            RunKindName::Rescore => BusyActivity::Rescore,
+        }
+    }
+}
+
+impl ErrorInfo {
+    /// `Busy` with what holds the app (`activity`; none when it is not known).
+    pub fn busy(activity: Option<BusyActivity>) -> ErrorInfo {
+        let error = ErrorInfo::new(ErrorKind::Busy);
+        match activity.and_then(|a| serde_json::to_value(a).ok()) {
+            Some(name) => error.with("activity", name),
+            None => error,
+        }
+    }
 }
 
 /// An error as the interface sees it: a code plus data (paths, numbers, portal keys).
@@ -283,16 +326,15 @@ impl From<&InvalidInput> for ErrorInfo {
 }
 
 impl From<&crate::profile::cv::CvError> for ErrorInfo {
-    /// `cv` with the code as `reason` and its data beside it (`until` of `limit`).
+    /// `cv` with the code as `reason` (`CvFailure`) and its data beside it (`until` of
+    /// `limit`).
     fn from(error: &crate::profile::cv::CvError) -> ErrorInfo {
         let mut info = ErrorInfo::new(ErrorKind::Cv);
-        if let Ok(Value::Object(mut map)) = serde_json::to_value(error) {
-            if let Some(Value::Object(params)) = map.remove("params") {
-                info.params.extend(params);
-            }
-            if let Some(code) = map.remove("code") {
-                info.params.insert("reason".to_owned(), code);
-            }
+        if let Some(code) = error.failure().and_then(|f| serde_json::to_value(f).ok()) {
+            info = info.with("reason", code);
+        }
+        if let crate::profile::cv::CvError::Limit { until } = error {
+            info = info.with("until", until.as_str());
         }
         info
     }
