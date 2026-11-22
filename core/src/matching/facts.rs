@@ -1114,7 +1114,7 @@ fn day_rate(
     match criteria.min_rate {
         Some(min) if i128::from(per_day) < min => {
             let mut params =
-                json!({ "rate": per_day, "min": min.to_string(), "hourly": rate.hourly });
+                json!({ "rate": per_day, "min": i64::try_from(min).ok(), "hourly": rate.hourly });
             rate_amounts(&mut params, &rate);
             vec![Finding::new(
                 ReasonCode::DayRate,

@@ -36,7 +36,7 @@ use crate::store::{
 use crate::text::split_company_location;
 
 #[cfg(test)]
-mod ts;
+pub(crate) mod ts;
 
 /// Most jobs one page of the list carries.
 pub const MAX_PAGE: u32 = 500;
@@ -427,7 +427,7 @@ pub struct Reason {
     pub label: String,
     pub evidence: Option<Evidence>,
     /// A reason that decided a hard criterion names it (`criterion`, a `CriterionKey`).
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: serde_json::Map<String, serde_json::Value>,
     pub ranges: Vec<TextRange>,
 }
@@ -445,7 +445,7 @@ pub struct Criterion {
     pub code: CriterionKey,
     /// The ad's words of the deciding reason (empty without one).
     pub label: String,
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: serde_json::Map<String, serde_json::Value>,
     pub ranges: Vec<TextRange>,
 }
@@ -746,7 +746,7 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
 /// names its term and field (`term`, `field`: `pipeline::local::open_term`) and a language
 /// its level (`level`), what the reader's "+" adds.
 fn reason_params(reason: &matching::Reason) -> serde_json::Map<String, serde_json::Value> {
-    let mut params = local::flat_params(&reason.params);
+    let mut params = local::ui_params(&reason.params);
     if let Some(core) = local::open_term(reason) {
         let level = term_level(&core, reason.label.as_deref().unwrap_or(&core.term));
         if let Some(level) = level.and_then(|l| serde_json::to_value(l).ok()) {
@@ -779,11 +779,11 @@ fn criteria_strip(
             let mut params = set
                 .iter()
                 .find(|info| info.key == c.key)
-                .map(|info| local::flat_params(&info.params))
+                .map(|info| local::ui_params(&info.params))
                 .unwrap_or_default();
-            params.extend(local::flat_params(&c.params));
+            params.extend(local::ui_params(&c.params));
             if let Some(reason) = linked {
-                params.extend(local::flat_params(&reason.params));
+                params.extend(local::ui_params(&reason.params));
                 params.insert("reason".into(), reason_id(reason.id).into());
             }
             let mut passages = linked.map(ranges).unwrap_or_default();
@@ -1369,7 +1369,7 @@ pub fn understanding(summary: &ProfileSummary) -> ProfileUnderstanding {
             .criteria
             .iter()
             .map(|c| {
-                let mut params = local::flat_params(&c.params);
+                let mut params = local::ui_params(&c.params);
                 params.insert("set".into(), c.set.into());
                 Notice {
                     code: c.key.into(),
@@ -1388,7 +1388,7 @@ pub fn understanding(summary: &ProfileSummary) -> ProfileUnderstanding {
 fn profile_warning(warning: &matching::ProfileWarning) -> Notice {
     Notice {
         code: warning.code.into(),
-        params: local::flat_params(&warning.params),
+        params: local::ui_params(&warning.params),
     }
 }
 
@@ -2682,7 +2682,10 @@ Rahmenbedingungen:
         let linked = rate.params["reason"].as_str().unwrap();
         assert!(ids.contains(linked) && !rate.ranges.is_empty(), "{rate:?}");
         assert_eq!(m.criteria[1].kind, ReasonKind::Met);
-        assert_eq!(m.criteria[1].params["countries"], "DE, AT, CH");
+        assert_eq!(
+            m.criteria[1].params["countries"],
+            serde_json::json!(["DE", "AT", "CH"])
+        );
         // Met with the ad's value as evidence; the start is not mentioned (open).
         assert_eq!(m.criteria[1].params["location"], "Hamburg");
         assert_eq!(m.criteria[2].params["contract"], "interim");

@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-474 files, 5 of them without a header comment ("(no header)").
+475 files, 5 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -67,7 +67,7 @@ everything the app knows and does, without UI and without…
 - settings.rs 300 · Settings of the app - stored as JSON in the key/value… · Settings, PortalSwitches, default_workspace, KEY
 - sync.rs 28 · Short locks on shared state. · lock
 - time.rs 129 · Time: UTC timestamps inside; local time for display, file… · zone, set_zone, follow_system_zone, local +7
-- view.rs 3072 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +64
+- view.rs 3075 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +64
 - window.rs 500 · Placement of the app window across restarts, as plain… · Placement, Screen, Restore, restore +6
 
 ### core/src/export
@@ -174,7 +174,7 @@ is the pure integer engine
 ### core/src/pipeline
 runs mail and search, screen, fetch and score
 - dry_run.rs 364 · Dry run: a mailbox and portals to look at - without… · matcher, search_plan, DryRunBackends, DryRunMail +4
-- local.rs 847 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, with_criterion +7
+- local.rs 844 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, with_criterion +7
 - mod.rs 1133 · One click: the alert mails and the search -> new jobs ->… · LocalMatcher, Matcher, RunRequest, RunKind +23
 - rescore.rs 421 · When the app scores every job again by itself: after the… · Host, Rescore
 - score.rs 218 · Scoring jobs against the profile. · Matcher, engine_failed, guarded, screen +3
@@ -232,7 +232,7 @@ HTML to text, company and location
 - title.rs 477 · The title as the list and the Excel file show it: without… · tidy_title
 
 ### core/src/view
-- ts.rs 474 · TypeScript types of the IPC contract, generated from the… · types_dir
+- ts.rs 513 · TypeScript types of the IPC contract, generated from the… · Params, types_dir
 
 ### core/tests
 - architecture.rs 69 · Architecture rules of the app shell.
@@ -444,7 +444,7 @@ the catalog (`de.ts`) and the text functions
 - api.ts 258 · The only importer of @tauri-apps/api. · CommandName, CommandArgs, CommandResult, IpcError +15
 
 ### ui/src/lib/ipc/types
-- 97 generated files, never edited by hand (by ts-rs 91, core/src/view/ts.rs 5, core/tests/contract.rs 1)
+- 98 generated files, never edited by hand (by ts-rs 92, core/src/view/ts.rs 5, core/tests/contract.rs 1)
 
 ### ui/src/lib/motion
 all motion

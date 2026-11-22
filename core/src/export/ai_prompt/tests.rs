@@ -945,7 +945,7 @@ fn an_excluded_job_says_why() {
     let rate = b.reason(
         (ReasonKind::Violation, Weight::Hard, ReasonCode::DayRate),
         None,
-        json!({ "rate": 760, "min": "1100", "hourly": true }),
+        json!({ "rate": 760, "min": 1100, "hourly": true }),
         None,
         Some("Honorar: 95,- € pro Stunde"),
     );

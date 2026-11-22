@@ -345,7 +345,7 @@ impl KeyFacts {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Notice {
     pub code: NoteCode,
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: serde_json::Map<String, serde_json::Value>,
 }
 

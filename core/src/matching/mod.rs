@@ -226,7 +226,7 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
         info(
             CriterionKey::MinDayRate,
             c.min_rate.is_some(),
-            json!({ "min": c.min_rate.map(|m| m.to_string()) }),
+            json!({ "min": c.min_rate.and_then(|m| i64::try_from(m).ok()) }),
         ),
         info(
             CriterionKey::Countries,

@@ -263,7 +263,7 @@ fn note(assessment: &Assessment) -> Option<Notice> {
     }?;
     Some(Notice {
         code: reason.code.into(),
-        params: with_criterion(assessment, reason, flat_params(&reason.params)),
+        params: with_criterion(assessment, reason, ui_params(&reason.params)),
     })
 }
 
@@ -389,29 +389,24 @@ pub(crate) fn code_name(code: &impl serde::Serialize) -> String {
     }
 }
 
-/// Params as the interface takes them: scalars only. Lists of scalars become one
-/// comma-separated string (`["DE", "AT"]` -> `"DE, AT"`), nested objects are dropped.
-pub(crate) fn flat_params(params: &Map<String, Value>) -> Map<String, Value> {
+/// Params as the interface takes them (`Params`): scalars and lists of scalars as they are,
+/// numbers as numbers; nested objects (and objects inside a list) are dropped.
+pub(crate) fn ui_params(params: &Map<String, Value>) -> Map<String, Value> {
     params
         .iter()
         .filter_map(|(key, value)| {
-            let flat = match value {
-                Value::Array(items) => Value::String(
+            let kept = match value {
+                Value::Array(items) => Value::Array(
                     items
                         .iter()
-                        .filter_map(|item| match item {
-                            Value::String(s) => Some(s.clone()),
-                            Value::Number(n) => Some(n.to_string()),
-                            Value::Bool(b) => Some(b.to_string()),
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
+                        .filter(|item| !item.is_array() && !item.is_object())
+                        .cloned()
+                        .collect(),
                 ),
                 Value::Object(_) => return None,
                 scalar => scalar.clone(),
             };
-            Some((key.clone(), flat))
+            Some((key.clone(), kept))
         })
         .collect()
 }
@@ -685,7 +680,7 @@ Wünschenswert:
         assert_eq!(excluded.status, MatchStatus::Excluded);
         let note = excluded.note.unwrap();
         assert_eq!(note.code, ReasonCode::DayRate.into());
-        assert_eq!(note.params["min"], "1000", "{note:?}");
+        assert_eq!(note.params["min"], 1000, "{note:?}");
         assert_eq!(note.params["criterion"], "minDayRate", "{note:?}");
         let country = assess(&matcher, "Interim CFO", "Paris, Frankreich", "");
         assert_eq!(country.status, MatchStatus::Excluded, "{country:?}");
@@ -693,11 +688,8 @@ Wünschenswert:
         assert_eq!(country.code, ReasonCode::Country.into());
         assert_eq!(country.params["criterion"], "countries", "{country:?}");
         assert!(
-            country
-                .params
-                .values()
-                .all(|v| !v.is_array() && !v.is_object()),
-            "lists are flattened for the interface: {country:?}"
+            country.params.values().any(Value::is_array),
+            "lists stay lists for the interface: {country:?}"
         );
         // A text too short to read is judged from its title (the rubric's rule 8); a title
         // that names neither the field nor a target role stays unscorable.
@@ -719,13 +711,18 @@ Wünschenswert:
         assert_eq!(check.note.unwrap().code, ReasonCode::AnueOptional.into());
     }
 
+    /// The interface gets lists as lists and numbers as numbers: an item with a comma comes
+    /// back whole; only nested objects are dropped.
     #[test]
-    fn params_become_scalars() {
-        let params = json!({"a": ["DE", "AT"], "b": 3, "c": {"x": 1}, "d": null, "e": [1, true]});
-        let flat = flat_params(params.as_object().unwrap());
+    fn params_keep_lists_and_numbers() {
+        let params = json!({
+            "a": ["Frankfurt, Main", "AT"], "b": 3, "c": {"x": 1}, "d": null,
+            "e": [1, true, {"x": 1}], "f": "DE, AT"
+        });
+        let kept = ui_params(params.as_object().unwrap());
         assert_eq!(
-            Value::Object(flat),
-            json!({"a": "DE, AT", "b": 3, "d": null, "e": "1, true"})
+            Value::Object(kept),
+            json!({"a": ["Frankfurt, Main", "AT"], "b": 3, "d": null, "e": [1, true], "f": "DE, AT"})
         );
         assert_eq!(code_name(&ReasonCode::AvailabilityGap), "availabilityGap");
     }

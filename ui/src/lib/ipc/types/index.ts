@@ -42,6 +42,7 @@ export type { Notice } from "./Notice";
 export type { OpenTarget } from "./OpenTarget";
 export type { Origin } from "./Origin";
 export type { Outcome } from "./Outcome";
+export type { Params } from "./Params";
 export type { Part } from "./Part";
 export type { PartCode } from "./PartCode";
 export type { PauseReason } from "./PauseReason";

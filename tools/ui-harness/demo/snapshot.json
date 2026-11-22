@@ -741,9 +741,14 @@
         "note": {
           "code": "country",
           "params": {
-            "allowed": "DE, AT",
+            "allowed": [
+              "DE",
+              "AT"
+            ],
             "criterion": "countries",
-            "outside": "CH"
+            "outside": [
+              "CH"
+            ]
           }
         },
         "mustMet": 0,
@@ -1136,7 +1141,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100"
+              "min": 1100
             },
             "ranges": []
           },
@@ -1146,7 +1151,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "München (Vor Ort)"
             },
             "ranges": []
@@ -1597,7 +1605,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Berlin"
             },
             "ranges": []
@@ -2080,7 +2091,7 @@
             "label": "",
             "params": {
               "hourly": false,
-              "min": "1100",
+              "min": 1100,
               "rate": 1150
             },
             "ranges": [
@@ -2096,7 +2107,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "München (Vor Ort)"
             },
             "ranges": []
@@ -2754,7 +2768,7 @@
             "label": "",
             "params": {
               "hourly": false,
-              "min": "1100",
+              "min": 1100,
               "rate": 1200
             },
             "ranges": [
@@ -2770,7 +2784,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Hamburg"
             },
             "ranges": []
@@ -3438,7 +3455,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100",
+              "min": 1100,
               "rateOpen": true
             },
             "ranges": [
@@ -3454,7 +3471,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "remote": true
             },
             "ranges": []
@@ -3974,7 +3994,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100",
+              "min": 1100,
               "rateOpen": true
             },
             "ranges": [
@@ -3990,7 +4010,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Kiel (Vor Ort)"
             },
             "ranges": []
@@ -4351,7 +4374,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100"
+              "min": 1100
             },
             "ranges": []
           },
@@ -4361,7 +4384,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Köln"
             },
             "ranges": []
@@ -4645,7 +4671,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100"
+              "min": 1100
             },
             "ranges": []
           },
@@ -4655,7 +4681,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Stuttgart"
             },
             "ranges": []
@@ -4852,7 +4881,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100"
+              "min": 1100
             },
             "ranges": []
           },
@@ -4862,7 +4891,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Hamburg"
             },
             "ranges": []
@@ -5187,7 +5219,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Hamburg"
             },
             "ranges": []
@@ -5218,7 +5253,10 @@
             "params": {
               "reason": "r5",
               "word": "Werkstudent",
-              "words": "Werkstudent, Praktikum"
+              "words": [
+                "Werkstudent",
+                "Praktikum"
+              ]
             },
             "ranges": [
               {
@@ -5822,7 +5860,7 @@
             "label": "",
             "params": {
               "hourly": false,
-              "min": "1100",
+              "min": 1100,
               "rate": 1250
             },
             "ranges": [
@@ -5838,7 +5876,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "remote": true
             },
             "ranges": []
@@ -6047,7 +6088,7 @@
             "code": "minDayRate",
             "label": "",
             "params": {
-              "min": "1100"
+              "min": 1100
             },
             "ranges": []
           },
@@ -6057,7 +6098,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Leipzig (Hybrid)"
             },
             "ranges": []
@@ -6487,7 +6531,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Frankfurt am Main (Hybrid)"
             },
             "ranges": []
@@ -6966,7 +7013,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Buchholz (Vor Ort)"
             },
             "ranges": []
@@ -7079,9 +7129,14 @@
           "note": {
             "code": "country",
             "params": {
-              "allowed": "DE, AT",
+              "allowed": [
+                "DE",
+                "AT"
+              ],
               "criterion": "countries",
-              "outside": "CH"
+              "outside": [
+                "CH"
+              ]
             }
           },
           "mustMet": 0,
@@ -7304,9 +7359,14 @@
             "label": "",
             "evidence": null,
             "params": {
-              "allowed": "DE, AT",
+              "allowed": [
+                "DE",
+                "AT"
+              ],
               "criterion": "countries",
-              "outside": "CH"
+              "outside": [
+                "CH"
+              ]
             },
             "ranges": []
           },
@@ -7396,10 +7456,18 @@
             "code": "countries",
             "label": "",
             "params": {
-              "allowed": "DE, AT",
-              "countries": "DE, AT",
+              "allowed": [
+                "DE",
+                "AT"
+              ],
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Zürich, Schweiz (Hybrid)",
-              "outside": "CH",
+              "outside": [
+                "CH"
+              ],
               "reason": "r6"
             },
             "ranges": []
@@ -7856,7 +7924,10 @@
             "code": "countries",
             "label": "",
             "params": {
-              "countries": "DE, AT",
+              "countries": [
+                "DE",
+                "AT"
+              ],
               "location": "Bremen"
             },
             "ranges": []
@@ -8393,7 +8464,10 @@
               "code": "countries",
               "label": "",
               "params": {
-                "countries": "DE, AT",
+                "countries": [
+                  "DE",
+                  "AT"
+                ],
                 "location": "Bremen"
               },
               "ranges": []
@@ -8527,7 +8601,7 @@
             "params": {
               "criterion": "minDayRate",
               "hourly": false,
-              "min": "1100",
+              "min": 1100,
               "rate": 950
             }
           },
@@ -8588,7 +8662,7 @@
               "params": {
                 "criterion": "minDayRate",
                 "hourly": false,
-                "min": "1100",
+                "min": 1100,
                 "rate": 950
               }
             },
@@ -8804,7 +8878,7 @@
               "params": {
                 "criterion": "minDayRate",
                 "hourly": false,
-                "min": "1100",
+                "min": 1100,
                 "rate": 950
               },
               "ranges": [
@@ -8945,7 +9019,7 @@
               "label": "",
               "params": {
                 "hourly": false,
-                "min": "1100",
+                "min": 1100,
                 "rate": 950,
                 "reason": "r5"
               },
@@ -8962,7 +9036,10 @@
               "code": "countries",
               "label": "",
               "params": {
-                "countries": "DE, AT",
+                "countries": [
+                  "DE",
+                  "AT"
+                ],
                 "location": "Stuttgart"
               },
               "ranges": []
@@ -9529,7 +9606,7 @@
               "code": "minDayRate",
               "label": "",
               "params": {
-                "min": "1100",
+                "min": 1100,
                 "rateOpen": true
               },
               "ranges": [
@@ -9545,7 +9622,10 @@
               "code": "countries",
               "label": "",
               "params": {
-                "countries": "DE, AT",
+                "countries": [
+                  "DE",
+                  "AT"
+                ],
                 "location": "Hamburg"
               },
               "ranges": []
@@ -10043,7 +10123,7 @@
               "label": "",
               "params": {
                 "hourly": false,
-                "min": "1100",
+                "min": 1100,
                 "rate": 1150
               },
               "ranges": [
@@ -10059,7 +10139,10 @@
               "code": "countries",
               "label": "",
               "params": {
-                "countries": "DE, AT",
+                "countries": [
+                  "DE",
+                  "AT"
+                ],
                 "location": "Leipzig (Hybrid)"
               },
               "ranges": []
@@ -10673,7 +10756,7 @@
               "label": "",
               "params": {
                 "hourly": false,
-                "min": "1100",
+                "min": 1100,
                 "rate": 1300
               },
               "ranges": [
@@ -10689,7 +10772,10 @@
               "code": "countries",
               "label": "",
               "params": {
-                "countries": "DE, AT",
+                "countries": [
+                  "DE",
+                  "AT"
+                ],
                 "location": "Hannover (Hybrid)"
               },
               "ranges": []
@@ -10863,14 +10949,17 @@
         {
           "code": "minDayRate",
           "params": {
-            "min": "1100",
+            "min": 1100,
             "set": true
           }
         },
         {
           "code": "countries",
           "params": {
-            "countries": "DE, AT",
+            "countries": [
+              "DE",
+              "AT"
+            ],
             "set": true
           }
         },
@@ -10925,7 +11014,10 @@
           "code": "exclusionWords",
           "params": {
             "set": true,
-            "words": "Werkstudent, Praktikum"
+            "words": [
+              "Werkstudent",
+              "Praktikum"
+            ]
           }
         }
       ],
@@ -11115,14 +11207,18 @@
             {
               "code": "minDayRate",
               "params": {
-                "min": "850",
+                "min": 850,
                 "set": true
               }
             },
             {
               "code": "countries",
               "params": {
-                "countries": "DE, AT, CH",
+                "countries": [
+                  "DE",
+                  "AT",
+                  "CH"
+                ],
                 "set": true
               }
             },
@@ -11177,7 +11273,10 @@
               "code": "exclusionWords",
               "params": {
                 "set": true,
-                "words": "Werkstudent, Praktikum"
+                "words": [
+                  "Werkstudent",
+                  "Praktikum"
+                ]
               }
             }
           ],
@@ -11856,14 +11955,18 @@
             {
               "code": "minDayRate",
               "params": {
-                "min": "800",
+                "min": 800,
                 "set": true
               }
             },
             {
               "code": "countries",
               "params": {
-                "countries": "DE, AT, CH",
+                "countries": [
+                  "DE",
+                  "AT",
+                  "CH"
+                ],
                 "set": true
               }
             },
@@ -11918,7 +12021,10 @@
               "code": "exclusionWords",
               "params": {
                 "set": true,
-                "words": "Werkstudent, Praktikum"
+                "words": [
+                  "Werkstudent",
+                  "Praktikum"
+                ]
               }
             }
           ],
@@ -12610,14 +12716,18 @@
             {
               "code": "minDayRate",
               "params": {
-                "min": "900",
+                "min": 900,
                 "set": true
               }
             },
             {
               "code": "countries",
               "params": {
-                "countries": "DE, AT, CH",
+                "countries": [
+                  "DE",
+                  "AT",
+                  "CH"
+                ],
                 "set": true
               }
             },
@@ -12672,7 +12782,11 @@
               "code": "exclusionWords",
               "params": {
                 "set": true,
-                "words": "Werkstudent, Praktikum, Abschlussarbeit"
+                "words": [
+                  "Werkstudent",
+                  "Praktikum",
+                  "Abschlussarbeit"
+                ]
               }
             }
           ],

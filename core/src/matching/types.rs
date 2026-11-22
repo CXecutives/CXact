@@ -101,7 +101,7 @@ pub struct Part {
     pub code: PartCode,
     pub points: i16,
     pub max: u8,
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: Map<String, Value>,
 }
 
@@ -138,7 +138,7 @@ pub struct CapLine {
     pub code: CapCode,
     pub max: u8,
     /// `open`, `total` (coreOpen), `level`, `gap` (level), `field` (offField).
-    #[cfg_attr(test, ts(type = "Record<string, string | number | boolean | null>"))]
+    #[cfg_attr(test, ts(as = "crate::view::ts::Params"))]
     pub params: Map<String, Value>,
 }
 

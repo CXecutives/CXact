@@ -78,6 +78,44 @@ impl TS for Portal {
     }
 }
 
+/// The data of a code (`Notice`, `Reason`, `Criterion`, `Part`, `CapLine`): scalars and lists
+/// of scalars, numbers as numbers (`pipeline::local::ui_params`). The fields say `ts(as)` it.
+pub(crate) struct Params;
+
+impl TS for Params {
+    type WithoutGenerics = Params;
+    type OptionInnerType = Params;
+    fn docs() -> Option<String> {
+        Some(ts_rs::format_docs(&[
+            " The data of a code: scalars and lists of scalars, numbers as numbers.",
+        ]))
+    }
+    fn ident(_: &Config) -> String {
+        "Params".to_owned()
+    }
+    fn name(_: &Config) -> String {
+        "Params".to_owned()
+    }
+    fn inline(_: &Config) -> String {
+        "Record<string, string | number | boolean | null | Array<string | number | boolean | null>>"
+            .to_owned()
+    }
+    fn decl(cfg: &Config) -> String {
+        format!("type Params = {};", Self::inline(cfg))
+    }
+    fn decl_concrete(cfg: &Config) -> String {
+        Self::decl(cfg)
+    }
+    fn visit_dependencies(_: &mut impl TypeVisitor)
+    where
+        Self: 'static,
+    {
+    }
+    fn output_path() -> Option<PathBuf> {
+        Some(PathBuf::from("Params.ts"))
+    }
+}
+
 /// Identity of a job across all mails and runs.
 #[derive(TS)]
 #[ts(rename = "JobKey")]
@@ -161,6 +199,7 @@ fn contract() -> BTreeMap<String, String> {
     };
     f.add::<Portal>();
     f.add::<JobKey>();
+    f.add::<Params>();
     f.add::<ErrorKind>();
     f.add::<ErrorInfo>();
     f.add::<InvalidInput>();
