@@ -66,6 +66,10 @@ TOP_K = 10
 # The score (tenths) a note is calibrated to.
 NOTE_TARGET = {0: 120, 1: 450, 2: 680, 3: 880}
 
+# Signals outside the fit, with their points (tenths) after the calibration: the plus of a
+# target role, at most 10 (the mirror of `ROLE_POINTS` in scorer.rs; change both together).
+FIXED = {"role": [0, 50, 100]}
+
 # The mirror of engine.rs `points` and `final_score` (change both together).
 WISH_MAX = 100
 PERMANENT_FACTOR = 900
@@ -437,7 +441,12 @@ def main():
 
     X = np.asarray([r["v"] for r in train], dtype=np.int64)
     y = np.asarray([NOTE_TARGET[note_of(labels[r["pair"]])] / 10 for r in train])
-    edges = [bin_edges(X[:, j]) for j in range(X.shape[1])]
+    edges = [[0] if names[j] in FIXED else bin_edges(X[:, j]) for j in range(X.shape[1])]
+    fixed = [(j, FIXED[n]) for j, n in enumerate(names) if n in FIXED]
+
+    def plus(v):
+        return sum(points[min(int(v[j]), len(points) - 1)] for j, points in fixed)
+
     n_bins = [len(e) for e in edges]
     bins = np.stack([bin_index(edges[j], X[:, j]) for j in range(X.shape[1])], axis=1)
 
@@ -460,7 +469,10 @@ def main():
     all_notes = [note_of(labels[unique[i]["pair"]]) for i in scored if not labels[unique[i]["pair"]].get("excluded")]
     knots = calibration([10 * oof_unique[i] for i in cal], cal_notes, all_notes)
     print(f"calibration on {len(cal)} pairs, note shares {np.round(note_shares(cal_notes, all_notes), 3).tolist()}")
-    oof_cal = [calibrate(knots, int(round(min(1000, max(0, 10 * p))))) for p in oof]
+    oof_cal = [
+        min(1000, calibrate(knots, int(round(min(1000, max(0, 10 * p))))) + plus(r["v"]))
+        for p, r in zip(oof, train)
+    ]
     intercept, tables = fit(bins, y, signs, n_bins)
     int_b, ints = integer_model(intercept, tables, edges)
 
@@ -482,7 +494,7 @@ def main():
         if not part:
             print(f"{split}: no labelled pairs")
             continue
-        pred = [calibrate(knots, integer_raw(int_b, ints, r["v"])) for r in part]
+        pred = [min(1000, calibrate(knots, integer_raw(int_b, ints, r["v"])) + plus(r["v"])) for r in part]
         report(f"{split}, integer model", part, pred, labels)
 
     Path(args.out).write_text(rust(names, int_b, ints, knots, len(unique)), encoding="utf-8", newline="\n")

@@ -1,7 +1,7 @@
 //! The learned scorer (engine 24): the points of a job from its signals, as tables learned
 //! from teacher labels (`tools/scorer/train.py`, `scorer_tables.rs`).
 //!
-//! `learned(s) = calib(clamp(INTERCEPT + sum(TABLES[j](s[j])), 0, 1000))`: each table maps
+//! `learned(s) = calib(clamp(INTERCEPT + sum(TABLES[j](s[j])), 0, 1000)) + ROLE_POINTS[role]`: each table maps
 //! a signal to the points of its bin (the last bin whose lower edge the value reaches), the
 //! calibration is piecewise linear between its knots. Per-mille (tenths of a score point),
 //! integer only. A table rises with its signal where [`SIGN`] says up and falls where it says
@@ -10,7 +10,13 @@
 //! [`SIGN`]: super::signals::SIGN
 
 use super::scorer_tables::{CALIB, INTERCEPT, TABLES};
-use super::signals::Signals;
+use super::signals::{Sig, Signals};
+
+/// The plus of the target role the title meets (none, half, full; per-mille): the rubric's
+/// "höchstens 10 Punkte". It comes after the calibration, so it is at most 10 points at every
+/// score; the trainer leaves the signal out of the fit (`ROLE_POINTS` in
+/// `tools/scorer/train.py`: change both together).
+pub(crate) const ROLE_POINTS: [u16; 3] = [0, 50, 100];
 
 /// The points of one signal value: those of the last bin whose lower edge it reaches.
 fn lookup(table: &[(u16, i16)], value: u16) -> i32 {
@@ -48,9 +54,10 @@ fn calib(value: u16) -> u16 {
     last.1
 }
 
-/// The learned fit of a job (per-mille, 0..=1000).
+/// The learned fit of a job with the plus of its target role (per-mille, 0..=1000).
 pub(crate) fn learned(signals: &Signals) -> u16 {
-    calib(raw(signals)).min(1000)
+    let role = ROLE_POINTS[usize::from(signals.get(Sig::Role)).min(ROLE_POINTS.len() - 1)];
+    (calib(raw(signals)) + role).min(1000)
 }
 
 #[cfg(test)]
@@ -122,6 +129,23 @@ mod tests {
                     last = Some(now);
                 }
             }
+        }
+    }
+
+    /// A target role adds at most 10 points, wherever the job stands.
+    #[test]
+    fn a_target_role_adds_at_most_ten() {
+        let mut half = Signals::default();
+        for (j, max) in MAX.iter().enumerate() {
+            half.v[j] = max / 2;
+        }
+        for start in [Signals::default(), half, Signals { v: MAX }] {
+            let mut none = start;
+            none.v[Sig::Role as usize] = 0;
+            let mut full = start;
+            full.v[Sig::Role as usize] = 2;
+            let lift = learned(&full) - learned(&none);
+            assert!(lift <= 100, "{lift}");
         }
     }
 
