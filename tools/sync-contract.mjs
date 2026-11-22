@@ -2,11 +2,12 @@
 // (CLAUDE.md "Change and connect"): this branch builds the UI against main's generated files,
 // never against its own core's.
 //
-//   copied     ui/src/lib/ipc/types/** (commands.ts included) and demo/vocabulary.json, as main
-//              has them committed (`git show`)
-//   computed   demo/snapshot.json: main's engine runs `core/tests/ui_demo_snapshot.rs` on this
-//              branch's demo/ads.json and demo/profile.json, in a temporary detached worktree of
-//              main that is removed afterwards
+//   copied     ui/src/lib/ipc/types/** (commands.ts included), demo/vocabulary.json and
+//              demo/ads.json (the demo ads and their expected roles are the engine's), as main has
+//              them committed (`git show`)
+//   computed   demo/snapshot.json: main's engine runs `core/tests/ui_demo_snapshot.rs` on main's
+//              demo/ads.json and this branch's demo/profile.json, in a temporary detached worktree
+//              of main that is removed afterwards
 //   stamped    tools/contract-sync.json: main's commit and a hash of every synced file and of
 //              the two demo inputs; tools/architecture.mjs (`npm run check`) fails while a file
 //              differs from its stamp, so a hand edit or a run of this branch's own generators
@@ -17,8 +18,8 @@
 //     node tools/sync-contract.mjs [--dry] [--from <ref>] [--demo-from-main]
 //       --dry             compute everything, write nothing, list what a sync would change
 //       --from <ref>      the backend's branch or commit (default main)
-//       --demo-from-main  take main's demo/ads.json and demo/profile.json as well (when main's
-//                         profile format moved and this branch's demo profile no longer reads)
+//       --demo-from-main  take main's demo/profile.json as well (when main's profile format
+//                         moved and this branch's demo profile no longer reads)
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -43,10 +44,12 @@ export const TYPES = 'ui/src/lib/ipc/types/';
 const DEMO = 'tools/ui-harness/demo/';
 /** Copied as main committed them. */
 const VOCABULARY = `${DEMO}vocabulary.json`;
+/** The demo ads with their expected roles: main's, copied. */
+const ADS = `${DEMO}ads.json`;
 /** Computed by main's engine from the inputs. */
 const SNAPSHOT = `${DEMO}snapshot.json`;
-/** This branch's demo data, the snapshot's inputs: stamped, not copied. */
-const INPUTS = [`${DEMO}ads.json`, `${DEMO}profile.json`];
+/** This branch's demo profile, the snapshot's other input: stamped, not copied. */
+const INPUTS = [`${DEMO}profile.json`];
 /** The stamp of the last sync. */
 export const STAMP = 'tools/contract-sync.json';
 const TEST = ['test', '-p', 'jobalert-core', '--test', 'ui_demo_snapshot'];
@@ -69,7 +72,7 @@ function walk(root, dir, out = []) {
 }
 
 /** The synced files of a checkout, sorted. */
-const syncedFiles = (root) => [...walk(root, TYPES.slice(0, -1)), VOCABULARY, SNAPSHOT].sort();
+const syncedFiles = (root) => [...walk(root, TYPES.slice(0, -1)), VOCABULARY, ADS, SNAPSHOT].sort();
 
 const hashes = (root, paths) =>
   Object.fromEntries(
@@ -141,7 +144,7 @@ function computeSnapshot(tree) {
     const report = `${run.stdout}`.trim() || `${run.stderr}`.trim();
     if (attempt === 1 && /regenerated|stale: rewritten/.test(report)) continue;
     const hint = /ProfileNot|profile/.test(report)
-      ? `\n${INPUTS[1]} of this branch does not read on main: bring it to main's format, or --demo-from-main`
+      ? `\n${INPUTS[0]} of this branch does not read on main: bring it to main's format, or --demo-from-main`
       : '';
     throw new Error(
       `main's snapshot test failed:\n${report.split('\n').slice(-30).join('\n')}${hint}`,
@@ -163,7 +166,8 @@ function sync({ dry, from, demoFromMain }) {
   console.log(`sync from ${from} ${commit.slice(0, 8)}${dry ? ' (dry: nothing is written)' : ''}`);
 
   const next = new Map();
-  for (const path of [...types, VOCABULARY]) next.set(path, git(['show', `${commit}:${path}`]));
+  for (const path of [...types, VOCABULARY, ADS])
+    next.set(path, git(['show', `${commit}:${path}`]));
 
   const tree = mkdtempSync(join(tmpdir(), 'cxact-sync-'));
   git(['worktree', 'add', '--detach', tree, commit], { stdio: ['ignore', 'ignore', 'pipe'] });

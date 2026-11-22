@@ -183,9 +183,9 @@ Each role of the UI has one pattern, decided in one place; the components only r
 ## What the backend generates for the UI
 
 On this branch (the new UI) the generated files come from main, never from this branch's own
-core: `tools/sync-contract.cmd` copies `ui/src/lib/ipc/types/**` and `demo/vocabulary.json`
-from main, computes `demo/snapshot.json` with main's engine from this branch's
-`demo/ads.json` and `demo/profile.json`, and stamps them in `tools/contract-sync.json`;
+core: `tools/sync-contract.cmd` copies `ui/src/lib/ipc/types/**`, `demo/vocabulary.json` and
+`demo/ads.json` from main, computes `demo/snapshot.json` with main's engine from those ads and this
+branch's `demo/profile.json`, and stamps them in `tools/contract-sync.json`;
 `npm run check` fails while a file differs from its stamp (`--dry` shows what a sync would
 change). Every contract block on main ends with this sync and the stub's update. On main:
 
@@ -353,7 +353,7 @@ score, a reason or a prompt into the stub by hand.
   comes from `tools/sync-contract.cmd` instead ("What the backend generates for the UI").
 - Another demo job, other ad words, another demo state (read, archive, a duplicate,
   details pending or failed, a job of the scripted fetch): edit
-  `tools/ui-harness/demo/ads.json`, then regenerate (on the new UI's branch: sync). The sample profile is
+  `tools/ui-harness/demo/ads.json` on main, then regenerate (the new UI's branch takes it by the sync). The sample profile is
   `tools/ui-harness/demo/profile.json`.
 - The stub keeps only state: moving, reading, deleting, the list's filter, runs, scenarios and
   errors.
