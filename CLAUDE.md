@@ -3,8 +3,8 @@
 Desktop app (Tauri 2 + Rust, Windows and macOS) that finds interim and freelance jobs, by its own search of the
 sources that allow it or from the user's job alert mails, fetches the job pages and **scores every job against a
 consultant profile**, only when the user presses the fetch.
-**What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read it before any
-work and tick its boxes. How to work with the user is in `MEMORY.md` (imported below).**
+**What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read the part the
+task needs. How to work with the user is in `MEMORY.md` (imported below).**
 The old app `CXecutives/projektscraper` is a read-only reference.
 
 ## Hard rules
