@@ -193,6 +193,8 @@ pub fn main() {
     }
     let fixture_ads = ads.len();
     page_ads(&mut ads);
+    // The harvested ads (`private/harvest/ads`, written by its `export_ads.py`) count as pages.
+    txt_ads(&fixtures().join("private/harvest/ads"), &mut ads);
     let pages = ads.len() - fixture_ads;
     mail_ads(&mut ads);
     let mails = ads.len() - fixture_ads - pages;
