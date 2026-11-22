@@ -337,12 +337,13 @@ fn task_lines(own: &str) -> Vec<&str> {
     out
 }
 
-/// Does a requirement name an expectation every candidate meets (`tables::HYGIENE`)?
-fn is_hygiene(text: &str) -> bool {
-    let folded = atoms::fold(text);
+/// Does a requirement name an expectation every candidate meets (`tables::HYGIENE`; a
+/// hyphen counts as a space: `MS-Office-Kenntnisse`; whole words: `Excellent` is no Excel)?
+pub(crate) fn is_hygiene(text: &str) -> bool {
+    let folded = atoms::fold(text).replace('-', " ");
     crate::matching::lexicon::HYGIENE
         .iter()
-        .any(|w| folded.contains(w))
+        .any(|w| job::contains_word(&folded, w))
 }
 
 fn related(a: &str, b: &str) -> bool {

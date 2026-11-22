@@ -434,8 +434,16 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                 && profile.skills.total_years.is_none()
                 && fit::general_experience(&item.text, &profile.skills.vocab))
                 || (item.class == Class::Degree && profile.skills.degree_fields.is_none());
+            // Filler and hygiene (office tools, travel, team player) are neutral: met or
+            // open, no must (the rubric's rule 4).
+            let hygiene =
+                matches!(item.class, Class::Skill | Class::Soft) && signals::is_hygiene(&item.text);
             Scored {
-                weight: if unjudged { 0 } else { weight(&item) },
+                weight: if unjudged || hygiene {
+                    0
+                } else {
+                    weight(&item)
+                },
                 fit,
                 item,
             }

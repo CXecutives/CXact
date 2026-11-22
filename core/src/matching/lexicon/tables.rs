@@ -774,21 +774,28 @@ pub(crate) const JOB_SKILL_VOCAB: &[&str] = &[
 
 /// Hygiene requirements every candidate is expected to meet (folded, sorted): office tools,
 /// a driving licence, willingness to travel, soft traits and native German. They carry no
-/// information about the fit.
+/// information about the fit: met or open, they are no must (the rubric's rule 4).
 pub(crate) const HYGIENE: &[&str] = &[
+    "analytical thinking",
+    "analytische fahigkeiten",
+    "analytisches denken",
+    "analytisches denkvermogen",
     "communication skills",
     "deutsch muttersprache",
     "driver's licence",
     "driving licence",
     "excel",
     "fuhrerschein",
+    "hands on",
     "kommunikationsstarke",
+    "microsoft office",
     "ms office",
     "native german",
     "powerpoint",
     "reisebereitschaft",
     "team player",
     "teamfahigkeit",
+    "teamplayer",
     "willingness to travel",
 ];
 
