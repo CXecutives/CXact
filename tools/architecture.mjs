@@ -10,6 +10,8 @@
 //              use it either)
 //   copies     the count of catalog phrases and of px or ms values written into comments and
 //              specs only goes down (RATCHET)
+//   contract   the generated types and the demo's generated data are main's, as the last
+//              tools/sync-contract.cmd stamped them (tools/contract-sync.json)
 //
 // It reads the import graph with the TypeScript parser (the <script> blocks of .svelte files
 // included) and resolves `$lib/`, `$components/`, relative paths and the harness's stand-in
@@ -23,6 +25,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { STAMP, stampProblems } from './sync-contract.mjs';
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -402,10 +405,16 @@ report(
   );
 }
 
+report(
+  `Contract: the synced files are main's, as ${STAMP} says`,
+  'run tools/sync-contract.cmd and commit what it wrote; never edit or regenerate them here',
+  stampProblems(repo),
+);
+
 if (problems.length) {
   console.error(`tools/architecture.mjs (docs/ARCHITECTURE.md):\n\n${problems.join('\n\n')}`);
   process.exit(1);
 }
 console.log(
-  `architecture: ${parsed.size} files, ${edges.length} imports: layering, size and dead code ok`,
+  `architecture: ${parsed.size} files, ${edges.length} imports: layering, size, dead code and contract ok`,
 );
