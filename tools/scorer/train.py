@@ -2,6 +2,7 @@
 
     py -3.14 -X utf8 -I tools/scorer/train.py --labels <consensus.jsonl> --signals <eNN.jsonl>
         --out core/src/matching/scorer_tables.rs [--train-splits train] [--report-splits test,locked]
+        [--calib <gold.jsonl> --calib-part tune]
 
 Inputs (both private, never in the repo):
   --signals  the engine's signals per pair: a header line {"names", "sign", "max"} and then
@@ -25,10 +26,15 @@ monotone table (PAVA, weighted by the bin counts); free signals (sign 0) keep th
 Tables are centred, their means go into the intercept.
 
 Evaluation: 5 folds grouped by "group" on the training pairs give out-of-fold predictions.
-Calibration is the isotonic (PAVA) map of the out-of-fold predictions to NOTE_TARGET of each
-pair's note, read at CALIB_KNOTS quantiles of the predictions (piecewise linear between them):
-it undoes the shrink to the mean and puts each note at its score. The final model is fitted
-on all training pairs.
+Calibration is a monotone quantile map of the out-of-fold predictions onto the note bands
+(BANDS: note 0 at 0-25, 1 at 26-49, 2 at 50-79, 3 at 80-100): the share of the calibration
+pairs per note sets where each band starts among their predictions, and within a band the
+score follows the quantile of the prediction (piecewise linear between CALIB_KNOTS knots).
+The calibration pairs are those of --calib (a gold label file, its part --calib-part) that
+the engine scores and the teacher does not exclude, else every training pair; a note with
+fewer than MIN_NOTE calibration pairs takes its share of the notes at and above it from all
+training pairs. It undoes the shrink to the mean: a strong fit lands in the top band, a
+clear misfit stays low. The final model is fitted on all training pairs.
 
 Output: a Rust file with INTERCEPT (tenths of a point), TABLES (per signal, the lower edge of
 each bin and its points in tenths) and CALIB (knots in tenths), all integer. The report
@@ -52,6 +58,10 @@ PASSES = 30
 LEARNING_RATE = 0.3
 FOLDS = 5
 CALIB_KNOTS = 21
+# The score band (tenths) of each note, contiguous; the note-2 band starts at 50 (optimistic).
+BANDS = [(0, 255), (255, 495), (495, 795), (795, 1000)]
+# A note with fewer calibration pairs takes its share from all training pairs.
+MIN_NOTE = 10
 TOP_K = 10
 # The score (tenths) a note is calibrated to.
 NOTE_TARGET = {0: 120, 1: 450, 2: 680, 3: 880}
@@ -82,6 +92,18 @@ def read_labels(path):
             continue
         labels[row["pair"]] = row
     return labels
+
+
+def read_gold(path, part):
+    """The gold labels of one part: pair -> (note, excluded)."""
+    gold = {}
+    for row in read_jsonl(path):
+        if row.get("gold") != part:
+            continue
+        answer = row["answer"]
+        excluded = (answer.get("ausschluss") or {}).get("grund", "keiner") != "keiner"
+        gold[row["pair"]] = (0 if excluded else int(answer["note"]), excluded)
+    return gold
 
 
 def split_of(row, labels):
@@ -190,30 +212,58 @@ def fold_of(group):
 # -- calibration ----------------------------------------------------------------------------
 
 
-def calibration(pred_tenths, target_tenths):
-    """The isotonic map of the predictions to the targets as CALIB_KNOTS knots (x strictly
-    rising in 0..1000, y non-decreasing in 0..1000), the knots at quantiles of the
-    predictions from the lowest to the highest (flat outside them)."""
-    pred = np.clip(np.round(np.asarray(pred_tenths, dtype=float)), 0, 1000).astype(int)
-    target = np.asarray(target_tenths, dtype=float)
-    order = np.argsort(pred, kind="mergesort")
-    xs_sorted, fitted = pred[order], pava(target[order], np.ones(len(pred)), True)
-    q = np.linspace(0.0, 1.0, CALIB_KNOTS)
-    xs = np.round(np.quantile(xs_sorted, q)).astype(int).tolist()
-    for k in range(1, CALIB_KNOTS):
-        xs[k] = max(xs[k], xs[k - 1] + 1)
-    for k in range(CALIB_KNOTS - 2, -1, -1):
-        xs[k] = min(xs[k], xs[k + 1] - 1)
+def note_shares(cal_notes, all_notes):
+    """The share of each note among the calibration pairs; a note with fewer than MIN_NOTE
+    pairs (from the top) splits the share of the notes at and above it as all pairs do."""
+    cal = np.bincount(np.asarray(cal_notes, dtype=int), minlength=4).astype(float)
+    every = np.bincount(np.asarray(all_notes, dtype=int), minlength=4).astype(float)
+    shares = cal / max(cal.sum(), 1)
+    for k in range(3, 0, -1):
+        if cal[k] >= MIN_NOTE:
+            continue
+        upper = shares[k - 1 :].sum()
+        ratio = every[k:].sum() / max(every[k - 1 :].sum(), 1)
+        # The thin note keeps at least its own pairs' share.
+        top = max(shares[k:].sum(), upper * ratio)
+        rest = shares[k:].sum()
+        if rest > 0:
+            shares[k:] *= top / rest
+        else:
+            shares[k] = top
+        shares[k - 1] = upper - top
+    return shares
 
-    def at(x):
-        """The fitted value of the last prediction at or below x (the first one below all)."""
-        i = int(np.searchsorted(xs_sorted, x, side="right")) - 1
-        return float(fitted[max(i, 0)])
 
-    ys = [int(np.clip(round(at(x)), 0, 1000)) for x in xs]
-    for k in range(1, CALIB_KNOTS):
-        ys[k] = max(ys[k], ys[k - 1])
-    return list(zip(xs, ys))
+def calibration(cal_pred, cal_notes, all_notes):
+    """The quantile map of the predictions (tenths) of the calibration pairs onto BANDS as
+    CALIB_KNOTS knots (x strictly rising in 0..1000, y rising in 0..1000; flat outside)."""
+    pred = np.sort(np.clip(np.round(np.asarray(cal_pred, dtype=float)), 0, 1000))
+    shares = note_shares(cal_notes, all_notes)
+    cum = np.concatenate([[0.0], np.cumsum(shares)])
+    cum[-1] = 1.0
+
+    def score_at(q):
+        """The score of the cumulative share q: linear within the band it falls in."""
+        for k, (lo, hi) in enumerate(BANDS):
+            if q <= cum[k + 1] or k == 3:
+                width = cum[k + 1] - cum[k]
+                t = 0.0 if width <= 0 else (q - cum[k]) / width
+                return lo + (hi - lo) * min(1.0, max(0.0, t))
+        return BANDS[-1][1]
+
+    # Knots at every band edge and evenly between them.
+    qs = sorted(set(np.round(np.concatenate([np.linspace(0.0, 1.0, CALIB_KNOTS - 3), cum[1:4]]), 6)))
+    xs = [int(round(float(np.quantile(pred, q)))) for q in qs]
+    ys = [int(round(score_at(q))) for q in qs]
+    knots = []
+    for x, y in zip(xs, ys):
+        if knots and x <= knots[-1][0]:
+            knots[-1] = (knots[-1][0], max(knots[-1][1], y))
+            continue
+        knots.append((x, max(y, knots[-1][1]) if knots else y))
+    while len(knots) < 2:
+        knots.append((min(1000, knots[-1][0] + 1), 1000))
+    return [(int(np.clip(x, 0, 1000)), int(np.clip(y, 0, 1000))) for x, y in knots]
 
 
 def calibrate(knots, v):
@@ -338,7 +388,7 @@ def rust(names, intercept, ints, knots, n_train):
     lines = [
         "//! generated by tools/scorer/train.py from private teacher labels; do not edit.",
         f"//! {n_train} training pairs, {PASSES} passes, learning rate {LEARNING_RATE}, at most",
-        f"//! {MAX_BINS} bins of at least {MIN_BIN} pairs, {CALIB_KNOTS} calibration knots.",
+        f"//! {MAX_BINS} bins of at least {MIN_BIN} pairs, {len(knots)} calibration knots.",
         "//! Points and knots in tenths of a score point.",
         "",
         "use super::signals::N;",
@@ -357,7 +407,7 @@ def rust(names, intercept, ints, knots, n_train):
     lines.append("")
     lines.append("/// The calibration knots: raw points to points.")
     body = ", ".join(f"({x}, {y})" for x, y in knots)
-    lines.append(f"pub(crate) const CALIB: [(u16, u16); {CALIB_KNOTS}] = [{body}];")
+    lines.append(f"pub(crate) const CALIB: [(u16, u16); {len(knots)}] = [{body}];")
     return "\n".join(lines) + "\n"
 
 
@@ -368,6 +418,8 @@ def main():
     parser.add_argument("--out", required=True)
     parser.add_argument("--train-splits", default="train")
     parser.add_argument("--report-splits", default="test,locked")
+    parser.add_argument("--calib", help="gold labels whose pairs set the calibration bands")
+    parser.add_argument("--calib-part", default="tune")
     args = parser.parse_args()
 
     header, rows = read_signals(args.signals)
@@ -398,7 +450,16 @@ def main():
         b, t = fit(bins[~held], y[~held], signs, n_bins)
         oof[held] = predict(b, t, bins[held])
 
-    knots = calibration(np.clip(oof * 10, 0, 1000), y * 10)
+    gold = read_gold(args.calib, args.calib_part) if args.calib else {}
+    oof_unique = [oof[i] for i in first]
+    scored = [i for i, r in enumerate(unique) if (r.get("verdict") or "scored") == "scored"]
+    cal = [i for i in scored if unique[i]["pair"] in gold and not gold[unique[i]["pair"]][1]]
+    if len(cal) < 4 * MIN_NOTE:
+        cal = [i for i in scored if not labels[unique[i]["pair"]].get("excluded")]
+    cal_notes = [gold[unique[i]["pair"]][0] if unique[i]["pair"] in gold else note_of(labels[unique[i]["pair"]]) for i in cal]
+    all_notes = [note_of(labels[unique[i]["pair"]]) for i in scored if not labels[unique[i]["pair"]].get("excluded")]
+    knots = calibration([10 * oof_unique[i] for i in cal], cal_notes, all_notes)
+    print(f"calibration on {len(cal)} pairs, note shares {np.round(note_shares(cal_notes, all_notes), 3).tolist()}")
     oof_cal = [calibrate(knots, int(round(min(1000, max(0, 10 * p))))) for p in oof]
     intercept, tables = fit(bins, y, signs, n_bins)
     int_b, ints = integer_model(intercept, tables, edges)
@@ -412,6 +473,10 @@ def main():
             span = max(p for _, p in table) - min(p for _, p in table)
             print(f"  {name:14s} bins {len(table):2d}  span {span / 10:6.1f} points")
     report("train, out of fold", unique, [oof_cal[i] for i in first], labels)
+    if gold:
+        part = [i for i, r in enumerate(unique) if r["pair"] in gold]
+        glabels = {unique[i]["pair"]: {"note": gold[unique[i]["pair"]][0], "excluded": gold[unique[i]["pair"]][1]} for i in part}
+        report(f"gold {args.calib_part}, out of fold", [unique[i] for i in part], [oof_cal[first[i]] for i in part], glabels)
     for split in [s for s in args.report_splits.split(",") if s]:
         part = [r for r in rows if r["pair"] in labels and split_of(r, labels) == split]
         if not part:
