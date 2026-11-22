@@ -45,6 +45,8 @@ desktop.ini
 /.claude/*
 # The two preview servers (`ui-preview`, `ui-dev`) for Claude's browser pane.
 !/.claude/launch.json
+# The project's subagents (the standing rules of a brief).
+!/.claude/agents/
 
 # Python caches of the helper scripts
 __pycache__/
