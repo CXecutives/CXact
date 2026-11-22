@@ -29,9 +29,10 @@ and current: replace what changes, drop what no longer holds.
 
 ## State (2026-11-22)
 
-- `main` holds the backend; `ui-preview` (worktree `.claude/worktrees/ui-preview`) holds the new UI, built against
-  main's generated types of 2026-10-11. The engine is being rebuilt as an explainable percent fit (the
-  Passungsgrad, branch `wt-percent`), measured on a private Claude-graded gold set (`private/bench/gold/`).
+- `main` holds the backend with engine 25, the Passungsgrad (an explainable percent fit, measured on a private
+  Claude-graded gold set, `private/bench/gold/`), and the typed contract. Main's old `ui/` is frozen until
+  connecting. `ui-preview` (worktree `.claude/worktrees/ui-preview`) holds the new UI; it takes main's contract
+  only through `tools/sync-contract.cmd` (stamp checked by `npm run check`).
 - The user changes the UI next. Connecting comes only after that (`CLAUDE.md` "Change and connect").
 - Engine rules of the user: fair and rather optimistic like a good consultant; what an ad does not say never
   costs points; every point of the number is explained.
