@@ -323,6 +323,10 @@ score, a reason or a prompt into the stub by hand.
   details pending or failed, a job of the scripted fetch): edit
   `tools/ui-harness/demo/ads.json`, then regenerate. The sample profile is
   `tools/ui-harness/demo/profile.json`.
+- Every ad there but a duplicate names its role (`expect`: `high`, `mid`, `low`, or
+  `excluded`, `unscorable` while it is not scored), judged once its page came;
+  `every_demo_ad_keeps_its_role` names the ad an engine change moved out of it. Move the role
+  only on purpose, or change the ad.
 - The stub keeps only state: moving, reading, deleting, the list's filter, runs, scenarios and
   errors.
 - Specs read engine values (a score, a reason, a count) from the snapshot
