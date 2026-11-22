@@ -72,18 +72,31 @@ fn field_fit(s: &Signals) -> u64 {
 /// role (the field of a wished role is never foreign, however low the level); the same field
 /// for a target role met in full, a title of the profile's field or an ad that fits it
 /// closely; near for a target role met in half or a title or an ad that fits it in part; far
-/// for an ad that touches it; else foreign.
+/// for an ad that touches it; else foreign. An ad without musts is judged by its title and
+/// field (the rubric's rule 8): in the profile's own field family it is at least near, in a
+/// near family at least far, never foreign.
 pub(crate) fn class(s: &Signals) -> FieldClass {
     let title = u64::from(s.get(Sig::TitleField));
     let role = s.get(Sig::Role);
     let field = field_fit(s);
+    let no_musts = [
+        Sig::CoreMet,
+        Sig::CorePartial,
+        Sig::CoreOpen,
+        Sig::OtherMet,
+        Sig::OtherPartial,
+        Sig::OtherOpen,
+    ]
+    .iter()
+    .all(|&k| s.get(k) == 0);
+    let family = if no_musts { s.get(Sig::Family) } else { 0 };
     if s.get(Sig::OffField) == 1 && role == 0 {
         FieldClass::Foreign
     } else if role == 2 || title >= TITLE_SAME || field >= RELEVANCE_SAME {
         FieldClass::Same
-    } else if role == 1 || title >= TITLE_NEAR || field >= RELEVANCE_NEAR {
+    } else if role == 1 || title >= TITLE_NEAR || field >= RELEVANCE_NEAR || family == 3 {
         FieldClass::Near
-    } else if field >= RELEVANCE_FAR {
+    } else if field >= RELEVANCE_FAR || family == 2 {
         FieldClass::Far
     } else {
         FieldClass::Foreign

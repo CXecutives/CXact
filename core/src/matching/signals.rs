@@ -24,7 +24,7 @@ use super::types::{JobInput, ReasonCode};
 use super::wishes::{State, WishResult};
 
 /// The number of signals.
-pub const N: usize = 21;
+pub const N: usize = 22;
 
 /// The signals in table order (the index into [`Signals::v`], [`SIGN`], [`NAMES`], [`MAX`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,6 +69,9 @@ pub enum Sig {
     /// Distinct core competences of the profile any requirement meets, without general business
     /// work (`Entry::method`; at most 8).
     CoreHits,
+    /// The ad's field family (its title and musts) against the profile's: 0 none to judge, 1 far,
+    /// 2 near, 3 the same family.
+    Family,
 }
 
 impl Sig {
@@ -95,12 +98,13 @@ impl Sig {
         Sig::Permanent,
         Sig::Evidence,
         Sig::CoreHits,
+        Sig::Family,
     ];
 }
 
 /// The direction of each signal: +1 up, -1 down, 0 either.
 pub const SIGN: [i8; N] = [
-    1, 1, 1, -1, 0, 1, 0, -1, 1, 0, -1, -1, -1, 1, 0, -1, -1, -1, -1, 0, 1,
+    1, 1, 1, -1, 0, 1, 0, -1, 1, 0, -1, -1, -1, 1, 0, -1, -1, -1, -1, 0, 1, 1,
 ];
 
 /// The names of the signals (the fitter's and the dump's).
@@ -126,6 +130,7 @@ pub const NAMES: [&str; N] = [
     "permanent",
     "evidence",
     "core_hits",
+    "family",
 ];
 
 /// Most requirements of one kind a signal counts.
@@ -157,6 +162,7 @@ pub const MAX: [u16; N] = [
     1,
     2,
     8,
+    3,
 ];
 
 /// The signals of one job.
@@ -450,6 +456,15 @@ fn role_and_field(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>) {
         u64::from(above >= 1)
     };
     s.set(Sig::Level, level);
+    s.set(
+        Sig::Family,
+        match parts.field {
+            Some((_, Distance::Same)) => 3,
+            Some((_, Distance::Near)) => 2,
+            Some((_, Distance::Far)) => 1,
+            None => 0,
+        },
+    );
 }
 
 /// The frame aspects in their order, as the explanation names them: day rate, work mode

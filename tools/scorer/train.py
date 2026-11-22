@@ -112,13 +112,15 @@ def field_class(s, p):
     """`scorer::class`: 0 same, 1 near, 2 far, 3 foreign."""
     title, role = s["title_field"], s["role"]
     field = s["relevance"] + p["HIT_RELEVANCE"] * min(s["core_hits"], p["HITS_MAX"])
+    musts = ("core_met", "core_partial", "core_open", "other_met", "other_partial", "other_open")
+    family = s.get("family", 0) if all(s[k] == 0 for k in musts) else 0
     if s["off_field"] == 1 and role == 0:
         return 3
     if role == 2 or title >= p["TITLE_SAME"] or field >= p["RELEVANCE_SAME"]:
         return 0
-    if role == 1 or title >= p["TITLE_NEAR"] or field >= p["RELEVANCE_NEAR"]:
+    if role == 1 or title >= p["TITLE_NEAR"] or field >= p["RELEVANCE_NEAR"] or family == 3:
         return 1
-    if field >= p["RELEVANCE_FAR"]:
+    if field >= p["RELEVANCE_FAR"] or family == 2:
         return 2
     return 3
 
