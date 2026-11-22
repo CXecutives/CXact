@@ -60,7 +60,8 @@ generated files and the guardrails.
 - Engine changes: `docs/CHANGING.md` "Add words to the engine".
 
 ## Workflow
-- Small English commits, each green on its own. Tick `docs/PLAN.md`. Parallel tracks work in their own worktree with
+- Small English commits, each green on its own. Docs only where they make the work faster (CLAUDE.md, CHANGING.md
+  as the map of where a change goes); no doc duties per change. Parallel tracks work in their own worktree with
   disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs`,
   `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`)
   belong to the integrator.

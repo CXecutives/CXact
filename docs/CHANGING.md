@@ -57,8 +57,6 @@ Commit them together with tokens.css.
 - `cargo test -p jobalert-core --test palette --test icon --test ui_contract`: the generated
   files say what tokens.css says, no colour is written anywhere else, every icon file carries
   `--brand`. CI runs these with `cargo test`.
-- Contrast by eye: the gallery's colour board (`tools/ui-preview.cmd`, then add `&gallery` to
-  the address) measures the text roles against white and the cream.
 - Look at the page (`tools/ui-preview.cmd`) and, after `npx tauri build` and installing, the top bar, the window before the page
   paints, and the icon in the taskbar, the Dock and Finder.
 

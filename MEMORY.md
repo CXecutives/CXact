@@ -23,7 +23,8 @@ and current: replace what changes, drop what no longer holds.
   answer. No value tables, they do not help.
 - Gates decide by exit code. Run `cargo fmt --all --check` before every commit, and never commit after a
   gate chained with `;`.
-- Run the harness with no dev server beside it. Two at once once failed with `ERR_NO_BUFFER_SPACE`.
+- The Windows dynamic port range is 10000-65535 (set by the user on 2026-11-22), so the harness runs at its
+  default workers, also beside a dev server.
 - Reports are a few lines. Say plainly when an earlier answer was wrong.
 
 ## State (2026-11-22)
