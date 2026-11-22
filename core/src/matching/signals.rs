@@ -430,15 +430,6 @@ fn coverage(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>, musts: 
             core += value;
         }
     }
-    // The musts a short list does not name stand half way between the fit of the named ones
-    // and the relevance, at the relevance without any: little text costs nothing (the
-    // rubric's rule 8).
-    let named = count(musts.len());
-    let relevance = parts.relevance.min(1000);
-    let fill = (core + tools + general)
-        .checked_div(named)
-        .map_or(relevance, |mean| (mean + relevance) / 2);
-    core += (units - named) * fill;
     s.set(Sig::CoreCov, core / units);
     s.set(Sig::ToolCov, tools / units);
     s.set(Sig::GeneralCov, general / units);
