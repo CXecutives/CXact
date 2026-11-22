@@ -73,12 +73,28 @@ use super::lexicon::engine::{
 /// the head an alternative of it (`10+ years in finance, ideally in controlling or
 /// accounting`).
 fn cut_nice_lead((phrase, kind, stage): Phrase<'_>) -> Vec<Phrase<'_>> {
+    let phrase = without_elaboration(phrase);
     match cut_at_nice_lead(phrase) {
         Some((head, clause)) if kind == ReqKind::Must => {
             vec![(head, kind, stage), (clause, ReqKind::Nice, stage)]
         }
         _ => vec![(phrase, kind, stage)],
     }
+}
+
+/// A phrase without the elaboration that follows a comma (`ELABORATION_LEADS`: `…, with the
+/// ability to develop and motivate teams`): the clause explains the head, its words would
+/// otherwise become requirements of their own.
+fn without_elaboration(phrase: &str) -> &str {
+    phrase
+        .match_indices(", ")
+        .find(|(at, sep)| {
+            let rest = phrase[at + sep.len()..].to_lowercase();
+            lex::ELABORATION_LEADS
+                .iter()
+                .any(|lead| rest.starts_with(lead) && rest[lead.len()..].starts_with([' ', ',']))
+        })
+        .map_or(phrase, |(at, _)| phrase[..at].trim_end())
 }
 
 /// Where a phrase splits at a nice lead after a comma: its head and the clause from the cue on.
@@ -244,8 +260,24 @@ struct SectionRead<'a> {
 
 /// Stage 1: requirement and nice-to-have sections; also the offsets of nice lines and the
 /// lines of the task sections.
+/// A line that opens a pick list: it names a count and refers to the items below
+/// (`lex::PICK_LIST_COUNTS`, `PICK_LIST_REFERS`), and ends with a colon.
+fn opens_pick_list(stripped: &str) -> bool {
+    let folded = fold(stripped);
+    stripped.trim_end().ends_with(':')
+        && lex::PICK_LIST_COUNTS.iter().any(|w| folded.contains(w))
+        && lex::PICK_LIST_REFERS.iter().any(|w| folded.contains(w))
+}
+
+/// An item of a pick list: a bullet, or a short line without a sentence's end.
+fn pick_item(stripped: &str, bullet: bool) -> bool {
+    bullet || (stripped.chars().count() <= 60 && !stripped.trim_end().ends_with('.'))
+}
+
 fn section_phrases(text: &str) -> SectionRead<'_> {
     let mut current: Option<HeadingKind> = None;
+    // The items under a pick list's line are a choice: nice-to-haves.
+    let mut pick = false;
     let mut phrases: Vec<Phrase<'_>> = Vec::new();
     let mut in_nice = Vec::new();
     let mut tasks = Vec::new();
@@ -280,6 +312,7 @@ fn section_phrases(text: &str) -> SectionRead<'_> {
         }
         if let Some(kind) = heading_of(stripped, bullet) {
             current = Some(kind);
+            pick = false;
             continue;
         }
         if closing_start(stripped) {
@@ -292,7 +325,13 @@ fn section_phrases(text: &str) -> SectionRead<'_> {
             current = Some(HeadingKind::Neutral);
             continue;
         }
+        if current == Some(HeadingKind::Must) && opens_pick_list(stripped) {
+            pick = true;
+            continue;
+        }
+        pick = pick && pick_item(stripped, bullet);
         let kind = match current {
+            Some(HeadingKind::Must) if pick => ReqKind::Nice,
             // A nice cue inside a must line marks items, not the line (see `read`).
             Some(HeadingKind::Must) => ReqKind::Must,
             Some(HeadingKind::Nice) => {
@@ -325,34 +364,14 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
     let mut doc = JobDoc::default();
     let read = section_phrases(text);
     doc.task_lines = read.tasks;
-    let (mut phrases, in_nice) = (read.phrases, read.in_nice);
+    let mut phrases = read.phrases;
     if !phrases.iter().any(|(_, kind, _)| *kind == ReqKind::Must) {
-        for line in splitlines(text) {
-            let (stripped, bullet) = line_of(line);
-            if stripped.is_empty()
-                || heading_of(stripped, bullet).is_some()
-                || closing_start(stripped)
-                || in_nice.contains(&offset(text, stripped))
-            {
-                continue;
-            }
-            for sentence in sentences(stripped) {
-                let phrase = sections::clean_phrase(sentence);
-                let folded = fold(phrase);
-                let english = EN_CUES.iter().any(|c| folded.contains(c));
-                let kind = sections::cue_kind(phrase).or(english.then_some(ReqKind::Must));
-                if let Some(kind) = kind {
-                    let kind = if nice_cue(phrase) {
-                        ReqKind::Nice
-                    } else {
-                        kind
-                    };
-                    phrases.push((phrase, kind, Stage::Sentence));
-                }
-            }
-        }
+        phrases.extend(cued_sentences(text, &read.in_nice));
     }
     for (phrase, kind, stage) in phrases.into_iter().flat_map(cut_nice_lead) {
+        if describes_role(phrase) {
+            continue;
+        }
         let start = offset(text, phrase);
         doc.requirement_lines.push(start..start + phrase.len());
         let level = level_in(phrase);
@@ -422,6 +441,37 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
         }
     }
     doc
+}
+
+/// An ad without a must section: every sentence with a requirement cue (German or English),
+/// outside headings, closing blocks and nice sections.
+fn cued_sentences<'a>(text: &'a str, in_nice: &[usize]) -> Vec<(&'a str, ReqKind, Stage)> {
+    let mut phrases = Vec::new();
+    for line in splitlines(text) {
+        let (stripped, bullet) = line_of(line);
+        if stripped.is_empty()
+            || heading_of(stripped, bullet).is_some()
+            || closing_start(stripped)
+            || in_nice.contains(&offset(text, stripped))
+        {
+            continue;
+        }
+        for sentence in sentences(stripped) {
+            let phrase = sections::clean_phrase(sentence);
+            let folded = fold(phrase);
+            let english = EN_CUES.iter().any(|c| folded.contains(c));
+            let kind = sections::cue_kind(phrase).or(english.then_some(ReqKind::Must));
+            if let Some(kind) = kind {
+                let kind = if nice_cue(phrase) {
+                    ReqKind::Nice
+                } else {
+                    kind
+                };
+                phrases.push((phrase, kind, Stage::Sentence));
+            }
+        }
+    }
+    phrases
 }
 
 /// Terms of an ad without requirement sentences: the general vocabulary without industries
@@ -784,6 +834,14 @@ pub(crate) fn language_of(token: &str) -> Option<&'static str> {
                 .find(|(name, _)| *name == token)
                 .map(|&(_, stem)| stem)
         })
+}
+
+/// A sentence that describes the role or the search, no skill (`lex::DESCRIPTION_STARTS`).
+fn describes_role(phrase: &str) -> bool {
+    let folded = fold(phrase);
+    lex::DESCRIPTION_STARTS
+        .iter()
+        .any(|w| folded.starts_with(w))
 }
 
 /// A sentence about the person, not a skill: it starts with `Sie`, `Du`, `You` or `Your`
@@ -1575,6 +1633,50 @@ SAP FI, DATEV, HGB, IFRS, Konzernabschluss
                 ("idealerweise im Maschinenbau".to_owned(), false)
             ]
         );
+        // The items under a pick list's line are a choice, not each a must; the list ends with a
+        // line of its own.
+        let picked = musts(
+            "- Erfahrung in Großprogrammen
+- Fundierte Kenntnisse in mindestens zwei der folgenden              Bereiche:
+- SAP S/4HANA
+- Salesforce
+- API Management
+             - Verhandlungssichere Englischkenntnisse in Wort und Schrift.",
+        );
+        let must = |t: &str| picked.iter().find(|(x, _)| x.contains(t)).map(|(_, m)| *m);
+        assert_eq!(must("Großprogrammen"), Some(true), "{picked:?}");
+        assert_eq!(must("Salesforce"), Some(false), "{picked:?}");
+        assert_eq!(must("API Management"), Some(false), "{picked:?}");
+        assert!(
+            !picked.iter().any(|(x, _)| x.contains("folgenden")),
+            "{picked:?}"
+        );
+        // An elaboration after a comma is no requirement of its own; a results section is no
+        // requirement section.
+        let led = musts(
+            "- Proven people leadership experience, with the ability to develop and              motivate high-performing teams",
+        );
+        assert_eq!(
+            led,
+            [("Proven people leadership experience".to_owned(), true)],
+            "{led:?}"
+        );
+        let results = read(
+            "Ihr Profil
+- Erfahrung in IT-Transformationen
+
+Erfolgskriterien
+             - Etablierte, funktionierende IT-Governance
+",
+            &Vocab::all(),
+        );
+        assert_eq!(results.items.len(), 1, "{:?}", results.items);
+        let described = musts(
+            "- Gesucht wird eine erfahrene Interim-Führungspersönlichkeit auf Partner-Level.
+             - Die Rolle ist ausdrücklich keine reine PMO-Position.
+- Erfahrung in Multi-Vendor-Umgebungen",
+        );
+        assert_eq!(described.len(), 1, "{described:?}");
         // An `or` in the nice clause leaves the head a must of its own.
         let items = musts("- 10+ years in finance, ideally in controlling or accounting");
         assert_eq!(

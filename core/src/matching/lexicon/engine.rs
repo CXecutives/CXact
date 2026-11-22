@@ -1051,6 +1051,23 @@ pub(crate) const AUDIENCE_ATOMS: &[&str] = &[
 /// requirement (`Sie kommunizieren klar`, `Du packst gerne mit an`).
 pub(crate) const PRONOUN_STARTS: &[&str] =
     &["sie", "du", "you", "your", "ihr", "ihre", "dein", "deine"];
+/// Starts of a sentence that describes the role or the search, not a skill (`we are looking for`,
+/// `the role is`, and their German forms): no requirement.
+pub(crate) const DESCRIPTION_STARTS: &[&str] = &[
+    "die position ist",
+    "die rolle ist",
+    "diese position ist",
+    "diese rolle ist",
+    "gesucht werden",
+    "gesucht wird",
+    "the position is",
+    "the role is",
+    "this position is",
+    "this role is",
+    "we are looking",
+    "we're looking",
+    "wir suchen",
+];
 /// Phrases whose `und`/`and` joins no two requirements (`Deutsch in Wort und Schrift`).
 pub(crate) const PROTECTED_PHRASES: &[&str] = &[
     "in wort und schrift",
@@ -1505,6 +1522,39 @@ pub(crate) const NICE_LEADS: &[&str] = &[
     "preferably",
     "vorzugsweise",
 ];
+/// Words that open an elaboration after a comma (`Proven leadership experience, with the ability
+/// to develop teams`): the clause explains the requirement before it, it asks nothing of its own
+/// and is dropped.
+pub(crate) const ELABORATION_LEADS: &[&str] = &[
+    "ensuring",
+    "in order to",
+    "to ensure",
+    "um",
+    "using",
+    "while",
+    "wobei",
+    "with the ability",
+];
+/// A line that opens a pick list (`Kenntnisse in mindestens zwei der folgenden Bereiche:`): it
+/// names a count of the items below and refers to them. The items it opens are a choice, no
+/// duty (the rubric's rule 1): they count as nice-to-haves.
+pub(crate) const PICK_LIST_COUNTS: &[&str] = &[
+    "any of",
+    "at least one",
+    "at least two",
+    "eine der",
+    "einem der",
+    "einer der",
+    "mindestens eine",
+    "mindestens einem",
+    "mindestens einer",
+    "mindestens zwei",
+    "one of",
+    "two of",
+    "zwei der",
+];
+/// The words of a pick list's line that refer to the items below it.
+pub(crate) const PICK_LIST_REFERS: &[&str] = &["folgend", "following"];
 /// Nice cues that close a line (`X und Y von Vorteil`): the whole line is nice.
 pub(crate) const NICE_CLOSING: &[&str] = &[
     "von vorteil",

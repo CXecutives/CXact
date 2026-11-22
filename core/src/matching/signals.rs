@@ -307,12 +307,6 @@ pub(crate) struct CoreTest<'a> {
     vocab: &'a Vocab,
 }
 
-/// Are a text's atoms field words only (`lexicon::engine::FIELD_ATOMS`), and at least one?
-pub(crate) fn only_field_words(atoms: &[String]) -> bool {
-    let words = crate::matching::lexicon::engine::FIELD_ATOMS;
-    !atoms.is_empty() && atoms.iter().all(|a| words.iter().any(|(w, _)| w == a))
-}
-
 /// The field family a requirement names and nothing else (`10+ years in finance`): every atom
 /// generic, at least one a field word (`lexicon::engine::FIELD_ATOMS`).
 pub(crate) fn only_names_field(atoms: &[String]) -> Option<&'static str> {

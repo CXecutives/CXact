@@ -102,6 +102,11 @@ const HIDDEN: &[&str] = &[
     "herstellungspraxis",
     "vertriebspraxis",
     // Second spellings of a term that is shown.
+    "m&a prozesse",
+    "multi vendor",
+    "multi-vendor",
+    "vendor steuerung",
+    "vendorsteuerung",
     "foreign currency translation",
     "intercompany eliminierung",
     "hr process harmonization",

@@ -162,17 +162,40 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("mergers acquisitions", "m&a"),
         ("mergers acquisition", "m&a"),
         ("carve out", "carve-out"),
+        ("financial due diligence", "due-diligence"),
+        ("due diligence", "due-diligence"),
+        ("m&a-prozesse", "m&a"),
+        ("m&a prozesse", "m&a"),
+        ("m&a-transaktionen", "m&a"),
+        // Steering the company's finances.
+        (
+            "kaufmannische unternehmenssteuerung",
+            "unternehmenssteuerung",
+        ),
+        ("unternehmenssteuerung", "unternehmenssteuerung"),
+        ("finanzwesen", "rechnungswesen"),
         ("restructuring", "restrukturierung"),
         ("shared service centre", "shared-service-cent"),
         ("shared service center", "shared-service-cent"),
     ],
     // Planning, analysis and the P&L are the work of controlling, cash management is part of
-    // treasury and liquidity planning, accounting part of the statements.
+    // treasury and liquidity planning, accounting part of the statements; integration and due
+    // diligence are steps of M&A, planning and controlling of steering the company.
     half: &[
         (
             "controlling",
-            &["finanzanalyse", "finanzplanung", "forecast", "fp&a", "guv"],
+            &[
+                "finanzanalyse",
+                "finanzplanung",
+                "forecast",
+                "fp&a",
+                "guv",
+                "unternehmenssteuerung",
+            ],
         ),
+        ("due-diligence", &["m&a"]),
+        ("post-merger-integration", &["m&a"]),
+        ("unternehmensplanung", &["unternehmenssteuerung"]),
         (
             "finance-bp",
             &["finanzanalyse", "finanzplanung", "fp&a", "guv"],
@@ -217,6 +240,24 @@ mod tests {
             ],
         );
         let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        for (step, part) in [
+            (
+                "Fundierte Erfahrung mit M&A-Prozessen",
+                "Post Merger Integration",
+            ),
+            (
+                "Fundierte Erfahrung mit M&A-Prozessen",
+                "Financial Due Diligence",
+            ),
+            ("kaufmännische Unternehmenssteuerung", "Unternehmensplanung"),
+        ] {
+            let job = atoms(step, &v);
+            let profile = one(part);
+            assert!(
+                job.iter().any(|j| fit(j, &profile) == Fit::General),
+                "{step} / {part}: {job:?} {profile:?}"
+            );
+        }
         let consolidation = one("Konsolidierung");
         for step in ["intercompany eliminations", "currency translation"] {
             assert_eq!(fit(&one(step), &consolidation), Fit::General, "{step}");

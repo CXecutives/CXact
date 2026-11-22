@@ -973,7 +973,7 @@ mod tests {
         assert_eq!(all("Restrukturierungen"), all("Restrukturierung"));
         assert_eq!(all("Shared Service Centern"), all("Shared Service Center"));
         assert_eq!(all("SAP FI/CO"), ["sap", "fi", "co"]);
-        assert_eq!(all("M&A-Transaktionen"), ["m&a-transaktion"]);
+        assert_eq!(all("M&A-Transaktionen"), ["m&a"]);
         assert!(!all("Müller GmbH & Co. KG").contains(&"co".to_owned()));
     }
 

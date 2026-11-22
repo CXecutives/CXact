@@ -113,6 +113,11 @@ pub(crate) const DOMAIN: Domain = Domain {
         // Suppliers.
         ("supplier management", "lieferantenmanagement"),
         ("vendor management", "lieferantenmanagement"),
+        ("vendor steuerung", "lieferantenmanagement"),
+        ("vendorsteuerung", "lieferantenmanagement"),
+        ("lieferantensteuerung", "lieferantenmanagement"),
+        ("multi-vendor", "lieferantenmanagement"),
+        ("multi vendor", "lieferantenmanagement"),
         ("lieferanten management", "lieferantenmanagement"),
         ("supplier relationship management", "lieferantenmanagement"),
         ("srm", "lieferantenmanagement"),

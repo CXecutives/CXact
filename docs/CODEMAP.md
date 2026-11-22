@@ -115,13 +115,13 @@ is the pure integer engine
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
 - atoms.rs 1223 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +9
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 843 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 844 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
-- explain.rs 927 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
+- explain.rs 947 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1825 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
 - fit.rs 1119 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- job.rs 1876 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
+- job.rs 1978 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
@@ -134,21 +134,21 @@ is the pure integer engine
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
-- scorer.rs 514 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
+- scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 585 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +15
+- signals.rs 594 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
-- vocabulary.rs 571 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
+- vocabulary.rs 576 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
 - wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/lexicon
-- engine.rs 3636 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +238
+- engine.rs 3691 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +242
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 79 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +7
-- tables.rs 1027 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
+- tables.rs 1037 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
 - terms.rs 844 · Words around a term of an ad and the words that name the… · LEADS, GERMAN_QUALIFIERS, QUALIFIER_ENDINGS, ENGLISH_QUALIFIERS +24
 - wishes.rs 463 · Word lists of the consultant's wishes and the industries… · LEAD_WORDS, LEAD_ENDINGS, LEVEL_WORDS, ROLE_SHAPE_WORDS +12
 
@@ -157,7 +157,7 @@ is the pure integer engine
 - customer_service.rs 598 · Customer service and customer experience: customer service… · DOMAIN
 - data.rs 218 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
 - energy.rs 126 · Energy industry: grids and their regulation, metering and… · DOMAIN
-- finance.rs 226 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
+- finance.rs 267 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
 - hr.rs 332 · Human resources: HR leadership and transformation, labour… · DOMAIN
 - it_project.rs 54 · IT projects and PMO: delivery, testing, data and… · DOMAIN
 - it_service.rs 180 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN
@@ -166,7 +166,7 @@ is the pure integer engine
 - mod.rs 198 · Domain packs: bilingual pairs and paraphrases of one field… · Domain, DOMAINS
 - operations.rs 272 · Operations and engineering: production and plant… · DOMAIN
 - pharma.rs 262 · Pharma quality and regulatory affairs: GMP/GDP/GxP,… · DOMAIN
-- procurement.rs 280 · Procurement and supply chain: strategic and operational… · DOMAIN
+- procurement.rs 285 · Procurement and supply chain: strategic and operational… · DOMAIN
 - restructuring.rs 127 · Restructuring: restructuring roles, restructuring… · DOMAIN
 - sales.rs 220 · Sales and marketing: sales leadership, key account… · DOMAIN
 - sap.rs 26 · SAP and ERP: products, modules and process names. · DOMAIN
@@ -518,7 +518,7 @@ beside the app.
 - build.py 544 · ESCO vocabulary of the matching engine:…
 
 ### tools/scorer
-- train.py 324 · Fits the free value of the Passungsgrad on teacher labels…
+- train.py 326 · Fits the free value of the Passungsgrad on teacher labels…
 
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default
