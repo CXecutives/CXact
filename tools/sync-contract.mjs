@@ -124,12 +124,14 @@ function targetDir() {
   return join(dirname(common), 'target');
 }
 
-/** Run main's snapshot test in `tree`; a first run that rewrote the snapshot runs again. */
+/** Run main's snapshot test in `tree`: with `CXACT_REGEN` it writes the snapshot and passes; a
+ *  main without it fails the run that rewrote the snapshot, which then runs again. */
 function computeSnapshot(tree) {
   const env = {
     ...process.env,
     CARGO_TARGET_DIR: targetDir(),
     DEMO_DIR: join(tree, DEMO),
+    CXACT_REGEN: '1',
   };
   for (const attempt of [1, 2]) {
     console.log(`cargo ${TEST.join(' ')} (main's engine, run ${attempt})`);
@@ -137,7 +139,7 @@ function computeSnapshot(tree) {
     if (run.status === 0) return readFileSync(join(tree, SNAPSHOT));
     // The test's own report is on stdout, cargo's build log on stderr.
     const report = `${run.stdout}`.trim() || `${run.stderr}`.trim();
-    if (attempt === 1 && report.includes('regenerated')) continue;
+    if (attempt === 1 && /regenerated|stale: rewritten/.test(report)) continue;
     const hint = /ProfileNot|profile/.test(report)
       ? `\n${INPUTS[1]} of this branch does not read on main: bring it to main's format, or --demo-from-main`
       : '';
