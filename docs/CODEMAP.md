@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-458 files, 5 of them without a header comment ("(no header)").
+461 files, 5 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -31,6 +31,7 @@ docs/CHANGING.md:
 - [Change a threshold or a default](CHANGING.md#change-a-threshold-or-a-default)
 - [The preview's demo data](CHANGING.md#the-previews-demo-data)
 - [Add words to the engine](CHANGING.md#add-words-to-the-engine)
+- [Change the Passungsgrad](CHANGING.md#change-the-passungsgrad)
 - [Release a version](CHANGING.md#release-a-version)
 - [Where a new rule goes](CHANGING.md#where-a-new-rule-goes)
 
@@ -66,7 +67,7 @@ everything the app knows and does, without UI and without…
 - settings.rs 300 · Settings of the app - stored as JSON in the key/value… · Settings, PortalSwitches, default_workspace, KEY
 - sync.rs 28 · Short locks on shared state. · lock
 - time.rs 129 · Time: UTC timestamps inside; local time for display, file… · zone, set_zone, follow_system_zone, local +7
-- view.rs 3027 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +63
+- view.rs 3025 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +63
 - window.rs 500 · Placement of the app window across restarts, as plain… · Placement, Screen, Restore, restore +6
 
 ### core/src/export
@@ -78,8 +79,8 @@ writes the AI prompts, the generated colours of the window…
 - personal.rs 224 · The one contact-data filter for everything that sends the… · scrub_profile, scrub_text
 
 ### core/src/export/ai_prompt
-- de.rs 798 · The German prompts: external contract - do not translate.
-- tests.rs 1309 · Tests of the AI prompts: every section of the prompt, the…
+- de.rs 796 · The German prompts: external contract - do not translate.
+- tests.rs 1317 · Tests of the AI prompts: every section of the prompt, the…
 
 ### core/src/fetch
 fetches pages through the policy (queue, HTTP, health)
@@ -111,57 +112,59 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 1181 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +8
+- atoms.rs 1223 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +9
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 978 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, CapKind +4
+- engine.rs 830 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
-- explain.rs 551 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
-- factors.rs 242 · What moved a score, for the reader's "why this number":… · factors
-- facts.rs 1801 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 999 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +8
+- explain.rs 930 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
+- factors.rs 289 · What moved a score, for the reader's "why this number":… · factors
+- facts.rs 1825 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
+- fit.rs 1119 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- job.rs 1841 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
+- job.rs 1876 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 450 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
+- mod.rs 468 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
 - normalize.rs 303 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +8
-- params.rs 137 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +58
-- permanent.rs 451 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
+- params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
+- permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 109 · Python `re` semantics on top of the `regex` crate. · compile, view, original_range
-- relevance.rs 340 · Relevance of a job for the profile, independent of… · query, title_fit, field_title_fit, title_query +2
+- relevance.rs 344 · Relevance of a job for the profile, independent of… · query, title_fit, field_title_fit, title_query +2
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
-- roles.rs 425 · Target roles: job titles the consultant wants. · Role, read, RoleFit, topics +1
+- roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
+- scorer.rs 514 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
+- signals.rs 576 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
-- title.rs 359 · The frame of a job title: the title without its noise, the… · clean, level_of, ad_level, ProfileLevel +3
-- types.rs 410 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +24
-- vocabulary.rs 559 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
-- wishes.rs 806 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
+- title.rs 454 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
+- types.rs 490 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +28
+- vocabulary.rs 570 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
+- wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/lexicon
-- engine.rs 3537 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +232
+- engine.rs 3635 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +238
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 79 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +7
-- tables.rs 817 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +5
+- tables.rs 1027 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
 - terms.rs 844 · Words around a term of an ad and the words that name the… · LEADS, GERMAN_QUALIFIERS, QUALIFIER_ENDINGS, ENGLISH_QUALIFIERS +24
-- wishes.rs 440 · Word lists of the consultant's wishes and the industries… · LEAD_WORDS, LEAD_ENDINGS, LEVEL_WORDS, ROLE_CONTRACT_WORDS +11
+- wishes.rs 463 · Word lists of the consultant's wishes and the industries… · LEAD_WORDS, LEAD_ENDINGS, LEVEL_WORDS, ROLE_SHAPE_WORDS +12
 
 ### core/src/matching/lexicon/domains
 - consulting.rs 134 · Management consulting for performance and profit: profit… · DOMAIN
 - customer_service.rs 598 · Customer service and customer experience: customer service… · DOMAIN
 - data.rs 218 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
 - energy.rs 126 · Energy industry: grids and their regulation, metering and… · DOMAIN
-- finance.rs 145 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
-- hr.rs 302 · Human resources: HR leadership and transformation, labour… · DOMAIN
-- it_project.rs 44 · IT projects and PMO: delivery, testing, data and… · DOMAIN
+- finance.rs 177 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
+- hr.rs 332 · Human resources: HR leadership and transformation, labour… · DOMAIN
+- it_project.rs 54 · IT projects and PMO: delivery, testing, data and… · DOMAIN
 - it_service.rs 180 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN
 - legal.rs 247 · Legal, compliance and risk: compliance management, data… · DOMAIN
 - marketing.rs 215 · Marketing beyond what `sales` already pairs: CRM and… · DOMAIN
 - mod.rs 198 · Domain packs: bilingual pairs and paraphrases of one field… · Domain, DOMAINS
-- operations.rs 257 · Operations and engineering: production and plant… · DOMAIN
+- operations.rs 272 · Operations and engineering: production and plant… · DOMAIN
 - pharma.rs 262 · Pharma quality and regulatory affairs: GMP/GDP/GxP,… · DOMAIN
 - procurement.rs 280 · Procurement and supply chain: strategic and operational… · DOMAIN
 - restructuring.rs 127 · Restructuring: restructuring roles, restructuring… · DOMAIN
@@ -171,12 +174,12 @@ is the pure integer engine
 
 ### core/src/pipeline
 runs mail and search, screen, fetch and score
-- dry_run.rs 365 · Dry run: a mailbox and portals to look at - without… · matcher, search_plan, DryRunBackends, DryRunMail +4
-- local.rs 796 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, judgement +6
+- dry_run.rs 364 · Dry run: a mailbox and portals to look at - without… · matcher, search_plan, DryRunBackends, DryRunMail +4
+- local.rs 827 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, judgement +6
 - mod.rs 1133 · One click: the alert mails and the search -> new jobs ->… · LocalMatcher, Matcher, RunRequest, RunKind +23
 - rescore.rs 421 · When the app scores every job again by itself: after the… · Host, Rescore
 - score.rs 224 · Scoring jobs against the profile. · Matcher, engine_failed, guarded, screen +4
-- tests.rs 1646 · Runs with the dry-run dummies; simulated time.
+- tests.rs 1651 · Runs with the dry-run dummies; simulated time.
 
 ### core/src/portal
 knows the portals (adapters, one registry)
@@ -185,7 +188,7 @@ knows the portals (adapters, one registry)
 - freelance_de.rs 1218 · freelance.de. · signed_in, is_postlogin, is_portal_url, judge_page +2
 - freelancermap.rs 950 · freelancermap. · without_archive_mark, parse
 - gulp.rs 718 · GULP: IT, engineering and finance projects.
-- hays.rs 555 · Hays: the largest agency for freelance projects in Germany.
+- hays.rs 594 · Hays: the largest agency for freelance projects in Germany.
 - interim_x.rs 401 · interim-x: interim management mandates of a Horváth company.
 - linkedin.rs 484 · LinkedIn. · parse
 - michael_page.rs 403 · Michael Page: senior interim roles, Finance above all.
@@ -243,17 +246,17 @@ HTML to text, company and location
 - language.rs 243 · English-only sweep: every git-tracked text file must be…
 - mail_fixtures.rs 194 · Checked-in, anonymised alert mails - result as a snapshot.
 - mailbox_slot.rs 172 · Safety invariants of saving the mailbox in `src-tauri`, as…
-- matching_corpus.rs 606 · The synthetic matching corpus.
+- matching_corpus.rs 617 · The synthetic matching corpus.
 - matching_criteria.rs 1086 · The hard-criteria strip rests on evidence: a criterion is…
 - matching_fuzz.rs 270 · Deterministic fuzzing of the engine: every corpus ad line…
-- matching_generalisation.rs 335 · Rules found on the unseen held-out sets 3 to 6, checked on…
-- matching_heldout.rs 583 · Held-out regression corpora: invented ads with blind…
+- matching_generalisation.rs 364 · Rules found on the unseen held-out sets 3 to 6, checked on…
+- matching_heldout.rs 631 · Held-out regression corpora: invented ads with blind…
 - matching_page_facts.rs 112 · A page's structured criteria reach the engine: an…
 - matching_profiles.rs 346 · Profiles beyond the corpus: a field without any domain…
-- matching_wishes.rs 416 · The target roles and wishes of the profile, one test per…
+- matching_wishes.rs 450 · The target roles and wishes of the profile, one test per…
 - notices.rs 124 · `src-tauri/resources/THIRD-PARTY.txt` must match the…
 - palette.rs 270 · `ui/src/styles/tokens.css` is the one place a colour of…
-- rubric.rs 81 · The scoring rubric of the AI prompts:…
+- rubric.rs 95 · The scoring rubric of the AI prompts:…
 - rust_texts.rs 222 · The texts on the Rust side follow the rules of the…
 - time_zone.rs 30 · The zone of everything the user sees is process-wide:…
 - ui_contract.rs 1780 · Architecture rules of the UI.
@@ -504,6 +507,9 @@ beside the app.
 
 ### tools/esco
 - build.py 544 · ESCO vocabulary of the matching engine:…
+
+### tools/scorer
+- train.py 324 · Fits the free value of the Passungsgrad on teacher labels…
 
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default
