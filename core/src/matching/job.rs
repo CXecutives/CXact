@@ -65,8 +65,35 @@ pub(crate) struct JobDoc {
 
 use super::lexicon::engine::{
     ABBREVIATIONS, AND, AND_WORDS, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, MUST_PREFIXES, NICE_CUES,
-    NICE_PREFIXES, NUMBER_WORDS, OR, OTHER_PREFIXES, YEAR_UNITS,
+    NICE_LEADS, NICE_PREFIXES, NUMBER_WORDS, OR, OTHER_PREFIXES, YEAR_UNITS,
 };
+
+/// A must phrase cut at a nice cue that opens a clause after a comma (`NICE_LEADS`): the head
+/// stays a must, the clause from the cue on is nice, so an `or` inside the clause never makes
+/// the head an alternative of it (`10+ years in finance, ideally in controlling or
+/// accounting`).
+fn cut_nice_lead((phrase, kind, stage): Phrase<'_>) -> Vec<Phrase<'_>> {
+    match cut_at_nice_lead(phrase) {
+        Some((head, clause)) if kind == ReqKind::Must => {
+            vec![(head, kind, stage), (clause, ReqKind::Nice, stage)]
+        }
+        _ => vec![(phrase, kind, stage)],
+    }
+}
+
+/// Where a phrase splits at a nice lead after a comma: its head and the clause from the cue on.
+fn cut_at_nice_lead(phrase: &str) -> Option<(&str, &str)> {
+    phrase.match_indices(", ").find_map(|(at, sep)| {
+        let rest = &phrase[at + sep.len()..];
+        let word = rest
+            .split(|c: char| !c.is_alphabetic())
+            .next()
+            .unwrap_or("");
+        let head = phrase[..at].trim_end();
+        (!head.is_empty() && NICE_LEADS.contains(&word.to_lowercase().as_str()))
+            .then_some((head, rest))
+    })
+}
 
 fn heading(line: &str) -> Option<HeadingKind> {
     if sections::is_bullet(line) {
@@ -325,7 +352,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
             }
         }
     }
-    for (phrase, kind, stage) in phrases {
+    for (phrase, kind, stage) in phrases.into_iter().flat_map(cut_nice_lead) {
         let start = offset(text, phrase);
         doc.requirement_lines.push(start..start + phrase.len());
         let level = level_in(phrase);
@@ -1548,6 +1575,14 @@ SAP FI, DATEV, HGB, IFRS, Konzernabschluss
                 ("idealerweise im Maschinenbau".to_owned(), false)
             ]
         );
+        // An `or` in the nice clause leaves the head a must of its own.
+        let items = musts("- 10+ years in finance, ideally in controlling or accounting");
+        assert_eq!(
+            items[0],
+            ("10+ years in finance".to_owned(), true),
+            "{items:?}"
+        );
+        assert!(items[1..].iter().all(|(_, must)| !must), "{items:?}");
         assert!(
             musts("- Kenntnisse in LucaNet und Power BI von Vorteil")
                 .iter()

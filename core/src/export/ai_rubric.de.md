@@ -20,6 +20,8 @@ Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen 
 - Rolle und Fach (40): Passen Titel und Fachgebiet zu den Wunschrollen (wunschrollen) und zum
   Profil? Gleiches Fach zählt voll, ein nahes 0,7, ein fernes 0,2, ein fremdes nichts. Dazu die
   Ebene (siehe unten). Ein Titel, der eine Wunschrolle trifft, ist nie ein fremdes Fach.
+  Allgemeine Methoden wie Projekt- oder Stakeholder-Management erfüllen Muss-Punkte, zeigen aber
+  kein Fachgebiet.
 - Kern der Rolle (40): der Anteil der erfüllten Muss-Punkte zum Thema der Rolle, gezählt als
   mindestens drei. Was die Anzeige zum Kern nicht nennt, zählt wie Rolle und Fach und die übrigen
   Muss-Punkte im Mittel.

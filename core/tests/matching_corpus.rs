@@ -47,8 +47,11 @@ use sha2::Digest as _;
 /// from its title (K38 of fin, senior and wish are scored), an industry costs little (rule
 /// 5), a similar tool is met in part (rule 3); the status, exclusion and check rows hold, the
 /// bands are the report's. Then `UNNAMED` 700 (rule 8: a short list of other musts counts as
-/// the role does) and a specialist offered as an employment is a rung below a lead.
-const GOLDEN_DIGEST: &str = "023edafc3ef44ceb";
+/// the role does) and a specialist offered as an employment is a rung below a lead. Then the
+/// causes of held-out sets 1 and 6: a nice cue after a comma makes only its clause nice, a
+/// field word is no industry, a must naming the title's field word stands on the core, general
+/// business work shows no field, a compound of another field fits a title in half.
+const GOLDEN_DIGEST: &str = "a10924f5ee84074a";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")

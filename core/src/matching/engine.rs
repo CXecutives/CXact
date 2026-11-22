@@ -429,8 +429,14 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
             // open, no must (the rubric's rule 4).
             let hygiene =
                 matches!(item.class, Class::Skill | Class::Soft) && signals::is_hygiene(&item.text);
+            // A teaser's term that only names a field (`Finance`, `SAP`; `FIELD_ATOMS`) says
+            // where the work lies, not what it asks: met it counts, open it is unclear and
+            // never costs.
+            let broad_open = item.stage == Stage::Vocabulary
+                && fit.value == E_NONE
+                && signals::only_field_words(&atoms::atoms(&item.text, &profile.skills.vocab));
             Scored {
-                weight: if unjudged || hygiene {
+                weight: if unjudged || hygiene || broad_open {
                     0
                 } else {
                     weight(&item)

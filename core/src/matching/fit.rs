@@ -22,6 +22,9 @@ pub(crate) struct Entry {
     pub years: Option<u32>,
     /// What ESCO names in it (competences, tools and certificates only).
     pub broad: Broad,
+    /// General business work any field does (`Projektmanagement`, `Stakeholder Management`;
+    /// `atoms::general_work`): it meets requirements, but it shows no field.
+    pub method: bool,
 }
 
 /// What ESCO, the broad layer under the engine's own words, names in a text
@@ -247,6 +250,7 @@ impl Skills {
                 } else {
                     Broad::default()
                 },
+                method: atoms::general_work(&entry.text),
                 text: entry.text.clone(),
                 path: entry.path.clone(),
             })
@@ -604,7 +608,13 @@ fn industry_atom(atom: &str) -> bool {
     wishes::INDUSTRIES
         .iter()
         .chain(wishes::INDUSTRY_WORDS)
-        .any(|(w, _)| atom == *w || (w.len() >= 6 && (atom.starts_with(w) || w.starts_with(atom))))
+        .any(|(w, _)| {
+            // A generic atom is never the start of an industry's name: `financ` (`finance`,
+            // the function) is no `financial services`.
+            atom == *w
+                || (w.len() >= 6
+                    && (atom.starts_with(w) || (w.starts_with(atom) && !atoms::is_generic(atom))))
+        })
         || terms::INDUSTRY_ENDINGS
             .iter()
             .chain(terms::INDUSTRY_TAILS)
@@ -788,7 +798,7 @@ fn packs_of(atom: &str) -> Vec<&'static str> {
 
 /// Is a profile atom a compound of another field than the job atom it narrows
 /// (`Personalcontrolling`, an HR word, for `Controlling`)?
-fn other_field(job: &str, profile: &str) -> bool {
+pub(crate) fn other_field(job: &str, profile: &str) -> bool {
     let own = packs_of(job);
     let theirs = packs_of(profile);
     !theirs.is_empty() && theirs.iter().all(|p| !own.contains(p))

@@ -66,7 +66,8 @@ pub enum Sig {
     Permanent,
     /// How much the text allowed to read: 0 full, 1 low, 2 teaser (shown, never counted).
     Evidence,
-    /// Distinct core competences of the profile any requirement meets (at most 8).
+    /// Distinct core competences of the profile any requirement meets, without general business
+    /// work (`Entry::method`; at most 8).
     CoreHits,
 }
 
@@ -291,12 +292,27 @@ fn related(a: &str, b: &str) -> bool {
         || matches!(atoms::fit(b, a), Fit::Equal | Fit::Specific)
 }
 
-/// Which musts stand on the core of the role: a skill that names what the title names, or
-/// the ad's field (a trigger of its family).
+/// Which musts stand on the core of the role: a skill that names what the title names (also
+/// a field word of it, `lexicon::engine::FIELD_ATOMS`), or the ad's field (a trigger of its family).
 pub(crate) struct CoreTest<'a> {
     title_atoms: Vec<String>,
+    title_fields: Vec<&'static str>,
     field: Option<&'static str>,
     vocab: &'a Vocab,
+}
+
+/// Are a text's atoms field words only (`lexicon::engine::FIELD_ATOMS`), and at least one?
+pub(crate) fn only_field_words(atoms: &[String]) -> bool {
+    let words = crate::matching::lexicon::engine::FIELD_ATOMS;
+    !atoms.is_empty() && atoms.iter().all(|a| words.iter().any(|(w, _)| w == a))
+}
+
+/// The fields the field words of a text's atoms name (`lexicon::engine::FIELD_ATOMS`).
+fn field_words(atoms: &[String]) -> impl Iterator<Item = &'static str> + '_ {
+    crate::matching::lexicon::engine::FIELD_ATOMS
+        .iter()
+        .filter(|(w, _)| atoms.iter().any(|a| a == w))
+        .map(|&(_, field)| field)
 }
 
 impl<'a> CoreTest<'a> {
@@ -308,19 +324,23 @@ impl<'a> CoreTest<'a> {
         let vocab = &profile.skills.vocab;
         Self {
             title_atoms: roles::title_core(title, vocab),
+            title_fields: field_words(&atoms::atoms(title, vocab)).collect(),
             field,
             vocab,
         }
     }
 
     pub(crate) fn on_core(&self, m: &Scored) -> bool {
-        m.item.class == Class::Skill
-            && (atoms::atoms(&m.item.text, self.vocab)
-                .iter()
-                .any(|a| !atoms::is_generic(a) && self.title_atoms.iter().any(|t| related(a, t)))
-                || self
-                    .field
-                    .is_some_and(|f| title::names_field(&m.item.text, f)))
+        if m.item.class != Class::Skill {
+            return false;
+        }
+        let item = atoms::atoms(&m.item.text, self.vocab);
+        item.iter()
+            .any(|a| !atoms::is_generic(a) && self.title_atoms.iter().any(|t| related(a, t)))
+            || field_words(&item).any(|f| self.title_fields.contains(&f))
+            || self
+                .field
+                .is_some_and(|f| title::names_field(&m.item.text, f))
     }
 }
 
@@ -357,19 +377,18 @@ pub(crate) fn compute(profile: &EngineProfile, parts: &Parts<'_>) -> Signals {
     s.set(Sig::OtherMet, met);
     s.set(Sig::OtherPartial, partial);
     s.set(Sig::OtherOpen, open);
-    let mut hit: Vec<usize> = parts
-        .items
-        .iter()
-        .filter(|x| x.fit.value > E_NONE)
-        .filter_map(|x| x.fit.entry)
-        .filter(|&e| {
-            profile
-                .skills
-                .entries
-                .get(e)
-                .is_some_and(|e| e.path.starts_with(crate::profile::key::COMPETENCES))
-        })
-        .collect();
+    let mut hit: Vec<usize> =
+        parts
+            .items
+            .iter()
+            .filter(|x| x.fit.value > E_NONE)
+            .filter_map(|x| x.fit.entry)
+            .filter(|&e| {
+                profile.skills.entries.get(e).is_some_and(|e| {
+                    e.path.starts_with(crate::profile::key::COMPETENCES) && !e.method
+                })
+            })
+            .collect();
     hit.sort_unstable();
     hit.dedup();
     s.set(Sig::CoreHits, count(hit.len()));

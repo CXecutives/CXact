@@ -594,6 +594,20 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
     })
 }
 
+/// Is a text general business work any field does (`Projektmanagement`, `Stakeholder
+/// Management`, leadership)? Every atom of it is generic, a concept of general business work
+/// (`lex::CORE_CONCEPTS`) or leadership: it meets requirements, but shows no field.
+pub(crate) fn general_work(text: &str) -> bool {
+    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
+    let atoms = atoms(text, &ALL_PACKS);
+    !atoms.is_empty()
+        && atoms.iter().all(|atom| {
+            is_generic(atom)
+                || general.contains(&atom.as_str())
+                || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
+        })
+}
+
 /// The atoms of each pack's names of its field (`Domain::search`), without the generic ones.
 static PACK_NAMES: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
     DOMAINS

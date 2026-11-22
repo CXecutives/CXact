@@ -115,7 +115,9 @@ fn run_set(name: &str) -> SetRun {
                 profile_name.trim_end_matches(".json"),
                 job.file
             );
-            explain(&pair_name, &a, label.grade, label.excluded);
+            explain(&pair_name, &a, label.grade, label.excluded, || {
+                jobalert_core::matching::signals(&profile, &input)
+            });
             let outcome = match a.verdict {
                 Verdict::Scored => Outcome::Scored,
                 Verdict::Excluded => Outcome::Excluded,
@@ -159,7 +161,13 @@ fn run_set(name: &str) -> SetRun {
 /// names every pair whose exclusion the label does not share or whose grade 3 is buried,
 /// `low` every relevant pair (grade 2 or 3) below 60, and `HELDOUT_ONLY=heldout1` runs one
 /// set.
-fn explain(pair_name: &str, a: &Assessment, grade: u8, label_excluded: bool) {
+fn explain(
+    pair_name: &str,
+    a: &Assessment,
+    grade: u8,
+    label_excluded: bool,
+    signals: impl Fn() -> jobalert_core::matching::Signals,
+) {
     let Ok(wanted) = std::env::var("HELDOUT_EXPLAIN") else {
         return;
     };
@@ -184,6 +192,31 @@ fn explain(pair_name: &str, a: &Assessment, grade: u8, label_excluded: bool) {
             r.code,
             r.label,
             Value::Object(r.params.clone())
+        );
+    }
+    let s = signals();
+    let named: Vec<String> = jobalert_core::matching::SIGNAL_NAMES
+        .iter()
+        .zip(s.v)
+        .filter(|(_, v)| *v != 0)
+        .map(|(n, v)| format!("{n}={v}"))
+        .collect();
+    println!("  signals {}", named.join(" "));
+    for p in &a.parts {
+        println!(
+            "  part {:?} {}/{} {}",
+            p.code,
+            p.points,
+            p.max,
+            Value::Object(p.params.clone())
+        );
+    }
+    for c in &a.caps {
+        println!(
+            "  cap {:?} <= {} {}",
+            c.code,
+            c.max,
+            Value::Object(c.params.clone())
         );
     }
 }

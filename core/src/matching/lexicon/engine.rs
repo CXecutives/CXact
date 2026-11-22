@@ -267,6 +267,18 @@ pub(crate) const GENERIC_ATOMS: &[&str] = &[
     "zusammenarbeit",
 ];
 
+/// Generic atoms that name a field, with the field: too broad to meet a requirement alone,
+/// but a must that names the field of the title stands on the core of the role (`10+ years
+/// in finance` for a `Finance Transformation Lead`).
+pub(crate) const FIELD_ATOMS: &[(&str, &str)] = &[
+    ("erp", "erp"),
+    ("financ", "finance"),
+    ("finance", "finance"),
+    ("finanz", "finance"),
+    ("it", "it"),
+    ("sap", "sap"),
+];
+
 /// Compound modifiers that do not narrow a skill (`Konzernkonsolidierung` is still
 /// consolidation) (sorted).
 pub(crate) const LIGHT_MODIFIERS: &[&str] = &[
@@ -1475,6 +1487,17 @@ pub(crate) const NICE_CUES: &[&str] = &[
     "bevorzugt",
     "desirable",
     "beneficial",
+];
+/// Nice cues that open a clause after a comma (`10+ years in finance, ideally in
+/// controlling`): the clause from the cue on is nice, what stands before it keeps its kind.
+pub(crate) const NICE_LEADS: &[&str] = &[
+    "bestenfalls",
+    "bevorzugt",
+    "idealerweise",
+    "ideally",
+    "optimalerweise",
+    "preferably",
+    "vorzugsweise",
 ];
 /// Nice cues that close a line (`X und Y von Vorteil`): the whole line is nice.
 pub(crate) const NICE_CLOSING: &[&str] = &[

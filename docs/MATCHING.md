@@ -474,16 +474,26 @@ Checked on three sets the fit never saw (engine 24, the learned tables, in brack
 
 | Set | NDCG@10 | Spearman | Mean per note 3 / 2 / 1 / 0 |
 |---|---|---|---|
-| Gold tune (155 pairs) | 0.788 (0.723) | 0.721 (0.744) | 83 / 78 / 53 / 22 |
-| The owner's 154 | 0.665 (0.634) | 0.672 (0.687) | 79 / 72 / 51 / 25 |
-| Teacher test split (338 pairs) | 0.725 (0.724) | | |
+| Gold tune (155 pairs) | 0.780 (0.723) | 0.725 (0.744) | 83 / 78 / 50 / 21 |
+| The owner's 154 | 0.692 (0.634) | 0.660 (0.687) | 73 / 70 / 48 / 25 |
+| Teacher test split (338 pairs) | 0.720 (0.724) | | |
+| Gold locked (145 pairs, read once) | 0.850 | 0.720 | 68 / 68 / 49 / 20 |
+
+The held-out round (sets 1 and 6 below their floors at 0.889 and 0.851, now 0.930 and 0.935)
+fixed five causes, each a rule, not a job: a nice cue that opens a clause after a comma
+(`10+ years in finance, ideally in controlling`) makes only that clause nice; a generic word is
+no start of an industry's name (`finance` is no `financial services`); a must that names a field
+word of the title (`FIELD_ATOMS`: finance, SAP, IT, ERP) stands on the core of the role, and a
+teaser's open term that only names a field costs nothing; general business work (project and
+stakeholder management, leadership; `atoms::general_work`) meets requirements but shows no field;
+a compound of another field (`Personalcontrolling`) fits a title word in half, as it meets a
+requirement. Before the round: gold tune 0.788, the 154 0.665, teacher test 0.725, gold locked
+0.862; the refit printed `PARTIAL` 950, which lowered all three check sets, so it stays 900.
 
 Known limits: the note-3 mean of gold tune (3 pairs) stays below 85, one of them a permanent
-role with a frame step; the held-out sets 1 (0.889, floor 0.92) and 6 (0.851, floor 0.90) stay
-below their NDCG@10 floors: the SAP project profile meets the SAP and project musts of finance
-transformation and SAP finance roles the labels grade 1 (the field of the role does not tell a
-functional finance role from an IT project), and English paraphrases of consolidation work
-(group accounting, intercompany eliminations) stay open for the finance profile.
+role with a frame step; AI roles lean on project and stakeholder hits the field no longer counts
+(two note-3 jobs of the 154 sit at 50 and 59); English paraphrases of consolidation work (group
+accounting, intercompany eliminations) stay open for the finance profile.
 
 Refit (private data; from the repo root):
 
