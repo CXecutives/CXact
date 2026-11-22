@@ -456,17 +456,16 @@ fn covered(skills: &Skills, atom: &str) -> bool {
                 .all(related))
 }
 
-/// The ladder over all entries; `broad`: ESCO too (not for a soft skill, which counts half
-/// unproven anyway).
-fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
-    let job = joined(atoms::atoms(text, &skills.vocab), &skills.joins);
-    if job.is_empty() {
-        return NONE;
-    }
-    let expanded = expand(&job);
+/// The best entry on the ladder for the atoms of a requirement (`industries`: the profile's
+/// industries count too), the first of equals.
+fn best_entry(skills: &Skills, job: &[String], industries: bool) -> ItemFit {
+    let expanded = expand(job);
     let mut best = NONE;
     for (index, entry) in skills.entries.iter().enumerate() {
-        let (value, via) = entry_fit(&job, &expanded, entry);
+        if !industries && entry.path.starts_with(key::INDUSTRIES) {
+            continue;
+        }
+        let (value, via) = entry_fit(job, &expanded, entry);
         if value > best.value {
             best = ItemFit {
                 value,
@@ -475,26 +474,24 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             };
         }
     }
+    best
+}
+
+/// The ladder over all entries; `broad`: ESCO too (not for a soft skill, which counts half
+/// unproven anyway).
+fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
+    let job = joined(atoms::atoms(text, &skills.vocab), &skills.joins);
+    if job.is_empty() {
+        return NONE;
+    }
+    let mut best = best_entry(skills, &job, true);
     // The industry is the setting of a requirement (`Qualitätsmanagement produzierender
     // Unternehmen`): without a fit the function alone is read, the setting costs little
     // (the rubric's rule 5).
     if best.value == E_NONE && job.iter().any(|a| industry_atom(a)) {
         let function: Vec<String> = job.iter().filter(|a| !industry_atom(a)).cloned().collect();
         if function.iter().any(|a| !atoms::is_generic(a)) {
-            let expanded = expand(&function);
-            for (index, entry) in skills.entries.iter().enumerate() {
-                if entry.path.starts_with(key::INDUSTRIES) {
-                    continue;
-                }
-                let (value, via) = entry_fit(&function, &expanded, entry);
-                if value > best.value {
-                    best = ItemFit {
-                        value,
-                        entry: Some(index),
-                        via,
-                    };
-                }
-            }
+            best = best_entry(skills, &function, false);
         }
     }
     // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
