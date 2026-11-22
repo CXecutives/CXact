@@ -79,7 +79,7 @@ Commit them together with tokens.css.
   switch or a value, its texts from the catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
-  `Settings::default()`) and `SettingsPatch` (`view.rs`).
+  `Settings::default()`) and `SettingsPatch` (`view/settings.rs`).
 - The work folder of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`); `pick_workspace` chooses another (`Settings::workspace`), and the
   profile comes along (`profile::carry_over`). "Öffnen" makes a missing folder first.
@@ -103,7 +103,7 @@ menu names a key.
   chips under the header, the query and the harness
   read it; the filter is the same in every place. Another group is one entry there, its field
   in `ListFilter` (`toQuery` hands it to the `JobQuery`), its words in the catalog, and in the
-  backend its field of `JobQuery` (`view.rs`) and its condition in `filter_condition`
+  backend its field of `JobQuery` (`view/jobs.rs`) and its condition in `filter_condition`
   (`core/src/store/jobs.rs`), which narrows the list and its counts alike.
 - **The order**: `SORTS` in the same file, the first group of the same funnel menu
   ("Sortierung": by match, by date). There is no sort button: the funnel is the one control of
@@ -217,7 +217,7 @@ both lists to read.
 
 "Häufig verlangt" under the competences (`ui/src/features/profile/AskedTerms.svelte`) shows
 what `asked_terms` answers. Its window, its most terms and the jobs a term needs are
-`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`. A requirement's term and the
+`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view/profile.rs`. A requirement's term and the
 field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan", "Branchenerfahrung Energie"
 the industry "Energie") are `core_term` in `core/src/matching/terms.rs`: a lead word, a wish,
 a tool, a certificate or a degree word is one more entry in `core/src/matching/lexicon/terms.rs`

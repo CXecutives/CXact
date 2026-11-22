@@ -459,7 +459,7 @@ integers with a range and a direction), integer only, every line in whole points
   duration, workload; `state` near or missed; it keeps `percent` 95), the `permanent` line (90)
   and the `cap` line; the points add up to the score exactly (`explain.rs` test). Example: role
   and field 40/40, core 31/40, other musts 11/20, nice 4/5, place -4 (95 %): 86 - 4 = 82. The
-  reader gets the parts and the caps on `MatchDetail` (`view.rs`), the AI prompt says them line
+  reader gets the parts and the caps on `MatchDetail` (`view/reader.rs`), the AI prompt says them line
   by line (`export/ai_prompt`).
 - The rank (`fine`) is the same arithmetic in per-mille before rounding and caps: it orders
   jobs with the same score.

@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-478 files, 5 of them without a header comment ("(no header)").
+484 files, 5 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -67,7 +67,7 @@ everything the app knows and does, without UI and without…
 - settings.rs 300 · Settings of the app - stored as JSON in the key/value… · Settings, PortalSwitches, default_workspace, KEY
 - sync.rs 28 · Short locks on shared state. · lock
 - time.rs 129 · Time: UTC timestamps inside; local time for display, file… · zone, set_zone, follow_system_zone, local +7
-- view.rs 3084 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +65
+- view.rs 28 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField
 - window.rs 500 · Placement of the app window across restarts, as plain… · Placement, Screen, Restore, restore +6
 
 ### core/src/export
@@ -233,6 +233,13 @@ HTML to text, company and location
 - title.rs 477 · The title as the list and the Excel file show it: without… · tidy_title
 
 ### core/src/view
+shape what the UI sees.
+- jobs.rs 1160 · The job list: rows, the query that narrows and orders… · Origin, WorkMode, work_mode, DetailState +15
+- profile.rs 624 · The profile as the interface shows it: what the app… · ProfileQuality, ProfileSource, ProfileUnderstanding, ProfileInfo +7
+- reader.rs 789 · The reader: one job with the explanation of its match, the… · ReasonKind, ReasonWeight, Evidence, TextRange +13
+- settings.rs 379 · The settings and the portals as the interface shows them:… · Platform, VaultKind, Mailbox, MailboxCheck +10
+- state.rs 138 · The state the app hands the interface at the start, the… · EmptyAlert, AppState, OpenTarget, MoveBack +2
+- test_support.rs 60 · Test helpers the view modules share: a store with one job,…
 - ts.rs 513 · TypeScript types of the IPC contract, generated from the… · Params, types_dir
 
 ### core/tests

@@ -16,7 +16,7 @@ Each layer uses only the ones below it.
   older data before the first release), `pipeline/` runs mail and search, screen, fetch and
   score, `export/` writes the AI prompts, the generated colours of the window and the icon and
   atomic files, `reset.rs` "reset everything", `text/` HTML to text, company and location,
-  `secrets.rs` the keychain, `settings.rs`, `view.rs` shapes what the UI sees (the IPC types,
+  `secrets.rs` the keychain, `settings.rs`, `view.rs` and `view/` shape what the UI sees (the IPC types,
   ts-rs in `view/ts.rs`).
 - **`src-tauri/`**: the shell. `main.rs` starts it (the window keeps dropped files for the CV
   import); thin commands in `src/commands/` (`cv.rs` "Aus Lebenslauf ausfüllen": its file
