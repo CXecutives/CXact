@@ -97,6 +97,18 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("budgeting", "budgetierung"),
         ("budgetplanung", "budgetierung"),
         ("forecasting", "forecast"),
+        ("financial forecasting", "forecast"),
+        ("financial planning", "finanzplanung"),
+        ("finanzplanung", "finanzplanung"),
+        ("financial analysis", "finanzanalyse"),
+        ("finanzanalyse", "finanzanalyse"),
+        ("p&l", "guv"),
+        ("profit loss", "guv"),
+        ("profit loss statement", "guv"),
+        ("income statement", "guv"),
+        ("gewinn verlustrechnung", "guv"),
+        ("guv", "guv"),
+        ("commercial finance", "finance-bp"),
         ("hochrechnung", "forecast"),
         ("variance analysis", "abweichungsanalyse"),
         ("accruals", "abgrenzung"),
@@ -146,5 +158,20 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("shared service centre", "shared-service-cent"),
         ("shared service center", "shared-service-cent"),
     ],
-    half: &[],
+    // Planning, analysis and the P&L are the work of controlling, cash management is part of
+    // treasury and liquidity planning, accounting part of the statements.
+    half: &[
+        (
+            "controlling",
+            &["finanzanalyse", "finanzplanung", "forecast", "fp&a", "guv"],
+        ),
+        (
+            "finance-bp",
+            &["finanzanalyse", "finanzplanung", "fp&a", "guv"],
+        ),
+        ("jahresabschluss", &["rechnungswesen"]),
+        ("konzernrechnungslegung", &["rechnungswesen"]),
+        ("liquiditatsplanung", &["cash-management"]),
+        ("treasury", &["cash-management"]),
+    ],
 };
