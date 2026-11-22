@@ -20,6 +20,7 @@
     "check:tokens": "node tools/tokens.mjs --check",
     "check:architecture": "node tools/architecture.mjs",
     "regen": "node tools/tokens.mjs && python tools/icon.py",
+    "gen": "npm run regen && node tools/gen.mjs",
     "harness": "playwright test -c tools/ui-harness/playwright.config.ts",
     "map": "node tools/codemap.mjs",
     "affected": "node tools/affected.mjs",
