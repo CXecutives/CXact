@@ -58,5 +58,5 @@ const status = spawnSync('git', ['status', '--short', '--', ...GENERATED], {
   cwd: repo,
   encoding: 'utf8',
 });
-const changed = status.stdout.trim();
+const changed = status.stdout.trimEnd();
 console.log(changed ? `Generated files changed:\n${changed}` : 'Every generated file was current.');
