@@ -442,8 +442,8 @@ fn every_section_of_one_job_in_order() {
             "**Wunschrolle und Wünsche**",
             "# Arbeitsweise\n",
             "# Bewertungsregel\n",
-            "## Punkte von 0 bis 100\n",
-            "## Obergrenzen",
+            "## Passungsgrad von 0 bis 100\n",
+            "## Grenzen",
             "# Antwortformat\n",
             "## Ergebnis\n",
             "## Anforderungen\n",
@@ -567,18 +567,18 @@ fn the_rubric_is_filled_with_the_limits_of_the_app() {
     assert!(flat.contains(&format!(
         "Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, darunter gering."
     )));
-    assert!(flat.contains(&format!("heben keinen Job auf {HIGH_FROM} oder mehr")));
     for part in [
-        "- 90 bis 100 Kernfeld, alle Muss-Punkte erfüllt",
-        "- 0 bis 29 außerhalb des Fachgebiets",
-        "Ein fehlender Kann-Punkt kostet höchstens 5 Punkte.",
+        "- 90 bis 100 alles Wesentliche passt",
+        "- unter 25 passt nicht",
+        "Rolle und Fach (35)",
+        "Kern der Rolle (35)",
+        "Weitere Muss-Punkte (20)",
+        "Rahmen (10)",
+        "offene kosten nichts",
         "(CXact rechnet sie mit 90 %)",
-        "kostet eine andere Art etwa 10 Punkte",
-        "ein Plus von höchstens 10 Punkten",
         "(tagessatz_wunsch, arbeitsmodell und regionen)",
-        "höchstens 10 Punkte nach oben oder unten",
-        "Kein fachlicher Muss-Punkt erfüllt höchstens 30",
-        "Nichts offen mindestens 40",
+        "Der Kern der Rolle ist klar offen: höchstens 49",
+        "Was eine Anzeige nicht oder nur vage sagt, kostet nichts",
     ] {
         assert!(flat.contains(part), "{part}");
     }
