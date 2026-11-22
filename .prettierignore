@@ -4,10 +4,7 @@
 !/ui/**
 !/tools/ui-harness/**
 !/cv-worker/**
-!/tools/third-party.mjs
-!/tools/tokens.mjs
-!/tools/architecture.mjs
-!/tools/preview.mjs
+!/tools/*.mjs
 !/package.json
 !/eslint.config.js
 !/stylelint.config.js
