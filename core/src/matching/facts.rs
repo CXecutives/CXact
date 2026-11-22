@@ -524,10 +524,20 @@ static PLACES_BY_FIRST_WORD: LazyLock<HashMap<&'static str, Vec<Place>>> = LazyL
     index
 });
 
-/// Every country or city a text names, with the byte offset of the name.
+/// Every country or city a text names, with the byte offset of the name; a place after a
+/// word of nearness (`nähe Venlo`) is a landmark, no place of the job.
 fn countries_at(folded: &str) -> Vec<(usize, &'static str)> {
     let mut found = Vec::new();
+    let mut before = "";
     for word in folded.split(|c: char| !c.is_alphanumeric()) {
+        if word.is_empty() {
+            continue;
+        }
+        let near = lex::NEAR_WORDS.contains(&before);
+        before = word;
+        if near {
+            continue;
+        }
         let Some(names) = PLACES_BY_FIRST_WORD.get(word) else {
             continue;
         };
@@ -1738,6 +1748,8 @@ mod tests {
             country_codes("Ort: 3199 Rotterdam, Niederlande"),
             [(ReasonCode::Country, true)]
         );
+        // A place near another names a landmark, not the place of work.
+        assert!(country_codes("Ort: Straelen (nähe Venlo) 3 Tage vor Ort").is_empty());
     }
 
     /// Remote work for a place abroad is a check, never an exclusion (remote work counts
