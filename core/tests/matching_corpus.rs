@@ -46,8 +46,9 @@ use sha2::Digest as _;
 /// then the caps) in place of the learned scorer, and the rubric's rules: a short ad is judged
 /// from its title (K38 of fin, senior and wish are scored), an industry costs little (rule
 /// 5), a similar tool is met in part (rule 3); the status, exclusion and check rows hold, the
-/// bands are the report's.
-const GOLDEN_DIGEST: &str = "e37b3f586b20adaf";
+/// bands are the report's. Then `UNNAMED` 700 (rule 8: a short list of other musts counts as
+/// the role does) and a specialist offered as an employment is a rung below a lead.
+const GOLDEN_DIGEST: &str = "023edafc3ef44ceb";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")

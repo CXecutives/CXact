@@ -443,9 +443,9 @@ integers with a range and a direction), integer only, every line in whole points
 
 | Part | Weight | What counts |
 |---|---|---|
-| Rolle und Fach | 40 | the field class (same 1000, near 700, far 200, foreign 0) from the target role, the title fit and how the ad and its musts fit the profile's field, at its level: a wished level full, one above or below `LEVEL_ONE` 850, two above `LEVEL_TWO_ABOVE` 500, two below caps at 40. Foreign only without a target role in the title (all skill musts open, or no fit); a title that meets a target role is never foreign |
+| Rolle und Fach | 40 | the field class (same 1000, near 700, far 200, foreign 0) from the target role, the title fit and how the ad and its musts fit the profile's field, at its level: a wished level full, one above or below `LEVEL_ONE` 850, two above `LEVEL_TWO_ABOVE` 500, two below caps at 40 (a specialist offered as an employment, permanent or ANÜ, is a rung with a senior: `Senior Qualitätsingenieur` caps for a plant manager; consulting and project heads, and any role on a project, interim or unclear contract, are engagements of every level, never below). Foreign only without a target role in the title (all skill musts open, or no fit); a title that meets a target role is never foreign |
 | Kern der Rolle | 40 | the musts on the core of the role (a skill that names what the title names, or the ad's field family), counted as at least `CORE_SATURATION` 3; the ones the ad does not name count as role and field and the share of the other musts on average (without other musts as role and field) |
-| Weitere Muss-Punkte | 20 | the other musts, counted as at least `MUST_SATURATION` 7; the ones a short list does not name count `UNNAMED` (300) of role and field |
+| Weitere Muss-Punkte | 20 | the other musts, counted as at least `MUST_SATURATION` 7; the ones a short list does not name count `UNNAMED` (700, the rubric's rule 8: a short ad is not punished) of role and field |
 | Kann-Punkte | +5 | the share of the nice-to-haves met, only a plus, inside the content (never above 100) |
 | Rahmen | x 0.95 each | one step per stated condition worse than wished that breaks no hard criterion: day rate between minimum and wish, work mode or place against the wish, a later start, a shorter duration, the workload; what the ad does not state fits (factor 1) |
 | Festanstellung | x 0.9 | a permanent role, after the frame |
@@ -464,8 +464,8 @@ integers with a range and a direction), integer only, every line in whole points
   jobs with the same score.
 
 Fixed by meaning: the weights, the field and level values, the frame step, the permanent factor,
-the saturations, the caps and the thresholds of the field class. Fitted, deterministically on
-a grid, only what has none: `PARTIAL` and `UNNAMED`, on the private teacher labels (the train
+the saturations, the caps, the thresholds of the field class and `UNNAMED` (rule 8). Fitted,
+deterministically on a grid, only what has none: `PARTIAL`, on the private teacher labels (the train
 and lockbox splits of `bench/labels/train-final.jsonl`, 701 pairs, the 300 gold pairs left
 out), objective NDCG@10 + Spearman (`tools/scorer/train.py`). Fitting the field-class
 thresholds on those labels lowered all three check sets, so they stay fixed.
@@ -474,21 +474,24 @@ Checked on three sets the fit never saw (engine 24, the learned tables, in brack
 
 | Set | NDCG@10 | Spearman | Mean per note 3 / 2 / 1 / 0 |
 |---|---|---|---|
-| Gold tune (155 pairs) | 0.785 (0.723) | 0.731 (0.744) | 80 / 76 / 52 / 21 |
-| The owner's 154 | 0.666 (0.634) | 0.676 (0.687) | 79 / 71 / 49 / 25 |
-| Teacher test split (338 pairs) | 0.720 (0.724) | | |
+| Gold tune (155 pairs) | 0.788 (0.723) | 0.721 (0.744) | 83 / 78 / 53 / 22 |
+| The owner's 154 | 0.665 (0.634) | 0.672 (0.687) | 79 / 72 / 51 / 25 |
+| Teacher test split (338 pairs) | 0.725 (0.724) | | |
 
 Known limits: the note-3 mean of gold tune (3 pairs) stays below 85, one of them a permanent
-role with a frame step; the held-out sets 1, 2 and 6 fell more than 0.03 below their NDCG@10
-floors (a short list of other musts costs more than it did).
+role with a frame step; the held-out sets 1 (0.889, floor 0.92) and 6 (0.851, floor 0.90) stay
+below their NDCG@10 floors: the SAP project profile meets the SAP and project musts of finance
+transformation and SAP finance roles the labels grade 1 (the field of the role does not tell a
+functional finance role from an IT project), and English paraphrases of consolidation work
+(group accounting, intercompany eliminations) stay open for the finance profile.
 
 Refit (private data; from the repo root):
 
     CORE=<core of the clone or worktree> WORK=<folder> SIGNALS=<folder>/signals.jsonl \
       bash core/tests/fixtures/private/bench/retrain.sh
 
-It dumps the signals, fits `PARTIAL` and `UNNAMED` on the teacher labels and prints them (put
-them into `params.rs`, then run again with `SKIP_TRAIN=1`), scores every pair again and prints
+It dumps the signals, fits `PARTIAL` on the teacher labels and prints it (put
+it into `params.rs`, then run again with `SKIP_TRAIN=1`), scores every pair again and prints
 the 154 line, the teacher test split and the gold tune part (`gold/eval.py --part=tune`). Read
 `--part=gold-locked` once per change only. Then re-pin `GOLDEN_DIGEST`, the held-out floors
 (only a loss within 0.03, with its reason) and the demo snapshot.
