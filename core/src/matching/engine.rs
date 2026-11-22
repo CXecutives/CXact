@@ -21,9 +21,10 @@ use super::lexicon::engine as lex;
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    E_FULL, E_NONE, FORMAL_CAP, JUNIOR_CAP, LANGUAGE_MUST_LEVEL, LEVEL_CAP, LOW_EVIDENCE_ITEMS,
-    MIN_TEXT_CHARS, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT, PERMANENT_FACTOR,
-    SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT, W_TERM, WISH_MAX,
+    E_FULL, E_HALF, E_NONE, FORMAL_CAP, JUNIOR_CAP, LANGUAGE_MUST_LEVEL, LEVEL_CAP,
+    LOW_EVIDENCE_ITEMS, MIN_TEXT_CHARS, OFF_FIELD_CAP, OFF_FIELD_SINGLE_CAP, OFF_FIELD_TITLE_FIT,
+    PERMANENT_FACTOR, SENIOR_YEARS, SEVERAL_OPEN_CAP, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT,
+    W_TERM, WISH_MAX,
 };
 use super::permanent;
 use super::profile::{self, CoreText};
@@ -428,6 +429,18 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
         .into_iter()
         .map(|item| {
             let mut fit = fit::item_fit(&profile.skills, &item);
+            // An industry the profile lacks costs little and never caps (the rubric's rule 5):
+            // half met, never open.
+            if fit.value == E_NONE
+                && item.class == Class::Skill
+                && fit::industry_only(&item.text, &profile.skills.vocab)
+            {
+                fit = ItemFit {
+                    value: E_HALF,
+                    entry: None,
+                    via: Via::General,
+                };
+            }
             // What follows from the profile's role counts as shown (the rubric's rule 2).
             if fit.value < E_FULL
                 && matches!(item.class, Class::Skill | Class::Soft)

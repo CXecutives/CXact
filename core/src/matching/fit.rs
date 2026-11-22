@@ -564,6 +564,37 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     best
 }
 
+/// Does a requirement ask only for experience in an industry (`Erfahrung in der
+/// Pharmaindustrie`, `Banking background`)? Its atoms are industries, industry endings and
+/// generic or experience words.
+pub(crate) fn industry_only(text: &str, vocab: &Vocab) -> bool {
+    use super::lexicon::{terms, wishes};
+    let endings: Vec<String> = terms::INDUSTRY_ENDINGS
+        .iter()
+        .chain(terms::INDUSTRY_TAILS)
+        .map(|e| atoms::stem(e))
+        .collect();
+    let industry = |a: &str| {
+        wishes::INDUSTRIES
+            .iter()
+            .chain(wishes::INDUSTRY_WORDS)
+            .any(|(w, _)| a == *w || (w.len() >= 6 && (a.starts_with(w) || w.starts_with(a))))
+            || endings.iter().any(|e| a.ends_with(e.as_str()))
+            || terms::INDUSTRY_NOUNS
+                .iter()
+                .any(|n| a.starts_with(&atoms::stem(n)))
+    };
+    let mut any = false;
+    for atom in atoms::atoms(text, vocab) {
+        if industry(&atom) {
+            any = true;
+        } else if !(atoms::is_generic(&atom) || experience_atom(&atom)) {
+            return false;
+        }
+    }
+    any
+}
+
 /// The kinds of tool a text names (`TOOL_KINDS`).
 fn tool_kinds(text: &str) -> Vec<&'static str> {
     let folded = fold(text).replace('-', " ");
@@ -831,12 +862,14 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
                 } else {
                     None
                 });
+        // Asked years cost little and never leave a requirement open (the rubric's rule 5):
+        // fewer years meet it at least in half.
         if general && fit.value == E_NONE {
             // General experience is judged by the profile's own years alone (none stated: no
             // verdict, the item stays open and the engine does not weigh it).
             if let Some(have) = have {
                 fit = ItemFit {
-                    value: years_value(have, needed),
+                    value: years_value(have, needed).max(E_HALF),
                     entry: None,
                     via: Via::Exact,
                 };
@@ -845,7 +878,7 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
             && let Some(have) = have
             && have < needed
         {
-            fit.value = years_value(have, needed).min(fit.value);
+            fit.value = years_value(have, needed).max(E_HALF).min(fit.value);
         }
     }
     fit
