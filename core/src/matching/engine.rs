@@ -441,6 +441,22 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                     via: Via::General,
                 };
             }
+            // A requirement that names a role of the profile (`Erfahrung als Head of Finance`)
+            // is shown by it: full for a full fit, half otherwise (the rubric's rule 2).
+            if fit.value < E_FULL
+                && item.class == Class::Skill
+                && let Some(role) = named_role(profile, &item)
+            {
+                fit = ItemFit {
+                    value: if role.full {
+                        E_FULL
+                    } else {
+                        E_HALF.max(fit.value)
+                    },
+                    entry: None,
+                    via: Via::Exact,
+                };
+            }
             // What follows from the profile's role counts as shown (the rubric's rule 2).
             if fit.value < E_FULL
                 && matches!(item.class, Class::Skill | Class::Soft)
@@ -488,6 +504,24 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
             }
         })
         .collect()
+}
+
+/// The target role a requirement names: its text or one of its alternatives has a head noun
+/// (`Head of Finance`, `kaufmännische Leitung`) and fits a target role as a title would.
+fn named_role(profile: &EngineProfile, item: &Item) -> Option<RoleFit> {
+    std::iter::once(item.text.as_str())
+        .chain(item.alternatives.iter().map(String::as_str))
+        .filter(|text| title::level_of(text).is_some())
+        .filter_map(|text| {
+            roles::best(
+                &profile.roles,
+                text,
+                &profile.skills.vocab,
+                (ContractKind::Interim, true),
+                None,
+            )
+        })
+        .max_by_key(|fit| fit.full)
 }
 
 /// The fields of a job the hard criteria read (the ad without the other listings under it).

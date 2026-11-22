@@ -631,6 +631,7 @@ pub(crate) const FRAME_WORDS: &[&str] = &[
     "verlangerung",
     "vertragsart",
     "vollzeit",
+    "vor-ort-anteil",
     "vor-ort-prasenz",
     "willingness",
     "workload",
@@ -666,6 +667,7 @@ pub(crate) const FRAME_HEADS: &[&str] = &[
     "model",
     "modell",
     "option",
+    "paket",
     "pflicht",
     "presence",
     "quote",
@@ -786,6 +788,19 @@ pub(crate) const SOFT_HEADS: &[&str] = &[
     "vorgehensweise",
 ];
 
+/// Words of the setting of a role, like an industry (`produzierender Unternehmen`,
+/// `Mittelstand`, `Konzernumfeld`): never its function (atom prefixes, folded).
+// external contract - do not translate (matching lexicon)
+pub(crate) const SETTING_WORDS: &[&str] = &[
+    "eigentumergefuhrt",
+    "fertigend",
+    "industriell",
+    "konzern",
+    "manufacturing",
+    "mittelstand",
+    "produzierend",
+];
+
 /// What a role brings (the rubric's rule 2): from this level of the profile's own roles on
 /// (its target roles and the roles its competences name, never its years), a requirement
 /// that asks only for these counts as shown (atom prefixes, folded). 4, a team lead:
@@ -810,8 +825,10 @@ pub(crate) const ROLE_BRINGS: &[(u8, &[&str])] = &[
         &[
             "budget",
             "ergebnisverantwort",
+            "executive",
             "kostenverantwort",
             "management",
+            "senior",
             "stakeholder",
         ],
     ),

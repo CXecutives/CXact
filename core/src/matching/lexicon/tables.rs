@@ -884,14 +884,14 @@ pub(crate) const TOOL_KINDS: &[(&str, &[&str])] = &[
             "bmc remedy",
             "freshdesk",
             "freshservice",
-            "itsm",
+            "itsm tool",
+            "itsm tools",
             "jira service desk",
             "jira service management",
             "otrs",
             "remedy",
             "servicenow",
             "ticket system",
-            "ticketing",
             "ticketsystem",
             "topdesk",
             "zendesk",
@@ -984,6 +984,10 @@ pub(crate) const TOOL_KINDS: &[(&str, &[&str])] = &[
         ],
     ),
     ("cloud", &["aws", "azure", "gcp", "google cloud"]),
+    (
+        "quality standard",
+        &["as9100", "en 9100", "iatf 16949", "iso 13485", "iso 9001"],
+    ),
 ];
 
 #[cfg(test)]

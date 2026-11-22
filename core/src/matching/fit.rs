@@ -475,6 +475,28 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             };
         }
     }
+    // The industry is the setting of a requirement (`Qualitätsmanagement produzierender
+    // Unternehmen`): without a fit the function alone is read, the setting costs little
+    // (the rubric's rule 5).
+    if best.value == E_NONE && job.iter().any(|a| industry_atom(a)) {
+        let function: Vec<String> = job.iter().filter(|a| !industry_atom(a)).cloned().collect();
+        if function.iter().any(|a| !atoms::is_generic(a)) {
+            let expanded = expand(&function);
+            for (index, entry) in skills.entries.iter().enumerate() {
+                if entry.path.starts_with(key::INDUSTRIES) {
+                    continue;
+                }
+                let (value, via) = entry_fit(&function, &expanded, entry);
+                if value > best.value {
+                    best = ItemFit {
+                        value,
+                        entry: Some(index),
+                        via,
+                    };
+                }
+            }
+        }
+    }
     // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
     // product of it (`SAP S/4HANA`).
     if best.value == E_NONE
@@ -568,31 +590,32 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
 /// Pharmaindustrie`, `Banking background`)? Its atoms are industries, industry endings and
 /// generic or experience words.
 pub(crate) fn industry_only(text: &str, vocab: &Vocab) -> bool {
-    use super::lexicon::{terms, wishes};
-    let endings: Vec<String> = terms::INDUSTRY_ENDINGS
-        .iter()
-        .chain(terms::INDUSTRY_TAILS)
-        .map(|e| atoms::stem(e))
-        .collect();
-    let industry = |a: &str| {
-        wishes::INDUSTRIES
-            .iter()
-            .chain(wishes::INDUSTRY_WORDS)
-            .any(|(w, _)| a == *w || (w.len() >= 6 && (a.starts_with(w) || w.starts_with(a))))
-            || endings.iter().any(|e| a.ends_with(e.as_str()))
-            || terms::INDUSTRY_NOUNS
-                .iter()
-                .any(|n| a.starts_with(&atoms::stem(n)))
-    };
     let mut any = false;
     for atom in atoms::atoms(text, vocab) {
-        if industry(&atom) {
+        if industry_atom(&atom) {
             any = true;
         } else if !(atoms::is_generic(&atom) || experience_atom(&atom)) {
             return false;
         }
     }
     any
+}
+
+/// Does an atom name an industry or a setting (`pharmaindustri`, `banken`, `produzierend`)?
+fn industry_atom(atom: &str) -> bool {
+    use super::lexicon::{terms, wishes};
+    wishes::INDUSTRIES
+        .iter()
+        .chain(wishes::INDUSTRY_WORDS)
+        .any(|(w, _)| atom == *w || (w.len() >= 6 && (atom.starts_with(w) || w.starts_with(atom))))
+        || terms::INDUSTRY_ENDINGS
+            .iter()
+            .chain(terms::INDUSTRY_TAILS)
+            .any(|e| atom.ends_with(atoms::stem(e).as_str()))
+        || terms::INDUSTRY_NOUNS
+            .iter()
+            .any(|n| atom.starts_with(atoms::stem(n).as_str()))
+        || lex::SETTING_WORDS.iter().any(|w| atom.starts_with(w))
 }
 
 /// The kinds of tool a text names (`TOOL_KINDS`).
