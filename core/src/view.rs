@@ -126,10 +126,6 @@ pub enum DetailState {
 }
 
 impl DetailState {
-    pub fn of(job: &JobRow) -> DetailState {
-        DetailState::at(job, Timestamp::now())
-    }
-
     /// The state's `kind` as the JSON says it (`ok`, `pending`, `teaser`, `failed`, `gone`,
     /// `unfetchable`, `onRequest`).
     pub fn code(self) -> &'static str {
@@ -235,6 +231,14 @@ pub struct JobView {
 
 impl From<&JobRow> for JobView {
     fn from(job: &JobRow) -> JobView {
+        JobView::at(job, Timestamp::now())
+    }
+}
+
+impl JobView {
+    /// The list row of a job at `now` (the clock its detail state is judged by; the preview's
+    /// demo has a fixed one).
+    pub fn at(job: &JobRow, now: Timestamp) -> JobView {
         let (company, location) = split_company_location(&job.company, &job.location);
         JobView {
             key: job.key.clone(),
@@ -246,7 +250,7 @@ impl From<&JobRow> for JobView {
             mail_date: job.mail_date,
             first_seen_at: job.first_seen_at,
             unread: job.read_at.is_none(),
-            detail: DetailState::of(job),
+            detail: DetailState::at(job, now),
             short: job.desc_status == DescStatus::Ok && job.desc_short,
             closed: job.desc_status == DescStatus::Ok && job.desc_closed,
             match_: job.match_.as_ref().map(|record| {
@@ -652,9 +656,9 @@ pub fn job_detail(
             gmail_url: job.gmail_id.and_then(gmail_url).map(|u| u.to_string()),
         },
         match_,
-        job: job_views(store, std::slice::from_ref(&job))?
+        job: job_views(store, std::slice::from_ref(&job), now)?
             .pop()
-            .unwrap_or_else(|| JobView::from(&job)),
+            .unwrap_or_else(|| JobView::at(&job, now)),
     }))
 }
 
@@ -848,15 +852,15 @@ fn reason_weight(weight: matching::Weight) -> ReasonWeight {
     }
 }
 
-/// List rows with the other portals that announced the same job (`alsoOn`).
-pub fn job_views(store: &Store, rows: &[JobRow]) -> crate::Result<Vec<JobView>> {
+/// List rows at `now` with the other portals that announced the same job (`alsoOn`).
+pub fn job_views(store: &Store, rows: &[JobRow], now: Timestamp) -> crate::Result<Vec<JobView>> {
     let keys: Vec<&JobKey> = rows.iter().map(|row| &row.key).collect();
     let mut also = store.also_on(&keys)?;
     Ok(rows
         .iter()
         .map(|row| JobView {
             also_on: also.remove(&row.key).unwrap_or_default(),
-            ..JobView::from(row)
+            ..JobView::at(row, now)
         })
         .collect())
 }
@@ -957,7 +961,7 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
         offset: query.offset,
     })?;
     Ok(JobPage {
-        jobs: job_views(store, &rows)?,
+        jobs: job_views(store, &rows, Timestamp::now())?,
         counts: JobCounts {
             inbox: counts.inbox,
             archive: counts.archive,

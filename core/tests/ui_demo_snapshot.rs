@@ -256,7 +256,7 @@ fn detail_of(store: &Store, matcher: &LocalMatcher, key: &JobKey) -> view::JobDe
 
 fn view_of(store: &Store, key: &JobKey) -> JobView {
     let row = store.job(key).unwrap().unwrap();
-    view::job_views(store, std::slice::from_ref(&row))
+    view::job_views(store, std::slice::from_ref(&row), now())
         .unwrap()
         .pop()
         .unwrap()

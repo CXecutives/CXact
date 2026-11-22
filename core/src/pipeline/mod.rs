@@ -927,7 +927,7 @@ async fn fetch_step<B: Backends>(
                 };
                 if let Ok(Some(job)) = store.job(&shown)
                     && let Ok(Some(view)) =
-                        crate::view::job_views(store, std::slice::from_ref(&job))
+                        crate::view::job_views(store, std::slice::from_ref(&job), clock())
                             .map(|mut views| views.pop())
                 {
                     emit(RunEvent::JobUpdated {
