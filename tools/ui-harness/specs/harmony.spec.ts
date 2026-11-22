@@ -43,7 +43,7 @@ const RADII = [
   ...new Set([
     0,
     px('--row-bar'),
-    // --radius-inner: the control's radius less the 2 px gap inside it.
+    // --radius-inner: the control's radius less the gap inside it.
     px('--radius-control') - px('--space-2'),
     ...ladder('--radius-').filter((radius) => radius < 100),
   ]),
