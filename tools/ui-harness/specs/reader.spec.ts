@@ -28,6 +28,7 @@ import {
   viaMenu,
   WIN,
 } from './helpers';
+import { FOLD_BELOW, MIN_WINDOW, WINDOW, px } from './scale';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -352,7 +353,6 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('reader-mail')).toHaveText(T.actions.mail);
     await expect(actions.getByTestId('open-ad')).toHaveText(T.actions.openAd);
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
-    expect(T.actions.prompt).toBe('Prompt für KI-Bewertung');
     // The moves of Eingang; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
@@ -383,10 +383,10 @@ test.describe('the actions', () => {
     page,
   }) => {
     for (const size of [
-      { width: 1360, height: 900 },
+      WINDOW,
       { width: 1000, height: 800 },
       { width: 900, height: 800 },
-      { width: 480, height: 360 },
+      MIN_WINDOW,
     ]) {
       await page.setViewportSize(size);
       await openAt(page, 'freelancermap-2801');
@@ -851,7 +851,6 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'workload')).toEqual([T.facts.workload(100, 100), 'met']);
     // One case in the row: "Voll remote" like "Vor Ort" and "Hybrid".
     expect(await cell(page, 'mode')).toEqual([T.facts.mode.remote, 'met']);
-    expect(T.facts.mode.remote).toBe('Voll remote');
     // A hybrid job without a share: its mode in the one set of words.
     await page.evaluate(() => {
       window.__harness.editDetail = (detail) => {
@@ -899,7 +898,7 @@ test.describe('Jobdetails', () => {
   test('the Anforderungen have no tooltip on their icons; the marks of the Jobdetails name their verdict', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.setViewportSize(WINDOW);
     await openAt(page, 'freelancermap-2801');
     for (const key of ['freelancermap-2801', 'freelance-900413', 'linkedin-4100200304']) {
       await openJob(page, key);
@@ -1182,7 +1181,7 @@ test.describe('the ad', () => {
   test('plain text: hovering or clicking a row or a requirement marks nothing in the ad', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await openAt(page, 'freelancermap-2801');
     const text = stage(page).getByTestId('ad-text');
     await expect(text).toContainText('Reporting nach IFRS');
@@ -1487,25 +1486,25 @@ test.describe('the cards', () => {
       }),
     );
     expect(boxes).toHaveLength(4);
-    expect(Math.round(boxes[0]!.y - pane.y)).toBe(8);
-    for (const box of boxes) expect(Math.round(box.width)).toBe(760);
+    expect(Math.round(boxes[0]!.y - pane.y)).toBe(px('--space-8'));
+    for (const box of boxes) expect(Math.round(box.width)).toBe(px('--reader-max'));
     // Centred in the pane.
     const left = boxes[0]!.x - pane.x;
     const right = pane.x + pane.width - (boxes[0]!.x + boxes[0]!.width);
     expect(Math.abs(left - right)).toBeLessThanOrEqual(9);
     for (let at = 1; at < boxes.length; at += 1) {
-      expect(Math.round(boxes[at]!.y - boxes[at - 1]!.bottom)).toBe(12);
+      expect(Math.round(boxes[at]!.y - boxes[at - 1]!.bottom)).toBe(px('--card-gap'));
     }
     // The pane's scroll area ends 40 under the last card.
     const end = await stage(page).evaluate(
       (node) => node.getBoundingClientRect().top - node.scrollTop + node.scrollHeight,
     );
-    expect(Math.round(end - boxes.at(-1)!.bottom)).toBe(40);
+    expect(Math.round(end - boxes.at(-1)!.bottom)).toBe(px('--reader-pad-end'));
     // A narrow pane: 28 from its sides.
-    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.setViewportSize({ width: FOLD_BELOW, height: 800 });
     const narrow = (await reader.boundingBox())!;
     const hero = (await cards.first().boundingBox())!;
-    expect(Math.round(hero.x - narrow.x)).toBe(28);
+    expect(Math.round(hero.x - narrow.x)).toBe(px('--reader-pad-x'));
   });
 
   test('Jobdetails: two columns of label 96, value and verdict; one column in a narrow card', async ({
@@ -1545,7 +1544,7 @@ test.describe('the cards', () => {
     };
     await hairlines(2);
     // A narrow window: one column.
-    await page.setViewportSize({ width: 480, height: 360 });
+    await page.setViewportSize(MIN_WINDOW);
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
     // Once the window has settled (the sidebar folds away as it narrows).
     await expect

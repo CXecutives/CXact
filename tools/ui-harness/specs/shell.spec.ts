@@ -33,6 +33,7 @@ import {
   T,
   viaMenu,
 } from './helpers';
+import { FOLD_BELOW, MIN_WINDOW, PAGE, WINDOW } from './scale';
 
 // Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
 // direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
@@ -108,10 +109,10 @@ async function settings(page: Page, query = WIN): Promise<void> {
 }
 
 const SIZES = [
-  { width: 480, height: 360 },
+  MIN_WINDOW,
   { width: 780, height: 560 },
   { width: 1280, height: 720 },
-  { width: 1360, height: 900 },
+  WINDOW,
   { width: 1536, height: 864 },
   { width: 1920, height: 1080 },
 ];
@@ -411,16 +412,12 @@ for (const os of [WIN, MAC]) {
   test(`the whole top bar moves the window, in every view and width ${os}`, async ({ page }) => {
     const states: [string, { width: number; height: number }, (p: typeof page) => Promise<void>][] =
       [
-        ['jobs', { width: 1360, height: 900 }, async () => undefined],
-        [
-          'reader',
-          { width: 1360, height: 900 },
-          (p) => p.locator('[data-testid^="job-row-"]').first().click(),
-        ],
+        ['jobs', WINDOW, async () => undefined],
+        ['reader', WINDOW, (p) => p.locator('[data-testid^="job-row-"]').first().click()],
         ['rail', { width: 1000, height: 700 }, async () => undefined],
-        ['profile', { width: 1360, height: 900 }, (p) => p.getByTestId('nav-profile').click()],
-        ['settings', { width: 1360, height: 900 }, (p) => p.getByTestId('nav-settings').click()],
-        ['minimum', { width: 480, height: 360 }, async () => undefined],
+        ['profile', WINDOW, (p) => p.getByTestId('nav-profile').click()],
+        ['settings', WINDOW, (p) => p.getByTestId('nav-settings').click()],
+        ['minimum', MIN_WINDOW, async () => undefined],
       ];
     for (const [name, size, go] of states) {
       await page.setViewportSize(size);
@@ -430,7 +427,7 @@ for (const os of [WIN, MAC]) {
       await motionSettled(page);
       expect(await page.evaluate(DRAG_PROBE), name).toEqual([]);
     }
-    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.setViewportSize(WINDOW);
     await open(page, `${os}&scenario=first-run`);
     expect(await page.evaluate(DRAG_PROBE), 'first run').toEqual([]);
   });
@@ -663,7 +660,7 @@ for (const os of [WIN, MAC]) {
   test(`the keyboard's focus going on into the view folds the floating sidebar, the top bar does not ${os}`, async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1099, height: 700 });
+    await page.setViewportSize({ width: FOLD_BELOW - 1, height: 700 });
     await open(page, os);
     const floating = page.getByTestId('sidebar-floating');
     await page.getByTestId('toggle-sidebar').focus();
@@ -694,7 +691,7 @@ for (const os of [WIN, MAC]) {
     await page.setViewportSize({ width: 1000, height: 700 });
     await toggle.click();
     await expect(floating).toBeVisible();
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await expect(floating).toHaveCount(0);
     await expect(page.getByTestId('sidebar')).toHaveCount(0);
     await expect(toggle).toHaveAccessibleName(T.nav.sidebarShow);
@@ -706,7 +703,7 @@ for (const os of [WIN, MAC]) {
   test(`at 480 x 360 the floating sidebar keeps every entry in the window ${os}`, async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 480, height: 360 });
+    await page.setViewportSize(MIN_WINDOW);
     await open(page, os);
     await page.getByTestId('toggle-sidebar').click();
     const ids = SIDEBAR_ENTRIES;
@@ -742,7 +739,7 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
   // A narrow window folds it by itself; a wide one brings it back.
   await page.setViewportSize({ width: 1000, height: 700 });
   await expect(sidebar).toHaveCount(0);
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await page.setViewportSize(WINDOW);
   await expect(sidebar).toBeVisible();
 });
 
@@ -937,7 +934,7 @@ test('a press on a toast takes no focus', async ({ page }) => {
 });
 
 test('Profil and Einstellungen keep their scroll place per view', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 400 });
   await open(page, `${WIN}&view=settings`);
   const view = (id: string) => page.getByTestId(`view-${id}`);
   // The page scrolls that far at this height.
@@ -956,7 +953,7 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
 test('a toast of a finished fetch over Profil: its Zeigen saves a change and opens the fetch', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 700 });
+  await page.setViewportSize({ width: WINDOW.width, height: 700 });
   await open(page, `${WIN}&view=profile&tick=5`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   // A value on its way (the caret stands in its field: not saved yet).
@@ -976,7 +973,7 @@ test('a toast of a finished fetch over Profil: its Zeigen saves a change and ope
 test('a toast of a finished fetch over Profil: its Zeigen waits for the question about a wrong value', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 700 });
+  await page.setViewportSize({ width: WINDOW.width, height: 700 });
   await open(page, `${WIN}&view=profile&tick=5`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await page.getByTestId('profile-wish-rate').fill('0');
@@ -1082,7 +1079,7 @@ test('macos: while a dialog is open the bar still moves the window', async ({ pa
   const back = (await page.getByTestId('history-back').boundingBox())!;
   expect(await movesWindow(page, back.x + back.width / 2, back.y + back.height / 2)).toBe(false);
   // A dialog never reaches the bar's height, where the traffic lights lie over the page.
-  await page.setViewportSize({ width: 480, height: 200 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 200 });
   await (await reveal(page, page.getByTestId('reset'))).click();
   await expect(dialog).toBeVisible();
   await motionSettled(page);
@@ -1202,10 +1199,7 @@ test('the note of a failed start moves nothing: the next press lands on the same
       'app_state',
     ],
   ] as const;
-  for (const size of [
-    { width: 1360, height: 900 },
-    { width: 480, height: 360 },
-  ]) {
+  for (const size of [WINDOW, MIN_WINDOW]) {
     for (const [way, command] of ways) {
       await page.setViewportSize(size);
       await open(page, `${WIN}&scenario=load-failed`);
@@ -1315,10 +1309,7 @@ test('the failed start keeps the top bar', async ({ page }) => {
 test('a failed start stands without the frame: no sidebar, no buttons in the bar, the tile in the middle of the window', async ({
   page,
 }) => {
-  for (const size of [
-    { width: 1360, height: 900 },
-    { width: 1000, height: 700 },
-  ]) {
+  for (const size of [WINDOW, { width: 1000, height: 700 }]) {
     await page.setViewportSize(size);
     await open(page, `${WIN}&scenario=load-failed`);
     await expect(page.getByTestId('view-error')).toBeVisible();
@@ -1469,15 +1460,15 @@ const GROUND = (): string[] => {
 };
 
 for (const [name, size, go] of [
-  ['jobs', { width: 1360, height: 860 }, async () => undefined],
+  ['jobs', PAGE, async () => undefined],
   ['jobs folded', { width: 1099, height: 860 }, async () => undefined],
   [
     'one column, a job',
     { width: 683, height: 700 },
     (p: Page) => p.locator('[data-testid^="job-row-"]').first().click(),
   ],
-  ['profile', { width: 1360, height: 860 }, (p: Page) => p.getByTestId('nav-profile').click()],
-  ['settings', { width: 1360, height: 860 }, (p: Page) => p.getByTestId('nav-settings').click()],
+  ['profile', PAGE, (p: Page) => p.getByTestId('nav-profile').click()],
+  ['settings', PAGE, (p: Page) => p.getByTestId('nav-settings').click()],
 ] as const) {
   test(`the top bar continues the columns below it: ${name}`, async ({ page }) => {
     await page.setViewportSize(size);
@@ -1542,7 +1533,7 @@ test('the sidebar docks and folds by a slide, never by its width', async ({ page
 // components (dialogs, toasts, chips).
 
 test('keyboard focus is never covered in Einstellungen and the job view', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 600 });
   // The centre of the focused control is the control itself, not something over it.
   const covered = async (): Promise<string | null> =>
     page.evaluate(() => {
@@ -1871,7 +1862,7 @@ test('the row Jobs keeps its wash under its chevron, like a row of the list unde
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 400 });
   await settings(page);
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
@@ -1892,7 +1883,7 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
 });
 
 test('after a click into the reader the arrows scroll it', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 600 });
   await open(page, WIN);
   await row(page, 'freelancermap-2801').click();
   const title = page.getByTestId('reader-title');

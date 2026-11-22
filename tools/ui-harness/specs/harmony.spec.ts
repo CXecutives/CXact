@@ -20,16 +20,34 @@ import {
   T,
   WIN,
 } from './helpers';
+import { ladder, MIN_WINDOW, numbers, PAGE, px, WINDOW } from './scale';
 
-/** The type ladder (tokens.css) and the digits of the two rings. */
-const SIZES = [12, 13, 14, 15, 16, 20, 26, 17];
-const WEIGHTS = [450, 500, 540, 650];
-/** In a field 24, inline 26, quiet icon 28, control 30, menu row and sidebar entry 32, a caption
- *  button of Windows 36. */
-const HEIGHTS = [24, 26, 28, 30, 32, 36];
-/** The radius ladder; a pill or a circle (radius at least half the shorter side) is always fine,
- *  and the selection bar is 3. */
-const RADII = [0, 3, 4, 6, 8, 10, 14, 20];
+/** The type ladder (--font-*, the digits of the two rings) and the weights (--weight-*), read from
+ *  tokens.css. */
+const SIZES = [...new Set([...ladder('--font-'), px('--ring-md-digits')])];
+const WEIGHTS = numbers('--weight-');
+/** The control heights (--control-*, the rows of a menu and the sidebar, the title bar). */
+const HEIGHTS = [
+  ...new Set([
+    px('--control-sm'),
+    px('--control-field'),
+    px('--control-icon'),
+    px('--nav-row'),
+    px('--menu-row'),
+    px('--titlebar-height'),
+  ]),
+].sort((a, b) => a - b);
+/** The radius ladder (--radius-*, never the pill); a pill or a circle (radius at least half the
+ *  shorter side) is always fine, and the selection bar is --row-bar. */
+const RADII = [
+  ...new Set([
+    0,
+    px('--row-bar'),
+    // --radius-inner: the control's radius less the 2 px gap inside it.
+    px('--radius-control') - px('--space-2'),
+    ...ladder('--radius-').filter((radius) => radius < 100),
+  ]),
+].sort((a, b) => a - b);
 /** The line of an icon in px, whatever its size: tokens.css sets it per size for the eye. */
 const LINE = { min: 1.2, max: 3.2 };
 
@@ -177,7 +195,7 @@ const edges = async (node: Locator): Promise<{ left: number; right: number }> =>
 
 testWithRoom(
   'beside a real scrollbar a column has as much room on both sides',
-  { width: 1360, height: 860 },
+  PAGE,
   async (page) => {
     await open(page, `${WIN}&open=freelancermap:2801`);
     const list = await edges(page.getByTestId('list-header'));
@@ -268,7 +286,7 @@ testWithRoom(
 
 testWithRoom(
   'no hit: the tile, its words, the button under them and the head have one middle',
-  { width: 1360, height: 860 },
+  PAGE,
   async (page) => {
     const middle = async (node: Locator): Promise<number> => {
       const { left, right } = await edges(node);
@@ -461,10 +479,10 @@ async function listMeasure(list: Locator): Promise<{
 
 testWithRoom(
   'a menu that scrolls stands like one that does not: the frame, its words, its rows even',
-  { width: 1360, height: 860 },
+  PAGE,
   async (page) => {
     const at = async (height: number) => {
-      await page.setViewportSize({ width: 1360, height });
+      await page.setViewportSize({ width: WINDOW.width, height });
       await open(page, WIN);
       const button = await edges(page.getByTestId('filter'));
       await openFilter(page);
@@ -489,10 +507,10 @@ testWithRoom(
 
 testWithRoom(
   "on macOS a menu's rows stand even, and a classic scrollbar does not push it past its button",
-  { width: 1360, height: 860 },
+  PAGE,
   async (page) => {
     const at = async (height: number) => {
-      await page.setViewportSize({ width: 1360, height });
+      await page.setViewportSize({ width: WINDOW.width, height });
       await open(page, MAC);
       const button = await edges(page.getByTestId('filter'));
       await openFilter(page);
@@ -511,7 +529,7 @@ testWithRoom(
 
 testWithRoom(
   "a field's list that scrolls stands like one that does not, in the smallest window",
-  { width: 480, height: 360 },
+  MIN_WINDOW,
   async (page) => {
     const at = async (block: 'center' | 'end') => {
       await open(page, `${WIN}&view=profile`);
@@ -536,7 +554,7 @@ testWithRoom(
 
 testPixels(
   "a press on the scrollbar of a field's list scrolls it and leaves the caret",
-  { width: 480, height: 360 },
+  MIN_WINDOW,
   async (page) => {
     await open(page, `${WIN}&view=profile`);
     const input = page.getByTestId('profile-countries').locator('input');
@@ -600,7 +618,7 @@ for (const height of [860, 640]) {
 
 testPixels(
   "a menu's words draw as crisply as the list's, scrolled or not, at any height",
-  { width: 1360, height: 860 },
+  PAGE,
   async (page) => {
     /** The colours of a word: LCD antialiasing leaves coloured fringes. */
     const fringed = async (word: Locator): Promise<boolean> => {
@@ -614,7 +632,7 @@ testPixels(
       return pixels.some(([r, g, b]) => Math.abs(r! - g!) > 12 || Math.abs(g! - b!) > 12);
     };
     for (const height of [860, 640]) {
-      await page.setViewportSize({ width: 1360, height });
+      await page.setViewportSize({ width: WINDOW.width, height });
       await open(page, WIN);
       const crisp = await fringed(row(page, 'linkedin-4100200301').locator('.title'));
       const words = page.getByTestId('menu').locator('.item .label');
@@ -703,7 +721,7 @@ const wholeFrame = async (page: Page, where: string): Promise<void> => {
 
 testPixels(
   'a file over the Profil: one whole frame around the view, at every scroll, clear of its head',
-  { width: 1360, height: 860 },
+  PAGE,
   async (page) => {
     await open(page, `${WIN}&view=profile`);
     const view = page.getByTestId('view-profile');

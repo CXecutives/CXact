@@ -8,6 +8,8 @@
 //   dead code  no file of ui/src or tools/ui-harness that nothing imports (ENTRIES excepted),
 //              no export that nothing uses (no other file imports it, its own file does not
 //              use it either)
+//   copies     the count of catalog phrases and of px or ms values written into comments and
+//              specs only goes down (RATCHET)
 //
 // It reads the import graph with the TypeScript parser (the <script> blocks of .svelte files
 // included) and resolves `$lib/`, `$components/`, relative paths and the harness's stand-in
@@ -43,6 +45,15 @@ const LARGE = {
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],
   'ui/src/components/ChipInput.svelte': [600, 'known large: its editing keys into input.ts'],
 };
+
+/**
+ * Copies of what the catalog (de.ts) and tokens.css own, written into comments of ui/src and into
+ * the specs: a quoted catalog phrase (two words or more) and a px or ms value. Each count may
+ * only go down: a spec reads a text from the catalog (T) and a size from the tokens
+ * (specs/scale.ts), a comment names the id or the token. Lower the ceiling in the commit that
+ * removes copies.
+ */
+const RATCHET = { phrases: 80, values: 153 };
 
 /** lib modules that are UI helpers by design and may import a component (none today). */
 const LIB_UI_HELPERS = {};
@@ -348,6 +359,48 @@ report(
   'delete the entry of TEMPORARY in tools/architecture.mjs',
   Object.keys(TEMPORARY).filter((key) => !temporaryUsed.has(key)),
 );
+
+// Copies of the catalog's phrases and of the tokens' values in comments and specs.
+{
+  const quoted = /(['"`])((?:\\.|(?!\1)[^\n])*)\1/g;
+  const phrases = new Set();
+  const catalog = readFileSync(join(repo, 'ui/src/lib/i18n/de.ts'), 'utf8');
+  for (const match of catalog.matchAll(quoted)) {
+    const text = match[2].replace(/\\'/g, "'");
+    if (text.length >= 10 && /\S \S/.test(text) && !text.includes('${')) phrases.add(text);
+  }
+  const commentOf = (text) =>
+    text
+      .split('\n')
+      .filter((line) => /^\s*(\/\/|\/\*|\*)/.test(line) || /\s\/\/ /.test(line))
+      .join('\n');
+  let copiedPhrases = 0;
+  let copiedValues = 0;
+  for (const [path, { text }] of parsed) {
+    const spec = path.startsWith('tools/ui-harness/specs/');
+    if (!spec && !path.startsWith('ui/src/')) continue;
+    if (path.startsWith(GENERATED) || path.endsWith('i18n/de.ts') || path.endsWith('scale.ts'))
+      continue;
+    const prose = spec ? text : commentOf(text);
+    for (const phrase of phrases) {
+      if (prose.includes(`'${phrase}'`) || prose.includes(`"${phrase}"`)) copiedPhrases += 1;
+    }
+    copiedValues += (prose.match(/(?<![\w.#-])\d+(\.\d+)? ?(px|ms)\b/g) ?? []).length;
+  }
+  console.log(
+    `copies: ${copiedPhrases} catalog phrases (ceiling ${RATCHET.phrases}), ${copiedValues} px or ms values (ceiling ${RATCHET.values})`,
+  );
+  const over = [];
+  if (copiedPhrases > RATCHET.phrases)
+    over.push(`catalog phrases: ${copiedPhrases}, ceiling ${RATCHET.phrases}`);
+  if (copiedValues > RATCHET.values)
+    over.push(`px or ms values: ${copiedValues}, ceiling ${RATCHET.values}`);
+  report(
+    'Copies: catalog phrases and px or ms values in comments and specs only go down',
+    'read the text from the catalog (T) and the size from the tokens (specs/scale.ts), name the token in a comment; lower RATCHET in tools/architecture.mjs when you remove copies',
+    over,
+  );
+}
 
 if (problems.length) {
   console.error(`tools/architecture.mjs (docs/ARCHITECTURE.md):\n\n${problems.join('\n\n')}`);

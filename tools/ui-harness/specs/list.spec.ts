@@ -23,6 +23,7 @@ import {
   test,
   visibleCount,
 } from './fixtures';
+import { MIN_WINDOW, WINDOW } from './scale';
 import {
   checkedSort,
   chip,
@@ -300,7 +301,6 @@ test.describe('header', () => {
     await expect(page.getByTestId('view-jobs').getByRole('tab')).toHaveCount(0);
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
-    expect(T.toolbar.filter).toBe('Sortieren und filtern');
     // Each place's search names its place.
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
     expect(T.place.search.inbox).toContain(T.place.inbox);
@@ -346,7 +346,6 @@ test.describe('header', () => {
     await open(page, `${WIN}&tick=15`);
     const fetch = page.getByTestId('fetch');
     await expect(fetch).toHaveAccessibleName(T.toolbar.searchNow);
-    expect(T.toolbar.searchNow).toBe('Jobs suchen');
     // No menu of ways beside it.
     await expect(page.getByTestId('fetch-ways')).toHaveCount(0);
     await page.evaluate(() => (window.__harness.holdAfter = 3));
@@ -1480,7 +1479,7 @@ test.describe('one list', () => {
     await open(page, WIN);
     await expect(row(page, 'freelancermap-2802')).toBeVisible();
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
-    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.setViewportSize(WINDOW);
     await open(page, WIN);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
     // A job of the Archiv opens with its place.
@@ -1626,7 +1625,7 @@ test.describe('one list', () => {
     await expect(thin).toContainText(T.list.thinProfile);
     await expect(thin).toContainText(T.profile.warning.fewCompetences);
     // Its competences stand below the window's end until the way leads to them.
-    await page.setViewportSize({ width: 1360, height: 480 });
+    await page.setViewportSize({ width: WINDOW.width, height: 480 });
     const competences = page.locator('[data-field~="competences"]');
     await page.getByTestId('nav-profile').click();
     await expect(competences).not.toBeInViewport();
@@ -2044,7 +2043,7 @@ test.describe('days', () => {
   test('a heading sticks while its rows pass; the head draws its line only where none sticks', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 420 });
+    await page.setViewportSize({ width: WINDOW.width, height: 420 });
     await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
     await open(page, WIN);
     const scroller = page.getByTestId('list-scroll');
@@ -2154,7 +2153,7 @@ test.describe('rows', () => {
   test('the open job that turns out excluded keeps its row: its section opens, the kept choice stays', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 600 });
+    await page.setViewportSize({ width: WINDOW.width, height: 600 });
     await open(page, `${WIN}&open=freelancermap:2805&tick=15`);
     const key = 'freelancermap-2805';
     const divider = page.getByTestId('excluded-divider');
@@ -2208,7 +2207,7 @@ test.describe('rows', () => {
   test('an excluded job counts anyway from its job view: its row stays in view, with its undo', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 520 });
+    await page.setViewportSize({ width: WINDOW.width, height: 520 });
     await open(page, `${WIN}&open=freelance:900412`);
     const key = 'freelance-900412';
     await expect.poll(() => wholeInList(page, key)).toBe(true);
@@ -2223,7 +2222,7 @@ test.describe('rows', () => {
   });
 
   test('another job counting anyway leaves the list where the user looks', async ({ page }) => {
-    await page.setViewportSize({ width: 1360, height: 520 });
+    await page.setViewportSize({ width: WINDOW.width, height: 520 });
     await open(page, WIN);
     const { active, excluded } = await stubList(page);
     const opened = active[0]!;
@@ -2556,7 +2555,7 @@ test.describe('search', () => {
   test('the end of a search brings the open job back into view, as an order or a filter does', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 600 });
+    await page.setViewportSize({ width: WINDOW.width, height: 600 });
     await open(page, `${WIN}&scenario=many`);
     const search = page.getByTestId('search');
     // A hit further down the whole list than its first page.
@@ -3304,7 +3303,7 @@ test.describe('moves and undo', () => {
       page,
     }) => {
       await slowly(page);
-      await page.setViewportSize({ width: 1360, height: 1100 });
+      await page.setViewportSize({ width: WINDOW.width, height: 1100 });
       await open(page, WIN);
       await page.getByTestId('excluded-divider').click();
       await expect(excludedRows(page).first()).toBeVisible();
@@ -3336,7 +3335,7 @@ test.describe('moves and undo', () => {
       page,
     }) => {
       await slowly(page);
-      await page.setViewportSize({ width: 1360, height: 1100 });
+      await page.setViewportSize({ width: WINDOW.width, height: 1100 });
       await open(page, WIN);
       await page.getByTestId('excluded-divider').click();
       await expect(excludedRows(page).first()).toBeVisible();
@@ -3422,7 +3421,7 @@ test.describe('moves and undo', () => {
       page,
     }) => {
       await slowly(page);
-      await page.setViewportSize({ width: 1360, height: 1100 });
+      await page.setViewportSize({ width: WINDOW.width, height: 1100 });
       await open(page, WIN);
       await page.getByTestId('excluded-divider').click();
       await expect(excludedRows(page).first()).toBeVisible();
@@ -3933,7 +3932,7 @@ test.describe('sidebar', () => {
     await expect(sidebar).toBeVisible();
     await page.setViewportSize({ width: 1000, height: 700 });
     await expect(sidebar).toHaveCount(0);
-    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.setViewportSize(WINDOW);
     await expect(sidebar).toBeVisible();
   });
 
@@ -3941,7 +3940,7 @@ test.describe('sidebar', () => {
     test(`the floating sidebar keeps every entry in the window at 480 x 360 ${os}`, async ({
       page,
     }) => {
-      await page.setViewportSize({ width: 480, height: 360 });
+      await page.setViewportSize(MIN_WINDOW);
       await open(page, os);
       await page.getByTestId('toggle-sidebar').click();
       for (const id of [
@@ -4026,7 +4025,7 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
     last = await listWidth();
   }
   // The smallest window: the header and the chips stay in it; below 900 px one column.
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await open(page, WIN);
   await chooseFilter(page, 'portal-linkedin');
   for (const id of ['search', 'filter', 'fetch', 'chip-portal-linkedin']) {
@@ -4230,7 +4229,7 @@ test.describe('the list keeps true', () => {
   test('a row brought into view from below clears the sticky heading of its day', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 520 });
+    await page.setViewportSize({ width: WINDOW.width, height: 520 });
     await open(page, WIN);
     const keys = await listed(page);
     const [first, last] = [keys[0]!, keys.at(-1)!];
@@ -4404,7 +4403,7 @@ test.describe('the list keeps true', () => {
   test('the list and the open job keep their scroll place while another view is shown', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 420 });
+    await page.setViewportSize({ width: WINDOW.width, height: 420 });
     await open(page, WIN);
     await openJob(page, 'linkedin-4100200301');
     const scroller = page.getByTestId('list-scroll');
@@ -4479,7 +4478,7 @@ test('baseline: jobs without a profile', async ({ page }) => {
 });
 
 test('baseline: jobs at the minimum size 480 x 360', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await open(page, WIN);
   await expectShot(page, 'jobs-min');
 });
@@ -4511,7 +4510,7 @@ test('the empty states without a head stand in the very middle of their pane', a
 test('a job that closes leaves no room behind: a list that fits stands at its top', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 700 });
+  await page.setViewportSize({ width: WINDOW.width, height: 700 });
   await open(page, '?scenario=default');
   const scroller = page.getByTestId('list-scroll');
   await scroller.evaluate((node) => node.scrollTo(0, node.scrollHeight));

@@ -23,6 +23,7 @@ import {
   test,
 } from './fixtures';
 import { adder, chooseWay, failNext, fillRequired, setToken, stubList, T, WIN } from './helpers';
+import { MIN_WINDOW, PAGE, WINDOW } from './scale';
 
 /** A country's German name (the catalog keeps them by code). */
 const country = (code: string): string => T.profile.country[code] ?? code;
@@ -278,7 +279,7 @@ test('each field is a row of its group with its label beside it', async ({ page 
 });
 
 test('in a narrow window the label stands above its control', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   const words = await label(field(page, 'dayRateWish')).evaluate((node) =>
@@ -404,7 +405,7 @@ test('a name of a list stands on the line of its field, a wrapped one too, which
 });
 
 test('in a narrow box the rows of a list keep the measure of every row', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await animationsDone(page);
@@ -465,7 +466,7 @@ test('a placeholder that does not fit beside the chips takes a line of its own, 
   const input = await industries.locator('input').boundingBox();
   expect(input!.y).toBeGreaterThan(chip!.y + chip!.height);
   // Where it fits, it stays beside them: one line, as high as any field.
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await page.setViewportSize(WINDOW);
   await expect.poll(cut).toEqual([]);
   await expect.poll(async () => (await industries.boundingBox())!.height).toBe(30);
 });
@@ -830,7 +831,7 @@ const clearOf = async (input: Locator, end: () => Promise<number>): Promise<numb
 test('the caret goes on with its field: a row taken above it, a chip on a new line, at the foot of the view', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 860 });
+  await page.setViewportSize(PAGE);
   await profile(page);
   const view = page.getByTestId('view-profile');
   const foot = (): Promise<number> =>
@@ -922,7 +923,7 @@ test("a field's list shows its eight rows whole, and none stands under the top b
   await page.keyboard.press('Escape');
   await leaveField(page);
   // A low window: inside the room on the side it opens, its first row in reach.
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await page.getByTestId('profile-tools').evaluate((node) => {
     node.scrollIntoView({ block: 'end' });
   });
@@ -1061,7 +1062,7 @@ test('a list under a field is no Tab stop, also where it scrolls: Tab goes on fr
   page,
 }) => {
   await profile(page);
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   const land = countryInput(page);
   await land.evaluate((node) => node.scrollIntoView({ block: 'center' }));
   await land.click();
@@ -1079,7 +1080,7 @@ test('going up from the keyboard a control stands clear of the fade under the to
   page,
 }) => {
   await profile(page);
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await page
     .getByTestId('profile-regions')
     .locator('input')
@@ -1576,7 +1577,7 @@ async function pressOpensList(page: Page, testid: string): Promise<void> {
 test.describe('a press on a control below a field lands, though leaving the field moves the rows', () => {
   test.beforeEach(async ({ page }) => {
     // Nothing below scrolls away.
-    await page.setViewportSize({ width: 1360, height: 1500 });
+    await page.setViewportSize({ width: WINDOW.width, height: 1500 });
   });
 
   test('the field folds: a tag field of many lines', async ({ page }) => {
@@ -2280,7 +2281,7 @@ test('Ergänzen glides to a field out of view, and shows it whole with what lies
 test('the first row of a group that Ergänzen brings up has its title whole above it', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 480 });
+  await page.setViewportSize({ width: WINDOW.width, height: 480 });
   await profile(page, '&scenario=profile-incomplete');
   // Far down the page: roles have to come back.
   await page.getByTestId('view-profile').evaluate((node) => node.scrollTo(0, node.scrollHeight));
@@ -2593,7 +2594,7 @@ test('a value refused while another field is typed in is said at its field, the 
   page,
 }) => {
   // Low enough that the two never stand in view together.
-  await page.setViewportSize({ width: 1360, height: 420 });
+  await page.setViewportSize({ width: WINDOW.width, height: 420 });
   await profile(page);
   const years = page.getByTestId('profile-years');
   const other = page.getByTestId('competence-years').last();

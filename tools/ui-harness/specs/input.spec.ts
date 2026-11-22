@@ -21,6 +21,7 @@ import {
   stage,
   T,
 } from './helpers';
+import { FOLD_BELOW, WINDOW } from './scale';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -199,7 +200,7 @@ test.beforeEach(async ({ page }) => {
 
 test('right click, middle click and drag: what the page lets through', async ({ page }) => {
   // A list long enough to scroll: the middle button may start the autoscroll there.
-  await page.setViewportSize({ width: 1360, height: 560 });
+  await page.setViewportSize({ width: WINDOW.width, height: 560 });
   const result = await page.evaluate(() => {
     const field = document.body.appendChild(document.createElement('input'));
     const view = document.querySelector('[data-testid="view-jobs"]')!;
@@ -935,7 +936,7 @@ test('native cursor: the arrow on controls, the text cursor on copyable text', a
 // key scrolling reaches the end (at once under reduced motion).
 
 test('the wheel over a switch changes nothing and scrolls the page', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 560 });
   await open(page, `${WIN}&view=settings`);
   // The first source's switch, high on the page, which scrolls at this height.
   const toggle = await reveal(page, page.getByTestId('toggle-enabled-hays'));
@@ -947,7 +948,7 @@ test('the wheel over a switch changes nothing and scrolls the page', async ({ pa
 test('the wheel over a field and a choice changes nothing and scrolls the page', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 560 });
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   const rate = page.getByTestId('profile-min-rate');
@@ -984,7 +985,7 @@ test('over an open menu only the menu scrolls; the list behind stays and the men
 test("a select's open list takes the wheel like a menu: over it the page stays, beside it the list closes", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 560 });
   await open(page, `${WIN}&view=profile`);
   await (await reveal(page, page.getByTestId('profile-work-mode'))).click();
   const list = page.getByTestId('menu');
@@ -1003,7 +1004,7 @@ test("a select's open list takes the wheel like a menu: over it the page stays, 
 });
 
 test('behind a modal dialog nothing scrolls', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 560 });
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   // Leaving with a value that is wrong (too large, it holds the save) asks in a dialog over
@@ -1156,7 +1157,7 @@ test('nothing drags but the handle and the drag regions; a double click selects 
 
 test('the page keys scroll to the end; under reduced motion they jump', async ({ page }) => {
   // Low enough that Einstellungen scrolls far (a page and more: End goes to its end).
-  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 400 });
   const room = (): Promise<number> =>
     page.getByTestId('view-settings').evaluate((node) => node.scrollHeight - node.clientHeight);
   const name = (): Locator => page.getByTestId('settings-portals').locator('h2');
@@ -1179,7 +1180,7 @@ test('the page keys scroll to the end; under reduced motion they jump', async ({
 test('the page keys scroll the Profil too: a click on plain text leaves no caret', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 400 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, `${WIN}&view=profile`);
   const view = page.getByTestId('view-profile');
@@ -1195,7 +1196,7 @@ test('the page keys scroll the Profil too: a click on plain text leaves no caret
 test('what only holds the focus counts as nowhere: the page keys scroll, Enter and Esc reach its form', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 400 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 400 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   /** End and Home go to the ends of the view, an arrow a line down. */
   const scrolls = async (pane: string): Promise<void> => {
@@ -1590,7 +1591,7 @@ test('a field menu switches Undo off while there is nothing to undo', async ({ p
 });
 
 test('keyboard focus stays clear of the edges of its scroll area', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 600 });
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-settings').focus();
@@ -1877,7 +1878,7 @@ test('the wheel over a date field, a level and the filter menu changes nothing',
   page,
 }) => {
   // Low enough that the page scrolls far.
-  await page.setViewportSize({ width: 1100, height: 420 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 420 });
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   // The demo's profile is free from a day on: the day's field stands beside the choice.
@@ -2533,7 +2534,7 @@ async function scrollsByKeys(page: Page, pane: Locator): Promise<void> {
 test('after a press on an entry of the sidebar the scroll keys scroll the view on screen', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 600 });
+  await page.setViewportSize({ width: WINDOW.width, height: 600 });
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
   await scrollsByKeys(page, page.getByTestId('view-settings'));
@@ -2559,7 +2560,7 @@ test('in one column the scroll keys scroll the job that stands in place of the l
 test('the view on screen takes no scroll key from a field, a menu or a dialog', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 600 });
+  await page.setViewportSize({ width: WINDOW.width, height: 600 });
   await open(page, `${WIN}&view=settings`);
   const pane = page.getByTestId('view-settings');
   const top = (): Promise<number> => pane.evaluate((node) => node.scrollTop);

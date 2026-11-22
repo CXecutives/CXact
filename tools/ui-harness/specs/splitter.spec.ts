@@ -7,6 +7,7 @@
 
 import type { Page } from '@playwright/test';
 import { animationsDone, expect, load, open, settle, test } from './fixtures';
+import { FOLD_BELOW, WINDOW } from './scale';
 
 const WIN = '?platform=windows';
 
@@ -81,11 +82,11 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
   await expect.poll(async () => (await handle(page)).width).toBe(at1360);
   // Narrower: the job view keeps its room, so the list is shown at the lower limit; the
   // choice stays and comes back with the room.
-  await page.setViewportSize({ width: 1100, height: 800 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 800 });
   await expect.poll(async () => (await handle(page)).max).toBeLessThan(at1360);
   const narrow = await handle(page);
   expect(narrow.width).toBe(narrow.max);
-  await page.setViewportSize({ width: 1360, height: 800 });
+  await page.setViewportSize({ width: WINDOW.width, height: 800 });
   await expect.poll(async () => (await handle(page)).width).toBe(at1360);
   await load(page, () => page.reload());
   expect((await handle(page)).width).toBe(at1360);
@@ -93,7 +94,7 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
 
 test('a kept width that is too wide shows at the limit', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('jobs-list-width', '900'));
-  await page.setViewportSize({ width: 1100, height: 800 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 800 });
   await open(page, WIN);
   const narrow = await handle(page);
   expect(narrow.max).toBeLessThan(900);

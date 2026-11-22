@@ -27,6 +27,7 @@ import {
   wholeInList,
   WIN,
 } from './helpers';
+import { WINDOW, css, px } from './scale';
 
 /** The row's wrapper (the row button and its tools). */
 const job = (page: Page, key: string): Locator =>
@@ -46,7 +47,7 @@ test('no portal anywhere in the rows', async ({ page }) => {
   }
 });
 
-test('one line: the ring and the title, 54 high, nothing else', async ({ page }) => {
+test('one line: the ring and the title, nothing else', async ({ page }) => {
   await open(page, WIN);
   for (const id of ['row-company', 'row-place', 'row-pay', 'row-date', 'row-facts']) {
     await expect(list(page).getByTestId(id), id).toHaveCount(0);
@@ -57,11 +58,11 @@ test('one line: the ring and the title, 54 high, nothing else', async ({ page })
   const heights = await rows(page).evaluateAll((items) =>
     items.slice(0, 6).map((item) => Math.round(item.getBoundingClientRect().height)),
   );
-  expect(new Set(heights)).toEqual(new Set([54]));
-  // The ring 34, the title 15/540 (a new one 650).
+  expect(new Set(heights)).toEqual(new Set([px('--ring-sm') + 2 * px('--list-row-pad')]));
+  // The ring and the title in their tokens (a new one 650).
   const ring = (await first.locator('.ring').boundingBox())!;
-  expect(Math.round(ring.width)).toBe(34);
-  await expect(first.locator('.title')).toHaveCSS('font-size', '15px');
+  expect(Math.round(ring.width)).toBe(px('--ring-sm'));
+  await expect(first.locator('.title')).toHaveCSS('font-size', css('--font-title'));
 });
 
 test('a new title in 650; the Papierkorb and a closed ad muted in 450, an excluded job not', async ({
@@ -106,7 +107,7 @@ test('the hairline above a row starts at the title; none next to the open row', 
   // The first row of a day has none; the next one from 56 on.
   expect((await rule(first!)).shown).toBe(false);
   const next = await rule(second!);
-  expect(next).toMatchObject({ left: '56px', opacity: '1', shown: true });
+  expect(next).toMatchObject({ left: css('--row-rule-start'), opacity: '1', shown: true });
   // Opened: no line at its top or under it (the highlight stands there).
   await openJob(page, second!);
   await page.mouse.move(0, 0);
@@ -623,7 +624,7 @@ test.describe('a click on a row that is cut', () => {
   };
 
   test('under the sticking heading: it glides out, just clear of the heading', async ({ page }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key, x, y, line } = await cutByHeading(page);
@@ -644,7 +645,7 @@ test.describe('a click on a row that is cut', () => {
   test("at the pane's end: it glides up just far enough, the press stays on it", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key, x, y, end } = await cutByEnd(page);
@@ -667,7 +668,7 @@ test.describe('a click on a row that is cut', () => {
   test('a row that stands whole does not move, also right at the end or under the heading', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key: byEnd, end } = await cutByEnd(page);
@@ -699,7 +700,7 @@ test.describe('a click on a row that is cut', () => {
   });
 
   test('the open row, cut since, pressed again: it comes whole into view too', async ({ page }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key, x, y } = await cutByEnd(page);
@@ -716,7 +717,7 @@ test.describe('a click on a row that is cut', () => {
   test('a flat order has no heading to clear: the row glides to the edge of the pane', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await chooseSort(page, 'match');
     await motionSettled(page);
@@ -740,7 +741,7 @@ test.describe('a click on a row that is cut', () => {
 
   test('the glide stops when the user scrolls', async ({ page }) => {
     await setToken(page, '--dur-slow', '1500ms');
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { x, y } = await cutByEnd(page);
@@ -762,7 +763,7 @@ test.describe('a click on a row that is cut', () => {
   test('a double click opens the ad of the row first pressed, though it slid away', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key, x, y } = await cutByEnd(page);
@@ -795,7 +796,7 @@ test.describe('a click on a row that is cut', () => {
   });
 
   test('a quick double click on a cut row opens its ad, once', async ({ page }) => {
-    await page.setViewportSize({ width: 1360, height: 700 });
+    await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
     const { key, x, y } = await cutByEnd(page);
@@ -844,7 +845,7 @@ test.describe('after a click on a row', () => {
   test('the arrows, Home and End scroll the list, in both engines, and Tab still reaches the rows', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 600 });
+    await page.setViewportSize({ width: WINDOW.width, height: 600 });
     await open(page, WIN);
     const first = (await listed(page))[0]!;
     await row(page, first).click();
@@ -935,7 +936,7 @@ test.describe('after a click on a row', () => {
   });
 
   test('the menu of a row scrolled out of view stands inside the window', async ({ page }) => {
-    await page.setViewportSize({ width: 1360, height: 500 });
+    await page.setViewportSize({ width: WINDOW.width, height: 500 });
     await open(page, WIN);
     const keys = await listed(page);
     const menu = page.getByTestId('menu');

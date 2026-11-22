@@ -6,6 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect, open, test } from './fixtures';
 import { T, WIN } from './helpers';
+import { px } from './scale';
 
 const STATES = `${WIN}&sheet=controls`;
 
@@ -22,19 +23,19 @@ const height = async (locator: Locator): Promise<number> => (await locator.bound
 test('one height per kind: 30, the quiet glyph 28, a suggestion 32', async ({ page }) => {
   const states = await sheet(page);
   await expect
-    .poll(() => height(states.getByRole('button', { name: 'Jobs suchen' }).first()))
-    .toBe(30);
+    .poll(() => height(states.getByRole('button', { name: T.toolbar.searchNow }).first()))
+    .toBe(px('--control-field'));
   await expect
-    .poll(() => height(states.getByRole('button', { name: 'Kopieren' }).first()))
-    .toBe(30);
+    .poll(() => height(states.getByRole('button', { name: T.edit.copy }).first()))
+    .toBe(px('--control-field'));
   const quiet = states.locator('.btn.ghost.icon-only').first();
-  expect(await height(quiet)).toBe(28);
-  expect(await width(quiet)).toBe(28);
+  expect(await height(quiet)).toBe(px('--control-icon'));
+  expect(await width(quiet)).toBe(px('--control-icon'));
   expect(
     await height(states.getByRole('listbox', { name: 'Tools' }).getByRole('option').first()),
-  ).toBe(32);
-  expect(await height(page.getByTestId('states-select'))).toBe(30);
-  expect(await height(page.getByTestId('states-level'))).toBe(30);
+  ).toBe(px('--menu-row'));
+  expect(await height(page.getByTestId('states-select'))).toBe(px('--control-field'));
+  expect(await height(page.getByTestId('states-level'))).toBe(px('--control-field'));
   expect(await width(page.getByTestId('states-select'))).toBeGreaterThanOrEqual(150);
 });
 
@@ -46,7 +47,7 @@ test('a button that swaps keeps one width, busy too; a pair has one least width'
   const search = page.getByTestId('states-search');
   expect(await width(search)).toBe(still);
   // The hidden copy reserves the width only: the name and the words stay its own.
-  await expect(search).toHaveAccessibleName('Jobs suchen');
+  await expect(search).toHaveAccessibleName(T.toolbar.searchNow);
   await search.click();
   await expect(page.getByTestId('states-cancel')).toBeVisible();
   expect(await width(page.getByTestId('states-cancel'))).toBe(still);
@@ -68,7 +69,7 @@ test('a select: the arrows open its list, the focus stays on its button; Enter, 
   await expect(select).toHaveText('Gmail');
   await select.focus();
   await page.keyboard.press('ArrowDown');
-  const list = page.getByRole('listbox', { name: 'Anbieter' });
+  const list = page.getByRole('listbox', { name: T.settings.providerLabel });
   await expect(list).toBeVisible();
   await expect(select).toBeFocused();
   await expect(select).toHaveAttribute('aria-expanded', 'true');
@@ -181,7 +182,7 @@ test('a closed chip list opens no list on focus, narrows by any name, refuses ot
   await expect(none).toHaveCount(0);
   // Text outside the list stays in the field and says so.
   await input.fill('Atlantis');
-  await expect(none).toHaveText('Kein Land mit diesem Namen.');
+  await expect(none).toHaveText(T.profile.field.countryNone);
   await page.keyboard.press('Enter');
   await expect(field.locator('[data-chip]')).toHaveCount(3);
   await expect(input).toHaveValue('Atlantis');

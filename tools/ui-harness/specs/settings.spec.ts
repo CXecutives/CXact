@@ -31,6 +31,7 @@ import {
   reveal,
   T,
 } from './helpers';
+import { FOLD_BELOW, MIN_WINDOW, WINDOW } from './scale';
 
 const WIN = '?platform=windows';
 /** What a failed command of the stub says (`failNext`). */
@@ -182,14 +183,14 @@ test('narrow, a row keeps its buttons clear of its label', async ({ page }) => {
   };
   await clear('reset-all');
   // At the smallest window the label keeps its room too.
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   await clear('reset-all');
   await clear('folder');
 });
 
 test('narrow, the calls stay clear of the portal state', async ({ page }) => {
   await settings(page);
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   await reveal(page, page.getByTestId('sign-in-freelance'));
   const [signIn, status] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
@@ -209,7 +210,7 @@ test('narrow, a row whose buttons are away keeps no empty line, with a pair or w
   };
   await page.setViewportSize({ width: 760, height: 800 });
   const wide = await atRest();
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   expect(await atRest()).toBe(wide);
   // Without a pair the same: its one button goes, and so does its line.
   await settings(page, `${WIN}&scenario=no-mailbox`);
@@ -286,7 +287,7 @@ test('a press beside the mailbox form is no press on it: Esc leaves the form sta
   page,
 }) => {
   // The sidebar folded: nothing of its handle over the view's left edge.
-  await page.setViewportSize({ width: 1099, height: 860 });
+  await page.setViewportSize({ width: FOLD_BELOW - 1, height: 860 });
   await settings(page);
   await (await reveal(page, page.getByTestId('mailbox-change'))).click();
   const form = page.getByTestId('mailbox-form');
@@ -369,7 +370,7 @@ test('mailbox form: rows like the Profil, the buttons in the order of the OS', a
   );
   // In a box under 560 wide the label stands above its control; the provider keeps its short
   // width.
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   const narrow = await formRows(page);
   expect(narrow.address.row.top).toBeGreaterThanOrEqual(narrow.provider.row.bottom);
   for (const { label, control } of [narrow.provider, narrow.address, narrow.password]) {
@@ -439,7 +440,7 @@ test('Postfach is a box of rows like Daten: its row and its form on their measur
     (await page.getByTestId('folder').boundingBox())!.height,
   );
   // The controls stand in the Profil's column.
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await page.setViewportSize(WINDOW);
   await settings(page);
   await (await reveal(page, page.getByTestId('mailbox-change'))).click();
   await animationsDone(page);
@@ -589,7 +590,6 @@ test('portals: two groups in the order of the UI, each portal with its state and
   await expect(page.getByTestId('portals-alert')).toHaveText(T.settings.way.alert);
   // Every portal has its brand name (LinkedIn, not linkedin.com).
   for (const portal of PORTALS) expect(T.portal[portal], portal).toMatch(/\S/);
-  expect(T.portal.linkedin).toBe('LinkedIn');
   // The last search asked all eight: each says what it brought.
   for (const [portal, state] of [
     ['freelancermap', T.settings.lastNew(3)],
@@ -1201,7 +1201,7 @@ const biggestStep = (values: number[]): number =>
 test('narrow, a portal switched off and on: its line closes and opens, the rows below glide all the way', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   await settings(page);
   await reveal(page, page.getByTestId('sign-in-freelance'));
   const tall = (await page.getByTestId('portal-freelance').boundingBox())!.height;
@@ -1229,7 +1229,7 @@ test('narrow, a portal switched off and on: its line closes and opens, the rows 
 test("narrow, the mailbox's form: its row's buttons go and come with the fold, nothing below twitches", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   await settings(page);
   const change = await reveal(page, page.getByTestId('mailbox-change'));
   /** The distance to the next row, in every frame of `act`. */
@@ -1280,7 +1280,7 @@ test("narrow, the mailbox's form: its row's buttons go and come with the fold, n
 test('narrow, a sign-in that stays keeps the line: the alert call folds aside, nothing below moves', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   await settings(page);
   await (await reveal(page, page.getByTestId('sign-in-freelance'))).click();
   await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
@@ -1293,7 +1293,7 @@ test('narrow, a sign-in that stays keeps the line: the alert call folds aside, n
 test('narrow, one measure for a line of buttons: alone, in a pair, in a wrapper', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 480, height: 800 });
+  await page.setViewportSize({ width: MIN_WINDOW.width, height: 800 });
   await settings(page);
   const measure = async (id: string): Promise<{ height: number; gap: number }> =>
     page.getByTestId(id).evaluate((row) => {
@@ -1313,7 +1313,7 @@ test('narrow, one measure for a line of buttons: alone, in a pair, in a wrapper'
 test('wide, a portal switched off and on: its calls only fade, nothing moves; every button stands in the middle of its line', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await page.setViewportSize(WINDOW);
   const middles = async (): Promise<number[]> =>
     page.locator('[data-setting-row] .actions').evaluateAll((lines) =>
       lines.flatMap((line) => {

@@ -1,11 +1,14 @@
 // UI harness: the harness build (Tauri replaced by stub.ts) served by `vite preview` with the
 // production CSP of the app, tested in Chromium (WebView2 on Windows) and WebKit (WKWebView
-// on macOS). `npm run harness`. Screenshot baselines ("baseline:" tests) run on request only:
+// on macOS). `npm run harness` runs Chromium (what the app is edited against); `npm run harness:again`
+// reruns what failed last; WebKit runs with HARNESS_ENGINES=chromium,webkit (CI and before a release)
+// or `--project=webkit`. The timing project follows the engines in HARNESS_ENGINES. Screenshot baselines ("baseline:" tests) run on request only:
 // set BASELINES=1 (PowerShell `$env:BASELINES=1`), add `--update-snapshots` to refresh them.
 
 import { defineConfig, devices } from '@playwright/test';
+import { WINDOW } from './specs/scale';
 
-const viewport = { width: 1360, height: 900 };
+const viewport = WINDOW;
 
 // One port per checkout, so parallel worktrees never test each other's build. HARNESS_PORT
 // overrides it; vite.config.ts reads the same variable for `vite preview`.
@@ -16,6 +19,10 @@ function checkoutPort(): number {
 }
 const port = Number(process.env.HARNESS_PORT) || checkoutPort();
 process.env.HARNESS_PORT = String(port);
+// The engines a run covers: Chromium by default, WebKit when HARNESS_ENGINES names it.
+const engines = process.env.HARNESS_ENGINES?.split(',') ?? ['chromium'];
+// WebKit is defined when an engine list or a `--project=webkit` asks for it.
+const withWebkit = engines.includes('webkit') || process.argv.some((arg) => arg.includes('webkit'));
 const origin = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
@@ -51,10 +58,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport, deviceScaleFactor: 1 },
       testIgnore: /timing\.spec\.ts/,
     },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'], viewport, deviceScaleFactor: 1 },
-    },
+    // WebKit only by name (`--project=webkit`, or HARNESS_ENGINES naming it): it doubles a run.
+    ...(withWebkit
+      ? [
+          {
+            name: 'webkit',
+            use: { ...devices['Desktop Safari'], viewport, deviceScaleFactor: 1 },
+          },
+        ]
+      : []),
     // Timing checks (long tasks, timing.spec.ts) run in Chromium once everything else is
     // done and alone: a browser beside them on the same CPU would lengthen their tasks.
     // WebKit runs them in its project for what they check besides the timing. CI runs one
@@ -65,7 +77,7 @@ export default defineConfig({
       name: 'timing',
       use: { ...devices['Desktop Chrome'], viewport, deviceScaleFactor: 1, trace: 'off' },
       testMatch: /timing\.spec\.ts/,
-      dependencies: process.env.HARNESS_ENGINES?.split(',') ?? ['chromium', 'webkit'],
+      dependencies: engines,
     },
   ],
   webServer: {

@@ -21,6 +21,7 @@ import {
   T,
   WIN,
 } from './helpers';
+import { FOLD_BELOW, WINDOW } from './scale';
 
 interface Frame {
   text: string;
@@ -143,7 +144,7 @@ test.describe('a tooltip goes when it should', () => {
   test('on a scroll of the pane: the bubble does not stay where its anchor was', async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1360, height: 420 });
+    await page.setViewportSize({ width: WINDOW.width, height: 420 });
     await open(page, WIN);
     await openJob(page, 'linkedin-4100200301');
     await byKeys(page);
@@ -175,7 +176,7 @@ test.describe('a tooltip goes when it should', () => {
   test("on a key's press as on the pointer's: one Esc then folds the floating sidebar", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 1099, height: 700 });
+    await page.setViewportSize({ width: FOLD_BELOW - 1, height: 700 });
     await open(page, WIN);
     const toggle = page.getByTestId('toggle-sidebar');
     const floating = page.getByTestId('sidebar-floating');
@@ -205,7 +206,7 @@ test.describe('a tooltip goes when it should', () => {
 
   test("a key's press drops the tooltip that still waits", async ({ page }) => {
     await setToken(page, '--delay-tooltip', '600ms');
-    await page.setViewportSize({ width: 1099, height: 700 });
+    await page.setViewportSize({ width: FOLD_BELOW - 1, height: 700 });
     await open(page, WIN);
     const floating = page.getByTestId('sidebar-floating');
     await byKeys(page);
@@ -474,7 +475,7 @@ test.describe('a press on an anchor that says why', () => {
       query: `${WIN}&sheet=controls`,
       control: (page) =>
         page
-          .getByRole('combobox', { name: 'Anbieter', exact: true })
+          .getByRole('combobox', { name: T.settings.providerLabel, exact: true })
           .and(page.locator('[aria-disabled]')),
       reason: 'Erst das Postfach trennen.',
     },

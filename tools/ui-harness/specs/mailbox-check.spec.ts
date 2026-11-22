@@ -6,6 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';
 import { expectMailboxState, reveal, T } from './helpers';
+import { MIN_WINDOW } from './scale';
 
 const WIN = '?platform=windows';
 
@@ -362,7 +363,7 @@ test('a message that grows the form keeps its buttons in the window', async ({ p
 });
 
 test('in the smallest window too the buttons just pressed stay in the window', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await connectForm(page);
   // The form is higher than the window here: Verbinden lies at its end.
   await (await reveal(page, save(page))).click();
@@ -437,7 +438,7 @@ test('a change while Verbinden checks stops it: the form keeps what stands and i
 test('a change that stops the check moves nothing: the caret keeps its place in a low window', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await connectForm(page);
   const user = page.getByTestId('mailbox-user');
   const view = page.getByTestId('view-settings');

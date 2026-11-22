@@ -5,6 +5,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { animationsDone, calls, expect, NOW, open, runFinished, test } from './fixtures';
 import { failNext, reveal, stubList, T } from './helpers';
+import { FOLD_BELOW } from './scale';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -281,7 +282,7 @@ test('closing with a save that fails asks too; nothing goes behind the question,
 test('a way that waited for the question goes with its Abbrechen: the page opens at its kept place', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 700 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 700 });
   await open(page, `${WIN}&mail=offline&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
@@ -307,7 +308,7 @@ test('a way that waited for the question goes with its Abbrechen: the page opens
 test('"Postfach prüfen" with another place kept in Einstellungen: the Postfach comes into view', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 360 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 360 });
   await open(page, `${WIN}&mail=offline&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
@@ -327,7 +328,7 @@ test('"Postfach prüfen" with another place kept in Einstellungen: the Postfach 
 test("a select's open list: the wheel over it moves nothing behind it, beside it closes it", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 600 });
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const select = await reveal(page, page.getByTestId('profile-work-mode'));
@@ -496,7 +497,7 @@ test('the end of a run keeps the jobs read in Eingang, the open one in its place
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Profil too', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 600 });
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const view = page.getByTestId('view-profile');

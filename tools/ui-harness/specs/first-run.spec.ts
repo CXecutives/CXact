@@ -9,6 +9,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { animationsDone, calls, expect, motionSettled, open, settle, test } from './fixtures';
 import { failNext, fillRequired, pressSideButton, T, WIN, MAC } from './helpers';
+import { FOLD_BELOW, MIN_WINDOW, PAGE, WINDOW } from './scale';
 
 const heading = (page: Page) => page.getByTestId('first-heading');
 const next = (page: Page) => page.getByTestId('first-next');
@@ -389,7 +390,7 @@ test('the Profil has the same Abbrechen: the evaluation stops and nothing is fil
   await page.keyboard.press('Enter');
   await expect(start).toBeFocused();
   // In the smallest window the head still holds it, beside its title.
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await start.click();
   const [title, busyBox, stopBox] = await Promise.all([
     page.getByTestId('profile-heading').boundingBox(),
@@ -636,7 +637,7 @@ test('a held Enter presses once: it takes the chip and stays, it goes on and pre
 test('above the bar of Dein Profil the caret goes on with its field, the row taken above it', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 860 });
+  await page.setViewportSize(PAGE);
   await open(page, `${WIN}&scenario=first-run`);
   await toWays(page);
   await page.getByTestId('way-self').click();
@@ -927,7 +928,7 @@ test('Postfach: a field refers to its message only while one shows', async ({ pa
 });
 
 test('the smallest window keeps every step usable', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await open(page, `${WIN}&scenario=setup-cv&step=profile`);
   await expectStep(page, T.firstRun.profile);
   await expect(next(page)).toBeInViewport();
@@ -1033,7 +1034,7 @@ test('beside a real scrollbar the bar of Dein Profil still reaches the edge of t
   try {
     const page = await browser.newPage({
       ...(baseURL ? { baseURL } : {}),
-      viewport: { width: 1360, height: 860 },
+      viewport: PAGE,
       locale: 'de-DE',
     });
     await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
@@ -1043,7 +1044,7 @@ test('beside a real scrollbar the bar of Dein Profil still reaches the edge of t
     ).toBeGreaterThan(0);
     await expectBarUnderTheView(page);
     // At a narrow page too, with the column's narrow sides.
-    await page.setViewportSize({ width: 480, height: 360 });
+    await page.setViewportSize(MIN_WINDOW);
     await expectBarUnderTheView(page);
   } finally {
     await browser.close();
@@ -1061,7 +1062,7 @@ test('beside a real scrollbar a press in the room at the left of the view is a p
   try {
     const page = await browser.newPage({
       ...(baseURL ? { baseURL } : {}),
-      viewport: { width: 1360, height: 860 },
+      viewport: PAGE,
       locale: 'de-DE',
     });
     await open(page, `${WIN}&scenario=first-run&step=reading`);
@@ -1098,7 +1099,7 @@ test('beside a real scrollbar a press on it leaves Esc with the form pressed las
   try {
     const page = await browser.newPage({
       ...(baseURL ? { baseURL } : {}),
-      viewport: { width: 1360, height: 860 },
+      viewport: PAGE,
       locale: 'de-DE',
     });
     await open(page, `${WIN}&scenario=first-run&step=reading`);
@@ -1206,7 +1207,7 @@ test("in a low window Tab and typing stay clear of the foot that sticks over a c
   }
   // The steps without fields: the two ways, the upload's zone, what stands where no evaluation
   // can run.
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   for (const query of ['step=way', 'step=upload', 'step=upload&cv=used']) {
     await open(page, `${WIN}&scenario=first-run&${query}`);
     const { reached, below } = await tabToTheBar(page);
@@ -1218,7 +1219,7 @@ test("in a low window Tab and typing stay clear of the foot that sticks over a c
 test("the room for the card's foot is the setup's alone: a field's list moves nothing on the Profil", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: FOLD_BELOW, height: 600 });
   await open(page, `${WIN}&view=profile`);
   const view = page.getByTestId('view-profile');
   const tools = page.getByTestId('profile-tools').locator('input');
@@ -1257,7 +1258,7 @@ test('in a low window Verbinden answers in view, above the foot, and puts no car
       const pane = document.querySelector('[data-testid="view-first-run"]')!;
       return box.top >= pane.getBoundingClientRect().top && box.bottom <= bar.top;
     });
-  await page.setViewportSize({ width: 480, height: 360 });
+  await page.setViewportSize(MIN_WINDOW);
   await open(page, `${WIN}&scenario=setup-profile`);
   // Empty fields: the address's sentence comes up, from the top of the step.
   await press();
@@ -1286,7 +1287,7 @@ test('in a low window Verbinden answers in view, above the foot, and puts no car
   await expect.poll(inView).toBe(true);
   await expect(caret(page)).toHaveCount(0);
   // Where it stands in view nothing moves: the first sentence fits above the foot here.
-  await page.setViewportSize({ width: 1099, height: 500 });
+  await page.setViewportSize({ width: FOLD_BELOW - 1, height: 500 });
   await open(page, `${WIN}&scenario=setup-profile`);
   await press();
   await expect(said).toHaveCount(2);
@@ -1486,7 +1487,7 @@ test("beside a real scrollbar the card stands the narrow sides from the window's
     const wide = (await setupEdges(page, WIN, 1000)).card;
     expect(wide[0]).toBe(1000 - wide[1]!);
     // In the smallest window Tab stays clear of its foot here too.
-    await page.setViewportSize({ width: 480, height: 360 });
+    await page.setViewportSize(MIN_WINDOW);
     await open(page, `${WIN}&scenario=setup-profile`);
     expect((await tabToTheBar(page)).below).toEqual([]);
   } finally {
@@ -1495,7 +1496,7 @@ test("beside a real scrollbar the card stands the narrow sides from the window's
 });
 
 test('Tab keeps every control of Dein Profil clear of the bar at its foot', async ({ page }) => {
-  await page.setViewportSize({ width: 1360, height: 640 });
+  await page.setViewportSize({ width: WINDOW.width, height: 640 });
   await open(page, `${WIN}&scenario=setup-cv&step=profile`);
   const { reached, below } = await tabToTheBar(page);
   expect(reached).toBeGreaterThan(20);
@@ -1505,7 +1506,7 @@ test('Tab keeps every control of Dein Profil clear of the bar at its foot', asyn
 test("a field's list low on Dein Profil opens above it, clear of the bar; with room it stays below", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1360, height: 860 });
+  await page.setViewportSize(PAGE);
   await open(page, `${WIN}&scenario=first-run&step=profile&way=self`);
   const view = page.getByTestId('view-first-run');
   const input = page.getByTestId('profile-tools').locator('input');
