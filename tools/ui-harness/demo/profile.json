@@ -1,22 +1,12 @@
 {
-  "wunschrollen": [
-    "Interim CFO"
-  ],
-  "vertragsarten": [
-    "projekt",
-    "festanstellung"
-  ],
+  "wunschrollen": ["Interim CFO"],
+  "vertragsarten": ["projekt", "festanstellung"],
   "tagessatz_wunsch": 1200,
   "tagessatz_min": 1100,
   "mindestgehalt": null,
   "arbeitsmodell": "remote",
-  "laender": [
-    "DE",
-    "AT"
-  ],
-  "regionen": [
-    "Hamburg"
-  ],
+  "laender": ["DE", "AT"],
+  "regionen": ["Hamburg"],
   "verfuegbar_ab": "01.09.2026",
   "auslastung": "egal",
   "mindestlaufzeit_monate": 6,
@@ -58,11 +48,7 @@
     "Sanierung"
   ],
   "berufserfahrung_jahre": 20,
-  "branchen": [
-    "Maschinenbau",
-    "Automotive",
-    "Chemie"
-  ],
+  "branchen": ["Maschinenbau", "Automotive", "Chemie"],
   "sprachen": [
     {
       "sprache": "Deutsch",
@@ -73,14 +59,7 @@
       "niveau": "B2"
     }
   ],
-  "abschluesse": [
-    "Diplom-Kauffrau (Univ.)"
-  ],
-  "zertifizierungen": [
-    "Certified Interim Manager (DDIM)"
-  ],
-  "ausschlusswoerter": [
-    "Werkstudent",
-    "Praktikum"
-  ]
+  "abschluesse": ["Diplom-Kauffrau (Univ.)"],
+  "zertifizierungen": ["Certified Interim Manager (DDIM)"],
+  "ausschlusswoerter": ["Werkstudent", "Praktikum"]
 }

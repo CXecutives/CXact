@@ -53,7 +53,8 @@ generated files and the guardrails.
   `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace --lib --tests` (no doc tests, examples only through clippy)
 - `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) ·
-  `npm run harness` · `npm run build`
+  `npm run harness` · `npm run build`. On main the old `ui/`, its stub and specs are frozen until the
+  new UI lands from `ui-preview` (connecting): there `check:types` checks only the CV worker.
 - `npx tauri build` (release bundles) · `tools/portable.cmd` (`target/portable/CXact.exe`) · debug smoke:
   `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
 - Colours: after a change to `tokens.css`, `npm run regen` rewrites the window and icon colours

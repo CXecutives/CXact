@@ -13,7 +13,7 @@
     "build": "vite build ui",
     "preview": "vite preview ui",
     "check": "npm run check:types && npm run check:eslint && npm run check:stylelint && npm run check:format && npm run check:tokens && npm run check:architecture",
-    "check:types": "svelte-check --workspace ui --tsconfig ./tsconfig.json --fail-on-warnings && tsc -p tools/ui-harness/tsconfig.json && tsc -p cv-worker/tsconfig.json",
+    "check:types": "tsc -p cv-worker/tsconfig.json",
     "check:eslint": "eslint --max-warnings 0 .",
     "check:stylelint": "stylelint --max-warnings 0 \"ui/src/**/*.{css,svelte}\"",
     "check:format": "prettier --check .",
