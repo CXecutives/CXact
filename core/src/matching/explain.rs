@@ -16,10 +16,11 @@ use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    E_FULL, E_NONE, MUST_SATURATION, NICE_MAX, PERMANENT_FACTOR, W_CORE, W_FRAME, W_MUSTS, W_ROLE,
+    CORE_SATURATION, E_FULL, E_NONE, FRAME_STEP, MUST_SATURATION, NICE_MAX, PERMANENT_FACTOR,
+    W_CORE, W_MUSTS, W_ROLE,
 };
 use super::permanent;
-use super::signals::{FRAME_ASPECTS, Sig};
+use super::signals::{self, FRAME_CODES, Sig};
 use super::types::{
     Assessment, CapCode, CapLine, CriterionKey, CriterionState, CriterionStatus, Evidence,
     EvidenceLevel, Highlight, Part, PartCode, Reason, ReasonCode, ReasonKind, Summary, Verdict,
@@ -225,7 +226,10 @@ fn role_params(profile: &EngineProfile, evaluation: &Evaluation) -> Value {
 }
 
 /// The Passungsgrad line by line and every cap that fired with its reason, the lowest first
-/// (none for an unscorable job). The points of the lines add up to the score.
+/// (none for an unscorable job): the three content parts with their points of their weight,
+/// the nice-to-have bonus, one line per frame condition worse than wished (it keeps
+/// `percent` of the score), the permanent line and the cap that held. The points of the
+/// lines add up to the score.
 fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<CapLine>) {
     if evaluation.verdict == Verdict::Unscorable {
         return (Vec::new(), Vec::new());
@@ -263,7 +267,7 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
                 "met": core_met,
                 "partial": core_partial,
                 "total": core_total,
-                "fallback": p.core_fallback,
+                "counted": u64::from(core_total).max(CORE_SATURATION),
             }),
         ),
         line(
@@ -277,16 +281,6 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
                 "counted": u64::from(musts_total).max(MUST_SATURATION),
             }),
         ),
-        line(
-            PartCode::Frame,
-            p.points[3],
-            W_FRAME,
-            json!({
-                "near": s.get(Sig::FrameNear),
-                "missed": s.get(Sig::FrameMissed),
-                "aspects": FRAME_ASPECTS,
-            }),
-        ),
     ];
     if nice_total > 0 {
         parts.push(line(
@@ -295,6 +289,22 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
             NICE_MAX,
             json!({ "met": nice_met, "partial": nice_partial, "total": nice_total }),
         ));
+    }
+    let worse = signals::frame_aspects(&evaluation.findings, &evaluation.wishes)
+        .into_iter()
+        .zip(FRAME_CODES)
+        .filter(|(state, _)| *state > 0);
+    for ((state, aspect), points) in worse.zip(&p.frame[..usize::from(p.steps)]) {
+        parts.push(Part {
+            code: PartCode::Frame,
+            points: -i16::from(*points),
+            max: 0,
+            params: object(&json!({
+                "aspect": aspect,
+                "state": if state == 1 { "near" } else { "missed" },
+                "percent": FRAME_STEP / 10,
+            })),
+        });
     }
     if s.get(Sig::Permanent) == 1 {
         parts.push(Part {
@@ -753,8 +763,8 @@ mod tests {
             .map_or(0, |p| p.points)
     }
 
-    /// The lines of the Passungsgrad add up to the score: the four parts, the nice-to-have bonus, the
-    /// permanent line and the cap that held.
+    /// The lines of the Passungsgrad add up to the score: the three content parts, the
+    /// nice-to-have bonus, the frame lines, the permanent line and the cap that held.
     #[test]
     fn the_lines_add_up_to_the_score() {
         let permanent = CFO.replace(
@@ -762,6 +772,10 @@ mod tests {
             "Wir suchen einen CFO in Festanstellung, Vollzeit und unbefristet.",
         );
         let open_core = CFO.replace("Reporting nach IFRS", "Steuerung nach US-GAAP und HGB");
+        let onsite = CFO.replace(
+            "Der Einsatz ist zu 100 % remote.",
+            "Der Einsatz ist zu 100 % vor Ort.",
+        );
         let foreign = "Wir suchen eine Pflegefachkraft.\n\nIhr Profil\n\
             • Examen in der Gesundheits- und Krankenpflege\n• Erfahrung in der Intensivpflege\n\
             • Kenntnisse der Wundversorgung\n";
@@ -769,26 +783,26 @@ mod tests {
             ("Interim CFO (m/w/d)", CFO),
             ("CFO (m/w/d)", permanent.as_str()),
             ("Interim CFO (m/w/d)", open_core.as_str()),
+            ("Interim CFO (m/w/d)", onsite.as_str()),
             ("Pflegefachkraft Intensivstation (m/w/d)", foreign),
         ] {
             let a = assessed(title, text);
             let sum: i16 = a.parts.iter().map(|p| p.points).sum();
             assert_eq!(sum, i16::from(a.score), "{title}: {:?}", a.parts);
-            let codes: Vec<PartCode> = a.parts.iter().map(|p| p.code).take(4).collect();
-            assert_eq!(
-                codes,
-                [
-                    PartCode::Role,
-                    PartCode::Core,
-                    PartCode::Musts,
-                    PartCode::Frame
-                ]
-            );
-            for part in &a.parts[..4] {
-                assert!(
-                    part.points >= 0 && part.points <= i16::from(part.max),
-                    "{part:?}"
-                );
+            let codes: Vec<PartCode> = a.parts.iter().map(|p| p.code).take(3).collect();
+            assert_eq!(codes, [PartCode::Role, PartCode::Core, PartCode::Musts]);
+            for part in &a.parts {
+                match part.code {
+                    PartCode::Role | PartCode::Core | PartCode::Musts | PartCode::Nice => {
+                        assert!(
+                            part.points >= 0 && part.points <= i16::from(part.max),
+                            "{part:?}"
+                        );
+                    }
+                    PartCode::Frame | PartCode::Permanent | PartCode::Cap => {
+                        assert!(part.points <= 0, "{part:?}");
+                    }
+                }
             }
             assert!(a.caps.windows(2).all(|w| w[0].max <= w[1].max));
         }
@@ -873,17 +887,24 @@ mod tests {
         assert!(more.score <= base.score);
     }
 
-    /// Frame: what the ad does not state fits; a work mode against the wish costs.
+    /// Frame: what the ad does not state fits (no line); a work mode against the wish is a
+    /// line of its own that keeps 95 % of the score.
     #[test]
-    fn the_frame_counts_what_the_ad_states() {
+    fn the_frame_is_a_factor_with_a_line_per_condition() {
+        let frames = |a: &Assessment| -> Vec<serde_json::Map<String, serde_json::Value>> {
+            a.parts
+                .iter()
+                .filter(|p| p.code == PartCode::Frame)
+                .map(|p| p.params.clone())
+                .collect()
+        };
         let remote = assessed("Interim CFO (m/w/d)", CFO);
-        let frame = &remote.parts[3];
-        assert_eq!(frame.points, i16::from(frame.max), "{frame:?}");
+        assert!(frames(&remote).is_empty(), "{:?}", remote.parts);
         let unstated = assessed(
             "Interim CFO (m/w/d)",
             &CFO.replace("Der Einsatz ist zu 100 % remote.\n", ""),
         );
-        assert_eq!(points(&unstated, PartCode::Frame), i16::from(frame.max));
+        assert!(frames(&unstated).is_empty(), "{:?}", unstated.parts);
         let onsite = assessed(
             "Interim CFO (m/w/d)",
             &CFO.replace(
@@ -891,8 +912,19 @@ mod tests {
                 "Der Einsatz ist zu 100 % vor Ort.",
             ),
         );
-        let lower = &onsite.parts[3];
-        assert!(lower.points < frame.points, "{lower:?}");
-        assert_eq!(lower.params["missed"], 1);
+        let lines = frames(&onsite);
+        assert_eq!(lines.len(), 1, "{:?}", onsite.parts);
+        assert_eq!(lines[0]["aspect"], "place");
+        assert_eq!(lines[0]["percent"], 95);
+        let content: i16 = onsite.parts[..3].iter().map(|p| p.points).sum::<i16>()
+            + points(&onsite, PartCode::Nice);
+        assert_eq!(
+            i16::from(onsite.score),
+            content + points(&onsite, PartCode::Frame),
+            "{:?}",
+            onsite.parts
+        );
+        assert!(points(&onsite, PartCode::Frame) < 0);
+        assert!(onsite.score < remote.score);
     }
 }

@@ -562,6 +562,7 @@ Anforderungen:
 
 Wünschenswert:
 - Erfahrung mit Qlik Sense
+- Erfahrung mit Jedox
 - Portugiesisch in Wort und Schrift
 
 Rahmenbedingungen:
@@ -571,7 +572,9 @@ Rahmenbedingungen:
         let judged = matcher.judge(&row, Some(text)).unwrap();
         assert_eq!(
             judged.terms,
-            ["Kenntnisse in Zollabwicklung", "Erfahrung mit Qlik Sense"],
+            // Qlik Sense is another BI tool like the profile's Power BI: met in part (the
+            // rubric's rule 3), no open term.
+            ["Kenntnisse in Zollabwicklung", "Erfahrung mit Jedox"],
             "{:?}",
             matcher.explain(&row, Some(text)).map(|a| a.reasons)
         );
@@ -630,10 +633,8 @@ Wünschenswert:
             term("Kenntnisse in Anaplan"),
             Some(("Anaplan".into(), TermField::Tool))
         );
-        assert_eq!(
-            term("Branchenerfahrung Energie"),
-            Some(("Energie".into(), TermField::Industry))
-        );
+        // An industry the profile lacks is met in part (the rubric's rule 5): no open term.
+        assert_eq!(term("Branchenerfahrung Energie"), None, "an industry");
         assert_eq!(
             term("Erfahrung mit Jedox von Vorteil"),
             Some(("Jedox".into(), TermField::Tool))
@@ -678,8 +679,12 @@ Wünschenswert:
                 .all(|v| !v.is_array() && !v.is_object()),
             "lists are flattened for the interface: {country:?}"
         );
-        let untold = assess(&matcher, "Interim CFO", "Hamburg", "");
-        assert_eq!(untold.status, MatchStatus::Unscorable);
+        // A text too short to read is judged from its title (the rubric's rule 8); a title
+        // that names neither the field nor a target role stays unscorable.
+        let titled = assess(&matcher, "Interim CFO", "Hamburg", "");
+        assert_eq!(titled.status, MatchStatus::Scored, "{titled:?}");
+        let untold = assess(&matcher, "Pflegefachkraft Intensivstation", "Hamburg", "");
+        assert_eq!(untold.status, MatchStatus::Unscorable, "{untold:?}");
         assert_eq!(
             (untold.score, untold.note.unwrap().code.as_str()),
             (0, "shortText")

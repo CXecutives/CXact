@@ -2,7 +2,8 @@
 //! for any ad and any profile, not for the ads they were found on.
 
 use jobalert_core::matching::{
-    Assessment, JobInput, ReasonCode, ReasonKind, TextKind, Verdict, assess, compile_profile,
+    Assessment, JobInput, PartCode, ReasonCode, ReasonKind, TextKind, Verdict, assess,
+    compile_profile,
 };
 use jobalert_core::portal::Portal;
 use serde_json::{Value, json};
@@ -68,15 +69,16 @@ fn languages_under_english_names() {
     assert!(met(&a, "Business fluent English"), "{:#?}", a.reasons);
 }
 
-/// A text long enough to read but without any requirement is judged from its title: low
-/// evidence and at most 60, higher for the profile whose field the title names.
+/// A text long enough to read but without any requirement is judged from its title (the
+/// rubric's rule 8, no penalty for a short ad): low evidence, a fit for the profile whose
+/// field the title names, lower for another profile.
 #[test]
 fn a_text_without_requirements_is_judged_from_its_title() {
     let text = "Die Muster AG sucht für die Übergangszeit bis zur Nachbesetzung eine erfahrene \
                 Persönlichkeit. Vor Ort in Köln, befristet für sechs Monate.";
     let fin = run(&finance(), "Interim CFO (m/w/d)", text);
     assert_eq!(fin.verdict, Verdict::Scored);
-    assert!(fin.score <= 60, "{}", fin.score);
+    assert!(fin.score >= 50, "{}", fin.score);
     assert!(
         fin.reasons
             .iter()
@@ -130,7 +132,8 @@ fn a_student_role_is_employment_and_its_wage_decides() {
 }
 
 /// A short teaser is judged from its title when the title names the field or a target
-/// role; a short full text (an empty ad) stays unscorable.
+/// role (the rubric's rule 8: a short ad is not punished); a title that names neither stays
+/// unscorable.
 #[test]
 fn a_short_teaser_is_judged_from_its_title() {
     let mut profile = finance();
@@ -150,13 +153,13 @@ fn a_short_teaser_is_judged_from_its_title() {
     };
     let cfo = teaser("Interim CFO (m/w/d)", TextKind::Teaser);
     assert_eq!(cfo.verdict, Verdict::Scored);
-    assert!(cfo.score <= 60 && cfo.score > 10, "{}", cfo.score);
+    assert!(cfo.score >= 75, "a target role in the title: {}", cfo.score);
     assert_eq!(
         teaser("Lagerlogistiker (m/w/d)", TextKind::Teaser).verdict,
         Verdict::Unscorable
     );
     assert_eq!(
-        teaser("Interim CFO (m/w/d)", TextKind::Full).verdict,
+        teaser("Lagerlogistiker (m/w/d)", TextKind::Full).verdict,
         Verdict::Unscorable
     );
 }
@@ -291,8 +294,9 @@ fn years_below_the_profile_never_exclude() {
     }
 }
 
-/// General experience is judged by the profile's years: at or above met, from four fifths
-/// on in part, below that open; topic years by the competence's own years.
+/// General experience is judged by the profile's years: at or above met, below in part
+/// (the rubric's rule 5: asked years cost little and never cap); topic years by the
+/// competence's own years.
 #[test]
 fn general_years_against_the_profile_years() {
     let kind = |years: u32, text: &str| {
@@ -308,28 +312,53 @@ fn general_years_against_the_profile_years() {
     assert_eq!(kind(15, general), Some((ReasonKind::Met, true)));
     assert_eq!(kind(10, general), Some((ReasonKind::Met, true)));
     assert_eq!(kind(8, general), Some((ReasonKind::Partial, true)));
-    assert_eq!(kind(7, general), Some((ReasonKind::Open, true)));
+    assert_eq!(kind(7, general), Some((ReasonKind::Partial, true)));
     // `Controlling` has 15 years of its own, whatever the profile's total.
     let topic = "Ihr Profil\n- Mindestens 12 Jahre Erfahrung im Controlling\n- Treasury\n";
     assert_eq!(kind(7, topic), Some((ReasonKind::Met, false)));
 }
 
 /// A teaser is judged like a full ad where its title names the field: an open field word
-/// of the title caps it like an open must on the title's topic.
+/// of the title is an open must on the core of the role and costs the core its share.
 #[test]
-fn an_open_title_word_caps_a_teaser() {
-    let text = "Die Muster AG sucht ab sofort Unterstützung im Treasury und Controlling mit \
-                Konzernrechnungslegung nach IFRS sowie Salesforce …";
-    let job = JobInput {
-        title: "Treasury Manager Salesforce (m/w/d)",
-        company: "Muster AG",
-        location: "Köln, Deutschland",
-        portal: Portal::LinkedIn,
-        text,
-        facts: None,
-        posted: None,
-        kind: TextKind::Teaser,
+fn an_open_title_word_costs_a_teaser_its_core() {
+    let teaser = |title: &str, text: &str| {
+        let job = JobInput {
+            title,
+            company: "Muster AG",
+            location: "Köln, Deutschland",
+            portal: Portal::LinkedIn,
+            text,
+            facts: None,
+            posted: None,
+            kind: TextKind::Teaser,
+        };
+        assess(&compile_profile(&form(&finance())), &job).expect("assessed")
     };
-    let a = assess(&compile_profile(&form(&finance())), &job).expect("assessed");
-    assert!(a.score <= 60, "{} {:#?}", a.score, a.reasons);
+    let open = teaser(
+        "Treasury Manager Salesforce (m/w/d)",
+        "Die Muster AG sucht ab sofort Unterstützung im Treasury und Controlling mit \
+         Konzernrechnungslegung nach IFRS sowie Salesforce …",
+    );
+    let fits = teaser(
+        "Treasury Manager (m/w/d)",
+        "Die Muster AG sucht ab sofort Unterstützung im Treasury und Controlling mit \
+         Konzernrechnungslegung nach IFRS …",
+    );
+    let core = |a: &Assessment| {
+        a.parts
+            .iter()
+            .find(|p| p.code == PartCode::Core)
+            .map(|p| (p.points, p.max))
+            .expect("a core line")
+    };
+    let (points, max) = core(&open);
+    assert!(points < i16::from(max), "{:#?}", open.parts);
+    assert!(
+        core(&open).0 < core(&fits).0,
+        "{:#?} {:#?}",
+        open.parts,
+        fits.parts
+    );
+    assert!(open.score < fits.score, "{} < {}", open.score, fits.score);
 }

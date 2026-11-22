@@ -51,7 +51,7 @@ pub enum Sig {
     OtherPartial,
     OtherOpen,
     /// The frame (day rate, remote and place, start, duration, workload): the aspects met in
-    /// part and those clearly missed; the rest fits or is not stated.
+    /// part and those clearly missed; the rest fits or is not stated. Each one is a frame step.
     FrameNear,
     FrameMissed,
     /// The nice-to-haves: met in full, in part, open.
@@ -424,11 +424,19 @@ fn role_and_field(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>) {
     s.set(Sig::Level, level);
 }
 
-/// The frame aspects met in part and clearly missed (day rate, remote and place, start,
-/// duration, workload); an aspect the ad does not state fits.
-fn frame(findings: &[Finding], wishes: &[WishResult]) -> (u64, u64) {
-    // Per aspect: 0 fits, 1 in part, 2 missed (the worst of what speaks to it).
-    let mut aspects = [0u8; 5];
+/// The frame aspects in their order, as the explanation names them: day rate, work mode
+/// and place, start, duration, workload.
+pub(crate) const FRAME_CODES: [&str; FRAME_ASPECTS as usize] =
+    ["rate", "place", "start", "duration", "workload"];
+
+/// How each frame aspect stands (day rate, work mode and place, start, duration, workload):
+/// 0 fits or is not stated, 1 met in part, 2 missed (the worst of what speaks to it; a hard
+/// criterion clearly broken excludes and is no frame aspect).
+pub(crate) fn frame_aspects(
+    findings: &[Finding],
+    wishes: &[WishResult],
+) -> [u8; FRAME_ASPECTS as usize] {
+    let mut aspects = [0u8; FRAME_ASPECTS as usize];
     for wish in wishes {
         let index = match wish.code {
             ReasonCode::DayRateWish => 0,
@@ -452,16 +460,16 @@ fn frame(findings: &[Finding], wishes: &[WishResult]) -> (u64, u64) {
         };
         aspects[index] = aspects[index].max(state);
     }
-    let (near, missed) = aspects.iter().fold((0u64, 0u64), |(n, m), a| {
-        (n + u64::from(*a == 1), m + u64::from(*a == 2))
-    });
-    (near, missed)
+    aspects
 }
 
-/// The share of the frame that fits (per-mille), the scorer's reading of the signals.
-#[cfg(test)]
-pub(crate) fn frame_share(s: &Signals) -> u16 {
-    scorer::percent(s).shares[3]
+/// The frame aspects met in part and clearly missed.
+fn frame(findings: &[Finding], wishes: &[WishResult]) -> (u64, u64) {
+    frame_aspects(findings, wishes)
+        .iter()
+        .fold((0u64, 0u64), |(n, m), a| {
+            (n + u64::from(*a == 1), m + u64::from(*a == 2))
+        })
 }
 
 #[cfg(test)]
@@ -540,10 +548,10 @@ mod tests {
         assert_eq!(signals(&empty, &input(AD)), Signals::default());
     }
 
-    /// An ad that states nothing of the frame fits it in full.
+    /// An ad that states nothing of the frame fits it in full: no frame step.
     #[test]
     fn an_unstated_frame_fits() {
         assert_eq!(frame(&[], &[]), (0, 0));
-        assert_eq!(frame_share(&Signals::default()), 1000);
+        assert_eq!(scorer::percent(&Signals::default()).steps, 0);
     }
 }

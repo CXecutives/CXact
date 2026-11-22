@@ -2957,10 +2957,8 @@ Anforderungen:
             named("Kenntnisse in Anaplan"),
             (Some("Anaplan".into()), Some("tool".into()))
         );
-        assert_eq!(
-            named("Branchenerfahrung Energie"),
-            (Some("Energie".into()), Some("industry".into()))
-        );
+        // An industry the profile lacks is met in part (the rubric's rule 5): it names none.
+        assert_eq!(named("Branchenerfahrung Energie"), (None, None));
         assert_eq!(named("Erfahrung im Controlling"), (None, None));
         let spanish = detail
             .reasons

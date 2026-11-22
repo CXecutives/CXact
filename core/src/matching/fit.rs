@@ -1094,9 +1094,10 @@ mod tests {
             fit("Datenvisualisierungssoftware", "Tableau"),
             (E_HALF, Via::Semantic)
         );
-        // Through another name in the profile: two products are no match.
+        // Through another name in the profile: no match; two products of the same kind are
+        // similar, met in part (the rubric's rule 3), never in full.
         assert_eq!(fit("Buchhaltung", "Accounting").0, E_NONE);
-        assert_eq!(fit("Power BI", "Tableau").0, E_NONE);
+        assert_eq!(fit("Power BI", "Tableau").0, E_HALF);
         // Where the engine's own words know both, they decide.
         assert_eq!(
             fit("Projektleitung", "Projektmanagement"),

@@ -14,22 +14,25 @@ nichts, denn man kann nachfragen. Punkte kostet nur, was klar nicht passt.
 
 ## Passungsgrad von 0 bis 100
 
-Die Zahl ist der Anteil dessen, worauf es bei der Stelle ankommt, den das Profil erfüllt. Sie setzt
-sich aus vier Teilen zusammen, jeder mit seinem Gewicht:
+Die Zahl ist der Anteil dessen, worauf es bei der Stelle ankommt, den das Profil erfüllt, mal dem
+Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen Gewicht:
 
-- Rolle und Fach (35): Passen Titel und Fachgebiet zu den Wunschrollen und zum Profil? Gleiches
-  Fach zählt voll, ein nahes 0,7, ein fernes 0,2, ein fremdes nichts. Dazu die Ebene (siehe unten).
-- Kern der Rolle (35): der Anteil der erfüllten Muss-Punkte zum Thema der Rolle. Nennt die Anzeige
-  keine, gilt der Anteil von Rolle und Fach.
-- Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte. Mehr als sieben zählen
-  nicht mehr extra, eine lange Anzeige verliert also nichts.
-- Rahmen (10): Tagessatz, Arbeitsmodell, Start, Dauer und Auslastung gegen die Wünsche. Was die
-  Anzeige nicht nennt, passt. Was schlechter ist als gewünscht, aber kein hartes Kriterium verletzt,
-  zählt anteilig.
+- Rolle und Fach (40): Passen Titel und Fachgebiet zu den Wunschrollen (wunschrollen) und zum
+  Profil? Gleiches Fach zählt voll, ein nahes 0,7, ein fernes 0,2, ein fremdes nichts. Dazu die
+  Ebene (siehe unten). Ein Titel, der eine Wunschrolle trifft, ist nie ein fremdes Fach.
+- Kern der Rolle (40): der Anteil der erfüllten Muss-Punkte zum Thema der Rolle, gezählt als
+  mindestens drei. Was die Anzeige zum Kern nicht nennt, zählt wie Rolle und Fach und die übrigen
+  Muss-Punkte im Mittel.
+- Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
+  sieben. Was eine kurze Liste nicht nennt, zählt zu 30 % wie Rolle und Fach.
 
-Ein teilweise erfüllter Punkt zählt halb. Was unklar ist, zählt nicht mit. Erfüllte Kann-Punkte
-bringen bis zu 5 Punkte dazu, offene kosten nichts. Eine Festanstellung zählt ein Zehntel weniger,
-solange das Profil sie nicht ausschließt.
+Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 90 %). Was unklar ist, zählt nicht mit.
+Erfüllte Kann-Punkte bringen bis zu 5 Punkte dazu, offene kosten nichts.
+
+Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
+die Anzeige nicht nennt, passt. Jede genannte Bedingung, die schlechter ist als gewünscht, aber kein
+hartes Kriterium verletzt, kostet 5 % der Zahl. Eine Festanstellung kostet danach 10 %, solange das
+Profil sie nicht ausschließt. Zuletzt gilt die niedrigste Grenze (siehe unten).
 
 So liest sich die Zahl:
 
@@ -124,5 +127,5 @@ Jede Grenze braucht einen klaren Grund in der Anzeige.
 
 - Eine passende Wunschrolle gehört zu Rolle und Fach. Sie bringt keinen eigenen Bonus und hebt keine
   Grenze auf.
-- Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus. Sie zählen im Rahmen.
-  Nennt die Anzeige einen Wert nicht, passt der Wunsch.
+- Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus. Sie zählen nur im
+  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch.

@@ -3,7 +3,8 @@
 //! (V17, V18), the signals of the job ([`signals`]) and the Passungsgrad ([`scorer`],
 //! engine 25). Integer arithmetic only.
 //!
-//! `score = min(parts + nice-to-haves - permanent line, lowest cap)`, every line in whole points.
+//! `score = min(content x frame factor x permanent factor, lowest cap)`, every line in whole
+//! points.
 
 use std::ops::Range;
 

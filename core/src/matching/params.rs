@@ -45,8 +45,8 @@ pub(crate) const HOURS_PER_DAY: u64 = 8;
 /// A profile entry with this many specific atoms is free text: containing a requirement
 /// proves nothing (USP sentences never do).
 pub(crate) const SENTENCE_ATOMS: usize = 4;
-/// Permanent roles are the second category of a consultant: the points are scaled by this
-/// factor (per-mille), shown as a line of its own.
+/// Permanent roles are the second category of a consultant: the score keeps this share
+/// (per-mille), shown as a line of its own after the frame.
 pub(crate) const PERMANENT_FACTOR: u64 = 900;
 /// Score caps of the Passungsgrad, each with its reason: an open formal must (degree field,
 /// licence, mandatory certificate) at most 40; the core of the role clearly open (less than
@@ -56,22 +56,30 @@ pub(crate) const CORE_OPEN_CAP: u8 = 49;
 pub(crate) const OFF_FIELD_CAP: u8 = 24;
 
 // --- ENGINE_VERSION 25: the Passungsgrad (`scorer.rs`) ---
-// The weights, the value of a requirement met in part and the level values are fitted on
-// the private gold labels by `tools/scorer/train.py` (each weight 10 to 50, sum 100; gold
-// tune NDCG@10 0.792, Spearman 0.733).
+// score = content x frame factor, then the lowest cap. The weights, the level values, the
+// field values, the frame step and the caps are fixed by what they mean (the owner's rules
+// in `export/ai_rubric.de.md`); only `PARTIAL` and `UNNAMED` are fitted, on the private
+// teacher labels (train and lockbox without the gold pairs) by `tools/scorer/train.py`.
 
-/// The weights of the four parts in points: role and field, core of the role,
-/// other musts, frame.
-pub(crate) const W_ROLE: u64 = 20;
-pub(crate) const W_CORE: u64 = 25;
-pub(crate) const W_MUSTS: u64 = 35;
-pub(crate) const W_FRAME: u64 = 20;
-/// What a requirement met in part (and a frame aspect met in part) counts (per-mille).
-pub(crate) const PARTIAL: u64 = 800;
+/// The weights of the three content parts in points (sum 100): role and field, core of the
+/// role, other musts. Fixed by meaning: the role and its core decide, the rest of the list
+/// adds.
+pub(crate) const W_ROLE: u64 = 40;
+pub(crate) const W_CORE: u64 = 40;
+pub(crate) const W_MUSTS: u64 = 20;
+/// What a requirement met in part counts (per-mille; fitted).
+pub(crate) const PARTIAL: u64 = 900;
+/// The other musts a short list does not name count this share of role and field
+/// (per-mille; fitted).
+pub(crate) const UNNAMED: u64 = 300;
+/// The core of the role counts at least this many musts: the ones the ad does not name
+/// count as role and field and the other musts do on average (a short ad is judged from its
+/// title and field, the rubric's rule 8).
+pub(crate) const CORE_SATURATION: u64 = 3;
 /// Role and field at a level one above or one below the target roles, and two or more
 /// above (per-mille of the part); two or more below caps at `LEVEL_CAP`.
-pub(crate) const LEVEL_ONE: u64 = 1000;
-pub(crate) const LEVEL_TWO_ABOVE: u64 = 300;
+pub(crate) const LEVEL_ONE: u64 = 850;
+pub(crate) const LEVEL_TWO_ABOVE: u64 = 500;
 /// Role and field by the field of the role (per-mille): the same field, near, far, foreign.
 pub(crate) const FIELD_VALUES: [u64; 4] = [1000, 700, 200, 0];
 /// The title fit (per-mille) from which a title of the profile's field is the same field,
@@ -86,11 +94,12 @@ pub(crate) const HITS_MAX: u16 = 4;
 pub(crate) const RELEVANCE_SAME: u64 = 900;
 pub(crate) const RELEVANCE_NEAR: u64 = 650;
 pub(crate) const RELEVANCE_FAR: u64 = 350;
-/// The other musts a short list does not name count this share of role and field
-/// (per-mille).
-pub(crate) const UNNAMED: u64 = 750;
-/// The nice-to-have bonus at most (points; only a plus).
+/// The nice-to-have bonus at most (points; only a plus, inside the content).
 pub(crate) const NICE_MAX: u64 = 5;
+/// The frame factor: each stated condition worse than wished that breaks no hard criterion
+/// (day rate, work mode and place, start, duration, workload) keeps this share of the score
+/// (per-mille); what the ad does not state fits.
+pub(crate) const FRAME_STEP: u64 = 950;
 
 // --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 

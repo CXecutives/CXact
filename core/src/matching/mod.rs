@@ -123,11 +123,14 @@ use facts::{Availability, HardCriteria};
 /// `tools/scorer/train.py`) in place of the hand formula, notes calibrated by an isotonic
 /// map; wishes, the permanent factor and the caps the ablation kept stay, a target role lifts
 /// no cap; salary headings and lower bounds far below the minimum decide. 25: the
-/// Passungsgrad (`scorer.rs`) in place of the learned tables: the share of what matters that
-/// the profile fits, in four parts with fitted weights (role and field, core of the role,
-/// other musts, frame), met in part counts `PARTIAL`, the nice-to-haves only add, a
-/// permanent role a line of its own, the caps with their reasons (the core clearly open at
-/// most 49, a foreign field at most 24); the wishes count in the frame.
+/// Passungsgrad (`scorer.rs`) in place of the learned tables: content x frame factor, then
+/// the lowest cap. The content is the share of what matters that the profile fits, in three
+/// parts with weights fixed by meaning (role and field 40, core of the role 40, other musts
+/// 20; what an ad does not name counts as its role does), met in part counts `PARTIAL`, the
+/// nice-to-haves only add; each stated condition worse than wished keeps 95 %, a permanent
+/// role 90 %, each a line of its own; the caps carry their reasons (the core clearly open at
+/// most 49, a foreign field at most 24; a title that meets a target role is never foreign).
+/// Only `PARTIAL` and `UNNAMED` are fitted, on teacher labels.
 pub const ENGINE_VERSION: u32 = 25;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for

@@ -572,10 +572,10 @@ fn the_rubric_is_filled_with_the_limits_of_the_app() {
     for part in [
         "- 90 bis 100 alles Wesentliche passt",
         "- unter 25 passt nicht",
-        "Rolle und Fach (35)",
-        "Kern der Rolle (35)",
+        "Rolle und Fach (40)",
+        "Kern der Rolle (40)",
         "Weitere Muss-Punkte (20)",
-        "Rahmen (10)",
+        "kostet 5 % der Zahl",
         "offene kosten nichts",
         "(CXact rechnet sie mit 90 %)",
         "(tagessatz_wunsch, arbeitsmodell und regionen)",

@@ -1,27 +1,32 @@
-"""Fits the weights of the Passungsgrad (engine 25) on graded pairs and prints them.
+"""Fits the two free values of the Passungsgrad (engine 25) on teacher labels and prints them.
 
-    py -3.14 -X utf8 -I tools/scorer/train.py --signals <scores.jsonl> --gold <gold.jsonl>
-        [--part tune] [--params core/src/matching/params.rs]
+    py -3.14 -X utf8 -I tools/scorer/train.py --signals <scores.jsonl> --labels <labels.jsonl>
+        --exclude <gold pairs.jsonl> [--splits train,lockbox] [--params core/src/matching/params.rs]
 
-Inputs (both private, never in the repo):
+Inputs (all private, never in the repo):
   --signals  the engine's dump of every pair: a header line {"names", "sign", "max"} and then
              one line per pair {"pair", "profile", "v": [...], "score", "rank", "verdict"}.
-  --gold     graded pairs {"pair", "profile", "gold": part, "answer": {"note", "passung",
-             "ausschluss"}}; only the pairs of --part are read.
+  --labels   the teacher labels {"pair", "profile", "split", "note", "passung", "excluded",
+             "drop"}; only the pairs of --splits are read.
+  --exclude  a file of pair lines {"pair", ...}: these pairs never enter the fit (the gold
+             pairs: the fit must not see the sets it is checked on).
 
 The fitter replays `scorer.rs` from the signals (`percent` and `caps`, integer arithmetic,
 the mirror of the Rust: change both together) and first checks that the replay with the
-constants of --params gives every dumped score. It then searches, deterministically:
+constants of --params gives every dumped score. Everything with a meaning stays fixed (the
+weights 40/40/20, the level and field values, the frame step, the caps, the thresholds of
+the field class); it searches only what has none, deterministically on a grid:
 
-  - the four weights (W_ROLE, W_CORE, W_MUSTS, W_FRAME), each 10 to 50 in steps of 5, sum 100,
-    with the value of a requirement met in part (PARTIAL) on a grid;
-  - then the level values (LEVEL_ONE, LEVEL_TWO_ABOVE) on a grid;
-  - the two steps once more from the best.
+  - PARTIAL, what a requirement met in part counts (300 to 950 per-mille);
+  - UNNAMED, what the other musts a short list does not name count of role and field
+    (300 to 1000 per-mille).
 
 The objective is NDCG@10 (mean over profiles, the order of gold/eval.py: scored, unscorable,
-excluded, then score, then rank) plus Spearman of the score against the graded passung
+excluded, then score, then rank) plus Spearman of the score against the teacher's passung
 (excluded -1 on both sides). A tie keeps the values nearest the current ones. The output is
-the named constants for `core/src/matching/params.rs` and the measures before and after.
+the named constants for `core/src/matching/params.rs` and the measures before and after;
+the checks on the gold tune part, the owner's 154 and the teacher test split are run apart
+(bench/retrain.sh).
 """
 
 import argparse
@@ -37,16 +42,22 @@ TOP_K = 10
 VERDICT_ORDER = {"scored": 0, "unscorable": 1, "excluded": 2}
 
 # The constants the replay reads from params.rs; the fitted ones first.
-FITTED = ["W_ROLE", "W_CORE", "W_MUSTS", "W_FRAME", "PARTIAL", "LEVEL_ONE", "LEVEL_TWO_ABOVE"]
+FITTED = ["PARTIAL", "UNNAMED"]
 FIXED = [
+    "W_ROLE",
+    "W_CORE",
+    "W_MUSTS",
+    "CORE_SATURATION",
     "MUST_SATURATION",
+    "LEVEL_ONE",
+    "LEVEL_TWO_ABOVE",
     "NICE_MAX",
+    "FRAME_STEP",
     "PERMANENT_FACTOR",
     "TITLE_SAME",
     "TITLE_NEAR",
     "HIT_RELEVANCE",
     "HITS_MAX",
-    "UNNAMED",
     "RELEVANCE_SAME",
     "RELEVANCE_NEAR",
     "RELEVANCE_FAR",
@@ -57,10 +68,7 @@ FIXED = [
     "LEVEL_CAP",
 ]
 
-WEIGHT_STEPS = range(10, 51, 5)
-PARTIAL_STEPS = range(300, 901, 50)
-LEVEL_ONE_STEPS = range(700, 1001, 50)
-LEVEL_TWO_STEPS = range(300, 701, 50)
+GRID = {"PARTIAL": range(300, 951, 50), "UNNAMED": range(300, 1001, 50)}
 
 
 def read_jsonl(path):
@@ -104,7 +112,7 @@ def field_class(s, p):
     """`scorer::class`: 0 same, 1 near, 2 far, 3 foreign."""
     title, role = s["title_field"], s["role"]
     field = s["relevance"] + p["HIT_RELEVANCE"] * min(s["core_hits"], p["HITS_MAX"])
-    if s["off_field"] == 1:
+    if s["off_field"] == 1 and role == 0:
         return 3
     if role == 2 or title >= p["TITLE_SAME"] or field >= p["RELEVANCE_SAME"]:
         return 0
@@ -123,29 +131,32 @@ def level_factor(level, p):
     return p["LEVEL_ONE"]
 
 
+def taken(points, keep):
+    return min(100, div_rhe(points * (1000 - keep), 1000))
+
+
 def percent(s, p):
     """`scorer::percent`: (total, fine, class)."""
     klass = field_class(s, p)
     role = p["FIELD_VALUES"][klass] * level_factor(s["level"], p) // 1000
-    core = share(s["core_met"], s["core_partial"], s["core_open"], 0, role, p)
-    unnamed = role * p["UNNAMED"] // 1000
-    musts = share(
-        s["other_met"], s["other_partial"], s["other_open"], p["MUST_SATURATION"], unnamed, p
-    )
-    missed = min(s["frame_missed"], FRAME_ASPECTS)
-    near = min(s["frame_near"], FRAME_ASPECTS - missed)
-    frame = share(FRAME_ASPECTS - near - missed, near, missed, FRAME_ASPECTS, E_FULL, p)
-    weights = [p["W_ROLE"], p["W_CORE"], p["W_MUSTS"], p["W_FRAME"]]
-    shares = [role, core, musts, frame]
-    points = [min(100, div_rhe(w * sh, 1000)) for w, sh in zip(weights, shares)]
+    om, op, oo = s["other_met"], s["other_partial"], s["other_open"]
+    musts = share(om, op, oo, p["MUST_SATURATION"], role * p["UNNAMED"] // 1000, p)
+    fill = role if om + op + oo == 0 else (role + share(om, op, oo, 0, 0, p)) // 2
+    core = share(s["core_met"], s["core_partial"], s["core_open"], p["CORE_SATURATION"], fill, p)
+    weights = [p["W_ROLE"], p["W_CORE"], p["W_MUSTS"]]
+    shares = [role, core, musts]
+    parts = sum(min(100, div_rhe(w * sh, 1000)) for w, sh in zip(weights, shares))
     nice_n = s["nice_met"] + s["nice_partial"] + s["nice_open"]
     nice_share = 0 if nice_n == 0 else share(s["nice_met"], s["nice_partial"], s["nice_open"], 0, 0, p)
-    nice = min(100, div_rhe(p["NICE_MAX"] * nice_share, 1000))
-    total = min(100, sum(points) + nice)
+    nice = min(min(100, div_rhe(p["NICE_MAX"] * nice_share, 1000)), 100 - parts)
+    total = parts + nice
     fine = min(1000, (sum(w * sh for w, sh in zip(weights, shares)) + p["NICE_MAX"] * nice_share) // 100)
+    for _ in range(min(FRAME_ASPECTS, s["frame_near"] + s["frame_missed"])):
+        total -= taken(total, p["FRAME_STEP"])
+        fine = fine * p["FRAME_STEP"] // 1000
     if s["permanent"] == 1:
-        total -= min(100, div_rhe(total * (1000 - p["PERMANENT_FACTOR"]), 1000))
         fine = fine * p["PERMANENT_FACTOR"] // 1000
+        total -= taken(total, p["PERMANENT_FACTOR"])
     return total, fine, klass
 
 
@@ -204,9 +215,9 @@ def dcg(gains):
 def measure(pairs, p):
     """NDCG@10 (mean over profiles), Spearman and the mean score per note."""
     scored = []
-    for row, s, gold in pairs:
+    for row, s, label in pairs:
         score, rank = replay(row, s, p)
-        scored.append((row, gold, score, rank))
+        scored.append((row, label, score, rank))
     by = defaultdict(list)
     for item in scored:
         by[item[0]["profile"]].append(item)
@@ -241,49 +252,35 @@ def better(candidate, best):
 
 
 def search(pairs, start):
+    """The whole grid of the two values (it is small)."""
     best_p = dict(start)
     best = (round(objective(pairs, best_p), 9), 0, tuple(best_p[k] for k in FITTED))
-    for _ in range(2):
-        base = dict(best_p)
-        for a in WEIGHT_STEPS:
-            for b in WEIGHT_STEPS:
-                for c in WEIGHT_STEPS:
-                    d = 100 - a - b - c
-                    if d not in WEIGHT_STEPS:
-                        continue
-                    for partial in PARTIAL_STEPS:
-                        p = dict(base, W_ROLE=a, W_CORE=b, W_MUSTS=c, W_FRAME=d, PARTIAL=partial)
-                        cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
-                        if better(cand, best):
-                            best, best_p = cand, p
-        base = dict(best_p)
-        for one in LEVEL_ONE_STEPS:
-            for two in LEVEL_TWO_STEPS:
-                if two > one:
-                    continue
-                p = dict(base, LEVEL_ONE=one, LEVEL_TWO_ABOVE=two)
-                cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
-                if better(cand, best):
-                    best, best_p = cand, p
+    for partial in GRID["PARTIAL"]:
+        for unnamed in GRID["UNNAMED"]:
+            p = dict(start, PARTIAL=partial, UNNAMED=unnamed)
+            cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
+            if better(cand, best):
+                best, best_p = cand, p
     return best_p
 
 
-def load(signals, gold_path, part):
+def load(signals, labels_path, exclude_path, splits):
     rows = read_jsonl(signals)
     header, rows = rows[0], rows[1:]
     names = header["names"]
-    gold = {}
-    for row in read_jsonl(gold_path):
-        if row.get("gold") != part:
+    excluded = {r["pair"] for r in read_jsonl(exclude_path)}
+    labels = {}
+    for row in read_jsonl(labels_path):
+        if row.get("drop") or row.get("note") is None or row.get("split") not in splits:
             continue
-        answer = row["answer"]
-        excluded = (answer.get("ausschluss") or {}).get("grund", "keiner") != "keiner"
-        gold[row["pair"]] = {
-            "note": 0 if excluded else int(answer["note"]),
-            "passung": answer["passung"],
-            "excluded": excluded,
+        if row["pair"] in excluded:
+            continue
+        labels[row["pair"]] = {
+            "note": 0 if row["excluded"] else int(row["note"]),
+            "passung": -1 if row["excluded"] else row["passung"],
+            "excluded": bool(row["excluded"]),
         }
-    pairs = [(r, dict(zip(names, r["v"])), gold[r["pair"]]) for r in rows if r["pair"] in gold]
+    pairs = [(r, dict(zip(names, r["v"])), labels[r["pair"]]) for r in rows if r["pair"] in labels]
     return rows, names, pairs
 
 
@@ -297,14 +294,16 @@ def main():
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--signals", required=True)
-    parser.add_argument("--gold", required=True)
-    parser.add_argument("--part", default="tune")
+    parser.add_argument("--labels", required=True)
+    parser.add_argument("--exclude", required=True)
+    parser.add_argument("--splits", default="train,lockbox")
     parser.add_argument("--params", default=str(here / "../../core/src/matching/params.rs"))
     args = parser.parse_args()
     current = read_params(args.params)
-    rows, names, pairs = load(args.signals, args.gold, args.part)
+    splits = set(args.splits.split(","))
+    rows, names, pairs = load(args.signals, args.labels, args.exclude, splits)
     if not pairs:
-        raise SystemExit(f"no pairs of part {args.part} in {args.signals}")
+        raise SystemExit(f"no labelled pairs of {args.splits} in {args.signals}")
     wrong = []
     for row in rows:
         s = dict(zip(names, row["v"]))
@@ -312,11 +311,12 @@ def main():
             wrong.append(row["pair"])
     if wrong:
         raise SystemExit(f"the replay differs from the engine on {len(wrong)} pairs, e.g. {wrong[:3]}")
-    print(f"{len(pairs)} pairs of part {args.part}; the replay matches all {len(rows)} dumped scores")
+    print(f"{len(pairs)} teacher pairs of {args.splits} (gold pairs left out); "
+          f"the replay matches all {len(rows)} dumped scores")
     show("current", pairs, current)
     fitted = search(pairs, current)
     show("fitted ", pairs, fitted)
-    print("\n// fitted on the gold labels by tools/scorer/train.py")
+    print("\n// fitted on the teacher labels by tools/scorer/train.py")
     for name in FITTED:
         print(f"pub(crate) const {name}: u64 = {fitted[name]};")
 

@@ -86,16 +86,17 @@ pub struct Assessment {
     /// What moved the score, at most [`MAX_FACTORS`] lines in reading order (empty for an
     /// unscorable job): the reader's "why this number".
     pub factors: Vec<Factor>,
-    /// The Passungsgrad line by line (empty for an unscorable job): the four parts with their
-    /// points of their weight, the nice-to-have bonus, the permanent line and the cap that held; the
-    /// points add up to `score`.
+    /// The Passungsgrad line by line (empty for an unscorable job): the three content parts
+    /// with their points of their weight, the nice-to-have bonus, one line per frame condition
+    /// worse than wished, the permanent line and the cap that held; the points add up to
+    /// `score`.
     pub parts: Vec<Part>,
     /// Every cap that fired, with its reason, the lowest first.
     pub caps: Vec<CapLine>,
 }
 
-/// One line of the Passungsgrad: its points (a minus for the permanent line and the cap) of
-/// its maximum, with what it was read from.
+/// One line of the Passungsgrad: its points (a minus for a frame line, the permanent line and
+/// the cap) of its maximum, with what it was read from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Part {
@@ -112,12 +113,14 @@ pub enum PartCode {
     /// Role and field: `class` same, near, far or foreign, the target role (`role`, `fit`),
     /// the level (`level`: at, oneAbove, oneBelow, twoAbove, twoBelow).
     Role,
-    /// Core of the role: the musts on the core met (`met`), in part (`partial`) of `total`;
-    /// `fallback` without any (the share of role and field).
+    /// Core of the role: the musts on the core met (`met`), in part (`partial`) of `total`,
+    /// counted as at least `counted` (the ones the ad does not name count as role and field
+    /// and the other musts do).
     Core,
     /// Weitere Muss-Punkte: `met`, `partial` of `total`, counted as at least `counted`.
     Musts,
-    /// Frame: the aspects met in part (`near`) and missed (`missed`) of `aspects`.
+    /// One frame condition worse than wished: its `aspect` (rate, place, start, duration,
+    /// workload) met in part or missed (`state`: near, missed); the score keeps `percent`.
     Frame,
     /// The nice-to-haves (`met`, `partial` of `total`): only a plus.
     Nice,

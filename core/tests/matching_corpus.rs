@@ -42,8 +42,12 @@ use sha2::Digest as _;
 /// 23: the frame of the title (levels, fields), the half way pads; the rows hold again.
 /// Version 24: the learned scorer in place of the hand formula, a target role lifts no
 /// off-field cap, salary headings and lower bounds far below the minimum; the corpus's band,
-/// status and exclusion checks hold.
-const GOLDEN_DIGEST: &str = "50f6d76d32dd7951";
+/// status and exclusion checks hold. Version 25: the Passungsgrad (content x frame factor,
+/// then the caps) in place of the learned scorer, and the rubric's rules: a short ad is judged
+/// from its title (K38 of fin, senior and wish are scored), an industry costs little (rule
+/// 5), a similar tool is met in part (rule 3); the status, exclusion and check rows hold, the
+/// bands are the report's.
+const GOLDEN_DIGEST: &str = "e37b3f586b20adaf";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")
