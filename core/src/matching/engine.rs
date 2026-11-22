@@ -35,7 +35,7 @@ use super::sections::ReqKind;
 use super::seniority;
 use super::signals::{self, Signals};
 use super::title::{self, Distance, ProfileLevel};
-use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict};
+use super::types::{EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict, Via};
 use super::wishes::{self, WishResult, Wishes};
 use crate::profile::{ProfileForm, key};
 
@@ -54,6 +54,9 @@ pub(crate) struct EngineProfile {
     pub level: ProfileLevel,
     /// The field families of the profile's packs (engine 23).
     pub fields: Vec<&'static str>,
+    /// The level of the profile's own roles: its target roles and the roles its competences
+    /// name, never its years (what its role brings, `fit::role_brings`).
+    pub brings: u8,
 }
 
 impl EngineProfile {
@@ -67,6 +70,17 @@ impl EngineProfile {
         let wishes = Wishes::new(form);
         let level = ProfileLevel::new(form.roles.iter().map(String::as_str), skills.total_years);
         let fields = title::profile_fields(skills.vocab.packs());
+        let brings = level
+            .wished
+            .iter()
+            .copied()
+            .chain(
+                form.competences
+                    .iter()
+                    .filter_map(|c| title::level_of(&c.name)),
+            )
+            .max()
+            .unwrap_or(0);
         Self {
             core,
             skills,
@@ -77,6 +91,7 @@ impl EngineProfile {
             wishes,
             level,
             fields,
+            brings,
         }
     }
 }
@@ -413,6 +428,17 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
         .into_iter()
         .map(|item| {
             let mut fit = fit::item_fit(&profile.skills, &item);
+            // What follows from the profile's role counts as shown (the rubric's rule 2).
+            if fit.value < E_FULL
+                && matches!(item.class, Class::Skill | Class::Soft)
+                && fit::role_brings(profile.brings, &item.text, &profile.skills.vocab)
+            {
+                fit = ItemFit {
+                    value: E_FULL,
+                    entry: None,
+                    via: Via::Exact,
+                };
+            }
             if item.kind == ReqKind::Must
                 && let Some(entry) = fit.entry.and_then(|e| profile.skills.entries.get(e))
                 && entry.path.starts_with(key::TOOLS)
@@ -737,7 +763,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::matching::types::Via;
     use crate::matching::wishes::State;
 
     fn must(value: u16) -> Scored {

@@ -597,6 +597,28 @@ fn experience_atom(atom: &str) -> bool {
         || atom == atoms::stem("projekterfahrung")
 }
 
+/// Does a requirement ask only for what a role at `level` brings (`ROLE_BRINGS`:
+/// `Führungserfahrung`, `Budgetverantwortung`, `Stakeholder-Management` for a head of)?
+pub(crate) fn role_brings(level: u8, text: &str, vocab: &Vocab) -> bool {
+    let brought: Vec<&str> = lex::ROLE_BRINGS
+        .iter()
+        .filter(|(from, _)| *from <= level)
+        .flat_map(|(_, words)| words.iter().copied())
+        .collect();
+    let named = |a: &str| brought.iter().any(|w| a.starts_with(w));
+    let filler = |a: &str| atoms::is_generic(a) || experience_atom(a);
+    let mut any = false;
+    for atom in atoms::atoms(text, vocab) {
+        let parts: Vec<&str> = atom.split('-').filter(|p| !p.is_empty()).collect();
+        if parts.iter().any(|p| named(p)) && parts.iter().all(|p| named(p) || filler(p)) {
+            any = true;
+        } else if !filler(&atom) {
+            return false;
+        }
+    }
+    any
+}
+
 /// An atom of leadership (`fuhrung`, `personalverantwortung`).
 pub(crate) fn leadership_atom(atom: &str) -> bool {
     lex::LEADERSHIP_ATOMS

@@ -786,6 +786,37 @@ pub(crate) const SOFT_HEADS: &[&str] = &[
     "vorgehensweise",
 ];
 
+/// What a role brings (the rubric's rule 2): from this level of the profile's own roles on
+/// (its target roles and the roles its competences name, never its years), a requirement
+/// that asks only for these counts as shown (atom prefixes, folded). 4, a team lead:
+/// leadership; 5, the lead of a function and above: budget, results and stakeholders too.
+// external contract - do not translate (matching lexicon)
+pub(crate) const ROLE_BRINGS: &[(u8, &[&str])] = &[
+    (
+        4,
+        &[
+            "disziplinarisch",
+            "fuhrung",
+            "leadership",
+            "mitarbeiterfuhrung",
+            "personalfuhrung",
+            "personalverantwort",
+            "teamfuhrung",
+            "teamleitung",
+        ],
+    ),
+    (
+        5,
+        &[
+            "budget",
+            "ergebnisverantwort",
+            "kostenverantwort",
+            "management",
+            "stakeholder",
+        ],
+    ),
+];
+
 /// Short tokens that name a skill or role (`QP`, `R`, `Go`, `5S`, `8D`, `IQ/OQ/PQ`, `CI/CD`)
 /// and survive the minimum length (sorted).
 pub(crate) const SHORT_TOKENS: &[&str] = &[
